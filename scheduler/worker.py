@@ -1218,6 +1218,7 @@ class MonitoringWorker:
                                         access_token=access_token,
                                         status="PAUSED"
                                     )
+                                    await asyncio.sleep(random.uniform(0.2, 0.4))
                                 stats["adsets_stopped"] += 1
                                 logger.info(f"STOPPED AdSet: {a_id} ({eval_res.adset_name}) - {eval_res.reason}")
 
@@ -1342,6 +1343,7 @@ class MonitoringWorker:
                                         access_token=access_token,
                                         status="ACTIVE"
                                     )
+                                    await asyncio.sleep(random.uniform(0.2, 0.4))
                                 stats["adsets_reactivated"] += 1
 
                                 try:
@@ -1410,6 +1412,7 @@ class MonitoringWorker:
                                         new_daily_budget_dollars=new_budget,
                                         currency=acc.currency,
                                     )
+                                    await asyncio.sleep(random.uniform(0.2, 0.4))
                                 stats["budgets_changed"] += 1
                                 self._finish_execution(execution_state, status="SUCCESS", now=now)
                                 audit_event_id = await self._persist_audit_event(
@@ -1465,6 +1468,7 @@ class MonitoringWorker:
                                         new_daily_budget_dollars=new_budget,
                                         currency=acc.currency,
                                     )
+                                    await asyncio.sleep(random.uniform(0.2, 0.4))
                                 stats["budgets_changed"] += 1
                                 self._finish_execution(execution_state, status="SUCCESS", now=now)
                                 audit_event_id = await self._persist_audit_event(
@@ -1513,9 +1517,8 @@ class MonitoringWorker:
                     logger.error(f"Error processing account {account_ref}: {e}")
                     stats["errors"].append(f"Account {account_ref}: {e}")
 
-                # Межаккаунтный случайный джиттер (0.5–1.5с) для сглаживания нагрузки на Meta API
-                jitter = random.uniform(0.5, 1.5)
-                await asyncio.sleep(jitter)
+                # Кооперативная передача управления Event Loop между обработкой аккаунтов
+                await asyncio.sleep(0.01)
 
             await session.commit()
 

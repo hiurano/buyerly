@@ -1,6 +1,9 @@
+import asyncio
 import logging
-from typing import Optional
+import time
+from typing import Dict, Optional
 from aiogram import Bot
+from aiogram.exceptions import TelegramRetryAfter
 from rules.engine import RuleEvaluationResult
 from bot.keyboards import get_reactivate_keyboard
 from bot.keyboards import get_undo_action_keyboard
@@ -43,6 +46,7 @@ class TelegramNotifier:
     def __init__(self, bot: Bot, target_chat_id: str = ""):
         self.bot = bot
         self.default_chat_id = target_chat_id
+        self._last_send_by_chat: Dict[str, float] = {}
 
     async def _save_event_log(self, event_type: str, chat_id: str, account_id: str, message: str, status: str = "SUCCESS"):
         try:
@@ -205,12 +209,35 @@ class TelegramNotifier:
 
             if text:
                 logger.info(f"Sending Telegram alert [{event_type}] to chat_id={chat_id} (Account: {account_id})")
-                await self.bot.send_message(
-                    chat_id=chat_id,
-                    text=text,
-                    reply_markup=keyboard,
-                    parse_mode="HTML"
-                )
+                last_time = self._last_send_by_chat.get(str(chat_id), 0.0)
+                now = time.monotonic()
+                time_since_last = now - last_time
+                if time_since_last < 0.1:
+                    await asyncio.sleep(0.1 - time_since_last)
+
+                try:
+                    await self.bot.send_message(
+                        chat_id=chat_id,
+                        text=text,
+                        reply_markup=keyboard,
+                        parse_mode="HTML"
+                    )
+                except TelegramRetryAfter as retry_err:
+                    retry_secs = min(max(1.0, float(getattr(retry_err, "retry_after", 1.0) or 1.0)), 15.0)
+                    logger.warning(
+                        "Telegram rate limit hit for chat %s on [%s]; retrying after %.1fs",
+                        chat_id,
+                        event_type,
+                        retry_secs,
+                    )
+                    await asyncio.sleep(retry_secs)
+                    await self.bot.send_message(
+                        chat_id=chat_id,
+                        text=text,
+                        reply_markup=keyboard,
+                        parse_mode="HTML"
+                    )
+                self._last_send_by_chat[str(chat_id)] = time.monotonic()
                 logger.info(f"✅ Alert [{event_type}] delivered successfully to chat_id={chat_id}")
                 await self._save_event_log(event_type=event_type, chat_id=chat_id, account_id=account_id, message=text, status="SUCCESS")
 
