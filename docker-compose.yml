@@ -36,12 +36,6 @@ services:
     container_name: buyerly-migrate
     command: ["python", "-m", "services.database"]
     restart: "no"
-    environment:
-      <<: *app-environment
-      LEGACY_SQLITE_PATH: /legacy/mediabuyer.db
-    volumes:
-      - ./data:/legacy:ro
-      - ./logs:/app/logs
     depends_on:
       db:
         condition: service_healthy

@@ -35,7 +35,7 @@ flowchart LR
     R --> B
 ```
 
-В production запускаются независимые сервисы `web`, `api`, `bot`, `worker` и `db`. Разделение процессов локализует сбои: Telegram polling и фоновые проверки не делят процесс с веб-интерфейсом. Одноразовый сервис `migrate` готовит схему и безопасно переносит прежнюю SQLite-базу.
+В production запускаются независимые сервисы `web`, `api`, `bot`, `worker` и `db`. Разделение процессов локализует сбои: Telegram polling и фоновые проверки не делят процесс с веб-интерфейсом. Одноразовый сервис `migrate` готовит схему PostgreSQL и применяет миграции контрактов.
 
 ## Быстрый старт
 
@@ -72,7 +72,7 @@ python -m unittest discover tests -v
 api/                 FastAPI и REST-маршруты
 bot/                 Telegram handlers и уведомления
 core/                настройки, аудит и безопасные журналы
-database/            модели, подключение и SQLite → PostgreSQL migration
+database/            модели, подключение и миграции контрактов PostgreSQL
 meta_api/            клиент Meta Marketing API
 rules/               чистый движок условий и действий
 scheduler/           MonitoringWorker

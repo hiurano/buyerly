@@ -137,7 +137,7 @@ ensure_postgres_password
 echo "[3/6] Building versioned API and web images..."
 docker compose build --pull api web
 
-echo "[4/6] Preparing PostgreSQL and migrating legacy data..."
+echo "[4/6] Preparing PostgreSQL schema and applying contract migrations..."
 docker compose up -d db
 if ! wait_for_container buyerly-db; then
     docker compose logs --tail=120 db
