@@ -5,7 +5,6 @@
 (function () {
   'use strict';
 
-  const SUMMARY_AUTO_REFRESH_MS = 3 * 60 * 1000;
   const SUMMARY_COLUMNS = [
     { key: 'account', label: 'Кабинет', group: 'base', required: true },
     { key: 'custom_name', label: 'Моё название', group: 'base' },
@@ -74,7 +73,6 @@
     add: 'Добавить кабинеты — Buyerly',
     settings: 'Настройки — Buyerly'
   });
-  let summaryAutoRefreshTimer = null;
   let summaryViewSaveQueue = Promise.resolve();
   let summaryViewChangeVersion = 0;
   let summaryFilterSaveTimer = null;
@@ -2103,29 +2101,6 @@
     return generatedAt ? Math.max(0, Date.now() - generatedAt) : Number.POSITIVE_INFINITY;
   }
 
-  function refreshSummaryIfStale(period, data) {
-    if (
-      state.activeTab !== 'summary' ||
-      document.hidden ||
-      state.summaryLoading ||
-      summaryAgeMs(data) < SUMMARY_AUTO_REFRESH_MS
-    ) return;
-
-    window.setTimeout(() => {
-      if (state.activeTab === 'summary' && state.currentPeriod === period && !document.hidden) {
-        loadSummary(period, true, { silent: true, reason: 'auto' });
-      }
-    }, 0);
-  }
-
-  function startSummaryAutoRefresh() {
-    if (summaryAutoRefreshTimer) window.clearInterval(summaryAutoRefreshTimer);
-    summaryAutoRefreshTimer = window.setInterval(() => {
-      if (state.activeTab !== 'summary' || document.hidden || state.summaryLoading) return;
-      loadSummary(state.currentPeriod, true, { silent: true, reason: 'auto' });
-    }, SUMMARY_AUTO_REFRESH_MS);
-  }
-
   async function initializeSummaryTab() {
     await Promise.all([loadSummaryViewPreference(), loadAccounts()]);
     if (state.activeTab !== 'summary') return;
@@ -2138,9 +2113,8 @@
     const savedData = state.summaryCache[state.currentPeriod];
     if (savedData) {
       renderLocalSummaryCache(savedData);
-      refreshSummaryIfStale(state.currentPeriod, savedData);
     } else {
-      loadSummary(state.currentPeriod, false, { silent: true, refreshIfStale: true });
+      loadSummary(state.currentPeriod, false, { silent: true });
     }
   }
 
@@ -2637,9 +2611,6 @@
         fetchBtn.classList.remove('loading');
         fetchBtn.disabled = false;
       }
-      if (!force && options.refreshIfStale !== false && loadedData) {
-        refreshSummaryIfStale(period, loadedData);
-      }
       const queuedRequest = state.summaryQueuedRequest;
       state.summaryQueuedRequest = null;
       if (queuedRequest && queuedRequest.period !== period) {
@@ -2709,7 +2680,6 @@
     const generatedLabel = formatSummaryTime(data.generated_at);
     const ageSeconds = summaryAgeMs(data) / 1000;
     const origin = data.cache?.origin || (data.cache?.is_cached ? 'memory' : 'live');
-    const isStale = ageSeconds >= (SUMMARY_AUTO_REFRESH_MS / 1000);
     if (status) {
       const scopeLabel = data.scope?.group_id && data.scope.group_id !== 'all'
         ? ` · группа «${data.scope.name}»`
@@ -2722,12 +2692,12 @@
       if (options.refreshError) {
         freshness.className = 'summary-freshness-badge stale';
         freshness.textContent = 'Сохранённые данные';
-      } else if (origin === 'live' && !isStale) {
+      } else if (origin === 'live') {
         freshness.className = 'summary-freshness-badge fresh';
         freshness.textContent = 'Свежие данные';
       } else {
-        freshness.className = `summary-freshness-badge ${isStale ? 'stale' : 'cached'}`;
-        freshness.textContent = `${origin === 'database' ? 'Сохранено' : 'Последние данные'} · ${formatSummaryAge(ageSeconds)}`;
+        freshness.className = 'summary-freshness-badge cached';
+        freshness.textContent = `${origin === 'database' ? 'Сохранено' : 'Сохранённый снимок'} · ${formatSummaryAge(ageSeconds)}`;
       }
     }
     const lastSync = document.getElementById('lastSyncLabel');
@@ -4288,9 +4258,8 @@
 
       if (state.summaryCache[period]) {
         renderLocalSummaryCache(state.summaryCache[period]);
-        refreshSummaryIfStale(period, state.summaryCache[period]);
       } else {
-        loadSummary(period, false, { silent: true, refreshIfStale: true });
+        loadSummary(period, false, { silent: true });
       }
     });
   });
@@ -4441,7 +4410,6 @@
       const initialTab = tabFromLocation(initialPath || TAB_ROUTES.accounts);
 
       // Restore the requested page only after authentication succeeds.
-      startSummaryAutoRefresh();
       window.switchTab(initialTab, {
         historyMode: 'replace',
         haptic: false,
@@ -4601,9 +4569,7 @@
     ) {
       const data = state.summaryCache[state.currentPeriod];
       if (!data) {
-        loadSummary(state.currentPeriod, false, { silent: true, refreshIfStale: true });
-      } else {
-        refreshSummaryIfStale(state.currentPeriod, data);
+        loadSummary(state.currentPeriod, false, { silent: true });
       }
     }
   });

@@ -37,3 +37,4 @@ transcription.txt
 .DS_Store
 .idea/
 .vscode/
+.agents/

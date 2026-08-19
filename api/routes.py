@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 import uuid
@@ -2143,9 +2144,12 @@ async def get_summary_report(
 
         account_results = []
 
+        prepared_accounts = []
         for acc in accounts:
             short_name = get_short_account_label(acc.name, acc.account_id)
             account_currency = normalize_currency(acc.currency)
+            access_token = None
+            prep_error = None
             try:
                 access_token = await resolve_account_access_token(session, acc)
                 if account_currency == UNKNOWN_CURRENCY:
@@ -2158,11 +2162,96 @@ async def get_summary_report(
                         raise RuntimeError("Meta не вернула валюту рекламного кабинета")
                     acc.currency = account_currency
                     await session.commit()
-                account_insights = await meta_client.get_account_insights_summary(
-                    account_id=acc.account_id,
-                    access_token=access_token,
-                    date_preset=period
-                )
+            except Exception as e:
+                prep_error = e
+            prepared_accounts.append({
+                "account": acc,
+                "short_name": short_name,
+                "currency": account_currency,
+                "access_token": access_token,
+                "prep_error": prep_error,
+            })
+
+        semaphore = asyncio.Semaphore(3)
+
+        async def _fetch_single_account_insights(item: Dict[str, Any]) -> Dict[str, Any]:
+            acc = item["account"]
+            if item["prep_error"] is not None:
+                return {"error": item["prep_error"]}
+            async with semaphore:
+                await asyncio.sleep(0.1)
+                try:
+                    insights = await meta_client.get_account_insights_summary(
+                        account_id=acc.account_id,
+                        access_token=item["access_token"],
+                        date_preset=period,
+                    )
+                    return {"insights": insights}
+                except Exception as e:
+                    return {"error": e}
+
+        fetched_results = await asyncio.gather(
+            *(_fetch_single_account_insights(item) for item in prepared_accounts)
+        )
+
+        for item, res in zip(prepared_accounts, fetched_results):
+            acc = item["account"]
+            short_name = item["short_name"]
+            account_currency = item["currency"]
+            if "error" in res:
+                e = res["error"]
+                logger.error(f"Error fetching insights for {acc.account_id}: {e}")
+                is_blocked = not acc.is_active or acc.account_status in [2, 101]
+                if is_blocked:
+                    accounts_blocked += 1
+                else:
+                    accounts_failed += 1
+                account_results.append({
+                    "account_id": acc.account_id,
+                    "name": acc.name,
+                    "short_name": short_name,
+                    "custom_name": acc.custom_name or "",
+                    "note": acc.note or "",
+                    "group_ids": group_ids_by_account.get(acc.account_id, []),
+                    "timezone_name": acc.timezone_name,
+                    "currency": account_currency,
+                    "account_status": acc.account_status,
+                    "status_label": "⚠️ Ошибка синхронизации",
+                    "rules_enabled": acc.rules_enabled,
+                    "spend": 0.0,
+                    "clicks": 0,
+                    "impressions": 0,
+                    "reach": 0,
+                    "frequency": None,
+                    "cpm": None,
+                    "unique_clicks": 0,
+                    "link_clicks": 0,
+                    "outbound_clicks": 0,
+                    "landing_page_views": 0,
+                    "leads": 0,
+                    "registrations": 0,
+                    "purchases": 0,
+                    "cost_per_lead": None,
+                    "cost_per_registration": None,
+                    "cost_per_purchase": None,
+                    "cpc": 0.0,
+                    "ctr": 0.0,
+                    "cpc_link": None,
+                    "ctr_link": None,
+                    "ctr_outbound": None,
+                    "cost_per_landing_page_view": None,
+                    "adsets": [],
+                    "has_error": not is_blocked,
+                    "is_banned": is_blocked,
+                    "data_status": "blocked" if is_blocked else "error",
+                    "data_status_label": (
+                        "Исторические метрики недоступны для текущего статуса кабинета"
+                        if is_blocked
+                        else "Meta не вернула метрики"
+                    ),
+                })
+            else:
+                account_insights = res["insights"]
                 acc_spend = account_insights.get("spend", 0.0)
                 acc_clicks = account_insights.get("clicks", 0)
                 acc_impressions = account_insights.get("impressions", 0)
@@ -2272,57 +2361,6 @@ async def get_summary_report(
                     "is_banned": not acc.is_active or acc.account_status in [2, 101],
                     "data_status": "synced",
                     "data_status_label": "Account-level метрики получены из Meta независимо от текущего статуса",
-                })
-            except Exception as e:
-                logger.error(f"Error fetching insights for {acc.account_id}: {e}")
-                is_blocked = not acc.is_active or acc.account_status in [2, 101]
-                if is_blocked:
-                    accounts_blocked += 1
-                else:
-                    accounts_failed += 1
-                account_results.append({
-                    "account_id": acc.account_id,
-                    "name": acc.name,
-                    "short_name": short_name,
-                    "custom_name": acc.custom_name or "",
-                    "note": acc.note or "",
-                    "group_ids": group_ids_by_account.get(acc.account_id, []),
-                    "timezone_name": acc.timezone_name,
-                    "currency": account_currency,
-                    "account_status": acc.account_status,
-                    "status_label": "⚠️ Ошибка синхронизации",
-                    "rules_enabled": acc.rules_enabled,
-                    "spend": 0.0,
-                    "clicks": 0,
-                    "impressions": 0,
-                    "reach": 0,
-                    "frequency": None,
-                    "cpm": None,
-                    "unique_clicks": 0,
-                    "link_clicks": 0,
-                    "outbound_clicks": 0,
-                    "landing_page_views": 0,
-                    "leads": 0,
-                    "registrations": 0,
-                    "purchases": 0,
-                    "cost_per_lead": None,
-                    "cost_per_registration": None,
-                    "cost_per_purchase": None,
-                    "cpc": 0.0,
-                    "ctr": 0.0,
-                    "cpc_link": None,
-                    "ctr_link": None,
-                    "ctr_outbound": None,
-                    "cost_per_landing_page_view": None,
-                    "adsets": [],
-                    "has_error": not is_blocked,
-                    "is_banned": is_blocked,
-                    "data_status": "blocked" if is_blocked else "error",
-                    "data_status_label": (
-                        "Исторические метрики недоступны для текущего статуса кабинета"
-                        if is_blocked
-                        else "Meta не вернула метрики"
-                    ),
                 })
 
         currency_totals = [

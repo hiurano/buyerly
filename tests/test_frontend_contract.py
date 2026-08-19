@@ -182,18 +182,20 @@ class TestFrontendRuleContract(unittest.TestCase):
         self.assertNotIn('Стоимость результата', self.index)
         self.assertNotIn('data.avg_cost_per_result', self.script)
 
-    def test_summary_restores_snapshots_and_auto_refreshes(self):
+    def test_summary_restores_snapshots_and_on_demand_refreshes(self):
         for contract in (
             'id="kpiSpendPrevious"',
-            'Автообновление · каждые 3 мин',
+            'Обновление по кнопке · Сохранённый снимок',
         ):
             self.assertIn(contract, self.index)
 
+        self.assertNotIn('Автообновление · каждые 3 мин', self.index)
+        self.assertNotIn('SUMMARY_AUTO_REFRESH_MS', self.script)
+        self.assertNotIn('startSummaryAutoRefresh', self.script)
+        self.assertNotIn('refreshSummaryIfStale', self.script)
+
         for contract in (
-            'SUMMARY_AUTO_REFRESH_MS = 3 * 60 * 1000',
-            'startSummaryAutoRefresh()',
-            "loadSummary(state.currentPeriod, false, { silent: true, refreshIfStale: true })",
-            'refreshSummaryIfStale',
+            "loadSummary(state.currentPeriod, false, { silent: true })",
             'renderSpendComparison',
             'показываем данные от',
         ):
