@@ -136,6 +136,11 @@ router.include_router(audit_router)
 router.include_router(adsets_router)
 
 # Sync meta_client reference to routers using it
+import api.routers.accounts
+import api.routers.adsets
+import api.routers.audit
+import api.routers.summary
+
 api.routers.accounts.meta_client = meta_client
 api.routers.adsets.meta_client = meta_client
 api.routers.audit.meta_client = meta_client
