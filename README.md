@@ -113,12 +113,6 @@ uvicorn services.api:app --host 0.0.0.0 --port 8000 --reload
 python -m unittest discover tests -v
 ```
 
-В среде NixOS:
-
-```bash
-nix-shell -p "python3.withPackages(ps: with ps; [ sqlalchemy httpx aiogram cryptography fastapi pydantic pydantic-settings uvicorn asyncpg apscheduler python-dotenv bcrypt ])" --run "python -m services.api"
-```
-
 ## Структура проекта
 
 ```text
