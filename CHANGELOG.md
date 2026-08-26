@@ -10,6 +10,13 @@
 ## [Unreleased]
 
 ### Security
+- **Сквозное шифрование ручных Meta System User токенов и MultiFernet ротация ключей (`[86eyr5qbd]`)**:
+  - Все ручные Meta credentials (`/api/accounts/batch-add` и Telegram-бот) переведены на единый шифрованный контракт `Account.access_token_encrypted` с использованием алгоритма Fernet / MultiFernet (AES-128-CBC + HMAC-SHA256).
+  - Реализована безопасная, атомарная и идемпотентная автомиграция `migrate_manual_meta_tokens_contract` при запуске приложения и через Alembic (`0003_encrypt_manual_meta_tokens.py`), шифрующая существующие открытые токены и полностью очищающая колонку `access_token`.
+  - Внедрена защита от двойного шифрования (Double-Encryption Guard) и fail-closed обработка при повреждении ключа или шифртекста (`MetaTokenError`).
+  - Добавлена поддержка zero-downtime ротации ключей через `META_TOKEN_ENCRYPTION_KEY="new_key,old_key"`, функция `rotate_stored_meta_tokens` и CLI-утилита `scripts/rotate_meta_tokens.py` для перешифрования базы на лету.
+  - Токены полностью исключены из ORM repr, ответов API (`AccountItem`), логов и снимков `SummarySnapshot`.
+  - Добавлены комплексные тесты шифрования, ротации, резолвинга и миграции в `tests/test_meta_tokens.py` и `tests/test_api.py`.
 - **Санитизация URL и экранирование динамических полей шаблонов (`avatar_url`, `account_id`)**:
   - Реализована защищённая функция `sanitizeUrl()` в `webapp/js/app.js` с проверкой протоколов (`https:`, `http:`, `/uploads/...`) и блокировкой опасных схем (`javascript:`, `data:`, `blob:`), управляющих символов и протокол-относительных URL (`//`).
   - Все вхождения `avatar_url` (таблица участников воркспейса, аватар профиля, онбординг) теперь санитизируются через `sanitizeUrl()` и экранируются через `escapeHtml()`, устраняя риск Stored XSS в мульти-тенант окружении.

@@ -16,7 +16,7 @@ from core.audit import build_audit_event
 from core.action_undo import UndoError, undo_audit_action
 from core.currency import format_money, normalize_currency
 from core.ownership import entity_is_owned_by, owned_by
-from core.meta_tokens import resolve_account_access_token
+from core.meta_tokens import encrypt_meta_token, resolve_account_access_token
 from core.timezones import resolve_account_clock
 from database.db import async_session_maker
 from database.models import Account, StoppedAdSet, AppSettings, User
@@ -330,21 +330,26 @@ async def process_token_and_save(message: Message, state: FSMContext):
                         )
                         continue
 
+                    encrypted_token = encrypt_meta_token(token)
                     if existing.timezone_name != timezone_name:
                         existing.last_day_start_date = ""
                     existing.name = display_name
-                    existing.access_token = token
+                    existing.access_token_encrypted = encrypted_token
+                    existing.access_token = ""
+                    existing.meta_connection_id = None
                     existing.timezone_name = timezone_name
                     existing.currency = currency
                     existing.owner_user_id = owner_user.id
                     existing.batch_name = batch_name if batch_name != "-" else ""
                     existing.is_active = True
                 else:
+                    encrypted_token = encrypt_meta_token(token)
                     new_acc = Account(
                         workspace_id=owner_user.active_workspace_id,
                         account_id=acc_id,
                         name=display_name,
-                        access_token=token,
+                        access_token_encrypted=encrypted_token,
+                        access_token="",
                         owner_user_id=owner_user.id,
                         batch_name=batch_name if batch_name != "-" else "",
                         timezone_name=timezone_name,

@@ -29,6 +29,7 @@ from api.schemas import (
 )
 from bot.handlers import parse_fb_raw_accounts
 from core.currency import normalize_currency
+from core.meta_tokens import encrypt_meta_token
 from core.ownership import owned_by
 from core.rate_limit import rate_limit_dep
 from core.timezones import resolve_account_clock
@@ -352,10 +353,12 @@ async def batch_add_accounts(payload: BatchAddRequest, user: User = Depends(get_
                         })
                         continue
 
+                    encrypted_token = encrypt_meta_token(token)
                     if existing.timezone_name != timezone_name:
                         existing.last_day_start_date = ""
                     existing.name = display_name
-                    existing.access_token = token
+                    existing.access_token_encrypted = encrypted_token
+                    existing.access_token = ""
                     existing.meta_connection_id = None
                     existing.timezone_name = timezone_name
                     existing.currency = currency
@@ -366,11 +369,13 @@ async def batch_add_accounts(payload: BatchAddRequest, user: User = Depends(get_
                     existing.status_label = status_label
                     existing.is_active = True
                 else:
+                    encrypted_token = encrypt_meta_token(token)
                     new_acc = Account(
                         workspace_id=ws.id if ws else None,
                         account_id=acc_id,
                         name=display_name,
-                        access_token=token,
+                        access_token_encrypted=encrypted_token,
+                        access_token="",
                         owner_user_id=user.id,
                         batch_name=batch_name if batch_name != "-" else "",
                         timezone_name=timezone_name,

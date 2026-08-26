@@ -21,6 +21,7 @@ from database.models import (
 )
 from rules.engine import RuleEngine, RuleAction
 from scheduler.worker import MonitoringWorker
+from core.meta_tokens import encrypt_meta_token
 from meta_api.client import MetaClient
 
 
@@ -148,7 +149,8 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             account = Account(
                 account_id="act_e2e_sweden_1083",
                 name="Underdog 3286 (Швеция)",
-                access_token="mock_token_123",
+                access_token_encrypted=encrypt_meta_token("mock_token_123"),
+                access_token="",
                 owner_user_id=user.id,
                 workspace_id=ws.id,
                 timezone_name="HST",
@@ -612,7 +614,8 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
                     Account(
                         account_id=f"act_parallel_{suffix}",
                         name=f"Parallel {suffix}",
-                        access_token=f"token_{suffix}",
+                        access_token_encrypted=encrypt_meta_token(f"token_{suffix}"),
+                        access_token="",
                         timezone_name="UTC",
                         currency="USD",
                         active_rules="[]",

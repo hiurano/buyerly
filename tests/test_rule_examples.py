@@ -3,6 +3,7 @@ import unittest
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from core.meta_tokens import encrypt_meta_token
 from core.rule_examples import EXAMPLE_GROUPS, EXAMPLE_PRESETS, ensure_rule_examples
 from database.db import Base
 from database.models import (
@@ -41,7 +42,8 @@ class TestRuleExamples(unittest.IsolatedAsyncioTestCase):
             account = Account(
                 account_id="act_examples",
                 name="Examples account",
-                access_token="token",
+                access_token_encrypted=encrypt_meta_token("token"),
+                access_token="",
                 currency="USD",
                 rules_enabled=False,
             )

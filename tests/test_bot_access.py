@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 import bot.handlers as bot_handlers
 from bot.handlers import _can_manage_account, _is_admin_user, check_user_access
 from core.config import settings
+from core.meta_tokens import encrypt_meta_token
 from database.db import Base
 from database.models import Account, User
 
@@ -62,7 +63,8 @@ class TestBotAccessChecks(unittest.IsolatedAsyncioTestCase):
             account = Account(
                 account_id="act_access_test",
                 name="Access test",
-                access_token="mock",
+                access_token_encrypted=encrypt_meta_token("mock"),
+                access_token="",
                 owner_user_id=owner.id,
                 workspace_id=owner.active_workspace_id,
             )

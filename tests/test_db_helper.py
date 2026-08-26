@@ -1,7 +1,12 @@
 import os
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from cryptography.fernet import Fernet
+from core.config import settings
 from database.db import Base
+
+if not settings.META_TOKEN_ENCRYPTION_KEY:
+    settings.META_TOKEN_ENCRYPTION_KEY = Fernet.generate_key().decode("ascii")
 
 
 def get_test_db_url() -> str:

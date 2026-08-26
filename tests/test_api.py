@@ -16,6 +16,7 @@ import api.server as api_server_module
 from api.auth import validate_telegram_init_data
 from api.server import create_app
 from core.config import settings
+from core.meta_tokens import decrypt_meta_token, encrypt_meta_token
 from database.db import Base, hash_password, verify_password
 from database.models import (
     Account,
@@ -119,7 +120,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             acc = Account(
                 account_id="act_1018756607700064",
                 name="Швеция 1",
-                access_token="mock_token",
+                access_token_encrypted=encrypt_meta_token("mock_token"),
+                access_token="",
                 owner_user_id=buyer_user.id,
                 workspace_id=ws_buyer.id,
                 timezone_name="UTC",
@@ -379,7 +381,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                     Account(
                         account_id="act_2000000000000001",
                         name="NL second",
-                        access_token="mock_token",
+                        access_token_encrypted=encrypt_meta_token("mock_token"),
+                        access_token="",
                         owner_user_id=buyer.id,
                         workspace_id=buyer.active_workspace_id,
                         timezone_name="UTC",
@@ -388,7 +391,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                     Account(
                         account_id="act_9000000000000001",
                         name="Admin foreign",
-                        access_token="mock_token",
+                        access_token_encrypted=encrypt_meta_token("mock_token"),
+                        access_token="",
                         owner_user_id=admin.id,
                         workspace_id=admin.active_workspace_id,
                         timezone_name="UTC",
@@ -1105,7 +1109,12 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 )
             ).scalar_one()
             self.assertIsNone(reconnected.meta_connection_id)
-            self.assertEqual(reconnected.access_token, "replacement_system_user_token")
+            self.assertEqual(reconnected.access_token, "")
+            self.assertNotIn("replacement_system_user_token", reconnected.access_token_encrypted)
+            self.assertEqual(
+                decrypt_meta_token(reconnected.access_token_encrypted),
+                "replacement_system_user_token",
+            )
             self.assertEqual(reconnected.currency, "EUR")
 
     async def test_batch_import_rejects_account_without_supported_meta_timezone(self):
@@ -1302,7 +1311,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                     Account(
                         account_id="act_blocked",
                         name="Blocked account",
-                        access_token="blocked_token",
+                        access_token_encrypted=encrypt_meta_token("blocked_token"),
+                        access_token="",
                         owner_user_id=buyer.id,
                         workspace_id=buyer.active_workspace_id,
                         currency="USD",
@@ -1312,7 +1322,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                     Account(
                         account_id="act_sync_error",
                         name="Error account",
-                        access_token="error_token",
+                        access_token_encrypted=encrypt_meta_token("error_token"),
+                        access_token="",
                         owner_user_id=buyer.id,
                         workspace_id=buyer.active_workspace_id,
                         currency="USD",
@@ -1499,7 +1510,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 Account(
                     account_id="act_eur",
                     name="Euro account",
-                    access_token="eur_token",
+                    access_token_encrypted=encrypt_meta_token("eur_token"),
+                    access_token="",
                     owner_user_id=buyer.id,
                     workspace_id=buyer.active_workspace_id,
                     currency="EUR",
@@ -1634,7 +1646,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 Account(
                     account_id="act_admin_account",
                     name="Admin account",
-                    access_token="admin_mock_token",
+                    access_token_encrypted=encrypt_meta_token("admin_mock_token"),
+                    access_token="",
                     owner_user_id=admin.id,
                     workspace_id=admin.active_workspace_id,
                     timezone_name="UTC",

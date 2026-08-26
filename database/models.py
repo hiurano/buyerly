@@ -463,7 +463,18 @@ class Account(Base):
         nullable=False,
         doc="Редактируемая внутренняя заметка владельца о кабинете",
     )
-    access_token = Column(String, nullable=True, default="", doc="Legacy manual User/System User Access Token")
+    access_token_encrypted = Column(
+        Text,
+        nullable=True,
+        default="",
+        doc="Encrypted manual Meta System User token",
+    )
+    access_token = Column(
+        String,
+        nullable=True,
+        default="",
+        doc="Legacy plaintext token column (deprecated and cleared)",
+    )
     meta_connection_id = Column(
         Integer,
         ForeignKey("meta_connections.id", ondelete="SET NULL"),

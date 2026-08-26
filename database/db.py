@@ -493,6 +493,97 @@ async def migrate_meta_connection_contract(conn) -> bool:
     return True
 
 
+async def migrate_manual_meta_tokens_contract(conn) -> int:
+    """Ensure access_token_encrypted column exists and migrate legacy plaintext tokens."""
+
+    table_names = await conn.run_sync(
+        lambda sync_conn: set(inspect(sync_conn).get_table_names())
+    )
+    if "accounts" not in table_names:
+        return 0
+
+    columns = await conn.run_sync(
+        lambda sync_conn: {
+            column["name"] for column in inspect(sync_conn).get_columns("accounts")
+        }
+    )
+
+    if "access_token_encrypted" not in columns:
+        await conn.execute(
+            text(
+                "ALTER TABLE accounts ADD COLUMN access_token_encrypted TEXT DEFAULT ''"
+            )
+        )
+        columns.add("access_token_encrypted")
+
+    if "access_token" not in columns:
+        return 0
+
+    result = await conn.execute(
+        text(
+            "SELECT id, access_token, access_token_encrypted FROM accounts "
+            "WHERE access_token IS NOT NULL AND access_token != ''"
+        )
+    )
+    rows = result.fetchall()
+    if not rows:
+        return 0
+
+    from core.meta_tokens import encrypt_meta_token, decrypt_meta_token, MetaTokenError
+
+    migrated_count = 0
+    for row in rows:
+        account_id = row[0]
+        raw_token = str(row[1] or "").strip()
+        current_encrypted = str(row[2] or "").strip()
+
+        if not raw_token:
+            await conn.execute(
+                text("UPDATE accounts SET access_token = '' WHERE id = :id"),
+                {"id": account_id},
+            )
+            continue
+
+        if not current_encrypted:
+            if raw_token.startswith("gAAAAA"):
+                try:
+                    decrypt_meta_token(raw_token)
+                    encrypted_val = raw_token
+                except Exception:
+                    try:
+                        encrypted_val = encrypt_meta_token(raw_token)
+                    except MetaTokenError as exc:
+                        logger.warning(
+                            "Skipping encryption for account %s: %s", account_id, exc
+                        )
+                        continue
+            else:
+                try:
+                    encrypted_val = encrypt_meta_token(raw_token)
+                except MetaTokenError as exc:
+                    logger.warning(
+                        "Skipping encryption for account %s: %s", account_id, exc
+                    )
+                    continue
+
+            res = await conn.execute(
+                text(
+                    "UPDATE accounts SET access_token_encrypted = :enc, access_token = '' "
+                    "WHERE id = :id AND (access_token_encrypted = '' OR access_token_encrypted IS NULL)"
+                ),
+                {"enc": encrypted_val, "id": account_id},
+            )
+            if res.rowcount > 0:
+                migrated_count += 1
+        else:
+            await conn.execute(
+                text("UPDATE accounts SET access_token = '' WHERE id = :id"),
+                {"id": account_id},
+            )
+
+    return migrated_count
+
+
 async def migrate_account_profile_contract(conn) -> bool:
     """Add owner-editable labels without overloading the Meta account name."""
 
@@ -770,6 +861,9 @@ async def init_schema():
             logger.info("Added the account-local day boundary contract.")
         if await migrate_meta_connection_contract(conn):
             logger.info("Added encrypted Meta connection links to accounts.")
+        migrated_tokens = await migrate_manual_meta_tokens_contract(conn)
+        if migrated_tokens:
+            logger.info("Encrypted manual Meta tokens for %s account(s).", migrated_tokens)
         if await migrate_account_profile_contract(conn):
             logger.info("Added editable Buyerly account names and notes.")
         automation_settings_added = await migrate_automation_settings_contract(conn)
