@@ -5,6 +5,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, select
 
+from api.auth import get_current_user
 from api.deps import (
     _active_support_grant,
     get_user_workspaces_list,
