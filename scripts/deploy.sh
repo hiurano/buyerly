@@ -47,11 +47,6 @@ ensure_postgres_password() {
 
 ensure_email_settings() {
     if [[ -f .env ]]; then
-        if grep -q '^RESEND_API_KEY=' .env 2>/dev/null; then
-            sed -i 's|^RESEND_API_KEY=.*|RESEND_API_KEY=re_iJQDcp4y_2gs2NMni1nrp7EpXEXeQmQHt|' .env
-        else
-            printf '\nRESEND_API_KEY=re_iJQDcp4y_2gs2NMni1nrp7EpXEXeQmQHt\n' >> .env
-        fi
         if ! grep -q '^EMAIL_FROM=' .env 2>/dev/null; then
             printf 'EMAIL_FROM="Buyerly <team@buyerly.app>"\n' >> .env
         fi
