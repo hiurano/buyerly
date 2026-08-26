@@ -332,16 +332,16 @@ class TestMigrationManualMetaTokens(unittest.IsolatedAsyncioTestCase):
             # Seed legacy rows directly with raw SQL
             await session.execute(
                 text(
-                    "INSERT INTO accounts (account_id, name, access_token, access_token_encrypted, currency, timezone_name, active_rules, is_active) "
-                    "VALUES ('act_plain_1', 'Plain 1', 'EAAB_legacy_token', '', 'USD', 'UTC', '[]', true)"
+                    "INSERT INTO accounts (account_id, name, custom_name, note, access_token, access_token_encrypted, currency, timezone_name, active_rules, is_active) "
+                    "VALUES ('act_plain_1', 'Plain 1', '', '', 'EAAB_legacy_token', '', 'USD', 'UTC', '[]', true)"
                 )
             )
             # Row with existing ciphertext
             existing_cipher = encrypt_meta_token("already_encrypted")
             await session.execute(
                 text(
-                    "INSERT INTO accounts (account_id, name, access_token, access_token_encrypted, currency, timezone_name, active_rules, is_active) "
-                    "VALUES ('act_enc_2', 'Enc 2', 'legacy_residual', :enc, 'USD', 'UTC', '[]', true)"
+                    "INSERT INTO accounts (account_id, name, custom_name, note, access_token, access_token_encrypted, currency, timezone_name, active_rules, is_active) "
+                    "VALUES ('act_enc_2', 'Enc 2', '', '', 'legacy_residual', :enc, 'USD', 'UTC', '[]', true)"
                 ),
                 {"enc": existing_cipher},
             )
