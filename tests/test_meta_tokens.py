@@ -328,23 +328,29 @@ class TestMigrationManualMetaTokens(unittest.IsolatedAsyncioTestCase):
         await self.test_engine.dispose()
 
     async def test_migration_encrypts_plaintext_and_clears_column(self):
+        existing_cipher = encrypt_meta_token("already_encrypted")
         async with self.test_session_maker() as session:
-            # Seed legacy rows directly with raw SQL
-            await session.execute(
-                text(
-                    "INSERT INTO accounts (account_id, name, custom_name, note, access_token, access_token_encrypted, currency, timezone_name, active_rules, is_active) "
-                    "VALUES ('act_plain_1', 'Plain 1', '', '', 'EAAB_legacy_token', '', 'USD', 'UTC', '[]', true)"
-                )
-            )
-            # Row with existing ciphertext
-            existing_cipher = encrypt_meta_token("already_encrypted")
-            await session.execute(
-                text(
-                    "INSERT INTO accounts (account_id, name, custom_name, note, access_token, access_token_encrypted, currency, timezone_name, active_rules, is_active) "
-                    "VALUES ('act_enc_2', 'Enc 2', '', '', 'legacy_residual', :enc, 'USD', 'UTC', '[]', true)"
+            # Seed legacy rows
+            session.add_all([
+                Account(
+                    account_id="act_plain_1",
+                    name="Plain 1",
+                    access_token="EAAB_legacy_token",
+                    access_token_encrypted="",
+                    currency="USD",
+                    timezone_name="UTC",
+                    is_active=True,
                 ),
-                {"enc": existing_cipher},
-            )
+                Account(
+                    account_id="act_enc_2",
+                    name="Enc 2",
+                    access_token="legacy_residual",
+                    access_token_encrypted=existing_cipher,
+                    currency="USD",
+                    timezone_name="UTC",
+                    is_active=True,
+                ),
+            ])
             await session.commit()
 
         # Run startup migration
