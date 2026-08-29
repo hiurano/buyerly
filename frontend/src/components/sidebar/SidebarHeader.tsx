@@ -79,8 +79,8 @@ export const SidebarHeader: React.FC = () => {
 
             {/* 1. Settings */}
             <DropdownMenuItem>
-              <span>Settings</span>
-              <div className="flex items-center gap-[3px]">
+              <span className="truncate">Settings</span>
+              <div className="flex shrink-0 items-center gap-[3px]">
                 <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
                   G
                 </kbd>
@@ -95,15 +95,15 @@ export const SidebarHeader: React.FC = () => {
 
             {/* 2. Invite and manage members */}
             <DropdownMenuItem>
-              <span>Invite and manage members</span>
+              <span className="truncate">Invite and manage members</span>
             </DropdownMenuItem>
 
             <DropdownMenuSeparator />
 
             {/* 3. Switch workspace */}
             <DropdownMenuItem>
-              <span>Switch workspace</span>
-              <div className="flex items-center gap-[6px]">
+              <span className="truncate">Switch workspace</span>
+              <div className="flex shrink-0 items-center gap-[6px]">
                 <div className="flex items-center gap-[3px]">
                   <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
                     O
@@ -115,7 +115,7 @@ export const SidebarHeader: React.FC = () => {
                     W
                   </kbd>
                 </div>
-                <span className="text-[6px] text-[#636364] flex items-center justify-end w-[16px]">
+                <span className="text-[7px] text-[#636364] flex items-center justify-end w-[12px]">
                   ▶
                 </span>
               </div>
@@ -123,8 +123,8 @@ export const SidebarHeader: React.FC = () => {
 
             {/* 4. Log out */}
             <DropdownMenuItem>
-              <span>Log out</span>
-              <div className="flex items-center gap-[3px]">
+              <span className="truncate">Log out</span>
+              <div className="flex shrink-0 items-center gap-[3px]">
                 <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
                   Alt
                 </kbd>
