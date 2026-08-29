@@ -17,15 +17,17 @@ export const SidebarHeader: React.FC = () => {
     <div
       className="w-full select-none min-w-0"
       style={{
+        paddingTop: '16px',
         paddingLeft: '12px',
         paddingRight: '12px',
+        marginBottom: '16px',
         WebkitAppRegion: 'drag',
       } as React.CSSProperties}
     >
-      {/* Linear Header Row: Height 44px, marginTop 8px */}
+      {/* Linear Header Row: Height 28px */}
       <div
         className="flex items-center w-full min-w-0"
-        style={{ height: '44px', marginTop: '8px' }}
+        style={{ height: '28px' }}
       >
         {/* Exact Workspace Button (Fluid, shrinkable with ellipsis) */}
         <DropdownMenu>

@@ -15,8 +15,11 @@ export const Sidebar: React.FC = () => {
     setSidebarWidth,
     activeTab,
     setActiveTab,
+    notifications,
   } = useAppStore();
   const [isDragging, setIsDragging] = useState(false);
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const trackRef = useRef<HTMLDivElement>(null);
   const indicatorRef = useRef<HTMLDivElement>(null);
@@ -80,15 +83,15 @@ export const Sidebar: React.FC = () => {
       {/* 1. Header (Workspace + Search) */}
       <SidebarHeader />
 
-      {/* 2. Navigation Section (Top padding 8px -> y: 60px) */}
-      <div className="flex-1 overflow-y-auto px-3 pt-2 pb-4 space-y-[1px]">
+      {/* 2. Navigation Section (Exact Linear width 196px with px-3 padding) */}
+      <div className="flex-1 overflow-y-auto px-3 pb-4 space-y-[1px]">
         {/* Item 1: Inbox */}
         <Tooltip content="Inbox" shortcut="G I" side="right" sideOffset={8}>
           <button
             type="button"
             onClick={() => setActiveTab('inbox')}
             data-active={activeTab === 'inbox' ? 'true' : 'false'}
-            className="linear-sidebar-nav-item"
+            className="linear-sidebar-nav-item group"
           >
             <div className="flex items-center min-w-0">
               <span
@@ -99,19 +102,34 @@ export const Sidebar: React.FC = () => {
                 }}
                 className="flex shrink-0 items-center justify-center"
               >
-                <LinearInboxIcon size={16} />
+                <LinearInboxIcon size={14} />
               </span>
               <span
                 style={{
                   fontSize: '13px',
                   fontWeight: 500,
-                  lineHeight: '16px',
+                  letterSpacing: '-0.1px',
                 }}
                 className="truncate"
               >
                 Inbox
               </span>
             </div>
+
+            {/* Dynamic Unread Badge */}
+            {unreadCount > 0 && (
+              <span
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  letterSpacing: '-0.1px',
+                  color: 'lch(60.621% 1.2 272 / 1)',
+                }}
+                className="shrink-0 transition-colors group-hover:text-white"
+              >
+                {unreadCount}
+              </span>
+            )}
           </button>
         </Tooltip>
 
@@ -132,13 +150,13 @@ export const Sidebar: React.FC = () => {
                 }}
                 className="flex shrink-0 items-center justify-center"
               >
-                <LinearLayersIcon size={16} />
+                <LinearLayersIcon size={14} />
               </span>
               <span
                 style={{
                   fontSize: '13px',
                   fontWeight: 500,
-                  lineHeight: '16px',
+                  letterSpacing: '-0.1px',
                 }}
                 className="truncate"
               >
@@ -165,13 +183,13 @@ export const Sidebar: React.FC = () => {
                 }}
                 className="flex shrink-0 items-center justify-center"
               >
-                <LinearBoltIcon size={16} />
+                <LinearBoltIcon size={14} />
               </span>
               <span
                 style={{
                   fontSize: '13px',
                   fontWeight: 500,
-                  lineHeight: '16px',
+                  letterSpacing: '-0.1px',
                 }}
                 className="truncate"
               >
@@ -198,13 +216,13 @@ export const Sidebar: React.FC = () => {
                 }}
                 className="flex shrink-0 items-center justify-center"
               >
-                <LinearBarChartIcon size={16} />
+                <LinearBarChartIcon size={14} />
               </span>
               <span
                 style={{
                   fontSize: '13px',
                   fontWeight: 500,
-                  lineHeight: '16px',
+                  letterSpacing: '-0.1px',
                 }}
                 className="truncate"
               >

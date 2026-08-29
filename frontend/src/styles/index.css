@@ -142,16 +142,19 @@ html, body {
 
 .linear-sidebar-nav-item {
   height: 28px;
-  padding: 0px 9px 0px 8px;
+  padding: 0px 8px;
   border-radius: 8px;
   display: flex;
   width: 100%;
   align-items: center;
   justify-content: space-between;
-  cursor: pointer;
+  cursor: default;
   outline: none;
   background-color: transparent;
   color: lch(60.621% 1.2 272 / 1);
+  letter-spacing: -0.1px;
+  font-size: 13px;
+  font-weight: 500;
   transition: color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94),
               background-color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
