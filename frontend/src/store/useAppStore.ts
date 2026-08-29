@@ -61,8 +61,8 @@ interface AppState {
   toggleRuleForCampaign: (campaignId: string, ruleId: string) => void;
   isRightSidebarOpen: boolean;
   toggleRightSidebar: () => void;
-  activeRightSidebarTab: 'rules' | 'priority' | 'platforms';
-  setActiveRightSidebarTab: (tab: 'rules' | 'priority' | 'platforms') => void;
+  activeRightSidebarTab: 'rules' | 'overview';
+  setActiveRightSidebarTab: (tab: 'rules' | 'overview') => void;
   selectedFilterRuleId: string | null;
   setSelectedFilterRuleId: (id: string | null) => void;
   selectedFilterPlatform: string | null;
@@ -75,6 +75,7 @@ interface AppState {
   selectedRuleId: string | null;
   setSelectedRuleId: (id: string | null) => void;
   toggleRuleStatus: (id: string) => void;
+  addRule: (rule: Omit<RuleItem, 'id' | 'identifier'>) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -268,4 +269,20 @@ export const useAppStore = create<AppState>((set) => ({
           : r
       ),
     })),
+  addRule: (newRule) =>
+    set((state) => {
+      const nextIndex = state.rules.length + 1;
+      const id = `rul-${String(nextIndex).padStart(2, '0')}`;
+      const identifier = `RUL-${String(nextIndex).padStart(2, '0')}`;
+      return {
+        rules: [
+          ...state.rules,
+          {
+            ...newRule,
+            id,
+            identifier,
+          },
+        ],
+      };
+    }),
 }));
