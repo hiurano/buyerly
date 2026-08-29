@@ -41,9 +41,15 @@ export const CampaignsView: React.FC = () => {
   return (
     <div className="flex h-full w-full select-none flex-col overflow-hidden bg-transparent">
       {/* 1. Header (Stacked 2 Tiers = 87px total) - Spans full width across canvas */}
-      <header className="flex shrink-0 flex-col border-b border-[#18191b] px-4 pt-1">
-        {/* Tier 1: Title (44px) */}
-        <div className="flex h-[44px] items-center justify-between">
+      <header className="flex shrink-0 flex-col">
+        {/* Tier 1: Title (44px) with border-bottom */}
+        <div
+          style={{
+            borderBottom: '1px solid lch(9.84 1.48 272)',
+            padding: '0px 10px 0px 8px',
+          }}
+          className="flex h-[44px] items-center justify-between"
+        >
           <div className="flex items-center gap-2">
             <h2
               style={{
@@ -57,8 +63,13 @@ export const CampaignsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Tier 2: View Filter Tabs & Action Buttons (43px) */}
-        <div className="flex h-[43px] items-center justify-between pb-1">
+        {/* Tier 2: View Filter Tabs & Action Buttons (43px) - No border bottom */}
+        <div
+          style={{
+            padding: '0px 10px 0px 8px',
+          }}
+          className="flex h-[43px] items-center justify-between"
+        >
           {/* Left: View Tabs (Pills 28px, border-radius: 9999px) */}
           <div className="flex items-center gap-1.5">
             {[
@@ -101,7 +112,15 @@ export const CampaignsView: React.FC = () => {
               <button
                 type="button"
                 aria-label="Add filter"
-                className="linear-icon-btn"
+                style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '9999px',
+                  backgroundColor: 'lch(10.149 0.689 272)',
+                  border: '1px solid transparent',
+                  color: 'lch(61.803% 1.2 272 / 1)',
+                }}
+                className="flex items-center justify-center transition-colors duration-100 hover:bg-[#1a1b1d] hover:text-white outline-none"
               >
                 <span className="flex h-[14px] w-[14px] items-center justify-center">
                   <LinearFilterIcon size={14} />
@@ -113,7 +132,15 @@ export const CampaignsView: React.FC = () => {
               <button
                 type="button"
                 aria-label="Display options"
-                className="linear-icon-btn"
+                style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '9999px',
+                  backgroundColor: 'lch(10.149 0.689 272)',
+                  border: '1px solid transparent',
+                  color: 'lch(61.803% 1.2 272 / 1)',
+                }}
+                className="flex items-center justify-center transition-colors duration-100 hover:bg-[#1a1b1d] hover:text-white outline-none"
               >
                 <span className="flex h-[14px] w-[14px] items-center justify-center">
                   <LinearSlidersIcon size={14} />
@@ -127,11 +154,15 @@ export const CampaignsView: React.FC = () => {
                 aria-label="Toggle sidebar"
                 onClick={toggleRightSidebar}
                 data-state={isRightSidebarOpen ? 'active' : 'inactive'}
-                className="linear-icon-btn"
                 style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '9999px',
+                  border: '1px solid transparent',
                   backgroundColor: isRightSidebarOpen ? 'lch(18.634 1.075 272)' : 'transparent',
                   color: isRightSidebarOpen ? 'lch(100 0 272)' : 'lch(61.803% 1.2 272 / 1)',
                 }}
+                className="flex items-center justify-center transition-colors duration-100 hover:bg-[#1a1b1d] hover:text-white outline-none"
               >
                 <span className="flex h-[14px] w-[14px] items-center justify-center">
                   <LinearSidebarToggleIcon size={16} />

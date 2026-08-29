@@ -50,7 +50,7 @@ export const CampaignRightSidebar: React.FC = () => {
           width: '350px',
           height: '100%',
           overflow: 'hidden auto',
-          padding: '8px 8px 8px 4px',
+          padding: '0px 0px 8px 4px',
         }}
       >
         <div
@@ -68,6 +68,7 @@ export const CampaignRightSidebar: React.FC = () => {
           <div
             style={{
               width: '336px',
+              minHeight: 'calc(100% - 8px)',
               padding: '12px',
               margin: '0px 0px 8px',
               borderRadius: '10px',
@@ -101,6 +102,7 @@ export const CampaignRightSidebar: React.FC = () => {
                   data-state={activeRightSidebarTab === 'rules' ? 'active' : 'inactive'}
                   onClick={() => setActiveRightSidebarTab('rules')}
                   style={{
+                    flex: 1,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -141,6 +143,7 @@ export const CampaignRightSidebar: React.FC = () => {
                   data-state={activeRightSidebarTab === 'priority' ? 'active' : 'inactive'}
                   onClick={() => setActiveRightSidebarTab('priority')}
                   style={{
+                    flex: 1,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -181,6 +184,7 @@ export const CampaignRightSidebar: React.FC = () => {
                   data-state={activeRightSidebarTab === 'platforms' ? 'active' : 'inactive'}
                   onClick={() => setActiveRightSidebarTab('platforms')}
                   style={{
+                    flex: 1,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -280,6 +284,7 @@ export const CampaignRightSidebar: React.FC = () => {
                               fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
                               fontSize: '13px',
                               fontWeight: 450,
+                              lineHeight: '16px',
                               color: 'lch(100 0 272)',
                               whiteSpace: 'nowrap',
                               textOverflow: 'ellipsis',
@@ -426,6 +431,7 @@ export const CampaignRightSidebar: React.FC = () => {
                               fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
                               fontSize: '13px',
                               fontWeight: 450,
+                              lineHeight: '16px',
                               color: 'lch(100 0 272)',
                               whiteSpace: 'nowrap',
                               textOverflow: 'ellipsis',
@@ -568,6 +574,7 @@ export const CampaignRightSidebar: React.FC = () => {
                               fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
                               fontSize: '13px',
                               fontWeight: 450,
+                              lineHeight: '16px',
                               color: 'lch(100 0 272)',
                               whiteSpace: 'nowrap',
                               textOverflow: 'ellipsis',

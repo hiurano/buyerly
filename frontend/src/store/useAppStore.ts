@@ -81,7 +81,7 @@ export const useAppStore = create<AppState>((set) => ({
   isSearchOpen: false,
   setSearchOpen: (open) => set({ isSearchOpen: open }),
   workspaceName: 'buyerly',
-  sidebarWidth: 244,
+  sidebarWidth: 220,
   setSidebarWidth: (width) =>
     set({ sidebarWidth: Math.min(Math.max(width, 220), 360) }),
   activeTab: 'campaigns',
