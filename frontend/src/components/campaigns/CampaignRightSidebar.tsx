@@ -212,7 +212,7 @@ export const CampaignRightSidebar: React.FC = () => {
                     }
                   }}
                 >
-                  <span>Правила</span>
+                  <span>Rules</span>
                 </button>
 
                 <button
@@ -253,7 +253,7 @@ export const CampaignRightSidebar: React.FC = () => {
                     }
                   }}
                 >
-                  <span>Сводка</span>
+                  <span>Overview</span>
                 </button>
               </div>
             </div>
