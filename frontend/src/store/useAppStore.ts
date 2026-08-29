@@ -1,0 +1,259 @@
+import { create } from 'zustand';
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  preview: string;
+  timestamp: string;
+  isRead: boolean;
+  contentBody?: string;
+}
+
+export interface CampaignItem {
+  id: string;
+  identifier: string;
+  name: string;
+  platform: 'Meta' | 'TikTok' | 'Google';
+  status: 'active' | 'paused';
+  budget: string;
+  leadsCount: number;
+  cpa: string;
+  spend: string;
+  roi: string;
+  date: string;
+}
+
+export interface RuleItem {
+  id: string;
+  identifier: string;
+  name: string;
+  condition: string;
+  action: string;
+  scope: string;
+  status: 'active' | 'triggered' | 'paused';
+  lastRun: string;
+}
+
+interface AppState {
+  isSearchOpen: boolean;
+  setSearchOpen: (open: boolean) => void;
+  workspaceName: string;
+  sidebarWidth: number;
+  setSidebarWidth: (width: number) => void;
+  activeTab: 'inbox' | 'campaigns' | 'rules';
+  setActiveTab: (tab: 'inbox' | 'campaigns' | 'rules') => void;
+  
+  // Inbox State
+  notifications: NotificationItem[];
+  selectedNotificationId: string | null;
+  setSelectedNotificationId: (id: string | null) => void;
+  archiveNotification: (id: string) => void;
+
+  // Campaigns State
+  campaigns: CampaignItem[];
+  campaignFilterTab: 'active' | 'paused' | 'all';
+  setCampaignFilterTab: (tab: 'active' | 'paused' | 'all') => void;
+  selectedCampaignIds: string[];
+  toggleCampaignSelection: (id: string) => void;
+  clearCampaignSelection: () => void;
+  toggleCampaignDelivery: (id: string) => void;
+  activeDetailsCampaignId: string | null;
+  openCampaignDetails: (id: string) => void;
+  closeCampaignDetails: () => void;
+  campaignAttachedRules: Record<string, string[]>;
+  toggleRuleForCampaign: (campaignId: string, ruleId: string) => void;
+
+  // Rules State
+  rules: RuleItem[];
+  ruleFilterTab: 'active' | 'triggered' | 'paused' | 'all';
+  setRuleFilterTab: (tab: 'active' | 'triggered' | 'paused' | 'all') => void;
+  selectedRuleId: string | null;
+  setSelectedRuleId: (id: string | null) => void;
+  toggleRuleStatus: (id: string) => void;
+}
+
+export const useAppStore = create<AppState>((set) => ({
+  isSearchOpen: false,
+  setSearchOpen: (open) => set({ isSearchOpen: open }),
+  workspaceName: 'buyerly',
+  sidebarWidth: 244,
+  setSidebarWidth: (width) =>
+    set({ sidebarWidth: Math.min(Math.max(width, 220), 360) }),
+  activeTab: 'campaigns',
+  setActiveTab: (tab) => set({ activeTab: tab }),
+
+  notifications: [
+    {
+      id: 'welcome-1',
+      title: 'Welcome to Linear',
+      preview: 'Watch an introductory video and access a list of resources below.',
+      timestamp: '1h',
+      isRead: false,
+      contentBody:
+        'Welcome to your new workspace! Linear is built for high-performance software teams. Streamline software projects, sprints, tasks, and bug tracking with high speed and keyboard shortcuts.',
+    },
+  ],
+  selectedNotificationId: 'welcome-1',
+  setSelectedNotificationId: (id) => set({ selectedNotificationId: id }),
+  archiveNotification: (id) =>
+    set((state) => ({
+      notifications: state.notifications.filter((n) => n.id !== id),
+      selectedNotificationId:
+        state.selectedNotificationId === id ? null : state.selectedNotificationId,
+    })),
+
+  campaigns: [
+    {
+      id: 'cmp-101',
+      identifier: 'CMP-101',
+      name: 'Nutra WeightLoss (Italy) • Broad CBO',
+      platform: 'Meta',
+      status: 'active',
+      budget: '$500/day',
+      leadsCount: 142,
+      cpa: '$8.70',
+      spend: '$1,240 spend',
+      roi: '+142% ROI',
+      date: 'Aug 29',
+    },
+    {
+      id: 'cmp-102',
+      identifier: 'CMP-102',
+      name: 'E-com Gadgets (USA) • UGC Hook #4',
+      platform: 'TikTok',
+      status: 'active',
+      budget: '$1,200/day',
+      leadsCount: 380,
+      cpa: '$9.20',
+      spend: '$3,500 spend',
+      roi: '+189% ROI',
+      date: 'Aug 29',
+    },
+    {
+      id: 'cmp-103',
+      identifier: 'CMP-103',
+      name: 'Mobile Cleaner iOS (Tier-1) • Target CPA',
+      platform: 'Google',
+      status: 'active',
+      budget: '$300/day',
+      leadsCount: 74,
+      cpa: '$12.00',
+      spend: '$890 spend',
+      roi: '+118% ROI',
+      date: 'Aug 28',
+    },
+    {
+      id: 'cmp-104',
+      identifier: 'CMP-104',
+      name: 'Crypto Info LeadGen (LATAM) • Retargeting',
+      platform: 'Meta',
+      status: 'paused',
+      budget: '$150/day',
+      leadsCount: 18,
+      cpa: '$25.00',
+      spend: '$450 spend',
+      roi: '-15% ROI',
+      date: 'Aug 26',
+    },
+  ],
+  campaignFilterTab: 'all',
+  setCampaignFilterTab: (tab) => set({ campaignFilterTab: tab }),
+  selectedCampaignIds: [],
+  toggleCampaignSelection: (id) =>
+    set((state) => ({
+      selectedCampaignIds: state.selectedCampaignIds.includes(id)
+        ? state.selectedCampaignIds.filter((item) => item !== id)
+        : [...state.selectedCampaignIds, id],
+    })),
+  clearCampaignSelection: () => set({ selectedCampaignIds: [] }),
+  toggleCampaignDelivery: (id) =>
+    set((state) => ({
+      campaigns: state.campaigns.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              status: c.status === 'paused' ? 'active' : 'paused',
+            }
+          : c
+      ),
+    })),
+  activeDetailsCampaignId: null,
+  openCampaignDetails: (id) => set({ activeDetailsCampaignId: id }),
+  closeCampaignDetails: () => set({ activeDetailsCampaignId: null }),
+  campaignAttachedRules: {
+    'cmp-101': ['rul-01', 'rul-02'],
+    'cmp-102': [],
+    'cmp-103': ['rul-03'],
+    'cmp-104': [],
+  },
+  toggleRuleForCampaign: (campaignId, ruleId) =>
+    set((state) => {
+      const attached = state.campaignAttachedRules[campaignId] || [];
+      return {
+        campaignAttachedRules: {
+          ...state.campaignAttachedRules,
+          [campaignId]: attached.includes(ruleId)
+            ? attached.filter((r) => r !== ruleId)
+            : [...attached, ruleId],
+        },
+      };
+    }),
+
+  rules: [
+    {
+      id: 'rul-01',
+      identifier: 'RUL-01',
+      name: 'Auto-Stop High CPA (> $25)',
+      condition: 'IF CPA > $25 & Spend > $40',
+      action: 'PAUSE ADSET',
+      scope: 'Meta Ads • All Campaigns',
+      status: 'active',
+      lastRun: '15m ago',
+    },
+    {
+      id: 'rul-02',
+      identifier: 'RUL-02',
+      name: 'Scale Winner Budget (+20% daily)',
+      condition: 'IF ROI > 140% & Leads ≥ 5',
+      action: 'BUDGET +20%',
+      scope: 'TikTok Ads • Broad',
+      status: 'triggered',
+      lastRun: '1h ago',
+    },
+    {
+      id: 'rul-03',
+      identifier: 'RUL-03',
+      name: 'Kill Zero-Conversions ($50 spend)',
+      condition: 'IF Spend > $50 & Leads == 0',
+      action: 'PAUSE CAMPAIGN',
+      scope: 'Google Ads • Search',
+      status: 'active',
+      lastRun: '3h ago',
+    },
+    {
+      id: 'rul-04',
+      identifier: 'RUL-04',
+      name: 'Duplicate Winner AdSet (Auto-Horiz Scale)',
+      condition: 'IF Conversions > 10 & CPA < $12',
+      action: 'DUPLICATE ADSET',
+      scope: 'Meta Ads • CBO',
+      status: 'paused',
+      lastRun: '2d ago',
+    },
+  ],
+  ruleFilterTab: 'active',
+  setRuleFilterTab: (tab) => set({ ruleFilterTab: tab }),
+  selectedRuleId: null,
+  setSelectedRuleId: (id) => set({ selectedRuleId: id }),
+  toggleRuleStatus: (id) =>
+    set((state) => ({
+      rules: state.rules.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              status: r.status === 'paused' ? 'active' : 'paused',
+            }
+          : r
+      ),
+    })),
+}));
