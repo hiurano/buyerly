@@ -105,7 +105,13 @@ export const useAppStore = create<AppState>((set) => ({
     },
   ],
   selectedNotificationId: 'welcome-1',
-  setSelectedNotificationId: (id) => set({ selectedNotificationId: id }),
+  setSelectedNotificationId: (id) =>
+    set((state) => ({
+      selectedNotificationId: id,
+      notifications: id
+        ? state.notifications.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+        : state.notifications,
+    })),
   archiveNotification: (id) =>
     set((state) => ({
       notifications: state.notifications.filter((n) => n.id !== id),

@@ -45,13 +45,32 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
         className="flex min-w-0 flex-1 flex-col justify-center"
       >
         {/* Title Line (13px, weight 500, line-height 16px) */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center min-w-0">
+          {/* 8px Accent Dot for Unread Notifications */}
+          {!item.isRead && (
+            <span
+              style={{
+                width: '8px',
+                height: '8px',
+                marginRight: '6px',
+              }}
+              className="flex shrink-0 items-center justify-center"
+            >
+              <span className="h-2 w-2 rounded-full bg-[#5e69d1]" />
+            </span>
+          )}
+
           <span
             style={{
               fontSize: '13px',
-              fontWeight: 500,
+              fontWeight: item.isRead ? 450 : 500,
               lineHeight: '16px',
-              color: isSelected ? '#ffffff' : 'lch(91.269% 1.425 272 / 1)',
+              letterSpacing: '-0.1px',
+              color: isSelected
+                ? '#ffffff'
+                : item.isRead
+                ? 'lch(61.803% 1.2 272 / 1)' // Muted secondary (#949597)
+                : '#ffffff',                // Bright primary (#ffffff)
             }}
             className="truncate"
           >
