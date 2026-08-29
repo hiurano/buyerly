@@ -2,6 +2,7 @@ import React from 'react';
 import { CampaignItem, useAppStore } from '@/store/useAppStore';
 import { LinearCheckbox } from '@/ui/LinearCheckbox';
 import { LinearToggle } from '@/ui/LinearToggle';
+import { LinearBoltIcon } from '@/icons/LinearIcons';
 
 interface CampaignRowProps {
   campaign: CampaignItem;
@@ -51,7 +52,7 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({ campaign }) => {
         height: '44px',
         display: 'grid',
         gridTemplateColumns:
-          '8px 18px 32px 1fr minmax(90px, auto) minmax(145px, auto) minmax(95px, auto) minmax(85px, auto) 18px',
+          '8px 18px 32px 1fr minmax(80px, auto) minmax(135px, auto) minmax(90px, auto) minmax(80px, auto) minmax(85px, auto) 18px',
         columnGap: '12px',
         alignItems: 'center',
         borderRadius: '8px',
@@ -83,8 +84,8 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({ campaign }) => {
         />
       </div>
 
-      {/* 4. Campaign Title + Rules Badge */}
-      <div className="flex items-center gap-2 min-w-0 pr-2">
+      {/* 4. Campaign Title (Clean, unconstrained, free of badge clutter) */}
+      <div className="flex items-center min-w-0 pr-2">
         <span
           style={{
             fontSize: '13px',
@@ -95,51 +96,6 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({ campaign }) => {
         >
           {campaign.name}
         </span>
-        {/* Rules Badge */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setFocusedCampaignId(campaign.id);
-            if (!isRightSidebarOpen) {
-              toggleRightSidebar();
-            }
-            setActiveRightSidebarTab('rules');
-          }}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '3px',
-            height: '18px',
-            padding: '0 6px',
-            borderRadius: '4px',
-            border: 'none',
-            cursor: 'pointer',
-            flexShrink: 0,
-            fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
-            fontSize: '11px',
-            fontWeight: 500,
-            lineHeight: 1,
-            whiteSpace: 'nowrap',
-            background: hasRules ? 'rgba(234, 179, 8, 0.12)' : 'rgba(255, 255, 255, 0.05)',
-            color: hasRules ? '#eab308' : '#94969b',
-            transition: 'background 0.15s, color 0.15s',
-          }}
-          onMouseEnter={(e) => {
-            const btn = e.currentTarget;
-            btn.style.background = hasRules ? 'rgba(234, 179, 8, 0.22)' : 'rgba(255, 255, 255, 0.1)';
-          }}
-          onMouseLeave={(e) => {
-            const btn = e.currentTarget;
-            btn.style.background = hasRules ? 'rgba(234, 179, 8, 0.12)' : 'rgba(255, 255, 255, 0.05)';
-          }}
-        >
-          {hasRules ? (
-            <>⚡ {attachedCount} {attachedCount === 1 ? 'rule' : 'rules'}</>
-          ) : (
-            <>+ Rule</>
-          )}
-        </button>
       </div>
 
       {/* 5. Budget ($500/day) */}
@@ -175,7 +131,111 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({ campaign }) => {
         </span>
       </div>
 
-      {/* 9. End padding spacer */}
+      {/* 9. Dedicated Rules Badge Column (Linear Badge Pill Shape & Physics) */}
+      <div className="flex items-center justify-start">
+        {hasRules ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setFocusedCampaignId(campaign.id);
+              if (!isRightSidebarOpen) {
+                toggleRightSidebar();
+              }
+              setActiveRightSidebarTab('rules');
+            }}
+            style={{
+              height: '22px',
+              padding: '0 8px',
+              borderRadius: '9999px',
+              backgroundColor: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              cursor: 'pointer',
+              outline: 'none',
+              transition: 'border-color 0.15s, background-color 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.06)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.03)';
+            }}
+          >
+            <div className="flex h-3.5 w-3.5 items-center justify-center flex-shrink-0">
+              <LinearBoltIcon size={12} className="text-[#eab308]" />
+            </div>
+            <span
+              style={{
+                fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
+                fontSize: '12px',
+                fontWeight: 500,
+                color: '#e4e5e8',
+                lineHeight: 1,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {attachedCount} {attachedCount === 1 ? 'rule' : 'rules'}
+            </span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setFocusedCampaignId(campaign.id);
+              if (!isRightSidebarOpen) {
+                toggleRightSidebar();
+              }
+              setActiveRightSidebarTab('rules');
+            }}
+            style={{
+              height: '22px',
+              padding: '0 8px',
+              borderRadius: '9999px',
+              backgroundColor: 'transparent',
+              border: '1px dashed rgba(255, 255, 255, 0.12)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              cursor: 'pointer',
+              outline: 'none',
+              transition: 'opacity 0.15s, border-color 0.15s, background-color 0.15s, color 0.15s',
+            }}
+            className="opacity-0 group-hover/row:opacity-100 text-[#8c8f95] hover:text-white hover:border-white/30 hover:bg-white/[0.04]"
+          >
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 10 10"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+            >
+              <line x1="5" y1="2" x2="5" y2="8" />
+              <line x1="2" y1="5" x2="8" y2="5" />
+            </svg>
+            <span
+              style={{
+                fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
+                fontSize: '12px',
+                fontWeight: 500,
+                lineHeight: 1,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Rule
+            </span>
+          </button>
+        )}
+      </div>
+
+      {/* 10. End Spacer */}
       <div />
     </div>
   );
