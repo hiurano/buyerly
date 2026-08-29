@@ -512,6 +512,7 @@ class TestFrontendRuleContract(unittest.TestCase):
             'Сравнение недоступно: разный охват кабинетов',
             'Частичные данные: подтверждено',
             'Операционные сигналы выше продолжают работать.',
+            "['critical', 'warning', 'partial'].includes(item.state)",
             'data-account-id=',
             '<progress value=',
         ):

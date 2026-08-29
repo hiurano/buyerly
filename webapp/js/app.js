@@ -2167,8 +2167,10 @@
       context: `Эффект: ${analyticsAnomalies[0].effect}`
     } : null;
     const signals = [metaSignal, healthSignal, coverageSignal, analyticsSignal].filter(Boolean);
-    const attentionSignals = signals.filter(item => ['critical', 'warning'].includes(item.state));
+    const attentionSignals = signals.filter(item => ['critical', 'warning', 'partial'].includes(item.state));
     const hasCritical = signals.some(item => item.state === 'critical');
+    const hasWarning = signals.some(item => item.state === 'warning');
+    const hasPartialSignal = signals.some(item => item.state === 'partial');
     const partial = unavailable.length > 0;
 
     const status = document.getElementById('todayWorkspaceStatus');
@@ -2204,7 +2206,13 @@
     });
 
     const count = document.getElementById('todayAttentionCount');
-    if (count) count.dataset.state = hasCritical ? 'critical' : attentionSignals.length ? 'warning' : partial ? 'partial' : 'healthy';
+    if (count) count.dataset.state = hasCritical
+      ? 'critical'
+      : hasWarning
+        ? 'warning'
+        : hasPartialSignal || partial
+          ? 'partial'
+          : 'healthy';
     const action = document.getElementById('todayPrimaryAction');
     if (action) {
       action.disabled = false;

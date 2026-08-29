@@ -1426,7 +1426,8 @@ textarea {
   font-weight: 750;
 }
 
-.today-attention-count[data-state="warning"] {
+.today-attention-count[data-state="warning"],
+.today-attention-count[data-state="partial"] {
   border-color: var(--warning-border);
   background: var(--warning-bg);
   color: var(--warning-fg);
