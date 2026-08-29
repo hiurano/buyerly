@@ -8,9 +8,6 @@ import {
   LinearSlidersIcon,
   LinearEmptyInboxIllustration,
   BuyerlyLogoAvatar,
-  LinearBoltIcon,
-  LinearChartIcon,
-  LinearKeyboardIcon,
   LinearClockOutlineIcon,
   LinearInboxDeleteIcon,
 } from '@/icons/LinearIcons';
@@ -231,66 +228,27 @@ export const InboxView: React.FC = () => {
                   <p>{selectedNotification.contentBody}</p>
                 </div>
 
-                {/* Feature Highlights / Onboarding Cards */}
-                <div className="flex flex-col gap-3">
-                  <div
-                    style={{
-                      padding: '14px 16px',
-                      borderRadius: '8px',
-                      backgroundColor: 'lch(9.232 0.85 272)',
-                      border: '1px solid lch(13.553 1.93 272)',
-                    }}
-                    className="flex items-start gap-3.5"
-                  >
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#eab308]/10 text-[#eab308] border border-[#eab308]/20">
-                      <LinearBoltIcon size={14} className="text-[#eab308]" />
-                    </div>
-                    <div>
-                      <h4 className="text-[13px] font-medium text-white mb-0.5">Automated Rules Engine</h4>
-                      <p className="text-[12px] text-[#94969b] leading-relaxed">
-                        Protect your ad budget with instant stop-loss triggers when CPA exceeds limits, and auto-scale budgets on top performers.
-                      </p>
-                    </div>
+                {/* Clean Typography Sections (No boxes, no borders, no icons) */}
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-[14px] font-semibold text-white mb-1.5">Automated Rules Engine</h3>
+                    <p className="text-[13px] leading-relaxed text-[#94969b]">
+                      Protect your ad budget with instant stop-loss triggers when CPA exceeds limits, and auto-scale budgets on top performers.
+                    </p>
                   </div>
 
-                  <div
-                    style={{
-                      padding: '14px 16px',
-                      borderRadius: '8px',
-                      backgroundColor: 'lch(9.232 0.85 272)',
-                      border: '1px solid lch(13.553 1.93 272)',
-                    }}
-                    className="flex items-start gap-3.5"
-                  >
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#27ae60]/10 text-[#27ae60] border border-[#27ae60]/20">
-                      <LinearChartIcon size={14} className="text-[#27ae60]" />
-                    </div>
-                    <div>
-                      <h4 className="text-[13px] font-medium text-white mb-0.5">Live Campaign Telemetry</h4>
-                      <p className="text-[12px] text-[#94969b] leading-relaxed">
-                        Inspect real-time daily spend, leads, CPA, ROI, and funnel conversion rates right inside the dedicated context sidebar.
-                      </p>
-                    </div>
+                  <div>
+                    <h3 className="text-[14px] font-semibold text-white mb-1.5">Live Campaign Telemetry</h3>
+                    <p className="text-[13px] leading-relaxed text-[#94969b]">
+                      Inspect real-time daily spend, leads, CPA, ROI, and funnel conversion rates right inside the dedicated context sidebar.
+                    </p>
                   </div>
 
-                  <div
-                    style={{
-                      padding: '14px 16px',
-                      borderRadius: '8px',
-                      backgroundColor: 'lch(9.232 0.85 272)',
-                      border: '1px solid lch(13.553 1.93 272)',
-                    }}
-                    className="flex items-start gap-3.5"
-                  >
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#5e6ad2]/10 text-[#a5b4fc] border border-[#5e6ad2]/20">
-                      <LinearKeyboardIcon size={14} className="text-[#a5b4fc]" />
-                    </div>
-                    <div>
-                      <h4 className="text-[13px] font-medium text-white mb-0.5">Lightning Speed Navigation</h4>
-                      <p className="text-[12px] text-[#94969b] leading-relaxed">
-                        Navigate like a pro with <kbd className="px-1.5 py-0.5 rounded border border-[#323237] text-[11px] bg-[#1a1b1d] text-white">G</kbd> then <kbd className="px-1.5 py-0.5 rounded border border-[#323237] text-[11px] bg-[#1a1b1d] text-white">C</kbd> for Campaigns, and <kbd className="px-1.5 py-0.5 rounded border border-[#323237] text-[11px] bg-[#1a1b1d] text-white">Ctrl</kbd> <kbd className="px-1.5 py-0.5 rounded border border-[#323237] text-[11px] bg-[#1a1b1d] text-white">I</kbd> to toggle details.
-                      </p>
-                    </div>
+                  <div>
+                    <h3 className="text-[14px] font-semibold text-white mb-1.5">Lightning Speed Navigation</h3>
+                    <p className="text-[13px] leading-relaxed text-[#94969b]">
+                      Navigate like a pro with <kbd className="px-1.5 py-0.5 rounded border border-[#323237] text-[11px] bg-[#1a1b1d] text-white font-mono">G</kbd> then <kbd className="px-1.5 py-0.5 rounded border border-[#323237] text-[11px] bg-[#1a1b1d] text-white font-mono">C</kbd> for Campaigns, and <kbd className="px-1.5 py-0.5 rounded border border-[#323237] text-[11px] bg-[#1a1b1d] text-white font-mono">Ctrl</kbd> <kbd className="px-1.5 py-0.5 rounded border border-[#323237] text-[11px] bg-[#1a1b1d] text-white font-mono">I</kbd> to toggle details.
+                    </p>
                   </div>
                 </div>
               </div>
