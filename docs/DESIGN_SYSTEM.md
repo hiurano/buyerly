@@ -1,8 +1,10 @@
 # Buyerly Design System
 
-Version: Unified UI 2.2
+Version: Unified UI 3.0
 Owner: Product / Frontend
 ClickUp: BL-101 `86eyr6073`
+
+> Normative usage, component recipes and the required change process are defined in [`UI_CONTRACT.md`](UI_CONTRACT.md). This document explains the product principles and screen-level system; `webapp/css/ui-system.css` owns the rendered values.
 
 ## Principles
 
@@ -17,8 +19,8 @@ ClickUp: BL-101 `86eyr6073`
 
 ## Production architecture
 
-- `webapp/css/styles.css` сохраняет legacy и domain-specific поведение;
-- `webapp/css/ui-system.css` загружается последним и является единым production-контрактом геометрии, типографики, surfaces и responsive;
+- `webapp/css/styles.css` сохраняет legacy и domain-specific поведение, но не владеет новыми shared values;
+- `webapp/css/ui-system.css` загружается последним и является единым production-источником tokens, control geometry, типографики, surfaces и responsive;
 - все семь authenticated-разделов помечены `data-ui-pilot` и используют одну ширину `--ui-page-max` и gutter `--ui-page-gutter`;
 - все 23 modal overlays и command palette получают `.ui-dialog`, `role="dialog"` и `aria-modal="true"` без изменения id и JavaScript handlers;
 - production HTML не содержит presentation-specific inline styles: разрешены только шесть стартовых `display:none` для экранов, чья видимость переключается JavaScript; вычисляемые ширины таблиц и user-configured colors остаются в runtime markup;
@@ -30,7 +32,7 @@ ClickUp: BL-101 `86eyr6073`
 |---|---|
 | Typography | `--font-sans`, `--font-mono`, `--font-size-xs/sm/md/lg/xl`, line heights |
 | Spacing | `--space-1/2/3/4/6/8` = 4/8/12/16/24/32px |
-| Controls | `--control-sm/md/lg` = 32/36/44px |
+| Controls | `--control-sm/md/lg` = 32/38/44px |
 | Action | `--action-primary`, `--action-primary-hover`, `--action-primary-soft` |
 | Warning | `--warning-fg`, `--warning-bg`, `--warning-border` |
 | Focus | `--focus-ring`; всегда visible для keyboard focus |
