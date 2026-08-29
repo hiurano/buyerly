@@ -93,12 +93,12 @@ export const useAppStore = create<AppState>((set) => ({
   notifications: [
     {
       id: 'welcome-1',
-      title: 'Welcome to Linear',
-      preview: 'Watch an introductory video and access a list of resources below.',
+      title: 'Welcome to Buyerly',
+      preview: 'Watch an introductory guide and access key media buying resources below.',
       timestamp: '1h',
       isRead: false,
       contentBody:
-        'Welcome to your new workspace! Linear is built for high-performance software teams. Streamline software projects, sprints, tasks, and bug tracking with high speed and keyboard shortcuts.',
+        'Welcome to your new workspace! Buyerly is built for high-performance media buying teams and solo affiliates. Automate rules, scale winning adsets, stop bleeding spend, and track real-time CPA & ROI with lightning speed and keyboard shortcuts.',
     },
   ],
   selectedNotificationId: 'welcome-1',

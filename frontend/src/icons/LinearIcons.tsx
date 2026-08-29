@@ -272,6 +272,35 @@ export const LinearLogoAvatar: React.FC<{ size?: number; className?: string }> =
   </svg>
 );
 
+// 12b. Official Buyerly Logo Avatar (Gold Anubis)
+export const BuyerlyLogoAvatar: React.FC<{
+  size?: number;
+  className?: string;
+  shape?: 'circle' | 'rounded';
+}> = ({ size = 32, className = '', shape = 'circle' }) => (
+  <div
+    style={{
+      width: `${size}px`,
+      height: `${size}px`,
+      borderRadius: shape === 'circle' ? '50%' : '8px',
+      backgroundColor: '#18191c',
+      border: '1px solid rgba(255, 255, 255, 0.08)',
+    }}
+    className={`relative flex shrink-0 items-center justify-center overflow-hidden select-none ${className}`}
+  >
+    <img
+      src="/buyerly-logo.png"
+      alt="Buyerly"
+      style={{
+        width: `${size * 0.75}px`,
+        height: `${size * 0.75}px`,
+        objectFit: 'contain',
+      }}
+      draggable={false}
+    />
+  </div>
+);
+
 // 13. Exact Linear Empty State Inbox Illustration (97.5 x 100px)
 export const LinearEmptyInboxIllustration: React.FC<{ className?: string }> = ({
   className = '',
