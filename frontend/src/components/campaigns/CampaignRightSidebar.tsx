@@ -53,10 +53,9 @@ export const CampaignRightSidebar: React.FC = () => {
     setActiveRightSidebarTab,
     rules,
     campaigns,
+    focusedCampaignId,
     campaignAttachedRules,
-    selectedFilterRuleId,
-    setSelectedFilterRuleId,
-    toggleRuleStatus,
+    toggleRuleForCampaign,
     addRule,
   } = useAppStore();
 
@@ -66,11 +65,25 @@ export const CampaignRightSidebar: React.FC = () => {
 
   if (!isRightSidebarOpen) return null;
 
+  const currentCampaign =
+    campaigns.find((c) => c.id === focusedCampaignId) || campaigns[0];
+
+  const attachedRuleIds = currentCampaign
+    ? campaignAttachedRules[currentCampaign.id] || []
+    : [];
+
   const handleCreateRule = () => {
     const template = RULE_TEMPLATES[selectedTemplateIndex];
     addRule(template);
+    if (currentCampaign) {
+      const nextIndex = rules.length + 1;
+      const newRuleId = `rul-${String(nextIndex).padStart(2, '0')}`;
+      toggleRuleForCampaign(currentCampaign.id, newRuleId);
+    }
     setIsAddModalOpen(false);
   };
+
+  const isPositiveRoi = currentCampaign ? currentCampaign.roi.startsWith('+') : true;
 
   return (
     <div
@@ -124,8 +137,27 @@ export const CampaignRightSidebar: React.FC = () => {
               flexDirection: 'column',
             }}
           >
+            {/* Minimal Campaign Title (Clean, no platforms, no status badges) */}
+            <div style={{ padding: '0 2px 10px 2px' }}>
+              <h3
+                title={currentCampaign?.name}
+                style={{
+                  fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: 'lch(90.451% 1.2 272 / 1)',
+                  whiteSpace: 'nowrap',
+                  textOverflow: 'ellipsis',
+                  overflow: 'hidden',
+                  margin: 0,
+                }}
+              >
+                {currentCampaign?.name || 'Campaign'}
+              </h3>
+            </div>
+
             {/* 2-Tab Segmented Header: [ Правила ] | [ Сводка ] */}
-            <div style={{ margin: '-2px 0 10px 0' }}>
+            <div style={{ margin: '0 0 10px 0' }}>
               <div
                 role="tablist"
                 aria-orientation="horizontal"
@@ -224,16 +256,12 @@ export const CampaignRightSidebar: React.FC = () => {
               </div>
             </div>
 
-            {/* TAB 1: ПРАВИЛА (ИНТЕРАКТИВНЫЙ СПИСОК + ТУМБЛЕРЫ + ДОБАВЛЕНИЕ) */}
+            {/* TAB 1: ПРАВИЛА (СИНХРОНИЗИРОВАНЫ С ВЫБРАННОЙ СВЯЗКОЙ) */}
             {activeRightSidebarTab === 'rules' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', width: '310px' }}>
                 {rules.map((rule, idx) => {
-                  const count = Object.values(campaignAttachedRules).filter((rIds) =>
-                    rIds.includes(rule.id)
-                  ).length;
-                  const isSelected = selectedFilterRuleId === rule.id;
+                  const isAttached = attachedRuleIds.includes(rule.id);
                   const isHovered = hoveredRowId === rule.id;
-                  const isRuleActive = rule.status !== 'paused';
                   const dotColor = RULE_COLORS[idx % RULE_COLORS.length];
 
                   return (
@@ -241,7 +269,11 @@ export const CampaignRightSidebar: React.FC = () => {
                       <div
                         role="button"
                         tabIndex={0}
-                        onClick={() => setSelectedFilterRuleId(rule.id)}
+                        onClick={() => {
+                          if (currentCampaign) {
+                            toggleRuleForCampaign(currentCampaign.id, rule.id);
+                          }
+                        }}
                         onMouseEnter={() => setHoveredRowId(rule.id)}
                         onMouseLeave={() => setHoveredRowId(null)}
                         style={{
@@ -251,8 +283,8 @@ export const CampaignRightSidebar: React.FC = () => {
                           height: '42px',
                           padding: '0 10px',
                           borderRadius: '8px',
-                          backgroundColor: isSelected ? 'lch(13.058 1.3 272)' : isHovered ? 'lch(13.058 1.3 272)' : 'transparent',
-                          color: isRuleActive ? 'lch(100 0 272)' : 'lch(61.803% 1.2 272 / 1)',
+                          backgroundColor: isHovered ? 'lch(13.058 1.3 272)' : 'transparent',
+                          color: isAttached ? 'lch(100 0 272)' : 'lch(61.803% 1.2 272 / 1)',
                           cursor: 'pointer',
                           userSelect: 'none',
                           overflow: 'hidden',
@@ -270,7 +302,7 @@ export const CampaignRightSidebar: React.FC = () => {
                             minWidth: '9px',
                             minHeight: '9px',
                             borderRadius: '50%',
-                            backgroundColor: isRuleActive ? dotColor : '#52525b',
+                            backgroundColor: isAttached ? dotColor : '#3f3f46',
                             flexShrink: 0,
                             transition: 'background-color 0.15s ease',
                           }}
@@ -291,7 +323,7 @@ export const CampaignRightSidebar: React.FC = () => {
                               fontSize: '13px',
                               fontWeight: 450,
                               lineHeight: '16px',
-                              color: isRuleActive ? 'lch(100 0 272)' : '#71717a',
+                              color: isAttached ? 'lch(100 0 272)' : '#71717a',
                               whiteSpace: 'nowrap',
                               textOverflow: 'ellipsis',
                               overflow: 'hidden',
@@ -301,45 +333,25 @@ export const CampaignRightSidebar: React.FC = () => {
                           </span>
                         </div>
 
-                        {/* Inline LinearToggle Switch */}
+                        {/* Inline LinearToggle Switch for this campaign */}
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
-                            toggleRuleStatus(rule.id);
+                            if (currentCampaign) {
+                              toggleRuleForCampaign(currentCampaign.id, rule.id);
+                            }
                           }}
                           style={{ flexShrink: 0 }}
                         >
                           <LinearToggle
-                            checked={isRuleActive}
-                            onChange={() => toggleRuleStatus(rule.id)}
-                            tooltipContent={isRuleActive ? 'Pause rule' : 'Activate rule'}
-                          />
-                        </div>
-
-                        {/* Right Count Badge */}
-                        <div
-                          data-column-id="row-count"
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'flex-end',
-                            minWidth: '16px',
-                            height: '24px',
-                          }}
-                        >
-                          <span
-                            data-animated-number="true"
-                            style={{
-                              fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
-                              fontSize: '13px',
-                              fontWeight: 450,
-                              color: 'lch(63.304 1.425 272)',
-                              fontVariantNumeric: 'tabular-nums',
-                              textAlign: 'right',
+                            checked={isAttached}
+                            onChange={() => {
+                              if (currentCampaign) {
+                                toggleRuleForCampaign(currentCampaign.id, rule.id);
+                              }
                             }}
-                          >
-                            {count}
-                          </span>
+                            tooltipContent={isAttached ? 'Detach rule' : 'Attach rule'}
+                          />
                         </div>
                       </div>
                     </div>
@@ -510,13 +522,78 @@ export const CampaignRightSidebar: React.FC = () => {
               </div>
             )}
 
-            {/* TAB 2: СВОДКА (ТЕЛЕМЕТРИЯ И СТАТИСТИКА КАБИНЕТА) */}
-            {activeRightSidebarTab === 'overview' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '310px' }}>
-                {/* Financial Overview Card */}
+            {/* TAB 2: СВОДКА (ЧИСТЫЕ МЕТРИКИ ВЫБРАННОЙ СВЯЗКИ) */}
+            {activeRightSidebarTab === 'overview' && currentCampaign && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '310px' }}>
+                {/* Campaign Metrics Card */}
                 <div
                   style={{
-                    padding: '10px',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    backgroundColor: 'lch(11 0.8 272)',
+                    border: '1px solid lch(13.553 1.93 272)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: '"Inter Variable", sans-serif',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: 'lch(63.304 1.425 272)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    Campaign Telemetry
+                  </span>
+
+                  {/* Daily Budget */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', color: '#a1a1aa' }}>Daily Budget</span>
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#fefeff', fontVariantNumeric: 'tabular-nums' }}>
+                      {currentCampaign.budget}
+                    </span>
+                  </div>
+
+                  {/* Leads & CPA */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', color: '#a1a1aa' }}>Leads (CPA)</span>
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#fefeff', fontVariantNumeric: 'tabular-nums' }}>
+                      {currentCampaign.leadsCount} leads <span style={{ color: '#94969b', fontSize: '11px' }}>(${currentCampaign.cpa})</span>
+                    </span>
+                  </div>
+
+                  {/* Spend */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', color: '#a1a1aa' }}>Total Spend</span>
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#fefeff', fontVariantNumeric: 'tabular-nums' }}>
+                      {currentCampaign.spend}
+                    </span>
+                  </div>
+
+                  {/* ROI */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', color: '#a1a1aa' }}>ROI</span>
+                    <span
+                      style={{
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: isPositiveRoi ? '#4ade80' : '#ef4444',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {currentCampaign.roi}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Funnel Telemetry */}
+                <div
+                  style={{
+                    padding: '12px',
                     borderRadius: '8px',
                     backgroundColor: 'lch(11 0.8 272)',
                     border: '1px solid lch(13.553 1.93 272)',
@@ -535,67 +612,12 @@ export const CampaignRightSidebar: React.FC = () => {
                       letterSpacing: '0.04em',
                     }}
                   >
-                    Financials (Today)
-                  </span>
-
-                  {/* Spend Metric */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', color: '#a1a1aa' }}>Total Spend</span>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#fefeff', fontVariantNumeric: 'tabular-nums' }}>
-                      $5,630 <span style={{ fontSize: '11px', fontWeight: 400, color: '#71717a' }}>/ $7,500</span>
-                    </span>
-                  </div>
-
-                  {/* Mini Progress Bar */}
-                  <div style={{ width: '100%', height: '4px', borderRadius: '9999px', backgroundColor: '#27272a', overflow: 'hidden' }}>
-                    <div style={{ width: '75%', height: '100%', backgroundColor: '#eab308' }} />
-                  </div>
-
-                  {/* Leads & Avg CPA */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
-                    <span style={{ fontSize: '12px', color: '#a1a1aa' }}>Leads (Avg CPA)</span>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#fefeff', fontVariantNumeric: 'tabular-nums' }}>
-                      614 <span style={{ fontSize: '11px', fontWeight: 400, color: '#94969b' }}>($9.17)</span>
-                    </span>
-                  </div>
-
-                  {/* Net ROI / Profit */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', color: '#a1a1aa' }}>Net Profit / ROI</span>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#4ade80', fontVariantNumeric: 'tabular-nums' }}>
-                      +$7,980 <span style={{ fontSize: '11px', fontWeight: 500 }}>(+141%)</span>
-                    </span>
-                  </div>
-                </div>
-
-                {/* Funnel Metrics */}
-                <div
-                  style={{
-                    padding: '10px',
-                    borderRadius: '8px',
-                    backgroundColor: 'lch(11 0.8 272)',
-                    border: '1px solid lch(13.553 1.93 272)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '6px',
-                  }}
-                >
-                  <span
-                    style={{
-                      fontFamily: '"Inter Variable", sans-serif',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      color: 'lch(63.304 1.425 272)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.04em',
-                    }}
-                  >
-                    Funnel Telemetry
+                    Funnel Rates
                   </span>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '12px', color: '#a1a1aa' }}>Avg CTR</span>
-                    <span style={{ fontSize: '12px', fontWeight: 500, color: '#fefeff' }}>2.48%</span>
+                    <span style={{ fontSize: '12px', fontWeight: 500, color: '#fefeff' }}>2.84%</span>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -605,47 +627,7 @@ export const CampaignRightSidebar: React.FC = () => {
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '12px', color: '#a1a1aa' }}>Avg CPM</span>
-                    <span style={{ fontSize: '12px', fontWeight: 500, color: '#fefeff' }}>$10.40</span>
-                  </div>
-                </div>
-
-                {/* Delivery & Automation Status */}
-                <div
-                  style={{
-                    padding: '10px',
-                    borderRadius: '8px',
-                    backgroundColor: 'lch(11 0.8 272)',
-                    border: '1px solid lch(13.553 1.93 272)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '6px',
-                  }}
-                >
-                  <span
-                    style={{
-                      fontFamily: '"Inter Variable", sans-serif',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      color: 'lch(63.304 1.425 272)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.04em',
-                    }}
-                  >
-                    Delivery & AI Agent
-                  </span>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', color: '#a1a1aa' }}>Campaigns Status</span>
-                    <span style={{ fontSize: '12px', fontWeight: 500, color: '#fefeff' }}>
-                      🟢 {campaigns.filter((c) => c.status === 'active').length} active • ⏸ {campaigns.filter((c) => c.status === 'paused').length} paused
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', color: '#a1a1aa' }}>AI Triggers (24h)</span>
-                    <span style={{ fontSize: '12px', fontWeight: 500, color: '#eab308' }}>
-                      ⚡ 14 rules executed
-                    </span>
+                    <span style={{ fontSize: '12px', fontWeight: 500, color: '#fefeff' }}>$11.20</span>
                   </div>
                 </div>
               </div>

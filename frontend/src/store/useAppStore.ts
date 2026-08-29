@@ -57,6 +57,8 @@ interface AppState {
   toggleCampaignSelection: (id: string) => void;
   clearCampaignSelection: () => void;
   toggleCampaignDelivery: (id: string) => void;
+  focusedCampaignId: string;
+  setFocusedCampaignId: (id: string) => void;
   campaignAttachedRules: Record<string, string[]>;
   toggleRuleForCampaign: (campaignId: string, ruleId: string) => void;
   isRightSidebarOpen: boolean;
@@ -183,6 +185,8 @@ export const useAppStore = create<AppState>((set) => ({
           : c
       ),
     })),
+  focusedCampaignId: 'cmp-101',
+  setFocusedCampaignId: (id) => set({ focusedCampaignId: id }),
   campaignAttachedRules: {
     'cmp-101': ['rul-01', 'rul-02'],
     'cmp-102': [],

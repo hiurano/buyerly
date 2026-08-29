@@ -16,17 +16,19 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({ campaign }) => {
     toggleRightSidebar,
     setActiveRightSidebarTab,
     campaignAttachedRules,
+    focusedCampaignId,
+    setFocusedCampaignId,
   } = useAppStore();
 
   const isSelected = selectedCampaignIds.includes(campaign.id);
+  const isFocused = focusedCampaignId === campaign.id;
   const isDeliveryOn = campaign.status !== 'paused';
   const isPositiveRoi = campaign.roi.startsWith('+');
   const attachedCount = (campaignAttachedRules[campaign.id] || []).length;
   const hasRules = attachedCount > 0;
 
-
   const handleRowClick = () => {
-    toggleCampaignSelection(campaign.id);
+    setFocusedCampaignId(campaign.id);
   };
 
   return (
@@ -35,12 +37,16 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({ campaign }) => {
       tabIndex={0}
       onClick={handleRowClick}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ' || e.key === 'x' || e.key === 'X') {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setFocusedCampaignId(campaign.id);
+        } else if (e.key === 'x' || e.key === 'X') {
           e.preventDefault();
           toggleCampaignSelection(campaign.id);
         }
       }}
       data-selected={isSelected ? 'true' : 'false'}
+      data-focused={isFocused ? 'true' : 'false'}
       style={{
         height: '44px',
         display: 'grid',
@@ -51,6 +57,8 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({ campaign }) => {
         borderRadius: '8px',
         backgroundColor: isSelected
           ? 'rgba(234, 179, 8, 0.09)'
+          : isFocused
+          ? 'rgba(255, 255, 255, 0.04)'
           : 'transparent',
       }}
       className="group/row relative cursor-pointer select-none px-2 transition-colors duration-100 hover:bg-white/[0.05] outline-none"
@@ -92,6 +100,7 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({ campaign }) => {
           type="button"
           onClick={(e) => {
             e.stopPropagation();
+            setFocusedCampaignId(campaign.id);
             if (!isRightSidebarOpen) {
               toggleRightSidebar();
             }
