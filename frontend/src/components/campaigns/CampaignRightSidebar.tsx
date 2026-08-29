@@ -50,7 +50,7 @@ export const CampaignRightSidebar: React.FC = () => {
           width: '350px',
           height: '100%',
           overflow: 'hidden auto',
-          padding: '0px 0px 0px 4px',
+          padding: '8px 8px 8px 4px',
         }}
       >
         <div
