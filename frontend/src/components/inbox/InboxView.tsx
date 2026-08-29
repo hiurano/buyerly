@@ -11,6 +11,8 @@ import {
   LinearBoltIcon,
   LinearChartIcon,
   LinearKeyboardIcon,
+  LinearClockOutlineIcon,
+  LinearInboxDeleteIcon,
 } from '@/icons/LinearIcons';
 
 export const InboxView: React.FC = () => {
@@ -130,12 +132,33 @@ export const InboxView: React.FC = () => {
                 <span className="text-[#ffffff]">{selectedNotification.title}</span>
               </div>
 
-              {/* Action Buttons: Archive, Snooze */}
-              <div className="flex items-center gap-1.5">
-                <Tooltip content="Archive" shortcut="E">
+              {/* Action Buttons: Snooze (H), Delete (⌫ / E) */}
+              <div className="flex items-center" style={{ gap: '6px' }}>
+                <Tooltip content="Snooze notification" shortcut="H">
                   <button
                     type="button"
-                    aria-label="Archive notification"
+                    aria-label="Snooze notification"
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '9999px',
+                      backgroundColor: 'transparent',
+                      border: '1px solid transparent',
+                      color: 'lch(61.803% 1.2 272 / 1)',
+                      transition: 'border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s',
+                    }}
+                    className="flex items-center justify-center outline-none hover:bg-[lch(14.006_0.593_272)] hover:text-white"
+                  >
+                    <span className="flex h-[14px] w-[14px] items-center justify-center">
+                      <LinearClockOutlineIcon size={14} />
+                    </span>
+                  </button>
+                </Tooltip>
+
+                <Tooltip content="Delete notification" shortcut="⌫">
+                  <button
+                    type="button"
+                    aria-label="Delete notification"
                     onClick={() => {
                       if (selectedNotification) {
                         useAppStore.getState().archiveNotification(selectedNotification.id);
@@ -145,38 +168,16 @@ export const InboxView: React.FC = () => {
                       width: '28px',
                       height: '28px',
                       borderRadius: '9999px',
-                      backgroundColor: 'lch(10.149 0.689 272)',
+                      backgroundColor: 'transparent',
                       border: '1px solid transparent',
                       color: 'lch(61.803% 1.2 272 / 1)',
+                      transition: 'border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s',
                     }}
-                    className="flex items-center justify-center transition-colors duration-100 hover:bg-[#1a1b1d] hover:text-white outline-none"
+                    className="flex items-center justify-center outline-none hover:bg-[lch(14.006_0.593_272)] hover:text-white"
                   >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="2" y="3" width="12" height="3" rx="1" />
-                      <path d="M3 6v6.5a1.5 1.5 0 0 0 1.5 1.5h7a1.5 1.5 0 0 0 1.5-1.5V6" />
-                      <line x1="6.5" y1="9" x2="9.5" y2="9" />
-                    </svg>
-                  </button>
-                </Tooltip>
-
-                <Tooltip content="Snooze" shortcut="H">
-                  <button
-                    type="button"
-                    aria-label="Snooze notification"
-                    style={{
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: '9999px',
-                      backgroundColor: 'lch(10.149 0.689 272)',
-                      border: '1px solid transparent',
-                      color: 'lch(61.803% 1.2 272 / 1)',
-                    }}
-                    className="flex items-center justify-center transition-colors duration-100 hover:bg-[#1a1b1d] hover:text-white outline-none"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="8" cy="8" r="6" />
-                      <polyline points="8 4.5 8 8 10.5 9.5" />
-                    </svg>
+                    <span className="flex h-[14px] w-[14px] items-center justify-center">
+                      <LinearInboxDeleteIcon size={14} />
+                    </span>
                   </button>
                 </Tooltip>
               </div>
