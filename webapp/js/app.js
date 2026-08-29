@@ -10623,10 +10623,14 @@
     if (!resultState) return;
     if (!message) {
       resultState.className = 'logs-result-state hidden';
+      resultState.setAttribute('role', 'status');
+      resultState.setAttribute('aria-live', 'polite');
       resultState.innerHTML = '';
       return;
     }
     resultState.className = `logs-result-state logs-result-state-${kind}`;
+    resultState.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+    resultState.setAttribute('aria-live', kind === 'error' ? 'assertive' : 'polite');
     resultState.innerHTML = `
       <span>${escapeHtml(message)}</span>
       ${retry ? '<button class="btn btn-secondary btn-sm" type="button" onclick="window.retryLogsLoad()">Повторить</button>' : ''}`;
@@ -10665,6 +10669,16 @@
     const message = error?.message || 'Не удалось загрузить историю действий.';
     if (tableBody) tableBody.innerHTML = '';
     if (mobileList) mobileList.innerHTML = '';
+    ['logsTotalCount', 'logsSuccessCount', 'logsErrorCount', 'logsSkippedCount', 'logsRevertedCount'].forEach(id => {
+      const value = document.getElementById(id);
+      if (value) value.textContent = '—';
+    });
+    const pageLabel = document.getElementById('logsPageLabel');
+    const previousButton = document.getElementById('btnLogsPrev');
+    const nextButton = document.getElementById('btnLogsNext');
+    if (pageLabel) pageLabel.textContent = 'История недоступна';
+    if (previousButton) previousButton.disabled = true;
+    if (nextButton) nextButton.disabled = true;
     emptyState?.classList.add('hidden');
     pagination?.classList.add('hidden');
     document.getElementById('logsPanel')?.setAttribute('aria-busy', 'false');
@@ -10770,6 +10784,7 @@
 
     tableBody.innerHTML = events.map(event => {
       const eventId = Number(event.id);
+      if (!Number.isSafeInteger(eventId) || eventId <= 0) return '';
       const secondaryTarget = event.adset_name || event.adset_id || (event.account_name ? event.account_id : '');
       const undoLabel = event.can_undo ? 'Можно отменить' : 'Отмена недоступна';
       return `
@@ -10781,7 +10796,7 @@
         <td>${escapeHtml(event.rule_name || '—')}</td>
         <td class="log-message">${escapeHtml(event.message || 'Без дополнительного сообщения')}<small>${event.action ? `Действие: ${escapeHtml(event.action)}` : ''}</small></td>
         <td class="log-actions-cell">
-          <span class="log-undo-availability ${event.can_undo ? 'is-available' : ''}" title="${escapeHtml(event.undo_reason || undoLabel)}">${undoLabel}</span>
+          <span class="log-undo-availability ${event.can_undo ? 'is-available' : ''}" title="${escapeHtml(event.undo_reason || undoLabel)}" aria-label="${escapeHtml(event.undo_reason || undoLabel)}">${undoLabel}</span>
           <button class="log-row-action" type="button" aria-label="Открыть детали события ${eventId}" onclick="window.openLogDetails(${eventId})">Детали</button>
         </td>
       </tr>`;
@@ -10789,12 +10804,13 @@
 
     mobileList.innerHTML = events.map(event => {
       const eventId = Number(event.id);
+      if (!Number.isSafeInteger(eventId) || eventId <= 0) return '';
       return `
       <button class="log-mobile-card" type="button" onclick="window.openLogDetails(${eventId})" aria-label="Открыть детали: ${escapeHtml(auditEventLabel(event))}">
-        <div class="log-mobile-head">${auditStatusBadge(event.display_status || event.status)}<span class="log-mobile-time">${formatAuditTime(event.created_at, true)}</span></div>
-        <h4>${escapeHtml(auditEventLabel(event))}</h4>
-        <p>${escapeHtml(event.message || 'Без дополнительного сообщения')}</p>
-        <div class="log-mobile-target"><span>${escapeHtml(auditTarget(event))}</span><span>${escapeHtml(event.rule_name || '')}</span></div>
+        <span class="log-mobile-head">${auditStatusBadge(event.display_status || event.status)}<span class="log-mobile-time">${formatAuditTime(event.created_at, true)}</span></span>
+        <span class="log-mobile-title">${escapeHtml(auditEventLabel(event))}</span>
+        <span class="log-mobile-message">${escapeHtml(event.message || 'Без дополнительного сообщения')}</span>
+        <span class="log-mobile-target"><span>${escapeHtml(auditTarget(event))}</span><span>${escapeHtml(event.rule_name || '')}</span></span>
         <span class="log-undo-availability ${event.can_undo ? 'is-available' : ''}">${event.can_undo ? 'Можно отменить' : 'Только просмотр'}</span>
       </button>`;
     }).join('');
@@ -10814,6 +10830,12 @@
       : 'Изменения состояния не зафиксированы';
     const operationId = event.correlation_id || '—';
     const undoReason = event.undo_reason || 'Это событие доступно только для просмотра.';
+    const numericEventId = Number(event.id);
+    const safeEventId = Number.isSafeInteger(numericEventId) && numericEventId > 0 ? numericEventId : null;
+    const canSafelyUndo = Boolean(event.can_undo && safeEventId);
+    const resolvedUndoReason = event.can_undo && !safeEventId
+      ? 'Отмена недоступна: событие содержит некорректный идентификатор.'
+      : undoReason;
     const duration = Number.isFinite(Number(event.duration_ms)) && Number(event.duration_ms) > 0
       ? `${Math.round(Number(event.duration_ms))} мс`
       : '—';
@@ -10832,15 +10854,15 @@
         <div class="log-detail-block"><span>Длительность</span><b>${duration}</b></div>
         <div class="log-detail-block wide"><span>Описание</span><p>${escapeHtml(event.message || '—')}</p></div>
         <div class="log-detail-block wide log-operation-id"><span>ID операции</span><button type="button" class="log-copy-id mono" onclick="window.copyToClipboard(${escapeJsArg(operationId)}, this)">${escapeHtml(operationId)}<small>Копировать</small></button></div>
-        ${event.reverts_event_id ? `<div class="log-detail-block wide"><span>Отменяет событие</span><p class="mono">#${event.reverts_event_id}</p></div>` : ''}
-        ${event.reverted_by_event_id ? `<div class="log-detail-block wide"><span>Событие отмены</span><p class="mono">#${event.reverted_by_event_id}</p></div>` : ''}
+        ${event.reverts_event_id ? `<div class="log-detail-block wide"><span>Отменяет событие</span><p class="mono">#${escapeHtml(event.reverts_event_id)}</p></div>` : ''}
+        ${event.reverted_by_event_id ? `<div class="log-detail-block wide"><span>Событие отмены</span><p class="mono">#${escapeHtml(event.reverted_by_event_id)}</p></div>` : ''}
         <details class="log-technical-details wide">
           <summary>Технические данные события</summary>
           <div><span>Метрики и условия</span><pre class="log-json">${escapeHtml(detailsJson)}</pre></div>
           <div><span>Состояние до / после</span><pre class="log-json">${escapeHtml(stateJson)}</pre></div>
         </details>
-        ${event.can_undo ? `<div class="log-detail-block wide log-undo-block"><span>Безопасная отмена</span><p>Buyerly сверит текущее состояние с Meta перед обратным действием.</p><button id="btnUndoAuditEvent" class="btn btn-secondary btn-block" type="button" onclick="window.undoAuditEvent(${event.id})">Отменить действие</button><div id="logUndoFeedback" class="log-undo-feedback hidden" role="alert"></div></div>` : ''}
-        ${!event.can_undo ? `<div class="log-detail-block wide log-undo-unavailable"><span>Отмена недоступна</span><p>${escapeHtml(undoReason)}</p></div>` : ''}
+        ${canSafelyUndo ? `<div class="log-detail-block wide log-undo-block"><span>Безопасная отмена</span><p>Buyerly сверит текущее состояние с Meta перед обратным действием.</p><button id="btnUndoAuditEvent" class="btn btn-secondary btn-block" type="button" onclick="window.undoAuditEvent(${safeEventId})">Отменить действие</button><div id="logUndoFeedback" class="log-undo-feedback hidden" role="alert"></div></div>` : ''}
+        ${!canSafelyUndo ? `<div class="log-detail-block wide log-undo-unavailable"><span>Отмена недоступна</span><p>${escapeHtml(resolvedUndoReason)}</p></div>` : ''}
       </div>`;
     window.openModal('modalLogDetails');
     window.setTimeout(() => document.getElementById('btnCloseLogDetails')?.focus(), 30);

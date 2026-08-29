@@ -507,6 +507,7 @@ class TestFrontendRuleContract(unittest.TestCase):
             'id="btnClearLogsFilters"',
             'id="logsResultState"',
             'aria-live="polite"',
+            '<span class="sr-only">Действия</span>',
             'id="logsRevertedCount"',
             'id="logsEmptyTitle"',
             'id="btnClearLogsFiltersEmpty"',
@@ -521,6 +522,8 @@ class TestFrontendRuleContract(unittest.TestCase):
             'state.auditLoadVersion !== loadVersion',
             'function renderAuditLoading()',
             'function renderAuditError(error)',
+            "value.textContent = '—'",
+            "kind === 'error' ? 'alert' : 'status'",
             'function logsDateFrom(period)',
             'window.clearLogsFilters',
             "logsSearchInput')?.addEventListener('input'",
@@ -530,6 +533,8 @@ class TestFrontendRuleContract(unittest.TestCase):
             'window.confirm(',
             "document.getElementById('btnCloseLogDetails')?.focus()",
             'logDetailsReturnFocus',
+            'Number.isSafeInteger(numericEventId)',
+            '<span class="log-mobile-title">',
         ):
             self.assertIn(script_contract, self.app_script)
 

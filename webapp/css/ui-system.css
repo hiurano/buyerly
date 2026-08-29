@@ -5053,14 +5053,17 @@ textarea {
   font-variant-numeric: tabular-nums;
 }
 
-.log-mobile-card h4 {
+.log-mobile-title {
+  display: block;
   margin: 12px 0 5px;
   overflow-wrap: anywhere;
   font-size: 15px;
+  font-weight: 600;
   line-height: 1.35;
 }
 
-.log-mobile-card p {
+.log-mobile-message {
+  display: block;
   margin: 0 0 12px;
   overflow-wrap: anywhere;
   color: var(--ui-ink-secondary);
