@@ -1,7 +1,12 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { SidebarHeader } from './SidebarHeader';
 import { useAppStore } from '@/store/useAppStore';
-import { LinearInboxIcon, LinearLayersIcon, LinearBoltIcon } from '@/icons/LinearIcons';
+import {
+  LinearInboxIcon,
+  LinearLayersIcon,
+  LinearBoltIcon,
+  LinearBarChartIcon,
+} from '@/icons/LinearIcons';
 import { Tooltip } from '@/ui/Tooltip';
 
 export const Sidebar: React.FC = () => {
@@ -171,6 +176,39 @@ export const Sidebar: React.FC = () => {
                 className="truncate"
               >
                 Rules
+              </span>
+            </div>
+          </button>
+        </Tooltip>
+
+        {/* Item 4: Insights */}
+        <Tooltip content="Go to insights" shortcut="G N" side="right" sideOffset={8}>
+          <button
+            type="button"
+            onClick={() => setActiveTab('insights')}
+            data-active={activeTab === 'insights' ? 'true' : 'false'}
+            className="linear-sidebar-nav-item"
+          >
+            <div className="flex items-center min-w-0">
+              <span
+                style={{
+                  width: '16px',
+                  height: '16px',
+                  marginRight: '6px',
+                }}
+                className="flex shrink-0 items-center justify-center"
+              >
+                <LinearBarChartIcon size={16} />
+              </span>
+              <span
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  lineHeight: '16px',
+                }}
+                className="truncate"
+              >
+                Insights
               </span>
             </div>
           </button>

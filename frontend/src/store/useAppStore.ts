@@ -40,8 +40,8 @@ interface AppState {
   workspaceName: string;
   sidebarWidth: number;
   setSidebarWidth: (width: number) => void;
-  activeTab: 'inbox' | 'campaigns' | 'rules';
-  setActiveTab: (tab: 'inbox' | 'campaigns' | 'rules') => void;
+  activeTab: 'inbox' | 'campaigns' | 'rules' | 'insights';
+  setActiveTab: (tab: 'inbox' | 'campaigns' | 'rules' | 'insights') => void;
   
   // Inbox State
   notifications: NotificationItem[];
