@@ -148,7 +148,7 @@ export const CampaignsView: React.FC = () => {
               </button>
             </Tooltip>
 
-            <Tooltip content={isRightSidebarOpen ? 'Close details' : 'Open details'} shortcut="⌥I">
+            <Tooltip content={isRightSidebarOpen ? 'Close details' : 'Open details'} shortcut="⌥I" align="end">
               <button
                 type="button"
                 aria-label={isRightSidebarOpen ? 'Close details' : 'Open details'}

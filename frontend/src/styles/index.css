@@ -1,0 +1,417 @@
+@import './tokens.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "calt";
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-window);
+  font-family: var(--font-regular);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* =========================================================
+   LINEAR FLOATING INSET CANVAS & RESIZER PHYSICS
+   ========================================================= */
+
+/* Floating Inset Canvas */
+.linear-floating-canvas {
+  margin: 8px 8px 8px 0px;
+  border-radius: var(--canvas-border-radius);
+  background-color: var(--bg-canvas);
+  border: 1px solid var(--color-border-primary);
+  box-shadow: var(--canvas-shadow);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+}
+
+/* 1. Interactive Sidebar Resizer Hit Target (7px) */
+.linear-resizer-hit-target {
+  position: absolute;
+  top: 14px;
+  bottom: 40px;
+  right: -3.5px;
+  width: 7px;
+  cursor: col-resize;
+  z-index: 97;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  background: transparent;
+}
+
+/* 2. Track Container with Edge Feathering Mask */
+.linear-resizer-track {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: calc(50% - 0.5px);
+  width: 1px;
+  border-radius: 4px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  mask-image: linear-gradient(
+    rgba(0, 0, 0, 0) 0px,
+    rgb(0, 0, 0) 20px,
+    rgb(0, 0, 0) calc(100% - 20px),
+    rgba(0, 0, 0, 0) 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    rgba(0, 0, 0, 0) 0px,
+    rgb(0, 0, 0) 20px,
+    rgb(0, 0, 0) calc(100% - 20px),
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+.linear-resizer-hit-target:hover .linear-resizer-track,
+.linear-resizer-hit-target[data-dragging="true"] .linear-resizer-track {
+  opacity: 1;
+}
+
+/* 3. Moving Spotlight Indicator Line (14-Stop Mask Gradient) */
+.linear-resizer-indicator {
+  position: absolute;
+  top: -50%;
+  height: 200%;
+  left: 0;
+  right: 0;
+  width: 1px;
+  background-color: var(--resizer-line-color);
+  will-change: transform;
+  mask-image: linear-gradient(
+    rgba(0, 0, 0, 0.45) 0%,
+    rgba(0, 0, 0, 0.45) 30%,
+    rgba(0, 0, 0, 0.6) 36%,
+    rgba(0, 0, 0, 0.8) 42%,
+    rgba(0, 0, 0, 0.8) 47%,
+    rgba(0, 0, 0, 0.9) 48.5%,
+    rgb(0, 0, 0) 49.5%,
+    rgb(0, 0, 0) 50.5%,
+    rgba(0, 0, 0, 0.9) 51.5%,
+    rgba(0, 0, 0, 0.8) 53%,
+    rgba(0, 0, 0, 0.8) 58%,
+    rgba(0, 0, 0, 0.6) 64%,
+    rgba(0, 0, 0, 0.45) 70%,
+    rgba(0, 0, 0, 0.45) 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    rgba(0, 0, 0, 0.45) 0%,
+    rgba(0, 0, 0, 0.45) 30%,
+    rgba(0, 0, 0, 0.6) 36%,
+    rgba(0, 0, 0, 0.8) 42%,
+    rgba(0, 0, 0, 0.8) 47%,
+    rgba(0, 0, 0, 0.9) 48.5%,
+    rgb(0, 0, 0) 49.5%,
+    rgb(0, 0, 0) 50.5%,
+    rgba(0, 0, 0, 0.9) 51.5%,
+    rgba(0, 0, 0, 0.8) 53%,
+    rgba(0, 0, 0, 0.8) 58%,
+    rgba(0, 0, 0, 0.6) 64%,
+    rgba(0, 0, 0, 0.45) 70%,
+    rgba(0, 0, 0, 0.45) 100%
+  );
+}
+
+/* =========================================================
+   EXACT LINEAR SIDEBAR ITEM HOVER & PHYSICS
+   ========================================================= */
+
+.linear-sidebar-nav-item {
+  height: 28px;
+  padding: 0px 9px 0px 8px;
+  border-radius: 8px;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  outline: none;
+  background-color: transparent;
+  color: lch(60.621% 1.2 272 / 1);
+  transition: color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              background-color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.linear-sidebar-nav-item:hover {
+  background-color: lch(8.445% 1.3 272 / 1);
+  color: lch(100% 0 272 / 1);
+  transition-duration: 0s;
+}
+
+.linear-sidebar-nav-item[data-active="true"] {
+  background-color: lch(13.845% 1.3 272 / 1);
+  color: #ffffff;
+}
+
+.linear-sidebar-nav-item svg {
+  transition: none;
+}
+
+.linear-sidebar-nav-item:hover svg,
+.linear-sidebar-nav-item[data-active="true"] svg {
+  color: #ffffff;
+}
+
+/* =========================================================
+   EXACT LINEAR BUTTON HOVER & GEOMETRY
+   ========================================================= */
+
+/* 1. Workspace Button */
+.linear-workspace-btn {
+  box-sizing: border-box;
+  font-family: var(--font-regular);
+  margin: 0;
+  border-radius: 10px;
+  border: none;
+  gap: 6px;
+  overflow: hidden;
+  padding: 0 9px 0 5px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  background-color: transparent;
+  color: lch(90.155% 1.2 272 / 1);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  outline: none;
+  transition: background-color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.linear-workspace-btn:hover {
+  background-color: lch(8.445% 1.3 272 / 1);
+  color: lch(100% 0 272 / 1);
+  transition-duration: 0s;
+}
+
+.linear-workspace-btn:active {
+  background-color: lch(11.595% 2.2 272 / 1);
+  transition-duration: 0s;
+}
+
+.linear-workspace-btn .chevron {
+  color: lch(60.621% 1.2 272 / 1);
+  transition: color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.linear-workspace-btn:hover .chevron {
+  color: lch(100% 0 272 / 1);
+  transition-duration: 0s;
+}
+
+/* 2. Top Header Action Circular Icon Button (Search) */
+.linear-icon-btn {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 2px;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  color: lch(60.621% 1.2 272 / 1);
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+  transition: background-color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.linear-icon-btn:hover {
+  background-color: lch(10.149% 0.689 272 / 1);
+  color: lch(100% 0 272 / 1);
+  transition-duration: 0s;
+}
+
+.linear-icon-btn:active {
+  background-color: lch(14.777% 1.075 272 / 1);
+  transition-duration: 0s;
+}
+
+/* 3. Main View Header Action Icon Button (24x24px, 6px radius) */
+.linear-header-icon-btn {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  color: lch(61.803% 1.2 272 / 1);
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+  transition: background-color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.linear-header-icon-btn:hover {
+  background-color: lch(10.149% 0.689 272 / 1);
+  color: lch(100% 0 272 / 1);
+  transition-duration: 0s;
+}
+
+.linear-header-icon-btn:active {
+  background-color: lch(14.777% 1.075 272 / 1);
+  transition-duration: 0s;
+}
+
+.linear-header-icon-btn svg,
+.linear-icon-btn svg,
+.linear-workspace-btn svg {
+  fill: currentColor;
+}
+
+/* Custom Linear Scrollbar */
+::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+  height: var(--scrollbar-width);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--app-scrollbar-bg);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--app-scrollbar-bg-hover);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--app-scrollbar-bg-active);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+/* =========================================================
+   EXACT LINEAR TOOLTIP SPRING & SCALE ANIMATIONS
+   ========================================================= */
+
+@keyframes linearTooltipScaleIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes linearTooltipScaleOut {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+.linear-tooltip-content {
+  box-sizing: border-box;
+  background-color: lch(12.72% 0.85 272 / 1);
+  border: 1px solid lch(21.36% 1.93 272 / 1);
+  box-shadow: 0px 0.5px 1px 1px rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 5px 8px;
+  gap: 8px;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  user-select: none;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.linear-tooltip-content[data-side="right"] {
+  transform-origin: 0px 50%;
+}
+
+.linear-tooltip-content[data-side="left"] {
+  transform-origin: 100% 50%;
+}
+
+.linear-tooltip-content[data-side="top"] {
+  transform-origin: 50% 100%;
+}
+
+.linear-tooltip-content[data-side="bottom"] {
+  transform-origin: 50% 0px;
+}
+
+.linear-tooltip-content[data-side="bottom"][data-align="end"] {
+  transform-origin: 100% 0px;
+}
+
+.linear-tooltip-content[data-side="bottom"][data-align="start"] {
+  transform-origin: 0px 0px;
+}
+
+.linear-tooltip-content[data-state="delayed-open"],
+.linear-tooltip-content[data-state="instant-open"] {
+  animation: linearTooltipScaleIn 0.12s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.linear-tooltip-content[data-state="closed"] {
+  animation: linearTooltipScaleOut 0.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Radix Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.96); }
+}
+
+.animate-scale-in {
+  animation: fadeIn 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+}
