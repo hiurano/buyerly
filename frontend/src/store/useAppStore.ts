@@ -48,6 +48,9 @@ interface AppState {
   selectedNotificationId: string | null;
   setSelectedNotificationId: (id: string | null) => void;
   archiveNotification: (id: string) => void;
+  markAllNotificationsAsRead: () => void;
+  deleteAllNotifications: () => void;
+  deleteAllReadNotifications: () => void;
 
   // Campaigns State
   campaigns: CampaignItem[];
@@ -108,6 +111,22 @@ export const useAppStore = create<AppState>((set) => ({
       notifications: state.notifications.filter((n) => n.id !== id),
       selectedNotificationId:
         state.selectedNotificationId === id ? null : state.selectedNotificationId,
+    })),
+  markAllNotificationsAsRead: () =>
+    set((state) => ({
+      notifications: state.notifications.map((n) => ({ ...n, isRead: true })),
+    })),
+  deleteAllNotifications: () =>
+    set(() => ({
+      notifications: [],
+      selectedNotificationId: null,
+    })),
+  deleteAllReadNotifications: () =>
+    set((state) => ({
+      notifications: state.notifications.filter((n) => !n.isRead),
+      selectedNotificationId: state.notifications.some((n) => n.id === state.selectedNotificationId && n.isRead)
+        ? null
+        : state.selectedNotificationId,
     })),
 
   campaigns: [

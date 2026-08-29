@@ -1,7 +1,14 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { InboxItemRow } from './InboxItemRow';
 import { Tooltip } from '@/ui/Tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/ui/DropdownMenu';
 import {
   LinearDotsIcon,
   LinearFilterIcon,
@@ -10,6 +17,7 @@ import {
   BuyerlyLogoAvatar,
   LinearClockOutlineIcon,
   LinearInboxDeleteIcon,
+  LinearInboxCheckmarkIcon,
 } from '@/icons/LinearIcons';
 
 export const InboxView: React.FC = () => {
@@ -17,7 +25,34 @@ export const InboxView: React.FC = () => {
     notifications,
     selectedNotificationId,
     setSelectedNotificationId,
+    markAllNotificationsAsRead,
+    deleteAllNotifications,
+    deleteAllReadNotifications,
   } = useAppStore();
+
+  // Keyboard shortcuts for Inbox: Alt+U (Mark all as read), Shift+Backspace (Delete all read)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        document.activeElement?.tagName === 'INPUT' ||
+        document.activeElement?.tagName === 'TEXTAREA' ||
+        (document.activeElement as HTMLElement)?.isContentEditable
+      ) {
+        return;
+      }
+
+      if (e.altKey && (e.key === 'u' || e.key === 'U' || e.key === 'г' || e.key === 'Г')) {
+        e.preventDefault();
+        markAllNotificationsAsRead();
+      } else if (e.shiftKey && (e.key === 'Backspace' || e.key === 'Delete')) {
+        e.preventDefault();
+        deleteAllReadNotifications();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [markAllNotificationsAsRead, deleteAllReadNotifications]);
 
   const selectedNotification = notifications.find(
     (n) => n.id === selectedNotificationId
@@ -50,17 +85,83 @@ export const InboxView: React.FC = () => {
               Inbox
             </h2>
 
-            <Tooltip content="Notification actions">
-              <button
-                type="button"
-                aria-label="Notification actions"
-                className="linear-icon-btn"
+            {/* Notification Actions Dropdown Menu */}
+            <DropdownMenu>
+              <Tooltip content="Notification actions">
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Notification actions"
+                    className="linear-icon-btn"
+                  >
+                    <span className="flex h-[14px] w-[14px] items-center justify-center">
+                      <LinearDotsIcon size={14} />
+                    </span>
+                  </button>
+                </DropdownMenuTrigger>
+              </Tooltip>
+
+              <DropdownMenuContent
+                align="start"
+                sideOffset={4}
+                style={{
+                  width: '192px',
+                  minWidth: '190px',
+                }}
               >
-                <span className="flex h-[14px] w-[14px] items-center justify-center">
-                  <LinearDotsIcon size={14} />
-                </span>
-              </button>
-            </Tooltip>
+                <div className="h-[6px] w-full" />
+
+                {/* 1. Mark all as read */}
+                <DropdownMenuItem onClick={markAllNotificationsAsRead}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[#9d9d9e] group-hover:text-white transition-colors">
+                      <LinearInboxCheckmarkIcon size={16} />
+                    </span>
+                    <span className="truncate">Mark all as read</span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-[3px]">
+                    <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
+                      Alt
+                    </kbd>
+                    <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
+                      U
+                    </kbd>
+                  </div>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                {/* 2. Delete all */}
+                <DropdownMenuItem onClick={deleteAllNotifications}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[#9d9d9e] group-hover:text-white transition-colors">
+                      <LinearInboxDeleteIcon size={16} />
+                    </span>
+                    <span className="truncate">Delete all</span>
+                  </div>
+                </DropdownMenuItem>
+
+                {/* 3. Delete all read */}
+                <DropdownMenuItem onClick={deleteAllReadNotifications}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[#9d9d9e] group-hover:text-white transition-colors">
+                      <LinearInboxDeleteIcon size={16} />
+                    </span>
+                    <span className="truncate">Delete all read</span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-[3px]">
+                    <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
+                      ⇧
+                    </kbd>
+                    <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
+                      ⌫
+                    </kbd>
+                  </div>
+                </DropdownMenuItem>
+
+                <div className="h-[6px] w-full" />
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Right Header Buttons: Filter + Display Options (28x28px, 6px gap) */}
