@@ -12,7 +12,9 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({ campaign }) => {
     selectedCampaignIds,
     toggleCampaignSelection,
     toggleCampaignDelivery,
-    openCampaignDetails,
+    isRightSidebarOpen,
+    toggleRightSidebar,
+    setActiveRightSidebarTab,
     campaignAttachedRules,
   } = useAppStore();
 
@@ -90,7 +92,10 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({ campaign }) => {
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            openCampaignDetails(campaign.id);
+            if (!isRightSidebarOpen) {
+              toggleRightSidebar();
+            }
+            setActiveRightSidebarTab('rules');
           }}
           style={{
             display: 'inline-flex',

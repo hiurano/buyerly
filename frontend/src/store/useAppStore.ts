@@ -57,11 +57,16 @@ interface AppState {
   toggleCampaignSelection: (id: string) => void;
   clearCampaignSelection: () => void;
   toggleCampaignDelivery: (id: string) => void;
-  activeDetailsCampaignId: string | null;
-  openCampaignDetails: (id: string) => void;
-  closeCampaignDetails: () => void;
   campaignAttachedRules: Record<string, string[]>;
   toggleRuleForCampaign: (campaignId: string, ruleId: string) => void;
+  isRightSidebarOpen: boolean;
+  toggleRightSidebar: () => void;
+  activeRightSidebarTab: 'rules' | 'priority' | 'platforms';
+  setActiveRightSidebarTab: (tab: 'rules' | 'priority' | 'platforms') => void;
+  selectedFilterRuleId: string | null;
+  setSelectedFilterRuleId: (id: string | null) => void;
+  selectedFilterPlatform: string | null;
+  setSelectedFilterPlatform: (platform: string | null) => void;
 
   // Rules State
   rules: RuleItem[];
@@ -177,9 +182,6 @@ export const useAppStore = create<AppState>((set) => ({
           : c
       ),
     })),
-  activeDetailsCampaignId: null,
-  openCampaignDetails: (id) => set({ activeDetailsCampaignId: id }),
-  closeCampaignDetails: () => set({ activeDetailsCampaignId: null }),
   campaignAttachedRules: {
     'cmp-101': ['rul-01', 'rul-02'],
     'cmp-102': [],
@@ -198,6 +200,16 @@ export const useAppStore = create<AppState>((set) => ({
         },
       };
     }),
+  isRightSidebarOpen: true,
+  toggleRightSidebar: () => set((state) => ({ isRightSidebarOpen: !state.isRightSidebarOpen })),
+  activeRightSidebarTab: 'rules',
+  setActiveRightSidebarTab: (tab) => set({ activeRightSidebarTab: tab }),
+  selectedFilterRuleId: null,
+  setSelectedFilterRuleId: (id) =>
+    set((state) => ({ selectedFilterRuleId: state.selectedFilterRuleId === id ? null : id })),
+  selectedFilterPlatform: null,
+  setSelectedFilterPlatform: (platform) =>
+    set((state) => ({ selectedFilterPlatform: state.selectedFilterPlatform === platform ? null : platform })),
 
   rules: [
     {
