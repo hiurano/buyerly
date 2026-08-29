@@ -433,10 +433,16 @@ export const CampaignRightSidebar: React.FC = () => {
                           border: 'none',
                           color: '#71717a',
                           cursor: 'pointer',
-                          fontSize: '13px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '2px',
                         }}
                       >
-                        ✕
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                          <line x1="3" y1="3" x2="13" y2="13" />
+                          <line x1="13" y1="3" x2="3" y2="13" />
+                        </svg>
                       </button>
                     </div>
 

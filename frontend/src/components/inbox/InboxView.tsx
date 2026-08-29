@@ -8,6 +8,9 @@ import {
   LinearSlidersIcon,
   LinearEmptyInboxIllustration,
   BuyerlyLogoAvatar,
+  LinearBoltIcon,
+  LinearChartIcon,
+  LinearKeyboardIcon,
 } from '@/icons/LinearIcons';
 
 export const InboxView: React.FC = () => {
@@ -239,7 +242,7 @@ export const InboxView: React.FC = () => {
                     className="flex items-start gap-3.5"
                   >
                     <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#eab308]/10 text-[#eab308] border border-[#eab308]/20">
-                      ⚡
+                      <LinearBoltIcon size={14} className="text-[#eab308]" />
                     </div>
                     <div>
                       <h4 className="text-[13px] font-medium text-white mb-0.5">Automated Rules Engine</h4>
@@ -259,7 +262,7 @@ export const InboxView: React.FC = () => {
                     className="flex items-start gap-3.5"
                   >
                     <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#27ae60]/10 text-[#27ae60] border border-[#27ae60]/20">
-                      📊
+                      <LinearChartIcon size={14} className="text-[#27ae60]" />
                     </div>
                     <div>
                       <h4 className="text-[13px] font-medium text-white mb-0.5">Live Campaign Telemetry</h4>
@@ -279,7 +282,7 @@ export const InboxView: React.FC = () => {
                     className="flex items-start gap-3.5"
                   >
                     <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[#5e6ad2]/10 text-[#a5b4fc] border border-[#5e6ad2]/20">
-                      ⌨️
+                      <LinearKeyboardIcon size={14} className="text-[#a5b4fc]" />
                     </div>
                     <div>
                       <h4 className="text-[13px] font-medium text-white mb-0.5">Lightning Speed Navigation</h4>

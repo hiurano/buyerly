@@ -106,7 +106,7 @@ export const LinearCommandIcon: React.FC<IconProps> = ({ size = 16, className = 
   </svg>
 );
 
-// 6. Exact Linear Close (✕) Icon (16x16)
+// 6. Exact Linear Close Icon (16x16)
 export const LinearCloseIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
@@ -383,6 +383,48 @@ export const LinearProjectCubeIcon: React.FC<IconProps> = ({ size = 16, classNam
       clipRule="evenodd"
       d="M7.331 1.07a3.2 3.2 0 0 1 1.338 0c.498.106.967.377 1.904.917l1.354.78c.937.541 1.406.812 1.747 1.19.301.334.53.728.669 1.156.157.484.157 1.025.157 2.107v1.56l-.003.718c-.007.63-.036 1.026-.154 1.389l-.057.158a3.2 3.2 0 0 1-.612.998l-.135.138c-.33.312-.792.578-1.612 1.051l-1.354.78-.623.357c-.55.309-.907.481-1.281.56l-.166.032a3.2 3.2 0 0 1-1.006 0l-.166-.031c-.374-.08-.73-.252-1.281-.561l-.623-.356-1.354-.78c-.82-.474-1.281-.74-1.612-1.052l-.135-.138a3.2 3.2 0 0 1-.612-.998l-.057-.158c-.118-.363-.147-.758-.154-1.39L1.5 8.78V7.22c0-.946 0-1.479.105-1.921l.052-.186c.122-.374.312-.723.56-1.028l.11-.128c.255-.284.583-.507 1.126-.83l.62-.36 1.354-.78c.82-.473 1.281-.739 1.718-.869zM3 7.22v1.56c0 1.183.018 1.439.084 1.643l.064.167q.11.246.292.449l.059.06c.151.143.427.318 1.323.835l1.354.78.632.36c.188.104.33.178.442.233V8.482l-4.247-1.93zm5.75 1.262v4.826c.212-.106.533-.282 1.074-.594l1.354-.78.628-.368c.499-.297.646-.407.754-.527l.113-.14q.158-.218.243-.476l.022-.081c.035-.144.051-.351.058-.835L13 8.78V7.22l-.004-.668zM7.82 2.51l-.177.027c-.159.034-.328.106-.835.39l-.632.359-1.354.78c-.896.517-1.172.692-1.323.834l-.059.06q-.046.051-.086.104l4.645 2.112 4.645-2.112-.084-.103c-.109-.12-.255-.23-.754-.528l-.628-.367-1.354-.78c-.897-.517-1.186-.668-1.386-.728l-.08-.021a1.7 1.7 0 0 0-.538-.027"
     />
+  </svg>
+);
+
+// 16. Linear Analytics / Chart Icon (16x16)
+export const LinearChartIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.3"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <line x1="13" y1="13" x2="3" y2="13" />
+    <line x1="3" y1="13" x2="3" y2="3" />
+    <path d="M5.5 10.5L8.5 7.5L10.5 9.5L13.5 5.5" />
+  </svg>
+);
+
+// 17. Linear Keyboard Icon (16x16)
+export const LinearKeyboardIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.3"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <rect x="2" y="4" width="12" height="8" rx="1.5" />
+    <line x1="4.5" y1="6.5" x2="5.5" y2="6.5" />
+    <line x1="7.5" y1="6.5" x2="8.5" y2="6.5" />
+    <line x1="10.5" y1="6.5" x2="11.5" y2="6.5" />
+    <line x1="5" y1="9.5" x2="11" y2="9.5" />
   </svg>
 );
 
