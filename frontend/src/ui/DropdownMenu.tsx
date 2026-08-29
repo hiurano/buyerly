@@ -12,6 +12,7 @@ export const DropdownMenuContent: React.FC<DropdownMenuPrimitive.DropdownMenuCon
   className = '',
   sideOffset = 4,
   align = 'start',
+  style,
   ...props
 }) => (
   <DropdownMenuPrimitive.Portal>
@@ -22,17 +23,11 @@ export const DropdownMenuContent: React.FC<DropdownMenuPrimitive.DropdownMenuCon
         width: '240px',
         minWidth: '240px',
         maxWidth: '500px',
-        backgroundColor: 'lch(12.72% 0.85 272 / 1)', // #212122
-        borderColor: 'lch(21.36% 1.93 272 / 1)',     // #323237
-        borderWidth: '1px',
-        borderStyle: 'solid',
-        borderRadius: '12px',
-        boxShadow:
-          '0px 3px 8px 0px rgba(0, 0, 0, 0.125), 0px 2px 5px 0px rgba(0, 0, 0, 0.125), 0px 1px 1px 0px rgba(0, 0, 0, 0.125)',
-        zIndex: 600,
-        padding: '0px',
-      } as React.CSSProperties}
-      className={`overflow-hidden select-none animate-scale-in outline-none ${className}`}
+        backgroundColor: '#212122',
+        borderColor: '#323237',
+        ...style,
+      }}
+      className={`bg-[#212122] border border-[#323237] rounded-[12px] shadow-[0px_3px_8px_0px_rgba(0,0,0,0.125),0px_2px_5px_0px_rgba(0,0,0,0.125),0px_1px_1px_0px_rgba(0,0,0,0.125)] z-[600] overflow-hidden select-none animate-scale-in outline-none p-0 ${className}`}
       {...props}
     />
   </DropdownMenuPrimitive.Portal>
@@ -42,14 +37,14 @@ export const DropdownMenuItem: React.FC<
   DropdownMenuPrimitive.DropdownMenuItemProps
 > = ({ className = '', children, ...props }) => (
   <DropdownMenuPrimitive.Item
-    className={`group relative flex h-[32px] cursor-default select-none items-center pl-[14px] pr-[14px] text-[13px] font-[450] text-[#e4e7e8] whitespace-nowrap outline-none ${className}`}
+    className={`group relative flex h-[32px] cursor-default select-none items-center pl-[14px] pr-[14px] text-[13px] font-[450] text-[#e4e7e8] whitespace-nowrap outline-none data-[highlighted]:text-white ${className}`}
     {...props}
   >
-    {/* Inner Hover/Focus Pill (left: 6px, right: 6px, radius: 8px, bg: #313136) */}
-    <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] h-[32px] rounded-[8px] bg-transparent transition-colors duration-100 group-hover:bg-[#313136] group-focus:bg-[#313136] group-hover:duration-0" />
+    {/* Inner Hover/Focus/Highlighted Pill (left: 6px, right: 6px, radius: 8px, bg: #313136) */}
+    <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] h-[32px] rounded-[8px] bg-transparent transition-colors duration-100 group-hover:bg-[#313136] group-focus:bg-[#313136] group-data-[highlighted]:bg-[#313136] group-hover:duration-0" />
     
     {/* Item Content Layer */}
-    <div className="relative z-10 flex w-full items-center justify-between gap-3 group-hover:text-white whitespace-nowrap">
+    <div className="relative z-10 flex w-full items-center justify-between gap-3 group-hover:text-white group-data-[highlighted]:text-white whitespace-nowrap">
       {children}
     </div>
   </DropdownMenuPrimitive.Item>

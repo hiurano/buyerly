@@ -41,10 +41,10 @@ export const InboxView: React.FC = () => {
         return;
       }
 
-      if (e.altKey && (e.key === 'u' || e.key === 'U' || e.key === 'г' || e.key === 'Г')) {
+      if (e.altKey && (e.code === 'KeyU' || e.key === 'u' || e.key === 'U' || e.key === 'г' || e.key === 'Г')) {
         e.preventDefault();
         markAllNotificationsAsRead();
-      } else if (e.shiftKey && (e.key === 'Backspace' || e.key === 'Delete')) {
+      } else if (e.shiftKey && (e.code === 'Backspace' || e.key === 'Backspace' || e.code === 'Delete')) {
         e.preventDefault();
         deleteAllReadNotifications();
       }
@@ -104,10 +104,7 @@ export const InboxView: React.FC = () => {
               <DropdownMenuContent
                 align="start"
                 sideOffset={4}
-                style={{
-                  width: '192px',
-                  minWidth: '190px',
-                }}
+                className="w-[192px] min-w-[190px]"
               >
                 <div className="h-[6px] w-full" />
 
