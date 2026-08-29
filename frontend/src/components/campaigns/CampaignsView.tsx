@@ -131,12 +131,12 @@ export const CampaignsView: React.FC = () => {
                   data-state={isRightSidebarOpen ? 'active' : 'inactive'}
                   className="linear-icon-btn"
                   style={{
-                    color: isRightSidebarOpen ? '#ffffff' : '#717375',
-                    backgroundColor: isRightSidebarOpen ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                    backgroundColor: isRightSidebarOpen ? 'lch(18.634 1.075 272)' : 'transparent',
+                    color: isRightSidebarOpen ? 'lch(100 0 272)' : 'lch(61.803% 1.2 272 / 1)',
                   }}
                 >
                   <span className="flex h-[14px] w-[14px] items-center justify-center">
-                    <LinearSidebarToggleIcon size={14} />
+                    <LinearSidebarToggleIcon size={16} />
                   </span>
                 </button>
               </Tooltip>

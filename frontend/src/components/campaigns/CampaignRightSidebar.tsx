@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
-import { LinearPriorityBarsIcon } from '@/icons/LinearIcons';
+import { LinearPriorityBarsIcon, LinearProjectCubeIcon } from '@/icons/LinearIcons';
 
 const RULE_COLORS: Record<string, string> = {
-  'rul-01': '#5f6ad3', // Purple-blue (Role: Backend & Bots)
-  'rul-02': '#9b51e0', // Purple (Этап 1: Ядро)
-  'rul-03': '#27ae60', // Green (Трек: Продажи)
-  'rul-04': '#f2994a', // Orange (Этап 3: Админка)
+  'rul-01': 'lch(48 59.31 288.43)', // #5f6ad3 (Role: Backend & Bots)
+  'rul-02': 'rgb(155, 81, 224)',     // #9b51e0 (Этап 1: Ядро)
+  'rul-03': 'rgb(39, 174, 96)',      // #27ae60 (Трек: Продажи)
+  'rul-04': 'rgb(242, 153, 74)',     // #f2994a (Этап 3: Админка)
 };
 
 export const CampaignRightSidebar: React.FC = () => {
@@ -22,6 +22,8 @@ export const CampaignRightSidebar: React.FC = () => {
     selectedFilterPlatform,
     setSelectedFilterPlatform,
   } = useAppStore();
+
+  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
 
   if (!isRightSidebarOpen) return null;
 
@@ -52,6 +54,7 @@ export const CampaignRightSidebar: React.FC = () => {
         }}
       >
         <div
+          data-scroll-container="true"
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -67,15 +70,16 @@ export const CampaignRightSidebar: React.FC = () => {
               width: '336px',
               padding: '12px',
               margin: '0px 0px 8px',
-              borderRadius: '8px',
-              background: '#1b1a1a',
-              border: '1px solid #222224',
+              borderRadius: '10px',
+              backgroundColor: 'lch(9.232 0.85 272)', // #141416
+              border: '1px solid lch(13.553 1.93 272)', // #1e1e21
+              boxShadow: '0px 0.5px 1px 1px lch(0% 0 0 / 0.3)',
               display: 'flex',
               flexDirection: 'column',
             }}
           >
             {/* Segmented Tab Pills Header */}
-            <div style={{ margin: '0 0 10px 0' }}>
+            <div style={{ margin: '-2px 0 10px 0' }}>
               <div
                 role="tablist"
                 aria-orientation="horizontal"
@@ -85,7 +89,7 @@ export const CampaignRightSidebar: React.FC = () => {
                   width: '310px',
                   height: '32px',
                   margin: '-2px 0',
-                  background: '#1b1a1a',
+                  backgroundColor: 'lch(9.232 0.85 272)',
                   borderRadius: '5px',
                   alignItems: 'center',
                 }}
@@ -104,14 +108,27 @@ export const CampaignRightSidebar: React.FC = () => {
                     padding: '4px 12px',
                     margin: '2px',
                     borderRadius: '9999px',
-                    background: activeRightSidebarTab === 'rules' ? '#313132' : '#222225',
-                    color: activeRightSidebarTab === 'rules' ? '#fefeff' : '#99999d',
+                    backgroundColor: activeRightSidebarTab === 'rules' ? 'lch(20.418 1.429 272)' : 'lch(13.861 1.043 272)',
+                    color: activeRightSidebarTab === 'rules' ? 'lch(100 0 272)' : 'lch(63.304 1.425 272)',
+                    fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
                     fontSize: '12px',
                     fontWeight: 500,
                     border: '1px solid transparent',
                     cursor: 'pointer',
-                    transition: 'all 0.15s',
+                    transition: 'border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s',
                     outline: 'none',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (activeRightSidebarTab !== 'rules') {
+                      e.currentTarget.style.backgroundColor = 'lch(16.5 1.2 272)';
+                      e.currentTarget.style.color = 'lch(90.451 1.2 272)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (activeRightSidebarTab !== 'rules') {
+                      e.currentTarget.style.backgroundColor = 'lch(13.861 1.043 272)';
+                      e.currentTarget.style.color = 'lch(63.304 1.425 272)';
+                    }
                   }}
                 >
                   <span>Labels</span>
@@ -131,14 +148,27 @@ export const CampaignRightSidebar: React.FC = () => {
                     padding: '4px 12px',
                     margin: '2px',
                     borderRadius: '9999px',
-                    background: activeRightSidebarTab === 'priority' ? '#313132' : '#222225',
-                    color: activeRightSidebarTab === 'priority' ? '#fefeff' : '#99999d',
+                    backgroundColor: activeRightSidebarTab === 'priority' ? 'lch(20.418 1.429 272)' : 'lch(13.861 1.043 272)',
+                    color: activeRightSidebarTab === 'priority' ? 'lch(100 0 272)' : 'lch(63.304 1.425 272)',
+                    fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
                     fontSize: '12px',
                     fontWeight: 500,
                     border: '1px solid transparent',
                     cursor: 'pointer',
-                    transition: 'all 0.15s',
+                    transition: 'border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s',
                     outline: 'none',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (activeRightSidebarTab !== 'priority') {
+                      e.currentTarget.style.backgroundColor = 'lch(16.5 1.2 272)';
+                      e.currentTarget.style.color = 'lch(90.451 1.2 272)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (activeRightSidebarTab !== 'priority') {
+                      e.currentTarget.style.backgroundColor = 'lch(13.861 1.043 272)';
+                      e.currentTarget.style.color = 'lch(63.304 1.425 272)';
+                    }
                   }}
                 >
                   <span>Priority</span>
@@ -158,14 +188,27 @@ export const CampaignRightSidebar: React.FC = () => {
                     padding: '4px 12px',
                     margin: '2px',
                     borderRadius: '9999px',
-                    background: activeRightSidebarTab === 'platforms' ? '#313132' : '#222225',
-                    color: activeRightSidebarTab === 'platforms' ? '#fefeff' : '#99999d',
+                    backgroundColor: activeRightSidebarTab === 'platforms' ? 'lch(20.418 1.429 272)' : 'lch(13.861 1.043 272)',
+                    color: activeRightSidebarTab === 'platforms' ? 'lch(100 0 272)' : 'lch(63.304 1.425 272)',
+                    fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
                     fontSize: '12px',
                     fontWeight: 500,
                     border: '1px solid transparent',
                     cursor: 'pointer',
-                    transition: 'all 0.15s',
+                    transition: 'border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s',
                     outline: 'none',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (activeRightSidebarTab !== 'platforms') {
+                      e.currentTarget.style.backgroundColor = 'lch(16.5 1.2 272)';
+                      e.currentTarget.style.color = 'lch(90.451 1.2 272)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (activeRightSidebarTab !== 'platforms') {
+                      e.currentTarget.style.backgroundColor = 'lch(13.861 1.043 272)';
+                      e.currentTarget.style.color = 'lch(63.304 1.425 272)';
+                    }
                   }}
                 >
                   <span>Projects</span>
@@ -181,7 +224,8 @@ export const CampaignRightSidebar: React.FC = () => {
                     rIds.includes(rule.id)
                   ).length;
                   const isSelected = selectedFilterRuleId === rule.id;
-                  const dotColor = RULE_COLORS[rule.id] || '#5f6ad3';
+                  const isHovered = hoveredRowId === rule.id;
+                  const dotColor = RULE_COLORS[rule.id] || 'lch(48 59.31 288.43)';
 
                   return (
                     <div key={rule.id} data-contextual-menu="true">
@@ -189,6 +233,8 @@ export const CampaignRightSidebar: React.FC = () => {
                         role="button"
                         tabIndex={0}
                         onClick={() => setSelectedFilterRuleId(rule.id)}
+                        onMouseEnter={() => setHoveredRowId(rule.id)}
+                        onMouseLeave={() => setHoveredRowId(null)}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -196,23 +242,24 @@ export const CampaignRightSidebar: React.FC = () => {
                           height: '42px',
                           padding: '0 10px',
                           borderRadius: '8px',
-                          background: isSelected ? '#222524' : '#1b1a1a',
-                          color: '#fefeff',
-                          cursor: 'pointer',
+                          backgroundColor: isSelected ? 'lch(13.058 1.3 272)' : isHovered ? 'lch(13.058 1.3 272)' : 'transparent',
+                          color: 'lch(100 0 272)',
+                          cursor: 'default',
                           userSelect: 'none',
                           overflow: 'hidden',
                           position: 'relative',
                           transition: 'background-color 0.1s ease',
                         }}
-                        className="hover:bg-[#222524]"
                       >
                         <div
+                          data-column-id="user"
                           style={{
                             display: 'flex',
                             alignItems: 'center',
                             gap: '8px',
                             flex: '1 1 auto',
                             overflow: 'hidden',
+                            position: 'relative',
                           }}
                         >
                           {/* 9px Colored Dot */}
@@ -225,13 +272,15 @@ export const CampaignRightSidebar: React.FC = () => {
                               minHeight: '9px',
                               borderRadius: '50%',
                               backgroundColor: dotColor,
+                              flexShrink: 0,
                             }}
                           />
                           <span
                             style={{
+                              fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
                               fontSize: '13px',
                               fontWeight: 450,
-                              color: '#fefeff',
+                              color: 'lch(100 0 272)',
                               whiteSpace: 'nowrap',
                               textOverflow: 'ellipsis',
                               overflow: 'hidden',
@@ -239,26 +288,81 @@ export const CampaignRightSidebar: React.FC = () => {
                           >
                             {rule.name}
                           </span>
+
+                          {/* "See issues" Hover Action Button with Linear smooth gradient mask */}
+                          {isHovered && (
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedFilterRuleId(rule.id);
+                              }}
+                              style={{
+                                display: 'flex',
+                                position: 'absolute',
+                                top: 0,
+                                right: 0,
+                                bottom: 0,
+                                height: '100%',
+                                minWidth: '104px',
+                                padding: '0 8px 0 35px',
+                                margin: 0,
+                                alignItems: 'center',
+                                justifyContent: 'flex-end',
+                                backgroundColor: 'lch(13.058 1.3 272)',
+                                border: 'none',
+                                borderRadius: '2px',
+                                cursor: 'pointer',
+                                maskImage: 'linear-gradient(to right, rgba(0, 0, 0, 0), rgb(0, 0, 0) 25px)',
+                                WebkitMaskImage: 'linear-gradient(to right, rgba(0, 0, 0, 0), rgb(0, 0, 0) 25px)',
+                                transition: 'color 0.15s ease',
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
+                                  fontSize: '12px',
+                                  fontWeight: 450,
+                                  color: 'lch(100 0 272)',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.color = 'lch(58.717 70 288.421)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.color = 'lch(100 0 272)';
+                                }}
+                              >
+                                See issues
+                              </span>
+                            </button>
+                          )}
                         </div>
 
                         {/* Right Count Badge */}
                         <div
+                          data-column-id="row-count"
                           style={{
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'flex-end',
-                            width: '24px',
+                            minWidth: '24px',
                             height: '24px',
+                            marginLeft: 'auto',
                           }}
                         >
                           <span
+                            data-animated-number="true"
                             style={{
+                              fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
                               fontSize: '13px',
                               fontWeight: 450,
-                              color: '#99999d',
+                              color: 'lch(63.304 1.425 272)',
+                              fontVariantNumeric: 'tabular-nums',
+                              textAlign: 'right',
                             }}
                           >
-                            <span>{count}</span>
+                            {count}
                           </span>
                         </div>
                       </div>
@@ -276,98 +380,15 @@ export const CampaignRightSidebar: React.FC = () => {
                   { id: 'high', name: 'High', icon: 'high', count: 2 },
                   { id: 'medium', name: 'Medium', icon: 'medium', count: 1 },
                   { id: 'low', name: 'Low', icon: 'low', count: 0 },
-                ].map((item) => (
-                  <div key={item.id} data-contextual-menu="true">
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        width: '310px',
-                        height: '42px',
-                        padding: '0 10px',
-                        borderRadius: '8px',
-                        background: '#1b1a1a',
-                        color: '#fefeff',
-                        cursor: 'pointer',
-                        userSelect: 'none',
-                        overflow: 'hidden',
-                        position: 'relative',
-                        transition: 'background-color 0.1s ease',
-                      }}
-                      className="hover:bg-[#222524]"
-                    >
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          flex: '1 1 auto',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        <LinearPriorityBarsIcon
-                          level={item.icon as 'urgent' | 'high' | 'medium' | 'low'}
-                          size={14}
-                          className="text-[#99999d]"
-                        />
-                        <span
-                          style={{
-                            fontSize: '13px',
-                            fontWeight: 450,
-                            color: '#fefeff',
-                            whiteSpace: 'nowrap',
-                            textOverflow: 'ellipsis',
-                            overflow: 'hidden',
-                          }}
-                        >
-                          {item.name}
-                        </span>
-                      </div>
-
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'flex-end',
-                          width: '24px',
-                          height: '24px',
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: '13px',
-                            fontWeight: 450,
-                            color: '#99999d',
-                          }}
-                        >
-                          <span>{item.count}</span>
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Tab 3: Projects / Platforms List */}
-            {activeRightSidebarTab === 'platforms' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', width: '310px' }}>
-                {[
-                  { id: 'Meta', name: 'Meta Ads', color: '#5f6ad3' },
-                  { id: 'TikTok', name: 'TikTok Ads', color: '#27ae60' },
-                  { id: 'Google', name: 'Google Ads', color: '#f2994a' },
-                ].map((platform) => {
-                  const count = campaigns.filter((c) => c.platform === platform.id).length;
-                  const isSelected = selectedFilterPlatform === platform.id;
-
+                ].map((item) => {
+                  const isHovered = hoveredRowId === item.id;
                   return (
-                    <div key={platform.id} data-contextual-menu="true">
+                    <div key={item.id} data-contextual-menu="true">
                       <div
                         role="button"
                         tabIndex={0}
-                        onClick={() => setSelectedFilterPlatform(platform.id)}
+                        onMouseEnter={() => setHoveredRowId(item.id)}
+                        onMouseLeave={() => setHoveredRowId(null)}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -375,42 +396,179 @@ export const CampaignRightSidebar: React.FC = () => {
                           height: '42px',
                           padding: '0 10px',
                           borderRadius: '8px',
-                          background: isSelected ? '#222524' : '#1b1a1a',
-                          color: '#fefeff',
-                          cursor: 'pointer',
+                          backgroundColor: isHovered ? 'lch(13.058 1.3 272)' : 'transparent',
+                          color: 'lch(100 0 272)',
+                          cursor: 'default',
                           userSelect: 'none',
                           overflow: 'hidden',
                           position: 'relative',
                           transition: 'background-color 0.1s ease',
                         }}
-                        className="hover:bg-[#222524]"
                       >
                         <div
+                          data-column-id="priority"
                           style={{
                             display: 'flex',
                             alignItems: 'center',
                             gap: '8px',
                             flex: '1 1 auto',
                             overflow: 'hidden',
+                            position: 'relative',
                           }}
                         >
-                          {/* 9px Colored Dot */}
-                          <div
-                            aria-hidden="true"
-                            style={{
-                              width: '9px',
-                              height: '9px',
-                              minWidth: '9px',
-                              minHeight: '9px',
-                              borderRadius: '50%',
-                              backgroundColor: platform.color,
-                            }}
+                          <LinearPriorityBarsIcon
+                            level={item.icon as 'urgent' | 'high' | 'medium' | 'low'}
+                            size={16}
+                            className="text-[#99999d]"
                           />
                           <span
                             style={{
+                              fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
                               fontSize: '13px',
                               fontWeight: 450,
-                              color: '#fefeff',
+                              color: 'lch(100 0 272)',
+                              whiteSpace: 'nowrap',
+                              textOverflow: 'ellipsis',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            {item.name}
+                          </span>
+
+                          {/* "See issues" Hover Action Button */}
+                          {isHovered && (
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              style={{
+                                display: 'flex',
+                                position: 'absolute',
+                                top: 0,
+                                right: 0,
+                                bottom: 0,
+                                height: '100%',
+                                minWidth: '104px',
+                                padding: '0 8px 0 35px',
+                                margin: 0,
+                                alignItems: 'center',
+                                justifyContent: 'flex-end',
+                                backgroundColor: 'lch(13.058 1.3 272)',
+                                border: 'none',
+                                borderRadius: '2px',
+                                cursor: 'pointer',
+                                maskImage: 'linear-gradient(to right, rgba(0, 0, 0, 0), rgb(0, 0, 0) 25px)',
+                                WebkitMaskImage: 'linear-gradient(to right, rgba(0, 0, 0, 0), rgb(0, 0, 0) 25px)',
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
+                                  fontSize: '12px',
+                                  fontWeight: 450,
+                                  color: 'lch(100 0 272)',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.color = 'lch(58.717 70 288.421)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.color = 'lch(100 0 272)';
+                                }}
+                              >
+                                See issues
+                              </span>
+                            </button>
+                          )}
+                        </div>
+
+                        <div
+                          data-column-id="row-count"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            minWidth: '24px',
+                            height: '24px',
+                            marginLeft: 'auto',
+                          }}
+                        >
+                          <span
+                            data-animated-number="true"
+                            style={{
+                              fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
+                              fontSize: '13px',
+                              fontWeight: 450,
+                              color: 'lch(63.304 1.425 272)',
+                              fontVariantNumeric: 'tabular-nums',
+                              textAlign: 'right',
+                            }}
+                          >
+                            {item.count}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Tab 3: Projects / Platforms List */}
+            {activeRightSidebarTab === 'platforms' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', width: '310px' }}>
+                {[
+                  { id: 'Meta', name: 'Meta Ads', color: 'lch(48 59.31 288.43)' },
+                  { id: 'TikTok', name: 'TikTok Ads', color: 'rgb(39, 174, 96)' },
+                  { id: 'Google', name: 'Google Ads', color: 'rgb(242, 153, 74)' },
+                ].map((platform) => {
+                  const count = campaigns.filter((c) => c.platform === platform.id).length;
+                  const isSelected = selectedFilterPlatform === platform.id;
+                  const isHovered = hoveredRowId === platform.id;
+
+                  return (
+                    <div key={platform.id} data-contextual-menu="true">
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setSelectedFilterPlatform(platform.id)}
+                        onMouseEnter={() => setHoveredRowId(platform.id)}
+                        onMouseLeave={() => setHoveredRowId(null)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          width: '310px',
+                          height: '42px',
+                          padding: '0 10px',
+                          borderRadius: '8px',
+                          backgroundColor: isSelected ? 'lch(13.058 1.3 272)' : isHovered ? 'lch(13.058 1.3 272)' : 'transparent',
+                          color: 'lch(100 0 272)',
+                          cursor: 'default',
+                          userSelect: 'none',
+                          overflow: 'hidden',
+                          position: 'relative',
+                          transition: 'background-color 0.1s ease',
+                        }}
+                      >
+                        <div
+                          data-column-id="project"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            flex: '1 1 auto',
+                            overflow: 'hidden',
+                            position: 'relative',
+                          }}
+                        >
+                          {/* Linear Project Hexagonal Cube Icon */}
+                          <div style={{ color: platform.color, display: 'flex', alignItems: 'center' }}>
+                            <LinearProjectCubeIcon size={16} />
+                          </div>
+                          <span
+                            style={{
+                              fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
+                              fontSize: '13px',
+                              fontWeight: 450,
+                              color: 'lch(100 0 272)',
                               whiteSpace: 'nowrap',
                               textOverflow: 'ellipsis',
                               overflow: 'hidden',
@@ -418,25 +576,79 @@ export const CampaignRightSidebar: React.FC = () => {
                           >
                             {platform.name}
                           </span>
+
+                          {/* "See issues" Hover Action Button */}
+                          {isHovered && (
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedFilterPlatform(platform.id);
+                              }}
+                              style={{
+                                display: 'flex',
+                                position: 'absolute',
+                                top: 0,
+                                right: 0,
+                                bottom: 0,
+                                height: '100%',
+                                minWidth: '104px',
+                                padding: '0 8px 0 35px',
+                                margin: 0,
+                                alignItems: 'center',
+                                justifyContent: 'flex-end',
+                                backgroundColor: 'lch(13.058 1.3 272)',
+                                border: 'none',
+                                borderRadius: '2px',
+                                cursor: 'pointer',
+                                maskImage: 'linear-gradient(to right, rgba(0, 0, 0, 0), rgb(0, 0, 0) 25px)',
+                                WebkitMaskImage: 'linear-gradient(to right, rgba(0, 0, 0, 0), rgb(0, 0, 0) 25px)',
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
+                                  fontSize: '12px',
+                                  fontWeight: 450,
+                                  color: 'lch(100 0 272)',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.color = 'lch(58.717 70 288.421)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.color = 'lch(100 0 272)';
+                                }}
+                              >
+                                See issues
+                              </span>
+                            </button>
+                          )}
                         </div>
 
                         <div
+                          data-column-id="row-count"
                           style={{
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'flex-end',
-                            width: '24px',
+                            minWidth: '24px',
                             height: '24px',
+                            marginLeft: 'auto',
                           }}
                         >
                           <span
+                            data-animated-number="true"
                             style={{
+                              fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
                               fontSize: '13px',
                               fontWeight: 450,
-                              color: '#99999d',
+                              color: 'lch(63.304 1.425 272)',
+                              fontVariantNumeric: 'tabular-nums',
+                              textAlign: 'right',
                             }}
                           >
-                            <span>{count}</span>
+                            {count}
                           </span>
                         </div>
                       </div>
