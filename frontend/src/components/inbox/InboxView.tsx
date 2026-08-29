@@ -87,19 +87,17 @@ export const InboxView: React.FC = () => {
 
             {/* Notification Actions Dropdown Menu */}
             <DropdownMenu>
-              <Tooltip content="Notification actions">
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="Notification actions"
-                    className="linear-icon-btn"
-                  >
-                    <span className="flex h-[14px] w-[14px] items-center justify-center">
-                      <LinearDotsIcon size={14} />
-                    </span>
-                  </button>
-                </DropdownMenuTrigger>
-              </Tooltip>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Notification actions"
+                  className="linear-icon-btn"
+                >
+                  <span className="flex h-[14px] w-[14px] items-center justify-center">
+                    <LinearDotsIcon size={14} />
+                  </span>
+                </button>
+              </DropdownMenuTrigger>
 
               <DropdownMenuContent
                 align="start"
