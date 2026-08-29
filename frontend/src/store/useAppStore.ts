@@ -51,6 +51,7 @@ interface AppState {
   markAllNotificationsAsRead: () => void;
   deleteAllNotifications: () => void;
   deleteAllReadNotifications: () => void;
+  toggleNotificationReadStatus: (id: string) => void;
 
   // Campaigns State
   campaigns: CampaignItem[];
@@ -133,6 +134,12 @@ export const useAppStore = create<AppState>((set) => ({
       selectedNotificationId: state.notifications.some((n) => n.id === state.selectedNotificationId && n.isRead)
         ? null
         : state.selectedNotificationId,
+    })),
+  toggleNotificationReadStatus: (id) =>
+    set((state) => ({
+      notifications: state.notifications.map((n) =>
+        n.id === id ? { ...n, isRead: !n.isRead } : n
+      ),
     })),
 
   campaigns: [
