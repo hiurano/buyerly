@@ -148,12 +148,14 @@ export const CampaignsView: React.FC = () => {
               </button>
             </Tooltip>
 
-            <Tooltip content="Toggle sidebar" shortcut="⌥I">
+            <Tooltip content={isRightSidebarOpen ? 'Close details' : 'Open details'} shortcut="⌥I">
               <button
                 type="button"
-                aria-label="Toggle sidebar"
+                aria-label={isRightSidebarOpen ? 'Close details' : 'Open details'}
+                aria-expanded={isRightSidebarOpen}
                 onClick={toggleRightSidebar}
                 data-state={isRightSidebarOpen ? 'active' : 'inactive'}
+                data-active={isRightSidebarOpen ? 'true' : undefined}
                 style={{
                   width: '28px',
                   height: '28px',
@@ -161,11 +163,12 @@ export const CampaignsView: React.FC = () => {
                   border: '1px solid transparent',
                   backgroundColor: isRightSidebarOpen ? 'lch(18.634 1.075 272)' : 'transparent',
                   color: isRightSidebarOpen ? 'lch(100 0 272)' : 'lch(61.803% 1.2 272 / 1)',
+                  transition: 'border 0.15s ease, background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease',
                 }}
-                className="flex items-center justify-center transition-colors duration-100 hover:bg-[#1a1b1d] hover:text-white outline-none"
+                className="flex items-center justify-center outline-none hover:bg-[lch(18.634_1.075_272)] hover:text-white"
               >
                 <span className="flex h-[14px] w-[14px] items-center justify-center">
-                  <LinearSidebarToggleIcon size={16} />
+                  <LinearSidebarToggleIcon size={16} isOpen={isRightSidebarOpen} />
                 </span>
               </button>
             </Tooltip>

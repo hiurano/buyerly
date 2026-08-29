@@ -63,8 +63,6 @@ export const CampaignRightSidebar: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedTemplateIndex, setSelectedTemplateIndex] = useState(0);
 
-  if (!isRightSidebarOpen) return null;
-
   const currentCampaign =
     campaigns.find((c) => c.id === focusedCampaignId) || campaigns[0];
 
@@ -94,6 +92,10 @@ export const CampaignRightSidebar: React.FC = () => {
         position: 'relative',
         zIndex: 90,
         display: 'block',
+        marginLeft: isRightSidebarOpen ? '0px' : '-350px',
+        transform: isRightSidebarOpen ? 'none' : 'translateX(350px)',
+        transition: 'margin-left 250ms cubic-bezier(0.16, 1, 0.3, 1), transform 250ms cubic-bezier(0.16, 1, 0.3, 1)',
+        pointerEvents: isRightSidebarOpen ? 'auto' : 'none',
       }}
     >
       <aside

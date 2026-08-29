@@ -296,8 +296,13 @@ export const LinearEmptyInboxIllustration: React.FC<{ className?: string }> = ({
   </svg>
 );
 
-// 14. Exact Linear Sidebar Panel Toggle Icon (16x16)
-export const LinearSidebarToggleIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+// 14. Exact Linear Sidebar Panel Toggle Icon (16x16) with Morph Animation
+export const LinearSidebarToggleIcon: React.FC<IconProps & { isOpen?: boolean }> = ({
+  size = 16,
+  isOpen = true,
+  className = '',
+  ...props
+}) => (
   <svg
     width={size}
     height={size}
@@ -315,7 +320,18 @@ export const LinearSidebarToggleIcon: React.FC<IconProps> = ({ size = 16, classN
         clipRule="evenodd"
         d="M4.25 2C2.45508 2 1 3.45508 1 5.25V10.75C1 12.5449 2.45508 14 4.25 14H11.75C13.5449 14 15 12.5449 15 10.75V5.25C15 3.45508 13.5449 2 11.75 2H4.25ZM2.5 5.5C2.5 4.39543 3.39543 3.5 4.5 3.5H11.5C12.6046 3.5 13.5 4.39543 13.5 5.5V10.5C13.5 11.6046 12.6046 12.5 11.5 12.5H4.5C3.39543 12.5 2.5 11.6046 2.5 10.5V5.5Z"
       />
-      <rect x="7" y="5" width="4.5" height="6" rx="0.75" />
+      <rect
+        x={isOpen ? 7 : 10}
+        y={5}
+        width={isOpen ? 4.5 : 1.5}
+        height={6}
+        rx={0.75}
+        style={{
+          transitionProperty: 'x, width',
+          transitionDuration: '250ms',
+          transitionTimingFunction: 'ease',
+        }}
+      />
     </g>
   </svg>
 );
