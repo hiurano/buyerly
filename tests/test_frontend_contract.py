@@ -6,7 +6,8 @@ import unittest
 class TestFrontendRuleContract(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        webapp = Path(__file__).parents[1] / "webapp"
+        repo = Path(__file__).parents[1]
+        webapp = repo / "webapp"
         cls.scripts = {
             path.name: path.read_text()
             for path in sorted((webapp / "js").glob("*.js"))
@@ -20,8 +21,14 @@ class TestFrontendRuleContract(unittest.TestCase):
         }
         cls.styles = "\n".join(cls.style_files.values())
         cls.ui_system = cls.style_files["ui-system.css"]
-        cls.server = (Path(__file__).parents[1] / "api" / "server.py").read_text()
-        cls.workflow = (Path(__file__).parents[1] / ".github" / "workflows" / "deploy.yml").read_text()
+        cls.legacy_styles = cls.style_files["styles.css"]
+        cls.server = (repo / "api" / "server.py").read_text()
+        cls.workflow = (repo / ".github" / "workflows" / "deploy.yml").read_text()
+        cls.agents = (repo / "AGENTS.md").read_text()
+        cls.claude = (repo / "CLAUDE.md").read_text()
+        cls.copilot = (repo / ".github" / "copilot-instructions.md").read_text()
+        cls.ui_contract = (repo / "docs" / "UI_CONTRACT.md").read_text()
+        cls.design_system = (repo / "docs" / "DESIGN_SYSTEM.md").read_text()
 
     def test_frontend_foundations_are_split_and_loaded_before_app(self):
         script_paths = (
@@ -57,6 +64,52 @@ class TestFrontendRuleContract(unittest.TestCase):
 
         self.assertIn("find webapp/js -type f -name '*.js'", self.workflow)
         self.assertIn("node --check", self.workflow)
+
+    def test_ui_contract_is_canonical_and_agent_enforced(self):
+        self.assertLess(
+            self.index.index("/static/css/styles.css"),
+            self.index.index("/static/css/ui-system.css"),
+        )
+
+        for instructions in (self.agents, self.claude, self.copilot):
+            self.assertIn("UI_CONTRACT.md", instructions)
+            self.assertIn("DESIGN_SYSTEM.md", instructions)
+
+        for contract in (
+            "One source of truth",
+            "Mandatory component recipes",
+            "Forbidden patterns",
+            "Change protocol",
+            "390, 768, 1024 and 1440px",
+        ):
+            self.assertIn(contract, self.ui_contract)
+
+        for token in (
+            "--font-size-sm:",
+            "--space-4:",
+            "--control-md:",
+            "--action-primary:",
+            "--focus-ring:",
+            "--layer-modal:",
+            "--motion-standard:",
+        ):
+            self.assertIn(token, self.ui_system)
+            self.assertNotIn(token, self.legacy_styles)
+
+        for component in (
+            ".ui-button",
+            ".ui-icon-button",
+            ".ui-input",
+            ".ui-select",
+            ".ui-tabs",
+            ".ui-tab",
+            ".ui-badge",
+            ".ui-table",
+            ".ui-dialog",
+        ):
+            self.assertIn(component, self.ui_system)
+
+        self.assertIn("UI_CONTRACT.md", self.design_system)
 
     def test_frontend_uses_current_rule_endpoints(self):
         self.assertNotIn("/apply-preset", self.script)

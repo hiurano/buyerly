@@ -10,6 +10,11 @@
 ## [Unreleased]
 
 ### Added & Improved
+- **Обязательный Buyerly UI Contract**:
+  - `docs/UI_CONTRACT.md` закрепляет единые recipes для кнопок, icon buttons, inputs, selects, tabs, badges, tables и dialogs, а также composition, accessibility и responsive rules.
+  - Shared foundation tokens перенесены в последний production layer `webapp/css/ui-system.css`: изменение semantic token теперь применяется ко всем legacy-bridged и новым consumers.
+  - `AGENTS.md`, `CLAUDE.md` и GitHub Copilot instructions направляют всех агентов в один контракт без копирования правил; pull request template добавляет обязательный UI checklist.
+  - Frontend contract tests проверяют canonical token ownership, component recipes и agent instruction entrypoints, чтобы расхождение блокировалось в GitHub Actions.
 - **Today Decision Center**:
   - Статический Today превращён в workspace-scoped центр решений на реальных данных подключений Meta, здоровья кабинетов, покрытия автоматизациями и последних audit-событий.
   - Command bar теперь выбирает одно следующее действие в детерминированном порядке и объясняет причину приоритета без fake metrics, искусственной срочности и декоративных controls.
