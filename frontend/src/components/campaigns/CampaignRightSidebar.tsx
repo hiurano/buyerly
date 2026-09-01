@@ -1,103 +1,340 @@
-import React, { useState } from 'react';
-import { useAppStore, RuleItem } from '@/store/useAppStore';
-import { LinearToggle } from '@/ui/LinearToggle';
+import React, { useEffect, useRef, useState } from 'react';
+import { useAppStore } from '@/store/useAppStore';
+import type { CampaignGroup, RuleItem } from '@/store/useAppStore';
+import { LinearBoltIcon } from '@/icons/LinearIcons';
 
-const RULE_COLORS = [
-  'lch(48 59.31 288.43)', // #5f6ad3 (Purple-blue)
-  'rgb(155, 81, 224)',     // #9b51e0 (Purple)
-  'rgb(39, 174, 96)',      // #27ae60 (Green)
-  'rgb(242, 153, 74)',     // #f2994a (Orange)
-  'rgb(234, 179, 8)',      // #eab308 (Yellow)
-  'rgb(47, 128, 237)',     // #2f80ed (Blue)
-];
+const SIDEBAR_FONT =
+  '"Inter Variable", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
-const RULE_TEMPLATES: Array<Omit<RuleItem, 'id' | 'identifier'>> = [
-  {
-    name: 'Auto-Stop High CPA (> $25)',
-    condition: 'IF CPA > $25 & Spend > $40',
-    action: 'PAUSE ADSET',
-    scope: 'Meta Ads • All Campaigns',
-    status: 'active',
-    lastRun: 'Just now',
-  },
-  {
-    name: 'Scale Winner Budget (+20% daily)',
-    condition: 'IF ROI > 140% & Leads ≥ 5',
-    action: 'BUDGET +20%',
-    scope: 'TikTok Ads • Broad',
-    status: 'active',
-    lastRun: 'Just now',
-  },
-  {
-    name: 'Kill Zero-Conversions ($50 spend)',
-    condition: 'IF Spend > $50 & Leads == 0',
-    action: 'PAUSE CAMPAIGN',
-    scope: 'Google Ads • Search',
-    status: 'active',
-    lastRun: 'Just now',
-  },
-  {
-    name: 'Duplicate Winner AdSet (Auto-Scale)',
-    condition: 'IF Conversions > 10 & CPA < $12',
-    action: 'DUPLICATE ADSET',
-    scope: 'Meta Ads • CBO',
-    status: 'active',
-    lastRun: 'Just now',
-  },
-];
+const SIDEBAR_MIN_WIDTH = 350;
+const SIDEBAR_MAX_WIDTH = 600;
+const SIDEBAR_DEFAULT_WIDTH = 350;
+const SIDEBAR_WIDTH_STORAGE_KEY = 'buyerly:campaign-sidebar-width:v2';
+
+const SIDEBAR_TABS = [
+  { id: 'groups', label: 'Groups' },
+  { id: 'rules', label: 'Rules' },
+] as const;
+
+const clampSidebarWidth = (width: number) =>
+  Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, width));
+
+const getInitialSidebarWidth = () => {
+  if (typeof window === 'undefined') return SIDEBAR_DEFAULT_WIDTH;
+
+  const storedWidth = Number.parseFloat(
+    window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY) ?? ''
+  );
+
+  return Number.isFinite(storedWidth)
+    ? clampSidebarWidth(storedWidth)
+    : SIDEBAR_DEFAULT_WIDTH;
+};
+
+interface SidebarFilterRowProps {
+  name: string;
+  count: number;
+  leading: React.ReactNode;
+  isActive: boolean;
+  isHovered: boolean;
+  onToggle: () => void;
+  onClear: () => void;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+}
+
+/** Linear sidebar row: stable count column with a hover action inside the content column. */
+const SidebarFilterRow: React.FC<SidebarFilterRowProps> = ({
+  name,
+  count,
+  leading,
+  isActive,
+  isHovered,
+  onToggle,
+  onClear,
+  onMouseEnter,
+  onMouseLeave,
+}) => (
+  <div
+    role="button"
+    tabIndex={0}
+    aria-pressed={isActive}
+    onClick={onToggle}
+    onMouseEnter={onMouseEnter}
+    onMouseLeave={onMouseLeave}
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      height: 42,
+      padding: '0 10px',
+      borderRadius: 8,
+      cursor: 'pointer',
+      position: 'relative',
+      overflow: 'hidden',
+      backgroundColor: isHovered
+        ? 'var(--item-hover-bg)'
+        : isActive
+        ? 'var(--item-active-bg)'
+        : 'transparent',
+      transition: 'background-color 150ms ease',
+    }}
+  >
+    <div
+      data-column-id="content"
+      style={{
+        display: 'flex',
+        minWidth: 0,
+        flex: 1,
+        alignItems: 'center',
+      }}
+    >
+      {leading}
+      <span
+        title={name}
+        style={{
+          minWidth: 0,
+          flex: 1,
+          overflow: 'hidden',
+          color: 'var(--text-primary)',
+          fontFamily: SIDEBAR_FONT,
+          fontSize: 13,
+          fontWeight: 450,
+          lineHeight: '16px',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {name}
+      </span>
+
+      {isHovered && (
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={(event) => {
+            event.stopPropagation();
+            if (isActive) onClear();
+            else onToggle();
+          }}
+          style={{
+            display: 'flex',
+            height: 16,
+            flexShrink: 0,
+            alignItems: 'center',
+            padding: '0 8px 0 35px',
+            border: 0,
+            outline: 0,
+            background: 'transparent',
+            color: 'var(--text-primary)',
+            cursor: 'pointer',
+            fontFamily: SIDEBAR_FONT,
+            fontSize: 13,
+            fontWeight: 450,
+            lineHeight: '16px',
+            whiteSpace: 'nowrap',
+            transition: 'color 150ms ease',
+          }}
+        >
+          {isActive ? 'Clear' : 'View'}
+        </button>
+      )}
+    </div>
+
+    <span
+      data-column-id="row-count"
+      style={{
+        flexShrink: 0,
+        color: 'var(--text-tertiary)',
+        fontFamily: SIDEBAR_FONT,
+        fontSize: 13,
+        fontWeight: 450,
+        lineHeight: '16px',
+      }}
+    >
+      {count}
+    </span>
+  </div>
+);
 
 export const CampaignRightSidebar: React.FC = () => {
   const {
     isRightSidebarOpen,
     activeRightSidebarTab,
     setActiveRightSidebarTab,
+    campaignGroups,
     rules,
     campaigns,
-    focusedCampaignId,
+    adSets,
+    ads,
     campaignAttachedRules,
-    toggleRuleForCampaign,
-    addRule,
+    campaignFilterTab,
+    adsManagerQuickFilter,
+    setAdsManagerQuickFilter,
   } = useAppStore();
 
-  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [selectedTemplateIndex, setSelectedTemplateIndex] = useState(0);
+  const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
+  const [hoveredTab, setHoveredTab] = useState<'groups' | 'rules' | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(getInitialSidebarWidth);
+  const [isResizing, setIsResizing] = useState(false);
+  const [isResizeHandleHovered, setIsResizeHandleHovered] = useState(false);
+  const resizeStartXRef = useRef(0);
+  const resizeStartWidthRef = useRef(sidebarWidth);
+  const currentSidebarWidthRef = useRef(sidebarWidth);
 
-  const currentCampaign =
-    campaigns.find((c) => c.id === focusedCampaignId) || campaigns[0];
+  useEffect(() => {
+    currentSidebarWidthRef.current = sidebarWidth;
+  }, [sidebarWidth]);
 
-  const attachedRuleIds = currentCampaign
-    ? campaignAttachedRules[currentCampaign.id] || []
-    : [];
+  useEffect(() => {
+    if (!isResizing) return;
 
-  const handleCreateRule = () => {
-    const template = RULE_TEMPLATES[selectedTemplateIndex];
-    addRule(template);
-    if (currentCampaign) {
-      const nextIndex = rules.length + 1;
-      const newRuleId = `rul-${String(nextIndex).padStart(2, '0')}`;
-      toggleRuleForCampaign(currentCampaign.id, newRuleId);
-    }
-    setIsAddModalOpen(false);
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
+
+    const finishResize = () => {
+      window.localStorage.setItem(
+        SIDEBAR_WIDTH_STORAGE_KEY,
+        String(currentSidebarWidthRef.current)
+      );
+      setIsResizing(false);
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const nextWidth = clampSidebarWidth(
+        resizeStartWidthRef.current + resizeStartXRef.current - event.clientX
+      );
+      currentSidebarWidthRef.current = nextWidth;
+      setSidebarWidth(nextWidth);
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', finishResize);
+    window.addEventListener('blur', finishResize);
+
+    return () => {
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', finishResize);
+      window.removeEventListener('blur', finishResize);
+    };
+  }, [isResizing]);
+
+  const handleResizePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+
+    event.preventDefault();
+    resizeStartXRef.current = event.clientX;
+    resizeStartWidthRef.current = sidebarWidth;
+    currentSidebarWidthRef.current = sidebarWidth;
+    setIsResizing(true);
   };
 
-  const isPositiveRoi = currentCampaign ? currentCampaign.roi.startsWith('+') : true;
+  const getCampaignForAdSet = (campaignId: string) =>
+    campaigns.find((campaign) => campaign.id === campaignId);
+
+  const getCampaignForAd = (adSetId: string) => {
+    const adSet = adSets.find((candidate) => candidate.id === adSetId);
+    return adSet ? getCampaignForAdSet(adSet.campaignId) : undefined;
+  };
+
+  // Counts follow the entity currently shown in Ads Manager.
+  const getGroupItemCount = (group: CampaignGroup) => {
+    if (campaignFilterTab === 'adsets') {
+      return adSets.filter((adSet) =>
+        getCampaignForAdSet(adSet.campaignId)?.groupIds.includes(group.id)
+      ).length;
+    }
+    if (campaignFilterTab === 'ads') {
+      return ads.filter((ad) => getCampaignForAd(ad.adSetId)?.groupIds.includes(group.id)).length;
+    }
+    return campaigns.filter((campaign) => campaign.groupIds.includes(group.id)).length;
+  };
+
+  // Rule assignments are inherited by child ad sets and ads from their campaign.
+  const getRuleItemCount = (rule: RuleItem) => {
+    const campaignHasRule = (campaignId: string) =>
+      (campaignAttachedRules[campaignId] || []).includes(rule.id);
+
+    if (campaignFilterTab === 'adsets') {
+      return adSets.filter((adSet) => campaignHasRule(adSet.campaignId)).length;
+    }
+    if (campaignFilterTab === 'ads') {
+      return ads.filter((ad) => {
+        const campaign = getCampaignForAd(ad.adSetId);
+        return campaign ? campaignHasRule(campaign.id) : false;
+      }).length;
+    }
+    return campaigns.filter((campaign) =>
+      campaignHasRule(campaign.id)
+    ).length;
+  };
+
+  const groupFieldId = 'group';
+  const ruleFieldId = 'rule';
+
+  const isQuickFilterActive = (fieldId: string, value: string) => {
+    return (
+      adsManagerQuickFilter?.entity === campaignFilterTab &&
+      adsManagerQuickFilter.fieldId === fieldId &&
+      adsManagerQuickFilter.value === value
+    );
+  };
+
+  const toggleQuickFilter = (sidebarTab: 'groups' | 'rules', fieldId: 'group' | 'rule', value: string) => {
+    if (isQuickFilterActive(fieldId, value)) {
+      setAdsManagerQuickFilter(null);
+      return;
+    }
+    setAdsManagerQuickFilter({ entity: campaignFilterTab, sidebarTab, fieldId, value });
+  };
+
+  if (!isRightSidebarOpen) return null;
 
   return (
     <div
       style={{
         flex: '0 0 auto',
-        width: '350px',
+        width: sidebarWidth,
         height: '100%',
         position: 'relative',
         zIndex: 90,
         display: 'block',
-        marginLeft: isRightSidebarOpen ? '0px' : '-350px',
-        transform: isRightSidebarOpen ? 'none' : 'translateX(350px)',
-        transition: 'margin-left 250ms cubic-bezier(0.16, 1, 0.3, 1), transform 250ms cubic-bezier(0.16, 1, 0.3, 1)',
-        pointerEvents: isRightSidebarOpen ? 'auto' : 'none',
       }}
     >
+      <div
+        aria-hidden="true"
+        data-sidebar-resize-handle="true"
+        onPointerDown={handleResizePointerDown}
+        onMouseEnter={() => setIsResizeHandleHovered(true)}
+        onMouseLeave={() => setIsResizeHandleHovered(false)}
+        style={{
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          left: -3,
+          width: 7,
+          zIndex: 91,
+          cursor: 'col-resize',
+          touchAction: 'none',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: 3,
+            width: 1,
+            backgroundColor: 'var(--color-border-secondary)',
+            opacity: isResizing || isResizeHandleHovered ? 1 : 0,
+            transition: 'opacity 250ms',
+          }}
+        />
+      </div>
+
       <aside
         style={{
           display: 'flex',
@@ -107,10 +344,10 @@ export const CampaignRightSidebar: React.FC = () => {
           right: 0,
           bottom: 0,
           left: 0,
-          width: '350px',
+          width: sidebarWidth,
           height: '100%',
           overflow: 'hidden auto',
-          padding: '0px 0px 8px 4px',
+          padding: '0px 0px 0px 4px',
         }}
       >
         <div
@@ -118,528 +355,180 @@ export const CampaignRightSidebar: React.FC = () => {
           style={{
             display: 'flex',
             flexDirection: 'column',
-            width: '346px',
+            width: sidebarWidth - 4,
             height: '100%',
             overflow: 'auto',
             scrollbarGutter: 'stable',
           }}
         >
-          {/* Inner Card Container */}
+          {/* Linear card keeps the same 10px right inset at every sidebar width. */}
           <div
             style={{
-              width: '336px',
+              width: sidebarWidth - 14,
               minHeight: 'calc(100% - 8px)',
               padding: '12px',
               margin: '0px 0px 8px',
               borderRadius: '10px',
-              backgroundColor: 'lch(9.232 0.85 272)', // #141416
-              border: '1px solid lch(13.553 1.93 272)', // #1e1e21
-              boxShadow: '0px 0.5px 1px 1px lch(0% 0 0 / 0.3)',
+              backgroundColor: 'var(--card-bg)',
+              border: '1px solid var(--sidebar-card-border)',
+              boxShadow: 'var(--canvas-shadow)',
               display: 'flex',
               flexDirection: 'column',
+              boxSizing: 'border-box',
+              userSelect: 'none',
             }}
           >
-            {/* Minimal Campaign Title (Clean, no platforms, no status badges) */}
-            <div style={{ padding: '0 2px 10px 2px' }}>
-              <h3
-                title={currentCampaign?.name}
-                style={{
-                  fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  color: 'lch(90.451% 1.2 272 / 1)',
-                  whiteSpace: 'nowrap',
-                  textOverflow: 'ellipsis',
-                  overflow: 'hidden',
-                  margin: 0,
-                }}
-              >
-                {currentCampaign?.name || 'Campaign'}
-              </h3>
+            {/* Pill Tab Header (Exact Linear 32px height & 28px pill) */}
+            <div
+              role="tablist"
+              aria-orientation="horizontal"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '2px',
+                width: '100%',
+                height: '32px',
+                marginBottom: '8px',
+                borderRadius: '5px',
+                backgroundColor: 'var(--card-bg)',
+                transform: 'translateY(-2px)',
+              }}
+            >
+              {SIDEBAR_TABS.map((tab) => {
+                const isActive = activeRightSidebarTab === tab.id;
+                const isHovered = hoveredTab === tab.id;
+
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    className="campaign-sidebar-tab"
+                    data-state={isActive ? 'active' : 'inactive'}
+                    aria-selected={isActive}
+                    onClick={() => setActiveRightSidebarTab(tab.id)}
+                    onMouseEnter={() => setHoveredTab(tab.id)}
+                    onMouseLeave={() => setHoveredTab(null)}
+                    style={{
+                      display: 'inline-flex',
+                      flex: '1 0 auto',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      height: '28px',
+                      margin: '2px',
+                      padding: '4px 12px',
+                      borderRadius: '9999px',
+                      backgroundColor: isActive
+                        ? 'var(--sidebar-tab-active-bg)'
+                        : isHovered
+                        ? 'var(--sidebar-tab-hover-bg)'
+                        : 'var(--sidebar-tab-inactive-bg)',
+                      color: isActive
+                        ? 'var(--sidebar-tab-active-text)'
+                        : isHovered
+                        ? 'var(--sidebar-tab-hover-text)'
+                        : 'var(--sidebar-tab-inactive-text)',
+                      fontFamily: SIDEBAR_FONT,
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      border: '1px solid transparent',
+                      cursor: 'default',
+                      outline: 'none',
+                      whiteSpace: 'nowrap',
+                      transition:
+                        'border 150ms, background-color 150ms, color 150ms, opacity 150ms',
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* 2-Tab Segmented Header: [ Правила ] | [ Сводка ] */}
-            <div style={{ margin: '0 0 10px 0' }}>
-              <div
-                role="tablist"
-                aria-orientation="horizontal"
-                style={{
-                  display: 'flex',
-                  gap: '2px',
-                  width: '310px',
-                  height: '32px',
-                  margin: '-2px 0',
-                  backgroundColor: 'lch(9.232 0.85 272)',
-                  borderRadius: '5px',
-                  alignItems: 'center',
-                }}
-              >
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={activeRightSidebarTab === 'rules'}
-                  data-state={activeRightSidebarTab === 'rules' ? 'active' : 'inactive'}
-                  onClick={() => setActiveRightSidebarTab('rules')}
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '28px',
-                    padding: '4px 12px',
-                    margin: '2px',
-                    borderRadius: '9999px',
-                    backgroundColor: activeRightSidebarTab === 'rules' ? 'lch(20.418 1.429 272)' : 'lch(13.861 1.043 272)',
-                    color: activeRightSidebarTab === 'rules' ? 'lch(100 0 272)' : 'lch(63.304 1.425 272)',
-                    fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
-                    fontSize: '12px',
-                    fontWeight: 500,
-                    border: '1px solid transparent',
-                    cursor: 'pointer',
-                    transition: 'border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s',
-                    outline: 'none',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (activeRightSidebarTab !== 'rules') {
-                      e.currentTarget.style.backgroundColor = 'lch(16.5 1.2 272)';
-                      e.currentTarget.style.color = 'lch(90.451 1.2 272)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (activeRightSidebarTab !== 'rules') {
-                      e.currentTarget.style.backgroundColor = 'lch(13.861 1.043 272)';
-                      e.currentTarget.style.color = 'lch(63.304 1.425 272)';
-                    }
-                  }}
-                >
-                  <span>Rules</span>
-                </button>
-
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={activeRightSidebarTab === 'overview'}
-                  data-state={activeRightSidebarTab === 'overview' ? 'active' : 'inactive'}
-                  onClick={() => setActiveRightSidebarTab('overview')}
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '28px',
-                    padding: '4px 12px',
-                    margin: '2px',
-                    borderRadius: '9999px',
-                    backgroundColor: activeRightSidebarTab === 'overview' ? 'lch(20.418 1.429 272)' : 'lch(13.861 1.043 272)',
-                    color: activeRightSidebarTab === 'overview' ? 'lch(100 0 272)' : 'lch(63.304 1.425 272)',
-                    fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
-                    fontSize: '12px',
-                    fontWeight: 500,
-                    border: '1px solid transparent',
-                    cursor: 'pointer',
-                    transition: 'border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s',
-                    outline: 'none',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (activeRightSidebarTab !== 'overview') {
-                      e.currentTarget.style.backgroundColor = 'lch(16.5 1.2 272)';
-                      e.currentTarget.style.color = 'lch(90.451 1.2 272)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (activeRightSidebarTab !== 'overview') {
-                      e.currentTarget.style.backgroundColor = 'lch(13.861 1.043 272)';
-                      e.currentTarget.style.color = 'lch(63.304 1.425 272)';
-                    }
-                  }}
-                >
-                  <span>Overview</span>
-                </button>
-              </div>
-            </div>
-
-            {/* TAB 1: ПРАВИЛА (СИНХРОНИЗИРОВАНЫ С ВЫБРАННОЙ СВЯЗКОЙ) */}
-            {activeRightSidebarTab === 'rules' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', width: '310px' }}>
-                {rules.map((rule, idx) => {
-                  const isAttached = attachedRuleIds.includes(rule.id);
-                  const isHovered = hoveredRowId === rule.id;
-                  const dotColor = RULE_COLORS[idx % RULE_COLORS.length];
+            {/* List Container */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1px',
+              }}
+            >
+              {/* 1. Groups Tab Content */}
+              {activeRightSidebarTab === 'groups' &&
+                campaignGroups.map((group) => {
+                  const count = getGroupItemCount(group);
+                  const isActive = isQuickFilterActive(groupFieldId, group.id);
+                  const isHovered = hoveredItemId === group.id;
+                  const dotColor = group.color;
 
                   return (
-                    <div key={rule.id} data-contextual-menu="true">
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => {
-                          if (currentCampaign) {
-                            toggleRuleForCampaign(currentCampaign.id, rule.id);
-                          }
-                        }}
-                        onMouseEnter={() => setHoveredRowId(rule.id)}
-                        onMouseLeave={() => setHoveredRowId(null)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          width: '310px',
-                          height: '42px',
-                          padding: '0 10px',
-                          borderRadius: '8px',
-                          backgroundColor: isHovered ? 'lch(13.058 1.3 272)' : 'transparent',
-                          color: isAttached ? 'lch(100 0 272)' : 'lch(61.803% 1.2 272 / 1)',
-                          cursor: 'pointer',
-                          userSelect: 'none',
-                          overflow: 'hidden',
-                          position: 'relative',
-                          transition: 'background-color 0.1s ease',
-                          gap: '8px',
-                        }}
-                      >
-                        {/* 9px Colored Dot */}
-                        <div
+                    <SidebarFilterRow
+                      key={group.id}
+                      name={group.name}
+                      count={count}
+                      isActive={isActive}
+                      isHovered={isHovered}
+                      onToggle={() => toggleQuickFilter('groups', groupFieldId, group.id)}
+                      onClear={() => setAdsManagerQuickFilter(null)}
+                      onMouseEnter={() => setHoveredItemId(group.id)}
+                      onMouseLeave={() => setHoveredItemId(null)}
+                      leading={
+                        <span
                           aria-hidden="true"
                           style={{
-                            width: '9px',
-                            height: '9px',
-                            minWidth: '9px',
-                            minHeight: '9px',
-                            borderRadius: '50%',
-                            backgroundColor: isAttached ? dotColor : '#3f3f46',
+                            display: 'block',
+                            width: 9,
+                            height: 9,
+                            marginRight: 8,
                             flexShrink: 0,
-                            transition: 'background-color 0.15s ease',
+                            borderRadius: '50%',
+                            backgroundColor: dotColor,
                           }}
                         />
-
-                        {/* Rule Name */}
-                        <div
-                          style={{
-                            flex: '1 1 auto',
-                            overflow: 'hidden',
-                            display: 'flex',
-                            flexDirection: 'column',
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
-                              fontSize: '13px',
-                              fontWeight: 450,
-                              lineHeight: '16px',
-                              color: isAttached ? 'lch(100 0 272)' : '#71717a',
-                              whiteSpace: 'nowrap',
-                              textOverflow: 'ellipsis',
-                              overflow: 'hidden',
-                            }}
-                          >
-                            {rule.name}
-                          </span>
-                        </div>
-
-                        {/* Inline LinearToggle Switch for this campaign */}
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (currentCampaign) {
-                              toggleRuleForCampaign(currentCampaign.id, rule.id);
-                            }
-                          }}
-                          style={{ flexShrink: 0 }}
-                        >
-                          <LinearToggle
-                            checked={isAttached}
-                            onChange={() => {
-                              if (currentCampaign) {
-                                toggleRuleForCampaign(currentCampaign.id, rule.id);
-                              }
-                            }}
-                            tooltipContent={isAttached ? 'Detach rule' : 'Attach rule'}
-                          />
-                        </div>
-                      </div>
-                    </div>
+                      }
+                    />
                   );
                 })}
 
-                {/* + Add Rule Button */}
-                <div style={{ marginTop: '6px' }}>
-                  <button
-                    type="button"
-                    onClick={() => setIsAddModalOpen(true)}
-                    style={{
-                      width: '100%',
-                      height: '32px',
-                      padding: '0 10px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      borderRadius: '6px',
-                      border: '1px dashed lch(13.553 1.93 272)',
-                      backgroundColor: 'transparent',
-                      color: 'lch(63.304 1.425 272)',
-                      fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
-                      fontSize: '12px',
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                      transition: 'background-color 0.15s, color 0.15s, border-color 0.15s',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'lch(13.058 1.3 272)';
-                      e.currentTarget.style.color = 'lch(100 0 272)';
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.color = 'lch(63.304 1.425 272)';
-                      e.currentTarget.style.borderColor = 'lch(13.553 1.93 272)';
-                    }}
-                  >
-                    <span style={{ fontSize: '14px', lineHeight: 1 }}>+</span>
-                    <span>Add rule...</span>
-                  </button>
-                </div>
+              {/* 2. Rules Tab Content */}
+              {activeRightSidebarTab === 'rules' &&
+                rules.map((rule) => {
+                  const count = getRuleItemCount(rule);
+                  const isActive = isQuickFilterActive(ruleFieldId, rule.id);
+                  const isHovered = hoveredItemId === rule.id;
 
-                {/* Quick Add Rule Inline Modal / Popover */}
-                {isAddModalOpen && (
-                  <div
-                    style={{
-                      marginTop: '8px',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      backgroundColor: 'lch(12 1 272)',
-                      border: '1px solid lch(18 1.5 272)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span
-                        style={{
-                          fontFamily: '"Inter Variable", sans-serif',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          color: '#e4e5e8',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
-                        }}
-                      >
-                        Choose Template
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setIsAddModalOpen(false)}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: '#71717a',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: '2px',
-                        }}
-                      >
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                          <line x1="3" y1="3" x2="13" y2="13" />
-                          <line x1="13" y1="3" x2="3" y2="13" />
-                        </svg>
-                      </button>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      {RULE_TEMPLATES.map((tmpl, tIdx) => {
-                        const isChosen = selectedTemplateIndex === tIdx;
-                        return (
-                          <div
-                            key={tIdx}
-                            onClick={() => setSelectedTemplateIndex(tIdx)}
-                            style={{
-                              padding: '6px 8px',
-                              borderRadius: '6px',
-                              backgroundColor: isChosen ? 'lch(20.418 1.429 272)' : 'transparent',
-                              border: isChosen ? '1px solid rgba(234, 179, 8, 0.4)' : '1px solid transparent',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '2px',
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontFamily: '"Inter Variable", sans-serif',
-                                fontSize: '12px',
-                                fontWeight: 500,
-                                color: isChosen ? '#ffffff' : '#a1a1aa',
-                              }}
-                            >
-                              {tmpl.name}
-                            </span>
-                            <span
-                              style={{
-                                fontFamily: '"Inter Variable", sans-serif',
-                                fontSize: '10px',
-                                color: '#71717a',
-                              }}
-                            >
-                              {tmpl.condition}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                      <button
-                        type="button"
-                        onClick={handleCreateRule}
-                        style={{
-                          flex: 1,
-                          height: '26px',
-                          borderRadius: '4px',
-                          backgroundColor: '#eab308',
-                          color: '#000000',
-                          border: 'none',
-                          fontFamily: '"Inter Variable", sans-serif',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Add Rule
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setIsAddModalOpen(false)}
-                        style={{
-                          height: '26px',
-                          padding: '0 8px',
-                          borderRadius: '4px',
-                          backgroundColor: 'transparent',
-                          color: '#a1a1aa',
-                          border: '1px solid #27272a',
-                          fontFamily: '"Inter Variable", sans-serif',
-                          fontSize: '11px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* TAB 2: СВОДКА (ЧИСТЫЕ МЕТРИКИ ВЫБРАННОЙ СВЯЗКИ) */}
-            {activeRightSidebarTab === 'overview' && currentCampaign && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '310px' }}>
-                {/* Campaign Metrics Card */}
-                <div
-                  style={{
-                    padding: '12px',
-                    borderRadius: '8px',
-                    backgroundColor: 'lch(11 0.8 272)',
-                    border: '1px solid lch(13.553 1.93 272)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px',
-                  }}
-                >
-                  <span
-                    style={{
-                      fontFamily: '"Inter Variable", sans-serif',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      color: 'lch(63.304 1.425 272)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.04em',
-                    }}
-                  >
-                    Campaign Telemetry
-                  </span>
-
-                  {/* Daily Budget */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', color: '#a1a1aa' }}>Daily Budget</span>
-                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#fefeff', fontVariantNumeric: 'tabular-nums' }}>
-                      {currentCampaign.budget}
-                    </span>
-                  </div>
-
-                  {/* Leads & CPA */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', color: '#a1a1aa' }}>Leads (CPA)</span>
-                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#fefeff', fontVariantNumeric: 'tabular-nums' }}>
-                      {currentCampaign.leadsCount} leads <span style={{ color: '#94969b', fontSize: '11px' }}>(${currentCampaign.cpa})</span>
-                    </span>
-                  </div>
-
-                  {/* Spend */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', color: '#a1a1aa' }}>Total Spend</span>
-                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#fefeff', fontVariantNumeric: 'tabular-nums' }}>
-                      {currentCampaign.spend}
-                    </span>
-                  </div>
-
-                  {/* ROI */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', color: '#a1a1aa' }}>ROI</span>
-                    <span
-                      style={{
-                        fontSize: '13px',
-                        fontWeight: 600,
-                        color: isPositiveRoi ? '#4ade80' : '#ef4444',
-                        fontVariantNumeric: 'tabular-nums',
-                      }}
-                    >
-                      {currentCampaign.roi}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Funnel Telemetry */}
-                <div
-                  style={{
-                    padding: '12px',
-                    borderRadius: '8px',
-                    backgroundColor: 'lch(11 0.8 272)',
-                    border: '1px solid lch(13.553 1.93 272)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                  }}
-                >
-                  <span
-                    style={{
-                      fontFamily: '"Inter Variable", sans-serif',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      color: 'lch(63.304 1.425 272)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.04em',
-                    }}
-                  >
-                    Funnel Rates
-                  </span>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', color: '#a1a1aa' }}>Avg CTR</span>
-                    <span style={{ fontSize: '12px', fontWeight: 500, color: '#fefeff' }}>2.84%</span>
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', color: '#a1a1aa' }}>Avg CPC</span>
-                    <span style={{ fontSize: '12px', fontWeight: 500, color: '#fefeff' }}>$0.42</span>
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', color: '#a1a1aa' }}>Avg CPM</span>
-                    <span style={{ fontSize: '12px', fontWeight: 500, color: '#fefeff' }}>$11.20</span>
-                  </div>
-                </div>
-              </div>
-            )}
+                  return (
+                    <SidebarFilterRow
+                      key={rule.id}
+                      name={rule.name}
+                      count={count}
+                      isActive={isActive}
+                      isHovered={isHovered}
+                      onToggle={() => toggleQuickFilter('rules', ruleFieldId, rule.id)}
+                      onClear={() => setAdsManagerQuickFilter(null)}
+                      onMouseEnter={() => setHoveredItemId(rule.id)}
+                      onMouseLeave={() => setHoveredItemId(null)}
+                      leading={
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            display: 'flex',
+                            width: 16,
+                            height: 16,
+                            marginRight: 8,
+                            flexShrink: 0,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <LinearBoltIcon size={13} className="text-[#eab308]" />
+                        </span>
+                      }
+                    />
+                  );
+                })}
+            </div>
           </div>
         </div>
       </aside>

@@ -1,0 +1,3 @@
+Put the BEST frontal face image(s) of your character in this folder.
+The first one is THE face anchor — it rides as reference #1 on every shot.
+PNG / JPG / WEBP. Cleanest source: the face portraits from ai-dataset-builder.

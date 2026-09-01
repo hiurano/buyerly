@@ -1,0 +1,14 @@
+{
+  "_pack": "MatrixLab Krea 2 Free Master v1.0.0",
+  "_note": "Machine-readable install manifest. Folders are relative to ComfyUI/models/. All downloads are public (no tokens needed).",
+  "custom_node_packs": [
+    {"name": "rgthree-comfy", "repo": "https://github.com/rgthree/rgthree-comfy"}
+  ],
+  "models": [
+    {"file": "krea2_turbo_fp8_scaled.safetensors", "folder": "diffusion_models", "approx_size_gb": 12.6, "url": "https://huggingface.co/Comfy-Org/Krea-2/resolve/main/diffusion_models/krea2_turbo_fp8_scaled.safetensors"},
+    {"file": "qwen3vl_4b_fp8_scaled.safetensors", "folder": "text_encoders", "approx_size_gb": 4.4, "url": "https://huggingface.co/Comfy-Org/Qwen3-VL/resolve/main/text_encoders/qwen3vl_4b_fp8_scaled.safetensors"},
+    {"file": "wan_2.1_vae.safetensors", "folder": "vae", "approx_size_gb": 0.25, "url": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors"}
+  ],
+  "settings": {"steps": 8, "cfg": 1.0, "sampler": "res_multistep", "scheduler": "simple", "resolution": "1024x1344"},
+  "min_vram_gb": 16
+}

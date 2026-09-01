@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { FilterClause } from '@/components/filters/filterModel';
 
 export interface NotificationItem {
   id: string;
@@ -21,7 +22,7 @@ export interface CampaignItem {
   spend: string;
   roi: string;
   date: string;
-  groupId?: string;
+  groupIds: string[];
 }
 
 export interface AdSetItem {
@@ -78,14 +79,48 @@ export interface RuleGroup {
   ruleIds: string[];
 }
 
+/** A buyer-managed bucket used only to organize campaigns in the campaign view. */
+export interface CampaignGroup {
+  id: string;
+  name: string;
+  color: string;
+  accentColor: string;
+}
+
+export interface RuleFilters {
+  status?: string[];
+  action?: string[];
+  group?: string[];
+  scope?: string[];
+  metric?: string[];
+}
+
+export type AdsManagerEntity = 'campaigns' | 'adsets' | 'ads';
+export interface AdsManagerQuickFilter {
+  entity: AdsManagerEntity;
+  sidebarTab: 'groups' | 'rules';
+  fieldId: 'group' | 'rule';
+  value: string;
+}
+export type AppTab = 'inbox' | 'campaigns' | 'rules' | 'statistics';
+export type ActiveTab = AppTab | 'preferences';
+export type InterfaceTheme = 'system' | 'light' | 'dark';
+
 interface AppState {
   isSearchOpen: boolean;
   setSearchOpen: (open: boolean) => void;
   workspaceName: string;
   sidebarWidth: number;
   setSidebarWidth: (width: number) => void;
-  activeTab: 'inbox' | 'campaigns' | 'rules' | 'insights';
-  setActiveTab: (tab: 'inbox' | 'campaigns' | 'rules' | 'insights') => void;
+  isSidebarCollapsed: boolean;
+  toggleSidebarCollapsed: () => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  resetSidebarWidth: () => void;
+  activeTab: ActiveTab;
+  lastAppTab: AppTab;
+  setActiveTab: (tab: ActiveTab) => void;
+  interfaceTheme: InterfaceTheme;
+  setInterfaceTheme: (theme: InterfaceTheme) => void;
   
   // Inbox State
   notifications: NotificationItem[];
@@ -99,14 +134,22 @@ interface AppState {
 
   // Campaigns / Ads Manager State
   campaigns: CampaignItem[];
+  campaignGroups: CampaignGroup[];
   adSets: AdSetItem[];
   ads: AdItem[];
-  campaignFilterTab: 'campaigns' | 'adsets' | 'ads' | 'active' | 'paused' | 'all';
-  setCampaignFilterTab: (tab: 'campaigns' | 'adsets' | 'ads' | 'active' | 'paused' | 'all') => void;
+  campaignFilterTab: AdsManagerEntity;
+  setCampaignFilterTab: (tab: AdsManagerEntity) => void;
+  adsManagerFilters: Record<AdsManagerEntity, FilterClause[]>;
+  setAdsManagerFilters: (entity: AdsManagerEntity, clauses: FilterClause[]) => void;
+  clearAdsManagerFilters: (entity: AdsManagerEntity) => void;
+  adsManagerQuickFilter: AdsManagerQuickFilter | null;
+  setAdsManagerQuickFilter: (filter: AdsManagerQuickFilter | null) => void;
+  clearAdsManagerQuickFilter: () => void;
   selectedCampaignIds: string[];
   toggleCampaignSelection: (id: string) => void;
   clearCampaignSelection: () => void;
   toggleCampaignDelivery: (id: string) => void;
+  toggleCampaignGroup: (id: string, groupId: string) => void;
   toggleAdSetDelivery: (id: string) => void;
   toggleAdDelivery: (id: string) => void;
   focusedCampaignId: string;
@@ -125,13 +168,25 @@ interface AppState {
   setSelectedFilterPlatform: (platform: string | null) => void;
 
   // Display Options State
+  campaignsViewMode: 'list' | 'board';
+  setCampaignsViewMode: (mode: 'list' | 'board') => void;
   isDisplayOptionsOpen: boolean;
   setIsDisplayOptionsOpen: (open: boolean) => void;
   toggleDisplayOptions: () => void;
-  displayGrouping: 'none' | 'groups';
-  setDisplayGrouping: (grouping: 'none' | 'groups') => void;
-  displayOrdering: 'manual' | 'spend' | 'roi' | 'results';
-  setDisplayOrdering: (ordering: 'manual' | 'spend' | 'roi' | 'results') => void;
+  displayGrouping: 'none' | 'groups' | 'status' | 'rules';
+  setDisplayGrouping: (grouping: 'none' | 'groups' | 'status' | 'rules') => void;
+  displaySubGrouping: 'none' | 'status' | 'rules';
+  setDisplaySubGrouping: (subGrouping: 'none' | 'status' | 'rules') => void;
+  displayOrdering: 'manual' | 'name' | 'spend' | 'roi' | 'results' | 'budget' | 'cpa' | 'created';
+  setDisplayOrdering: (ordering: 'manual' | 'name' | 'spend' | 'roi' | 'results' | 'budget' | 'cpa' | 'created') => void;
+  showEmptyGroups: boolean;
+  setShowEmptyGroups: (show: boolean) => void;
+  orderCompletedByRecency: boolean;
+  setOrderCompletedByRecency: (val: boolean) => void;
+  showSubIssues: boolean;
+  setShowSubIssues: (show: boolean) => void;
+  completedIssuesFilter: 'all' | 'day' | 'week' | 'month' | 'none';
+  setCompletedIssuesFilter: (filter: 'all' | 'day' | 'week' | 'month' | 'none') => void;
   displayProperties: Record<string, boolean>;
   toggleDisplayProperty: (property: string) => void;
   collapsedGroups: string[];
@@ -154,17 +209,74 @@ interface AppState {
   createRuleTargetGroupId?: string;
   openCreateRuleModal: (groupId?: string) => void;
   closeCreateRuleModal: () => void;
+
+  // Rules Display Options & Sidebar State
+  rulesViewMode: 'board' | 'list';
+  setRulesViewMode: (mode: 'board' | 'list') => void;
+  isRulesDisplayOptionsOpen: boolean;
+  setIsRulesDisplayOptionsOpen: (open: boolean) => void;
+  toggleRulesDisplayOptions: () => void;
+  rulesDisplayGrouping: 'none' | 'groups' | 'status';
+  setRulesDisplayGrouping: (grouping: 'none' | 'groups' | 'status') => void;
+  rulesDisplayOrdering: 'manual' | 'name' | 'lastRun' | 'status';
+  setRulesDisplayOrdering: (ordering: 'manual' | 'name' | 'lastRun' | 'status') => void;
+  rulesDisplayProperties: Record<string, boolean>;
+  toggleRulesDisplayProperty: (property: string) => void;
+  isRulesRightSidebarOpen: boolean;
+  setIsRulesRightSidebarOpen: (open: boolean) => void;
+  toggleRulesRightSidebar: () => void;
+  activeRulesRightSidebarTab: 'groups' | 'rules';
+  setActiveRulesRightSidebarTab: (tab: 'groups' | 'rules') => void;
+  selectedFilterRuleGroupId: string | null;
+  setSelectedFilterRuleGroupId: (groupId: string | null) => void;
+  rulesCollapsedGroups: string[];
+  toggleRulesGroupCollapse: (groupId: string) => void;
+  selectedRuleIds: string[];
+  toggleRuleSelection: (id: string) => void;
+  clearRuleSelection: () => void;
+  focusedRuleId: string | null;
+  setFocusedRuleId: (id: string | null) => void;
+
+  // Rules Filter State
+  isRulesFilterOpen: boolean;
+  setIsRulesFilterOpen: (open: boolean) => void;
+  toggleRulesFilter: () => void;
+  rulesFilterInitialCategory?: 'status' | 'action' | 'group' | 'scope' | 'metric';
+  openRulesFilterWithCategory: (category?: 'status' | 'action' | 'group' | 'scope' | 'metric') => void;
+  rulesFilters: RuleFilters;
+  toggleRulesFilterValue: (category: keyof RuleFilters, value: string, defaultOperator?: 'is' | 'is_not') => void;
+  removeRulesFilter: (category: keyof RuleFilters, value?: string) => void;
+  clearAllRulesFilters: () => void;
+  rulesFilterClauses: FilterClause[];
+  setRulesFilterClauses: (clauses: FilterClause[]) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
   isSearchOpen: false,
   setSearchOpen: (open) => set({ isSearchOpen: open }),
   workspaceName: 'buyerly',
-  sidebarWidth: 220,
+  sidebarWidth: 244,
   setSidebarWidth: (width) =>
-    set({ sidebarWidth: Math.min(Math.max(width, 220), 360) }),
+    set({ sidebarWidth: Math.min(Math.max(width, 200), 400) }),
+  isSidebarCollapsed: false,
+  toggleSidebarCollapsed: () =>
+    set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
+  setSidebarCollapsed: (collapsed) => set({ isSidebarCollapsed: collapsed }),
+  resetSidebarWidth: () => set({ sidebarWidth: 244, isSidebarCollapsed: false }),
   activeTab: 'campaigns',
-  setActiveTab: (tab) => set({ activeTab: tab }),
+  lastAppTab: 'campaigns',
+  setActiveTab: (tab) =>
+    set((state) => ({
+      activeTab: tab,
+      lastAppTab: tab === 'preferences' ? state.lastAppTab : tab,
+    })),
+  interfaceTheme:
+    typeof window !== 'undefined' &&
+    (window.localStorage.getItem('buyerly-interface-theme') === 'light' ||
+      window.localStorage.getItem('buyerly-interface-theme') === 'dark')
+      ? (window.localStorage.getItem('buyerly-interface-theme') as InterfaceTheme)
+      : 'system',
+  setInterfaceTheme: (theme) => set({ interfaceTheme: theme }),
 
   notifications: [
     {
@@ -218,7 +330,7 @@ export const useAppStore = create<AppState>((set) => ({
     {
       id: 'cmp-101',
       identifier: 'CMP-101',
-      name: 'Nutra WeightLoss (Italy) • Broad CBO',
+      name: 'LuckySpin Casino • Italy • Broad CBO',
       platform: 'Meta',
       status: 'active',
       budget: '$500/day',
@@ -227,12 +339,12 @@ export const useAppStore = create<AppState>((set) => ({
       spend: '$1,240 spend',
       roi: '+142% ROI',
       date: 'Aug 29',
-      groupId: 'group-italy',
+      groupIds: ['campaign-group-testing'],
     },
     {
       id: 'cmp-102',
       identifier: 'CMP-102',
-      name: 'E-com Gadgets (USA) • UGC Hook #4',
+      name: 'RoyalBet Sportsbook • USA • UGC Scale',
       platform: 'TikTok',
       status: 'active',
       budget: '$1,200/day',
@@ -241,12 +353,12 @@ export const useAppStore = create<AppState>((set) => ({
       spend: '$3,500 spend',
       roi: '+189% ROI',
       date: 'Aug 29',
-      groupId: 'group-usa',
+      groupIds: ['campaign-group-scale'],
     },
     {
       id: 'cmp-103',
       identifier: 'CMP-103',
-      name: 'Mobile Cleaner iOS (Tier-1: DE) • Target CPA',
+      name: 'NeonSlots Casino • DACH • Target CPA',
       platform: 'Google',
       status: 'active',
       budget: '$300/day',
@@ -255,12 +367,12 @@ export const useAppStore = create<AppState>((set) => ({
       spend: '$890 spend',
       roi: '+118% ROI',
       date: 'Aug 28',
-      groupId: 'group-germany',
+      groupIds: ['campaign-group-testing'],
     },
     {
       id: 'cmp-104',
       identifier: 'CMP-104',
-      name: 'Crypto Info LeadGen (NL) • Retargeting',
+      name: 'AcePlay Casino • Netherlands • Retargeting',
       platform: 'Meta',
       status: 'paused',
       budget: '$150/day',
@@ -269,16 +381,36 @@ export const useAppStore = create<AppState>((set) => ({
       spend: '$450 spend',
       roi: '-15% ROI',
       date: 'Aug 26',
-      groupId: 'group-netherlands',
+      groupIds: ['campaign-group-watchlist'],
+    },
+  ],
+  campaignGroups: [
+    {
+      id: 'campaign-group-testing',
+      name: 'Testing',
+      color: 'rgb(59, 130, 246)',
+      accentColor: 'lch(10.756 5.912 273.56)',
+    },
+    {
+      id: 'campaign-group-scale',
+      name: 'Scale',
+      color: 'rgb(34, 197, 94)',
+      accentColor: 'lch(10.756 6.8 145)',
+    },
+    {
+      id: 'campaign-group-watchlist',
+      name: 'Watchlist',
+      color: 'rgb(249, 115, 22)',
+      accentColor: 'lch(10.756 4.2 50)',
     },
   ],
   adSets: [
     {
       id: 'adset-201',
       identifier: 'SET-201',
-      name: 'Rome & Milan • Broad 25-45 • IG Stories',
+      name: 'Italy Broad 25-45 • Slots Interest • Reels',
       campaignId: 'cmp-101',
-      campaignName: 'Nutra WeightLoss (Italy) • Broad CBO',
+      campaignName: 'LuckySpin Casino • Italy • Broad CBO',
       platform: 'Meta',
       status: 'active',
       budget: '$250/day',
@@ -286,15 +418,15 @@ export const useAppStore = create<AppState>((set) => ({
       cpa: '$8.20',
       spend: '$688 spend',
       roi: '+155% ROI',
-      audience: 'Broad 25-45 (IT)',
+      audience: 'Casino Players 25-45 (IT)',
       date: 'Aug 29',
     },
     {
       id: 'adset-202',
       identifier: 'SET-202',
-      name: 'Naples & South • Interest: Fitness • Reels',
+      name: 'High-Value Players • Casino Lookalike 3%',
       campaignId: 'cmp-101',
-      campaignName: 'Nutra WeightLoss (Italy) • Broad CBO',
+      campaignName: 'LuckySpin Casino • Italy • Broad CBO',
       platform: 'Meta',
       status: 'active',
       budget: '$250/day',
@@ -302,15 +434,15 @@ export const useAppStore = create<AppState>((set) => ({
       cpa: '$9.50',
       spend: '$552 spend',
       roi: '+124% ROI',
-      audience: 'Fitness / Diet Interests',
+      audience: 'Depositors Lookalike 3%',
       date: 'Aug 29',
     },
     {
       id: 'adset-203',
       identifier: 'SET-203',
-      name: 'Tier-1 States (CA, TX, FL) • UGC Cleaners',
+      name: 'US Sports Bettors • NFL & NBA Broad',
       campaignId: 'cmp-102',
-      campaignName: 'E-com Gadgets (USA) • UGC Hook #4',
+      campaignName: 'RoyalBet Sportsbook • USA • UGC Scale',
       platform: 'Meta',
       status: 'active',
       budget: '$600/day',
@@ -318,15 +450,15 @@ export const useAppStore = create<AppState>((set) => ({
       cpa: '$8.90',
       spend: '$1,869 spend',
       roi: '+204% ROI',
-      audience: 'Online Shoppers USA',
+      audience: 'Sports Betting Interests USA',
       date: 'Aug 28',
     },
     {
       id: 'adset-204',
       identifier: 'SET-204',
-      name: 'iOS 16+ • Memory Optimizer • Broad Tier-1',
+      name: 'DACH Casino Players • Slots & Live Dealer',
       campaignId: 'cmp-103',
-      campaignName: 'Mobile Cleaner iOS (Tier-1) • Target CPA',
+      campaignName: 'NeonSlots Casino • DACH • Target CPA',
       platform: 'Meta',
       status: 'active',
       budget: '$300/day',
@@ -334,15 +466,15 @@ export const useAppStore = create<AppState>((set) => ({
       cpa: '$12.00',
       spend: '$880 spend',
       roi: '+118% ROI',
-      audience: 'iPhone 13-15 Users',
+      audience: 'Slots & Live Casino Interests',
       date: 'Aug 28',
     },
     {
       id: 'adset-205',
       identifier: 'SET-205',
-      name: 'LATAM Retargeting • 30D Engagers',
+      name: 'NL Retargeting • Depositors 30D',
       campaignId: 'cmp-104',
-      campaignName: 'Crypto Info LeadGen (LATAM) • Retargeting',
+      campaignName: 'AcePlay Casino • Netherlands • Retargeting',
       platform: 'Meta',
       status: 'paused',
       budget: '$150/day',
@@ -350,7 +482,7 @@ export const useAppStore = create<AppState>((set) => ({
       cpa: '$25.00',
       spend: '$450 spend',
       roi: '-15% ROI',
-      audience: 'Page Engagers 30D',
+      audience: 'Casino Visitors 30D',
       date: 'Aug 26',
     },
   ],
@@ -358,10 +490,10 @@ export const useAppStore = create<AppState>((set) => ({
     {
       id: 'ad-301',
       identifier: 'AD-301',
-      name: 'UGC Doctor Review (Italian Subtitles) v2',
+      name: 'LuckySpin Welcome Bonus • UGC Testimonial v2',
       adSetId: 'adset-201',
-      adSetName: 'Rome & Milan • Broad 25-45 • IG Stories',
-      campaignName: 'Nutra WeightLoss (Italy) • Broad CBO',
+      adSetName: 'Italy Broad 25-45 • Slots Interest • Reels',
+      campaignName: 'LuckySpin Casino • Italy • Broad CBO',
       platform: 'Meta',
       status: 'active',
       leadsCount: 52,
@@ -374,10 +506,10 @@ export const useAppStore = create<AppState>((set) => ({
     {
       id: 'ad-302',
       identifier: 'AD-302',
-      name: 'Before/After Split Screen Hook #3',
+      name: 'Mega Jackpot Win • Split Screen Hook #3',
       adSetId: 'adset-201',
-      adSetName: 'Rome & Milan • Broad 25-45 • IG Stories',
-      campaignName: 'Nutra WeightLoss (Italy) • Broad CBO',
+      adSetName: 'Italy Broad 25-45 • Slots Interest • Reels',
+      campaignName: 'LuckySpin Casino • Italy • Broad CBO',
       platform: 'Meta',
       status: 'active',
       leadsCount: 32,
@@ -390,10 +522,10 @@ export const useAppStore = create<AppState>((set) => ({
     {
       id: 'ad-303',
       identifier: 'AD-303',
-      name: 'Cleaning Gadget 3-in-1 Viral TikTok Cut',
+      name: 'RoyalBet Game-Day Odds • UGC Hook',
       adSetId: 'adset-203',
-      adSetName: 'Tier-1 States (CA, TX, FL) • UGC Cleaners',
-      campaignName: 'E-com Gadgets (USA) • UGC Hook #4',
+      adSetName: 'US Sports Bettors • NFL & NBA Broad',
+      campaignName: 'RoyalBet Sportsbook • USA • UGC Scale',
       platform: 'Meta',
       status: 'active',
       leadsCount: 140,
@@ -406,10 +538,10 @@ export const useAppStore = create<AppState>((set) => ({
     {
       id: 'ad-304',
       identifier: 'AD-304',
-      name: 'iPhone Storage Full Warning Red Alert animation',
+      name: 'NeonSlots Free Spins • Animated Jackpot',
       adSetId: 'adset-204',
-      adSetName: 'iOS 16+ • Memory Optimizer • Broad Tier-1',
-      campaignName: 'Mobile Cleaner iOS (Tier-1) • Target CPA',
+      adSetName: 'DACH Casino Players • Slots & Live Dealer',
+      campaignName: 'NeonSlots Casino • DACH • Target CPA',
       platform: 'Meta',
       status: 'active',
       leadsCount: 74,
@@ -422,10 +554,10 @@ export const useAppStore = create<AppState>((set) => ({
     {
       id: 'ad-305',
       identifier: 'AD-305',
-      name: 'Crypto Masterclass Free PDF Lead Magnet',
+      name: 'AcePlay Cashback • Retargeting Offer',
       adSetId: 'adset-205',
-      adSetName: 'LATAM Retargeting • 30D Engagers',
-      campaignName: 'Crypto Info LeadGen (LATAM) • Retargeting',
+      adSetName: 'NL Retargeting • Depositors 30D',
+      campaignName: 'AcePlay Casino • Netherlands • Retargeting',
       platform: 'Meta',
       status: 'paused',
       leadsCount: 18,
@@ -437,7 +569,30 @@ export const useAppStore = create<AppState>((set) => ({
     },
   ],
   campaignFilterTab: 'campaigns',
-  setCampaignFilterTab: (tab) => set({ campaignFilterTab: tab }),
+  setCampaignFilterTab: (tab) =>
+    set({ campaignFilterTab: tab, adsManagerQuickFilter: null }),
+  adsManagerFilters: {
+    campaigns: [],
+    adsets: [],
+    ads: [],
+  },
+  setAdsManagerFilters: (entity, clauses) =>
+    set((state) => ({
+      adsManagerFilters: {
+        ...state.adsManagerFilters,
+        [entity]: clauses,
+      },
+    })),
+  clearAdsManagerFilters: (entity) =>
+    set((state) => ({
+      adsManagerFilters: {
+        ...state.adsManagerFilters,
+        [entity]: [],
+      },
+    })),
+  adsManagerQuickFilter: null,
+  setAdsManagerQuickFilter: (filter) => set({ adsManagerQuickFilter: filter }),
+  clearAdsManagerQuickFilter: () => set({ adsManagerQuickFilter: null }),
   selectedCampaignIds: [],
   toggleCampaignSelection: (id) =>
     set((state) => ({
@@ -453,6 +608,19 @@ export const useAppStore = create<AppState>((set) => ({
           ? {
               ...c,
               status: c.status === 'paused' ? 'active' : 'paused',
+            }
+          : c
+      ),
+    })),
+  toggleCampaignGroup: (id, groupId) =>
+    set((state) => ({
+      campaigns: state.campaigns.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              groupIds: c.groupIds.includes(groupId)
+                ? c.groupIds.filter((item) => item !== groupId)
+                : [...c.groupIds, groupId],
             }
           : c
       ),
@@ -500,9 +668,18 @@ export const useAppStore = create<AppState>((set) => ({
       };
     }),
   isRightSidebarOpen: true,
-  toggleRightSidebar: () => set((state) => ({ isRightSidebarOpen: !state.isRightSidebarOpen })),
+  toggleRightSidebar: () =>
+    set((state) => ({
+      isRightSidebarOpen: !state.isRightSidebarOpen,
+      adsManagerQuickFilter: state.isRightSidebarOpen ? null : state.adsManagerQuickFilter,
+    })),
   activeRightSidebarTab: 'groups',
-  setActiveRightSidebarTab: (tab) => set({ activeRightSidebarTab: tab }),
+  setActiveRightSidebarTab: (tab) =>
+    set((state) => ({
+      activeRightSidebarTab: tab,
+      adsManagerQuickFilter:
+        state.activeRightSidebarTab === tab ? state.adsManagerQuickFilter : null,
+    })),
   selectedFilterGroupId: null,
   setSelectedFilterGroupId: (groupId) =>
     set((state) => ({ selectedFilterGroupId: state.selectedFilterGroupId === groupId ? null : groupId })),
@@ -514,13 +691,25 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({ selectedFilterPlatform: state.selectedFilterPlatform === platform ? null : platform })),
 
   // Display Options implementation
+  campaignsViewMode: 'list',
+  setCampaignsViewMode: (mode) => set({ campaignsViewMode: mode }),
   isDisplayOptionsOpen: false,
   setIsDisplayOptionsOpen: (open) => set({ isDisplayOptionsOpen: open }),
   toggleDisplayOptions: () => set((state) => ({ isDisplayOptionsOpen: !state.isDisplayOptionsOpen })),
   displayGrouping: 'none',
   setDisplayGrouping: (grouping) => set({ displayGrouping: grouping }),
+  displaySubGrouping: 'none',
+  setDisplaySubGrouping: (subGrouping) => set({ displaySubGrouping: subGrouping }),
   displayOrdering: 'manual',
   setDisplayOrdering: (ordering) => set({ displayOrdering: ordering }),
+  showEmptyGroups: true,
+  setShowEmptyGroups: (show) => set({ showEmptyGroups: show }),
+  orderCompletedByRecency: false,
+  setOrderCompletedByRecency: (val) => set({ orderCompletedByRecency: val }),
+  showSubIssues: false,
+  setShowSubIssues: (show) => set({ showSubIssues: show }),
+  completedIssuesFilter: 'all',
+  setCompletedIssuesFilter: (filter) => set({ completedIssuesFilter: filter }),
   displayProperties: {
     status: true,
     budget: true,
@@ -530,7 +719,6 @@ export const useAppStore = create<AppState>((set) => ({
     roi: true,
     rules: true,
     group: false,
-    account: false,
     created: false,
   },
   toggleDisplayProperty: (property) =>
@@ -555,11 +743,11 @@ export const useAppStore = create<AppState>((set) => ({
       name: 'Auto-Stop High CPA (> $25)',
       condition: 'IF CPA > $25 & Spend > $40',
       action: 'PAUSE ADSET',
-      campaignName: 'Nutra WeightLoss (Italy) • Broad CBO',
+      campaignName: 'LuckySpin Casino • Italy • Broad CBO',
       scope: 'Meta Ads • All Campaigns',
       status: 'active',
       lastRun: '15m ago',
-      groupId: 'group-budget',
+      groupId: 'rule-group-safety',
     },
     {
       id: 'rul-02',
@@ -567,11 +755,11 @@ export const useAppStore = create<AppState>((set) => ({
       name: 'Scale Winner Budget (+20% daily)',
       condition: 'IF ROI > 140% & Leads ≥ 5',
       action: 'BUDGET +20%',
-      campaignName: 'E-com Gadgets (USA) • UGC Hook #4',
+      campaignName: 'RoyalBet Sportsbook • USA • UGC Scale',
       scope: 'TikTok Ads • Broad',
       status: 'active',
       lastRun: '1h ago',
-      groupId: 'group-scale',
+      groupId: 'rule-group-scaling',
     },
     {
       id: 'rul-03',
@@ -579,11 +767,11 @@ export const useAppStore = create<AppState>((set) => ({
       name: 'Kill Zero-Conversions ($50 spend)',
       condition: 'IF Spend > $50 & Leads == 0',
       action: 'PAUSE CAMPAIGN',
-      campaignName: 'Mobile Cleaner iOS (Tier-1) • Target CPA',
+      campaignName: 'NeonSlots Casino • DACH • Target CPA',
       scope: 'Google Ads • Search',
       status: 'active',
       lastRun: '3h ago',
-      groupId: 'group-budget',
+      groupId: 'rule-group-safety',
     },
     {
       id: 'rul-04',
@@ -591,37 +779,25 @@ export const useAppStore = create<AppState>((set) => ({
       name: 'Duplicate Winner AdSet (Auto-Horiz Scale)',
       condition: 'IF Conversions > 10 & CPA < $12',
       action: 'DUPLICATE ADSET',
-      campaignName: 'Crypto Info LeadGen (LATAM) • Retargeting',
+      campaignName: 'AcePlay Casino • Netherlands • Retargeting',
       scope: 'Meta Ads • CBO',
       status: 'paused',
       lastRun: '2d ago',
-      groupId: 'group-scale',
+      groupId: 'rule-group-scaling',
     },
   ],
   ruleGroups: [
     {
-      id: 'group-germany',
-      name: 'Germany',
-      icon: 'custom',
-      ruleIds: ['rul-03'],
+      id: 'rule-group-safety',
+      name: 'Safety',
+      icon: 'shield',
+      ruleIds: ['rul-01', 'rul-03'],
     },
     {
-      id: 'group-netherlands',
-      name: 'Netherlands',
-      icon: 'custom',
-      ruleIds: ['rul-04'],
-    },
-    {
-      id: 'group-italy',
-      name: 'Italy',
-      icon: 'custom',
-      ruleIds: ['rul-01'],
-    },
-    {
-      id: 'group-usa',
-      name: 'USA',
-      icon: 'custom',
-      ruleIds: ['rul-02'],
+      id: 'rule-group-scaling',
+      name: 'Scaling',
+      icon: 'rocket',
+      ruleIds: ['rul-02', 'rul-04'],
     },
   ],
   ruleFilterTab: 'all',
@@ -723,4 +899,101 @@ export const useAppStore = create<AppState>((set) => ({
       isCreateRuleModalOpen: false,
       createRuleTargetGroupId: undefined,
     }),
+
+  // Rules Display Options & Sidebar State
+  rulesViewMode: 'list',
+  setRulesViewMode: (mode) => set({ rulesViewMode: mode }),
+  isRulesDisplayOptionsOpen: false,
+  setIsRulesDisplayOptionsOpen: (open) => set({ isRulesDisplayOptionsOpen: open }),
+  toggleRulesDisplayOptions: () =>
+    set((state) => ({ isRulesDisplayOptionsOpen: !state.isRulesDisplayOptionsOpen })),
+  rulesDisplayGrouping: 'groups',
+  setRulesDisplayGrouping: (grouping) => set({ rulesDisplayGrouping: grouping }),
+  rulesDisplayOrdering: 'manual',
+  setRulesDisplayOrdering: (ordering) => set({ rulesDisplayOrdering: ordering }),
+  rulesDisplayProperties: {
+    status: true,
+    condition: true,
+    action: true,
+    scope: true,
+    lastRun: true,
+  },
+  toggleRulesDisplayProperty: (property) =>
+    set((state) => ({
+      rulesDisplayProperties: {
+        ...state.rulesDisplayProperties,
+        [property]: !state.rulesDisplayProperties[property],
+      },
+    })),
+  isRulesRightSidebarOpen: false,
+  setIsRulesRightSidebarOpen: (open) => set({ isRulesRightSidebarOpen: open }),
+  toggleRulesRightSidebar: () =>
+    set((state) => ({ isRulesRightSidebarOpen: !state.isRulesRightSidebarOpen })),
+  activeRulesRightSidebarTab: 'groups',
+  setActiveRulesRightSidebarTab: (tab) => set({ activeRulesRightSidebarTab: tab }),
+  selectedFilterRuleGroupId: null,
+  setSelectedFilterRuleGroupId: (groupId) => set({ selectedFilterRuleGroupId: groupId }),
+  rulesCollapsedGroups: [],
+  toggleRulesGroupCollapse: (groupId) =>
+    set((state) => ({
+      rulesCollapsedGroups: state.rulesCollapsedGroups.includes(groupId)
+        ? state.rulesCollapsedGroups.filter((id) => id !== groupId)
+        : [...state.rulesCollapsedGroups, groupId],
+    })),
+  selectedRuleIds: [],
+  toggleRuleSelection: (id) =>
+    set((state) => ({
+      selectedRuleIds: state.selectedRuleIds.includes(id)
+        ? state.selectedRuleIds.filter((item) => item !== id)
+        : [...state.selectedRuleIds, id],
+    })),
+  clearRuleSelection: () => set({ selectedRuleIds: [] }),
+  focusedRuleId: null,
+  setFocusedRuleId: (id) => set({ focusedRuleId: id }),
+
+  // Rules Filter State
+  isRulesFilterOpen: false,
+  setIsRulesFilterOpen: (open) => set({ isRulesFilterOpen: open }),
+  toggleRulesFilter: () =>
+    set((state) => ({ isRulesFilterOpen: !state.isRulesFilterOpen })),
+  rulesFilterInitialCategory: undefined,
+  openRulesFilterWithCategory: (category) =>
+    set({
+      isRulesFilterOpen: true,
+      rulesFilterInitialCategory: category,
+    }),
+  rulesFilters: {},
+  toggleRulesFilterValue: (category, value) =>
+    set((state) => {
+      const currentList = state.rulesFilters[category] || [];
+      const updatedList = currentList.includes(value)
+        ? currentList.filter((v) => v !== value)
+        : [...currentList, value];
+
+      return {
+        rulesFilters: {
+          ...state.rulesFilters,
+          [category]: updatedList.length > 0 ? updatedList : undefined,
+        },
+      };
+    }),
+  removeRulesFilter: (category, value) =>
+    set((state) => {
+      if (!value) {
+        const nextFilters = { ...state.rulesFilters };
+        delete nextFilters[category];
+        return { rulesFilters: nextFilters };
+      }
+      const currentList = state.rulesFilters[category] || [];
+      const updatedList = currentList.filter((v) => v !== value);
+      return {
+        rulesFilters: {
+          ...state.rulesFilters,
+          [category]: updatedList.length > 0 ? updatedList : undefined,
+        },
+      };
+    }),
+  clearAllRulesFilters: () => set({ rulesFilters: {} }),
+  rulesFilterClauses: [],
+  setRulesFilterClauses: (clauses) => set({ rulesFilterClauses: clauses }),
 }));

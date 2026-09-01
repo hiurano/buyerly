@@ -1,8 +1,13 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { CampaignItem, useAppStore } from '@/store/useAppStore';
 import { LinearCheckbox } from '@/ui/LinearCheckbox';
 import { LinearToggle } from '@/ui/LinearToggle';
+import { LinearLabelPill } from '@/ui/LinearLabelPill';
+import { LinearDataListRow } from '@/ui/LinearDataList';
+import { LabelSelectorPopover } from './LabelSelectorPopover';
+import { RuleSelectorPopover } from './RuleSelectorPopover';
 import { LinearBoltIcon } from '@/icons/LinearIcons';
+import { getAdsManagerColumns } from './tableColumns';
 
 interface CampaignRowProps {
   campaign: CampaignItem;
@@ -13,230 +18,274 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({ campaign }) => {
     selectedCampaignIds,
     toggleCampaignSelection,
     toggleCampaignDelivery,
-    isRightSidebarOpen,
-    toggleRightSidebar,
-    setActiveRightSidebarTab,
     campaignAttachedRules,
-    focusedCampaignId,
     setFocusedCampaignId,
+    displayProperties,
+    campaignGroups,
   } = useAppStore();
 
+  const [isLabelSelectorOpen, setIsLabelSelectorOpen] = useState(false);
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const groupColumnRef = useRef<HTMLDivElement>(null);
+
+  const [isRuleSelectorOpen, setIsRuleSelectorOpen] = useState(false);
+  const [ruleAnchorRect, setRuleAnchorRect] = useState<DOMRect | null>(null);
+  const rulesColumnRef = useRef<HTMLDivElement>(null);
+
   const isSelected = selectedCampaignIds.includes(campaign.id);
-  const isFocused = focusedCampaignId === campaign.id;
   const isDeliveryOn = campaign.status !== 'paused';
   const isPositiveRoi = campaign.roi.startsWith('+');
   const attachedCount = (campaignAttachedRules[campaign.id] || []).length;
   const hasRules = attachedCount > 0;
+  const assignedGroups = campaignGroups.filter((group) =>
+    campaign.groupIds.includes(group.id)
+  );
+  const columns = getAdsManagerColumns('campaigns', displayProperties);
 
   const handleRowClick = () => {
     setFocusedCampaignId(campaign.id);
   };
 
+  const openLabelSelector = (e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      setAnchorRect(e.currentTarget.getBoundingClientRect());
+    } else if (groupColumnRef.current) {
+      setAnchorRect(groupColumnRef.current.getBoundingClientRect());
+    }
+    setIsLabelSelectorOpen(true);
+  };
+
+  const openRuleSelector = (e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      setFocusedCampaignId(campaign.id);
+      setRuleAnchorRect(e.currentTarget.getBoundingClientRect());
+    } else if (rulesColumnRef.current) {
+      setFocusedCampaignId(campaign.id);
+      setRuleAnchorRect(rulesColumnRef.current.getBoundingClientRect());
+    }
+    setIsRuleSelectorOpen(true);
+  };
+
   return (
-    <div
-      role="row"
-      tabIndex={0}
-      onClick={handleRowClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          setFocusedCampaignId(campaign.id);
-        } else if (e.key === 'x' || e.key === 'X') {
-          e.preventDefault();
-          toggleCampaignSelection(campaign.id);
-        }
-      }}
-      data-selected={isSelected ? 'true' : 'false'}
-      data-focused={isFocused ? 'true' : 'false'}
-      style={{
-        height: '44px',
-        display: 'grid',
-        gridTemplateColumns:
-          '8px 18px 32px 1fr minmax(80px, auto) minmax(135px, auto) minmax(90px, auto) minmax(80px, auto) minmax(85px, auto) 18px',
-        columnGap: '12px',
-        alignItems: 'center',
-        borderRadius: '8px',
-        backgroundColor: isSelected
-          ? 'rgba(234, 179, 8, 0.09)'
-          : isFocused
-          ? 'rgba(255, 255, 255, 0.04)'
-          : 'transparent',
-      }}
-      className="group/row relative cursor-pointer select-none px-2 transition-colors duration-100 hover:bg-white/[0.05] outline-none"
-    >
-      {/* 1. Indent spacer */}
-      <div />
-
-      {/* 2. Exact Linear Checkbox with Row Hover Visibility & Yellow Accent */}
-      <div className="flex items-center justify-center">
-        <LinearCheckbox
-          checked={isSelected}
-          onChange={() => toggleCampaignSelection(campaign.id)}
-        />
-      </div>
-
-      {/* 3. Linear Delivery Switch (On / Off) */}
-      <div className="flex items-center justify-center">
-        <LinearToggle
-          checked={isDeliveryOn}
-          onChange={() => toggleCampaignDelivery(campaign.id)}
-          tooltipContent={isDeliveryOn ? 'Pause campaign' : 'Resume campaign'}
-        />
-      </div>
-
-      {/* 4. Campaign Title (Clean, unconstrained, free of badge clutter) */}
-      <div className="flex items-center min-w-0 pr-2">
-        <span
-          style={{
-            fontSize: '13px',
-            fontWeight: 500,
-            color: isDeliveryOn ? '#ffffff' : 'lch(61.803% 1.2 272 / 1)',
-          }}
-          className="truncate"
-        >
-          {campaign.name}
-        </span>
-      </div>
-
-      {/* 5. Budget ($500/day) */}
-      <div className="flex items-center whitespace-nowrap text-[12px] font-medium text-[#94969b]">
-        <span>{campaign.budget}</span>
-      </div>
-
-      {/* 6. Leads & CPA (142 leads ($8.70)) */}
-      <div className="flex items-center gap-1 whitespace-nowrap text-[12px] font-medium">
-        <span className={isDeliveryOn ? 'text-white' : 'text-[#94969b]'}>
-          {campaign.leadsCount} leads
-        </span>
-        <span className="text-[#94969b]">({campaign.cpa})</span>
-      </div>
-
-      {/* 7. Spend ($1,240 spend) */}
-      <div className="flex items-center whitespace-nowrap text-[12px] font-medium text-[#94969b]">
-        <span>{campaign.spend}</span>
-      </div>
-
-      {/* 8. ROI (+142% ROI) */}
-      <div className="flex items-center whitespace-nowrap text-[12px] font-medium">
-        <span
-          className={
-            isDeliveryOn
-              ? isPositiveRoi
-                ? 'text-emerald-400 font-semibold'
-                : 'text-rose-400 font-semibold'
-              : 'text-[#6b6f76]'
+    <>
+      <LinearDataListRow
+        layout="grid"
+        columns={columns}
+        tabIndex={0}
+        onClick={handleRowClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setFocusedCampaignId(campaign.id);
+          } else if (e.key === 'x' || e.key === 'X') {
+            e.preventDefault();
+            toggleCampaignSelection(campaign.id);
+          } else if (e.key === 'l' || e.key === 'L') {
+            e.preventDefault();
+            openLabelSelector();
+          } else if (e.key === 'r' || e.key === 'R') {
+            e.preventDefault();
+            openRuleSelector();
           }
-        >
-          {campaign.roi}
-        </span>
-      </div>
+        }}
+        selected={isSelected}
+        className="campaign-data-row cursor-pointer"
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <LinearCheckbox checked={isSelected} onChange={() => toggleCampaignSelection(campaign.id)} />
+          {displayProperties.status !== false && (
+            <LinearToggle
+              checked={isDeliveryOn}
+              onChange={() => toggleCampaignDelivery(campaign.id)}
+              tooltipContent={isDeliveryOn ? 'Pause campaign' : 'Resume campaign'}
+            />
+          )}
+          <span
+            className="truncate text-[13px] font-medium"
+            style={{ color: isDeliveryOn ? 'var(--text-primary)' : 'var(--text-tertiary)' }}
+          >
+            {campaign.name}
+          </span>
+        </div>
 
-      {/* 9. Dedicated Rules Badge Column (Linear Badge Pill Shape & Physics) */}
-      <div className="flex items-center justify-start">
-        {hasRules ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setFocusedCampaignId(campaign.id);
-              if (!isRightSidebarOpen) {
-                toggleRightSidebar();
-              }
-              setActiveRightSidebarTab('rules');
-            }}
-            style={{
-              height: '22px',
-              padding: '0 8px',
-              borderRadius: '9999px',
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px',
-              cursor: 'pointer',
-              outline: 'none',
-              transition: 'border-color 0.15s, background-color 0.15s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.06)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.03)';
-            }}
-          >
-            <div className="flex h-3.5 w-3.5 items-center justify-center flex-shrink-0">
-              <LinearBoltIcon size={12} className="text-[#eab308]" />
-            </div>
-            <span
-              style={{
-                fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
-                fontSize: '12px',
-                fontWeight: 500,
-                color: '#e4e5e8',
-                lineHeight: 1,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {attachedCount} {attachedCount === 1 ? 'rule' : 'rules'}
-            </span>
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setFocusedCampaignId(campaign.id);
-              if (!isRightSidebarOpen) {
-                toggleRightSidebar();
-              }
-              setActiveRightSidebarTab('rules');
-            }}
-            style={{
-              height: '22px',
-              padding: '0 8px',
-              borderRadius: '9999px',
-              backgroundColor: 'transparent',
-              border: '1px dashed rgba(255, 255, 255, 0.12)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px',
-              cursor: 'pointer',
-              outline: 'none',
-              transition: 'opacity 0.15s, border-color 0.15s, background-color 0.15s, color 0.15s',
-            }}
-            className="opacity-0 group-hover/row:opacity-100 text-[#8c8f95] hover:text-white hover:border-white/30 hover:bg-white/[0.04]"
-          >
-            <svg
-              width="10"
-              height="10"
-              viewBox="0 0 10 10"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.3"
-              strokeLinecap="round"
-            >
-              <line x1="5" y1="2" x2="5" y2="8" />
-              <line x1="2" y1="5" x2="8" y2="5" />
-            </svg>
-            <span
-              style={{
-                fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
-                fontSize: '12px',
-                fontWeight: 500,
-                lineHeight: 1,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Rule
-            </span>
-          </button>
+        {displayProperties.budget !== false && (
+          <div className="truncate text-right text-[12px] font-[450] text-[var(--text-secondary)]">{campaign.budget}</div>
         )}
-      </div>
 
-      {/* 10. End Spacer */}
-      <div />
-    </div>
+        {(displayProperties.results !== false || displayProperties.cpa !== false) && (
+          <div className="flex min-w-0 items-center justify-end gap-1 truncate whitespace-nowrap text-[12px] font-[450]">
+            {displayProperties.results !== false && <span>{campaign.leadsCount} leads</span>}
+            {displayProperties.cpa !== false && <span className="text-[var(--text-tertiary)]">({campaign.cpa})</span>}
+          </div>
+        )}
+
+        {displayProperties.spend !== false && (
+          <div className="truncate text-right text-[12px] font-[450] text-[var(--text-secondary)]">{campaign.spend}</div>
+        )}
+
+        {displayProperties.roi !== false && (
+          <div className={`truncate text-right text-[12px] font-semibold ${isDeliveryOn ? isPositiveRoi ? 'text-emerald-500' : 'text-rose-500' : 'text-[var(--text-muted)]'}`}>
+            {campaign.roi}
+          </div>
+        )}
+
+        {displayProperties.rules !== false && (
+          <div ref={rulesColumnRef} className="flex min-w-0 items-center">
+            {hasRules ? (
+              <button
+                type="button"
+                onClick={openRuleSelector}
+                style={{
+                  height: '22px',
+                  padding: '0 8px',
+                  borderRadius: '9999px',
+                  backgroundColor: 'var(--item-hover-bg)',
+                  border: '1px solid var(--color-border-secondary)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  transition: 'border-color 0.15s, background-color 0.15s',
+                }}
+              >
+                <div className="flex h-3.5 w-3.5 items-center justify-center flex-shrink-0">
+                  <LinearBoltIcon size={12} className="text-[#eab308]" />
+                </div>
+                <span
+                  style={{
+                    fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    color: 'var(--text-primary)',
+                    lineHeight: 1,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {attachedCount} {attachedCount === 1 ? 'rule' : 'rules'}
+                </span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={openRuleSelector}
+                style={{
+                  height: '22px',
+                  padding: '0 8px',
+                  borderRadius: '9999px',
+                  backgroundColor: 'transparent',
+                  border: '1px dashed var(--color-border-secondary)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  transition: 'opacity 0.15s, border-color 0.15s, background-color 0.15s, color 0.15s',
+                }}
+                className="opacity-0 group-hover/row:opacity-100 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--color-border-secondary)] hover:bg-[var(--item-hover-bg)]"
+                title="Add rule (R)"
+              >
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 10 10"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                  strokeLinecap="round"
+                >
+                  <line x1="5" y1="2" x2="5" y2="8" />
+                  <line x1="2" y1="5" x2="8" y2="5" />
+                </svg>
+                <span
+                  style={{
+                    fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    lineHeight: 1,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Rule
+                </span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {displayProperties.group && (
+          <div
+            ref={groupColumnRef}
+            className="flex min-w-0 items-center gap-1 overflow-hidden"
+          >
+            {assignedGroups.length > 0 ? (
+              assignedGroups.map((group) => (
+                <LinearLabelPill
+                  key={group.id}
+                  label={group.name}
+                  dotColor={group.color}
+                  onClick={openLabelSelector}
+                />
+              ))
+            ) : (
+              <button
+                type="button"
+                onClick={openLabelSelector}
+                style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '9999px',
+                  backgroundColor: 'transparent',
+                  border: '1px dashed var(--color-border-secondary)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  transition:
+                    'opacity 0.15s, border-color 0.15s, background-color 0.15s, color 0.15s',
+                }}
+                className="opacity-0 group-hover/row:opacity-100 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--color-border-secondary)] hover:bg-[var(--item-hover-bg)]"
+                title="Add group (L)"
+              >
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 10 10"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                  strokeLinecap="round"
+                >
+                  <line x1="5" y1="2" x2="5" y2="8" />
+                  <line x1="2" y1="5" x2="8" y2="5" />
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
+
+        {displayProperties.created && (
+          <div className="truncate text-right text-[12px] text-[var(--text-tertiary)]">{campaign.date}</div>
+        )}
+      </LinearDataListRow>
+
+      <LabelSelectorPopover
+        isOpen={isLabelSelectorOpen}
+        onClose={() => setIsLabelSelectorOpen(false)}
+        anchorRect={anchorRect}
+        campaignId={campaign.id}
+        selectedGroupIds={campaign.groupIds}
+      />
+
+      <RuleSelectorPopover
+        isOpen={isRuleSelectorOpen}
+        onClose={() => setIsRuleSelectorOpen(false)}
+        anchorRect={ruleAnchorRect}
+        campaignId={campaign.id}
+      />
+    </>
   );
 };

@@ -7,7 +7,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
 } from '@/ui/DropdownMenu';
 import {
   LinearDotsIcon,
@@ -17,7 +16,7 @@ import {
   BuyerlyLogoAvatar,
   LinearClockOutlineIcon,
   LinearInboxDeleteIcon,
-  LinearInboxCheckmarkIcon,
+  LinearSidebarLeftToggleIcon,
 } from '@/icons/LinearIcons';
 
 export const InboxView: React.FC = () => {
@@ -28,6 +27,8 @@ export const InboxView: React.FC = () => {
     markAllNotificationsAsRead,
     deleteAllNotifications,
     deleteAllReadNotifications,
+    isSidebarCollapsed,
+    toggleSidebarCollapsed,
   } = useAppStore();
 
   // Keyboard shortcuts for Inbox: Alt+U (Mark all as read), Shift+Backspace (Delete all read)
@@ -60,25 +61,50 @@ export const InboxView: React.FC = () => {
 
   return (
     <div className="flex h-full w-full select-none overflow-hidden bg-transparent">
-      {/* 1. Left Column: Notification List Pane (400px fixed width) */}
-      <div className="flex h-full w-[400px] shrink-0 flex-col border-r border-[#191a1c]">
-        {/* Left Column Header (44px, padding: 0 8px 0 16px) */}
+      {/* 1. Left Column: Linear's 400px notification list pane. */}
+      <div className="flex h-full w-[400px] shrink-0 flex-col border-r border-[var(--color-border-primary)]">
+        {/* Left Column Header (44px, Linear title inset: 14px) */}
         <header
           style={{
             height: '44px',
-            paddingLeft: '16px',
+            paddingLeft: '14px',
             paddingRight: '8px',
           }}
           className="flex shrink-0 items-center justify-between"
         >
-          {/* Left Title (13px, weight 500, line-height 16px) + 3-dots button with 8px gap */}
-          <div className="flex items-center" style={{ gap: '8px' }}>
+          {/* Left Title (13px, weight 500, line-height 16px) + 3-dots button with 4px gap */}
+          <div className="flex items-center" style={{ gap: '4px' }}>
+            <div
+              style={{
+                width: isSidebarCollapsed ? '28px' : '0px',
+                opacity: isSidebarCollapsed ? 1 : 0,
+                transform: isSidebarCollapsed ? 'scale(1)' : 'scale(0.85)',
+                marginRight: isSidebarCollapsed ? '2px' : '0px',
+                pointerEvents: isSidebarCollapsed ? 'auto' : 'none',
+                overflow: 'hidden',
+                transition:
+                  'width 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), margin-right 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
+              }}
+              className="flex shrink-0 items-center justify-center"
+            >
+              <Tooltip content="Open sidebar" shortcut="[" side="bottom" sideOffset={6}>
+                <button
+                  type="button"
+                  onClick={toggleSidebarCollapsed}
+                  className="linear-icon-btn"
+                  aria-label="Open sidebar"
+                >
+                  <LinearSidebarLeftToggleIcon size={14} isOpen={false} aria-hidden="true" />
+                </button>
+              </Tooltip>
+            </div>
             <h2
               style={{
                 fontSize: '13px',
                 fontWeight: 500,
                 lineHeight: '16px',
-                color: 'lch(90.155% 1.2 272 / 1)',
+                letterSpacing: '-0.01em',
+                color: 'var(--text-primary)',
                 paddingLeft: '0px',
               }}
             >
@@ -106,40 +132,20 @@ export const InboxView: React.FC = () => {
               >
                 <div className="h-[6px] w-full" />
 
-                {/* 1. Mark all as read */}
-                <DropdownMenuItem onClick={markAllNotificationsAsRead}>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-[#9d9d9e] group-hover:text-white transition-colors">
-                      <LinearInboxCheckmarkIcon size={16} />
-                    </span>
-                    <span className="truncate">Mark all as read</span>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-[3px]">
-                    <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
-                      Alt
-                    </kbd>
-                    <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
-                      U
-                    </kbd>
-                  </div>
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator />
-
-                {/* 2. Delete all */}
+                {/* 1. Delete all */}
                 <DropdownMenuItem onClick={deleteAllNotifications}>
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-[#9d9d9e] group-hover:text-white transition-colors">
+                    <span className="text-[#9d9d9e] group-hover:text-[var(--text-primary)] transition-colors">
                       <LinearInboxDeleteIcon size={16} />
                     </span>
                     <span className="truncate">Delete all</span>
                   </div>
                 </DropdownMenuItem>
 
-                {/* 3. Delete all read */}
+                {/* 2. Delete all read */}
                 <DropdownMenuItem onClick={deleteAllReadNotifications}>
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-[#9d9d9e] group-hover:text-white transition-colors">
+                    <span className="text-[#9d9d9e] group-hover:text-[var(--text-primary)] transition-colors">
                       <LinearInboxDeleteIcon size={16} />
                     </span>
                     <span className="truncate">Delete all read</span>
@@ -214,15 +220,15 @@ export const InboxView: React.FC = () => {
                 height: '44px',
                 paddingLeft: '24px',
                 paddingRight: '16px',
-                borderBottom: '1px solid lch(9.84% 1.48 272)',
+                borderBottom: '1px solid var(--color-border-primary)',
               }}
               className="flex shrink-0 items-center justify-between"
             >
               {/* Breadcrumb */}
-              <div className="flex items-center gap-1.5 text-[13px] font-medium text-[#94969b]">
-                <span className="hover:text-white cursor-pointer transition-colors">Buyerly</span>
-                <span className="text-[#52525b]">›</span>
-                <span className="text-[#ffffff]">{selectedNotification.title}</span>
+              <div className="flex items-center gap-1.5 text-[13px] font-medium text-[var(--text-tertiary)]">
+                <span className="hover:text-[var(--text-primary)] cursor-pointer transition-colors">Buyerly</span>
+                <span className="text-[var(--text-muted)]">›</span>
+                <span className="text-[var(--text-primary)]">{selectedNotification.title}</span>
               </div>
 
               {/* Action Buttons: Snooze (H), Delete (⌫ / E) */}
@@ -231,16 +237,7 @@ export const InboxView: React.FC = () => {
                   <button
                     type="button"
                     aria-label="Snooze notification"
-                    style={{
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: '9999px',
-                      backgroundColor: 'transparent',
-                      border: '1px solid transparent',
-                      color: 'lch(61.803% 1.2 272 / 1)',
-                      transition: 'border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s',
-                    }}
-                    className="flex items-center justify-center outline-none hover:bg-[lch(14.006_0.593_272)] hover:text-white"
+                    className="linear-icon-btn"
                   >
                     <span className="flex h-[14px] w-[14px] items-center justify-center">
                       <LinearClockOutlineIcon size={14} />
@@ -257,16 +254,7 @@ export const InboxView: React.FC = () => {
                         useAppStore.getState().archiveNotification(selectedNotification.id);
                       }
                     }}
-                    style={{
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: '9999px',
-                      backgroundColor: 'transparent',
-                      border: '1px solid transparent',
-                      color: 'lch(61.803% 1.2 272 / 1)',
-                      transition: 'border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s',
-                    }}
-                    className="flex items-center justify-center outline-none hover:bg-[lch(14.006_0.593_272)] hover:text-white"
+                    className="linear-icon-btn"
                   >
                     <span className="flex h-[14px] w-[14px] items-center justify-center">
                       <LinearInboxDeleteIcon size={14} />
@@ -289,7 +277,7 @@ export const InboxView: React.FC = () => {
                         fontSize: '22px',
                         fontWeight: 550,
                         letterSpacing: '-0.015em',
-                        color: '#ffffff',
+                        color: 'var(--text-primary)',
                         lineHeight: '28px',
                       }}
                       className="mb-1"
@@ -300,11 +288,11 @@ export const InboxView: React.FC = () => {
                       style={{
                         fontSize: '12px',
                         fontWeight: 450,
-                        color: 'lch(60.621% 1.2 272 / 1)',
+                        color: 'var(--text-tertiary)',
                       }}
                       className="flex items-center gap-1.5"
                     >
-                      <span className="text-[#e2e3e5] font-medium">Buyerly</span>
+                      <span className="text-[var(--text-primary)] font-medium">Buyerly</span>
                       <span>•</span>
                       <span>{selectedNotification.timestamp} ago</span>
                     </div>
@@ -317,33 +305,33 @@ export const InboxView: React.FC = () => {
                     fontFamily: '"Inter Variable", -apple-system, sans-serif',
                     fontSize: '14px',
                     lineHeight: '1.65',
-                    color: 'lch(90.155% 1.2 272 / 1)',
+                    color: 'var(--text-secondary)',
                   }}
                   className="mb-8 space-y-3"
                 >
                   <p>{selectedNotification.contentBody}</p>
                 </div>
 
-                {/* Clean Typography Sections (No boxes, no borders, no icons) */}
+                {/* Clean Typography Sections */}
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-[14px] font-semibold text-white mb-1.5">Automated Rules Engine</h3>
-                    <p className="text-[13px] leading-relaxed text-[#94969b]">
+                    <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-1.5">Automated Rules Engine</h3>
+                    <p className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
                       Protect your ad budget with instant stop-loss triggers when CPA exceeds limits, and auto-scale budgets on top performers.
                     </p>
                   </div>
 
                   <div>
-                    <h3 className="text-[14px] font-semibold text-white mb-1.5">Live Campaign Telemetry</h3>
-                    <p className="text-[13px] leading-relaxed text-[#94969b]">
+                    <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-1.5">Live Campaign Telemetry</h3>
+                    <p className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
                       Inspect real-time daily spend, leads, CPA, ROI, and funnel conversion rates right inside the dedicated context sidebar.
                     </p>
                   </div>
 
                   <div>
-                    <h3 className="text-[14px] font-semibold text-white mb-1.5">Lightning Speed Navigation</h3>
-                    <p className="text-[13px] leading-relaxed text-[#94969b]">
-                      Navigate like a pro with <kbd className="px-1.5 py-0.5 rounded border border-[#323237] text-[11px] bg-[#1a1b1d] text-white font-mono">G</kbd> then <kbd className="px-1.5 py-0.5 rounded border border-[#323237] text-[11px] bg-[#1a1b1d] text-white font-mono">C</kbd> for Campaigns, and <kbd className="px-1.5 py-0.5 rounded border border-[#323237] text-[11px] bg-[#1a1b1d] text-white font-mono">Ctrl</kbd> <kbd className="px-1.5 py-0.5 rounded border border-[#323237] text-[11px] bg-[#1a1b1d] text-white font-mono">I</kbd> to toggle details.
+                    <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-1.5">Lightning Speed Navigation</h3>
+                    <p className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
+                      Navigate like a pro with <kbd className="px-1.5 py-0.5 rounded border border-[var(--color-border-secondary)] text-[11px] bg-[var(--item-hover-bg)] text-[var(--text-primary)] font-mono">G</kbd> then <kbd className="px-1.5 py-0.5 rounded border border-[var(--color-border-secondary)] text-[11px] bg-[var(--item-hover-bg)] text-[var(--text-primary)] font-mono">C</kbd> for Campaigns, and <kbd className="px-1.5 py-0.5 rounded border border-[var(--color-border-secondary)] text-[11px] bg-[var(--item-hover-bg)] text-[var(--text-primary)] font-mono">Ctrl</kbd> <kbd className="px-1.5 py-0.5 rounded border border-[var(--color-border-secondary)] text-[11px] bg-[var(--item-hover-bg)] text-[var(--text-primary)] font-mono">I</kbd> to toggle details.
                     </p>
                   </div>
                 </div>
@@ -362,7 +350,7 @@ export const InboxView: React.FC = () => {
                 fontSize: '13px',
                 fontWeight: 500,
                 lineHeight: '16px',
-                color: 'lch(61.803% 1.2 272 / 1)',
+                color: 'var(--text-tertiary)',
               }}
             >
               No notification selected

@@ -1,0 +1,16 @@
+[project]
+name = "matrix-power-nodes"
+version = "0.1.0"
+description = "Production-oriented ComfyUI nodes and workflow for sequential AI dataset generation."
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = []
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+]
+
+[tool.comfy]
+PublisherId = "matrixlabai"
+DisplayName = "MATRIX POWER NODES - AI Dataset"

@@ -1,0 +1,4 @@
+Put body / angle shots of your character in this folder (full body, profiles,
+3/4 views, back). PNG / JPG / WEBP. The runner picks 1-3 per shot and pulls the
+matching angle forward on 360-degree shots. Even 1-2 images work - with 4 or fewer
+total anchors, every shot automatically uses all of them.

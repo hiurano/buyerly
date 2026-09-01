@@ -1,0 +1,92 @@
+{
+  "blocks": [
+    {
+      "content_hash": "7415990f166972e1955c73cb627a4c271e8197c1629cadfa10f0aadcff9faadd",
+      "id": "auth.provider-key",
+      "version": "0.8.0"
+    },
+    {
+      "content_hash": "b86a2ee4ef640205352cdb7ade968cb8afeb12698287cbc855a16cd37321eca0",
+      "id": "spend.admission",
+      "version": "0.1.0"
+    },
+    {
+      "content_hash": "4d4ddf33da3d4d3a1b3d704cd762ac9e74a67c85ffa69a5b9fd43a58b6a39a81",
+      "id": "errors.taxonomy",
+      "version": "0.1.0"
+    },
+    {
+      "content_hash": "9a0e132a93d7320c465f3ff8540b4566830e9fd542742ced6fd04e7aa44421c1",
+      "id": "transport.http",
+      "version": "0.4.2"
+    },
+    {
+      "content_hash": "6a71b5e8eea76b4e143b30f6f543d390d428db682d1296e8c321bc5b24caddb6",
+      "id": "media.reference-set",
+      "version": "2.0.0"
+    },
+    {
+      "content_hash": "8dc2eff24afe759eb3aa101f6e5b94dfe1fa5c24ba951240abfbc33fc1e88a03",
+      "id": "media.image-in",
+      "version": "0.5.0"
+    },
+    {
+      "content_hash": "2bcebd35011bb3a59c464d16ef414aa02a522534b5a3248f5940c6add26cb86f",
+      "id": "submit.billable",
+      "version": "0.2.0"
+    },
+    {
+      "content_hash": "1f5531ab5baeb201d8871653aea3e9c3453e8e8b953a856fa514cb0ecc70c8cb",
+      "id": "submit.sync",
+      "version": "0.1.0"
+    },
+    {
+      "content_hash": "7e1294ebcb57127ac2bd231312e5f2e811c101c7861ecc361974ddd5a449e4a9",
+      "id": "poll.task",
+      "version": "0.1.0"
+    },
+    {
+      "content_hash": "949a4b71946645f5b1427587c44277b09c0429d2a00643c40afca07396b13099",
+      "id": "media.image-out",
+      "version": "0.2.0"
+    },
+    {
+      "content_hash": "2124dc71664d98f7a1c39080d8db449dea7dcb10488eeab81ca84d0f2c5e6392",
+      "id": "cache.semantic",
+      "version": "1.0.1"
+    },
+    {
+      "content_hash": "81209f62657832335caec6743764226d41da7cfcaea540b55fee6108cf765257",
+      "id": "route.multi",
+      "version": "0.2.0"
+    },
+    {
+      "content_hash": "6b1ab42232d38df45a2944f5eaaf68e100ed3b9fbe64aed4457fe1eb82570225",
+      "id": "ui.progress",
+      "version": "0.1.0"
+    },
+    {
+      "content_hash": "a426ffcdd52215d393f9da5b81840ba2d6ecdfc1d66235f709ad43ab7ceab37f",
+      "id": "flow.api-media",
+      "version": "3.1.1"
+    },
+    {
+      "content_hash": "7944009b65e42fe89631cee3838a6129c6d6e5a0ceb1d605e9a8c66f1bfe6730",
+      "id": "ui.key-mask",
+      "version": "0.9.0"
+    },
+    {
+      "content_hash": "da8bf1dc3dbf4c5f9dfdc86be0e4b797c4b9367470ad48c4b3b3fafa4fefcc60",
+      "id": "ui.appearance",
+      "version": "0.4.0"
+    }
+  ],
+  "declaration_hashes": {
+    "MATRIX_Wave1Seedream45T2i": "7e395a7b548a6e0e561b7f6278e1de163cc36a8b2a7771fb27010c2e5bb627ac"
+  },
+  "node_api": "v1",
+  "route_contract_fetched": {
+    "wavespeed": "2026-08-04T12:00:38+02:00"
+  },
+  "semantic_runtime_id": "b1d13f299d4d4ec591d9519efcd6a9c81cb1ff8f9049651087c5f5c9ec818bbd"
+}

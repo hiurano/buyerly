@@ -1,0 +1,79 @@
+{
+  "blocks": [
+    {
+      "id": "auth.provider-key",
+      "version": "0.2.0"
+    },
+    {
+      "id": "spend.admission",
+      "version": "0.1.0"
+    },
+    {
+      "id": "errors.taxonomy",
+      "version": "0.1.0"
+    },
+    {
+      "id": "transport.http",
+      "version": "0.1.0"
+    },
+    {
+      "id": "media.reference-set",
+      "version": "2.0.0"
+    },
+    {
+      "id": "media.image-in",
+      "version": "0.3.0"
+    },
+    {
+      "id": "submit.billable",
+      "version": "0.1.0"
+    },
+    {
+      "id": "submit.sync",
+      "version": "0.1.0"
+    },
+    {
+      "id": "poll.task",
+      "version": "0.1.0"
+    },
+    {
+      "id": "media.image-out",
+      "version": "0.1.0"
+    },
+    {
+      "id": "cache.semantic",
+      "version": "0.3.0"
+    },
+    {
+      "id": "route.multi",
+      "version": "0.1.0"
+    },
+    {
+      "id": "ui.progress",
+      "version": "0.1.0"
+    },
+    {
+      "id": "flow.api-media",
+      "version": "1.3.0"
+    },
+    {
+      "id": "ui.key-mask",
+      "version": "0.6.0"
+    },
+    {
+      "id": "ui.appearance",
+      "version": "0.1.0"
+    },
+    {
+      "id": "ui.model-switch",
+      "version": "0.1.0"
+    }
+  ],
+  "declaration_hashes": {
+    "MATRIX_DatasetConfig": "4a6455eeffe468dfaf8ee282ea58eb1c87bb86aa343ae581abded57c3c07c8c1",
+    "MATRIX_DatasetImage": "fbdf73505176e67df2a1db3bbeedfd099f1f4a8cfdd91e42bc8e232c4255c9de"
+  },
+  "route_contract_fetched": {
+    "wavespeed": "2026-07-29T03:28:03+02:00"
+  }
+}

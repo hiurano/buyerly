@@ -47,3 +47,17 @@ webapp/prototype.html
 .DS_Store
 .idea/
 .vscode/
+
+# Frontend dependencies and generated output
+node_modules/
+dist/
+
+# Local design captures (production files are the design contract)
+/*Attio*Copy*.html
+
+# Empty graph-export artifacts accidentally created in the repository root
+/*[[]*
+
+# Archive metadata from macOS
+__MACOSX/
+._*

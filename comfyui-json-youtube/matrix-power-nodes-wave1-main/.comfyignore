@@ -1,0 +1,7 @@
+.git/
+.github/
+assets/
+scripts/
+tests/
+workflows/
+

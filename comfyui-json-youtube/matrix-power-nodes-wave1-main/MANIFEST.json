@@ -1,0 +1,1787 @@
+{
+  "schema_version": "matrix.power-nodes-wave1.release.v1",
+  "name": "MATRIX POWER NODES - Wave 1",
+  "version": "1.0.0",
+  "tag": "v1.0.0",
+  "license": "MIT",
+  "pack_count": 10,
+  "declaration_ids": [
+    "MATRIX_Wave1GptImage2T2i",
+    "MATRIX_Wave1NanoBanana2T2i",
+    "MATRIX_Wave1NanoBananaProT2i",
+    "MATRIX_Wave1Seedream45T2i",
+    "MATRIX_Wave1Seedream50ProT2i",
+    "MATRIX_Wave1GptImage2Edit",
+    "MATRIX_Wave1NanoBanana2Edit",
+    "MATRIX_Wave1NanoBananaProEdit",
+    "MATRIX_Wave1Seedream45Edit",
+    "MATRIX_Wave1Seedream50ProEdit"
+  ],
+  "credential_abi": "v2",
+  "pack_abi": 4,
+  "shared_key_block": {
+    "id": "ui.key-mask",
+    "version": "0.9.0",
+    "content_hash": "7944009b65e42fe89631cee3838a6129c6d6e5a0ceb1d605e9a8c66f1bfe6730"
+  },
+  "verification_summary_sha256": "a13aae7912cb68fde3d36568291567171a14c032688a9ea4b72fd8228ecafb8a",
+  "packs": [
+    {
+      "pack": "matrix-wave1-gpt-image-2-edit",
+      "declaration_id": "MATRIX_Wave1GptImage2Edit",
+      "pack_tree_sha256": "8bb2db9ac3a74ee907fd574ea18067eb0f6256a052fef8dbdf5c7a2ab2c764f1",
+      "factory_request_sha256": "d405830a8ae8c40f39abfc35de61c620420104f9e6ec8547c4968eefed1dab6b",
+      "release_receipt_sha256": "6cf02fdff78f85103fef430c096a16e22c45f953cf21dac46a273742ad0be40d",
+      "release_candidate_verified": true
+    },
+    {
+      "pack": "matrix-wave1-gpt-image-2-t2i",
+      "declaration_id": "MATRIX_Wave1GptImage2T2i",
+      "pack_tree_sha256": "a798912c2cfdf7edfb163f18cd499738fd539aa1062a394a92146c1c431ed9ab",
+      "factory_request_sha256": "1b76ca485b05ffa519e996584186aaa02a6ae527e6901bbfb51d5a2e1fa60db5",
+      "release_receipt_sha256": "87599c20721d44eef83f3fa8dbacc63e1e803445999aa224304311971b98abeb",
+      "release_candidate_verified": true
+    },
+    {
+      "pack": "matrix-wave1-nano-banana-2-edit",
+      "declaration_id": "MATRIX_Wave1NanoBanana2Edit",
+      "pack_tree_sha256": "00208776729846644792e6ca3ca1dbf084d8ffdde8bf31d3ca868a59a314b565",
+      "factory_request_sha256": "63cf24ac45b4bfcab566374d7559395cb83e3059ccb13720efec9af670ee87b9",
+      "release_receipt_sha256": "b66ac85be95944de403bf34b5f46fda0977afc1e73cbbce0820dafd84800b119",
+      "release_candidate_verified": true
+    },
+    {
+      "pack": "matrix-wave1-nano-banana-2-t2i",
+      "declaration_id": "MATRIX_Wave1NanoBanana2T2i",
+      "pack_tree_sha256": "311373950fbc9923fe86cb48c7ae2b618fc41eb01a9772a2269d13c16cb5fcb5",
+      "factory_request_sha256": "7faebd89f220bea06cae255cb3ae420061c73759215c2104cb1e95e384049054",
+      "release_receipt_sha256": "f1f83b6446809d39e4aeed432a095048eb599fa4d25627e3caa29c662d7e32e9",
+      "release_candidate_verified": true
+    },
+    {
+      "pack": "matrix-wave1-nano-banana-pro-edit",
+      "declaration_id": "MATRIX_Wave1NanoBananaProEdit",
+      "pack_tree_sha256": "5e0005fa03a0ad825a98024aef459b1b4622b22a8cd306529d7a70050506bece",
+      "factory_request_sha256": "f53eb6977ebfb24fe0ab1e7dd50d4dde7ff9015d2dd321acdee5c30e49708153",
+      "release_receipt_sha256": "742f1dd0de7fa375f9c64e11a91dcaa74f5f2e2a46a3b7e06fe8740c85f8f374",
+      "release_candidate_verified": true
+    },
+    {
+      "pack": "matrix-wave1-nano-banana-pro-t2i",
+      "declaration_id": "MATRIX_Wave1NanoBananaProT2i",
+      "pack_tree_sha256": "737085770f53149575fcec2fd9c60e6db8da048ab8d9628c616f191172d63778",
+      "factory_request_sha256": "b159966cfc3c90ef7e58065fbbc2d4fdc295be247c7ad6e5a55a54b959762f92",
+      "release_receipt_sha256": "00101ebc9cc63e1e4252255c2ab95b735c04dcca5460d541dc460a4cb09d2952",
+      "release_candidate_verified": true
+    },
+    {
+      "pack": "matrix-wave1-seedream-45-edit",
+      "declaration_id": "MATRIX_Wave1Seedream45Edit",
+      "pack_tree_sha256": "b59e9cb65dba42f6ac5505e889b29d1dd9d84852a2369d79a65a8972f6c9851c",
+      "factory_request_sha256": "6bf6982348b8f8f9c56a2534b9d6c11099d39205cc6c1c1d408d6ee2146c666f",
+      "release_receipt_sha256": "0de375c29275d6e44eed40b457a7e6a51daae450c102fbbbbc75cd97c565c756",
+      "release_candidate_verified": true
+    },
+    {
+      "pack": "matrix-wave1-seedream-45-t2i",
+      "declaration_id": "MATRIX_Wave1Seedream45T2i",
+      "pack_tree_sha256": "7fe0b9c8bf509fdcd26993bc2fc1aaeb371f2841653bc512bd4b1a1641c4752c",
+      "factory_request_sha256": "e942f89fb700387d533358f36d90d387d1cb52ad0950167399c270756d323a8e",
+      "release_receipt_sha256": "bf376ab1525ec26e622ee15f548d5664c2f8349977d61639e32e65c5cc3f1af2",
+      "release_candidate_verified": true
+    },
+    {
+      "pack": "matrix-wave1-seedream-50-pro-edit",
+      "declaration_id": "MATRIX_Wave1Seedream50ProEdit",
+      "pack_tree_sha256": "790fc2bd77cf9fdc5d3ea3cc5b55c6d56acd16104c04e47d17c34bfcb0c9208d",
+      "factory_request_sha256": "685cac78350c83e576ee9191c523182406decf987cc9f107ce59e0fdea239437",
+      "release_receipt_sha256": "7ea030766bae8afbd10ace686b5b7a27bd73a3c4b106d272948f5d450c7bcb4d",
+      "release_candidate_verified": true
+    },
+    {
+      "pack": "matrix-wave1-seedream-50-pro-t2i",
+      "declaration_id": "MATRIX_Wave1Seedream50ProT2i",
+      "pack_tree_sha256": "541f9f04b008a6533109140c1c6c76fe2b2da3b6fc280ffa4b9efb75f61b5edd",
+      "factory_request_sha256": "a0332f695531460f4b15eb14c378e4f5f547d83a4fddc9d2b90cbc8d452b5f32",
+      "release_receipt_sha256": "d25175d1f3d77c06244279902d0ba47635e1543d822a679b371c3dbba0c05ebf",
+      "release_candidate_verified": true
+    }
+  ],
+  "files": [
+    {
+      "path": ".comfyignore",
+      "size": 51,
+      "sha256": "1ed767ba351418a9b6f73505cb1c1f137e7d341b524860556847660c2eb40e95"
+    },
+    {
+      "path": ".gitattributes",
+      "size": 34,
+      "sha256": "e405e84c9512df833ebdbd98bd167f6e0a576576f153befe42edd906c6fb1c61"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "size": 518,
+      "sha256": "732ee231b3b89e45602b16b409308831ccd466d8a0c3cf03f7ffbddca02901f1"
+    },
+    {
+      "path": ".gitignore",
+      "size": 109,
+      "sha256": "5a360d65bcb2ecbc59ba8d24f120a7ececcd257ff8da304a639b9bd143439095"
+    },
+    {
+      "path": "AGENT-INSTALL.md",
+      "size": 594,
+      "sha256": "16eb4eb7bea5ba65ba74fbd4d9575af4c018b1c26feaa18757d1002e6e770bc1"
+    },
+    {
+      "path": "AGENTS.md",
+      "size": 2306,
+      "sha256": "4d0663ac9ab736c3fc7d35ecc7f8da47596cf28e6d6e0ce991a744be26d0558a"
+    },
+    {
+      "path": "assets/matrix-power-nodes-wave1.png",
+      "size": 297304,
+      "sha256": "829f5e91c5f9ac19ab78f33340fae1ab90b0b155199512e1e8bb14dc4ce6cef3"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "size": 459,
+      "sha256": "0d2248fbfd22e76381728ec2250049ad0240f3073c2f7a69abb7d21fddbad47d"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/__init__.py",
+      "size": 496,
+      "sha256": "d340ead4cf81d520c90ce8e5165769480b0139ef7c341b5e060e0ae36e910091"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/__init__.py",
+      "size": 118,
+      "sha256": "ab9b648bd97f78bf8e1a5adc7c542e2a077ee0f37b4bcb670e3a60d2b6c85337"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/auth_provider_key/__init__.py",
+      "size": 501,
+      "sha256": "cac8deffc72e07e344c066fa9da112a299b6350df433fd21207b45a9f7955931"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/auth_provider_key/provider_key.py",
+      "size": 26448,
+      "sha256": "cea75aa38c6d47b867b7c53f1946317f71ec10d17cb572e211896370b8f491f5"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/cache_semantic/__init__.py",
+      "size": 31429,
+      "sha256": "c8fe990ec591abf026a14b97988477b8cf7d489dbc8bac6d832b178348c9f5dc"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/credentials.py",
+      "size": 5287,
+      "sha256": "ea2536040b076a92c053674a63e16de407be754941370daf050bfa376ee9d12c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/errors_taxonomy/__init__.py",
+      "size": 3928,
+      "sha256": "3e3a95fe208e307d7100b189bd4f853af546a65fb5c2067794294584963f3959"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/flow_api_media/__init__.py",
+      "size": 34253,
+      "sha256": "ee26283e0d5468c7c1c39ace165a08428dd4002e4e4f598137fd743f3fef2228"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/media_image_in/__init__.py",
+      "size": 17202,
+      "sha256": "6ad5e1aac2808df92105a8842f6c7d426d18e6bde521387451fa8f0b29119807"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/media_image_out/__init__.py",
+      "size": 5656,
+      "sha256": "c84d61606fc110cee8d9f845108dc929d8b8980a722641628fb0b68ed010c64f"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/media_reference_set/__init__.py",
+      "size": 1424,
+      "sha256": "72e7bfef62ad25f17c2ce43d7e5db6883bd040610fe3459dffbeead8fc62123c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/poll_task/__init__.py",
+      "size": 7317,
+      "sha256": "04030d7f99ce23627a3b8de61c78d5f83696bb541c08aec8e7e830d163021952"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/route_multi/__init__.py",
+      "size": 3673,
+      "sha256": "a9ae2ae8f2c1905a1fa4b373973b663d8d680a72cf898b548f632693592cd417"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/runtime.py",
+      "size": 35242,
+      "sha256": "4a9a1696baa0a7791950683b52b49b100ade9cc307066fb45f57ecac6fb1a6eb"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/spend_admission/__init__.py",
+      "size": 14814,
+      "sha256": "9d15a4a6c16b152245fdf5e7a20c10921043e13c2373f5b0d40f3c57b6125c51"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/submit_billable/__init__.py",
+      "size": 6330,
+      "sha256": "76765283227e7c124cc10463d9b9a4d25b6ccf60b0c15851060b7aa8433488e4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/submit_sync/__init__.py",
+      "size": 2150,
+      "sha256": "b824d3b4b7cc2477992ed151eac721bf9e7f688e28a86784c7e676490eb78d56"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/transport_http/__init__.py",
+      "size": 17475,
+      "sha256": "3b3d6f122b743834acc0be01112233fe16253ea1b17864f1476a745f7876bd9b"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/ui_appearance/__init__.py",
+      "size": 75,
+      "sha256": "e3a82bc2ad416272eb8fd2ff7bcdefbeb08efe7d4eafac7df745d42255b4765c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/ui_key_mask/__init__.py",
+      "size": 69,
+      "sha256": "ac093e77f29cc39e025f76a91285947adf08ef85fa2fa0a9be335457c13813a4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/_core/ui_progress/__init__.py",
+      "size": 1352,
+      "sha256": "4f85a25664a74f11fcb17151c8f53d3bf212cfd072607cbcc146a5b08b3591a7"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/MANIFEST.json",
+      "size": 2867,
+      "sha256": "c4c5eaa00803333d23dfb4de4da5a79201fa22de0fc5ec8be3106d71523b256d"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/nodes/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/nodes/matrix_wave1gptimage2edit.py",
+      "size": 3964,
+      "sha256": "e37901814c3795a24c11bb274d8111129841f1fe39b7baf61929928f235faf75"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/NODES.md",
+      "size": 2615,
+      "sha256": "95b9010d4263d3eafce85b00691f87507ba2b71bdcf29532efabe8b12b22b50f"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/requirements.txt",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/tests/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/tests/test_pack.py",
+      "size": 2418,
+      "sha256": "10cfc5c6f63d606db484b796431841e4065d32c61bb1d295f8f882d1680278d2"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/web/appearance.33c3c3d3b3071bb5.js",
+      "size": 5652,
+      "sha256": "33c3c3d3b3071bb52c6f6e9271b46496b0d849071d983a8010ea86262d4b3781"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/web/key_mask.9547f6bbf90548f6.js",
+      "size": 15657,
+      "sha256": "9547f6bbf90548f6e34573496e00c713f3dad6eca01dd7d59ace07abeeae6701"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-edit/web/progress.64c330fcc746d58f.js",
+      "size": 2330,
+      "sha256": "64c330fcc746d58f4846050d3c8efb82f43ba5643b5326a12cdb9d8d722ef639"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/__init__.py",
+      "size": 495,
+      "sha256": "330beaccf06cd652cfc6998259ef845bf60bc18ad48c1d2775c94bdc957f55f9"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/__init__.py",
+      "size": 118,
+      "sha256": "ab9b648bd97f78bf8e1a5adc7c542e2a077ee0f37b4bcb670e3a60d2b6c85337"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/auth_provider_key/__init__.py",
+      "size": 501,
+      "sha256": "cac8deffc72e07e344c066fa9da112a299b6350df433fd21207b45a9f7955931"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/auth_provider_key/provider_key.py",
+      "size": 26448,
+      "sha256": "cea75aa38c6d47b867b7c53f1946317f71ec10d17cb572e211896370b8f491f5"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/cache_semantic/__init__.py",
+      "size": 31429,
+      "sha256": "c8fe990ec591abf026a14b97988477b8cf7d489dbc8bac6d832b178348c9f5dc"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/credentials.py",
+      "size": 5287,
+      "sha256": "ea2536040b076a92c053674a63e16de407be754941370daf050bfa376ee9d12c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/errors_taxonomy/__init__.py",
+      "size": 3928,
+      "sha256": "3e3a95fe208e307d7100b189bd4f853af546a65fb5c2067794294584963f3959"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/flow_api_media/__init__.py",
+      "size": 34253,
+      "sha256": "ee26283e0d5468c7c1c39ace165a08428dd4002e4e4f598137fd743f3fef2228"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/media_image_in/__init__.py",
+      "size": 17202,
+      "sha256": "6ad5e1aac2808df92105a8842f6c7d426d18e6bde521387451fa8f0b29119807"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/media_image_out/__init__.py",
+      "size": 5656,
+      "sha256": "c84d61606fc110cee8d9f845108dc929d8b8980a722641628fb0b68ed010c64f"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/media_reference_set/__init__.py",
+      "size": 1424,
+      "sha256": "72e7bfef62ad25f17c2ce43d7e5db6883bd040610fe3459dffbeead8fc62123c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/poll_task/__init__.py",
+      "size": 7317,
+      "sha256": "04030d7f99ce23627a3b8de61c78d5f83696bb541c08aec8e7e830d163021952"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/route_multi/__init__.py",
+      "size": 3673,
+      "sha256": "a9ae2ae8f2c1905a1fa4b373973b663d8d680a72cf898b548f632693592cd417"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/runtime.py",
+      "size": 36968,
+      "sha256": "01d89a1705f1d3bd6ce4d49c49732bfc03c5625aee577309334204047524d11f"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/spend_admission/__init__.py",
+      "size": 14814,
+      "sha256": "9d15a4a6c16b152245fdf5e7a20c10921043e13c2373f5b0d40f3c57b6125c51"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/submit_billable/__init__.py",
+      "size": 6330,
+      "sha256": "76765283227e7c124cc10463d9b9a4d25b6ccf60b0c15851060b7aa8433488e4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/submit_sync/__init__.py",
+      "size": 2150,
+      "sha256": "b824d3b4b7cc2477992ed151eac721bf9e7f688e28a86784c7e676490eb78d56"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/transport_http/__init__.py",
+      "size": 17475,
+      "sha256": "3b3d6f122b743834acc0be01112233fe16253ea1b17864f1476a745f7876bd9b"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/ui_appearance/__init__.py",
+      "size": 75,
+      "sha256": "e3a82bc2ad416272eb8fd2ff7bcdefbeb08efe7d4eafac7df745d42255b4765c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/ui_key_mask/__init__.py",
+      "size": 69,
+      "sha256": "ac093e77f29cc39e025f76a91285947adf08ef85fa2fa0a9be335457c13813a4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/_core/ui_progress/__init__.py",
+      "size": 1352,
+      "sha256": "4f85a25664a74f11fcb17151c8f53d3bf212cfd072607cbcc146a5b08b3591a7"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/MANIFEST.json",
+      "size": 2866,
+      "sha256": "0d726261cde8a7d975f80d00fa1249985a0615ff9887d0c01f50527082b44900"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/nodes/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/nodes/matrix_wave1gptimage2t2i.py",
+      "size": 3740,
+      "sha256": "92b67b122fdbb499df62a6e1da78df03ce8e6f9a46596716a32ac71980100968"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/NODES.md",
+      "size": 2410,
+      "sha256": "fca962e9601add0863a556c92eee70ac1b3bc7d75f4559332866259e0347cd6b"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/requirements.txt",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/tests/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/tests/test_pack.py",
+      "size": 2403,
+      "sha256": "089ac19f466e8c5a4787b45070a982abb3b504cec83fd64e969b7bc3578d3422"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/web/appearance.b38b457fcfa7f005.js",
+      "size": 5651,
+      "sha256": "b38b457fcfa7f005d326e3eee5c3787e724be1e4c24aab0863256be679a3ddc7"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/web/key_mask.5800e43b40e96696.js",
+      "size": 15656,
+      "sha256": "5800e43b40e96696ed9f5dc7f32622921a3c43ec2345a402351da22dff4efc73"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-gpt-image-2-t2i/web/progress.e0886614a9f35107.js",
+      "size": 2329,
+      "sha256": "e0886614a9f35107fe90a416dabdf28bec126e4d6d674aa18324ff59980325e9"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/__init__.py",
+      "size": 498,
+      "sha256": "21425d06730105b7f5eb37dee060b8a74e97b66f9223c2cf9178650666483119"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/__init__.py",
+      "size": 118,
+      "sha256": "ab9b648bd97f78bf8e1a5adc7c542e2a077ee0f37b4bcb670e3a60d2b6c85337"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/auth_provider_key/__init__.py",
+      "size": 501,
+      "sha256": "cac8deffc72e07e344c066fa9da112a299b6350df433fd21207b45a9f7955931"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/auth_provider_key/provider_key.py",
+      "size": 26448,
+      "sha256": "cea75aa38c6d47b867b7c53f1946317f71ec10d17cb572e211896370b8f491f5"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/cache_semantic/__init__.py",
+      "size": 31429,
+      "sha256": "c8fe990ec591abf026a14b97988477b8cf7d489dbc8bac6d832b178348c9f5dc"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/credentials.py",
+      "size": 5287,
+      "sha256": "ea2536040b076a92c053674a63e16de407be754941370daf050bfa376ee9d12c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/errors_taxonomy/__init__.py",
+      "size": 3928,
+      "sha256": "3e3a95fe208e307d7100b189bd4f853af546a65fb5c2067794294584963f3959"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/flow_api_media/__init__.py",
+      "size": 34253,
+      "sha256": "ee26283e0d5468c7c1c39ace165a08428dd4002e4e4f598137fd743f3fef2228"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/media_image_in/__init__.py",
+      "size": 17202,
+      "sha256": "6ad5e1aac2808df92105a8842f6c7d426d18e6bde521387451fa8f0b29119807"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/media_image_out/__init__.py",
+      "size": 5656,
+      "sha256": "c84d61606fc110cee8d9f845108dc929d8b8980a722641628fb0b68ed010c64f"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/media_reference_set/__init__.py",
+      "size": 1424,
+      "sha256": "72e7bfef62ad25f17c2ce43d7e5db6883bd040610fe3459dffbeead8fc62123c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/poll_task/__init__.py",
+      "size": 7317,
+      "sha256": "04030d7f99ce23627a3b8de61c78d5f83696bb541c08aec8e7e830d163021952"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/route_multi/__init__.py",
+      "size": 3673,
+      "sha256": "a9ae2ae8f2c1905a1fa4b373973b663d8d680a72cf898b548f632693592cd417"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/runtime.py",
+      "size": 37411,
+      "sha256": "0399c380a7db0b0bd313ea54876f1c512e958a28ad77b20649c0151c20c6e656"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/spend_admission/__init__.py",
+      "size": 14814,
+      "sha256": "9d15a4a6c16b152245fdf5e7a20c10921043e13c2373f5b0d40f3c57b6125c51"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/submit_billable/__init__.py",
+      "size": 6330,
+      "sha256": "76765283227e7c124cc10463d9b9a4d25b6ccf60b0c15851060b7aa8433488e4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/submit_sync/__init__.py",
+      "size": 2150,
+      "sha256": "b824d3b4b7cc2477992ed151eac721bf9e7f688e28a86784c7e676490eb78d56"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/transport_http/__init__.py",
+      "size": 17475,
+      "sha256": "3b3d6f122b743834acc0be01112233fe16253ea1b17864f1476a745f7876bd9b"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/ui_appearance/__init__.py",
+      "size": 75,
+      "sha256": "e3a82bc2ad416272eb8fd2ff7bcdefbeb08efe7d4eafac7df745d42255b4765c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/ui_key_mask/__init__.py",
+      "size": 69,
+      "sha256": "ac093e77f29cc39e025f76a91285947adf08ef85fa2fa0a9be335457c13813a4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/_core/ui_progress/__init__.py",
+      "size": 1352,
+      "sha256": "4f85a25664a74f11fcb17151c8f53d3bf212cfd072607cbcc146a5b08b3591a7"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/MANIFEST.json",
+      "size": 2869,
+      "sha256": "04ba18d2ea96e276d3f93374518a3005fb25095f55053de62688f892ca987f74"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/nodes/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/nodes/matrix_wave1nanobanana2edit.py",
+      "size": 4292,
+      "sha256": "8fada08bf04bf0c96e8999c6a4f4ea5fe77f9b5abe74d208a591b43063e971dd"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/NODES.md",
+      "size": 2663,
+      "sha256": "8403b6e7636e6c25bc04966aa058e5bc58039d6dbbc34dc5352f34f31c4d3745"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/requirements.txt",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/tests/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/tests/test_pack.py",
+      "size": 2461,
+      "sha256": "936b5df9fbdec7fb5533fd1583d30d6c3e094f70d08f0aac43f9905e695885b0"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/web/appearance.fa56c52dab6c7898.js",
+      "size": 5654,
+      "sha256": "fa56c52dab6c7898a9911b4a7d7c7f3244cf345557c0980f56d8f06ef339f8ec"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/web/key_mask.ba0e97caa810f40a.js",
+      "size": 15659,
+      "sha256": "ba0e97caa810f40a5183e3cb1ba026bb6e976b198fd519e00c50d0b871218e81"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-edit/web/progress.e8b4a4bf6a1ff5df.js",
+      "size": 2332,
+      "sha256": "e8b4a4bf6a1ff5dfc9e858b5c6f30020a275a68862156dfeefa0d84486c1cda6"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/__init__.py",
+      "size": 497,
+      "sha256": "fadc171641a324f1c18f029242ac700459b2a176fc1e78b92d14feb9a5cf00aa"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/__init__.py",
+      "size": 118,
+      "sha256": "ab9b648bd97f78bf8e1a5adc7c542e2a077ee0f37b4bcb670e3a60d2b6c85337"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/auth_provider_key/__init__.py",
+      "size": 501,
+      "sha256": "cac8deffc72e07e344c066fa9da112a299b6350df433fd21207b45a9f7955931"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/auth_provider_key/provider_key.py",
+      "size": 26448,
+      "sha256": "cea75aa38c6d47b867b7c53f1946317f71ec10d17cb572e211896370b8f491f5"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/cache_semantic/__init__.py",
+      "size": 31429,
+      "sha256": "c8fe990ec591abf026a14b97988477b8cf7d489dbc8bac6d832b178348c9f5dc"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/credentials.py",
+      "size": 5287,
+      "sha256": "ea2536040b076a92c053674a63e16de407be754941370daf050bfa376ee9d12c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/errors_taxonomy/__init__.py",
+      "size": 3928,
+      "sha256": "3e3a95fe208e307d7100b189bd4f853af546a65fb5c2067794294584963f3959"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/flow_api_media/__init__.py",
+      "size": 34253,
+      "sha256": "ee26283e0d5468c7c1c39ace165a08428dd4002e4e4f598137fd743f3fef2228"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/media_image_in/__init__.py",
+      "size": 17202,
+      "sha256": "6ad5e1aac2808df92105a8842f6c7d426d18e6bde521387451fa8f0b29119807"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/media_image_out/__init__.py",
+      "size": 5656,
+      "sha256": "c84d61606fc110cee8d9f845108dc929d8b8980a722641628fb0b68ed010c64f"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/media_reference_set/__init__.py",
+      "size": 1424,
+      "sha256": "72e7bfef62ad25f17c2ce43d7e5db6883bd040610fe3459dffbeead8fc62123c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/poll_task/__init__.py",
+      "size": 7317,
+      "sha256": "04030d7f99ce23627a3b8de61c78d5f83696bb541c08aec8e7e830d163021952"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/route_multi/__init__.py",
+      "size": 3673,
+      "sha256": "a9ae2ae8f2c1905a1fa4b373973b663d8d680a72cf898b548f632693592cd417"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/runtime.py",
+      "size": 38464,
+      "sha256": "3359cebbd5ff1adf600ce4f84cd1e98888bcdee9c545cd6797f11040e7817b72"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/spend_admission/__init__.py",
+      "size": 14814,
+      "sha256": "9d15a4a6c16b152245fdf5e7a20c10921043e13c2373f5b0d40f3c57b6125c51"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/submit_billable/__init__.py",
+      "size": 6330,
+      "sha256": "76765283227e7c124cc10463d9b9a4d25b6ccf60b0c15851060b7aa8433488e4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/submit_sync/__init__.py",
+      "size": 2150,
+      "sha256": "b824d3b4b7cc2477992ed151eac721bf9e7f688e28a86784c7e676490eb78d56"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/transport_http/__init__.py",
+      "size": 17475,
+      "sha256": "3b3d6f122b743834acc0be01112233fe16253ea1b17864f1476a745f7876bd9b"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/ui_appearance/__init__.py",
+      "size": 75,
+      "sha256": "e3a82bc2ad416272eb8fd2ff7bcdefbeb08efe7d4eafac7df745d42255b4765c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/ui_key_mask/__init__.py",
+      "size": 69,
+      "sha256": "ac093e77f29cc39e025f76a91285947adf08ef85fa2fa0a9be335457c13813a4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/_core/ui_progress/__init__.py",
+      "size": 1352,
+      "sha256": "4f85a25664a74f11fcb17151c8f53d3bf212cfd072607cbcc146a5b08b3591a7"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/MANIFEST.json",
+      "size": 2868,
+      "sha256": "8e1a21bfe7a6b9d5dea5393488e3ede6a512addbfb404802091e6486908b8b3c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/nodes/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/nodes/matrix_wave1nanobanana2t2i.py",
+      "size": 4081,
+      "sha256": "c03ce980ee37fdd25b1527bd97339e720bf52204f882747659af3064b609809c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/NODES.md",
+      "size": 2503,
+      "sha256": "4d8d1bf4b28ee382fb038051e65a354365280f037b652468572448928572479f"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/requirements.txt",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/tests/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/tests/test_pack.py",
+      "size": 2446,
+      "sha256": "03a65430ed698ae55f0b93c1018af91b1b98bf8f48a558bda12f15a72c043ae7"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/web/appearance.fe0e8ea0a7b3c803.js",
+      "size": 5653,
+      "sha256": "fe0e8ea0a7b3c80339a07c0fdd7fb327031f0225e8b893610993dd07d57b98e5"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/web/key_mask.e87ec25b8e9ee6a9.js",
+      "size": 15658,
+      "sha256": "e87ec25b8e9ee6a9178fca8756f63bd5872650cad8a06805fc9a54de51fcaa89"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-2-t2i/web/progress.b5e5edd57cca10c2.js",
+      "size": 2331,
+      "sha256": "b5e5edd57cca10c2bb3e8c0f230c215a4bbcda5c428f8e3901273808fc7bc5f1"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/__init__.py",
+      "size": 500,
+      "sha256": "d78b971830db66e308d8a74e26c01ee5994f3aa97a440dd412b6fbdf64ac458e"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/__init__.py",
+      "size": 118,
+      "sha256": "ab9b648bd97f78bf8e1a5adc7c542e2a077ee0f37b4bcb670e3a60d2b6c85337"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/auth_provider_key/__init__.py",
+      "size": 501,
+      "sha256": "cac8deffc72e07e344c066fa9da112a299b6350df433fd21207b45a9f7955931"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/auth_provider_key/provider_key.py",
+      "size": 26448,
+      "sha256": "cea75aa38c6d47b867b7c53f1946317f71ec10d17cb572e211896370b8f491f5"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/cache_semantic/__init__.py",
+      "size": 31429,
+      "sha256": "c8fe990ec591abf026a14b97988477b8cf7d489dbc8bac6d832b178348c9f5dc"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/credentials.py",
+      "size": 5287,
+      "sha256": "ea2536040b076a92c053674a63e16de407be754941370daf050bfa376ee9d12c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/errors_taxonomy/__init__.py",
+      "size": 3928,
+      "sha256": "3e3a95fe208e307d7100b189bd4f853af546a65fb5c2067794294584963f3959"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/flow_api_media/__init__.py",
+      "size": 34253,
+      "sha256": "ee26283e0d5468c7c1c39ace165a08428dd4002e4e4f598137fd743f3fef2228"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/media_image_in/__init__.py",
+      "size": 17202,
+      "sha256": "6ad5e1aac2808df92105a8842f6c7d426d18e6bde521387451fa8f0b29119807"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/media_image_out/__init__.py",
+      "size": 5656,
+      "sha256": "c84d61606fc110cee8d9f845108dc929d8b8980a722641628fb0b68ed010c64f"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/media_reference_set/__init__.py",
+      "size": 1424,
+      "sha256": "72e7bfef62ad25f17c2ce43d7e5db6883bd040610fe3459dffbeead8fc62123c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/poll_task/__init__.py",
+      "size": 7317,
+      "sha256": "04030d7f99ce23627a3b8de61c78d5f83696bb541c08aec8e7e830d163021952"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/route_multi/__init__.py",
+      "size": 3673,
+      "sha256": "a9ae2ae8f2c1905a1fa4b373973b663d8d680a72cf898b548f632693592cd417"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/runtime.py",
+      "size": 31928,
+      "sha256": "ec82d5bf0a8a37bda963458df77185c707e6c5c84004f60a2a1a3df85f7464b7"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/spend_admission/__init__.py",
+      "size": 14814,
+      "sha256": "9d15a4a6c16b152245fdf5e7a20c10921043e13c2373f5b0d40f3c57b6125c51"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/submit_billable/__init__.py",
+      "size": 6330,
+      "sha256": "76765283227e7c124cc10463d9b9a4d25b6ccf60b0c15851060b7aa8433488e4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/submit_sync/__init__.py",
+      "size": 2150,
+      "sha256": "b824d3b4b7cc2477992ed151eac721bf9e7f688e28a86784c7e676490eb78d56"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/transport_http/__init__.py",
+      "size": 17475,
+      "sha256": "3b3d6f122b743834acc0be01112233fe16253ea1b17864f1476a745f7876bd9b"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/ui_appearance/__init__.py",
+      "size": 75,
+      "sha256": "e3a82bc2ad416272eb8fd2ff7bcdefbeb08efe7d4eafac7df745d42255b4765c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/ui_key_mask/__init__.py",
+      "size": 69,
+      "sha256": "ac093e77f29cc39e025f76a91285947adf08ef85fa2fa0a9be335457c13813a4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/_core/ui_progress/__init__.py",
+      "size": 1352,
+      "sha256": "4f85a25664a74f11fcb17151c8f53d3bf212cfd072607cbcc146a5b08b3591a7"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/MANIFEST.json",
+      "size": 2871,
+      "sha256": "b394125561ab6fc857529a05547748b3bad7b4f9bac7e9a47d7257bf7391e7cd"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/nodes/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/nodes/matrix_wave1nanobananaproedit.py",
+      "size": 3724,
+      "sha256": "cf0c4377182b9864bcddccbaf87ed5556a47d8f420afd74e19cb074dc71120ea"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/NODES.md",
+      "size": 2204,
+      "sha256": "5824a632603022a7e5b97dfb1742bf83962fbcceb0340c1fe1ecc6f5a222fa2c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/requirements.txt",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/tests/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/tests/test_pack.py",
+      "size": 2427,
+      "sha256": "f71838538be4e79f4b0de2e4038616fc344302d622a123567ab988a46df69495"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/web/appearance.f22c610cc0954d86.js",
+      "size": 5656,
+      "sha256": "f22c610cc0954d86eb66ab770acdf32efd69b59b47d64a7fd2120989a49321a5"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/web/key_mask.24e836ac036f9fad.js",
+      "size": 15661,
+      "sha256": "24e836ac036f9fade398faa7f764527fbe33b97dca1b63176c08173a7717ff57"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-edit/web/progress.cc18eb49ebe542ce.js",
+      "size": 2334,
+      "sha256": "cc18eb49ebe542ce4d84d9f845dc12ae60ed850f5ca1318ae3376d57ca60a2c8"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/__init__.py",
+      "size": 499,
+      "sha256": "38b246aeaa4ed302af87563927ccdf07c24f60c34f33d62ace746fb13e009528"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/__init__.py",
+      "size": 118,
+      "sha256": "ab9b648bd97f78bf8e1a5adc7c542e2a077ee0f37b4bcb670e3a60d2b6c85337"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/auth_provider_key/__init__.py",
+      "size": 501,
+      "sha256": "cac8deffc72e07e344c066fa9da112a299b6350df433fd21207b45a9f7955931"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/auth_provider_key/provider_key.py",
+      "size": 26448,
+      "sha256": "cea75aa38c6d47b867b7c53f1946317f71ec10d17cb572e211896370b8f491f5"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/cache_semantic/__init__.py",
+      "size": 31429,
+      "sha256": "c8fe990ec591abf026a14b97988477b8cf7d489dbc8bac6d832b178348c9f5dc"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/credentials.py",
+      "size": 5287,
+      "sha256": "ea2536040b076a92c053674a63e16de407be754941370daf050bfa376ee9d12c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/errors_taxonomy/__init__.py",
+      "size": 3928,
+      "sha256": "3e3a95fe208e307d7100b189bd4f853af546a65fb5c2067794294584963f3959"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/flow_api_media/__init__.py",
+      "size": 34253,
+      "sha256": "ee26283e0d5468c7c1c39ace165a08428dd4002e4e4f598137fd743f3fef2228"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/media_image_in/__init__.py",
+      "size": 17202,
+      "sha256": "6ad5e1aac2808df92105a8842f6c7d426d18e6bde521387451fa8f0b29119807"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/media_image_out/__init__.py",
+      "size": 5656,
+      "sha256": "c84d61606fc110cee8d9f845108dc929d8b8980a722641628fb0b68ed010c64f"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/media_reference_set/__init__.py",
+      "size": 1424,
+      "sha256": "72e7bfef62ad25f17c2ce43d7e5db6883bd040610fe3459dffbeead8fc62123c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/poll_task/__init__.py",
+      "size": 7317,
+      "sha256": "04030d7f99ce23627a3b8de61c78d5f83696bb541c08aec8e7e830d163021952"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/route_multi/__init__.py",
+      "size": 3673,
+      "sha256": "a9ae2ae8f2c1905a1fa4b373973b663d8d680a72cf898b548f632693592cd417"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/runtime.py",
+      "size": 31475,
+      "sha256": "0dee9d8e13fc37c91e8327f602214078ed19f8d89ba530e234954da8f6a58309"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/spend_admission/__init__.py",
+      "size": 14814,
+      "sha256": "9d15a4a6c16b152245fdf5e7a20c10921043e13c2373f5b0d40f3c57b6125c51"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/submit_billable/__init__.py",
+      "size": 6330,
+      "sha256": "76765283227e7c124cc10463d9b9a4d25b6ccf60b0c15851060b7aa8433488e4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/submit_sync/__init__.py",
+      "size": 2150,
+      "sha256": "b824d3b4b7cc2477992ed151eac721bf9e7f688e28a86784c7e676490eb78d56"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/transport_http/__init__.py",
+      "size": 17475,
+      "sha256": "3b3d6f122b743834acc0be01112233fe16253ea1b17864f1476a745f7876bd9b"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/ui_appearance/__init__.py",
+      "size": 75,
+      "sha256": "e3a82bc2ad416272eb8fd2ff7bcdefbeb08efe7d4eafac7df745d42255b4765c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/ui_key_mask/__init__.py",
+      "size": 69,
+      "sha256": "ac093e77f29cc39e025f76a91285947adf08ef85fa2fa0a9be335457c13813a4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/_core/ui_progress/__init__.py",
+      "size": 1352,
+      "sha256": "4f85a25664a74f11fcb17151c8f53d3bf212cfd072607cbcc146a5b08b3591a7"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/MANIFEST.json",
+      "size": 2870,
+      "sha256": "151b5c34dc5dae505e3fe4b087058e1e2cce1889d2f44c855c3409b574dfdb29"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/nodes/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/nodes/matrix_wave1nanobananaprot2i.py",
+      "size": 3513,
+      "sha256": "c7e94d1dce84738579e8ad1dc738bfc784f284ab20749d68577030c1bdd5ef6e"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/NODES.md",
+      "size": 2045,
+      "sha256": "1891afac2ca5fcfabf1f2c508b4d8a97efeec762e6ff573c2cf621d1a4868c99"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/requirements.txt",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/tests/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/tests/test_pack.py",
+      "size": 2412,
+      "sha256": "6dddd5caf384e640362f71f65ae504833e4f46d343c9a46c42eb6779bb4db36f"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/web/appearance.e7e38b8de854fb13.js",
+      "size": 5655,
+      "sha256": "e7e38b8de854fb138b56ea4163a46801d2b7e43a6c853c452b867c6b5ef09488"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/web/key_mask.63aaea3d8a667dc7.js",
+      "size": 15660,
+      "sha256": "63aaea3d8a667dc76dcf7735dc4009d237961a3c902ebdfb2dceef0a520c9fd3"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-nano-banana-pro-t2i/web/progress.90963f67a8138900.js",
+      "size": 2333,
+      "sha256": "90963f67a8138900a7e0f7647dabc524ad6bbffc2735e65257655b5d43c56cba"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/__init__.py",
+      "size": 497,
+      "sha256": "3505e7f244a847938e99d7d8d78dc45fa0bf4d9eba116b6c109090d220dfb69f"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/__init__.py",
+      "size": 118,
+      "sha256": "ab9b648bd97f78bf8e1a5adc7c542e2a077ee0f37b4bcb670e3a60d2b6c85337"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/auth_provider_key/__init__.py",
+      "size": 501,
+      "sha256": "cac8deffc72e07e344c066fa9da112a299b6350df433fd21207b45a9f7955931"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/auth_provider_key/provider_key.py",
+      "size": 26448,
+      "sha256": "cea75aa38c6d47b867b7c53f1946317f71ec10d17cb572e211896370b8f491f5"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/cache_semantic/__init__.py",
+      "size": 31429,
+      "sha256": "c8fe990ec591abf026a14b97988477b8cf7d489dbc8bac6d832b178348c9f5dc"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/credentials.py",
+      "size": 5287,
+      "sha256": "ea2536040b076a92c053674a63e16de407be754941370daf050bfa376ee9d12c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/errors_taxonomy/__init__.py",
+      "size": 3928,
+      "sha256": "3e3a95fe208e307d7100b189bd4f853af546a65fb5c2067794294584963f3959"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/flow_api_media/__init__.py",
+      "size": 34253,
+      "sha256": "ee26283e0d5468c7c1c39ace165a08428dd4002e4e4f598137fd743f3fef2228"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/media_image_in/__init__.py",
+      "size": 17202,
+      "sha256": "6ad5e1aac2808df92105a8842f6c7d426d18e6bde521387451fa8f0b29119807"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/media_image_out/__init__.py",
+      "size": 5656,
+      "sha256": "c84d61606fc110cee8d9f845108dc929d8b8980a722641628fb0b68ed010c64f"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/media_reference_set/__init__.py",
+      "size": 1424,
+      "sha256": "72e7bfef62ad25f17c2ce43d7e5db6883bd040610fe3459dffbeead8fc62123c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/poll_task/__init__.py",
+      "size": 7317,
+      "sha256": "04030d7f99ce23627a3b8de61c78d5f83696bb541c08aec8e7e830d163021952"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/route_multi/__init__.py",
+      "size": 3673,
+      "sha256": "a9ae2ae8f2c1905a1fa4b373973b663d8d680a72cf898b548f632693592cd417"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/runtime.py",
+      "size": 27736,
+      "sha256": "081e3d12981082bb584c1266c61970da9d96062edee1b415f27b3788986c155b"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/spend_admission/__init__.py",
+      "size": 14814,
+      "sha256": "9d15a4a6c16b152245fdf5e7a20c10921043e13c2373f5b0d40f3c57b6125c51"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/submit_billable/__init__.py",
+      "size": 6330,
+      "sha256": "76765283227e7c124cc10463d9b9a4d25b6ccf60b0c15851060b7aa8433488e4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/submit_sync/__init__.py",
+      "size": 2150,
+      "sha256": "b824d3b4b7cc2477992ed151eac721bf9e7f688e28a86784c7e676490eb78d56"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/transport_http/__init__.py",
+      "size": 17475,
+      "sha256": "3b3d6f122b743834acc0be01112233fe16253ea1b17864f1476a745f7876bd9b"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/ui_appearance/__init__.py",
+      "size": 75,
+      "sha256": "e3a82bc2ad416272eb8fd2ff7bcdefbeb08efe7d4eafac7df745d42255b4765c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/ui_key_mask/__init__.py",
+      "size": 69,
+      "sha256": "ac093e77f29cc39e025f76a91285947adf08ef85fa2fa0a9be335457c13813a4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/_core/ui_progress/__init__.py",
+      "size": 1352,
+      "sha256": "4f85a25664a74f11fcb17151c8f53d3bf212cfd072607cbcc146a5b08b3591a7"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/MANIFEST.json",
+      "size": 2868,
+      "sha256": "6e93447f72a5ccc55235bee009a247ce0e0072f1dfaf1a5ca1b6ab9db36fdb6c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/nodes/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/nodes/matrix_wave1seedream45edit.py",
+      "size": 3718,
+      "sha256": "cb19b88b6c2214b298eda55870de543eb9325be8a9d8c411ee071ee039ec1c2a"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/NODES.md",
+      "size": 2170,
+      "sha256": "dcefca60cd3d5fb7b22b216f0c96892ab0e8b29bb6656e4657ddeb3aef16f442"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/requirements.txt",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/tests/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/tests/test_pack.py",
+      "size": 2392,
+      "sha256": "6ae462670bc2dca5244c461c9d788e8372c9c4a2803ca0c2f5e830b926ef305e"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/web/appearance.540292a0bfd6c7d7.js",
+      "size": 5653,
+      "sha256": "540292a0bfd6c7d70a3b06d3d86433859d26373df3b9ee4ad8b70a17b01712d8"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/web/key_mask.32d1fa38525947ad.js",
+      "size": 15658,
+      "sha256": "32d1fa38525947adbb4b59509fdaf284456e43d65894e2a875e5d0d8d193ce1b"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/web/progress.6c721b2595cf832b.js",
+      "size": 2331,
+      "sha256": "6c721b2595cf832b61194e1fd4909563bb23c3e8d9b32b1d43ba33b445d36321"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-edit/web/size_composer.9a574edf3a917bdb.js",
+      "size": 1613,
+      "sha256": "9a574edf3a917bdb28f560da0608acaa9ea3df57c755d0c9d8f6b5df76b6c838"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/__init__.py",
+      "size": 496,
+      "sha256": "3b3aa3a0e8af6027295077ff3cdef98f95bcf10a9328ab4499038a7e42b986b8"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/__init__.py",
+      "size": 118,
+      "sha256": "ab9b648bd97f78bf8e1a5adc7c542e2a077ee0f37b4bcb670e3a60d2b6c85337"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/auth_provider_key/__init__.py",
+      "size": 501,
+      "sha256": "cac8deffc72e07e344c066fa9da112a299b6350df433fd21207b45a9f7955931"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/auth_provider_key/provider_key.py",
+      "size": 26448,
+      "sha256": "cea75aa38c6d47b867b7c53f1946317f71ec10d17cb572e211896370b8f491f5"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/cache_semantic/__init__.py",
+      "size": 31429,
+      "sha256": "c8fe990ec591abf026a14b97988477b8cf7d489dbc8bac6d832b178348c9f5dc"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/credentials.py",
+      "size": 5287,
+      "sha256": "ea2536040b076a92c053674a63e16de407be754941370daf050bfa376ee9d12c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/errors_taxonomy/__init__.py",
+      "size": 3928,
+      "sha256": "3e3a95fe208e307d7100b189bd4f853af546a65fb5c2067794294584963f3959"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/flow_api_media/__init__.py",
+      "size": 34253,
+      "sha256": "ee26283e0d5468c7c1c39ace165a08428dd4002e4e4f598137fd743f3fef2228"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/media_image_in/__init__.py",
+      "size": 17202,
+      "sha256": "6ad5e1aac2808df92105a8842f6c7d426d18e6bde521387451fa8f0b29119807"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/media_image_out/__init__.py",
+      "size": 5656,
+      "sha256": "c84d61606fc110cee8d9f845108dc929d8b8980a722641628fb0b68ed010c64f"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/media_reference_set/__init__.py",
+      "size": 1424,
+      "sha256": "72e7bfef62ad25f17c2ce43d7e5db6883bd040610fe3459dffbeead8fc62123c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/poll_task/__init__.py",
+      "size": 7317,
+      "sha256": "04030d7f99ce23627a3b8de61c78d5f83696bb541c08aec8e7e830d163021952"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/route_multi/__init__.py",
+      "size": 3673,
+      "sha256": "a9ae2ae8f2c1905a1fa4b373973b663d8d680a72cf898b548f632693592cd417"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/runtime.py",
+      "size": 25308,
+      "sha256": "1e896c9487229aaaffa26e860e106e524580f260c895a5a91901bd7f5fc9e6d3"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/spend_admission/__init__.py",
+      "size": 14814,
+      "sha256": "9d15a4a6c16b152245fdf5e7a20c10921043e13c2373f5b0d40f3c57b6125c51"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/submit_billable/__init__.py",
+      "size": 6330,
+      "sha256": "76765283227e7c124cc10463d9b9a4d25b6ccf60b0c15851060b7aa8433488e4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/submit_sync/__init__.py",
+      "size": 2150,
+      "sha256": "b824d3b4b7cc2477992ed151eac721bf9e7f688e28a86784c7e676490eb78d56"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/transport_http/__init__.py",
+      "size": 17475,
+      "sha256": "3b3d6f122b743834acc0be01112233fe16253ea1b17864f1476a745f7876bd9b"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/ui_appearance/__init__.py",
+      "size": 75,
+      "sha256": "e3a82bc2ad416272eb8fd2ff7bcdefbeb08efe7d4eafac7df745d42255b4765c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/ui_key_mask/__init__.py",
+      "size": 69,
+      "sha256": "ac093e77f29cc39e025f76a91285947adf08ef85fa2fa0a9be335457c13813a4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/_core/ui_progress/__init__.py",
+      "size": 1352,
+      "sha256": "4f85a25664a74f11fcb17151c8f53d3bf212cfd072607cbcc146a5b08b3591a7"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/MANIFEST.json",
+      "size": 2867,
+      "sha256": "6f00b104459d9f559d4295da1d2577b6d46ffe7c7e69491c5be4cd3ff70b6f7e"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/nodes/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/nodes/matrix_wave1seedream45t2i.py",
+      "size": 3459,
+      "sha256": "6ba806a7935d23e3bc2f9d1dd449033a7a7589677ddfdcb56d3e797dbef1cb85"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/NODES.md",
+      "size": 2026,
+      "sha256": "43ae834124e044eff64f811640e21aaf69d741ea300cfcc020ffd480df8734ba"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/requirements.txt",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/tests/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/tests/test_pack.py",
+      "size": 2377,
+      "sha256": "53900a67bf5a8f5f647ac8edc0689d738d20c047a6dc2e41b89fb85623c2d8d8"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/web/appearance.0861b4c72bad2d17.js",
+      "size": 5652,
+      "sha256": "0861b4c72bad2d17515114ed4b93beefe2c21b99b6d38bcf19fb971c3d498b45"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/web/key_mask.23a6b54e58de97e6.js",
+      "size": 15657,
+      "sha256": "23a6b54e58de97e6f9c8e4c5e018e1b0912976bc2798b04215bf18310a6c2029"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/web/progress.7d268485bb9c8d82.js",
+      "size": 2330,
+      "sha256": "7d268485bb9c8d825ea4471df60a055a66bfa210a2aa532fca6061cd27a754b2"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-45-t2i/web/size_composer.854ec0e19b26d679.js",
+      "size": 1611,
+      "sha256": "854ec0e19b26d67972179f41a81dfa22a996028dc684aeb80133eb88715b2b59"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/__init__.py",
+      "size": 500,
+      "sha256": "a61d03e5c4502f85b7cc6503248eaa25b0d60e50547b93632521eec327aa70bf"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/__init__.py",
+      "size": 118,
+      "sha256": "ab9b648bd97f78bf8e1a5adc7c542e2a077ee0f37b4bcb670e3a60d2b6c85337"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/auth_provider_key/__init__.py",
+      "size": 501,
+      "sha256": "cac8deffc72e07e344c066fa9da112a299b6350df433fd21207b45a9f7955931"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/auth_provider_key/provider_key.py",
+      "size": 26448,
+      "sha256": "cea75aa38c6d47b867b7c53f1946317f71ec10d17cb572e211896370b8f491f5"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/cache_semantic/__init__.py",
+      "size": 31429,
+      "sha256": "c8fe990ec591abf026a14b97988477b8cf7d489dbc8bac6d832b178348c9f5dc"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/credentials.py",
+      "size": 5287,
+      "sha256": "ea2536040b076a92c053674a63e16de407be754941370daf050bfa376ee9d12c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/errors_taxonomy/__init__.py",
+      "size": 3928,
+      "sha256": "3e3a95fe208e307d7100b189bd4f853af546a65fb5c2067794294584963f3959"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/flow_api_media/__init__.py",
+      "size": 34253,
+      "sha256": "ee26283e0d5468c7c1c39ace165a08428dd4002e4e4f598137fd743f3fef2228"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/media_image_in/__init__.py",
+      "size": 17202,
+      "sha256": "6ad5e1aac2808df92105a8842f6c7d426d18e6bde521387451fa8f0b29119807"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/media_image_out/__init__.py",
+      "size": 5656,
+      "sha256": "c84d61606fc110cee8d9f845108dc929d8b8980a722641628fb0b68ed010c64f"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/media_reference_set/__init__.py",
+      "size": 1424,
+      "sha256": "72e7bfef62ad25f17c2ce43d7e5db6883bd040610fe3459dffbeead8fc62123c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/poll_task/__init__.py",
+      "size": 7317,
+      "sha256": "04030d7f99ce23627a3b8de61c78d5f83696bb541c08aec8e7e830d163021952"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/route_multi/__init__.py",
+      "size": 3673,
+      "sha256": "a9ae2ae8f2c1905a1fa4b373973b663d8d680a72cf898b548f632693592cd417"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/runtime.py",
+      "size": 37006,
+      "sha256": "29be5e62f64b930f5f74ea7b3c01d9b9141f7d889a81448fbdde2fa38f39f7db"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/spend_admission/__init__.py",
+      "size": 14814,
+      "sha256": "9d15a4a6c16b152245fdf5e7a20c10921043e13c2373f5b0d40f3c57b6125c51"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/submit_billable/__init__.py",
+      "size": 6330,
+      "sha256": "76765283227e7c124cc10463d9b9a4d25b6ccf60b0c15851060b7aa8433488e4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/submit_sync/__init__.py",
+      "size": 2150,
+      "sha256": "b824d3b4b7cc2477992ed151eac721bf9e7f688e28a86784c7e676490eb78d56"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/transport_http/__init__.py",
+      "size": 17475,
+      "sha256": "3b3d6f122b743834acc0be01112233fe16253ea1b17864f1476a745f7876bd9b"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/ui_appearance/__init__.py",
+      "size": 75,
+      "sha256": "e3a82bc2ad416272eb8fd2ff7bcdefbeb08efe7d4eafac7df745d42255b4765c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/ui_key_mask/__init__.py",
+      "size": 69,
+      "sha256": "ac093e77f29cc39e025f76a91285947adf08ef85fa2fa0a9be335457c13813a4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/_core/ui_progress/__init__.py",
+      "size": 1352,
+      "sha256": "4f85a25664a74f11fcb17151c8f53d3bf212cfd072607cbcc146a5b08b3591a7"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/MANIFEST.json",
+      "size": 2871,
+      "sha256": "421c38af319d38d7bde7316d38427626ef06bade7dd3d1b9a2ff3270d90cef98"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/nodes/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/nodes/matrix_wave1seedream50proedit.py",
+      "size": 3932,
+      "sha256": "a49ca33b1336e2bf6b376c730459becd26f5c732017326bcbba122533366228d"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/NODES.md",
+      "size": 2403,
+      "sha256": "51d051469d5bbfe8109f10b2aab725b6ea419dee3951c356f74ca9626ce37582"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/requirements.txt",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/tests/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/tests/test_pack.py",
+      "size": 2427,
+      "sha256": "e365e76c64294ecfba7bd7a021d3b7f27b282a406c8df8040fbf49c8cc4a36d0"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/web/appearance.1cc33a2379e397b2.js",
+      "size": 5656,
+      "sha256": "1cc33a2379e397b294d1b15abf60a0197c199608675f286d4a8760f4f159d354"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/web/key_mask.47518b2e1611b4f0.js",
+      "size": 15661,
+      "sha256": "47518b2e1611b4f008ee83838d3e6db9797587c2f006a37badff5e526d300c71"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-edit/web/progress.b4da0f25edaf886b.js",
+      "size": 2334,
+      "sha256": "b4da0f25edaf886bc7cc91de5f865f7eb80c508f6871abe9f1c70eaca042239e"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/__init__.py",
+      "size": 499,
+      "sha256": "16fc30e643b80964415cf7cd29156e0f7462f573d6d377b1649e154b0d2fe9cb"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/__init__.py",
+      "size": 118,
+      "sha256": "ab9b648bd97f78bf8e1a5adc7c542e2a077ee0f37b4bcb670e3a60d2b6c85337"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/auth_provider_key/__init__.py",
+      "size": 501,
+      "sha256": "cac8deffc72e07e344c066fa9da112a299b6350df433fd21207b45a9f7955931"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/auth_provider_key/provider_key.py",
+      "size": 26448,
+      "sha256": "cea75aa38c6d47b867b7c53f1946317f71ec10d17cb572e211896370b8f491f5"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/cache_semantic/__init__.py",
+      "size": 31429,
+      "sha256": "c8fe990ec591abf026a14b97988477b8cf7d489dbc8bac6d832b178348c9f5dc"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/credentials.py",
+      "size": 5287,
+      "sha256": "ea2536040b076a92c053674a63e16de407be754941370daf050bfa376ee9d12c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/errors_taxonomy/__init__.py",
+      "size": 3928,
+      "sha256": "3e3a95fe208e307d7100b189bd4f853af546a65fb5c2067794294584963f3959"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/flow_api_media/__init__.py",
+      "size": 34253,
+      "sha256": "ee26283e0d5468c7c1c39ace165a08428dd4002e4e4f598137fd743f3fef2228"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/media_image_in/__init__.py",
+      "size": 17202,
+      "sha256": "6ad5e1aac2808df92105a8842f6c7d426d18e6bde521387451fa8f0b29119807"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/media_image_out/__init__.py",
+      "size": 5656,
+      "sha256": "c84d61606fc110cee8d9f845108dc929d8b8980a722641628fb0b68ed010c64f"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/media_reference_set/__init__.py",
+      "size": 1424,
+      "sha256": "72e7bfef62ad25f17c2ce43d7e5db6883bd040610fe3459dffbeead8fc62123c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/poll_task/__init__.py",
+      "size": 7317,
+      "sha256": "04030d7f99ce23627a3b8de61c78d5f83696bb541c08aec8e7e830d163021952"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/route_multi/__init__.py",
+      "size": 3673,
+      "sha256": "a9ae2ae8f2c1905a1fa4b373973b663d8d680a72cf898b548f632693592cd417"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/runtime.py",
+      "size": 31174,
+      "sha256": "de7721970563f0be6e1535b5de132c05ce5a1373806a59d27e7cbc503b3981bc"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/spend_admission/__init__.py",
+      "size": 14814,
+      "sha256": "9d15a4a6c16b152245fdf5e7a20c10921043e13c2373f5b0d40f3c57b6125c51"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/submit_billable/__init__.py",
+      "size": 6330,
+      "sha256": "76765283227e7c124cc10463d9b9a4d25b6ccf60b0c15851060b7aa8433488e4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/submit_sync/__init__.py",
+      "size": 2150,
+      "sha256": "b824d3b4b7cc2477992ed151eac721bf9e7f688e28a86784c7e676490eb78d56"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/transport_http/__init__.py",
+      "size": 17475,
+      "sha256": "3b3d6f122b743834acc0be01112233fe16253ea1b17864f1476a745f7876bd9b"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/ui_appearance/__init__.py",
+      "size": 75,
+      "sha256": "e3a82bc2ad416272eb8fd2ff7bcdefbeb08efe7d4eafac7df745d42255b4765c"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/ui_key_mask/__init__.py",
+      "size": 69,
+      "sha256": "ac093e77f29cc39e025f76a91285947adf08ef85fa2fa0a9be335457c13813a4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/_core/ui_progress/__init__.py",
+      "size": 1352,
+      "sha256": "4f85a25664a74f11fcb17151c8f53d3bf212cfd072607cbcc146a5b08b3591a7"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/MANIFEST.json",
+      "size": 2870,
+      "sha256": "f775318961ea132c41b8c2d4866467a1b69a9997acfdb1aeb192f52585fbd224"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/nodes/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/nodes/matrix_wave1seedream50prot2i.py",
+      "size": 3526,
+      "sha256": "0db7a8b66dd14123332d899df355f3ccd409f3fbb2f0ca919d3ba894943bd8b1"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/NODES.md",
+      "size": 2087,
+      "sha256": "52b00fcac90445f02d768789d3e4fdaa3b3c2275602c8ee8fa383d2302637dc3"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/requirements.txt",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/tests/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/tests/test_pack.py",
+      "size": 2412,
+      "sha256": "ad50b208798e5015acda6717ee4075d819b2e35c9736c6923462d1d751e6384e"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/web/appearance.7f0fb00075f15dcc.js",
+      "size": 5655,
+      "sha256": "7f0fb00075f15dccd40253813ca08ff5a4e3eb6a434dbaf882ffc89af9a171c3"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/web/key_mask.195af6076736747a.js",
+      "size": 15660,
+      "sha256": "195af6076736747aed42715c4db6ecb49b2bca17f9c855a63c856474debb39d4"
+    },
+    {
+      "path": "custom_nodes/matrix-wave1-seedream-50-pro-t2i/web/progress.1b93f40de538ecc5.js",
+      "size": 2333,
+      "sha256": "1b93f40de538ecc5a93c1a53a600990f2ded9a532a92de8dc5c49af28e048842"
+    },
+    {
+      "path": "INSTALL.md",
+      "size": 1271,
+      "sha256": "3eaef7e47836370ab002df254fa4e4e5c4b52fa8133d8040fa83eda3a87d075b"
+    },
+    {
+      "path": "LEARNINGS.md",
+      "size": 1475,
+      "sha256": "47c864d46aa1eccc185a440b1c0e0142f6a70512765946d6b2af7bb087f49055"
+    },
+    {
+      "path": "LICENSE",
+      "size": 1067,
+      "sha256": "1d9f68db323417963eec0bcb3b7bfff4725c3d53ce1ca25c44e853c00d119f54"
+    },
+    {
+      "path": "LOG.md",
+      "size": 281,
+      "sha256": "d4e9b37057d53a59c117b215a4589fca7d781773cd5da6257cf0baf08cf9d8d9"
+    },
+    {
+      "path": "NODES.md",
+      "size": 1016,
+      "sha256": "d0d060bcf200463c425c3801fe57219264e707f6c462384f6b31fecc6e9048a8"
+    },
+    {
+      "path": "README.md",
+      "size": 2218,
+      "sha256": "ae900f045c93ffcfd3ad9f9f109aa786e792c00ee5fa6fa611ed2a560f2b3f85"
+    },
+    {
+      "path": "scripts/install.ps1",
+      "size": 2032,
+      "sha256": "2dc99fb2ec661483b11dd634a8c4b421f0e839abf0a881debbd1ada479f4e8a9"
+    },
+    {
+      "path": "scripts/install.sh",
+      "size": 1266,
+      "sha256": "5c5065c827ba2bfbe147c0610cd6be8018a46652c8c9118ee14deef54c253b23"
+    },
+    {
+      "path": "scripts/verify.py",
+      "size": 3364,
+      "sha256": "586fb3968867153d4da7db7e95641a971d2f0982211c937395388639afaff50d"
+    },
+    {
+      "path": "SECURITY.md",
+      "size": 643,
+      "sha256": "8e33436161f89c9d83c7dac351b9d64f62d0023c6b573c267f0793950e45792e"
+    },
+    {
+      "path": "tests/test_release_contract.py",
+      "size": 1223,
+      "sha256": "36d57fe3b4b774c9078f432f7ecbb598eba2718bbac9682b4aff7c970936341c"
+    },
+    {
+      "path": "verification/summary.json",
+      "size": 5577,
+      "sha256": "a13aae7912cb68fde3d36568291567171a14c032688a9ea4b72fd8228ecafb8a"
+    },
+    {
+      "path": "VERIFICATION.md",
+      "size": 1221,
+      "sha256": "4dff3a57cd3ea533ea30b83d7155891a35484a5ca7253b2ef846388ea9ef0d9d"
+    },
+    {
+      "path": "VERSION",
+      "size": 7,
+      "sha256": "902772cf66e85a24a4c33df08372d2e50040c365eff94f8a7cf0e3183fe1140f"
+    },
+    {
+      "path": "workflows/matrix-power-nodes-wave1-all-nodes-safe.json",
+      "size": 21684,
+      "sha256": "877f9ee8950e4363576eba8967f70f829ddf8aac739cba17ea19abc052253ae6"
+    }
+  ]
+}

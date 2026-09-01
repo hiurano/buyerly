@@ -3,16 +3,20 @@ import { SidebarHeader } from './SidebarHeader';
 import { useAppStore } from '@/store/useAppStore';
 import {
   LinearInboxIcon,
-  LinearLayersIcon,
+  LinearMetaIcon,
   LinearBoltIcon,
-  LinearBarChartIcon,
+  LinearChartIcon,
 } from '@/icons/LinearIcons';
 import { Tooltip } from '@/ui/Tooltip';
+import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
 
 export const Sidebar: React.FC = () => {
   const {
     sidebarWidth,
     setSidebarWidth,
+    isSidebarCollapsed,
+    setSidebarCollapsed,
+    resetSidebarWidth,
     activeTab,
     setActiveTab,
     notifications,
@@ -51,7 +55,15 @@ export const Sidebar: React.FC = () => {
     if (!isDragging) return;
 
     const handlePointerMove = (e: PointerEvent) => {
-      setSidebarWidth(e.clientX);
+      // Snap-to-collapse when dragged below 150px
+      if (e.clientX < 150) {
+        setSidebarCollapsed(true);
+      } else {
+        if (isSidebarCollapsed) {
+          setSidebarCollapsed(false);
+        }
+        setSidebarWidth(e.clientX);
+      }
       updateSpotlight(e.clientY);
     };
 
@@ -73,177 +85,190 @@ export const Sidebar: React.FC = () => {
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
-  }, [isDragging, setSidebarWidth, updateSpotlight]);
+  }, [isDragging, isSidebarCollapsed, setSidebarCollapsed, setSidebarWidth, updateSpotlight]);
 
   return (
-    <aside
-      style={{ width: `${sidebarWidth}px` }}
-      className="relative flex h-screen shrink-0 flex-col select-none bg-[#09090a]"
+    <div
+      className="sidebar-slot-wrapper"
+      data-resizing={isDragging ? 'true' : 'false'}
+      style={{
+        width: isSidebarCollapsed ? '8px' : `${sidebarWidth}px`,
+        transition: isDragging ? 'none' : undefined,
+      }}
     >
-      {/* 1. Header (Workspace + Search) */}
-      <SidebarHeader />
-
-      {/* 2. Navigation Section (Exact Linear width 196px with px-3 padding) */}
-      <div className="flex-1 overflow-y-auto px-3 pb-4 space-y-[1px]">
-        {/* Item 1: Inbox */}
-        <Tooltip content="Inbox" shortcut="G I" side="right" sideOffset={8}>
-          <button
-            type="button"
-            onClick={() => setActiveTab('inbox')}
-            data-active={activeTab === 'inbox' ? 'true' : 'false'}
-            className="linear-sidebar-nav-item group"
-          >
-            <div className="flex items-center min-w-0">
-              <span
-                style={{
-                  width: '16px',
-                  height: '16px',
-                  marginRight: '6px',
-                }}
-                className="flex shrink-0 items-center justify-center"
-              >
-                <LinearInboxIcon size={14} />
-              </span>
-              <span
-                style={{
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  letterSpacing: '-0.1px',
-                }}
-                className="truncate"
-              >
-                Inbox
-              </span>
-            </div>
-
-            {/* Dynamic Unread Badge */}
-            {unreadCount > 0 && (
-              <span
-                style={{
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  letterSpacing: '-0.1px',
-                  color: 'lch(60.621% 1.2 272 / 1)',
-                }}
-                className="shrink-0 transition-colors group-hover:text-white"
-              >
-                {unreadCount}
-              </span>
-            )}
-          </button>
-        </Tooltip>
-
-        {/* Item 2: Campaigns */}
-        <Tooltip content="Go to campaigns" shortcut="G C" side="right" sideOffset={8}>
-          <button
-            type="button"
-            onClick={() => setActiveTab('campaigns')}
-            data-active={activeTab === 'campaigns' ? 'true' : 'false'}
-            className="linear-sidebar-nav-item"
-          >
-            <div className="flex items-center min-w-0">
-              <span
-                style={{
-                  width: '16px',
-                  height: '16px',
-                  marginRight: '6px',
-                }}
-                className="flex shrink-0 items-center justify-center"
-              >
-                <LinearLayersIcon size={14} />
-              </span>
-              <span
-                style={{
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  letterSpacing: '-0.1px',
-                }}
-                className="truncate"
-              >
-                Campaigns
-              </span>
-            </div>
-          </button>
-        </Tooltip>
-
-        {/* Item 3: Rules */}
-        <Tooltip content="Go to rules" shortcut="G R" side="right" sideOffset={8}>
-          <button
-            type="button"
-            onClick={() => setActiveTab('rules')}
-            data-active={activeTab === 'rules' ? 'true' : 'false'}
-            className="linear-sidebar-nav-item"
-          >
-            <div className="flex items-center min-w-0">
-              <span
-                style={{
-                  width: '16px',
-                  height: '16px',
-                  marginRight: '6px',
-                }}
-                className="flex shrink-0 items-center justify-center"
-              >
-                <LinearBoltIcon size={14} />
-              </span>
-              <span
-                style={{
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  letterSpacing: '-0.1px',
-                }}
-                className="truncate"
-              >
-                Rules
-              </span>
-            </div>
-          </button>
-        </Tooltip>
-
-        {/* Item 4: Insights */}
-        <Tooltip content="Go to insights" shortcut="G N" side="right" sideOffset={8}>
-          <button
-            type="button"
-            onClick={() => setActiveTab('insights')}
-            data-active={activeTab === 'insights' ? 'true' : 'false'}
-            className="linear-sidebar-nav-item"
-          >
-            <div className="flex items-center min-w-0">
-              <span
-                style={{
-                  width: '16px',
-                  height: '16px',
-                  marginRight: '6px',
-                }}
-                className="flex shrink-0 items-center justify-center"
-              >
-                <LinearBarChartIcon size={14} />
-              </span>
-              <span
-                style={{
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  letterSpacing: '-0.1px',
-                }}
-                className="truncate"
-              >
-                Insights
-              </span>
-            </div>
-          </button>
-        </Tooltip>
-      </div>
-
-      {/* 3. Linear Exact 3-Layer Spotlight Resizer */}
-      <div
-        className="linear-resizer-hit-target"
-        data-dragging={isDragging ? 'true' : 'false'}
-        onMouseMove={handleMouseMove}
-        onMouseDown={startResizing}
+      <aside
+        data-sidebar-surface="true"
+        data-resizing={isDragging ? 'true' : 'false'}
+        style={{
+          width: `${sidebarWidth}px`,
+          transform: isSidebarCollapsed
+            ? `translateX(-${sidebarWidth + 16}px)`
+            : 'translateX(0px)',
+          transition: isDragging ? 'none' : undefined,
+        }}
+        className="sidebar-surface app-sidebar"
       >
-        <div ref={trackRef} className="linear-resizer-track" aria-hidden="true">
-          <div ref={indicatorRef} className="linear-resizer-indicator" />
+        {/* 1. Header (Workspace + Search + Create) */}
+        <SidebarHeader />
+
+        {/* 2. Navigation Section */}
+        <div className="flex-1 overflow-y-auto px-3 pb-4 space-y-[1px]">
+          {/* Item 1: Inbox */}
+          <Tooltip content="Inbox" shortcut="G I" side="right" sideOffset={8}>
+            <button
+              type="button"
+              onClick={() => setActiveTab('inbox')}
+              data-active={activeTab === 'inbox' ? 'true' : 'false'}
+              className="linear-sidebar-nav-item group"
+            >
+              <div className="flex items-center min-w-0">
+                <span
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    marginRight: '8px',
+                  }}
+                  className="flex shrink-0 items-center justify-center"
+                >
+                  <LinearInboxIcon size={14} />
+                </span>
+                <span
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    letterSpacing: '-0.1px',
+                  }}
+                  className="truncate"
+                >
+                  Inbox
+                </span>
+              </div>
+
+              {/* Exact Linear Unread Badge */}
+              {unreadCount > 0 && (
+                <span className="linear-sidebar-badge">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          </Tooltip>
+
+          {/* Item 2: Ads Manager */}
+          <Tooltip content="Go to Ads Manager" shortcut="G A" side="right" sideOffset={8}>
+            <button
+              type="button"
+              onClick={() => setActiveTab('campaigns')}
+              data-active={activeTab === 'campaigns' ? 'true' : 'false'}
+              className="linear-sidebar-nav-item"
+            >
+              <div className="flex items-center min-w-0">
+                <span
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    marginRight: '8px',
+                  }}
+                  className="flex shrink-0 items-center justify-center"
+                >
+                  <LinearMetaIcon size={14} />
+                </span>
+                <span
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    letterSpacing: '-0.1px',
+                  }}
+                  className="truncate"
+                >
+                  Ads Manager
+                </span>
+              </div>
+            </button>
+          </Tooltip>
+
+          {/* Item 3: Rules */}
+          <Tooltip content="Go to rules" shortcut="G R" side="right" sideOffset={8}>
+            <button
+              type="button"
+              onClick={() => setActiveTab('rules')}
+              data-active={activeTab === 'rules' ? 'true' : 'false'}
+              className="linear-sidebar-nav-item"
+            >
+              <div className="flex items-center min-w-0">
+                <span
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    marginRight: '8px',
+                  }}
+                  className="flex shrink-0 items-center justify-center"
+                >
+                  <LinearBoltIcon size={14} />
+                </span>
+                <span
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    letterSpacing: '-0.1px',
+                  }}
+                  className="truncate"
+                >
+                  Rules
+                </span>
+              </div>
+            </button>
+          </Tooltip>
+
+          {/* Item 4: Statistics */}
+          <Tooltip content="Go to statistics" shortcut="G S" side="right" sideOffset={8}>
+            <button
+              type="button"
+              onClick={() => setActiveTab('statistics')}
+              data-active={activeTab === 'statistics' ? 'true' : 'false'}
+              className="linear-sidebar-nav-item"
+            >
+              <div className="flex items-center min-w-0">
+                <span
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    marginRight: '8px',
+                  }}
+                  className="flex shrink-0 items-center justify-center"
+                >
+                  <LinearChartIcon size={14} />
+                </span>
+                <span
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    letterSpacing: '-0.1px',
+                  }}
+                  className="truncate"
+                >
+                  Statistics
+                </span>
+              </div>
+            </button>
+          </Tooltip>
         </div>
-      </div>
-    </aside>
+
+        <SidebarUtilityFooter />
+
+        {/* 3. Linear Exact 3-Layer Spotlight Resizer with Double-Click Reset */}
+        <div
+          className="linear-resizer-hit-target"
+          data-dragging={isDragging ? 'true' : 'false'}
+          onMouseMove={handleMouseMove}
+          onMouseDown={startResizing}
+          onDoubleClick={resetSidebarWidth}
+          title="Drag to resize, double-click to reset"
+        >
+          <div ref={trackRef} className="linear-resizer-track" aria-hidden="true">
+            <div ref={indicatorRef} className="linear-resizer-indicator" />
+          </div>
+        </div>
+      </aside>
+    </div>
   );
 };

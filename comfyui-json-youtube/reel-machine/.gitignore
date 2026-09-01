@@ -1,0 +1,5 @@
+intake/
+reels/
+characters/*/refs/*
+!characters/your-model/refs/README.txt
+*.mp4

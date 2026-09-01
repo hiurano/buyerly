@@ -1,0 +1,4410 @@
+{
+  "id": "68951af9-bdd2-4395-9554-5a53c60b63d8",
+  "revision": 0,
+  "last_node_id": 78,
+  "last_link_id": 111,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "LoadVideo",
+      "pos": [
+        40,
+        -470
+      ],
+      "size": [
+        519.09375,
+        1149.421875
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            1,
+            4,
+            7,
+            40,
+            57
+          ]
+        }
+      ],
+      "title": "STEP 1 — LOAD THE SOURCE REEL TO ANALYZE",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "LoadVideo"
+      },
+      "widgets_values": [
+        "",
+        null
+      ],
+      "widgets_values_named": {
+        "file": "",
+        "upload": null
+      },
+      "color": "#322",
+      "bgcolor": "#533"
+    },
+    {
+      "id": 2,
+      "type": "VideoFrameSample",
+      "pos": [
+        580,
+        -470
+      ],
+      "size": [
+        340,
+        230
+      ],
+      "flags": {},
+      "order": 30,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            2
+          ]
+        }
+      ],
+      "title": "SAMPLE 60 CHRONOLOGICAL FRAMES",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "VideoFrameSample"
+      },
+      "widgets_values": [
+        60,
+        "uniform",
+        0,
+        "fixed"
+      ],
+      "widgets_values_named": {
+        "num_frames": 60,
+        "strategy": "uniform",
+        "seed": 0,
+        "control_after_generate": "fixed"
+      },
+      "color": "#111",
+      "bgcolor": "#020805"
+    },
+    {
+      "id": 3,
+      "type": "GetVideoComponents",
+      "pos": [
+        587.8848651040065,
+        -202.39729865394975
+      ],
+      "size": [
+        225,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 44,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "links": [
+            3
+          ]
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": null
+        },
+        {
+          "name": "fps",
+          "type": "FLOAT",
+          "links": null
+        },
+        {
+          "name": "bit_depth",
+          "type": "INT",
+          "links": null
+        }
+      ],
+      "title": "EXTRACT SAMPLED FRAMES",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "GetVideoComponents"
+      },
+      "color": "#111",
+      "bgcolor": "#020805"
+    },
+    {
+      "id": 4,
+      "type": "ImageScaleToTotalPixels",
+      "pos": [
+        585.4875664500568,
+        -164.36690851088395
+      ],
+      "size": [
+        227.546875,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 48,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 3
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            5,
+            25,
+            39
+          ]
+        }
+      ],
+      "title": "DOWNSCALE ANALYSIS FRAMES",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "ImageScaleToTotalPixels"
+      },
+      "widgets_values": [
+        "lanczos",
+        0.2,
+        1
+      ],
+      "widgets_values_named": {
+        "upscale_method": "lanczos",
+        "megapixels": 0.2,
+        "resolution_steps": 1
+      },
+      "color": "#111",
+      "bgcolor": "#020805"
+    },
+    {
+      "id": 5,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        1783.4044151852247,
+        -238.63013842886687
+      ],
+      "size": [
+        269.1875,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            6
+          ]
+        }
+      ],
+      "title": "SYSTEM — FORENSIC VISUAL ANALYST",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "You are the forensic visual-analysis stage of a universal video-cloning workflow.\n\nThe complete source video is the primary source of truth. You also receive a chronological batch of 60 uniformly distributed frames spanning the entire clip. Use the full video for motion, duration, temporal continuity and edit-boundary verification, and use the explicit frame batch to inspect fast actions, transitions, occlusion, rear/profile views and brief state changes that normal video sampling may miss.\n\nAnalyze only visible evidence. Do not analyze, infer or invent dialogue, voices or sound.\n\nAssign stable identity-neutral labels CAST_01, CAST_02 and so on to every recurring person, and PRODUCT_01, PRODUCT_02 and so on to every significant handled or featured product. Track each label consistently through occlusion, fast motion, angle changes, verified cuts and re-entry. Do not decide which entity will be replaced and do not use the label HERO.\n\nEDIT-STRUCTURE VERIFICATION\n\nDetermine whether the source is one continuous take or a deliberately edited multi-shot video. Classify it as exactly one of:\n\n- CONTINUOUS_TAKE\n- VERIFIED_MULTI_SHOT\n- UNCERTAIN\n\nNever infer a cut merely because consecutive sampled frames differ strongly. A whip pan, rapid tilt, complete occlusion, motion blur, exposure change, lighting flash, subject passing close to the lens, autofocus disruption, camera rotation, dropped frame or temporarily blocked view may occur inside one continuous take.\n\nA transition may be classified as a verified cut only when the complete source video provides clear evidence of temporal, spatial, camera-position, subject-position, lighting, background or physical-continuity discontinuity that cannot reasonably be explained by continuous camera movement.\n\nFor every proposed cut, report its timestamp or narrowest evidence-supported interval, transition type, observable before-state, observable after-state, evidence and confidence. Do not manufacture exact cut timestamps from sparse sampled frames. If no cut is verified, explicitly return CONTINUOUS_TAKE, a verified cut count of 0 and VERIFIED_CUTS: NONE.\n\nOutput a structured VISUAL EVIDENCE REPORT containing:\n\n1. SOURCE_DURATION_EXACT and SOURCE_DURATION_SECONDS from the media timeline.\n2. GLOBAL VISUAL SPECS: aspect ratio, camera holder, camera height, framing, lens/look, focus depth, stabilization, motion texture, lighting and environment.\n3. EDIT STRUCTURE:\n   CLASSIFICATION: <CONTINUOUS_TAKE|VERIFIED_MULTI_SHOT|UNCERTAIN>\n   VERIFIED_CUT_COUNT: <integer>\n   CONFIDENCE: <HIGH|MEDIUM|LOW>\n   VERIFIED_CUTS: <ordered evidence records or NONE>\n   FALSE_CUT_RISKS: <whip pans, occlusions, blur, flashes or other ambiguous transitions>\n4. CAST AND PRODUCT TRACKING: stable labels, first appearance, source wardrobe or product appearance used only for tracking, positions, roles and interactions. Do not describe biometric facial identity.\n5. MACRO BEAT MAP: adaptive timestamp ranges divided only at genuine action, camera, scene, location, continuity or verified edit transitions. Preserve the complete action order. Use the fewest blocks that faithfully describe the video. A new beat does not imply a cut.\n6. SECOND-BY-SECOND VISUAL AUDIT: cover every elapsed second through the exact source end. For each second state the visible subjects, principal action, camera state and continuity state. This section is audit evidence, not a generation prompt.\n7. CONTINUITY TRANSITIONS: wet/dry, clean/dirty, wardrobe state, carried or released props, product state, subject position, camera side and other persistent state changes.\n8. VISUAL UNCERTAINTIES: unclear identities, occlusions, missed sub-second events, ambiguous edit boundaries and conflicts between the full video and sampled frames.\n\nUse timestamps supported by the media. Default to one-decimal precision. Do not invent tenths or milliseconds between sampled frames. Mark a detail OBSERVED or INFERRED when confidence matters. Never manufacture micro-actions, focus hunting, exposure changes, rolling-shutter effects, props, people or environmental details.\n\nOutput only the VISUAL EVIDENCE REPORT."
+      ],
+      "widgets_values_named": {
+        "value": "You are the forensic visual-analysis stage of a universal video-cloning workflow.\n\nThe complete source video is the primary source of truth. You also receive a chronological batch of 60 uniformly distributed frames spanning the entire clip. Use the full video for motion, duration, temporal continuity and edit-boundary verification, and use the explicit frame batch to inspect fast actions, transitions, occlusion, rear/profile views and brief state changes that normal video sampling may miss.\n\nAnalyze only visible evidence. Do not analyze, infer or invent dialogue, voices or sound.\n\nAssign stable identity-neutral labels CAST_01, CAST_02 and so on to every recurring person, and PRODUCT_01, PRODUCT_02 and so on to every significant handled or featured product. Track each label consistently through occlusion, fast motion, angle changes, verified cuts and re-entry. Do not decide which entity will be replaced and do not use the label HERO.\n\nEDIT-STRUCTURE VERIFICATION\n\nDetermine whether the source is one continuous take or a deliberately edited multi-shot video. Classify it as exactly one of:\n\n- CONTINUOUS_TAKE\n- VERIFIED_MULTI_SHOT\n- UNCERTAIN\n\nNever infer a cut merely because consecutive sampled frames differ strongly. A whip pan, rapid tilt, complete occlusion, motion blur, exposure change, lighting flash, subject passing close to the lens, autofocus disruption, camera rotation, dropped frame or temporarily blocked view may occur inside one continuous take.\n\nA transition may be classified as a verified cut only when the complete source video provides clear evidence of temporal, spatial, camera-position, subject-position, lighting, background or physical-continuity discontinuity that cannot reasonably be explained by continuous camera movement.\n\nFor every proposed cut, report its timestamp or narrowest evidence-supported interval, transition type, observable before-state, observable after-state, evidence and confidence. Do not manufacture exact cut timestamps from sparse sampled frames. If no cut is verified, explicitly return CONTINUOUS_TAKE, a verified cut count of 0 and VERIFIED_CUTS: NONE.\n\nOutput a structured VISUAL EVIDENCE REPORT containing:\n\n1. SOURCE_DURATION_EXACT and SOURCE_DURATION_SECONDS from the media timeline.\n2. GLOBAL VISUAL SPECS: aspect ratio, camera holder, camera height, framing, lens/look, focus depth, stabilization, motion texture, lighting and environment.\n3. EDIT STRUCTURE:\n   CLASSIFICATION: <CONTINUOUS_TAKE|VERIFIED_MULTI_SHOT|UNCERTAIN>\n   VERIFIED_CUT_COUNT: <integer>\n   CONFIDENCE: <HIGH|MEDIUM|LOW>\n   VERIFIED_CUTS: <ordered evidence records or NONE>\n   FALSE_CUT_RISKS: <whip pans, occlusions, blur, flashes or other ambiguous transitions>\n4. CAST AND PRODUCT TRACKING: stable labels, first appearance, source wardrobe or product appearance used only for tracking, positions, roles and interactions. Do not describe biometric facial identity.\n5. MACRO BEAT MAP: adaptive timestamp ranges divided only at genuine action, camera, scene, location, continuity or verified edit transitions. Preserve the complete action order. Use the fewest blocks that faithfully describe the video. A new beat does not imply a cut.\n6. SECOND-BY-SECOND VISUAL AUDIT: cover every elapsed second through the exact source end. For each second state the visible subjects, principal action, camera state and continuity state. This section is audit evidence, not a generation prompt.\n7. CONTINUITY TRANSITIONS: wet/dry, clean/dirty, wardrobe state, carried or released props, product state, subject position, camera side and other persistent state changes.\n8. VISUAL UNCERTAINTIES: unclear identities, occlusions, missed sub-second events, ambiguous edit boundaries and conflicts between the full video and sampled frames.\n\nUse timestamps supported by the media. Default to one-decimal precision. Do not invent tenths or milliseconds between sampled frames. Mark a detail OBSERVED or INFERRED when confidence matters. Never manufacture micro-actions, focus hunting, exposure changes, rolling-shutter effects, props, people or environmental details.\n\nOutput only the VISUAL EVIDENCE REPORT."
+      },
+      "color": "#183923",
+      "bgcolor": "#0b1f13"
+    },
+    {
+      "id": 6,
+      "type": "GeminiNodeV2",
+      "pos": [
+        1785.5015368530474,
+        -716.4299004600254
+      ],
+      "size": [
+        720,
+        442
+      ],
+      "flags": {},
+      "order": 49,
+      "mode": 0,
+      "showAdvanced": true,
+      "inputs": [
+        {
+          "label": "image_1",
+          "name": "model.images.image_1",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 5
+        },
+        {
+          "label": "image_2",
+          "name": "model.images.image_2",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "label": "audio_1",
+          "name": "model.audio.audio_1",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        },
+        {
+          "label": "video_1",
+          "name": "model.video.video_1",
+          "shape": 7,
+          "type": "VIDEO",
+          "link": 4
+        },
+        {
+          "label": "files",
+          "name": "model.files",
+          "shape": 7,
+          "type": "GEMINI_INPUT_FILES",
+          "link": null
+        },
+        {
+          "name": "system_prompt",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "system_prompt"
+          },
+          "link": 6
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            9,
+            48
+          ]
+        }
+      ],
+      "title": "PASS 1A — VISUAL ANALYSIS (VIDEO + 60 FRAMES)",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "GeminiNodeV2"
+      },
+      "widgets_values": [
+        "Analyze the complete source video and the attached chronological 60-frame batch. Produce the required forensic visual report, including an adaptive macro beat map and a complete second-by-second audit. Use only observable evidence and supported timing.",
+        "Gemini 3.5 Flash",
+        "MEDIUM",
+        0.3,
+        0.9,
+        32768,
+        42,
+        "fixed",
+        ""
+      ],
+      "widgets_values_named": {
+        "prompt": "Analyze the complete source video and the attached chronological 60-frame batch. Produce the required forensic visual report, including an adaptive macro beat map and a complete second-by-second audit. Use only observable evidence and supported timing.",
+        "model": "Gemini 3.5 Flash",
+        "model.thinking_level": "MEDIUM",
+        "model.temperature": 0.3,
+        "model.top_p": 0.9,
+        "model.max_output_tokens": 32768,
+        "seed": 42,
+        "control_after_generate": "fixed",
+        "system_prompt": ""
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 7,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        1803.0232782388712,
+        378.2014246767392
+      ],
+      "size": [
+        264.265625,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            8
+          ]
+        }
+      ],
+      "title": "SYSTEM — FORENSIC AUDIO ANALYST",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "You are the forensic audio-analysis stage of a universal video-cloning workflow.\n\nListen to the complete audio stream of the supplied source video. Analyze original audio evidence only. Do not translate during analysis and do not use visual appearance to identify a speaker.\n\nOutput a structured AUDIO EVIDENCE REPORT containing:\n\n1. SOURCE AUDIO DURATION.\n2. DETECTED LANGUAGE or languages with confidence.\n3. SPEAKER MAP using stable identity-neutral labels SPEAKER_01, SPEAKER_02 and so on. Distinguish on-camera, off-camera and uncertain speakers only when the evidence supports it.\n4. VERIFIED DIALOGUE: timestamped verbatim words only when intelligible. Include confidence. Never repair, complete or invent a quotation.\n5. UNCERTAIN SPEECH: timestamped indistinct conversation, shouting, overlap, laughter or reactions without guessed wording.\n6. SOUND-EVENT MAP: footsteps, impacts, splashes, handling sounds, breaths, ambience, room tone, traffic, machinery, music and other non-speech events with supported timestamps.\n7. SECOND-BY-SECOND AUDIO COVERAGE through the exact source end, including continuing ambience or genuine silence. This section is audit evidence, not a generation prompt.\n8. AUDIO-TO-ACTION SYNC CUES: only high-confidence synchronization points such as an impact, clap, splash, door close, product click or dialogue onset.\n9. AUDIO UNCERTAINTIES and speaker-assignment conflicts.\n\nUse one-decimal timestamps by default and finer precision only when the waveform or a decisive sync event supports it. Preserve the original language, overlap, pauses and music status. Mark uncertainty instead of guessing.\n\nOutput only the AUDIO EVIDENCE REPORT."
+      ],
+      "widgets_values_named": {
+        "value": "You are the forensic audio-analysis stage of a universal video-cloning workflow.\n\nListen to the complete audio stream of the supplied source video. Analyze original audio evidence only. Do not translate during analysis and do not use visual appearance to identify a speaker.\n\nOutput a structured AUDIO EVIDENCE REPORT containing:\n\n1. SOURCE AUDIO DURATION.\n2. DETECTED LANGUAGE or languages with confidence.\n3. SPEAKER MAP using stable identity-neutral labels SPEAKER_01, SPEAKER_02 and so on. Distinguish on-camera, off-camera and uncertain speakers only when the evidence supports it.\n4. VERIFIED DIALOGUE: timestamped verbatim words only when intelligible. Include confidence. Never repair, complete or invent a quotation.\n5. UNCERTAIN SPEECH: timestamped indistinct conversation, shouting, overlap, laughter or reactions without guessed wording.\n6. SOUND-EVENT MAP: footsteps, impacts, splashes, handling sounds, breaths, ambience, room tone, traffic, machinery, music and other non-speech events with supported timestamps.\n7. SECOND-BY-SECOND AUDIO COVERAGE through the exact source end, including continuing ambience or genuine silence. This section is audit evidence, not a generation prompt.\n8. AUDIO-TO-ACTION SYNC CUES: only high-confidence synchronization points such as an impact, clap, splash, door close, product click or dialogue onset.\n9. AUDIO UNCERTAINTIES and speaker-assignment conflicts.\n\nUse one-decimal timestamps by default and finer precision only when the waveform or a decisive sync event supports it. Preserve the original language, overlap, pauses and music status. Mark uncertainty instead of guessing.\n\nOutput only the AUDIO EVIDENCE REPORT."
+      },
+      "color": "#3a1e22",
+      "bgcolor": "#1d090c"
+    },
+    {
+      "id": 8,
+      "type": "GeminiNodeV2",
+      "pos": [
+        1796.5685934608023,
+        -40.734661719294536
+      ],
+      "size": [
+        720,
+        370
+      ],
+      "flags": {},
+      "order": 31,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "image_1",
+          "name": "model.images.image_1",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "label": "audio_1",
+          "name": "model.audio.audio_1",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        },
+        {
+          "label": "video_1",
+          "name": "model.video.video_1",
+          "shape": 7,
+          "type": "VIDEO",
+          "link": 7
+        },
+        {
+          "label": "files",
+          "name": "model.files",
+          "shape": 7,
+          "type": "GEMINI_INPUT_FILES",
+          "link": null
+        },
+        {
+          "name": "system_prompt",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "system_prompt"
+          },
+          "link": 8
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            10,
+            49
+          ]
+        }
+      ],
+      "title": "PASS 1B — AUDIO ANALYSIS (FULL VIDEO)",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "GeminiNodeV2"
+      },
+      "widgets_values": [
+        "Analyze the complete original audio stream. Produce the required forensic audio report with verified dialogue, uncertain speech, sound events, synchronization cues and complete second-by-second coverage. Do not translate or guess.",
+        "Gemini 3.5 Flash",
+        "MEDIUM",
+        0.2,
+        0.9,
+        32768,
+        42,
+        "fixed",
+        ""
+      ],
+      "widgets_values_named": {
+        "prompt": "Analyze the complete original audio stream. Produce the required forensic audio report with verified dialogue, uncertain speech, sound events, synchronization cues and complete second-by-second coverage. Do not translate or guess.",
+        "model": "Gemini 3.5 Flash",
+        "model.thinking_level": "MEDIUM",
+        "model.temperature": 0.2,
+        "model.top_p": 0.9,
+        "model.max_output_tokens": 32768,
+        "seed": 42,
+        "control_after_generate": "fixed",
+        "system_prompt": ""
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 9,
+      "type": "StringConcatenate",
+      "pos": [
+        3301.445159774125,
+        -133.88172397961122
+      ],
+      "size": [
+        239.984375,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 51,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string_a",
+          "type": "STRING",
+          "widget": {
+            "name": "string_a"
+          },
+          "link": 9
+        },
+        {
+          "name": "string_b",
+          "type": "STRING",
+          "widget": {
+            "name": "string_b"
+          },
+          "link": 10
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            26
+          ]
+        }
+      ],
+      "title": "MERGE VISUAL + AUDIO EVIDENCE",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "StringConcatenate"
+      },
+      "widgets_values": [
+        "",
+        "",
+        "\n\n================ AUDIO EVIDENCE ================\n\n"
+      ],
+      "widgets_values_named": {
+        "string_a": "",
+        "string_b": "",
+        "delimiter": "\n\n================ AUDIO EVIDENCE ================\n\n"
+      },
+      "color": "#102b33",
+      "bgcolor": "#061319"
+    },
+    {
+      "id": 10,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        3316.173487113392,
+        376.4415791502817
+      ],
+      "size": [
+        321.921875,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            12
+          ]
+        }
+      ],
+      "title": "SYSTEM — BLUEPRINT SYNTHESIZER & VERIFIER",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "You are the evidence-fusion and verification stage of a universal video-cloning workflow.\n\nYou receive a VISUAL EVIDENCE REPORT, an AUDIO EVIDENCE REPORT, the complete source video, the chronological sampled-frame batch, an authoritative CLONE INTENT / TARGET MAPPING block and TARGET_OUTPUT_DURATION_SECONDS.\n\nRe-check the reports against the source video and frames. Fuse them into one identity-neutral SOURCE VIDEO BLUEPRINT. Resolve contradictions conservatively from directly observed evidence. Preserve uncertainty instead of inventing facts.\n\nMaintain stable CAST_ID and PRODUCT_ID labels for every recurring entity. Resolve exactly one TARGET_01 from CLONE INTENT. Never select a second replacement target. Mark every non-target person, product, prop and background role as protected in PRESERVE_MAPPING. Do not call an entity HERO until TARGET_01 has been resolved as a human target.\n\nSOURCE_DURATION_EXACT is the observed media length. TARGET_OUTPUT_DURATION_SECONDS is the generation endpoint shared with Seedance and is authoritative for the final prompt. If the source contains an encoder tail or content beyond the target duration, document the difference and stop the generation blueprint exactly at TARGET_OUTPUT_DURATION_SECONDS.\n\nEDIT CONTINUITY GATE\n\nReconcile the proposed edit structure against the complete source video, chronological sampled frames, camera motion, environment, subject positions, physical state transitions and audio continuity.\n\nReturn exactly one authoritative EDIT_STRUCTURE:\n\n- CONTINUOUS_TAKE\n- VERIFIED_MULTI_SHOT\n- UNCERTAIN\n\nReject any proposed cut that can reasonably be explained by continuous handheld movement, a whip pan, rapid tilt, complete occlusion, motion blur, lighting or exposure change, autofocus behavior, camera rotation, a dropped frame or a subject passing close to the lens.\n\nAudio discontinuity may support a cut, but audio discontinuity alone does not prove a visual edit. Continuous audio does not disprove a visual cut because an edited video may use an uninterrupted audio bed.\n\nOnly HIGH-confidence cuts verified against the complete source video may become mandatory directing events in the final blueprint. If an edit boundary remains unresolved, classify the overall structure as UNCERTAIN and treat that boundary as continuous motion downstream. Do not create a cut to simplify the action or improve pacing.\n\nYour output must begin with these exact fields:\n\nSOURCE_DURATION_EXACT: <HH:MM:SS.mmm>\nSOURCE_DURATION_SECONDS: <decimal>\nTARGET_OUTPUT_DURATION_SECONDS: <integer 4-30>\nTARGET_MODE: <AUTO|EXPLICIT>\nTARGET_TYPE: <HUMAN|PRODUCT|NONE>\nTARGET_MAPPING: <one resolved stable ID and identity-neutral tracking description>\nREPLACEMENT_REFERENCE_ROLE: <HUMAN_CHARACTER|PRODUCT|NONE>\nPRESERVE_MAPPING: <all protected cast, products, props and background roles>\nREQUESTED_DIALOGUE_LANGUAGE: <language>\nEDIT_STRUCTURE: <CONTINUOUS_TAKE|VERIFIED_MULTI_SHOT|UNCERTAIN>\nVERIFIED_CUT_COUNT: <integer>\nVERIFIED_CUTS: <ordered HIGH-confidence cut records with timestamp, type, before-state and after-state, or NONE>\n\nThen output:\n\n1. GLOBAL SPECS: recording format, aspect ratio, camera holder, lens/look, focus depth, stabilization, motion texture, environment and lighting.\n2. CAST AND PRODUCT ROLES with stable IDs and tracking-only descriptions.\n3. CONTINUITY RULES and persistent state transitions.\n4. VERIFIED AUDIO MAP preserving original evidence and clearly separating exact dialogue from uncertain speech.\n5. GENERATION MACRO BEAT MAP: adaptive timestamp blocks divided only at genuine action, camera, scene, location, audio or continuity transitions, plus only the HIGH-confidence cuts explicitly listed in VERIFIED_CUTS. Use the fewest blocks that preserve the full observable sequence. A new timestamp block does not imply a cut. This is the authoritative compressed chronology for the final compiler.\n6. SECOND-BY-SECOND AUDIT TABLE from 00:00 through TARGET_OUTPUT_DURATION_SECONDS. Cover each elapsed second with visual action, camera state, continuity and synchronized audio evidence. This table exists for verification and must not force the final generation prompt into one-second blocks.\n7. VERIFICATION NOTES: uncertainty, duration normalization, rejected false-cut candidates, possible missed events and any unsupported detail removed from the reports.\n\nDo not invent exact dialogue, sub-frame timing, micro-actions, props, camera artifacts, environmental details or edit boundaries. Do not replace the source target's face in this blueprint; retain only identity-neutral tracking information. Do not describe the replacement reference identity because the downstream compiler receives the actual images.\n\nOutput only the verified SOURCE VIDEO BLUEPRINT."
+      ],
+      "widgets_values_named": {
+        "value": "You are the evidence-fusion and verification stage of a universal video-cloning workflow.\n\nYou receive a VISUAL EVIDENCE REPORT, an AUDIO EVIDENCE REPORT, the complete source video, the chronological sampled-frame batch, an authoritative CLONE INTENT / TARGET MAPPING block and TARGET_OUTPUT_DURATION_SECONDS.\n\nRe-check the reports against the source video and frames. Fuse them into one identity-neutral SOURCE VIDEO BLUEPRINT. Resolve contradictions conservatively from directly observed evidence. Preserve uncertainty instead of inventing facts.\n\nMaintain stable CAST_ID and PRODUCT_ID labels for every recurring entity. Resolve exactly one TARGET_01 from CLONE INTENT. Never select a second replacement target. Mark every non-target person, product, prop and background role as protected in PRESERVE_MAPPING. Do not call an entity HERO until TARGET_01 has been resolved as a human target.\n\nSOURCE_DURATION_EXACT is the observed media length. TARGET_OUTPUT_DURATION_SECONDS is the generation endpoint shared with Seedance and is authoritative for the final prompt. If the source contains an encoder tail or content beyond the target duration, document the difference and stop the generation blueprint exactly at TARGET_OUTPUT_DURATION_SECONDS.\n\nEDIT CONTINUITY GATE\n\nReconcile the proposed edit structure against the complete source video, chronological sampled frames, camera motion, environment, subject positions, physical state transitions and audio continuity.\n\nReturn exactly one authoritative EDIT_STRUCTURE:\n\n- CONTINUOUS_TAKE\n- VERIFIED_MULTI_SHOT\n- UNCERTAIN\n\nReject any proposed cut that can reasonably be explained by continuous handheld movement, a whip pan, rapid tilt, complete occlusion, motion blur, lighting or exposure change, autofocus behavior, camera rotation, a dropped frame or a subject passing close to the lens.\n\nAudio discontinuity may support a cut, but audio discontinuity alone does not prove a visual edit. Continuous audio does not disprove a visual cut because an edited video may use an uninterrupted audio bed.\n\nOnly HIGH-confidence cuts verified against the complete source video may become mandatory directing events in the final blueprint. If an edit boundary remains unresolved, classify the overall structure as UNCERTAIN and treat that boundary as continuous motion downstream. Do not create a cut to simplify the action or improve pacing.\n\nYour output must begin with these exact fields:\n\nSOURCE_DURATION_EXACT: <HH:MM:SS.mmm>\nSOURCE_DURATION_SECONDS: <decimal>\nTARGET_OUTPUT_DURATION_SECONDS: <integer 4-30>\nTARGET_MODE: <AUTO|EXPLICIT>\nTARGET_TYPE: <HUMAN|PRODUCT|NONE>\nTARGET_MAPPING: <one resolved stable ID and identity-neutral tracking description>\nREPLACEMENT_REFERENCE_ROLE: <HUMAN_CHARACTER|PRODUCT|NONE>\nPRESERVE_MAPPING: <all protected cast, products, props and background roles>\nREQUESTED_DIALOGUE_LANGUAGE: <language>\nEDIT_STRUCTURE: <CONTINUOUS_TAKE|VERIFIED_MULTI_SHOT|UNCERTAIN>\nVERIFIED_CUT_COUNT: <integer>\nVERIFIED_CUTS: <ordered HIGH-confidence cut records with timestamp, type, before-state and after-state, or NONE>\n\nThen output:\n\n1. GLOBAL SPECS: recording format, aspect ratio, camera holder, lens/look, focus depth, stabilization, motion texture, environment and lighting.\n2. CAST AND PRODUCT ROLES with stable IDs and tracking-only descriptions.\n3. CONTINUITY RULES and persistent state transitions.\n4. VERIFIED AUDIO MAP preserving original evidence and clearly separating exact dialogue from uncertain speech.\n5. GENERATION MACRO BEAT MAP: adaptive timestamp blocks divided only at genuine action, camera, scene, location, audio or continuity transitions, plus only the HIGH-confidence cuts explicitly listed in VERIFIED_CUTS. Use the fewest blocks that preserve the full observable sequence. A new timestamp block does not imply a cut. This is the authoritative compressed chronology for the final compiler.\n6. SECOND-BY-SECOND AUDIT TABLE from 00:00 through TARGET_OUTPUT_DURATION_SECONDS. Cover each elapsed second with visual action, camera state, continuity and synchronized audio evidence. This table exists for verification and must not force the final generation prompt into one-second blocks.\n7. VERIFICATION NOTES: uncertainty, duration normalization, rejected false-cut candidates, possible missed events and any unsupported detail removed from the reports.\n\nDo not invent exact dialogue, sub-frame timing, micro-actions, props, camera artifacts, environmental details or edit boundaries. Do not replace the source target's face in this blueprint; retain only identity-neutral tracking information. Do not describe the replacement reference identity because the downstream compiler receives the actual images.\n\nOutput only the verified SOURCE VIDEO BLUEPRINT."
+      },
+      "color": "#183923",
+      "bgcolor": "#0b1f13"
+    },
+    {
+      "id": 11,
+      "type": "GeminiNodeV2",
+      "pos": [
+        3305.7550258193555,
+        -87.85741038512953
+      ],
+      "size": [
+        720,
+        410
+      ],
+      "flags": {},
+      "order": 54,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          },
+          "link": 28
+        },
+        {
+          "label": "image_1",
+          "name": "model.images.image_1",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 39
+        },
+        {
+          "label": "image_2",
+          "name": "model.images.image_2",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 41
+        },
+        {
+          "label": "image_3",
+          "name": "model.images.image_3",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "label": "audio_1",
+          "name": "model.audio.audio_1",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        },
+        {
+          "label": "video_1",
+          "name": "model.video.video_1",
+          "shape": 7,
+          "type": "VIDEO",
+          "link": 40
+        },
+        {
+          "label": "files",
+          "name": "model.files",
+          "shape": 7,
+          "type": "GEMINI_INPUT_FILES",
+          "link": null
+        },
+        {
+          "name": "system_prompt",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "system_prompt"
+          },
+          "link": 12
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            29,
+            50
+          ]
+        }
+      ],
+      "title": "PASS 2 — BUILD & VERIFY SOURCE BLUEPRINT",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "GeminiNodeV2"
+      },
+      "widgets_values": [
+        "",
+        "Gemini 3.5 Flash",
+        "MEDIUM",
+        0.2,
+        0.9,
+        32768,
+        42,
+        "fixed",
+        ""
+      ],
+      "widgets_values_named": {
+        "prompt": "",
+        "model": "Gemini 3.5 Flash",
+        "model.thinking_level": "MEDIUM",
+        "model.temperature": 0.2,
+        "model.top_p": 0.9,
+        "model.max_output_tokens": 32768,
+        "seed": 42,
+        "control_after_generate": "fixed",
+        "system_prompt": ""
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 12,
+      "type": "LoadImage",
+      "pos": [
+        5310.139617028543,
+        -665.0416747716785
+      ],
+      "size": [
+        585.90625,
+        284.65625
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            19,
+            42,
+            51
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "title": "REFERENCE 01 — PRIMARY FACE / MAIN PRODUCT VIEW — CTRL+M TO TOGGLE",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "",
+        null
+      ],
+      "widgets_values_named": {
+        "image": "",
+        "upload": null
+      },
+      "color": "#111",
+      "bgcolor": "#020805"
+    },
+    {
+      "id": 13,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        7302.11097132398,
+        -568.5722561877762
+      ],
+      "size": [
+        598.109375,
+        488.859375
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            14
+          ]
+        }
+      ],
+      "title": "SYSTEM — OPUS 5 — UNIVERSAL ORIGINAL-STYLE MACRO COMPILER",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "You are the final master-prompt compiler for a universal Seedance 2.5 video-cloning workflow.\n\nYour job is to convert a verified SOURCE VIDEO BLUEPRINT, an authoritative TARGET MAPPING, the attached REPLACEMENT REFERENCE IMAGES, and TARGET_OUTPUT_DURATION_SECONDS into one concise generation prompt that reads like a professionally written timestamped master prompt.\n\nThe final output is a directing prompt for a video model. It is not an analysis report, frame audit, technical specification, JSON document, checklist, or explanation.\n\nMISSION\n\nReconstruct the source video's observable recording format, subjects, setting, action order, camera behavior, timing, continuity, pacing, and synchronized audio as faithfully as possible while replacing exactly the selected target with the single human or product established by the active replacement reference images.\n\nThis is controlled replacement, not creative reinterpretation. Preserve every non-target person, product, prop, and background role.\n\nINPUT CONTRACT\n\nYou receive:\n\n1. A verified SOURCE VIDEO BLUEPRINT. It may be highly detailed or cover every second for audit purposes and contains the authoritative EDIT_STRUCTURE classification and VERIFIED_CUTS list.\n2. An authoritative TARGET MAPPING containing TARGET_TYPE, exactly one TARGET_01, the replacement role, a PRESERVE list, and optional voice ownership.\n3. One or more active REPLACEMENT REFERENCE IMAGES. All active images depict the same replacement human or the same replacement product.\n4. TARGET_OUTPUT_DURATION_SECONDS, which is the exact endpoint of the final prompt.\n5. A requested dialogue language, normally natural US English.\n\nSOURCE-OF-TRUTH PRIORITY\n\nResolve conflicts in this order:\n\n1. TARGET MAPPING and TARGET_OUTPUT_DURATION_SECONDS.\n2. Directly observed and cross-verified source-video evidence.\n3. Active replacement reference images for the selected entity.\n4. Conservative inference only when required to connect verified events.\n\nNever convert uncertainty into a precise fact. Never add a shot, cut, person, product, prop, action, quotation, camera move, or continuity event merely to make the prompt more interesting.\n\nSILENT COMPILATION METHOD\n\nBefore writing, silently perform these steps:\n\n1. Identify the recording format, aspect ratio, camera holder, visual texture and overall pacing. Read EDIT_STRUCTURE and VERIFIED_CUTS from the blueprint; never infer an edit structure independently.\n2. Resolve exactly one replacement target from TARGET MAPPING.\n3. Identify every supporting person, product, and prop that must remain protected.\n4. Extract the source's decisive story beats and physical state changes.\n5. Find genuine timeline boundaries: a primary action changes, camera behavior changes, the location changes, an important audio event begins, a continuity state changes, or a HIGH-confidence cut explicitly listed in VERIFIED_CUTS occurs. A new timeline block does not imply a cut.\n6. Merge visually continuous audit seconds into natural macro segments.\n7. Remove repeated locks, decorative language, unsupported micro-actions, and false sub-second precision.\n8. Verify that the final timestamp sequence begins at 0.0 seconds, contains no gaps or overlaps, and ends exactly at TARGET_OUTPUT_DURATION_SECONDS.\n\nEDIT-STRUCTURE POLICY\n\nThe verified SOURCE VIDEO BLUEPRINT contains one authoritative edit classification: CONTINUOUS_TAKE, VERIFIED_MULTI_SHOT or UNCERTAIN. Never invent, assume or stylistically add a cut.\n\nIf EDIT_STRUCTURE is CONTINUOUS_TAKE:\n\n- Describe one uninterrupted recording.\n- Preserve continuous camera and subject motion across the complete duration.\n- Never write \"cut,\" \"jump cut,\" \"hard cut,\" \"new shot,\" or an equivalent edit transition.\n- Timestamp blocks describe consecutive phases inside the same take, not separate shots.\n\nIf EDIT_STRUCTURE is VERIFIED_MULTI_SHOT:\n\n- Include only the HIGH-confidence cuts explicitly listed in VERIFIED_CUTS.\n- Start a new timestamp block at every verified cut boundary.\n- State each verified transition naturally, such as \"Hard cut to a close handheld angle,\" only when its type is supported.\n- Never add another cut for pacing, variety, simplification or cinematic improvement.\n\nIf EDIT_STRUCTURE is UNCERTAIN:\n\n- Default to one continuous take.\n- Represent ambiguous transitions as continuous camera movement, occlusion or reframing without claiming a cut.\n\nA new timestamp block does not automatically mean a new shot. Most timestamp blocks may describe consecutive action phases inside one uninterrupted take.\nTIMELINE SEGMENTATION\n\nDo not create one entry per second.\n\nCreate a new timestamp block only at a meaningful action, camera, scene, audio, continuity or explicitly verified edit transition. Use the fewest blocks that preserve the complete observable action order. Do not treat a block boundary as a camera cut unless the blueprint explicitly verifies one there.\n\nNatural macro segments will commonly last about 1.5 to 5 seconds. A complex 30-second video will commonly use 7 to 12 blocks; a simple dance, talking-head clip, product reveal, or static demonstration may use fewer. Timeline-block count is independent of edit count: a continuous one-take video may contain many timestamp blocks while containing zero cuts. Never force a fixed block count.\n\nUse one-decimal timestamps by default. Use finer precision only when a decisive event is explicitly supported by the source evidence. Never invent tenths or milliseconds between sampled frames.\n\nQuiet seconds belong inside the surrounding macro segment. Do not manufacture eye movements, breathing, hand gestures, focus hunting, exposure changes, rolling-shutter effects, or environmental motion unless they are observable and important.\n\nREFERENCE-IMAGE FUSION\n\nSilently classify active images by what they establish: face identity, multiple viewpoints, full-body proportions, outfit, product geometry, material, color, or legitimate markings. Fuse them as complementary evidence for one entity.\n\nFor a human replacement:\n\n- The images, not prose, carry facial identity, hair, age impression, skin, and body proportions.\n- In the final prompt refer naturally to \"the person from the attached reference images,\" \"the hero from the attached reference images,\" or an equivalent source-appropriate phrase.\n- Never describe or transfer the original target's biometric identity.\n- If a clear outfit reference establishes one coherent outfit, that outfit replaces the source target's wardrobe. Describe it once in the Characters section.\n- Repeat identity or outfit information only when a major transition makes it operationally necessary, such as wetness, occlusion, a rear/profile view, a clothing change, or re-entry.\n- Never spread the replacement identity or outfit to supporting people.\n\nFor a product replacement:\n\n- Refer naturally to \"the product from the attached reference images.\"\n- Preserve visible geometry, proportions, material, color, construction, and legitimate markings.\n- Preserve presenters, hands, packaging, and all non-target products unless TARGET MAPPING explicitly says otherwise.\n- Never duplicate the replacement product or transfer its design to background objects.\n\nNever reproduce a reference sheet's grid, dividers, captions, studio background, reference pose, or reference lighting. Never mention filenames, slot numbers, muted inputs, workflow nodes, or internal image-processing steps.\n\nOUTPUT CONTRACT\n\nOutput only the finished prompt. Do not use Markdown headings, bullets, code fences, prefatory text, or closing commentary.\n\nUse this natural structure and order:\n\n1. One compact opening paragraph describing the recording format, camera holder, camera behavior, lens/look, lighting character, focus depth, and overall motion texture.\n\n2. One subject paragraph with the most natural label for the source:\n   - \"Characters:\" for people-led scenes;\n   - \"Product:\" for product-only scenes;\n   - \"Subjects:\" for mixed human/product scenes.\n\n   Identify the replacement entity naturally and summarize supporting roles only as needed for generation. Never expose internal labels such as TARGET_01, CAST_02, PRODUCT_01, PRESERVE_MAPPING, or HERO as a system token.\n\n3. \"Setting:\" followed by one compact paragraph describing the location, spatial layout, lighting, and environmental elements required for the action.\n\n4. A complete sequence of adaptive timestamped macro blocks in this exact surface form:\n\n[0.0s-X.Xs] - <Shot size, camera angle, camera movement, decisive visible action, and only the continuity or synchronized audio detail needed for this phase.>\n\n[X.Xs-X.Xs] - <The next meaningful phase.>\n\nContinue without gaps or overlaps until the exact target duration.\n\n5. \"Audio:\" followed by one compact paragraph describing verified dialogue language, speaker behavior, laughter or reactions, synchronized effects, ambience, and music status.\n\n6. \"Style:\" followed by one compact sentence reinforcing the authentic visual style and its most important lighting or motion qualities.\n\nWRITING STYLE\n\nMatch the density and natural directing style of a strong human-written timestamped master prompt:\n\n- Lead each time block with shot size, angle, and camera movement.\n- Then describe the central action in chronological order.\n- Mention continuity only where it affects generation.\n- Use concrete observable verbs.\n- Preserve amateur, phone-camera, UGC, surveillance, tripod, cinematic, screen-recorded, or commercial qualities only when present in the source.\n- Keep each block focused on one meaningful phase.\n- Prefer one or two strong sentences to a checklist of micro-instructions.\n- State global information once and let it govern all blocks.\n\nDo not output separate CAPTURE AND FORMAT, REFERENCE AND TARGET LOCK, VOICE AND PACING, PER-SECOND TIMELINE, AUDIO LOCK, SCENE LOCKS, NEGATIVE CONSTRAINTS, VERIFICATION NOTES, or QUALITY GATE sections.\n\nDo not use CAMERA, ACTION, PERFORMANCE/CONTINUITY, or AUDIO fields inside every timestamp block.\n\nDo not repeat identity, clothing, protected-cast, ambience, or \"no music\" in every block.\n\nDo not create long negative lists. A necessary negative condition should appear once in the relevant natural sentence. Most constraints should be expressed positively by describing what must happen.\n\nAUDIO POLICY\n\n- Use the requested output language.\n- Translate only verified intelligible dialogue while preserving meaning, intent, approximate length, overlap, and timing.\n- When words are uncertain or inaudible, describe them as indistinct conversation, laughter, shouting, reactions, or silence. Never invent a quotation.\n- Do not assign a voice to the wrong person.\n- If an optional replacement voice reference is active, assign it only to the target defined by VOICE_OWNER.\n- Describe important synchronized effects in the relevant time block and summarize the continuous audio bed once in Audio.\n- State music status once.\n\nDURATION AND DENSITY\n\nThe final macro timeline must end exactly at TARGET_OUTPUT_DURATION_SECONDS. Never write timed content beyond it.\n\nTarget approximately:\n\n- 180 to 400 words for a 4-10 second clip;\n- 300 to 650 words for an 11-20 second clip;\n- 500 to 900 words for a 21-30 second clip.\n\nThese are density targets, not reasons to omit a necessary beat. Hard maximum: 1,000 words for a 30-second prompt unless the source contains many explicitly verified cuts or speakers that cannot be represented faithfully within that limit.\n\nFINAL SILENT QUALITY GATE\n\nBefore answering, silently verify:\n\n- The output uses the six-part natural structure: opening format paragraph, Characters/Product/Subjects, Setting, macro timeline, Audio, Style.\n- The timeline begins at 0.0 seconds and ends exactly at TARGET_OUTPUT_DURATION_SECONDS.\n- There are no gaps, overlaps, forced one-second entries, or false-precision timestamps.\n- Cut language appears only for HIGH-confidence cuts explicitly listed in VERIFIED_CUTS; CONTINUOUS_TAKE and UNCERTAIN outputs introduce no cuts.\n- Every decisive source action and camera transition appears once in the correct order.\n- Exactly one selected entity is replaced and every other entity remains protected.\n- Reference identity or product design is not spread to supporting subjects.\n- Outfit and state transitions remain consistent.\n- Exact dialogue exists only when verified.\n- No unsupported micro-actions, props, camera artifacts, or environmental details were added.\n- The output contains no analysis, internal IDs, workflow instructions, uncertainty discussion, cost notes, model settings, placeholders, or explanations.\n- The prompt reads like one coherent human-written master prompt, not a machine-generated compliance document.\n\nOutput only the finished generation prompt.\n```"
+      ],
+      "widgets_values_named": {
+        "value": "You are the final master-prompt compiler for a universal Seedance 2.5 video-cloning workflow.\n\nYour job is to convert a verified SOURCE VIDEO BLUEPRINT, an authoritative TARGET MAPPING, the attached REPLACEMENT REFERENCE IMAGES, and TARGET_OUTPUT_DURATION_SECONDS into one concise generation prompt that reads like a professionally written timestamped master prompt.\n\nThe final output is a directing prompt for a video model. It is not an analysis report, frame audit, technical specification, JSON document, checklist, or explanation.\n\nMISSION\n\nReconstruct the source video's observable recording format, subjects, setting, action order, camera behavior, timing, continuity, pacing, and synchronized audio as faithfully as possible while replacing exactly the selected target with the single human or product established by the active replacement reference images.\n\nThis is controlled replacement, not creative reinterpretation. Preserve every non-target person, product, prop, and background role.\n\nINPUT CONTRACT\n\nYou receive:\n\n1. A verified SOURCE VIDEO BLUEPRINT. It may be highly detailed or cover every second for audit purposes and contains the authoritative EDIT_STRUCTURE classification and VERIFIED_CUTS list.\n2. An authoritative TARGET MAPPING containing TARGET_TYPE, exactly one TARGET_01, the replacement role, a PRESERVE list, and optional voice ownership.\n3. One or more active REPLACEMENT REFERENCE IMAGES. All active images depict the same replacement human or the same replacement product.\n4. TARGET_OUTPUT_DURATION_SECONDS, which is the exact endpoint of the final prompt.\n5. A requested dialogue language, normally natural US English.\n\nSOURCE-OF-TRUTH PRIORITY\n\nResolve conflicts in this order:\n\n1. TARGET MAPPING and TARGET_OUTPUT_DURATION_SECONDS.\n2. Directly observed and cross-verified source-video evidence.\n3. Active replacement reference images for the selected entity.\n4. Conservative inference only when required to connect verified events.\n\nNever convert uncertainty into a precise fact. Never add a shot, cut, person, product, prop, action, quotation, camera move, or continuity event merely to make the prompt more interesting.\n\nSILENT COMPILATION METHOD\n\nBefore writing, silently perform these steps:\n\n1. Identify the recording format, aspect ratio, camera holder, visual texture and overall pacing. Read EDIT_STRUCTURE and VERIFIED_CUTS from the blueprint; never infer an edit structure independently.\n2. Resolve exactly one replacement target from TARGET MAPPING.\n3. Identify every supporting person, product, and prop that must remain protected.\n4. Extract the source's decisive story beats and physical state changes.\n5. Find genuine timeline boundaries: a primary action changes, camera behavior changes, the location changes, an important audio event begins, a continuity state changes, or a HIGH-confidence cut explicitly listed in VERIFIED_CUTS occurs. A new timeline block does not imply a cut.\n6. Merge visually continuous audit seconds into natural macro segments.\n7. Remove repeated locks, decorative language, unsupported micro-actions, and false sub-second precision.\n8. Verify that the final timestamp sequence begins at 0.0 seconds, contains no gaps or overlaps, and ends exactly at TARGET_OUTPUT_DURATION_SECONDS.\n\nEDIT-STRUCTURE POLICY\n\nThe verified SOURCE VIDEO BLUEPRINT contains one authoritative edit classification: CONTINUOUS_TAKE, VERIFIED_MULTI_SHOT or UNCERTAIN. Never invent, assume or stylistically add a cut.\n\nIf EDIT_STRUCTURE is CONTINUOUS_TAKE:\n\n- Describe one uninterrupted recording.\n- Preserve continuous camera and subject motion across the complete duration.\n- Never write \"cut,\" \"jump cut,\" \"hard cut,\" \"new shot,\" or an equivalent edit transition.\n- Timestamp blocks describe consecutive phases inside the same take, not separate shots.\n\nIf EDIT_STRUCTURE is VERIFIED_MULTI_SHOT:\n\n- Include only the HIGH-confidence cuts explicitly listed in VERIFIED_CUTS.\n- Start a new timestamp block at every verified cut boundary.\n- State each verified transition naturally, such as \"Hard cut to a close handheld angle,\" only when its type is supported.\n- Never add another cut for pacing, variety, simplification or cinematic improvement.\n\nIf EDIT_STRUCTURE is UNCERTAIN:\n\n- Default to one continuous take.\n- Represent ambiguous transitions as continuous camera movement, occlusion or reframing without claiming a cut.\n\nA new timestamp block does not automatically mean a new shot. Most timestamp blocks may describe consecutive action phases inside one uninterrupted take.\nTIMELINE SEGMENTATION\n\nDo not create one entry per second.\n\nCreate a new timestamp block only at a meaningful action, camera, scene, audio, continuity or explicitly verified edit transition. Use the fewest blocks that preserve the complete observable action order. Do not treat a block boundary as a camera cut unless the blueprint explicitly verifies one there.\n\nNatural macro segments will commonly last about 1.5 to 5 seconds. A complex 30-second video will commonly use 7 to 12 blocks; a simple dance, talking-head clip, product reveal, or static demonstration may use fewer. Timeline-block count is independent of edit count: a continuous one-take video may contain many timestamp blocks while containing zero cuts. Never force a fixed block count.\n\nUse one-decimal timestamps by default. Use finer precision only when a decisive event is explicitly supported by the source evidence. Never invent tenths or milliseconds between sampled frames.\n\nQuiet seconds belong inside the surrounding macro segment. Do not manufacture eye movements, breathing, hand gestures, focus hunting, exposure changes, rolling-shutter effects, or environmental motion unless they are observable and important.\n\nREFERENCE-IMAGE FUSION\n\nSilently classify active images by what they establish: face identity, multiple viewpoints, full-body proportions, outfit, product geometry, material, color, or legitimate markings. Fuse them as complementary evidence for one entity.\n\nFor a human replacement:\n\n- The images, not prose, carry facial identity, hair, age impression, skin, and body proportions.\n- In the final prompt refer naturally to \"the person from the attached reference images,\" \"the hero from the attached reference images,\" or an equivalent source-appropriate phrase.\n- Never describe or transfer the original target's biometric identity.\n- If a clear outfit reference establishes one coherent outfit, that outfit replaces the source target's wardrobe. Describe it once in the Characters section.\n- Repeat identity or outfit information only when a major transition makes it operationally necessary, such as wetness, occlusion, a rear/profile view, a clothing change, or re-entry.\n- Never spread the replacement identity or outfit to supporting people.\n\nFor a product replacement:\n\n- Refer naturally to \"the product from the attached reference images.\"\n- Preserve visible geometry, proportions, material, color, construction, and legitimate markings.\n- Preserve presenters, hands, packaging, and all non-target products unless TARGET MAPPING explicitly says otherwise.\n- Never duplicate the replacement product or transfer its design to background objects.\n\nNever reproduce a reference sheet's grid, dividers, captions, studio background, reference pose, or reference lighting. Never mention filenames, slot numbers, muted inputs, workflow nodes, or internal image-processing steps.\n\nOUTPUT CONTRACT\n\nOutput only the finished prompt. Do not use Markdown headings, bullets, code fences, prefatory text, or closing commentary.\n\nUse this natural structure and order:\n\n1. One compact opening paragraph describing the recording format, camera holder, camera behavior, lens/look, lighting character, focus depth, and overall motion texture.\n\n2. One subject paragraph with the most natural label for the source:\n   - \"Characters:\" for people-led scenes;\n   - \"Product:\" for product-only scenes;\n   - \"Subjects:\" for mixed human/product scenes.\n\n   Identify the replacement entity naturally and summarize supporting roles only as needed for generation. Never expose internal labels such as TARGET_01, CAST_02, PRODUCT_01, PRESERVE_MAPPING, or HERO as a system token.\n\n3. \"Setting:\" followed by one compact paragraph describing the location, spatial layout, lighting, and environmental elements required for the action.\n\n4. A complete sequence of adaptive timestamped macro blocks in this exact surface form:\n\n[0.0s-X.Xs] - <Shot size, camera angle, camera movement, decisive visible action, and only the continuity or synchronized audio detail needed for this phase.>\n\n[X.Xs-X.Xs] - <The next meaningful phase.>\n\nContinue without gaps or overlaps until the exact target duration.\n\n5. \"Audio:\" followed by one compact paragraph describing verified dialogue language, speaker behavior, laughter or reactions, synchronized effects, ambience, and music status.\n\n6. \"Style:\" followed by one compact sentence reinforcing the authentic visual style and its most important lighting or motion qualities.\n\nWRITING STYLE\n\nMatch the density and natural directing style of a strong human-written timestamped master prompt:\n\n- Lead each time block with shot size, angle, and camera movement.\n- Then describe the central action in chronological order.\n- Mention continuity only where it affects generation.\n- Use concrete observable verbs.\n- Preserve amateur, phone-camera, UGC, surveillance, tripod, cinematic, screen-recorded, or commercial qualities only when present in the source.\n- Keep each block focused on one meaningful phase.\n- Prefer one or two strong sentences to a checklist of micro-instructions.\n- State global information once and let it govern all blocks.\n\nDo not output separate CAPTURE AND FORMAT, REFERENCE AND TARGET LOCK, VOICE AND PACING, PER-SECOND TIMELINE, AUDIO LOCK, SCENE LOCKS, NEGATIVE CONSTRAINTS, VERIFICATION NOTES, or QUALITY GATE sections.\n\nDo not use CAMERA, ACTION, PERFORMANCE/CONTINUITY, or AUDIO fields inside every timestamp block.\n\nDo not repeat identity, clothing, protected-cast, ambience, or \"no music\" in every block.\n\nDo not create long negative lists. A necessary negative condition should appear once in the relevant natural sentence. Most constraints should be expressed positively by describing what must happen.\n\nAUDIO POLICY\n\n- Use the requested output language.\n- Translate only verified intelligible dialogue while preserving meaning, intent, approximate length, overlap, and timing.\n- When words are uncertain or inaudible, describe them as indistinct conversation, laughter, shouting, reactions, or silence. Never invent a quotation.\n- Do not assign a voice to the wrong person.\n- If an optional replacement voice reference is active, assign it only to the target defined by VOICE_OWNER.\n- Describe important synchronized effects in the relevant time block and summarize the continuous audio bed once in Audio.\n- State music status once.\n\nDURATION AND DENSITY\n\nThe final macro timeline must end exactly at TARGET_OUTPUT_DURATION_SECONDS. Never write timed content beyond it.\n\nTarget approximately:\n\n- 180 to 400 words for a 4-10 second clip;\n- 300 to 650 words for an 11-20 second clip;\n- 500 to 900 words for a 21-30 second clip.\n\nThese are density targets, not reasons to omit a necessary beat. Hard maximum: 1,000 words for a 30-second prompt unless the source contains many explicitly verified cuts or speakers that cannot be represented faithfully within that limit.\n\nFINAL SILENT QUALITY GATE\n\nBefore answering, silently verify:\n\n- The output uses the six-part natural structure: opening format paragraph, Characters/Product/Subjects, Setting, macro timeline, Audio, Style.\n- The timeline begins at 0.0 seconds and ends exactly at TARGET_OUTPUT_DURATION_SECONDS.\n- There are no gaps, overlaps, forced one-second entries, or false-precision timestamps.\n- Cut language appears only for HIGH-confidence cuts explicitly listed in VERIFIED_CUTS; CONTINUOUS_TAKE and UNCERTAIN outputs introduce no cuts.\n- Every decisive source action and camera transition appears once in the correct order.\n- Exactly one selected entity is replaced and every other entity remains protected.\n- Reference identity or product design is not spread to supporting subjects.\n- Outfit and state transitions remain consistent.\n- Exact dialogue exists only when verified.\n- No unsupported micro-actions, props, camera artifacts, or environmental details were added.\n- The output contains no analysis, internal IDs, workflow instructions, uncertainty discussion, cost notes, model settings, placeholders, or explanations.\n- The prompt reads like one coherent human-written master prompt, not a machine-generated compliance document.\n\nOutput only the finished generation prompt.\n```"
+      },
+      "color": "#183923",
+      "bgcolor": "#0b1f13"
+    },
+    {
+      "id": 14,
+      "type": "ClaudeNode",
+      "pos": [
+        7924.979511903427,
+        -578.8466989497977
+      ],
+      "size": [
+        526.390625,
+        506
+      ],
+      "flags": {},
+      "order": 57,
+      "mode": 0,
+      "showAdvanced": true,
+      "inputs": [
+        {
+          "label": "image_1",
+          "name": "images.image_1",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 43
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          },
+          "link": 31
+        },
+        {
+          "name": "system_prompt",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "system_prompt"
+          },
+          "link": 14
+        },
+        {
+          "label": "image_5",
+          "name": "images.image_5",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 94
+        },
+        {
+          "label": "image_6",
+          "name": "images.image_6",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 96
+        },
+        {
+          "label": "image_7",
+          "name": "images.image_7",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 98
+        },
+        {
+          "label": "image_8",
+          "name": "images.image_8",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 100
+        },
+        {
+          "label": "image_9",
+          "name": "images.image_9",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 102
+        },
+        {
+          "label": "image_10",
+          "name": "images.image_10",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 104
+        },
+        {
+          "label": "image_11",
+          "name": "images.image_11",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "label": "image_2",
+          "name": "images.image_2",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 45
+        },
+        {
+          "label": "image_3",
+          "name": "images.image_3",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 47
+        },
+        {
+          "label": "image_4",
+          "name": "images.image_4",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 92
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            16,
+            24,
+            54
+          ]
+        }
+      ],
+      "title": "PASS 3 — COMPILE COMPACT ORIGINAL-STYLE MASTER PROMPT",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "ClaudeNode"
+      },
+      "widgets_values": [
+        "",
+        "Opus 5",
+        8192,
+        "medium",
+        0,
+        "fixed",
+        ""
+      ],
+      "widgets_values_named": {
+        "prompt": "",
+        "model": "Opus 5",
+        "model.max_tokens": 8192,
+        "model.reasoning_effort": "medium",
+        "seed": 0,
+        "control_after_generate": "fixed",
+        "system_prompt": ""
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 15,
+      "type": "ByteDance2ReferenceNodeV2",
+      "pos": [
+        9188.784094066219,
+        -653.0741253226795
+      ],
+      "size": [
+        1300,
+        523
+      ],
+      "flags": {},
+      "order": 36,
+      "mode": 4,
+      "inputs": [
+        {
+          "localized_name": "model",
+          "name": "model",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "widget": { "name": "model" },
+          "link": null
+        },
+        {
+          "localized_name": "model.prompt",
+          "name": "model.prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "model.prompt"
+          },
+          "link": 16
+        },
+        {
+          "localized_name": "model.resolution",
+          "name": "model.resolution",
+          "type": "COMBO",
+          "widget": { "name": "model.resolution" },
+          "link": null
+        },
+        {
+          "localized_name": "model.ratio",
+          "name": "model.ratio",
+          "type": "COMBO",
+          "widget": { "name": "model.ratio" },
+          "link": null
+        },
+        {
+          "localized_name": "model.duration",
+          "name": "model.duration",
+          "type": "INT",
+          "widget": {
+            "name": "model.duration"
+          },
+          "link": 33
+        },
+        {
+          "localized_name": "model.generate_audio",
+          "name": "model.generate_audio",
+          "type": "BOOLEAN",
+          "widget": { "name": "model.generate_audio" },
+          "link": null
+        },
+        {
+          "localized_name": "model.task_type",
+          "name": "model.task_type",
+          "type": "COMBO",
+          "widget": { "name": "model.task_type" },
+          "link": null
+        },
+        {
+          "localized_name": "model.output_format",
+          "name": "model.output_format",
+          "type": "COMBO",
+          "widget": { "name": "model.output_format" },
+          "link": null
+        },
+        {
+          "label": "image_1",
+          "localized_name": "model.reference_images.image_1",
+          "name": "model.reference_images.image_1",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 19
+        },
+        {
+          "label": "image_2",
+          "localized_name": "model.reference_images.image_2",
+          "name": "model.reference_images.image_2",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 21
+        },
+        {
+          "label": "image_3",
+          "localized_name": "model.reference_images.image_3",
+          "name": "model.reference_images.image_3",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 23
+        },
+        {
+          "label": "image_4",
+          "localized_name": "model.reference_images.image_4",
+          "name": "model.reference_images.image_4",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 73
+        },
+        {
+          "label": "image_5",
+          "localized_name": "model.reference_images.image_5",
+          "name": "model.reference_images.image_5",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 74
+        },
+        {
+          "label": "image_6",
+          "localized_name": "model.reference_images.image_6",
+          "name": "model.reference_images.image_6",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 75
+        },
+        {
+          "label": "image_7",
+          "localized_name": "model.reference_images.image_7",
+          "name": "model.reference_images.image_7",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 76
+        },
+        {
+          "label": "image_8",
+          "localized_name": "model.reference_images.image_8",
+          "name": "model.reference_images.image_8",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 77
+        },
+        {
+          "label": "image_9",
+          "localized_name": "model.reference_images.image_9",
+          "name": "model.reference_images.image_9",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 78
+        },
+        {
+          "label": "image_10",
+          "localized_name": "model.reference_images.image_10",
+          "name": "model.reference_images.image_10",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 79
+        },
+        {
+          "label": "image_11",
+          "localized_name": "model.reference_images.image_11",
+          "name": "model.reference_images.image_11",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "label": "video_1",
+          "localized_name": "model.reference_videos.video_1",
+          "name": "model.reference_videos.video_1",
+          "shape": 7,
+          "type": "VIDEO",
+          "link": null
+        },
+        {
+          "label": "audio_1",
+          "localized_name": "model.reference_audios.audio_1",
+          "name": "model.reference_audios.audio_1",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 87
+        },
+        {
+          "label": "audio_2",
+          "localized_name": "model.reference_audios.audio_2",
+          "name": "model.reference_audios.audio_2",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        },
+        {
+          "label": "asset_1",
+          "localized_name": "model.reference_assets.asset_1",
+          "name": "model.reference_assets.asset_1",
+          "shape": 7,
+          "type": "STRING",
+          "link": null
+        },
+        {
+          "localized_name": "model.auto_downscale",
+          "name": "model.auto_downscale",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": { "name": "model.auto_downscale" },
+          "link": null
+        },
+        {
+          "localized_name": "model.auto_upscale",
+          "name": "model.auto_upscale",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": { "name": "model.auto_upscale" },
+          "link": null
+        },
+        {
+          "localized_name": "seed",
+          "name": "seed",
+          "type": "INT",
+          "widget": { "name": "seed" },
+          "link": null
+        },
+        {
+          "localized_name": "watermark",
+          "name": "watermark",
+          "type": "BOOLEAN",
+          "widget": { "name": "watermark" },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            90
+          ]
+        }
+      ],
+      "title": "PAID — MODE A — PROMPT + REFERENCE IMAGES ONLY — NO SOURCE VIDEO — CTRL+M",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "ByteDance2ReferenceNodeV2"
+      },
+      "widgets_values": [
+        "Seedance 2.5",
+        "",
+        "720p",
+        "9:16",
+        30,
+        true,
+        "reference",
+        "mp4",
+        true,
+        false,
+        42,
+        "fixed",
+        false
+      ],
+      "widgets_values_named": {
+        "model": "Seedance 2.5",
+        "model.prompt": "",
+        "model.resolution": "720p",
+        "model.ratio": "9:16",
+        "model.duration": 30,
+        "model.generate_audio": true,
+        "model.task_type": "reference",
+        "model.output_format": "mp4",
+        "model.auto_downscale": true,
+        "model.auto_upscale": false,
+        "seed": 42,
+        "control_after_generate": "fixed",
+        "watermark": false
+      },
+      "color": "#133847",
+      "bgcolor": "#071923"
+    },
+    {
+      "id": 16,
+      "type": "SaveVideo",
+      "pos": [
+        10664.404561719333,
+        -379.48788629716375
+      ],
+      "size": [
+        1722.46875,
+        126
+      ],
+      "flags": {},
+      "order": 47,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 90
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": null
+        }
+      ],
+      "title": "MODE A OUTPUT — ENABLE WITH MODE A",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0"
+      },
+      "widgets_values": [
+        "MatrixLab_AI_UGC_ModeA_ImagesOnly",
+        "auto",
+        "auto"
+      ],
+      "widgets_values_named": {
+        "filename_prefix": "MatrixLab_AI_UGC_ModeA_ImagesOnly",
+        "format": "auto",
+        "codec": "auto"
+      },
+      "color": "#263818",
+      "bgcolor": "#111b08"
+    },
+    {
+      "id": 17,
+      "type": "LoadImage",
+      "pos": [
+        5906.49620816999,
+        -658.2254781808193
+      ],
+      "size": [
+        555.78125,
+        280
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            21,
+            44,
+            52
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "title": "REFERENCE 02 — FACE DETAIL / ALTERNATE ANGLE — CTRL+M TO TOGGLE",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "",
+        null
+      ],
+      "widgets_values_named": {
+        "image": "",
+        "upload": null
+      },
+      "color": "#111",
+      "bgcolor": "#020805"
+    },
+    {
+      "id": 18,
+      "type": "LoadImage",
+      "pos": [
+        6517.60864277772,
+        -657.5297400094843
+      ],
+      "size": [
+        592.0625,
+        280
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            23,
+            46,
+            53
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "title": "REFERENCE 03 — FULL BODY + OUTFIT / FULL PRODUCT — CTRL+M TO TOGGLE",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "",
+        null
+      ],
+      "widgets_values_named": {
+        "image": "",
+        "upload": null
+      },
+      "color": "#111",
+      "bgcolor": "#020805"
+    },
+    {
+      "id": 19,
+      "type": "SaveText",
+      "pos": [
+        7929.460844751272,
+        -35.44616187688159
+      ],
+      "size": [
+        513.578125,
+        613.09375
+      ],
+      "flags": {},
+      "order": 58,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 24
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "SAFE OUTPUT — SAVE FINAL ORIGINAL-STYLE MASTER PROMPT",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "SaveText"
+      },
+      "widgets_values": [
+        "MatrixLab_AI_UGC_Final_Seedance_Prompt",
+        "txt"
+      ],
+      "widgets_values_named": {
+        "filename_prefix": "MatrixLab_AI_UGC_Final_Seedance_Prompt",
+        "format": "txt"
+      },
+      "color": "#133847",
+      "bgcolor": "#071923"
+    },
+    {
+      "id": 22,
+      "type": "PreviewImage",
+      "pos": [
+        950.8892088353923,
+        -470
+      ],
+      "size": [
+        729.09375,
+        1157.921875
+      ],
+      "flags": {},
+      "order": 50,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 25
+        }
+      ],
+      "outputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "links": null
+        }
+      ],
+      "title": "PREVIEW — EXACT FRAMES SENT TO GEMINI",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 23,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        3296.600945182678,
+        -692.24567630923
+      ],
+      "size": [
+        620,
+        500
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            35
+          ]
+        }
+      ],
+      "title": "CLONE INTENT — WHO OR WHAT SHOULD BE REPLACED?",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        "MODE: AUTO\nTARGET_TYPE: HUMAN\nTARGET_01: the single unambiguous primary person in a one-person video; if multiple people appear, replace this line with one precise role, starting position, clothing tracker and decisive action\nREPLACE_TARGET_01_WITH: the single human character defined by all active replacement reference images\nREPLACEMENT_REFERENCE_ROLE: HUMAN_CHARACTER\nPRESERVE: every non-target person, product, prop, background role, environment, camera path and action timing\nVOICE_OWNER: TARGET_01 if the optional voice-reference audio is enabled; otherwise follow the verified source speaker mapping\nREQUESTED_DIALOGUE_LANGUAGE: preserve the source language unless the user explicitly requests another language"
+      ],
+      "widgets_values_named": {
+        "value": "MODE: AUTO\nTARGET_TYPE: HUMAN\nTARGET_01: the single unambiguous primary person in a one-person video; if multiple people appear, replace this line with one precise role, starting position, clothing tracker and decisive action\nREPLACE_TARGET_01_WITH: the single human character defined by all active replacement reference images\nREPLACEMENT_REFERENCE_ROLE: HUMAN_CHARACTER\nPRESERVE: every non-target person, product, prop, background role, environment, camera path and action timing\nVOICE_OWNER: TARGET_01 if the optional voice-reference audio is enabled; otherwise follow the verified source speaker mapping\nREQUESTED_DIALOGUE_LANGUAGE: preserve the source language unless the user explicitly requests another language"
+      }
+    },
+    {
+      "id": 24,
+      "type": "StringConcatenate",
+      "pos": [
+        3619.9319144785054,
+        -133.88172397961122
+      ],
+      "size": [
+        296.234375,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 53,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string_a",
+          "type": "STRING",
+          "widget": {
+            "name": "string_a"
+          },
+          "link": 26
+        },
+        {
+          "name": "string_b",
+          "type": "STRING",
+          "widget": {
+            "name": "string_b"
+          },
+          "link": 37
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            28
+          ]
+        }
+      ],
+      "title": "MERGE EVIDENCE + USER TARGET MAPPING",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "StringConcatenate"
+      },
+      "widgets_values": [
+        "",
+        "",
+        "\n\n=== AUTHORITATIVE CLONE INTENT / TARGET MAPPING ===\n"
+      ],
+      "widgets_values_named": {
+        "string_a": "",
+        "string_b": "",
+        "delimiter": "\n\n=== AUTHORITATIVE CLONE INTENT / TARGET MAPPING ===\n"
+      }
+    },
+    {
+      "id": 25,
+      "type": "StringConcatenate",
+      "pos": [
+        7918.063190082352,
+        -677.2254223704288
+      ],
+      "size": [
+        286.53125,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 55,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string_a",
+          "type": "STRING",
+          "widget": {
+            "name": "string_a"
+          },
+          "link": 29
+        },
+        {
+          "name": "string_b",
+          "type": "STRING",
+          "widget": {
+            "name": "string_b"
+          },
+          "link": 38
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            31
+          ]
+        }
+      ],
+      "title": "LOCK TARGET MAPPING INTO OPUS INPUT",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "StringConcatenate"
+      },
+      "widgets_values": [
+        "",
+        "",
+        "\n\n=== AUTHORITATIVE CLONE INTENT / TARGET MAPPING ===\n"
+      ],
+      "widgets_values_named": {
+        "string_a": "",
+        "string_b": "",
+        "delimiter": "\n\n=== AUTHORITATIVE CLONE INTENT / TARGET MAPPING ===\n"
+      }
+    },
+    {
+      "id": 29,
+      "type": "LoadAudio",
+      "pos": [
+        8559.56561448606,
+        -299.15007855156864
+      ],
+      "size": [
+        560.546875,
+        260
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 4,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            56,
+            87
+          ]
+        }
+      ],
+      "title": "OPTIONAL VOICE REFERENCE — LOAD CLEAN AUDIO — CTRL+M TO ENABLE",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "LoadAudio"
+      },
+      "widgets_values": [
+        "",
+        null,
+        null
+      ],
+      "widgets_values_named": {
+        "audio": "",
+        "upload": null
+      }
+    },
+    {
+      "id": 30,
+      "type": "PrimitiveInt",
+      "pos": [
+        7723.031693977059,
+        -517.7596338751091
+      ],
+      "size": [
+        327.78125,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 10,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "INT",
+          "type": "INT",
+          "links": [
+            33,
+            34,
+            55
+          ]
+        }
+      ],
+      "title": "TARGET OUTPUT DURATION — 4 TO 30 SECONDS",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "PrimitiveInt"
+      },
+      "widgets_values": [
+        30,
+        "fixed"
+      ],
+      "widgets_values_named": {
+        "value": 30,
+        "fixed": "fixed"
+      }
+    },
+    {
+      "id": 31,
+      "type": "StringFormat",
+      "pos": [
+        7927.219251481293,
+        -614.8824981439202
+      ],
+      "size": [
+        324.21875,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 35,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "a",
+          "name": "values.a",
+          "shape": 7,
+          "type": "*",
+          "link": 34
+        },
+        {
+          "label": "b",
+          "name": "values.b",
+          "shape": 7,
+          "type": "*",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            36
+          ]
+        }
+      ],
+      "title": "FORMAT SHARED DURATION FOR GEMINI + OPUS",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "StringFormat"
+      },
+      "widgets_values": [
+        "TARGET_OUTPUT_DURATION_SECONDS: {a}\nThis integer is the authoritative generation endpoint shared with the Seedance duration input."
+      ],
+      "widgets_values_named": {
+        "f_string": "TARGET_OUTPUT_DURATION_SECONDS: {a}\nThis integer is the authoritative generation endpoint shared with the Seedance duration input."
+      }
+    },
+    {
+      "id": 32,
+      "type": "StringConcatenate",
+      "pos": [
+        7921.427941298534,
+        -649.2999896146107
+      ],
+      "size": [
+        315.3125,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 46,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string_a",
+          "type": "STRING",
+          "widget": {
+            "name": "string_a"
+          },
+          "link": 35
+        },
+        {
+          "name": "string_b",
+          "type": "STRING",
+          "widget": {
+            "name": "string_b"
+          },
+          "link": 36
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            37,
+            38
+          ]
+        }
+      ],
+      "title": "MERGE TARGET MAPPING + SHARED DURATION",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "StringConcatenate"
+      },
+      "widgets_values": [
+        "",
+        "",
+        "\n\n=== SHARED OUTPUT DURATION ===\n"
+      ],
+      "widgets_values_named": {
+        "string_a": "",
+        "string_b": "",
+        "delimiter": "\n\n=== SHARED OUTPUT DURATION ===\n"
+      }
+    },
+    {
+      "id": 33,
+      "type": "LoadImage",
+      "pos": [
+        4307.03946896415,
+        -617.1571917439014
+      ],
+      "size": [
+        558.890625,
+        228.609375
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 4,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            41
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "title": "OPTIONAL TARGET SCREENSHOT FOR BLUEPRINT VERIFICATION — CTRL+M",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "",
+        null
+      ],
+      "widgets_values_named": {
+        "image": "",
+        "upload": null
+      }
+    },
+    {
+      "id": 34,
+      "type": "ImageScaleToTotalPixels",
+      "pos": [
+        5622.737431708759,
+        -709.4224151388867
+      ],
+      "size": [
+        225,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 32,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 42
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            43
+          ]
+        }
+      ],
+      "title": "CLAUDE DOWNSCALE — REF 01",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "ImageScaleToTotalPixels"
+      },
+      "widgets_values": [
+        "lanczos",
+        1,
+        1
+      ],
+      "widgets_values_named": {
+        "upscale_method": "lanczos",
+        "megapixels": 1,
+        "resolution_steps": 1
+      }
+    },
+    {
+      "id": 35,
+      "type": "ImageScaleToTotalPixels",
+      "pos": [
+        6236.2539600998725,
+        -706.486396370476
+      ],
+      "size": [
+        225,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 33,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 44
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            45
+          ]
+        }
+      ],
+      "title": "CLAUDE DOWNSCALE — REF 02",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "ImageScaleToTotalPixels"
+      },
+      "widgets_values": [
+        "lanczos",
+        1,
+        1
+      ],
+      "widgets_values_named": {
+        "upscale_method": "lanczos",
+        "megapixels": 1,
+        "resolution_steps": 1
+      }
+    },
+    {
+      "id": 36,
+      "type": "ImageScaleToTotalPixels",
+      "pos": [
+        6882.981129659277,
+        -702.2017043064737
+      ],
+      "size": [
+        225,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 34,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 46
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            47
+          ]
+        }
+      ],
+      "title": "CLAUDE DOWNSCALE — REF 03",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "ImageScaleToTotalPixels"
+      },
+      "widgets_values": [
+        "lanczos",
+        1,
+        1
+      ],
+      "widgets_values_named": {
+        "upscale_method": "lanczos",
+        "megapixels": 1,
+        "resolution_steps": 1
+      }
+    },
+    {
+      "id": 37,
+      "type": "SaveText",
+      "pos": [
+        2517.1066223746852,
+        -712.9261577994564
+      ],
+      "size": [
+        705.859375,
+        491.859375
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 52,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 48
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "AUDIT OUTPUT 1 — SAVE VISUAL EVIDENCE REPORT",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "SaveText"
+      },
+      "widgets_values": [
+        "MatrixLab_AI_UGC_Audit_01_Visual_Evidence",
+        "txt"
+      ],
+      "widgets_values_named": {
+        "filename_prefix": "MatrixLab_AI_UGC_Audit_01_Visual_Evidence",
+        "format": "txt"
+      },
+      "color": "#133847",
+      "bgcolor": "#071923"
+    },
+    {
+      "id": 38,
+      "type": "SaveText",
+      "pos": [
+        2522.3697292652078,
+        -35.60483208995538
+      ],
+      "size": [
+        705.734375,
+        466.75
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 45,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 49
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "AUDIT OUTPUT 2 — SAVE AUDIO EVIDENCE REPORT",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "SaveText"
+      },
+      "widgets_values": [
+        "MatrixLab_AI_UGC_Audit_02_Audio_Evidence",
+        "txt"
+      ],
+      "widgets_values_named": {
+        "filename_prefix": "MatrixLab_AI_UGC_Audit_02_Audio_Evidence",
+        "format": "txt"
+      },
+      "color": "#133847",
+      "bgcolor": "#071923"
+    },
+    {
+      "id": 39,
+      "type": "SaveText",
+      "pos": [
+        4044.583262640284,
+        -83.29192752438809
+      ],
+      "size": [
+        779.421875,
+        518.375
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 56,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 50
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "AUDIT OUTPUT 3 — SAVE VERIFIED SOURCE BLUEPRINT",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "SaveText"
+      },
+      "widgets_values": [
+        "MatrixLab_AI_UGC_Audit_03_Verified_Blueprint",
+        "txt"
+      ],
+      "widgets_values_named": {
+        "filename_prefix": "MatrixLab_AI_UGC_Audit_03_Verified_Blueprint",
+        "format": "txt"
+      },
+      "color": "#133847",
+      "bgcolor": "#071923"
+    },
+    {
+      "id": 40,
+      "type": "LoadImage",
+      "pos": [
+        5309.463063776813,
+        -224.34488032059204
+      ],
+      "size": [
+        606.40625,
+        243.25
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 4,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            73,
+            91,
+            105
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "title": "REFERENCE 04 — PROFILE / SECONDARY PRODUCT ANGLE — CTRL+M TO TOGGLE",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "",
+        null
+      ],
+      "widgets_values_named": {
+        "image": "",
+        "upload": null
+      },
+      "color": "#111",
+      "bgcolor": "#020805"
+    },
+    {
+      "id": 41,
+      "type": "LoadImage",
+      "pos": [
+        5923.325794332448,
+        -218.2677689803134
+      ],
+      "size": [
+        537.109375,
+        244.015625
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 4,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            74,
+            93,
+            106
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "title": "REFERENCE 05 — BACK VIEW / MATERIAL DETAIL — CTRL+M TO TOGGLE",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "",
+        null
+      ],
+      "widgets_values_named": {
+        "image": "",
+        "upload": null
+      },
+      "color": "#111",
+      "bgcolor": "#020805"
+    },
+    {
+      "id": 42,
+      "type": "LoadImage",
+      "pos": [
+        6544.787095405233,
+        -219.6124657308271
+      ],
+      "size": [
+        563.59375,
+        237.578125
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 4,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            75,
+            95,
+            107
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "title": "REFERENCE 06 — EXPRESSION / ADDITIONAL DETAIL — CTRL+M TO TOGGLE",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "",
+        null
+      ],
+      "widgets_values_named": {
+        "image": "",
+        "upload": null
+      },
+      "color": "#111",
+      "bgcolor": "#020805"
+    },
+    {
+      "id": 43,
+      "type": "LoadImage",
+      "pos": [
+        5298.457157175451,
+        209.53292250166135
+      ],
+      "size": [
+        569.1875,
+        209.796875
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 4,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            76,
+            97,
+            108
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "title": "REFERENCE 07 — OUTFIT DETAIL / PACKAGING VIEW — CTRL+M TO TOGGLE",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "",
+        null
+      ],
+      "widgets_values_named": {
+        "image": "",
+        "upload": null
+      },
+      "color": "#111",
+      "bgcolor": "#020805"
+    },
+    {
+      "id": 44,
+      "type": "LoadImage",
+      "pos": [
+        5944.980704118381,
+        178.43701436040303
+      ],
+      "size": [
+        567.140625,
+        254.5625
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 4,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            77,
+            99,
+            109
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "title": "REFERENCE 08 — BODY PROPORTIONS / SCALE VIEW — CTRL+M TO TOGGLE",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "",
+        null
+      ],
+      "widgets_values_named": {
+        "image": "",
+        "upload": null
+      },
+      "color": "#111",
+      "bgcolor": "#020805"
+    },
+    {
+      "id": 45,
+      "type": "LoadImage",
+      "pos": [
+        6546.159350546557,
+        188.6077422599152
+      ],
+      "size": [
+        516.109375,
+        246.078125
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 4,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            78,
+            101,
+            110
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "title": "REFERENCE 09 — ALTERNATE ANGLE — CTRL+M TO TOGGLE",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "",
+        null
+      ],
+      "widgets_values_named": {
+        "image": "",
+        "upload": null
+      },
+      "color": "#111",
+      "bgcolor": "#020805"
+    },
+    {
+      "id": 46,
+      "type": "LoadImage",
+      "pos": [
+        5330.556439652461,
+        478.2884791661245
+      ],
+      "size": [
+        493.390625,
+        280
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 4,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            79,
+            103,
+            111
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "title": "REFERENCE 10 — ADDITIONAL REFERENCE — CTRL+M TO TOGGLE",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "",
+        null
+      ],
+      "widgets_values_named": {
+        "image": "",
+        "upload": null
+      },
+      "color": "#111",
+      "bgcolor": "#020805"
+    },
+    {
+      "id": 47,
+      "type": "ByteDance2ReferenceNodeV2",
+      "pos": [
+        9216.02620485881,
+        148.19667240069901
+      ],
+      "size": [
+        1300,
+        543
+      ],
+      "flags": {},
+      "order": 59,
+      "mode": 4,
+      "inputs": [
+        {
+          "localized_name": "model",
+          "name": "model",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "widget": { "name": "model" },
+          "link": null
+        },
+        {
+          "localized_name": "model.prompt",
+          "name": "model.prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "model.prompt"
+          },
+          "link": 54
+        },
+        {
+          "localized_name": "model.resolution",
+          "name": "model.resolution",
+          "type": "COMBO",
+          "widget": { "name": "model.resolution" },
+          "link": null
+        },
+        {
+          "localized_name": "model.ratio",
+          "name": "model.ratio",
+          "type": "COMBO",
+          "widget": { "name": "model.ratio" },
+          "link": null
+        },
+        {
+          "localized_name": "model.duration",
+          "name": "model.duration",
+          "type": "INT",
+          "widget": {
+            "name": "model.duration"
+          },
+          "link": 55
+        },
+        {
+          "localized_name": "model.generate_audio",
+          "name": "model.generate_audio",
+          "type": "BOOLEAN",
+          "widget": { "name": "model.generate_audio" },
+          "link": null
+        },
+        {
+          "localized_name": "model.task_type",
+          "name": "model.task_type",
+          "type": "COMBO",
+          "widget": { "name": "model.task_type" },
+          "link": null
+        },
+        {
+          "localized_name": "model.output_format",
+          "name": "model.output_format",
+          "type": "COMBO",
+          "widget": { "name": "model.output_format" },
+          "link": null
+        },
+        {
+          "label": "image_1",
+          "localized_name": "model.reference_images.image_1",
+          "name": "model.reference_images.image_1",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 51
+        },
+        {
+          "label": "image_2",
+          "localized_name": "model.reference_images.image_2",
+          "name": "model.reference_images.image_2",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 52
+        },
+        {
+          "label": "image_3",
+          "localized_name": "model.reference_images.image_3",
+          "name": "model.reference_images.image_3",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 53
+        },
+        {
+          "label": "image_4",
+          "localized_name": "model.reference_images.image_4",
+          "name": "model.reference_images.image_4",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 105
+        },
+        {
+          "label": "image_5",
+          "localized_name": "model.reference_images.image_5",
+          "name": "model.reference_images.image_5",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 106
+        },
+        {
+          "label": "image_6",
+          "localized_name": "model.reference_images.image_6",
+          "name": "model.reference_images.image_6",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 107
+        },
+        {
+          "label": "image_7",
+          "localized_name": "model.reference_images.image_7",
+          "name": "model.reference_images.image_7",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 108
+        },
+        {
+          "label": "image_8",
+          "localized_name": "model.reference_images.image_8",
+          "name": "model.reference_images.image_8",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 109
+        },
+        {
+          "label": "image_9",
+          "localized_name": "model.reference_images.image_9",
+          "name": "model.reference_images.image_9",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 110
+        },
+        {
+          "label": "image_10",
+          "localized_name": "model.reference_images.image_10",
+          "name": "model.reference_images.image_10",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 111
+        },
+        {
+          "label": "image_11",
+          "localized_name": "model.reference_images.image_11",
+          "name": "model.reference_images.image_11",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "label": "video_1",
+          "localized_name": "model.reference_videos.video_1",
+          "name": "model.reference_videos.video_1",
+          "shape": 7,
+          "type": "VIDEO",
+          "link": 57
+        },
+        {
+          "label": "video_2",
+          "localized_name": "model.reference_videos.video_2",
+          "name": "model.reference_videos.video_2",
+          "shape": 7,
+          "type": "VIDEO",
+          "link": null
+        },
+        {
+          "label": "audio_1",
+          "localized_name": "model.reference_audios.audio_1",
+          "name": "model.reference_audios.audio_1",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 56
+        },
+        {
+          "label": "audio_2",
+          "localized_name": "model.reference_audios.audio_2",
+          "name": "model.reference_audios.audio_2",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        },
+        {
+          "label": "asset_1",
+          "localized_name": "model.reference_assets.asset_1",
+          "name": "model.reference_assets.asset_1",
+          "shape": 7,
+          "type": "STRING",
+          "link": null
+        },
+        {
+          "localized_name": "model.auto_downscale",
+          "name": "model.auto_downscale",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": { "name": "model.auto_downscale" },
+          "link": null
+        },
+        {
+          "localized_name": "model.auto_upscale",
+          "name": "model.auto_upscale",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": { "name": "model.auto_upscale" },
+          "link": null
+        },
+        {
+          "localized_name": "seed",
+          "name": "seed",
+          "type": "INT",
+          "widget": { "name": "seed" },
+          "link": null
+        },
+        {
+          "localized_name": "watermark",
+          "name": "watermark",
+          "type": "BOOLEAN",
+          "widget": { "name": "watermark" },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            89
+          ]
+        }
+      ],
+      "title": "PAID — MODE B — PROMPT + REFERENCE IMAGES + SOURCE VIDEO EDIT — CTRL+M",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "ByteDance2ReferenceNodeV2"
+      },
+      "widgets_values": [
+        "Seedance 2.5",
+        "",
+        "480p",
+        "9:16",
+        30,
+        true,
+        "edit",
+        "mp4",
+        true,
+        false,
+        42,
+        "fixed",
+        false
+      ],
+      "widgets_values_named": {
+        "model": "Seedance 2.5",
+        "model.prompt": "",
+        "model.resolution": "480p",
+        "model.ratio": "9:16",
+        "model.duration": 30,
+        "model.generate_audio": true,
+        "model.task_type": "edit",
+        "model.output_format": "mp4",
+        "model.auto_downscale": true,
+        "model.auto_upscale": false,
+        "seed": 42,
+        "control_after_generate": "fixed",
+        "watermark": false
+      },
+      "color": "#133847",
+      "bgcolor": "#071923"
+    },
+    {
+      "id": 48,
+      "type": "SaveVideo",
+      "pos": [
+        10676.434677509775,
+        679.3350727903538
+      ],
+      "size": [
+        760,
+        126
+      ],
+      "flags": {},
+      "order": 60,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 89
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": null
+        }
+      ],
+      "title": "MODE B OUTPUT — ENABLE WITH MODE B",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0"
+      },
+      "widgets_values": [
+        "MatrixLab_AI_UGC_ModeB_SourceVideoEdit",
+        "auto",
+        "auto"
+      ],
+      "widgets_values_named": {
+        "filename_prefix": "MatrixLab_AI_UGC_ModeB_SourceVideoEdit",
+        "format": "auto",
+        "codec": "auto"
+      },
+      "color": "#263818",
+      "bgcolor": "#111b08"
+    },
+    {
+      "id": 49,
+      "type": "Label (rgthree)",
+      "pos": [
+        40,
+        -1220
+      ],
+      "size": [
+        1035.544921875,
+        180
+      ],
+      "flags": {
+        "allow_interaction": true
+      },
+      "order": 19,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "███╗   ███╗ █████╗ ████████╗██████╗ ██╗██╗  ██╗        ██╗      █████╗ ██████╗\n████╗ ████║██╔══██╗╚══██╔══╝██╔══██╗██║╚██╗██╔╝        ██║     ██╔══██╗██╔══██╗\n██╔████╔██║███████║   ██║   ██████╔╝██║ ╚███╔╝         ██║     ███████║██████╔╝\n██║╚██╔╝██║██╔══██║   ██║   ██╔══██╗██║ ██╔██╗         ██║     ██╔══██║██╔══██╗\n██║ ╚═╝ ██║██║  ██║   ██║   ██║  ██║██║██╔╝ ██╗        ███████╗██║  ██║██████╔╝\n╚═╝     ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝  ╚═╝        ╚══════╝╚═╝  ╚═╝╚═════╝\n\nUNIVERSAL AI UGC VIDEO CLONER v1.2.0  //  LOAD → ANALYZE → MAP → REFERENCE → PROMPT → GENERATE → SAVE",
+      "properties": {
+        "fontSize": 18,
+        "fontFamily": "Consolas",
+        "fontColor": "#ffffff",
+        "textAlign": "left",
+        "backgroundColor": "#061507",
+        "padding": 18,
+        "borderRadius": 8,
+        "angle": 0
+      },
+      "color": "#fff0",
+      "bgcolor": "#fff0"
+    },
+    {
+      "id": 51,
+      "type": "Note",
+      "pos": [
+        43.98414691068348,
+        -771.5091863178353
+      ],
+      "size": [
+        661.421875,
+        250.390625
+      ],
+      "flags": {},
+      "order": 20,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "01 — START HERE — LOAD THE SOURCE VIDEO",
+      "properties": {},
+      "widgets_values": [
+        "LOAD THE ORIGINAL VIDEO YOU WANT TO RECREATE\n\n1. Choose a TikTok, Reel, Short or product video in the Load Video node below.\n2. The workflow samples 60 frames and analyzes the full video plus its original audio.\n3. The source is used for analysis only unless you deliberately choose Seedance Mode B at the end."
+      ],
+      "widgets_values_named": {
+        "text": "LOAD THE ORIGINAL VIDEO YOU WANT TO RECREATE\n\n1. Choose a TikTok, Reel, Short or product video in the Load Video node below.\n2. The workflow samples 60 frames and analyzes the full video plus its original audio.\n3. The source is used for analysis only unless you deliberately choose Seedance Mode B at the end."
+      },
+      "color": "#2d3a18",
+      "bgcolor": "#061507"
+    },
+    {
+      "id": 57,
+      "type": "Note",
+      "pos": [
+        10656.565958223331,
+        -742.5408482146049
+      ],
+      "size": [
+        1720,
+        300
+      ],
+      "flags": {},
+      "order": 21,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "07 — SAVE VIDEO — YOUR FINAL OUTPUT",
+      "properties": {},
+      "widgets_values": [
+        "SAVE YOUR GENERATED VIDEO\n\nEnable exactly one green Seedance mode in the rgthree panel. The matching Save Video node is toggled together with that complete mode group. Mode A is the recommended default: prompt + reference images, without the original source video. Mode B additionally sends the source video as an edit reference."
+      ],
+      "widgets_values_named": {
+        "text": "SAVE YOUR GENERATED VIDEO\n\nEnable exactly one green Seedance mode in the rgthree panel. The matching Save Video node is toggled together with that complete mode group. Mode A is the recommended default: prompt + reference images, without the original source video. Mode B additionally sends the source video as an edit reference."
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 61,
+      "type": "Label (rgthree)",
+      "pos": [
+        1730,
+        -820
+      ],
+      "size": [
+        396.6845703125,
+        54
+      ],
+      "flags": {
+        "allow_interaction": true
+      },
+      "order": 22,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "02 · ANALYZE VIDEO + AUDIO",
+      "properties": {
+        "fontSize": 26,
+        "fontFamily": "Arial",
+        "fontColor": "#ffffff",
+        "textAlign": "left",
+        "backgroundColor": "#0d211d",
+        "padding": 14,
+        "borderRadius": 8,
+        "angle": 0
+      },
+      "color": "#fff0",
+      "bgcolor": "#fff0"
+    },
+    {
+      "id": 62,
+      "type": "Label (rgthree)",
+      "pos": [
+        3288.53612456915,
+        -804.8171151375341
+      ],
+      "size": [
+        569.78515625,
+        54
+      ],
+      "flags": {
+        "allow_interaction": true
+      },
+      "order": 23,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "03 · CHOOSE EXACTLY WHAT TO REPLACE",
+      "properties": {
+        "fontSize": 26,
+        "fontFamily": "Arial",
+        "fontColor": "#ffffff",
+        "textAlign": "left",
+        "backgroundColor": "#0d211d",
+        "padding": 14,
+        "borderRadius": 8,
+        "angle": 0
+      },
+      "color": "#fff0",
+      "bgcolor": "#fff0"
+    },
+    {
+      "id": 63,
+      "type": "Label (rgthree)",
+      "pos": [
+        4899.1171610651245,
+        -794.3058871558269
+      ],
+      "size": [
+        761.9541015625,
+        54
+      ],
+      "flags": {
+        "allow_interaction": true
+      },
+      "order": 24,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "04 · ADD 1–10 REFERENCES · CONTROLLED BY RGTHREE",
+      "properties": {
+        "fontSize": 26,
+        "fontFamily": "Arial",
+        "fontColor": "#ffffff",
+        "textAlign": "left",
+        "backgroundColor": "#24102e",
+        "padding": 14,
+        "borderRadius": 8,
+        "angle": 0
+      },
+      "color": "#fff0",
+      "bgcolor": "#fff0"
+    },
+    {
+      "id": 64,
+      "type": "Label (rgthree)",
+      "pos": [
+        7258.614759446256,
+        -785.6107764039166
+      ],
+      "size": [
+        565.443359375,
+        54
+      ],
+      "flags": {
+        "allow_interaction": true
+      },
+      "order": 25,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "05 · BUILD THE FINAL SEEDANCE PROMPT",
+      "properties": {
+        "fontSize": 26,
+        "fontFamily": "Arial",
+        "fontColor": "#ffffff",
+        "textAlign": "left",
+        "backgroundColor": "#0d211d",
+        "padding": 14,
+        "borderRadius": 8,
+        "angle": 0
+      },
+      "color": "#fff0",
+      "bgcolor": "#fff0"
+    },
+    {
+      "id": 65,
+      "type": "Label (rgthree)",
+      "pos": [
+        8510.424130900725,
+        -803.0418855228459
+      ],
+      "size": [
+        822.5615234375,
+        54
+      ],
+      "flags": {
+        "allow_interaction": true
+      },
+      "order": 26,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "title": "06 · CHOOSE ONE SEEDANCE MODE · PAID NODES START OFF",
+      "properties": {
+        "fontSize": 26,
+        "fontFamily": "Arial",
+        "fontColor": "#ffffff",
+        "textAlign": "left",
+        "backgroundColor": "#3a1e22",
+        "padding": 14,
+        "borderRadius": 8,
+        "angle": 0
+      },
+      "color": "#fff0",
+      "bgcolor": "#fff0"
+    },
+    {
+      "id": 68,
+      "type": "Fast Groups Bypasser (rgthree)",
+      "pos": [
+        3944.6666121836483,
+        -683.7283022947138
+      ],
+      "size": [
+        300,
+        220
+      ],
+      "flags": {},
+      "order": 27,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "OPT_CONNECTION",
+          "type": "*",
+          "links": []
+        }
+      ],
+      "title": "OPTIONAL INPUTS · ON / OFF",
+      "properties": {
+        "matchColors": "",
+        "matchTitle": "^T0[1-2](?:\\s|$)",
+        "showNav": true,
+        "showAllGraphs": false,
+        "sort": "alphanumeric",
+        "customSortAlphabet": "",
+        "toggleRestriction": "default",
+        "Node name for S&R": "Fast Groups Bypasser (rgthree)"
+      },
+      "color": "#193d2a",
+      "bgcolor": "#0d2117"
+    },
+    {
+      "id": 78,
+      "type": "Fast Groups Bypasser (rgthree)",
+      "pos": [
+        4928.058473292705,
+        -464.16042889905157
+      ],
+      "size": [
+        310,
+        650
+      ],
+      "flags": {},
+      "order": 28,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "OPT_CONNECTION",
+          "type": "*",
+          "links": []
+        }
+      ],
+      "title": "REFERENCE IMAGES · ON / OFF",
+      "properties": {
+        "matchColors": "",
+        "matchTitle": "^R(?:0[1-9]|10)(?:\\s|$)",
+        "showNav": true,
+        "showAllGraphs": false,
+        "sort": "alphanumeric",
+        "customSortAlphabet": "",
+        "toggleRestriction": "default",
+        "Node name for S&R": "Fast Groups Bypasser (rgthree)"
+      },
+      "color": "#193d2a",
+      "bgcolor": "#0d2117"
+    },
+    {
+      "id": 70,
+      "type": "Fast Groups Bypasser (rgthree)",
+      "pos": [
+        8540.752706237974,
+        -677.7369023451395
+      ],
+      "size": [
+        340,
+        300
+      ],
+      "flags": {},
+      "order": 29,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "OPT_CONNECTION",
+          "type": "*",
+          "links": []
+        }
+      ],
+      "title": "SEEDANCE MODES · CHOOSE ONE",
+      "properties": {
+        "matchColors": "",
+        "matchTitle": "^G0[1-2](?:\\s|$)",
+        "showNav": true,
+        "showAllGraphs": false,
+        "sort": "alphanumeric",
+        "customSortAlphabet": "",
+        "toggleRestriction": "default",
+        "Node name for S&R": "Fast Groups Bypasser (rgthree)"
+      },
+      "color": "#193d2a",
+      "bgcolor": "#0d2117"
+    },
+    {
+      "id": 71,
+      "type": "ImageScaleToTotalPixels",
+      "pos": [
+        5625.566810956761,
+        -261.08746168775974
+      ],
+      "size": [
+        310.65625,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 37,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 91
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            92
+          ]
+        }
+      ],
+      "title": "CLAUDE DOWNSCALE — REF 04",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "ImageScaleToTotalPixels"
+      },
+      "widgets_values": [
+        "lanczos",
+        1,
+        1
+      ],
+      "widgets_values_named": {
+        "upscale_method": "lanczos",
+        "megapixels": 1,
+        "resolution_steps": 1
+      }
+    },
+    {
+      "id": 72,
+      "type": "ImageScaleToTotalPixels",
+      "pos": [
+        6235.190012893106,
+        -258.09364388878186
+      ],
+      "size": [
+        310.03125,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 38,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 93
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            94
+          ]
+        }
+      ],
+      "title": "CLAUDE DOWNSCALE — REF 05",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "ImageScaleToTotalPixels"
+      },
+      "widgets_values": [
+        "lanczos",
+        1,
+        1
+      ],
+      "widgets_values_named": {
+        "upscale_method": "lanczos",
+        "megapixels": 1,
+        "resolution_steps": 1
+      }
+    },
+    {
+      "id": 73,
+      "type": "ImageScaleToTotalPixels",
+      "pos": [
+        6860.304695635922,
+        -255.5842237126697
+      ],
+      "size": [
+        310.34375,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 39,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 95
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            96
+          ]
+        }
+      ],
+      "title": "CLAUDE DOWNSCALE — REF 06",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "ImageScaleToTotalPixels"
+      },
+      "widgets_values": [
+        "lanczos",
+        1,
+        1
+      ],
+      "widgets_values_named": {
+        "upscale_method": "lanczos",
+        "megapixels": 1,
+        "resolution_steps": 1
+      }
+    },
+    {
+      "id": 74,
+      "type": "ImageScaleToTotalPixels",
+      "pos": [
+        5628.321861703195,
+        163.8855463949798
+      ],
+      "size": [
+        309.46875,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 40,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 97
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            98
+          ]
+        }
+      ],
+      "title": "CLAUDE DOWNSCALE — REF 07",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "ImageScaleToTotalPixels"
+      },
+      "widgets_values": [
+        "lanczos",
+        1,
+        1
+      ],
+      "widgets_values_named": {
+        "upscale_method": "lanczos",
+        "megapixels": 1,
+        "resolution_steps": 1
+      }
+    },
+    {
+      "id": 75,
+      "type": "ImageScaleToTotalPixels",
+      "pos": [
+        6254.680996612945,
+        154.41301885110119
+      ],
+      "size": [
+        310.328125,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 41,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 99
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            100
+          ]
+        }
+      ],
+      "title": "CLAUDE DOWNSCALE — REF 08",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "ImageScaleToTotalPixels"
+      },
+      "widgets_values": [
+        "lanczos",
+        1,
+        1
+      ],
+      "widgets_values_named": {
+        "upscale_method": "lanczos",
+        "megapixels": 1,
+        "resolution_steps": 1
+      }
+    },
+    {
+      "id": 76,
+      "type": "ImageScaleToTotalPixels",
+      "pos": [
+        6839.541691545907,
+        160.34421813132482
+      ],
+      "size": [
+        310.34375,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 42,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 101
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            102
+          ]
+        }
+      ],
+      "title": "CLAUDE DOWNSCALE — REF 09",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "ImageScaleToTotalPixels"
+      },
+      "widgets_values": [
+        "lanczos",
+        1,
+        1
+      ],
+      "widgets_values_named": {
+        "upscale_method": "lanczos",
+        "megapixels": 1,
+        "resolution_steps": 1
+      }
+    },
+    {
+      "id": 77,
+      "type": "ImageScaleToTotalPixels",
+      "pos": [
+        5621.88544146344,
+        478.2884791661244
+      ],
+      "size": [
+        307.78125,
+        0
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 43,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 103
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            104
+          ]
+        }
+      ],
+      "title": "CLAUDE DOWNSCALE — REF 10",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "ImageScaleToTotalPixels"
+      },
+      "widgets_values": [
+        "lanczos",
+        1,
+        1
+      ],
+      "widgets_values_named": {
+        "upscale_method": "lanczos",
+        "megapixels": 1,
+        "resolution_steps": 1
+      }
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      2,
+      0,
+      "VIDEO"
+    ],
+    [
+      2,
+      2,
+      0,
+      3,
+      0,
+      "VIDEO"
+    ],
+    [
+      3,
+      3,
+      0,
+      4,
+      0,
+      "IMAGE"
+    ],
+    [
+      4,
+      1,
+      0,
+      6,
+      3,
+      "VIDEO"
+    ],
+    [
+      5,
+      4,
+      0,
+      6,
+      0,
+      "IMAGE"
+    ],
+    [
+      6,
+      5,
+      0,
+      6,
+      5,
+      "STRING"
+    ],
+    [
+      7,
+      1,
+      0,
+      8,
+      2,
+      "VIDEO"
+    ],
+    [
+      8,
+      7,
+      0,
+      8,
+      4,
+      "STRING"
+    ],
+    [
+      9,
+      6,
+      0,
+      9,
+      0,
+      "STRING"
+    ],
+    [
+      10,
+      8,
+      0,
+      9,
+      1,
+      "STRING"
+    ],
+    [
+      12,
+      10,
+      0,
+      11,
+      7,
+      "STRING"
+    ],
+    [
+      14,
+      13,
+      0,
+      14,
+      2,
+      "STRING"
+    ],
+    [
+      16,
+      14,
+      0,
+      15,
+      1,
+      "STRING"
+    ],
+    [
+      19,
+      12,
+      0,
+      15,
+      8,
+      "IMAGE"
+    ],
+    [
+      21,
+      17,
+      0,
+      15,
+      9,
+      "IMAGE"
+    ],
+    [
+      23,
+      18,
+      0,
+      15,
+      10,
+      "IMAGE"
+    ],
+    [
+      24,
+      14,
+      0,
+      19,
+      0,
+      "STRING"
+    ],
+    [
+      25,
+      4,
+      0,
+      22,
+      0,
+      "IMAGE"
+    ],
+    [
+      26,
+      9,
+      0,
+      24,
+      0,
+      "STRING"
+    ],
+    [
+      28,
+      24,
+      0,
+      11,
+      0,
+      "STRING"
+    ],
+    [
+      29,
+      11,
+      0,
+      25,
+      0,
+      "STRING"
+    ],
+    [
+      31,
+      25,
+      0,
+      14,
+      1,
+      "STRING"
+    ],
+    [
+      33,
+      30,
+      0,
+      15,
+      4,
+      "INT"
+    ],
+    [
+      34,
+      30,
+      0,
+      31,
+      0,
+      "INT"
+    ],
+    [
+      35,
+      23,
+      0,
+      32,
+      0,
+      "STRING"
+    ],
+    [
+      36,
+      31,
+      0,
+      32,
+      1,
+      "STRING"
+    ],
+    [
+      37,
+      32,
+      0,
+      24,
+      1,
+      "STRING"
+    ],
+    [
+      38,
+      32,
+      0,
+      25,
+      1,
+      "STRING"
+    ],
+    [
+      39,
+      4,
+      0,
+      11,
+      1,
+      "IMAGE"
+    ],
+    [
+      40,
+      1,
+      0,
+      11,
+      5,
+      "VIDEO"
+    ],
+    [
+      41,
+      33,
+      0,
+      11,
+      2,
+      "IMAGE"
+    ],
+    [
+      42,
+      12,
+      0,
+      34,
+      0,
+      "IMAGE"
+    ],
+    [
+      43,
+      34,
+      0,
+      14,
+      0,
+      "IMAGE"
+    ],
+    [
+      44,
+      17,
+      0,
+      35,
+      0,
+      "IMAGE"
+    ],
+    [
+      45,
+      35,
+      0,
+      14,
+      10,
+      "IMAGE"
+    ],
+    [
+      46,
+      18,
+      0,
+      36,
+      0,
+      "IMAGE"
+    ],
+    [
+      47,
+      36,
+      0,
+      14,
+      11,
+      "IMAGE"
+    ],
+    [
+      48,
+      6,
+      0,
+      37,
+      0,
+      "STRING"
+    ],
+    [
+      49,
+      8,
+      0,
+      38,
+      0,
+      "STRING"
+    ],
+    [
+      50,
+      11,
+      0,
+      39,
+      0,
+      "STRING"
+    ],
+    [
+      51,
+      12,
+      0,
+      47,
+      8,
+      "IMAGE"
+    ],
+    [
+      52,
+      17,
+      0,
+      47,
+      9,
+      "IMAGE"
+    ],
+    [
+      53,
+      18,
+      0,
+      47,
+      10,
+      "IMAGE"
+    ],
+    [
+      54,
+      14,
+      0,
+      47,
+      1,
+      "STRING"
+    ],
+    [
+      55,
+      30,
+      0,
+      47,
+      4,
+      "INT"
+    ],
+    [
+      56,
+      29,
+      0,
+      47,
+      21,
+      "AUDIO"
+    ],
+    [
+      57,
+      1,
+      0,
+      47,
+      19,
+      "VIDEO"
+    ],
+    [
+      73,
+      40,
+      0,
+      15,
+      11,
+      "IMAGE"
+    ],
+    [
+      74,
+      41,
+      0,
+      15,
+      12,
+      "IMAGE"
+    ],
+    [
+      75,
+      42,
+      0,
+      15,
+      13,
+      "IMAGE"
+    ],
+    [
+      76,
+      43,
+      0,
+      15,
+      14,
+      "IMAGE"
+    ],
+    [
+      77,
+      44,
+      0,
+      15,
+      15,
+      "IMAGE"
+    ],
+    [
+      78,
+      45,
+      0,
+      15,
+      16,
+      "IMAGE"
+    ],
+    [
+      79,
+      46,
+      0,
+      15,
+      17,
+      "IMAGE"
+    ],
+    [
+      87,
+      29,
+      0,
+      15,
+      20,
+      "AUDIO"
+    ],
+    [
+      89,
+      47,
+      0,
+      48,
+      0,
+      "VIDEO"
+    ],
+    [
+      90,
+      15,
+      0,
+      16,
+      0,
+      "VIDEO"
+    ],
+    [
+      91,
+      40,
+      0,
+      71,
+      0,
+      "IMAGE"
+    ],
+    [
+      92,
+      71,
+      0,
+      14,
+      12,
+      "IMAGE"
+    ],
+    [
+      93,
+      41,
+      0,
+      72,
+      0,
+      "IMAGE"
+    ],
+    [
+      94,
+      72,
+      0,
+      14,
+      3,
+      "IMAGE"
+    ],
+    [
+      95,
+      42,
+      0,
+      73,
+      0,
+      "IMAGE"
+    ],
+    [
+      96,
+      73,
+      0,
+      14,
+      4,
+      "IMAGE"
+    ],
+    [
+      97,
+      43,
+      0,
+      74,
+      0,
+      "IMAGE"
+    ],
+    [
+      98,
+      74,
+      0,
+      14,
+      5,
+      "IMAGE"
+    ],
+    [
+      99,
+      44,
+      0,
+      75,
+      0,
+      "IMAGE"
+    ],
+    [
+      100,
+      75,
+      0,
+      14,
+      6,
+      "IMAGE"
+    ],
+    [
+      101,
+      45,
+      0,
+      76,
+      0,
+      "IMAGE"
+    ],
+    [
+      102,
+      76,
+      0,
+      14,
+      7,
+      "IMAGE"
+    ],
+    [
+      103,
+      46,
+      0,
+      77,
+      0,
+      "IMAGE"
+    ],
+    [
+      104,
+      77,
+      0,
+      14,
+      8,
+      "IMAGE"
+    ],
+    [
+      105,
+      40,
+      0,
+      47,
+      11,
+      "IMAGE"
+    ],
+    [
+      106,
+      41,
+      0,
+      47,
+      12,
+      "IMAGE"
+    ],
+    [
+      107,
+      42,
+      0,
+      47,
+      13,
+      "IMAGE"
+    ],
+    [
+      108,
+      43,
+      0,
+      47,
+      14,
+      "IMAGE"
+    ],
+    [
+      109,
+      44,
+      0,
+      47,
+      15,
+      "IMAGE"
+    ],
+    [
+      110,
+      45,
+      0,
+      47,
+      16,
+      "IMAGE"
+    ],
+    [
+      111,
+      46,
+      0,
+      47,
+      17,
+      "IMAGE"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "MATRIX LAB — UNIVERSAL AI UGC VIDEO CLONER v1.2.0",
+      "bounding": [
+        -120,
+        -1320,
+        12600,
+        2250
+      ],
+      "color": "#17421f",
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "00 MATRIX LAB HEADER",
+      "bounding": [
+        0,
+        -1280,
+        12360,
+        410
+      ],
+      "color": "#17421f",
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "01 SOURCE VIDEO + FRAME SAMPLING",
+      "bounding": [
+        0,
+        -850,
+        1700,
+        1600
+      ],
+      "color": "#203a35",
+      "flags": {}
+    },
+    {
+      "id": 4,
+      "title": "02 ANALYZE VIDEO + AUDIO",
+      "bounding": [
+        1730,
+        -850,
+        1510,
+        1600
+      ],
+      "color": "#17384a",
+      "flags": {}
+    },
+    {
+      "id": 5,
+      "title": "03 TARGET MAPPING + BLUEPRINT",
+      "bounding": [
+        3270.8349246694,
+        -846.4962573394309,
+        1580,
+        1600
+      ],
+      "color": "#21462f",
+      "flags": {}
+    },
+    {
+      "id": 6,
+      "title": "04 REFERENCE IMAGES",
+      "bounding": [
+        4888.058473292705,
+        -844.1604288990516,
+        2313.20854396941,
+        1671.506716045334
+      ],
+      "color": "#535",
+      "flags": {}
+    },
+    {
+      "id": 7,
+      "title": "05 OPUS PROMPT COMPILER",
+      "bounding": [
+        7243.418602831288,
+        -838.9690608077103,
+        1220.115190968817,
+        1653.0082395031714
+      ],
+      "color": "#21462f",
+      "flags": {}
+    },
+    {
+      "id": 8,
+      "title": "06 SEEDANCE GENERATION",
+      "bounding": [
+        8510.424130900725,
+        -833.0418855228459,
+        2052.8815652383164,
+        1715.44349382069
+      ],
+      "color": "#3a1e22",
+      "flags": {}
+    },
+    {
+      "id": 9,
+      "title": "07 SAVE VIDEO",
+      "bounding": [
+        10603.025855421449,
+        -825.7658503787076,
+        1832.1281764042778,
+        1711.1069799418565
+      ],
+      "color": "#443",
+      "flags": {}
+    },
+    {
+      "id": 20,
+      "title": "T01 OPTIONAL TARGET SCREENSHOT",
+      "bounding": [
+        4269.338269064397,
+        -705.5529027533858,
+        553.4701659553048,
+        356.3507990826557
+      ],
+      "color": "#535",
+      "flags": {}
+    },
+    {
+      "id": 21,
+      "title": "T02 OPTIONAL VOICE REFERENCE",
+      "bounding": [
+        8539.56561448606,
+        -329.15007855156836,
+        600.8918300952464,
+        307.3891806971278
+      ],
+      "color": "#535",
+      "flags": {}
+    },
+    {
+      "id": 30,
+      "title": "R01 PRIMARY REFERENCE",
+      "bounding": [
+        5283.935072733786,
+        -739.4224151388867,
+        583.8023589749728,
+        386.57111055081236
+      ],
+      "color": "#535",
+      "flags": {}
+    },
+    {
+      "id": 31,
+      "title": "R02 REFERENCE",
+      "bounding": [
+        5885.380174436854,
+        -736.486396370476,
+        595.8737856630187,
+        381.42298678683574
+      ],
+      "color": "#535",
+      "flags": {}
+    },
+    {
+      "id": 32,
+      "title": "R03 REFERENCE",
+      "bounding": [
+        6504.631525799649,
+        -732.2017043064737,
+        623.3496038596277,
+        371.77080314890435
+      ],
+      "color": "#535",
+      "flags": {}
+    },
+    {
+      "id": 33,
+      "title": "R04 REFERENCE",
+      "bounding": [
+        5290.213813636481,
+        -291.08746168775974,
+        580.3529973202803,
+        329.8922334450067
+      ],
+      "color": "#535",
+      "flags": {}
+    },
+    {
+      "id": 34,
+      "title": "R05 REFERENCE",
+      "bounding": [
+        5893.0481491947785,
+        -288.09364388878186,
+        587.1418636983271,
+        322.56941128441736
+      ],
+      "color": "#535",
+      "flags": {}
+    },
+    {
+      "id": 35,
+      "title": "R06 REFERENCE",
+      "bounding": [
+        6511.739303726552,
+        -285.5842237126697,
+        593.5653919093702,
+        326.4235282110433
+      ],
+      "color": "#535",
+      "flags": {}
+    },
+    {
+      "id": 36,
+      "title": "R07 REFERENCE",
+      "bounding": [
+        5297.603074109096,
+        133.8855463949798,
+        575.718787594099,
+        284.82547377791593
+      ],
+      "color": "#535",
+      "flags": {}
+    },
+    {
+      "id": 37,
+      "title": "R08 REFERENCE",
+      "bounding": [
+        5910.628133271832,
+        124.41301885110119,
+        589.0528633411132,
+        318.5868237935704
+      ],
+      "color": "#535",
+      "flags": {}
+    },
+    {
+      "id": 38,
+      "title": "R09 REFERENCE",
+      "bounding": [
+        6523.112189351444,
+        130.34421813132482,
+        561.4295021944636,
+        303.6492009173443
+      ],
+      "color": "#535",
+      "flags": {}
+    },
+    {
+      "id": 39,
+      "title": "R10 REFERENCE",
+      "bounding": [
+        5310.556439652461,
+        448.2884791661244,
+        556.3290018109783,
+        315.7604713807116
+      ],
+      "color": "#535",
+      "flags": {}
+    },
+    {
+      "id": 40,
+      "title": "G01 MODE A — IMAGES ONLY — RECOMMENDED",
+      "bounding": [
+        9169.363952014575,
+        -733.1740740608702,
+        1357.3818033535736,
+        763.2696296243482
+      ],
+      "color": "#3a1e22",
+      "flags": {}
+    },
+    {
+      "id": 41,
+      "title": "G02 MODE B — SOURCE VIDEO EDIT",
+      "bounding": [
+        9179.600466538319,
+        71.65141056472639,
+        1351.8814037542707,
+        783.9712442624176
+      ],
+      "color": "#3a1e22",
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.5054470284992967,
+      "offset": [
+        -138.33546660937782,
+        714.8274326718449
+      ]
+    },
+    "matrixlab_version": "production-v1.2.0-ux",
+    "frontendVersion": "1.49.6"
+  },
+  "version": 0.4
+}

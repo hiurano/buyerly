@@ -94,6 +94,23 @@ export const LinearLayersIcon: React.FC<IconProps> = ({ size = 16, className = '
   </svg>
 );
 
+// 3c. Exact Linear Meta Brand Icon (16x16)
+export const LinearMetaIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    <path d="M11.265 3.002c-1.23 0-2.191.93-3.061 2.11-1.196-1.528-2.197-2.11-3.394-2.11C2.37 3.002.5 6.188.5 9.56c0 2.11 1.018 3.441 2.722 3.441 1.227 0 2.11-.58 3.678-3.331l1.104-1.956q.236.383.498.825l.735 1.241c1.433 2.406 2.232 3.221 3.678 3.221 1.66 0 2.585-1.35 2.585-3.504 0-3.53-1.912-6.496-4.235-6.496M5.704 8.926c-1.272 2-1.712 2.448-2.42 2.448-.729 0-1.162-.641-1.162-1.786 0-2.448 1.217-4.952 2.668-4.952.785 0 1.442.456 2.447 1.9a200 200 0 0 0-1.533 2.39m4.8-.252-.88-1.471a31 31 0 0 0-.686-1.072c.793-1.228 1.447-1.84 2.224-1.84 1.616 0 2.908 2.387 2.908 5.318 0 1.117-.365 1.765-1.12 1.765-.725 0-1.07-.48-2.446-2.7" />
+  </svg>
+);
+
 // 4. Exact Linear Solid Lightning Bolt / Rules Icon (16x16)
 export const LinearBoltIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
@@ -309,8 +326,8 @@ export const BuyerlyLogoAvatar: React.FC<{
       width: `${size}px`,
       height: `${size}px`,
       borderRadius: shape === 'circle' ? '50%' : '8px',
-      backgroundColor: '#18191c',
-      border: '1px solid rgba(255, 255, 255, 0.08)',
+      backgroundColor: 'var(--item-hover-bg)',
+      border: '1px solid var(--color-border-secondary)',
     }}
     className={`relative flex shrink-0 items-center justify-center overflow-hidden select-none ${className}`}
   >
@@ -339,12 +356,12 @@ export const LinearEmptyInboxIllustration: React.FC<{ className?: string }> = ({
     className={className}
   >
     <path
-      stroke="lch(61.803% 1.2 272 / 1)"
+      stroke="var(--text-tertiary)"
       strokeWidth="1.5"
       d="M10.4 9.11A10 10 0 0 1 20.22 1h37.56a10 10 0 0 1 9.82 8.11l8.11 42.2a10 10 0 0 1-9.82 11.9H54.7a6.36 6.36 0 0 0-5.65 3.45 6.36 6.36 0 0 1-5.66 3.45H34.6a6.36 6.36 0 0 1-5.66-3.45 6.36 6.36 0 0 0-5.65-3.46H12.1a10 10 0 0 1-9.8-11.89l8.11-42.2Z"
     />
     <path
-      stroke="lch(61.803% 1.2 272 / 1)"
+      stroke="var(--text-tertiary)"
       strokeWidth="1.5"
       d="m2.36 55.6 3.2 14.06A12 12 0 0 0 17.26 79h43.48a12 12 0 0 0 11.7-9.34l3.2-14.06"
     />
@@ -391,6 +408,46 @@ export const LinearSidebarToggleIcon: React.FC<IconProps & { isOpen?: boolean }>
   </svg>
 );
 
+// 14b. Exact Linear Left Sidebar Panel Toggle Icon (16x16)
+export const LinearSidebarLeftToggleIcon: React.FC<IconProps & { isOpen?: boolean }> = ({
+  size = 16,
+  isOpen = true,
+  className = '',
+  ...props
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    <g>
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M4.25 2C2.45508 2 1 3.45508 1 5.25V10.75C1 12.5449 2.45508 14 4.25 14H11.75C13.5449 14 15 12.5449 15 10.75V5.25C15 3.45508 13.5449 2 11.75 2H4.25ZM2.5 5.5C2.5 4.39543 3.39543 3.5 4.5 3.5H11.5C12.6046 3.5 13.5 4.39543 13.5 5.5V10.5C13.5 11.6046 12.6046 12.5 11.5 12.5H4.5C3.39543 12.5 2.5 11.6046 2.5 10.5V5.5Z"
+      />
+      <rect
+        x={4.5}
+        y={5}
+        width={isOpen ? 4.5 : 1.5}
+        height={6}
+        rx={0.75}
+        style={{
+          transitionProperty: 'width',
+          transitionDuration: '250ms',
+          transitionTimingFunction: 'ease',
+        }}
+      />
+    </g>
+  </svg>
+);
+
 // 15. Exact Linear Projects / Cube Symbol Icon (16x16)
 export const LinearProjectCubeIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
@@ -420,15 +477,16 @@ export const LinearChartIcon: React.FC<IconProps> = ({ size = 16, className = ''
     viewBox="0 0 16 16"
     fill="none"
     stroke="currentColor"
-    strokeWidth="1.3"
+    strokeWidth="1.5"
     strokeLinecap="round"
     strokeLinejoin="round"
     className={className}
     {...props}
   >
-    <line x1="13" y1="13" x2="3" y2="13" />
-    <line x1="3" y1="13" x2="3" y2="3" />
-    <path d="M5.5 10.5L8.5 7.5L10.5 9.5L13.5 5.5" />
+    {/* Coordinate axes X and Y */}
+    <path d="M2.5 2.5V13.5H13.5" />
+    {/* Analytical chart trend line */}
+    <path d="M5.5 10.5L8 7.5L10.5 9.5L13.5 5.5" />
   </svg>
 );
 
@@ -498,8 +556,76 @@ export const LinearInboxDeleteIcon: React.FC<IconProps> = ({ size = 16, classNam
   </svg>
 );
 
-// 20. Exact Linear BarChart / Insights Icon (16x16)
+// 20. Exact Linear Rising Bar Chart / Statistics Icon (16x16)
 export const LinearBarChartIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    {/* Bar 1 (left, low) */}
+    <rect x="1.5" y="9" width="3" height="5.5" rx="0.75" />
+    {/* Bar 2 (center, mid) */}
+    <rect x="6.5" y="5" width="3" height="9.5" rx="0.75" />
+    {/* Bar 3 (right, high) */}
+    <rect x="11.5" y="1.5" width="3" height="13" rx="0.75" />
+  </svg>
+);
+
+// 20e. Exact Linear Dashboard / Metric Cards Layout Icon (16x16)
+export const LinearDashboardIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    {/* Top wide card (Hero metric / chart) */}
+    <rect x="1.5" y="1.5" width="13" height="5.5" rx="1" />
+    {/* Bottom-left card (KPI 1) */}
+    <rect x="1.5" y="9" width="5.5" height="5.5" rx="1" />
+    {/* Bottom-right card (KPI 2) */}
+    <rect x="9" y="9" width="5.5" height="5.5" rx="1" />
+  </svg>
+);
+
+// 20f. Exact Linear Trending Up / Performance Statistics Icon (16x16)
+export const LinearTrendingUpIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    {/* Trend Line */}
+    <polyline points="1.5 12 5.5 7.5 8.5 9.5 14.5 3.5" />
+    {/* Arrow Head */}
+    <polyline points="10 3.5 14.5 3.5 14.5 8" />
+  </svg>
+);
+
+// 20b. Exact Linear AI Sparkles / Magic Insights Icon (16x16)
+export const LinearSparklesIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -514,7 +640,52 @@ export const LinearBarChartIcon: React.FC<IconProps> = ({ size = 16, className =
     <path
       fillRule="evenodd"
       clipRule="evenodd"
-      d="M3 10a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1zm11-9a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM8.5 5a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"
+      d="M6 3.5C6 6.81371 8.68629 9.5 12 9.5C8.68629 9.5 6 12.1863 6 15.5C6 12.1863 3.31371 9.5 0 9.5C3.31371 9.5 6 6.81371 6 3.5ZM11.5 0.5C11.5 2.433 13.067 4 15 4C13.067 4 11.5 5.567 11.5 7.5C11.5 5.567 9.933 4 8 4C9.933 4 11.5 2.433 11.5 0.5Z"
+    />
+  </svg>
+);
+
+// 20c. Exact Linear Pie Chart / Diagram Icon (16x16)
+export const LinearPieChartIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M9 1.07C12.35 1.45 14.93 4.28 14.93 7.75H9V1.07ZM7.5 1.07V9.25H14.93C14.53 12.63 11.66 15.25 8.15 15.25C4.37 15.25 1.3 12.18 1.3 8.4C1.3 4.69 4.12 1.62 7.5 1.07Z"
+    />
+  </svg>
+);
+
+// 20d. Exact Linear Donut / Segmented Diagram Icon (16x16)
+export const LinearDonutChartIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    {/* Top-right segment */}
+    <path
+      d="M9 1.07C12.4 1.46 14.93 4.3 14.93 7.75H12.43C12.43 5.48 10.74 3.61 9 3.32V1.07Z"
+    />
+    {/* Main 3/4 ring segment */}
+    <path
+      d="M7.5 1.07V3.32C5.38 3.64 3.75 5.51 3.75 7.75C3.75 10.23 5.77 12.25 8.25 12.25C10.49 12.25 12.36 10.62 12.68 8.5H14.93C14.6 11.86 11.73 14.5 8.25 14.5C4.52 14.5 1.5 11.48 1.5 7.75C1.5 4.27 4.14 1.4 7.5 1.07Z"
     />
   </svg>
 );
@@ -571,4 +742,223 @@ export const LinearInboxUnreadIcon: React.FC<IconProps> = ({ size = 16, classNam
   </svg>
 );
 
+// 23. Exact Linear Plus Icon (16x16)
+export const LinearPlusIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    <path d="M8.75 4C8.75 3.58579 8.41421 3.25 8 3.25C7.58579 3.25 7.25 3.58579 7.25 4V7.25H4C3.58579 7.25 3.25 7.58579 3.25 8C3.25 8.41421 3.58579 8.75 4 8.75H7.25V12C7.25 12.4142 7.58579 12.75 8 12.75C8.41421 12.75 8.75 12.4142 8.75 12V8.75H12C12.4142 8.75 12.75 8.41421 12.75 8C12.75 7.58579 12.4142 7.25 12 7.25H8.75V4Z" />
+  </svg>
+);
 
+// 24. Linear Shield / Stop-Loss Protection Icon (16x16)
+export const LinearShieldIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.3"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <path d="M8 1.5l5.5 2.5v4.5c0 3.5-2.5 6-5.5 7-3-1-5.5-3.5-5.5-7V4L8 1.5z" />
+  </svg>
+);
+
+// 25. Linear Rocket / Scaling Icon (16x16)
+export const LinearRocketIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.3"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <path d="M9.5 2.5a6.5 6.5 0 0 1 4 4L11 9l-4-4 2.5-2.5z" />
+    <path d="M7 5L3 9l-.5 3.5L6 12l4-4" />
+    <path d="M2.5 13.5l1.5-1.5" />
+  </svg>
+);
+
+// 26. Linear Flask / Testing Icon (16x16)
+export const LinearFlaskIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.3"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <path d="M6 2h4M7 2v3.5L3.5 12A1.5 1.5 0 0 0 4.8 14h6.4a1.5 1.5 0 0 0 1.3-2L9 5.5V2" />
+    <path d="M5 10h6" />
+  </svg>
+);
+
+// 27. Exact Linear Backlog Dashed Circle Icon (16x16)
+export const LinearBacklogDashedIcon: React.FC<IconProps> = ({ size = 14, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 14 14"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="none"
+    className={className}
+    {...props}
+  >
+    <circle
+      cx="7"
+      cy="7"
+      r="5.5"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeDasharray="2.5 2"
+    />
+  </svg>
+);
+
+// 28. Exact Linear Star Favorite Icon (16x16)
+export const LinearStarIcon: React.FC<IconProps> = ({ size = 14, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="none"
+    className={className}
+    {...props}
+  >
+    <path
+      d="M8 1.75l1.854 4.146a.5.5 0 00.416.302l4.523.411-3.41 3.013a.5.5 0 00-.154.475l1.01 4.417-3.918-2.316a.5.5 0 00-.502 0l-3.918 2.316 1.01-4.417a.5.5 0 00-.154-.475L1.757 6.609l4.523-.411a.5.5 0 00.416-.302L8 1.75z"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+// 29. Exact Linear Trash Icon (16x16)
+export const LinearTrashIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="m2 3 1.652 9.911A2.5 2.5 0 0 0 6.118 15h3.764a2.5 2.5 0 0 0 2.466-2.089L14 3H2Zm1.77 1.5 1.361 8.164a1 1 0 0 0 .987.836h3.764a1 1 0 0 0 .987-.836l1.36-8.164H3.771Z"
+    />
+    <path d="M5.5 2.5A1.5 1.5 0 0 1 7 1h2a1.5 1.5 0 0 1 1.5 1.5v1h-5v-1Z" />
+    <path d="M1 3.75A.75.75 0 0 1 1.75 3h12.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 3.75Z" />
+  </svg>
+);
+
+// 30. Exact Linear Checkmark Icon (16x16)
+export const LinearCheckIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    <path d="M4.2996 7.23968C4.01775 6.93614 3.5432 6.91857 3.23966 7.20042C2.93613 7.48227 2.91856 7.95682 3.20041 8.26035L6.45041 11.7603C6.7612 12.095 7.29647 12.0766 7.58346 11.7212L12.8335 5.22127C13.0937 4.89904 13.0435 4.42683 12.7213 4.16657C12.399 3.9063 11.9268 3.95654 11.6665 4.27877L6.96051 10.1053L4.2996 7.23968Z" />
+  </svg>
+);
+
+// 31. Exact Linear Half Status Icon (16x16)
+export const LinearHalfStatusIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    <path d="M13.5 8C13.5 4.96243 11.0376 2.5 8 2.5C4.96243 2.5 2.5 4.96243 2.5 8C2.5 11.0376 4.96243 13.5 8 13.5C11.0376 13.5 13.5 11.0376 13.5 8ZM15 8C15 11.866 11.866 15 8 15C4.13401 15 1 11.866 1 8C1 4.13401 4.13401 1 8 1C11.866 1 15 4.13401 15 8ZM12 8C12 10.2091 10.2091 12 8 12V4C10.2091 4 12 5.79086 12 8Z" />
+  </svg>
+);
+
+// 32. Exact Linear List Layout Icon (16x16)
+export const LinearListIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    <path d="M1 1.8c0-.28 0-.42.054-.527a.5.5 0 0 1 .219-.218C1.38 1 1.52 1 1.8 1h12.4c.28 0 .42 0 .527.054a.5.5 0 0 1 .218.219C15 1.38 15 1.52 15 1.8v.4c0 .28 0 .42-.055.527a.5.5 0 0 1-.218.219C14.62 3 14.48 3 14.2 3H1.8c-.28 0-.42 0-.527-.054a.5.5 0 0 1-.218-.219C1 2.62 1 2.48 1 2.2v-.4ZM1 13.8c0-.28 0-.42.054-.527a.5.5 0 0 1 .219-.218C1.38 13 1.52 13 1.8 13h12.4c.28 0 .42 0 .527.055a.5.5 0 0 1 .218.218c.055.107.055.247.055.527v.4c0 .28 0 .42-.055.527a.5.5 0 0 1-.218.218C14.62 15 14.48 15 14.2 15H1.8c-.28 0-.42 0-.527-.055a.5.5 0 0 1-.218-.218C1 14.62 1 14.48 1 14.2v-.4ZM1 9.8c0-.28 0-.42.054-.527a.5.5 0 0 1 .219-.218C1.38 9 1.52 9 1.8 9h12.4c.28 0 .42 0 .527.055a.5.5 0 0 1 .218.218C15 9.38 15 9.52 15 9.8v.4c0 .28 0 .42-.055.527a.5.5 0 0 1-.218.218C14.62 11 14.48 11 14.2 11H1.8c-.28 0-.42 0-.527-.055a.5.5 0 0 1-.218-.218C1 10.62 1 10.48 1 10.2v-.4ZM1 5.8c0-.28 0-.42.054-.527a.5.5 0 0 1 .219-.218C1.38 5 1.52 5 1.8 5h12.4c.28 0 .42 0 .527.054a.5.5 0 0 1 .218.219C15 5.38 15 5.52 15 5.8v.4c0 .28 0 .42-.055.527a.5.5 0 0 1-.218.218C14.62 7 14.48 7 14.2 7H1.8c-.28 0-.42 0-.527-.054a.5.5 0 0 1-.218-.219C1 6.62 1 6.48 1 6.2v-.4Z" />
+  </svg>
+);
+
+// 33. Exact Linear Board / Kanban Layout Icon (16x16)
+export const LinearBoardIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    <path d="M1 2.6c0-.56 0-.84.109-1.054a1 1 0 0 1 .437-.437C1.76 1 2.04 1 2.6 1h2.8c.56 0 .84 0 1.054.109a1 1 0 0 1 .437.437C7 1.76 7 2.04 7 2.6v.8c0 .56 0 .84-.109 1.054a1 1 0 0 1-.437.437C6.24 5 5.96 5 5.4 5H2.6c-.56 0-.84 0-1.054-.109a1 1 0 0 1-.437-.437C1 4.24 1 3.96 1 3.4v-.8ZM9 2.6c0-.56 0-.84.109-1.054a1 1 0 0 1 .437-.437C9.76 1 10.04 1 10.6 1h2.8c.56 0 .84 0 1.054.109a1 1 0 0 1 .437.437C15 1.76 15 2.04 15 2.6v.8c0 .56 0 .84-.109 1.054a1 1 0 0 1-.437.437C14.24 5 13.96 5 13.4 5h-2.8c-.56 0-.84 0-1.054-.109a1 1 0 0 1-.437-.437C9 4.24 9 3.96 9 3.4v-.8ZM1 7.6c0-.56 0-.84.109-1.054a1 1 0 0 1 .437-.437C1.76 6 2.04 6 2.6 6h2.8c.56 0 .84 0 1.054.109a1 1 0 0 1 .437.437C7 6.76 7 7.04 7 7.6v.8c0 .56 0 .84-.109 1.054a1 1 0 0 1-.437.437C6.24 10 5.96 10 5.4 10H2.6c-.56 0-.84 0-1.054-.109a1 1 0 0 1-.437-.437C1 9.24 1 8.96 1 8.4v-.8ZM9 7.6c0-.56 0-.84.109-1.054a1 1 0 0 1 .437-.437C9.76 6 10.04 6 10.6 6h2.8c.56 0 .84 0 1.054.109a1 1 0 0 1 .437.437C15 6.76 15 7.04 15 7.6v.8c0 .56 0 .84-.109 1.054a1 1 0 0 1-.437.437C14.24 10 13.96 10 13.4 10h-2.8c-.56 0-.84 0-1.054-.109a1 1 0 0 1-.437-.437C9 9.24 9 8.96 9 8.4v-.8ZM1 12.6c0-.56 0-.84.109-1.054a1 1 0 0 1 .437-.437C1.76 11 2.04 11 2.6 11h2.8c.56 0 .84 0 1.054.109a1 1 0 0 1 .437.437C7 11.76 7 12.04 7 12.6v.8c0 .56 0 .84-.109 1.054a1 1 0 0 1-.437.437C6.24 15 5.96 15 5.4 15H2.6c-.56 0-.84 0-1.054-.109a1 1 0 0 1-.437-.437C1 14.24 1 13.96 1 13.4v-.8ZM9 12.6c0-.56 0-.84.109-1.054a1 1 0 0 1 .437-.437C9.76 11 10.04 11 10.6 11h2.8c.56 0 .84 0 1.054.109a1 1 0 0 1 .437.437C15 11.76 15 12.04 15 12.6v.8c0 .56 0 .84-.109 1.054a1 1 0 0 1-.437.437C14.24 15 13.96 15 13.4 15h-2.8c-.56 0-.84 0-1.054-.109a1 1 0 0 1-.437-.437C9 14.24 9 13.96 9 13.4v-.8Z" />
+  </svg>
+);

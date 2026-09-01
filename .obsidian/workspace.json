@@ -1,0 +1,212 @@
+{
+  "main": {
+    "id": "186e27d8062ca84d",
+    "type": "split",
+    "children": [
+      {
+        "id": "7027c316e085324a",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "a1c74544ced18f8b",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "New tab"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "58b46227ac50179d",
+    "type": "split",
+    "children": [
+      {
+        "id": "718d81138f448a31",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "5abc58e9fdd890cb",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "d1a8f0357ce07bd9",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "5215657543c2d4d7",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "446b6d87dcd7fac1",
+    "type": "split",
+    "children": [
+      {
+        "id": "4a70cef7e4508997",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "9a4eab6c04398060",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "docs/ROADMAP_ACCOUNTS_WORKSPACES_ATTIO.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "3f0e31556e86209d",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "docs/ROADMAP_ACCOUNTS_WORKSPACES_ATTIO.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links"
+            }
+          },
+          {
+            "id": "d821ed1cb692a4e1",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "c76bddb9239ce55c",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "1e1ebfe3ab8bdc30",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "docs/ROADMAP_ACCOUNTS_WORKSPACES_ATTIO.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "a1c74544ced18f8b",
+  "lastOpenFiles": [
+    "docs/ROADMAP_ACCOUNTS_WORKSPACES_ATTIO.md",
+    "app.attio-structure-login-workspaces/photo_7_2026-08-22_18-02-42.jpg",
+    "app.attio-structure-login-workspaces/photo_6_2026-08-22_18-02-42.jpg",
+    "app.attio-structure-login-workspaces/photo_5_2026-08-22_18-02-42.jpg",
+    "app.attio-structure-login-workspaces/photo_4_2026-08-22_18-02-42.jpg",
+    "app.attio-structure-login-workspaces/photo_3_2026-08-22_18-02-42.jpg",
+    "app.attio-structure-login-workspaces/photo_2_2026-08-22_18-02-42.jpg",
+    "app.attio-structure-login-workspaces/photo_1_2026-08-22_18-02-42.jpg",
+    "app.attio-structure-login-workspaces/invite-4/invite-members-popup.png",
+    "app.attio-structure-login-workspaces/invite-4/invite-members-popup.html",
+    "app.attio-structure-login-workspaces/invite-4/click-on-+new-workspace.png",
+    "app.attio-structure-login-workspaces/invite-4/bar-workspaces.html",
+    "app.attio-structure-login-workspaces/invite-4",
+    "app.attio-structure-login-workspaces/app.attio.com-workspaces.html",
+    "app.attio-structure-login-workspaces/app.attio.com-welcome-workspace-details.html",
+    "app.attio-structure-login-workspaces/app.attio.com-welcome-personal-details",
+    "app.attio-structure-login-workspaces/app.attio.com-buyerly-dev-welcome-invite-team.html",
+    "app.attio-structure-login-workspaces/app.attio.com-buyerly-app-home.html",
+    "app.attio-structure-login-workspaces/app.attio.com-auth-temporary-password?email=team%40buyerly.app.html",
+    "app.attio-structure-login-workspaces/app.attio.com-auth-sign-in.html",
+    "README.md",
+    "PROJECT_SPEC.md"
+  ]
+}

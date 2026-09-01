@@ -1,0 +1,3 @@
+Put body shots of your character in this folder (full body, 3/4 views, profiles).
+PNG / JPG / WEBP. The runner sends 1-2 of these after the face anchor on every post
+so body proportions stay consistent.

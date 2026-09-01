@@ -1,0 +1,54 @@
+# Normalize text files to LF by default.
+* text=auto eol=lf
+
+# Explicit source and documentation text formats.
+*.sql  text eol=lf
+*.sh   text eol=lf
+*.py   text eol=lf
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.js   text eol=lf
+*.jsx  text eol=lf
+*.mjs  text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+
+# Windows-native scripts may use CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Common binary formats must not be line-normalized.
+*.7z    binary
+*.avi   binary
+*.bin   binary
+*.doc   binary
+*.docx  binary
+*.eot   binary
+*.exe   binary
+*.gif   binary
+*.gz    binary
+*.ico   binary
+*.jpeg  binary
+*.jpg   binary
+*.mov   binary
+*.mp3   binary
+*.mp4   binary
+*.otf   binary
+*.pdf   binary
+*.png   binary
+*.tar   binary
+*.ttf   binary
+*.webm  binary
+*.webp  binary
+*.woff  binary
+*.woff2 binary
+*.xls   binary
+*.xlsx  binary
+*.zip   binary
+
+# Exclude macOS metadata from generated archives.
+.DS_Store export-ignore
+._*       export-ignore

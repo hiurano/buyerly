@@ -1,0 +1,4 @@
+Not sure which picture goes where? Drop ALL your images of the character in this
+folder (PNG / JPG / WEBP — convert iPhone HEIC first). Claude looks at every one
+and copies the best frontal portrait into anchors/face/ and clear body/angle shots
+into anchors/body/ for you. Your originals stay untouched in here.

@@ -1,0 +1,977 @@
+{
+  "id": "matrix-power-nodes-wave1-v1-safe-showcase",
+  "revision": 0,
+  "last_node_id": 10,
+  "last_link_id": 0,
+  "nodes": [
+    {
+      "bgcolor": "#050a05",
+      "boxcolor": "#00ff41",
+      "color": "#0a150a",
+      "flags": {},
+      "id": 1,
+      "inputs": [
+        {
+          "link": null,
+          "localized_name": "live",
+          "name": "live",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "live"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "prompt",
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "aspect_ratio",
+          "name": "aspect_ratio",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "aspect_ratio"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "output_format",
+          "name": "output_format",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "output_format"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "quality",
+          "name": "quality",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "quality"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "resolution",
+          "name": "resolution",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "resolution"
+          }
+        }
+      ],
+      "mode": 0,
+      "order": 0,
+      "outputs": [
+        {
+          "links": null,
+          "localized_name": "result",
+          "name": "result",
+          "type": "IMAGE"
+        }
+      ],
+      "pos": [
+        20,
+        100
+      ],
+      "properties": {
+        "Node name for S&R": "MATRIX_Wave1GptImage2T2i"
+      },
+      "size": [
+        440,
+        236
+      ],
+      "type": "MATRIX_Wave1GptImage2T2i",
+      "widgets_values": [
+        false,
+        "A clean studio photograph of one bright red toy cube centered on a white background, soft shadow, no other objects.",
+        "1:1",
+        "png",
+        "low",
+        "1k"
+      ]
+    },
+    {
+      "bgcolor": "#050a05",
+      "boxcolor": "#00ff41",
+      "color": "#0a150a",
+      "flags": {},
+      "id": 2,
+      "inputs": [
+        {
+          "link": null,
+          "localized_name": "live",
+          "name": "live",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "live"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "prompt",
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "aspect_ratio",
+          "name": "aspect_ratio",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "aspect_ratio"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "enable_image_search",
+          "name": "enable_image_search",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "enable_image_search"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "enable_web_search",
+          "name": "enable_web_search",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "enable_web_search"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "output_format",
+          "name": "output_format",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "output_format"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "resolution",
+          "name": "resolution",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "resolution"
+          }
+        }
+      ],
+      "mode": 0,
+      "order": 1,
+      "outputs": [
+        {
+          "links": null,
+          "localized_name": "result",
+          "name": "result",
+          "type": "IMAGE"
+        }
+      ],
+      "pos": [
+        490,
+        100
+      ],
+      "properties": {
+        "Node name for S&R": "MATRIX_Wave1NanoBanana2T2i"
+      },
+      "size": [
+        440,
+        260
+      ],
+      "type": "MATRIX_Wave1NanoBanana2T2i",
+      "widgets_values": [
+        false,
+        "A clean studio photograph of one bright red toy cube centered on a white background, soft shadow, no other objects.",
+        "1:1",
+        false,
+        false,
+        "png",
+        "0.5k"
+      ]
+    },
+    {
+      "bgcolor": "#050a05",
+      "boxcolor": "#00ff41",
+      "color": "#0a150a",
+      "flags": {},
+      "id": 3,
+      "inputs": [
+        {
+          "link": null,
+          "localized_name": "live",
+          "name": "live",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "live"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "prompt",
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "aspect_ratio",
+          "name": "aspect_ratio",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "aspect_ratio"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "output_format",
+          "name": "output_format",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "output_format"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "resolution",
+          "name": "resolution",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "resolution"
+          }
+        }
+      ],
+      "mode": 0,
+      "order": 2,
+      "outputs": [
+        {
+          "links": null,
+          "localized_name": "result",
+          "name": "result",
+          "type": "IMAGE"
+        }
+      ],
+      "pos": [
+        960,
+        100
+      ],
+      "properties": {
+        "Node name for S&R": "MATRIX_Wave1NanoBananaProT2i"
+      },
+      "size": [
+        440,
+        212
+      ],
+      "type": "MATRIX_Wave1NanoBananaProT2i",
+      "widgets_values": [
+        false,
+        "A clean studio photograph of one bright red toy cube centered on a white background, soft shadow, no other objects.",
+        "1:1",
+        "png",
+        "1k"
+      ]
+    },
+    {
+      "bgcolor": "#050a05",
+      "boxcolor": "#00ff41",
+      "color": "#0a150a",
+      "flags": {},
+      "id": 4,
+      "inputs": [
+        {
+          "link": null,
+          "localized_name": "live",
+          "name": "live",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "live"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "prompt",
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "size",
+          "name": "size",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "size"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "width",
+          "name": "width",
+          "shape": 7,
+          "type": "INT",
+          "widget": {
+            "name": "width"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "height",
+          "name": "height",
+          "shape": 7,
+          "type": "INT",
+          "widget": {
+            "name": "height"
+          }
+        }
+      ],
+      "mode": 0,
+      "order": 3,
+      "outputs": [
+        {
+          "links": null,
+          "localized_name": "result",
+          "name": "result",
+          "type": "IMAGE"
+        }
+      ],
+      "pos": [
+        1430,
+        100
+      ],
+      "properties": {
+        "Node name for S&R": "MATRIX_Wave1Seedream45T2i"
+      },
+      "size": [
+        440,
+        212
+      ],
+      "type": "MATRIX_Wave1Seedream45T2i",
+      "widgets_values": [
+        false,
+        "A clean studio photograph of one bright red toy cube centered on a white background, soft shadow, no other objects.",
+        "1:1",
+        0,
+        0
+      ]
+    },
+    {
+      "bgcolor": "#050a05",
+      "boxcolor": "#00ff41",
+      "color": "#0a150a",
+      "flags": {},
+      "id": 5,
+      "inputs": [
+        {
+          "link": null,
+          "localized_name": "live",
+          "name": "live",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "live"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "prompt",
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "aspect_ratio",
+          "name": "aspect_ratio",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "aspect_ratio"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "output_format",
+          "name": "output_format",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "output_format"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "resolution",
+          "name": "resolution",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "resolution"
+          }
+        }
+      ],
+      "mode": 0,
+      "order": 4,
+      "outputs": [
+        {
+          "links": null,
+          "localized_name": "result",
+          "name": "result",
+          "type": "IMAGE"
+        }
+      ],
+      "pos": [
+        1900,
+        100
+      ],
+      "properties": {
+        "Node name for S&R": "MATRIX_Wave1Seedream50ProT2i"
+      },
+      "size": [
+        440,
+        212
+      ],
+      "type": "MATRIX_Wave1Seedream50ProT2i",
+      "widgets_values": [
+        false,
+        "A clean studio photograph of one bright red toy cube centered on a white background, soft shadow, no other objects.",
+        "1:1",
+        "png",
+        "1k"
+      ]
+    },
+    {
+      "bgcolor": "#050a05",
+      "boxcolor": "#00ff41",
+      "color": "#0a150a",
+      "flags": {},
+      "id": 6,
+      "inputs": [
+        {
+          "link": null,
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE"
+        },
+        {
+          "link": null,
+          "localized_name": "live",
+          "name": "live",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "live"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "prompt",
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "aspect_ratio",
+          "name": "aspect_ratio",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "aspect_ratio"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "output_format",
+          "name": "output_format",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "output_format"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "quality",
+          "name": "quality",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "quality"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "resolution",
+          "name": "resolution",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "resolution"
+          }
+        }
+      ],
+      "mode": 0,
+      "order": 5,
+      "outputs": [
+        {
+          "links": null,
+          "localized_name": "result",
+          "name": "result",
+          "type": "IMAGE"
+        }
+      ],
+      "pos": [
+        20,
+        470
+      ],
+      "properties": {
+        "Node name for S&R": "MATRIX_Wave1GptImage2Edit"
+      },
+      "size": [
+        440,
+        260
+      ],
+      "type": "MATRIX_Wave1GptImage2Edit",
+      "widgets_values": [
+        false,
+        "Change only the green square to bright blue. Keep the background and all four black corner markers unchanged.",
+        "1:1",
+        "png",
+        "low",
+        "1k"
+      ]
+    },
+    {
+      "bgcolor": "#050a05",
+      "boxcolor": "#00ff41",
+      "color": "#0a150a",
+      "flags": {},
+      "id": 7,
+      "inputs": [
+        {
+          "link": null,
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE"
+        },
+        {
+          "link": null,
+          "localized_name": "live",
+          "name": "live",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "live"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "prompt",
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "aspect_ratio",
+          "name": "aspect_ratio",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "aspect_ratio"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "enable_image_search",
+          "name": "enable_image_search",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "enable_image_search"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "enable_web_search",
+          "name": "enable_web_search",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "enable_web_search"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "output_format",
+          "name": "output_format",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "output_format"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "resolution",
+          "name": "resolution",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "resolution"
+          }
+        }
+      ],
+      "mode": 0,
+      "order": 6,
+      "outputs": [
+        {
+          "links": null,
+          "localized_name": "result",
+          "name": "result",
+          "type": "IMAGE"
+        }
+      ],
+      "pos": [
+        490,
+        470
+      ],
+      "properties": {
+        "Node name for S&R": "MATRIX_Wave1NanoBanana2Edit"
+      },
+      "size": [
+        440,
+        284
+      ],
+      "type": "MATRIX_Wave1NanoBanana2Edit",
+      "widgets_values": [
+        false,
+        "Change only the green square to bright blue. Keep the background and all four black corner markers unchanged.",
+        "1:1",
+        false,
+        false,
+        "png",
+        "0.5k"
+      ]
+    },
+    {
+      "bgcolor": "#050a05",
+      "boxcolor": "#00ff41",
+      "color": "#0a150a",
+      "flags": {},
+      "id": 8,
+      "inputs": [
+        {
+          "link": null,
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE"
+        },
+        {
+          "link": null,
+          "localized_name": "live",
+          "name": "live",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "live"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "prompt",
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "aspect_ratio",
+          "name": "aspect_ratio",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "aspect_ratio"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "output_format",
+          "name": "output_format",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "output_format"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "resolution",
+          "name": "resolution",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "resolution"
+          }
+        }
+      ],
+      "mode": 0,
+      "order": 7,
+      "outputs": [
+        {
+          "links": null,
+          "localized_name": "result",
+          "name": "result",
+          "type": "IMAGE"
+        }
+      ],
+      "pos": [
+        960,
+        470
+      ],
+      "properties": {
+        "Node name for S&R": "MATRIX_Wave1NanoBananaProEdit"
+      },
+      "size": [
+        440,
+        236
+      ],
+      "type": "MATRIX_Wave1NanoBananaProEdit",
+      "widgets_values": [
+        false,
+        "Change only the green square to bright blue. Keep the background and all four black corner markers unchanged.",
+        "1:1",
+        "png",
+        "1k"
+      ]
+    },
+    {
+      "bgcolor": "#050a05",
+      "boxcolor": "#00ff41",
+      "color": "#0a150a",
+      "flags": {},
+      "id": 9,
+      "inputs": [
+        {
+          "link": null,
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE"
+        },
+        {
+          "link": null,
+          "localized_name": "live",
+          "name": "live",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "live"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "prompt",
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "size",
+          "name": "size",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "size"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "width",
+          "name": "width",
+          "shape": 7,
+          "type": "INT",
+          "widget": {
+            "name": "width"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "height",
+          "name": "height",
+          "shape": 7,
+          "type": "INT",
+          "widget": {
+            "name": "height"
+          }
+        }
+      ],
+      "mode": 0,
+      "order": 8,
+      "outputs": [
+        {
+          "links": null,
+          "localized_name": "result",
+          "name": "result",
+          "type": "IMAGE"
+        }
+      ],
+      "pos": [
+        1430,
+        470
+      ],
+      "properties": {
+        "Node name for S&R": "MATRIX_Wave1Seedream45Edit"
+      },
+      "size": [
+        440,
+        236
+      ],
+      "type": "MATRIX_Wave1Seedream45Edit",
+      "widgets_values": [
+        false,
+        "Change only the green square to bright blue. Keep the background and all four black corner markers unchanged.",
+        "1:1",
+        0,
+        0
+      ]
+    },
+    {
+      "bgcolor": "#050a05",
+      "boxcolor": "#00ff41",
+      "color": "#0a150a",
+      "flags": {},
+      "id": 10,
+      "inputs": [
+        {
+          "link": null,
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE"
+        },
+        {
+          "link": null,
+          "localized_name": "live",
+          "name": "live",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "live"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "prompt",
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "aspect_ratio",
+          "name": "aspect_ratio",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "aspect_ratio"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "output_format",
+          "name": "output_format",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "output_format"
+          }
+        },
+        {
+          "link": null,
+          "localized_name": "resolution",
+          "name": "resolution",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "resolution"
+          }
+        }
+      ],
+      "mode": 0,
+      "order": 9,
+      "outputs": [
+        {
+          "links": null,
+          "localized_name": "result",
+          "name": "result",
+          "type": "IMAGE"
+        }
+      ],
+      "pos": [
+        1900,
+        470
+      ],
+      "properties": {
+        "Node name for S&R": "MATRIX_Wave1Seedream50ProEdit"
+      },
+      "size": [
+        440,
+        236
+      ],
+      "type": "MATRIX_Wave1Seedream50ProEdit",
+      "widgets_values": [
+        false,
+        "Change only the green square to bright blue. Keep the background and all four black corner markers unchanged.",
+        "1:1",
+        "png",
+        "1k"
+      ]
+    }
+  ],
+  "links": [],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.42,
+      "offset": [
+        10,
+        10
+      ]
+    }
+  },
+  "version": 0.4
+}

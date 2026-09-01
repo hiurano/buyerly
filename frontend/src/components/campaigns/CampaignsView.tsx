@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { CampaignRow } from './CampaignRow';
 import { AdSetRow } from './AdSetRow';
@@ -8,21 +8,32 @@ import { DisplayOptionsPopover } from './DisplayOptionsPopover';
 import { CampaignGroupHeader } from './CampaignGroupHeader';
 import { Tooltip } from '@/ui/Tooltip';
 import { LinearTabs } from '@/ui/LinearTabs';
+import { LinearDataListColumnHeader, LinearDataListStack, LinearDataListToolbar, LinearDataListViewport } from '@/ui/LinearDataList';
+import { getAdsManagerColumns, getAdsManagerTableMinWidth } from './tableColumns';
 import {
-  LinearFilterIcon,
+  ActiveFilterFormula,
+  FilteredEmptyState,
+  FilterMenuMode,
+  LinearFilterButton,
+  LinearFilterMenu,
+} from '@/components/filters/LinearFilter';
+import {
+  createAdFilterFields,
+  createAdSetFilterFields,
+  createCampaignFilterFields,
+} from '@/components/filters/filterCatalogs';
+import { applyFilterClauses, FilterClause } from '@/components/filters/filterModel';
+import {
   LinearSlidersIcon,
   LinearSidebarToggleIcon,
+  LinearSidebarLeftToggleIcon,
 } from '@/icons/LinearIcons';
 
-/** Per-group GEO color config (dot color + gradient left-stop accent) */
-const GEO_GROUP_COLORS: Record<string, { dotColor: string; accentLch: string }> = {
-  'group-germany':     { dotColor: 'rgb(59, 130, 246)',  accentLch: 'lch(10.756 5.912 273.56)' },
-  'group-netherlands': { dotColor: 'rgb(249, 115, 22)',  accentLch: 'lch(10.756 4.2 50)' },
-  'group-italy':       { dotColor: 'rgb(239, 68, 68)',   accentLch: 'lch(10.756 2.366 34.369)' },
-  'group-usa':         { dotColor: 'rgb(139, 92, 246)',  accentLch: 'lch(10.756 5.221 300.708)' },
-};
-
-const DEFAULT_GROUP_COLOR = { dotColor: 'rgb(148, 163, 184)', accentLch: 'lch(10.756 0.85 272)' };
+interface OpenFilterMenu {
+  mode: FilterMenuMode;
+  anchor: HTMLElement;
+  fieldId?: string;
+}
 
 export const CampaignsView: React.FC = () => {
   const {
@@ -33,20 +44,102 @@ export const CampaignsView: React.FC = () => {
     setCampaignFilterTab,
     isRightSidebarOpen,
     toggleRightSidebar,
-    selectedFilterGroupId,
-    setSelectedFilterGroupId,
-    ruleGroups,
+    campaignGroups,
     campaignAttachedRules,
+    rules,
+    adsManagerFilters,
+    setAdsManagerFilters,
+    adsManagerQuickFilter,
+    clearAdsManagerQuickFilter,
     isDisplayOptionsOpen,
     toggleDisplayOptions,
     setIsDisplayOptionsOpen,
     displayGrouping,
     displayOrdering,
+    setDisplayOrdering,
+    displayProperties,
     collapsedGroups,
     toggleGroupCollapse,
+    isSidebarCollapsed,
+    toggleSidebarCollapsed,
   } = useAppStore();
 
+  const filterButtonRef = useRef<HTMLButtonElement>(null);
   const displayOptionsButtonRef = useRef<HTMLButtonElement>(null);
+  const [openFilterMenu, setOpenFilterMenu] = useState<OpenFilterMenu | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  const campaignFilterFields = useMemo(
+    () =>
+      createCampaignFilterFields({
+        campaigns,
+        campaignGroups,
+        rules,
+        campaignAttachedRules,
+      }),
+    [campaignAttachedRules, campaignGroups, campaigns, rules]
+  );
+
+  const adSetFilterFields = useMemo(
+    () =>
+      createAdSetFilterFields({
+        adSets,
+        campaigns,
+        campaignGroups,
+        rules,
+        campaignAttachedRules,
+      }),
+    [adSets, campaignAttachedRules, campaignGroups, campaigns, rules]
+  );
+
+  const adFilterFields = useMemo(
+    () =>
+      createAdFilterFields({
+        ads,
+        adSets,
+        campaigns,
+        campaignGroups,
+        rules,
+        campaignAttachedRules,
+      }),
+    [adSets, ads, campaignAttachedRules, campaignGroups, campaigns, rules]
+  );
+
+  const currentFilters = adsManagerFilters[campaignFilterTab];
+  const currentFields =
+    campaignFilterTab === 'campaigns'
+      ? campaignFilterFields
+      : campaignFilterTab === 'adsets'
+      ? adSetFilterFields
+      : adFilterFields;
+  const currentFilterUiFields = currentFields as unknown as typeof campaignFilterFields;
+
+  const updateCurrentFilters = (clauses: FilterClause[]) =>
+    setAdsManagerFilters(campaignFilterTab, clauses);
+
+  const clearAllCurrentFilters = () => {
+    updateCurrentFilters([]);
+    clearAdsManagerQuickFilter();
+  };
+
+  const getEffectiveFilters = (entity: 'campaigns' | 'adsets' | 'ads'): FilterClause[] => {
+    const explicitFilters = adsManagerFilters[entity];
+    if (!adsManagerQuickFilter || adsManagerQuickFilter.entity !== entity) {
+      return explicitFilters;
+    }
+    return [
+      ...explicitFilters,
+      {
+        fieldId: adsManagerQuickFilter.fieldId,
+        operator: 'is',
+        values: [adsManagerQuickFilter.value],
+      },
+    ];
+  };
+
+  const showFilterMenu = (mode: FilterMenuMode, anchor: HTMLElement, fieldId?: string) => {
+    setOpenFilterMenu({ mode, anchor, fieldId });
+  };
 
   // Global hotkey: 'V' for Display options (when not typing in an input)
   useEffect(() => {
@@ -56,60 +149,84 @@ export const CampaignsView: React.FC = () => {
         return;
       }
 
-      if (e.key === 'v' || e.key === 'V') {
+      if ((e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
+        setIsDisplayOptionsOpen(false);
+        if (filterButtonRef.current) {
+          setOpenFilterMenu((current) =>
+            current ? null : { mode: 'root', anchor: filterButtonRef.current as HTMLElement }
+          );
+        }
+      } else if (e.key === 'v' || e.key === 'V') {
+        e.preventDefault();
+        setOpenFilterMenu(null);
         toggleDisplayOptions();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggleDisplayOptions]);
+  }, [setIsDisplayOptionsOpen, toggleDisplayOptions]);
 
-  // Filter campaigns by GEO group
-  let filteredCampaigns = campaigns.filter((c) => {
-    if (selectedFilterGroupId) {
-      if (c.groupId !== selectedFilterGroupId) return false;
-    }
-    return true;
-  });
+  useEffect(() => {
+    setOpenFilterMenu(null);
+  }, [campaignFilterTab]);
+
+  let filteredCampaigns = applyFilterClauses(
+    campaigns,
+    campaignFilterFields,
+    getEffectiveFilters('campaigns')
+  );
+  const parseMetric = (value: string) => Number.parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
+  const directionFactor = sortDirection === 'asc' ? 1 : -1;
 
   // Apply Ordering
-  if (displayOrdering === 'spend') {
+  if (displayOrdering === 'name') {
+    filteredCampaigns = [...filteredCampaigns].sort((a, b) => a.name.localeCompare(b.name) * directionFactor);
+  } else if (displayOrdering === 'spend') {
     filteredCampaigns = [...filteredCampaigns].sort((a, b) => {
-      const spendA = parseFloat(a.spend.replace(/[^0-9.]/g, '')) || 0;
-      const spendB = parseFloat(b.spend.replace(/[^0-9.]/g, '')) || 0;
-      return spendB - spendA;
+      return (parseMetric(a.spend) - parseMetric(b.spend)) * directionFactor;
     });
   } else if (displayOrdering === 'roi') {
     filteredCampaigns = [...filteredCampaigns].sort((a, b) => {
-      const roiA = parseFloat(a.roi.replace(/[^0-9.-]/g, '')) || 0;
-      const roiB = parseFloat(b.roi.replace(/[^0-9.-]/g, '')) || 0;
-      return roiB - roiA;
+      return (parseMetric(a.roi) - parseMetric(b.roi)) * directionFactor;
     });
   } else if (displayOrdering === 'results') {
-    filteredCampaigns = [...filteredCampaigns].sort((a, b) => b.leadsCount - a.leadsCount);
+    filteredCampaigns = [...filteredCampaigns].sort((a, b) => (a.leadsCount - b.leadsCount) * directionFactor);
+  } else if (displayOrdering === 'budget') {
+    filteredCampaigns = [...filteredCampaigns].sort((a, b) => (parseMetric(a.budget) - parseMetric(b.budget)) * directionFactor);
+  } else if (displayOrdering === 'cpa') {
+    filteredCampaigns = [...filteredCampaigns].sort((a, b) => (parseMetric(a.cpa) - parseMetric(b.cpa)) * directionFactor);
+  } else if (displayOrdering === 'created') {
+    filteredCampaigns = [...filteredCampaigns].sort((a, b) => (Date.parse(a.date) - Date.parse(b.date)) * directionFactor);
   }
 
-  const matchingCampaignIds = new Set(filteredCampaigns.map((c) => c.id));
+  let filteredAdSets = applyFilterClauses(adSets, adSetFilterFields, getEffectiveFilters('adsets'));
+  let filteredAds = applyFilterClauses(ads, adFilterFields, getEffectiveFilters('ads'));
 
-  // Filter adSets
-  const filteredAdSets = adSets.filter((s) => {
-    if (selectedFilterGroupId) {
-      return matchingCampaignIds.has(s.campaignId);
-    }
-    return true;
-  });
+  if (displayOrdering === 'name') {
+    filteredAdSets = [...filteredAdSets].sort((a, b) => a.name.localeCompare(b.name) * directionFactor);
+    filteredAds = [...filteredAds].sort((a, b) => a.name.localeCompare(b.name) * directionFactor);
+  } else if (displayOrdering === 'spend') {
+    filteredAdSets = [...filteredAdSets].sort((a, b) => (parseMetric(a.spend) - parseMetric(b.spend)) * directionFactor);
+    filteredAds = [...filteredAds].sort((a, b) => (parseMetric(a.spend) - parseMetric(b.spend)) * directionFactor);
+  } else if (displayOrdering === 'roi') {
+    filteredAdSets = [...filteredAdSets].sort((a, b) => (parseMetric(a.roi) - parseMetric(b.roi)) * directionFactor);
+  } else if (displayOrdering === 'results') {
+    filteredAdSets = [...filteredAdSets].sort((a, b) => (a.leadsCount - b.leadsCount) * directionFactor);
+    filteredAds = [...filteredAds].sort((a, b) => (a.leadsCount - b.leadsCount) * directionFactor);
+  } else if (displayOrdering === 'budget') {
+    filteredAdSets = [...filteredAdSets].sort((a, b) => (parseMetric(a.budget) - parseMetric(b.budget)) * directionFactor);
+  } else if (displayOrdering === 'cpa') {
+    filteredAdSets = [...filteredAdSets].sort((a, b) => (parseMetric(a.cpa) - parseMetric(b.cpa)) * directionFactor);
+    filteredAds = [...filteredAds].sort((a, b) => (parseMetric(a.cpa) - parseMetric(b.cpa)) * directionFactor);
+  }
 
-  const matchingAdSetIds = new Set(filteredAdSets.map((s) => s.id));
-
-  // Filter ads
-  const filteredAds = ads.filter((a) => {
-    if (selectedFilterGroupId) {
-      return matchingAdSetIds.has(a.adSetId);
-    }
-    return true;
-  });
+  const tableColumns = getAdsManagerColumns(campaignFilterTab, displayProperties);
+  const tableMinWidth = getAdsManagerTableMinWidth(tableColumns);
+  const hasExplicitFilter = currentFilters.length > 0;
+  const hasQuickFilter = Boolean(adsManagerQuickFilter?.entity === campaignFilterTab);
+  const hasFilterActive = hasExplicitFilter || hasQuickFilter;
 
   const totalCurrent =
     campaignFilterTab === 'adsets'
@@ -134,18 +251,43 @@ export const CampaignsView: React.FC = () => {
         {/* Tier 1: Title (44px) with border-bottom */}
         <div
           style={{
-            borderBottom: '1px solid #1a1b1d',
+            borderBottom: '1px solid var(--color-border-primary)',
+            paddingLeft: '14px',
           }}
-          className="flex h-[44px] items-center justify-between pl-2 pr-2.5"
+          className="flex h-[44px] items-center justify-between pr-2.5"
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center">
+            <div
+              style={{
+                width: isSidebarCollapsed ? '28px' : '0px',
+                opacity: isSidebarCollapsed ? 1 : 0,
+                transform: isSidebarCollapsed ? 'scale(1)' : 'scale(0.85)',
+                marginRight: isSidebarCollapsed ? '6px' : '0px',
+                pointerEvents: isSidebarCollapsed ? 'auto' : 'none',
+                overflow: 'hidden',
+                transition:
+                  'width 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), margin-right 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
+              }}
+              className="flex shrink-0 items-center justify-center"
+            >
+              <Tooltip content="Open sidebar" shortcut="[" side="bottom" sideOffset={6}>
+                <button
+                  type="button"
+                  onClick={toggleSidebarCollapsed}
+                  className="linear-icon-btn"
+                  aria-label="Open sidebar"
+                >
+                  <LinearSidebarLeftToggleIcon size={14} isOpen={false} aria-hidden="true" />
+                </button>
+              </Tooltip>
+            </div>
             <h2
               style={{
                 fontSize: '13px',
                 fontWeight: 500,
                 lineHeight: '16px',
                 letterSpacing: '-0.01em',
-                color: 'lch(90.155% 1.2 272 / 1)',
+                color: 'var(--text-secondary)',
               }}
             >
               Ads Manager
@@ -154,9 +296,7 @@ export const CampaignsView: React.FC = () => {
         </div>
 
         {/* Tier 2: View Filter Tabs & Action Buttons (43px) */}
-        <div
-          className="flex h-[43px] items-center justify-between pl-2 pr-2.5"
-        >
+        <LinearDataListToolbar>
           {/* Left: View Tabs with Linear Sliding Pill Physics */}
           <LinearTabs
             tabs={[
@@ -171,25 +311,37 @@ export const CampaignsView: React.FC = () => {
           {/* Right: Add filter + Display options + Toggle Sidebar */}
           <div className="flex items-center gap-1.5">
             <Tooltip content="Add filter" shortcut="F">
-              <button
-                type="button"
-                className="group relative flex h-[28px] w-[28px] items-center justify-center rounded-full bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.06)] text-[#959496] transition-all hover:bg-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.12)] hover:text-[#ffffff]"
-              >
-                <LinearFilterIcon size={14} />
-              </button>
+              <LinearFilterButton
+                ref={filterButtonRef}
+                active={hasExplicitFilter}
+                open={Boolean(openFilterMenu)}
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  setIsDisplayOptionsOpen(false);
+                  setOpenFilterMenu((current) =>
+                    current ? null : { mode: 'root', anchor: event.currentTarget }
+                  );
+                }}
+              />
             </Tooltip>
 
             {/* Display Options Button with Popover */}
             <div className="relative">
-              <Tooltip content="Display options" shortcut="V">
+              <Tooltip content="Show display options" shortcut="Shift V">
                 <button
                   ref={displayOptionsButtonRef}
                   type="button"
-                  onClick={toggleDisplayOptions}
-                  className={`group relative flex h-[28px] w-[28px] items-center justify-center rounded-full transition-all border ${
+                  aria-label="Display options"
+                  data-active={isDisplayOptionsOpen ? 'true' : undefined}
+                  onMouseDown={(event) => event.stopPropagation()}
+                  onClick={() => {
+                    setOpenFilterMenu(null);
+                    toggleDisplayOptions();
+                  }}
+                  className={`group relative flex h-[28px] w-[28px] items-center justify-center rounded-full border border-transparent outline-none transition-all ${
                     isDisplayOptionsOpen
-                      ? 'bg-[rgba(255,255,255,0.12)] border-[rgba(255,255,255,0.16)] text-[#ffffff]'
-                      : 'bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.06)] text-[#959496] hover:bg-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.12)] hover:text-[#ffffff]'
+                      ? 'bg-[var(--item-active-bg)] text-[var(--text-primary)]'
+                      : 'bg-transparent text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   <LinearSlidersIcon size={14} />
@@ -210,55 +362,94 @@ export const CampaignsView: React.FC = () => {
             >
               <button
                 type="button"
+                aria-label={isRightSidebarOpen ? 'Close details' : 'Open details'}
                 onClick={toggleRightSidebar}
                 className={`group relative flex h-[28px] w-[28px] items-center justify-center rounded-full transition-all border ${
                   isRightSidebarOpen
-                    ? 'bg-[rgba(255,255,255,0.12)] border-[rgba(255,255,255,0.16)] text-[#ffffff]'
-                    : 'bg-[rgba(255,255,255,0.04)] border-[rgba(255,255,255,0.06)] text-[#959496] hover:bg-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.12)] hover:text-[#ffffff]'
+                    ? 'bg-[var(--item-hover-bg)] border-[var(--color-border-secondary)] text-[var(--text-primary)]'
+                    : 'bg-transparent border-transparent text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 <LinearSidebarToggleIcon isOpen={isRightSidebarOpen} size={14} />
               </button>
             </Tooltip>
           </div>
-        </div>
+        </LinearDataListToolbar>
+
+        <ActiveFilterFormula
+          fields={currentFilterUiFields}
+          clauses={currentFilters}
+          onChange={updateCurrentFilters}
+          onOpenMenu={showFilterMenu}
+        />
       </header>
+
+      <LinearFilterMenu
+        isOpen={Boolean(openFilterMenu)}
+        mode={openFilterMenu?.mode ?? 'root'}
+        anchorElement={openFilterMenu?.anchor ?? null}
+        fieldId={openFilterMenu?.fieldId}
+        fields={currentFilterUiFields}
+        clauses={currentFilters}
+        onChange={updateCurrentFilters}
+        onClose={() => setOpenFilterMenu(null)}
+      />
 
       {/* 2. Main Content Area below Header (Split: List on Left, Right Sidebar on Right) */}
       <div className="flex flex-1 overflow-hidden" style={{ flexDirection: 'row' }}>
         {/* Left: Campaign / Ad Set / Ad List Scroll Container */}
-        <div className="flex-1 overflow-y-auto px-2 py-1">
-          {/* Rows List */}
-          <div className="space-y-0.5">
+        <LinearDataListViewport className="campaign-list-container" horizontal>
+          <div style={{ minWidth: `${tableMinWidth}px` }}>
+            <LinearDataListColumnHeader
+              columns={tableColumns}
+              minWidth={tableMinWidth}
+              sortKey={displayOrdering === 'manual' ? undefined : displayOrdering}
+              sortDirection={sortDirection}
+              onSort={(columnId) => {
+                if (displayOrdering === columnId) {
+                  setSortDirection((current) => current === 'asc' ? 'desc' : 'asc');
+                } else {
+                  setDisplayOrdering(columnId as typeof displayOrdering);
+                  setSortDirection(columnId === 'name' ? 'asc' : 'desc');
+                }
+              }}
+            />
+
+            <LinearDataListStack>
             {campaignFilterTab === 'adsets' ? (
               filteredAdSets.length === 0 ? (
-                <div className="flex h-32 items-center justify-center text-[13px] text-[#6b6f76]">
-                  No ad sets found
-                </div>
+                hasFilterActive ? (
+                  <FilteredEmptyState noun="ad sets" hiddenCount={hiddenCount} onClear={clearAllCurrentFilters} />
+                ) : (
+                  <div className="flex h-32 items-center justify-center text-[13px] text-[#6b6f76]">No ad sets found</div>
+                )
               ) : (
                 filteredAdSets.map((adSet) => <AdSetRow key={adSet.id} adSet={adSet} />)
               )
             ) : campaignFilterTab === 'ads' ? (
               filteredAds.length === 0 ? (
-                <div className="flex h-32 items-center justify-center text-[13px] text-[#6b6f76]">
-                  No ads found
-                </div>
+                hasFilterActive ? (
+                  <FilteredEmptyState noun="ads" hiddenCount={hiddenCount} onClear={clearAllCurrentFilters} />
+                ) : (
+                  <div className="flex h-32 items-center justify-center text-[13px] text-[#6b6f76]">No ads found</div>
+                )
               ) : (
                 filteredAds.map((ad) => <AdRow key={ad.id} ad={ad} />)
               )
             ) : filteredCampaigns.length === 0 ? (
-              <div className="flex h-32 items-center justify-center text-[13px] text-[#6b6f76]">
-                No campaigns found
-              </div>
+              hasFilterActive ? (
+                <FilteredEmptyState noun="campaigns" hiddenCount={hiddenCount} onClear={clearAllCurrentFilters} />
+              ) : (
+                <div className="flex h-32 items-center justify-center text-[13px] text-[#6b6f76]">No campaigns found</div>
+              )
             ) : displayGrouping === 'groups' ? (
-              ruleGroups.map((group) => {
-                const groupCampaigns = filteredCampaigns.filter((c) => c.groupId === group.id);
+              campaignGroups.map((group) => {
+                const groupCampaigns = filteredCampaigns.filter((c) => c.groupIds.includes(group.id));
                 if (groupCampaigns.length === 0) return null;
                 return (
                   <div key={group.id}>
                     {/* Linear-style Group Header */}
                     {(() => {
-                      const colors = GEO_GROUP_COLORS[group.id] ?? DEFAULT_GROUP_COLOR;
                       const isCollapsed = collapsedGroups.includes(group.id);
                       return (
                         <>
@@ -266,8 +457,8 @@ export const CampaignsView: React.FC = () => {
                             groupId={group.id}
                             groupName={group.name}
                             count={groupCampaigns.length}
-                            dotColor={colors.dotColor}
-                            accentLch={colors.accentLch}
+                            dotColor={group.color}
+                            accentLch={group.accentColor}
                             isCollapsed={isCollapsed}
                             onToggleCollapse={() => toggleGroupCollapse(group.id)}
                           />
@@ -289,18 +480,18 @@ export const CampaignsView: React.FC = () => {
                 <CampaignRow key={campaign.id} campaign={campaign} />
               ))
             )}
-          </div>
+            </LinearDataListStack>
 
           {/* Footer Filter Notification Banner */}
-          {selectedFilterGroupId && hiddenCount > 0 && (
-            <div className="mt-4 flex items-center justify-center gap-4 py-4 text-[12px] text-[#959496]">
+            {hasFilterActive && hiddenCount > 0 && (
+            <div className="mt-4 flex items-center justify-center gap-4 py-4 text-[12px] text-[var(--text-tertiary)]">
               <div className="flex items-center gap-2">
-                <span className="font-medium text-[#fefeff]">{hiddenCount}</span>
+                <span className="font-medium text-[var(--text-secondary)]">{hiddenCount}</span>
                 <span>more hidden by filters</span>
                 <button
                   type="button"
-                  onClick={() => setSelectedFilterGroupId(null)}
-                  className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] font-medium text-[#e3e5e7] hover:bg-[#222225] transition-colors"
+                  onClick={clearAllCurrentFilters}
+                  className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
                 >
                   <span>Clear Filters</span>
                   <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
@@ -309,8 +500,9 @@ export const CampaignsView: React.FC = () => {
                 </button>
               </div>
             </div>
-          )}
-        </div>
+            )}
+          </div>
+        </LinearDataListViewport>
 
         {/* Right: Linear Right Context Sidebar (Groups Filter Panel) */}
         <CampaignRightSidebar />

@@ -11,7 +11,7 @@ import {
 } from '@/ui/DropdownMenu';
 
 export const SidebarHeader: React.FC = () => {
-  const { workspaceName, setSearchOpen } = useAppStore();
+  const { workspaceName, setSearchOpen, setActiveTab } = useAppStore();
 
   return (
     <div
@@ -37,7 +37,7 @@ export const SidebarHeader: React.FC = () => {
               aria-haspopup="menu"
               aria-expanded="false"
               aria-label={`${workspaceName} Workspace Menu`}
-              className="linear-workspace-btn min-w-0 max-w-[calc(100%-40px)]"
+              className="linear-workspace-btn min-w-0 max-w-[calc(100%-36px)]"
             >
               {/* 20x20 Buyerly Logo Avatar (Gold Anubis) */}
               <BuyerlyLogoAvatar size={20} shape="rounded" />
@@ -49,7 +49,7 @@ export const SidebarHeader: React.FC = () => {
                   fontWeight: 550,
                   lineHeight: '23px',
                   letterSpacing: '-0.1px',
-                  color: 'lch(90.155% 1.2 272 / 1)',
+                  color: 'var(--text-primary)',
                 }}
                 className="truncate min-w-0"
               >
@@ -80,7 +80,7 @@ export const SidebarHeader: React.FC = () => {
             <div className="h-[6px] w-full" />
 
             {/* 1. Settings */}
-            <DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setActiveTab('preferences')}>
               <span className="truncate">Settings</span>
               <div className="flex shrink-0 items-center gap-[3px]">
                 <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
@@ -146,7 +146,7 @@ export const SidebarHeader: React.FC = () => {
         {/* Linear Middle Flex Spacer */}
         <div className="flex-1 min-w-[4px]" />
 
-        {/* Right Action: Fixed Search Button pinned to right */}
+        {/* Search Action */}
         <div className="flex items-center shrink-0">
           <Tooltip content="Search workspace" shortcut="/">
             <button

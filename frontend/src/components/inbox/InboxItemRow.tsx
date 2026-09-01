@@ -43,38 +43,50 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
           style={{
             height: '55px',
             borderRadius: '8px',
-            backgroundColor: isSelected ? 'lch(13.845% 1.3 272 / 1)' : 'transparent',
-            paddingLeft: '16px',
-            paddingRight: '16px',
+            backgroundColor: isSelected ? 'var(--item-active-bg)' : 'transparent',
+            paddingLeft: '8px',
+            paddingRight: '8px',
+            marginLeft: '8px',
+            marginRight: '8px',
           }}
-          className="group flex cursor-pointer select-none items-center transition-colors duration-100 hover:bg-white/[0.04] outline-none"
+          className="group flex cursor-pointer select-none items-center transition-colors duration-100 hover:bg-[var(--item-hover-bg)] outline-none"
         >
-          {/* 32x32 Buyerly Logo Avatar (Gold Anubis) */}
-          <div className="flex shrink-0 items-center justify-center">
+          {/* 32x32 Buyerly Logo Avatar with 14x14 Action Badge */}
+          <div className="relative flex shrink-0 items-center justify-center">
             <BuyerlyLogoAvatar size={32} shape="circle" />
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '-2px',
+                right: '-2px',
+                width: '14px',
+                height: '14px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--item-hover-bg)',
+                border: '1.5px solid var(--card-bg)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <span
+                style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  backgroundColor: item.isRead ? 'var(--text-tertiary)' : '#eab308',
+                }}
+              />
+            </div>
           </div>
 
-          {/* Text Container with exact 12px gap from avatar */}
+          {/* Text Container with exact 10px gap from avatar */}
           <div
-            style={{ marginLeft: '12px' }}
+            style={{ marginLeft: '10px' }}
             className="flex min-w-0 flex-1 flex-col justify-center"
           >
-            {/* Title Line (13px, weight 500, line-height 16px) */}
+            {/* Title Line (13px, weight 500 unread / 450 read, line-height 16px) */}
             <div className="flex items-center min-w-0">
-              {/* 8px Accent Dot for Unread Notifications */}
-              {!item.isRead && (
-                <span
-                  style={{
-                    width: '8px',
-                    height: '8px',
-                    marginRight: '6px',
-                  }}
-                  className="flex shrink-0 items-center justify-center"
-                >
-                  <span className="h-2 w-2 rounded-full bg-[#5e69d1]" />
-                </span>
-              )}
-
               <span
                 style={{
                   fontSize: '13px',
@@ -82,10 +94,10 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
                   lineHeight: '16px',
                   letterSpacing: '-0.1px',
                   color: isSelected
-                    ? '#ffffff'
+                    ? 'var(--text-primary)'
                     : item.isRead
-                    ? 'lch(61.803% 1.2 272 / 1)' // Muted secondary (#949597)
-                    : '#ffffff',                // Bright primary (#ffffff)
+                    ? 'var(--text-tertiary)'
+                    : 'var(--text-primary)',
                 }}
                 className="truncate"
               >
@@ -93,9 +105,9 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
               </span>
             </div>
 
-            {/* Subtitle & Timestamp Line (exact 3.5px top margin, 12px font, weight 450, line-height 15px) */}
+            {/* Subtitle & Timestamp Line (exact 2px top margin, 12px font, weight 450) */}
             <div
-              style={{ marginTop: '3.5px' }}
+              style={{ marginTop: '2px' }}
               className="flex items-center justify-between gap-2"
             >
               <span
@@ -103,7 +115,7 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
                   fontSize: '12px',
                   fontWeight: 450,
                   lineHeight: '15px',
-                  color: 'lch(65.078% 1.425 272 / 1)',
+                  color: 'var(--text-tertiary)',
                 }}
                 className="truncate flex-1"
               >
@@ -115,7 +127,7 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
                   fontSize: '12px',
                   fontWeight: 450,
                   lineHeight: '15px',
-                  color: 'lch(65.078% 1.425 272 / 1)',
+                  color: 'var(--text-tertiary)',
                 }}
                 className="shrink-0"
               >
@@ -137,7 +149,7 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
           }}
         >
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-[#9d9d9e] group-hover:text-white transition-colors">
+            <span className="text-[#9d9d9e] group-hover:text-[var(--text-primary)] transition-colors">
               {item.isRead ? (
                 <LinearInboxUnreadIcon size={16} />
               ) : (
@@ -163,7 +175,7 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
           }}
         >
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-[#9d9d9e] group-hover:text-white transition-colors">
+            <span className="text-[#9d9d9e] group-hover:text-[var(--text-primary)] transition-colors">
               <LinearInboxDeleteIcon size={16} />
             </span>
             <span className="truncate">Delete notification</span>
