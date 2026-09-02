@@ -91,7 +91,9 @@ services:
       start_period: 15s
 
   web:
-    build: ./webapp
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
     image: buyerly-web:${APP_VERSION:-local}
     container_name: buyerly-web
     restart: unless-stopped

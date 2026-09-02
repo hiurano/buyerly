@@ -3,6 +3,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 
 from api.auth import get_current_user
 from api.deps import (
@@ -18,12 +19,12 @@ from api.schemas import (
     WorkspaceItem,
 )
 from database.db import async_session_maker
-from database.models import User, Workspace, WorkspaceMember
+from database.models import AllowedEmail, User, Workspace, WorkspaceMember
 from services.image_uploads import (
     delete_workspace_logo_if_unreferenced,
     is_owned_workspace_logo,
 )
-from services.workspace_slugs import allocate_workspace_slug
+from services.workspace_slugs import WorkspaceSlugUnavailable, allocate_workspace_slug
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Workspaces"])
@@ -52,7 +53,33 @@ async def create_workspace(req: CreateWorkspaceRequest, user: User = Depends(get
         raise HTTPException(status_code=400, detail="Логотип не найден или принадлежит другому пользователю")
 
     async with async_session_maker() as session:
-        slug = await allocate_workspace_slug(session, requested_slug)
+        existing_membership = (
+            await session.execute(
+                select(WorkspaceMember.id).where(
+                    WorkspaceMember.user_id == user.id
+                ).limit(1)
+            )
+        ).scalar_one_or_none()
+        clean_user_email = (user.email or "").strip().lower()
+        allowlisted = None
+        if clean_user_email:
+            allowlisted = (
+                await session.execute(
+                    select(AllowedEmail.id).where(
+                        AllowedEmail.email == clean_user_email
+                    )
+                )
+            ).scalar_one_or_none()
+        if existing_membership is None and allowlisted is None:
+            raise HTTPException(
+                status_code=403,
+                detail="Создание воркспейса недоступно для invite-only сессии",
+            )
+
+        try:
+            slug = await allocate_workspace_slug(session, requested_slug)
+        except WorkspaceSlugUnavailable as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         ws = Workspace(
             name=name,
             slug=slug,
@@ -62,7 +89,11 @@ async def create_workspace(req: CreateWorkspaceRequest, user: User = Depends(get
             owner_user_id=user.id,
         )
         session.add(ws)
-        await session.flush()
+        try:
+            await session.flush()
+        except IntegrityError as exc:
+            await session.rollback()
+            raise HTTPException(status_code=409, detail="Это имя воркспейса уже занято") from exc
 
         member = WorkspaceMember(workspace_id=ws.id, user_id=user.id, role="owner")
         session.add(member)

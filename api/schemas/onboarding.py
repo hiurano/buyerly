@@ -15,7 +15,7 @@ class OnboardingStatusResponse(BaseModel):
 
 class PersonalDetailsRequest(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=60)
-    last_name: str = Field(..., min_length=1, max_length=60)
+    last_name: str = Field(default="", max_length=60)
     email: Optional[str] = Field(None, max_length=255)
 
 

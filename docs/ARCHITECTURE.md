@@ -87,24 +87,19 @@ Account-level запрос включает только видимые в те�
 
 ## Маршрутизация web-интерфейса
 
-Frontend загружается как упорядоченный набор независимых classic scripts без
-сборщика: `browser-preferences.js`, `workspace-slugs.js` и `security.js`
-публикуют замороженные пространства имён, после чего `app.js` подключает их и
-запускает UI. Вынесенные модули владеют соответственно browser storage,
-детерминированными slug и экранированием/URL allow-list; основной файл не
-дублирует эти реализации. Порядок script-тегов зафиксирован контрактным тестом,
-а GitHub Actions выполняет `node --check` для каждого файла в `webapp/js` до
-установки Python-зависимостей и полного тестового набора.
+Frontend — React/Vite-приложение из `frontend/`. CI собирает его на Node.js 22,
+а production web image переносит статический `dist` в Nginx. FastAPI может
+отдавать тот же build только в локальном single-process режиме.
 
-Интерфейс платформы спроектирован по эталону Attio CRM с поддержкой семантической иерархии URL:
+Интерфейс использует одну workspace-first иерархию URL:
 
-- **Авторизация и онбординг**: `/auth/sign-in` (вход), `/auth/temporary-password` (ввод OTP-кода), `/welcome/personal-details` (шаг 3), `/welcome/workspace-details` (шаг 4), `/welcome/invite-team` (шаг 5), `/invite/<token>` (публичная страница принятия инвайта).
-- **Рабочее пространство**: `/<workspace-slug>/lists/all` (все кабинеты), `/<workspace-slug>/groups/<group-id>` (группа), `/<workspace-slug>/rules` (правила), `/<workspace-slug>/summary` (сводка), `/<workspace-slug>/logs` (история и аудит), `/<workspace-slug>/settings` (настройки).
-- **Быстрые шорткаты**: `/accounts`, `/rules`, `/summary`, `/logs`, `/settings` бесшовно транслируются в контекст текущего активного воркспейса.
+- **Авторизация и онбординг**: `/login`, `/auth/email/verify?token=…`, `/create-workspace`, `/invite/<token>`, `/<workspace>/welcome`.
+- **Рабочее пространство**: `/<workspace>/inbox`, `/<workspace>/ads/{campaigns|adsets|ads}`, `/<workspace>/rules`, `/<workspace>/statistics`, `/<workspace>/settings`.
+- **Совместимость**: `/w/` и прежние shortcuts удалены без redirect; неизвестный адрес открывает Not Found.
 
 Интерфейс переключает разделы через History API без полной перезагрузки, а Nginx и локальный FastAPI fallback возвращают `index.html` при прямом открытии каждого адреса. Поэтому обновление страницы сохраняет открытый раздел, прямую ссылку можно передать коллеге, а системные кнопки браузера «назад» и «вперёд» работают ожидаемо.
 
-Web-вход создаёт ограниченную по времени серверную сессию: browser secret находится в `Secure + HttpOnly + SameSite` cookie, в PostgreSQL хранится только hash, а изменяющие запросы защищены CSRF-токеном. В настройках пользователь видит активные устройства и может завершить одну или все сессии. При истечении или отзыве запрошенный раздел временно сохраняется в `sessionStorage`, пользователь переходит на `/auth/sign-in`, а после повторного входа возвращается на исходную страницу.
+Web-вход создаёт ограниченную по времени серверную сессию: browser secret находится в `Secure + HttpOnly + SameSite` cookie, в PostgreSQL хранится только hash, а изменяющие запросы защищены CSRF-токеном. При истечении или отзыве запрошенный раздел временно сохраняется в `sessionStorage`, пользователь переходит на `/login`, а после повторного входа возвращается на исходную страницу.
 
 ## Автоправила
 

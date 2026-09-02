@@ -25,6 +25,7 @@ from api.auth import validate_telegram_init_data
 from api.server import create_app
 from core.config import settings
 from core.meta_tokens import decrypt_meta_token
+from core.rate_limit import limiter
 from database.db import Base, hash_password, verify_password
 from database.models import (
     Account,
@@ -46,6 +47,7 @@ from database.models import (
     User,
     WebSession,
     Workspace,
+    WorkspaceInvite,
     WorkspaceMember,
 )
 
@@ -75,6 +77,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         self.original_meta_token_key = settings.META_TOKEN_ENCRYPTION_KEY
         settings.META_TOKEN_ENCRYPTION_KEY = Fernet.generate_key().decode("ascii")
         api_routes_module._summary_cache.clear()
+        await limiter.reset()
         self.test_engine = create_test_engine()
         self.test_session_maker = async_sessionmaker(self.test_engine, class_=AsyncSession, expire_on_commit=False)
         await init_test_db(self.test_engine)
@@ -2735,8 +2738,9 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         delivered = {}
 
-        async def capture_code(email, code):
+        async def capture_code(email, code, login_link):
             delivered[email] = code
+            delivered["login_link"] = login_link
             return True
 
         transport = httpx.ASGITransport(app=self.app)
@@ -2767,6 +2771,123 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 ).scalars().all()
                 self.assertEqual(len(users), 1)
                 self.assertIsNotNone(users[0].email_verified_at)
+
+            # The code and link are two ways to consume the same credential.
+            client.cookies.clear()
+            link_token = urllib.parse.parse_qs(
+                urllib.parse.urlsplit(delivered["login_link"]).query
+            )["token"][0]
+            replay = await client.post(
+                "/api/auth/verify-email-link",
+                json={"token": link_token},
+            )
+            self.assertEqual(replay.status_code, 401)
+
+    async def test_magic_link_is_consumed_once_and_never_stored_in_plaintext(self):
+        async with self.test_session_maker() as session:
+            session.add(AllowedEmail(email="magic@example.com", added_by="test"))
+            await session.commit()
+
+        delivered = {}
+
+        async def capture_message(email, code, login_link):
+            delivered.update(email=email, code=code, login_link=login_link)
+            return True
+
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            with patch("api.routers.auth.send_otp_verification_email", new=capture_message):
+                requested = await client.post(
+                    "/api/auth/request-temporary-password",
+                    json={"email": "magic@example.com"},
+                )
+            self.assertEqual(requested.status_code, 200)
+            token = urllib.parse.parse_qs(
+                urllib.parse.urlsplit(delivered["login_link"]).query
+            )["token"][0]
+
+            async with self.test_session_maker() as session:
+                record = (
+                    await session.execute(
+                        select(EmailVerificationCode).where(
+                            EmailVerificationCode.email == "magic@example.com"
+                        )
+                    )
+                ).scalar_one()
+                self.assertNotEqual(record.link_token_hash, token)
+                self.assertEqual(len(record.link_token_hash), 64)
+
+            verified = await client.post(
+                "/api/auth/verify-email-link",
+                json={"token": token},
+            )
+            self.assertEqual(verified.status_code, 200)
+            self.assertIsNone(verified.json()["redirect_url"])
+
+            client.cookies.clear()
+            replay = await client.post(
+                "/api/auth/verify-email-link",
+                json={"token": token},
+            )
+            self.assertEqual(replay.status_code, 401)
+
+    async def test_revoked_invite_invalidates_already_issued_login(self):
+        token = "inv_login_context_1234567890"
+        email = "invite-login@example.com"
+        async with self.test_session_maker() as session:
+            owner = (
+                await session.execute(
+                    select(User).where(User.telegram_id == "8948797431")
+                )
+            ).scalar_one()
+            invite = WorkspaceInvite(
+                workspace_id=self.ws_buyer_id,
+                token=token,
+                email=email,
+                role="buyer",
+                inviter_user_id=owner.id,
+                status="pending",
+                max_uses=1,
+                used_count=0,
+            )
+            session.add(invite)
+            await session.commit()
+
+        delivered = {}
+
+        async def capture_message(_email, code, _login_link):
+            delivered["code"] = code
+            return True
+
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            with patch("api.routers.auth.send_otp_verification_email", new=capture_message):
+                requested = await client.post(
+                    "/api/auth/request-temporary-password",
+                    json={"email": email, "invite_token": token},
+                )
+            self.assertEqual(requested.status_code, 200)
+
+            async with self.test_session_maker() as session:
+                invite = (
+                    await session.execute(
+                        select(WorkspaceInvite).where(WorkspaceInvite.token == token)
+                    )
+                ).scalar_one()
+                invite.status = "revoked"
+                await session.commit()
+
+            denied = await client.post(
+                "/api/auth/verify-temporary-password",
+                json={"email": email, "code": delivered["code"]},
+            )
+            self.assertEqual(denied.status_code, 403)
+
+            async with self.test_session_maker() as session:
+                user = (
+                    await session.execute(select(User).where(User.username == email))
+                ).scalar_one_or_none()
+                self.assertIsNone(user)
 
     async def test_avatar_and_logo_disallow_svg(self):
         buyer_data = generate_valid_telegram_init_data(

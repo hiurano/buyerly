@@ -1,5 +1,6 @@
 import logging
 import httpx
+from html import escape
 from typing import Optional
 from core.config import settings
 
@@ -56,9 +57,29 @@ async def send_email(
     return True
 
 
-async def send_otp_verification_email(to_email: str, otp_code: str) -> bool:
-    """Send 6-digit one-time password (OTP) verification email."""
+async def send_otp_verification_email(
+    to_email: str,
+    otp_code: str,
+    login_link: Optional[str] = None,
+) -> bool:
+    """Send a one-time login link and its six-digit manual fallback code."""
     subject = f"Your Buyerly verification code is {otp_code}"
+    safe_login_link = escape(login_link or "", quote=True)
+    login_link_html = ""
+    if safe_login_link:
+        login_link_html = f"""
+          <tr>
+            <td align="center" style="padding-bottom:20px;">
+              <a href="{safe_login_link}" target="_blank" rel="noopener" style="display:inline-block;background:#F5A300;color:#171717;text-decoration:none;font-size:14px;font-weight:600;padding:12px 28px;border-radius:8px;">
+                Log in to Buyerly
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding-bottom:18px;color:#898A8D;font-size:12px;line-height:1.5;text-align:center;">
+              Or enter this code manually:
+            </td>
+          </tr>"""
     
     html_content = f"""<!DOCTYPE html>
 <html>
@@ -83,9 +104,10 @@ async def send_otp_verification_email(to_email: str, otp_code: str) -> bool:
           </tr>
           <tr>
             <td style="padding-bottom:24px;color:#5A5E66;font-size:14px;line-height:1.5;text-align:center;">
-              Enter the following 6-digit temporary password to sign in to your Buyerly account. This code is valid for 15 minutes.
+              Use the secure link below to sign in. The link and manual code are valid for 15 minutes and can be used only once.
             </td>
           </tr>
+          {login_link_html}
           <tr>
             <td align="center" style="padding-bottom:24px;">
               <div style="display:inline-block;background:#F5F6F8;border:1px solid #E6E7EA;border-radius:8px;padding:14px 28px;font-size:32px;font-weight:700;letter-spacing:6px;color:#266DF0;font-family:monospace,sans-serif;">
@@ -110,7 +132,12 @@ async def send_otp_verification_email(to_email: str, otp_code: str) -> bool:
 </body>
 </html>"""
 
-    text_content = f"Your Buyerly verification code is: {otp_code}\n\nThis code is valid for 15 minutes.\nIf you didn't request this code, please ignore this email."
+    link_text = f"Log in: {login_link}\n\n" if login_link else ""
+    text_content = (
+        f"{link_text}Your Buyerly verification code is: {otp_code}\n\n"
+        "The link and code are valid for 15 minutes and can be used only once.\n"
+        "If you didn't request this, please ignore this email."
+    )
     return await send_email(to_email, subject, html_content, text_content)
 
 

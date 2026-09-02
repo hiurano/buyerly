@@ -18,6 +18,7 @@ from api.schemas import (
     RequestTemporaryPasswordRequest,
     UpdateProfileRequest,
     UserProfileResponse,
+    VerifyEmailLinkRequest,
     VerifyTemporaryPasswordRequest,
     WebSessionItem,
     VerifyEmailChangeRequest,
@@ -53,6 +54,7 @@ from services.otp import (
     OTP_EMAIL_CHANGE,
     OTP_EMAIL_VERIFICATION,
     OTP_LOGIN,
+    consume_magic_link,
     consume_otp,
     create_otp,
     email_scope,
@@ -66,29 +68,59 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Auth & Profile"])
 
 
-async def is_email_allowed_for_login(session, email: str) -> bool:
-    """Check if the normalized email is authorized to request an OTP and log in/register.
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
 
-    Allowed when:
-    1. Present in AllowedEmail (the whitelist).
-    2. Has a valid active WorkspaceInvite addressed specifically to this email.
-    """
+
+def _invite_is_active(invite: WorkspaceInvite, now: datetime) -> bool:
+    if invite.status != "pending":
+        return False
+    if invite.expires_at and _as_utc(invite.expires_at) <= now:
+        return False
+    return invite.max_uses == 0 or invite.used_count < invite.max_uses
+
+
+async def _resolve_login_authorization(
+    session,
+    email: str,
+    *,
+    invite_token: str | None = None,
+    invite_id: int | None = None,
+) -> tuple[bool, WorkspaceInvite | None]:
+    """Authorize login and preserve an optional invitation context."""
     clean_email = email.strip().lower()
     if not clean_email or "@" not in clean_email:
-        return False
+        return False, None
 
-    # 1. Check AllowedEmail whitelist
+    now = datetime.now(timezone.utc)
+    if invite_token or invite_id:
+        invite_query = select(WorkspaceInvite)
+        if invite_token:
+            invite_query = invite_query.where(WorkspaceInvite.token == invite_token.strip())
+        else:
+            invite_query = invite_query.where(WorkspaceInvite.id == invite_id)
+        invite_query = invite_query.with_for_update()
+        invite = (await session.execute(invite_query)).scalar_one_or_none()
+        if not invite or not _invite_is_active(invite, now):
+            return False, None
+        target_email = (invite.email or "").strip().lower()
+        if target_email and target_email != clean_email:
+            return False, None
+        return True, invite
+
     allowed_res = await session.execute(
         select(AllowedEmail).where(func.lower(AllowedEmail.email) == clean_email)
     )
     if allowed_res.scalar_one_or_none() is not None:
-        return True
+        return True, None
 
-    # 2. Check active WorkspaceInvite
-    now = datetime.now(timezone.utc)
     invite_res = await session.execute(
-        select(WorkspaceInvite).where(
+        select(WorkspaceInvite)
+        .where(
             func.lower(WorkspaceInvite.email) == clean_email,
+            WorkspaceInvite.status == "pending",
             or_(
                 WorkspaceInvite.expires_at.is_(None),
                 WorkspaceInvite.expires_at > now,
@@ -98,11 +130,111 @@ async def is_email_allowed_for_login(session, email: str) -> bool:
                 WorkspaceInvite.used_count < WorkspaceInvite.max_uses,
             ),
         )
+        .order_by(WorkspaceInvite.id.desc())
     )
-    if invite_res.scalar_one_or_none() is not None:
-        return True
+    invite = invite_res.scalars().first()
+    if invite is not None:
+        return True, invite
 
-    return False
+    return False, None
+
+
+async def is_email_allowed_for_login(
+    session,
+    email: str,
+    invite_token: str | None = None,
+) -> bool:
+    """Compatibility wrapper for the closed-access login policy."""
+    allowed, _ = await _resolve_login_authorization(
+        session,
+        email,
+        invite_token=invite_token,
+    )
+    return allowed
+
+
+async def _complete_passwordless_login(
+    session,
+    *,
+    email: str,
+    invite_id: int | None,
+    request: Request,
+    response: Response,
+) -> LoginResponse:
+    email_clean = email.strip().lower()
+    if invite_id is None:
+        # Preserve the authorization context captured when the email was sent.
+        # A whitelist login must still be whitelisted; it must not silently gain
+        # access through an invitation created after the token was issued.
+        allowed_email = (
+            await session.execute(
+                select(AllowedEmail).where(
+                    func.lower(AllowedEmail.email) == email_clean
+                ).with_for_update()
+            )
+        ).scalar_one_or_none()
+        is_allowed, invite = allowed_email is not None, None
+    else:
+        is_allowed, invite = await _resolve_login_authorization(
+            session,
+            email_clean,
+            invite_id=invite_id,
+        )
+    if not is_allowed:
+        await session.commit()
+        raise HTTPException(
+            status_code=403,
+            detail="Доступ больше не разрешён. Запросите новую ссылку входа.",
+        )
+
+    user = (
+        await session.execute(
+            select(User)
+            .where(func.lower(User.email) == email_clean)
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if user is None:
+        username_collision = (
+            await session.execute(
+                select(User.id).where(func.lower(User.username) == email_clean).limit(1)
+            )
+        ).scalar_one_or_none()
+        user = User(
+            username=email_clean if username_collision is None else f"user-{uuid.uuid4().hex}",
+            email=email_clean,
+            email_verified_at=datetime.now(timezone.utc),
+            role="buyer",
+            is_approved=True,
+            onboarding_completed=False,
+            onboarding_step="personal_details" if invite else "workspace",
+        )
+        session.add(user)
+        await session.flush()
+    else:
+        if not user.email_verified_at:
+            user.email_verified_at = datetime.now(timezone.utc)
+        if not user.is_approved and is_allowed:
+            user.is_approved = True
+
+    if not user.is_approved:
+        await session.commit()
+        raise HTTPException(status_code=403, detail="Ваш аккаунт ожидает одобрения администратора.")
+
+    await create_web_session(
+        session,
+        user=user,
+        request=request,
+        response=response,
+    )
+    await session.commit()
+    return LoginResponse(
+        username=user.username,
+        full_name=user.full_name or user.username,
+        role=user.role,
+        message="Авторизация успешна",
+        redirect_url=f"/invite/{invite.token}" if invite else None,
+    )
 
 
 @router.post(
@@ -115,13 +247,18 @@ async def is_email_allowed_for_login(session, email: str) -> bool:
     ))],
 )
 async def request_temporary_password(req: RequestTemporaryPasswordRequest):
-    """Generate and email a 6-digit one-time password (OTP) for login/registration."""
+    """Email one single-use login link and its matching 6-digit code."""
     email_clean = req.email.strip().lower()
     if "@" not in email_clean or "." not in email_clean:
         raise HTTPException(status_code=400, detail="Некорректный адрес электронной почты")
 
     async with async_session_maker() as session:
-        if not await is_email_allowed_for_login(session, email_clean):
+        is_allowed, invite = await _resolve_login_authorization(
+            session,
+            email_clean,
+            invite_token=req.invite_token,
+        )
+        if not is_allowed:
             raise HTTPException(
                 status_code=403,
                 detail="Доступ ограничен. Данный email не найден в списке разрешенных. Обратитесь к администратору.",
@@ -139,12 +276,19 @@ async def request_temporary_password(req: RequestTemporaryPasswordRequest):
             email=email_clean,
             purpose=OTP_LOGIN,
             scope=scope,
+            invite_id=invite.id if invite else None,
         )
         await session.commit()
 
         sent = False
         try:
-            sent = await send_otp_verification_email(email_clean, issued.code)
+            webapp_url = (settings.WEBAPP_URL or "https://buyerly.app").rstrip("/")
+            login_link = f"{webapp_url}/auth/email/verify?token={issued.link_token}"
+            sent = await send_otp_verification_email(
+                email_clean,
+                issued.code,
+                login_link,
+            )
         except Exception as e:
             logger.error("Failed to send OTP email to %s: %s", email_clean, e)
 
@@ -257,53 +401,42 @@ async def verify_temporary_password(
                 )
             raise HTTPException(status_code=401, detail="Неверный или просроченный временный пароль")
 
-        is_allowed = await is_email_allowed_for_login(session, email_clean)
-        if not is_allowed:
-            await session.commit()
-            raise HTTPException(status_code=403, detail="Доступ ограничен. Данный email не найден в списке разрешенных.")
-
-        user = (
-            await session.execute(
-                select(User).where(
-                    (func.lower(User.email) == email_clean)
-                    | (func.lower(User.username) == email_clean)
-                )
-            )
-        ).scalar_one_or_none()
-        if user is None:
-            user = User(
-                username=email_clean,
-                email=email_clean,
-                email_verified_at=datetime.now(timezone.utc),
-                role="buyer",
-                is_approved=True,
-                onboarding_completed=False,
-                onboarding_step="personal_details",
-            )
-            session.add(user)
-            await session.flush()
-        else:
-            if not user.email_verified_at:
-                user.email_verified_at = datetime.now(timezone.utc)
-            if not user.is_approved and is_allowed:
-                user.is_approved = True
-
-        if not user.is_approved:
-            await session.commit()
-            raise HTTPException(status_code=403, detail="Ваш аккаунт ожидает одобрения администратора.")
-
-        await create_web_session(
+        return await _complete_passwordless_login(
             session,
-            user=user,
+            email=email_clean,
+            invite_id=result.invite_id,
             request=request,
             response=response,
         )
-        await session.commit()
-        return LoginResponse(
-            username=user.username,
-            full_name=user.full_name or user.username,
-            role=user.role,
-            message="Авторизация успешна",
+
+
+@router.post(
+    "/auth/verify-email-link",
+    response_model=LoginResponse,
+    dependencies=[Depends(rate_limit_dep(
+        limit=10,
+        window_seconds=60,
+        scope="verify_login_link",
+        identity_fields=("token",),
+    ))],
+)
+async def verify_email_link(
+    req: VerifyEmailLinkRequest,
+    request: Request,
+    response: Response,
+):
+    """Atomically exchange a delivered one-time email link for a web session."""
+    async with async_session_maker() as session:
+        result = await consume_magic_link(session, raw_token=req.token)
+        if result.status != "consumed" or result.purpose != OTP_LOGIN or not result.email:
+            await session.commit()
+            raise HTTPException(status_code=401, detail="Ссылка входа недействительна или устарела")
+        return await _complete_passwordless_login(
+            session,
+            email=result.email,
+            invite_id=result.invite_id,
+            request=request,
+            response=response,
         )
 
 
@@ -701,11 +834,6 @@ async def get_me(user: User = Depends(get_current_user)):
         active_ws = next((w for w in workspaces if w.is_active), workspaces[0] if workspaces else None)
 
         onboarding_done = bool(getattr(db_user, "onboarding_completed", False))
-        if not onboarding_done and len(workspaces) > 0 and getattr(db_user, "first_name", ""):
-            onboarding_done = True
-            db_user.onboarding_completed = True
-            db_user.onboarding_step = "completed"
-            await session.commit()
 
         return UserProfileResponse(
             telegram_id=db_user.telegram_id,
@@ -865,7 +993,9 @@ async def delete_allowed_email(email_id: int, user: User = Depends(get_current_u
     async with async_session_maker() as session:
         entry = (
             await session.execute(
-                select(AllowedEmail).where(AllowedEmail.id == email_id)
+                select(AllowedEmail)
+                .where(AllowedEmail.id == email_id)
+                .with_for_update()
             )
         ).scalar_one_or_none()
         if not entry:
@@ -891,4 +1021,3 @@ async def delete_allowed_email(email_id: int, user: User = Depends(get_current_u
         await session.commit()
 
         return {"ok": True, "message": f"Email {target_email} удален из списка разрешенных"}
-

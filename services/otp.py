@@ -4,7 +4,7 @@ import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import case, select, update
+from sqlalchemy import case, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
@@ -20,6 +20,7 @@ OTP_EMAIL_VERIFICATION = "email_verification"
 class IssuedOtp:
     record_id: int
     code: str
+    link_token: str
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,7 @@ class ConsumedOtp:
     status: str
     email: str | None = None
     purpose: str | None = None
+    invite_id: int | None = None
 
 
 def login_scope(email: str) -> str:
@@ -54,6 +56,12 @@ async def has_recent_active_otp(
     scope: str,
     seconds: int = 60,
 ) -> bool:
+    bind = session.get_bind()
+    if bind.dialect.name == "postgresql":
+        await session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
+            {"lock_key": f"buyerly-otp-scope:{scope}"},
+        )
     cutoff = datetime.now(timezone.utc) - timedelta(seconds=seconds)
     record_id = (
         await session.execute(
@@ -75,6 +83,7 @@ async def create_otp(
     email: str,
     purpose: str,
     scope: str,
+    invite_id: int | None = None,
 ) -> IssuedOtp:
     now = datetime.now(timezone.utc)
     await session.execute(
@@ -87,10 +96,13 @@ async def create_otp(
     )
 
     code = str(secrets.randbelow(900000) + 100000)
+    link_token = secrets.token_urlsafe(32)
     record = EmailVerificationCode(
         email=email.strip().lower(),
         code="",
         code_hash=_hash_code(code),
+        link_token_hash=_hash_code(link_token),
+        invite_id=invite_id,
         purpose=purpose,
         scope=scope,
         expires_at=now + timedelta(minutes=15),
@@ -101,7 +113,7 @@ async def create_otp(
     )
     session.add(record)
     await session.flush()
-    return IssuedOtp(record_id=record.id, code=code)
+    return IssuedOtp(record_id=record.id, code=code, link_token=link_token)
 
 
 async def mark_otp_delivered(session: AsyncSession, record_id: int) -> bool:
@@ -169,6 +181,7 @@ async def consume_otp(
             .returning(
                 EmailVerificationCode.email,
                 EmailVerificationCode.purpose,
+                EmailVerificationCode.invite_id,
             )
         )
     ).one_or_none()
@@ -177,6 +190,7 @@ async def consume_otp(
             status="consumed",
             email=consumed.email,
             purpose=consumed.purpose,
+            invite_id=consumed.invite_id,
         )
 
     new_attempts = EmailVerificationCode.failed_attempts + 1
@@ -203,3 +217,41 @@ async def consume_otp(
     if failed is None:
         return ConsumedOtp(status="invalid")
     return ConsumedOtp(status="locked" if failed.is_used else "invalid")
+
+
+async def consume_magic_link(
+    session: AsyncSession,
+    *,
+    raw_token: str,
+) -> ConsumedOtp:
+    """Atomically consume a delivered, unexpired email-link token."""
+    token = raw_token.strip()
+    if not token:
+        return ConsumedOtp(status="invalid")
+
+    now = datetime.now(timezone.utc)
+    consumed = (
+        await session.execute(
+            update(EmailVerificationCode)
+            .where(
+                EmailVerificationCode.link_token_hash == _hash_code(token),
+                EmailVerificationCode.is_used.is_(False),
+                EmailVerificationCode.delivered_at.is_not(None),
+                EmailVerificationCode.expires_at > now,
+            )
+            .values(is_used=True)
+            .returning(
+                EmailVerificationCode.email,
+                EmailVerificationCode.purpose,
+                EmailVerificationCode.invite_id,
+            )
+        )
+    ).one_or_none()
+    if consumed is None:
+        return ConsumedOtp(status="invalid")
+    return ConsumedOtp(
+        status="consumed",
+        email=consumed.email,
+        purpose=consumed.purpose,
+        invite_id=consumed.invite_id,
+    )

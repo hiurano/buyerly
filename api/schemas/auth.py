@@ -26,12 +26,18 @@ class UserProfileResponse(BaseModel):
 class RequestTemporaryPasswordRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: str = Field(..., min_length=3, max_length=255)
+    invite_token: Optional[str] = Field(None, min_length=16, max_length=255)
 
 
 class VerifyTemporaryPasswordRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: str = Field(..., min_length=3, max_length=255)
     code: str = Field(..., min_length=6, max_length=6)
+
+
+class VerifyEmailLinkRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(..., min_length=32, max_length=255)
 
 
 class RequestEmailChangeRequest(BaseModel):
@@ -56,6 +62,7 @@ class LoginResponse(BaseModel):
     full_name: str
     role: str
     message: str = "Авторизация успешна"
+    redirect_url: Optional[str] = None
 
 
 class WebSessionItem(BaseModel):
@@ -116,4 +123,3 @@ class AddAllowedEmailRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: str = Field(..., min_length=3, max_length=255)
     comment: Optional[str] = Field(None, max_length=255)
-

@@ -39,15 +39,15 @@
 - мульти-воркспейсы (Workspaces) со слагами, бейджами, цветами и логотипами;
 - ролевая модель RBAC (`owner`, `admin`, `buyer`, `viewer`) с гранулярным разделением прав внутри воркспейса;
 - система персональных и публичных инвайтов (`WorkspaceInvite`) со сроками жизни, лимитами использований и публичной проверкой;
-- Dual-Channel аутентификация: постоянный пароль (bcrypt), 6-значный одноразовый OTP-код (Resend) и Telegram Mini App (`initData`);
-- 5-шаговый онбординг в эталонном стиле Attio CRM (`/auth/sign-in`, `/auth/temporary-password`, `/welcome/personal-details`, `/welcome/workspace-details`, `/welcome/invite-team`);
+- закрытый web-вход по whitelist/invite через письмо с одноразовой ссылкой и 6-значным кодом, плюс Telegram Mini App (`initData`);
+- канонический онбординг `/login` → `/create-workspace` → `/<workspace>/welcome` без регистрации, Title и legacy redirects;
 - живая проверка доступности слага воркспейса в реальном времени и загрузка медиа (аватары, логотипы);
 - транзакционная отправка писем верификации и приглашений через официальный REST API Resend с адаптивными HTML-шаблонами;
 - интерфейс в дизайн-системе Attio CRM (таблицы, сайдбар-свитчер, попап инвайтов, карточки и глобальный поиск).
 
 ## Контроль качества
 
-Автоматическая серия включает 161 unit-, API-, integration-, migration-, PostgreSQL-contract, documentation- и frontend-contract тест. Production считается готовым только после успешной проверки базы через API, публичного веб-шлюза и точного commit всех контейнеров.
+Автоматическая серия включает unit-, API-, integration-, migration-, PostgreSQL-contract, documentation- и frontend-contract проверки. Production считается готовым только после успешной проверки базы через API, публичного веб-шлюза и точного commit всех контейнеров.
 
 ## Следующие продуктовые направления
 

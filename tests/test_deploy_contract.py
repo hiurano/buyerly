@@ -190,7 +190,7 @@ class TestDeployContract(unittest.TestCase):
         )
 
     def test_user_uploads_are_durable_and_served_by_web(self):
-        nginx = (Path(__file__).parents[1] / "webapp" / "nginx.conf").read_text()
+        nginx = (Path(__file__).parents[1] / "frontend" / "nginx.conf").read_text()
         self.assertIn("buyerly-uploads:/app/webapp/uploads", self.compose)
         self.assertIn(
             "buyerly-uploads:/usr/share/nginx/html/uploads:ro",
@@ -199,6 +199,16 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("preserve_legacy_uploads", self.script)
         self.assertIn("location /uploads/", nginx)
         self.assertIn('X-Content-Type-Options "nosniff"', nginx)
+
+    def test_react_frontend_is_the_production_web_image(self):
+        root = Path(__file__).parents[1]
+        frontend_dockerfile = (root / "frontend" / "Dockerfile").read_text()
+        self.assertIn("dockerfile: frontend/Dockerfile", self.compose)
+        self.assertIn("FROM node:22-alpine AS build", frontend_dockerfile)
+        self.assertIn("RUN npm ci", frontend_dockerfile)
+        self.assertIn("RUN npm run build", frontend_dockerfile)
+        self.assertIn("FROM nginx:1.27-alpine", frontend_dockerfile)
+        self.assertIn("frontend/package-lock.json", frontend_dockerfile)
 
     def test_account_day_boundary_has_an_independent_minute_job(self):
         self.assertIn('id="account_day_boundary_job"', self.worker_service)

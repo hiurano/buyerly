@@ -47,3 +47,8 @@ webapp/prototype.html
 .DS_Store
 .idea/
 .vscode/
+
+# React build outputs and local dependencies
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/

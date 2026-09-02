@@ -88,22 +88,27 @@ class TestDocumentationContract(unittest.TestCase):
         ia = (PROJECT_ROOT / "docs" / "INFORMATION_ARCHITECTURE.md").read_text(encoding="utf-8")
         for contract in (
             "## Jobs-to-be-done",
-            "## Канонические и совместимые URL",
+            "## Канонические URL",
+            "## Авторизация и первый вход",
             "## Терминология",
             "## Роли и видимость",
             "## Локализация",
             "## Длинные списки",
             "## Definition of Done",
-            "/today",
-            "/efficiency",
-            "/automations",
-            "/action-history",
-            "/connections",
+            "/login",
+            "/auth/email/verify?token=…",
+            "/create-workspace",
+            "/{workspace}/inbox",
+            "/{workspace}/ads/campaigns",
+            "/{workspace}/rules",
+            "/{workspace}/statistics",
             "Admin",
             "Buyer",
             "Viewer",
         ):
             self.assertIn(contract, ia)
+        self.assertIn("Legacy URL показывают Not Found", ia)
+        self.assertNotIn("Совместимые aliases", ia)
 
 
 

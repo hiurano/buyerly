@@ -280,6 +280,20 @@ class EmailVerificationCode(Base):
     email = Column(String, nullable=False, index=True, doc="Email получателя кода")
     code = Column(String(10), default="", nullable=False, doc="Legacy field; new OTP values are never stored in plaintext")
     code_hash = Column(String(64), nullable=False, doc="HMAC-SHA256 проверочного кода")
+    link_token_hash = Column(
+        String(64),
+        unique=True,
+        nullable=True,
+        index=True,
+        doc="HMAC-SHA256 одноразового токена ссылки входа",
+    )
+    invite_id = Column(
+        Integer,
+        ForeignKey("workspace_invites.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        doc="Приглашение, которое разрешило этот вход",
+    )
     purpose = Column(String(32), nullable=False, doc="Назначение кода: login/email_change/email_verification")
     scope = Column(String(320), nullable=False, index=True, doc="Изолированная область одноразового кода")
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True, doc="Срок действия кода (UTC)")
@@ -1083,4 +1097,3 @@ class AnalyticsEntityFact(Base):
             f"<AnalyticsEntityFact(ws={self.workspace_id}, acc='{self.account_id}', "
             f"level='{self.entity_level}', id='{self.entity_id}', date='{self.date}', spend={self.spend})>"
         )
-

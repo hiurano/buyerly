@@ -1,0 +1,265 @@
+/* =========================================================
+   EXACT LINEAR @FONT-FACE DECLARATIONS
+   ========================================================= */
+
+@font-face {
+  font-family: 'Inter Variable';
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/InterVariable.woff2') format('woff2');
+  unicode-range: U+0-2B1B, U+2B1D-10FFFF;
+}
+
+@font-face {
+  font-family: 'Inter Variable';
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+  src: url('/fonts/InterVariable-Italic.woff2') format('woff2');
+  unicode-range: U+0-2B1B, U+2B1D-10FFFF;
+}
+
+@font-face {
+  font-family: 'Berkeley Mono';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/Berkeley-Mono-Variable.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Linear Thai';
+  font-weight: 450;
+  font-display: swap;
+  font-style: normal;
+  src: local(Thonburi), local(Thonburi-Regular), local(Sukhumvit Set), local(Tahoma), local(Garuda), local(Noto Sans Thai);
+  unicode-range: U+E00-E7F;
+}
+
+:root {
+  --font-monospace: "Berkeley Mono", "SFMono Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  --font-regular: "Inter Variable", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Linear Thai", sans-serif;
+
+  --speed-highlightFadeIn: 0s;
+  --speed-highlightFadeOut: 0.15s;
+  --speed-quickTransition: 0.1s;
+  --speed-regularTransition: 0.25s;
+  --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
+
+  --sidebar-width: 244px;
+  --header-height: 44px;
+  --canvas-border-radius: 12px;
+  --control-border-radius: 8px;
+
+  /* Typography Weights & Settings */
+  --font-weight-normal: 450;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Exact Linear Dark Theme Colors */
+  --bg-window: lch(2.595% 0.4 272 / 1);         /* #09090a - Window Backdrop & Sidebar */
+  --bg-sidebar: lch(2.595% 0.4 272 / 1);        /* #09090a */
+  --bg-canvas: lch(5.52% 0.4 272 / 1);          /* #111212 - Floating Inset Canvas */
+  --color-border-primary: lch(9.84% 1.48 272 / 1); /* #1a1b1d - Canvas Border & Dividers */
+  --color-border-secondary: lch(14.16% 1.48 272 / 1);
+  --color-border-tertiary: lch(16.32% 1.48 272 / 1);
+
+  /* Resizer Highlights */
+  --resizer-line-color: lch(100% 0 272 / 0.72);
+
+  /* Typography Colors */
+  --text-primary: lch(100% 0 272 / 1);
+  --text-secondary: lch(90.155% 1.2 272 / 1);
+  --text-tertiary: lch(64.714% 1.425 272 / 1);
+  --text-muted: lch(41.778% 1.425 272 / 1);
+
+  /* Shadows */
+  --canvas-shadow: 0px 0.5px 1px 1px lch(0% 0 0 / 0.3);
+  --dropdown-shadow: 0px 3px 8px 0px rgba(0, 0, 0, 0.125), 0px 2px 5px 0px rgba(0, 0, 0, 0.125), 0px 1px 1px 0px rgba(0, 0, 0, 0.125);
+
+  /* Scrollbars */
+  --scrollbar-width: 10px;
+  --scrollbar-min-size: 32px;
+  --app-scrollbar-bg: lch(37.275% 1.2 272 / 1);
+  --app-scrollbar-bg-hover: lch(37.375% 1.2 272 / 1);
+  --app-scrollbar-bg-active: lch(36.975% 1.2 272 / 1);
+
+  /* Semantic UI Tokens (Dark Default) */
+  --item-hover-bg: lch(8.445% 1.3 272 / 1);
+  --data-row-hover-bg: var(--item-hover-bg);
+  --item-active-bg: lch(13.845% 1.3 272 / 1);
+  --row-selected-bg: rgba(234, 179, 8, 0.08);
+  --tab-active-bg: lch(16.706% 0.979 272 / 1);
+  --tab-inactive-bg: transparent;
+  --sidebar-card-border: var(--card-border);
+  --sidebar-tab-active-bg: var(--tab-active-bg);
+  --sidebar-tab-hover-bg: var(--item-hover-bg);
+  --sidebar-tab-inactive-bg: var(--card-bg);
+  --sidebar-tab-active-text: var(--text-primary);
+  --sidebar-tab-hover-text: var(--text-secondary);
+  --sidebar-tab-inactive-text: var(--text-tertiary);
+  --sidebar-tab-active-shadow: 0 0 0 1px lch(100% 0 272 / 0.16);
+  --sidebar-tab-inactive-shadow: 0 0 0 1px lch(100% 0 272 / 0.1);
+  --sidebar-tab-hover-shadow: 0 0 0 1px lch(100% 0 272 / 0.16);
+  --card-bg: lch(9.232% 0.85 272 / 1);
+  --card-border: lch(13.553% 1.93 272 / 1);
+  --dock-bg: lch(9.232% 0.85 272 / 1);
+  --dock-btn-bg: lch(13.861% 1.139 272 / 1);
+  --checkbox-border-rest: lch(48.72% 1.48 272 / 1);
+  --toggle-unchecked-bg: lch(47.551% 0.913 272 / 1);
+  --focus-ring-color: #6d78d5;
+
+  /* Add Filter command menu */
+  --filter-menu-border: var(--color-border-secondary);
+  --filter-menu-divider: var(--color-border-secondary);
+  --filter-menu-text: var(--text-secondary);
+  --filter-menu-text-active: var(--text-primary);
+  --filter-menu-muted: var(--text-tertiary);
+  --filter-menu-highlight: var(--item-hover-bg);
+  --filter-checkbox-border: lch(54.1% 0 272 / 1);
+  --filter-checkbox-selected: #5e6ad2;
+  --filter-trigger-bg: transparent;
+  --filter-trigger-active-bg: var(--tab-active-bg);
+  --filter-menu-shadow: var(--dropdown-shadow);
+  --filter-menu-strong-shadow: 0px 9px 48px lch(0% 0 0 / 0.28), 0px 6px 24px lch(0% 0 0 / 0.24), 0px 1px 1px lch(0% 0 0 / 0.3);
+
+  /* Rules list: semantic surfaces shared by list, groups and property badges. */
+  --rules-group-bg: lch(9.232% 0.85 272 / 1);
+  --rules-group-hover-bg: lch(13.845% 1.3 272 / 1);
+  --rules-row-hover-bg: lch(8.445% 1.3 272 / 1);
+  --rules-row-focus-bg: lch(11.033% 1.3 272 / 1);
+  --rules-property-bg: rgba(255, 255, 255, 0.06);
+  --rules-property-border: rgba(255, 255, 255, 0.08);
+  --rules-property-text: lch(85% 1.2 272 / 1);
+  --rules-scope-bg: rgba(255, 255, 255, 0.04);
+  --rules-scope-text: lch(68% 1.2 272 / 1);
+  --rules-action-stop-bg: rgba(239, 68, 68, 0.14);
+  --rules-action-stop-border: rgba(239, 68, 68, 0.25);
+  --rules-action-stop-text: #f87171;
+  --rules-action-positive-bg: rgba(16, 185, 129, 0.14);
+  --rules-action-positive-border: rgba(16, 185, 129, 0.25);
+  --rules-action-positive-text: #34d399;
+  --rules-action-default-bg: rgba(59, 130, 246, 0.14);
+  --rules-action-default-border: rgba(59, 130, 246, 0.25);
+  --rules-action-default-text: #60a5fa;
+
+  /* Preferences Specific Tokens (Dark default) */
+  --preferences-card-bg: lch(9.232% 0.85 272 / 1);
+  --preferences-control-bg: lch(13.861% 1.139 272 / 1);
+  --preferences-control-hover: #2b2c2e;
+  --preferences-active-bg: lch(13.845% 1.3 272 / 1);
+  --preferences-search-bg: lch(7.32% 0.85 272 / 1);
+  --preferences-search-border: lch(14.16% 1.48 272 / 1);
+  --preferences-menu-bg: lch(11.5% 1.1 272 / 1);
+  --preferences-menu-border: lch(20.032% 1.93 272 / 1);
+  --preferences-menu-hover: lch(18% 1.2 272 / 1);
+  --preferences-accent: #5e69d1;
+}
+
+html[data-theme='light'] {
+  color-scheme: light;
+
+  /* Linear Light Theme Colors */
+  --bg-window: lch(94.44% 0.5 282 / 1);           /* #eeeef0 - Window Backdrop & Sidebar */
+  --bg-sidebar: lch(94.44% 0.5 282 / 1);          /* #eeeef0 */
+  --bg-canvas: lch(97.94% 0.5 282 / 1);           /* #f9f8fb - Floating Inset Canvas */
+  --color-border-primary: lch(95.24% 0 282 / 1);  /* #f1f0f0 - Canvas Border & Divider */
+  --color-border-secondary: lch(88.49% 0 282 / 1);/* #dedfdf */
+  --color-border-tertiary: lch(84.44% 0 282 / 1); /* #d3d3d3 */
+
+  /* Resizer Highlights */
+  --resizer-line-color: lch(0% 0 0 / 0.15);
+
+  /* Typography Colors */
+  --text-primary: lch(9.794% 0 282 / 1);          /* #1a1b1a */
+  --text-secondary: lch(19.588% 1.25 282 / 1);    /* #2f2f31 */
+  --text-tertiary: lch(39.176% 1.25 282 / 1);     /* #5d5d5e */
+  --text-muted: lch(64.64% 1.25 282 / 1);         /* #9d9d9e */
+
+  /* Shadows */
+  --canvas-shadow: 0px 3px 6px -2px rgba(0, 0, 0, 0.02), 0px 1px 1px 0px rgba(0, 0, 0, 0.04);
+  --dropdown-shadow: 0px 6px 18px 0px rgba(0, 0, 0, 0.02), 0px 3px 9px 0px rgba(0, 0, 0, 0.04), 0px 1px 1px 0px rgba(0, 0, 0, 0.04);
+
+  /* Scrollbars */
+  --app-scrollbar-bg: lch(64.94% 1.25 282 / 1);
+  --app-scrollbar-bg-hover: lch(65.44% 1.25 282 / 1);
+  --app-scrollbar-bg-active: lch(64.64% 1.25 282 / 1);
+
+  /* Semantic UI Tokens (Light) */
+  --item-hover-bg: lch(89.54% 0.5 282 / 1);       /* #e1e1e2 */
+  --data-row-hover-bg: lch(94.44% 0.5 282 / 1);   /* Linear data-row hover */
+  --item-active-bg: lch(89.54% 0.5 282 / 1);      /* #e1e1e2 */
+  --row-selected-bg: rgba(234, 179, 8, 0.09);
+  --tab-active-bg: lch(93.483% 0.5 282 / 1);      /* #eeeef0 */
+  --tab-inactive-bg: transparent;
+  --sidebar-card-border: lch(97.3% 0 282 / 1);
+  --sidebar-tab-active-bg: lch(95.543% 0 282 / 1);
+  --sidebar-tab-hover-bg: lch(96.914% 0 282 / 1);
+  --sidebar-tab-inactive-bg: lch(100% 0 282 / 1);
+  --sidebar-tab-active-text: lch(10% 0 282 / 1);
+  --sidebar-tab-hover-text: lch(20% 1 282 / 1);
+  --sidebar-tab-inactive-text: lch(40% 1 282 / 1);
+  --sidebar-tab-active-shadow: 0 0 0 1px lch(0% 0 0 / 0.147), 0 0 0 0 transparent;
+  --sidebar-tab-inactive-shadow: 0 0 0 1px lch(0% 0 0 / 0.103), 0 3px 6px -2px lch(0% 0 0 / 0.02), 0 1px 1px lch(0% 0 0 / 0.04);
+  --sidebar-tab-hover-shadow: 0 0 0 1px lch(0% 0 0 / 0.147), 0 3px 6px -2px lch(0% 0 0 / 0.02), 0 1px 1px lch(0% 0 0 / 0.04);
+  --card-bg: lch(100% 0 282 / 1);                 /* #ffffff */
+  --card-border: lch(95.24% 0 282 / 1);           /* #f1f0f0 */
+  --dock-bg: lch(100% 0 282 / 1);                 /* #ffffff */
+  --dock-btn-bg: lch(93.483% 0.5 282 / 1);        /* #eeeef0 */
+  --checkbox-border-rest: lch(52.04% 0 282 / 1);  /* Linear unchecked control */
+  --toggle-unchecked-bg: lch(85.4% 0 282 / 1);    /* #d6d6d6 */
+  --focus-ring-color: #6d78d5;
+
+  /* Linear Add Filter light-theme measurements. */
+  --filter-menu-border: lch(90.55% 0 282 / 1);
+  --filter-menu-divider: lch(97.3% 0 282 / 1);
+  --filter-menu-text: lch(20% 1 282 / 1);
+  --filter-menu-text-active: lch(10% 0 282 / 1);
+  --filter-menu-muted: lch(40% 1 282 / 1);
+  --filter-menu-highlight: lch(95% 0 282 / 1);
+  --filter-checkbox-border: lch(54.1% 0 282 / 1);
+  --filter-checkbox-selected: #5e6ad2;
+  --filter-trigger-bg: lch(99.997% 0.5 282 / 1);
+  --filter-trigger-active-bg: lch(94.854% 0.157 282 / 1);
+  --filter-menu-shadow: 0px 6px 18px lch(0% 0 0 / 0.02), 0px 3px 9px lch(0% 0 0 / 0.04), 0px 1px 1px lch(0% 0 0 / 0.04);
+  --filter-menu-strong-shadow: 0px 9px 48px lch(0% 0 0 / 0.08), 0px 6px 24px lch(0% 0 0 / 0.1), 0px 1px 1px lch(0% 0 0 / 0.04);
+
+  /* Rules list: light equivalents of Linear's My issues hierarchy. */
+  --rules-group-bg: var(--bg-sidebar);
+  --rules-group-hover-bg: var(--item-hover-bg);
+  --rules-row-hover-bg: lch(99.997% 0.5 282 / 1);
+  --rules-row-focus-bg: var(--item-hover-bg);
+  --rules-property-bg: lch(95.24% 0 282 / 1);
+  --rules-property-border: lch(88.49% 0 282 / 1);
+  --rules-property-text: var(--text-secondary);
+  --rules-scope-bg: lch(97.94% 0.5 282 / 1);
+  --rules-scope-text: var(--text-tertiary);
+  --rules-action-stop-bg: rgba(220, 38, 38, 0.09);
+  --rules-action-stop-border: rgba(220, 38, 38, 0.22);
+  --rules-action-stop-text: #b42318;
+  --rules-action-positive-bg: rgba(5, 150, 105, 0.10);
+  --rules-action-positive-border: rgba(5, 150, 105, 0.22);
+  --rules-action-positive-text: #087f5b;
+  --rules-action-default-bg: rgba(37, 99, 235, 0.09);
+  --rules-action-default-border: rgba(37, 99, 235, 0.22);
+  --rules-action-default-text: #1d4ed8;
+
+  /* Preferences Specific Tokens (Light) */
+  --preferences-card-bg: lch(100% 0 282 / 1);     /* #fefeff */
+  --preferences-control-bg: lch(100% 0 282 / 1);  /* #fefeff */
+  --preferences-control-hover: #f2f2f3;
+  --preferences-active-bg: lch(89.54% 0.5 282 / 1); /* #e1e1e2 */
+  --preferences-search-bg: lch(100% 0 282 / 1);   /* #fefeff */
+  --preferences-search-border: lch(95.24% 0 282 / 1); /* #f1f0f0 */
+  --preferences-menu-bg: lch(100% 0 282 / 1);     /* #fefeff */
+  --preferences-menu-border: lch(86.5% 0 282 / 1);/* #d8d8d8 */
+  --preferences-menu-hover: lch(95% 0 282 / 1);   /* #f1f0f0 */
+  --preferences-accent: #6d78d5;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+}

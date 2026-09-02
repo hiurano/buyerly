@@ -912,6 +912,13 @@ async def accept_workspace_invite(
             if invite.max_uses > 0 and invite.used_count >= invite.max_uses:
                 invite.status = "accepted"
 
+        if not db_user.first_name and not db_user.full_name:
+            db_user.onboarding_step = "personal_details"
+            db_user.onboarding_completed = False
+        else:
+            db_user.onboarding_step = "completed"
+            db_user.onboarding_completed = True
+
         session.add(
             AuditEvent(
                 workspace_id=invite.workspace_id,
@@ -939,4 +946,6 @@ async def accept_workspace_invite(
             "workspace_id": ws.id,
             "workspace_slug": ws.slug,
             "role": existing_m.role if existing_m else invite.role,
+            "onboarding_step": db_user.onboarding_step,
+            "onboarding_completed": db_user.onboarding_completed,
         }

@@ -30,3 +30,5 @@ transcribe.py
 main.py
 webapp/attio-reference.html
 webapp/prototype.html
+frontend/node_modules
+frontend/dist

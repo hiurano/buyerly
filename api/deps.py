@@ -41,7 +41,6 @@ from database.models import (
     WorkspaceMember,
     WorkspaceSupportGrant,
 )
-from services.workspace_slugs import allocate_workspace_slug
 
 logger = logging.getLogger(__name__)
 
@@ -281,30 +280,9 @@ async def get_user_workspace(
             user.active_workspace_id = ws.id
             return ws
 
-    # Create default workspace if user has none
-    ws_slug = await allocate_workspace_slug(session, "buyerly")
-
-    ws = Workspace(
-        name="Buyerly",
-        slug=ws_slug,
-        badge_text="B",
-        badge_color="#F5A300",
-        logo_url="",
-        owner_user_id=user.id,
-    )
-    session.add(ws)
-    await session.flush()
-
-    member = WorkspaceMember(workspace_id=ws.id, user_id=user.id, role="owner")
-    session.add(member)
-    db_user = (
-        await session.execute(select(User).where(User.id == user.id))
-    ).scalar_one_or_none()
-    if db_user is not None:
-        db_user.active_workspace_id = ws.id
-    user.active_workspace_id = ws.id
-    await session.commit()
-    return ws
+    # Workspace creation is an explicit onboarding action. Never create tenant
+    # state as a side effect of a read endpoint such as GET /api/me.
+    return None
 
 
 async def get_user_workspaces_list(session, user: User) -> List[WorkspaceItem]:

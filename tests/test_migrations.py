@@ -1245,7 +1245,20 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
 
             async with engine.begin() as conn:
                 version = (await conn.execute(text("SELECT version_num FROM alembic_version"))).scalar()
-                self.assertEqual(version, "0021_analytics_entity_facts")
+                self.assertEqual(version, "0022_login_magic_links")
+                columns = {
+                    row.column_name
+                    for row in (
+                        await conn.execute(
+                            text(
+                                "SELECT column_name FROM information_schema.columns "
+                                "WHERE table_name = 'email_verification_codes'"
+                            )
+                        )
+                    )
+                }
+                self.assertIn("link_token_hash", columns)
+                self.assertIn("invite_id", columns)
 
             command.downgrade(alembic_cfg, "base")
         finally:
@@ -1268,7 +1281,7 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                 version = (
                     await conn.execute(text("SELECT version_num FROM alembic_version"))
                 ).scalar_one()
-                self.assertEqual(version, "0021_analytics_entity_facts")
+                self.assertEqual(version, "0022_login_magic_links")
         finally:
             await init_test_db(engine)
             await engine.dispose()
@@ -1302,7 +1315,7 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                 version = (
                     await conn.execute(text("SELECT version_num FROM alembic_version"))
                 ).scalar_one()
-                self.assertEqual(version, "0021_analytics_entity_facts")
+                self.assertEqual(version, "0022_login_magic_links")
         finally:
             await init_test_db(engine)
             await engine.dispose()
@@ -1336,7 +1349,7 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                 version = (
                     await conn.execute(text("SELECT version_num FROM alembic_version"))
                 ).scalar_one()
-                self.assertEqual(version, "0021_analytics_entity_facts")
+                self.assertEqual(version, "0022_login_magic_links")
         finally:
             await init_test_db(engine)
             await engine.dispose()

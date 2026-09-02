@@ -159,24 +159,18 @@ erDiagram
 
 ## 4. Аутентификация и безопасность сессий
 
-### 4.1. Dual-Channel Authentication (Почта, Пароль, OTP, Telegram)
+### 4.1. Passwordless Email и Telegram
 
-1. **Email Passwordless OTP (Одноразовый код)**:
-   - Пользователь вводит свой рабочий Email на странице `/auth/sign-in`.
-   - Если пароль не указан, клиент вызывает `POST /api/auth/request-temporary-password`.
-   - Генерируется 6-значный криптографически стойкий код (`secrets.randbelow(900000) + 100000`); в `EmailVerificationCode` сохраняется только HMAC-хэш, назначение, scope и срок жизни 15 минут.
-   - Сервис Resend отправляет брендированное HTML-письмо с кодом.
-   - До подтверждённой доставки код нельзя проверить; ошибка провайдера аннулирует запись и не создаёт пользователя или неподтверждённый email.
-   - Пользователь переходит на `/auth/temporary-password` и вводит полученный код.
-   - Клиент вызывает отдельный `POST /api/auth/verify-temporary-password`; постоянный пароль обрабатывается только `/api/auth/login`.
-   - При 5 неверных попытках код навсегда аннулируется для защиты от перебора.
-   - Условный SQL `UPDATE ... WHERE is_used = false` атомарно отдаёт код только одному параллельному запросу; при первом успешном входе пользователь создаётся в той же транзакции, после чего сервер открывает web-сессию.
+1. **Закрытый вход по email**:
+   - `/login` содержит только кнопку `Continue with email`; свободной регистрации, Google, SSO, passkey и публичного password-flow нет.
+   - `POST /api/auth/request-temporary-password` разрешён только адресу из whitelist или пользователю активного invite. Invite-контекст сохраняется вместе с credential.
+   - Resend отправляет одно письмо с одноразовой ссылкой `/auth/email/verify?token=…` и соответствующим 6-значным кодом.
+   - В базе сохраняются только HMAC-хэши ссылки и кода, назначение, scope, invite и срок жизни 15 минут. Тело письма и OTP-код не журналируются.
+   - `POST /api/auth/verify-email-link` и `POST /api/auth/verify-temporary-password` атомарно потребляют одну запись: после ссылки нельзя применить код и наоборот.
+   - Whitelist или исходный invite повторно проверяется при обмене. Отозванный доступ аннулирует уже высланный credential и не создаёт пользователя.
+   - При 5 неверных попытках ввода код аннулируется. До подтверждённой доставки нельзя использовать ни ссылку, ни код.
 
-2. **Email / Логин + Пароль**:
-   - При вводе сохранённого пароля происходит проверка через `bcrypt.checkpw`.
-   - Пароли защищены адаптивным алгоритмом хэширования с авто-рехэшингом при устаревании параметров.
-
-3. **Telegram Mini App (TMA)**:
+2. **Telegram Mini App (TMA)**:
    - При открытии веб-приложения внутри Telegram проверяется криптографическая подпись `initData` с использованием токена бота.
    - Пользователь бесшовно связывается с записью `User` по `telegram_id`.
 
@@ -190,37 +184,21 @@ erDiagram
 
 ---
 
-## 5. Онбординг в стиле Attio CRM
+## 5. Linear-like онбординг
 
-Онбординг сопровождает нового пользователя от регистрации до создания первого воркспейса и приглашения команды:
+Путь зависит от источника доступа и не содержит регистрации:
 
 ```
-[ 1. Sign In ] ──► [ 2. Temporary Code ] ──► [ 3. Personal Details ]
- /auth/sign-in       /auth/temporary-password   /welcome/personal-details
-                                                         │
-                                                         ▼
-[ 6. Workspace Home ] ◄── [ 5. Invite Team ] ◄── [ 4. Workspace Details ]
- /<slug>/home              /welcome/invite-team     /welcome/workspace-details
+Whitelist: /login → email link or code → /create-workspace → /<slug>/welcome → /<slug>/inbox
+Invite:    /invite/<token> → email link or code → accept → /<slug>/welcome → /<slug>/inbox
 ```
 
 ### 5.1. Шаги онбординга:
-1. **`/auth/sign-in`** — Ввод рабочего email и пароля/запрос OTP.
-2. **`/auth/temporary-password`** — Ввод 6-значного проверочного кода, таймер обратного отсчёта и кнопка повторной отправки («Resend code»).
-3. **`/welcome/personal-details`**:
-   - Загрузка пользовательского аватара (`POST /api/onboarding/avatar`, хранение в `webapp/uploads/avatars/`).
-   - Ввод имени и фамилии (обновляет `first_name`, `last_name`, `full_name`).
-   - Переключатель подписки на продуктовые обновления.
-4. **`/welcome/workspace-details` (или `/workspace/new`)**:
-   - Ввод названия компании/команды.
-   - Автоматическая генерация URL-слага (например, `media-team` → `buyerly.app/media-team`).
-   - Живая проверка доступности слага в реальном времени (`GET /api/onboarding/check-slug`) с защитой зарезервированных системных путей (`api`, `auth`, `admin`, `settings` и др.).
-   - Загрузка логотипа компании (`POST /api/onboarding/workspace/logo`, сохранение в `webapp/uploads/workspaces/`).
-   - **Интерактивный Live Preview**: правая колонка в реальном времени визуализирует сайдбар и карточку создаваемого воркспейса.
-5. **`/welcome/invite-team`**:
-   - Массовое добавление коллег (`POST /api/onboarding/invites`) с назначением ролей (`Member`, `Admin`, `Viewer`).
-   - Автоматическая отправка писем с приглашениями через Resend.
-   - Быстрое копирование общей инвайт-ссылки.
-   - Кнопка быстрого пропуска («Skip for now»).
+1. **`/login`** — ввод email, экран проверки письма и ручной ввод кода остаются на одном стабильном URL.
+2. **`/create-workspace`** — только Name и вычисляемый `buyerly.app/<slug>`. Занятый или системный адрес показывается ошибкой под полем; автоматического `-2` нет.
+3. **`/<slug>/welcome` / Profile** — одно поле Name. Фамилия опциональна на уровне API; поля Title нет.
+4. **`/<slug>/welcome` / Invite teammates** — email-приглашения, копирование публичной ссылки или Skip. Приглашённый участник этот owner-only шаг не видит.
+5. После завершения открывается `/<slug>/inbox`.
 
 ---
 

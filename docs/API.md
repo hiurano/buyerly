@@ -36,8 +36,9 @@ Production: `https://buyerly.app`.
 
 | Метод и путь | Тело | Результат |
 |---|---|---|
-| `POST /api/auth/request-temporary-password` | `email` | генерирует и высылает 6-значный одноразовый пароль на email через Resend |
-| `POST /api/auth/verify-temporary-password` | `email`, `code` | атомарно потребляет доставленный OTP, создаёт пользователя при первом успешном входе и открывает web-сессию |
+| `POST /api/auth/request-temporary-password` | `email`, `invite_token?` | после проверки whitelist/invite высылает одно письмо с одноразовой ссылкой и 6-значным кодом |
+| `POST /api/auth/verify-temporary-password` | `email`, `code` | атомарно потребляет общий login credential, повторно проверяет доступ и открывает web-сессию |
+| `POST /api/auth/verify-email-link` | `token` | атомарно потребляет тот же login credential по ссылке; после этого код также недействителен |
 | `POST /api/auth/request-email-verification` | — | высылает 6-значный одноразовый код на текущий неподтверждённый email |
 | `POST /api/auth/request-email-change` | `new_email` | высылает 6-значный код подтверждения для привязки нового email |
 | `POST /api/auth/verify-email-change` | `code` | верифицирует OTP и активирует подтверждённый email |
@@ -70,10 +71,10 @@ Production: `https://buyerly.app`.
 | `PATCH /api/workspaces/{workspace_id}` | `name?`, `badge_color?`, `badge_text?`, `logo_url?` | обновляет настройки и оформление воркспейса |
 | `DELETE /api/workspaces/{workspace_id}` | — | удаляет воркспейс (доступно владельцу при наличии других воркспейсов) |
 
-Slug нормализуется в ASCII и ограничивается 60 символами. Системные пути получают
-суффикс `-workspace`, а совпадения распределяются транзакционно и предсказуемо:
-`name`, `name-2`, `name-3`. Это правило одинаково для онбординга, обычного создания
-и автоматического первого воркспейса.
+Slug нормализуется в ASCII и ограничивается 60 символами. Системный или уже
+занятый адрес не изменяется автоматически: API возвращает `409`, а пользователь
+сам выбирает другое имя. Это правило одинаково для онбординга и обычного
+создания воркспейса.
 
 ## Участники воркспейса (Members & RBAC)
 
@@ -100,11 +101,11 @@ Slug нормализуется в ASCII и ограничивается 60 си
 | Метод и путь | Тело | Назначение |
 |---|---|---|
 | `GET /api/onboarding/status` | — | проверка текущего шага онбординга и профиля пользователя |
-| `POST /api/onboarding/personal-details` | `first_name`, `last_name`, `email?` | сохранение персональных данных на шаге 3 |
+| `POST /api/onboarding/personal-details` | `first_name`, `last_name?`, `email?` | сохранение отображаемого имени после создания или принятия workspace; поле Title отсутствует |
 | `POST /api/onboarding/avatar` | `file` (multipart) | проверка реального содержимого и загрузка фотографии профиля (PNG, JPG, WEBP до 5 МБ) |
 | `DELETE /api/onboarding/avatar` | — | удаление аватара и возврат к инициальному бейджу |
 | `GET /api/onboarding/check-slug` | `slug` (query) | живая проверка доступности слага воркспейса в реальном времени |
-| `POST /api/onboarding/workspace` | `name`, `slug?`, `badge_color?`, `badge_text?`, `logo_url?` | создание воркспейса на шаге 4 онбординга |
+| `POST /api/onboarding/workspace` | `name`, `slug?`, `badge_color?`, `badge_text?`, `logo_url?` | создание первого воркспейса до настройки профиля; занятый slug возвращает `409` |
 | `POST /api/onboarding/workspace/logo` | `file` (multipart) | проверка реального содержимого и загрузка логотипа компании для воркспейса (PNG, JPG, WEBP до 5 МБ) |
 | `POST /api/onboarding/invites` | `invites[]` (`email`, `role`) | массовая отправка инвайтов на шаге 5 и завершение онбординга |
 | `POST /api/onboarding/skip` | — | быстрый пропуск шага инвайтов и завершение онбординга |
@@ -353,7 +354,7 @@ curl -fsS https://buyerly.app/api/me \
 | Метод и путь | Назначение |
 |---|---|
 | `GET /api/onboarding/status` | текущий шаг и статус прохождения онбординга |
-| `POST /api/onboarding/personal-details` | сохранение персональных данных (имя, фамилия, email) |
+| `POST /api/onboarding/personal-details` | сохранение Name; фамилия и email опциональны, Title отсутствует |
 | `POST /api/onboarding/avatar` | загрузка аватара профиля |
 | `DELETE /api/onboarding/avatar` | удаление аватара профиля |
 | `GET /api/onboarding/check-slug` | проверка доступности slug воркспейса |

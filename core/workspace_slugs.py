@@ -11,6 +11,7 @@ RESERVED_WORKSPACE_SLUGS = frozenset(
         "admin",
         "app",
         "auth",
+        "w",
         "static",
         "uploads",
         "health",
@@ -23,10 +24,22 @@ RESERVED_WORKSPACE_SLUGS = frozenset(
         "privacy",
         "data-deletion",
         "onboarding",
+        "create-workspace",
+        "welcome",
+        "workspace",
         "login",
         "sign-in",
+        "sign-up",
+        "signup",
+        "register",
         "dashboard",
         "home",
+        "today",
+        "main",
+        "efficiency",
+        "automations",
+        "action-history",
+        "connections",
         "accounts",
         "facebook-accounts",
         "facebook-groups",
@@ -35,6 +48,7 @@ RESERVED_WORKSPACE_SLUGS = frozenset(
         "collection",
         "rule-groups",
         "add-accounts",
+        "add",
         "rules",
         "chats",
         "summary",
@@ -43,6 +57,20 @@ RESERVED_WORKSPACE_SLUGS = frozenset(
         "invites",
         "null",
         "undefined",
+    }
+)
+
+# Revision 0011 imported these helpers instead of carrying its own snapshot.
+# Keep its original reservation set stable while the live router evolves.
+_MIGRATION_0011_RESERVED_WORKSPACE_SLUGS = frozenset(
+    {
+        "api", "admin", "app", "auth", "static", "uploads", "health",
+        "docs", "redoc", "openapi", "openapi-json", "settings", "terms",
+        "privacy", "data-deletion", "onboarding", "login", "sign-in",
+        "dashboard", "home", "accounts", "facebook-accounts",
+        "facebook-groups", "groups", "lists", "collection", "rule-groups",
+        "add-accounts", "rules", "chats", "summary", "logs", "invite",
+        "invites", "null", "undefined",
     }
 )
 
@@ -108,16 +136,16 @@ def normalize_workspace_slug(value: str) -> str:
 
 
 def reservation_safe_workspace_slug(value: str) -> str:
-    """Normalize a slug and move system-reserved names into user-safe space."""
+    """Migration-only helper retained for revision 0011 reproducibility."""
     slug = normalize_workspace_slug(value)
-    if slug not in RESERVED_WORKSPACE_SLUGS:
+    if slug not in _MIGRATION_0011_RESERVED_WORKSPACE_SLUGS:
         return slug
     suffix = "-workspace"
     return f"{slug[: MAX_WORKSPACE_SLUG_LENGTH - len(suffix)].rstrip('-')}{suffix}"
 
 
 def numbered_workspace_slug(base: str, number: int) -> str:
-    """Append a collision number without exceeding the database field contract."""
+    """Migration-only helper retained for revision 0011 reproducibility."""
     if number < 2:
         return base[:MAX_WORKSPACE_SLUG_LENGTH].rstrip("-")
     suffix = f"-{number}"

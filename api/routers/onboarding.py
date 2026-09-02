@@ -5,6 +5,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from api.auth import get_current_user
 from api.deps import (
@@ -28,7 +29,7 @@ from core.email import send_workspace_invitation_email
 from core.rate_limit import rate_limit_dep
 from core.workspace_slugs import normalize_workspace_slug
 from database.db import async_session_maker
-from database.models import AuditEvent, User, Workspace, WorkspaceInvite, WorkspaceMember
+from database.models import AllowedEmail, AuditEvent, User, Workspace, WorkspaceInvite, WorkspaceMember
 from services.image_uploads import (
     InvalidImageUpload,
     MAX_UPLOAD_BYTES,
@@ -37,7 +38,7 @@ from services.image_uploads import (
     is_owned_workspace_logo,
     save_image_upload,
 )
-from services.workspace_slugs import allocate_workspace_slug
+from services.workspace_slugs import WorkspaceSlugUnavailable, allocate_workspace_slug
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Onboarding"])
@@ -51,13 +52,24 @@ async def get_onboarding_status(user: User = Depends(get_current_user)):
         workspaces = await get_user_workspaces_list(session, db_user)
         active_ws = next((w for w in workspaces if w.is_active), workspaces[0] if workspaces else None)
 
-        step = db_user.onboarding_step or "personal_details"
-        if not db_user.first_name and not db_user.full_name:
-            step = "personal_details"
-        elif not workspaces:
+        step = db_user.onboarding_step or "workspace"
+        if not workspaces:
             step = "workspace"
+        elif not db_user.first_name and not db_user.full_name:
+            step = "personal_details"
         elif not db_user.onboarding_completed:
-            step = "invites"
+            active_workspace_id = active_ws.id if active_ws else None
+            membership = None
+            if active_workspace_id:
+                membership = (
+                    await session.execute(
+                        select(WorkspaceMember).where(
+                            WorkspaceMember.workspace_id == active_workspace_id,
+                            WorkspaceMember.user_id == db_user.id,
+                        )
+                    )
+                ).scalar_one_or_none()
+            step = "invites" if membership and membership.role == "owner" else "completed"
         else:
             step = "completed"
 
@@ -111,13 +123,30 @@ async def submit_onboarding_personal_details(
                 db_user.email = clean_email
                 db_user.email_verified_at = None
 
-        if db_user.onboarding_step in ("personal_details", ""):
-            db_user.onboarding_step = "workspace"
-
-        await session.commit()
-
         workspaces = await get_user_workspaces_list(session, db_user)
         active_ws = next((w for w in workspaces if w.is_active), workspaces[0] if workspaces else None)
+        membership = None
+        if active_ws:
+            membership = (
+                await session.execute(
+                    select(WorkspaceMember).where(
+                        WorkspaceMember.workspace_id == active_ws.id,
+                        WorkspaceMember.user_id == db_user.id,
+                    )
+                )
+            ).scalar_one_or_none()
+
+        if not active_ws:
+            db_user.onboarding_step = "workspace"
+            db_user.onboarding_completed = False
+        elif membership and membership.role == "owner":
+            db_user.onboarding_step = "invites"
+            db_user.onboarding_completed = False
+        else:
+            db_user.onboarding_step = "completed"
+            db_user.onboarding_completed = True
+
+        await session.commit()
 
         profile = UserProfileResponse(
             telegram_id=db_user.telegram_id,
@@ -269,7 +298,44 @@ async def submit_onboarding_workspace(
         raise HTTPException(status_code=400, detail="Логотип не найден или принадлежит другому пользователю")
 
     async with async_session_maker() as session:
-        slug = await allocate_workspace_slug(session, requested_slug)
+        clean_user_email = (user.email or "").strip().lower()
+        allowlisted = None
+        if clean_user_email:
+            allowlisted = (
+                await session.execute(
+                    select(AllowedEmail.id).where(
+                        AllowedEmail.email == clean_user_email
+                    ).with_for_update()
+                )
+            ).scalar_one_or_none()
+        if allowlisted is None:
+            raise HTTPException(
+                status_code=403,
+                detail="Создание воркспейса доступно только пользователям из whitelist",
+            )
+
+        # Lock in the same AllowedEmail -> User order as whitelist revocation.
+        # The user lock makes two different first-workspace submissions serial.
+        db_user = (
+            await session.execute(
+                select(User).where(User.id == user.id).with_for_update()
+            )
+        ).scalar_one()
+        if (db_user.email or "").strip().lower() != clean_user_email:
+            raise HTTPException(status_code=409, detail="Email пользователя изменился, повторите запрос")
+
+        existing_membership = (
+            await session.execute(
+                select(WorkspaceMember.id).where(WorkspaceMember.user_id == user.id).limit(1)
+            )
+        ).scalar_one_or_none()
+        if existing_membership is not None:
+            raise HTTPException(status_code=409, detail="У пользователя уже есть воркспейс")
+
+        try:
+            slug = await allocate_workspace_slug(session, requested_slug)
+        except WorkspaceSlugUnavailable as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
 
         ws = Workspace(
             name=name,
@@ -280,15 +346,18 @@ async def submit_onboarding_workspace(
             owner_user_id=user.id,
         )
         session.add(ws)
-        await session.flush()
+        try:
+            await session.flush()
+        except IntegrityError as exc:
+            await session.rollback()
+            raise HTTPException(status_code=409, detail="Это имя воркспейса уже занято") from exc
 
         member = WorkspaceMember(workspace_id=ws.id, user_id=user.id, role="owner")
         session.add(member)
 
-        db_user = (await session.execute(select(User).where(User.id == user.id))).scalar_one()
         db_user.active_workspace_id = ws.id
-        if db_user.onboarding_step in ("personal_details", "workspace", ""):
-            db_user.onboarding_step = "invites"
+        db_user.onboarding_step = "personal_details"
+        db_user.onboarding_completed = False
 
         await session.commit()
 
@@ -339,6 +408,18 @@ async def submit_onboarding_invites(
         active_ws = await get_user_workspace(session, db_user)
         if not active_ws:
             raise HTTPException(status_code=400, detail="Не найден активный воркспейс для создания приглашений")
+        membership = (
+            await session.execute(
+                select(WorkspaceMember).where(
+                    WorkspaceMember.workspace_id == active_ws.id,
+                    WorkspaceMember.user_id == db_user.id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not membership or membership.role != "owner":
+            raise HTTPException(status_code=403, detail="Только владелец может приглашать команду на этом шаге")
+        if not db_user.first_name and not db_user.full_name:
+            raise HTTPException(status_code=409, detail="Сначала настройте профиль")
 
         created_invites: List[WorkspaceInviteItem] = []
         now_dt = datetime.now(timezone.utc)
@@ -407,7 +488,7 @@ async def submit_onboarding_invites(
                 send_ok = True
                 try:
                     inviter_name = db_user.full_name or db_user.username or "Коллега"
-                    await send_workspace_invitation_email(
+                    send_ok = await send_workspace_invitation_email(
                         to_email=clean_email,
                         workspace_name=active_ws.name,
                         inviter_name=inviter_name,
@@ -446,9 +527,24 @@ async def submit_onboarding_invites(
 
 @router.post("/onboarding/skip")
 async def skip_onboarding(user: User = Depends(get_current_user)):
-    """Skip remaining onboarding steps and mark onboarding completed."""
+    """Allow an owner to skip only the optional team-invitation step."""
     async with async_session_maker() as session:
         db_user = (await session.execute(select(User).where(User.id == user.id))).scalar_one()
+        active_ws = await get_user_workspace(session, db_user)
+        if not active_ws:
+            raise HTTPException(status_code=409, detail="Сначала создайте воркспейс")
+        membership = (
+            await session.execute(
+                select(WorkspaceMember).where(
+                    WorkspaceMember.workspace_id == active_ws.id,
+                    WorkspaceMember.user_id == db_user.id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not membership or membership.role != "owner":
+            raise HTTPException(status_code=403, detail="Этот шаг доступен только владельцу воркспейса")
+        if not db_user.first_name and not db_user.full_name:
+            raise HTTPException(status_code=409, detail="Сначала настройте профиль")
         db_user.onboarding_step = "completed"
         db_user.onboarding_completed = True
         await session.commit()

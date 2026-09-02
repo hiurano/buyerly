@@ -17,8 +17,8 @@ from core.config import settings
 from core.rate_limit import limiter
 from core.workspace_slugs import (
     MAX_WORKSPACE_SLUG_LENGTH,
+    RESERVED_WORKSPACE_SLUGS,
     normalize_workspace_slug,
-    reservation_safe_workspace_slug,
 )
 from database.db import Base, hash_password
 from database.models import (
@@ -46,11 +46,20 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             normalize_workspace_slug("广告投放"),
         )
         self.assertTrue(normalize_workspace_slug("广告投放").startswith("workspace-"))
-        self.assertEqual(reservation_safe_workspace_slug("api"), "api-workspace")
         self.assertLessEqual(
             len(normalize_workspace_slug("a" * 100)),
             MAX_WORKSPACE_SLUG_LENGTH,
         )
+        for system_slug in (
+            "auth",
+            "create-workspace",
+            "invite",
+            "login",
+            "register",
+            "w",
+            "welcome",
+        ):
+            self.assertIn(system_slug, RESERVED_WORKSPACE_SLUGS)
 
     async def asyncSetUp(self):
         self.original_meta_token_key = settings.META_TOKEN_ENCRYPTION_KEY
@@ -231,7 +240,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(del_only.status_code, 400)
 
-    async def test_workspace_creation_allocates_stable_reserved_safe_suffixes(self):
+    async def test_workspace_creation_rejects_occupied_and_reserved_slugs(self):
         artem_data = generate_valid_telegram_init_data(
             settings.BOT_TOKEN,
             {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'},
@@ -244,20 +253,17 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 client.post('/api/workspaces', headers=headers, json={'name': 'Канада Трафик'}),
                 client.post('/api/workspaces', headers=headers, json={'name': 'Канада Трафик'}),
             )
-            self.assertEqual(first.status_code, 200)
-            self.assertEqual(second.status_code, 200)
-            self.assertEqual(
-                sorted([first.json()['slug'], second.json()['slug']]),
-                ['kanada-trafik', 'kanada-trafik-2'],
-            )
+            self.assertEqual(sorted((first.status_code, second.status_code)), [200, 409])
+            conflict = first if first.status_code == 409 else second
+            self.assertIn('занято', conflict.json()['detail'])
 
             third = await client.post(
                 '/api/workspaces',
                 headers=headers,
                 json={'name': 'Канада Трафик'},
             )
-            self.assertEqual(third.status_code, 200)
-            self.assertEqual(third.json()['slug'], 'kanada-trafik-3')
+            self.assertEqual(third.status_code, 409)
+            self.assertIn('занято', third.json()['detail'])
 
             reserved_check = await client.get(
                 '/api/onboarding/check-slug',
@@ -272,8 +278,8 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 headers=headers,
                 json={'name': 'API', 'slug': 'api'},
             )
-            self.assertEqual(reserved_create.status_code, 200)
-            self.assertEqual(reserved_create.json()['slug'], 'api-workspace')
+            self.assertEqual(reserved_create.status_code, 409)
+            self.assertIn('недоступен', reserved_create.json()['detail'])
 
             async with self.test_session_maker() as session:
                 names = (
@@ -281,41 +287,49 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                         select(Workspace.name).where(Workspace.name == 'Канада Трафик')
                     )
                 ).scalars().all()
-                self.assertEqual(len(names), 3)
+                self.assertEqual(len(names), 1)
 
     async def test_spa_workspace_slug_routes(self):
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
             routes = [
-                '/buyerly/home',
-                '/buyerly/accounts',
-                '/buyerly/groups/1',
-                '/buyerly/groups/canada',
-                '/buyerly/facebook-accounts',
-                '/buyerly/facebook-groups/1',
-                '/buyerly/rules',
-                '/buyerly/rule-groups/1',
-                '/buyerly/chats',
-                '/buyerly/chats/1',
-                '/buyerly/collection/1',
-                '/buyerly/collection/1/view/default',
-                '/buyerly/summary',
-                '/buyerly/logs',
-                '/canada-traffic/home',
-                '/canada-traffic/accounts',
-                '/canada-traffic/groups/1',
-                '/groups/1',
-                '/facebook-groups/1',
-                '/rule-groups/1',
-                '/chats',
-                '/chats/1',
-                '/collection/1',
-                '/sign-in',
+                '/',
                 '/login',
+                '/auth/email/verify?token=sample',
+                '/create-workspace',
+                '/invite/sample-token',
+                '/buyerly',
+                '/buyerly/welcome',
+                '/buyerly/inbox',
+                '/buyerly/inbox/1',
+                '/buyerly/ads/campaigns',
+                '/buyerly/ads/adsets/1',
+                '/buyerly/rules',
+                '/buyerly/rules/1',
+                '/buyerly/statistics',
+                '/buyerly/settings',
             ]
             for r in routes:
                 res = await client.get(r)
                 self.assertEqual(res.status_code, 200, f'Route {r} should return 200')
+
+            for legacy_route in (
+                '/sign-in',
+                '/onboarding',
+                '/home',
+                '/dashboard',
+                '/accounts',
+                '/rules',
+                '/summary',
+                '/logs',
+                '/groups/1',
+            ):
+                res = await client.get(legacy_route)
+                self.assertEqual(
+                    res.status_code,
+                    404,
+                    f'Legacy route {legacy_route} must not redirect or render the app',
+                )
 
     async def test_workspace_invite_model_schema_and_persistence(self):
         async with self.test_session_maker() as session:

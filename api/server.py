@@ -12,6 +12,7 @@ from api.routes import router as api_router
 from api.meta_oauth import router as meta_oauth_router
 from core.config import settings
 from core.rate_limit import limiter
+from core.workspace_slugs import RESERVED_WORKSPACE_SLUGS
 from database.db import async_session_maker
 from services.image_uploads import cleanup_stale_workspace_logos
 
@@ -114,100 +115,73 @@ def create_app() -> FastAPI:
     if not settings.SERVE_STATIC:
         return app
 
-    # Static Web App files (local development and legacy fallback only).
-    webapp_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "webapp")
-    os.makedirs(webapp_dir, exist_ok=True)
+    # Built React application for local single-process development. Production
+    # serves the same files through the dedicated frontend container.
+    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    frontend_dir = os.path.join(project_dir, "frontend", "dist")
+    webapp_dir = os.path.join(project_dir, "webapp")
     uploads_dir = os.path.join(webapp_dir, "uploads")
     os.makedirs(os.path.join(uploads_dir, "avatars"), exist_ok=True)
     os.makedirs(os.path.join(uploads_dir, "workspaces"), exist_ok=True)
 
-    if os.path.exists(webapp_dir):
-        app.mount("/static", StaticFiles(directory=webapp_dir), name="static")
-        app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+    assets_dir = os.path.join(frontend_dir, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+    app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
-        public_documents = {
-            "/privacy": "privacy.html",
-            "/terms": "terms.html",
-            "/data-deletion": "data-deletion.html",
+    public_documents = {
+        "/privacy": "privacy.html",
+        "/terms": "terms.html",
+        "/data-deletion": "data-deletion.html",
+    }
+
+    @app.get("/privacy", include_in_schema=False)
+    @app.get("/terms", include_in_schema=False)
+    @app.get("/data-deletion", include_in_schema=False)
+    async def serve_public_document(request: Request):
+        document_path = os.path.join(webapp_dir, public_documents[request.url.path])
+        if os.path.exists(document_path):
+            return FileResponse(
+                document_path,
+                headers={"Cache-Control": "public, max-age=300"},
+            )
+        return JSONResponse(status_code=404, content={"detail": "Document not found"})
+
+    @app.get("/")
+    @app.get("/login")
+    @app.get("/auth/email/verify")
+    @app.get("/create-workspace")
+    @app.get("/invite/{token}")
+    @app.get("/{workspace_slug}/welcome")
+    @app.get("/{workspace_slug}/inbox")
+    @app.get("/{workspace_slug}/inbox/{item_id}")
+    @app.get("/{workspace_slug}/ads/{entity_type}")
+    @app.get("/{workspace_slug}/ads/{entity_type}/{entity_id}")
+    @app.get("/{workspace_slug}/rules")
+    @app.get("/{workspace_slug}/rules/{rule_id}")
+    @app.get("/{workspace_slug}/statistics")
+    @app.get("/{workspace_slug}/settings")
+    @app.get("/{workspace_slug}")
+    async def serve_index(request: Request):
+        path_parts = [part for part in request.url.path.split("/") if part]
+        public_entrypoints = {
+            "/",
+            "/login",
+            "/auth/email/verify",
+            "/create-workspace",
         }
-
-        @app.get("/privacy", include_in_schema=False)
-        @app.get("/terms", include_in_schema=False)
-        @app.get("/data-deletion", include_in_schema=False)
-        async def serve_public_document(request: Request):
-            document_path = os.path.join(webapp_dir, public_documents[request.url.path])
-            if os.path.exists(document_path):
-                return FileResponse(
-                    document_path,
-                    headers={"Cache-Control": "public, max-age=300"},
-                )
-            return JSONResponse(status_code=404, content={"detail": "Document not found"})
-
-        @app.get("/")
-        @app.get("/sign-in")
-        @app.get("/login")
-        @app.get("/onboarding")
-        @app.get("/onboarding/{step}")
-        @app.get("/invite/{token}")
-        @app.get("/home")
-        @app.get("/today")
-        @app.get("/dashboard")
-        @app.get("/facebook-accounts")
-        @app.get("/connections")
-        @app.get("/facebook-groups/{group_id}")
-        @app.get("/accounts")
-        @app.get("/groups/{group_id}")
-        @app.get("/lists/{group_id}")
-        @app.get("/collection/{group_id}")
-        @app.get("/collection/{group_id}/view/{view_id}")
-        @app.get("/rules")
-        @app.get("/rules/{rule_id}")
-        @app.get("/automations")
-        @app.get("/automations/{rule_id}")
-        @app.get("/rule-groups/{group_id}")
-        @app.get("/chats")
-        @app.get("/chats/{chat_id}")
-        @app.get("/summary")
-        @app.get("/efficiency")
-        @app.get("/logs")
-        @app.get("/action-history")
-        @app.get("/add-accounts")
-        @app.get("/settings")
-        @app.get("/connect/meta/{token}")
-        @app.get("/connect/meta/success")
-        @app.get("/{workspace_slug}/home")
-        @app.get("/{workspace_slug}/today")
-        @app.get("/{workspace_slug}/facebook-accounts")
-        @app.get("/{workspace_slug}/connections")
-        @app.get("/{workspace_slug}/facebook-groups/{group_id}")
-        @app.get("/{workspace_slug}/accounts")
-        @app.get("/{workspace_slug}/groups/{group_id}")
-        @app.get("/{workspace_slug}/lists/{group_id}")
-        @app.get("/{workspace_slug}/collection/{group_id}")
-        @app.get("/{workspace_slug}/collection/{group_id}/view/{view_id}")
-        @app.get("/{workspace_slug}/rules")
-        @app.get("/{workspace_slug}/rules/{rule_id}")
-        @app.get("/{workspace_slug}/automations")
-        @app.get("/{workspace_slug}/automations/{rule_id}")
-        @app.get("/{workspace_slug}/rule-groups/{group_id}")
-        @app.get("/{workspace_slug}/chats")
-        @app.get("/{workspace_slug}/chats/{chat_id}")
-        @app.get("/{workspace_slug}/summary")
-        @app.get("/{workspace_slug}/efficiency")
-        @app.get("/{workspace_slug}/logs")
-        @app.get("/{workspace_slug}/action-history")
-        @app.get("/{workspace_slug}/add-accounts")
-        @app.get("/{workspace_slug}/settings")
-        @app.get("/{workspace_slug}")
-        async def serve_index(workspace_slug: str = "", group_id: str = "", view_id: str = "", chat_id: str = "", rule_id: str = "", step: str = "", token: str = ""):
-            index_path = os.path.join(webapp_dir, "index.html")
-            if os.path.exists(index_path):
-                return FileResponse(index_path, headers={
-                    "Cache-Control": "no-cache, no-store, must-revalidate",
-                    "Pragma": "no-cache",
-                    "Expires": "0"
-                })
-            return {"status": "Buyerly API is running", "webapp": "index.html not found"}
+        is_invite = len(path_parts) == 2 and path_parts[0] == "invite"
+        is_workspace_route = bool(path_parts) and path_parts[0] not in RESERVED_WORKSPACE_SLUGS
+        if request.url.path not in public_entrypoints and not is_invite and not is_workspace_route:
+            return JSONResponse(status_code=404, content={"detail": "Page not found"})
+        index_path = os.path.join(frontend_dir, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path, headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            })
+        return {"status": "Buyerly API is running", "webapp": "index.html not found"}
 
     return app
 
