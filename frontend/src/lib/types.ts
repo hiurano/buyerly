@@ -48,3 +48,50 @@ export interface OnboardingStatus {
   user: SessionUser;
   active_workspace: Workspace | null;
 }
+
+export interface MetaAccount {
+  account_id: string;
+  name: string;
+  connection_type: 'facebook_login' | 'system_user';
+}
+
+export interface MetaConnection {
+  id: number;
+  provider_user_name: string;
+  status: string;
+}
+
+export interface MetaConnectionAsset {
+  account_id: string;
+  name: string;
+  business_id: string;
+  business_name: string;
+  account_status: number;
+  currency: string;
+  timezone_name: string;
+  imported: boolean;
+  import_status: 'this_connection' | 'not_imported' | 'manual_token' | 'other_connection';
+  can_migrate: boolean;
+}
+
+export interface MetaAssetsResponse {
+  connection: { id: number; provider_user_name: string; status: string };
+  accounts: MetaConnectionAsset[];
+  count: number;
+  imported_count: number;
+  migratable_count: number;
+}
+
+export interface MetaInviteCreated {
+  invite_url: string;
+  expires_at: string;
+}
+
+export interface PublicMetaInviteInfo {
+  valid: boolean;
+  status: string;
+  workspace_name: string;
+  workspace_logo_url: string | null;
+  label: string;
+  inviter_name: string | null;
+}

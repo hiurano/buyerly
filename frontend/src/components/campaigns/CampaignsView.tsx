@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
+import { apiRequest } from '@/lib/api';
+import type { MetaAccount, MetaConnection } from '@/lib/types';
 import { CampaignRow } from './CampaignRow';
 import { AdSetRow } from './AdSetRow';
 import { AdRow } from './AdRow';
@@ -24,10 +26,18 @@ import {
 } from '@/components/filters/filterCatalogs';
 import { applyFilterClauses, FilterClause } from '@/components/filters/filterModel';
 import {
+  LinearDotsIcon,
   LinearSlidersIcon,
   LinearSidebarToggleIcon,
   LinearSidebarLeftToggleIcon,
 } from '@/icons/LinearIcons';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/ui/DropdownMenu';
+import { MetaConnectionDialog } from './MetaConnectionDialog';
 
 interface OpenFilterMenu {
   mode: FilterMenuMode;
@@ -68,6 +78,40 @@ export const CampaignsView: React.FC = () => {
   const displayOptionsButtonRef = useRef<HTMLButtonElement>(null);
   const [openFilterMenu, setOpenFilterMenu] = useState<OpenFilterMenu | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [metaAccounts, setMetaAccounts] = useState<MetaAccount[] | null>(null);
+  const [metaConnections, setMetaConnections] = useState<MetaConnection[]>([]);
+  const [metaFlow, setMetaFlow] = useState<'connect' | 'invite' | null>(null);
+  const [returnedConnectionId, setReturnedConnectionId] = useState<number | null>(
+    Number(new URLSearchParams(window.location.search).get('meta_connection')) || null,
+  );
+
+  const refreshMetaAccounts = async () => {
+    const [accounts, connections] = await Promise.all([
+      apiRequest<MetaAccount[]>('/api/accounts'),
+      apiRequest<MetaConnection[]>('/api/meta/connections'),
+    ]);
+    setMetaAccounts(accounts);
+    setMetaConnections(connections);
+  };
+
+  useEffect(() => {
+    void refreshMetaAccounts().catch(() => setMetaAccounts(null));
+  }, []);
+
+  const clearMetaCallback = () => {
+    window.history.replaceState({}, '', window.location.pathname);
+    setReturnedConnectionId(null);
+  };
+
+  const openMetaFlow = (mode: 'connect' | 'invite') => setMetaFlow(mode);
+  const openAccountSelection = () => {
+    const activeConnections = metaConnections.filter((connection) => connection.status === 'active');
+    if (activeConnections.length === 1) {
+      setReturnedConnectionId(activeConnections[0].id);
+      return;
+    }
+    setMetaFlow('connect');
+  };
 
   const campaignFilterFields = useMemo(
     () =>
@@ -293,6 +337,27 @@ export const CampaignsView: React.FC = () => {
               Ads Manager
             </h2>
           </div>
+          <DropdownMenu>
+            <Tooltip content="Действия с Facebook" side="bottom" sideOffset={6}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="ui-icon-button flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
+                  aria-label="Действия с Facebook"
+                >
+                  <LinearDotsIcon size={16} />
+                </button>
+              </DropdownMenuTrigger>
+            </Tooltip>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => openMetaFlow('connect')}>
+                <span>{metaAccounts?.some((account) => account.connection_type === 'facebook_login') ? 'Подключить ещё Facebook' : 'Подключить Facebook'}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => openMetaFlow('invite')}>
+                <span>Создать ссылку для подключения</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Tier 2: View Filter Tabs & Action Buttons (43px) */}
@@ -398,6 +463,17 @@ export const CampaignsView: React.FC = () => {
       {/* 2. Main Content Area below Header (Split: List on Left, Right Sidebar on Right) */}
       <div className="flex flex-1 overflow-hidden" style={{ flexDirection: 'row' }}>
         {/* Left: Campaign / Ad Set / Ad List Scroll Container */}
+        {metaAccounts && metaAccounts.length === 0 ? (
+          <section className="ui-empty-state flex flex-1 items-center justify-center" aria-label="Подключение рекламных кабинетов">
+            <button
+              className="ui-button ui-button-primary h-11 rounded-lg px-5 text-[14px] font-medium"
+              type="button"
+              onClick={openAccountSelection}
+            >
+              Подключить кабинеты
+            </button>
+          </section>
+        ) : (
         <LinearDataListViewport className="campaign-list-container" horizontal>
           <div style={{ minWidth: `${tableMinWidth}px` }}>
             <LinearDataListColumnHeader
@@ -503,10 +579,24 @@ export const CampaignsView: React.FC = () => {
             )}
           </div>
         </LinearDataListViewport>
+        )}
 
         {/* Right: Linear Right Context Sidebar (Groups Filter Panel) */}
         <CampaignRightSidebar />
       </div>
+      <MetaConnectionDialog
+        open={metaFlow !== null || returnedConnectionId !== null}
+        mode={metaFlow || 'connect'}
+        connectionId={returnedConnectionId}
+        returnPath={window.location.pathname}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMetaFlow(null);
+            clearMetaCallback();
+          }
+        }}
+        onImported={() => { void refreshMetaAccounts(); }}
+      />
     </div>
   );
 };
