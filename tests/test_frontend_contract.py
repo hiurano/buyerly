@@ -603,11 +603,24 @@ class TestFrontendRuleContract(unittest.TestCase):
 
         self.assertNotIn("window.history[method]", self.script)
 
-        for route in ('today', 'efficiency', 'automations', 'action-history', 'connections', 'accounts', 'settings'):
+        for route in (
+            'login',
+            'auth/email/verify',
+            'create-workspace',
+            '{workspace_slug}/welcome',
+            '{workspace_slug}/inbox',
+            '{workspace_slug}/inbox/{item_id}',
+            '{workspace_slug}/ads/{entity_type}',
+            '{workspace_slug}/ads/{entity_type}/{entity_id}',
+            '{workspace_slug}/rules',
+            '{workspace_slug}/rules/{rule_id}',
+            '{workspace_slug}/statistics',
+            '{workspace_slug}/settings',
+        ):
             self.assertIn(f'@app.get("/{route}")', self.server)
 
-        for legacy_route in ('home', 'facebook-accounts', 'rules', 'summary', 'logs', 'add-accounts'):
-            self.assertIn(f'@app.get("/{legacy_route}")', self.server)
+        for legacy_route in ('today', 'efficiency', 'automations', 'action-history', 'connections', 'accounts', 'settings', 'home', 'facebook-accounts', 'rules', 'summary', 'logs', 'add-accounts'):
+            self.assertNotIn(f'@app.get("/{legacy_route}")', self.server)
 
     def test_rule_groups_can_be_managed_and_assigned_from_the_ui(self):
         for contract in (

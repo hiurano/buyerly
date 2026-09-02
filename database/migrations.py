@@ -25,6 +25,10 @@ POST_BASELINE_COLUMNS = {
         "purpose",
         "scope",
         "delivered_at",
+        # Added by the passwordless-login link migration (0022). Legacy
+        # databases are allowed to omit these until the normal upgrade runs.
+        "link_token_hash",
+        "invite_id",
     },
     "meta_oauth_states": {
         "reconnect_connection_id",
