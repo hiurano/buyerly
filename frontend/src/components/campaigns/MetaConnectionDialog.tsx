@@ -152,61 +152,61 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[500] bg-[var(--bg-window)] opacity-70 animate-fade-in" />
+        <Dialog.Overlay className="fixed inset-0 z-[500] bg-black/50 backdrop-blur-[2px] animate-fade-in" />
         <div className="pointer-events-none fixed inset-0 z-[501] flex items-center justify-center p-4">
-          <Dialog.Content className="ui-dialog pointer-events-auto w-full max-w-[560px] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] text-left outline-none animate-scale-in">
-            <header className="flex items-center justify-between border-b border-[var(--color-border-primary)] px-5 py-4">
+          <Dialog.Content className="ui-dialog pointer-events-auto w-full max-w-[560px] rounded-[20px] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] text-left outline-none animate-scale-in shadow-[0_1px_2px_rgba(0,0,0,0.04),0_6px_24px_rgba(0,0,0,0.12),0_12px_48px_rgba(0,0,0,0.18)]">
+            <header className="flex items-center justify-between px-6 pt-6 pb-2">
               <div className="flex items-center gap-2.5">
                 <LinearMetaIcon size={16} className="text-[var(--text-secondary)]" />
-                <Dialog.Title className="text-[16px] font-semibold text-[var(--text-primary)]">{title}</Dialog.Title>
+                <Dialog.Title className="text-[15px] font-semibold text-[var(--text-primary)]">{title}</Dialog.Title>
               </div>
               <Dialog.Close asChild>
-                <button className="ui-icon-button flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]" type="button" aria-label="Закрыть">
-                  <LinearCloseIcon size={16} />
+                <button className="ui-icon-button flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] transition-colors duration-150 cursor-default" type="button" aria-label="Закрыть">
+                  <LinearCloseIcon size={14} />
                 </button>
               </Dialog.Close>
             </header>
 
-            <div className="max-h-[60vh] overflow-y-auto px-5 py-5">
+            <div className="max-h-[60vh] overflow-y-auto px-6 py-2">
               {step === 'choice' && (
                 <div className="space-y-2">
-                  <Dialog.Description className="text-[14px] leading-6 text-[var(--text-secondary)]">
+                  <Dialog.Description className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
                     Выберите способ подключения рекламных кабинетов.
                   </Dialog.Description>
                 </div>
               )}
 
-              {step === 'creating_invite' && <p className="text-[14px] text-[var(--text-secondary)]" role="status">Создаём одноразовую ссылку…</p>}
+              {step === 'creating_invite' && <p className="text-[13px] text-[var(--text-secondary)]" role="status">Создаём одноразовую ссылку…</p>}
 
               {step === 'invite_ready' && invite && (
                 <div className="space-y-3">
-                  <Dialog.Description className="text-[14px] leading-6 text-[var(--text-secondary)]">
+                  <Dialog.Description className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
                     Откройте эту ссылку в браузере с нужным Facebook-профилем или отправьте владельцу профиля. Ссылка действует 24 часа и используется один раз.
                   </Dialog.Description>
-                  <input className="ui-input w-full bg-[var(--item-hover-bg)] font-mono text-[12px] text-[var(--text-primary)]" readOnly value={invite.invite_url} aria-label="Одноразовая ссылка для подключения" />
+                  <input className="ui-input w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--item-hover-bg)] px-3 py-2 font-mono text-[12px] text-[var(--text-primary)]" readOnly value={invite.invite_url} aria-label="Одноразовая ссылка для подключения" />
                 </div>
               )}
 
-              {step === 'discovering' && <p className="text-[14px] text-[var(--text-secondary)]" role="status">Ищем доступные рекламные кабинеты…</p>}
+              {step === 'discovering' && <p className="text-[13px] text-[var(--text-secondary)]" role="status">Ищем доступные рекламные кабинеты…</p>}
 
               {step === 'selecting' && (
                 <div className="space-y-4">
-                  <Dialog.Description className="text-[14px] leading-6 text-[var(--text-secondary)]">
+                  <Dialog.Description className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
                     Выберите кабинеты, которые нужно добавить в этот workspace.
                   </Dialog.Description>
                   {groupedAssets.length === 0 ? (
-                    <p className="text-[14px] text-[var(--text-tertiary)]">Facebook не вернул доступных рекламных кабинетов для этого профиля.</p>
+                    <p className="text-[13px] text-[var(--text-tertiary)]">Facebook не вернул доступных рекламных кабинетов для этого профиля.</p>
                   ) : groupedAssets.map(([businessName, businessAssets]) => (
                     <section key={businessName} className="space-y-1.5" aria-label={businessName}>
                       <h3 className="px-1 text-[12px] font-medium text-[var(--text-tertiary)]">{businessName}</h3>
-                      <div className="overflow-hidden rounded-lg border border-[var(--color-border-primary)]">
+                      <div className="overflow-hidden rounded-xl border border-[var(--color-border-primary)]">
                         {businessAssets.map((asset) => {
                           const imported = asset.import_status === 'this_connection';
                           const checked = selectedIds.has(asset.account_id);
                           return (
-                            <label key={asset.account_id} className="flex min-h-11 cursor-pointer items-center gap-3 border-b border-[var(--color-border-primary)] px-3 last:border-b-0 hover:bg-[var(--item-hover-bg)]">
-                              <input type="checkbox" checked={imported || checked} disabled={imported} onChange={() => toggleAsset(asset)} className="h-4 w-4" />
-                              <span className="min-w-0 flex-1 text-[14px] text-[var(--text-primary)]">{accountLabel(asset)}</span>
+                            <label key={asset.account_id} className="flex min-h-10 cursor-default items-center gap-3 border-b border-[var(--color-border-primary)] px-3.5 last:border-b-0 transition-colors hover:bg-[var(--item-hover-bg)]">
+                              <input type="checkbox" checked={imported || checked} disabled={imported} onChange={() => toggleAsset(asset)} className="h-4 w-4 rounded" />
+                              <span className="min-w-0 flex-1 text-[13px] text-[var(--text-primary)]">{accountLabel(asset)}</span>
                               <span className="text-[12px] text-[var(--text-tertiary)]">{imported ? 'Добавлен' : asset.currency}</span>
                             </label>
                           );
@@ -217,41 +217,63 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
                 </div>
               )}
 
-              {step === 'importing' && <p className="text-[14px] text-[var(--text-secondary)]" role="status">Добавляем выбранные кабинеты…</p>}
+              {step === 'importing' && <p className="text-[13px] text-[var(--text-secondary)]" role="status">Добавляем выбранные кабинеты…</p>}
 
               {step === 'done' && (
-                <Dialog.Description className="text-[14px] leading-6 text-[var(--text-secondary)]">
+                <Dialog.Description className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
                   Кабинеты добавлены. Автоправила для них выключены.
                 </Dialog.Description>
               )}
 
-              {error && <p className="mt-4 text-[14px] text-[var(--rules-action-stop-text)]" role="alert">{error}</p>}
+              {error && <p className="mt-3 text-[13px] text-[var(--rules-action-stop-text)]" role="alert">{error}</p>}
             </div>
 
-            <footer className="flex flex-col items-stretch gap-2 border-t border-[var(--color-border-primary)] px-5 py-4 sm:flex-row sm:items-center sm:justify-end">
+            <footer className="flex flex-col items-stretch gap-2 px-6 pb-6 pt-4 sm:flex-row sm:items-center sm:justify-end">
               {step === 'choice' && (
                 <>
-                  <button className="ui-button w-full sm:w-auto" type="button" onClick={() => setStep('creating_invite')}>
+                  <button
+                    className="inline-flex h-7 items-center justify-center rounded-full border border-[var(--color-border-secondary)] bg-transparent px-3 text-[12px] font-medium text-[var(--text-secondary)] transition-colors duration-150 hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] active:duration-0 cursor-default select-none w-full sm:w-auto"
+                    type="button"
+                    onClick={() => setStep('creating_invite')}
+                  >
                     Сгенерировать ссылку
                   </button>
-                  <button className="ui-button ui-button-primary w-full sm:w-auto" type="button" onClick={continueWithFacebook}>
+                  <button
+                    className="inline-flex h-7 items-center justify-center rounded-full bg-[#5e6ad2] px-3.5 text-[12px] font-medium text-white shadow-[0_1px_1px_rgba(0,0,0,0.04),0_3px_6px_-2px_rgba(0,0,0,0.02)] transition-colors duration-150 hover:bg-[#6875e5] active:duration-0 cursor-default select-none w-full sm:w-auto"
+                    type="button"
+                    onClick={continueWithFacebook}
+                  >
                     Войти через Facebook
                   </button>
                 </>
               )}
               {step === 'invite_ready' && (
-                <button className="ui-button ui-button-primary w-full sm:w-auto" type="button" onClick={copyInvite}>
+                <button
+                  className="inline-flex h-7 items-center justify-center rounded-full bg-[#5e6ad2] px-3.5 text-[12px] font-medium text-white shadow-[0_1px_1px_rgba(0,0,0,0.04),0_3px_6px_-2px_rgba(0,0,0,0.02)] transition-colors duration-150 hover:bg-[#6875e5] active:duration-0 cursor-default select-none w-full sm:w-auto"
+                  type="button"
+                  onClick={copyInvite}
+                >
                   Скопировать ссылку
                 </button>
               )}
               {step === 'selecting' && (
-                <button className="ui-button ui-button-primary w-full disabled:opacity-50 sm:w-auto" type="button" disabled={selectedIds.size === 0} onClick={importSelected}>
+                <button
+                  className="inline-flex h-7 items-center justify-center rounded-full bg-[#5e6ad2] px-3.5 text-[12px] font-medium text-white shadow-[0_1px_1px_rgba(0,0,0,0.04),0_3px_6px_-2px_rgba(0,0,0,0.02)] transition-colors duration-150 hover:bg-[#6875e5] active:duration-0 disabled:opacity-50 cursor-default select-none w-full sm:w-auto"
+                  type="button"
+                  disabled={selectedIds.size === 0}
+                  onClick={importSelected}
+                >
                   Добавить кабинеты
                 </button>
               )}
               {step === 'done' && (
                 <Dialog.Close asChild>
-                  <button className="ui-button ui-button-primary w-full sm:w-auto" type="button">Готово</button>
+                  <button
+                    className="inline-flex h-7 items-center justify-center rounded-full bg-[#5e6ad2] px-3.5 text-[12px] font-medium text-white shadow-[0_1px_1px_rgba(0,0,0,0.04),0_3px_6px_-2px_rgba(0,0,0,0.02)] transition-colors duration-150 hover:bg-[#6875e5] active:duration-0 cursor-default select-none w-full sm:w-auto"
+                    type="button"
+                  >
+                    Готово
+                  </button>
                 </Dialog.Close>
               )}
               {isBusy && <span className="text-[12px] text-[var(--text-tertiary)]" aria-live="polite">Подождите…</span>}
