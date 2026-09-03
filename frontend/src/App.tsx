@@ -20,6 +20,7 @@ import { InviteView } from '@/components/auth/InviteView';
 import { NotFoundView } from '@/components/auth/NotFoundView';
 import { CreateWorkspaceView } from '@/components/onboarding/CreateWorkspaceView';
 import { WelcomeView } from '@/components/onboarding/WelcomeView';
+import { MetaConnectInviteView, MetaConnectSuccessView } from '@/components/auth/MetaConnectInviteView';
 
 const RETURN_ROUTE_KEY = 'buyerly-return-route';
 
@@ -210,7 +211,7 @@ export const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (user === undefined || route.kind === 'verify-email-link' || route.kind === 'invite' || route.kind === 'unknown') return;
+    if (user === undefined || route.kind === 'verify-email-link' || route.kind === 'invite' || route.kind === 'meta-connect-invite' || route.kind === 'meta-connect-success' || route.kind === 'unknown') return;
 
     if (user === null) {
       if (route.kind !== 'login') {
@@ -278,6 +279,9 @@ export const App: React.FC = () => {
       />
     );
   }
+
+  if (route.kind === 'meta-connect-invite') return <MetaConnectInviteView token={route.token} />;
+  if (route.kind === 'meta-connect-success') return <MetaConnectSuccessView />;
 
   if (user === null) return <LoginView onAuthenticated={handleAuthenticated} />;
 

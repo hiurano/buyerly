@@ -3,6 +3,7 @@
 import hashlib
 import json
 import logging
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
@@ -136,7 +137,28 @@ def _safe_return_path(value: str) -> str:
     path = str(value or "").strip()
     if path.endswith("/facebook-accounts") or path.endswith("/add-accounts") or path.endswith("/settings"):
         return path
+    if path == "/connect/meta/success":
+        return path
+    if re.fullmatch(r"/[a-z0-9][a-z0-9-]{0,62}/ads/(campaigns|adsets|ads)", path):
+        return path
     return "/facebook-accounts"
+
+
+async def _callback_return_path(state: str) -> str:
+    """Recover the original internal destination for a cancelled OAuth flow."""
+
+    if not state:
+        return "/facebook-accounts"
+    state_hash = hashlib.sha256(state.encode("utf-8")).hexdigest()
+    async with async_session_maker() as session:
+        oauth_state = (
+            await session.execute(
+                select(MetaOAuthState.return_path).where(
+                    MetaOAuthState.state_hash == state_hash
+                )
+            )
+        ).scalar_one_or_none()
+    return _safe_return_path(oauth_state or "")
 
 
 def _app_redirect(path: str, **params: str) -> str:
@@ -578,12 +600,12 @@ async def oauth_callback(
 ):
     if error:
         return RedirectResponse(
-            _app_redirect("/facebook-accounts", meta_status="cancelled"),
+            _app_redirect(await _callback_return_path(state), meta_status="cancelled"),
             status_code=303,
         )
     if not state or not code:
         return RedirectResponse(
-            _app_redirect("/facebook-accounts", meta_status="invalid_callback"),
+            _app_redirect(await _callback_return_path(state), meta_status="invalid_callback"),
             status_code=303,
         )
 

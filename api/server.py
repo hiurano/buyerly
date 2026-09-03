@@ -152,6 +152,8 @@ def create_app() -> FastAPI:
     @app.get("/auth/email/verify")
     @app.get("/create-workspace")
     @app.get("/invite/{token}")
+    @app.get("/connect/meta/{token}")
+    @app.get("/connect/meta/success")
     @app.get("/{workspace_slug}/welcome")
     @app.get("/{workspace_slug}/inbox")
     @app.get("/{workspace_slug}/inbox/{item_id}")
@@ -171,8 +173,9 @@ def create_app() -> FastAPI:
             "/create-workspace",
         }
         is_invite = len(path_parts) == 2 and path_parts[0] == "invite"
+        is_meta_invite = len(path_parts) == 3 and path_parts[:2] == ["connect", "meta"]
         is_workspace_route = bool(path_parts) and path_parts[0] not in RESERVED_WORKSPACE_SLUGS
-        if request.url.path not in public_entrypoints and not is_invite and not is_workspace_route:
+        if request.url.path not in public_entrypoints and not is_invite and not is_meta_invite and not is_workspace_route:
             return JSONResponse(status_code=404, content={"detail": "Page not found"})
         index_path = os.path.join(frontend_dir, "index.html")
         if os.path.exists(index_path):

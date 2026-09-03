@@ -6,6 +6,8 @@ export type Route =
   | { kind: 'verify-email-link'; token: string }
   | { kind: 'create-workspace' }
   | { kind: 'invite'; token: string }
+  | { kind: 'meta-connect-invite'; token: string }
+  | { kind: 'meta-connect-success' }
   | { kind: 'welcome'; workspace: string }
   | { kind: 'workspace'; workspace: string; tab: AppTab | 'preferences'; entity?: AdsManagerEntity; recordId?: string }
   | { kind: 'unknown' };
@@ -75,6 +77,12 @@ export function parseRoute(location: Location = window.location): Route {
   }
   if (parts[0] === 'invite' && parts.length === 2) {
     return { kind: 'invite', token: parts[1] };
+  }
+  if (parts[0] === 'connect' && parts[1] === 'meta' && parts.length === 3 && parts[2] === 'success') {
+    return { kind: 'meta-connect-success' };
+  }
+  if (parts[0] === 'connect' && parts[1] === 'meta' && parts.length === 3) {
+    return { kind: 'meta-connect-invite', token: parts[2] };
   }
   if (SYSTEM_ROOTS.has(parts[0])) return { kind: 'unknown' };
 
