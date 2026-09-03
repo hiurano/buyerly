@@ -26,6 +26,7 @@ import {
 } from '@/components/filters/filterCatalogs';
 import { applyFilterClauses, FilterClause } from '@/components/filters/filterModel';
 import {
+  LinearPlusIcon,
   LinearSlidersIcon,
   LinearSidebarToggleIcon,
   LinearSidebarLeftToggleIcon,
@@ -331,11 +332,12 @@ export const CampaignsView: React.FC = () => {
             </h2>
           </div>
           <button
-            className="ui-button ui-button-primary h-8 shrink-0 whitespace-nowrap px-3 text-[14px] font-medium"
+            className="ui-button flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-transparent bg-transparent px-2.5 text-[13px] font-medium text-[var(--text-secondary)] shadow-none outline-none transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)]"
             type="button"
             onClick={openMetaDialog}
           >
-            Подключить Facebook
+            <LinearPlusIcon size={14} />
+            <span>Connect Facebook</span>
           </button>
         </div>
 
@@ -445,11 +447,11 @@ export const CampaignsView: React.FC = () => {
         {metaAccounts && metaAccounts.length === 0 ? (
           <section className="ui-empty-state flex flex-1 items-center justify-center" aria-label="Подключение рекламных кабинетов">
             <button
-              className="ui-button ui-button-primary h-11 rounded-lg px-5 text-[14px] font-medium"
+              className="ui-button ui-button-primary inline-flex h-11 items-center justify-center rounded-lg border border-[var(--text-primary)] bg-[var(--text-primary)] px-5 text-[14px] font-medium text-[var(--bg-canvas)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
               type="button"
               onClick={openAccountSelection}
             >
-              Подключить Facebook
+              Connect Facebook
             </button>
           </section>
         ) : (
