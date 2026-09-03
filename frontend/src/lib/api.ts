@@ -35,9 +35,18 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     headers,
     credentials: 'include',
   });
-  const payload = await response.json().catch(() => ({}));
+  const payload: any = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const detail = typeof payload.detail === 'string' ? payload.detail : 'Something went wrong';
+    let detail = 'Something went wrong';
+    if (typeof payload.detail === 'string') {
+      detail = payload.detail;
+    } else if (payload.detail?.code === 'meta_oauth_not_configured') {
+      detail = 'Вход через Facebook не настроен: отсутствуют ключи META_APP_ID / META_APP_SECRET в .env. Используйте «Сгенерировать ссылку».';
+    } else if (typeof payload.detail?.message === 'string') {
+      detail = payload.detail.message;
+    } else if (typeof payload.message === 'string') {
+      detail = payload.message;
+    }
     throw new ApiError(response.status, detail);
   }
   return payload as T;
