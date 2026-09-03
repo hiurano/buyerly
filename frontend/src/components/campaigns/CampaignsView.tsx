@@ -26,17 +26,10 @@ import {
 } from '@/components/filters/filterCatalogs';
 import { applyFilterClauses, FilterClause } from '@/components/filters/filterModel';
 import {
-  LinearDotsIcon,
   LinearSlidersIcon,
   LinearSidebarToggleIcon,
   LinearSidebarLeftToggleIcon,
 } from '@/icons/LinearIcons';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/ui/DropdownMenu';
 import { MetaConnectionDialog } from './MetaConnectionDialog';
 
 interface OpenFilterMenu {
@@ -80,7 +73,7 @@ export const CampaignsView: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [metaAccounts, setMetaAccounts] = useState<MetaAccount[] | null>(null);
   const [metaConnections, setMetaConnections] = useState<MetaConnection[]>([]);
-  const [metaFlow, setMetaFlow] = useState<'connect' | 'invite' | null>(null);
+  const [isMetaDialogOpen, setIsMetaDialogOpen] = useState(false);
   const [returnedConnectionId, setReturnedConnectionId] = useState<number | null>(
     Number(new URLSearchParams(window.location.search).get('meta_connection')) || null,
   );
@@ -103,14 +96,14 @@ export const CampaignsView: React.FC = () => {
     setReturnedConnectionId(null);
   };
 
-  const openMetaFlow = (mode: 'connect' | 'invite') => setMetaFlow(mode);
+  const openMetaDialog = () => setIsMetaDialogOpen(true);
   const openAccountSelection = () => {
     const activeConnections = metaConnections.filter((connection) => connection.status === 'active');
     if (activeConnections.length === 1) {
       setReturnedConnectionId(activeConnections[0].id);
       return;
     }
-    setMetaFlow('connect');
+    openMetaDialog();
   };
 
   const campaignFilterFields = useMemo(
@@ -337,27 +330,13 @@ export const CampaignsView: React.FC = () => {
               Ads Manager
             </h2>
           </div>
-          <DropdownMenu>
-            <Tooltip content="Действия с Facebook" side="bottom" sideOffset={6}>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="ui-icon-button flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
-                  aria-label="Действия с Facebook"
-                >
-                  <LinearDotsIcon size={16} />
-                </button>
-              </DropdownMenuTrigger>
-            </Tooltip>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => openMetaFlow('connect')}>
-                <span>{metaAccounts?.some((account) => account.connection_type === 'facebook_login') ? 'Подключить ещё Facebook' : 'Подключить Facebook'}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => openMetaFlow('invite')}>
-                <span>Создать ссылку для подключения</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <button
+            className="ui-button ui-button-primary h-8 shrink-0 whitespace-nowrap px-3 text-[14px] font-medium"
+            type="button"
+            onClick={openMetaDialog}
+          >
+            Подключить Facebook
+          </button>
         </div>
 
         {/* Tier 2: View Filter Tabs & Action Buttons (43px) */}
@@ -470,7 +449,7 @@ export const CampaignsView: React.FC = () => {
               type="button"
               onClick={openAccountSelection}
             >
-              Подключить кабинеты
+              Подключить Facebook
             </button>
           </section>
         ) : (
@@ -585,13 +564,12 @@ export const CampaignsView: React.FC = () => {
         <CampaignRightSidebar />
       </div>
       <MetaConnectionDialog
-        open={metaFlow !== null || returnedConnectionId !== null}
-        mode={metaFlow || 'connect'}
+        open={isMetaDialogOpen || returnedConnectionId !== null}
         connectionId={returnedConnectionId}
         returnPath={window.location.pathname}
         onOpenChange={(open) => {
           if (!open) {
-            setMetaFlow(null);
+            setIsMetaDialogOpen(false);
             clearMetaCallback();
           }
         }}

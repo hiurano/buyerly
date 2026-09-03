@@ -4,12 +4,10 @@ import { apiRequest } from '@/lib/api';
 import type { MetaAssetsResponse, MetaConnectionAsset, MetaInviteCreated } from '@/lib/types';
 import { LinearCloseIcon, LinearMetaIcon } from '@/icons/LinearIcons';
 
-type FlowMode = 'connect' | 'invite';
-type FlowStep = 'intro' | 'creating_invite' | 'invite_ready' | 'discovering' | 'selecting' | 'importing' | 'done';
+type FlowStep = 'choice' | 'creating_invite' | 'invite_ready' | 'discovering' | 'selecting' | 'importing' | 'done';
 
 interface MetaConnectionDialogProps {
   open: boolean;
-  mode: FlowMode;
   connectionId: number | null;
   returnPath: string;
   onOpenChange: (open: boolean) => void;
@@ -26,13 +24,12 @@ function accountLabel(asset: MetaConnectionAsset): string {
 
 export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
   open,
-  mode,
   connectionId,
   returnPath,
   onOpenChange,
   onImported,
 }) => {
-  const [step, setStep] = useState<FlowStep>('intro');
+  const [step, setStep] = useState<FlowStep>('choice');
   const [assets, setAssets] = useState<MetaConnectionAsset[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [invite, setInvite] = useState<MetaInviteCreated | null>(null);
@@ -53,8 +50,8 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
     setAssets([]);
     setSelectedIds(new Set());
     setInvite(null);
-    setStep(connectionId ? 'discovering' : mode === 'invite' ? 'creating_invite' : 'intro');
-  }, [connectionId, mode, open]);
+    setStep(connectionId ? 'discovering' : 'choice');
+  }, [connectionId, open]);
 
   useEffect(() => {
     if (!open || !connectionId || step !== 'discovering') return;
@@ -79,7 +76,7 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
   }, [connectionId, open, step]);
 
   useEffect(() => {
-    if (!open || mode !== 'invite' || step !== 'creating_invite') return;
+    if (!open || step !== 'creating_invite') return;
     let active = true;
     const createInvite = async () => {
       try {
@@ -98,7 +95,7 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
     return () => {
       active = false;
     };
-  }, [mode, open, step]);
+  }, [open, step]);
 
   const continueWithFacebook = async () => {
     setError('');
@@ -149,7 +146,7 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
     }
   };
 
-  const title = mode === 'invite' ? 'Ссылка для подключения' : 'Подключить кабинеты';
+  const title = 'Подключить Facebook';
   const isBusy = step === 'discovering' || step === 'importing' || step === 'creating_invite';
 
   return (
@@ -171,14 +168,11 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
             </header>
 
             <div className="max-h-[60vh] overflow-y-auto px-5 py-5">
-              {step === 'intro' && (
-                <div className="space-y-4">
+              {step === 'choice' && (
+                <div className="space-y-2">
                   <Dialog.Description className="text-[14px] leading-6 text-[var(--text-secondary)]">
-                    Войдите в Facebook, выберите доступные рекламные кабинеты и добавьте только нужные в Buyerly.
+                    Выберите способ подключения рекламных кабинетов.
                   </Dialog.Description>
-                  <p className="text-[13px] leading-5 text-[var(--text-tertiary)]">
-                    Пароль и cookies Facebook не передаются Buyerly. Автоправила для добавленных кабинетов останутся выключены.
-                  </p>
                 </div>
               )}
 
@@ -234,11 +228,32 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
               {error && <p className="mt-4 text-[14px] text-[var(--rules-action-stop-text)]" role="alert">{error}</p>}
             </div>
 
-            <footer className="flex items-center justify-end gap-2 border-t border-[var(--color-border-primary)] px-5 py-4">
-              {step === 'intro' && <button className="ui-button ui-button-primary h-10 rounded-lg px-4 text-[14px] font-medium" type="button" onClick={continueWithFacebook}>Продолжить с Facebook</button>}
-              {step === 'invite_ready' && <button className="ui-button ui-button-primary h-10 rounded-lg px-4 text-[14px] font-medium" type="button" onClick={copyInvite}>Скопировать ссылку</button>}
-              {step === 'selecting' && <button className="ui-button ui-button-primary h-10 rounded-lg px-4 text-[14px] font-medium disabled:opacity-50" type="button" disabled={selectedIds.size === 0} onClick={importSelected}>Добавить кабинеты</button>}
-              {step === 'done' && <Dialog.Close asChild><button className="ui-button ui-button-primary h-10 rounded-lg px-4 text-[14px] font-medium" type="button">Готово</button></Dialog.Close>}
+            <footer className="flex flex-col items-stretch gap-2 border-t border-[var(--color-border-primary)] px-5 py-4 sm:flex-row sm:items-center sm:justify-end">
+              {step === 'choice' && (
+                <>
+                  <button className="ui-button w-full sm:w-auto" type="button" onClick={() => setStep('creating_invite')}>
+                    Сгенерировать ссылку
+                  </button>
+                  <button className="ui-button ui-button-primary w-full sm:w-auto" type="button" onClick={continueWithFacebook}>
+                    Войти через Facebook
+                  </button>
+                </>
+              )}
+              {step === 'invite_ready' && (
+                <button className="ui-button ui-button-primary w-full sm:w-auto" type="button" onClick={copyInvite}>
+                  Скопировать ссылку
+                </button>
+              )}
+              {step === 'selecting' && (
+                <button className="ui-button ui-button-primary w-full disabled:opacity-50 sm:w-auto" type="button" disabled={selectedIds.size === 0} onClick={importSelected}>
+                  Добавить кабинеты
+                </button>
+              )}
+              {step === 'done' && (
+                <Dialog.Close asChild>
+                  <button className="ui-button ui-button-primary w-full sm:w-auto" type="button">Готово</button>
+                </Dialog.Close>
+              )}
               {isBusy && <span className="text-[12px] text-[var(--text-tertiary)]" aria-live="polite">Подождите…</span>}
             </footer>
           </Dialog.Content>
