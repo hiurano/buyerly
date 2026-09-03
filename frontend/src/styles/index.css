@@ -1604,17 +1604,12 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
   margin-bottom: 24px;
-  color: #171717;
-  font-size: 17px;
-  font-weight: 650;
-  letter-spacing: -0.35px;
 }
 
 .buyerly-auth-brand img {
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
 }
 
@@ -1625,8 +1620,8 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 }
 
 .buyerly-auth-brand--compact img {
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
 }
 
 .buyerly-auth-card h1,

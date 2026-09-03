@@ -1,9 +1,12 @@
 import React from 'react';
 
 export const BuyerlyBrand: React.FC<{ compact?: boolean }> = ({ compact = false }) => (
-  <div className={`buyerly-auth-brand${compact ? ' buyerly-auth-brand--compact' : ''}`} aria-label="Buyerly">
+  <div
+    className={`buyerly-auth-brand${compact ? ' buyerly-auth-brand--compact' : ''}`}
+    role="img"
+    aria-label="Buyerly"
+  >
     <img src="/buyerly-logo.png" alt="" aria-hidden="true" />
-    <span>Buyerly</span>
   </div>
 );
 
