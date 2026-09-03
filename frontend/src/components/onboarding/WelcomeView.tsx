@@ -1,7 +1,7 @@
 import React, { FormEvent, useMemo, useState } from 'react';
 import { apiRequest } from '@/lib/api';
 import type { OnboardingStatus, SessionUser, Workspace } from '@/lib/types';
-import { BuyerlyBrand } from '@/components/auth/AuthFrame';
+import { AuthFrame, BuyerlyBrand } from '@/components/auth/AuthFrame';
 
 interface WelcomeViewProps {
   user: SessionUser;
@@ -99,83 +99,71 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
   };
 
   return (
-    <main className="buyerly-welcome">
-      <section className="buyerly-welcome__form-panel">
-        <div className="buyerly-welcome__content">
-          <BuyerlyBrand compact />
-          {step === 'profile' ? (
-            <form onSubmit={submitProfile}>
-              <h1>Set up your profile</h1>
-              <p>Choose how you’ll appear in Buyerly.</p>
-              <label className="buyerly-welcome-field">
-                <span>Name</span>
-                <input
-                  type="text"
-                  autoComplete="name"
-                  autoFocus
-                  placeholder="Enter your name…"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                />
-              </label>
-              {error && <p className="buyerly-welcome-error" role="alert">{error}</p>}
-              <div className="buyerly-welcome-actions">
-                <button className="buyerly-welcome-primary" type="submit" disabled={busy}>
-                  {busy ? 'Saving…' : 'Continue'}
-                </button>
-              </div>
-            </form>
-          ) : (
-            <div>
-              <h1>Invite teammates</h1>
-              <p>Bring your team into {workspace.name}.</p>
-              <div className="buyerly-welcome-invite-label">
-                <span>Invitations</span>
-                <button type="button" onClick={copyInviteLink}>{copied ? 'Copied' : 'Copy invite link'}</button>
-              </div>
-              <textarea
+    <AuthFrame>
+      <section className="buyerly-auth-card">
+        <BuyerlyBrand />
+        {step === 'profile' ? (
+          <form onSubmit={submitProfile} noValidate>
+            <h1>Set up your profile</h1>
+            <p className="buyerly-auth-copy">Choose how you’ll appear in Buyerly.</p>
+            <label className="buyerly-auth-field buyerly-auth-field--labeled">
+              <span>Name</span>
+              <input
+                className="ui-input"
+                type="text"
+                autoComplete="name"
                 autoFocus
-                aria-label="Invitation email addresses"
+                placeholder="Enter your name…"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                aria-invalid={Boolean(error)}
+              />
+            </label>
+            {error && <p className="buyerly-auth-error" role="alert">{error}</p>}
+            <button className="buyerly-auth-button ui-button ui-button-primary" type="submit" disabled={busy} aria-busy={busy}>
+              {busy ? 'Saving…' : 'Continue'}
+            </button>
+          </form>
+        ) : (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void finishInvites(false);
+            }}
+            noValidate
+          >
+            <h1>Invite teammates</h1>
+            <p className="buyerly-auth-copy">Bring your team into {workspace.name}.</p>
+            <label className="buyerly-auth-field buyerly-auth-field--labeled">
+              <span>Invitation email addresses</span>
+              <textarea
+                className="ui-input w-full"
+                autoFocus
+                rows={4}
                 placeholder="email@company.com, teammate@company.com"
                 value={emails}
                 onChange={(event) => setEmails(event.target.value)}
+                aria-invalid={Boolean(error)}
               />
-              {error && <p className="buyerly-welcome-error" role="alert">{error}</p>}
-              <div className="buyerly-welcome-actions">
-                <button type="button" className="buyerly-welcome-skip" onClick={() => finishInvites(true)} disabled={busy}>
-                  Skip
-                </button>
-                <button
-                  type="button"
-                  className="buyerly-welcome-primary"
-                  onClick={() => finishInvites(false)}
-                  disabled={busy || parsedEmails.length === 0}
-                >
-                  {busy ? 'Sending…' : 'Send invitations'}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="buyerly-welcome-progress" aria-label={`Step ${step === 'profile' ? 1 : 2} of 2`}>
-          <span data-active="true" />
-          <span data-active={step === 'invites' ? 'true' : 'false'} />
-        </div>
+            </label>
+            <button className="buyerly-auth-text-button" type="button" onClick={copyInviteLink}>
+              {copied ? 'Copied invite link' : 'Copy invite link'}
+            </button>
+            {error && <p className="buyerly-auth-error" role="alert">{error}</p>}
+            <button
+              className="buyerly-auth-button ui-button ui-button-primary"
+              type="submit"
+              disabled={busy || parsedEmails.length === 0}
+              aria-busy={busy}
+            >
+              {busy ? 'Sending…' : 'Send invitations'}
+            </button>
+            <button className="buyerly-auth-text-button" type="button" onClick={() => finishInvites(true)} disabled={busy}>
+              Skip for now
+            </button>
+          </form>
+        )}
       </section>
-      <aside className="buyerly-welcome__visual" aria-hidden="true">
-        <div className="buyerly-welcome__glow" />
-        <div className="buyerly-welcome__wordmark">
-          <img src="/buyerly-logo.png" alt="" />
-          <span>Buyerly</span>
-        </div>
-        <div className="buyerly-welcome__preview">
-          <span>Campaign performance</span>
-          <strong>+24.8%</strong>
-          <i />
-          <i />
-          <i />
-        </div>
-      </aside>
-    </main>
+    </AuthFrame>
   );
 };
