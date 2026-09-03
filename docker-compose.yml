@@ -18,7 +18,7 @@ x-app: &app
     WEBAPP_URL: ${WEBAPP_URL:-https://buyerly.app}
     TZ: UTC
   volumes:
-    - ./logs:/app/logs
+    - ./logs:/app/logs:z
   restart: unless-stopped
   logging: *default-logging
 
@@ -76,7 +76,7 @@ services:
     expose:
       - "8080"
     volumes:
-      - ./logs:/app/logs
+      - ./logs:/app/logs:z
       - buyerly-uploads:/app/webapp/uploads
     depends_on:
       migrate:
