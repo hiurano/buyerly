@@ -332,7 +332,7 @@ export const CampaignsView: React.FC = () => {
             </h2>
           </div>
           <button
-            className="ui-button flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-transparent bg-transparent px-2.5 text-[13px] font-medium text-[var(--text-secondary)] shadow-none outline-none transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)]"
+            className="inline-flex h-7 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-transparent bg-transparent pl-2 pr-2.5 text-[12px] font-medium text-[var(--text-secondary)] shadow-none outline-none transition-colors duration-150 ease-out hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] active:duration-0 focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)] cursor-default select-none"
             type="button"
             onClick={openMetaDialog}
           >
@@ -447,11 +447,12 @@ export const CampaignsView: React.FC = () => {
         {metaAccounts && metaAccounts.length === 0 ? (
           <section className="ui-empty-state flex flex-1 items-center justify-center" aria-label="Подключение рекламных кабинетов">
             <button
-              className="ui-button ui-button-primary inline-flex h-11 items-center justify-center rounded-lg border border-[var(--text-primary)] bg-[var(--text-primary)] px-5 text-[14px] font-medium text-[var(--bg-canvas)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
+              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full bg-[#5e6ad2] px-3.5 text-[12px] font-medium text-white shadow-[0_1px_1px_rgba(0,0,0,0.04),0_3px_6px_-2px_rgba(0,0,0,0.02)] transition-colors duration-150 ease-out hover:bg-[#6875e5] active:duration-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] cursor-default select-none"
               type="button"
               onClick={openAccountSelection}
             >
-              Connect Facebook
+              <LinearPlusIcon size={14} />
+              <span>Connect Facebook</span>
             </button>
           </section>
         ) : (
