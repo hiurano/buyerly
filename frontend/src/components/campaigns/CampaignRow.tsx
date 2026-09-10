@@ -112,7 +112,9 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
             />
           )}
           {displayProperties.status !== false && (
-            readOnly || !isDeliveryKnown ? (
+            readOnly ? (
+              <LinearLabelPill label={campaign.statusLabel} />
+            ) : !isDeliveryKnown ? (
               <span
                 className="inline-flex h-5 w-8 items-center justify-center text-[12px] text-[var(--text-muted)]"
                 title="Delivery status is not available in this snapshot"

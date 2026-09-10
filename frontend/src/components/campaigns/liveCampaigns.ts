@@ -28,14 +28,46 @@ export function formatMetricMoney(value: number | null, currency: string): strin
   }
 }
 
+export function formatDailyBudget(value: number, currency: string): string {
+  if (!Number.isFinite(value) || value <= 0) return '—';
+  const money = formatMetricMoney(value, currency);
+  return money === '—' ? money : `${money}/day`;
+}
+
+function humanizeMetaStatus(value: string): string {
+  const normalized = value.trim().toUpperCase();
+  if (!normalized || normalized === 'UNKNOWN') return 'Unknown';
+  if (normalized === 'ACTIVE') return 'Active';
+  if (normalized === 'PAUSED' || normalized.endsWith('_PAUSED')) return 'Paused';
+  return normalized
+    .toLowerCase()
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function campaignDelivery(item: AnalyticsHierarchyItem): Pick<CampaignItem, 'status' | 'statusLabel'> {
+  const rawStatus = item.effective_status || item.status || 'UNKNOWN';
+  const normalized = rawStatus.trim().toUpperCase();
+  return {
+    status: normalized === 'ACTIVE'
+      ? 'active'
+      : normalized === 'PAUSED' || normalized.endsWith('_PAUSED')
+        ? 'paused'
+        : 'unknown',
+    statusLabel: humanizeMetaStatus(rawStatus),
+  };
+}
+
 export function hierarchyCampaignToRow(item: AnalyticsHierarchyItem): CampaignItem {
+  const delivery = campaignDelivery(item);
   return {
     id: item.entity_id,
     identifier: item.entity_id,
     name: item.entity_name || `Campaign ${item.entity_id}`,
     platform: 'Meta',
-    status: 'unknown',
-    budget: '—',
+    ...delivery,
+    budget: formatDailyBudget(item.daily_budget, item.currency),
     leadsCount: item.leads,
     cpa: formatMetricMoney(item.cost_per_lead, item.currency),
     spend: formatMetricMoney(item.spend, item.currency),
