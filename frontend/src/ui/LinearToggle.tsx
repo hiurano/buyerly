@@ -3,7 +3,7 @@ import { Tooltip } from './Tooltip';
 
 interface LinearToggleProps {
   checked: boolean;
-  onChange: (checked: boolean) => void;
+  onChange?: (checked: boolean) => void;
   tooltipContent?: string;
   disabled?: boolean;
   className?: string;
@@ -19,17 +19,20 @@ export const LinearToggle: React.FC<LinearToggleProps> = ({
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!disabled) {
+    if (!disabled && onChange) {
       onChange(!checked);
     }
   };
 
   const defaultTooltip = checked ? 'Pause campaign' : 'Resume campaign';
+  const accessibleLabel = tooltipContent || defaultTooltip;
 
   const toggleElement = (
     <div
       role="switch"
       aria-checked={checked}
+      aria-disabled={disabled}
+      aria-label={accessibleLabel}
       tabIndex={-1}
       onClick={handleClick}
       style={{
@@ -57,6 +60,8 @@ export const LinearToggle: React.FC<LinearToggleProps> = ({
         tabIndex={-1}
         checked={checked}
         aria-checked={checked}
+        aria-label={accessibleLabel}
+        disabled={disabled}
         onChange={() => {}}
         className="sr-only"
       />

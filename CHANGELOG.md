@@ -14,6 +14,7 @@
 
 ### Changed
 
+- В live read-only таблице Ads Manager восстановлена прежняя компактная геометрия campaign rows: статус снова отображается штатным 28px toggle, выровненным с колонкой Name и заблокированным до подключения управляющего API.
 - Campaign rows получили реальные read-only status/effective status и поддерживаемый дневной campaign budget; ошибки hierarchy sync больше не скрываются за полностью healthy-состоянием кабинета.
 - Из production-состояния Ads Manager удалены fixture campaigns, ad sets, ads и группы; неподтверждённые status, budget и ROI скрыты, а write-controls и ещё не подключённые уровни Ad sets/Ads недоступны до отдельных API-этапов.
 - UI-контракт и инструкции разработчика синхронизированы с фактическим production React/Vite frontend: canonical tokens находятся в `frontend/src/styles/tokens.css`, shared primitives — в `frontend/src/ui/`, а `webapp/` закреплён как legacy-код без новой authenticated-функциональности.
