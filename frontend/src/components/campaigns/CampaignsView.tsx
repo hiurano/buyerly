@@ -6,17 +6,15 @@ import type {
   MetaConnection,
 } from '@/lib/types';
 import { useAppStore } from '@/store/useAppStore';
+import type { AdsManagerEntity } from '@/store/useAppStore';
 import { CampaignRow } from './CampaignRow';
+import { AdSetRow } from './AdSetRow';
+import { AdRow } from './AdRow';
+import { DisplayOptionsPopover } from './DisplayOptionsPopover';
 import { MetaConnectionDialog } from './MetaConnectionDialog';
 import { Button } from '@/ui/Button';
 import { Tooltip } from '@/ui/Tooltip';
 import { LinearTabs } from '@/ui/LinearTabs';
-import {
-  LinearDataListColumnHeader,
-  LinearDataListStack,
-  LinearDataListToolbar,
-  LinearDataListViewport,
-} from '@/ui/LinearDataList';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,18 +22,43 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
-import { getAdsManagerColumns, getAdsManagerTableMinWidth } from './tableColumns';
+import {
+  LinearDataListColumnHeader,
+  LinearDataListStack,
+  LinearDataListToolbar,
+  LinearDataListViewport,
+} from '@/ui/LinearDataList';
+import {
+  ActiveFilterFormula,
+  FilteredEmptyState,
+  LinearFilterButton,
+  LinearFilterMenu,
+} from '@/components/filters/LinearFilter';
+import type { FilterMenuMode } from '@/components/filters/LinearFilter';
+import { createStatusFilterFields } from '@/components/filters/filterCatalogs';
+import { applyFilterClauses } from '@/components/filters/filterModel';
+import type { FilterClause } from '@/components/filters/filterModel';
 import {
   LinearPlusIcon,
   LinearSidebarLeftToggleIcon,
+  LinearSlidersIcon,
 } from '@/icons/LinearIcons';
+import { getAdsManagerColumns, getAdsManagerTableMinWidth } from './tableColumns';
 import {
   eligibleMetaAccounts,
+  hierarchyAdSetToRow,
+  hierarchyAdToRow,
   hierarchyCampaignToRow,
   metaAccountLabel,
 } from './liveCampaigns';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
+
+interface OpenFilterMenu {
+  mode: FilterMenuMode;
+  anchor: HTMLElement;
+  fieldId?: string;
+}
 
 function requestErrorMessage(error: unknown): string {
   if (error instanceof ApiError || error instanceof Error) return error.message;
@@ -61,24 +84,17 @@ const DataState: React.FC<DataStateProps> = ({
   secondaryLabel,
   onSecondary,
 }) => (
-  <section
-    className="flex min-h-52 flex-1 items-center justify-center px-6 text-center"
-    role={role}
-  >
+  <section className="flex min-h-52 flex-1 items-center justify-center px-6 text-center" role={role}>
     <div className="max-w-md">
       <h3 className="text-[14px] font-medium text-[var(--text-primary)]">{title}</h3>
       <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--text-tertiary)]">{detail}</p>
       {(actionLabel || secondaryLabel) && (
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           {actionLabel && onAction && (
-            <Button variant="primary" onClick={onAction}>
-              {actionLabel}
-            </Button>
+            <Button variant="primary" onClick={onAction}>{actionLabel}</Button>
           )}
           {secondaryLabel && onSecondary && (
-            <Button onClick={onSecondary}>
-              {secondaryLabel}
-            </Button>
+            <Button onClick={onSecondary}>{secondaryLabel}</Button>
           )}
         </div>
       )}
@@ -86,18 +102,34 @@ const DataState: React.FC<DataStateProps> = ({
   </section>
 );
 
+const entityLabels: Record<AdsManagerEntity, { plural: string; singular: string }> = {
+  campaigns: { plural: 'campaigns', singular: 'campaign' },
+  adsets: { plural: 'ad sets', singular: 'ad set' },
+  ads: { plural: 'ads', singular: 'ad' },
+};
+
 export const CampaignsView: React.FC = () => {
   const {
+    campaignFilterTab,
+    setCampaignFilterTab,
+    adsManagerFilters,
+    setAdsManagerFilters,
     clearAdsManagerQuickFilter,
     displayOrdering,
     setDisplayOrdering,
     displayProperties,
+    isDisplayOptionsOpen,
+    toggleDisplayOptions,
+    setIsDisplayOptionsOpen,
     clearCampaignSelection,
     isSidebarCollapsed,
     toggleSidebarCollapsed,
   } = useAppStore();
 
   const requestGenerationRef = useRef(0);
+  const filterButtonRef = useRef<HTMLButtonElement>(null);
+  const displayOptionsButtonRef = useRef<HTMLButtonElement>(null);
+  const [openFilterMenu, setOpenFilterMenu] = useState<OpenFilterMenu | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [metaAccounts, setMetaAccounts] = useState<MetaAccount[]>([]);
   const [metaConnections, setMetaConnections] = useState<MetaConnection[]>([]);
@@ -105,9 +137,11 @@ export const CampaignsView: React.FC = () => {
   const [accountsError, setAccountsError] = useState('');
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [campaigns, setCampaigns] = useState<ReturnType<typeof hierarchyCampaignToRow>[]>([]);
-  const [campaignsState, setCampaignsState] = useState<LoadState>('idle');
-  const [campaignsError, setCampaignsError] = useState('');
-  const [campaignReloadKey, setCampaignReloadKey] = useState(0);
+  const [adSets, setAdSets] = useState<ReturnType<typeof hierarchyAdSetToRow>[]>([]);
+  const [ads, setAds] = useState<ReturnType<typeof hierarchyAdToRow>[]>([]);
+  const [hierarchyState, setHierarchyState] = useState<LoadState>('idle');
+  const [hierarchyError, setHierarchyError] = useState('');
+  const [hierarchyReloadKey, setHierarchyReloadKey] = useState(0);
   const [isMetaDialogOpen, setIsMetaDialogOpen] = useState(false);
   const [returnedConnectionId, setReturnedConnectionId] = useState<number | null>(
     Number(new URLSearchParams(window.location.search).get('meta_connection')) || null,
@@ -124,7 +158,7 @@ export const CampaignsView: React.FC = () => {
       const eligibleAccounts = eligibleMetaAccounts(accounts);
       setMetaAccounts(eligibleAccounts);
       setMetaConnections(connections);
-      setCampaignsState(eligibleAccounts.length > 0 ? 'loading' : 'idle');
+      setHierarchyState(eligibleAccounts.length > 0 ? 'loading' : 'idle');
       setSelectedAccountId((current) => {
         if (current && eligibleAccounts.some((account) => account.account_id === current)) {
           return current;
@@ -150,32 +184,78 @@ export const CampaignsView: React.FC = () => {
     const generation = ++requestGenerationRef.current;
     clearCampaignSelection();
     setCampaigns([]);
-    setCampaignsError('');
+    setAdSets([]);
+    setAds([]);
+    setHierarchyError('');
     if (!selectedAccountId) {
-      setCampaignsState('idle');
+      setHierarchyState('idle');
       return undefined;
     }
 
-    setCampaignsState('loading');
-    const path =
-      `/api/analytics/hierarchy?parent_id=${encodeURIComponent(selectedAccountId)}` +
-      '&level=campaign&period=today';
-    void apiRequest<AnalyticsHierarchyResponse>(path)
-      .then((response) => {
+    setHierarchyState('loading');
+    const hierarchyRequest = (level: 'campaign' | 'adset' | 'ad') =>
+      apiRequest<AnalyticsHierarchyResponse>(
+        `/api/analytics/hierarchy?parent_id=${encodeURIComponent(selectedAccountId)}` +
+        `&level=${level}&period=today`,
+      );
+
+    void Promise.all([
+      hierarchyRequest('campaign'),
+      hierarchyRequest('adset'),
+      hierarchyRequest('ad'),
+    ])
+      .then(([campaignResponse, adSetResponse, adResponse]) => {
         if (generation !== requestGenerationRef.current) return;
-        setCampaigns(response.items.map(hierarchyCampaignToRow));
-        setCampaignsState('ready');
+        const campaignRows = campaignResponse.items.map(hierarchyCampaignToRow);
+        const campaignNames = new Map(campaignRows.map((campaign) => [campaign.id, campaign.name]));
+        const adSetRows = adSetResponse.items.map((item) => hierarchyAdSetToRow(item, campaignNames));
+        const adSetsById = new Map(adSetRows.map((adSet) => [adSet.id, adSet]));
+        setCampaigns(campaignRows);
+        setAdSets(adSetRows);
+        setAds(adResponse.items.map((item) => hierarchyAdToRow(item, adSetsById)));
+        setHierarchyState('ready');
       })
       .catch((error) => {
         if (generation !== requestGenerationRef.current) return;
-        setCampaignsError(requestErrorMessage(error));
-        setCampaignsState('error');
+        setHierarchyError(requestErrorMessage(error));
+        setHierarchyState('error');
       });
 
     return () => {
       requestGenerationRef.current += 1;
     };
-  }, [campaignReloadKey, clearCampaignSelection, selectedAccountId]);
+  }, [hierarchyReloadKey, clearCampaignSelection, selectedAccountId]);
+
+  useEffect(() => {
+    setOpenFilterMenu(null);
+    setIsDisplayOptionsOpen(false);
+    clearCampaignSelection();
+  }, [campaignFilterTab, clearCampaignSelection, setIsDisplayOptionsOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const active = document.activeElement as HTMLElement | null;
+      const tag = active?.tagName.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || active?.isContentEditable) return;
+
+      if ((event.key === 'f' || event.key === 'F') && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        event.preventDefault();
+        setIsDisplayOptionsOpen(false);
+        if (filterButtonRef.current) {
+          setOpenFilterMenu((current) => current ? null : {
+            mode: 'root',
+            anchor: filterButtonRef.current as HTMLElement,
+          });
+        }
+      } else if (event.key === 'v' || event.key === 'V') {
+        event.preventDefault();
+        setOpenFilterMenu(null);
+        toggleDisplayOptions();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [setIsDisplayOptionsOpen, toggleDisplayOptions]);
 
   const clearMetaCallback = () => {
     window.history.replaceState({}, '', window.location.pathname);
@@ -192,53 +272,111 @@ export const CampaignsView: React.FC = () => {
     openMetaDialog();
   };
 
-  const selectedAccount = metaAccounts.find(
-    (account) => account.account_id === selectedAccountId,
-  );
+  const selectedAccount = metaAccounts.find((account) => account.account_id === selectedAccountId);
   const selectAccount = (accountId: string) => {
+    if (accountId === selectedAccountId) return;
     requestGenerationRef.current += 1;
-    clearCampaignSelection();
-    setCampaigns([]);
-    setCampaignsError('');
-    setCampaignsState('loading');
+    setHierarchyState('loading');
     setSelectedAccountId(accountId);
   };
-  const supportedProperties = useMemo(
-    () => ({
-      ...displayProperties,
-      status: true,
-      budget: true,
-      roi: false,
-      rules: false,
-      group: false,
-      created: false,
-    }),
-    [displayProperties],
-  );
-  const parseMetric = (value: string) =>
-    Number.parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
-  const directionFactor = sortDirection === 'asc' ? 1 : -1;
-  let filteredCampaigns = campaigns;
-  if (displayOrdering === 'name') {
-    filteredCampaigns = [...filteredCampaigns].sort(
-      (a, b) => a.name.localeCompare(b.name) * directionFactor,
-    );
-  } else if (displayOrdering === 'spend') {
-    filteredCampaigns = [...filteredCampaigns].sort(
-      (a, b) => (parseMetric(a.spend) - parseMetric(b.spend)) * directionFactor,
-    );
-  } else if (displayOrdering === 'results') {
-    filteredCampaigns = [...filteredCampaigns].sort(
-      (a, b) => (a.leadsCount - b.leadsCount) * directionFactor,
-    );
-  } else if (displayOrdering === 'cpa') {
-    filteredCampaigns = [...filteredCampaigns].sort(
-      (a, b) => (parseMetric(a.cpa) - parseMetric(b.cpa)) * directionFactor,
-    );
-  }
 
-  const tableColumns = getAdsManagerColumns('campaigns', supportedProperties);
+  const campaignFilterFields = useMemo(() => createStatusFilterFields(campaigns), [campaigns]);
+  const adSetFilterFields = useMemo(() => createStatusFilterFields(adSets), [adSets]);
+  const adFilterFields = useMemo(() => createStatusFilterFields(ads), [ads]);
+  const currentFilters = adsManagerFilters[campaignFilterTab];
+  const currentFilterFields = (
+    campaignFilterTab === 'campaigns'
+      ? campaignFilterFields
+      : campaignFilterTab === 'adsets'
+        ? adSetFilterFields
+        : adFilterFields
+  ) as unknown as typeof campaignFilterFields;
+  const updateCurrentFilters = (clauses: FilterClause[]) =>
+    setAdsManagerFilters(campaignFilterTab, clauses);
+  const showFilterMenu = (mode: FilterMenuMode, anchor: HTMLElement, fieldId?: string) =>
+    setOpenFilterMenu({ mode, anchor, fieldId });
+
+  const directionFactor = sortDirection === 'asc' ? 1 : -1;
+  const supportsBudget = campaignFilterTab !== 'ads';
+  const supportedOrdering = new Set([
+    'manual',
+    'name',
+    'spend',
+    'results',
+    'cpa',
+    ...(supportsBudget ? ['budget'] : []),
+  ]);
+  const effectiveOrdering = supportedOrdering.has(displayOrdering) ? displayOrdering : 'manual';
+  const parseMetric = (value: string) => Number.parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
+  const sortRows = <T extends { name: string; spend: string; leadsCount: number; cpa: string; budget?: string }>(rows: T[]) => {
+    const sorted = [...rows];
+    if (effectiveOrdering === 'name') {
+      sorted.sort((a, b) => a.name.localeCompare(b.name) * directionFactor);
+    } else if (effectiveOrdering === 'spend') {
+      sorted.sort((a, b) => (parseMetric(a.spend) - parseMetric(b.spend)) * directionFactor);
+    } else if (effectiveOrdering === 'results') {
+      sorted.sort((a, b) => (a.leadsCount - b.leadsCount) * directionFactor);
+    } else if (effectiveOrdering === 'cpa') {
+      sorted.sort((a, b) => (parseMetric(a.cpa) - parseMetric(b.cpa)) * directionFactor);
+    } else if (effectiveOrdering === 'budget') {
+      sorted.sort((a, b) => (parseMetric(a.budget || '') - parseMetric(b.budget || '')) * directionFactor);
+    }
+    return sorted;
+  };
+
+  const filteredCampaigns = sortRows(applyFilterClauses(campaigns, campaignFilterFields, adsManagerFilters.campaigns));
+  const filteredAdSets = sortRows(applyFilterClauses(adSets, adSetFilterFields, adsManagerFilters.adsets));
+  const filteredAds = sortRows(applyFilterClauses(ads, adFilterFields, adsManagerFilters.ads));
+  const totalCurrent = campaignFilterTab === 'campaigns' ? campaigns.length : campaignFilterTab === 'adsets' ? adSets.length : ads.length;
+  const filteredCurrentCount = campaignFilterTab === 'campaigns' ? filteredCampaigns.length : campaignFilterTab === 'adsets' ? filteredAdSets.length : filteredAds.length;
+
+  const supportedProperties = useMemo(() => ({
+    ...displayProperties,
+    status: displayProperties.status !== false,
+    budget: supportsBudget && displayProperties.budget !== false,
+    results: displayProperties.results !== false,
+    cpa: displayProperties.cpa !== false,
+    spend: displayProperties.spend !== false,
+    ctr: campaignFilterTab === 'ads' && displayProperties.ctr !== false,
+    cpc: campaignFilterTab === 'ads' && displayProperties.cpc !== false,
+    roi: false,
+    rules: false,
+    group: false,
+    created: false,
+  }), [campaignFilterTab, displayProperties, supportsBudget]);
+  const tableColumns = getAdsManagerColumns(campaignFilterTab, supportedProperties);
   const tableMinWidth = getAdsManagerTableMinWidth(tableColumns);
+
+  const renderRows = () => {
+    if (currentFilters.length > 0 && filteredCurrentCount === 0) {
+      return (
+        <FilteredEmptyState
+          noun={entityLabels[campaignFilterTab].plural}
+          hiddenCount={totalCurrent}
+          onClear={() => updateCurrentFilters([])}
+        />
+      );
+    }
+    if (campaignFilterTab === 'adsets') {
+      return filteredAdSets.map((adSet) => (
+        <AdSetRow key={adSet.id} adSet={adSet} properties={supportedProperties} readOnly />
+      ));
+    }
+    if (campaignFilterTab === 'ads') {
+      return filteredAds.map((ad) => (
+        <AdRow key={ad.id} ad={ad} properties={supportedProperties} readOnly />
+      ));
+    }
+    return filteredCampaigns.map((campaign) => (
+      <CampaignRow
+        key={campaign.id}
+        campaign={campaign}
+        properties={supportedProperties}
+        readOnly
+        showIdentifier
+      />
+    ));
+  };
 
   const renderData = () => {
     if (accountsState === 'loading') {
@@ -261,35 +399,35 @@ export const CampaignsView: React.FC = () => {
       return (
         <DataState
           title="Connect an ad account"
-          detail="Connect Facebook and import at least one account to see real campaign data. Automation stays off after import."
+          detail="Connect Facebook and import at least one account to see real Meta entities. Automation stays off after import."
           actionLabel="Connect Facebook"
           onAction={openAccountSelection}
         />
       );
     }
-    if (campaignsState === 'loading') {
-      return <DataState title="Loading campaigns…" detail="Reading saved Meta campaign inventory and today's metrics." />;
+    if (hierarchyState === 'loading') {
+      return <DataState title="Loading Ads Manager…" detail="Reading saved Meta campaigns, ad sets, ads, and current metrics." />;
     }
-    if (campaignsState === 'error') {
+    if (hierarchyState === 'error') {
       return (
         <DataState
-          title="Couldn't load campaigns"
-          detail={campaignsError}
+          title="Couldn't load Ads Manager"
+          detail={hierarchyError}
           role="alert"
           actionLabel="Retry"
-          onAction={() => setCampaignReloadKey((value) => value + 1)}
+          onAction={() => setHierarchyReloadKey((value) => value + 1)}
           secondaryLabel="Connect Facebook"
           onSecondary={openMetaDialog}
         />
       );
     }
-    if (campaigns.length === 0) {
+    if (totalCurrent === 0) {
       return (
         <DataState
-          title="No campaigns in this ad account"
-          detail="Meta returned no campaign inventory for this imported account. Campaigns with zero activity today are included when they exist."
+          title={`No ${entityLabels[campaignFilterTab].plural} in this ad account`}
+          detail={`Meta returned no ${entityLabels[campaignFilterTab].singular} inventory for this imported account. Zero-activity entities are included when they exist.`}
           actionLabel="Retry"
-          onAction={() => setCampaignReloadKey((value) => value + 1)}
+          onAction={() => setHierarchyReloadKey((value) => value + 1)}
         />
       );
     }
@@ -300,28 +438,18 @@ export const CampaignsView: React.FC = () => {
           <LinearDataListColumnHeader
             columns={tableColumns}
             minWidth={tableMinWidth}
-            sortKey={displayOrdering === 'manual' ? undefined : displayOrdering}
+            sortKey={effectiveOrdering === 'manual' ? undefined : effectiveOrdering}
             sortDirection={sortDirection}
             onSort={(columnId) => {
-              if (displayOrdering === columnId) {
-                setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'));
+              if (effectiveOrdering === columnId) {
+                setSortDirection((current) => current === 'asc' ? 'desc' : 'asc');
               } else {
                 setDisplayOrdering(columnId as typeof displayOrdering);
                 setSortDirection(columnId === 'name' ? 'asc' : 'desc');
               }
             }}
           />
-          <LinearDataListStack>
-            {filteredCampaigns.map((campaign) => (
-              <CampaignRow
-                key={campaign.id}
-                campaign={campaign}
-                properties={supportedProperties}
-                readOnly
-                showIdentifier
-              />
-            ))}
-          </LinearDataListStack>
+          <LinearDataListStack>{renderRows()}</LinearDataListStack>
         </div>
       </LinearDataListViewport>
     );
@@ -343,25 +471,17 @@ export const CampaignsView: React.FC = () => {
                 marginRight: isSidebarCollapsed ? '6px' : '0px',
                 pointerEvents: isSidebarCollapsed ? 'auto' : 'none',
                 overflow: 'hidden',
-                transition:
-                  'width 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), margin-right 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
+                transition: 'width 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), margin-right 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
               }}
               className="flex shrink-0 items-center justify-center"
             >
               <Tooltip content="Open sidebar" shortcut="[" side="bottom" sideOffset={6}>
-                <button
-                  type="button"
-                  onClick={toggleSidebarCollapsed}
-                  className="linear-icon-btn"
-                  aria-label="Open sidebar"
-                >
+                <button type="button" onClick={toggleSidebarCollapsed} className="linear-icon-btn" aria-label="Open sidebar">
                   <LinearSidebarLeftToggleIcon size={14} isOpen={false} aria-hidden="true" />
                 </button>
               </Tooltip>
             </div>
-            <h2 className="text-[13px] font-medium tracking-[-0.01em] text-[var(--text-secondary)]">
-              Ads Manager
-            </h2>
+            <h2 className="text-[13px] font-medium tracking-[-0.01em] text-[var(--text-secondary)]">Ads Manager</h2>
           </div>
           <button
             className="inline-flex h-7 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-[12px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)]"
@@ -374,53 +494,82 @@ export const CampaignsView: React.FC = () => {
         </div>
 
         <LinearDataListToolbar>
-          <div className="flex min-w-0 items-center gap-3">
-            <LinearTabs
-              tabs={[
-                { id: 'campaigns', label: 'Campaigns', count: campaignsState === 'ready' ? campaigns.length : undefined },
-                { id: 'adsets', label: 'Ad sets', disabled: true },
-                { id: 'ads', label: 'Ads', disabled: true },
-              ]}
-              activeTabId="campaigns"
-              onChange={() => undefined}
-              aria-label="Ads Manager level"
-            />
-            <span className="hidden text-[11px] text-[var(--text-muted)] md:inline">Today · read-only</span>
-          </div>
+          <LinearTabs
+            tabs={[
+              { id: 'campaigns', label: 'Campaigns', count: hierarchyState === 'ready' ? campaigns.length : undefined },
+              { id: 'adsets', label: 'Ad sets', count: hierarchyState === 'ready' ? adSets.length : undefined },
+              { id: 'ads', label: 'Ads', count: hierarchyState === 'ready' ? ads.length : undefined },
+            ]}
+            activeTabId={campaignFilterTab}
+            onChange={(id) => setCampaignFilterTab(id as AdsManagerEntity)}
+            aria-label="Ads Manager level"
+          />
 
           <div className="flex min-w-0 items-center gap-1.5">
+            <Tooltip content="Add filter" shortcut="F">
+              <LinearFilterButton
+                ref={filterButtonRef}
+                active={currentFilters.length > 0}
+                open={Boolean(openFilterMenu)}
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  setIsDisplayOptionsOpen(false);
+                  setOpenFilterMenu((current) => current ? null : { mode: 'root', anchor: event.currentTarget });
+                }}
+              />
+            </Tooltip>
+            <Tooltip content="Display options" shortcut="V">
+              <button
+                ref={displayOptionsButtonRef}
+                type="button"
+                aria-label="Display options"
+                data-active={isDisplayOptionsOpen ? 'true' : undefined}
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={() => {
+                  setOpenFilterMenu(null);
+                  toggleDisplayOptions();
+                }}
+                className={`group relative flex h-[28px] w-[28px] items-center justify-center rounded-full border border-transparent outline-none transition-all ${isDisplayOptionsOpen ? 'bg-[var(--item-active-bg)] text-[var(--text-primary)]' : 'bg-transparent text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'}`}
+              >
+                <LinearSlidersIcon size={14} />
+              </button>
+            </Tooltip>
+            <DisplayOptionsPopover
+              isOpen={isDisplayOptionsOpen}
+              onClose={() => setIsDisplayOptionsOpen(false)}
+              anchorRef={displayOptionsButtonRef}
+              entity={campaignFilterTab}
+            />
+
             {selectedAccount && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="max-w-[120px] truncate rounded-full border border-[var(--color-border-secondary)] px-2.5 py-1 text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)] sm:max-w-[220px] lg:max-w-[280px]"
-                    aria-label="Select ad account"
-                    title={metaAccountLabel(selectedAccount)}
-                  >
-                    {metaAccountLabel(selectedAccount)} ▾
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  style={{ width: 'min(360px, calc(100vw - 32px))' }}
-                >
-                  <DropdownMenuLabel>Ad account</DropdownMenuLabel>
-                  {metaAccounts.map((account) => (
-                    <DropdownMenuItem
-                      key={account.account_id}
-                      onSelect={() => selectAccount(account.account_id)}
-                    >
-                      <span className="truncate">{metaAccountLabel(account)}</span>
-                      {account.account_id === selectedAccountId && <span aria-hidden="true">✓</span>}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <DropdownMenuAccount
+                account={selectedAccount}
+                accounts={metaAccounts}
+                selectedAccountId={selectedAccountId}
+                onSelect={selectAccount}
+              />
             )}
           </div>
         </LinearDataListToolbar>
+
+        <ActiveFilterFormula
+          fields={currentFilterFields}
+          clauses={currentFilters}
+          onChange={updateCurrentFilters}
+          onOpenMenu={showFilterMenu}
+        />
       </header>
+
+      <LinearFilterMenu
+        isOpen={Boolean(openFilterMenu)}
+        mode={openFilterMenu?.mode ?? 'root'}
+        anchorElement={openFilterMenu?.anchor ?? null}
+        fieldId={openFilterMenu?.fieldId}
+        fields={currentFilterFields}
+        clauses={currentFilters}
+        onChange={updateCurrentFilters}
+        onClose={() => setOpenFilterMenu(null)}
+      />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">{renderData()}</div>
 
@@ -435,9 +584,47 @@ export const CampaignsView: React.FC = () => {
           }
         }}
         onImported={() => {
-          void refreshMetaAccounts().then(() => setCampaignReloadKey((value) => value + 1));
+          void refreshMetaAccounts().then(() => setHierarchyReloadKey((value) => value + 1));
         }}
       />
     </div>
+  );
+};
+
+interface DropdownMenuAccountProps {
+  account: MetaAccount;
+  accounts: MetaAccount[];
+  selectedAccountId: string | null;
+  onSelect: (accountId: string) => void;
+}
+
+const DropdownMenuAccount: React.FC<DropdownMenuAccountProps> = ({
+  account,
+  accounts,
+  selectedAccountId,
+  onSelect,
+}) => {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="max-w-[120px] truncate rounded-full border border-[var(--color-border-secondary)] px-2.5 py-1 text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)] sm:max-w-[220px] lg:max-w-[280px]"
+          aria-label="Select ad account"
+          title={metaAccountLabel(account)}
+        >
+          {metaAccountLabel(account)} ▾
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" style={{ width: 'min(360px, calc(100vw - 32px))' }}>
+        <DropdownMenuLabel>Ad account</DropdownMenuLabel>
+        {accounts.map((candidate) => (
+          <DropdownMenuItem key={candidate.account_id} onSelect={() => onSelect(candidate.account_id)}>
+            <span className="truncate">{metaAccountLabel(candidate)}</span>
+            {candidate.account_id === selectedAccountId && <span aria-hidden="true">✓</span>}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };

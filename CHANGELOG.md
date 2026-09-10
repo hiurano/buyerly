@@ -4,6 +4,7 @@
 
 ### Added
 
+- Ads Manager снова показывает рабочие вкладки Campaigns, Ad sets и Ads на полном Meta inventory, включая paused-сущности без активности; для каждого live-уровня возвращены фильтр по статусу и настройки поддерживаемых колонок и сортировки.
 - Ads Manager теперь сохраняет полный Meta campaign inventory и показывает кампании без активности за today, присоединяя дневные Insights по campaign ID и используя локальную дату рекламного кабинета.
 - Ads Manager получил первый live read-only контур: выбор активного импортированного Meta-кабинета, загрузку сохранённых campaign facts за today и честные loading, empty, error и retry состояния без подстановки демонстрационных метрик.
 - В новом Ads Manager добавлен минимальный Facebook OAuth flow: единая кнопка «Подключить Facebook» в шапке и пустом состоянии, выбор входа через Facebook или одноразовой ссылки в диалоге, выбор обнаруженных кабинетов и импорт без включения автоправил.
@@ -14,6 +15,7 @@
 
 ### Changed
 
+- Из toolbar Ads Manager удалена внутренняя подпись `Today · read-only`; неподключённые board/grouping/ROI и write-actions не выдаются за рабочие controls.
 - В live read-only таблице Ads Manager восстановлена прежняя компактная геометрия campaign rows: статус снова отображается штатным 28px toggle, выровненным с колонкой Name и заблокированным до подключения управляющего API.
 - Campaign rows получили реальные read-only status/effective status и поддерживаемый дневной campaign budget; ошибки hierarchy sync больше не скрываются за полностью healthy-состоянием кабинета.
 - Из production-состояния Ads Manager удалены fixture campaigns, ad sets, ads и группы; неподтверждённые status, budget и ROI скрыты, а write-controls и ещё не подключённые уровни Ad sets/Ads недоступны до отдельных API-этапов.

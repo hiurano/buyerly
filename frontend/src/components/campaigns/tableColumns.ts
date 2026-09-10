@@ -50,10 +50,12 @@ export const getAdsManagerColumns = (
       }
     }
   } else {
-    columns.push(
-      { id: 'ctr', label: 'CTR', width: '90px', align: 'right' },
-      { id: 'cpc', label: 'CPC', width: '90px', align: 'right' }
-    );
+    if (properties.ctr !== false) {
+      columns.push({ id: 'ctr', label: 'CTR', width: '90px', align: 'right' });
+    }
+    if (properties.cpc !== false) {
+      columns.push({ id: 'cpc', label: 'CPC', width: '90px', align: 'right' });
+    }
     if (properties.results !== false || properties.cpa !== false) {
       const resultsVisible = properties.results !== false;
       const cpaVisible = properties.cpa !== false;

@@ -122,6 +122,8 @@ interface LinearDisplayOptionsProps {
   onToggleProperty: (value: string) => void;
   showEmptyGroups?: boolean;
   onShowEmptyGroupsChange?: (value: boolean) => void;
+  showViewModes?: boolean;
+  showGrouping?: boolean;
 }
 
 export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
@@ -141,6 +143,8 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
   onToggleProperty,
   showEmptyGroups,
   onShowEmptyGroupsChange,
+  showViewModes = true,
+  showGrouping = true,
 }) => {
   const groupingLabel = viewMode === 'board' ? 'Columns' : 'Grouping';
   const subGroupingLabel = viewMode === 'board' ? 'Rows' : 'Sub-grouping';
@@ -150,7 +154,7 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
   return (
     <>
       <section className="linear-display-main-section">
-        <div role="tablist" className="linear-display-tabs">
+        {showViewModes && <div role="tablist" className="linear-display-tabs">
           {(['list', 'board'] as const).map((mode) => (
             <div className="linear-display-tab-slot" key={mode}>
               <button
@@ -174,9 +178,9 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
               </button>
             </div>
           ))}
-        </div>
+        </div>}
 
-        <div className="linear-display-row">
+        {showGrouping && <div className="linear-display-row">
           <span>{groupingLabel}</span>
           <div className="linear-display-row-controls">
             <LinearSelect value={grouping} options={groupingOptions} onChange={onGroupingChange} />
@@ -186,9 +190,9 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
               </svg>
             </button>
           </div>
-        </div>
+        </div>}
 
-        {subGrouping !== undefined && subGroupingOptions && onSubGroupingChange && (
+        {showGrouping && subGrouping !== undefined && subGroupingOptions && onSubGroupingChange && (
           <div className="linear-display-row">
             <span>{subGroupingLabel}</span>
             <LinearSelect value={subGrouping} options={subGroupingOptions} onChange={onSubGroupingChange} />

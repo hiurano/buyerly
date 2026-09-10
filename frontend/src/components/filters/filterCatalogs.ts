@@ -75,6 +75,10 @@ const statusField = <T extends { status: string }>(items: T[]): FilterFieldDefin
   pluralLabel: 'statuses',
 });
 
+export const createStatusFilterFields = <T extends { status: string }>(
+  items: T[],
+): FilterFieldDefinition<T>[] => [statusField(items)];
+
 export const createCampaignFilterFields = ({
   campaigns,
   campaignGroups,

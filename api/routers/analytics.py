@@ -53,8 +53,10 @@ async def get_analytics_hierarchy(
                 "items": [],
             }
 
-        # If requesting campaigns for an account, verify that account belongs to this workspace
-        if level == "campaign":
+        # Account-wide hierarchy views are available only for accounts in the
+        # active workspace. Direct campaign/ad set parents remain protected by
+        # the workspace filter in the fact store.
+        if level == "campaign" or parent_id.startswith("act_"):
             acc_id = parent_id if parent_id.startswith("act_") else f"act_{parent_id}"
             user_acc_ids = {a.account_id for a in accounts}
             if acc_id not in user_acc_ids and parent_id not in user_acc_ids:

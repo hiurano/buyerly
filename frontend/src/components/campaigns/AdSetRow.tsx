@@ -7,13 +7,17 @@ import { getAdsManagerColumns } from './tableColumns';
 
 interface AdSetRowProps {
   adSet: AdSetItem;
+  readOnly?: boolean;
+  properties?: Record<string, boolean>;
 }
 
-export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet }) => {
-  const { toggleAdSetDelivery, selectedCampaignIds, toggleCampaignSelection, displayProperties } = useAppStore();
+export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, properties }) => {
+  const { toggleAdSetDelivery, selectedCampaignIds, toggleCampaignSelection, displayProperties: storedDisplayProperties } = useAppStore();
 
-  const isSelected = selectedCampaignIds.includes(adSet.id);
-  const isDeliveryOn = adSet.status !== 'paused';
+  const displayProperties = properties ?? storedDisplayProperties;
+  const isSelected = !readOnly && selectedCampaignIds.includes(adSet.id);
+  const isDeliveryKnown = adSet.status !== 'unknown';
+  const isDeliveryOn = adSet.status === 'active';
   const isPositiveRoi = adSet.roi.startsWith('+');
   const columns = getAdsManagerColumns('adsets', displayProperties);
 
@@ -21,18 +25,31 @@ export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet }) => {
     <LinearDataListRow
       layout="grid"
       columns={columns}
-      tabIndex={0}
+      tabIndex={readOnly ? undefined : 0}
       selected={isSelected}
-      className="adset-data-row cursor-pointer"
+      className={`adset-data-row ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}
     >
       <div className="flex min-w-0 items-center gap-3">
-        <LinearCheckbox checked={isSelected} onChange={() => toggleCampaignSelection(adSet.id)} />
+        {readOnly ? (
+          <LinearCheckbox checked={false} hidden />
+        ) : (
+          <LinearCheckbox checked={isSelected} onChange={() => toggleCampaignSelection(adSet.id)} />
+        )}
         {displayProperties.status !== false && (
-          <LinearToggle checked={isDeliveryOn} onChange={() => toggleAdSetDelivery(adSet.id)} tooltipContent={isDeliveryOn ? 'Pause ad set' : 'Resume ad set'} />
+          !isDeliveryKnown ? (
+            <span className="inline-flex h-5 w-8 items-center justify-center text-[12px] text-[var(--text-muted)]" aria-label="Delivery status unavailable">—</span>
+          ) : (
+            <LinearToggle
+              checked={isDeliveryOn}
+              onChange={readOnly ? undefined : () => toggleAdSetDelivery(adSet.id)}
+              disabled={readOnly}
+              tooltipContent={readOnly ? `${adSet.statusLabel}. Ad set controls are not connected yet` : isDeliveryOn ? 'Pause ad set' : 'Resume ad set'}
+            />
+          )
         )}
         <div className="min-w-0">
-          <div className="truncate text-[13px] font-medium" style={{ color: isDeliveryOn ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>{adSet.name}</div>
-          <div className="truncate text-[11px] text-[var(--text-muted)]">{adSet.campaignName} · {adSet.audience}</div>
+          <div className="truncate text-[13px] font-medium" style={{ color: isDeliveryKnown && !isDeliveryOn ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>{adSet.name}</div>
+          <div className="truncate text-[11px] text-[var(--text-muted)]">{adSet.campaignName} · {adSet.identifier}</div>
         </div>
       </div>
 

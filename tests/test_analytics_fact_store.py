@@ -341,6 +341,7 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
 
     async def test_hierarchical_drill_down_and_tenant_isolation(self):
         async with self.test_session_maker() as session:
+            self.acc1.timezone_name = "UTC"
             today_str = datetime.now(timezone.utc).date().isoformat()
 
             # Insert hierarchy into Workspace 1
@@ -410,6 +411,28 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(breakdown_w1[0]["entity_id"], "cmp_alpha_1")
             self.assertEqual(breakdown_w1[0]["cost_per_lead"], 8.0)
 
+            # An authorized account parent returns the selected level account-wide.
+            account_adsets = await AnalyticsFactService.get_hierarchy_breakdown(
+                session,
+                workspace_id=self.ws1.id,
+                parent_entity_id=self.acc1.account_id,
+                entity_level="adset",
+                period="today",
+                user_accounts=[self.acc1],
+            )
+            self.assertEqual([item["entity_id"] for item in account_adsets], ["adset_alpha_1"])
+
+            # Existing direct-parent drill-down remains available.
+            direct_adsets = await AnalyticsFactService.get_hierarchy_breakdown(
+                session,
+                workspace_id=self.ws1.id,
+                parent_entity_id="cmp_alpha_1",
+                entity_level="adset",
+                period="today",
+                user_accounts=[self.acc1],
+            )
+            self.assertEqual([item["entity_id"] for item in direct_adsets], ["adset_alpha_1"])
+
             # Verify Tenant Isolation: Workspace 1 query MUST NOT see Workspace 2 campaigns
             breakdown_leak_attempt = await AnalyticsFactService.get_hierarchy_breakdown(
                 session,
@@ -442,11 +465,34 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
                         "effective_status": "PAUSED",
                     },
                 ],
-                # 3. Campaign level insights
+                # 3. Authoritative ad set inventory
+                [
+                    {
+                        "id": "as1",
+                        "name": "AdSet 1",
+                        "campaign_id": "c1",
+                        "status": "ACTIVE",
+                        "effective_status": "ACTIVE",
+                        "daily_budget": "1500",
+                    },
+                    {
+                        "id": "as2",
+                        "name": "Paused ad set without delivery",
+                        "campaign_id": "c2",
+                        "status": "PAUSED",
+                        "effective_status": "PAUSED",
+                    },
+                ],
+                # 4. Authoritative ad inventory
+                [
+                    {"id": "ad1", "name": "Ad 1", "campaign_id": "c1", "adset_id": "as1", "status": "ACTIVE", "effective_status": "ACTIVE"},
+                    {"id": "ad2", "name": "Paused ad without delivery", "campaign_id": "c2", "adset_id": "as2", "status": "PAUSED", "effective_status": "PAUSED"},
+                ],
+                # 5. Campaign level insights
                 [{"campaign_id": "c1", "campaign_name": "Camp 1", "spend": "60.00", "impressions": "3000", "clicks": "120", "actions": [{"action_type": "lead", "value": "6"}]}],
-                # 4. Adset level insights
+                # 6. Adset level insights
                 [{"adset_id": "as1", "adset_name": "AdSet 1", "campaign_id": "c1", "spend": "40.00", "impressions": "2000", "clicks": "80", "actions": []}],
-                # 5. Ad level insights
+                # 7. Ad level insights
                 [{"ad_id": "ad1", "ad_name": "Ad 1", "adset_id": "as1", "spend": "20.00", "impressions": "1000", "clicks": "40", "actions": []}],
             ]
         )
@@ -460,9 +506,9 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
             reporting_date="2026-08-28",
         )
 
-        self.assertEqual(len(facts), 5)
+        self.assertEqual(len(facts), 7)
         levels = [f["entity_level"] for f in facts]
-        self.assertEqual(levels, ["account", "campaign", "campaign", "adset", "ad"])
+        self.assertEqual(levels, ["account", "campaign", "campaign", "adset", "adset", "ad", "ad"])
         self.assertEqual(facts[0]["spend"], 100.0)
         self.assertEqual(facts[0]["leads"], 10)
         self.assertEqual(facts[1]["entity_id"], "c1")
@@ -474,8 +520,15 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(facts[2]["effective_status"], "PAUSED")
         self.assertEqual(facts[3]["entity_id"], "as1")
         self.assertEqual(facts[3]["parent_entity_id"], "c1")
-        self.assertEqual(facts[4]["entity_id"], "ad1")
-        self.assertEqual(facts[4]["parent_entity_id"], "as1")
+        self.assertEqual(facts[3]["daily_budget"], 15.0)
+        self.assertEqual(facts[4]["entity_id"], "as2")
+        self.assertEqual(facts[4]["spend"], 0.0)
+        self.assertEqual(facts[4]["effective_status"], "PAUSED")
+        self.assertEqual(facts[5]["entity_id"], "ad1")
+        self.assertEqual(facts[5]["parent_entity_id"], "as1")
+        self.assertEqual(facts[6]["entity_id"], "ad2")
+        self.assertEqual(facts[6]["spend"], 0.0)
+        self.assertEqual(facts[6]["effective_status"], "PAUSED")
         self.assertTrue(all(fact["date"] == "2026-08-28" for fact in facts))
 
         calls = client._fetch_paginated_data.await_args_list
@@ -484,15 +537,20 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
             calls[1].args[1]["fields"],
             "id,name,status,effective_status,daily_budget",
         )
-        self.assertNotIn("adset_id", calls[2].args[1]["fields"])
-        self.assertNotIn("ad_id", calls[2].args[1]["fields"])
+        self.assertTrue(calls[2].args[0].endswith("/adsets"))
+        self.assertIn("campaign_id", calls[2].args[1]["fields"])
+        self.assertTrue(calls[3].args[0].endswith("/ads"))
         self.assertIn("adset_id", calls[3].args[1]["fields"])
-        self.assertIn("ad_id", calls[4].args[1]["fields"])
+        self.assertNotIn("adset_id", calls[4].args[1]["fields"])
+        self.assertIn("adset_id", calls[5].args[1]["fields"])
+        self.assertIn("ad_id", calls[6].args[1]["fields"])
 
     async def test_hierarchical_insights_preserves_insight_only_campaign(self):
         client = MetaClient()
         client._fetch_paginated_data = AsyncMock(
             side_effect=[
+                [],
+                [],
                 [],
                 [],
                 [{"campaign_id": "removed_1", "campaign_name": "Removed today", "spend": "12.50"}],
@@ -560,6 +618,26 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
                         "impressions": 0,
                         "clicks": 0,
                     },
+                    {
+                        "entity_level": "adset",
+                        "entity_id": "adset_api_zero",
+                        "entity_name": "Paused Ad Set",
+                        "parent_entity_id": "cmp_api_zero",
+                        "date": today_str,
+                        "currency": "USD",
+                        "status": "PAUSED",
+                        "effective_status": "PAUSED",
+                    },
+                    {
+                        "entity_level": "ad",
+                        "entity_id": "ad_api_zero",
+                        "entity_name": "Paused Ad",
+                        "parent_entity_id": "adset_api_zero",
+                        "date": today_str,
+                        "currency": "USD",
+                        "status": "PAUSED",
+                        "effective_status": "PAUSED",
+                    },
                 ],
             )
             await session.commit()
@@ -585,12 +663,24 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(rows_by_id["cmp_api_zero"]["spend"], 0.0)
             self.assertEqual(rows_by_id["cmp_api_zero"]["effective_status"], "PAUSED")
 
+            for level, expected_id in (
+                ("adset", "adset_api_zero"),
+                ("ad", "ad_api_zero"),
+            ):
+                level_res = await ac.get(
+                    f"/api/analytics/hierarchy?parent_id={self.acc1.account_id}&level={level}&period=today",
+                    headers=headers_w1,
+                )
+                self.assertEqual(level_res.status_code, 200)
+                self.assertEqual(level_res.json()["items"][0]["entity_id"], expected_id)
+
             # Query for alien account from another workspace should be rejected (404)
-            res_alien = await ac.get(
-                f"/api/analytics/hierarchy?parent_id={self.acc3.account_id}&level=campaign&period=today",
-                headers=headers_w1,
-            )
-            self.assertEqual(res_alien.status_code, 404)
+            for level in ("campaign", "adset", "ad"):
+                res_alien = await ac.get(
+                    f"/api/analytics/hierarchy?parent_id={self.acc3.account_id}&level={level}&period=today",
+                    headers=headers_w1,
+                )
+                self.assertEqual(res_alien.status_code, 404)
 
     async def test_retention_cleanup(self):
         async with self.test_session_maker() as session:
