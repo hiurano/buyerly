@@ -75,6 +75,7 @@ IconButton, Input, Dialog, EmptyState and Skeleton are required product patterns
 ### Ads Manager
 
 - hierarchy is `Campaigns → Ad sets → Ads` and uses account/campaign data returned by the authenticated workspace API;
+- campaign identity, name, delivery status and supported budget come from Meta inventory, while period metrics come from Insights; a campaign remains visible when its period activity is zero;
 - Meta connection is a real OAuth flow: explanation, Facebook authorization, account discovery, explicit import and result;
 - imported ad accounts are not the same entity as campaigns and must not be rendered as campaign rows;
 - fixtures such as LuckySpin, RoyalBet, NeonSlots and AcePlay are development examples only and must not ship as current workspace data;

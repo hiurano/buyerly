@@ -35,7 +35,7 @@ from meta_api.client import MetaClient
 from rules.engine import RuleEngine, RuleAction, RuleEvaluationResult
 from services.inventory_cache import AdsetInventoryService, PostgreSQLInventoryCache
 from services.account_health import record_account_health
-from services.analytics_store import AnalyticsFactService
+from services.analytics_store import AnalyticsFactService, resolve_account_period_dates
 
 logger = logging.getLogger(__name__)
 
@@ -170,7 +170,11 @@ class MonitoringWorker:
                     insights_by_window[window] = rows
 
             hierarchical_facts = []
+            hierarchy_error = None
             try:
+                reporting_timezone = canonical_timezone_name(
+                    (account_info or {}).get("timezone_name") or account.timezone_name
+                )
                 hierarchical_facts = await self.meta_client.get_hierarchical_insights(
                     account_id=account.account_id,
                     access_token=access_token,
@@ -178,9 +182,14 @@ class MonitoringWorker:
                     currency=currency,
                     account_name=account.name,
                     priority=priority,
+                    reporting_date=resolve_account_period_dates(
+                        reporting_timezone,
+                        "today",
+                    )[0],
                 )
             except Exception as h_err:
                 logger.warning("Failed to collect hierarchical facts for %s: %s", account.account_id, h_err)
+                hierarchy_error = h_err
 
             return {
                 "account_info": account_info,
@@ -189,6 +198,7 @@ class MonitoringWorker:
                 "insights_by_window": insights_by_window,
                 "window_errors": window_errors,
                 "hierarchical_facts": hierarchical_facts,
+                "hierarchy_error": hierarchy_error,
             }
 
     async def _persist_runtime_state(
@@ -950,6 +960,10 @@ class MonitoringWorker:
             date_preset=date_preset,
             currency=currency,
             account_name=account.name,
+            reporting_date=resolve_account_period_dates(
+                account.timezone_name,
+                date_preset,
+            )[0],
         )
         if facts:
             return await AnalyticsFactService.upsert_entity_facts(
@@ -1366,6 +1380,7 @@ class MonitoringWorker:
 
                     # Upsert hierarchical facts into Analytics Fact Store
                     hierarchical_facts = snapshot.get("hierarchical_facts")
+                    hierarchy_error = snapshot.get("hierarchy_error")
                     if hierarchical_facts and acc.workspace_id:
                         try:
                             await AnalyticsFactService.upsert_entity_facts(
@@ -1376,19 +1391,40 @@ class MonitoringWorker:
                             )
                         except Exception as store_err:
                             logger.error("Failed to upsert facts for %s: %s", acc.account_id, store_err)
+                            hierarchy_error = store_err
 
-                    await self._set_account_health(
-                        session,
-                        acc,
-                        success=True,
-                        notification_target=notification_target,
-                        signals={
-                            "token_healthy": True,
-                            "account_active": True,
-                            "meta_read_ok": True,
-                            "window_errors_count": len(window_errors),
-                        },
-                    )
+                    if hierarchy_error is not None:
+                        stats["errors"].append(
+                            f"Account {account_ref} hierarchy sync: {hierarchy_error}"
+                        )
+                        await self._set_account_health(
+                            session,
+                            acc,
+                            success=False,
+                            notification_target=notification_target,
+                            error=f"Meta hierarchy sync failed: {hierarchy_error}",
+                            signals={
+                                "token_healthy": True,
+                                "account_active": True,
+                                "meta_read_ok": True,
+                                "hierarchy_sync_ok": False,
+                                "window_errors_count": len(window_errors),
+                            },
+                        )
+                    else:
+                        await self._set_account_health(
+                            session,
+                            acc,
+                            success=True,
+                            notification_target=notification_target,
+                            signals={
+                                "token_healthy": True,
+                                "account_active": True,
+                                "meta_read_ok": True,
+                                "hierarchy_sync_ok": True,
+                                "window_errors_count": len(window_errors),
+                            },
+                        )
 
                     if not acc.rules_enabled or not due_rules:
                         continue

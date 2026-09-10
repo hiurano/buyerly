@@ -53,6 +53,7 @@ Tailwind utilities may be used for composition. Repeated arbitrary values for co
 8. Unknown duration uses indeterminate progress. Motion uses tokens and respects `prefers-reduced-motion`.
 9. Desktop and mobile keep the same information model. Required QA widths are 390, 768, 1024 and 1440px; document-level horizontal overflow is not allowed.
 10. Server data and local UI state are visibly distinct: cached, stale, unavailable and demo data may never be presented as current Meta data.
+11. Entity inventory and period metrics retain separate provenance: an entity with no activity stays visible, while unavailable fields render as unavailable rather than an invented value.
 
 ## Forbidden patterns
 

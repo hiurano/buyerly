@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from database.db import Base
 from database.models import (
     Account,
+    AccountHealth,
     AppSettings,
     AuditEvent,
     AutomationRuntimeState,
@@ -66,6 +67,7 @@ class MockMetaClient(MetaClient):
         }
         self.insights_by_window = {}
         self.requested_windows = []
+        self.hierarchy_requests = []
         self.status_changes = []
         self.budget_changes = []
 
@@ -89,6 +91,10 @@ class MockMetaClient(MetaClient):
         self.requested_windows.append(date_preset)
         source = self.insights_by_window.get(date_preset, self.adsets_state)
         return [dict(adset) for adset in source.values()]
+
+    async def get_hierarchical_insights(self, *args, **kwargs):
+        self.hierarchy_requests.append(dict(kwargs))
+        return []
 
     async def set_adset_status(self, adset_id: str, access_token: str, status: str, *args, **kwargs) -> bool:
         self.adsets_state[adset_id]["status"] = status
@@ -206,6 +212,9 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             await session.commit()
 
         mock_meta = MockMetaClient()
+        expected_reporting_date = datetime.now(
+            ZoneInfo("Pacific/Honolulu")
+        ).date().isoformat()
         sent_alerts = []
         async def mock_notifier(**kwargs):
             sent_alerts.append(kwargs)
@@ -218,6 +227,10 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(stats["adsets_stopped"], 0)
         self.assertEqual(mock_meta.adsets_state["adset_1"]["status"], "ACTIVE")
         self.assertEqual(mock_meta.adsets_state["adset_2"]["status"], "ACTIVE")
+        self.assertEqual(
+            mock_meta.hierarchy_requests[0]["reporting_date"],
+            expected_reporting_date,
+        )
         async with self.test_session_maker() as session:
             runtime = await session.get(AutomationRuntimeState, "monitoring")
             self.assertIsInstance(runtime.payload, dict)
@@ -973,6 +986,25 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(len(sent_alerts), 1)
         self.assertEqual(sent_alerts[0]["event_type"], "TOKEN_EXPIRED")
+
+    async def test_hierarchy_sync_failure_degrades_health_without_hiding_error(self):
+        mock_meta = MockMetaClient()
+        mock_meta.get_hierarchical_insights = AsyncMock(
+            side_effect=RuntimeError("Meta campaign inventory unavailable")
+        )
+        worker = MonitoringWorker(meta_client=mock_meta)
+
+        stats = await worker.run_cycle()
+
+        self.assertTrue(
+            any("hierarchy sync" in error for error in stats["errors"]),
+            stats["errors"],
+        )
+        async with self.test_session_maker() as session:
+            health = (await session.execute(select(AccountHealth))).scalar_one()
+            self.assertEqual(health.status, "degraded")
+            self.assertFalse(health.signals["hierarchy_sync_ok"])
+            self.assertIn("campaign inventory unavailable", health.last_error_message)
 
     def test_meta_client_usage_headers_parsing(self):
         """Проверка парсинга заголовков X-Business-Use-Case-Usage."""

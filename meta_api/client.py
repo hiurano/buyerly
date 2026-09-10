@@ -981,11 +981,77 @@ class MetaClient:
         currency: str = "UNKNOWN",
         account_name: str = "",
         priority: str = "normal",
+        reporting_date: str = "",
     ) -> List[Dict[str, Any]]:
-        """Fetch normalized hierarchical metric facts across Account, Campaign, AdSet and Ad levels."""
+        """Fetch normalized hierarchy facts with authoritative campaign inventory.
+
+        Campaign identity and delivery state come from the campaigns edge. Insights
+        are joined by Meta ID and remain the source of reporting-period metrics.
+        """
         acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
         normalized_currency = normalize_currency(currency)
         facts: List[Dict[str, Any]] = []
+
+        def attach_reporting_date(fact: Dict[str, Any]) -> Dict[str, Any]:
+            if reporting_date:
+                fact["date"] = reporting_date
+            return fact
+
+        def metric_fact(
+            *,
+            level: str,
+            entity_id: str,
+            entity_name: str,
+            parent_id: str,
+            insight: Dict[str, Any],
+            status: str = "UNKNOWN",
+            effective_status: str = "UNKNOWN",
+            daily_budget: float = 0.0,
+        ) -> Dict[str, Any]:
+            normalized = self._normalize_basic_insight(insight)
+            spend = normalized["spend"]
+            clicks = normalized["clicks"]
+            impressions = normalized["impressions"]
+            link_clicks = normalized["link_clicks"]
+            outbound_clicks = normalized["outbound_clicks"]
+            lp_views = normalized["landing_page_views"]
+            leads = normalized["leads"]
+            regs = normalized["registrations"]
+            purchases = normalized["purchases"]
+            return attach_reporting_date({
+                "account_id": acc_id,
+                "entity_level": level,
+                "entity_id": entity_id,
+                "entity_name": entity_name,
+                "parent_entity_id": parent_id,
+                "currency": normalized_currency,
+                "spend": spend,
+                "impressions": impressions,
+                "reach": normalized["reach"],
+                "frequency": normalized["frequency"],
+                "cpm": normalized["cpm"],
+                "clicks": clicks,
+                "unique_clicks": normalized["unique_clicks"],
+                "link_clicks": link_clicks,
+                "outbound_clicks": outbound_clicks,
+                "landing_page_views": lp_views,
+                "cpc": (spend / clicks) if clicks > 0 else 0.0,
+                "cpc_link": (spend / link_clicks) if link_clicks > 0 else None,
+                "ctr": ((clicks / impressions) * 100) if impressions > 0 else 0.0,
+                "ctr_link": ((link_clicks / impressions) * 100) if impressions > 0 else None,
+                "ctr_outbound": ((outbound_clicks / impressions) * 100) if impressions > 0 else None,
+                "leads": leads,
+                "registrations": regs,
+                "purchases": purchases,
+                "cost_per_lead": (spend / leads) if leads > 0 else None,
+                "cost_per_registration": (spend / regs) if regs > 0 else None,
+                "cost_per_purchase": (spend / purchases) if purchases > 0 else None,
+                "cost_per_landing_page_view": (spend / lp_views) if lp_views > 0 else None,
+                "raw_actions": insight.get("actions") if isinstance(insight.get("actions"), list) else [],
+                "status": status,
+                "effective_status": effective_status,
+                "daily_budget": daily_budget,
+            })
 
         # 1. Account Level Fact
         acc_summary = await self.get_account_insights_summary(
@@ -1003,7 +1069,7 @@ class MetaClient:
         acc_regs = acc_summary.get("registrations", 0)
         acc_purchases = acc_summary.get("purchases", 0)
 
-        facts.append({
+        facts.append(attach_reporting_date({
             "account_id": acc_id,
             "entity_level": "account",
             "entity_id": acc_id,
@@ -1036,98 +1102,122 @@ class MetaClient:
             "status": "ACTIVE",
             "effective_status": "ACTIVE",
             "daily_budget": 0.0,
-        })
+        }))
 
-        # 2. Level breakdown queries (Campaign, AdSet, Ad)
+        # 2. Campaign inventory is authoritative even when there is no delivery.
+        campaigns_url = f"{self.base_url}/{acc_id}/campaigns"
+        campaigns = await self._fetch_paginated_data(
+            campaigns_url,
+            {
+                "fields": "id,name,status,effective_status,daily_budget",
+                "limit": 100,
+                "access_token": access_token,
+            },
+            account_id=acc_id,
+            priority=priority,
+        )
+
         insights_url = f"{self.base_url}/{acc_id}/insights"
-        fields = (
-            "campaign_id,campaign_name,adset_id,adset_name,ad_id,ad_name,"
+        metric_fields = (
             "spend,impressions,reach,frequency,cpm,clicks,unique_clicks,"
             "inline_link_clicks,outbound_clicks,actions"
         )
+        hierarchy_fields = {
+            "campaign": f"campaign_id,campaign_name,{metric_fields}",
+            "adset": f"campaign_id,adset_id,adset_name,{metric_fields}",
+            "ad": f"campaign_id,adset_id,ad_id,ad_name,{metric_fields}",
+        }
+        campaign_insights = await self._fetch_paginated_data(
+            insights_url,
+            {
+                "level": "campaign",
+                "fields": hierarchy_fields["campaign"],
+                "date_preset": date_preset,
+                "limit": 100,
+                "access_token": access_token,
+            },
+            account_id=acc_id,
+            priority=priority,
+        )
+        insights_by_campaign = {
+            str(row["campaign_id"]): row
+            for row in campaign_insights
+            if row.get("campaign_id")
+        }
+        inventory_campaign_ids = set()
+        for campaign in campaigns:
+            campaign_id = str(campaign.get("id") or "")
+            if not campaign_id:
+                continue
+            inventory_campaign_ids.add(campaign_id)
+            status = str(campaign.get("status") or "UNKNOWN")
+            effective_status = str(campaign.get("effective_status") or status)
+            facts.append(metric_fact(
+                level="campaign",
+                entity_id=campaign_id,
+                entity_name=str(campaign.get("name") or f"Campaign {campaign_id}"),
+                parent_id=acc_id,
+                insight=insights_by_campaign.get(campaign_id, {}),
+                status=status,
+                effective_status=effective_status,
+                daily_budget=from_meta_budget_units(
+                    campaign.get("daily_budget"),
+                    normalized_currency,
+                ),
+            ))
 
-        for level in ("campaign", "adset", "ad"):
-            try:
-                level_rows = await self._fetch_paginated_data(
-                    insights_url,
-                    {
-                        "level": level,
-                        "fields": fields,
-                        "date_preset": date_preset,
-                        "limit": 100,
-                        "access_token": access_token,
-                    },
-                    account_id=acc_id,
-                    priority=priority,
-                )
-                for r in level_rows:
-                    normalized = self._normalize_basic_insight(r)
-                    spend = normalized["spend"]
-                    clicks = normalized["clicks"]
-                    impressions = normalized["impressions"]
-                    link_clicks = normalized["link_clicks"]
-                    outbound_clicks = normalized["outbound_clicks"]
-                    lp_views = normalized["landing_page_views"]
-                    leads = normalized["leads"]
-                    regs = normalized["registrations"]
-                    purchases = normalized["purchases"]
+        # Preserve period activity for a campaign that disappeared from current inventory.
+        for campaign_id, insight in insights_by_campaign.items():
+            if campaign_id in inventory_campaign_ids:
+                continue
+            facts.append(metric_fact(
+                level="campaign",
+                entity_id=campaign_id,
+                entity_name=str(insight.get("campaign_name") or f"Campaign {campaign_id}"),
+                parent_id=acc_id,
+                insight=insight,
+            ))
 
-                    if level == "campaign":
-                        entity_id = str(r.get("campaign_id") or "")
-                        entity_name = str(r.get("campaign_name") or "")
-                        parent_id = acc_id
-                    elif level == "adset":
-                        entity_id = str(r.get("adset_id") or "")
-                        entity_name = str(r.get("adset_name") or "")
-                        parent_id = str(r.get("campaign_id") or acc_id)
-                    else:  # ad
-                        entity_id = str(r.get("ad_id") or "")
-                        entity_name = str(r.get("ad_name") or "")
-                        parent_id = str(r.get("adset_id") or "")
-
-                    if not entity_id:
-                        continue
-
-                    # Skip empty rows with 0 spend, 0 impressions and 0 clicks
-                    if spend == 0 and impressions == 0 and clicks == 0:
-                        continue
-
-                    facts.append({
-                        "account_id": acc_id,
-                        "entity_level": level,
-                        "entity_id": entity_id,
-                        "entity_name": entity_name,
-                        "parent_entity_id": parent_id,
-                        "currency": normalized_currency,
-                        "spend": spend,
-                        "impressions": impressions,
-                        "reach": normalized["reach"],
-                        "frequency": normalized["frequency"],
-                        "cpm": normalized["cpm"],
-                        "clicks": clicks,
-                        "unique_clicks": normalized["unique_clicks"],
-                        "link_clicks": link_clicks,
-                        "outbound_clicks": outbound_clicks,
-                        "landing_page_views": lp_views,
-                        "cpc": (spend / clicks) if clicks > 0 else 0.0,
-                        "cpc_link": (spend / link_clicks) if link_clicks > 0 else None,
-                        "ctr": ((clicks / impressions) * 100) if impressions > 0 else 0.0,
-                        "ctr_link": ((link_clicks / impressions) * 100) if impressions > 0 else None,
-                        "ctr_outbound": ((outbound_clicks / impressions) * 100) if impressions > 0 else None,
-                        "leads": leads,
-                        "registrations": regs,
-                        "purchases": purchases,
-                        "cost_per_lead": (spend / leads) if leads > 0 else None,
-                        "cost_per_registration": (spend / regs) if regs > 0 else None,
-                        "cost_per_purchase": (spend / purchases) if purchases > 0 else None,
-                        "cost_per_landing_page_view": (spend / lp_views) if lp_views > 0 else None,
-                        "raw_actions": r.get("actions") if isinstance(r.get("actions"), list) else [],
-                        "status": "ACTIVE",
-                        "effective_status": "ACTIVE",
-                        "daily_budget": 0.0,
-                    })
-            except Exception as e:
-                logger.warning("Failed to fetch %s level insights for %s: %s", level, acc_id, e)
+        # 3. Lower hierarchy levels remain reporting facts until their inventory
+        # views are implemented. Failures propagate so health cannot claim a full sync.
+        for level in ("adset", "ad"):
+            level_rows = await self._fetch_paginated_data(
+                insights_url,
+                {
+                    "level": level,
+                    "fields": hierarchy_fields[level],
+                    "date_preset": date_preset,
+                    "limit": 100,
+                    "access_token": access_token,
+                },
+                account_id=acc_id,
+                priority=priority,
+            )
+            for row in level_rows:
+                if level == "adset":
+                    entity_id = str(row.get("adset_id") or "")
+                    entity_name = str(row.get("adset_name") or "")
+                    parent_id = str(row.get("campaign_id") or acc_id)
+                else:
+                    entity_id = str(row.get("ad_id") or "")
+                    entity_name = str(row.get("ad_name") or "")
+                    parent_id = str(row.get("adset_id") or "")
+                if not entity_id:
+                    continue
+                normalized = self._normalize_basic_insight(row)
+                if (
+                    normalized["spend"] == 0
+                    and normalized["impressions"] == 0
+                    and normalized["clicks"] == 0
+                ):
+                    continue
+                facts.append(metric_fact(
+                    level=level,
+                    entity_id=entity_id,
+                    entity_name=entity_name,
+                    parent_id=parent_id,
+                    insight=row,
+                ))
 
         return facts
 
@@ -1263,4 +1353,3 @@ class MetaClient:
             self._inventory_cache.pop(acc_id, None)
             if self._cache_provider is not None:
                 await self._cache_provider.invalidate(acc_id)
-

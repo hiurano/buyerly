@@ -168,8 +168,8 @@ class TestReactFrontendContract(unittest.TestCase):
             "Loading campaigns…",
             "Couldn't load ad accounts",
             "Couldn't load campaigns",
-            "No campaign facts for today",
-            "No zero values or demo campaigns are substituted",
+            "No campaigns in this ad account",
+            "Campaigns with zero activity today are included",
             "readOnly",
         ):
             self.assertIn(contract, self.campaigns_view)
@@ -197,11 +197,14 @@ class TestReactFrontendContract(unittest.TestCase):
         )
         self.assertIn("campaignAttachedRules: {},", self.app_store)
 
-        self.assertIn("status: 'unknown'", self.live_campaigns)
-        self.assertIn("budget: '—'", self.live_campaigns)
+        self.assertIn("campaignDelivery(item)", self.live_campaigns)
+        self.assertIn("formatDailyBudget(item.daily_budget, item.currency)", self.live_campaigns)
         self.assertIn("roi: '—'", self.live_campaigns)
         self.assertIn("showIdentifier", self.campaign_row)
         self.assertIn("readOnly ? undefined", self.campaign_row)
+        self.assertIn("LinearLabelPill label={campaign.statusLabel}", self.campaign_row)
+        self.assertIn("status: true", self.campaigns_view)
+        self.assertIn("budget: true", self.campaigns_view)
         self.assertIn("--action-primary:", self.tokens)
         self.assertIn("--action-primary-hover:", self.tokens)
         self.assertIn("export const Button", self.button)

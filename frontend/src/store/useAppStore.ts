@@ -16,6 +16,7 @@ export interface CampaignItem {
   name: string;
   platform: 'Meta' | 'TikTok' | 'Google';
   status: 'active' | 'paused' | 'unknown';
+  statusLabel: string;
   budget: string;
   leadsCount: number;
   cpa: string;

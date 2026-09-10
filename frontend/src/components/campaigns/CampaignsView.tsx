@@ -206,8 +206,8 @@ export const CampaignsView: React.FC = () => {
   const supportedProperties = useMemo(
     () => ({
       ...displayProperties,
-      status: false,
-      budget: false,
+      status: true,
+      budget: true,
       roi: false,
       rules: false,
       group: false,
@@ -268,7 +268,7 @@ export const CampaignsView: React.FC = () => {
       );
     }
     if (campaignsState === 'loading') {
-      return <DataState title="Loading campaigns…" detail="Reading today's saved Meta campaign facts." />;
+      return <DataState title="Loading campaigns…" detail="Reading saved Meta campaign inventory and today's metrics." />;
     }
     if (campaignsState === 'error') {
       return (
@@ -286,8 +286,8 @@ export const CampaignsView: React.FC = () => {
     if (campaigns.length === 0) {
       return (
         <DataState
-          title="No campaign facts for today"
-          detail="This account is connected, but Buyerly has no saved campaign activity for today's account-local period yet. No zero values or demo campaigns are substituted."
+          title="No campaigns in this ad account"
+          detail="Meta returned no campaign inventory for this imported account. Campaigns with zero activity today are included when they exist."
           actionLabel="Retry"
           onAction={() => setCampaignReloadKey((value) => value + 1)}
         />

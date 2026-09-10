@@ -426,11 +426,27 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
             side_effect=[
                 # 1. Account insights summary
                 [{"spend": "100.00", "impressions": "5000", "clicks": "200", "actions": [{"action_type": "lead", "value": "10"}]}],
-                # 2. Campaign level insights
+                # 2. Authoritative campaign inventory
+                [
+                    {
+                        "id": "c1",
+                        "name": "Camp 1",
+                        "status": "ACTIVE",
+                        "effective_status": "ACTIVE",
+                        "daily_budget": "2500",
+                    },
+                    {
+                        "id": "c2",
+                        "name": "Paused without delivery",
+                        "status": "PAUSED",
+                        "effective_status": "PAUSED",
+                    },
+                ],
+                # 3. Campaign level insights
                 [{"campaign_id": "c1", "campaign_name": "Camp 1", "spend": "60.00", "impressions": "3000", "clicks": "120", "actions": [{"action_type": "lead", "value": "6"}]}],
-                # 3. Adset level insights
+                # 4. Adset level insights
                 [{"adset_id": "as1", "adset_name": "AdSet 1", "campaign_id": "c1", "spend": "40.00", "impressions": "2000", "clicks": "80", "actions": []}],
-                # 4. Ad level insights
+                # 5. Ad level insights
                 [{"ad_id": "ad1", "ad_name": "Ad 1", "adset_id": "as1", "spend": "20.00", "impressions": "1000", "clicks": "40", "actions": []}],
             ]
         )
@@ -441,19 +457,75 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
             date_preset="today",
             currency="USD",
             account_name="Alpha USD",
+            reporting_date="2026-08-28",
         )
 
-        self.assertEqual(len(facts), 4)
+        self.assertEqual(len(facts), 5)
         levels = [f["entity_level"] for f in facts]
-        self.assertEqual(levels, ["account", "campaign", "adset", "ad"])
+        self.assertEqual(levels, ["account", "campaign", "campaign", "adset", "ad"])
         self.assertEqual(facts[0]["spend"], 100.0)
         self.assertEqual(facts[0]["leads"], 10)
         self.assertEqual(facts[1]["entity_id"], "c1")
         self.assertEqual(facts[1]["parent_entity_id"], "act_1001")
-        self.assertEqual(facts[2]["entity_id"], "as1")
-        self.assertEqual(facts[2]["parent_entity_id"], "c1")
-        self.assertEqual(facts[3]["entity_id"], "ad1")
-        self.assertEqual(facts[3]["parent_entity_id"], "as1")
+        self.assertEqual(facts[1]["status"], "ACTIVE")
+        self.assertEqual(facts[1]["daily_budget"], 25.0)
+        self.assertEqual(facts[2]["entity_id"], "c2")
+        self.assertEqual(facts[2]["spend"], 0.0)
+        self.assertEqual(facts[2]["effective_status"], "PAUSED")
+        self.assertEqual(facts[3]["entity_id"], "as1")
+        self.assertEqual(facts[3]["parent_entity_id"], "c1")
+        self.assertEqual(facts[4]["entity_id"], "ad1")
+        self.assertEqual(facts[4]["parent_entity_id"], "as1")
+        self.assertTrue(all(fact["date"] == "2026-08-28" for fact in facts))
+
+        calls = client._fetch_paginated_data.await_args_list
+        self.assertTrue(calls[1].args[0].endswith("/campaigns"))
+        self.assertEqual(
+            calls[1].args[1]["fields"],
+            "id,name,status,effective_status,daily_budget",
+        )
+        self.assertNotIn("adset_id", calls[2].args[1]["fields"])
+        self.assertNotIn("ad_id", calls[2].args[1]["fields"])
+        self.assertIn("adset_id", calls[3].args[1]["fields"])
+        self.assertIn("ad_id", calls[4].args[1]["fields"])
+
+    async def test_hierarchical_insights_preserves_insight_only_campaign(self):
+        client = MetaClient()
+        client._fetch_paginated_data = AsyncMock(
+            side_effect=[
+                [],
+                [],
+                [{"campaign_id": "removed_1", "campaign_name": "Removed today", "spend": "12.50"}],
+                [],
+                [],
+            ]
+        )
+
+        facts = await client.get_hierarchical_insights(
+            account_id="act_1001",
+            access_token="test_token",
+            currency="USD",
+            reporting_date="2026-08-28",
+        )
+
+        campaign = next(fact for fact in facts if fact["entity_level"] == "campaign")
+        self.assertEqual(campaign["entity_id"], "removed_1")
+        self.assertEqual(campaign["spend"], 12.5)
+        self.assertEqual(campaign["status"], "UNKNOWN")
+
+    async def test_hierarchical_inventory_failure_is_not_silenced(self):
+        client = MetaClient()
+        client._fetch_paginated_data = AsyncMock(
+            side_effect=[[], RuntimeError("Meta campaign inventory unavailable")]
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "campaign inventory unavailable"):
+            await client.get_hierarchical_insights(
+                account_id="act_1001",
+                access_token="test_token",
+                currency="USD",
+                reporting_date="2026-08-28",
+            )
 
     async def test_analytics_hierarchy_api_endpoint(self):
         async with self.test_session_maker() as session:
@@ -462,18 +534,33 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
                 session,
                 workspace_id=self.ws1.id,
                 account_id=self.acc1.account_id,
-                facts=[{
-                    "entity_level": "campaign",
-                    "entity_id": "cmp_api_1",
-                    "entity_name": "Campaign API Test",
-                    "parent_entity_id": self.acc1.account_id,
-                    "date": today_str,
-                    "currency": "USD",
-                    "spend": 75.0,
-                    "impressions": 3000,
-                    "clicks": 150,
-                    "leads": 5,
-                }],
+                facts=[
+                    {
+                        "entity_level": "campaign",
+                        "entity_id": "cmp_api_1",
+                        "entity_name": "Campaign API Test",
+                        "parent_entity_id": self.acc1.account_id,
+                        "date": today_str,
+                        "currency": "USD",
+                        "spend": 75.0,
+                        "impressions": 3000,
+                        "clicks": 150,
+                        "leads": 5,
+                    },
+                    {
+                        "entity_level": "campaign",
+                        "entity_id": "cmp_api_zero",
+                        "entity_name": "Paused Campaign",
+                        "parent_entity_id": self.acc1.account_id,
+                        "date": today_str,
+                        "currency": "USD",
+                        "status": "PAUSED",
+                        "effective_status": "PAUSED",
+                        "spend": 0.0,
+                        "impressions": 0,
+                        "clicks": 0,
+                    },
+                ],
             )
             await session.commit()
 
@@ -492,9 +579,11 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(res.status_code, 200)
             data = res.json()
-            self.assertEqual(data["total"], 1)
-            self.assertEqual(data["items"][0]["entity_id"], "cmp_api_1")
-            self.assertEqual(data["items"][0]["spend"], 75.0)
+            self.assertEqual(data["total"], 2)
+            rows_by_id = {item["entity_id"]: item for item in data["items"]}
+            self.assertEqual(rows_by_id["cmp_api_1"]["spend"], 75.0)
+            self.assertEqual(rows_by_id["cmp_api_zero"]["spend"], 0.0)
+            self.assertEqual(rows_by_id["cmp_api_zero"]["effective_status"], "PAUSED")
 
             # Query for alien account from another workspace should be rejected (404)
             res_alien = await ac.get(
