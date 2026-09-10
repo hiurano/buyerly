@@ -12,6 +12,7 @@
 
 ### Changed
 
+- UI-контракт и инструкции разработчика синхронизированы с фактическим production React/Vite frontend: canonical tokens находятся в `frontend/src/styles/tokens.css`, shared primitives — в `frontend/src/ui/`, а `webapp/` закреплён как legacy-код без новой authenticated-функциональности.
 - Точка входа Facebook в Ads Manager приведена к паттерну Linear `New project`: компактная 28px капсула `+ Connect Facebook` (радиус 9999px, отступы 8px/10px, системный курсор, `active:duration-0`), акцентный Primary CTA в пустом состоянии, а модальное окно подключения получило радиус 20px, бесшовный заголовок без разделителя и 3-слойную тень Linear Elevation.
 - В компоненте `BuyerlyBrand` убрана текстовая надпись, оставлен только логотип размером 40px (32px в compact) с доступной разметкой `role="img"`.
 - Создание профиля и приглашение команды в onboarding переведены на светлую минимальную форму входа; тёмная декоративная split-screen сцена удалена.

@@ -24,6 +24,27 @@ class TestReactFrontendContract(unittest.TestCase):
         cls.welcome = (
             ROOT / "frontend" / "src" / "components" / "onboarding" / "WelcomeView.tsx"
         ).read_text()
+        cls.compose = (ROOT / "docker-compose.yml").read_text()
+        cls.dockerfile = (ROOT / "frontend" / "Dockerfile").read_text()
+        cls.main = (ROOT / "frontend" / "src" / "main.tsx").read_text()
+        cls.styles = (
+            ROOT / "frontend" / "src" / "styles" / "index.css"
+        ).read_text()
+        cls.tokens = (
+            ROOT / "frontend" / "src" / "styles" / "tokens.css"
+        ).read_text()
+        cls.ui_sources = "\n".join(
+            path.read_text()
+            for path in sorted((ROOT / "frontend" / "src" / "ui").glob("*.tsx"))
+        )
+        cls.agents = (ROOT / "AGENTS.md").read_text()
+        cls.claude = (ROOT / "CLAUDE.md").read_text()
+        cls.copilot = (ROOT / ".github" / "copilot-instructions.md").read_text()
+        cls.pull_request_template = (
+            ROOT / ".github" / "pull_request_template.md"
+        ).read_text()
+        cls.ui_contract = (ROOT / "docs" / "UI_CONTRACT.md").read_text()
+        cls.design_system = (ROOT / "docs" / "DESIGN_SYSTEM.md").read_text()
 
     def test_login_surface_is_email_only_and_explains_both_credentials(self):
         self.assertIn("Continue with email", self.login)
@@ -63,6 +84,50 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertNotIn("'/w/'", self.routing)
         self.assertNotIn('"/w/"', self.routing)
         self.assertIn("<NotFoundView", self.app)
+
+    def test_production_ui_contract_points_to_the_react_runtime(self):
+        self.assertIn("dockerfile: frontend/Dockerfile", self.compose)
+        self.assertIn("COPY frontend/src ./src", self.dockerfile)
+        self.assertIn("COPY --from=build /app/dist", self.dockerfile)
+        self.assertIn("import './styles/index.css'", self.main)
+        self.assertTrue(self.styles.startswith("@import './tokens.css';"))
+
+        for token in (
+            "--font-regular:",
+            "--sidebar-width:",
+            "--control-border-radius:",
+            "--text-primary:",
+        ):
+            self.assertIn(token, self.tokens)
+
+        for component in (
+            "LinearTabs",
+            "LinearDataList",
+            "LinearCheckbox",
+            "LinearToggle",
+            "DropdownMenu",
+            "ContextMenu",
+            "Tooltip",
+        ):
+            self.assertIn(component, self.ui_sources)
+
+        for instructions in (self.agents, self.claude, self.copilot):
+            self.assertIn("UI_CONTRACT.md", instructions)
+            self.assertIn("DESIGN_SYSTEM.md", instructions)
+            self.assertIn("frontend/src/styles/tokens.css", instructions)
+            self.assertIn("frontend/src/ui/", instructions)
+            self.assertNotIn("webapp/css/ui-system.css", instructions)
+
+        for contract in (
+            self.ui_contract,
+            self.design_system,
+            self.pull_request_template,
+        ):
+            self.assertIn("frontend/src/styles/tokens.css", contract)
+            self.assertIn("frontend/src/ui/", contract)
+
+        self.assertIn("not the authenticated production application", self.ui_contract)
+        self.assertIn("legacy authenticated UI", self.design_system)
 
 
 if __name__ == "__main__":
