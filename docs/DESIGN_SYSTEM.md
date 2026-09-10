@@ -1,180 +1,148 @@
 # Buyerly Design System
 
-Version: Unified UI 3.0
+Version: React UI 4.0
 Owner: Product / Frontend
-ClickUp: BL-101 `86eyr6073`
 
-> Normative usage, component recipes and the required change process are defined in [`UI_CONTRACT.md`](UI_CONTRACT.md). This document explains the product principles and screen-level system; `webapp/css/ui-system.css` owns the rendered values.
+> Normative usage, canonical source locations and the required change process are defined in [`UI_CONTRACT.md`](UI_CONTRACT.md). This document describes product principles and the current production surfaces.
 
 ## Principles
 
-1. **Action is not warning.** Brand amber может использоваться в identity, primary action использует более тёмный доступный `--action-primary`, warning — отдельные foreground/background/border tokens.
-2. **Readable by default.** Базовый UI-текст — 14px; 12px разрешён для secondary metadata, но не для основного действия или значения.
-3. **Numbers scan, identifiers copy.** Числа используют tabular numerals; mono применяется только для ID, code, SHA и технических значений.
-4. **State before decoration.** Loading, empty, partial, error, permission и success должны быть понятны без цвета.
-5. **Progressive migration.** Новый компонент получает `ui-*` contract; legacy selector может сосуществовать до переноса всех consumers.
-6. **One surface per job.** Карточка не используется как универсальный контейнер. Заголовок страницы живёт на canvas, метрики объединяются в один divided surface, а таблица получает только один внешний data-surface.
-7. **Hierarchy before decoration.** Иерархию создают размер текста, интервалы и разделители. Тень используется только для самостоятельной surface, popover и dialog.
-8. **Character without card salad.** Характер создают ambient background, типографический контраст, semantic accent и одна доминирующая поверхность — не карточки внутри карточек.
+1. **Action is not warning.** Primary, warning and destructive actions use separate semantic treatments.
+2. **Readable by default.** Base interface text is at least 14px; 12px is reserved for secondary metadata.
+3. **Numbers scan, identifiers copy.** Metrics use tabular numerals; monospace is reserved for IDs and technical values.
+4. **State before decoration.** Loading, empty, partial, stale, error, permission and success are understandable without color.
+5. **One surface per job.** Headers live on the canvas, related metrics share a divided surface, and data lists have one outer surface.
+6. **Progressive shared components.** Existing React primitives are reused. A repeated pattern becomes a component in `frontend/src/ui/` instead of a page-local family.
+7. **Truth over polish.** No fixture campaign, invented metric, decorative control or fake progress may look like production data.
+8. **One information model.** Mobile and desktop may reflow, but they preserve terminology, actions and data meaning.
 
 ## Production architecture
 
-- `webapp/css/styles.css` сохраняет legacy и domain-specific поведение, но не владеет новыми shared values;
-- `webapp/css/ui-system.css` загружается последним и является единым production-источником tokens, control geometry, типографики, surfaces и responsive;
-- все семь authenticated-разделов помечены `data-ui-pilot` и используют одну ширину `--ui-page-max` и gutter `--ui-page-gutter`;
-- все 23 modal overlays и command palette получают `.ui-dialog`, `role="dialog"` и `aria-modal="true"` без изменения id и JavaScript handlers;
-- production HTML не содержит presentation-specific inline styles: разрешены только шесть стартовых `display:none` для экранов, чья видимость переключается JavaScript; вычисляемые ширины таблиц и user-configured colors остаются в runtime markup;
-- public legal pages используют ту же neutral/action palette через собственный маленький набор semantic tokens в `legal.css`.
+- `frontend/` is the authenticated production React/Vite application;
+- `frontend/src/styles/tokens.css` owns semantic visual values and light/dark theme values;
+- `frontend/src/ui/` owns shared React primitives and their interaction/accessibility behavior;
+- `frontend/src/styles/index.css` composes shared and domain styles while consuming semantic tokens;
+- `frontend/src/components/` owns product surfaces and page-specific composition;
+- `frontend/src/lib/api.ts` and `frontend/src/lib/routing.ts` own the client API and canonical routes;
+- `frontend/Dockerfile` builds hashed Vite assets and copies only the public legal HTML pages from `webapp/`;
+- `webapp/` is legacy authenticated UI pending retirement and is not extended with new product work.
 
 ## Tokens
 
-| Group | Contract |
-|---|---|
-| Typography | `--font-sans`, `--font-mono`, `--font-size-xs/sm/md/lg/xl`, line heights |
-| Spacing | `--space-1/2/3/4/6/8` = 4/8/12/16/24/32px |
-| Controls | `--control-sm/md/lg` = 32/38/44px |
-| Action | `--action-primary`, `--action-primary-hover`, `--action-primary-soft` |
-| Warning | `--warning-fg`, `--warning-bg`, `--warning-border` |
-| Focus | `--focus-ring`; всегда visible для keyboard focus |
-| Elevation | `--elevation-card`, existing dropdown/modal/tooltip shadows |
-| Layers | `--layer-sticky/popover/modal` |
-| Motion | `--motion-fast`, `--motion-standard` |
-| Page layout | `--ui-page-max`, `--ui-page-readable`, `--ui-page-gutter`, `--ui-page-top` |
-| Surface | `--ui-canvas`, `--ui-surface`, `--ui-line`, `--ui-radius-surface`, `--ui-shadow-surface` |
-| Dialog | `--ui-dialog-sm/md/lg/xl`, `--ui-radius-dialog`, `--ui-shadow-dialog` |
+The live token vocabulary is defined in `frontend/src/styles/tokens.css`. Its current groups include:
 
-## Visual polish layer
+| Group | Examples | Use |
+|---|---|---|
+| Typography | `--font-regular`, `--font-monospace` | UI copy and technical identifiers |
+| Layout | `--sidebar-width`, `--header-height` | Application shell geometry |
+| Shape | `--canvas-border-radius`, `--control-border-radius` | Shared surfaces and controls |
+| Surfaces | `--bg-window`, `--bg-sidebar`, `--bg-content` | Shell and content hierarchy |
+| Text and borders | `--text-primary`, `--text-secondary`, `--border-subtle` | Accessible hierarchy and separation |
+| Interaction | hover, focus, selected and disabled tokens | Explicit control states |
+| Elevation and motion | shadow, speed and easing tokens | Menus, dialogs and state transitions |
+| Domain | Ads Manager, Rules, Preferences and filter tokens | Stable product-specific semantics |
 
-- Тёмная command-surface разрешена только для Today: это точка входа в продукт, а не новый универсальный тип карточки.
-- Amber обозначает spend, primary action и brand emphasis; blue — traffic/leads и информационный контур; violet — registrations и rule grouping; teal — purchases, healthy connection и безопасное действие.
-- Цвет всегда дублируется подписью, числом, иконкой или геометрией; он не является единственным носителем состояния.
-- Ambient gradients, тонкая texture и shadow живут на внешней surface. Вложенные рабочие элементы остаются плоскими и разделяются линиями или spacing.
-- Visual polish не добавляет fake metrics, фиктивные controls или новые действия без существующего handler/API contract.
-- Hover и lift используются только там, где элемент интерактивен; при `prefers-reduced-motion` переходы отключаются.
-
-Новые компоненты не добавляют direct hex или inline styles. Исключения допустимы только для внешнего brand asset (например, Meta blue) и user-configured color.
+New reusable values belong in this file with a semantic name. Page-local Tailwind literals are acceptable only when truly one-off; a repeated literal is a missing token.
 
 ## Components
 
-| Component | Selector | Required states |
+Implemented shared primitives:
+
+| Component | Production source | Required states |
 |---|---|---|
-| Button | `.ui-button`, `.ui-button-primary`, `.ui-button-danger` | default, hover, focus-visible, disabled, busy |
-| IconButton | `.ui-icon-button` | label/title, hover, focus-visible, disabled |
-| Input | `.ui-input` | empty, filled, focus, invalid, disabled |
-| Select | `.ui-select` | closed, open, selected, disabled |
-| Tabs | `.ui-tabs`, `.ui-tab` | selected via `aria-selected`, focus, overflow |
-| Badge | `.ui-badge` + semantic modifier | neutral, success, warning, danger |
-| Tooltip | `.ui-tooltip` | short explanation; not a required action |
-| Popover | `.ui-popover` | anchored, dismissible, viewport-safe |
-| Modal | `.ui-modal`, `.ui-dialog` | title, body, actions, escape/close, responsive sheet |
-| Drawer | `.ui-drawer` | desktop side panel, mobile full-width |
-| Table | `.ui-table` | loading, empty, populated, long IDs, sticky context |
-| KPI | `.ui-kpi-value` | value, no data, partial, comparison |
-| Chart | `.ui-chart` | loading, no data, populated, accessible summary |
-| EmptyState | `.ui-empty-state` | reason, next step, one primary CTA |
-| Alert | `.ui-alert` + semantic modifier | info, warning, danger, success/action |
-| Skeleton | `.ui-skeleton` | stable geometry, reduced layout shift |
+| Tabs | `LinearTabs` | selected, hover, keyboard focus, overflow |
+| DataList | `LinearDataList` | loading, empty, populated, partial/error |
+| Checkbox | `LinearCheckbox` | unchecked, checked, focus, disabled |
+| Toggle | `LinearToggle` | on, off, focus, disabled/busy where applicable |
+| DropdownMenu | `DropdownMenu` | open, selected, keyboard navigation, dismiss |
+| ContextMenu | `ContextMenu` | anchored, viewport-safe, keyboard navigation |
+| Tooltip | `Tooltip` | accessible optional explanation |
+| LabelPill | `LinearLabelPill` | neutral and semantic text-labelled states |
+| DisplayOptions | `LinearDisplayOptions` | current selection and real state update |
 
-## Pilot screens
+Button, IconButton, Input, Dialog, EmptyState and Skeleton are required product patterns but do not yet have one canonical React primitive. Existing implementations are migration debt. When a task touches or repeats one of these patterns, create the shared primitive in `frontend/src/ui/` before spreading another implementation.
 
-### Today
+## Current production screens
 
-- selector: `[data-ui-pilot="today"]`;
-- удалён декоративный AI composer;
-- тёмный command hero показывает живую дату и фактическое состояние workspace по `/api/meta/connections`, `/api/health/overview` и `/api/accounts`;
-- три hero-сигнала означают только реальные величины: активные/все Meta-подключения, healthy/все кабинеты и покрытые/активные кабинеты;
-- command bar содержит ровно одно next-best action с фиксированным порядком: setup → доступ/токен → critical/degraded health → покрытие правилами → ошибки действий → эффективность;
-- сигналы и пять последних `/api/audit-events` собраны в одну divided operations surface, без карточек внутри карточек;
-- при частичной ошибке успешные источники остаются видимыми, недоступные значения получают `—` и явное объяснение; данные не вычисляются и не подменяются;
-- secondary navigation сохраняет только существующие product routes, а каждая интерактивная строка имеет реальный handler.
+### Inbox
 
-### Automations
+- shows real workspace events or an honest empty/loading/error state;
+- unread state is not communicated by color alone;
+- each interactive row has a real destination or handler.
 
-- selector: `[data-ui-pilot="automations"]`;
-- shared page header, primary Button и EmptyState;
-- Kanban wrapper и lanes прозрачные: единственная самостоятельная surface в рабочей области — rule card;
-- lane headers используют компактные semantic bands, а rule cards получают left rail по фактическому типу действия: stop, start/increase, decrease или notify;
-- существующие rule groups, detail, modal и API contracts сохранены.
+### Ads Manager
 
-#### Guided Rule Builder
+- hierarchy is `Campaigns → Ad sets → Ads` and uses account/campaign data returned by the authenticated workspace API;
+- Meta connection is a real OAuth flow: explanation, Facebook authorization, account discovery, explicit import and result;
+- imported ad accounts are not the same entity as campaigns and must not be rendered as campaign rows;
+- fixtures such as LuckySpin, RoyalBet, NeonSlots and AcePlay are development examples only and must not ship as current workspace data;
+- toggles and mutations need explicit busy, success and recoverable error states; no rule is enabled as a side effect of importing an account.
 
-- create и edit используют одну трёхшаговую модель `Условия → Действие → Проверка`, сохраняя существующие DOM ids, handlers и payload;
-- шаг отображает только реальное состояние навигации и валидации: никаких процентов, таймеров или fake progress;
-- новый шаблон не получает action и threshold автоматически; опасное действие требует явного выбора;
-- дополнительные ограничения и уведомления раскрываются по запросу, но обязательные guardrails остаются в основном потоке;
-- review всегда содержит human-readable `ЕСЛИ / ТО` и preflight: workspace, объекты, текущий охват кабинетов, частоту проверки, cooldown, логику и action-specific limits;
-- создание шаблона не означает назначение кабинета: это явно написано в preflight, а новое назначение остаётся отдельным существующим действием;
-- безопасный create draft хранит только non-secret form values, версионируется, валидируется и изолируется ключом workspace; edit draft не восстанавливается из-за риска stale overwrite;
-- состояние шага, готовность, warning и восстановленный draft обозначаются текстом/символом вместе с цветом;
-- на `390px` condition row складывается в одну колонку, footer actions переносятся, dialog не создаёт horizontal overflow.
+### Rules
 
-### Efficiency
+- server-owned rule definitions and assignments are distinguished from local editor state;
+- dangerous actions require explicit conditions, scope and review;
+- account coverage and active/inactive state use real workspace-scoped data.
 
-- selector: `[data-ui-pilot="efficiency"]`;
-- Spend остаётся главным KPI и занимает две колонки; остальные метрики группируются по смыслу, а не превращаются в одинаковые карточки;
-- blue/violet/teal accents помогают сканировать путь `traffic → registration → purchase`, при этом значения и подписи остаются достаточными без цвета;
-- фильтры, freshness status и refresh action используют общую control geometry и существующий data contract.
+### Statistics
 
-### Connections
+- every number carries a real period, freshness and data-status meaning;
+- unavailable or unsupported metrics render as unavailable, never as zero unless the API returned a true zero;
+- mixed currency is not silently aggregated.
 
-- selector: `[data-ui-pilot="connections"]`;
-- shared page header, Buttons, Table и EmptyState;
-- OAuth, invite и manual-token handlers сохранены;
-- основной OAuth-сценарий начинается с value-before-OAuth dialog: пользователь до перехода в Facebook видит результат подключения, запрашиваемые permissions и влияние на автоматизации;
-- реальная последовательность одинакова на странице и в модальных окнах: `Подключение → Выбор кабинетов → Проверка доступа → Готово`;
-- завершённым отмечается только шаг, подтверждённый ответом Facebook/Meta или Buyerly API; ожидание ответа показывается indeterminate progress без вымышленных процентов;
-- refresh, validate, import и reconnect используют локальный busy-state, `aria-live` feedback и сохраняют доступный повторный action после ошибки;
-- manual-token остаётся явно техническим advanced-сценарием и не маскируется под основной OAuth flow.
+### Settings
 
-## Trust flow и motion contract
+- profile, workspace and connection settings preserve role and workspace boundaries;
+- secrets and full access tokens are never display data.
 
-`meta-flow-steps` применяется только к конечным процессам с реальными контрольными точками. Он не является декоративным progress bar и не должен предсказывать длительность операции.
+### Auth and onboarding
 
-- `is-current` означает, что действие пользователя или ответ внешнего сервиса ожидается сейчас;
-- `is-complete` выставляется только после фактического завершения шага;
-- неизвестная длительность использует indeterminate track и понятный текст текущей операции;
-- ошибка завершает loading, сохраняет контекст и показывает следующий безопасный action; успешные частичные результаты не скрываются;
-- footer у длинных trust dialogs остаётся sticky, чтобы `Отмена` и primary action были доступны при любом размере viewport;
-- interaction transitions используют диапазон `140–200ms`; текущий базовый timing — `160ms` для control state и `180ms` для progress/state transition;
-- `prefers-reduced-motion: reduce` отключает движение и оставляет статическое, текстово различимое состояние;
-- секреты, токены, пароли и cookies никогда не используются как display data, progress metadata или diagnostic copy.
+- passwordless login, workspace creation and initial profile setup remain separate, comprehensible states;
+- blocked invitation or whitelist checks surface a clear next action;
+- authenticated product navigation is unavailable until the session and workspace are resolved.
+
+### Meta connection dialog
+
+- users see the purpose and requested access before leaving Buyerly;
+- returning from OAuth reopens the flow at account selection;
+- already imported accounts are visibly non-actionable, while eligible accounts can be selected explicitly;
+- completion is shown only after the import API confirms it.
+
+## Data integrity and state
+
+- API data is workspace-scoped and remains the source of truth for accounts, connections, rules and metrics.
+- Zustand or other client stores may hold navigation, view preferences, dialog state and optimistic state, but may not manufacture domain records.
+- Cached data exposes its freshness. Partial responses preserve successful sections and identify unavailable ones.
+- Account health, account activation and automation enablement are separate concepts and must have separate labels and controls.
+- OAuth success means a connection exists; it does not imply that every discovered account was imported or that rules were enabled.
 
 ## Responsive contract
 
-- `390px`: шесть mobile destinations помещаются без горизонтального scroll; длинные desktop-названия сокращены до `Сводка`, `Правила` и `Связи`;
-- `390px`: Today сохраняет live status, складывает operations surface и context links в одну колонку, а primary next action занимает полную ширину;
-- `390–480px`: KPI используют две колонки, а главный Spend занимает всю строку; при ширине до `360px` сетка безопасно складывается в одну колонку;
-- `768px`: sidebar уступает место mobile navigation, data surfaces не создают document-level horizontal overflow;
-- `1024px+`: sidebar и content shell сохраняют независимую геометрию, таблицы прокручиваются только внутри собственного viewport;
-- иконки внутри action buttons всегда имеют явный размер `16×16px`, чтобы native SVG intrinsic size не ломал mobile layout;
-- auth footer переносится на несколько строк и не выходит за mobile viewport.
+- `390px`: priority actions have touch-safe targets; toolbars wrap; data surfaces scroll locally when columns cannot collapse;
+- `768px`: compact navigation must not create document-level horizontal overflow;
+- `1024px`: content and secondary panels preserve hierarchy without covering primary data;
+- `1440px`: density may increase, but line length and scan paths remain bounded;
+- dialogs fit the viewport, keep close/primary actions reachable and expose internal scrolling for long content;
+- every breakpoint retains the same data meaning and available safe actions.
 
 ## Migration map
 
-| Legacy family | Foundation target | Rule |
+| Legacy or local pattern | Production target | Migration rule |
 |---|---|---|
-| `.btn*`, `.attio-header-btn` | `.ui-button*` | добавлять foundation class, затем удалять legacy после всех consumers |
-| `.attio-checkbox`, form-specific inputs | `.ui-input` / native control tokens | не менять ids/API payloads |
-| `.settings-subnav-btn`, `.record-tab-btn` | `.ui-tab` | сохранить `data-*` и onclick contract |
-| `.status-pill`, `.badge*`, `.label-badge` | `.ui-badge*` | semantic name, не color name |
-| `.attio-dropdown-menu`, custom popovers | `.ui-popover` | единый layer/elevation/focus loop |
-| `.modal-card`, `.modal-dialog` | `.ui-modal` | единый header/body/footer contract |
-| `.attio-table`, `.data-table`, `.logs-table` | `.ui-table` | shared typography/row height, domain columns remain |
-| `.empty-state`, `.rules-empty-card` | `.ui-empty-state` | reason + next action |
-| `.loading-state`, `.spinner` | `.ui-skeleton` | skeleton для layout, spinner только для atomic action |
+| `webapp/css/ui-system.css` tokens | `frontend/src/styles/tokens.css` | Port only values still needed by a React consumer; do not maintain two sources. |
+| Legacy `.ui-*` selector families | React primitive in `frontend/src/ui/` | Preserve useful accessibility behavior, not legacy markup for its own sake. |
+| Repeated raw page buttons/inputs/dialogs | New shared React primitive | Migrate consumers incrementally when touched. |
+| Page-local reusable constants | Semantic token | Promote by meaning and check all consumers. |
+| Hardcoded domain fixtures | Workspace API plus explicit states | Remove from production paths; keep fixtures only in isolated development/test data. |
+| Legacy authenticated routes | Canonical React workspace routes | Do not add compatibility behavior unless explicitly approved. |
 
 ## Review checklist
 
-- primary action и warning визуально различаются;
-- interactive target не меньше 36px, mobile priority target 44px;
-- keyboard focus видим;
-- основной текст не меньше 14px;
-- каждый control имеет действие или удалён;
-- state не передаётся только цветом;
-- новые styles используют semantic tokens;
-- desktop/mobile сохраняют один information model.
-- визуальный характер создаётся semantic accent и иерархией, а не дополнительными nested surfaces;
-- KPI, stats и summary groups используют divided surface, а не россыпь вложенных карточек;
-- у каждой таблицы только один внешний surface и собственный horizontal scroll region;
-- все dialog families визуально проходят через `.ui-dialog`.
-- presentation rules живут в UI-kit, а не в `style="..."` внутри страниц или динамических строк.
+- production source is under `frontend/`, not legacy `webapp/`;
+- shared controls and semantic tokens are reused;
+- primary, warning and destructive actions are distinct;
+- focus, disabled, busy, empty, partial, stale, error and success states are explicit;
+- state is not communicated by color alone;
+- no fixture is presented as live workspace or Meta data;
+- 390 / 768 / 1024 / 1440px have no document-level overflow;
+- API payloads, workspace isolation, roles and security boundaries are preserved unless explicitly in scope.

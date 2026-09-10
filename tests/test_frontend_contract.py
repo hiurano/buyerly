@@ -65,7 +65,7 @@ class TestFrontendRuleContract(unittest.TestCase):
         self.assertIn("find webapp/js -type f -name '*.js'", self.workflow)
         self.assertIn("node --check", self.workflow)
 
-    def test_ui_contract_is_canonical_and_agent_enforced(self):
+    def test_legacy_ui_foundation_remains_self_consistent_during_retirement(self):
         self.assertLess(
             self.index.index("/static/css/styles.css"),
             self.index.index("/static/css/ui-system.css"),

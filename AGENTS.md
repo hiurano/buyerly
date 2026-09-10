@@ -76,9 +76,10 @@ flowchart LR
 
 ## 🎨 3. Дизайн и UI/UX референс
 - **Обязательный UI-контракт**: перед любым изменением страницы, модального окна, кнопки, поля, таблицы, статуса или responsive-вёрстки агент обязан полностью прочитать [`docs/UI_CONTRACT.md`](docs/UI_CONTRACT.md) и релевантный раздел [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
-- **Единственный production-источник визуальных значений и shared components**: [`webapp/css/ui-system.css`](webapp/css/ui-system.css). Цвета, типографика, spacing, размеры controls, radii, shadows, layers и motion меняются semantic-токеном там, а не копируются в page-specific selector.
-- [`webapp/css/styles.css`](webapp/css/styles.css) считается legacy/domain layer. Новые глобальные constants и новые семейства `*-btn`, `*-input`, `*-select`, `*-modal` в нём запрещены.
-- Новая разметка использует foundation classes (`.ui-button`, `.ui-icon-button`, `.ui-input`, `.ui-select`, `.ui-tab`, `.ui-badge`, `.ui-table`, `.ui-dialog`). Legacy classes допускаются только через существующий bridge в `ui-system.css`.
-- При изменении shared CSS обязательно повысить cache-version `ui-system.css` в [`webapp/index.html`](webapp/index.html), обновить contract test и пройти визуальную проверку 390/768/1024/1440px без document-level overflow.
+- **Production-источник визуальных значений**: [`frontend/src/styles/tokens.css`](frontend/src/styles/tokens.css). Цвета, типографика, spacing, размеры controls, radii, shadows, layers и motion меняются semantic-токеном там, а не копируются в page-specific component.
+- **Production-источник shared components**: [`frontend/src/ui/`](frontend/src/ui/). Существующий React primitive переиспользуется; повторяющийся control сначала оформляется как shared primitive, а не как новая локальная семья.
+- [`frontend/src/styles/index.css`](frontend/src/styles/index.css) — shared/domain composition layer. Он потребляет semantic tokens, но не создаёт второй источник глобальных constants.
+- `webapp/` — legacy authenticated UI, не production-приложение. Новая продуктовая функциональность туда не добавляется; production image использует оттуда только public legal HTML.
+- Vite создаёт fingerprinted assets, поэтому ручной cache-version не нужен. При изменении shared UI обновить `tests/test_react_frontend_contract.py` и пройти визуальную проверку 390/768/1024/1440px без document-level overflow.
 - Id, handlers, API payloads, workspace isolation и security boundaries не меняются визуальным рефакторингом, если это явно не входит в задачу.
 - Захваченные страницы сторонних продуктов и локальные HTML-снимки в репозитории не хранятся.

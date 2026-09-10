@@ -137,7 +137,8 @@ scheduler/           MonitoringWorker, периодические задачи �
 scripts/             Скрипты резервного копирования и атомарного деплоя
 services/            Точки входа отдельных микросервисов (API, бот, воркер, база)
 tests/               Набор модульных, интеграционных и контрактных тестов
-webapp/              Фронтенд SPA в стиле Attio CRM, стили, иконки и Nginx конфигурация
+frontend/            Production React/Vite SPA, semantic tokens, shared UI и Nginx-конфигурация
+webapp/              Legacy authenticated UI и public legal HTML; новая продуктовая работа сюда не добавляется
 ```
 
 ## Документация

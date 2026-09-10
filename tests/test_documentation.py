@@ -73,17 +73,20 @@ class TestDocumentationContract(unittest.TestCase):
         for contract in (
             "## Tokens",
             "## Components",
-            "## Pilot screens",
+            "## Current production screens",
             "## Migration map",
             "Button",
             "IconButton",
             "EmptyState",
             "Skeleton",
-            "### Today",
-            "### Automations",
-            "### Connections",
+            "### Ads Manager",
+            "### Rules",
+            "### Statistics",
+            "frontend/src/styles/tokens.css",
+            "frontend/src/ui/",
         ):
             self.assertIn(contract, design_system)
+
     def test_information_architecture_contract(self):
         ia = (PROJECT_ROOT / "docs" / "INFORMATION_ARCHITECTURE.md").read_text(encoding="utf-8")
         for contract in (
