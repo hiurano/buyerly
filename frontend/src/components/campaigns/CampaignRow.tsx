@@ -105,16 +105,17 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
         className={`campaign-data-row ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}
       >
         <div className="flex min-w-0 items-center gap-3">
-          {!readOnly && (
+          {/* Keep the selection slot so read-only rows retain the established Name alignment. */}
+          {readOnly ? (
+            <LinearCheckbox checked={false} hidden />
+          ) : (
             <LinearCheckbox
               checked={isSelected}
               onChange={() => toggleCampaignSelection(campaign.id)}
             />
           )}
           {displayProperties.status !== false && (
-            readOnly ? (
-              <LinearLabelPill label={campaign.statusLabel} />
-            ) : !isDeliveryKnown ? (
+            !isDeliveryKnown ? (
               <span
                 className="inline-flex h-5 w-8 items-center justify-center text-[12px] text-[var(--text-muted)]"
                 title="Delivery status is not available in this snapshot"
@@ -125,8 +126,11 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
             ) : (
               <LinearToggle
                 checked={isDeliveryOn}
-                onChange={() => toggleCampaignDelivery(campaign.id)}
-                tooltipContent={isDeliveryOn ? 'Pause campaign' : 'Resume campaign'}
+                onChange={readOnly ? undefined : () => toggleCampaignDelivery(campaign.id)}
+                disabled={readOnly}
+                tooltipContent={readOnly
+                  ? `${campaign.statusLabel}. Campaign controls are not connected yet`
+                  : isDeliveryOn ? 'Pause campaign' : 'Resume campaign'}
               />
             )
           )}

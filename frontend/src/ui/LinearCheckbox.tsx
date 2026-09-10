@@ -5,6 +5,7 @@ interface LinearCheckboxProps {
   indeterminate?: boolean;
   onChange?: (checked: boolean) => void;
   className?: string;
+  hidden?: boolean;
 }
 
 export const LinearCheckbox: React.FC<LinearCheckboxProps> = ({
@@ -12,6 +13,7 @@ export const LinearCheckbox: React.FC<LinearCheckboxProps> = ({
   indeterminate = false,
   onChange,
   className = '',
+  hidden = false,
 }) => {
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -24,10 +26,12 @@ export const LinearCheckbox: React.FC<LinearCheckboxProps> = ({
   return (
     <div
       data-checked={checked || indeterminate ? 'true' : 'false'}
+      aria-hidden={hidden || undefined}
       onClick={handleClick}
       style={{
         opacity: checked || indeterminate ? 1 : undefined,
         cursor: 'default',
+        visibility: hidden ? 'hidden' : undefined,
       }}
       className={`flex h-[22px] w-[18px] shrink-0 items-center justify-center opacity-0 transition-opacity duration-75 group-hover/row:opacity-100 group-focus-visible/row:opacity-100 ${
         checked || indeterminate ? '!opacity-100' : ''
@@ -67,6 +71,7 @@ export const LinearCheckbox: React.FC<LinearCheckboxProps> = ({
           checked={checked}
           aria-checked={indeterminate ? 'mixed' : checked}
           aria-label="Select row"
+          disabled={hidden}
           onChange={() => {}}
           className="sr-only"
         />
