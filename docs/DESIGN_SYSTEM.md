@@ -38,6 +38,7 @@ The live token vocabulary is defined in `frontend/src/styles/tokens.css`. Its cu
 | Shape | `--canvas-border-radius`, `--control-border-radius` | Shared surfaces and controls |
 | Surfaces | `--bg-window`, `--bg-sidebar`, `--bg-content` | Shell and content hierarchy |
 | Text and borders | `--text-primary`, `--text-secondary`, `--border-subtle` | Accessible hierarchy and separation |
+| Action | `--action-primary`, `--action-primary-hover` | Accessible primary actions distinct from warnings |
 | Interaction | hover, focus, selected and disabled tokens | Explicit control states |
 | Elevation and motion | shadow, speed and easing tokens | Menus, dialogs and state transitions |
 | Domain | Ads Manager, Rules, Preferences and filter tokens | Stable product-specific semantics |
@@ -50,6 +51,7 @@ Implemented shared primitives:
 
 | Component | Production source | Required states |
 |---|---|---|
+| Button | `Button` | primary/secondary, hover, keyboard focus, disabled |
 | Tabs | `LinearTabs` | selected, hover, keyboard focus, overflow |
 | DataList | `LinearDataList` | loading, empty, populated, partial/error |
 | Checkbox | `LinearCheckbox` | unchecked, checked, focus, disabled |
@@ -60,7 +62,7 @@ Implemented shared primitives:
 | LabelPill | `LinearLabelPill` | neutral and semantic text-labelled states |
 | DisplayOptions | `LinearDisplayOptions` | current selection and real state update |
 
-Button, IconButton, Input, Dialog, EmptyState and Skeleton are required product patterns but do not yet have one canonical React primitive. Existing implementations are migration debt. When a task touches or repeats one of these patterns, create the shared primitive in `frontend/src/ui/` before spreading another implementation.
+IconButton, Input, Dialog, EmptyState and Skeleton are required product patterns but do not yet have one canonical React primitive. Existing implementations are migration debt. When a task touches or repeats one of these patterns, create the shared primitive in `frontend/src/ui/` before spreading another implementation.
 
 ## Current production screens
 

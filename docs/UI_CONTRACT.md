@@ -27,6 +27,7 @@ Use the existing primitives from `frontend/src/ui/`:
 
 | Component | React primitive | Required contract |
 |---|---|---|
+| Button | `Button` | Primary and secondary variants share geometry, visible focus and disabled state. |
 | Tabs | `LinearTabs` | Selected state, keyboard focus and overflow remain accessible. |
 | Data list | `LinearDataList` | One outer data surface; loading, empty, populated and error states are explicit. |
 | Checkbox | `LinearCheckbox` | Labelled state is operable by keyboard and not communicated by color alone. |
@@ -36,7 +37,7 @@ Use the existing primitives from `frontend/src/ui/`:
 | Label/status | `LinearLabelPill` | Semantic text or icon accompanies color. |
 | Display controls | `LinearDisplayOptions` | Changes real view state and exposes the current selection. |
 
-There is not yet a canonical shared Button, Input or Dialog primitive in the React application. Existing screens may keep their current implementation until touched. Any task that introduces a second reusable version must first add an appropriately scoped component under `frontend/src/ui/`, backed by semantic tokens and documented here.
+There is not yet a canonical shared Input or Dialog primitive in the React application. Existing screens may keep their current implementation until touched. Any task that introduces a second reusable version must first add an appropriately scoped component under `frontend/src/ui/`, backed by semantic tokens and documented here.
 
 Tailwind utilities may be used for composition. Repeated arbitrary values for color, geometry, shadow, z-index or motion must be promoted to `tokens.css` or a shared primitive. External brand colors, user-configured colors and runtime-calculated dimensions are allowed as local, explained exceptions.
 

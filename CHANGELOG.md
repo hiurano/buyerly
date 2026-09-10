@@ -4,6 +4,7 @@
 
 ### Added
 
+- Ads Manager получил первый live read-only контур: выбор активного импортированного Meta-кабинета, загрузку сохранённых campaign facts за today и честные loading, empty, error и retry состояния без подстановки демонстрационных метрик.
 - В новом Ads Manager добавлен минимальный Facebook OAuth flow: единая кнопка «Подключить Facebook» в шапке и пустом состоянии, выбор входа через Facebook или одноразовой ссылки в диалоге, выбор обнаруженных кабинетов и импорт без включения автоправил.
 - Одноразовая ссылка подключения получила public React landing и страницу успешного подключения вместо legacy-маршрута.
 - Новый React-интерфейс Buyerly подключён как production web image с каноническими workspace-first URL без префикса `/w/`.
@@ -12,6 +13,7 @@
 
 ### Changed
 
+- Из production-состояния Ads Manager удалены fixture campaigns, ad sets, ads и группы; неподтверждённые status, budget и ROI скрыты, а write-controls и ещё не подключённые уровни Ad sets/Ads недоступны до отдельных API-этапов.
 - UI-контракт и инструкции разработчика синхронизированы с фактическим production React/Vite frontend: canonical tokens находятся в `frontend/src/styles/tokens.css`, shared primitives — в `frontend/src/ui/`, а `webapp/` закреплён как legacy-код без новой authenticated-функциональности.
 - Точка входа Facebook в Ads Manager приведена к паттерну Linear `New project`: компактная 28px капсула `+ Connect Facebook` (радиус 9999px, отступы 8px/10px, системный курсор, `active:duration-0`), акцентный Primary CTA в пустом состоянии, а модальное окно подключения получило радиус 20px, бесшовный заголовок без разделителя и 3-слойную тень Linear Elevation.
 - В компоненте `BuyerlyBrand` убрана текстовая надпись, оставлен только логотип размером 40px (32px в compact) с доступной разметкой `role="img"`.
