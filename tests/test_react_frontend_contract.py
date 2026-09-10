@@ -45,6 +45,34 @@ class TestReactFrontendContract(unittest.TestCase):
         ).read_text()
         cls.ui_contract = (ROOT / "docs" / "UI_CONTRACT.md").read_text()
         cls.design_system = (ROOT / "docs" / "DESIGN_SYSTEM.md").read_text()
+        cls.campaigns_view = (
+            ROOT
+            / "frontend"
+            / "src"
+            / "components"
+            / "campaigns"
+            / "CampaignsView.tsx"
+        ).read_text()
+        cls.live_campaigns = (
+            ROOT
+            / "frontend"
+            / "src"
+            / "components"
+            / "campaigns"
+            / "liveCampaigns.ts"
+        ).read_text()
+        cls.campaign_row = (
+            ROOT
+            / "frontend"
+            / "src"
+            / "components"
+            / "campaigns"
+            / "CampaignRow.tsx"
+        ).read_text()
+        cls.button = (ROOT / "frontend" / "src" / "ui" / "Button.tsx").read_text()
+        cls.app_store = (
+            ROOT / "frontend" / "src" / "store" / "useAppStore.ts"
+        ).read_text()
 
     def test_login_surface_is_email_only_and_explains_both_credentials(self):
         self.assertIn("Continue with email", self.login)
@@ -128,6 +156,56 @@ class TestReactFrontendContract(unittest.TestCase):
 
         self.assertIn("not the authenticated production application", self.ui_contract)
         self.assertIn("legacy authenticated UI", self.design_system)
+
+    def test_ads_manager_uses_workspace_api_without_production_fixtures(self):
+        for contract in (
+            "apiRequest<MetaAccount[]>('/api/accounts')",
+            "/api/analytics/hierarchy?parent_id=",
+            "encodeURIComponent(selectedAccountId)",
+            "&level=campaign&period=today",
+            "requestGenerationRef",
+            "Loading ad accounts…",
+            "Loading campaigns…",
+            "Couldn't load ad accounts",
+            "Couldn't load campaigns",
+            "No campaign facts for today",
+            "No zero values or demo campaigns are substituted",
+            "readOnly",
+        ):
+            self.assertIn(contract, self.campaigns_view)
+
+        self.assertNotIn("CampaignRightSidebar", self.campaigns_view)
+        self.assertNotIn("toggleCampaignDelivery", self.campaigns_view)
+        self.assertIn("{ id: 'adsets', label: 'Ad sets', disabled: true }", self.campaigns_view)
+        self.assertIn("{ id: 'ads', label: 'Ads', disabled: true }", self.campaigns_view)
+
+        campaign_path = self.campaigns_view + self.live_campaigns
+        for fixture in (
+            "LuckySpin",
+            "RoyalBet",
+            "NeonSlots",
+            "AcePlay",
+            "campaign-group-testing",
+            "campaign-group-scale",
+            "campaign-group-watchlist",
+        ):
+            self.assertNotIn(fixture, campaign_path)
+
+        self.assertIn(
+            "campaigns: [],\n  campaignGroups: [],\n  adSets: [],\n  ads: [],",
+            self.app_store,
+        )
+        self.assertIn("campaignAttachedRules: {},", self.app_store)
+
+        self.assertIn("status: 'unknown'", self.live_campaigns)
+        self.assertIn("budget: '—'", self.live_campaigns)
+        self.assertIn("roi: '—'", self.live_campaigns)
+        self.assertIn("showIdentifier", self.campaign_row)
+        self.assertIn("readOnly ? undefined", self.campaign_row)
+        self.assertIn("--action-primary:", self.tokens)
+        self.assertIn("--action-primary-hover:", self.tokens)
+        self.assertIn("export const Button", self.button)
+        self.assertIn("disabled:cursor-not-allowed", self.button)
 
 
 if __name__ == "__main__":

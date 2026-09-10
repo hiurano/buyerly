@@ -112,6 +112,8 @@
   --checkbox-border-rest: lch(48.72% 1.48 272 / 1);
   --toggle-unchecked-bg: lch(47.551% 0.913 272 / 1);
   --focus-ring-color: #6d78d5;
+  --action-primary: #5e6ad2;
+  --action-primary-hover: #6875e5;
 
   /* Add Filter command menu */
   --filter-menu-border: var(--color-border-secondary);
@@ -213,6 +215,8 @@ html[data-theme='light'] {
   --checkbox-border-rest: lch(52.04% 0 282 / 1);  /* Linear unchecked control */
   --toggle-unchecked-bg: lch(85.4% 0 282 / 1);    /* #d6d6d6 */
   --focus-ring-color: #6d78d5;
+  --action-primary: #5e6ad2;
+  --action-primary-hover: #6875e5;
 
   /* Linear Add Filter light-theme measurements. */
   --filter-menu-border: lch(90.55% 0 282 / 1);

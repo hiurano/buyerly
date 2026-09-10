@@ -1,96 +1,181 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ApiError, apiRequest } from '@/lib/api';
+import type {
+  AnalyticsHierarchyResponse,
+  MetaAccount,
+  MetaConnection,
+} from '@/lib/types';
 import { useAppStore } from '@/store/useAppStore';
-import { apiRequest } from '@/lib/api';
-import type { MetaAccount, MetaConnection } from '@/lib/types';
 import { CampaignRow } from './CampaignRow';
-import { AdSetRow } from './AdSetRow';
-import { AdRow } from './AdRow';
-import { CampaignRightSidebar } from './CampaignRightSidebar';
-import { DisplayOptionsPopover } from './DisplayOptionsPopover';
-import { CampaignGroupHeader } from './CampaignGroupHeader';
+import { MetaConnectionDialog } from './MetaConnectionDialog';
+import { Button } from '@/ui/Button';
 import { Tooltip } from '@/ui/Tooltip';
 import { LinearTabs } from '@/ui/LinearTabs';
-import { LinearDataListColumnHeader, LinearDataListStack, LinearDataListToolbar, LinearDataListViewport } from '@/ui/LinearDataList';
+import {
+  LinearDataListColumnHeader,
+  LinearDataListStack,
+  LinearDataListToolbar,
+  LinearDataListViewport,
+} from '@/ui/LinearDataList';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/ui/DropdownMenu';
 import { getAdsManagerColumns, getAdsManagerTableMinWidth } from './tableColumns';
 import {
-  ActiveFilterFormula,
-  FilteredEmptyState,
-  FilterMenuMode,
-  LinearFilterButton,
-  LinearFilterMenu,
-} from '@/components/filters/LinearFilter';
-import {
-  createAdFilterFields,
-  createAdSetFilterFields,
-  createCampaignFilterFields,
-} from '@/components/filters/filterCatalogs';
-import { applyFilterClauses, FilterClause } from '@/components/filters/filterModel';
-import {
   LinearPlusIcon,
-  LinearSlidersIcon,
-  LinearSidebarToggleIcon,
   LinearSidebarLeftToggleIcon,
 } from '@/icons/LinearIcons';
-import { MetaConnectionDialog } from './MetaConnectionDialog';
+import {
+  eligibleMetaAccounts,
+  hierarchyCampaignToRow,
+  metaAccountLabel,
+} from './liveCampaigns';
 
-interface OpenFilterMenu {
-  mode: FilterMenuMode;
-  anchor: HTMLElement;
-  fieldId?: string;
+type LoadState = 'idle' | 'loading' | 'ready' | 'error';
+
+function requestErrorMessage(error: unknown): string {
+  if (error instanceof ApiError || error instanceof Error) return error.message;
+  return 'Something went wrong. Please try again.';
 }
+
+interface DataStateProps {
+  title: string;
+  detail: string;
+  role?: 'status' | 'alert';
+  actionLabel?: string;
+  onAction?: () => void;
+  secondaryLabel?: string;
+  onSecondary?: () => void;
+}
+
+const DataState: React.FC<DataStateProps> = ({
+  title,
+  detail,
+  role = 'status',
+  actionLabel,
+  onAction,
+  secondaryLabel,
+  onSecondary,
+}) => (
+  <section
+    className="flex min-h-52 flex-1 items-center justify-center px-6 text-center"
+    role={role}
+  >
+    <div className="max-w-md">
+      <h3 className="text-[14px] font-medium text-[var(--text-primary)]">{title}</h3>
+      <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--text-tertiary)]">{detail}</p>
+      {(actionLabel || secondaryLabel) && (
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+          {actionLabel && onAction && (
+            <Button variant="primary" onClick={onAction}>
+              {actionLabel}
+            </Button>
+          )}
+          {secondaryLabel && onSecondary && (
+            <Button onClick={onSecondary}>
+              {secondaryLabel}
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  </section>
+);
 
 export const CampaignsView: React.FC = () => {
   const {
-    campaigns,
-    adSets,
-    ads,
-    campaignFilterTab,
-    setCampaignFilterTab,
-    isRightSidebarOpen,
-    toggleRightSidebar,
-    campaignGroups,
-    campaignAttachedRules,
-    rules,
-    adsManagerFilters,
-    setAdsManagerFilters,
-    adsManagerQuickFilter,
     clearAdsManagerQuickFilter,
-    isDisplayOptionsOpen,
-    toggleDisplayOptions,
-    setIsDisplayOptionsOpen,
-    displayGrouping,
     displayOrdering,
     setDisplayOrdering,
     displayProperties,
-    collapsedGroups,
-    toggleGroupCollapse,
+    clearCampaignSelection,
     isSidebarCollapsed,
     toggleSidebarCollapsed,
   } = useAppStore();
 
-  const filterButtonRef = useRef<HTMLButtonElement>(null);
-  const displayOptionsButtonRef = useRef<HTMLButtonElement>(null);
-  const [openFilterMenu, setOpenFilterMenu] = useState<OpenFilterMenu | null>(null);
+  const requestGenerationRef = useRef(0);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [metaAccounts, setMetaAccounts] = useState<MetaAccount[] | null>(null);
+  const [metaAccounts, setMetaAccounts] = useState<MetaAccount[]>([]);
   const [metaConnections, setMetaConnections] = useState<MetaConnection[]>([]);
+  const [accountsState, setAccountsState] = useState<LoadState>('loading');
+  const [accountsError, setAccountsError] = useState('');
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [campaigns, setCampaigns] = useState<ReturnType<typeof hierarchyCampaignToRow>[]>([]);
+  const [campaignsState, setCampaignsState] = useState<LoadState>('idle');
+  const [campaignsError, setCampaignsError] = useState('');
+  const [campaignReloadKey, setCampaignReloadKey] = useState(0);
   const [isMetaDialogOpen, setIsMetaDialogOpen] = useState(false);
   const [returnedConnectionId, setReturnedConnectionId] = useState<number | null>(
     Number(new URLSearchParams(window.location.search).get('meta_connection')) || null,
   );
 
-  const refreshMetaAccounts = async () => {
-    const [accounts, connections] = await Promise.all([
-      apiRequest<MetaAccount[]>('/api/accounts'),
-      apiRequest<MetaConnection[]>('/api/meta/connections'),
-    ]);
-    setMetaAccounts(accounts);
-    setMetaConnections(connections);
-  };
+  const refreshMetaAccounts = useCallback(async () => {
+    setAccountsState('loading');
+    setAccountsError('');
+    try {
+      const [accounts, connections] = await Promise.all([
+        apiRequest<MetaAccount[]>('/api/accounts'),
+        apiRequest<MetaConnection[]>('/api/meta/connections').catch(() => []),
+      ]);
+      const eligibleAccounts = eligibleMetaAccounts(accounts);
+      setMetaAccounts(eligibleAccounts);
+      setMetaConnections(connections);
+      setCampaignsState(eligibleAccounts.length > 0 ? 'loading' : 'idle');
+      setSelectedAccountId((current) => {
+        if (current && eligibleAccounts.some((account) => account.account_id === current)) {
+          return current;
+        }
+        return eligibleAccounts[0]?.account_id ?? null;
+      });
+      setAccountsState('ready');
+    } catch (error) {
+      setAccountsError(requestErrorMessage(error));
+      setAccountsState('error');
+    }
+  }, []);
 
   useEffect(() => {
-    void refreshMetaAccounts().catch(() => setMetaAccounts(null));
-  }, []);
+    void refreshMetaAccounts();
+  }, [refreshMetaAccounts]);
+
+  useEffect(() => {
+    clearAdsManagerQuickFilter();
+  }, [clearAdsManagerQuickFilter]);
+
+  useEffect(() => {
+    const generation = ++requestGenerationRef.current;
+    clearCampaignSelection();
+    setCampaigns([]);
+    setCampaignsError('');
+    if (!selectedAccountId) {
+      setCampaignsState('idle');
+      return undefined;
+    }
+
+    setCampaignsState('loading');
+    const path =
+      `/api/analytics/hierarchy?parent_id=${encodeURIComponent(selectedAccountId)}` +
+      '&level=campaign&period=today';
+    void apiRequest<AnalyticsHierarchyResponse>(path)
+      .then((response) => {
+        if (generation !== requestGenerationRef.current) return;
+        setCampaigns(response.items.map(hierarchyCampaignToRow));
+        setCampaignsState('ready');
+      })
+      .catch((error) => {
+        if (generation !== requestGenerationRef.current) return;
+        setCampaignsError(requestErrorMessage(error));
+        setCampaignsState('error');
+      });
+
+    return () => {
+      requestGenerationRef.current += 1;
+    };
+  }, [campaignReloadKey, clearCampaignSelection, selectedAccountId]);
 
   const clearMetaCallback = () => {
     window.history.replaceState({}, '', window.location.pathname);
@@ -107,191 +192,146 @@ export const CampaignsView: React.FC = () => {
     openMetaDialog();
   };
 
-  const campaignFilterFields = useMemo(
-    () =>
-      createCampaignFilterFields({
-        campaigns,
-        campaignGroups,
-        rules,
-        campaignAttachedRules,
-      }),
-    [campaignAttachedRules, campaignGroups, campaigns, rules]
+  const selectedAccount = metaAccounts.find(
+    (account) => account.account_id === selectedAccountId,
   );
-
-  const adSetFilterFields = useMemo(
-    () =>
-      createAdSetFilterFields({
-        adSets,
-        campaigns,
-        campaignGroups,
-        rules,
-        campaignAttachedRules,
-      }),
-    [adSets, campaignAttachedRules, campaignGroups, campaigns, rules]
-  );
-
-  const adFilterFields = useMemo(
-    () =>
-      createAdFilterFields({
-        ads,
-        adSets,
-        campaigns,
-        campaignGroups,
-        rules,
-        campaignAttachedRules,
-      }),
-    [adSets, ads, campaignAttachedRules, campaignGroups, campaigns, rules]
-  );
-
-  const currentFilters = adsManagerFilters[campaignFilterTab];
-  const currentFields =
-    campaignFilterTab === 'campaigns'
-      ? campaignFilterFields
-      : campaignFilterTab === 'adsets'
-      ? adSetFilterFields
-      : adFilterFields;
-  const currentFilterUiFields = currentFields as unknown as typeof campaignFilterFields;
-
-  const updateCurrentFilters = (clauses: FilterClause[]) =>
-    setAdsManagerFilters(campaignFilterTab, clauses);
-
-  const clearAllCurrentFilters = () => {
-    updateCurrentFilters([]);
-    clearAdsManagerQuickFilter();
+  const selectAccount = (accountId: string) => {
+    requestGenerationRef.current += 1;
+    clearCampaignSelection();
+    setCampaigns([]);
+    setCampaignsError('');
+    setCampaignsState('loading');
+    setSelectedAccountId(accountId);
   };
-
-  const getEffectiveFilters = (entity: 'campaigns' | 'adsets' | 'ads'): FilterClause[] => {
-    const explicitFilters = adsManagerFilters[entity];
-    if (!adsManagerQuickFilter || adsManagerQuickFilter.entity !== entity) {
-      return explicitFilters;
-    }
-    return [
-      ...explicitFilters,
-      {
-        fieldId: adsManagerQuickFilter.fieldId,
-        operator: 'is',
-        values: [adsManagerQuickFilter.value],
-      },
-    ];
-  };
-
-  const showFilterMenu = (mode: FilterMenuMode, anchor: HTMLElement, fieldId?: string) => {
-    setOpenFilterMenu({ mode, anchor, fieldId });
-  };
-
-  // Global hotkey: 'V' for Display options (when not typing in an input)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const activeTag = document.activeElement?.tagName.toLowerCase();
-      if (activeTag === 'input' || activeTag === 'textarea' || (document.activeElement as HTMLElement)?.isContentEditable) {
-        return;
-      }
-
-      if ((e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        e.preventDefault();
-        setIsDisplayOptionsOpen(false);
-        if (filterButtonRef.current) {
-          setOpenFilterMenu((current) =>
-            current ? null : { mode: 'root', anchor: filterButtonRef.current as HTMLElement }
-          );
-        }
-      } else if (e.key === 'v' || e.key === 'V') {
-        e.preventDefault();
-        setOpenFilterMenu(null);
-        toggleDisplayOptions();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setIsDisplayOptionsOpen, toggleDisplayOptions]);
-
-  useEffect(() => {
-    setOpenFilterMenu(null);
-  }, [campaignFilterTab]);
-
-  let filteredCampaigns = applyFilterClauses(
-    campaigns,
-    campaignFilterFields,
-    getEffectiveFilters('campaigns')
+  const supportedProperties = useMemo(
+    () => ({
+      ...displayProperties,
+      status: false,
+      budget: false,
+      roi: false,
+      rules: false,
+      group: false,
+      created: false,
+    }),
+    [displayProperties],
   );
-  const parseMetric = (value: string) => Number.parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
+  const parseMetric = (value: string) =>
+    Number.parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
   const directionFactor = sortDirection === 'asc' ? 1 : -1;
-
-  // Apply Ordering
+  let filteredCampaigns = campaigns;
   if (displayOrdering === 'name') {
-    filteredCampaigns = [...filteredCampaigns].sort((a, b) => a.name.localeCompare(b.name) * directionFactor);
+    filteredCampaigns = [...filteredCampaigns].sort(
+      (a, b) => a.name.localeCompare(b.name) * directionFactor,
+    );
   } else if (displayOrdering === 'spend') {
-    filteredCampaigns = [...filteredCampaigns].sort((a, b) => {
-      return (parseMetric(a.spend) - parseMetric(b.spend)) * directionFactor;
-    });
-  } else if (displayOrdering === 'roi') {
-    filteredCampaigns = [...filteredCampaigns].sort((a, b) => {
-      return (parseMetric(a.roi) - parseMetric(b.roi)) * directionFactor;
-    });
+    filteredCampaigns = [...filteredCampaigns].sort(
+      (a, b) => (parseMetric(a.spend) - parseMetric(b.spend)) * directionFactor,
+    );
   } else if (displayOrdering === 'results') {
-    filteredCampaigns = [...filteredCampaigns].sort((a, b) => (a.leadsCount - b.leadsCount) * directionFactor);
-  } else if (displayOrdering === 'budget') {
-    filteredCampaigns = [...filteredCampaigns].sort((a, b) => (parseMetric(a.budget) - parseMetric(b.budget)) * directionFactor);
+    filteredCampaigns = [...filteredCampaigns].sort(
+      (a, b) => (a.leadsCount - b.leadsCount) * directionFactor,
+    );
   } else if (displayOrdering === 'cpa') {
-    filteredCampaigns = [...filteredCampaigns].sort((a, b) => (parseMetric(a.cpa) - parseMetric(b.cpa)) * directionFactor);
-  } else if (displayOrdering === 'created') {
-    filteredCampaigns = [...filteredCampaigns].sort((a, b) => (Date.parse(a.date) - Date.parse(b.date)) * directionFactor);
+    filteredCampaigns = [...filteredCampaigns].sort(
+      (a, b) => (parseMetric(a.cpa) - parseMetric(b.cpa)) * directionFactor,
+    );
   }
 
-  let filteredAdSets = applyFilterClauses(adSets, adSetFilterFields, getEffectiveFilters('adsets'));
-  let filteredAds = applyFilterClauses(ads, adFilterFields, getEffectiveFilters('ads'));
-
-  if (displayOrdering === 'name') {
-    filteredAdSets = [...filteredAdSets].sort((a, b) => a.name.localeCompare(b.name) * directionFactor);
-    filteredAds = [...filteredAds].sort((a, b) => a.name.localeCompare(b.name) * directionFactor);
-  } else if (displayOrdering === 'spend') {
-    filteredAdSets = [...filteredAdSets].sort((a, b) => (parseMetric(a.spend) - parseMetric(b.spend)) * directionFactor);
-    filteredAds = [...filteredAds].sort((a, b) => (parseMetric(a.spend) - parseMetric(b.spend)) * directionFactor);
-  } else if (displayOrdering === 'roi') {
-    filteredAdSets = [...filteredAdSets].sort((a, b) => (parseMetric(a.roi) - parseMetric(b.roi)) * directionFactor);
-  } else if (displayOrdering === 'results') {
-    filteredAdSets = [...filteredAdSets].sort((a, b) => (a.leadsCount - b.leadsCount) * directionFactor);
-    filteredAds = [...filteredAds].sort((a, b) => (a.leadsCount - b.leadsCount) * directionFactor);
-  } else if (displayOrdering === 'budget') {
-    filteredAdSets = [...filteredAdSets].sort((a, b) => (parseMetric(a.budget) - parseMetric(b.budget)) * directionFactor);
-  } else if (displayOrdering === 'cpa') {
-    filteredAdSets = [...filteredAdSets].sort((a, b) => (parseMetric(a.cpa) - parseMetric(b.cpa)) * directionFactor);
-    filteredAds = [...filteredAds].sort((a, b) => (parseMetric(a.cpa) - parseMetric(b.cpa)) * directionFactor);
-  }
-
-  const tableColumns = getAdsManagerColumns(campaignFilterTab, displayProperties);
+  const tableColumns = getAdsManagerColumns('campaigns', supportedProperties);
   const tableMinWidth = getAdsManagerTableMinWidth(tableColumns);
-  const hasExplicitFilter = currentFilters.length > 0;
-  const hasQuickFilter = Boolean(adsManagerQuickFilter?.entity === campaignFilterTab);
-  const hasFilterActive = hasExplicitFilter || hasQuickFilter;
 
-  const totalCurrent =
-    campaignFilterTab === 'adsets'
-      ? adSets.length
-      : campaignFilterTab === 'ads'
-      ? ads.length
-      : campaigns.length;
+  const renderData = () => {
+    if (accountsState === 'loading') {
+      return <DataState title="Loading ad accounts…" detail="Reading imported accounts from this workspace." />;
+    }
+    if (accountsState === 'error') {
+      return (
+        <DataState
+          title="Couldn't load ad accounts"
+          detail={accountsError}
+          role="alert"
+          actionLabel="Retry"
+          onAction={() => void refreshMetaAccounts()}
+          secondaryLabel="Connect Facebook"
+          onSecondary={openMetaDialog}
+        />
+      );
+    }
+    if (metaAccounts.length === 0) {
+      return (
+        <DataState
+          title="Connect an ad account"
+          detail="Connect Facebook and import at least one account to see real campaign data. Automation stays off after import."
+          actionLabel="Connect Facebook"
+          onAction={openAccountSelection}
+        />
+      );
+    }
+    if (campaignsState === 'loading') {
+      return <DataState title="Loading campaigns…" detail="Reading today's saved Meta campaign facts." />;
+    }
+    if (campaignsState === 'error') {
+      return (
+        <DataState
+          title="Couldn't load campaigns"
+          detail={campaignsError}
+          role="alert"
+          actionLabel="Retry"
+          onAction={() => setCampaignReloadKey((value) => value + 1)}
+          secondaryLabel="Connect Facebook"
+          onSecondary={openMetaDialog}
+        />
+      );
+    }
+    if (campaigns.length === 0) {
+      return (
+        <DataState
+          title="No campaign facts for today"
+          detail="This account is connected, but Buyerly has no saved campaign activity for today's account-local period yet. No zero values or demo campaigns are substituted."
+          actionLabel="Retry"
+          onAction={() => setCampaignReloadKey((value) => value + 1)}
+        />
+      );
+    }
 
-  const filteredCurrentCount =
-    campaignFilterTab === 'adsets'
-      ? filteredAdSets.length
-      : campaignFilterTab === 'ads'
-      ? filteredAds.length
-      : filteredCampaigns.length;
-
-  const hiddenCount = totalCurrent - filteredCurrentCount;
+    return (
+      <LinearDataListViewport className="campaign-list-container" horizontal>
+        <div style={{ minWidth: `${tableMinWidth}px` }}>
+          <LinearDataListColumnHeader
+            columns={tableColumns}
+            minWidth={tableMinWidth}
+            sortKey={displayOrdering === 'manual' ? undefined : displayOrdering}
+            sortDirection={sortDirection}
+            onSort={(columnId) => {
+              if (displayOrdering === columnId) {
+                setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'));
+              } else {
+                setDisplayOrdering(columnId as typeof displayOrdering);
+                setSortDirection(columnId === 'name' ? 'asc' : 'desc');
+              }
+            }}
+          />
+          <LinearDataListStack>
+            {filteredCampaigns.map((campaign) => (
+              <CampaignRow
+                key={campaign.id}
+                campaign={campaign}
+                properties={supportedProperties}
+                readOnly
+                showIdentifier
+              />
+            ))}
+          </LinearDataListStack>
+        </div>
+      </LinearDataListViewport>
+    );
+  };
 
   return (
     <div className="flex h-full w-full select-none flex-col overflow-hidden bg-transparent">
-      {/* 1. Header (Stacked 2 Tiers = 87px total) - Spans full width across canvas */}
       <header className="flex shrink-0 flex-col">
-        {/* Tier 1: Title (44px) with border-bottom */}
         <div
-          style={{
-            borderBottom: '1px solid var(--color-border-primary)',
-            paddingLeft: '14px',
-          }}
+          style={{ borderBottom: '1px solid var(--color-border-primary)', paddingLeft: '14px' }}
           className="flex h-[44px] items-center justify-between pr-2.5"
         >
           <div className="flex items-center">
@@ -319,20 +359,12 @@ export const CampaignsView: React.FC = () => {
                 </button>
               </Tooltip>
             </div>
-            <h2
-              style={{
-                fontSize: '13px',
-                fontWeight: 500,
-                lineHeight: '16px',
-                letterSpacing: '-0.01em',
-                color: 'var(--text-secondary)',
-              }}
-            >
+            <h2 className="text-[13px] font-medium tracking-[-0.01em] text-[var(--text-secondary)]">
               Ads Manager
             </h2>
           </div>
           <button
-            className="inline-flex h-7 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-transparent bg-transparent pl-2 pr-2.5 text-[12px] font-medium text-[var(--text-secondary)] shadow-none outline-none transition-colors duration-150 ease-out hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] active:duration-0 focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)] cursor-default select-none"
+            className="inline-flex h-7 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-[12px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)]"
             type="button"
             onClick={openMetaDialog}
           >
@@ -341,231 +373,57 @@ export const CampaignsView: React.FC = () => {
           </button>
         </div>
 
-        {/* Tier 2: View Filter Tabs & Action Buttons (43px) */}
         <LinearDataListToolbar>
-          {/* Left: View Tabs with Linear Sliding Pill Physics */}
-          <LinearTabs
-            tabs={[
-              { id: 'campaigns', label: 'Campaigns' },
-              { id: 'adsets', label: 'Ad sets' },
-              { id: 'ads', label: 'Ads' },
-            ]}
-            activeTabId={campaignFilterTab}
-            onChange={(id) => setCampaignFilterTab(id as 'campaigns' | 'adsets' | 'ads')}
-          />
+          <div className="flex min-w-0 items-center gap-3">
+            <LinearTabs
+              tabs={[
+                { id: 'campaigns', label: 'Campaigns', count: campaignsState === 'ready' ? campaigns.length : undefined },
+                { id: 'adsets', label: 'Ad sets', disabled: true },
+                { id: 'ads', label: 'Ads', disabled: true },
+              ]}
+              activeTabId="campaigns"
+              onChange={() => undefined}
+              aria-label="Ads Manager level"
+            />
+            <span className="hidden text-[11px] text-[var(--text-muted)] md:inline">Today · read-only</span>
+          </div>
 
-          {/* Right: Add filter + Display options + Toggle Sidebar */}
-          <div className="flex items-center gap-1.5">
-            <Tooltip content="Add filter" shortcut="F">
-              <LinearFilterButton
-                ref={filterButtonRef}
-                active={hasExplicitFilter}
-                open={Boolean(openFilterMenu)}
-                onMouseDown={(event) => event.stopPropagation()}
-                onClick={(event) => {
-                  setIsDisplayOptionsOpen(false);
-                  setOpenFilterMenu((current) =>
-                    current ? null : { mode: 'root', anchor: event.currentTarget }
-                  );
-                }}
-              />
-            </Tooltip>
-
-            {/* Display Options Button with Popover */}
-            <div className="relative">
-              <Tooltip content="Show display options" shortcut="Shift V">
-                <button
-                  ref={displayOptionsButtonRef}
-                  type="button"
-                  aria-label="Display options"
-                  data-active={isDisplayOptionsOpen ? 'true' : undefined}
-                  onMouseDown={(event) => event.stopPropagation()}
-                  onClick={() => {
-                    setOpenFilterMenu(null);
-                    toggleDisplayOptions();
-                  }}
-                  className={`group relative flex h-[28px] w-[28px] items-center justify-center rounded-full border border-transparent outline-none transition-all ${
-                    isDisplayOptionsOpen
-                      ? 'bg-[var(--item-active-bg)] text-[var(--text-primary)]'
-                      : 'bg-transparent text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'
-                  }`}
+          <div className="flex min-w-0 items-center gap-1.5">
+            {selectedAccount && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="max-w-[120px] truncate rounded-full border border-[var(--color-border-secondary)] px-2.5 py-1 text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)] sm:max-w-[220px] lg:max-w-[280px]"
+                    aria-label="Select ad account"
+                    title={metaAccountLabel(selectedAccount)}
+                  >
+                    {metaAccountLabel(selectedAccount)} ▾
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  style={{ width: 'min(360px, calc(100vw - 32px))' }}
                 >
-                  <LinearSlidersIcon size={14} />
-                </button>
-              </Tooltip>
-
-              <DisplayOptionsPopover
-                isOpen={isDisplayOptionsOpen}
-                onClose={() => setIsDisplayOptionsOpen(false)}
-                anchorRef={displayOptionsButtonRef}
-              />
-            </div>
-
-            {/* Toggle Right Details Sidebar */}
-            <Tooltip
-              content={isRightSidebarOpen ? 'Close details' : 'Open details'}
-              shortcut="Alt I"
-            >
-              <button
-                type="button"
-                aria-label={isRightSidebarOpen ? 'Close details' : 'Open details'}
-                onClick={toggleRightSidebar}
-                className={`group relative flex h-[28px] w-[28px] items-center justify-center rounded-full transition-all border ${
-                  isRightSidebarOpen
-                    ? 'bg-[var(--item-hover-bg)] border-[var(--color-border-secondary)] text-[var(--text-primary)]'
-                    : 'bg-transparent border-transparent text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                <LinearSidebarToggleIcon isOpen={isRightSidebarOpen} size={14} />
-              </button>
-            </Tooltip>
+                  <DropdownMenuLabel>Ad account</DropdownMenuLabel>
+                  {metaAccounts.map((account) => (
+                    <DropdownMenuItem
+                      key={account.account_id}
+                      onSelect={() => selectAccount(account.account_id)}
+                    >
+                      <span className="truncate">{metaAccountLabel(account)}</span>
+                      {account.account_id === selectedAccountId && <span aria-hidden="true">✓</span>}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </LinearDataListToolbar>
-
-        <ActiveFilterFormula
-          fields={currentFilterUiFields}
-          clauses={currentFilters}
-          onChange={updateCurrentFilters}
-          onOpenMenu={showFilterMenu}
-        />
       </header>
 
-      <LinearFilterMenu
-        isOpen={Boolean(openFilterMenu)}
-        mode={openFilterMenu?.mode ?? 'root'}
-        anchorElement={openFilterMenu?.anchor ?? null}
-        fieldId={openFilterMenu?.fieldId}
-        fields={currentFilterUiFields}
-        clauses={currentFilters}
-        onChange={updateCurrentFilters}
-        onClose={() => setOpenFilterMenu(null)}
-      />
+      <div className="flex min-h-0 flex-1 overflow-hidden">{renderData()}</div>
 
-      {/* 2. Main Content Area below Header (Split: List on Left, Right Sidebar on Right) */}
-      <div className="flex flex-1 overflow-hidden" style={{ flexDirection: 'row' }}>
-        {/* Left: Campaign / Ad Set / Ad List Scroll Container */}
-        {metaAccounts && metaAccounts.length === 0 ? (
-          <section className="ui-empty-state flex flex-1 items-center justify-center" aria-label="Подключение рекламных кабинетов">
-            <button
-              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full bg-[#5e6ad2] px-3.5 text-[12px] font-medium text-white shadow-[0_1px_1px_rgba(0,0,0,0.04),0_3px_6px_-2px_rgba(0,0,0,0.02)] transition-colors duration-150 ease-out hover:bg-[#6875e5] active:duration-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] cursor-default select-none"
-              type="button"
-              onClick={openAccountSelection}
-            >
-              <LinearPlusIcon size={14} />
-              <span>Connect Facebook</span>
-            </button>
-          </section>
-        ) : (
-        <LinearDataListViewport className="campaign-list-container" horizontal>
-          <div style={{ minWidth: `${tableMinWidth}px` }}>
-            <LinearDataListColumnHeader
-              columns={tableColumns}
-              minWidth={tableMinWidth}
-              sortKey={displayOrdering === 'manual' ? undefined : displayOrdering}
-              sortDirection={sortDirection}
-              onSort={(columnId) => {
-                if (displayOrdering === columnId) {
-                  setSortDirection((current) => current === 'asc' ? 'desc' : 'asc');
-                } else {
-                  setDisplayOrdering(columnId as typeof displayOrdering);
-                  setSortDirection(columnId === 'name' ? 'asc' : 'desc');
-                }
-              }}
-            />
-
-            <LinearDataListStack>
-            {campaignFilterTab === 'adsets' ? (
-              filteredAdSets.length === 0 ? (
-                hasFilterActive ? (
-                  <FilteredEmptyState noun="ad sets" hiddenCount={hiddenCount} onClear={clearAllCurrentFilters} />
-                ) : (
-                  <div className="flex h-32 items-center justify-center text-[13px] text-[#6b6f76]">No ad sets found</div>
-                )
-              ) : (
-                filteredAdSets.map((adSet) => <AdSetRow key={adSet.id} adSet={adSet} />)
-              )
-            ) : campaignFilterTab === 'ads' ? (
-              filteredAds.length === 0 ? (
-                hasFilterActive ? (
-                  <FilteredEmptyState noun="ads" hiddenCount={hiddenCount} onClear={clearAllCurrentFilters} />
-                ) : (
-                  <div className="flex h-32 items-center justify-center text-[13px] text-[#6b6f76]">No ads found</div>
-                )
-              ) : (
-                filteredAds.map((ad) => <AdRow key={ad.id} ad={ad} />)
-              )
-            ) : filteredCampaigns.length === 0 ? (
-              hasFilterActive ? (
-                <FilteredEmptyState noun="campaigns" hiddenCount={hiddenCount} onClear={clearAllCurrentFilters} />
-              ) : (
-                <div className="flex h-32 items-center justify-center text-[13px] text-[#6b6f76]">No campaigns found</div>
-              )
-            ) : displayGrouping === 'groups' ? (
-              campaignGroups.map((group) => {
-                const groupCampaigns = filteredCampaigns.filter((c) => c.groupIds.includes(group.id));
-                if (groupCampaigns.length === 0) return null;
-                return (
-                  <div key={group.id}>
-                    {/* Linear-style Group Header */}
-                    {(() => {
-                      const isCollapsed = collapsedGroups.includes(group.id);
-                      return (
-                        <>
-                          <CampaignGroupHeader
-                            groupId={group.id}
-                            groupName={group.name}
-                            count={groupCampaigns.length}
-                            dotColor={group.color}
-                            accentLch={group.accentColor}
-                            isCollapsed={isCollapsed}
-                            onToggleCollapse={() => toggleGroupCollapse(group.id)}
-                          />
-                          {!isCollapsed && (
-                            <div className="space-y-0.5">
-                              {groupCampaigns.map((campaign) => (
-                                <CampaignRow key={campaign.id} campaign={campaign} />
-                              ))}
-                            </div>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-                );
-              })
-            ) : (
-              filteredCampaigns.map((campaign) => (
-                <CampaignRow key={campaign.id} campaign={campaign} />
-              ))
-            )}
-            </LinearDataListStack>
-
-          {/* Footer Filter Notification Banner */}
-            {hasFilterActive && hiddenCount > 0 && (
-            <div className="mt-4 flex items-center justify-center gap-4 py-4 text-[12px] text-[var(--text-tertiary)]">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-[var(--text-secondary)]">{hiddenCount}</span>
-                <span>more hidden by filters</span>
-                <button
-                  type="button"
-                  onClick={clearAllCurrentFilters}
-                  className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
-                >
-                  <span>Clear Filters</span>
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M2.97 2.97a.75.75 0 0 1 1.06 0L8 6.94l3.97-3.97a.75.75 0 1 1 1.06 1.06L9.06 8l3.97 3.97a.75.75 0 1 1-1.06 1.06L8 9.06l-3.97 3.97a.75.75 0 0 1-1.06-1.06L6.94 8 2.97 4.03a.75.75 0 0 1 0-1.06Z" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            )}
-          </div>
-        </LinearDataListViewport>
-        )}
-
-        {/* Right: Linear Right Context Sidebar (Groups Filter Panel) */}
-        <CampaignRightSidebar />
-      </div>
       <MetaConnectionDialog
         open={isMetaDialogOpen || returnedConnectionId !== null}
         connectionId={returnedConnectionId}
@@ -576,7 +434,9 @@ export const CampaignsView: React.FC = () => {
             clearMetaCallback();
           }
         }}
-        onImported={() => { void refreshMetaAccounts(); }}
+        onImported={() => {
+          void refreshMetaAccounts().then(() => setCampaignReloadKey((value) => value + 1));
+        }}
       />
     </div>
   );

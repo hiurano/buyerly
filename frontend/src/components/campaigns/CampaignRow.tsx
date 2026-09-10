@@ -11,16 +11,24 @@ import { getAdsManagerColumns } from './tableColumns';
 
 interface CampaignRowProps {
   campaign: CampaignItem;
+  readOnly?: boolean;
+  properties?: Record<string, boolean>;
+  showIdentifier?: boolean;
 }
 
-export const CampaignRow: React.FC<CampaignRowProps> = ({ campaign }) => {
+export const CampaignRow: React.FC<CampaignRowProps> = ({
+  campaign,
+  readOnly = false,
+  properties,
+  showIdentifier = false,
+}) => {
   const {
     selectedCampaignIds,
     toggleCampaignSelection,
     toggleCampaignDelivery,
     campaignAttachedRules,
     setFocusedCampaignId,
-    displayProperties,
+    displayProperties: storedDisplayProperties,
     campaignGroups,
   } = useAppStore();
 
@@ -32,8 +40,10 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({ campaign }) => {
   const [ruleAnchorRect, setRuleAnchorRect] = useState<DOMRect | null>(null);
   const rulesColumnRef = useRef<HTMLDivElement>(null);
 
-  const isSelected = selectedCampaignIds.includes(campaign.id);
-  const isDeliveryOn = campaign.status !== 'paused';
+  const isSelected = !readOnly && selectedCampaignIds.includes(campaign.id);
+  const isDeliveryKnown = campaign.status !== 'unknown';
+  const isDeliveryOn = campaign.status === 'active';
+  const displayProperties = properties ?? storedDisplayProperties;
   const isPositiveRoi = campaign.roi.startsWith('+');
   const attachedCount = (campaignAttachedRules[campaign.id] || []).length;
   const hasRules = attachedCount > 0;
@@ -43,6 +53,7 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({ campaign }) => {
   const columns = getAdsManagerColumns('campaigns', displayProperties);
 
   const handleRowClick = () => {
+    if (readOnly) return;
     setFocusedCampaignId(campaign.id);
   };
 
@@ -73,40 +84,62 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({ campaign }) => {
       <LinearDataListRow
         layout="grid"
         columns={columns}
-        tabIndex={0}
-        onClick={handleRowClick}
-        onKeyDown={(e) => {
+        tabIndex={readOnly ? undefined : 0}
+        onClick={readOnly ? undefined : handleRowClick}
+        onKeyDown={readOnly ? undefined : (e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             setFocusedCampaignId(campaign.id);
           } else if (e.key === 'x' || e.key === 'X') {
             e.preventDefault();
             toggleCampaignSelection(campaign.id);
-          } else if (e.key === 'l' || e.key === 'L') {
+          } else if (!readOnly && (e.key === 'l' || e.key === 'L')) {
             e.preventDefault();
             openLabelSelector();
-          } else if (e.key === 'r' || e.key === 'R') {
+          } else if (!readOnly && (e.key === 'r' || e.key === 'R')) {
             e.preventDefault();
             openRuleSelector();
           }
         }}
         selected={isSelected}
-        className="campaign-data-row cursor-pointer"
+        className={`campaign-data-row ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}
       >
         <div className="flex min-w-0 items-center gap-3">
-          <LinearCheckbox checked={isSelected} onChange={() => toggleCampaignSelection(campaign.id)} />
-          {displayProperties.status !== false && (
-            <LinearToggle
-              checked={isDeliveryOn}
-              onChange={() => toggleCampaignDelivery(campaign.id)}
-              tooltipContent={isDeliveryOn ? 'Pause campaign' : 'Resume campaign'}
+          {!readOnly && (
+            <LinearCheckbox
+              checked={isSelected}
+              onChange={() => toggleCampaignSelection(campaign.id)}
             />
           )}
-          <span
-            className="truncate text-[13px] font-medium"
-            style={{ color: isDeliveryOn ? 'var(--text-primary)' : 'var(--text-tertiary)' }}
-          >
-            {campaign.name}
+          {displayProperties.status !== false && (
+            readOnly || !isDeliveryKnown ? (
+              <span
+                className="inline-flex h-5 w-8 items-center justify-center text-[12px] text-[var(--text-muted)]"
+                title="Delivery status is not available in this snapshot"
+                aria-label="Delivery status unavailable"
+              >
+                —
+              </span>
+            ) : (
+              <LinearToggle
+                checked={isDeliveryOn}
+                onChange={() => toggleCampaignDelivery(campaign.id)}
+                tooltipContent={isDeliveryOn ? 'Pause campaign' : 'Resume campaign'}
+              />
+            )
+          )}
+          <span className="flex min-w-0 flex-col" title={`${campaign.name} · ${campaign.identifier}`}>
+            <span
+              className="truncate text-[13px] font-medium"
+              style={{ color: isDeliveryKnown && !isDeliveryOn ? 'var(--text-tertiary)' : 'var(--text-primary)' }}
+            >
+              {campaign.name}
+            </span>
+            {showIdentifier && (
+              <span className="truncate font-mono text-[10px] leading-3 text-[var(--text-muted)]">
+                {campaign.identifier}
+              </span>
+            )}
           </span>
         </div>
 

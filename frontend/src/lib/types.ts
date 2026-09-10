@@ -50,9 +50,18 @@ export interface OnboardingStatus {
 }
 
 export interface MetaAccount {
+  id?: number;
   account_id: string;
   name: string;
+  custom_name?: string;
+  note?: string;
   connection_type: 'facebook_login' | 'system_user';
+  timezone_name?: string;
+  currency?: string;
+  account_status?: number;
+  status_label?: string;
+  rules_enabled?: boolean;
+  is_active?: boolean;
 }
 
 export interface MetaConnection {
@@ -85,6 +94,35 @@ export interface MetaAssetsResponse {
 export interface MetaInviteCreated {
   invite_url: string;
   expires_at: string;
+}
+
+export interface AnalyticsHierarchyItem {
+  entity_id: string;
+  entity_name: string;
+  entity_level: 'campaign' | 'adset' | 'ad';
+  parent_entity_id: string;
+  account_id: string;
+  currency: string;
+  status: string;
+  effective_status: string;
+  daily_budget: number;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  leads: number;
+  registrations: number;
+  purchases: number;
+  cost_per_lead: number | null;
+  cpc: number;
+  ctr: number;
+}
+
+export interface AnalyticsHierarchyResponse {
+  parent_id: string;
+  level: 'campaign' | 'adset' | 'ad';
+  period: 'today' | 'yesterday' | 'last_3d' | 'last_7d';
+  total: number;
+  items: AnalyticsHierarchyItem[];
 }
 
 export interface PublicMetaInviteInfo {
