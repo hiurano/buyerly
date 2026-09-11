@@ -583,7 +583,11 @@ def _preset_snapshot(preset: RulePreset) -> Dict[str, Any]:
     return snapshot
 
 
-def _preset_response(preset: RulePreset, last_run_at: str = "") -> RulePresetItem:
+def _preset_response(
+    preset: RulePreset,
+    last_run_at: str = "",
+    attached_account_ids: Optional[List[str]] = None,
+) -> RulePresetItem:
     try:
         raw_conditions = (
             json.loads(preset.conditions)
@@ -620,6 +624,7 @@ def _preset_response(preset: RulePreset, last_run_at: str = "") -> RulePresetIte
         needs_review=bool(snapshot.get("needs_review", False)),
         review_reason=str(snapshot.get("review_reason", "")),
         last_run_at=last_run_at,
+        attached_account_ids=list(attached_account_ids or []),
     )
 
 
@@ -691,8 +696,10 @@ def _rule_group_response(
     group: RuleGroup,
     presets: List[RulePreset],
     last_runs: Optional[Dict[int, str]] = None,
+    attachments: Optional[Dict[int, List[str]]] = None,
 ) -> RuleGroupResponse:
     last_runs = last_runs or {}
+    attachments = attachments or {}
     return RuleGroupResponse(
         id=group.id,
         name=group.name,
@@ -701,11 +708,36 @@ def _rule_group_response(
         position=getattr(group, "position", 0) or 0,
         preset_ids=[preset.id for preset in presets],
         rules=[
-            _preset_response(preset, last_runs.get(preset.id, ""))
+            _preset_response(
+                preset,
+                last_runs.get(preset.id, ""),
+                attachments.get(preset.id, []),
+            )
             for preset in presets
         ],
         created_at=group.created_at.strftime("%Y-%m-%d %H:%M") if group.created_at else "",
     )
+
+
+async def _preset_attachments(session, workspace_id: int) -> Dict[int, List[str]]:
+    """Map each preset to the ad accounts whose snapshots currently embed it."""
+    accounts = (
+        await session.execute(
+            select(Account.account_id, Account.active_rules).where(
+                Account.workspace_id == workspace_id
+            )
+        )
+    ).all()
+    attachments: Dict[int, List[str]] = {}
+    for account_id, raw_rules in accounts:
+        for rule in _load_active_rules(raw_rules):
+            preset_id = rule.get("preset_id")
+            if not isinstance(preset_id, int):
+                continue
+            account_ids = attachments.setdefault(preset_id, [])
+            if account_id not in account_ids:
+                account_ids.append(account_id)
+    return attachments
 
 
 async def _preset_last_runs(

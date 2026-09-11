@@ -35,6 +35,9 @@ class RulePresetItem(BaseModel):
     review_reason: str = ""
     # Last RULE_ACTION audit event for this preset; empty when it never fired.
     last_run_at: str = ""
+    # Ad accounts this preset is currently attached to, so the UI can tell a
+    # configured rule apart from one that cannot run anywhere yet.
+    attached_account_ids: List[str] = Field(default_factory=list)
 
 
 class CreatePresetRequest(BaseModel):

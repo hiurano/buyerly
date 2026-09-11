@@ -15,6 +15,7 @@ from api.deps import (
     _get_workspace_presets,
     _load_active_rules,
     _load_group_presets,
+    _preset_attachments,
     _preset_last_runs,
     _preset_response,
     _preset_snapshot,
@@ -73,8 +74,13 @@ async def list_presets(user: User = Depends(get_current_user)):
         last_runs = await _preset_last_runs(
             session, ws.id, [preset.id for preset in presets]
         )
+        attachments = await _preset_attachments(session, ws.id)
         return [
-            _preset_response(preset, last_runs.get(preset.id, ""))
+            _preset_response(
+                preset,
+                last_runs.get(preset.id, ""),
+                attachments.get(preset.id, []),
+            )
             for preset in presets
         ]
 
@@ -156,7 +162,12 @@ async def update_preset(preset_id: int, payload: CreatePresetRequest, user: User
         await session.commit()
         await session.refresh(preset)
         last_runs = await _preset_last_runs(session, ws.id, [preset.id])
-        return _preset_response(preset, last_runs.get(preset.id, ""))
+        attachments = await _preset_attachments(session, ws.id)
+        return _preset_response(
+            preset,
+            last_runs.get(preset.id, ""),
+            attachments.get(preset.id, []),
+        )
 
 
 @router.delete("/presets/{preset_id}")
@@ -235,8 +246,11 @@ async def list_rule_groups(user: User = Depends(get_current_user)):
         last_runs = await _preset_last_runs(
             session, ws.id, _grouped_preset_ids(presets_by_group)
         )
+        attachments = await _preset_attachments(session, ws.id)
         return [
-            _rule_group_response(group, presets_by_group.get(group.id, []), last_runs)
+            _rule_group_response(
+                group, presets_by_group.get(group.id, []), last_runs, attachments
+            )
             for group in groups
         ]
 
@@ -283,8 +297,11 @@ async def reorder_rule_groups(
         last_runs = await _preset_last_runs(
             session, ws.id, _grouped_preset_ids(presets_by_group)
         )
+        attachments = await _preset_attachments(session, ws.id)
         return [
-            _rule_group_response(g, presets_by_group.get(g.id, []), last_runs)
+            _rule_group_response(
+                g, presets_by_group.get(g.id, []), last_runs, attachments
+            )
             for g in ordered_groups
         ]
 
@@ -335,7 +352,8 @@ async def create_rule_group(
         last_runs = await _preset_last_runs(
             session, ws.id, [preset.id for preset in presets]
         )
-        return _rule_group_response(group, presets, last_runs)
+        attachments = await _preset_attachments(session, ws.id)
+        return _rule_group_response(group, presets, last_runs, attachments)
 
 
 @router.put("/rule-groups/{group_id}", response_model=RuleGroupResponse)
@@ -380,7 +398,8 @@ async def update_rule_group(
         last_runs = await _preset_last_runs(
             session, ws.id, [preset.id for preset in presets]
         )
-        return _rule_group_response(group, presets, last_runs)
+        attachments = await _preset_attachments(session, ws.id)
+        return _rule_group_response(group, presets, last_runs, attachments)
 
 
 @router.delete("/rule-groups/{group_id}")
