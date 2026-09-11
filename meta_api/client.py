@@ -983,10 +983,10 @@ class MetaClient:
         priority: str = "normal",
         reporting_date: str = "",
     ) -> List[Dict[str, Any]]:
-        """Fetch normalized hierarchy facts with authoritative campaign inventory.
+        """Fetch normalized hierarchy facts with authoritative entity inventory.
 
-        Campaign identity and delivery state come from the campaigns edge. Insights
-        are joined by Meta ID and remain the source of reporting-period metrics.
+        Identity and delivery state come from the campaign, ad set, and ad edges.
+        Insights are joined by Meta ID and remain the source of period metrics.
         """
         acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
         normalized_currency = normalize_currency(currency)
@@ -1104,19 +1104,26 @@ class MetaClient:
             "daily_budget": 0.0,
         }))
 
-        # 2. Campaign inventory is authoritative even when there is no delivery.
-        campaigns_url = f"{self.base_url}/{acc_id}/campaigns"
-        campaigns = await self._fetch_paginated_data(
-            campaigns_url,
-            {
-                "fields": "id,name,status,effective_status,daily_budget",
-                "limit": 100,
-                "access_token": access_token,
-            },
-            account_id=acc_id,
-            priority=priority,
-        )
+        # 2. Entity inventory is authoritative even when there is no delivery.
+        inventory_specs = {
+            "campaign": ("campaigns", "id,name,status,effective_status,daily_budget"),
+            "adset": ("adsets", "id,name,campaign_id,status,effective_status,daily_budget"),
+            "ad": ("ads", "id,name,campaign_id,adset_id,status,effective_status"),
+        }
+        inventory_by_level: Dict[str, List[Dict[str, Any]]] = {}
+        for level, (edge, fields) in inventory_specs.items():
+            inventory_by_level[level] = await self._fetch_paginated_data(
+                f"{self.base_url}/{acc_id}/{edge}",
+                {
+                    "fields": fields,
+                    "limit": 100,
+                    "access_token": access_token,
+                },
+                account_id=acc_id,
+                priority=priority,
+            )
 
+        # 3. Period metrics are joined onto the current inventory by Meta ID.
         insights_url = f"{self.base_url}/{acc_id}/insights"
         metric_fields = (
             "spend,impressions,reach,frequency,cpm,clicks,unique_clicks,"
@@ -1127,61 +1134,23 @@ class MetaClient:
             "adset": f"campaign_id,adset_id,adset_name,{metric_fields}",
             "ad": f"campaign_id,adset_id,ad_id,ad_name,{metric_fields}",
         }
-        campaign_insights = await self._fetch_paginated_data(
-            insights_url,
-            {
-                "level": "campaign",
-                "fields": hierarchy_fields["campaign"],
-                "date_preset": date_preset,
-                "limit": 100,
-                "access_token": access_token,
-            },
-            account_id=acc_id,
-            priority=priority,
-        )
-        insights_by_campaign = {
-            str(row["campaign_id"]): row
-            for row in campaign_insights
-            if row.get("campaign_id")
+        insight_id_keys = {"campaign": "campaign_id", "adset": "adset_id", "ad": "ad_id"}
+        insight_name_keys = {
+            "campaign": "campaign_name",
+            "adset": "adset_name",
+            "ad": "ad_name",
         }
-        inventory_campaign_ids = set()
-        for campaign in campaigns:
-            campaign_id = str(campaign.get("id") or "")
-            if not campaign_id:
-                continue
-            inventory_campaign_ids.add(campaign_id)
-            status = str(campaign.get("status") or "UNKNOWN")
-            effective_status = str(campaign.get("effective_status") or status)
-            facts.append(metric_fact(
-                level="campaign",
-                entity_id=campaign_id,
-                entity_name=str(campaign.get("name") or f"Campaign {campaign_id}"),
-                parent_id=acc_id,
-                insight=insights_by_campaign.get(campaign_id, {}),
-                status=status,
-                effective_status=effective_status,
-                daily_budget=from_meta_budget_units(
-                    campaign.get("daily_budget"),
-                    normalized_currency,
-                ),
-            ))
 
-        # Preserve period activity for a campaign that disappeared from current inventory.
-        for campaign_id, insight in insights_by_campaign.items():
-            if campaign_id in inventory_campaign_ids:
-                continue
-            facts.append(metric_fact(
-                level="campaign",
-                entity_id=campaign_id,
-                entity_name=str(insight.get("campaign_name") or f"Campaign {campaign_id}"),
-                parent_id=acc_id,
-                insight=insight,
-            ))
+        def hierarchy_parent_id(level: str, source: Dict[str, Any]) -> str:
+            if level == "campaign":
+                return acc_id
+            if level == "adset":
+                return str(source.get("campaign_id") or "")
+            return str(source.get("adset_id") or "")
 
-        # 3. Lower hierarchy levels remain reporting facts until their inventory
-        # views are implemented. Failures propagate so health cannot claim a full sync.
-        for level in ("adset", "ad"):
-            level_rows = await self._fetch_paginated_data(
+        insights_by_level: Dict[str, Dict[str, Dict[str, Any]]] = {}
+        for level in ("campaign", "adset", "ad"):
+            level_insights = await self._fetch_paginated_data(
                 insights_url,
                 {
                     "level": level,
@@ -1193,30 +1162,51 @@ class MetaClient:
                 account_id=acc_id,
                 priority=priority,
             )
-            for row in level_rows:
-                if level == "adset":
-                    entity_id = str(row.get("adset_id") or "")
-                    entity_name = str(row.get("adset_name") or "")
-                    parent_id = str(row.get("campaign_id") or acc_id)
-                else:
-                    entity_id = str(row.get("ad_id") or "")
-                    entity_name = str(row.get("ad_name") or "")
-                    parent_id = str(row.get("adset_id") or "")
+            id_key = insight_id_keys[level]
+            insights_by_level[level] = {
+                str(row[id_key]): row
+                for row in level_insights
+                if row.get(id_key)
+            }
+
+        for level in ("campaign", "adset", "ad"):
+            insights_by_id = insights_by_level[level]
+            inventory_ids = set()
+            for entity in inventory_by_level[level]:
+                entity_id = str(entity.get("id") or "")
                 if not entity_id:
                     continue
-                normalized = self._normalize_basic_insight(row)
-                if (
-                    normalized["spend"] == 0
-                    and normalized["impressions"] == 0
-                    and normalized["clicks"] == 0
-                ):
+                inventory_ids.add(entity_id)
+                status = str(entity.get("status") or "UNKNOWN")
+                effective_status = str(entity.get("effective_status") or status)
+                facts.append(metric_fact(
+                    level=level,
+                    entity_id=entity_id,
+                    entity_name=str(entity.get("name") or f"{level.capitalize()} {entity_id}"),
+                    parent_id=hierarchy_parent_id(level, entity),
+                    insight=insights_by_id.get(entity_id, {}),
+                    status=status,
+                    effective_status=effective_status,
+                    daily_budget=(
+                        from_meta_budget_units(entity.get("daily_budget"), normalized_currency)
+                        if level != "ad"
+                        else 0.0
+                    ),
+                ))
+
+            # Preserve period activity for an entity removed from current inventory.
+            for entity_id, insight in insights_by_id.items():
+                if entity_id in inventory_ids:
                     continue
                 facts.append(metric_fact(
                     level=level,
                     entity_id=entity_id,
-                    entity_name=entity_name,
-                    parent_id=parent_id,
-                    insight=row,
+                    entity_name=str(
+                        insight.get(insight_name_keys[level])
+                        or f"{level.capitalize()} {entity_id}"
+                    ),
+                    parent_id=hierarchy_parent_id(level, insight),
+                    insight=insight,
                 ))
 
         return facts

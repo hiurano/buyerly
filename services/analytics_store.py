@@ -626,22 +626,33 @@ class AnalyticsFactService:
         if entity_level not in valid_levels:
             return []
 
-        # Find timezone for the parent account if user_accounts provided
+        # An authorized account parent requests an account-wide view for the
+        # selected level. Other parent IDs retain direct hierarchy drill-down.
         target_account = None
+        normalized_parent = (
+            parent_entity_id
+            if parent_entity_id.startswith("act_")
+            else f"act_{parent_entity_id}"
+        )
         if user_accounts:
             for acc in user_accounts:
-                if acc.account_id == parent_entity_id:
+                if acc.account_id in {parent_entity_id, normalized_parent}:
                     target_account = acc
                     break
 
         timezone_name = target_account.timezone_name if target_account else "UTC"
         dates = resolve_account_period_dates(timezone_name, period)
 
+        hierarchy_scope = (
+            AnalyticsEntityFact.account_id == target_account.account_id
+            if target_account
+            else AnalyticsEntityFact.parent_entity_id == parent_entity_id
+        )
         stmt = (
             select(AnalyticsEntityFact)
             .where(
                 AnalyticsEntityFact.workspace_id == workspace_id,
-                AnalyticsEntityFact.parent_entity_id == parent_entity_id,
+                hierarchy_scope,
                 AnalyticsEntityFact.entity_level == entity_level,
                 AnalyticsEntityFact.date.in_(dates),
             )

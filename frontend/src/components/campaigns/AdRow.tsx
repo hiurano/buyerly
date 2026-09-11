@@ -7,37 +7,54 @@ import { getAdsManagerColumns } from './tableColumns';
 
 interface AdRowProps {
   ad: AdItem;
+  readOnly?: boolean;
+  properties?: Record<string, boolean>;
 }
 
-export const AdRow: React.FC<AdRowProps> = ({ ad }) => {
-  const { toggleAdDelivery, selectedCampaignIds, toggleCampaignSelection, displayProperties } = useAppStore();
+export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, properties }) => {
+  const { toggleAdDelivery, selectedCampaignIds, toggleCampaignSelection, displayProperties: storedDisplayProperties } = useAppStore();
 
-  const isSelected = selectedCampaignIds.includes(ad.id);
-  const isDeliveryOn = ad.status !== 'paused';
+  const displayProperties = properties ?? storedDisplayProperties;
+  const isSelected = !readOnly && selectedCampaignIds.includes(ad.id);
+  const isDeliveryKnown = ad.status !== 'unknown';
+  const isDeliveryOn = ad.status === 'active';
   const columns = getAdsManagerColumns('ads', displayProperties);
 
   return (
     <LinearDataListRow
       layout="grid"
       columns={columns}
-      tabIndex={0}
+      tabIndex={readOnly ? undefined : 0}
       selected={isSelected}
-      className="ad-data-row cursor-pointer"
+      className={`ad-data-row ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}
     >
       <div className="flex min-w-0 items-center gap-3">
-        <LinearCheckbox checked={isSelected} onChange={() => toggleCampaignSelection(ad.id)} />
+        {readOnly ? (
+          <LinearCheckbox checked={false} hidden />
+        ) : (
+          <LinearCheckbox checked={isSelected} onChange={() => toggleCampaignSelection(ad.id)} />
+        )}
         {displayProperties.status !== false && (
-          <LinearToggle checked={isDeliveryOn} onChange={() => toggleAdDelivery(ad.id)} tooltipContent={isDeliveryOn ? 'Pause ad' : 'Resume ad'} />
+          !isDeliveryKnown ? (
+            <span className="inline-flex h-5 w-8 items-center justify-center text-[12px] text-[var(--text-muted)]" aria-label="Delivery status unavailable">—</span>
+          ) : (
+            <LinearToggle
+              checked={isDeliveryOn}
+              onChange={readOnly ? undefined : () => toggleAdDelivery(ad.id)}
+              disabled={readOnly}
+              tooltipContent={readOnly ? `${ad.statusLabel}. Ad controls are not connected yet` : isDeliveryOn ? 'Pause ad' : 'Resume ad'}
+            />
+          )
         )}
         <div className="min-w-0">
-          <div className="truncate text-[13px] font-medium" style={{ color: isDeliveryOn ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>{ad.name}</div>
+          <div className="truncate text-[13px] font-medium" style={{ color: isDeliveryKnown && !isDeliveryOn ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>{ad.name}</div>
           <div className="truncate text-[11px] text-[var(--text-muted)]">{ad.campaignName} › {ad.adSetName}</div>
         </div>
       </div>
 
-      <div className="truncate text-right text-[12px] font-[450] text-[var(--text-secondary)]">{ad.ctr}</div>
+      {displayProperties.ctr !== false && <div className="truncate text-right text-[12px] font-[450] text-[var(--text-secondary)]">{ad.ctr}</div>}
 
-      <div className="truncate text-right font-mono text-[12px] font-[450] text-[var(--text-secondary)]">{ad.cpc}</div>
+      {displayProperties.cpc !== false && <div className="truncate text-right font-mono text-[12px] font-[450] text-[var(--text-secondary)]">{ad.cpc}</div>}
 
       {(displayProperties.results !== false || displayProperties.cpa !== false) && (
         <div className="flex min-w-0 items-center justify-end gap-1 truncate whitespace-nowrap">

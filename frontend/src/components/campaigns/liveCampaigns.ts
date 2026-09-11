@@ -1,4 +1,4 @@
-import type { CampaignItem } from '@/store/useAppStore';
+import type { AdItem, AdSetItem, CampaignItem } from '@/store/useAppStore';
 import type { AnalyticsHierarchyItem, MetaAccount } from '@/lib/types';
 
 const KNOWN_CURRENCY = /^[A-Z]{3}$/;
@@ -74,5 +74,51 @@ export function hierarchyCampaignToRow(item: AnalyticsHierarchyItem): CampaignIt
     roi: '—',
     date: '',
     groupIds: [],
+  };
+}
+
+export function hierarchyAdSetToRow(
+  item: AnalyticsHierarchyItem,
+  campaignNames: Map<string, string>,
+): AdSetItem {
+  const campaignId = item.parent_entity_id;
+  return {
+    id: item.entity_id,
+    identifier: item.entity_id,
+    name: item.entity_name || `Ad set ${item.entity_id}`,
+    campaignId,
+    campaignName: campaignNames.get(campaignId) || campaignId,
+    platform: 'Meta',
+    ...campaignDelivery(item),
+    budget: formatDailyBudget(item.daily_budget, item.currency),
+    leadsCount: item.leads,
+    cpa: formatMetricMoney(item.cost_per_lead, item.currency),
+    spend: formatMetricMoney(item.spend, item.currency),
+    roi: '—',
+    audience: '',
+    date: '',
+  };
+}
+
+export function hierarchyAdToRow(
+  item: AnalyticsHierarchyItem,
+  adSetsById: Map<string, AdSetItem>,
+): AdItem {
+  const adSet = adSetsById.get(item.parent_entity_id);
+  return {
+    id: item.entity_id,
+    identifier: item.entity_id,
+    name: item.entity_name || `Ad ${item.entity_id}`,
+    adSetId: item.parent_entity_id,
+    adSetName: adSet?.name || item.parent_entity_id,
+    campaignName: adSet?.campaignName || '',
+    platform: 'Meta',
+    ...campaignDelivery(item),
+    leadsCount: item.leads,
+    cpa: formatMetricMoney(item.cost_per_lead, item.currency),
+    spend: formatMetricMoney(item.spend, item.currency),
+    ctr: Number.isFinite(item.ctr) ? `${item.ctr.toFixed(2)}%` : '—',
+    cpc: formatMetricMoney(item.cpc, item.currency),
+    date: '',
   };
 }

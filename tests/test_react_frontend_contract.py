@@ -69,6 +69,20 @@ class TestReactFrontendContract(unittest.TestCase):
             / "campaigns"
             / "CampaignRow.tsx"
         ).read_text()
+        cls.adset_row = (
+            ROOT / "frontend" / "src" / "components" / "campaigns" / "AdSetRow.tsx"
+        ).read_text()
+        cls.ad_row = (
+            ROOT / "frontend" / "src" / "components" / "campaigns" / "AdRow.tsx"
+        ).read_text()
+        cls.display_options = (
+            ROOT
+            / "frontend"
+            / "src"
+            / "components"
+            / "campaigns"
+            / "DisplayOptionsPopover.tsx"
+        ).read_text()
         cls.button = (ROOT / "frontend" / "src" / "ui" / "Button.tsx").read_text()
         cls.app_store = (
             ROOT / "frontend" / "src" / "store" / "useAppStore.ts"
@@ -162,22 +176,28 @@ class TestReactFrontendContract(unittest.TestCase):
             "apiRequest<MetaAccount[]>('/api/accounts')",
             "/api/analytics/hierarchy?parent_id=",
             "encodeURIComponent(selectedAccountId)",
-            "&level=campaign&period=today",
+            "hierarchyRequest('campaign')",
+            "hierarchyRequest('adset')",
+            "hierarchyRequest('ad')",
             "requestGenerationRef",
             "Loading ad accounts…",
-            "Loading campaigns…",
+            "Loading Ads Manager…",
             "Couldn't load ad accounts",
-            "Couldn't load campaigns",
-            "No campaigns in this ad account",
-            "Campaigns with zero activity today are included",
+            "Couldn't load Ads Manager",
+            "Zero-activity entities are included",
+            "setCampaignFilterTab",
+            "LinearFilterButton",
+            "LinearFilterMenu",
+            "ActiveFilterFormula",
+            "DisplayOptionsPopover",
             "readOnly",
         ):
             self.assertIn(contract, self.campaigns_view)
 
         self.assertNotIn("CampaignRightSidebar", self.campaigns_view)
         self.assertNotIn("toggleCampaignDelivery", self.campaigns_view)
-        self.assertIn("{ id: 'adsets', label: 'Ad sets', disabled: true }", self.campaigns_view)
-        self.assertIn("{ id: 'ads', label: 'Ads', disabled: true }", self.campaigns_view)
+        self.assertNotIn("disabled: true", self.campaigns_view)
+        self.assertNotIn("Today · read-only", self.campaigns_view)
 
         campaign_path = self.campaigns_view + self.live_campaigns
         for fixture in (
@@ -198,6 +218,8 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("campaignAttachedRules: {},", self.app_store)
 
         self.assertIn("campaignDelivery(item)", self.live_campaigns)
+        self.assertIn("hierarchyAdSetToRow", self.live_campaigns)
+        self.assertIn("hierarchyAdToRow", self.live_campaigns)
         self.assertIn("formatDailyBudget(item.daily_budget, item.currency)", self.live_campaigns)
         self.assertIn("roi: '—'", self.live_campaigns)
         self.assertIn("showIdentifier", self.campaign_row)
@@ -206,8 +228,13 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("onChange={readOnly ? undefined", self.campaign_row)
         self.assertIn("disabled={readOnly}", self.campaign_row)
         self.assertIn("Campaign controls are not connected yet", self.campaign_row)
-        self.assertIn("status: true", self.campaigns_view)
-        self.assertIn("budget: true", self.campaigns_view)
+        for row in (self.adset_row, self.ad_row):
+            self.assertIn("<LinearCheckbox checked={false} hidden />", row)
+            self.assertIn("disabled={readOnly}", row)
+        self.assertIn("showViewModes={false}", self.display_options)
+        self.assertIn("showGrouping={false}", self.display_options)
+        self.assertNotIn("Campaign groups", self.display_options)
+        self.assertNotIn("'ROI'", self.display_options)
         self.assertIn("--action-primary:", self.tokens)
         self.assertIn("--action-primary-hover:", self.tokens)
         self.assertIn("export const Button", self.button)

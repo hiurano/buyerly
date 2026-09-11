@@ -34,6 +34,7 @@ export interface AdSetItem {
   campaignName: string;
   platform: 'Meta' | 'TikTok' | 'Google';
   status: 'active' | 'paused' | 'unknown';
+  statusLabel: string;
   budget: string;
   leadsCount: number;
   cpa: string;
@@ -52,6 +53,7 @@ export interface AdItem {
   campaignName: string;
   platform: 'Meta' | 'TikTok' | 'Google';
   status: 'active' | 'paused' | 'unknown';
+  statusLabel: string;
   leadsCount: number;
   cpa: string;
   spend: string;

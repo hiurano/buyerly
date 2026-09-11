@@ -2,14 +2,16 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '@/store/useAppStore';
 import { LinearDisplayOptions } from '@/ui/LinearDisplayOptions';
+import type { AdsManagerEntity } from '@/store/useAppStore';
 
 interface DisplayOptionsPopoverProps {
   isOpen: boolean;
   onClose: () => void;
   anchorRef: React.RefObject<HTMLElement | null>;
+  entity: AdsManagerEntity;
 }
 
-export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ isOpen, onClose, anchorRef }) => {
+export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ isOpen, onClose, anchorRef, entity }) => {
   const store = useAppStore();
   const popoverRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
@@ -40,43 +42,43 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
 
   if (!isOpen) return null;
 
+  const supportsBudget = entity !== 'ads';
+  const liveProperties = {
+    status: 'Status',
+    ...(supportsBudget ? { budget: 'Budget' } : {}),
+    ...(entity === 'ads' ? { ctr: 'CTR', cpc: 'CPC' } : {}),
+    results: 'Results',
+    cpa: 'CPA',
+    spend: 'Spend',
+  };
+  const orderingOptions = [
+    { value: 'manual', label: 'Default' },
+    { value: 'name', label: 'Name' },
+    { value: 'spend', label: 'Spend' },
+    { value: 'results', label: 'Results' },
+    { value: 'cpa', label: 'CPA' },
+    ...(supportsBudget ? [{ value: 'budget', label: 'Budget' }] : []),
+  ];
+  const ordering = orderingOptions.some((option) => option.value === store.displayOrdering)
+    ? store.displayOrdering
+    : 'manual';
+
   return createPortal(
     <div ref={popoverRef} className="linear-display-options-popover" style={{ top: coords.top, right: coords.right }}>
       <LinearDisplayOptions
         viewMode={store.campaignsViewMode}
         onViewModeChange={store.setCampaignsViewMode}
         grouping={store.displayGrouping}
-        groupingOptions={[
-          { value: 'none', label: 'No grouping' },
-          { value: 'groups', label: 'Campaign groups' },
-          { value: 'status', label: 'Status' },
-          { value: 'rules', label: 'Rules' },
-        ]}
+        groupingOptions={[]}
         onGroupingChange={(value) => store.setDisplayGrouping(value as typeof store.displayGrouping)}
-        subGrouping={store.displaySubGrouping}
-        subGroupingOptions={[
-          { value: 'none', label: 'No grouping' },
-          { value: 'status', label: 'Status' },
-          { value: 'rules', label: 'Rules' },
-        ]}
-        onSubGroupingChange={(value) => store.setDisplaySubGrouping(value as typeof store.displaySubGrouping)}
-        ordering={store.displayOrdering}
-        orderingOptions={[
-          { value: 'manual', label: 'Manual' },
-          { value: 'name', label: 'Name' },
-          { value: 'spend', label: 'Spend' },
-          { value: 'roi', label: 'ROI' },
-          { value: 'results', label: 'Results' },
-          { value: 'budget', label: 'Budget' },
-          { value: 'cpa', label: 'CPA' },
-          { value: 'created', label: 'Created' },
-        ]}
+        ordering={ordering}
+        orderingOptions={orderingOptions}
         onOrderingChange={(value) => store.setDisplayOrdering(value as typeof store.displayOrdering)}
-        showEmptyGroups={store.showEmptyGroups}
-        onShowEmptyGroupsChange={store.setShowEmptyGroups}
-        properties={{ status: 'Status', budget: 'Budget', results: 'Results', cpa: 'CPA', spend: 'Spend', roi: 'ROI', rules: 'Rules', group: 'Group', created: 'Created' }}
+        properties={liveProperties}
         enabledProperties={store.displayProperties}
         onToggleProperty={store.toggleDisplayProperty}
+        showViewModes={false}
+        showGrouping={false}
       />
     </div>,
     document.body
