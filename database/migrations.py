@@ -35,6 +35,13 @@ POST_BASELINE_COLUMNS = {
         "workspace_id",
         "invite_id",
     },
+    # Added by the rule on/off switch migration (0023).
+    "rule_presets": {
+        "enabled",
+    },
+    "rule_groups": {
+        "icon",
+    },
 }
 
 # Tables that were added after the legacy baseline and may be absent on pre-migration databases.
