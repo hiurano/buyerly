@@ -72,11 +72,12 @@ const OPERATORS: { value: RuleOperator; label: string }[] = [
 
 const TIME_WINDOWS: RuleTimeWindow[] = ['today', 'yesterday', 'last_3d', 'last_7d'];
 
-const LEVELS: RuleExecutionLevel[] = ['adset', 'campaign'];
+const LEVELS: RuleExecutionLevel[] = ['adset', 'campaign', 'ad'];
 
 const LEVEL_DESCRIPTIONS: Record<RuleExecutionLevel, string> = {
   adset: 'Each ad set on its own',
   campaign: 'The campaign as a whole',
+  ad: 'A single ad, leaving its ad set running',
 };
 
 /**

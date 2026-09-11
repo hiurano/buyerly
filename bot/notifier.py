@@ -98,7 +98,11 @@ class TelegramNotifier:
         # The inline buttons drive ad set handlers, so a campaign notification
         # is informational until campaign handlers exist.
         is_adset_target = bool(eval_result and eval_result.is_adset)
-        entity_label = "AdSet" if is_adset_target else "Кампания"
+        entity_label = {
+            "adset": "AdSet",
+            "campaign": "Кампания",
+            "ad": "Объявление",
+        }.get(eval_result.entity_level if eval_result else "adset", "AdSet")
 
         try:
             # 1. ОСТАНОВКА АДСЕТА

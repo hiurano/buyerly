@@ -87,6 +87,15 @@ class MonitoringWorker:
         ]
 
     @staticmethod
+    def _stats_noun(evaluation: RuleEvaluationResult) -> str:
+        """Plural noun of the acted-on level, for the per-cycle counters."""
+        return {
+            "adset": "adsets",
+            "campaign": "campaigns",
+            "ad": "ads",
+        }.get(evaluation.entity_level, "adsets")
+
+    @staticmethod
     def _rule_level(rule: Any) -> str:
         """Execution level of a rule snapshot, defaulting to the ad set level."""
         if not isinstance(rule, dict):
@@ -284,6 +293,40 @@ class MonitoringWorker:
                     )
                     campaigns_error = campaign_error
 
+            # An ad is a leaf, so nothing can be summed up to it: its rows and
+            # every window it needs are read at the ad level, and only when an
+            # ad rule is due.
+            ads: list[dict[str, Any]] = []
+            ads_by_window: dict[str, dict[str, Any]] = {}
+            ads_error = None
+            if any(self._rule_level(rule) == "ad" for rule in due_rules):
+                try:
+                    ads = await self.meta_client.get_ads_insights(
+                        account_id=account.account_id,
+                        access_token=access_token,
+                        date_preset="today",
+                        currency=currency,
+                        priority=priority,
+                    )
+                    for window in sorted(windows):
+                        rows = await self.meta_client.get_ads_insights(
+                            account_id=account.account_id,
+                            access_token=access_token,
+                            date_preset=window,
+                            currency=currency,
+                            priority=priority,
+                        )
+                        ads_by_window[window] = {
+                            str(row["ad_id"]): row for row in rows
+                        }
+                except Exception as ad_error:
+                    logger.warning(
+                        "Failed to read ads for %s: %s", account.account_id, ad_error
+                    )
+                    ads = []
+                    ads_by_window = {}
+                    ads_error = ad_error
+
             hierarchical_facts = []
             hierarchy_error = None
             try:
@@ -312,6 +355,9 @@ class MonitoringWorker:
                 "adsets": today,
                 "campaigns": campaigns,
                 "campaigns_error": campaigns_error,
+                "ads": ads,
+                "ads_by_window": ads_by_window,
+                "ads_error": ads_error,
                 "insights_by_window": insights_by_window,
                 "window_errors": window_errors,
                 "hierarchical_facts": hierarchical_facts,
@@ -353,8 +399,10 @@ class MonitoringWorker:
                 for key in (
                     "adsets_stopped",
                     "campaigns_stopped",
+                    "ads_stopped",
                     "adsets_reactivated",
                     "campaigns_reactivated",
+                    "ads_reactivated",
                     "budgets_changed",
                     "proposals_sent",
                 )
@@ -788,6 +836,13 @@ class MonitoringWorker:
                     status=status,
                     account_id=account.account_id,
                 )
+            elif evaluation.entity_level == "ad":
+                await self.meta_client.set_ad_status(
+                    ad_id=evaluation.entity_id,
+                    access_token=access_token,
+                    status=status,
+                    account_id=account.account_id,
+                )
             else:
                 await self.meta_client.set_campaign_status(
                     campaign_id=evaluation.entity_id,
@@ -1165,8 +1220,10 @@ class MonitoringWorker:
             "adsets_checked": 0,
             "adsets_stopped": 0,
             "campaigns_stopped": 0,
+            "ads_stopped": 0,
             "adsets_reactivated": 0,
             "campaigns_reactivated": 0,
+            "ads_reactivated": 0,
             "budgets_changed": 0,
             "actions_skipped": 0,
             "actions_reconciled": 0,
@@ -1541,6 +1598,8 @@ class MonitoringWorker:
                     insights_by_window = snapshot["insights_by_window"]
                     adsets = snapshot["adsets"]
                     campaigns = snapshot.get("campaigns") or []
+                    ads = snapshot.get("ads") or []
+                    ads_by_window = snapshot.get("ads_by_window") or {}
                     stats["adsets_checked"] += len(adsets)
 
                     # Upsert hierarchical facts into Analytics Fact Store
@@ -1625,6 +1684,24 @@ class MonitoringWorker:
                             f"Account {account_ref}: campaign inventory unavailable "
                             f"({snapshot['campaigns_error']}); campaign rules skipped "
                             "this cycle"
+                        )
+
+                    for ad in ads:
+                        ad_id = str(ad["ad_id"])
+                        entities.append({
+                            **ad,
+                            "entity_level": "ad",
+                            "entity_id": ad_id,
+                            "entity_name": str(ad.get("ad_name") or ""),
+                        })
+                        entity_windows[ad_id] = {
+                            window: rows_by_ad.get(ad_id, {})
+                            for window, rows_by_ad in ads_by_window.items()
+                        }
+                    if snapshot.get("ads_error") is not None:
+                        stats["errors"].append(
+                            f"Account {account_ref}: ads unavailable "
+                            f"({snapshot['ads_error']}); ad rules skipped this cycle"
                         )
 
                     for adset in entities:
@@ -1780,9 +1857,7 @@ class MonitoringWorker:
                                     access_token=access_token,
                                     status="PAUSED",
                                 )
-                                stats[
-                                    "adsets_stopped" if eval_res.is_adset else "campaigns_stopped"
-                                ] += 1
+                                stats[f"{self._stats_noun(eval_res)}_stopped"] += 1
                                 logger.info(f"STOPPED {eval_res.entity_level}: {a_id} ({eval_res.entity_name}) - {eval_res.reason}")
 
                                 try:
@@ -1907,9 +1982,7 @@ class MonitoringWorker:
                                     access_token=access_token,
                                     status="ACTIVE",
                                 )
-                                stats[
-                                    "adsets_reactivated" if eval_res.is_adset else "campaigns_reactivated"
-                                ] += 1
+                                stats[f"{self._stats_noun(eval_res)}_reactivated"] += 1
 
                                 try:
                                     if eval_res.is_adset:

@@ -75,6 +75,43 @@ class MockMetaClient(MetaClient):
                 "effective_status": "ACTIVE",
             }
         }
+        self.ads_state = {
+            "ad_1": {
+                "ad_id": "ad_1",
+                "ad_name": "Creative A",
+                "adset_id": "adset_1",
+                "campaign_id": "campaign_1",
+                "status": "ACTIVE",
+                "effective_status": "ACTIVE",
+                "spend": 12.0,
+                "leads": 0,
+                "registrations": 0,
+                "purchases": 0,
+                "impressions": 80,
+                "clicks": 4,
+                "cpc": 3.0,
+                "ctr": 5.0,
+            },
+            "ad_2": {
+                "ad_id": "ad_2",
+                "ad_name": "Creative B",
+                "adset_id": "adset_1",
+                "campaign_id": "campaign_1",
+                "status": "ACTIVE",
+                "effective_status": "ACTIVE",
+                "spend": 3.5,
+                "leads": 1,
+                "registrations": 0,
+                "purchases": 0,
+                "impressions": 20,
+                "clicks": 1,
+                "cpc": 3.5,
+                "ctr": 5.0,
+            },
+        }
+        self.ads_by_window = {}
+        self.ad_status_changes = []
+        self.requested_ad_windows = []
         self.insights_by_window = {}
         self.requested_windows = []
         self.hierarchy_requests = []
@@ -112,6 +149,31 @@ class MockMetaClient(MetaClient):
         self.adsets_state[adset_id]["status"] = status
         self.adsets_state[adset_id]["effective_status"] = status
         self.status_changes.append((adset_id, status))
+        return True
+
+    async def get_ads_insights(
+        self,
+        account_id: str,
+        access_token: str,
+        date_preset: str = "today",
+        currency: str = "UNKNOWN",
+        priority: str = "normal",
+    ):
+        self.requested_ad_windows.append(date_preset)
+        source = self.ads_by_window.get(date_preset, self.ads_state)
+        return [dict(ad) for ad in source.values()]
+
+    async def set_ad_status(
+        self,
+        ad_id: str,
+        access_token: str,
+        status: str,
+        *args,
+        **kwargs,
+    ) -> bool:
+        self.ads_state[ad_id]["status"] = status
+        self.ads_state[ad_id]["effective_status"] = status
+        self.ad_status_changes.append((ad_id, status))
         return True
 
     async def get_campaigns_inventory(
@@ -283,8 +345,8 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             self.assertIsInstance(runtime.payload, dict)
             self.assertIn("cycle_id", runtime.payload)
 
-    async def _set_campaign_rule(self, **overrides):
-        """Replace the account rules with one campaign-level rule."""
+    async def _set_rule(self, **overrides):
+        """Replace the account rules with a single rule built from overrides."""
         rule = {
             "preset_id": 7,
             "name": "Stop campaign without leads",
@@ -314,7 +376,7 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
 
     async def test_campaign_rule_stops_the_campaign_not_its_adsets(self):
         """Spend rolls up: $15.50 + $1.00 crosses $16 only at campaign level."""
-        await self._set_campaign_rule()
+        await self._set_rule()
         mock_meta = MockMetaClient()
         sent_alerts = []
 
@@ -355,7 +417,7 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
 
     async def test_campaign_rule_reads_the_real_campaign_status(self):
         """A paused campaign whose ad sets are still ACTIVE must not be stopped."""
-        await self._set_campaign_rule()
+        await self._set_rule()
         mock_meta = MockMetaClient()
         mock_meta.campaigns_state["campaign_1"]["status"] = "PAUSED"
         mock_meta.campaigns_state["campaign_1"]["effective_status"] = "PAUSED"
@@ -372,6 +434,87 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
         await worker.run_cycle()
 
         self.assertEqual(mock_meta.campaign_inventory_requests, 0)
+        self.assertEqual(mock_meta.requested_ad_windows, [])
+
+    async def test_ad_rule_stops_one_creative_and_leaves_its_adset_running(self):
+        await self._set_rule(
+            level="ad",
+            name="Stop expensive creative",
+            conditions=[
+                {"metric": "spend", "operator": "gte", "value": 10.0, "time_window": "today"},
+                {"metric": "leads", "operator": "eq", "value": 0.0, "time_window": "today"},
+            ],
+        )
+        mock_meta = MockMetaClient()
+        sent_alerts = []
+
+        async def mock_notifier(**kwargs):
+            sent_alerts.append(kwargs)
+
+        worker = MonitoringWorker(
+            meta_client=mock_meta,
+            telegram_notifier=mock_notifier,
+            clock=lambda: 10_000.0,
+        )
+        stats = await worker.run_cycle()
+
+        # ad_1 spent $12 with no leads; ad_2 has a lead and is left alone.
+        self.assertEqual(mock_meta.ad_status_changes, [("ad_1", "PAUSED")])
+        self.assertEqual(mock_meta.status_changes, [])
+        self.assertEqual(mock_meta.campaign_status_changes, [])
+        self.assertEqual(stats["ads_stopped"], 1)
+        self.assertEqual(stats["adsets_stopped"], 0)
+
+        async with self.test_session_maker() as session:
+            self.assertEqual(
+                (await session.execute(select(StoppedAdSet))).scalars().all(), []
+            )
+            event = (
+                await session.execute(
+                    select(AuditEvent).where(AuditEvent.event_type == "STOP")
+                )
+            ).scalar_one()
+            self.assertEqual(event.entity_level, "ad")
+            self.assertEqual(event.entity_id, "ad_1")
+            self.assertEqual(event.entity_name, "Creative A")
+            self.assertEqual(event.adset_id, "")
+
+        self.assertIn("STOP", [alert["event_type"] for alert in sent_alerts])
+
+    async def test_ad_rule_scoped_to_an_adset_only_touches_that_adsets_ads(self):
+        await self._set_rule(
+            level="ad",
+            name="Stop expensive creative",
+            conditions=[
+                {"metric": "spend", "operator": "gte", "value": 1.0, "time_window": "today"},
+            ],
+            scope={"level": "adset", "ids": ["adset_2"]},
+        )
+        mock_meta = MockMetaClient()
+        worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: 10_000.0)
+        await worker.run_cycle()
+
+        # Both ads live in adset_1, so an adset_2 scope reaches neither.
+        self.assertEqual(mock_meta.ad_status_changes, [])
+
+    async def test_ad_rule_reads_every_window_its_conditions_need(self):
+        await self._set_rule(
+            level="ad",
+            name="Stop creative that failed yesterday",
+            conditions=[
+                {"metric": "spend", "operator": "gte", "value": 5.0, "time_window": "yesterday"},
+            ],
+        )
+        mock_meta = MockMetaClient()
+        mock_meta.ads_by_window["yesterday"] = {
+            "ad_1": {**mock_meta.ads_state["ad_1"], "spend": 9.0},
+            "ad_2": {**mock_meta.ads_state["ad_2"], "spend": 0.0},
+        }
+        worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: 10_000.0)
+        await worker.run_cycle()
+
+        self.assertEqual(mock_meta.requested_ad_windows, ["today", "yesterday"])
+        self.assertEqual(mock_meta.ad_status_changes, [("ad_1", "PAUSED")])
 
     async def test_custom_rule_stops_adset(self):
         """Пользовательское правило: Спенд >= $10 И Лиды = 0 → STOP."""

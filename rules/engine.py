@@ -48,7 +48,7 @@ class RuleEvaluationResult:
     conditions_snapshot: List[Dict[str, Any]] = field(default_factory=list)
     currency: str = "UNKNOWN"
     entity_level: str = "adset"
-    # Parent campaign of an ad set; empty for a campaign-level result.
+    # Parent campaign of an ad set or ad; empty for a campaign-level result.
     campaign_id: str = ""
 
     @property
