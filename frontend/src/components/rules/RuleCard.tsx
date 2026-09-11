@@ -35,7 +35,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({
   isSelected,
   onSelect,
 }) => {
-  const { ruleGroups, addRuleToGroup, deleteRule } = useAppStore();
+  const { ruleGroups, addRuleToGroup, deleteRule, openEditRuleModal } = useAppStore();
 
   return (
     <ContextMenu>
@@ -160,6 +160,14 @@ export const RuleCard: React.FC<RuleCardProps> = ({
 
       {/* Linear Card Context Menu Popup */}
       <ContextMenuContent>
+        <ContextMenuItem onClick={() => openEditRuleModal(rule.id)}>
+          <div className="flex items-center gap-2">
+            <span>Edit rule</span>
+          </div>
+        </ContextMenuItem>
+
+        <ContextMenuSeparator />
+
         {/* Status / Group Cascading Submenu */}
         <ContextMenuSub>
           <ContextMenuSubTrigger>

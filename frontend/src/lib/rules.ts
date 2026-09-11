@@ -83,6 +83,8 @@ export interface RulePresetPayload {
   review_reason: string;
   last_run_at: string;
   attached_account_ids: string[];
+  /** Scope per attached account, keyed by ad account id. */
+  attached_scopes: Record<string, RuleScope>;
 }
 
 export interface RuleGroupPayload {

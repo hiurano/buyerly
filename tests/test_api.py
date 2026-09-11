@@ -1199,6 +1199,18 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(stored["name"], "Стоп по кампании v2")
             self.assertEqual(stored["scope"], {"level": "campaign", "ids": ["camp_a", "camp_b"]})
 
+            # The rules list reports the scope per attached account, so a client
+            # can say what detaching would remove before it happens.
+            listed = await client.get("/api/presets", headers=headers)
+            listed_preset = next(
+                item for item in listed.json() if item["id"] == preset_id
+            )
+            self.assertEqual(
+                listed_preset["attached_scopes"],
+                {account_id: {"level": "campaign", "ids": ["camp_a", "camp_b"]}},
+            )
+            self.assertEqual(listed_preset["attached_account_ids"], [account_id])
+
             for invalid in (
                 {"level": "galaxy", "ids": ["camp_a"]},
                 {"level": "campaign", "ids": []},

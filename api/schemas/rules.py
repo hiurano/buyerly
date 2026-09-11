@@ -1,4 +1,4 @@
-from typing import List, Optional, Literal
+from typing import Dict, List, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from core.metrics import (
@@ -9,6 +9,25 @@ from core.metrics import (
 
 
 RuleGroupIcon = Literal["backlog", "shield", "rocket", "flask", "custom"]
+
+
+class RuleScopeItem(BaseModel):
+    """Which entities an attached rule may act on.
+
+    Scope only narrows the search; the level a rule acts on is its own `level`.
+    "account" keeps the historical behaviour of sweeping the whole ad account.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    level: Literal["account", "campaign", "adset"] = "account"
+    ids: List[str] = Field(default_factory=list, max_length=RULE_MAX_SCOPE_IDS)
+
+    @model_validator(mode="after")
+    def validate_scope_shape(self):
+        # One source of truth: the runtime validator the worker also uses.
+        normalize_rule_scope(self.model_dump())
+        return self
 
 
 class ConditionItem(BaseModel):
@@ -45,6 +64,9 @@ class RulePresetItem(BaseModel):
     # Ad accounts this preset is currently attached to, so the UI can tell a
     # configured rule apart from one that cannot run anywhere yet.
     attached_account_ids: List[str] = Field(default_factory=list)
+    # Scope per attached account, so a client can say what detaching removes
+    # instead of silently discarding a rule narrowed to specific campaigns.
+    attached_scopes: Dict[str, RuleScopeItem] = Field(default_factory=dict)
 
 
 class CreatePresetRequest(BaseModel):
@@ -100,25 +122,6 @@ class RuleGroupResponse(BaseModel):
 
 class RuleGroupsReorderRequest(BaseModel):
     group_ids: List[int] = Field(min_length=0, max_length=100)
-
-
-class RuleScopeItem(BaseModel):
-    """Which ad sets an attached rule may act on.
-
-    A rule always acts on ad sets; scope only narrows the search. "account"
-    keeps the historical behaviour of sweeping the whole ad account.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    level: Literal["account", "campaign", "adset"] = "account"
-    ids: List[str] = Field(default_factory=list, max_length=RULE_MAX_SCOPE_IDS)
-
-    @model_validator(mode="after")
-    def validate_scope_shape(self):
-        # One source of truth: the runtime validator the worker also uses.
-        normalize_rule_scope(self.model_dump())
-        return self
 
 
 class ApplyPresetRequest(BaseModel):

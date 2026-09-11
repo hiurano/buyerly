@@ -102,6 +102,12 @@ class TestReactFrontendContract(unittest.TestCase):
         cls.create_rule_modal = (
             ROOT / "frontend" / "src" / "components" / "rules" / "CreateRuleModal.tsx"
         ).read_text()
+        cls.rule_row = (
+            ROOT / "frontend" / "src" / "components" / "rules" / "RuleRow.tsx"
+        ).read_text()
+        cls.rule_row_menu = (
+            ROOT / "frontend" / "src" / "components" / "rules" / "RuleRowMenu.tsx"
+        ).read_text()
         cls.rule_selector_popover = (
             ROOT
             / "frontend"
@@ -329,6 +335,27 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertIn(contract, self.create_rule_modal)
         # Budget actions stay on ad sets; the form must not offer them higher up.
         self.assertIn("BUDGET_ACTIONS", self.create_rule_modal)
+
+    def test_a_rule_can_be_edited_and_run_on_chosen_ad_accounts(self):
+        # One modal serves both create and edit rather than a second screen.
+        for contract in ("editingRuleId", "Edit rule", "Save changes", "loadRuleIntoForm"):
+            self.assertIn(contract, self.create_rule_modal)
+
+        # Row actions are built from the shared menu primitives, and the "…"
+        # button now has a handler instead of an empty one.
+        for contract in (
+            "openEditRuleModal",
+            "toggleRuleOnAccount",
+            "DropdownMenuSub",
+            "Run on ad accounts",
+        ):
+            self.assertIn(contract, self.rule_row_menu)
+        self.assertIn("<RuleRowMenu", self.rule_row)
+        self.assertNotIn("onClick={(e) => {\n              e.stopPropagation();\n            }}", self.rule_row)
+
+        # Detaching an account must say what it removes before it is clicked.
+        self.assertIn("attached_scopes", self.rules_lib)
+        self.assertIn("attached_scopes", self.rule_row_menu)
 
     def test_campaign_rule_attachment_is_served_by_the_api(self):
         # Attaching a rule to a campaign writes a scope through the API rather

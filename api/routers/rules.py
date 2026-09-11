@@ -80,7 +80,7 @@ async def list_presets(user: User = Depends(get_current_user)):
             _preset_response(
                 preset,
                 last_runs.get(preset.id, ""),
-                attachments.get(preset.id, []),
+                attachments.get(preset.id, {}),
             )
             for preset in presets
         ]
@@ -175,7 +175,7 @@ async def update_preset(preset_id: int, payload: CreatePresetRequest, user: User
         return _preset_response(
             preset,
             last_runs.get(preset.id, ""),
-            attachments.get(preset.id, []),
+            attachments.get(preset.id, {}),
         )
 
 
