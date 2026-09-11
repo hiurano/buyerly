@@ -4,6 +4,7 @@ import { LinearCheckbox } from '@/ui/LinearCheckbox';
 import { LinearToggle } from '@/ui/LinearToggle';
 import { LinearDataListRow } from '@/ui/LinearDataList';
 import { getAdsManagerColumns } from './tableColumns';
+import { RuleAttachmentCell } from './RuleAttachmentCell';
 
 interface AdSetRowProps {
   adSet: AdSetItem;
@@ -12,7 +13,13 @@ interface AdSetRowProps {
 }
 
 export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, properties }) => {
-  const { toggleAdSetDelivery, selectedCampaignIds, toggleCampaignSelection, displayProperties: storedDisplayProperties } = useAppStore();
+  const {
+    toggleAdSetDelivery,
+    selectedCampaignIds,
+    toggleCampaignSelection,
+    displayProperties: storedDisplayProperties,
+    adSetAttachedRules,
+  } = useAppStore();
 
   const displayProperties = properties ?? storedDisplayProperties;
   const isSelected = !readOnly && selectedCampaignIds.includes(adSet.id);
@@ -65,6 +72,14 @@ export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, pro
       {displayProperties.spend !== false && <div className="truncate text-right font-mono text-[12px] font-[450] text-[var(--text-secondary)]">{adSet.spend}</div>}
 
       {displayProperties.roi !== false && <div className={`truncate text-right text-[12px] font-medium ${isPositiveRoi ? 'text-emerald-400' : 'text-rose-400'}`}>{adSet.roi}</div>}
+
+      {displayProperties.rules !== false && (
+        <RuleAttachmentCell
+          level="adset"
+          entityId={adSet.id}
+          attachedRuleIds={adSetAttachedRules[adSet.id] || []}
+        />
+      )}
     </LinearDataListRow>
   );
 };

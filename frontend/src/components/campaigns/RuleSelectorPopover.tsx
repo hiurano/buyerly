@@ -4,11 +4,15 @@ import { LinearBoltIcon } from '@/icons/LinearIcons';
 import { useAppStore } from '@/store/useAppStore';
 import type { RuleItem } from '@/store/useAppStore';
 
+/** The level this picker attaches rules to. */
+export type RuleTargetLevel = 'campaign' | 'adset';
+
 interface RuleSelectorPopoverProps {
   isOpen: boolean;
   onClose: () => void;
   anchorRect: DOMRect | null;
-  campaignId: string;
+  level: RuleTargetLevel;
+  entityId: string;
 }
 
 /**
@@ -19,12 +23,14 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
   isOpen,
   onClose,
   anchorRect,
-  campaignId,
+  level,
+  entityId,
 }) => {
   const {
     rules,
     campaignAttachedRules,
-    toggleRuleForCampaign,
+    adSetAttachedRules,
+    toggleRuleForEntity,
     attachedRuleScopes,
     attachmentError,
     clearAttachmentError,
@@ -34,7 +40,9 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  const attachedRuleIds = campaignAttachedRules[campaignId] || [];
+  const attachedByEntity =
+    level === 'campaign' ? campaignAttachedRules : adSetAttachedRules;
+  const attachedRuleIds = attachedByEntity[entityId] || [];
   const attachedIds = useMemo(() => new Set(attachedRuleIds), [attachedRuleIds]);
   const filteredRules = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -103,28 +111,33 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
     top = Math.max(margin, anchorRect.top - estimatedHeight - 6);
   }
 
+  const thisNoun = level === 'campaign' ? 'campaign' : 'ad set';
+  const otherNoun = level === 'campaign' ? 'ad sets' : 'campaigns';
+
   /**
-   * What this rule is currently aimed at. A rule targeting the whole account or
-   * specific ad sets cannot be re-aimed from a per-campaign control.
+   * What this rule is currently aimed at. A rule aimed at another level cannot
+   * be re-aimed from here, so the note says where it lives instead.
    */
   const scopeNote = (rule: RuleItem): string => {
     const scope = attachedRuleScopes[rule.id];
     if (!scope) return '';
     if (scope.level === 'account') return 'Whole account';
-    if (scope.level === 'adset') return 'Specific ad sets';
-    if (scope.ids.includes(campaignId)) {
-      return scope.ids.length === 1 ? 'This campaign' : `${scope.ids.length} campaigns`;
+    if (scope.level !== level) return `Specific ${otherNoun}`;
+    if (scope.ids.includes(entityId)) {
+      return scope.ids.length === 1
+        ? `This ${thisNoun}`
+        : `${scope.ids.length} ${thisNoun}s`;
     }
-    return `${scope.ids.length} other campaigns`;
+    return `${scope.ids.length} other ${thisNoun}s`;
   };
 
   const isLocked = (rule: RuleItem): boolean => {
     const scope = attachedRuleScopes[rule.id];
-    return Boolean(scope) && scope.level !== 'campaign';
+    return Boolean(scope) && scope.level !== level;
   };
 
   const toggleRule = (rule: RuleItem) => {
-    void toggleRuleForCampaign(campaignId, rule.id);
+    void toggleRuleForEntity(level, entityId, rule.id);
     window.requestAnimationFrame(() => inputRef.current?.focus());
   };
 
@@ -160,7 +173,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
     const isActive = activeIndex === index;
     const locked = isLocked(rule);
     const note = scopeNote(rule);
-    const optionId = `campaign-rule-${campaignId}-${rule.id}`;
+    const optionId = `rule-option-${entityId}-${rule.id}`;
 
     return (
       <li
@@ -340,9 +353,9 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
           value={searchQuery}
           placeholder="Change or add rules…"
           aria-label="Change or add rules…"
-          aria-controls={`campaign-rule-list-${campaignId}`}
+          aria-controls={`rule-option-list-${entityId}`}
           aria-activedescendant={
-            activeIndex >= 0 ? `campaign-rule-${campaignId}-${orderedRules[activeIndex].id}` : undefined
+            activeIndex >= 0 ? `rule-option-${entityId}-${orderedRules[activeIndex].id}` : undefined
           }
           autoComplete="off"
           spellCheck={false}
@@ -388,7 +401,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
       </form>
 
       <div
-        id={`campaign-rule-list-${campaignId}`}
+        id={`rule-option-list-${entityId}`}
         role="listbox"
         aria-multiselectable="true"
         style={{ maxHeight: 340, overflowY: 'auto', padding: '2px 0' }}

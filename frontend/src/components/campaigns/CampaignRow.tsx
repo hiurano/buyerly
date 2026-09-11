@@ -5,8 +5,8 @@ import { LinearToggle } from '@/ui/LinearToggle';
 import { LinearLabelPill } from '@/ui/LinearLabelPill';
 import { LinearDataListRow } from '@/ui/LinearDataList';
 import { LabelSelectorPopover } from './LabelSelectorPopover';
-import { RuleSelectorPopover } from './RuleSelectorPopover';
-import { LinearBoltIcon } from '@/icons/LinearIcons';
+import { RuleAttachmentCell } from './RuleAttachmentCell';
+import type { RuleAttachmentCellHandle } from './RuleAttachmentCell';
 import { getAdsManagerColumns } from './tableColumns';
 
 interface CampaignRowProps {
@@ -35,10 +35,7 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
   const [isLabelSelectorOpen, setIsLabelSelectorOpen] = useState(false);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const groupColumnRef = useRef<HTMLDivElement>(null);
-
-  const [isRuleSelectorOpen, setIsRuleSelectorOpen] = useState(false);
-  const [ruleAnchorRect, setRuleAnchorRect] = useState<DOMRect | null>(null);
-  const rulesColumnRef = useRef<HTMLDivElement>(null);
+  const ruleCellRef = useRef<RuleAttachmentCellHandle>(null);
 
   const isSelected = !readOnly && selectedCampaignIds.includes(campaign.id);
   const isDeliveryKnown = campaign.status !== 'unknown';
@@ -67,18 +64,6 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
     setIsLabelSelectorOpen(true);
   };
 
-  const openRuleSelector = (e?: React.MouseEvent) => {
-    if (e) {
-      e.stopPropagation();
-      setFocusedCampaignId(campaign.id);
-      setRuleAnchorRect(e.currentTarget.getBoundingClientRect());
-    } else if (rulesColumnRef.current) {
-      setFocusedCampaignId(campaign.id);
-      setRuleAnchorRect(rulesColumnRef.current.getBoundingClientRect());
-    }
-    setIsRuleSelectorOpen(true);
-  };
-
   return (
     <>
       <LinearDataListRow
@@ -98,7 +83,7 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
             openLabelSelector();
           } else if (!readOnly && (e.key === 'r' || e.key === 'R')) {
             e.preventDefault();
-            openRuleSelector();
+            ruleCellRef.current?.open();
           }
         }}
         selected={isSelected}
@@ -171,87 +156,13 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
         )}
 
         {displayProperties.rules !== false && (
-          <div ref={rulesColumnRef} className="flex min-w-0 items-center">
-            {hasRules ? (
-              <button
-                type="button"
-                onClick={openRuleSelector}
-                style={{
-                  height: '22px',
-                  padding: '0 8px',
-                  borderRadius: '9999px',
-                  backgroundColor: 'var(--item-hover-bg)',
-                  border: '1px solid var(--color-border-secondary)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  transition: 'border-color 0.15s, background-color 0.15s',
-                }}
-              >
-                <div className="flex h-3.5 w-3.5 items-center justify-center flex-shrink-0">
-                  <LinearBoltIcon size={12} className="text-[#eab308]" />
-                </div>
-                <span
-                  style={{
-                    fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
-                    fontSize: '12px',
-                    fontWeight: 500,
-                    color: 'var(--text-primary)',
-                    lineHeight: 1,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {attachedCount} {attachedCount === 1 ? 'rule' : 'rules'}
-                </span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={openRuleSelector}
-                style={{
-                  height: '22px',
-                  padding: '0 8px',
-                  borderRadius: '9999px',
-                  backgroundColor: 'transparent',
-                  border: '1px dashed var(--color-border-secondary)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  transition: 'opacity 0.15s, border-color 0.15s, background-color 0.15s, color 0.15s',
-                }}
-                className="opacity-0 group-hover/row:opacity-100 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--color-border-secondary)] hover:bg-[var(--item-hover-bg)]"
-                title="Add rule (R)"
-              >
-                <svg
-                  width="10"
-                  height="10"
-                  viewBox="0 0 10 10"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.3"
-                  strokeLinecap="round"
-                >
-                  <line x1="5" y1="2" x2="5" y2="8" />
-                  <line x1="2" y1="5" x2="8" y2="5" />
-                </svg>
-                <span
-                  style={{
-                    fontFamily: '"Inter Variable", "SF Pro Display", -apple-system, sans-serif',
-                    fontSize: '12px',
-                    fontWeight: 500,
-                    lineHeight: 1,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  Rule
-                </span>
-              </button>
-            )}
-          </div>
+          <RuleAttachmentCell
+            ref={ruleCellRef}
+            level="campaign"
+            entityId={campaign.id}
+            attachedRuleIds={campaignAttachedRules[campaign.id] || []}
+            onOpen={() => setFocusedCampaignId(campaign.id)}
+          />
         )}
 
         {displayProperties.group && (
@@ -319,12 +230,6 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
         selectedGroupIds={campaign.groupIds}
       />
 
-      <RuleSelectorPopover
-        isOpen={isRuleSelectorOpen}
-        onClose={() => setIsRuleSelectorOpen(false)}
-        anchorRect={ruleAnchorRect}
-        campaignId={campaign.id}
-      />
     </>
   );
 };
