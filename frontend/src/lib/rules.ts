@@ -30,6 +30,31 @@ export type RuleAction =
 
 export type RuleGroupIcon = 'backlog' | 'shield' | 'rocket' | 'flask' | 'custom';
 
+/**
+ * Which ad sets an attached rule may act on. A rule always acts on ad sets;
+ * scope only narrows the search. "account" is the historical behaviour of
+ * sweeping every ad set in the ad account.
+ */
+export type RuleScopeLevel = 'account' | 'campaign' | 'adset';
+
+export interface RuleScope {
+  level: RuleScopeLevel;
+  ids: string[];
+}
+
+/** One rule as stored on an ad account, in the runtime snapshot format. */
+export interface AttachedRule {
+  preset_id: number;
+  name: string;
+  scope?: RuleScope;
+}
+
+export const ACCOUNT_SCOPE: RuleScope = { level: 'account', ids: [] };
+
+export function attachedRuleScope(rule: AttachedRule): RuleScope {
+  return rule.scope ?? ACCOUNT_SCOPE;
+}
+
 export interface RuleConditionPayload {
   metric: RuleMetric;
   operator: RuleOperator;
@@ -256,6 +281,52 @@ export function deleteRuleGroup(groupId: number): Promise<{ success: boolean }> 
   return apiRequest<{ success: boolean }>(`/api/rule-groups/${groupId}`, {
     method: 'DELETE',
   });
+}
+
+/* ------------------------------------------- rules attached to accounts -- */
+
+interface AccountRulesResponse {
+  account_id: string;
+  active_rules: AttachedRule[];
+  rules_enabled: boolean;
+}
+
+export function assignRuleToAccount(
+  accountId: string,
+  presetId: number,
+  scope: RuleScope,
+): Promise<AccountRulesResponse> {
+  return apiRequest<AccountRulesResponse>(
+    `/api/accounts/${encodeURIComponent(accountId)}/assign-rule`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ preset_id: presetId, scope }),
+    },
+  );
+}
+
+export function setAttachedRuleScope(
+  accountId: string,
+  presetId: number,
+  scope: RuleScope,
+): Promise<AccountRulesResponse> {
+  return apiRequest<AccountRulesResponse>(
+    `/api/accounts/${encodeURIComponent(accountId)}/rules/${presetId}/scope`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(scope),
+    },
+  );
+}
+
+export function detachRuleFromAccount(
+  accountId: string,
+  presetId: number,
+): Promise<AccountRulesResponse> {
+  return apiRequest<AccountRulesResponse>(
+    `/api/accounts/${encodeURIComponent(accountId)}/detach-rule/${presetId}`,
+    { method: 'POST' },
+  );
 }
 
 /**

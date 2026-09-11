@@ -562,6 +562,9 @@ def _preset_snapshot(preset: RulePreset) -> Dict[str, Any]:
         "budget_change_percent": preset.budget_change_percent,
         "budget_max_daily": preset.budget_max_daily,
         "currency_mode": "account",
+        # Scope belongs to the attachment, not the preset. Attaching or
+        # re-scoping overwrites this default.
+        "scope": {"level": "account", "ids": []},
     }
     validation_error = ""
     try:

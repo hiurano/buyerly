@@ -1126,6 +1126,97 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(stored["icon"], "rocket")
 
+    async def test_rule_scope_is_attached_re_aimed_and_survives_preset_edits(self):
+        user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
+        init_data = generate_valid_telegram_init_data(settings.BOT_TOKEN, user_info)
+        headers = {"Authorization": f"tma {init_data}"}
+        account_id = "act_1018756607700064"
+
+        payload = {
+            "name": "Стоп по кампании",
+            "action": "turn_off",
+            "conditions": [
+                {"metric": "cpl", "operator": "gte", "value": 12.0, "time_window": "today"}
+            ],
+        }
+
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            preset_id = (
+                await client.post("/api/presets", headers=headers, json=payload)
+            ).json()["id"]
+
+            attached = await client.post(
+                f"/api/accounts/{account_id}/assign-rule",
+                headers=headers,
+                json={
+                    "preset_id": preset_id,
+                    "scope": {"level": "campaign", "ids": ["camp_a"]},
+                },
+            )
+            self.assertEqual(attached.status_code, 200)
+            snapshot = next(
+                rule
+                for rule in attached.json()["active_rules"]
+                if rule["preset_id"] == preset_id
+            )
+            self.assertEqual(snapshot["scope"], {"level": "campaign", "ids": ["camp_a"]})
+
+            rescoped = await client.put(
+                f"/api/accounts/{account_id}/rules/{preset_id}/scope",
+                headers=headers,
+                json={"level": "campaign", "ids": ["camp_a", "camp_b"]},
+            )
+            self.assertEqual(rescoped.status_code, 200)
+            self.assertEqual(
+                next(
+                    rule
+                    for rule in rescoped.json()["active_rules"]
+                    if rule["preset_id"] == preset_id
+                )["scope"],
+                {"level": "campaign", "ids": ["camp_a", "camp_b"]},
+            )
+
+            # Scope belongs to the attachment: editing the rule must not widen it
+            # back to the whole ad account.
+            edited = await client.put(
+                f"/api/presets/{preset_id}",
+                headers=headers,
+                json={**payload, "name": "Стоп по кампании v2"},
+            )
+            self.assertEqual(edited.status_code, 200)
+
+            accounts = await client.get("/api/accounts", headers=headers)
+            stored = next(
+                rule
+                for rule in next(
+                    item
+                    for item in accounts.json()
+                    if item["account_id"] == account_id
+                )["active_rules"]
+                if rule["preset_id"] == preset_id
+            )
+            self.assertEqual(stored["name"], "Стоп по кампании v2")
+            self.assertEqual(stored["scope"], {"level": "campaign", "ids": ["camp_a", "camp_b"]})
+
+            for invalid in (
+                {"level": "galaxy", "ids": ["camp_a"]},
+                {"level": "campaign", "ids": []},
+            ):
+                rejected = await client.put(
+                    f"/api/accounts/{account_id}/rules/{preset_id}/scope",
+                    headers=headers,
+                    json=invalid,
+                )
+                self.assertEqual(rejected.status_code, 422, invalid)
+
+            missing = await client.put(
+                f"/api/accounts/{account_id}/rules/{preset_id + 9999}/scope",
+                headers=headers,
+                json={"level": "account", "ids": []},
+            )
+            self.assertEqual(missing.status_code, 404)
+
     async def test_account_rejects_rules_with_opposite_actions_and_same_trigger(self):
         init_data = generate_valid_telegram_init_data(
             settings.BOT_TOKEN,

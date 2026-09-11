@@ -125,7 +125,8 @@ Slug нормализуется в ASCII и ограничивается 60 си
 | `POST /api/accounts/batch-add` | `accounts[]`, `batch_name?`, `access_token` | проверяет кабинеты через Meta и добавляет/обновляет их |
 | `PATCH /api/accounts/{account_id}/profile` | `custom_name`, `note` | сохраняет внутреннее название до 120 символов и заметку до 500 символов, не меняя имя в Meta |
 | `DELETE /api/accounts/{account_id}` | — | удаляет доступный пользователю кабинет из Buyerly |
-| `POST /api/accounts/{account_id}/assign-rule` | `preset_id` | назначает один пресет и включает исполнение правил кабинета |
+| `POST /api/accounts/{account_id}/assign-rule` | `preset_id`, `scope` | назначает один пресет и включает исполнение правил кабинета; `scope` по умолчанию охватывает весь кабинет |
+| `PUT /api/accounts/{account_id}/rules/{preset_id}/scope` | `level`, `ids` | меняет область действия уже назначенного правила: `account`, `campaign` или `adset`; исполнение всегда остаётся на адсетах |
 | `POST /api/accounts/{account_id}/assign-rule-group/{group_id}` | — | атомарно назначает всю группу, уже назначенные пресеты пропускает |
 | `POST /api/accounts/{account_id}/detach-rule/{preset_id}` | — | удаляет назначение одного правила; при пустом списке выключает правила |
 | `POST /api/accounts/{account_id}/toggle-rules` | — | включает/выключает уже назначенные правила; без правил включение запрещено |

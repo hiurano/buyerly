@@ -31,6 +31,7 @@ from api.schemas import (
     RuleGroupResponse,
     RuleGroupsReorderRequest,
     RuleGroupWriteRequest,
+    RuleScopeItem,
     RulePresetItem,
 )
 from core.rule_examples import ensure_rule_examples
@@ -153,7 +154,13 @@ async def update_preset(preset_id: int, payload: CreatePresetRequest, user: User
             changed = False
             for index, active_rule in enumerate(active_rules):
                 if active_rule.get("preset_id") == preset_id:
-                    active_rules[index] = updated_snapshot.copy()
+                    resynced = updated_snapshot.copy()
+                    # Scope is a property of this attachment, not of the preset,
+                    # so editing the rule must not widen it back to the account.
+                    resynced["scope"] = active_rule.get(
+                        "scope", updated_snapshot["scope"]
+                    )
+                    active_rules[index] = resynced
                     changed = True
             if changed:
                 _ensure_compatible_rule_set(active_rules)
@@ -467,6 +474,7 @@ async def assign_rule_to_account(
                     status_code=400,
                     detail="Правило имеет небезопасные или устаревшие параметры. Откройте и пересохраните его.",
                 )
+            new_rule["scope"] = payload.scope.model_dump()
         else:
             raise HTTPException(status_code=400, detail="Custom rules without preset are no longer supported.")
 
@@ -487,6 +495,57 @@ async def assign_rule_to_account(
             "active_rules": active_rules,
             "rules_enabled": acc.rules_enabled,
             "message": f"Правило '{new_rule['name']}' успешно добавлено к кабинету",
+        }
+
+
+@router.put("/accounts/{account_id}/rules/{preset_id}/scope")
+async def set_attached_rule_scope(
+    account_id: str,
+    preset_id: int,
+    payload: RuleScopeItem,
+    user: User = Depends(get_current_user),
+):
+    """Re-aim an already attached rule at an account, campaigns or ad sets."""
+    async with async_session_maker() as session:
+        ws, member = await get_user_workspace_member(session, user)
+        ensure_workspace_write_access(user, member, "изменения области действия правила")
+
+        acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
+        acc = (
+            await session.execute(
+                select(Account).where(
+                    Account.account_id == acc_id,
+                    Account.workspace_id == ws.id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not acc:
+            raise HTTPException(status_code=404, detail="Кабинет не найден.")
+        await _ensure_stable_account_owner(session, acc)
+
+        active_rules = _load_active_rules(acc.active_rules)
+        scope = payload.model_dump()
+        matched = False
+        for rule in active_rules:
+            if rule.get("preset_id") == preset_id:
+                rule["scope"] = scope
+                matched = True
+        if not matched:
+            raise HTTPException(
+                status_code=404,
+                detail="Правило не привязано к этому кабинету.",
+            )
+
+        # Narrowing a scope can free a pair of rules that used to contradict
+        # each other, and widening one can create a new contradiction.
+        _ensure_compatible_rule_set(active_rules)
+        acc.active_rules = json.dumps(active_rules)
+
+        await session.commit()
+        return {
+            "account_id": acc.account_id,
+            "active_rules": active_rules,
+            "rules_enabled": acc.rules_enabled,
         }
 
 

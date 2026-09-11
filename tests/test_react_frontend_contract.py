@@ -94,6 +94,14 @@ class TestReactFrontendContract(unittest.TestCase):
         cls.create_rule_modal = (
             ROOT / "frontend" / "src" / "components" / "rules" / "CreateRuleModal.tsx"
         ).read_text()
+        cls.rule_selector_popover = (
+            ROOT
+            / "frontend"
+            / "src"
+            / "components"
+            / "campaigns"
+            / "RuleSelectorPopover.tsx"
+        ).read_text()
 
     def test_login_surface_is_email_only_and_explains_both_credentials(self):
         self.assertIn("Continue with email", self.login)
@@ -286,6 +294,20 @@ class TestReactFrontendContract(unittest.TestCase):
             "is between",
         ):
             self.assertNotIn(unsupported, self.create_rule_modal)
+
+    def test_campaign_rule_attachment_is_served_by_the_api(self):
+        # Attaching a rule to a campaign writes a scope through the API rather
+        # than flipping a local-only map.
+        self.assertIn("loadAccountRuleAttachments", self.app_store)
+        self.assertIn("assignRuleToAccount", self.app_store)
+        self.assertIn("setAttachedRuleScope", self.app_store)
+        self.assertIn("detachRuleFromAccount", self.app_store)
+        self.assertIn("/scope", self.rules_lib)
+
+        # A rule aimed at the whole account or at single ad sets cannot be
+        # silently re-aimed from a per-campaign control.
+        self.assertIn("attachedRuleScopes", self.rule_selector_popover)
+        self.assertIn("aria-disabled={locked}", self.rule_selector_popover)
 
 
 if __name__ == "__main__":

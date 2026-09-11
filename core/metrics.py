@@ -40,6 +40,11 @@ RULE_MAX_BUDGET = 10_000_000.0
 RULE_MAX_COOLDOWN_MINUTES = 10_080
 RULE_MAX_CHECK_INTERVAL_MINUTES = 1_440
 RULE_MAX_BUDGET_CHANGE_PERCENT = 100.0
+# A rule always acts on ad sets. Scope only narrows which ad sets it looks at:
+# the whole account, the ad sets of named campaigns, or named ad sets.
+RULE_SCOPE_LEVELS = frozenset({"account", "campaign", "adset"})
+RULE_MAX_SCOPE_IDS = 200
+RULE_MAX_SCOPE_ID_LENGTH = 64
 
 CONFLICTING_RULE_ACTIONS = frozenset(
     {
@@ -425,6 +430,29 @@ def _rule_trigger_signature(rule: Mapping[str, Any]) -> tuple[str, tuple[tuple[s
     )
 
 
+def _rule_scopes_can_overlap(first: Mapping[str, Any], second: Mapping[str, Any]) -> bool:
+    """Whether two rules could ever act on the same ad set.
+
+    Opposite actions are only a contradiction when both rules can reach the same
+    ad set. Rules aimed at different campaigns never meet, so they coexist.
+    """
+    try:
+        first_scope = normalize_rule_scope(first.get("scope"))
+        second_scope = normalize_rule_scope(second.get("scope"))
+    except ValueError:
+        # An unreadable scope is treated as reaching everything, so a malformed
+        # rule cannot smuggle a contradicting pair past this check.
+        return True
+
+    if first_scope["level"] == "account" or second_scope["level"] == "account":
+        return True
+    if first_scope["level"] != second_scope["level"]:
+        # A campaign scope and an ad set scope cannot be compared by id alone,
+        # and the ad set may well sit inside that campaign.
+        return True
+    return bool(set(first_scope["ids"]) & set(second_scope["ids"]))
+
+
 def validate_rule_set_compatibility(rules: Sequence[Mapping[str, Any]]) -> None:
     """Reject exact opposite actions driven by the same trigger."""
 
@@ -442,6 +470,8 @@ def validate_rule_set_compatibility(rules: Sequence[Mapping[str, Any]]) -> None:
                 continue
             if _rule_trigger_signature(first) != _rule_trigger_signature(second):
                 continue
+            if not _rule_scopes_can_overlap(first, second):
+                continue
             first_name = str(first.get("name") or "Первое правило")
             second_name = str(second.get("name") or "Второе правило")
             raise ValueError(
@@ -450,11 +480,72 @@ def validate_rule_set_compatibility(rules: Sequence[Mapping[str, Any]]) -> None:
             )
 
 
+def normalize_rule_scope(scope: Any) -> dict[str, Any]:
+    """Return a validated scope, defaulting to the whole ad account.
+
+    Raises ValueError for anything the engine could not honour, so a malformed
+    scope never silently widens a rule back to every ad set in the account.
+    """
+    if scope is None:
+        return {"level": "account", "ids": []}
+    if not isinstance(scope, Mapping):
+        raise ValueError("Rule scope must be an object")
+
+    level = str(scope.get("level", "account"))
+    if level not in RULE_SCOPE_LEVELS:
+        raise ValueError(f"Unsupported rule scope level: {level}")
+    if level == "account":
+        return {"level": "account", "ids": []}
+
+    raw_ids = scope.get("ids", [])
+    if not isinstance(raw_ids, (list, tuple)):
+        raise ValueError("Rule scope ids must be a list")
+
+    ids: list[str] = []
+    for raw_id in raw_ids:
+        # bool is an int subclass, and "True" is not a Meta entity id.
+        if isinstance(raw_id, bool) or not isinstance(raw_id, (str, int)):
+            raise ValueError("Rule scope ids must be strings")
+        entity_id = str(raw_id).strip()
+        if not entity_id or len(entity_id) > RULE_MAX_SCOPE_ID_LENGTH:
+            raise ValueError("Rule scope id is empty or too long")
+        if entity_id not in ids:
+            ids.append(entity_id)
+
+    if not ids:
+        raise ValueError(f"Rule scoped to a {level} must name at least one id")
+    if len(ids) > RULE_MAX_SCOPE_IDS:
+        raise ValueError(f"Rule scope cannot name more than {RULE_MAX_SCOPE_IDS} ids")
+    return {"level": level, "ids": ids}
+
+
+def rule_scope_matches_adset(scope: Any, adset: Mapping[str, Any]) -> bool:
+    """Whether a rule with this scope may act on this ad set.
+
+    An ad set whose campaign is unknown — a row from an inventory cache written
+    before campaign_id was collected — never matches a campaign scope. Running
+    the rule anyway could pause a campaign the buyer never aimed it at.
+    """
+    try:
+        normalized = normalize_rule_scope(scope)
+    except ValueError:
+        return False
+
+    level = normalized["level"]
+    if level == "account":
+        return True
+    if level == "adset":
+        return str(adset.get("adset_id", "")) in normalized["ids"]
+    campaign_id = str(adset.get("campaign_id", "") or "")
+    return bool(campaign_id) and campaign_id in normalized["ids"]
+
+
 def validate_runtime_rule(rule: Mapping[str, Any]) -> None:
     """Fail closed for stored snapshots before RuleEngine can choose an action."""
 
     if not isinstance(rule, Mapping):
         raise ValueError("Rule must be an object")
+    normalize_rule_scope(rule.get("scope"))
     action = str(rule.get("action", ""))
     if action not in RULE_ACTIONS:
         raise ValueError(f"Unsupported rule action: {action}")
