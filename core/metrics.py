@@ -44,9 +44,10 @@ RULE_MAX_BUDGET_CHANGE_PERCENT = 100.0
 # the whole account, the ad sets of named campaigns, or named ad sets.
 RULE_SCOPE_LEVELS = frozenset({"account", "campaign", "adset"})
 # Where a rule reads its metrics and applies its action. Budget actions stay on
-# ad sets: a campaign running Campaign Budget Optimization owns its budget, and
-# Meta rejects a budget write aimed at the ad set underneath it.
-RULE_EXECUTION_LEVELS = frozenset({"campaign", "adset"})
+# ad sets: a campaign running Campaign Budget Optimization owns its budget and
+# Meta rejects a budget write aimed at the ad set underneath it, while an ad has
+# no budget of its own at all.
+RULE_EXECUTION_LEVELS = frozenset({"campaign", "adset", "ad"})
 BUDGET_RULE_ACTIONS = frozenset({"increase_budget", "decrease_budget"})
 RULE_MAX_SCOPE_IDS = 200
 RULE_MAX_SCOPE_ID_LENGTH = 64
@@ -553,14 +554,22 @@ def rule_scope_matches_entity(scope: Any, entity: Mapping[str, Any]) -> bool:
     entity_level = str(entity.get("entity_level") or "adset")
     entity_id = str(entity.get("entity_id") or entity.get("adset_id") or "")
 
-    if scope_level == "adset":
-        # A campaign cannot be selected by an ad set scope.
-        return entity_level == "adset" and entity_id in normalized["ids"]
+    # Which id of this entity the scope level is talking about. An ad belongs to
+    # both an ad set and a campaign, so either scope can select it; a campaign
+    # has no ad set above it, so an ad set scope can never select one.
+    if scope_level == "campaign":
+        if entity_level == "campaign":
+            owner_id = entity_id
+        else:
+            owner_id = str(entity.get("campaign_id") or "")
+    elif entity_level == "adset":
+        owner_id = entity_id
+    elif entity_level == "ad":
+        owner_id = str(entity.get("adset_id") or "")
+    else:
+        return False
 
-    if entity_level == "campaign":
-        return bool(entity_id) and entity_id in normalized["ids"]
-    campaign_id = str(entity.get("campaign_id", "") or "")
-    return bool(campaign_id) and campaign_id in normalized["ids"]
+    return bool(owner_id) and owner_id in normalized["ids"]
 
 
 def validate_runtime_rule(rule: Mapping[str, Any]) -> None:

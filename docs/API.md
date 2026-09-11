@@ -126,7 +126,7 @@ Slug нормализуется в ASCII и ограничивается 60 си
 | `PATCH /api/accounts/{account_id}/profile` | `custom_name`, `note` | сохраняет внутреннее название до 120 символов и заметку до 500 символов, не меняя имя в Meta |
 | `DELETE /api/accounts/{account_id}` | — | удаляет доступный пользователю кабинет из Buyerly |
 | `POST /api/accounts/{account_id}/assign-rule` | `preset_id`, `scope` | назначает один пресет и включает исполнение правил кабинета; `scope` по умолчанию охватывает весь кабинет |
-| `PUT /api/accounts/{account_id}/rules/{preset_id}/scope` | `level`, `ids` | меняет область действия уже назначенного правила: `account`, `campaign` или `adset`; исполнение всегда остаётся на адсетах |
+| `PUT /api/accounts/{account_id}/rules/{preset_id}/scope` | `level`, `ids` | меняет область действия уже назначенного правила: `account`, `campaign` или `adset`; область сужает, какие сущности правило рассматривает, а на каком уровне оно действует задаёт `level` самого правила |
 | `POST /api/accounts/{account_id}/assign-rule-group/{group_id}` | — | атомарно назначает всю группу, уже назначенные пресеты пропускает |
 | `POST /api/accounts/{account_id}/detach-rule/{preset_id}` | — | удаляет назначение одного правила; при пустом списке выключает правила |
 | `POST /api/accounts/{account_id}/toggle-rules` | — | включает/выключает уже назначенные правила; без правил включение запрещено |
@@ -199,7 +199,7 @@ Meta возвращает браузер на служебный callback `/api/
 | Метод и путь | Тело | Назначение |
 |---|---|---|
 | `GET /api/presets` | — | список пресетов текущего владельца |
-| `POST /api/presets` | rule payload | создаёт пресет |
+| `POST /api/presets` | rule payload, включая `level` | создаёт пресет; `level` — уровень исполнения `adset` (по умолчанию), `campaign` или `ad`; действия с бюджетом допустимы только на `adset` |
 | `PUT /api/presets/{preset_id}` | полный rule payload | обновляет пресет и его назначенные snapshot |
 | `DELETE /api/presets/{preset_id}` | — | удаляет пресет, назначения и ссылки в группах |
 

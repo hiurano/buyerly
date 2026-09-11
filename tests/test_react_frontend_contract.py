@@ -323,8 +323,9 @@ class TestReactFrontendContract(unittest.TestCase):
         # A rule that pauses a whole campaign must be distinguishable from one
         # that pauses a single ad set, both when creating it and in the list.
         self.assertIn("RULE_LEVEL_LABELS", self.rules_lib)
-        self.assertIn("CAMPAIGN", self.rules_lib)
-        for contract in ("RuleExecutionLevel", "Applies to:", "changeLevel"):
+        # The displayed action carries the level rather than the bare verb.
+        self.assertIn("RULE_LEVEL_LABELS[preset.level]", self.rules_lib)
+        for contract in ("RuleExecutionLevel", "Applies to:", "changeLevel", "'ad'"):
             self.assertIn(contract, self.create_rule_modal)
         # Budget actions stay on ad sets; the form must not offer them higher up.
         self.assertIn("BUDGET_ACTIONS", self.create_rule_modal)

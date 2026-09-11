@@ -1262,6 +1262,122 @@ class MetaClient:
             logger.error(f"Failed to set adset {adset_id} status: {error_msg}")
             raise RuntimeError(f"Meta API Error ({resp.status_code}): {error_msg}")
 
+    async def get_ads_insights(
+        self,
+        account_id: str,
+        access_token: str,
+        date_preset: str = "today",
+        currency: str = "UNKNOWN",
+        priority: str = "normal",
+    ) -> List[Dict[str, Any]]:
+        """Ads with their period metrics, shaped like ``get_adsets_insights``.
+
+        An ad is a leaf, so its metrics cannot be summed from anything below it
+        the way a campaign's are: both the inventory and the insights have to be
+        read at this level.
+        """
+        acc_id = self._normalize_account_id(account_id)
+
+        ads_list = await self._fetch_paginated_data(
+            f"{self.base_url}/{acc_id}/ads",
+            {
+                "fields": "id,name,adset_id,campaign_id,status,effective_status",
+                "limit": 100,
+                "access_token": access_token,
+            },
+            account_id=acc_id,
+            priority=priority,
+        )
+        insight_rows = await self._fetch_paginated_data(
+            f"{self.base_url}/{acc_id}/insights",
+            {
+                "level": "ad",
+                "fields": (
+                    "campaign_id,adset_id,ad_id,ad_name,spend,impressions,clicks,"
+                    "cpc,ctr,actions,cost_per_action_type"
+                ),
+                "date_preset": date_preset,
+                "limit": 100,
+                "access_token": access_token,
+            },
+            account_id=acc_id,
+            priority=priority,
+        )
+        insights_by_id = {
+            str(row["ad_id"]): row for row in insight_rows if row.get("ad_id")
+        }
+
+        unified: List[Dict[str, Any]] = []
+        for ad in ads_list:
+            ad_id = str(ad.get("id") or "")
+            if not ad_id:
+                continue
+            status = str(ad.get("status") or "UNKNOWN")
+            effective_status = str(ad.get("effective_status") or status)
+            insight = insights_by_id.get(ad_id, {})
+            normalized = self._normalize_basic_insight(insight)
+            spend = normalized["spend"]
+            impressions = normalized["impressions"]
+            clicks = normalized["clicks"]
+
+            # Same safeguard as ad sets: a dead archived ad with no activity in
+            # the period is not worth evaluating.
+            if (
+                effective_status in ("ARCHIVED", "DELETED")
+                and spend == 0
+                and impressions == 0
+                and clicks == 0
+            ):
+                continue
+
+            unified.append({
+                "ad_id": ad_id,
+                "ad_name": str(ad.get("name") or f"Ad {ad_id}"),
+                "adset_id": str(ad.get("adset_id") or insight.get("adset_id") or ""),
+                "campaign_id": str(
+                    ad.get("campaign_id") or insight.get("campaign_id") or ""
+                ),
+                "status": status,
+                "effective_status": effective_status,
+                "spend": spend,
+                "clicks": clicks,
+                "leads": normalized["leads"],
+                "registrations": normalized["registrations"],
+                "purchases": normalized["purchases"],
+                "impressions": impressions,
+                "cpc": round(self._safe_float(insight.get("cpc", 0.0)), 2),
+                "ctr": round(self._safe_float(insight.get("ctr", 0.0)), 2),
+                "currency": normalize_currency(currency),
+            })
+        return unified
+
+    async def set_ad_status(
+        self,
+        ad_id: str,
+        access_token: str,
+        status: str,
+        account_id: Optional[str] = None,
+    ) -> bool:
+        """Переключает статус объявления: 'PAUSED' или 'ACTIVE'."""
+        if status not in ["PAUSED", "ACTIVE"]:
+            raise ValueError(f"Invalid status: {status}. Must be 'PAUSED' or 'ACTIVE'.")
+
+        resp = await self._request_with_retry(
+            "POST",
+            f"{self.base_url}/{ad_id}",
+            data={"status": status, "access_token": access_token},
+            account_id=ad_id,
+            priority="critical",
+        )
+        if resp.status_code == 200 and resp.json().get("success") is True:
+            logger.info("Successfully set ad %s status to %s", ad_id, status)
+            return True
+
+        error_data = resp.json().get("error", {})
+        error_msg = error_data.get("message", resp.text)
+        logger.error("Failed to set ad %s status: %s", ad_id, error_msg)
+        raise RuntimeError(f"Meta API Error ({resp.status_code}): {error_msg}")
+
     async def get_campaigns_inventory(
         self,
         account_id: str,

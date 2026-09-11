@@ -28,7 +28,7 @@ export type RuleAction =
   | 'increase_budget'
   | 'decrease_budget';
 
-export type RuleExecutionLevel = 'campaign' | 'adset';
+export type RuleExecutionLevel = 'campaign' | 'adset' | 'ad';
 
 export type RuleGroupIcon = 'backlog' | 'shield' | 'rocket' | 'flask' | 'custom';
 
@@ -150,6 +150,7 @@ export const RULE_TIME_WINDOW_LABELS: Record<RuleTimeWindow, string> = {
 export const RULE_LEVEL_LABELS: Record<RuleExecutionLevel, string> = {
   adset: 'Ad set',
   campaign: 'Campaign',
+  ad: 'Ad',
 };
 
 export const RULE_ACTION_LABELS: Record<RuleAction, string> = {
@@ -196,7 +197,7 @@ export function formatAction(preset: RulePresetPayload): string {
   }
   const label = RULE_ACTION_LABELS[preset.action] ?? preset.action.toUpperCase();
   if (preset.action === 'notify_only') return label;
-  return `${label} ${preset.level === 'campaign' ? 'CAMPAIGN' : 'AD SET'}`;
+  return `${label} ${RULE_LEVEL_LABELS[preset.level]?.toUpperCase() ?? 'AD SET'}`;
 }
 
 /**

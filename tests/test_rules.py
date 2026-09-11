@@ -3,6 +3,7 @@ import unittest
 from core.metrics import (
     normalize_rule_level,
     normalize_rule_scope,
+    rule_scope_matches_entity,
     validate_rule_semantics,
     validate_rule_set_compatibility,
     validate_runtime_rule,
@@ -614,7 +615,8 @@ class TestRuleExecutionLevel(unittest.TestCase):
             "entity_level": level,
             "entity_id": entity_id,
             "entity_name": f"{level} {entity_id}",
-            "campaign_id": "camp_a" if level == "adset" else entity_id,
+            "campaign_id": entity_id if level == "campaign" else "camp_a",
+            "adset_id": "as_1" if level == "ad" else "",
             "status": "ACTIVE",
             "effective_status": "ACTIVE",
             "spend": 100.0,
@@ -678,6 +680,31 @@ class TestRuleExecutionLevel(unittest.TestCase):
         with self.assertRaises(ValueError):
             normalize_rule_level("account")
         self.assertEqual(normalize_rule_level(None), "adset")
+
+    def test_an_ad_rule_leaves_its_adset_and_campaign_alone(self):
+        self.account.active_rules = json.dumps([self._rule("ad")])
+
+        self.assertEqual(
+            RuleEngine.evaluate(self._entity("ad", "ad_1"), self.account).action,
+            RuleAction.STOP,
+        )
+        for level in ("adset", "campaign"):
+            self.assertEqual(
+                RuleEngine.evaluate(self._entity(level, "x"), self.account).action,
+                RuleAction.NOOP,
+                level,
+            )
+
+    def test_budget_actions_are_rejected_on_ads_too(self):
+        with self.assertRaises(ValueError):
+            validate_runtime_rule(
+                self._rule(
+                    "ad",
+                    action="increase_budget",
+                    budget_change_percent=20.0,
+                    budget_max_daily=100.0,
+                )
+            )
 
 
 class TestCampaignRollup(unittest.TestCase):
@@ -803,6 +830,42 @@ class TestRuleScopeContract(unittest.TestCase):
         ):
             with self.assertRaises(ValueError, msg=invalid):
                 normalize_rule_scope(invalid)
+
+    def test_an_ad_is_selected_by_both_its_adset_and_its_campaign(self):
+        ad = {
+            "entity_level": "ad",
+            "entity_id": "ad_1",
+            "adset_id": "as_1",
+            "campaign_id": "camp_a",
+        }
+
+        self.assertTrue(
+            rule_scope_matches_entity({"level": "campaign", "ids": ["camp_a"]}, ad)
+        )
+        self.assertTrue(
+            rule_scope_matches_entity({"level": "adset", "ids": ["as_1"]}, ad)
+        )
+        self.assertFalse(
+            rule_scope_matches_entity({"level": "adset", "ids": ["as_2"]}, ad)
+        )
+        # The ad's own id is not an ad set id, so it must not match one.
+        self.assertFalse(
+            rule_scope_matches_entity({"level": "adset", "ids": ["ad_1"]}, ad)
+        )
+
+    def test_a_campaign_is_never_selected_by_an_adset_scope(self):
+        campaign = {
+            "entity_level": "campaign",
+            "entity_id": "camp_a",
+            "campaign_id": "camp_a",
+        }
+
+        self.assertFalse(
+            rule_scope_matches_entity({"level": "adset", "ids": ["camp_a"]}, campaign)
+        )
+        self.assertTrue(
+            rule_scope_matches_entity({"level": "campaign", "ids": ["camp_a"]}, campaign)
+        )
 
     def test_opposite_actions_coexist_when_aimed_at_different_campaigns(self):
         conditions = [{"metric": "spend", "operator": "gte", "value": 10.0}]

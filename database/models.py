@@ -413,7 +413,7 @@ class RulePreset(Base):
         String,
         default="adset",
         nullable=False,
-        doc="Уровень исполнения: 'adset' или 'campaign'; метрики читаются и действие применяется на нём",
+        doc="Уровень исполнения: 'adset', 'campaign' или 'ad'; метрики читаются и действие применяется на нём",
     )
     conditions = Column(JSONB, default=list, nullable=False, doc="JSONB список условий")
     condition_logic = Column(String, default="and", nullable=False, doc="'and' или 'or' — логика объединения условий")
@@ -968,7 +968,7 @@ class AuditEvent(Base):
         default="adset",
         nullable=False,
         index=True,
-        doc="Уровень сущности, к которой применено действие: 'campaign' или 'adset'",
+        doc="Уровень сущности, к которой применено действие: 'campaign', 'adset' или 'ad'",
     )
     entity_id = Column(String, default="", nullable=False, index=True, doc="Meta ID этой сущности")
     entity_name = Column(String, default="", nullable=False)

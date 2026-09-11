@@ -25,7 +25,7 @@ class RulePresetItem(BaseModel):
     name: str
     action: str
     # Where the rule reads metrics and applies its action.
-    level: Literal["campaign", "adset"] = "adset"
+    level: Literal["campaign", "adset", "ad"] = "adset"
     enabled: bool = True
     conditions: List[ConditionItem]
     condition_logic: str = "and"
@@ -52,7 +52,7 @@ class CreatePresetRequest(BaseModel):
 
     name: str = Field(min_length=1, max_length=120)
     action: Literal["turn_off", "notify_only", "turn_on", "increase_budget", "decrease_budget"] = "turn_off"
-    level: Literal["campaign", "adset"] = "adset"
+    level: Literal["campaign", "adset", "ad"] = "adset"
     enabled: bool = True
     conditions: List[ConditionItem] = Field(min_length=1, max_length=20)
     condition_logic: Literal["and", "or"] = "and"
