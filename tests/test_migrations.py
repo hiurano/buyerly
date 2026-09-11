@@ -39,6 +39,15 @@ from database.models import (
 from tests.test_db_helper import create_test_engine, init_test_db
 
 
+def alembic_head_revision() -> str:
+    """Revision the migration chain ends at, so no test pins a version number."""
+    from alembic.script import ScriptDirectory
+
+    from database.migrations import alembic_config
+
+    return ScriptDirectory.from_config(alembic_config()).get_current_head()
+
+
 class TestLegacyAccountRulesMigration(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.engine = create_test_engine()
@@ -1245,7 +1254,7 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
 
             async with engine.begin() as conn:
                 version = (await conn.execute(text("SELECT version_num FROM alembic_version"))).scalar()
-                self.assertEqual(version, "0022_login_magic_links")
+                self.assertEqual(version, alembic_head_revision())
                 columns = {
                     row.column_name
                     for row in (
@@ -1281,7 +1290,7 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                 version = (
                     await conn.execute(text("SELECT version_num FROM alembic_version"))
                 ).scalar_one()
-                self.assertEqual(version, "0022_login_magic_links")
+                self.assertEqual(version, alembic_head_revision())
         finally:
             await init_test_db(engine)
             await engine.dispose()
@@ -1315,7 +1324,7 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                 version = (
                     await conn.execute(text("SELECT version_num FROM alembic_version"))
                 ).scalar_one()
-                self.assertEqual(version, "0022_login_magic_links")
+                self.assertEqual(version, alembic_head_revision())
         finally:
             await init_test_db(engine)
             await engine.dispose()
@@ -1349,7 +1358,7 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                 version = (
                     await conn.execute(text("SELECT version_num FROM alembic_version"))
                 ).scalar_one()
-                self.assertEqual(version, "0022_login_magic_links")
+                self.assertEqual(version, alembic_head_revision())
         finally:
             await init_test_db(engine)
             await engine.dispose()

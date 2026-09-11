@@ -87,6 +87,13 @@ class TestReactFrontendContract(unittest.TestCase):
         cls.app_store = (
             ROOT / "frontend" / "src" / "store" / "useAppStore.ts"
         ).read_text()
+        cls.rules_view = (
+            ROOT / "frontend" / "src" / "components" / "rules" / "RulesView.tsx"
+        ).read_text()
+        cls.rules_lib = (ROOT / "frontend" / "src" / "lib" / "rules.ts").read_text()
+        cls.create_rule_modal = (
+            ROOT / "frontend" / "src" / "components" / "rules" / "CreateRuleModal.tsx"
+        ).read_text()
 
     def test_login_surface_is_email_only_and_explains_both_credentials(self):
         self.assertIn("Continue with email", self.login)
@@ -239,6 +246,46 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("--action-primary-hover:", self.tokens)
         self.assertIn("export const Button", self.button)
         self.assertIn("disabled:cursor-not-allowed", self.button)
+
+    def test_rules_surface_uses_workspace_api_without_production_fixtures(self):
+        # The rules store is seeded by the API, never by shipped example rows.
+        self.assertIn("rules: [],\n  ruleGroups: [],", self.app_store)
+        for fixture in (
+            "Auto-Stop High CPA",
+            "Scale Winner Budget",
+            "Kill Zero-Conversions",
+            "Duplicate Winner AdSet",
+            "rule-group-safety",
+            "rule-group-scaling",
+        ):
+            self.assertNotIn(fixture, self.app_store)
+
+        for endpoint in ("'/api/presets'", "'/api/rule-groups'"):
+            self.assertIn(endpoint, self.rules_lib)
+
+        for contract in (
+            "loadRules",
+            "Couldn't load rules",
+            "No rules yet",
+            "rulesMutationError",
+        ):
+            self.assertIn(contract, self.rules_view)
+
+        # A rule is switched on or off; there is no third runtime state to show.
+        self.assertNotIn("'triggered'", self.app_store)
+
+        # The create form may only offer what api/schemas/rules.py accepts.
+        for supported in ("'cpl'", "'cpreg'", "'cpp'", "'last_3d'", "'increase_budget'"):
+            self.assertIn(supported, self.create_rule_modal)
+        for unsupported in (
+            "Cost per result",
+            "Lifetime spent",
+            "Website purchase ROAS",
+            "Frequency",
+            "37 months",
+            "is between",
+        ):
+            self.assertNotIn(unsupported, self.create_rule_modal)
 
 
 if __name__ == "__main__":

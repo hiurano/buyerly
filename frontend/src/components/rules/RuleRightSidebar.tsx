@@ -514,13 +514,7 @@ export const RuleRightSidebar: React.FC = () => {
                         leading={
                           <div style={{ display: 'flex', alignItems: 'center', marginRight: 8 }}>
                             <LinearStatusCircleIcon
-                              status={
-                                rule.status === 'paused'
-                                  ? 'paused'
-                                  : rule.status === 'triggered'
-                                  ? 'scaling'
-                                  : 'active'
-                              }
+                              status={rule.status === 'paused' ? 'paused' : 'active'}
                               size={12}
                             />
                           </div>

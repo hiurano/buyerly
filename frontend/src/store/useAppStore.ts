@@ -1,5 +1,28 @@
 import { create } from 'zustand';
 import type { FilterClause } from '@/components/filters/filterModel';
+import { ApiError } from '@/lib/api';
+import {
+  createRuleGroup,
+  createRulePreset,
+  deleteRuleGroup as deleteRuleGroupRequest,
+  deleteRulePreset,
+  fetchRuleGroups,
+  fetchRulePresets,
+  formatAction,
+  formatCondition,
+  formatRelativeTime,
+  formatScope,
+  presetToWriteRequest,
+  updateRuleGroup,
+  updateRulePreset,
+} from '@/lib/rules';
+import type {
+  RuleAction,
+  RuleGroupIcon,
+  RuleGroupPayload,
+  RulePresetPayload,
+  RulePresetWriteRequest,
+} from '@/lib/rules';
 
 export interface NotificationItem {
   id: string;
@@ -62,25 +85,40 @@ export interface AdItem {
   date: string;
 }
 
+/**
+ * View model for one rule preset. Display strings are derived once here from
+ * the API payload, which stays attached so an edit can round-trip every field
+ * the write endpoint requires.
+ */
 export interface RuleItem {
   id: string;
+  presetId: number;
   identifier: string;
   name: string;
   condition: string;
   action: string;
-  campaignName: string;
+  /** Raw action, so styling never has to sniff the display label. */
+  actionKind: RuleAction;
   scope?: string;
-  status: 'active' | 'paused' | 'triggered';
+  status: 'active' | 'paused';
   lastRun: string;
   groupId?: string;
+  /** Set when the runtime holds the rule back until it is re-saved. */
+  needsReview: boolean;
+  reviewReason: string;
+  preset: RulePresetPayload;
 }
 
 export interface RuleGroup {
   id: string;
   name: string;
-  icon: 'backlog' | 'shield' | 'rocket' | 'flask' | 'custom';
+  /** Kept so a membership edit round-trips it instead of clearing it. */
+  description: string;
+  icon: RuleGroupIcon;
   ruleIds: string[];
 }
+
+export type RulesLoadState = 'idle' | 'loading' | 'ready' | 'error';
 
 /** A buyer-managed bucket used only to organize campaigns in the campaign view. */
 export interface CampaignGroup {
@@ -108,6 +146,57 @@ export interface AdsManagerQuickFilter {
 export type AppTab = 'inbox' | 'campaigns' | 'rules' | 'statistics';
 export type ActiveTab = AppTab | 'preferences';
 export type InterfaceTheme = 'system' | 'light' | 'dark';
+
+/**
+ * A preset belongs to at most one group in the UI. The API models membership
+ * as an ordered many-to-many, so the first group that lists the preset wins.
+ */
+function buildGroupIndex(groups: RuleGroupPayload[]): Map<number, string> {
+  const index = new Map<number, string>();
+  for (const group of groups) {
+    for (const presetId of group.preset_ids) {
+      if (!index.has(presetId)) index.set(presetId, String(group.id));
+    }
+  }
+  return index;
+}
+
+function presetToRuleItem(
+  preset: RulePresetPayload,
+  groupIndex: Map<number, string>,
+): RuleItem {
+  return {
+    id: String(preset.id),
+    presetId: preset.id,
+    identifier: `RUL-${String(preset.id).padStart(2, '0')}`,
+    name: preset.name,
+    condition: formatCondition(preset),
+    action: formatAction(preset),
+    actionKind: preset.action,
+    scope: formatScope(preset),
+    status: preset.enabled ? 'active' : 'paused',
+    lastRun: formatRelativeTime(preset.last_run_at),
+    groupId: groupIndex.get(preset.id),
+    needsReview: preset.needs_review,
+    reviewReason: preset.review_reason,
+    preset,
+  };
+}
+
+function groupToRuleGroup(group: RuleGroupPayload): RuleGroup {
+  return {
+    id: String(group.id),
+    name: group.name,
+    description: group.description,
+    icon: group.icon,
+    ruleIds: group.preset_ids.map(String),
+  };
+}
+
+function requestErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) return error.message;
+  return 'Не удалось связаться с сервером. Попробуйте ещё раз.';
+}
 
 interface AppState {
   isSearchOpen: boolean;
@@ -196,19 +285,25 @@ interface AppState {
   collapsedGroups: string[];
   toggleGroupCollapse: (groupId: string) => void;
 
-  // Rules State
+  // Rules State (served by /api/presets and /api/rule-groups)
   rules: RuleItem[];
   ruleGroups: RuleGroup[];
+  rulesLoadState: RulesLoadState;
+  rulesError: string;
+  /** Last failed write, surfaced next to the list without discarding it. */
+  rulesMutationError: string;
+  clearRulesMutationError: () => void;
+  loadRules: () => Promise<void>;
   ruleFilterTab: 'active' | 'paused' | 'all';
   setRuleFilterTab: (tab: 'active' | 'paused' | 'all') => void;
   selectedRuleId: string | null;
   setSelectedRuleId: (id: string | null) => void;
-  toggleRuleStatus: (id: string) => void;
-  addRule: (rule: Omit<RuleItem, 'id' | 'identifier'>, groupId?: string) => void;
-  addRuleGroup: (name: string, icon?: 'backlog' | 'shield' | 'rocket' | 'flask' | 'custom') => void;
-  deleteRuleGroup: (id: string) => void;
-  addRuleToGroup: (groupId: string, ruleId: string) => void;
-  deleteRule: (id: string) => void;
+  toggleRuleStatus: (id: string) => Promise<void>;
+  addRule: (payload: RulePresetWriteRequest, groupId?: string) => Promise<void>;
+  addRuleGroup: (name: string, icon?: RuleGroupIcon) => Promise<void>;
+  deleteRuleGroup: (id: string) => Promise<void>;
+  addRuleToGroup: (groupId: string, ruleId: string) => Promise<void>;
+  deleteRule: (id: string) => Promise<void>;
   isCreateRuleModalOpen: boolean;
   createRuleTargetGroupId?: string;
   openCreateRuleModal: (groupId?: string) => void;
@@ -255,7 +350,7 @@ interface AppState {
   setRulesFilterClauses: (clauses: FilterClause[]) => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>((set, get) => ({
   isSearchOpen: false,
   setSearchOpen: (open) => set({ isSearchOpen: open }),
   workspaceName: 'buyerly',
@@ -498,157 +593,148 @@ export const useAppStore = create<AppState>((set) => ({
         : [...state.collapsedGroups, groupId],
     })),
 
-  rules: [
-    {
-      id: 'rul-01',
-      identifier: 'RUL-01',
-      name: 'Auto-Stop High CPA (> $25)',
-      condition: 'IF CPA > $25 & Spend > $40',
-      action: 'PAUSE ADSET',
-      campaignName: 'LuckySpin Casino • Italy • Broad CBO',
-      scope: 'Meta Ads • All Campaigns',
-      status: 'active',
-      lastRun: '15m ago',
-      groupId: 'rule-group-safety',
-    },
-    {
-      id: 'rul-02',
-      identifier: 'RUL-02',
-      name: 'Scale Winner Budget (+20% daily)',
-      condition: 'IF ROI > 140% & Leads ≥ 5',
-      action: 'BUDGET +20%',
-      campaignName: 'RoyalBet Sportsbook • USA • UGC Scale',
-      scope: 'TikTok Ads • Broad',
-      status: 'active',
-      lastRun: '1h ago',
-      groupId: 'rule-group-scaling',
-    },
-    {
-      id: 'rul-03',
-      identifier: 'RUL-03',
-      name: 'Kill Zero-Conversions ($50 spend)',
-      condition: 'IF Spend > $50 & Leads == 0',
-      action: 'PAUSE CAMPAIGN',
-      campaignName: 'NeonSlots Casino • DACH • Target CPA',
-      scope: 'Google Ads • Search',
-      status: 'active',
-      lastRun: '3h ago',
-      groupId: 'rule-group-safety',
-    },
-    {
-      id: 'rul-04',
-      identifier: 'RUL-04',
-      name: 'Duplicate Winner AdSet (Auto-Horiz Scale)',
-      condition: 'IF Conversions > 10 & CPA < $12',
-      action: 'DUPLICATE ADSET',
-      campaignName: 'AcePlay Casino • Netherlands • Retargeting',
-      scope: 'Meta Ads • CBO',
-      status: 'paused',
-      lastRun: '2d ago',
-      groupId: 'rule-group-scaling',
-    },
-  ],
-  ruleGroups: [
-    {
-      id: 'rule-group-safety',
-      name: 'Safety',
-      icon: 'shield',
-      ruleIds: ['rul-01', 'rul-03'],
-    },
-    {
-      id: 'rule-group-scaling',
-      name: 'Scaling',
-      icon: 'rocket',
-      ruleIds: ['rul-02', 'rul-04'],
-    },
-  ],
+  rules: [],
+  ruleGroups: [],
+  rulesLoadState: 'idle',
+  rulesError: '',
+  rulesMutationError: '',
+  clearRulesMutationError: () => set({ rulesMutationError: '' }),
+
+  loadRules: async () => {
+    set({ rulesLoadState: 'loading', rulesError: '' });
+    try {
+      const [presets, groups] = await Promise.all([
+        fetchRulePresets(),
+        fetchRuleGroups(),
+      ]);
+      const groupIndex = buildGroupIndex(groups);
+      set({
+        rules: presets.map((preset) => presetToRuleItem(preset, groupIndex)),
+        ruleGroups: groups.map(groupToRuleGroup),
+        rulesLoadState: 'ready',
+      });
+    } catch (error) {
+      set({ rulesError: requestErrorMessage(error), rulesLoadState: 'error' });
+    }
+  },
+
   ruleFilterTab: 'all',
   setRuleFilterTab: (tab) => set({ ruleFilterTab: tab }),
   selectedRuleId: null,
   setSelectedRuleId: (id) => set({ selectedRuleId: id }),
-  toggleRuleStatus: (id) =>
-    set((state) => ({
-      rules: state.rules.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              status: r.status === 'paused' ? 'active' : 'paused',
-            }
-          : r
-      ),
-    })),
-  addRule: (newRule, groupId) =>
-    set((state) => {
-      const nextIndex = state.rules.length + 1;
-      const id = `rul-${String(nextIndex).padStart(2, '0')}`;
-      const identifier = `RUL-${String(nextIndex).padStart(2, '0')}`;
-      const createdRule: RuleItem = {
-        ...newRule,
-        id,
-        identifier,
-        groupId: groupId || undefined,
-      };
 
-      return {
-        rules: [...state.rules, createdRule],
-        ruleGroups: groupId
-          ? state.ruleGroups.map((g) =>
-              g.id === groupId
-                ? { ...g, ruleIds: [...g.ruleIds, id] }
-                : g
-            )
-          : state.ruleGroups,
-      };
-    }),
-  addRuleGroup: (name, icon = 'custom') =>
-    set((state) => {
-      const nextIndex = state.ruleGroups.length + 1;
-      const id = `group-custom-${nextIndex}`;
-      return {
-        ruleGroups: [
-          ...state.ruleGroups,
-          {
-            id,
-            name,
-            icon,
-            ruleIds: [],
-          },
-        ],
-      };
-    }),
-  deleteRuleGroup: (id) =>
-    set((state) => ({
-      ruleGroups: state.ruleGroups.filter((g) => g.id !== id),
-      rules: state.rules.map((r) =>
-        r.groupId === id ? { ...r, groupId: undefined } : r
-      ),
-    })),
-  addRuleToGroup: (groupId, ruleId) =>
-    set((state) => ({
-      rules: state.rules.map((r) =>
-        r.id === ruleId ? { ...r, groupId } : r
-      ),
-      ruleGroups: state.ruleGroups.map((g) => {
-        if (g.id === groupId) {
-          return g.ruleIds.includes(ruleId)
-            ? g
-            : { ...g, ruleIds: [...g.ruleIds, ruleId] };
+  toggleRuleStatus: async (id) => {
+    const rule = get().rules.find((item) => item.id === id);
+    if (!rule) return;
+    // A rule the runtime holds back cannot be switched on from the list; the
+    // conditions have to be re-saved first.
+    if (rule.needsReview && rule.status === 'paused') {
+      set({
+        rulesMutationError:
+          rule.reviewReason || 'Правило требует пересохранения перед включением.',
+      });
+      return;
+    }
+    const enabled = rule.status === 'paused';
+    set({ rulesMutationError: '' });
+    try {
+      await updateRulePreset(
+        rule.presetId,
+        presetToWriteRequest(rule.preset, { enabled }),
+      );
+      await get().loadRules();
+    } catch (error) {
+      set({ rulesMutationError: requestErrorMessage(error) });
+    }
+  },
+
+  addRule: async (payload, groupId) => {
+    set({ rulesMutationError: '' });
+    try {
+      const preset = await createRulePreset(payload);
+      if (groupId) {
+        const group = get().ruleGroups.find((item) => item.id === groupId);
+        if (group) {
+          await updateRuleGroup(Number(groupId), {
+            name: group.name,
+            description: group.description,
+            icon: group.icon,
+            preset_ids: [...group.ruleIds.map(Number), preset.id],
+          });
         }
-        return {
-          ...g,
-          ruleIds: g.ruleIds.filter((id) => id !== ruleId),
-        };
-      }),
-    })),
-  deleteRule: (id) =>
-    set((state) => ({
-      rules: state.rules.filter((r) => r.id !== id),
-      ruleGroups: state.ruleGroups.map((g) => ({
-        ...g,
-        ruleIds: g.ruleIds.filter((ruleId) => ruleId !== id),
-      })),
-      selectedRuleId: state.selectedRuleId === id ? null : state.selectedRuleId,
-    })),
+      }
+      await get().loadRules();
+    } catch (error) {
+      set({ rulesMutationError: requestErrorMessage(error) });
+      throw error;
+    }
+  },
+
+  addRuleGroup: async (name, icon = 'custom') => {
+    set({ rulesMutationError: '' });
+    try {
+      await createRuleGroup({ name, description: '', icon, preset_ids: [] });
+      await get().loadRules();
+    } catch (error) {
+      set({ rulesMutationError: requestErrorMessage(error) });
+    }
+  },
+
+  deleteRuleGroup: async (id) => {
+    set({ rulesMutationError: '' });
+    try {
+      await deleteRuleGroupRequest(Number(id));
+      await get().loadRules();
+    } catch (error) {
+      set({ rulesMutationError: requestErrorMessage(error) });
+    }
+  },
+
+  addRuleToGroup: async (groupId, ruleId) => {
+    const { ruleGroups } = get();
+    const presetId = Number(ruleId);
+    // Group membership is stored as the group's full preset list, so moving a
+    // rule means rewriting both the group that loses it and the one that gains it.
+    const affected = ruleGroups.filter(
+      (group) => group.id === groupId || group.ruleIds.includes(ruleId),
+    );
+    if (affected.length === 0) return;
+    set({ rulesMutationError: '' });
+    try {
+      for (const group of affected) {
+        const currentIds = group.ruleIds.map(Number);
+        const nextIds =
+          group.id === groupId
+            ? currentIds.includes(presetId)
+              ? currentIds
+              : [...currentIds, presetId]
+            : currentIds.filter((id) => id !== presetId);
+        if (nextIds.length === currentIds.length && group.id !== groupId) continue;
+        await updateRuleGroup(Number(group.id), {
+          name: group.name,
+          description: group.description,
+          icon: group.icon,
+          preset_ids: nextIds,
+        });
+      }
+      await get().loadRules();
+    } catch (error) {
+      set({ rulesMutationError: requestErrorMessage(error) });
+    }
+  },
+
+  deleteRule: async (id) => {
+    set({ rulesMutationError: '' });
+    try {
+      await deleteRulePreset(Number(id));
+      set((state) => ({
+        selectedRuleId: state.selectedRuleId === id ? null : state.selectedRuleId,
+      }));
+      await get().loadRules();
+    } catch (error) {
+      set({ rulesMutationError: requestErrorMessage(error) });
+    }
+  },
   isCreateRuleModalOpen: false,
   createRuleTargetGroupId: undefined,
   openCreateRuleModal: (groupId) =>

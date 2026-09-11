@@ -203,6 +203,19 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             [],
         )
 
+    async def test_worker_skips_rules_switched_off_by_the_buyer(self):
+        rules = [
+            {"preset_id": 1, "workspace_id": 11, "name": "on", "enabled": True},
+            {"preset_id": 2, "workspace_id": 11, "name": "off", "enabled": False},
+            {"preset_id": 3, "workspace_id": 11, "name": "legacy-no-flag"},
+        ]
+
+        # A disabled rule is dropped before scheduling, so it costs no Meta call.
+        self.assertEqual(
+            MonitoringWorker._load_rules(rules, workspace_id=11),
+            [rules[0], rules[2]],
+        )
+
     async def test_rules_disabled_mode_skips_stopping(self):
         """Если авто-правила выключены, адсеты не должны останавливаться."""
         async with self.test_session_maker() as session:

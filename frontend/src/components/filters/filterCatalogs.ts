@@ -15,10 +15,8 @@ const STATUS_OPTIONS: FilterOption[] = [
   { value: 'paused', label: 'Paused', color: '#8b8d93', icon: 'status-paused' },
 ];
 
-const RULE_STATUS_OPTIONS: FilterOption[] = [
-  ...STATUS_OPTIONS,
-  { value: 'triggered', label: 'Triggered', color: '#fbbf24', icon: 'status-triggered' },
-];
+/** A rule is either switched on or off, the same two states a campaign has. */
+const RULE_STATUS_OPTIONS: FilterOption[] = STATUS_OPTIONS;
 
 const withCounts = <T>(
   options: FilterOption[],

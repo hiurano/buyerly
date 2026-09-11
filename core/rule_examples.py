@@ -102,6 +102,7 @@ EXAMPLE_PRESETS: tuple[dict[str, Any], ...] = (
 EXAMPLE_GROUPS = (
     {
         "name": "Пример · Контроль запуска",
+        "icon": "shield",
         "description": (
             "Стоп без лидов, уведомление о дорогой регистрации и снижение бюджета "
             "при слабом CTR. Пороги считаются в валюте каждого кабинета."
@@ -114,6 +115,7 @@ EXAMPLE_GROUPS = (
     },
     {
         "name": "Пример · Контроль и масштабирование",
+        "icon": "rocket",
         "description": (
             "Остановка дорогого лида, безопасное увеличение бюджета на покупках "
             "и включение после долетевшей покупки."
@@ -192,6 +194,7 @@ async def ensure_rule_examples(session, user: User, *, workspace_id: int) -> boo
             owner_user_id=user.id,
             name=group_definition["name"],
             description=group_definition["description"],
+            icon=group_definition.get("icon", "custom"),
         )
         session.add(group)
         await session.flush()

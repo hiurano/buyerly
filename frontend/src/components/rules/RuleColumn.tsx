@@ -155,7 +155,7 @@ export const RuleColumn: React.FC<RuleColumnProps> = ({
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onClick={() => deleteRuleGroup(id)}
+                    onClick={() => void deleteRuleGroup(id)}
                     className="text-[#f87171] hover:text-[#f87171] focus:text-[#f87171]"
                   >
                     <span>Delete group</span>

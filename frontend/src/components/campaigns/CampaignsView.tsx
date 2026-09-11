@@ -12,7 +12,7 @@ import { AdSetRow } from './AdSetRow';
 import { AdRow } from './AdRow';
 import { DisplayOptionsPopover } from './DisplayOptionsPopover';
 import { MetaConnectionDialog } from './MetaConnectionDialog';
-import { Button } from '@/ui/Button';
+import { DataState } from '@/ui/DataState';
 import { Tooltip } from '@/ui/Tooltip';
 import { LinearTabs } from '@/ui/LinearTabs';
 import {
@@ -64,43 +64,6 @@ function requestErrorMessage(error: unknown): string {
   if (error instanceof ApiError || error instanceof Error) return error.message;
   return 'Something went wrong. Please try again.';
 }
-
-interface DataStateProps {
-  title: string;
-  detail: string;
-  role?: 'status' | 'alert';
-  actionLabel?: string;
-  onAction?: () => void;
-  secondaryLabel?: string;
-  onSecondary?: () => void;
-}
-
-const DataState: React.FC<DataStateProps> = ({
-  title,
-  detail,
-  role = 'status',
-  actionLabel,
-  onAction,
-  secondaryLabel,
-  onSecondary,
-}) => (
-  <section className="flex min-h-52 flex-1 items-center justify-center px-6 text-center" role={role}>
-    <div className="max-w-md">
-      <h3 className="text-[14px] font-medium text-[var(--text-primary)]">{title}</h3>
-      <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--text-tertiary)]">{detail}</p>
-      {(actionLabel || secondaryLabel) && (
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-          {actionLabel && onAction && (
-            <Button variant="primary" onClick={onAction}>{actionLabel}</Button>
-          )}
-          {secondaryLabel && onSecondary && (
-            <Button onClick={onSecondary}>{secondaryLabel}</Button>
-          )}
-        </div>
-      )}
-    </div>
-  </section>
-);
 
 const entityLabels: Record<AdsManagerEntity, { plural: string; singular: string }> = {
   campaigns: { plural: 'campaigns', singular: 'campaign' },

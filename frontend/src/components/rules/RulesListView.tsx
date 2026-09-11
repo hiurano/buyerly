@@ -29,12 +29,17 @@ export const RulesListView: React.FC<RulesListViewProps> = ({ filteredRules }) =
   if (rulesDisplayOrdering === 'name') {
     filteredRules = [...filteredRules].sort((a, b) => a.name.localeCompare(b.name) * directionFactor);
   } else if (rulesDisplayOrdering === 'status') {
-    const statusOrder: Record<string, number> = { active: 1, triggered: 2, paused: 3 };
+    const statusOrder: Record<string, number> = { active: 1, paused: 2 };
     filteredRules = [...filteredRules].sort(
       (a, b) => ((statusOrder[a.status] || 99) - (statusOrder[b.status] || 99)) * directionFactor
     );
   } else if (rulesDisplayOrdering === 'lastRun') {
-    filteredRules = [...filteredRules].sort((a, b) => a.lastRun.localeCompare(b.lastRun) * directionFactor);
+    // Sort on the raw timestamp: the visible label is relative text like "3h ago".
+    filteredRules = [...filteredRules].sort(
+      (a, b) =>
+        ((Date.parse(b.preset.last_run_at) || 0) - (Date.parse(a.preset.last_run_at) || 0)) *
+        directionFactor,
+    );
   }
 
   const getGroupDotColor = (iconType: string) => {
@@ -92,25 +97,16 @@ export const RulesListView: React.FC<RulesListViewProps> = ({ filteredRules }) =
           // Flat List
           filteredRules.map((rule) => <RuleRow key={rule.id} rule={rule} />)
         ) : rulesDisplayGrouping === 'status' ? (
-          // Grouped by Status (Active, Triggered, Paused)
-          (['active', 'triggered', 'paused'] as const).map((status) => {
+          // Grouped by Status (Active, Paused)
+          (['active', 'paused'] as const).map((status) => {
             const statusRules = filteredRules.filter((r) => r.status === status);
             if (statusRules.length === 0) return null;
 
             const isCollapsed = rulesCollapsedGroups.includes(`status-${status}`);
-            const statusTitle =
-              status === 'active'
-                ? 'Active rules'
-                : status === 'triggered'
-                ? 'Triggered rules'
-                : 'Paused rules';
+            const statusTitle = status === 'active' ? 'Active rules' : 'Paused rules';
 
             const dotColor =
-              status === 'active'
-                ? 'rgb(52, 211, 153)'
-                : status === 'triggered'
-                ? 'rgb(251, 191, 36)'
-                : 'rgb(156, 163, 175)';
+              status === 'active' ? 'rgb(52, 211, 153)' : 'rgb(156, 163, 175)';
 
             return (
               <div key={status}>
@@ -120,11 +116,7 @@ export const RulesListView: React.FC<RulesListViewProps> = ({ filteredRules }) =
                   count={statusRules.length}
                   dotColor={dotColor}
                   accentLch={
-                    status === 'active'
-                      ? 'lch(12.756 12 150)'
-                      : status === 'triggered'
-                      ? 'lch(12.756 14 80)'
-                      : 'lch(10.756 1.5 272)'
+                    status === 'active' ? 'lch(12.756 12 150)' : 'lch(10.756 1.5 272)'
                   }
                   isCollapsed={isCollapsed}
                   onToggleCollapse={() => toggleRulesGroupCollapse(`status-${status}`)}

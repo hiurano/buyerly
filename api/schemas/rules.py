@@ -4,6 +4,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from core.metrics import validate_runtime_rule
 
 
+RuleGroupIcon = Literal["backlog", "shield", "rocket", "flask", "custom"]
+
+
 class ConditionItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -17,6 +20,7 @@ class RulePresetItem(BaseModel):
     id: int
     name: str
     action: str
+    enabled: bool = True
     conditions: List[ConditionItem]
     condition_logic: str = "and"
     cooldown_minutes: int = 0
@@ -26,6 +30,15 @@ class RulePresetItem(BaseModel):
     budget_max_daily: float = 0.0
     currency_mode: Literal["account"] = "account"
     created_at: str
+    # Legacy or unsafe snapshots are held back from execution until re-saved.
+    needs_review: bool = False
+    review_reason: str = ""
+    # Last RULE_ACTION audit event for this preset as ISO 8601 with offset;
+    # empty when the rule has never fired.
+    last_run_at: str = ""
+    # Ad accounts this preset is currently attached to, so the UI can tell a
+    # configured rule apart from one that cannot run anywhere yet.
+    attached_account_ids: List[str] = Field(default_factory=list)
 
 
 class CreatePresetRequest(BaseModel):
@@ -33,6 +46,7 @@ class CreatePresetRequest(BaseModel):
 
     name: str = Field(min_length=1, max_length=120)
     action: Literal["turn_off", "notify_only", "turn_on", "increase_budget", "decrease_budget"] = "turn_off"
+    enabled: bool = True
     conditions: List[ConditionItem] = Field(min_length=1, max_length=20)
     condition_logic: Literal["and", "or"] = "and"
     cooldown_minutes: int = Field(default=0, ge=0, le=10_080)
@@ -60,6 +74,7 @@ class CreatePresetRequest(BaseModel):
 class RuleGroupWriteRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     description: str = Field(default="", max_length=500)
+    icon: RuleGroupIcon = "custom"
     position: Optional[int] = None
     preset_ids: List[int] = Field(default_factory=list, min_length=0, max_length=50)
 
@@ -68,6 +83,7 @@ class RuleGroupResponse(BaseModel):
     id: int
     name: str
     description: str
+    icon: str = "custom"
     position: int = 0
     preset_ids: List[int]
     rules: List[RulePresetItem]

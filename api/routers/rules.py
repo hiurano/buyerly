@@ -15,6 +15,8 @@ from api.deps import (
     _get_workspace_presets,
     _load_active_rules,
     _load_group_presets,
+    _preset_attachments,
+    _preset_last_runs,
     _preset_response,
     _preset_snapshot,
     _rule_group_response,
@@ -25,7 +27,6 @@ from api.deps import (
 )
 from api.schemas import (
     ApplyPresetRequest,
-    ConditionItem,
     CreatePresetRequest,
     RuleGroupResponse,
     RuleGroupsReorderRequest,
@@ -47,6 +48,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Rules & Presets"])
 
 
+def _grouped_preset_ids(presets_by_group: dict) -> List[int]:
+    """Flatten grouped presets into the unique id list an audit lookup needs."""
+    return list(
+        dict.fromkeys(
+            preset.id
+            for presets in presets_by_group.values()
+            for preset in presets
+        )
+    )
+
+
 @router.get("/presets", response_model=List[RulePresetItem])
 async def list_presets(user: User = Depends(get_current_user)):
     async with async_session_maker() as session:
@@ -59,7 +71,18 @@ async def list_presets(user: User = Depends(get_current_user)):
         )
         res = await session.execute(stmt)
         presets = res.scalars().all()
-        return [_preset_response(preset) for preset in presets]
+        last_runs = await _preset_last_runs(
+            session, ws.id, [preset.id for preset in presets]
+        )
+        attachments = await _preset_attachments(session, ws.id)
+        return [
+            _preset_response(
+                preset,
+                last_runs.get(preset.id, ""),
+                attachments.get(preset.id, []),
+            )
+            for preset in presets
+        ]
 
 
 @router.post("/presets", response_model=RulePresetItem)
@@ -74,6 +97,7 @@ async def create_preset(payload: CreatePresetRequest, user: User = Depends(get_c
             owner_user_id=user.id,
             name=payload.name.strip() or "Новое правило",
             action=payload.action or "turn_off",
+            enabled=payload.enabled,
             conditions=condition_payloads,
             condition_logic=payload.condition_logic or "and",
             cooldown_minutes=payload.cooldown_minutes or 0,
@@ -85,19 +109,7 @@ async def create_preset(payload: CreatePresetRequest, user: User = Depends(get_c
         session.add(preset)
         await session.commit()
         await session.refresh(preset)
-        return RulePresetItem(
-            id=preset.id,
-            name=preset.name,
-            action=preset.action,
-            conditions=[ConditionItem(**condition) for condition in condition_payloads],
-            condition_logic=preset.condition_logic,
-            cooldown_minutes=preset.cooldown_minutes,
-            check_interval_minutes=preset.check_interval_minutes,
-            notify_tg=preset.notify_tg,
-            budget_change_percent=preset.budget_change_percent,
-            budget_max_daily=preset.budget_max_daily,
-            created_at=preset.created_at.strftime("%Y-%m-%d %H:%M") if preset.created_at else "",
-        )
+        return _preset_response(preset)
 
 
 @router.put("/presets/{preset_id}", response_model=RulePresetItem)
@@ -118,6 +130,7 @@ async def update_preset(preset_id: int, payload: CreatePresetRequest, user: User
 
         preset.name = payload.name.strip() or preset.name
         preset.action = payload.action or "turn_off"
+        preset.enabled = payload.enabled
         preset.conditions = condition_payloads
         if payload.condition_logic is not None:
             preset.condition_logic = payload.condition_logic
@@ -148,18 +161,12 @@ async def update_preset(preset_id: int, payload: CreatePresetRequest, user: User
 
         await session.commit()
         await session.refresh(preset)
-        return RulePresetItem(
-            id=preset.id,
-            name=preset.name,
-            action=preset.action,
-            conditions=[ConditionItem(**condition) for condition in condition_payloads],
-            condition_logic=preset.condition_logic,
-            cooldown_minutes=preset.cooldown_minutes,
-            check_interval_minutes=preset.check_interval_minutes,
-            notify_tg=preset.notify_tg,
-            budget_change_percent=preset.budget_change_percent,
-            budget_max_daily=preset.budget_max_daily,
-            created_at=preset.created_at.strftime("%Y-%m-%d %H:%M") if preset.created_at else "",
+        last_runs = await _preset_last_runs(session, ws.id, [preset.id])
+        attachments = await _preset_attachments(session, ws.id)
+        return _preset_response(
+            preset,
+            last_runs.get(preset.id, ""),
+            attachments.get(preset.id, []),
         )
 
 
@@ -236,8 +243,14 @@ async def list_rule_groups(user: User = Depends(get_current_user)):
             [group.id for group in groups],
             workspace_id=ws.id,
         )
+        last_runs = await _preset_last_runs(
+            session, ws.id, _grouped_preset_ids(presets_by_group)
+        )
+        attachments = await _preset_attachments(session, ws.id)
         return [
-            _rule_group_response(group, presets_by_group.get(group.id, []))
+            _rule_group_response(
+                group, presets_by_group.get(group.id, []), last_runs, attachments
+            )
             for group in groups
         ]
 
@@ -281,8 +294,14 @@ async def reorder_rule_groups(
             [g.id for g in ordered_groups],
             workspace_id=ws.id,
         )
+        last_runs = await _preset_last_runs(
+            session, ws.id, _grouped_preset_ids(presets_by_group)
+        )
+        attachments = await _preset_attachments(session, ws.id)
         return [
-            _rule_group_response(g, presets_by_group.get(g.id, []))
+            _rule_group_response(
+                g, presets_by_group.get(g.id, []), last_runs, attachments
+            )
             for g in ordered_groups
         ]
 
@@ -319,6 +338,7 @@ async def create_rule_group(
             owner_user_id=user.id,
             name=_clean_rule_group_name(payload.name),
             description=payload.description.strip(),
+            icon=payload.icon,
             position=position,
         )
         session.add(group)
@@ -329,7 +349,11 @@ async def create_rule_group(
         )
         await session.commit()
         await session.refresh(group)
-        return _rule_group_response(group, presets)
+        last_runs = await _preset_last_runs(
+            session, ws.id, [preset.id for preset in presets]
+        )
+        attachments = await _preset_attachments(session, ws.id)
+        return _rule_group_response(group, presets, last_runs, attachments)
 
 
 @router.put("/rule-groups/{group_id}", response_model=RuleGroupResponse)
@@ -361,6 +385,7 @@ async def update_rule_group(
         _ensure_compatible_presets(presets)
         group.name = _clean_rule_group_name(payload.name)
         group.description = payload.description.strip()
+        group.icon = payload.icon
         if payload.position is not None:
             group.position = payload.position
         await session.execute(delete(RuleGroupItem).where(RuleGroupItem.group_id == group.id))
@@ -370,7 +395,11 @@ async def update_rule_group(
         )
         await session.commit()
         await session.refresh(group)
-        return _rule_group_response(group, presets)
+        last_runs = await _preset_last_runs(
+            session, ws.id, [preset.id for preset in presets]
+        )
+        attachments = await _preset_attachments(session, ws.id)
+        return _rule_group_response(group, presets, last_runs, attachments)
 
 
 @router.delete("/rule-groups/{group_id}")

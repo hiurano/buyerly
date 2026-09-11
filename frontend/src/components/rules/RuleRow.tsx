@@ -4,7 +4,31 @@ import { LinearCheckbox } from '@/ui/LinearCheckbox';
 import { LinearToggle } from '@/ui/LinearToggle';
 import { LinearDotsIcon } from '@/icons/LinearIcons';
 import { LinearDataListRow } from '@/ui/LinearDataList';
+import { LinearLabelPill } from '@/ui/LinearLabelPill';
+import { ruleActionTone } from '@/lib/rules';
+import type { RuleActionTone } from '@/lib/rules';
 import { getRulesColumns } from './tableColumns';
+
+const ACTION_BADGE_STYLES: Record<
+  RuleActionTone,
+  { bg: string; border: string; text: string }
+> = {
+  stop: {
+    bg: 'var(--rules-action-stop-bg)',
+    border: 'var(--rules-action-stop-border)',
+    text: 'var(--rules-action-stop-text)',
+  },
+  positive: {
+    bg: 'var(--rules-action-positive-bg)',
+    border: 'var(--rules-action-positive-border)',
+    text: 'var(--rules-action-positive-text)',
+  },
+  default: {
+    bg: 'var(--rules-action-default-bg)',
+    border: 'var(--rules-action-default-border)',
+    text: 'var(--rules-action-default-text)',
+  },
+};
 
 interface RuleRowProps {
   rule: RuleItem;
@@ -27,30 +51,7 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
     setFocusedRuleId(rule.id);
   };
 
-  const getActionBadgeStyle = (actionText: string) => {
-    const upper = actionText.toUpperCase();
-    if (upper.includes('PAUSE') || upper.includes('KILL') || upper.includes('STOP')) {
-      return {
-        bg: 'var(--rules-action-stop-bg)',
-        border: 'var(--rules-action-stop-border)',
-        text: 'var(--rules-action-stop-text)',
-      };
-    }
-    if (upper.includes('BUDGET') || upper.includes('SCALE') || upper.includes('INCREASE') || upper.includes('BUMP')) {
-      return {
-        bg: 'var(--rules-action-positive-bg)',
-        border: 'var(--rules-action-positive-border)',
-        text: 'var(--rules-action-positive-text)',
-      };
-    }
-    return {
-      bg: 'var(--rules-action-default-bg)',
-      border: 'var(--rules-action-default-border)',
-      text: 'var(--rules-action-default-text)',
-    };
-  };
-
-  const actionStyle = getActionBadgeStyle(rule.action);
+  const actionStyle = ACTION_BADGE_STYLES[ruleActionTone(rule.actionKind)];
 
   return (
     <LinearDataListRow
@@ -76,11 +77,26 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
           <div onClick={(e) => e.stopPropagation()}>
             <LinearToggle
               checked={isDeliveryOn}
-              onChange={() => toggleRuleStatus(rule.id)}
+              disabled={rule.needsReview && !isDeliveryOn}
+              tooltipContent={
+                rule.needsReview && !isDeliveryOn
+                  ? rule.reviewReason || 'Re-save this rule before switching it on'
+                  : isDeliveryOn
+                  ? 'Pause rule'
+                  : 'Resume rule'
+              }
+              onChange={() => void toggleRuleStatus(rule.id)}
             />
           </div>
         )}
         <span className="truncate text-[13px] font-[450]" style={{ color: isDeliveryOn ? 'var(--text-primary)' : 'var(--text-muted)' }}>{rule.name}</span>
+        {rule.needsReview && (
+          <LinearLabelPill
+            label="Needs review"
+            dotColor="var(--rules-action-stop-text)"
+            className="shrink-0"
+          />
+        )}
       </div>
 
       {rulesDisplayProperties.condition !== false && (

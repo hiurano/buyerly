@@ -1010,6 +1010,122 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(delete_audit.workspace_id, self.ws_buyer_id)
         self.assertEqual(delete_audit.action, "DELETE")
 
+    async def test_disabled_preset_stops_running_and_reports_its_attachments(self):
+        user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
+        init_data = generate_valid_telegram_init_data(settings.BOT_TOKEN, user_info)
+        headers = {"Authorization": f"tma {init_data}"}
+        account_id = "act_1018756607700064"
+
+        payload = {
+            "name": "Стоп дорогого лида",
+            "action": "turn_off",
+            "conditions": [
+                {"metric": "cpl", "operator": "gte", "value": 12.0, "time_window": "today"}
+            ],
+        }
+
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            created = await client.post("/api/presets", headers=headers, json=payload)
+            self.assertEqual(created.status_code, 200)
+            preset = created.json()
+            preset_id = preset["id"]
+
+            # A new rule is on, has never fired, and is attached to nothing.
+            self.assertTrue(preset["enabled"])
+            self.assertFalse(preset["needs_review"])
+            self.assertEqual(preset["last_run_at"], "")
+            self.assertEqual(preset["attached_account_ids"], [])
+
+            attached = await client.post(
+                f"/api/accounts/{account_id}/assign-rule",
+                headers=headers,
+                json={"preset_id": preset_id},
+            )
+            self.assertEqual(attached.status_code, 200)
+
+            listed = await client.get("/api/presets", headers=headers)
+            listed_preset = next(
+                item for item in listed.json() if item["id"] == preset_id
+            )
+            self.assertEqual(listed_preset["attached_account_ids"], [account_id])
+
+            # Switching the rule off rewrites every account snapshot holding it,
+            # which is what actually keeps the worker from running it.
+            disabled = await client.put(
+                f"/api/presets/{preset_id}",
+                headers=headers,
+                json={**payload, "enabled": False},
+            )
+            self.assertEqual(disabled.status_code, 200)
+            self.assertFalse(disabled.json()["enabled"])
+
+            accounts = await client.get("/api/accounts", headers=headers)
+            account = next(
+                item
+                for item in accounts.json()
+                if item["account_id"] == account_id
+            )
+            runtime_rule = next(
+                rule
+                for rule in account["active_rules"]
+                if rule["preset_id"] == preset_id
+            )
+            self.assertFalse(runtime_rule["enabled"])
+
+            # Switching it back on restores execution.
+            reenabled = await client.put(
+                f"/api/presets/{preset_id}",
+                headers=headers,
+                json={**payload, "enabled": True},
+            )
+            self.assertEqual(reenabled.status_code, 200)
+            self.assertTrue(reenabled.json()["enabled"])
+
+    async def test_rule_group_icon_round_trips(self):
+        user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
+        init_data = generate_valid_telegram_init_data(settings.BOT_TOKEN, user_info)
+        headers = {"Authorization": f"tma {init_data}"}
+
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            created = await client.post(
+                "/api/rule-groups",
+                headers=headers,
+                json={"name": "Safety", "icon": "shield", "preset_ids": []},
+            )
+            self.assertEqual(created.status_code, 200)
+            self.assertEqual(created.json()["icon"], "shield")
+            group_id = created.json()["id"]
+
+            # Groups created without an icon fall back to the neutral marker.
+            default_icon = await client.post(
+                "/api/rule-groups",
+                headers=headers,
+                json={"name": "Unmarked", "preset_ids": []},
+            )
+            self.assertEqual(default_icon.json()["icon"], "custom")
+
+            updated = await client.put(
+                f"/api/rule-groups/{group_id}",
+                headers=headers,
+                json={"name": "Scaling", "icon": "rocket", "preset_ids": []},
+            )
+            self.assertEqual(updated.json()["icon"], "rocket")
+
+            rejected = await client.post(
+                "/api/rule-groups",
+                headers=headers,
+                json={"name": "Bad icon", "icon": "skull", "preset_ids": []},
+            )
+            self.assertEqual(rejected.status_code, 422)
+
+            listed = await client.get("/api/rule-groups", headers=headers)
+            stored = next(
+                item for item in listed.json() if item["id"] == group_id
+            )
+            self.assertEqual(stored["icon"], "rocket")
+
     async def test_account_rejects_rules_with_opposite_actions_and_same_trigger(self):
         init_data = generate_valid_telegram_init_data(
             settings.BOT_TOKEN,
