@@ -28,6 +28,8 @@ export type RuleAction =
   | 'increase_budget'
   | 'decrease_budget';
 
+export type RuleExecutionLevel = 'campaign' | 'adset';
+
 export type RuleGroupIcon = 'backlog' | 'shield' | 'rocket' | 'flask' | 'custom';
 
 /**
@@ -66,6 +68,7 @@ export interface RulePresetPayload {
   id: number;
   name: string;
   action: RuleAction;
+  level: RuleExecutionLevel;
   enabled: boolean;
   conditions: RuleConditionPayload[];
   condition_logic: 'and' | 'or';
@@ -96,6 +99,7 @@ export interface RuleGroupPayload {
 export interface RulePresetWriteRequest {
   name: string;
   action: RuleAction;
+  level: RuleExecutionLevel;
   enabled: boolean;
   conditions: RuleConditionPayload[];
   condition_logic: 'and' | 'or';
@@ -143,6 +147,11 @@ export const RULE_TIME_WINDOW_LABELS: Record<RuleTimeWindow, string> = {
   last_7d: 'last 7d',
 };
 
+export const RULE_LEVEL_LABELS: Record<RuleExecutionLevel, string> = {
+  adset: 'Ad set',
+  campaign: 'Campaign',
+};
+
 export const RULE_ACTION_LABELS: Record<RuleAction, string> = {
   turn_off: 'TURN OFF',
   turn_on: 'TURN ON',
@@ -174,15 +183,20 @@ export function formatCondition(preset: RulePresetPayload): string {
   return `IF ${parts.join(joiner)}`;
 }
 
+/**
+ * Includes the level, because "turn off" means very different things when it
+ * takes down one ad set versus a whole campaign.
+ */
 export function formatAction(preset: RulePresetPayload): string {
-  const label = RULE_ACTION_LABELS[preset.action] ?? preset.action.toUpperCase();
   if (preset.action === 'increase_budget') {
     return `BUDGET +${preset.budget_change_percent}%`;
   }
   if (preset.action === 'decrease_budget') {
     return `BUDGET −${preset.budget_change_percent}%`;
   }
-  return label;
+  const label = RULE_ACTION_LABELS[preset.action] ?? preset.action.toUpperCase();
+  if (preset.action === 'notify_only') return label;
+  return `${label} ${preset.level === 'campaign' ? 'CAMPAIGN' : 'AD SET'}`;
 }
 
 /**
@@ -340,6 +354,7 @@ export function presetToWriteRequest(
   return {
     name: preset.name,
     action: preset.action,
+    level: preset.level,
     enabled: preset.enabled,
     conditions: preset.conditions,
     condition_logic: preset.condition_logic,

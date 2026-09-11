@@ -73,6 +73,8 @@ async def list_audit_events(
                     AuditEvent.account_id.ilike(search_pattern),
                     AuditEvent.adset_name.ilike(search_pattern),
                     AuditEvent.adset_id.ilike(search_pattern),
+                    AuditEvent.entity_name.ilike(search_pattern),
+                    AuditEvent.entity_id.ilike(search_pattern),
                     AuditEvent.rule_name.ilike(search_pattern),
                     AuditEvent.message.ilike(search_pattern),
                 )
@@ -214,6 +216,9 @@ async def list_audit_events(
             "account_name": row.account_name,
             "adset_id": row.adset_id,
             "adset_name": row.adset_name,
+            "entity_level": row.entity_level,
+            "entity_id": row.entity_id,
+            "entity_name": row.entity_name,
             "rule_id": row.rule_id,
             "rule_name": row.rule_name,
             "action": row.action,

@@ -409,6 +409,12 @@ class RulePreset(Base):
         nullable=False,
         doc="Выключенное правило не исполняется воркером ни в одном кабинете",
     )
+    level = Column(
+        String,
+        default="adset",
+        nullable=False,
+        doc="Уровень исполнения: 'adset' или 'campaign'; метрики читаются и действие применяется на нём",
+    )
     conditions = Column(JSONB, default=list, nullable=False, doc="JSONB список условий")
     condition_logic = Column(String, default="and", nullable=False, doc="'and' или 'or' — логика объединения условий")
     cooldown_minutes = Column(Integer, default=0, nullable=False, doc="Пауза между срабатываниями (мин, 0=нет)")
@@ -955,8 +961,17 @@ class AuditEvent(Base):
     status = Column(String, default="SUCCESS", nullable=False, index=True)
     account_id = Column(String, default="", nullable=False, index=True)
     account_name = Column(String, default="", nullable=False)
-    adset_id = Column(String, default="", nullable=False, index=True)
+    adset_id = Column(String, default="", nullable=False, index=True, doc="Пусто, если действие было не на адсете")
     adset_name = Column(String, default="", nullable=False)
+    entity_level = Column(
+        String,
+        default="adset",
+        nullable=False,
+        index=True,
+        doc="Уровень сущности, к которой применено действие: 'campaign' или 'adset'",
+    )
+    entity_id = Column(String, default="", nullable=False, index=True, doc="Meta ID этой сущности")
+    entity_name = Column(String, default="", nullable=False)
     rule_id = Column(Integer, nullable=True, index=True)
     rule_name = Column(String, default="", nullable=False)
     action = Column(String, default="", nullable=False, index=True)
@@ -999,7 +1014,9 @@ class RuleExecutionState(Base):
     execution_key = Column(String, unique=True, nullable=False, index=True)
     owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     account_id = Column(String, default="", nullable=False, index=True)
-    adset_id = Column(String, default="", nullable=False, index=True)
+    adset_id = Column(String, default="", nullable=False, index=True, doc="Пусто, если слот не про адсет")
+    entity_level = Column(String, default="adset", nullable=False, index=True)
+    entity_id = Column(String, default="", nullable=False, index=True)
     rule_key = Column(String, default="", nullable=False, index=True)
     action = Column(String, default="", nullable=False, index=True)
     status = Column(String, default="IDLE", nullable=False, index=True)

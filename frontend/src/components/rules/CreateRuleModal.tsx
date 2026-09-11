@@ -9,10 +9,15 @@ import {
 } from '@/ui/DropdownMenu';
 import { Button } from '@/ui/Button';
 import { FormCheckbox } from '@/ui/FormCheckbox';
-import { RULE_METRIC_LABELS, RULE_TIME_WINDOW_LABELS } from '@/lib/rules';
+import {
+  RULE_LEVEL_LABELS,
+  RULE_METRIC_LABELS,
+  RULE_TIME_WINDOW_LABELS,
+} from '@/lib/rules';
 import type {
   RuleAction,
   RuleConditionPayload,
+  RuleExecutionLevel,
   RuleMetric,
   RuleOperator,
   RuleTimeWindow,
@@ -31,8 +36,8 @@ const ACTIONS: RuleAction[] = [
 ];
 
 const ACTION_DESCRIPTIONS: Record<RuleAction, string> = {
-  turn_off: 'Turn off the ad set',
-  turn_on: 'Turn on the ad set',
+  turn_off: 'Turn it off',
+  turn_on: 'Turn it on',
   notify_only: 'Send a notification only',
   increase_budget: 'Increase the daily budget',
   decrease_budget: 'Decrease the daily budget',
@@ -67,6 +72,23 @@ const OPERATORS: { value: RuleOperator; label: string }[] = [
 
 const TIME_WINDOWS: RuleTimeWindow[] = ['today', 'yesterday', 'last_3d', 'last_7d'];
 
+const LEVELS: RuleExecutionLevel[] = ['adset', 'campaign'];
+
+const LEVEL_DESCRIPTIONS: Record<RuleExecutionLevel, string> = {
+  adset: 'Each ad set on its own',
+  campaign: 'The campaign as a whole',
+};
+
+/**
+ * Budget changes stay on ad sets: a campaign running Campaign Budget
+ * Optimization owns its budget, and Meta rejects a budget write aimed at the
+ * ad set underneath it.
+ */
+const BUDGET_ACTIONS: ReadonlySet<RuleAction> = new Set([
+  'increase_budget',
+  'decrease_budget',
+]);
+
 const CHECK_INTERVALS = [5, 15, 30, 60, 180, 720, 1440];
 
 function formatInterval(minutes: number): string {
@@ -100,6 +122,7 @@ export const CreateRuleModal: React.FC = () => {
 
   const [name, setName] = useState('');
   const [action, setAction] = useState<RuleAction>('turn_off');
+  const [level, setLevel] = useState<RuleExecutionLevel>('adset');
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [timeWindow, setTimeWindow] = useState<RuleTimeWindow>('today');
   const [checkInterval, setCheckInterval] = useState(5);
@@ -112,11 +135,30 @@ export const CreateRuleModal: React.FC = () => {
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isBudgetAction = action === 'increase_budget' || action === 'decrease_budget';
+  const isBudgetAction = BUDGET_ACTIONS.has(action);
+  const availableActions = ACTIONS.filter(
+    (candidate) => level === 'adset' || !BUDGET_ACTIONS.has(candidate),
+  );
+
+  const describeAction = (candidate: RuleAction): string => {
+    const target = RULE_LEVEL_LABELS[level].toLowerCase();
+    if (candidate === 'turn_off') return `Turn off the ${target}`;
+    if (candidate === 'turn_on') return `Turn on the ${target}`;
+    return ACTION_DESCRIPTIONS[candidate];
+  };
+
+  /** Switching to campaign level drops an action that level cannot perform. */
+  const changeLevel = (next: RuleExecutionLevel) => {
+    setLevel(next);
+    if (next !== 'adset' && BUDGET_ACTIONS.has(action)) {
+      setAction('turn_off');
+    }
+  };
 
   const resetForm = () => {
     setName('');
     setAction('turn_off');
+    setLevel('adset');
     setTimeWindow('today');
     setCheckInterval(5);
     setConditionLogic('and');
@@ -189,6 +231,7 @@ export const CreateRuleModal: React.FC = () => {
         {
           name: name.trim(),
           action,
+          level,
           enabled: true,
           conditions: builtConditions,
           condition_logic: conditionLogic,
@@ -276,14 +319,34 @@ export const CreateRuleModal: React.FC = () => {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button type="button" className={PILL_CLASS}>
-                      <span className="text-[var(--text-tertiary)]">Action:</span>
-                      <span className="text-[var(--text-primary)]">{ACTION_DESCRIPTIONS[action]}</span>
+                      <span className="text-[var(--text-tertiary)]">Applies to:</span>
+                      <span className="text-[var(--text-primary)]">
+                        {RULE_LEVEL_LABELS[level]}
+                      </span>
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" sideOffset={4}>
-                    {ACTIONS.map((value) => (
+                    {LEVELS.map((value) => (
+                      <DropdownMenuItem key={value} onClick={() => changeLevel(value)}>
+                        <span>
+                          {RULE_LEVEL_LABELS[value]} — {LEVEL_DESCRIPTIONS[value]}
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button type="button" className={PILL_CLASS}>
+                      <span className="text-[var(--text-tertiary)]">Action:</span>
+                      <span className="text-[var(--text-primary)]">{describeAction(action)}</span>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" sideOffset={4}>
+                    {availableActions.map((value) => (
                       <DropdownMenuItem key={value} onClick={() => setAction(value)}>
-                        <span>{ACTION_DESCRIPTIONS[value]}</span>
+                        <span>{describeAction(value)}</span>
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>

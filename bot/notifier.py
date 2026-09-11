@@ -92,17 +92,21 @@ class TelegramNotifier:
 
         safe_account_name = html.escape(str(account_name or ""))
         safe_account_id = html.escape(str(account_id or ""))
-        safe_adset_name = html.escape(str(eval_result.adset_name or "")) if eval_result else ""
-        safe_adset_id = html.escape(str(eval_result.adset_id or "")) if eval_result else ""
+        safe_adset_name = html.escape(str(eval_result.entity_name or "")) if eval_result else ""
+        safe_adset_id = html.escape(str(eval_result.entity_id or "")) if eval_result else ""
         safe_reason = html.escape(str(eval_result.reason or "")) if eval_result else ""
+        # The inline buttons drive ad set handlers, so a campaign notification
+        # is informational until campaign handlers exist.
+        is_adset_target = bool(eval_result and eval_result.is_adset)
+        entity_label = "AdSet" if is_adset_target else "Кампания"
 
         try:
             # 1. ОСТАНОВКА АДСЕТА
             if event_type == "STOP" and eval_result:
                 text = (
-                    f"🛑 <b>Авто-отключение AdSet</b>\n\n"
+                    f"🛑 <b>Авто-отключение: {entity_label}</b>\n\n"
                     f"🏢 <b>Кабинет:</b> {safe_account_name} (<code>{safe_account_id}</code>)\n"
-                    f"🎯 <b>AdSet:</b> <code>{safe_adset_name}</code> (ID: <code>{safe_adset_id}</code>)\n"
+                    f"🎯 <b>{entity_label}:</b> <code>{safe_adset_name}</code> (ID: <code>{safe_adset_id}</code>)\n"
                     f"💰 <b>Спенд:</b> {format_money(eval_result.spend, currency)}\n"
                     f"👥 <b>Лидов:</b> {eval_result.leads} | <b>Рег:</b> {eval_result.registrations} | <b>Покупок:</b> {eval_result.purchases}\n"
                     f"📊 <b>CPL:</b> {_cost_text(eval_result.cpl, currency)} | <b>CPReg:</b> {_cost_text(eval_result.cpreg, currency)} | <b>CPP:</b> {_cost_text(eval_result.cpp, currency)}\n\n"
@@ -112,25 +116,26 @@ class TelegramNotifier:
             # 2. ДОЛЕТ ЛИДА / РЕГИ (ПРЕДЛОЖЕНИЕ ВКЛЮЧИТЬ)
             elif event_type == "PROPOSE_REACTIVATE" and eval_result:
                 text = (
-                    f"🟢 <b>Долетел результат в остановленный AdSet!</b>\n\n"
+                    f"🟢 <b>Долетел результат в остановленный {entity_label}!</b>\n\n"
                     f"🏢 <b>Кабинет:</b> {safe_account_name} (<code>{safe_account_id}</code>)\n"
-                    f"🎯 <b>AdSet:</b> <code>{safe_adset_name}</code> (ID: <code>{safe_adset_id}</code>)\n"
+                    f"🎯 <b>{entity_label}:</b> <code>{safe_adset_name}</code> (ID: <code>{safe_adset_id}</code>)\n"
                     f"💰 <b>Итоговый спенд:</b> {format_money(eval_result.spend, currency)}\n"
                     f"👥 <b>Лидов:</b> {eval_result.leads} | <b>Рег:</b> {eval_result.registrations} | <b>Покупок:</b> {eval_result.purchases}\n"
                     f"🎯 <b>CPL:</b> {_cost_text(eval_result.cpl, currency)} | <b>CPReg:</b> {_cost_text(eval_result.cpreg, currency)} | <b>CPP:</b> {_cost_text(eval_result.cpp, currency)}\n\n"
                     f"❓ <i>Результат вошел в допустимую норму. Включить адсет обратно?</i>"
                 )
-                keyboard = get_reactivate_keyboard(
-                    account_id=account_id,
-                    adset_id=eval_result.adset_id
-                )
+                if is_adset_target:
+                    keyboard = get_reactivate_keyboard(
+                        account_id=account_id,
+                        adset_id=eval_result.entity_id
+                    )
 
             # 3. АВТО-ВКЛЮЧЕНИЕ
             elif event_type == "AUTO_REACTIVATE" and eval_result:
                 text = (
-                    f"⚡ <b>Авто-возобновление AdSet (Долетел результат)</b>\n\n"
+                    f"⚡ <b>Авто-возобновление: {entity_label} (долетел результат)</b>\n\n"
                     f"🏢 <b>Кабинет:</b> {safe_account_name} (<code>{safe_account_id}</code>)\n"
-                    f"🎯 <b>AdSet:</b> <code>{safe_adset_name}</code>\n"
+                    f"🎯 <b>{entity_label}:</b> <code>{safe_adset_name}</code>\n"
                     f"💰 <b>Спенд:</b> {format_money(eval_result.spend, currency)} | <b>Лиды:</b> {eval_result.leads} | <b>Реги:</b> {eval_result.registrations} | <b>Покупки:</b> {eval_result.purchases}\n"
                     f"📊 <b>CPL:</b> {_cost_text(eval_result.cpl, currency)} | <b>CPReg:</b> {_cost_text(eval_result.cpreg, currency)} | <b>CPP:</b> {_cost_text(eval_result.cpp, currency)}\n\n"
                     f"✅ <i>Адсет автоматически переведен в статус ACTIVE.</i>"
@@ -141,17 +146,18 @@ class TelegramNotifier:
                 text = (
                     f"🔔 <b>Внимание: Сработало правило (Только пуш)</b>\n\n"
                     f"🏢 <b>Кабинет:</b> {safe_account_name} (<code>{safe_account_id}</code>)\n"
-                    f"🎯 <b>AdSet:</b> <code>{safe_adset_name}</code> (ID: <code>{safe_adset_id}</code>)\n"
+                    f"🎯 <b>{entity_label}:</b> <code>{safe_adset_name}</code> (ID: <code>{safe_adset_id}</code>)\n"
                     f"💰 <b>Спенд:</b> {format_money(eval_result.spend, currency)}\n"
                     f"👥 <b>Лидов:</b> {eval_result.leads} | <b>Рег:</b> {eval_result.registrations} | <b>Покупок:</b> {eval_result.purchases}\n"
                     f"📊 <b>CPL:</b> {_cost_text(eval_result.cpl, currency)} | <b>CPReg:</b> {_cost_text(eval_result.cpreg, currency)} | <b>CPP:</b> {_cost_text(eval_result.cpp, currency)}\n\n"
                     f"⚠️ <i>{safe_reason}</i>"
                 )
-                from bot.keyboards import get_pause_adset_keyboard
-                keyboard = get_pause_adset_keyboard(
-                    account_id=account_id,
-                    adset_id=eval_result.adset_id
-                )
+                if is_adset_target:
+                    from bot.keyboards import get_pause_adset_keyboard
+                    keyboard = get_pause_adset_keyboard(
+                        account_id=account_id,
+                        adset_id=eval_result.entity_id
+                    )
 
             # УВЕЛИЧЕНИЕ БЮДЖЕТА
             elif event_type == "INCREASE_BUDGET" and eval_result:
@@ -160,7 +166,7 @@ class TelegramNotifier:
                 text = (
                     f"📈 <b>Увеличен бюджет AdSet</b>\n\n"
                     f"🏢 <b>Кабинет:</b> {safe_account_name} (<code>{safe_account_id}</code>)\n"
-                    f"🎯 <b>AdSet:</b> <code>{safe_adset_name}</code> (ID: <code>{safe_adset_id}</code>)\n"
+                    f"🎯 <b>{entity_label}:</b> <code>{safe_adset_name}</code> (ID: <code>{safe_adset_id}</code>)\n"
                     f"💰 <b>Бюджет:</b> {format_money(old_b, currency)} → <b>{format_money(new_b, currency)}</b> (+{eval_result.budget_change_percent:.0f}%)\n"
                     f"📊 <b>Спенд:</b> {format_money(eval_result.spend, currency)} | <b>Лидов:</b> {eval_result.leads} | <b>Рег:</b> {eval_result.registrations}\n\n"
                     f"⚠️ <i>{safe_reason}</i>"
@@ -173,7 +179,7 @@ class TelegramNotifier:
                 text = (
                     f"📉 <b>Уменьшен бюджет AdSet</b>\n\n"
                     f"🏢 <b>Кабинет:</b> {safe_account_name} (<code>{safe_account_id}</code>)\n"
-                    f"🎯 <b>AdSet:</b> <code>{safe_adset_name}</code> (ID: <code>{safe_adset_id}</code>)\n"
+                    f"🎯 <b>{entity_label}:</b> <code>{safe_adset_name}</code> (ID: <code>{safe_adset_id}</code>)\n"
                     f"💰 <b>Бюджет:</b> {format_money(old_b, currency)} → <b>{format_money(new_b, currency)}</b> (-{eval_result.budget_change_percent:.0f}%)\n"
                     f"📊 <b>Спенд:</b> {format_money(eval_result.spend, currency)} | <b>Лидов:</b> {eval_result.leads} | <b>Рег:</b> {eval_result.registrations}\n\n"
                     f"⚠️ <i>{safe_reason}</i>"

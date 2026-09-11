@@ -98,6 +98,7 @@ async def create_preset(payload: CreatePresetRequest, user: User = Depends(get_c
             owner_user_id=user.id,
             name=payload.name.strip() or "Новое правило",
             action=payload.action or "turn_off",
+            level=payload.level,
             enabled=payload.enabled,
             conditions=condition_payloads,
             condition_logic=payload.condition_logic or "and",
@@ -131,6 +132,7 @@ async def update_preset(preset_id: int, payload: CreatePresetRequest, user: User
 
         preset.name = payload.name.strip() or preset.name
         preset.action = payload.action or "turn_off"
+        preset.level = payload.level
         preset.enabled = payload.enabled
         preset.conditions = condition_payloads
         if payload.condition_logic is not None:
