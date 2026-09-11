@@ -850,7 +850,9 @@ class MetaClient:
         # 1. Получаем список всех адсетов и их текущие статусы
         adsets_url = f"{self.base_url}/{acc_id}/adsets"
         adsets_params = {
-            "fields": "id,name,status,effective_status,daily_budget",
+            # campaign_id lets a rule be aimed at one campaign instead of the
+            # whole account; without it the engine cannot tell them apart.
+            "fields": "id,name,campaign_id,status,effective_status,daily_budget",
             "limit": 100,
             "access_token": access_token
         }
@@ -887,7 +889,7 @@ class MetaClient:
         insights_url = f"{self.base_url}/{acc_id}/insights"
         insights_params = {
             "level": "adset",
-            "fields": "adset_id,adset_name,spend,impressions,clicks,cpc,ctr,actions,cost_per_action_type",
+            "fields": "campaign_id,adset_id,adset_name,spend,impressions,clicks,cpc,ctr,actions,cost_per_action_type",
             "date_preset": date_preset,
             "limit": 100,
             "access_token": access_token
@@ -934,6 +936,7 @@ class MetaClient:
             unified_adsets.append({
                 "adset_id": a_id,
                 "adset_name": a_name,
+                "campaign_id": str(adset.get("campaign_id") or insight.get("campaign_id") or ""),
                 "status": status,
                 "effective_status": effective_status,
                 "spend": spend,
@@ -957,6 +960,7 @@ class MetaClient:
                     unified_adsets.append({
                         "adset_id": str(a_id),
                         "adset_name": insight.get("adset_name") or f"AdSet {a_id}",
+                        "campaign_id": str(insight.get("campaign_id") or ""),
                         "status": "ARCHIVED",
                         "effective_status": "ARCHIVED",
                         "spend": spend,

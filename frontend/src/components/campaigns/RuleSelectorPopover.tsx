@@ -21,7 +21,14 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
   anchorRect,
   campaignId,
 }) => {
-  const { rules, campaignAttachedRules, toggleRuleForCampaign } = useAppStore();
+  const {
+    rules,
+    campaignAttachedRules,
+    toggleRuleForCampaign,
+    attachedRuleScopes,
+    attachmentError,
+    clearAttachmentError,
+  } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -47,9 +54,10 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
     if (!isOpen) return;
     setSearchQuery('');
     setActiveIndex(-1);
+    clearAttachmentError();
     const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 50);
     return () => window.clearTimeout(focusTimer);
-  }, [isOpen]);
+  }, [isOpen, clearAttachmentError]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -95,8 +103,28 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
     top = Math.max(margin, anchorRect.top - estimatedHeight - 6);
   }
 
+  /**
+   * What this rule is currently aimed at. A rule targeting the whole account or
+   * specific ad sets cannot be re-aimed from a per-campaign control.
+   */
+  const scopeNote = (rule: RuleItem): string => {
+    const scope = attachedRuleScopes[rule.id];
+    if (!scope) return '';
+    if (scope.level === 'account') return 'Whole account';
+    if (scope.level === 'adset') return 'Specific ad sets';
+    if (scope.ids.includes(campaignId)) {
+      return scope.ids.length === 1 ? 'This campaign' : `${scope.ids.length} campaigns`;
+    }
+    return `${scope.ids.length} other campaigns`;
+  };
+
+  const isLocked = (rule: RuleItem): boolean => {
+    const scope = attachedRuleScopes[rule.id];
+    return Boolean(scope) && scope.level !== 'campaign';
+  };
+
   const toggleRule = (rule: RuleItem) => {
-    toggleRuleForCampaign(campaignId, rule.id);
+    void toggleRuleForCampaign(campaignId, rule.id);
     window.requestAnimationFrame(() => inputRef.current?.focus());
   };
 
@@ -130,6 +158,8 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
   const renderOption = (rule: RuleItem, index: number) => {
     const isSelected = attachedIds.has(rule.id);
     const isActive = activeIndex === index;
+    const locked = isLocked(rule);
+    const note = scopeNote(rule);
     const optionId = `campaign-rule-${campaignId}-${rule.id}`;
 
     return (
@@ -139,6 +169,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
         role="option"
         aria-selected={isSelected}
         aria-checked={isSelected}
+        aria-disabled={locked}
         onMouseEnter={() => setActiveIndex(index)}
         onClick={() => toggleRule(rule)}
         style={{
@@ -147,7 +178,8 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
           height: 32,
           alignItems: 'center',
           padding: '0 18px 0 14px',
-          cursor: 'pointer',
+          cursor: locked ? 'not-allowed' : 'pointer',
+          opacity: locked ? 0.55 : 1,
         }}
       >
         <div
@@ -234,6 +266,20 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
           >
             {rule.name}
           </span>
+          {note && (
+            <span
+              style={{
+                marginLeft: 8,
+                flexShrink: 0,
+                color: 'var(--text-tertiary)',
+                fontSize: 11,
+                lineHeight: '20px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {note}
+            </span>
+          )}
         </div>
       </li>
     );
@@ -367,6 +413,22 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
           )}
         </ul>
       </div>
+
+      {attachmentError && (
+        <div
+          role="alert"
+          style={{
+            flexShrink: 0,
+            padding: '8px 14px',
+            borderTop: '1px solid var(--color-border-primary)',
+            color: 'var(--rules-action-stop-text)',
+            fontSize: 12,
+            lineHeight: '16px',
+          }}
+        >
+          {attachmentError}
+        </div>
+      )}
     </div>,
     document.body
   );

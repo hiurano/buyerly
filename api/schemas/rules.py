@@ -1,7 +1,11 @@
 from typing import List, Optional, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from core.metrics import validate_runtime_rule
+from core.metrics import (
+    RULE_MAX_SCOPE_IDS,
+    normalize_rule_scope,
+    validate_runtime_rule,
+)
 
 
 RuleGroupIcon = Literal["backlog", "shield", "rocket", "flask", "custom"]
@@ -94,7 +98,27 @@ class RuleGroupsReorderRequest(BaseModel):
     group_ids: List[int] = Field(min_length=0, max_length=100)
 
 
+class RuleScopeItem(BaseModel):
+    """Which ad sets an attached rule may act on.
+
+    A rule always acts on ad sets; scope only narrows the search. "account"
+    keeps the historical behaviour of sweeping the whole ad account.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    level: Literal["account", "campaign", "adset"] = "account"
+    ids: List[str] = Field(default_factory=list, max_length=RULE_MAX_SCOPE_IDS)
+
+    @model_validator(mode="after")
+    def validate_scope_shape(self):
+        # One source of truth: the runtime validator the worker also uses.
+        normalize_rule_scope(self.model_dump())
+        return self
+
+
 class ApplyPresetRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     preset_id: int = Field(gt=0)
+    scope: RuleScopeItem = Field(default_factory=RuleScopeItem)

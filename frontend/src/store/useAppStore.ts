@@ -1,7 +1,12 @@
 import { create } from 'zustand';
 import type { FilterClause } from '@/components/filters/filterModel';
-import { ApiError } from '@/lib/api';
+import { ApiError, apiRequest } from '@/lib/api';
+import type { MetaAccount } from '@/lib/types';
 import {
+  assignRuleToAccount,
+  attachedRuleScope,
+  detachRuleFromAccount,
+  setAttachedRuleScope,
   createRuleGroup,
   createRulePreset,
   deleteRuleGroup as deleteRuleGroupRequest,
@@ -22,6 +27,7 @@ import type {
   RuleGroupPayload,
   RulePresetPayload,
   RulePresetWriteRequest,
+  RuleScope,
 } from '@/lib/rules';
 
 export interface NotificationItem {
@@ -198,6 +204,24 @@ function requestErrorMessage(error: unknown): string {
   return 'Не удалось связаться с сервером. Попробуйте ещё раз.';
 }
 
+/**
+ * Campaign id → rule ids aimed at it. Account-wide rules are deliberately
+ * absent: they run on every campaign, so listing them per campaign would read
+ * as a per-campaign attachment the buyer never made.
+ */
+function campaignRuleIndex(
+  scopes: Record<string, RuleScope>,
+): Record<string, string[]> {
+  const index: Record<string, string[]> = {};
+  for (const [ruleId, scope] of Object.entries(scopes)) {
+    if (scope.level !== 'campaign') continue;
+    for (const campaignId of scope.ids) {
+      (index[campaignId] ??= []).push(ruleId);
+    }
+  }
+  return index;
+}
+
 interface AppState {
   isSearchOpen: boolean;
   setSearchOpen: (open: boolean) => void;
@@ -247,8 +271,16 @@ interface AppState {
   toggleAdDelivery: (id: string) => void;
   focusedCampaignId: string;
   setFocusedCampaignId: (id: string) => void;
+  /** Ad account whose rule attachments are currently loaded. */
+  attachedRulesAccountId: string | null;
+  /** Rule id → the scope it is attached with on that account. */
+  attachedRuleScopes: Record<string, RuleScope>;
+  /** Campaign id → rules aimed at that campaign, derived from the scopes. */
   campaignAttachedRules: Record<string, string[]>;
-  toggleRuleForCampaign: (campaignId: string, ruleId: string) => void;
+  attachmentError: string;
+  clearAttachmentError: () => void;
+  loadAccountRuleAttachments: (accountId: string | null) => Promise<void>;
+  toggleRuleForCampaign: (campaignId: string, ruleId: string) => Promise<void>;
   isRightSidebarOpen: boolean;
   toggleRightSidebar: () => void;
   activeRightSidebarTab: 'groups' | 'rules' | 'overview';
@@ -511,19 +543,84 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
   focusedCampaignId: '',
   setFocusedCampaignId: (id) => set({ focusedCampaignId: id }),
+  attachedRulesAccountId: null,
+  attachedRuleScopes: {},
   campaignAttachedRules: {},
-  toggleRuleForCampaign: (campaignId, ruleId) =>
-    set((state) => {
-      const attached = state.campaignAttachedRules[campaignId] || [];
-      return {
-        campaignAttachedRules: {
-          ...state.campaignAttachedRules,
-          [campaignId]: attached.includes(ruleId)
-            ? attached.filter((r) => r !== ruleId)
-            : [...attached, ruleId],
-        },
-      };
-    }),
+  attachmentError: '',
+  clearAttachmentError: () => set({ attachmentError: '' }),
+
+  loadAccountRuleAttachments: async (accountId) => {
+    if (!accountId) {
+      set({
+        attachedRulesAccountId: null,
+        attachedRuleScopes: {},
+        campaignAttachedRules: {},
+      });
+      return;
+    }
+    try {
+      const accounts = await apiRequest<MetaAccount[]>('/api/accounts');
+      const account = accounts.find((item) => item.account_id === accountId);
+      const scopes: Record<string, RuleScope> = {};
+      for (const rule of account?.active_rules ?? []) {
+        scopes[String(rule.preset_id)] = attachedRuleScope(rule);
+      }
+      set({
+        attachedRulesAccountId: accountId,
+        attachedRuleScopes: scopes,
+        campaignAttachedRules: campaignRuleIndex(scopes),
+      });
+    } catch (error) {
+      set({ attachmentError: requestErrorMessage(error) });
+    }
+  },
+
+  toggleRuleForCampaign: async (campaignId, ruleId) => {
+    const { attachedRulesAccountId, attachedRuleScopes } = get();
+    if (!attachedRulesAccountId) return;
+
+    const presetId = Number(ruleId);
+    const scope = attachedRuleScopes[ruleId];
+
+    // An account-wide or ad-set-scoped rule already has a target that this
+    // per-campaign control cannot express. Silently rewriting it would either
+    // widen or destroy what the buyer set elsewhere.
+    if (scope && scope.level !== 'campaign') {
+      set({
+        attachmentError:
+          scope.level === 'account'
+            ? 'Это правило работает на весь кабинет. Измените его область на экране Rules.'
+            : 'Это правило нацелено на отдельные адсеты. Измените его область на экране Rules.',
+      });
+      return;
+    }
+
+    set({ attachmentError: '' });
+    try {
+      if (!scope) {
+        await assignRuleToAccount(attachedRulesAccountId, presetId, {
+          level: 'campaign',
+          ids: [campaignId],
+        });
+      } else {
+        const nextIds = scope.ids.includes(campaignId)
+          ? scope.ids.filter((id) => id !== campaignId)
+          : [...scope.ids, campaignId];
+        if (nextIds.length === 0) {
+          // A campaign rule with no campaigns left has nothing to act on.
+          await detachRuleFromAccount(attachedRulesAccountId, presetId);
+        } else {
+          await setAttachedRuleScope(attachedRulesAccountId, presetId, {
+            level: 'campaign',
+            ids: nextIds,
+          });
+        }
+      }
+      await get().loadAccountRuleAttachments(attachedRulesAccountId);
+    } catch (error) {
+      set({ attachmentError: requestErrorMessage(error) });
+    }
+  },
   isRightSidebarOpen: true,
   toggleRightSidebar: () =>
     set((state) => ({

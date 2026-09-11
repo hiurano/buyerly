@@ -1,3 +1,5 @@
+import type { AttachedRule } from '@/lib/rules';
+
 export interface Workspace {
   id: number;
   name: string;
@@ -62,6 +64,8 @@ export interface MetaAccount {
   status_label?: string;
   rules_enabled?: boolean;
   is_active?: boolean;
+  /** Runtime rule snapshots attached to this ad account, each with its scope. */
+  active_rules?: AttachedRule[];
 }
 
 export interface MetaConnection {

@@ -8,6 +8,7 @@ from core.metrics import (
     compare_metric,
     cost_per_event,
     rule_metric_reading,
+    rule_scope_matches_adset,
     validate_rule_set_compatibility,
     validate_runtime_rule,
 )
@@ -166,6 +167,9 @@ class RuleEngine:
 
         for rule in active_rules:
             if rule.get("enabled", True) is False or rule.get("needs_review", False) is True:
+                continue
+            # A rule aimed at one campaign must leave the rest of the account alone.
+            if not rule_scope_matches_adset(rule.get("scope"), adset):
                 continue
             try:
                 validate_runtime_rule(rule)

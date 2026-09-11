@@ -43,6 +43,7 @@ from api.schemas.rules import (
     RuleGroupWriteRequest,
     RuleGroupResponse,
     RuleGroupsReorderRequest,
+    RuleScopeItem,
     ApplyPresetRequest,
 )
 from api.schemas.accounts import (
@@ -102,6 +103,7 @@ __all__ = [
     "RuleGroupWriteRequest",
     "RuleGroupResponse",
     "RuleGroupsReorderRequest",
+    "RuleScopeItem",
     "ApplyPresetRequest",
     "AccountLatestMetrics",
     "AccountItem",

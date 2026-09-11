@@ -87,6 +87,7 @@ export const CampaignsView: React.FC = () => {
     clearCampaignSelection,
     isSidebarCollapsed,
     toggleSidebarCollapsed,
+    loadAccountRuleAttachments,
   } = useAppStore();
 
   const requestGenerationRef = useRef(0);
@@ -142,6 +143,11 @@ export const CampaignsView: React.FC = () => {
   useEffect(() => {
     clearAdsManagerQuickFilter();
   }, [clearAdsManagerQuickFilter]);
+
+  // Rule attachments are per ad account, so they reload whenever it changes.
+  useEffect(() => {
+    void loadAccountRuleAttachments(selectedAccountId);
+  }, [loadAccountRuleAttachments, selectedAccountId]);
 
   useEffect(() => {
     const generation = ++requestGenerationRef.current;

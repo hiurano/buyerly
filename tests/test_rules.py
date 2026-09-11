@@ -1,6 +1,10 @@
 import json
 import unittest
-from core.metrics import validate_rule_semantics
+from core.metrics import (
+    normalize_rule_scope,
+    validate_rule_semantics,
+    validate_rule_set_compatibility,
+)
 from database.models import Account
 from rules.engine import RuleEngine, RuleAction
 
@@ -25,23 +29,23 @@ class TestRuleEngine(unittest.TestCase):
         logic="and",
         budget_change_percent=0.0,
         budget_max_daily=0.0,
+        scope=None,
     ):
         """Configure one rule using the current multi-rule account schema."""
-        self.account.active_rules = json.dumps(
-            [
-                {
-                    "preset_id": 1,
-                    "name": "Test rule",
-                    "action": action,
-                    "conditions": conditions or [],
-                    "logic": logic,
-                    "cooldown_minutes": 0,
-                    "notify_tg": True,
-                    "budget_change_percent": budget_change_percent,
-                    "budget_max_daily": budget_max_daily,
-                }
-            ]
-        )
+        rule = {
+            "preset_id": 1,
+            "name": "Test rule",
+            "action": action,
+            "conditions": conditions or [],
+            "logic": logic,
+            "cooldown_minutes": 0,
+            "notify_tg": True,
+            "budget_change_percent": budget_change_percent,
+            "budget_max_daily": budget_max_daily,
+        }
+        if scope is not None:
+            rule["scope"] = scope
+        self.account.active_rules = json.dumps([rule])
 
     # --------------------------------------------------------
     # Базовые тесты: нет условий, неактивный адсет
@@ -499,6 +503,139 @@ class TestRuleEngine(unittest.TestCase):
             logic="and",
             action="turn_off",
         )
+
+    # --------------------------------------------------------
+    # Scope: which ad sets a rule is allowed to touch
+    # --------------------------------------------------------
+
+    def _triggering_adset(self, adset_id="1", campaign_id="camp_a"):
+        return {
+            "adset_id": adset_id,
+            "adset_name": "Test",
+            "campaign_id": campaign_id,
+            "status": "ACTIVE",
+            "effective_status": "ACTIVE",
+            "spend": 100.0,
+            "leads": 0,
+            "registrations": 0,
+            "purchases": 0,
+        }
+
+    def test_campaign_scope_only_touches_its_own_campaign(self):
+        conditions = [{"metric": "spend", "operator": "gte", "value": 50.0}]
+        self.set_rule(
+            conditions=conditions,
+            scope={"level": "campaign", "ids": ["camp_a"]},
+        )
+
+        inside = RuleEngine.evaluate(self._triggering_adset(campaign_id="camp_a"), self.account)
+        outside = RuleEngine.evaluate(self._triggering_adset(campaign_id="camp_b"), self.account)
+
+        self.assertEqual(inside.action, RuleAction.STOP)
+        self.assertEqual(outside.action, RuleAction.NOOP)
+
+    def test_adset_with_unknown_campaign_is_never_caught_by_campaign_scope(self):
+        """A row from an inventory cache written before campaign_id was collected."""
+        self.set_rule(
+            conditions=[{"metric": "spend", "operator": "gte", "value": 50.0}],
+            scope={"level": "campaign", "ids": ["camp_a"]},
+        )
+        stale = self._triggering_adset()
+        del stale["campaign_id"]
+
+        self.assertEqual(RuleEngine.evaluate(stale, self.account).action, RuleAction.NOOP)
+
+    def test_adset_scope_targets_one_adset(self):
+        self.set_rule(
+            conditions=[{"metric": "spend", "operator": "gte", "value": 50.0}],
+            scope={"level": "adset", "ids": ["1"]},
+        )
+
+        self.assertEqual(
+            RuleEngine.evaluate(self._triggering_adset(adset_id="1"), self.account).action,
+            RuleAction.STOP,
+        )
+        self.assertEqual(
+            RuleEngine.evaluate(self._triggering_adset(adset_id="2"), self.account).action,
+            RuleAction.NOOP,
+        )
+
+    def test_missing_scope_keeps_the_historical_account_wide_behaviour(self):
+        self.set_rule(conditions=[{"metric": "spend", "operator": "gte", "value": 50.0}])
+
+        self.assertEqual(
+            RuleEngine.evaluate(self._triggering_adset(campaign_id="anything"), self.account).action,
+            RuleAction.STOP,
+        )
+
+    def test_malformed_scope_fails_closed(self):
+        self.set_rule(
+            conditions=[{"metric": "spend", "operator": "gte", "value": 50.0}],
+            scope={"level": "galaxy", "ids": ["camp_a"]},
+        )
+
+        self.assertEqual(
+            RuleEngine.evaluate(self._triggering_adset(), self.account).action,
+            RuleAction.NOOP,
+        )
+
+
+class TestRuleScopeContract(unittest.TestCase):
+    def test_scope_normalization_rejects_unusable_input(self):
+        self.assertEqual(
+            normalize_rule_scope(None),
+            {"level": "account", "ids": []},
+        )
+        # An account scope ignores ids rather than pretending to honour them.
+        self.assertEqual(
+            normalize_rule_scope({"level": "account", "ids": ["camp_a"]}),
+            {"level": "account", "ids": []},
+        )
+        self.assertEqual(
+            normalize_rule_scope({"level": "campaign", "ids": ["b", "a", "b"]}),
+            {"level": "campaign", "ids": ["b", "a"]},
+        )
+        for invalid in (
+            {"level": "galaxy", "ids": ["a"]},
+            {"level": "campaign", "ids": []},
+            {"level": "campaign", "ids": [{"id": "a"}]},
+            {"level": "campaign", "ids": ["  "]},
+            {"level": "campaign", "ids": ["x" * 65]},
+            {"level": "campaign", "ids": [str(i) for i in range(201)]},
+            "campaign",
+        ):
+            with self.assertRaises(ValueError, msg=invalid):
+                normalize_rule_scope(invalid)
+
+    def test_opposite_actions_coexist_when_aimed_at_different_campaigns(self):
+        conditions = [{"metric": "spend", "operator": "gte", "value": 10.0}]
+
+        def rule(action, ids):
+            return {
+                "preset_id": 1,
+                "name": action,
+                "action": action,
+                "conditions": conditions,
+                "logic": "and",
+                "scope": {"level": "campaign", "ids": ids},
+            }
+
+        # Different campaigns never meet, so this pair is not a contradiction.
+        validate_rule_set_compatibility(
+            [rule("turn_off", ["camp_a"]), rule("turn_on", ["camp_b"])]
+        )
+
+        with self.assertRaises(ValueError):
+            validate_rule_set_compatibility(
+                [rule("turn_off", ["camp_a"]), rule("turn_on", ["camp_a", "camp_b"])]
+            )
+        with self.assertRaises(ValueError):
+            validate_rule_set_compatibility(
+                [
+                    rule("turn_off", ["camp_a"]),
+                    {**rule("turn_on", ["camp_b"]), "scope": {"level": "account", "ids": []}},
+                ]
+            )
 
 
 if __name__ == "__main__":
