@@ -238,7 +238,7 @@ class TestDeployContract(unittest.TestCase):
         self.assertNotIn('export APP_VERSION="${CURRENT_SHA}"', self.script)
 
     def test_remote_deploy_failure_exposes_only_safe_stage_diagnostics(self):
-        self.assertIn("appleboy/ssh-action@v1.2.2", self.workflow)
+        self.assertIn("appleboy/ssh-action@v1.2.5", self.workflow)
         self.assertIn("capture_stdout: true", self.workflow)
         self.assertIn("BUYERLY_DEPLOY_RESULT=success", self.workflow)
         self.assertIn("BUYERLY_DEPLOY_RESULT=failure", self.workflow)
@@ -250,6 +250,17 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("ERROR:|DETAIL:", self.workflow)
         self.assertIn("grep -Ev '(parameters:|UPDATE accounts|INSERT INTO)'", self.workflow)
         self.assertNotIn('cat "${deploy_log}"', self.workflow)
+
+    def test_ci_avoids_duplicate_feature_branch_runs_and_uses_node24_actions(self):
+        workflow_events = self.workflow.split("permissions:", 1)[0]
+        self.assertIn("push:\n    branches:\n      - main", workflow_events)
+        self.assertIn("pull_request:", workflow_events)
+        self.assertIn("workflow_dispatch:", workflow_events)
+        self.assertIn("actions/checkout@v7", self.workflow)
+        self.assertIn("actions/setup-node@v7", self.workflow)
+        self.assertIn("actions/setup-python@v7", self.workflow)
+        self.assertIn("actions/checkout@v7", self.restore_drill_workflow)
+        self.assertIn("actions/setup-python@v7", self.restore_drill_workflow)
 
     def test_production_repository_owner_and_origin_are_fail_closed(self):
         self.assertIn("EXPECTED_GIT_REPOSITORY", self.script)

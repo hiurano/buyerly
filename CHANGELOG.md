@@ -15,6 +15,7 @@
 
 ### Changed
 
+- GitHub Actions больше не запускает одинаковый CI одновременно для `push` и `pull_request` feature-ветки; push-проверка и production deploy сохранены для `main`, а официальные runtime Actions обновлены до Node 24-совместимых версий.
 - Из toolbar Ads Manager удалена внутренняя подпись `Today · read-only`; неподключённые board/grouping/ROI и write-actions не выдаются за рабочие controls.
 - В live read-only таблице Ads Manager восстановлена прежняя компактная геометрия campaign rows: статус снова отображается штатным 28px toggle, выровненным с колонкой Name и заблокированным до подключения управляющего API.
 - Campaign rows получили реальные read-only status/effective status и поддерживаемый дневной campaign budget; ошибки hierarchy sync больше не скрываются за полностью healthy-состоянием кабинета.
