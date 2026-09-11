@@ -134,14 +134,6 @@ export interface CampaignGroup {
   accentColor: string;
 }
 
-export interface RuleFilters {
-  status?: string[];
-  action?: string[];
-  group?: string[];
-  scope?: string[];
-  metric?: string[];
-}
-
 export type AdsManagerEntity = 'campaigns' | 'adsets' | 'ads';
 export interface AdsManagerQuickFilter {
   entity: AdsManagerEntity;
@@ -369,15 +361,6 @@ interface AppState {
   setFocusedRuleId: (id: string | null) => void;
 
   // Rules Filter State
-  isRulesFilterOpen: boolean;
-  setIsRulesFilterOpen: (open: boolean) => void;
-  toggleRulesFilter: () => void;
-  rulesFilterInitialCategory?: 'status' | 'action' | 'group' | 'scope' | 'metric';
-  openRulesFilterWithCategory: (category?: 'status' | 'action' | 'group' | 'scope' | 'metric') => void;
-  rulesFilters: RuleFilters;
-  toggleRulesFilterValue: (category: keyof RuleFilters, value: string, defaultOperator?: 'is' | 'is_not') => void;
-  removeRulesFilter: (category: keyof RuleFilters, value?: string) => void;
-  clearAllRulesFilters: () => void;
   rulesFilterClauses: FilterClause[];
   setRulesFilterClauses: (clauses: FilterClause[]) => void;
 }
@@ -897,48 +880,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   setFocusedRuleId: (id) => set({ focusedRuleId: id }),
 
   // Rules Filter State
-  isRulesFilterOpen: false,
-  setIsRulesFilterOpen: (open) => set({ isRulesFilterOpen: open }),
-  toggleRulesFilter: () =>
-    set((state) => ({ isRulesFilterOpen: !state.isRulesFilterOpen })),
-  rulesFilterInitialCategory: undefined,
-  openRulesFilterWithCategory: (category) =>
-    set({
-      isRulesFilterOpen: true,
-      rulesFilterInitialCategory: category,
-    }),
-  rulesFilters: {},
-  toggleRulesFilterValue: (category, value) =>
-    set((state) => {
-      const currentList = state.rulesFilters[category] || [];
-      const updatedList = currentList.includes(value)
-        ? currentList.filter((v) => v !== value)
-        : [...currentList, value];
-
-      return {
-        rulesFilters: {
-          ...state.rulesFilters,
-          [category]: updatedList.length > 0 ? updatedList : undefined,
-        },
-      };
-    }),
-  removeRulesFilter: (category, value) =>
-    set((state) => {
-      if (!value) {
-        const nextFilters = { ...state.rulesFilters };
-        delete nextFilters[category];
-        return { rulesFilters: nextFilters };
-      }
-      const currentList = state.rulesFilters[category] || [];
-      const updatedList = currentList.filter((v) => v !== value);
-      return {
-        rulesFilters: {
-          ...state.rulesFilters,
-          [category]: updatedList.length > 0 ? updatedList : undefined,
-        },
-      };
-    }),
-  clearAllRulesFilters: () => set({ rulesFilters: {} }),
   rulesFilterClauses: [],
   setRulesFilterClauses: (clauses) => set({ rulesFilterClauses: clauses }),
 }));

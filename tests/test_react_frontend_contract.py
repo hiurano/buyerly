@@ -295,6 +295,22 @@ class TestReactFrontendContract(unittest.TestCase):
         ):
             self.assertNotIn(unsupported, self.create_rule_modal)
 
+    def test_rules_screen_has_one_filter_implementation(self):
+        # The live Rules screen filters through LinearFilterMenu and
+        # rulesFilterClauses. The earlier popover/bar pair was never wired in and
+        # carried states the API does not have; nothing should bring it back.
+        rules_dir = ROOT / "frontend" / "src" / "components" / "rules"
+        for retired in ("RuleFilterPopover.tsx", "ActiveRuleFilterBar.tsx"):
+            self.assertFalse((rules_dir / retired).exists(), retired)
+        for retired_state in (
+            "rulesFilters",
+            "isRulesFilterOpen",
+            "openRulesFilterWithCategory",
+            "clearAllRulesFilters",
+        ):
+            self.assertNotIn(retired_state, self.app_store)
+        self.assertIn("rulesFilterClauses", self.app_store)
+
     def test_campaign_rule_attachment_is_served_by_the_api(self):
         # Attaching a rule to a campaign writes a scope through the API rather
         # than flipping a local-only map.
