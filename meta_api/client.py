@@ -1482,10 +1482,70 @@ class MetaClient:
             "currency": normalize_currency(currency),
         }
 
+    async def get_entity_state(
+        self,
+        entity_id: str,
+        access_token: str,
+        entity_level: str = "adset",
+        currency: str = "UNKNOWN",
+    ) -> Dict[str, Any]:
+        """Live delivery state of a campaign, ad set or ad, for undo checks.
+
+        An ad has no budget of its own, so only ad sets and campaigns report
+        ``daily_budget``; the key stays present and zero elsewhere so callers
+        need no special case.
+        """
+        if entity_level == "adset":
+            return await self.get_adset_state(entity_id, access_token, currency=currency)
+
+        fields = (
+            "id,name,status,effective_status"
+            if entity_level == "ad"
+            else "id,name,status,effective_status,daily_budget"
+        )
+        response = await self._request_with_retry(
+            "GET",
+            f"{self.base_url}/{entity_id}",
+            params={"fields": fields, "access_token": access_token},
+            account_id=entity_id,
+        )
+        payload = response.json()
+        return {
+            "entity_id": str(payload.get("id") or entity_id),
+            "entity_name": str(payload.get("name") or ""),
+            "status": str(payload.get("status") or "UNKNOWN").upper(),
+            "effective_status": str(
+                payload.get("effective_status") or payload.get("status") or "UNKNOWN"
+            ).upper(),
+            "daily_budget": from_meta_budget_units(payload.get("daily_budget"), currency),
+            "currency": normalize_currency(currency),
+        }
+
+    async def set_entity_status(
+        self,
+        entity_id: str,
+        access_token: str,
+        status: str,
+        entity_level: str = "adset",
+        account_id: Optional[str] = None,
+    ) -> bool:
+        """Write delivery state at the level the entity lives on."""
+        if entity_level == "campaign":
+            return await self.set_campaign_status(
+                entity_id, access_token, status, account_id=account_id
+            )
+        if entity_level == "ad":
+            return await self.set_ad_status(
+                entity_id, access_token, status, account_id=account_id
+            )
+        return await self.set_adset_status(
+            entity_id, access_token, status, account_id=account_id
+        )
+
     async def update_adset_budget(
-        self, 
-        adset_id: str, 
-        access_token: str, 
+        self,
+        adset_id: str,
+        access_token: str,
         new_daily_budget_dollars: float,
         currency: str = "UNKNOWN",
         account_id: Optional[str] = None,
