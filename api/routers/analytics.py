@@ -19,6 +19,30 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analytics", tags=["Analytics Fact Store"])
 
 
+def _hierarchy_response(
+    parent_id: str,
+    level: str,
+    period: str,
+    items: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    freshness_values = [
+        str(item["data_as_of"])
+        for item in items
+        if item.get("data_as_of")
+    ]
+    return {
+        "parent_id": parent_id,
+        "level": level,
+        "period": period,
+        "source": "analytics_fact_store",
+        # The oldest per-entity timestamp is the conservative freshness of the
+        # whole result set: every visible row is at least this fresh.
+        "data_as_of": min(freshness_values) if freshness_values else None,
+        "total": len(items),
+        "items": items,
+    }
+
+
 @router.get("/hierarchy")
 async def get_analytics_hierarchy(
     parent_id: str = Query(..., description="Meta ID родительской сущности (account_id, campaign_id, adset_id)"),
@@ -35,23 +59,11 @@ async def get_analytics_hierarchy(
         ws = await get_user_workspace(session, user)
         ws_id = ws.id if ws else getattr(user, "active_workspace_id", None)
         if not ws_id:
-            return {
-                "parent_id": parent_id,
-                "level": level,
-                "period": period,
-                "total": 0,
-                "items": [],
-            }
+            return _hierarchy_response(parent_id, level, period, [])
 
         accounts = await get_user_accounts(session, user, workspace_id=ws_id)
         if not accounts:
-            return {
-                "parent_id": parent_id,
-                "level": level,
-                "period": period,
-                "total": 0,
-                "items": [],
-            }
+            return _hierarchy_response(parent_id, level, period, [])
 
         # Account-wide hierarchy views are available only for accounts in the
         # active workspace. Direct campaign/ad set parents remain protected by
@@ -74,10 +86,4 @@ async def get_analytics_hierarchy(
             user_accounts=accounts,
         )
 
-        return {
-            "parent_id": parent_id,
-            "level": level,
-            "period": period,
-            "total": len(items),
-            "items": items,
-        }
+        return _hierarchy_response(parent_id, level, period, items)

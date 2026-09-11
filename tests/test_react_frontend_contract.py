@@ -90,6 +90,14 @@ class TestReactFrontendContract(unittest.TestCase):
         cls.rules_view = (
             ROOT / "frontend" / "src" / "components" / "rules" / "RulesView.tsx"
         ).read_text()
+        cls.statistics_view = (
+            ROOT
+            / "frontend"
+            / "src"
+            / "components"
+            / "statistics"
+            / "StatisticsView.tsx"
+        ).read_text()
         cls.rules_lib = (ROOT / "frontend" / "src" / "lib" / "rules.ts").read_text()
         cls.create_rule_modal = (
             ROOT / "frontend" / "src" / "components" / "rules" / "CreateRuleModal.tsx"
@@ -324,6 +332,42 @@ class TestReactFrontendContract(unittest.TestCase):
         # silently re-aimed from a per-campaign control.
         self.assertIn("attachedRuleScopes", self.rule_selector_popover)
         self.assertIn("aria-disabled={locked}", self.rule_selector_popover)
+
+    def test_statistics_uses_workspace_api_without_production_fixtures(self):
+        for contract in (
+            "apiRequest<MetaAccount[]>('/api/accounts')",
+            "/api/analytics/hierarchy?parent_id=",
+            "encodeURIComponent(selectedAccountId)",
+            "&level=${level}&period=${period}",
+            "requestGenerationRef",
+            "Loading ad accounts…",
+            "Loading ${levelLabel.plural}…",
+            "Couldn't load ad accounts",
+            "Couldn't load Statistics",
+            "No ${levelLabel.plural} in this ad account",
+            "data_as_of",
+            "analytics_fact_store",
+            "<Button",
+            "Monetary totals are unavailable",
+            "Zero-activity entities remain visible",
+        ):
+            self.assertIn(contract, self.statistics_view)
+
+        for fixture_or_unsupported_control in (
+            "Creative Test — Batch 08",
+            "Lookalike — Qualified leads",
+            "Prospecting — Broad",
+            "Retargeting — 30 days",
+            "New Offer — Validation",
+            "ROAS",
+            "Previous period",
+            "28-day baseline",
+            "Updated 2 min ago",
+            "LinearToggle",
+            "cplTarget",
+            "roasTarget",
+        ):
+            self.assertNotIn(fixture_or_unsupported_control, self.statistics_view)
 
 
 if __name__ == "__main__":

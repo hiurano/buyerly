@@ -259,7 +259,7 @@ Meta возвращает браузер на служебный callback `/api/
 | Метод и путь | Параметры/тело | Назначение |
 |---|---|---|
 | `GET /api/summary` | `period=today|yesterday|last_3d|last_7d`, `force=false|true` | возвращает сохранённую или свежую account-level сводку Meta |
-| `GET /api/analytics/hierarchy` | `parent_id`, `level=campaign|adset|ad`, `period=today|yesterday|last_3d|last_7d` | возвращает нормализованные дочерние сущности и метрики из Analytics Fact Store; campaign-уровень сохраняет полный Meta inventory, включая кампании без активности за период |
+| `GET /api/analytics/hierarchy` | `parent_id`, `level=campaign|adset|ad`, `period=today|yesterday|last_3d|last_7d` | возвращает нормализованные дочерние сущности и метрики из Analytics Fact Store; campaign-уровень сохраняет полный Meta inventory, включая кампании без активности за период; `source` и `data_as_of` описывают источник и консервативную свежесть набора |
 | `GET /api/analytics-view` | — | сохранённое представление таблицы пользователя |
 | `PUT /api/analytics-view` | view payload | сохраняет вид, колонки, порядок, ширины, сортировку, фильтры и период |
 
@@ -273,7 +273,7 @@ Meta возвращает браузер на служебный callback `/api/
 
 View payload принимает `view_mode` (`all`, `overview`, `delivery`, `traffic`, `funnel`, `custom`), `visible_columns`, `column_order`, `column_widths`, `sort_column`, `sort_direction`, `filters` и `period`. Обязательные колонки — `account` и `data`, допустимая ширина — 72–420 px. Фильтры: `query`, `status` (`all`, `synced`, `blocked`, `error`) и `group_id` (`all` или положительный ID своей группы). Колонки `custom_name` и `note` настраиваются и сохраняются по тем же правилам, что и метрики.
 
-Для `level=campaign` поля `entity_id`, `entity_name`, `status`, `effective_status` и положительный `daily_budget` происходят из Meta campaigns inventory. Метрики (`spend`, показы, клики и конверсии) присоединяются по `campaign_id` из Insights за запрошенный период. Успешный Insights-ответ без строки для существующей кампании означает нулевую активность за период; отсутствие поддерживаемого campaign-level daily budget возвращается как `0.0`, а UI отображает его как недоступное значение.
+Для `level=campaign` поля `entity_id`, `entity_name`, `status`, `effective_status` и положительный `daily_budget` происходят из Meta campaigns inventory. Метрики (`spend`, показы, клики и конверсии) присоединяются по `campaign_id` из Insights за запрошенный период. Успешный Insights-ответ без строки для существующей кампании означает нулевую активность за период; отсутствие поддерживаемого campaign-level daily budget возвращается как `0.0`, а UI отображает его как недоступное значение. Каждый элемент содержит `data_as_of` — последнее время получения фактов этой сущности. Верхнеуровневый `data_as_of` равен самому раннему из этих значений, поэтому не завышает свежесть всего отображаемого набора; при пустом наборе он равен `null`.
 
 Выбор группы в web-интерфейсе является глобальным срезом сводки: из уже полученного snapshot локально пересчитываются верхние KPI, качество синхронизации, раздельные итоги валют и строки таблицы. Переключение группы не создаёт новый запрос в Meta. Для группового среза сравнение с предыдущим обновлением пока не показывается, потому что прежний snapshot не хранит историю состава группы.
 
