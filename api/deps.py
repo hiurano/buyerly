@@ -17,6 +17,7 @@ from api.schemas import (
 from bot.handlers import get_short_account_label
 from core.metrics import (
     cost_per_event,
+    normalize_rule_scope,
     normalize_rule_conditions,
     normalize_runtime_rule,
     validate_public_rule_conditions,
@@ -590,7 +591,7 @@ def _preset_snapshot(preset: RulePreset) -> Dict[str, Any]:
 def _preset_response(
     preset: RulePreset,
     last_run_at: str = "",
-    attached_account_ids: Optional[List[str]] = None,
+    attachments: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> RulePresetItem:
     try:
         raw_conditions = (
@@ -629,7 +630,8 @@ def _preset_response(
         needs_review=bool(snapshot.get("needs_review", False)),
         review_reason=str(snapshot.get("review_reason", "")),
         last_run_at=last_run_at,
-        attached_account_ids=list(attached_account_ids or []),
+        attached_account_ids=list((attachments or {}).keys()),
+        attached_scopes=dict(attachments or {}),
     )
 
 
@@ -701,7 +703,7 @@ def _rule_group_response(
     group: RuleGroup,
     presets: List[RulePreset],
     last_runs: Optional[Dict[int, str]] = None,
-    attachments: Optional[Dict[int, List[str]]] = None,
+    attachments: Optional[Dict[int, Dict[str, Dict[str, Any]]]] = None,
 ) -> RuleGroupResponse:
     last_runs = last_runs or {}
     attachments = attachments or {}
@@ -716,7 +718,7 @@ def _rule_group_response(
             _preset_response(
                 preset,
                 last_runs.get(preset.id, ""),
-                attachments.get(preset.id, []),
+                attachments.get(preset.id, {}),
             )
             for preset in presets
         ],
@@ -724,8 +726,15 @@ def _rule_group_response(
     )
 
 
-async def _preset_attachments(session, workspace_id: int) -> Dict[int, List[str]]:
-    """Map each preset to the ad accounts whose snapshots currently embed it."""
+async def _preset_attachments(
+    session, workspace_id: int
+) -> Dict[int, Dict[str, Dict[str, Any]]]:
+    """Map each preset to the ad accounts holding it, and the scope on each.
+
+    The scope travels with the attachment so a client can say what detaching
+    would remove before the buyer clicks, instead of silently discarding a rule
+    that was narrowed to specific campaigns.
+    """
     accounts = (
         await session.execute(
             select(Account.account_id, Account.active_rules).where(
@@ -733,15 +742,17 @@ async def _preset_attachments(session, workspace_id: int) -> Dict[int, List[str]
             )
         )
     ).all()
-    attachments: Dict[int, List[str]] = {}
+    attachments: Dict[int, Dict[str, Dict[str, Any]]] = {}
     for account_id, raw_rules in accounts:
         for rule in _load_active_rules(raw_rules):
             preset_id = rule.get("preset_id")
             if not isinstance(preset_id, int):
                 continue
-            account_ids = attachments.setdefault(preset_id, [])
-            if account_id not in account_ids:
-                account_ids.append(account_id)
+            try:
+                scope = normalize_rule_scope(rule.get("scope"))
+            except ValueError:
+                scope = {"level": "account", "ids": []}
+            attachments.setdefault(preset_id, {})[account_id] = scope
     return attachments
 
 

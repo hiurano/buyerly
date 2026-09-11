@@ -2,7 +2,9 @@ import { create } from 'zustand';
 import type { FilterClause } from '@/components/filters/filterModel';
 import { ApiError, apiRequest } from '@/lib/api';
 import type { MetaAccount } from '@/lib/types';
+import { eligibleMetaAccounts } from '@/components/campaigns/liveCampaigns';
 import {
+  ACCOUNT_SCOPE,
   assignRuleToAccount,
   attachedRuleScope,
   detachRuleFromAccount,
@@ -314,6 +316,8 @@ interface AppState {
   ruleGroups: RuleGroup[];
   rulesLoadState: RulesLoadState;
   rulesError: string;
+  /** Ad accounts a rule can be attached to, loaded with the rules. */
+  ruleAccounts: MetaAccount[];
   /** Last failed write, surfaced next to the list without discarding it. */
   rulesMutationError: string;
   clearRulesMutationError: () => void;
@@ -330,8 +334,14 @@ interface AppState {
   deleteRule: (id: string) => Promise<void>;
   isCreateRuleModalOpen: boolean;
   createRuleTargetGroupId?: string;
+  /** Rule being edited in the shared modal; null while creating a new one. */
+  editingRuleId: string | null;
   openCreateRuleModal: (groupId?: string) => void;
+  openEditRuleModal: (ruleId: string) => void;
   closeCreateRuleModal: () => void;
+  updateRule: (ruleId: string, payload: RulePresetWriteRequest) => Promise<void>;
+  /** Attach the rule to a whole ad account, or detach it from one. */
+  toggleRuleOnAccount: (ruleId: string, accountId: string) => Promise<void>;
 
   // Rules Display Options & Sidebar State
   rulesViewMode: 'board' | 'list';
@@ -675,6 +685,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   rules: [],
   ruleGroups: [],
+  ruleAccounts: [],
   rulesLoadState: 'idle',
   rulesError: '',
   rulesMutationError: '',
@@ -683,14 +694,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   loadRules: async () => {
     set({ rulesLoadState: 'loading', rulesError: '' });
     try {
-      const [presets, groups] = await Promise.all([
+      const [presets, groups, accounts] = await Promise.all([
         fetchRulePresets(),
         fetchRuleGroups(),
+        // Needed to offer "run on this ad account"; a failure here must not
+        // hide the rules themselves.
+        apiRequest<MetaAccount[]>('/api/accounts').catch(() => []),
       ]);
       const groupIndex = buildGroupIndex(groups);
       set({
         rules: presets.map((preset) => presetToRuleItem(preset, groupIndex)),
         ruleGroups: groups.map(groupToRuleGroup),
+        ruleAccounts: eligibleMetaAccounts(accounts),
         rulesLoadState: 'ready',
       });
     } catch (error) {
@@ -817,16 +832,54 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   isCreateRuleModalOpen: false,
   createRuleTargetGroupId: undefined,
+  editingRuleId: null,
   openCreateRuleModal: (groupId) =>
     set({
       isCreateRuleModalOpen: true,
       createRuleTargetGroupId: groupId === 'all' ? undefined : groupId,
+      editingRuleId: null,
+    }),
+  openEditRuleModal: (ruleId) =>
+    set({
+      isCreateRuleModalOpen: true,
+      createRuleTargetGroupId: undefined,
+      editingRuleId: ruleId,
     }),
   closeCreateRuleModal: () =>
     set({
       isCreateRuleModalOpen: false,
       createRuleTargetGroupId: undefined,
+      editingRuleId: null,
     }),
+
+  updateRule: async (ruleId, payload) => {
+    set({ rulesMutationError: '' });
+    try {
+      await updateRulePreset(Number(ruleId), payload);
+      await get().loadRules();
+    } catch (error) {
+      set({ rulesMutationError: requestErrorMessage(error) });
+      throw error;
+    }
+  },
+
+  toggleRuleOnAccount: async (ruleId, accountId) => {
+    const rule = get().rules.find((item) => item.id === ruleId);
+    if (!rule) return;
+    set({ rulesMutationError: '' });
+    try {
+      if (rule.preset.attached_account_ids.includes(accountId)) {
+        await detachRuleFromAccount(accountId, rule.presetId);
+      } else {
+        // Attaching from the rules list means the whole ad account; narrowing
+        // to campaigns happens in Ads Manager.
+        await assignRuleToAccount(accountId, rule.presetId, ACCOUNT_SCOPE);
+      }
+      await get().loadRules();
+    } catch (error) {
+      set({ rulesMutationError: requestErrorMessage(error) });
+    }
+  },
 
   // Rules Display Options & Sidebar State
   rulesViewMode: 'list',

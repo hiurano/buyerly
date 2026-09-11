@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useAppStore } from '@/store/useAppStore';
+import type { RuleItem } from '@/store/useAppStore';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -116,10 +117,18 @@ export const CreateRuleModal: React.FC = () => {
   const {
     isCreateRuleModalOpen,
     createRuleTargetGroupId,
+    editingRuleId,
     closeCreateRuleModal,
     addRule,
+    updateRule,
+    rules,
     ruleGroups,
   } = useAppStore();
+
+  const editedRule = editingRuleId
+    ? rules.find((rule) => rule.id === editingRuleId)
+    : undefined;
+  const isEditing = Boolean(editedRule);
 
   const [name, setName] = useState('');
   const [action, setAction] = useState<RuleAction>('turn_off');
@@ -135,6 +144,15 @@ export const CreateRuleModal: React.FC = () => {
   const [createMore, setCreateMore] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const modalTitle = isEditing ? 'Edit rule' : 'New rule';
+  const submitLabel = isSubmitting
+    ? isEditing
+      ? 'Saving…'
+      : 'Creating…'
+    : isEditing
+    ? 'Save changes'
+    : 'Create rule';
 
   const isBudgetAction = BUDGET_ACTIONS.has(action);
   const availableActions = ACTIONS.filter(
@@ -170,12 +188,44 @@ export const CreateRuleModal: React.FC = () => {
     setSubmitError('');
   };
 
+  /** Fill the form from an existing rule so an edit round-trips every field. */
+  const loadRuleIntoForm = (rule: RuleItem) => {
+    const preset = rule.preset;
+    setName(preset.name);
+    setAction(preset.action);
+    setLevel(preset.level);
+    setTimeWindow(preset.conditions[0]?.time_window ?? 'today');
+    setCheckInterval(preset.check_interval_minutes);
+    setConditionLogic(preset.condition_logic);
+    setConditions(
+      preset.conditions.length === 0
+        ? [EMPTY_CONDITION]
+        : preset.conditions.map((condition) => ({
+            metric: condition.metric,
+            operator: condition.operator,
+            value: String(condition.value),
+          })),
+    );
+    setBudgetChangePercent(String(preset.budget_change_percent || 20));
+    setBudgetMaxDaily(
+      preset.budget_max_daily > 0 ? String(preset.budget_max_daily) : '',
+    );
+    setNotifyTg(preset.notify_tg);
+    setSubmitError('');
+  };
+
   useEffect(() => {
-    if (isCreateRuleModalOpen) {
+    if (!isCreateRuleModalOpen) return;
+    if (editedRule) {
+      loadRuleIntoForm(editedRule);
+      setSelectedGroupId(editedRule.groupId || '');
+    } else {
       resetForm();
       setSelectedGroupId(createRuleTargetGroupId || '');
     }
-  }, [isCreateRuleModalOpen, createRuleTargetGroupId]);
+    // Creating several in a row makes no sense while editing one rule.
+    setCreateMore(false);
+  }, [isCreateRuleModalOpen, createRuleTargetGroupId, editingRuleId]);
 
   const updateCondition = (index: number, patch: Partial<ConditionDraft>) => {
     setConditions((current) =>
@@ -227,32 +277,41 @@ export const CreateRuleModal: React.FC = () => {
 
     setIsSubmitting(true);
     setSubmitError('');
+    const payload = {
+      name: name.trim(),
+      action,
+      level,
+      // Editing keeps the rule's own on/off state; a new rule starts on.
+      enabled: editedRule ? editedRule.preset.enabled : true,
+      conditions: builtConditions,
+      condition_logic: conditionLogic,
+      cooldown_minutes: editedRule ? editedRule.preset.cooldown_minutes : 0,
+      check_interval_minutes: checkInterval,
+      notify_tg: notifyTg,
+      // Non-budget actions must send exactly zero for both budget fields.
+      budget_change_percent: isBudgetAction ? budgetPercent : 0,
+      budget_max_daily: action === 'increase_budget' ? budgetCeiling : 0,
+    };
+
     try {
-      await addRule(
-        {
-          name: name.trim(),
-          action,
-          level,
-          enabled: true,
-          conditions: builtConditions,
-          condition_logic: conditionLogic,
-          cooldown_minutes: 0,
-          check_interval_minutes: checkInterval,
-          notify_tg: notifyTg,
-          // Non-budget actions must send exactly zero for both budget fields.
-          budget_change_percent: isBudgetAction ? budgetPercent : 0,
-          budget_max_daily: action === 'increase_budget' ? budgetCeiling : 0,
-        },
-        selectedGroupId || undefined,
-      );
-      if (createMore) {
-        resetForm();
-      } else {
+      if (editedRule) {
+        await updateRule(editedRule.id, payload);
         closeCreateRuleModal();
+      } else {
+        await addRule(payload, selectedGroupId || undefined);
+        if (createMore) {
+          resetForm();
+        } else {
+          closeCreateRuleModal();
+        }
       }
     } catch (error) {
       setSubmitError(
-        error instanceof Error ? error.message : 'Не удалось создать правило.',
+        error instanceof Error
+          ? error.message
+          : isEditing
+          ? 'Не удалось сохранить правило.'
+          : 'Не удалось создать правило.',
       );
     } finally {
       setIsSubmitting(false);
@@ -279,7 +338,7 @@ export const CreateRuleModal: React.FC = () => {
             }}
             className="pointer-events-auto border flex flex-col outline-none animate-scale-in select-none text-left"
           >
-            <Dialog.Title className="sr-only">New rule</Dialog.Title>
+            <Dialog.Title className="sr-only">{modalTitle}</Dialog.Title>
             <form onSubmit={handleSubmit} className="flex flex-col p-5">
               {/* 1. Modal Header (Breadcrumb & Close) */}
               <div className="flex items-center justify-between pb-3">
@@ -288,7 +347,7 @@ export const CreateRuleModal: React.FC = () => {
                     <span>Rules</span>
                   </div>
                   <span className="text-[13px] text-[var(--text-muted)]">›</span>
-                  <span className="text-[13px] font-[450] text-[var(--text-primary)]">New rule</span>
+                  <span className="text-[13px] font-[450] text-[var(--text-primary)]">{modalTitle}</span>
                 </div>
 
                 <Dialog.Close asChild>
@@ -353,6 +412,9 @@ export const CreateRuleModal: React.FC = () => {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
+                {/* Group membership is changed from the rule row; editing here
+                    would need a second write the save button does not make. */}
+                {!isEditing && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button type="button" className={PILL_CLASS}>
@@ -373,6 +435,7 @@ export const CreateRuleModal: React.FC = () => {
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+                )}
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -580,11 +643,13 @@ export const CreateRuleModal: React.FC = () => {
               {/* 6. Modal Footer Actions */}
               <div className="flex items-center justify-end pt-3 border-t border-[var(--color-border-primary)] mt-2">
                 <div className="flex items-center gap-3">
-                  <FormCheckbox
-                    checked={createMore}
-                    onChange={setCreateMore}
-                    label="Create more"
-                  />
+                  {!isEditing && (
+                    <FormCheckbox
+                      checked={createMore}
+                      onChange={setCreateMore}
+                      label="Create more"
+                    />
+                  )}
 
                   <Button
                     type="submit"
@@ -592,7 +657,7 @@ export const CreateRuleModal: React.FC = () => {
                     size="compact"
                     disabled={!canSubmit}
                   >
-                    {isSubmitting ? 'Creating…' : 'Create rule'}
+                    {submitLabel}
                   </Button>
                 </div>
               </div>

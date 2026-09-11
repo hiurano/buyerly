@@ -2,12 +2,13 @@ import React from 'react';
 import { RuleItem, useAppStore } from '@/store/useAppStore';
 import { LinearCheckbox } from '@/ui/LinearCheckbox';
 import { LinearToggle } from '@/ui/LinearToggle';
-import { LinearDotsIcon } from '@/icons/LinearIcons';
+
 import { LinearDataListRow } from '@/ui/LinearDataList';
 import { LinearLabelPill } from '@/ui/LinearLabelPill';
 import { ruleActionTone } from '@/lib/rules';
 import type { RuleActionTone } from '@/lib/rules';
 import { getRulesColumns } from './tableColumns';
+import { RuleRowMenu } from './RuleRowMenu';
 
 const ACTION_BADGE_STYLES: Record<
   RuleActionTone,
@@ -174,17 +175,8 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
           </span>
       )}
 
-        <div className="flex items-center justify-end">
-          <button
-            type="button"
-            aria-label={`More options for ${rule.name}`}
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-            className="flex h-6 w-6 items-center justify-center rounded text-[var(--text-tertiary)] opacity-0 transition-all hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] group-hover/row:opacity-100"
-          >
-            <LinearDotsIcon size={14} />
-          </button>
+        <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+          <RuleRowMenu rule={rule} />
       </div>
     </LinearDataListRow>
   );
