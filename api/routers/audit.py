@@ -159,21 +159,25 @@ async def list_audit_events(
         if target_keys:
             account_ids = {account_key for account_key, _ in target_keys}
             entity_ids = {entity_key for _, entity_key in target_keys}
+            # One expression object, reused: building it twice would emit two
+            # separate bind parameters, and Postgres would then not recognise
+            # the grouped expression as the selected one.
+            entity_key_column = undo_entity_id_column()
             latest_rows = (
                 await session.execute(
                     select(
                         AuditEvent.account_id,
-                        undo_entity_id_column().label("entity_key"),
+                        entity_key_column,
                         func.max(AuditEvent.id),
                     )
                     .where(
                         AuditEvent.account_id.in_(account_ids),
-                        undo_entity_id_column().in_(entity_ids),
+                        entity_key_column.in_(entity_ids),
                         AuditEvent.status == "SUCCESS",
                         AuditEvent.event_type.in_(MUTATING_EVENT_TYPES),
                         AuditEvent.workspace_id == workspace_id,
                     )
-                    .group_by(AuditEvent.account_id, undo_entity_id_column())
+                    .group_by(AuditEvent.account_id, entity_key_column)
                 )
             ).all()
             latest_mutating_by_target = {
