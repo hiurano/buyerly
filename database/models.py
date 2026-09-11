@@ -403,6 +403,12 @@ class RulePreset(Base):
     owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     name = Column(String, nullable=False, doc="Название пресета (e.g. 'Стоп CPL выше порога')")
     action = Column(String, default="turn_off", nullable=False, doc="'turn_off', 'turn_on', 'notify_only', 'increase_budget', 'decrease_budget'")
+    enabled = Column(
+        Boolean,
+        default=True,
+        nullable=False,
+        doc="Выключенное правило не исполняется воркером ни в одном кабинете",
+    )
     conditions = Column(JSONB, default=list, nullable=False, doc="JSONB список условий")
     condition_logic = Column(String, default="and", nullable=False, doc="'and' или 'or' — логика объединения условий")
     cooldown_minutes = Column(Integer, default=0, nullable=False, doc="Пауза между срабатываниями (мин, 0=нет)")
@@ -427,6 +433,12 @@ class RuleGroup(Base):
     owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     name = Column(String, nullable=False)
     description = Column(String, default="", nullable=False)
+    icon = Column(
+        String,
+        default="custom",
+        nullable=False,
+        doc="Визуальный маркер группы: 'backlog', 'shield', 'rocket', 'flask' или 'custom'",
+    )
     position = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)

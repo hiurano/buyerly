@@ -553,6 +553,7 @@ def _preset_snapshot(preset: RulePreset) -> Dict[str, Any]:
         "workspace_id": preset.workspace_id,
         "name": preset.name,
         "action": preset.action,
+        "enabled": preset.enabled if preset.enabled is not None else True,
         "conditions": normalized_conditions,
         "logic": preset.condition_logic,
         "cooldown_minutes": preset.cooldown_minutes,
@@ -582,7 +583,7 @@ def _preset_snapshot(preset: RulePreset) -> Dict[str, Any]:
     return snapshot
 
 
-def _preset_response(preset: RulePreset) -> RulePresetItem:
+def _preset_response(preset: RulePreset, last_run_at: str = "") -> RulePresetItem:
     try:
         raw_conditions = (
             json.loads(preset.conditions)
@@ -600,10 +601,14 @@ def _preset_response(preset: RulePreset) -> RulePresetItem:
             conditions.append(ConditionItem(**condition))
         except ValidationError:
             continue
+    # The snapshot is the single source of truth for whether a rule may execute,
+    # so a preset the runtime holds back never reports itself as running.
+    snapshot = _preset_snapshot(preset)
     return RulePresetItem(
         id=preset.id,
         name=preset.name,
         action=preset.action,
+        enabled=bool(snapshot.get("enabled", True)),
         conditions=conditions,
         condition_logic=preset.condition_logic or "and",
         cooldown_minutes=preset.cooldown_minutes or 0,
@@ -612,6 +617,9 @@ def _preset_response(preset: RulePreset) -> RulePresetItem:
         budget_change_percent=preset.budget_change_percent or 0.0,
         budget_max_daily=preset.budget_max_daily or 0.0,
         created_at=preset.created_at.strftime("%Y-%m-%d %H:%M") if preset.created_at else "",
+        needs_review=bool(snapshot.get("needs_review", False)),
+        review_reason=str(snapshot.get("review_reason", "")),
+        last_run_at=last_run_at,
     )
 
 
@@ -679,16 +687,49 @@ async def _get_workspace_presets(
     return [by_id[preset_id] for preset_id in ordered_ids]
 
 
-def _rule_group_response(group: RuleGroup, presets: List[RulePreset]) -> RuleGroupResponse:
+def _rule_group_response(
+    group: RuleGroup,
+    presets: List[RulePreset],
+    last_runs: Optional[Dict[int, str]] = None,
+) -> RuleGroupResponse:
+    last_runs = last_runs or {}
     return RuleGroupResponse(
         id=group.id,
         name=group.name,
         description=group.description or "",
+        icon=getattr(group, "icon", "custom") or "custom",
         position=getattr(group, "position", 0) or 0,
         preset_ids=[preset.id for preset in presets],
-        rules=[_preset_response(preset) for preset in presets],
+        rules=[
+            _preset_response(preset, last_runs.get(preset.id, ""))
+            for preset in presets
+        ],
         created_at=group.created_at.strftime("%Y-%m-%d %H:%M") if group.created_at else "",
     )
+
+
+async def _preset_last_runs(
+    session,
+    workspace_id: int,
+    preset_ids: List[int],
+) -> Dict[int, str]:
+    """Latest executed rule action per preset, read from the workspace audit trail."""
+    if not preset_ids:
+        return {}
+    rows = await session.execute(
+        select(AuditEvent.rule_id, func.max(AuditEvent.created_at))
+        .where(
+            AuditEvent.workspace_id == workspace_id,
+            AuditEvent.category == "RULE_ACTION",
+            AuditEvent.rule_id.in_(preset_ids),
+        )
+        .group_by(AuditEvent.rule_id)
+    )
+    return {
+        rule_id: last_run.strftime("%Y-%m-%d %H:%M")
+        for rule_id, last_run in rows.all()
+        if rule_id is not None and last_run is not None
+    }
 
 
 async def _load_group_presets(

@@ -82,6 +82,7 @@ class MonitoringWorker:
             for rule in rules
             if isinstance(rule, dict)
             and rule.get("workspace_id") == workspace_id
+            and rule.get("enabled", True) is not False
         ]
 
     @staticmethod
