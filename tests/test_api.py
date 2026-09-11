@@ -2653,7 +2653,9 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(second.status_code, 200)
         self.assertTrue(second.json()["already_reverted"])
         get_state.assert_awaited_once_with("undo_stop_adset", "mock_token", currency="USD")
-        set_status.assert_awaited_once_with("undo_stop_adset", "mock_token", "ACTIVE")
+        set_status.assert_awaited_once_with(
+            "undo_stop_adset", "mock_token", "ACTIVE", account_id="act_1018756607700064"
+        )
         source_item = next(item for item in history.json()["items"] if item["id"] == source_id)
         self.assertEqual(source_item["display_status"], "REVERTED")
         self.assertFalse(source_item["can_undo"])
@@ -2685,6 +2687,201 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             after_st = json.loads(reversal.after_state) if isinstance(reversal.after_state, str) else reversal.after_state
             self.assertEqual(after_st["status"], "ACTIVE")
             self.assertTrue(stopped.is_resolved)
+
+    async def _seed_entity_stop_event(self, *, entity_level, entity_id, entity_name):
+        """One successful STOP recorded against a campaign or an ad."""
+        async with self.test_session_maker() as session:
+            buyer = (
+                await session.execute(
+                    select(User).where(User.telegram_id == "8948797431")
+                )
+            ).scalar_one()
+            source = AuditEvent(
+                owner_user_id=buyer.id,
+                workspace_id=buyer.active_workspace_id,
+                actor_type="system",
+                actor_id="monitoring_worker",
+                category="RULE_ACTION",
+                event_type="STOP",
+                status="SUCCESS",
+                account_id="act_1018756607700064",
+                account_name="Швеция 1",
+                # The worker leaves the ad set columns empty above ad set level.
+                adset_id="",
+                adset_name="",
+                entity_level=entity_level,
+                entity_id=entity_id,
+                entity_name=entity_name,
+                action="STOP",
+                before_state={"status": "ACTIVE"},
+                after_state={"status": "PAUSED"},
+                correlation_id=f"source-stop-{entity_level}",
+            )
+            session.add(source)
+            await session.commit()
+            await session.refresh(source)
+            return source.id
+
+    async def test_a_campaign_stop_can_be_undone(self):
+        source_id = await self._seed_entity_stop_event(
+            entity_level="campaign",
+            entity_id="camp_undo_1",
+            entity_name="Sweden scale",
+        )
+        init_data = generate_valid_telegram_init_data(
+            settings.BOT_TOKEN,
+            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
+        )
+        headers = {"Authorization": f"tma {init_data}"}
+        transport = httpx.ASGITransport(app=self.app)
+
+        with (
+            patch.object(
+                api_routes_module.meta_client,
+                "get_entity_state",
+                new=AsyncMock(
+                    return_value={
+                        "entity_id": "camp_undo_1",
+                        "entity_name": "Sweden scale",
+                        "status": "PAUSED",
+                        "effective_status": "PAUSED",
+                        "daily_budget": 0.0,
+                    }
+                ),
+            ) as get_state,
+            patch.object(
+                api_routes_module.meta_client,
+                "set_entity_status",
+                new=AsyncMock(return_value=True),
+            ) as set_status,
+        ):
+            async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.post(
+                    f"/api/audit-events/{source_id}/undo", headers=headers
+                )
+                history = await client.get(
+                    "/api/audit-events?page_size=100", headers=headers
+                )
+
+        self.assertEqual(response.status_code, 200)
+        get_state.assert_awaited_once_with(
+            "camp_undo_1", "mock_token", entity_level="campaign", currency="USD"
+        )
+        set_status.assert_awaited_once_with(
+            "camp_undo_1",
+            "mock_token",
+            "ACTIVE",
+            entity_level="campaign",
+            account_id="act_1018756607700064",
+        )
+
+        source_item = next(
+            item for item in history.json()["items"] if item["id"] == source_id
+        )
+        self.assertEqual(source_item["display_status"], "REVERTED")
+
+        async with self.test_session_maker() as session:
+            reversal = (
+                await session.execute(
+                    select(AuditEvent).where(AuditEvent.reverts_event_id == source_id)
+                )
+            ).scalar_one()
+            self.assertEqual(reversal.entity_level, "campaign")
+            self.assertEqual(reversal.entity_id, "camp_undo_1")
+            # A campaign reversal must not claim an ad set.
+            self.assertEqual(reversal.adset_id, "")
+            self.assertEqual(
+                (await session.execute(select(StoppedAdSet))).scalars().all(), []
+            )
+
+    async def test_an_ad_stop_can_be_undone(self):
+        source_id = await self._seed_entity_stop_event(
+            entity_level="ad",
+            entity_id="ad_undo_1",
+            entity_name="Creative A",
+        )
+        init_data = generate_valid_telegram_init_data(
+            settings.BOT_TOKEN,
+            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
+        )
+        headers = {"Authorization": f"tma {init_data}"}
+        transport = httpx.ASGITransport(app=self.app)
+
+        with (
+            patch.object(
+                api_routes_module.meta_client,
+                "get_entity_state",
+                new=AsyncMock(
+                    return_value={
+                        "entity_id": "ad_undo_1",
+                        "entity_name": "Creative A",
+                        "status": "PAUSED",
+                        "effective_status": "PAUSED",
+                        "daily_budget": 0.0,
+                    }
+                ),
+            ),
+            patch.object(
+                api_routes_module.meta_client,
+                "set_entity_status",
+                new=AsyncMock(return_value=True),
+            ) as set_status,
+        ):
+            async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.post(
+                    f"/api/audit-events/{source_id}/undo", headers=headers
+                )
+
+        self.assertEqual(response.status_code, 200)
+        set_status.assert_awaited_once_with(
+            "ad_undo_1",
+            "mock_token",
+            "ACTIVE",
+            entity_level="ad",
+            account_id="act_1018756607700064",
+        )
+
+    async def test_undo_refuses_when_meta_state_no_longer_matches(self):
+        source_id = await self._seed_entity_stop_event(
+            entity_level="campaign",
+            entity_id="camp_undo_2",
+            entity_name="Already resumed",
+        )
+        init_data = generate_valid_telegram_init_data(
+            settings.BOT_TOKEN,
+            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
+        )
+        headers = {"Authorization": f"tma {init_data}"}
+        transport = httpx.ASGITransport(app=self.app)
+
+        with (
+            patch.object(
+                api_routes_module.meta_client,
+                "get_entity_state",
+                new=AsyncMock(
+                    return_value={
+                        "entity_id": "camp_undo_2",
+                        "entity_name": "Already resumed",
+                        # Someone turned it back on in Meta already.
+                        "status": "ACTIVE",
+                        "effective_status": "ACTIVE",
+                        "daily_budget": 0.0,
+                    }
+                ),
+            ),
+            patch.object(
+                api_routes_module.meta_client,
+                "set_entity_status",
+                new=AsyncMock(return_value=True),
+            ) as set_status,
+        ):
+            async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.post(
+                    f"/api/audit-events/{source_id}/undo", headers=headers
+                )
+
+        self.assertEqual(response.status_code, 409)
+        set_status.assert_not_awaited()
 
     async def test_undo_rejects_a_stale_action_after_a_newer_mutation(self):
         async with self.test_session_maker() as session:

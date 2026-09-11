@@ -40,6 +40,9 @@ def build_audit_event(
     actor_id: str = "monitoring_worker",
     adset_id: str = "",
     adset_name: str = "",
+    entity_level: str = "",
+    entity_id: str = "",
+    entity_name: str = "",
 ) -> AuditEvent:
     """Build a secret-safe audit row without committing the caller's transaction."""
 
@@ -81,9 +84,13 @@ def build_audit_event(
         adset_name=str(
             evaluation.entity_name if evaluation and evaluation.is_adset else adset_name
         ),
-        entity_level=str(evaluation.entity_level if evaluation else "adset"),
-        entity_id=str(evaluation.entity_id if evaluation else adset_id),
-        entity_name=str(evaluation.entity_name if evaluation else adset_name),
+        entity_level=str(
+            evaluation.entity_level if evaluation else (entity_level or "adset")
+        ),
+        entity_id=str(evaluation.entity_id if evaluation else (entity_id or adset_id)),
+        entity_name=str(
+            evaluation.entity_name if evaluation else (entity_name or adset_name)
+        ),
         rule_id=_optional_int(evaluation.rule_id if evaluation else None),
         rule_name=str(evaluation.rule_name if evaluation else ""),
         action=action or (evaluation.action.value if evaluation else ""),

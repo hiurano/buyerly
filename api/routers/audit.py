@@ -16,7 +16,11 @@ from core.action_undo import (
     MUTATING_EVENT_TYPES,
     REVERSIBLE_EVENT_TYPES,
     UndoError,
+    ENTITY_NOUNS,
     event_is_within_undo_window,
+    undo_entity_id,
+    undo_entity_id_column,
+    undo_entity_level,
     undo_audit_action,
 )
 from database.db import async_session_maker
@@ -144,35 +148,37 @@ async def list_audit_events(
             if original_id is not None
         }
 
+        # Keyed on the entity, so a campaign or ad action is tracked as its own
+        # target instead of collapsing into the empty ad set column.
         target_keys = {
-            (row.account_id, row.adset_id)
+            (row.account_id, undo_entity_id(row))
             for row in rows
-            if row.account_id and row.adset_id
+            if row.account_id and undo_entity_id(row)
         }
         latest_mutating_by_target = {}
         if target_keys:
             account_ids = {account_key for account_key, _ in target_keys}
-            adset_ids = {adset_key for _, adset_key in target_keys}
+            entity_ids = {entity_key for _, entity_key in target_keys}
             latest_rows = (
                 await session.execute(
                     select(
                         AuditEvent.account_id,
-                        AuditEvent.adset_id,
+                        undo_entity_id_column().label("entity_key"),
                         func.max(AuditEvent.id),
                     )
                     .where(
                         AuditEvent.account_id.in_(account_ids),
-                        AuditEvent.adset_id.in_(adset_ids),
+                        undo_entity_id_column().in_(entity_ids),
                         AuditEvent.status == "SUCCESS",
                         AuditEvent.event_type.in_(MUTATING_EVENT_TYPES),
                         AuditEvent.workspace_id == workspace_id,
                     )
-                    .group_by(AuditEvent.account_id, AuditEvent.adset_id)
+                    .group_by(AuditEvent.account_id, undo_entity_id_column())
                 )
             ).all()
             latest_mutating_by_target = {
-                (account_key, adset_key): latest_id
-                for account_key, adset_key, latest_id in latest_rows
+                (account_key, entity_key): latest_id
+                for account_key, entity_key, latest_id in latest_rows
             }
 
     items = []
@@ -181,9 +187,11 @@ async def list_audit_events(
         is_reversible = (
             row.status == "SUCCESS"
             and row.event_type in REVERSIBLE_EVENT_TYPES
-            and bool(row.account_id and row.adset_id)
+            and bool(row.account_id and undo_entity_id(row))
         )
-        latest_id = latest_mutating_by_target.get((row.account_id, row.adset_id))
+        latest_id = latest_mutating_by_target.get(
+            (row.account_id, undo_entity_id(row))
+        )
         can_undo = bool(
             can_write_workspace
             and is_reversible
@@ -198,7 +206,10 @@ async def list_audit_events(
         elif not is_reversible:
             undo_reason = "Это событие не меняется обратной командой."
         elif latest_id != row.id:
-            undo_reason = "После этого события ad set уже изменялся."
+            undo_reason = (
+                f"После этого события {ENTITY_NOUNS[undo_entity_level(row)]} "
+                "уже изменялся."
+            )
         elif not event_is_within_undo_window(row):
             undo_reason = "Окно безопасной отмены 24 часа закрыто."
         else:

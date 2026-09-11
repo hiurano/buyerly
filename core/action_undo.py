@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.audit import build_audit_event
@@ -27,6 +27,32 @@ REVERSIBLE_EVENT_TYPES = {
     "DECREASE_BUDGET",
 }
 MUTATING_EVENT_TYPES = REVERSIBLE_EVENT_TYPES | {"UNDO_ACTION"}
+ENTITY_NOUNS = {"adset": "ad set", "campaign": "кампания", "ad": "объявление"}
+
+
+def undo_entity_level(event: AuditEvent) -> str:
+    """Level the event acted on; rows written before #124 are ad set actions."""
+    level = str(getattr(event, "entity_level", "") or "adset")
+    return level if level in ENTITY_NOUNS else "adset"
+
+
+def undo_entity_id(event: AuditEvent) -> str:
+    """Entity the event acted on, falling back to the pre-#124 ad set column."""
+    return str(getattr(event, "entity_id", "") or event.adset_id or "")
+
+
+def undo_entity_name(event: AuditEvent) -> str:
+    return str(getattr(event, "entity_name", "") or event.adset_name or "")
+
+
+def undo_entity_id_column():
+    """SQL mirror of :func:`undo_entity_id`.
+
+    Rows written before the entity columns existed carry the id only in
+    ``adset_id``, so every query that targets an entity must fall back the same
+    way the Python helper does.
+    """
+    return func.coalesce(func.nullif(AuditEvent.entity_id, ""), AuditEvent.adset_id)
 
 
 class UndoError(Exception):
@@ -137,6 +163,9 @@ async def _mark_failed(
         actor_id=actor_id,
         adset_id=source.adset_id,
         adset_name=source.adset_name,
+        entity_level=undo_entity_level(source),
+        entity_id=undo_entity_id(source),
+        entity_name=undo_entity_name(source),
     )
     session.add(failure)
     try:
@@ -198,8 +227,13 @@ async def reverse_audit_event(
     if str(source.status).upper() != "SUCCESS":
         raise UndoError("Отменять можно только успешно выполненное действие.")
     spec = undo_spec_for_event(source)
-    if not source.account_id or not source.adset_id:
-        raise UndoError("В истории нет кабинета или ad set для отмены.")
+    entity_level = undo_entity_level(source)
+    entity_id = undo_entity_id(source)
+    if not source.account_id or not entity_id:
+        raise UndoError("В истории нет кабинета или сущности для отмены.")
+    if spec.kind == "budget" and entity_level != "adset":
+        # Only ad sets carry a budget a rule could have changed.
+        raise UndoError("Отмена изменения бюджета доступна только для ad set.")
     if not event_is_within_undo_window(source, now=now_ts):
         raise UndoError("Безопасное окно отмены 24 часа уже закрыто.")
 
@@ -208,7 +242,7 @@ async def reverse_audit_event(
             select(AuditEvent.id).where(
                 AuditEvent.id > source.id,
                 AuditEvent.account_id == source.account_id,
-                AuditEvent.adset_id == source.adset_id,
+                undo_entity_id_column() == entity_id,
                 AuditEvent.status == "SUCCESS",
                 AuditEvent.event_type.in_(MUTATING_EVENT_TYPES),
                 AuditEvent.workspace_id == workspace_id,
@@ -216,7 +250,10 @@ async def reverse_audit_event(
         )
     ).scalar_one_or_none()
     if newer_action is not None:
-        raise UndoError("После этого события ad set уже изменялся. Старая отмена заблокирована.")
+        raise UndoError(
+            f"После этого события {ENTITY_NOUNS[entity_level]} уже изменялся. "
+            "Старая отмена заблокирована."
+        )
 
     account = (
         await session.execute(
@@ -278,9 +315,10 @@ async def reverse_audit_event(
                 raise RuntimeError("Meta did not return the ad account currency")
             account.currency = currency
             await session.commit()
-        current_state = await meta_client.get_adset_state(
-            source.adset_id,
+        current_state = await meta_client.get_entity_state(
+            entity_id,
             access_token,
+            entity_level=entity_level,
             currency=currency,
         )
     except Exception as error:
@@ -306,14 +344,16 @@ async def reverse_audit_event(
     if not reconciled:
         try:
             if spec.kind == "status":
-                await meta_client.set_adset_status(
-                    source.adset_id,
+                await meta_client.set_entity_status(
+                    entity_id,
                     access_token,
                     spec.desired_state["status"],
+                    entity_level=entity_level,
+                    account_id=account.account_id,
                 )
             else:
                 await meta_client.update_adset_budget(
-                    source.adset_id,
+                    entity_id,
                     access_token,
                     float(spec.desired_state["daily_budget"]),
                     currency=currency,
@@ -350,37 +390,57 @@ async def reverse_audit_event(
         duration_ms=(time.perf_counter() - action_started) * 1000,
         actor_type=actor_type,
         actor_id=actor_id,
-        adset_id=source.adset_id,
-        adset_name=source.adset_name or current_state.get("adset_name", ""),
+        # The ad set columns stay empty above the ad set level, matching how the
+        # worker records the original action.
+        adset_id=entity_id if entity_level == "adset" else "",
+        adset_name=(
+            undo_entity_name(source) or current_state.get("adset_name", "")
+            if entity_level == "adset"
+            else ""
+        ),
+        entity_level=entity_level,
+        entity_id=entity_id,
+        entity_name=(
+            undo_entity_name(source)
+            or current_state.get("entity_name")
+            or current_state.get("adset_name")
+            or entity_id
+        ),
     )
     reversal.reverts_event_id = source.id
     session.add(reversal)
     undo_state.status = "SUCCESS"
 
-    stopped = (
-        await session.execute(
-            select(StoppedAdSet).where(StoppedAdSet.adset_id == source.adset_id)
-        )
-    ).scalar_one_or_none()
-    if spec.kind == "status" and spec.desired_state["status"] == "ACTIVE":
-        if stopped:
-            stopped.is_resolved = True
-    elif spec.kind == "status" and spec.desired_state["status"] == "PAUSED":
-        if stopped:
-            stopped.is_resolved = False
-        else:
-            session.add(
-                StoppedAdSet(
-                    account_id=account.account_id,
-                    adset_id=source.adset_id,
-                    adset_name=source.adset_name or current_state.get("adset_name") or source.adset_id,
-                    stop_spend=0.0,
-                    stop_leads=0,
-                    stop_registrations=0,
-                    is_resolved=False,
-                    stopped_at=datetime.now(timezone.utc),
-                )
+    # Reactivation tracking is an ad set concept, like everywhere else.
+    if entity_level == "adset":
+        stopped = (
+            await session.execute(
+                select(StoppedAdSet).where(StoppedAdSet.adset_id == entity_id)
             )
+        ).scalar_one_or_none()
+        if spec.kind == "status" and spec.desired_state["status"] == "ACTIVE":
+            if stopped:
+                stopped.is_resolved = True
+        elif spec.kind == "status" and spec.desired_state["status"] == "PAUSED":
+            if stopped:
+                stopped.is_resolved = False
+            else:
+                session.add(
+                    StoppedAdSet(
+                        account_id=account.account_id,
+                        adset_id=entity_id,
+                        adset_name=(
+                            undo_entity_name(source)
+                            or current_state.get("adset_name")
+                            or entity_id
+                        ),
+                        stop_spend=0.0,
+                        stop_leads=0,
+                        stop_registrations=0,
+                        is_resolved=False,
+                        stopped_at=datetime.now(timezone.utc),
+                    )
+                )
     try:
         await session.commit()
         await session.refresh(reversal)
