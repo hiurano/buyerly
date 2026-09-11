@@ -588,6 +588,8 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
     async def test_analytics_hierarchy_api_endpoint(self):
         async with self.test_session_maker() as session:
             today_str = resolve_account_period_dates(self.acc1.timezone_name, "today")[0]
+            older_fetch = datetime(2026, 9, 12, 8, 0, tzinfo=timezone.utc)
+            newer_fetch = datetime(2026, 9, 12, 9, 0, tzinfo=timezone.utc)
             await AnalyticsFactService.upsert_entity_facts(
                 session,
                 workspace_id=self.ws1.id,
@@ -604,6 +606,7 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
                         "impressions": 3000,
                         "clicks": 150,
                         "leads": 5,
+                        "fetched_at": older_fetch,
                     },
                     {
                         "entity_level": "campaign",
@@ -617,6 +620,7 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
                         "spend": 0.0,
                         "impressions": 0,
                         "clicks": 0,
+                        "fetched_at": newer_fetch,
                     },
                     {
                         "entity_level": "adset",
@@ -658,8 +662,11 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(res.status_code, 200)
             data = res.json()
             self.assertEqual(data["total"], 2)
+            self.assertEqual(data["source"], "analytics_fact_store")
+            self.assertEqual(data["data_as_of"], "2026-09-12T08:00:00Z")
             rows_by_id = {item["entity_id"]: item for item in data["items"]}
             self.assertEqual(rows_by_id["cmp_api_1"]["spend"], 75.0)
+            self.assertEqual(rows_by_id["cmp_api_1"]["data_as_of"], "2026-09-12T08:00:00Z")
             self.assertEqual(rows_by_id["cmp_api_zero"]["spend"], 0.0)
             self.assertEqual(rows_by_id["cmp_api_zero"]["effective_status"], "PAUSED")
 

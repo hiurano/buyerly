@@ -90,6 +90,10 @@ IconButton, Input, Dialog, EmptyState and Skeleton are required product patterns
 
 ### Statistics
 
+- selects one imported workspace account and reads campaign, ad-set or ad facts through the workspace-isolated hierarchy API;
+- supported periods are Today, Yesterday, Last 3 days and Last 7 days, matching the API vocabulary;
+- the overview is derived from the currently loaded rows and identifies the Analytics Fact Store freshness timestamp;
+- comparison, KPI targets, revenue/ROAS, decision groups and delivery mutations stay absent until server contracts exist;
 - every number carries a real period, freshness and data-status meaning;
 - unavailable or unsupported metrics render as unavailable, never as zero unless the API returned a true zero;
 - mixed currency is not silently aggregated.

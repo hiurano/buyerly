@@ -110,21 +110,35 @@ export interface AnalyticsHierarchyItem {
   status: string;
   effective_status: string;
   daily_budget: number;
+  data_as_of: string | null;
   spend: number;
   impressions: number;
+  reach: number;
+  cpm: number;
   clicks: number;
+  link_clicks: number;
+  outbound_clicks: number;
+  landing_page_views: number;
   leads: number;
   registrations: number;
   purchases: number;
   cost_per_lead: number | null;
+  cost_per_registration: number | null;
+  cost_per_purchase: number | null;
+  cost_per_landing_page_view: number | null;
   cpc: number;
   ctr: number;
+  cpc_link: number | null;
+  ctr_link: number;
+  ctr_outbound: number;
 }
 
 export interface AnalyticsHierarchyResponse {
   parent_id: string;
   level: 'campaign' | 'adset' | 'ad';
   period: 'today' | 'yesterday' | 'last_3d' | 'last_7d';
+  source: 'analytics_fact_store';
+  data_as_of: string | null;
   total: number;
   items: AnalyticsHierarchyItem[];
 }

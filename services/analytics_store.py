@@ -58,6 +58,13 @@ def _safe_int(val: Any, default: int = 0) -> int:
         return default
 
 
+def _utc_iso(value: datetime) -> str:
+    """Serialize database timestamps consistently, including SQLite's naive values."""
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
 class AnalyticsFactService:
     """Core domain service for the PostgreSQL-backed Analytics Fact Store."""
 
@@ -670,6 +677,8 @@ class AnalyticsFactService:
         results = []
         for entity_id, entity_facts in grouped.items():
             first_fact = entity_facts[-1]  # Latest snapshot for status/budget
+            fetched_at_values = [fact.fetched_at for fact in entity_facts if fact.fetched_at]
+            data_as_of = _utc_iso(max(fetched_at_values)) if fetched_at_values else None
             spend = sum(f.spend for f in entity_facts)
             impressions = sum(f.impressions for f in entity_facts)
             reach = max((f.reach for f in entity_facts), default=0)
@@ -697,6 +706,7 @@ class AnalyticsFactService:
                 "status": first_fact.status,
                 "effective_status": first_fact.effective_status,
                 "daily_budget": first_fact.daily_budget,
+                "data_as_of": data_as_of,
                 "spend": round(spend, 2),
                 "impressions": impressions,
                 "reach": reach,
