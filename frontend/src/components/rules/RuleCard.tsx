@@ -15,6 +15,14 @@ import {
   LinearTrashIcon,
   LinearCheckIcon,
 } from '@/icons/LinearIcons';
+import { ruleActionTone } from '@/lib/rules';
+import type { RuleActionTone } from '@/lib/rules';
+
+const ACTION_DOT_COLORS: Record<RuleActionTone, string> = {
+  stop: 'var(--rules-action-stop-text)',
+  positive: 'var(--rules-action-positive-text)',
+  default: 'var(--rules-action-default-text)',
+};
 
 interface RuleCardProps {
   rule: RuleItem;
@@ -129,11 +137,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({
                   width: '6px',
                   height: '6px',
                   borderRadius: '50%',
-                  backgroundColor: rule.action.includes('PAUSE')
-                    ? '#f87171'
-                    : rule.action.includes('BUDGET')
-                    ? '#34d399'
-                    : '#60a5fa',
+                  backgroundColor: ACTION_DOT_COLORS[ruleActionTone(rule.actionKind)],
                 }}
               />
               <span>{rule.action}</span>
@@ -182,7 +186,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({
                 return (
                   <ContextMenuItem
                     key={group.id}
-                    onClick={() => addRuleToGroup(group.id, rule.id)}
+                    onClick={() => void addRuleToGroup(group.id, rule.id)}
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="truncate">{group.name}</span>
@@ -207,7 +211,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({
 
         {/* Delete Item */}
         <ContextMenuItem
-          onClick={() => deleteRule(rule.id)}
+          onClick={() => void deleteRule(rule.id)}
           className="text-[#e4e7e8] hover:text-white"
         >
           <div className="flex items-center gap-2">

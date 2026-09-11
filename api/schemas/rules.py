@@ -33,7 +33,8 @@ class RulePresetItem(BaseModel):
     # Legacy or unsafe snapshots are held back from execution until re-saved.
     needs_review: bool = False
     review_reason: str = ""
-    # Last RULE_ACTION audit event for this preset; empty when it never fired.
+    # Last RULE_ACTION audit event for this preset as ISO 8601 with offset;
+    # empty when the rule has never fired.
     last_run_at: str = ""
     # Ad accounts this preset is currently attached to, so the UI can tell a
     # configured rule apart from one that cannot run anywhere yet.

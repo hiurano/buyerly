@@ -757,8 +757,10 @@ async def _preset_last_runs(
         )
         .group_by(AuditEvent.rule_id)
     )
+    # ISO 8601 with an explicit offset, so the browser renders "3h ago" against
+    # the viewer's clock instead of reparsing a naive string as local time.
     return {
-        rule_id: last_run.strftime("%Y-%m-%d %H:%M")
+        rule_id: last_run.isoformat()
         for rule_id, last_run in rows.all()
         if rule_id is not None and last_run is not None
     }

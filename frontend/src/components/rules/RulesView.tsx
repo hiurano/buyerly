@@ -21,6 +21,7 @@ import {
   LinearSidebarLeftToggleIcon,
 } from '@/icons/LinearIcons';
 import { LinearTabs } from '@/ui/LinearTabs';
+import { DataState } from '@/ui/DataState';
 import { LinearDataListToolbar } from '@/ui/LinearDataList';
 import { Tooltip } from '@/ui/Tooltip';
 
@@ -48,7 +49,16 @@ export const RulesView: React.FC = () => {
     setRulesFilterClauses,
     isSidebarCollapsed,
     toggleSidebarCollapsed,
+    rulesLoadState,
+    rulesError,
+    rulesMutationError,
+    clearRulesMutationError,
+    loadRules,
   } = useAppStore();
+
+  useEffect(() => {
+    void loadRules();
+  }, [loadRules]);
 
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
@@ -123,7 +133,7 @@ export const RulesView: React.FC = () => {
   const handleCreateGroup = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGroupName.trim()) return;
-    addRuleGroup(newGroupName.trim());
+    void addRuleGroup(newGroupName.trim());
     setNewGroupName('');
     setIsCreatingGroup(false);
   };
@@ -291,9 +301,52 @@ export const RulesView: React.FC = () => {
         onClose={() => setOpenFilterMenu(null)}
       />
 
+      {/* Failed write: the list stays on screen, the reason sits above it. */}
+      {rulesMutationError && (
+        <div
+          role="alert"
+          className="mx-5 mb-2 flex items-start justify-between gap-3 rounded-[6px] border px-3 py-2"
+          style={{
+            borderColor: 'var(--rules-action-stop-border)',
+            backgroundColor: 'var(--rules-action-stop-bg)',
+          }}
+        >
+          <span className="text-[13px]" style={{ color: 'var(--rules-action-stop-text)' }}>
+            {rulesMutationError}
+          </span>
+          <button
+            type="button"
+            onClick={clearRulesMutationError}
+            className="shrink-0 text-[12px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* 2. Main Content Area (Split: Left content, Right sidebar) */}
       <div className="flex flex-1 overflow-hidden" style={{ flexDirection: 'row' }}>
-        {hasFilters && filteredRules.length === 0 ? (
+        {rulesLoadState === 'loading' || rulesLoadState === 'idle' ? (
+          <DataState
+            title="Loading rules…"
+            detail="Reading the automation rules saved in this workspace."
+          />
+        ) : rulesLoadState === 'error' ? (
+          <DataState
+            title="Couldn't load rules"
+            detail={rulesError}
+            role="alert"
+            actionLabel="Retry"
+            onAction={() => void loadRules()}
+          />
+        ) : rules.length === 0 ? (
+          <DataState
+            title="No rules yet"
+            detail="A rule watches one metric and acts on its own — pausing an ad set or changing a budget. Create the first one to get started."
+            actionLabel="New rule"
+            onAction={() => openCreateRuleModal()}
+          />
+        ) : hasFilters && filteredRules.length === 0 ? (
           <div className="min-w-0 flex-1 overflow-y-auto">
             <FilteredEmptyState noun="rules" hiddenCount={hiddenCount} onClear={() => setRulesFilterClauses([])} />
           </div>
