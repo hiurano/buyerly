@@ -42,8 +42,6 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
   const isDeliveryOn = campaign.status === 'active';
   const displayProperties = properties ?? storedDisplayProperties;
   const isPositiveRoi = campaign.roi.startsWith('+');
-  const attachedCount = (campaignAttachedRules[campaign.id] || []).length;
-  const hasRules = attachedCount > 0;
   const assignedGroups = campaignGroups.filter((group) =>
     campaign.groupIds.includes(group.id)
   );
