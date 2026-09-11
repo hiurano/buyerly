@@ -1262,6 +1262,80 @@ class MetaClient:
             logger.error(f"Failed to set adset {adset_id} status: {error_msg}")
             raise RuntimeError(f"Meta API Error ({resp.status_code}): {error_msg}")
 
+    async def get_campaigns_inventory(
+        self,
+        account_id: str,
+        access_token: str,
+        priority: str = "normal",
+    ) -> List[Dict[str, Any]]:
+        """Identity and delivery state of every campaign in the ad account.
+
+        Campaign metrics are summed from ad sets, but a campaign's name and its
+        real status only exist on the campaign itself: an ad set that is still
+        ACTIVE inside a PAUSED campaign would otherwise read as live.
+        """
+        acc_id = self._normalize_account_id(account_id)
+        rows = await self._fetch_paginated_data(
+            f"{self.base_url}/{acc_id}/campaigns",
+            {
+                "fields": "id,name,status,effective_status",
+                "limit": 100,
+                "access_token": access_token,
+            },
+            account_id=acc_id,
+            priority=priority,
+        )
+        return [
+            {
+                "campaign_id": str(row.get("id") or ""),
+                "campaign_name": str(row.get("name") or f"Campaign {row.get('id')}"),
+                "status": str(row.get("status") or "UNKNOWN"),
+                "effective_status": str(
+                    row.get("effective_status") or row.get("status") or "UNKNOWN"
+                ),
+            }
+            for row in rows
+            if row.get("id")
+        ]
+
+    async def set_campaign_status(
+        self,
+        campaign_id: str,
+        access_token: str,
+        status: str,
+        account_id: Optional[str] = None,
+    ) -> bool:
+        """Переключает статус кампании: 'PAUSED' или 'ACTIVE'.
+
+        Пауза кампании останавливает все её адсеты, поэтому запрос идёт с тем же
+        критическим приоритетом, что и остановка адсета.
+        """
+        if status not in ["PAUSED", "ACTIVE"]:
+            raise ValueError(f"Invalid status: {status}. Must be 'PAUSED' or 'ACTIVE'.")
+
+        resp = await self._request_with_retry(
+            "POST",
+            f"{self.base_url}/{campaign_id}",
+            data={"status": status, "access_token": access_token},
+            account_id=campaign_id,
+            priority="critical",
+        )
+        if resp.status_code == 200 and resp.json().get("success") is True:
+            # The ad set inventory cache holds no campaign rows, but ad set
+            # delivery now follows the campaign, so the cached snapshot is stale.
+            if self._cache_provider is not None:
+                acc_id = self._normalize_account_id(account_id or "")
+                if acc_id:
+                    await self._cache_provider.invalidate(acc_id)
+            self._inventory_cache.pop(self._normalize_account_id(account_id or ""), None)
+            logger.info("Successfully set campaign %s status to %s", campaign_id, status)
+            return True
+
+        error_data = resp.json().get("error", {})
+        error_msg = error_data.get("message", resp.text)
+        logger.error("Failed to set campaign %s status: %s", campaign_id, error_msg)
+        raise RuntimeError(f"Meta API Error ({resp.status_code}): {error_msg}")
+
     async def get_adset_state(
         self,
         adset_id: str,

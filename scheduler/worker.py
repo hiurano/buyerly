@@ -32,6 +32,7 @@ from core.timezones import (
     utc_offset_label,
 )
 from meta_api.client import MetaClient
+from core.metrics import normalize_rule_level
 from rules.engine import RuleEngine, RuleAction, RuleEvaluationResult
 from services.inventory_cache import AdsetInventoryService, PostgreSQLInventoryCache
 from services.account_health import record_account_health
@@ -84,6 +85,101 @@ class MonitoringWorker:
             and rule.get("workspace_id") == workspace_id
             and rule.get("enabled", True) is not False
         ]
+
+    @staticmethod
+    def _rule_level(rule: Any) -> str:
+        """Execution level of a rule snapshot, defaulting to the ad set level."""
+        if not isinstance(rule, dict):
+            return "adset"
+        try:
+            return normalize_rule_level(rule.get("level"))
+        except ValueError:
+            return "adset"
+
+    @staticmethod
+    def _campaign_entities(
+        adsets: list[dict[str, Any]],
+        campaigns: list[dict[str, Any]],
+        insights_by_window: dict[str, dict[str, Any]],
+    ) -> tuple[list[dict[str, Any]], dict[str, dict[str, dict[str, Any]]]]:
+        """Roll ad set rows up into the campaigns that own them.
+
+        Every metric a rule can test is either additive (spend, leads,
+        registrations, purchases, clicks, impressions) or derived from additive
+        ones (cpl, cpreg, cpp, cpc, ctr), so the rollup is exact and needs no
+        extra Meta read. Identity and delivery state come from the campaign
+        inventory: an ad set left ACTIVE inside a PAUSED campaign must not make
+        the campaign look live.
+        """
+
+        def blank() -> dict[str, Any]:
+            return {
+                "spend": 0.0,
+                "leads": 0,
+                "registrations": 0,
+                "purchases": 0,
+                "clicks": 0,
+                "impressions": 0,
+            }
+
+        def accumulate(target: dict[str, Any], row: dict[str, Any]) -> None:
+            target["spend"] += float(row.get("spend", 0.0) or 0.0)
+            target["leads"] += int(row.get("leads", 0) or 0)
+            target["registrations"] += int(row.get("registrations", 0) or 0)
+            target["purchases"] += int(row.get("purchases", 0) or 0)
+            target["clicks"] += int(row.get("clicks", 0) or 0)
+            target["impressions"] += int(row.get("impressions", 0) or 0)
+
+        def derive(totals: dict[str, Any]) -> dict[str, Any]:
+            clicks = totals["clicks"]
+            impressions = totals["impressions"]
+            return {
+                **totals,
+                "spend": round(totals["spend"], 6),
+                "cpc": round(totals["spend"] / clicks, 2) if clicks > 0 else 0.0,
+                "ctr": round((clicks / impressions) * 100, 2) if impressions > 0 else 0.0,
+            }
+
+        campaign_of_adset: dict[str, str] = {}
+        today_totals: dict[str, dict[str, Any]] = {}
+        for adset in adsets:
+            campaign_id = str(adset.get("campaign_id") or "")
+            if not campaign_id:
+                # Without a known campaign the row cannot be attributed; leaving
+                # it out is safer than folding it into the wrong campaign.
+                continue
+            campaign_of_adset[str(adset.get("adset_id") or "")] = campaign_id
+            accumulate(today_totals.setdefault(campaign_id, blank()), adset)
+
+        entities = []
+        for campaign in campaigns:
+            campaign_id = str(campaign.get("campaign_id") or "")
+            if not campaign_id:
+                continue
+            entities.append({
+                **derive(today_totals.get(campaign_id, blank())),
+                "entity_level": "campaign",
+                "entity_id": campaign_id,
+                "entity_name": campaign.get("campaign_name") or f"Campaign {campaign_id}",
+                "campaign_id": campaign_id,
+                "status": campaign.get("status", "UNKNOWN"),
+                "effective_status": campaign.get(
+                    "effective_status", campaign.get("status", "UNKNOWN")
+                ),
+            })
+
+        windows_by_campaign: dict[str, dict[str, dict[str, Any]]] = {}
+        for window, rows_by_adset in insights_by_window.items():
+            window_totals: dict[str, dict[str, Any]] = {}
+            for adset_id, row in rows_by_adset.items():
+                campaign_id = campaign_of_adset.get(str(adset_id))
+                if not campaign_id:
+                    continue
+                accumulate(window_totals.setdefault(campaign_id, blank()), row)
+            for campaign_id, totals in window_totals.items():
+                windows_by_campaign.setdefault(campaign_id, {})[window] = derive(totals)
+
+        return entities, windows_by_campaign
 
     @staticmethod
     def _interval_minutes(value: Any, fallback: int) -> int:
@@ -170,6 +266,24 @@ class MonitoringWorker:
                     window, rows = result
                     insights_by_window[window] = rows
 
+            # Only paid for when a campaign rule is actually due this cycle.
+            campaigns: list[dict[str, Any]] = []
+            campaigns_error = None
+            if any(self._rule_level(rule) == "campaign" for rule in due_rules):
+                try:
+                    campaigns = await self.meta_client.get_campaigns_inventory(
+                        account_id=account.account_id,
+                        access_token=access_token,
+                        priority=priority,
+                    )
+                except Exception as campaign_error:
+                    logger.warning(
+                        "Failed to read campaign inventory for %s: %s",
+                        account.account_id,
+                        campaign_error,
+                    )
+                    campaigns_error = campaign_error
+
             hierarchical_facts = []
             hierarchy_error = None
             try:
@@ -196,6 +310,8 @@ class MonitoringWorker:
                 "account_info": account_info,
                 "currency": currency,
                 "adsets": today,
+                "campaigns": campaigns,
+                "campaigns_error": campaigns_error,
                 "insights_by_window": insights_by_window,
                 "window_errors": window_errors,
                 "hierarchical_facts": hierarchical_facts,
@@ -236,7 +352,9 @@ class MonitoringWorker:
                 int(stats.get(key, 0))
                 for key in (
                     "adsets_stopped",
+                    "campaigns_stopped",
                     "adsets_reactivated",
+                    "campaigns_reactivated",
                     "budgets_changed",
                     "proposals_sent",
                 )
@@ -350,7 +468,7 @@ class MonitoringWorker:
         raw_key = ":".join(
             (
                 str(account.account_id),
-                str(evaluation.adset_id),
+                str(evaluation.entity_id),
                 rule_key,
                 evaluation.action.value,
             )
@@ -453,7 +571,9 @@ class MonitoringWorker:
                 execution_key=execution_key,
                 owner_user_id=account.owner_user_id,
                 account_id=str(account.account_id),
-                adset_id=str(evaluation.adset_id),
+                adset_id=str(evaluation.entity_id) if evaluation.is_adset else "",
+                entity_level=evaluation.entity_level,
+                entity_id=str(evaluation.entity_id),
                 rule_key=rule_key,
                 action=evaluation.action.value,
             )
@@ -525,7 +645,9 @@ class MonitoringWorker:
                 execution_key=execution_key,
                 owner_user_id=account.owner_user_id,
                 account_id=str(account.account_id),
-                adset_id=str(evaluation.adset_id),
+                adset_id=str(evaluation.entity_id) if evaluation.is_adset else "",
+                entity_level=evaluation.entity_level,
+                entity_id=str(evaluation.entity_id),
                 rule_key=rule_key,
                 action=evaluation.action.value,
             )
@@ -601,7 +723,7 @@ class MonitoringWorker:
         self,
         session,
         account: Account,
-        adset_id: str,
+        entity_id: str,
         *,
         keep_execution_key: Optional[str] = None,
         now: float,
@@ -613,7 +735,7 @@ class MonitoringWorker:
                 select(RuleExecutionState)
                 .where(
                     RuleExecutionState.account_id == str(account.account_id),
-                    RuleExecutionState.adset_id == str(adset_id),
+                    RuleExecutionState.entity_id == str(entity_id),
                     RuleExecutionState.action == RuleAction.STOP.value,
                     RuleExecutionState.status == "STOP_CONFIRMING",
                 )
@@ -648,16 +770,55 @@ class MonitoringWorker:
             state.last_success_at = now
         state.details = details or {}
 
+    async def _apply_entity_status(
+        self,
+        session,
+        account: Account,
+        evaluation: RuleEvaluationResult,
+        *,
+        access_token: str,
+        status: str,
+    ) -> None:
+        """Write delivery state to Meta at the level the rule targets."""
+        async with self._action_semaphore:
+            if evaluation.is_adset:
+                await self.meta_client.set_adset_status(
+                    adset_id=evaluation.entity_id,
+                    access_token=access_token,
+                    status=status,
+                    account_id=account.account_id,
+                )
+            else:
+                await self.meta_client.set_campaign_status(
+                    campaign_id=evaluation.entity_id,
+                    access_token=access_token,
+                    status=status,
+                    account_id=account.account_id,
+                )
+        if evaluation.is_adset:
+            # The local inventory only mirrors ad sets; pausing a campaign is
+            # reflected by the cache invalidation the client performs.
+            await AdsetInventoryService.update_adset_status(
+                session, account.account_id, evaluation.entity_id, status
+            )
+
     @staticmethod
     async def _record_stopped_adset(session, account: Account, result: RuleEvaluationResult) -> None:
+        """Track a stopped ad set so a late conversion can propose reactivation.
+
+        Only ad sets are tracked: the reactivation flow and its Telegram buttons
+        act on ad sets.
+        """
+        if not result.is_adset:
+            return
         query = await session.execute(
-            select(StoppedAdSet).where(StoppedAdSet.adset_id == result.adset_id)
+            select(StoppedAdSet).where(StoppedAdSet.adset_id == result.entity_id)
         )
         stopped = query.scalar_one_or_none()
         stopped_at = datetime.now(timezone.utc)
         if stopped:
             stopped.account_id = account.account_id
-            stopped.adset_name = result.adset_name
+            stopped.adset_name = result.entity_name
             stopped.stop_spend = result.spend
             stopped.stop_leads = result.leads
             stopped.stop_registrations = result.registrations
@@ -667,8 +828,8 @@ class MonitoringWorker:
             session.add(
                 StoppedAdSet(
                     account_id=account.account_id,
-                    adset_id=result.adset_id,
-                    adset_name=result.adset_name,
+                    adset_id=result.entity_id,
+                    adset_name=result.entity_name,
                     stop_spend=result.spend,
                     stop_leads=result.leads,
                     stop_registrations=result.registrations,
@@ -1003,7 +1164,9 @@ class MonitoringWorker:
             "rules_checked": 0,
             "adsets_checked": 0,
             "adsets_stopped": 0,
+            "campaigns_stopped": 0,
             "adsets_reactivated": 0,
+            "campaigns_reactivated": 0,
             "budgets_changed": 0,
             "actions_skipped": 0,
             "actions_reconciled": 0,
@@ -1377,6 +1540,7 @@ class MonitoringWorker:
                         continue
                     insights_by_window = snapshot["insights_by_window"]
                     adsets = snapshot["adsets"]
+                    campaigns = snapshot.get("campaigns") or []
                     stats["adsets_checked"] += len(adsets)
 
                     # Upsert hierarchical facts into Analytics Fact Store
@@ -1434,15 +1598,41 @@ class MonitoringWorker:
                         self._is_critical_stop_rule(rule) for rule in due_rules
                     )
 
-                    for adset in adsets:
-                        a_id = str(adset["adset_id"])
-                        current_adset_windows = {
-                            window: rows_by_adset.get(a_id, {})
+                    entities: list[dict[str, Any]] = [
+                        {
+                            **adset,
+                            "entity_level": "adset",
+                            "entity_id": str(adset["adset_id"]),
+                            "entity_name": str(adset.get("adset_name") or ""),
+                        }
+                        for adset in adsets
+                    ]
+                    entity_windows: dict[str, dict[str, dict[str, Any]]] = {
+                        str(adset["adset_id"]): {
+                            window: rows_by_adset.get(str(adset["adset_id"]), {})
                             for window, rows_by_adset in insights_by_window.items()
                         }
+                        for adset in adsets
+                    }
+                    if campaigns:
+                        campaign_entities, campaign_windows = self._campaign_entities(
+                            adsets, campaigns, insights_by_window
+                        )
+                        entities.extend(campaign_entities)
+                        entity_windows.update(campaign_windows)
+                    elif snapshot.get("campaigns_error") is not None:
+                        stats["errors"].append(
+                            f"Account {account_ref}: campaign inventory unavailable "
+                            f"({snapshot['campaigns_error']}); campaign rules skipped "
+                            "this cycle"
+                        )
+
+                    for adset in entities:
+                        a_id = str(adset["entity_id"])
+                        current_adset_windows = entity_windows.get(a_id, {})
 
                         eval_res = RuleEngine.evaluate(
-                            adset=adset,
+                            entity=adset,
                             account=acc,
                             insights_by_window=current_adset_windows,
                             active_rules_override=due_rules,
@@ -1583,18 +1773,17 @@ class MonitoringWorker:
                         if eval_res.action == RuleAction.STOP:
                             action_started = time.perf_counter()
                             try:
-                                async with self._action_semaphore:
-                                    await self.meta_client.set_adset_status(
-                                        adset_id=a_id,
-                                        access_token=access_token,
-                                        status="PAUSED",
-                                        account_id=acc.account_id,
-                                    )
-                                await AdsetInventoryService.update_adset_status(
-                                    session, acc.account_id, a_id, "PAUSED"
+                                await self._apply_entity_status(
+                                    session,
+                                    acc,
+                                    eval_res,
+                                    access_token=access_token,
+                                    status="PAUSED",
                                 )
-                                stats["adsets_stopped"] += 1
-                                logger.info(f"STOPPED AdSet: {a_id} ({eval_res.adset_name}) - {eval_res.reason}")
+                                stats[
+                                    "adsets_stopped" if eval_res.is_adset else "campaigns_stopped"
+                                ] += 1
+                                logger.info(f"STOPPED {eval_res.entity_level}: {a_id} ({eval_res.entity_name}) - {eval_res.reason}")
 
                                 try:
                                     await self._record_stopped_adset(session, acc, eval_res)
@@ -1651,7 +1840,7 @@ class MonitoringWorker:
 
                         # ТОЛЬКО УВЕДОМЛЕНИЕ (Send notification only)
                         elif eval_res.action == RuleAction.NOTIFY_ONLY:
-                            logger.info(f"NOTIFY ONLY AdSet: {a_id} ({eval_res.adset_name}) - {eval_res.reason}")
+                            logger.info(f"NOTIFY ONLY {eval_res.entity_level}: {a_id} ({eval_res.entity_name}) - {eval_res.reason}")
                             self._finish_execution(
                                 execution_state,
                                 status="SUCCESS",
@@ -1680,7 +1869,7 @@ class MonitoringWorker:
                         # ПРЕДЛОЖЕНИЕ ВКЛЮЧИТЬ (долет)
                         elif eval_res.action == RuleAction.PROPOSE_REACTIVATE:
                             stats["proposals_sent"] += 1
-                            logger.info(f"PROPOSE REACTIVATE AdSet: {a_id} ({eval_res.adset_name}) - {eval_res.reason}")
+                            logger.info(f"PROPOSE REACTIVATE {eval_res.entity_level}: {a_id} ({eval_res.entity_name}) - {eval_res.reason}")
                             self._finish_execution(
                                 execution_state,
                                 status="SUCCESS",
@@ -1711,20 +1900,20 @@ class MonitoringWorker:
                         elif eval_res.action == RuleAction.AUTO_REACTIVATE:
                             action_started = time.perf_counter()
                             try:
-                                async with self._action_semaphore:
-                                    await self.meta_client.set_adset_status(
-                                        adset_id=a_id,
-                                        access_token=access_token,
-                                        status="ACTIVE",
-                                        account_id=acc.account_id,
-                                    )
-                                await AdsetInventoryService.update_adset_status(
-                                    session, acc.account_id, a_id, "ACTIVE"
+                                await self._apply_entity_status(
+                                    session,
+                                    acc,
+                                    eval_res,
+                                    access_token=access_token,
+                                    status="ACTIVE",
                                 )
-                                stats["adsets_reactivated"] += 1
+                                stats[
+                                    "adsets_reactivated" if eval_res.is_adset else "campaigns_reactivated"
+                                ] += 1
 
                                 try:
-                                    await self._resolve_stopped_adset(session, a_id)
+                                    if eval_res.is_adset:
+                                        await self._resolve_stopped_adset(session, a_id)
                                 except Exception as db_error:
                                     await session.rollback()
                                     logger.error(f"Failed to resolve stopped adset {a_id}: {db_error}")
@@ -1746,7 +1935,7 @@ class MonitoringWorker:
                                     duration_ms=(time.perf_counter() - action_started) * 1000,
                                 )
                                 
-                                logger.info(f"AUTO REACTIVATED AdSet: {a_id} ({eval_res.adset_name})")
+                                logger.info(f"AUTO REACTIVATED {eval_res.entity_level}: {a_id} ({eval_res.entity_name})")
 
                                 if should_notify_tg and self.telegram_notifier:
                                     await self.telegram_notifier(

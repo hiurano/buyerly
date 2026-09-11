@@ -14,8 +14,8 @@ class TestTelegramNotifierEscaping(unittest.IsolatedAsyncioTestCase):
     async def test_stop_alert_escapes_comparison_operators_in_reason(self, mock_session_maker):
         eval_result = RuleEvaluationResult(
             action=RuleAction.STOP,
-            adset_id="1234567890",
-            adset_name="<Test AdSet & Campaign>",
+            entity_id="1234567890",
+            entity_name="<Test AdSet & Campaign>",
             spend=45.5,
             leads=0,
             registrations=0,
@@ -74,8 +74,8 @@ class TestTelegramNotifierEscaping(unittest.IsolatedAsyncioTestCase):
     async def test_notify_only_and_budget_alerts_escape_reason(self, mock_session_maker):
         eval_result = RuleEvaluationResult(
             action=RuleAction.NOTIFY_ONLY,
-            adset_id="555",
-            adset_name="AdSet <A & B>",
+            entity_id="555",
+            entity_name="AdSet <A & B>",
             spend=10.0,
             leads=1,
             registrations=0,

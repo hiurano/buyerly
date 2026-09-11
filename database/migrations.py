@@ -35,12 +35,23 @@ POST_BASELINE_COLUMNS = {
         "workspace_id",
         "invite_id",
     },
-    # Added by the rule on/off switch migration (0023).
+    # Added by the rule on/off switch migration (0023) and the execution level
+    # migration (0024).
     "rule_presets": {
         "enabled",
+        "level",
     },
     "rule_groups": {
         "icon",
+    },
+    "audit_events": {
+        "entity_level",
+        "entity_id",
+        "entity_name",
+    },
+    "rule_execution_states": {
+        "entity_level",
+        "entity_id",
     },
 }
 

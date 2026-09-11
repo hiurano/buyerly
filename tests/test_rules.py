@@ -1,12 +1,15 @@
 import json
 import unittest
 from core.metrics import (
+    normalize_rule_level,
     normalize_rule_scope,
     validate_rule_semantics,
     validate_rule_set_compatibility,
+    validate_runtime_rule,
 )
 from database.models import Account
 from rules.engine import RuleEngine, RuleAction
+from scheduler.worker import MonitoringWorker
 
 class TestRuleEngine(unittest.TestCase):
 
@@ -578,6 +581,200 @@ class TestRuleEngine(unittest.TestCase):
             RuleEngine.evaluate(self._triggering_adset(), self.account).action,
             RuleAction.NOOP,
         )
+
+
+class TestRuleExecutionLevel(unittest.TestCase):
+    def setUp(self):
+        self.account = Account(
+            account_id="act_test_123",
+            name="Тестовый кабинет",
+            access_token="mock_token",
+            timezone_name="UTC",
+            currency="USD",
+            rules_enabled=True,
+            active_rules="[]",
+        )
+
+    def _rule(self, level, **overrides):
+        rule = {
+            "preset_id": 1,
+            "name": f"{level} rule",
+            "action": "turn_off",
+            "level": level,
+            "conditions": [{"metric": "spend", "operator": "gte", "value": 50.0}],
+            "logic": "and",
+            "cooldown_minutes": 0,
+            "notify_tg": True,
+        }
+        rule.update(overrides)
+        return rule
+
+    def _entity(self, level, entity_id):
+        return {
+            "entity_level": level,
+            "entity_id": entity_id,
+            "entity_name": f"{level} {entity_id}",
+            "campaign_id": "camp_a" if level == "adset" else entity_id,
+            "status": "ACTIVE",
+            "effective_status": "ACTIVE",
+            "spend": 100.0,
+            "leads": 0,
+            "registrations": 0,
+            "purchases": 0,
+        }
+
+    def test_a_rule_only_acts_on_its_own_level(self):
+        self.account.active_rules = json.dumps([self._rule("campaign")])
+
+        self.assertEqual(
+            RuleEngine.evaluate(self._entity("campaign", "camp_a"), self.account).action,
+            RuleAction.STOP,
+        )
+        # The same spend on an ad set must not trigger a campaign rule.
+        self.assertEqual(
+            RuleEngine.evaluate(self._entity("adset", "as_1"), self.account).action,
+            RuleAction.NOOP,
+        )
+
+    def test_result_names_the_entity_it_acted_on(self):
+        self.account.active_rules = json.dumps([self._rule("campaign")])
+        result = RuleEngine.evaluate(self._entity("campaign", "camp_a"), self.account)
+
+        self.assertEqual(result.entity_level, "campaign")
+        self.assertEqual(result.entity_id, "camp_a")
+        self.assertFalse(result.is_adset)
+
+    def test_a_rule_without_a_level_still_runs_on_adsets(self):
+        rule = self._rule("adset")
+        del rule["level"]
+        self.account.active_rules = json.dumps([rule])
+
+        self.assertEqual(
+            RuleEngine.evaluate(self._entity("adset", "as_1"), self.account).action,
+            RuleAction.STOP,
+        )
+
+    def test_budget_actions_are_rejected_outside_the_adset_level(self):
+        with self.assertRaises(ValueError):
+            validate_runtime_rule(
+                self._rule(
+                    "campaign",
+                    action="increase_budget",
+                    budget_change_percent=20.0,
+                    budget_max_daily=100.0,
+                )
+            )
+        # The same rule is fine on an ad set.
+        validate_runtime_rule(
+            self._rule(
+                "adset",
+                action="increase_budget",
+                budget_change_percent=20.0,
+                budget_max_daily=100.0,
+            )
+        )
+
+    def test_unknown_level_is_rejected(self):
+        with self.assertRaises(ValueError):
+            normalize_rule_level("account")
+        self.assertEqual(normalize_rule_level(None), "adset")
+
+
+class TestCampaignRollup(unittest.TestCase):
+    """Campaign metrics are summed from ad sets instead of re-read from Meta."""
+
+    def _adset(self, adset_id, campaign_id, **metrics):
+        row = {
+            "adset_id": adset_id,
+            "adset_name": adset_id,
+            "campaign_id": campaign_id,
+            "spend": 0.0,
+            "leads": 0,
+            "registrations": 0,
+            "purchases": 0,
+            "clicks": 0,
+            "impressions": 0,
+        }
+        row.update(metrics)
+        return row
+
+    def test_metrics_are_summed_and_derived_metrics_recomputed(self):
+        adsets = [
+            self._adset("a1", "c1", spend=30.0, leads=2, clicks=10, impressions=1000),
+            self._adset("a2", "c1", spend=10.0, leads=0, clicks=10, impressions=1000),
+        ]
+        campaigns = [
+            {
+                "campaign_id": "c1",
+                "campaign_name": "Scale",
+                "status": "ACTIVE",
+                "effective_status": "ACTIVE",
+            }
+        ]
+
+        entities, windows = MonitoringWorker._campaign_entities(adsets, campaigns, {})
+        campaign = entities[0]
+
+        self.assertEqual(campaign["entity_level"], "campaign")
+        self.assertEqual(campaign["entity_name"], "Scale")
+        self.assertEqual(campaign["spend"], 40.0)
+        self.assertEqual(campaign["leads"], 2)
+        # Derived from the totals, not averaged from the ad sets.
+        self.assertEqual(campaign["cpc"], 2.0)
+        self.assertEqual(campaign["ctr"], 1.0)
+        self.assertEqual(windows, {})
+
+    def test_identity_and_status_come_from_the_campaign_not_its_adsets(self):
+        adsets = [self._adset("a1", "c1", spend=30.0)]
+        campaigns = [
+            {
+                "campaign_id": "c1",
+                "campaign_name": "Paused scale",
+                "status": "PAUSED",
+                "effective_status": "PAUSED",
+            }
+        ]
+
+        campaign = MonitoringWorker._campaign_entities(adsets, campaigns, {})[0][0]
+
+        self.assertEqual(campaign["status"], "PAUSED")
+        self.assertEqual(campaign["effective_status"], "PAUSED")
+
+    def test_adsets_with_an_unknown_campaign_are_left_out(self):
+        adsets = [
+            self._adset("a1", "c1", spend=30.0),
+            self._adset("a2", "", spend=500.0),
+        ]
+        campaigns = [
+            {"campaign_id": "c1", "campaign_name": "Scale", "status": "ACTIVE"}
+        ]
+
+        campaign = MonitoringWorker._campaign_entities(adsets, campaigns, {})[0][0]
+
+        self.assertEqual(campaign["spend"], 30.0)
+
+    def test_time_windows_are_rolled_up_per_campaign(self):
+        adsets = [
+            self._adset("a1", "c1"),
+            self._adset("a2", "c1"),
+        ]
+        campaigns = [
+            {"campaign_id": "c1", "campaign_name": "Scale", "status": "ACTIVE"}
+        ]
+        insights_by_window = {
+            "yesterday": {
+                "a1": {"spend": 5.0, "leads": 1, "clicks": 4, "impressions": 200},
+                "a2": {"spend": 7.0, "leads": 0, "clicks": 0, "impressions": 0},
+            }
+        }
+
+        _, windows = MonitoringWorker._campaign_entities(
+            adsets, campaigns, insights_by_window
+        )
+
+        self.assertEqual(windows["c1"]["yesterday"]["spend"], 12.0)
+        self.assertEqual(windows["c1"]["yesterday"]["leads"], 1)
+        self.assertEqual(windows["c1"]["yesterday"]["ctr"], 2.0)
 
 
 class TestRuleScopeContract(unittest.TestCase):

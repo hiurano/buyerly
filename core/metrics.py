@@ -43,6 +43,11 @@ RULE_MAX_BUDGET_CHANGE_PERCENT = 100.0
 # A rule always acts on ad sets. Scope only narrows which ad sets it looks at:
 # the whole account, the ad sets of named campaigns, or named ad sets.
 RULE_SCOPE_LEVELS = frozenset({"account", "campaign", "adset"})
+# Where a rule reads its metrics and applies its action. Budget actions stay on
+# ad sets: a campaign running Campaign Budget Optimization owns its budget, and
+# Meta rejects a budget write aimed at the ad set underneath it.
+RULE_EXECUTION_LEVELS = frozenset({"campaign", "adset"})
+BUDGET_RULE_ACTIONS = frozenset({"increase_budget", "decrease_budget"})
 RULE_MAX_SCOPE_IDS = 200
 RULE_MAX_SCOPE_ID_LENGTH = 64
 
@@ -519,8 +524,18 @@ def normalize_rule_scope(scope: Any) -> dict[str, Any]:
     return {"level": level, "ids": ids}
 
 
-def rule_scope_matches_adset(scope: Any, adset: Mapping[str, Any]) -> bool:
-    """Whether a rule with this scope may act on this ad set.
+def normalize_rule_level(level: Any) -> str:
+    """Return the execution level, defaulting to the historical ad set level."""
+    if level is None:
+        return "adset"
+    normalized = str(level)
+    if normalized not in RULE_EXECUTION_LEVELS:
+        raise ValueError(f"Unsupported rule execution level: {normalized}")
+    return normalized
+
+
+def rule_scope_matches_entity(scope: Any, entity: Mapping[str, Any]) -> bool:
+    """Whether a rule with this scope may act on this campaign or ad set.
 
     An ad set whose campaign is unknown — a row from an inventory cache written
     before campaign_id was collected — never matches a campaign scope. Running
@@ -531,12 +546,20 @@ def rule_scope_matches_adset(scope: Any, adset: Mapping[str, Any]) -> bool:
     except ValueError:
         return False
 
-    level = normalized["level"]
-    if level == "account":
+    scope_level = normalized["level"]
+    if scope_level == "account":
         return True
-    if level == "adset":
-        return str(adset.get("adset_id", "")) in normalized["ids"]
-    campaign_id = str(adset.get("campaign_id", "") or "")
+
+    entity_level = str(entity.get("entity_level") or "adset")
+    entity_id = str(entity.get("entity_id") or entity.get("adset_id") or "")
+
+    if scope_level == "adset":
+        # A campaign cannot be selected by an ad set scope.
+        return entity_level == "adset" and entity_id in normalized["ids"]
+
+    if entity_level == "campaign":
+        return bool(entity_id) and entity_id in normalized["ids"]
+    campaign_id = str(entity.get("campaign_id", "") or "")
     return bool(campaign_id) and campaign_id in normalized["ids"]
 
 
@@ -549,6 +572,11 @@ def validate_runtime_rule(rule: Mapping[str, Any]) -> None:
     action = str(rule.get("action", ""))
     if action not in RULE_ACTIONS:
         raise ValueError(f"Unsupported rule action: {action}")
+    level = normalize_rule_level(rule.get("level"))
+    if level != "adset" and action in BUDGET_RULE_ACTIONS:
+        raise ValueError(
+            "Изменение бюджета поддерживается только на уровне адсета."
+        )
     logic = str(rule.get("logic", rule.get("condition_logic", "")))
     if logic not in RULE_LOGICS:
         raise ValueError(f"Unsupported rule logic: {logic}")

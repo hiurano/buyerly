@@ -47,7 +47,8 @@ class MockMetaClient(MetaClient):
                 "cpc": 0.5,
                 "ctr": 5.0,
                 "daily_budget": 50.0,
-                "purchases": 0
+                "purchases": 0,
+                "campaign_id": "campaign_1",
             },
             "adset_2": {
                 "adset_id": "adset_2",
@@ -62,13 +63,24 @@ class MockMetaClient(MetaClient):
                 "cpc": 0.5,
                 "ctr": 4.0,
                 "daily_budget": 30.0,
-                "purchases": 0
+                "purchases": 0,
+                "campaign_id": "campaign_1",
+            }
+        }
+        self.campaigns_state = {
+            "campaign_1": {
+                "campaign_id": "campaign_1",
+                "campaign_name": "Sweden scale",
+                "status": "ACTIVE",
+                "effective_status": "ACTIVE",
             }
         }
         self.insights_by_window = {}
         self.requested_windows = []
         self.hierarchy_requests = []
         self.status_changes = []
+        self.campaign_status_changes = []
+        self.campaign_inventory_requests = 0
         self.budget_changes = []
 
     async def get_account_info(
@@ -100,6 +112,28 @@ class MockMetaClient(MetaClient):
         self.adsets_state[adset_id]["status"] = status
         self.adsets_state[adset_id]["effective_status"] = status
         self.status_changes.append((adset_id, status))
+        return True
+
+    async def get_campaigns_inventory(
+        self,
+        account_id: str,
+        access_token: str,
+        priority: str = "normal",
+    ):
+        self.campaign_inventory_requests += 1
+        return [dict(campaign) for campaign in self.campaigns_state.values()]
+
+    async def set_campaign_status(
+        self,
+        campaign_id: str,
+        access_token: str,
+        status: str,
+        *args,
+        **kwargs,
+    ) -> bool:
+        self.campaigns_state[campaign_id]["status"] = status
+        self.campaigns_state[campaign_id]["effective_status"] = status
+        self.campaign_status_changes.append((campaign_id, status))
         return True
 
     async def update_adset_budget(
@@ -248,6 +282,96 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             runtime = await session.get(AutomationRuntimeState, "monitoring")
             self.assertIsInstance(runtime.payload, dict)
             self.assertIn("cycle_id", runtime.payload)
+
+    async def _set_campaign_rule(self, **overrides):
+        """Replace the account rules with one campaign-level rule."""
+        rule = {
+            "preset_id": 7,
+            "name": "Stop campaign without leads",
+            "action": "turn_off",
+            "level": "campaign",
+            "conditions": [
+                {"metric": "spend", "operator": "gte", "value": 16.0, "time_window": "today"},
+                {"metric": "leads", "operator": "eq", "value": 0.0, "time_window": "today"},
+            ],
+            "logic": "and",
+            "cooldown_minutes": 0,
+            "notify_tg": True,
+            "budget_change_percent": 0.0,
+            "budget_max_daily": 0.0,
+        }
+        rule.update(overrides)
+        async with self.test_session_maker() as session:
+            session.add(AppSettings(stop_confirmation_minutes=0))
+            acc = (
+                await session.execute(
+                    select(Account).where(Account.account_id == self.account_id)
+                )
+            ).scalar_one()
+            rule["workspace_id"] = acc.workspace_id
+            acc.active_rules = json.dumps([rule])
+            await session.commit()
+
+    async def test_campaign_rule_stops_the_campaign_not_its_adsets(self):
+        """Spend rolls up: $15.50 + $1.00 crosses $16 only at campaign level."""
+        await self._set_campaign_rule()
+        mock_meta = MockMetaClient()
+        sent_alerts = []
+
+        async def mock_notifier(**kwargs):
+            sent_alerts.append(kwargs)
+
+        worker = MonitoringWorker(
+            meta_client=mock_meta,
+            telegram_notifier=mock_notifier,
+            clock=lambda: 10_000.0,
+        )
+        stats = await worker.run_cycle()
+
+        self.assertEqual(mock_meta.campaign_status_changes, [("campaign_1", "PAUSED")])
+        # The ad sets themselves are never touched by a campaign rule.
+        self.assertEqual(mock_meta.status_changes, [])
+        self.assertEqual(stats["campaigns_stopped"], 1)
+        self.assertEqual(stats["adsets_stopped"], 0)
+
+        async with self.test_session_maker() as session:
+            # Reactivation tracking is an ad set concept; a campaign stop must
+            # not create a StoppedAdSet row pointing at a campaign id.
+            self.assertEqual(
+                (await session.execute(select(StoppedAdSet))).scalars().all(), []
+            )
+            event = (
+                await session.execute(
+                    select(AuditEvent).where(AuditEvent.event_type == "STOP")
+                )
+            ).scalar_one()
+            self.assertEqual(event.entity_level, "campaign")
+            self.assertEqual(event.entity_id, "campaign_1")
+            self.assertEqual(event.entity_name, "Sweden scale")
+            # An ad set column must never hold a campaign id.
+            self.assertEqual(event.adset_id, "")
+
+        self.assertIn("STOP", [alert["event_type"] for alert in sent_alerts])
+
+    async def test_campaign_rule_reads_the_real_campaign_status(self):
+        """A paused campaign whose ad sets are still ACTIVE must not be stopped."""
+        await self._set_campaign_rule()
+        mock_meta = MockMetaClient()
+        mock_meta.campaigns_state["campaign_1"]["status"] = "PAUSED"
+        mock_meta.campaigns_state["campaign_1"]["effective_status"] = "PAUSED"
+
+        worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: 10_000.0)
+        await worker.run_cycle()
+
+        self.assertEqual(mock_meta.campaign_status_changes, [])
+
+    async def test_adset_rules_do_not_read_campaign_inventory(self):
+        """The extra Meta call is only paid for when a campaign rule is due."""
+        mock_meta = MockMetaClient()
+        worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: 10_000.0)
+        await worker.run_cycle()
+
+        self.assertEqual(mock_meta.campaign_inventory_requests, 0)
 
     async def test_custom_rule_stops_adset(self):
         """Пользовательское правило: Спенд >= $10 И Лиды = 0 → STOP."""

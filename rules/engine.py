@@ -7,8 +7,9 @@ from core.currency import format_money, normalize_currency
 from core.metrics import (
     compare_metric,
     cost_per_event,
+    normalize_rule_level,
     rule_metric_reading,
-    rule_scope_matches_adset,
+    rule_scope_matches_entity,
     validate_rule_set_compatibility,
     validate_runtime_rule,
 )
@@ -25,8 +26,11 @@ class RuleAction(str, Enum):
 @dataclass
 class RuleEvaluationResult:
     action: RuleAction
-    adset_id: str
-    adset_name: str
+    # The entity the action applies to. For an ad set rule this is the ad set;
+    # for a campaign rule it is the campaign. Never mix the two: an audit row
+    # naming a campaign id in an ad set field would mislead an incident review.
+    entity_id: str
+    entity_name: str
     spend: float
     leads: int
     registrations: int
@@ -43,6 +47,14 @@ class RuleEvaluationResult:
     rule_name: str = ""
     conditions_snapshot: List[Dict[str, Any]] = field(default_factory=list)
     currency: str = "UNKNOWN"
+    entity_level: str = "adset"
+    # Parent campaign of an ad set; empty for a campaign-level result.
+    campaign_id: str = ""
+
+    @property
+    def is_adset(self) -> bool:
+        return self.entity_level == "adset"
+
 
 class RuleEngine:
     """
@@ -70,23 +82,29 @@ class RuleEngine:
 
     @staticmethod
     def evaluate(
-        adset: Dict[str, Any],
+        entity: Dict[str, Any],
         account: Account,
         insights_by_window: Optional[Dict[str, Dict[str, Any]]] = None,
         active_rules_override: Optional[List[Dict[str, Any]]] = None,
     ) -> RuleEvaluationResult:
         """
-        Оценивает адсет по пользовательским правилам с поддержкой AND/OR логики и временных окон.
-        Поддерживает множественные правила на один кабинет с разрешением конфликтов.
+        Оценивает сущность (адсет или кампанию) по пользовательским правилам
+        с поддержкой AND/OR логики и временных окон. Поддерживает множественные
+        правила на один кабинет с разрешением конфликтов.
+
+        Словарь описывает адсет или кампанию; уровень берётся из
+        ``entity_level``, по умолчанию адсет.
         """
-        adset_id = str(adset["adset_id"])
-        adset_name = str(adset["adset_name"])
-        status = adset.get("status", "UNKNOWN")
-        effective_status = adset.get("effective_status", status)
-        spend = float(adset.get("spend", 0.0))
-        leads = int(adset.get("leads", 0))
-        registrations = int(adset.get("registrations", 0))
-        purchases = int(adset.get("purchases", 0))
+        entity_level = str(entity.get("entity_level") or "adset")
+        entity_id = str(entity.get("entity_id") or entity.get("adset_id") or "")
+        entity_name = str(entity.get("entity_name") or entity.get("adset_name") or "")
+        campaign_id = str(entity.get("campaign_id") or "")
+        status = entity.get("status", "UNKNOWN")
+        effective_status = entity.get("effective_status", status)
+        spend = float(entity.get("spend", 0.0))
+        leads = int(entity.get("leads", 0))
+        registrations = int(entity.get("registrations", 0))
+        purchases = int(entity.get("purchases", 0))
         cpl = cost_per_event(spend, leads)
         cpreg = cost_per_event(spend, registrations)
         cpp = cost_per_event(spend, purchases)
@@ -96,8 +114,8 @@ class RuleEngine:
         def noop(reason="Метрики в пределах нормы."):
             return RuleEvaluationResult(
                 action=RuleAction.NOOP,
-                adset_id=adset_id,
-                adset_name=adset_name,
+                entity_id=entity_id,
+                entity_name=entity_name,
                 spend=spend,
                 leads=leads,
                 registrations=registrations,
@@ -109,6 +127,8 @@ class RuleEngine:
                 cooldown_minutes=0,
                 notify_tg=False,
                 currency=currency,
+                entity_level=entity_level,
+                campaign_id=campaign_id,
             )
 
         if not getattr(account, "rules_enabled", False):
@@ -168,8 +188,16 @@ class RuleEngine:
         for rule in active_rules:
             if rule.get("enabled", True) is False or rule.get("needs_review", False) is True:
                 continue
+            # A rule only ever sees the level it executes on, so a campaign rule
+            # never reads ad set metrics and vice versa.
+            try:
+                if normalize_rule_level(rule.get("level")) != entity_level:
+                    continue
+            except ValueError:
+                invalid_rule_seen = True
+                continue
             # A rule aimed at one campaign must leave the rest of the account alone.
-            if not rule_scope_matches_adset(rule.get("scope"), adset):
+            if not rule_scope_matches_entity(rule.get("scope"), entity):
                 continue
             try:
                 validate_runtime_rule(rule)
@@ -202,7 +230,7 @@ class RuleEngine:
                 if time_window != "today" and insights_by_window and time_window in insights_by_window:
                     source_data = insights_by_window[time_window]
                 else:
-                    source_data = adset
+                    source_data = entity
 
                 reading = rule_metric_reading(metric, source_data)
                 metric_val, metric_name, unit = reading.value, reading.label, reading.unit
@@ -280,8 +308,8 @@ class RuleEngine:
 
         return RuleEvaluationResult(
             action=highest_priority_action["action"],
-            adset_id=adset_id,
-            adset_name=adset_name,
+            entity_id=entity_id,
+            entity_name=entity_name,
             spend=spend,
             leads=leads,
             registrations=registrations,
@@ -298,4 +326,6 @@ class RuleEngine:
             rule_name=highest_priority_action["rule_name"],
             conditions_snapshot=highest_priority_action["conditions"],
             currency=currency,
+            entity_level=entity_level,
+            campaign_id=campaign_id,
         )

@@ -73,8 +73,17 @@ def build_audit_event(
         status=str(status),
         account_id=str(account.account_id or ""),
         account_name=str(account.name or ""),
-        adset_id=str(evaluation.adset_id if evaluation else adset_id),
-        adset_name=str(evaluation.adset_name if evaluation else adset_name),
+        # adset_id/adset_name stay empty for a campaign action: a campaign id
+        # sitting in an ad set column would misread during an incident review.
+        adset_id=str(
+            evaluation.entity_id if evaluation and evaluation.is_adset else adset_id
+        ),
+        adset_name=str(
+            evaluation.entity_name if evaluation and evaluation.is_adset else adset_name
+        ),
+        entity_level=str(evaluation.entity_level if evaluation else "adset"),
+        entity_id=str(evaluation.entity_id if evaluation else adset_id),
+        entity_name=str(evaluation.entity_name if evaluation else adset_name),
         rule_id=_optional_int(evaluation.rule_id if evaluation else None),
         rule_name=str(evaluation.rule_name if evaluation else ""),
         action=action or (evaluation.action.value if evaluation else ""),
