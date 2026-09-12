@@ -59,18 +59,22 @@ Implemented shared primitives:
 | DropdownMenu | `DropdownMenu` | open, selected, keyboard navigation, dismiss |
 | ContextMenu | `ContextMenu` | anchored, viewport-safe, keyboard navigation |
 | Tooltip | `Tooltip` | accessible optional explanation |
+| Input | `Input` | text, search, placeholder, focus, disabled |
 | LabelPill | `LinearLabelPill` | neutral and semantic text-labelled states |
 | DisplayOptions | `LinearDisplayOptions` | current selection and real state update |
 
-IconButton, Input, Dialog, EmptyState and Skeleton are required product patterns but do not yet have one canonical React primitive. Existing implementations are migration debt. When a task touches or repeats one of these patterns, create the shared primitive in `frontend/src/ui/` before spreading another implementation.
+IconButton, Dialog, EmptyState and Skeleton are required product patterns but do not yet have one canonical React primitive. Existing implementations are migration debt. When a task touches or repeats one of these patterns, create the shared primitive in `frontend/src/ui/` before spreading another implementation.
 
 ## Current production screens
 
 ### Inbox
 
 - shows real workspace events or an honest empty/loading/error state;
-- unread state is not communicated by color alone;
-- each interactive row has a real destination or handler.
+- reads the append-only activity stream from `/api/audit-events`; it does not invent read, archive, snooze or delete state that the audit model does not store;
+- supports server-backed status filters, search and pagination, while detail renders presentation-safe event fields instead of raw state payloads;
+- offers Undo only when the server returns `can_undo`, and leaves authorization and safety checks to the workspace-scoped undo endpoint;
+- each interactive row has a real destination or handler;
+- switches from the desktop master/detail split to one pane at a time below `md`, with an explicit Back action from event detail.
 
 ### Ads Manager
 

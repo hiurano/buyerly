@@ -98,6 +98,21 @@ class TestReactFrontendContract(unittest.TestCase):
             / "statistics"
             / "StatisticsView.tsx"
         ).read_text()
+        cls.inbox_view = (
+            ROOT / "frontend" / "src" / "components" / "inbox" / "InboxView.tsx"
+        ).read_text()
+        cls.inbox_item_row = (
+            ROOT
+            / "frontend"
+            / "src"
+            / "components"
+            / "inbox"
+            / "InboxItemRow.tsx"
+        ).read_text()
+        cls.audit_lib = (ROOT / "frontend" / "src" / "lib" / "audit.ts").read_text()
+        cls.sidebar = (
+            ROOT / "frontend" / "src" / "components" / "sidebar" / "Sidebar.tsx"
+        ).read_text()
         cls.rules_lib = (ROOT / "frontend" / "src" / "lib" / "rules.ts").read_text()
         cls.create_rule_modal = (
             ROOT / "frontend" / "src" / "components" / "rules" / "CreateRuleModal.tsx"
@@ -182,6 +197,7 @@ class TestReactFrontendContract(unittest.TestCase):
             "DropdownMenu",
             "ContextMenu",
             "Tooltip",
+            "Input",
         ):
             self.assertIn(component, self.ui_sources)
 
@@ -421,6 +437,51 @@ class TestReactFrontendContract(unittest.TestCase):
             "roasTarget",
         ):
             self.assertNotIn(fixture_or_unsupported_control, self.statistics_view)
+
+    def test_inbox_uses_workspace_audit_events_without_notification_fixtures(self):
+        for contract in (
+            "/api/audit-events?${params.toString()}",
+            "/api/audit-events/${eventId}/undo",
+            "requestGenerationRef",
+            "Loading workspace events…",
+            "Couldn't load Inbox",
+            "No workspace events yet",
+            "No matching events",
+            "fetchAuditEvents",
+            "undoAuditEvent",
+            "<LinearTabs",
+            "<LinearDataListStack",
+            "<DataState",
+            "<Input",
+            "<Button",
+            "md:w-[400px]",
+            "md:hidden",
+        ):
+            source = self.audit_lib if contract.startswith("/api/") else self.inbox_view
+            self.assertIn(contract, source)
+
+        combined = "\n".join((self.inbox_view, self.inbox_item_row, self.app_store))
+        for fixture_or_unsupported_control in (
+            "Welcome to Buyerly",
+            "Automated Rules Engine",
+            "Live Campaign Telemetry",
+            "Snooze notification",
+            "Delete notification",
+            "Delete all read",
+            "markAllNotificationsAsRead",
+            "deleteAllNotifications",
+            "deleteAllReadNotifications",
+            "toggleNotificationReadStatus",
+            "archiveNotification",
+            "selectedNotificationId",
+            "NotificationItem",
+        ):
+            self.assertNotIn(fixture_or_unsupported_control, combined)
+
+        self.assertNotIn("notifications", self.app_store)
+        self.assertNotIn("unreadCount", self.sidebar)
+        self.assertNotIn("before_state", self.inbox_view)
+        self.assertNotIn("after_state", self.inbox_view)
 
 
 if __name__ == "__main__":

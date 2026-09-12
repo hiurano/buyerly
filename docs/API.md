@@ -286,6 +286,8 @@ View payload принимает `view_mode` (`all`, `overview`, `delivery`, `tra
 
 Статусы истории: `SUCCESS` (Выполнено), `ERROR` (Ошибка), `SKIPPED` (Пропущено); исходное событие с успешной отменой отображается как `REVERTED`. Ответ каждого элемента содержит `before_state`, `after_state`, `correlation_id`, `can_undo` и `undo_reason`.
 
+Production Inbox использует этот endpoint как workspace activity stream: фильтрует по `status`, ищет через `search`, переключает страницы через `page`/`page_size` и показывает Undo только при `can_undo=true`. Интерфейс не выводит сырые `before_state`, `after_state` и `details`, а audit API не моделируется как read/delete/archive notification storage.
+
 Отмена доступна только для успешного STOP/START/изменения бюджета, если событие является последним изменением этого ad set, текущее состояние Meta совпадает с ожидаемым, действие ещё не отменено и не прошло 24 часа. Повторный запрос идемпотентен. История append-only: исходная запись не удаляется, создаётся связанное событие отмены.
 
 ## Внутренние карточки остановок
