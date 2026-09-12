@@ -102,6 +102,9 @@ class TestReactFrontendContract(unittest.TestCase):
         cls.create_rule_modal = (
             ROOT / "frontend" / "src" / "components" / "rules" / "CreateRuleModal.tsx"
         ).read_text()
+        cls.ads_manager_columns = (
+            ROOT / "frontend" / "src" / "components" / "campaigns" / "tableColumns.ts"
+        ).read_text()
         cls.rule_row = (
             ROOT / "frontend" / "src" / "components" / "rules" / "RuleRow.tsx"
         ).read_text()
@@ -366,10 +369,22 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("detachRuleFromAccount", self.app_store)
         self.assertIn("/scope", self.rules_lib)
 
-        # A rule aimed at the whole account or at single ad sets cannot be
-        # silently re-aimed from a per-campaign control.
+        # A rule aimed at another level cannot be silently re-aimed from here.
         self.assertIn("attachedRuleScopes", self.rule_selector_popover)
         self.assertIn("aria-disabled={locked}", self.rule_selector_popover)
+
+        # Campaigns and ad sets share one cell and one picker, so the two levels
+        # cannot drift apart.
+        self.assertIn("RuleAttachmentCell", self.campaign_row)
+        self.assertIn("RuleAttachmentCell", self.adset_row)
+        self.assertIn('level="campaign"', self.campaign_row)
+        self.assertIn('level="adset"', self.adset_row)
+        self.assertIn("adSetAttachedRules", self.app_store)
+        self.assertIn("toggleRuleForEntity", self.app_store)
+        # The Rules column is offered on both levels, never on ads.
+        self.assertIn(
+            "if (tab === 'campaigns' || tab === 'adsets') {", self.ads_manager_columns
+        )
 
     def test_statistics_uses_workspace_api_without_production_fixtures(self):
         for contract in (

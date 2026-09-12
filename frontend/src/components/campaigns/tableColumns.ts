@@ -42,8 +42,9 @@ export const getAdsManagerColumns = (
       columns.push({ id: 'roi', label: 'ROI', width: '90px', align: 'right', sortable: true });
     }
 
+    if (properties.rules !== false) columns.push({ id: 'rules', label: 'Rules', width: '100px' });
+
     if (tab === 'campaigns') {
-      if (properties.rules !== false) columns.push({ id: 'rules', label: 'Rules', width: '100px' });
       if (properties.group) columns.push({ id: 'group', label: 'Group', width: '140px' });
       if (properties.created) {
         columns.push({ id: 'created', label: 'Created', width: '80px', align: 'right', sortable: true });

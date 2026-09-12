@@ -199,18 +199,19 @@ function requestErrorMessage(error: unknown): string {
 }
 
 /**
- * Campaign id → rule ids aimed at it. Account-wide rules are deliberately
- * absent: they run on every campaign, so listing them per campaign would read
- * as a per-campaign attachment the buyer never made.
+ * Entity id → rule ids aimed at it, for one scope level. Account-wide rules are
+ * deliberately absent: they run on everything, so listing them per entity would
+ * read as a targeted attachment the buyer never made.
  */
-function campaignRuleIndex(
+function entityRuleIndex(
   scopes: Record<string, RuleScope>,
+  level: 'campaign' | 'adset',
 ): Record<string, string[]> {
   const index: Record<string, string[]> = {};
   for (const [ruleId, scope] of Object.entries(scopes)) {
-    if (scope.level !== 'campaign') continue;
-    for (const campaignId of scope.ids) {
-      (index[campaignId] ??= []).push(ruleId);
+    if (scope.level !== level) continue;
+    for (const entityId of scope.ids) {
+      (index[entityId] ??= []).push(ruleId);
     }
   }
   return index;
@@ -271,10 +272,16 @@ interface AppState {
   attachedRuleScopes: Record<string, RuleScope>;
   /** Campaign id → rules aimed at that campaign, derived from the scopes. */
   campaignAttachedRules: Record<string, string[]>;
+  /** Ad set id → rules aimed at that ad set. */
+  adSetAttachedRules: Record<string, string[]>;
   attachmentError: string;
   clearAttachmentError: () => void;
   loadAccountRuleAttachments: (accountId: string | null) => Promise<void>;
-  toggleRuleForCampaign: (campaignId: string, ruleId: string) => Promise<void>;
+  toggleRuleForEntity: (
+    level: 'campaign' | 'adset',
+    entityId: string,
+    ruleId: string,
+  ) => Promise<void>;
   isRightSidebarOpen: boolean;
   toggleRightSidebar: () => void;
   activeRightSidebarTab: 'groups' | 'rules' | 'overview';
@@ -539,6 +546,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   attachedRulesAccountId: null,
   attachedRuleScopes: {},
   campaignAttachedRules: {},
+  adSetAttachedRules: {},
   attachmentError: '',
   clearAttachmentError: () => set({ attachmentError: '' }),
 
@@ -548,6 +556,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         attachedRulesAccountId: null,
         attachedRuleScopes: {},
         campaignAttachedRules: {},
+        adSetAttachedRules: {},
       });
       return;
     }
@@ -561,29 +570,31 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({
         attachedRulesAccountId: accountId,
         attachedRuleScopes: scopes,
-        campaignAttachedRules: campaignRuleIndex(scopes),
+        campaignAttachedRules: entityRuleIndex(scopes, 'campaign'),
+        adSetAttachedRules: entityRuleIndex(scopes, 'adset'),
       });
     } catch (error) {
       set({ attachmentError: requestErrorMessage(error) });
     }
   },
 
-  toggleRuleForCampaign: async (campaignId, ruleId) => {
+  toggleRuleForEntity: async (level, entityId, ruleId) => {
     const { attachedRulesAccountId, attachedRuleScopes } = get();
     if (!attachedRulesAccountId) return;
 
     const presetId = Number(ruleId);
     const scope = attachedRuleScopes[ruleId];
 
-    // An account-wide or ad-set-scoped rule already has a target that this
-    // per-campaign control cannot express. Silently rewriting it would either
-    // widen or destroy what the buyer set elsewhere.
-    if (scope && scope.level !== 'campaign') {
+    // A rule already aimed somewhere else has a target this control cannot
+    // express. Silently rewriting it would widen or destroy what the buyer set.
+    if (scope && scope.level !== level) {
       set({
         attachmentError:
           scope.level === 'account'
             ? 'Это правило работает на весь кабинет. Измените его область на экране Rules.'
-            : 'Это правило нацелено на отдельные адсеты. Измените его область на экране Rules.',
+            : scope.level === 'campaign'
+            ? 'Это правило нацелено на отдельные кампании. Снимите его там или измените область на экране Rules.'
+            : 'Это правило нацелено на отдельные адсеты. Снимите его там или измените область на экране Rules.',
       });
       return;
     }
@@ -592,19 +603,19 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       if (!scope) {
         await assignRuleToAccount(attachedRulesAccountId, presetId, {
-          level: 'campaign',
-          ids: [campaignId],
+          level,
+          ids: [entityId],
         });
       } else {
-        const nextIds = scope.ids.includes(campaignId)
-          ? scope.ids.filter((id) => id !== campaignId)
-          : [...scope.ids, campaignId];
+        const nextIds = scope.ids.includes(entityId)
+          ? scope.ids.filter((id) => id !== entityId)
+          : [...scope.ids, entityId];
         if (nextIds.length === 0) {
-          // A campaign rule with no campaigns left has nothing to act on.
+          // A targeted rule with nothing left to target has no work to do.
           await detachRuleFromAccount(attachedRulesAccountId, presetId);
         } else {
           await setAttachedRuleScope(attachedRulesAccountId, presetId, {
-            level: 'campaign',
+            level,
             ids: nextIds,
           });
         }
