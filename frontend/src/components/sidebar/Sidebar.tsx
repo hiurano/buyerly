@@ -19,11 +19,8 @@ export const Sidebar: React.FC = () => {
     resetSidebarWidth,
     activeTab,
     setActiveTab,
-    notifications,
   } = useAppStore();
   const [isDragging, setIsDragging] = useState(false);
-
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const trackRef = useRef<HTMLDivElement>(null);
   const indicatorRef = useRef<HTMLDivElement>(null);
@@ -143,13 +140,6 @@ export const Sidebar: React.FC = () => {
                   Inbox
                 </span>
               </div>
-
-              {/* Exact Linear Unread Badge */}
-              {unreadCount > 0 && (
-                <span className="linear-sidebar-badge">
-                  {unreadCount}
-                </span>
-              )}
             </button>
           </Tooltip>
 

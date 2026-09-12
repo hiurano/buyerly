@@ -32,15 +32,6 @@ import type {
   RuleScope,
 } from '@/lib/rules';
 
-export interface NotificationItem {
-  id: string;
-  title: string;
-  preview: string;
-  timestamp: string;
-  isRead: boolean;
-  contentBody?: string;
-}
-
 export interface CampaignItem {
   id: string;
   identifier: string;
@@ -234,16 +225,6 @@ interface AppState {
   interfaceTheme: InterfaceTheme;
   setInterfaceTheme: (theme: InterfaceTheme) => void;
 
-  // Inbox State
-  notifications: NotificationItem[];
-  selectedNotificationId: string | null;
-  setSelectedNotificationId: (id: string | null) => void;
-  archiveNotification: (id: string) => void;
-  markAllNotificationsAsRead: () => void;
-  deleteAllNotifications: () => void;
-  deleteAllReadNotifications: () => void;
-  toggleNotificationReadStatus: (id: string) => void;
-
   // Campaigns / Ads Manager State
   campaigns: CampaignItem[];
   campaignGroups: CampaignGroup[];
@@ -409,54 +390,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       ? (window.localStorage.getItem('buyerly-interface-theme') as InterfaceTheme)
       : 'system',
   setInterfaceTheme: (theme) => set({ interfaceTheme: theme }),
-
-  notifications: [
-    {
-      id: 'welcome-1',
-      title: 'Welcome to Buyerly',
-      preview: 'Watch an introductory guide and access key media buying resources below.',
-      timestamp: '1h',
-      isRead: false,
-      contentBody:
-        'Welcome to your new workspace! Buyerly is built for high-performance media buying teams and solo affiliates. Automate rules, scale winning adsets, stop bleeding spend, and track real-time CPA & ROI with lightning speed and keyboard shortcuts.',
-    },
-  ],
-  selectedNotificationId: 'welcome-1',
-  setSelectedNotificationId: (id) =>
-    set((state) => ({
-      selectedNotificationId: id,
-      notifications: id
-        ? state.notifications.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-        : state.notifications,
-    })),
-  archiveNotification: (id) =>
-    set((state) => ({
-      notifications: state.notifications.filter((n) => n.id !== id),
-      selectedNotificationId:
-        state.selectedNotificationId === id ? null : state.selectedNotificationId,
-    })),
-  markAllNotificationsAsRead: () =>
-    set((state) => ({
-      notifications: state.notifications.map((n) => ({ ...n, isRead: true })),
-    })),
-  deleteAllNotifications: () =>
-    set(() => ({
-      notifications: [],
-      selectedNotificationId: null,
-    })),
-  deleteAllReadNotifications: () =>
-    set((state) => ({
-      notifications: state.notifications.filter((n) => !n.isRead),
-      selectedNotificationId: state.notifications.some((n) => n.id === state.selectedNotificationId && n.isRead)
-        ? null
-        : state.selectedNotificationId,
-    })),
-  toggleNotificationReadStatus: (id) =>
-    set((state) => ({
-      notifications: state.notifications.map((n) =>
-        n.id === id ? { ...n, isRead: !n.isRead } : n
-      ),
-    })),
 
   campaigns: [],
   campaignGroups: [],
