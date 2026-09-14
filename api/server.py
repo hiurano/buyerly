@@ -14,7 +14,7 @@ from core.config import settings
 from core.rate_limit import limiter
 from core.workspace_slugs import RESERVED_WORKSPACE_SLUGS
 from database.db import async_session_maker
-from services.image_uploads import cleanup_stale_workspace_logos
+from services.image_uploads import UPLOADS_ROOT, cleanup_stale_workspace_logos
 
 logger = logging.getLogger(__name__)
 
@@ -119,8 +119,8 @@ def create_app() -> FastAPI:
     # serves the same files through the dedicated frontend container.
     project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     frontend_dir = os.path.join(project_dir, "frontend", "dist")
-    webapp_dir = os.path.join(project_dir, "webapp")
-    uploads_dir = os.path.join(webapp_dir, "uploads")
+    public_dir = os.path.join(project_dir, "frontend", "public")
+    uploads_dir = str(UPLOADS_ROOT)
     os.makedirs(os.path.join(uploads_dir, "avatars"), exist_ok=True)
     os.makedirs(os.path.join(uploads_dir, "workspaces"), exist_ok=True)
 
@@ -128,6 +128,9 @@ def create_app() -> FastAPI:
     if os.path.exists(assets_dir):
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
     app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+    legal_assets_dir = os.path.join(public_dir, "static")
+    if os.path.isdir(legal_assets_dir):
+        app.mount("/static", StaticFiles(directory=legal_assets_dir), name="legal-assets")
 
     public_documents = {
         "/privacy": "privacy.html",
@@ -139,7 +142,7 @@ def create_app() -> FastAPI:
     @app.get("/terms", include_in_schema=False)
     @app.get("/data-deletion", include_in_schema=False)
     async def serve_public_document(request: Request):
-        document_path = os.path.join(webapp_dir, public_documents[request.url.path])
+        document_path = os.path.join(public_dir, public_documents[request.url.path])
         if os.path.exists(document_path):
             return FileResponse(
                 document_path,

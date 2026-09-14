@@ -138,7 +138,8 @@ scripts/             Скрипты резервного копирования 
 services/            Точки входа отдельных микросервисов (API, бот, воркер, база)
 tests/               Набор модульных, интеграционных и контрактных тестов
 frontend/            Production React/Vite SPA, semantic tokens, shared UI и Nginx-конфигурация
-webapp/              Legacy authenticated UI и public legal HTML; новая продуктовая работа сюда не добавляется
+frontend/public/     Public legal HTML и ресурсы; включаются в Vite build
+uploads/             Runtime-хранилище пользовательских изображений (не в Git)
 ```
 
 ## Документация

@@ -79,7 +79,7 @@ flowchart LR
 - **Production-источник визуальных значений**: [`frontend/src/styles/tokens.css`](frontend/src/styles/tokens.css). Цвета, типографика, spacing, размеры controls, radii, shadows, layers и motion меняются semantic-токеном там, а не копируются в page-specific component.
 - **Production-источник shared components**: [`frontend/src/ui/`](frontend/src/ui/). Существующий React primitive переиспользуется; повторяющийся control сначала оформляется как shared primitive, а не как новая локальная семья.
 - [`frontend/src/styles/index.css`](frontend/src/styles/index.css) — shared/domain composition layer. Он потребляет semantic tokens, но не создаёт второй источник глобальных constants.
-- `webapp/` — legacy authenticated UI, не production-приложение. Новая продуктовая функциональность туда не добавляется; production image использует оттуда только public legal HTML.
+- Старый интерфейс удалён. Production UI находится в `frontend/`, public legal HTML и ресурсы — в `frontend/public/`. Пользовательские изображения хранятся в runtime-каталоге `uploads/`.
 - Vite создаёт fingerprinted assets, поэтому ручной cache-version не нужен. При изменении shared UI обновить `tests/test_react_frontend_contract.py` и пройти визуальную проверку 390/768/1024/1440px без document-level overflow.
 - Id, handlers, API payloads, workspace isolation и security boundaries не меняются визуальным рефакторингом, если это явно не входит в задачу.
 - Захваченные страницы сторонних продуктов и локальные HTML-снимки в репозитории не хранятся.

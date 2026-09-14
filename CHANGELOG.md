@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Removed
+- Retired vanilla authenticated interface, its assets, Docker/Nginx configuration and legacy-only UI tests. React is the sole product frontend.
+
+### Fixed
+- Public legal pages now ship with their CSS and SVG assets through `frontend/public`, preserving existing URLs. Runtime uploads use `/app/uploads` with the existing durable volume.
+
 ### Added
 
 - В настройках появился раздел `Profile`: аватар, текущий email и полное имя. Email меняется прямо из интерфейса — модальное окно в два шага запрашивает новый адрес и шестизначный код. Эндпоинты `/api/auth/request-email-change` и `/api/auth/verify-email-change` существовали с самого начала, но ни один экран их не вызывал, поэтому сменить почту было невозможно без прямого обращения к API.

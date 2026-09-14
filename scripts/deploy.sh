@@ -133,6 +133,8 @@ preserve_legacy_uploads() {
     fi
 
     legacy_upload_dir=$(mktemp -d)
+    # Upgrade compatibility: this reads the old container before replacement.
+    # Current containers use /app/uploads with the same named volume.
     if docker cp buyerly-api:/app/webapp/uploads/. "${legacy_upload_dir}/" 2>/dev/null; then
         docker run --rm \
             -v "${uploads_volume}:/uploads" \

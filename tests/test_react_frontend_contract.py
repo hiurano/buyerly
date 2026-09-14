@@ -216,8 +216,8 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertIn("frontend/src/styles/tokens.css", contract)
             self.assertIn("frontend/src/ui/", contract)
 
-        self.assertIn("not the authenticated production application", self.ui_contract)
-        self.assertIn("legacy authenticated UI", self.design_system)
+        self.assertIn("frontend/public/", self.ui_contract)
+        self.assertIn("retired authenticated interface has been removed", self.design_system)
 
     def test_ads_manager_uses_workspace_api_without_production_fixtures(self):
         for contract in (

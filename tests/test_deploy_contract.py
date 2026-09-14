@@ -191,7 +191,7 @@ class TestDeployContract(unittest.TestCase):
 
     def test_user_uploads_are_durable_and_served_by_web(self):
         nginx = (Path(__file__).parents[1] / "frontend" / "nginx.conf").read_text()
-        self.assertIn("buyerly-uploads:/app/webapp/uploads", self.compose)
+        self.assertIn("buyerly-uploads:/app/uploads", self.compose)
         self.assertIn(
             "buyerly-uploads:/usr/share/nginx/html/uploads:ro",
             self.compose,

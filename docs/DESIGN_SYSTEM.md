@@ -24,8 +24,8 @@ Owner: Product / Frontend
 - `frontend/src/styles/index.css` composes shared and domain styles while consuming semantic tokens;
 - `frontend/src/components/` owns product surfaces and page-specific composition;
 - `frontend/src/lib/api.ts` and `frontend/src/lib/routing.ts` own the client API and canonical routes;
-- `frontend/Dockerfile` builds hashed Vite assets and copies only the public legal HTML pages from `webapp/`;
-- `webapp/` is legacy authenticated UI pending retirement and is not extended with new product work.
+- `frontend/Dockerfile` builds hashed Vite assets and includes legal documents and assets from `frontend/public/`;
+- the retired authenticated interface has been removed.
 
 ## Tokens
 
@@ -144,7 +144,7 @@ Full mobile support — touch-safe targets, wrapping toolbars, compact navigatio
 
 | Legacy or local pattern | Production target | Migration rule |
 |---|---|---|
-| `webapp/css/ui-system.css` tokens | `frontend/src/styles/tokens.css` | Port only values still needed by a React consumer; do not maintain two sources. |
+| Retired vanilla UI tokens | `frontend/src/styles/tokens.css` | Port only values still needed by a React consumer; do not maintain two sources. |
 | Legacy `.ui-*` selector families | React primitive in `frontend/src/ui/` | Preserve useful accessibility behavior, not legacy markup for its own sake. |
 | Repeated raw page buttons/inputs/dialogs | New shared React primitive | Migrate consumers incrementally when touched. |
 | Page-local reusable constants | Semantic token | Promote by meaning and check all consumers. |
@@ -153,7 +153,7 @@ Full mobile support — touch-safe targets, wrapping toolbars, compact navigatio
 
 ## Review checklist
 
-- production source is under `frontend/`, not legacy `webapp/`;
+- production source is under `frontend/`, with public documents in `frontend/public/`;
 - shared controls and semantic tokens are reused;
 - primary, warning and destructive actions are distinct;
 - focus, disabled, busy, empty, partial, stale, error and success states are explicit;

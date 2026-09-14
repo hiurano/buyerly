@@ -60,10 +60,6 @@ jobs:
           npm ci
           npm run build
 
-      - name: Validate Frontend JavaScript Syntax
-        run: |
-          find webapp/js -type f -name '*.js' -print0 | sort -z | xargs -0 -n1 node --check
-
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
