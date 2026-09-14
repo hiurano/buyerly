@@ -133,7 +133,7 @@ const SummaryMetric: React.FC<{
   <article className="flex min-h-[var(--statistics-metric-height)] min-w-0 flex-col rounded-[var(--control-border-radius)] border border-[var(--card-border)] bg-[var(--card-bg)] p-4 shadow-[var(--canvas-shadow)]">
     <div className="text-[12px] font-medium text-[var(--text-muted)]">{label}</div>
     <div className="mt-2.5 break-words text-[length:var(--statistics-metric-mobile-font-size)] font-medium leading-none tracking-[-0.03em] text-[var(--text-primary)] tabular-nums sm:text-[length:var(--statistics-metric-font-size)]">
-      {value}
+      {value.replace(/\u00a0/g, ' ')}
     </div>
     <div className="mt-2 text-[12px] text-[var(--text-secondary)]">{supporting}</div>
   </article>
