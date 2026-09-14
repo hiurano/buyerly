@@ -86,6 +86,8 @@ try {
     await page.getByRole('button', { name: 'Filter statistics', exact: true }).focus();
     await page.keyboard.press('Enter');
     await page.getByRole('menuitemradio', { name: 'Today', exact: true }).waitFor();
+    const menu = await page.getByRole('menu').boundingBox();
+    assert.ok(menu && menu.x >= 0 && menu.x + menu.width <= width && menu.y + menu.height <= 1000, `${width}: filter menu must fit`);
     await screenshot('filter');
     await page.getByRole('menuitemradio', { name: 'Today', exact: true }).click();
     await page.getByText('QA campaign 1', { exact: true }).waitFor();

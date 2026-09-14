@@ -428,7 +428,7 @@ export const StatisticsView: React.FC = () => {
                 </Button>
               </DropdownMenuTrigger>
             </Tooltip>
-            <DropdownMenuContent align="end" className="max-w-[calc(100vw-24px)]">
+            <DropdownMenuContent align="end" className="!w-[var(--statistics-filter-width)] !max-w-[calc(100vw-24px)] max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto">
               <DropdownMenuLabel>Ad account</DropdownMenuLabel>
               <DropdownMenuRadioGroup value={selectedAccountId ?? ''} onValueChange={selectAccount}>
                 {accounts.map((account) => (
