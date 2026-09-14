@@ -69,7 +69,7 @@ try {
       return route.fulfill({ json: [] });
     });
     const open = () => page.goto('http://127.0.0.1:5173/statistics-preview.html');
-    const screenshot = name => page.screenshot({ path: `${output}/${width}-${name}.png`, fullPage: true });
+    const screenshot = name => page.screenshot({ path: `${output}/${width}-${name}.png`, fullPage: true, animations: 'disabled' });
     const noOverflow = async () => {
       assert.equal(await page.locator('.app-shell').evaluate(node => getComputedStyle(node).display), 'flex', 'Application Tailwind styles must be loaded');
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${width}: document overflow`);
