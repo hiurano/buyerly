@@ -78,9 +78,10 @@ class TestFrontendRuleContract(unittest.TestCase):
         for contract in (
             "One source of truth",
             "Mandatory component recipes",
+            "Density and geometry",
             "Forbidden patterns",
+            "Known gaps",
             "Change protocol",
-            "390, 768, 1024 and 1440px",
         ):
             self.assertIn(contract, self.ui_contract)
 

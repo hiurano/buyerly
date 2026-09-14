@@ -8,7 +8,7 @@ Owner: Product / Frontend
 ## Principles
 
 1. **Action is not warning.** Primary, warning and destructive actions use separate semantic treatments.
-2. **Readable by default.** Base interface text is at least 14px; 12px is reserved for secondary metadata.
+2. **Dense like Linear, readable anyway.** Base interface text is 12–13px, matching the Linear scale the tokens encode; 14–15px carries emphasis and section titles, 11px is the floor and only for metadata badges.
 3. **Numbers scan, identifiers copy.** Metrics use tabular numerals; monospace is reserved for IDs and technical values.
 4. **State before decoration.** Loading, empty, partial, stale, error, permission and success are understandable without color.
 5. **One surface per job.** Headers live on the canvas, related metrics share a divided surface, and data lists have one outer surface.
@@ -130,12 +130,13 @@ IconButton, Dialog, EmptyState and Skeleton are required product patterns but do
 
 ## Responsive contract
 
-- `390px`: priority actions have touch-safe targets; toolbars wrap; data surfaces scroll locally when columns cannot collapse;
-- `768px`: compact navigation must not create document-level horizontal overflow;
-- `1024px`: content and secondary panels preserve hierarchy without covering primary data;
-- `1440px`: density may increase, but line length and scan paths remain bounded;
+Buyerly is desktop-first today. The production layout targets `1024px` and wider, and `frontend/src/styles/index.css` contains no media queries. What is required now:
+
+- no document-level horizontal overflow at the widths the product actually serves;
 - dialogs fit the viewport, keep close/primary actions reachable and expose internal scrolling for long content;
-- every breakpoint retains the same data meaning and available safe actions.
+- no hard-coded width that would block a later mobile pass.
+
+Full mobile support — touch-safe targets, wrapping toolbars, compact navigation — is open work in backlog queue 8 (BL-052). Until it ships, no screen is described as mobile-ready.
 
 ## Migration map
 
@@ -156,5 +157,5 @@ IconButton, Dialog, EmptyState and Skeleton are required product patterns but do
 - focus, disabled, busy, empty, partial, stale, error and success states are explicit;
 - state is not communicated by color alone;
 - no fixture is presented as live workspace or Meta data;
-- 390 / 768 / 1024 / 1440px have no document-level overflow;
+- no document-level horizontal overflow at desktop widths;
 - API payloads, workspace isolation, roles and security boundaries are preserved unless explicitly in scope.
