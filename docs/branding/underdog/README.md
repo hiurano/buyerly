@@ -4,8 +4,7 @@
 
 ## 📁 Директории
 
-1. `docs/branding/underdog/`
-2. `webapp/icons/underdog/`
+Референсы хранятся в `docs/branding/underdog/`. Копии старого интерфейса удалены.
 
 ## 🎨 Список ассетов
 

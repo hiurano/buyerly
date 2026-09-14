@@ -1,5 +1,7 @@
 # 📋 Meta App Review Submission Guide & Screencast Script (Buyerly)
 
+> Исторические записи и этапы могут быть заменены последующими изменениями. Текущая архитектура: [ARCHITECTURE.md](ARCHITECTURE.md); актуальные задачи: [PRODUCT_BACKLOG.md](PRODUCT_BACKLOG.md). Статус внешних сервисов проверяется отдельно.
+
 > **Цель:** Официальное прохождение Meta App Review для получения **Advanced Access** к разрешениям Marketing API (`ads_read`, `ads_management`, `business_management`), что позволит любому пользователю/байеру подключать свои рекламные кабинеты к **Buyerly** в 1 клик.
 
 ---

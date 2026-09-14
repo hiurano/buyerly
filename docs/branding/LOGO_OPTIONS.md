@@ -1,16 +1,6 @@
-# Buyerly — Официальный логотип и фирменный знак (SVG / PNG)
+# Ресурсы бренда Buyerly
 
-Официальный утверждённый логотип сервиса **Buyerly** (AI Media Buyer Platform) — **The Doberman «B» Mark**.
+Production React использует [buyerly-logo.png](../../frontend/public/buyerly-logo.png).
+Юридические страницы используют [favicon.svg](../../frontend/public/static/icons/favicon.svg) и [buyerly_logo_badge.svg](../../frontend/public/static/icons/buyerly_logo_badge.svg).
 
-Синтез геометрии **Attio**, хищного маскота команды **Underdog** и монограммы **«B»**.
-
----
-
-## 🌟 Официальный знак: The Doberman «B» Mark
-
-* **Файлы:**
-  * Фавикон: [`webapp/icons/favicon.svg`](file:///home/user/Projects/ai-mediabuyer/webapp/icons/favicon.svg)
-  * Бейдж приложения: [`webapp/icons/buyerly_logo_badge.svg`](file:///home/user/Projects/ai-mediabuyer/webapp/icons/buyerly_logo_badge.svg)
-  * Прозрачный знак: [`webapp/icons/buyerly_logo_trans.svg`](file:///home/user/Projects/ai-mediabuyer/webapp/icons/buyerly_logo_trans.svg)
-* **Папка ассетов:** [`docs/branding/buyerly/`](file:///home/user/Projects/ai-mediabuyer/docs/branding/buyerly/)
-* **Смысл:** Профиль добермана с навостренными ушами, хищной пастью и глазом-прицелом, образующий букву **«B»** (Buyerly / Buy).
+Исходные варианты Buyerly хранятся в [buyerly/](buyerly/). Каталоги [attio/](attio/) и [underdog/](underdog/) содержат дизайн-референсы и не являются production UI.

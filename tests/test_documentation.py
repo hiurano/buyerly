@@ -1,5 +1,7 @@
 import unittest
+import re
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 from api.server import create_app
 
@@ -40,31 +42,31 @@ class TestDocumentationContract(unittest.TestCase):
         ):
             self.assertIn(path, readme)
 
-    def test_ux_baseline_covers_routes_states_and_pilots(self):
-        baseline = (
-            PROJECT_ROOT / "docs" / "UX_BASELINE_2026-08-29.md"
-        ).read_text(encoding="utf-8")
+    def test_current_documentation_links_resolve(self):
+        # Historical snapshots can refer to retired source files. Check current
+        # navigation and the archive index, without revalidating old proposals.
+        documents = [PROJECT_ROOT / "README.md", PROJECT_ROOT / "CHANGELOG.md"]
+        documents += list((PROJECT_ROOT / "docs").glob("*.md"))
+        documents += list((PROJECT_ROOT / "docs" / "branding").rglob("*.md"))
+        documents.append(PROJECT_ROOT / "docs" / "archive" / "README.md")
+        missing = []
+        for document in documents:
+            content = re.sub(r"```.*?```", "", document.read_text(), flags=re.S)
+            for target in re.findall(r"\]\(([^\s)]+)\)", content):
+                url = urlsplit(target)
+                if url.scheme or url.netloc or not url.path or url.path.startswith("/"):
+                    continue
+                if not (document.parent / unquote(url.path)).exists():
+                    missing.append(f"{document.relative_to(PROJECT_ROOT)}: {target}")
+        self.assertEqual(missing, [])
 
-        for contract in (
-            "/sign-in",
-            "/facebook-accounts",
-            "/accounts",
-            "/rules",
-            "/summary",
-            "/logs",
-            "/settings",
-            "Loading",
-            "Empty",
-            "Populated",
-            "Error",
-            "Partial",
-            "Long content",
-            "Permission denied",
-            "### Today",
-            "### Automations",
-            "### Connections",
-        ):
-            self.assertIn(contract, baseline)
+    def test_readme_directs_tests_to_cloud_and_changelog_has_one_unreleased(self):
+        readme = (PROJECT_ROOT / "README.md").read_text()
+        self.assertIn("Локальный запуск тестов запрещён", readme)
+        self.assertIn("gh run view <run-id> --log-failed", readme)
+        self.assertNotIn("unittest discover", readme)
+        changelog = (PROJECT_ROOT / "CHANGELOG.md").read_text()
+        self.assertEqual(changelog.count("## [Unreleased]"), 1)
 
     def test_design_system_documents_tokens_components_and_migration(self):
         design_system = (PROJECT_ROOT / "docs" / "DESIGN_SYSTEM.md").read_text(
