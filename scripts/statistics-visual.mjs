@@ -10,6 +10,8 @@ const require = createRequire(new URL('../frontend/package.json', import.meta.ur
 const { chromium } = require('playwright');
 const { createServer } = await import(require.resolve('vite'));
 const root = new URL('../frontend/', import.meta.url).pathname;
+// Tailwind resolves its config and content paths from the working directory.
+process.chdir(root);
 const output = '/tmp/buyerly-statistics-visual';
 await mkdir(output, { recursive: true });
 await writeFile(`${root}statistics-preview.html`, '<div id="root"></div><script type="module" src="/statistics-preview.tsx"></script>');
@@ -69,7 +71,10 @@ try {
     const open = () => page.goto('http://127.0.0.1:5173/statistics-preview.html');
     const screenshot = name => page.screenshot({ path: `${output}/${width}-${name}.png`, fullPage: true });
     const noOverflow = async () => {
+      assert.equal(await page.locator('.app-shell').evaluate(node => getComputedStyle(node).display), 'flex', 'Application Tailwind styles must be loaded');
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${width}: document overflow`);
+      const heading = await page.getByRole('heading', { name: 'Statistics', exact: true }).boundingBox();
+      assert.ok(heading && heading.y >= 0 && heading.y < 1000 && heading.x < width, `${width}: Statistics must be in the viewport`);
       const cards = await page.locator('article').evaluateAll(nodes => nodes.map(node => ({ scroll: node.scrollWidth, client: node.clientWidth })));
       assert.ok(cards.every(card => card.scroll <= card.client + 1), `${width}: clipped metric`);
     };
