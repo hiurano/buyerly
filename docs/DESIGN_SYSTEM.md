@@ -94,6 +94,8 @@ IconButton, Dialog, EmptyState and Skeleton are required product patterns but do
 
 ### Statistics
 
+- keeps the restored individual overview cards, header filter/display menus and search beside the entity tabs (below them on mobile); this user-requested composition is a scoped exception to the divided-summary-surface principle;
+
 - selects one imported workspace account and reads campaign, ad-set or ad facts through the workspace-isolated hierarchy API;
 - supported periods are Today, Yesterday, Last 3 days and Last 7 days, matching the API vocabulary;
 - the overview is derived from the currently loaded rows and identifies the Analytics Fact Store freshness timestamp;

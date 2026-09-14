@@ -53,6 +53,11 @@
   --canvas-border-radius: 12px;
   --control-border-radius: 8px;
 
+  /* Statistics overview: restored individual metric cards. */
+  --statistics-metric-height: 136px;
+  --statistics-metric-font-size: 26px;
+  --statistics-metric-mobile-font-size: 20px;
+
   /* Typography Weights & Settings */
   --font-weight-normal: 450;
   --font-weight-medium: 500;

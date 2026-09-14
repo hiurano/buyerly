@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronRight, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { ApiError, apiRequest } from '@/lib/api';
 import type {
   AnalyticsHierarchyItem,
@@ -13,6 +13,8 @@ import {
 } from '@/components/campaigns/liveCampaigns';
 import {
   LinearCheckIcon,
+  LinearFilterIcon,
+  LinearSlidersIcon,
   LinearSidebarLeftToggleIcon,
 } from '@/icons/LinearIcons';
 import {
@@ -21,9 +23,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
 import { Button } from '@/ui/Button';
+import { Input } from '@/ui/Input';
 import { DataState } from '@/ui/DataState';
 import {
   LinearDataListColumn,
@@ -126,9 +130,9 @@ const SummaryMetric: React.FC<{
   value: string;
   supporting: string;
 }> = ({ label, value, supporting }) => (
-  <article className="min-w-0 border-t border-[var(--color-border-primary)] p-4">
+  <article className="flex min-h-[var(--statistics-metric-height)] min-w-0 flex-col rounded-[var(--control-border-radius)] border border-[var(--card-border)] bg-[var(--card-bg)] p-4 shadow-[var(--canvas-shadow)]">
     <div className="text-[12px] font-medium text-[var(--text-muted)]">{label}</div>
-    <div className="mt-2 font-mono text-[24px] font-medium leading-none tracking-[-0.03em] text-[var(--text-primary)] tabular-nums">
+    <div className="mt-2.5 break-words text-[length:var(--statistics-metric-mobile-font-size)] font-medium leading-none tracking-[-0.03em] text-[var(--text-primary)] tabular-nums sm:text-[length:var(--statistics-metric-font-size)]">
       {value}
     </div>
     <div className="mt-2 text-[12px] text-[var(--text-secondary)]">{supporting}</div>
@@ -146,7 +150,7 @@ const StatisticsRow: React.FC<{
     className="text-left"
     style={{ minWidth: `${TABLE_MIN_WIDTH}px` }}
   >
-    <div className="min-w-0">
+    <div className="sticky left-0 z-[1] min-w-0 bg-[var(--bg-canvas)] transition-colors group-hover/row:bg-[var(--item-hover-bg)]">
       <div className="truncate text-[14px] font-medium text-[var(--text-primary)]">{item.entity_name}</div>
       <div className="mt-0.5 truncate font-mono text-[12px] text-[var(--text-muted)]">Meta ID {item.entity_id}</div>
     </div>
@@ -155,22 +159,22 @@ const StatisticsRow: React.FC<{
       <LinearLabelPill label={statusLabel(item)} dotColor={statusDot(item)} />
     </div>
 
-    <div className="text-right font-mono text-[14px] text-[var(--text-primary)] tabular-nums">
+    <div className="text-right text-[14px] text-[var(--text-primary)] tabular-nums">
       {formatMetricMoney(item.spend, item.currency)}
     </div>
-    <div className="text-right font-mono text-[14px] text-[var(--text-primary)] tabular-nums">
+    <div className="text-right text-[14px] text-[var(--text-primary)] tabular-nums">
       {formatCount(item.leads)}
     </div>
-    <div className="text-right font-mono text-[14px] text-[var(--text-primary)] tabular-nums">
+    <div className="text-right text-[14px] text-[var(--text-primary)] tabular-nums">
       {formatMetricMoney(item.cost_per_lead, item.currency)}
     </div>
-    <div className="text-right font-mono text-[14px] text-[var(--text-primary)] tabular-nums">
+    <div className="text-right text-[14px] text-[var(--text-primary)] tabular-nums">
       {formatCount(item.impressions)}
     </div>
-    <div className="text-right font-mono text-[14px] text-[var(--text-primary)] tabular-nums">
+    <div className="text-right text-[14px] text-[var(--text-primary)] tabular-nums">
       {formatCount(item.clicks)}
     </div>
-    <div className="text-right font-mono text-[14px] text-[var(--text-primary)] tabular-nums">
+    <div className="text-right text-[14px] text-[var(--text-primary)] tabular-nums">
       {formatPercent(item.ctr)}
     </div>
   </LinearDataListRow>
@@ -415,82 +419,76 @@ export const StatisticsView: React.FC = () => {
           )}
           <h1 className="truncate text-[14px] font-medium tracking-[-0.01em] text-[var(--text-primary)]">Statistics</h1>
         </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <DropdownMenu>
+            <Tooltip content="Filter statistics" side="bottom" sideOffset={6}>
+              <DropdownMenuTrigger asChild>
+                <Button className="!h-11 !w-11 !rounded-[var(--control-border-radius)] !border-transparent !p-0 sm:!h-9 sm:!w-9" aria-label="Filter statistics" disabled={accounts.length === 0}>
+                  <LinearFilterIcon size={14} aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+            </Tooltip>
+            <DropdownMenuContent align="end" className="max-w-[calc(100vw-24px)]">
+              <DropdownMenuLabel>Ad account</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={selectedAccountId ?? ''} onValueChange={selectAccount}>
+                {accounts.map((account) => (
+                  <DropdownMenuRadioItem key={account.account_id} value={account.account_id}>
+                    <span className="min-w-0 truncate">{metaAccountLabel(account)}</span>
+                    {selectedAccountId === account.account_id && <LinearCheckIcon size={13} className="shrink-0" aria-hidden="true" />}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Reporting period</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={period} onValueChange={(value) => setPeriod(value as ReportingPeriod)}>
+                {PERIOD_OPTIONS.map((option) => (
+                  <DropdownMenuRadioItem key={option.value} value={option.value}>
+                    <span>{option.label}</span>
+                    {period === option.value && <LinearCheckIcon size={13} aria-hidden="true" />}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <Tooltip content="Display options" side="bottom" sideOffset={6}>
+              <DropdownMenuTrigger asChild>
+                <Button className="!h-11 !w-11 !rounded-[var(--control-border-radius)] !border-transparent !p-0 sm:!h-9 sm:!w-9" aria-label="Display options">
+                  <LinearSlidersIcon size={14} aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+            </Tooltip>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Row density</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={density} onValueChange={(value) => setDensity(value as typeof density)}>
+                <DropdownMenuRadioItem value="comfortable">Comfortable</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="compact">Compact</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-3">
-        <main className="flex min-h-full w-full flex-col gap-3">
+      <div className="min-w-0 flex-1 overflow-y-auto p-3">
+        <main className="flex min-h-full min-w-0 w-full flex-col gap-3">
           {accounts.length > 0 && (
-            <section className="flex flex-wrap items-center gap-2 rounded-[var(--canvas-border-radius)] bg-[var(--bg-sidebar)] p-2" aria-label="Statistics controls">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    className="h-9 max-w-full gap-2 text-[14px]"
-                    aria-label="Select ad account"
-                  >
-                    <span className="truncate">{selectedAccount ? metaAccountLabel(selectedAccount) : 'Select an account'}</span>
-                    <ChevronRight size={13} className="shrink-0" aria-hidden="true" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="max-w-[calc(100vw-24px)]">
-                  <DropdownMenuLabel>Ad account</DropdownMenuLabel>
-                  <DropdownMenuRadioGroup value={selectedAccountId ?? ''} onValueChange={selectAccount}>
-                    {accounts.map((account) => (
-                      <DropdownMenuRadioItem key={account.account_id} value={account.account_id}>
-                        <span className="truncate">{metaAccountLabel(account)}</span>
-                        {selectedAccountId === account.account_id && <LinearCheckIcon size={13} className="text-[var(--text-primary)]" />}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    className="h-9 gap-2 text-[14px]"
-                    aria-label="Select reporting period"
-                  >
-                    <span>{periodLabel}</span>
-                    <ChevronRight size={13} aria-hidden="true" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuLabel>Reporting period</DropdownMenuLabel>
-                  <DropdownMenuRadioGroup value={period} onValueChange={(value) => setPeriod(value as ReportingPeriod)}>
-                    {PERIOD_OPTIONS.map((option) => (
-                      <DropdownMenuRadioItem key={option.value} value={option.value}>
-                        <span>{option.label}</span>
-                        {period === option.value && <LinearCheckIcon size={13} className="text-[var(--text-primary)]" />}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <label className="flex h-9 min-w-0 flex-1 basis-[220px] items-center gap-2 rounded-[var(--control-border-radius)] px-3 text-[var(--text-muted)] transition-colors focus-within:bg-[var(--item-hover-bg)] focus-within:ring-1 focus-within:ring-[var(--focus-ring-color)] hover:bg-[var(--item-hover-bg)]">
-                <Search size={14} aria-hidden="true" />
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  aria-label={`Search ${levelLabel.plural}`}
-                  placeholder={`Search ${levelLabel.plural}…`}
-                  className="min-w-0 flex-1 bg-transparent text-[14px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
-                />
-              </label>
-
-              <div className="ml-auto px-2 text-[12px] text-[var(--text-muted)]" role="status">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 px-2 text-[12px] text-[var(--text-muted)]">
+              <span className="min-w-0 break-words text-[var(--text-secondary)]">
+                {selectedAccount ? metaAccountLabel(selectedAccount) : 'Select an account'} · {periodLabel}
+              </span>
+              <span role="status">
                 {hierarchyState === 'loading'
                   ? 'Loading stored Meta data…'
                   : hierarchy?.source === 'analytics_fact_store'
                     ? `Stored Meta data · ${formatFreshness(hierarchy.data_as_of)}`
                     : 'Stored Meta data unavailable'}
-              </div>
-            </section>
+              </span>
+            </div>
           )}
 
           {hierarchyState === 'ready' && items.length > 0 && (
-            <section className="overflow-hidden rounded-[var(--canvas-border-radius)] border border-[var(--color-border-primary)] bg-[var(--card-bg)]" aria-labelledby="statistics-overview-heading">
-              <div className="flex min-h-10 flex-wrap items-center justify-between gap-2 px-4 py-2">
+            <section className="min-w-0 rounded-[var(--canvas-border-radius)] bg-[var(--bg-sidebar)] p-2" aria-labelledby="statistics-overview-heading">
+              <div className="flex min-h-10 flex-wrap items-center justify-between gap-2 px-2 py-2">
                 <h2 id="statistics-overview-heading" className="text-[14px] font-medium text-[var(--text-primary)]">Overview</h2>
                 <span className="text-[12px] text-[var(--text-muted)]">{periodLabel} · {formatCount(items.length)} {levelLabel.plural}</span>
               </div>
@@ -499,17 +497,17 @@ export const StatisticsView: React.FC = () => {
                   Monetary totals are unavailable because the result has an unknown or inconsistent currency. Row-level supported values remain visible.
                 </div>
               )}
-              <div className="grid grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
                 <SummaryMetric label="Spend" value={summary.spend} supporting={`${periodLabel} total`} />
-                <SummaryMetric label="Leads" value={formatCount(summary.leads)} supporting="Meta lead actions" />
                 <SummaryMetric label="Cost per lead" value={summary.cpl} supporting="Spend ÷ lead actions" />
+                <SummaryMetric label="Leads" value={formatCount(summary.leads)} supporting="Meta lead actions" />
                 <SummaryMetric label="CTR" value={summary.ctr} supporting={`${formatCount(summary.clicks)} clicks · ${formatCount(summary.impressions)} impressions`} />
               </div>
             </section>
           )}
 
-          <section className="flex min-h-52 flex-1 flex-col overflow-hidden rounded-[var(--canvas-border-radius)] bg-[var(--bg-sidebar)]">
-            <LinearDataListToolbar>
+          <section className="flex min-h-52 min-w-0 flex-1 flex-col overflow-hidden">
+            <LinearDataListToolbar className="!h-auto min-h-11 flex-wrap gap-x-4 gap-y-2 py-1">
               <LinearTabs
                 tabs={([
                   { id: 'campaign', label: 'Campaigns' },
@@ -524,13 +522,17 @@ export const StatisticsView: React.FC = () => {
                 aria-label="Statistics entity level"
               />
 
-              <Button
-                className="h-9 text-[14px]"
-                onClick={() => setDensity((current) => current === 'comfortable' ? 'compact' : 'comfortable')}
-                aria-label={`Use ${density === 'comfortable' ? 'compact' : 'comfortable'} row density`}
-              >
-                {density === 'comfortable' ? 'Comfortable' : 'Compact'}
-              </Button>
+              <label className="relative w-full sm:w-[220px]">
+                <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" aria-hidden="true" />
+                <Input
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  aria-label={`Search ${levelLabel.plural}`}
+                  placeholder={`Search ${levelLabel.plural}…`}
+                  className="w-full !border-transparent !bg-transparent !pl-9 hover:!bg-[var(--item-hover-bg)] focus:!border-[var(--focus-ring-color)]"
+                />
+              </label>
             </LinearDataListToolbar>
             {renderData()}
           </section>
