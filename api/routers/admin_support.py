@@ -17,8 +17,8 @@ router = APIRouter(prefix="/admin", tags=["Admin Support Sessions"])
 
 class CreateSupportSessionRequest(BaseModel):
     workspace_id: int
-    reason: str = Field(..., min_length=10, max_length=500, description="Обоснование для сессии техподдержки")
-    duration_minutes: int = Field(default=30, ge=5, le=240, description="Длительность сессии от 5 до 240 минут")
+    reason: str = Field(..., min_length=10, max_length=500, description="Reason for the support session")
+    duration_minutes: int = Field(default=30, ge=5, le=240, description="Session duration must be between 5 and 240 minutes")
 
 
 class SupportSessionItem(BaseModel):
@@ -36,7 +36,7 @@ class SupportSessionItem(BaseModel):
 
 def _require_platform_admin(user: User):
     if user.role != "admin":
-        raise HTTPException(status_code=403, detail="Требуются права глобального администратора платформы")
+        raise HTTPException(status_code=403, detail="Platform global administrator rights are required")
 
 
 @router.post("/support-sessions", response_model=SupportSessionItem)
@@ -56,7 +56,7 @@ async def create_support_session(
             )
         ).scalar_one_or_none()
         if not ws:
-            raise HTTPException(status_code=404, detail="Целевой воркспейс не найден")
+            raise HTTPException(status_code=404, detail="Target workspace not found")
 
         # Revoke any prior active grants for this admin in this workspace
         existing_grants = (
@@ -92,7 +92,7 @@ async def create_support_session(
             event_type="SUPPORT_SESSION_GRANTED",
             status="SUCCESS",
             action="CREATE_SUPPORT_SESSION",
-            message=f"Создана сессия техподдержки для воркспейса '{ws.name}' на {payload.duration_minutes} мин. Причина: {payload.reason.strip()}",
+            message=f"Support session created for workspace '{ws.name}' for {payload.duration_minutes} min. Reason: {payload.reason.strip()}",
             details={
                 "grant_id": grant.id,
                 "workspace_id": ws.id,
@@ -177,7 +177,7 @@ async def revoke_support_session(
             )
         ).scalar_one_or_none()
         if not grant:
-            raise HTTPException(status_code=404, detail="Сессия техподдержки не найдена")
+            raise HTTPException(status_code=404, detail="Support session not found")
 
         if grant.revoked_at is None:
             grant.revoked_at = now
@@ -190,10 +190,10 @@ async def revoke_support_session(
                 event_type="SUPPORT_SESSION_REVOKED",
                 status="SUCCESS",
                 action="REVOKE_SUPPORT_SESSION",
-                message=f"Сессия техподдержки #{grant.id} отозвана администратором.",
+                message=f"Support session #{grant.id} was revoked by an administrator.",
                 details={"grant_id": grant.id, "workspace_id": grant.workspace_id},
             )
             session.add(audit_event)
             await session.commit()
 
-        return {"status": "ok", "message": "Сессия техподдержки отозвана", "grant_id": grant_id}
+        return {"status": "ok", "message": "Support session revoked", "grant_id": grant_id}

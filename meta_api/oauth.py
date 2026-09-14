@@ -224,7 +224,7 @@ def evaluate_meta_connection_health(
             "missing_scopes": list(REQUIRED_META_SCOPES),
             "granted_scopes": [],
             "token_expires_at": None,
-            "error": "Токен недействителен или отозван в Meta",
+            "error": "The token is invalid or was revoked in Meta",
         }
 
     raw_scopes = debug_data.get("scopes") or []
@@ -243,7 +243,7 @@ def evaluate_meta_connection_health(
                 "missing_scopes": missing_scopes,
                 "granted_scopes": granted_scopes,
                 "token_expires_at": expires_at,
-                "error": "Срок действия токена истёк",
+                "error": "The token has expired",
             }
 
     if missing_scopes:
@@ -253,7 +253,7 @@ def evaluate_meta_connection_health(
             "missing_scopes": missing_scopes,
             "granted_scopes": granted_scopes,
             "token_expires_at": expires_at,
-            "error": f"Отсутствуют обязательные права: {', '.join(missing_scopes)}",
+            "error": f"Required permissions are missing: {', '.join(missing_scopes)}",
         }
 
     if days_until_expiration is not None and days_until_expiration <= EXPIRING_THRESHOLD_DAYS:

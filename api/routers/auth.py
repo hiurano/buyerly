@@ -184,7 +184,7 @@ async def _complete_passwordless_login(
         await session.commit()
         raise HTTPException(
             status_code=403,
-            detail="Доступ больше не разрешён. Запросите новую ссылку входа.",
+            detail="Access is no longer permitted. Request a new sign-in link.",
         )
 
     user = (
@@ -219,7 +219,7 @@ async def _complete_passwordless_login(
 
     if not user.is_approved:
         await session.commit()
-        raise HTTPException(status_code=403, detail="Ваш аккаунт ожидает одобрения администратора.")
+        raise HTTPException(status_code=403, detail="Your account is awaiting administrator approval.")
 
     await create_web_session(
         session,
@@ -232,7 +232,7 @@ async def _complete_passwordless_login(
         username=user.username,
         full_name=user.full_name or user.username,
         role=user.role,
-        message="Авторизация успешна",
+        message="Signed in successfully",
         redirect_url=f"/invite/{invite.token}" if invite else None,
     )
 
@@ -250,7 +250,7 @@ async def request_temporary_password(req: RequestTemporaryPasswordRequest):
     """Email one single-use login link and its matching 6-digit code."""
     email_clean = req.email.strip().lower()
     if "@" not in email_clean or "." not in email_clean:
-        raise HTTPException(status_code=400, detail="Некорректный адрес электронной почты")
+        raise HTTPException(status_code=400, detail="Invalid email address")
 
     async with async_session_maker() as session:
         is_allowed, invite = await _resolve_login_authorization(
@@ -261,14 +261,14 @@ async def request_temporary_password(req: RequestTemporaryPasswordRequest):
         if not is_allowed:
             raise HTTPException(
                 status_code=403,
-                detail="Доступ ограничен. Данный email не найден в списке разрешенных. Обратитесь к администратору.",
+                detail="Access is restricted. This email is not on the allowlist. Contact your administrator.",
             )
 
         scope = login_scope(email_clean)
         if await has_recent_active_otp(session, scope=scope):
             raise HTTPException(
                 status_code=429,
-                detail="Код уже был отправлен недавно. Подождите 1 минуту перед повторным запросом.",
+                detail="A code was sent recently. Wait one minute before requesting another.",
             )
 
         issued = await create_otp(
@@ -297,15 +297,15 @@ async def request_temporary_password(req: RequestTemporaryPasswordRequest):
             await session.commit()
             raise HTTPException(
                 status_code=502,
-                detail="Не удалось доставить письмо с проверочным кодом. Пожалуйста, попробуйте позже.",
+                detail="The verification code email could not be delivered. Please try again later.",
             )
 
         if not await mark_otp_delivered(session, issued.record_id):
             await session.rollback()
-            raise HTTPException(status_code=409, detail="Запрос кода был заменён более новым запросом")
+            raise HTTPException(status_code=409, detail="This code request was superseded by a newer one")
         await session.commit()
 
-        return {"ok": True, "message": "Временный пароль отправлен на вашу почту"}
+        return {"ok": True, "message": "A temporary password has been sent to your email"}
 
 
 @router.post(
@@ -342,10 +342,10 @@ async def login_user(req: LoginRequest, request: Request, response: Response):
                 user = display_name_matches[0]
 
         if not user or not verify_password(req.password, user.password_hash):
-            raise HTTPException(status_code=401, detail="Неверный логин или пароль")
+            raise HTTPException(status_code=401, detail="Invalid username or password")
 
         if not user.is_approved:
-            raise HTTPException(status_code=403, detail="Ваш аккаунт ожидает одобрения администратора.")
+            raise HTTPException(status_code=403, detail="Your account is awaiting administrator approval.")
 
         if password_needs_rehash(user.password_hash):
             user.password_hash = hash_password(req.password)
@@ -362,7 +362,7 @@ async def login_user(req: LoginRequest, request: Request, response: Response):
             username=user.username,
             full_name=user.full_name or user.username,
             role=user.role,
-            message="Авторизация успешна",
+            message="Signed in successfully",
         )
 
 
@@ -384,7 +384,7 @@ async def verify_temporary_password(
     """Atomically verify a delivered login OTP, then create/sign in the user."""
     email_clean = req.email.strip().lower()
     if "@" not in email_clean or "." not in email_clean:
-        raise HTTPException(status_code=400, detail="Некорректный адрес электронной почты")
+        raise HTTPException(status_code=400, detail="Invalid email address")
 
     async with async_session_maker() as session:
         result = await consume_otp(
@@ -397,9 +397,9 @@ async def verify_temporary_password(
             if result.status == "locked":
                 raise HTTPException(
                     status_code=401,
-                    detail="Превышено максимальное количество попыток ввода кода. Запросите новый код.",
+                    detail="Too many incorrect code attempts. Request a new code.",
                 )
-            raise HTTPException(status_code=401, detail="Неверный или просроченный временный пароль")
+            raise HTTPException(status_code=401, detail="Invalid or expired temporary password")
 
         return await _complete_passwordless_login(
             session,
@@ -430,7 +430,7 @@ async def verify_email_link(
         result = await consume_magic_link(session, raw_token=req.token)
         if result.status != "consumed" or result.purpose != OTP_LOGIN or not result.email:
             await session.commit()
-            raise HTTPException(status_code=401, detail="Ссылка входа недействительна или устарела")
+            raise HTTPException(status_code=401, detail="This sign-in link is invalid or has expired")
         return await _complete_passwordless_login(
             session,
             email=result.email,
@@ -444,21 +444,21 @@ async def verify_email_link(
 async def change_password(req: ChangePasswordRequest, user: User = Depends(get_current_user)):
     new_pw = req.new_password
     if len(new_pw) < 8:
-        raise HTTPException(status_code=400, detail="Пароль должен содержать минимум 8 символов")
+        raise HTTPException(status_code=400, detail="The password must be at least 8 characters")
 
     async with async_session_maker() as session:
         res = await session.execute(select(User).where(User.id == user.id))
         db_user = res.scalar_one_or_none()
         if not db_user:
-            raise HTTPException(status_code=404, detail="Пользователь не найден")
+            raise HTTPException(status_code=404, detail="User not found")
 
         if db_user.password_hash:
             if not req.old_password or not verify_password(req.old_password, db_user.password_hash):
-                raise HTTPException(status_code=400, detail="Старый пароль указан неверно")
+                raise HTTPException(status_code=400, detail="The current password is incorrect")
 
         db_user.password_hash = hash_password(new_pw)
         await session.commit()
-        return {"message": "Пароль успешно обновлен"}
+        return {"message": "Password updated"}
 
 
 async def _deliver_otp(session, *, issued, email: str, log_context: str) -> None:
@@ -473,11 +473,11 @@ async def _deliver_otp(session, *, issued, email: str, log_context: str) -> None
         await session.commit()
         raise HTTPException(
             status_code=502,
-            detail="Не удалось доставить письмо с проверочным кодом. Пожалуйста, попробуйте позже.",
+            detail="The verification code email could not be delivered. Please try again later.",
         )
     if not await mark_otp_delivered(session, issued.record_id):
         await session.rollback()
-        raise HTTPException(status_code=409, detail="Запрос кода был заменён более новым запросом")
+        raise HTTPException(status_code=409, detail="This code request was superseded by a newer one")
 
 
 @router.post(
@@ -490,15 +490,15 @@ async def request_email_verification(user: User = Depends(get_current_user)):
         db_user = (await session.execute(select(User).where(User.id == user.id))).scalar_one()
         target_email = (db_user.email or "").strip().lower()
         if not target_email or "@" not in target_email or "." not in target_email:
-            raise HTTPException(status_code=400, detail="У вас не указан корректный адрес электронной почты")
+            raise HTTPException(status_code=400, detail="You do not have a valid email address on file")
         if db_user.email_verified_at is not None:
-            return {"ok": True, "message": "Email уже подтвержден", "already_verified": True}
+            return {"ok": True, "message": "Email already confirmed", "already_verified": True}
 
         scope = email_scope(db_user.id)
         if await has_recent_active_otp(session, scope=scope):
             raise HTTPException(
                 status_code=429,
-                detail="Код уже был отправлен недавно. Подождите 1 минуту перед повторным запросом.",
+                detail="A code was sent recently. Wait one minute before requesting another.",
             )
 
         issued = await create_otp(
@@ -513,7 +513,7 @@ async def request_email_verification(user: User = Depends(get_current_user)):
         db_user.unconfirmed_email = target_email
         await session.commit()
 
-        return {"ok": True, "message": "Код подтверждения отправлен на вашу почту"}
+        return {"ok": True, "message": "A confirmation code has been sent to your email"}
 
 
 @router.post(
@@ -527,14 +527,14 @@ async def request_email_change(
     """Request OTP code to attach or change user email."""
     clean_email = req.new_email.strip().lower()
     if not clean_email or "@" not in clean_email or "." not in clean_email:
-        raise HTTPException(status_code=400, detail="Некорректный адрес электронной почты")
+        raise HTTPException(status_code=400, detail="Invalid email address")
 
     async with async_session_maker() as session:
         db_user = (await session.execute(select(User).where(User.id == user.id))).scalar_one()
 
         # If user is already verified with this exact email, no action needed
         if (db_user.email or "").strip().lower() == clean_email and db_user.email_verified_at is not None:
-            return {"ok": True, "message": "Этот email уже подтвержден для вашего аккаунта", "already_verified": True}
+            return {"ok": True, "message": "This email is already confirmed for your account", "already_verified": True}
 
         # Check collision: another user already has verified email
         collision = (
@@ -547,13 +547,13 @@ async def request_email_change(
             )
         ).scalar_one_or_none()
         if collision is not None:
-            raise HTTPException(status_code=409, detail="Этот адрес электронной почты уже используется другим пользователем")
+            raise HTTPException(status_code=409, detail="This email address is already in use by another user")
 
         scope = email_scope(db_user.id)
         if await has_recent_active_otp(session, scope=scope):
             raise HTTPException(
                 status_code=429,
-                detail="Код уже был отправлен недавно. Подождите 1 минуту перед повторным запросом.",
+                detail="A code was sent recently. Wait one minute before requesting another.",
             )
 
         issued = await create_otp(
@@ -568,7 +568,7 @@ async def request_email_change(
         db_user.unconfirmed_email = clean_email
         await session.commit()
 
-        return {"ok": True, "message": "Код подтверждения отправлен на новый email", "unconfirmed_email": clean_email}
+        return {"ok": True, "message": "A confirmation code has been sent to the new email", "unconfirmed_email": clean_email}
 
 
 @router.post(
@@ -584,7 +584,7 @@ async def verify_email_change(
         db_user = (await session.execute(select(User).where(User.id == user.id))).scalar_one()
         target_email = db_user.unconfirmed_email or db_user.email
         if not target_email:
-            raise HTTPException(status_code=400, detail="Нет активного запроса на подтверждение email")
+            raise HTTPException(status_code=400, detail="There is no active email confirmation request")
 
         target_email = target_email.strip().lower()
         result = await consume_otp(
@@ -600,12 +600,12 @@ async def verify_email_change(
             if result.status == "locked":
                 raise HTTPException(
                     status_code=401,
-                    detail="Превышено максимальное количество попыток ввода кода. Запросите новый код.",
+                    detail="Too many incorrect code attempts. Request a new code.",
                 )
-            raise HTTPException(status_code=400, detail="Неверный код подтверждения")
+            raise HTTPException(status_code=400, detail="Invalid confirmation code")
         if result.email != target_email:
             await session.rollback()
-            raise HTTPException(status_code=400, detail="Код не соответствует активному запросу email")
+            raise HTTPException(status_code=400, detail="The code does not match the active email request")
 
         now_dt = datetime.now(timezone.utc)
 
@@ -620,7 +620,7 @@ async def verify_email_change(
             )
         ).scalar_one_or_none()
         if collision is not None:
-            raise HTTPException(status_code=409, detail="Этот email уже был подтвержден другим пользователем")
+            raise HTTPException(status_code=409, detail="This email has already been confirmed by another user")
 
         # Clear legacy unverified duplicate holders
         other_unverified = (
@@ -640,11 +640,11 @@ async def verify_email_change(
         except Exception as e:
             await session.rollback()
             logger.error("Error activating email %s for user %s: %s", target_email, user.id, e)
-            raise HTTPException(status_code=409, detail="Не удалось активировать email из-за конфликта уникальности")
+            raise HTTPException(status_code=409, detail="The email could not be activated because of a uniqueness conflict")
 
         return {
             "ok": True,
-            "message": "Email успешно подтвержден и привязан к аккаунту",
+            "message": "Email confirmed and linked to your account",
             "email": db_user.email,
             "email_verified": True,
         }
@@ -656,7 +656,7 @@ async def update_profile(req: UpdateProfileRequest, user: User = Depends(get_cur
         res = await session.execute(select(User).where(User.id == user.id))
         db_user = res.scalar_one_or_none()
         if not db_user:
-            raise HTTPException(status_code=404, detail="Пользователь не найден")
+            raise HTTPException(status_code=404, detail="User not found")
 
         if req.first_name is not None:
             db_user.first_name = req.first_name.strip()
@@ -668,7 +668,7 @@ async def update_profile(req: UpdateProfileRequest, user: User = Depends(get_cur
             if clean_email != existing_email:
                 raise HTTPException(
                     status_code=400,
-                    detail="Прямое изменение email без подтверждения запрещено. Используйте процедуру верификации через код.",
+                    detail="Changing the email directly without confirmation is not allowed. Use the code verification flow.",
                 )
         old_avatar_url = db_user.avatar_url
         if req.avatar_url is not None:
@@ -679,7 +679,7 @@ async def update_profile(req: UpdateProfileRequest, user: User = Depends(get_cur
             ):
                 raise HTTPException(
                     status_code=400,
-                    detail="Аватар не найден или принадлежит другому пользователю",
+                    detail="Avatar not found, or it belongs to another user",
                 )
             db_user.avatar_url = new_avatar_url
         if req.full_name is not None:
@@ -690,7 +690,7 @@ async def update_profile(req: UpdateProfileRequest, user: User = Depends(get_cur
         if req.telegram_id is not None:
             new_telegram_id = req.telegram_id.strip()
             if not new_telegram_id:
-                raise HTTPException(status_code=400, detail="Telegram ID не может быть пустым")
+                raise HTTPException(status_code=400, detail="Telegram ID cannot be empty")
             collision = (
                 await session.execute(
                     select(User.id).where(
@@ -700,7 +700,7 @@ async def update_profile(req: UpdateProfileRequest, user: User = Depends(get_cur
                 )
             ).scalar_one_or_none()
             if collision is not None:
-                raise HTTPException(status_code=409, detail="Этот Telegram ID уже используется")
+                raise HTTPException(status_code=409, detail="This Telegram ID is already in use")
 
             db_user.telegram_id = new_telegram_id
         await session.commit()
@@ -711,7 +711,7 @@ async def update_profile(req: UpdateProfileRequest, user: User = Depends(get_cur
                 owner_prefix=f"avatar_{user.id}_",
             )
         return {
-            "message": "Профиль успешно обновлен",
+            "message": "Profile updated",
             "username": db_user.username,
             "full_name": db_user.full_name,
             "first_name": db_user.first_name,
@@ -743,7 +743,7 @@ async def logout_user(
                 web_session.revoked_at = datetime.now(timezone.utc)
             await session.commit()
     clear_session_cookies(response)
-    return {"message": "Успешный выход"}
+    return {"message": "Signed out"}
 
 
 @router.get("/auth/sessions", response_model=list[WebSessionItem])
@@ -797,13 +797,13 @@ async def revoke_web_session(
             )
         ).scalar_one_or_none()
         if web_session is None:
-            raise HTTPException(status_code=404, detail="Сессия не найдена")
+            raise HTTPException(status_code=404, detail="Session not found")
         web_session.revoked_at = datetime.now(timezone.utc)
         await session.commit()
 
     if session_id == getattr(request.state, "web_session_id", None):
         clear_session_cookies(response)
-    return {"message": "Сессия завершена"}
+    return {"message": "Session ended"}
 
 
 @router.post("/auth/logout-all")
@@ -823,7 +823,7 @@ async def logout_all_web_sessions(
         )
         await session.commit()
     clear_session_cookies(response)
-    return {"message": "Все сессии завершены"}
+    return {"message": "All sessions ended"}
 
 
 @router.get("/me", response_model=UserProfileResponse)
@@ -858,7 +858,7 @@ async def get_me(user: User = Depends(get_current_user)):
 async def get_admin_overview(user: User = Depends(get_current_user)):
     """Return all users, workspaces, members, and invites for administrative inspection."""
     if user.role != "admin":
-        raise HTTPException(status_code=403, detail="Доступ только для администраторов")
+        raise HTTPException(status_code=403, detail="Administrators only")
     async with async_session_maker() as session:
         users = (await session.execute(select(User).order_by(User.id))).scalars().all()
         workspaces = (await session.execute(select(Workspace).order_by(Workspace.id))).scalars().all()
@@ -921,7 +921,7 @@ async def get_admin_overview(user: User = Depends(get_current_user)):
 async def list_allowed_emails(user: User = Depends(get_current_user)):
     """List all allowed email addresses in the whitelist (admin only)."""
     if user.role != "admin":
-        raise HTTPException(status_code=403, detail="Доступ только для администраторов")
+        raise HTTPException(status_code=403, detail="Administrators only")
     async with async_session_maker() as session:
         result = await session.execute(
             select(AllowedEmail).order_by(AllowedEmail.created_at.desc())
@@ -943,10 +943,10 @@ async def list_allowed_emails(user: User = Depends(get_current_user)):
 async def add_allowed_email(req: AddAllowedEmailRequest, user: User = Depends(get_current_user)):
     """Add an email address to the whitelist (admin only)."""
     if user.role != "admin":
-        raise HTTPException(status_code=403, detail="Доступ только для администраторов")
+        raise HTTPException(status_code=403, detail="Administrators only")
     clean_email = req.email.strip().lower()
     if "@" not in clean_email or "." not in clean_email or len(clean_email) < 5:
-        raise HTTPException(status_code=400, detail="Некорректный адрес электронной почты")
+        raise HTTPException(status_code=400, detail="Invalid email address")
 
     async with async_session_maker() as session:
         existing = (
@@ -988,7 +988,7 @@ async def add_allowed_email(req: AddAllowedEmailRequest, user: User = Depends(ge
 async def delete_allowed_email(email_id: int, user: User = Depends(get_current_user)):
     """Delete an email address from the whitelist and revoke active sessions (admin only)."""
     if user.role != "admin":
-        raise HTTPException(status_code=403, detail="Доступ только для администраторов")
+        raise HTTPException(status_code=403, detail="Administrators only")
 
     async with async_session_maker() as session:
         entry = (
@@ -999,7 +999,7 @@ async def delete_allowed_email(email_id: int, user: User = Depends(get_current_u
             )
         ).scalar_one_or_none()
         if not entry:
-            raise HTTPException(status_code=404, detail="Email не найден в списке разрешенных")
+            raise HTTPException(status_code=404, detail="Email not found on the allowlist")
 
         target_email = entry.email.lower()
 
@@ -1020,4 +1020,4 @@ async def delete_allowed_email(email_id: int, user: User = Depends(get_current_u
         await session.delete(entry)
         await session.commit()
 
-        return {"ok": True, "message": f"Email {target_email} удален из списка разрешенных"}
+        return {"ok": True, "message": f"Email {target_email} removed from the allowlist"}

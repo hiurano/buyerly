@@ -108,7 +108,7 @@ async def submit_onboarding_personal_details(
     first_name = req.first_name.strip()
     last_name = req.last_name.strip()
     if not first_name:
-        raise HTTPException(status_code=400, detail="Имя обязательно для заполнения")
+        raise HTTPException(status_code=400, detail="Name is required")
 
     clean_email = req.email.strip().lower() if req.email and req.email.strip() else None
 
@@ -250,14 +250,14 @@ async def check_workspace_slug(
         return CheckSlugResponse(
             slug=raw_slug,
             available=False,
-            message="Слаг должен содержать минимум 2 символа (латиница, цифры, дефис)",
+            message="The slug must be at least 2 characters (Latin letters, digits, hyphen)",
         )
 
     if cleaned_slug in RESERVED_WORKSPACE_SLUGS:
         return CheckSlugResponse(
             slug=cleaned_slug,
             available=False,
-            message="Этот слаг зарезервирован системой",
+            message="That slug is reserved by the system",
         )
 
     async with async_session_maker() as session:
@@ -266,13 +266,13 @@ async def check_workspace_slug(
             return CheckSlugResponse(
                 slug=cleaned_slug,
                 available=False,
-                message="Этот адрес воркспейса уже занят",
+                message="That workspace address is already taken",
             )
 
     return CheckSlugResponse(
         slug=cleaned_slug,
         available=True,
-        message="Адрес доступен",
+        message="Address available",
     )
 
 
@@ -284,7 +284,7 @@ async def submit_onboarding_workspace(
     """Create a new workspace during onboarding and set it as active."""
     name = req.name.strip()
     if not name:
-        raise HTTPException(status_code=400, detail="Название воркспейса обязательно")
+        raise HTTPException(status_code=400, detail="A workspace name is required")
 
     requested_slug = req.slug.strip() if req.slug else name
 
@@ -295,7 +295,7 @@ async def submit_onboarding_workspace(
         logo_url,
         user.id,
     ):
-        raise HTTPException(status_code=400, detail="Логотип не найден или принадлежит другому пользователю")
+        raise HTTPException(status_code=400, detail="Logo not found, or it belongs to another user")
 
     async with async_session_maker() as session:
         clean_user_email = (user.email or "").strip().lower()
@@ -311,7 +311,7 @@ async def submit_onboarding_workspace(
         if allowlisted is None:
             raise HTTPException(
                 status_code=403,
-                detail="Создание воркспейса доступно только пользователям из whitelist",
+                detail="Only allowlisted users can create a workspace",
             )
 
         # Lock in the same AllowedEmail -> User order as whitelist revocation.
@@ -322,7 +322,7 @@ async def submit_onboarding_workspace(
             )
         ).scalar_one()
         if (db_user.email or "").strip().lower() != clean_user_email:
-            raise HTTPException(status_code=409, detail="Email пользователя изменился, повторите запрос")
+            raise HTTPException(status_code=409, detail="The user's email has changed; please retry")
 
         existing_membership = (
             await session.execute(
@@ -330,7 +330,7 @@ async def submit_onboarding_workspace(
             )
         ).scalar_one_or_none()
         if existing_membership is not None:
-            raise HTTPException(status_code=409, detail="У пользователя уже есть воркспейс")
+            raise HTTPException(status_code=409, detail="This user already has a workspace")
 
         try:
             slug = await allocate_workspace_slug(session, requested_slug)
@@ -350,7 +350,7 @@ async def submit_onboarding_workspace(
             await session.flush()
         except IntegrityError as exc:
             await session.rollback()
-            raise HTTPException(status_code=409, detail="Это имя воркспейса уже занято") from exc
+            raise HTTPException(status_code=409, detail="That workspace name is already taken") from exc
 
         member = WorkspaceMember(workspace_id=ws.id, user_id=user.id, role="owner")
         session.add(member)
@@ -407,7 +407,7 @@ async def submit_onboarding_invites(
         db_user = (await session.execute(select(User).where(User.id == user.id))).scalar_one()
         active_ws = await get_user_workspace(session, db_user)
         if not active_ws:
-            raise HTTPException(status_code=400, detail="Не найден активный воркспейс для создания приглашений")
+            raise HTTPException(status_code=400, detail="No active workspace found for creating invites")
         membership = (
             await session.execute(
                 select(WorkspaceMember).where(
@@ -417,9 +417,9 @@ async def submit_onboarding_invites(
             )
         ).scalar_one_or_none()
         if not membership or membership.role != "owner":
-            raise HTTPException(status_code=403, detail="Только владелец может приглашать команду на этом шаге")
+            raise HTTPException(status_code=403, detail="Only the owner can invite the team at this step")
         if not db_user.first_name and not db_user.full_name:
-            raise HTTPException(status_code=409, detail="Сначала настройте профиль")
+            raise HTTPException(status_code=409, detail="Set up your profile first")
 
         created_invites: List[WorkspaceInviteItem] = []
         now_dt = datetime.now(timezone.utc)
@@ -456,7 +456,7 @@ async def submit_onboarding_invites(
                     category="WORKSPACE_INVITE",
                     event_type="INVITE_CREATE",
                     status="SUCCESS",
-                    message=f"Создано приглашение для {clean_email}",
+                    message=f"Invite created for {clean_email}",
                     details={
                         "invite_id": invite.id,
                         "email": clean_email,
@@ -478,7 +478,7 @@ async def submit_onboarding_invites(
                     status=invite.status,
                     max_uses=invite.max_uses,
                     used_count=invite.used_count,
-                    inviter_name=db_user.full_name or db_user.username or "Команда",
+                    inviter_name=db_user.full_name or db_user.username or "The team",
                     expires_at=_utc_iso(invite.expires_at),
                     created_at=_utc_iso(invite.created_at),
                 )
@@ -487,7 +487,7 @@ async def submit_onboarding_invites(
             if clean_email:
                 send_ok = True
                 try:
-                    inviter_name = db_user.full_name or db_user.username or "Коллега"
+                    inviter_name = db_user.full_name or db_user.username or "A colleague"
                     send_ok = await send_workspace_invitation_email(
                         to_email=clean_email,
                         workspace_name=active_ws.name,
@@ -508,7 +508,7 @@ async def submit_onboarding_invites(
                         category="WORKSPACE_INVITE",
                         event_type="INVITE_SEND",
                         status="SUCCESS" if send_ok else "FAILED",
-                        message=f"Отправка приглашения на {clean_email}: {'успешно' if send_ok else 'ошибка'}",
+                        message=f"Invite delivery to {clean_email}: {'success' if send_ok else 'error'}",
                         details={"invite_id": invite.id, "email": clean_email},
                     )
                 )
@@ -532,7 +532,7 @@ async def skip_onboarding(user: User = Depends(get_current_user)):
         db_user = (await session.execute(select(User).where(User.id == user.id))).scalar_one()
         active_ws = await get_user_workspace(session, db_user)
         if not active_ws:
-            raise HTTPException(status_code=409, detail="Сначала создайте воркспейс")
+            raise HTTPException(status_code=409, detail="Create a workspace first")
         membership = (
             await session.execute(
                 select(WorkspaceMember).where(
@@ -542,9 +542,9 @@ async def skip_onboarding(user: User = Depends(get_current_user)):
             )
         ).scalar_one_or_none()
         if not membership or membership.role != "owner":
-            raise HTTPException(status_code=403, detail="Этот шаг доступен только владельцу воркспейса")
+            raise HTTPException(status_code=403, detail="This step is available to the workspace owner only")
         if not db_user.first_name and not db_user.full_name:
-            raise HTTPException(status_code=409, detail="Сначала настройте профиль")
+            raise HTTPException(status_code=409, detail="Set up your profile first")
         db_user.onboarding_step = "completed"
         db_user.onboarding_completed = True
         await session.commit()

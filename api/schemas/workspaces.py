@@ -9,15 +9,15 @@ def validate_workspace_logo_url_value(value: Optional[str]) -> Optional[str]:
     if not cleaned:
         return ""
     if any(char in cleaned for char in ("<", ">", '"', "'", "\r", "\n", "\t", "\0")):
-        raise ValueError("logo_url содержит недопустимые символы")
+        raise ValueError("logo_url contains invalid characters")
     if cleaned.startswith("//") or "/../" in cleaned or cleaned.endswith("/.."):
-        raise ValueError("Некорректный путь logo_url")
+        raise ValueError("Invalid logo_url path")
     if cleaned.startswith("/uploads/workspaces/"):
         return cleaned
     if cleaned.startswith("http://") or cleaned.startswith("https://"):
         return cleaned
     raise ValueError(
-        "logo_url должен начинаться с https://, http:// или /uploads/workspaces/"
+        "logo_url must start with https://, http:// or /uploads/workspaces/"
     )
 
 

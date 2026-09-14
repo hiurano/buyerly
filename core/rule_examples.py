@@ -19,7 +19,7 @@ RULE_EXAMPLES_VERSION = 1
 EXAMPLE_PRESETS: tuple[dict[str, Any], ...] = (
     {
         "key": "stop_no_leads",
-        "name": "Пример · Стоп без лидов после 20",
+        "name": "Example · Stop with no leads after 20",
         "action": "turn_off",
         "conditions": [
             {"metric": "spend", "operator": "gte", "value": 20, "time_window": "today"},
@@ -32,7 +32,7 @@ EXAMPLE_PRESETS: tuple[dict[str, Any], ...] = (
     },
     {
         "key": "stop_expensive_lead",
-        "name": "Пример · Стоп дорогого лида выше 12",
+        "name": "Example · Stop expensive leads above 12",
         "action": "turn_off",
         "conditions": [
             {"metric": "cpl", "operator": "gt", "value": 12, "time_window": "today"},
@@ -45,7 +45,7 @@ EXAMPLE_PRESETS: tuple[dict[str, Any], ...] = (
     },
     {
         "key": "notify_expensive_registration",
-        "name": "Пример · Алерт CPReg выше 25",
+        "name": "Example · Alert on CPReg above 25",
         "action": "notify_only",
         "conditions": [
             {"metric": "cpreg", "operator": "gt", "value": 25, "time_window": "today"},
@@ -58,7 +58,7 @@ EXAMPLE_PRESETS: tuple[dict[str, Any], ...] = (
     },
     {
         "key": "scale_purchases",
-        "name": "Пример · +20% при выгодных покупках",
+        "name": "Example · +20% on cheap purchases",
         "action": "increase_budget",
         "conditions": [
             {"metric": "purchases", "operator": "gte", "value": 2, "time_window": "today"},
@@ -73,7 +73,7 @@ EXAMPLE_PRESETS: tuple[dict[str, Any], ...] = (
     },
     {
         "key": "reduce_weak_traffic",
-        "name": "Пример · −20% при слабом CTR",
+        "name": "Example · −20% on weak CTR",
         "action": "decrease_budget",
         "conditions": [
             {"metric": "spend", "operator": "gte", "value": 100, "time_window": "today"},
@@ -87,7 +87,7 @@ EXAMPLE_PRESETS: tuple[dict[str, Any], ...] = (
     },
     {
         "key": "reactivate_late_purchase",
-        "name": "Пример · Включить при долетевшей покупке",
+        "name": "Example · Turn on when a purchase lands",
         "action": "turn_on",
         "conditions": [
             {"metric": "purchases", "operator": "gte", "value": 1, "time_window": "today"},
@@ -101,11 +101,11 @@ EXAMPLE_PRESETS: tuple[dict[str, Any], ...] = (
 
 EXAMPLE_GROUPS = (
     {
-        "name": "Пример · Контроль запуска",
+        "name": "Example · Launch control",
         "icon": "shield",
         "description": (
-            "Стоп без лидов, уведомление о дорогой регистрации и снижение бюджета "
-            "при слабом CTR. Пороги считаются в валюте каждого кабинета."
+            "Stop with no leads, alert on an expensive registration, and cut the budget "
+            "on weak CTR. Thresholds are measured in each ad account's currency."
         ),
         "preset_keys": (
             "stop_no_leads",
@@ -114,11 +114,11 @@ EXAMPLE_GROUPS = (
         ),
     },
     {
-        "name": "Пример · Контроль и масштабирование",
+        "name": "Example · Control and scale",
         "icon": "rocket",
         "description": (
-            "Остановка дорогого лида, безопасное увеличение бюджета на покупках "
-            "и включение после долетевшей покупки."
+            "Stop expensive leads, raise the budget safely on purchases, "
+            "and turn back on after a purchase lands."
         ),
         "preset_keys": (
             "stop_expensive_lead",

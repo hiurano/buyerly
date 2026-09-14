@@ -55,7 +55,7 @@ def create_app() -> FastAPI:
                 if content_length > max_allowed_bytes:
                     return JSONResponse(
                         status_code=413,
-                        content={"detail": "Размер тела запроса превышает допустимый лимит."},
+                        content={"detail": "The request body exceeds the allowed size limit."},
                     )
             except ValueError:
                 pass

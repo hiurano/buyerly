@@ -86,7 +86,7 @@ async def update_automation_settings(
 
     return {
         "success": True,
-        "message": "Настройки автоматики сохранены",
+        "message": "Automation settings saved",
     }
 
 
@@ -106,5 +106,5 @@ async def set_poll_interval(payload: SetIntervalRequest, user: User = Depends(ge
     return {
         "success": True,
         "poll_interval_minutes": payload.minutes,
-        "message": f"Базовый интервал мониторинга изменен на {payload.minutes} минут",
+        "message": f"Base monitoring interval changed to {payload.minutes} minutes",
     }

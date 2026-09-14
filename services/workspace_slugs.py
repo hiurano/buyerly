@@ -17,7 +17,7 @@ async def allocate_workspace_slug(session, value: str) -> str:
     """Return the requested normalized slug only when it is available."""
     base = normalize_workspace_slug(value)
     if base in RESERVED_WORKSPACE_SLUGS:
-        raise WorkspaceSlugUnavailable("Этот адрес воркспейса недоступен")
+        raise WorkspaceSlugUnavailable("That workspace address is unavailable")
     bind = session.get_bind()
     if bind.dialect.name == "postgresql":
         await session.execute(
@@ -30,4 +30,4 @@ async def allocate_workspace_slug(session, value: str) -> str:
     ).scalar_one_or_none()
     if base_exists is None:
         return base
-    raise WorkspaceSlugUnavailable("Это имя воркспейса уже занято")
+    raise WorkspaceSlugUnavailable("That workspace name is already taken")

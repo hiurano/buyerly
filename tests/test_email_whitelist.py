@@ -105,7 +105,7 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
                 json={"email": "stranger@random.com"},
             )
             self.assertEqual(resp.status_code, 403)
-            self.assertIn("не найден в списке разрешенных", resp.json()["detail"])
+            self.assertIn("not on the allowlist", resp.json()["detail"])
 
     async def test_whitelisted_email_allowed_on_request_temporary_password(self):
         async with self.sessions() as session:

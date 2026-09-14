@@ -345,7 +345,7 @@ class TestRuleSafetyContractMigration(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(second, 0)
         self.assertFalse(migrated[0]["enabled"])
         self.assertTrue(migrated[0]["needs_review"])
-        self.assertIn("отключено", migrated[0]["review_reason"])
+        self.assertIn("disabled", migrated[0]["review_reason"])
 
 
 class TestAuditUndoContractMigration(unittest.IsolatedAsyncioTestCase):
@@ -1058,7 +1058,7 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                         ) VALUES (
                             'act_legacy_manual', 'Legacy manual', '', '', :token,
                             '', 'USD', 'UTC', '', '', '[]', 1,
-                            'Активен (ACTIVE)', false, true, NOW()
+                            'Active (ACTIVE)', false, true, NOW()
                         )
                         """
                     ),

@@ -69,7 +69,7 @@ class RuleEngine:
         from core.metrics import MetricReading
 
         return compare_metric(
-            MetricReading(key="value", label="Значение", unit="", value=metric_val),
+            MetricReading(key="value", label="Value", unit="", value=metric_val),
             operator,
             target_val,
         )
@@ -111,7 +111,7 @@ class RuleEngine:
         is_active = status == "ACTIVE" and effective_status == "ACTIVE"
         currency = normalize_currency(getattr(account, "currency", "UNKNOWN"))
 
-        def noop(reason="Метрики в пределах нормы."):
+        def noop(reason="Metrics are within range."):
             return RuleEvaluationResult(
                 action=RuleAction.NOOP,
                 entity_id=entity_id,
@@ -132,7 +132,7 @@ class RuleEngine:
             )
 
         if not getattr(account, "rules_enabled", False):
-            return noop("Правила выключены для этого кабинета.")
+            return noop("Rules are switched off for this ad account.")
 
         if active_rules_override is not None:
             active_rules = active_rules_override
@@ -144,7 +144,7 @@ class RuleEngine:
                 active_rules = []
 
         if not active_rules or not isinstance(active_rules, list) or len(active_rules) == 0:
-            return noop("Правила не настроены.")
+            return noop("No rules are configured.")
 
         account_workspace_id = getattr(account, "workspace_id", None)
         if account_workspace_id is not None:
@@ -155,12 +155,12 @@ class RuleEngine:
                 and rule.get("workspace_id") == account_workspace_id
             ]
             if not active_rules:
-                return noop("Правила этого рабочего пространства не настроены.")
+                return noop("This workspace's rules are not configured.")
 
         try:
             validate_rule_set_compatibility(active_rules)
         except (TypeError, ValueError) as error:
-            return noop(f"Автоматика остановлена: {error}")
+            return noop(f"Automation halted: {error}")
 
         def get_action_priority(action: RuleAction) -> int:
             priorities = {
@@ -258,7 +258,7 @@ class RuleEngine:
 
                 window_label = ""
                 if time_window != "today":
-                    window_labels = {"yesterday": "Вчера", "last_3d": "3 дня", "last_7d": "7 дней"}
+                    window_labels = {"yesterday": "Yesterday", "last_3d": "3 days", "last_7d": "7 days"}
                     window_label = f" [{window_labels.get(time_window, time_window)}]"
 
                 matches = compare_metric(reading, operator, target_val)
@@ -295,9 +295,9 @@ class RuleEngine:
 
         if not triggered_actions:
             return noop(
-                "Правила не настроены или некорректны; действия в Meta пропущены."
+                "Rules are missing or invalid; no actions were sent to Meta."
                 if invalid_rule_seen
-                else "Метрики в пределах нормы."
+                else "Metrics are within range."
             )
 
         # Sort by priority descending

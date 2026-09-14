@@ -255,7 +255,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(sorted((first.status_code, second.status_code)), [200, 409])
             conflict = first if first.status_code == 409 else second
-            self.assertIn('занято', conflict.json()['detail'])
+            self.assertIn('already taken', conflict.json()['detail'])
 
             third = await client.post(
                 '/api/workspaces',
@@ -263,7 +263,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 json={'name': 'Канада Трафик'},
             )
             self.assertEqual(third.status_code, 409)
-            self.assertIn('занято', third.json()['detail'])
+            self.assertIn('already taken', third.json()['detail'])
 
             reserved_check = await client.get(
                 '/api/onboarding/check-slug',
@@ -279,7 +279,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 json={'name': 'API', 'slug': 'api'},
             )
             self.assertEqual(reserved_create.status_code, 409)
-            self.assertIn('недоступен', reserved_create.json()['detail'])
+            self.assertIn('unavailable', reserved_create.json()['detail'])
 
             async with self.test_session_maker() as session:
                 names = (
@@ -839,7 +839,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             'id': 'act_111111',
             'name': 'Hijacked Account',
             'account_status': 1,
-            'status_label': 'Активен',
+            'status_label': 'Active',
             'timezone_name': 'UTC',
             'currency': 'USD',
         }
@@ -860,7 +860,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
         data = res.json()
         self.assertEqual(data['success_count'], 0)
         self.assertEqual(data['error_count'], 1)
-        self.assertIn('другом рабочем пространстве', data['errors'][0]['error'])
+        self.assertIn('another workspace', data['errors'][0]['error'])
 
         # Verify account in DB was NOT modified
         async with self.test_session_maker() as session:
@@ -903,7 +903,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             'id': 'act_111111',
             'name': 'Refreshed Account',
             'account_status': 1,
-            'status_label': 'Активен',
+            'status_label': 'Active',
             'timezone_name': 'UTC',
             'currency': 'USD',
         }
@@ -992,7 +992,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             # Imposter tries to accept targeted invite -> 403 Forbidden
             imposter_accept = await client.post(f'/api/invites/{token}/accept', headers=imposter_headers)
             self.assertEqual(imposter_accept.status_code, 403)
-            self.assertIn('предназначено для другого email-адреса', imposter_accept.json()['detail'])
+            self.assertIn('intended for a different email address', imposter_accept.json()['detail'])
 
             # Intended recipient accepts -> 200 OK
             recipient_accept = await client.post(f'/api/invites/{token}/accept', headers=recipient_headers)
@@ -1058,7 +1058,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             # 1. User without email tries to accept -> 403 Forbidden (email is NOT auto-assigned)
             no_email_accept = await client.post(f'/api/invites/{token}/accept', headers=no_email_headers)
             self.assertEqual(no_email_accept.status_code, 403)
-            self.assertIn('требуется подтверждённый адрес электронной почты', no_email_accept.json()['detail'])
+            self.assertIn('confirmed email address is required', no_email_accept.json()['detail'])
 
             # Verify no_email_user still has NO email assigned in DB
             async with self.test_session_maker() as session:
@@ -1068,7 +1068,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             # 2. User with unverified matching email tries to accept -> 403 Forbidden
             unverified_accept = await client.post(f'/api/invites/{token}/accept', headers=unverified_headers)
             self.assertEqual(unverified_accept.status_code, 403)
-            self.assertIn('требуется подтверждённый адрес электронной почты', unverified_accept.json()['detail'])
+            self.assertIn('confirmed email address is required', unverified_accept.json()['detail'])
 
             # 3. Mark unverified user as verified in DB -> now acceptance succeeds
             async with self.test_session_maker() as session:

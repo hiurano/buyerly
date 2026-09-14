@@ -304,14 +304,14 @@ def rate_limit_dep(
         except RateLimitBackendUnavailable:
             raise HTTPException(
                 status_code=503,
-                detail="Защита от частых запросов временно недоступна. Повторите попытку позже.",
+                detail="Rate limiting is temporarily unavailable. Please try again later.",
                 headers={"Retry-After": "1"},
             )
 
         if retry_after:
             raise HTTPException(
                 status_code=429,
-                detail=f"Слишком много запросов. Пожалуйста, повторите попытку через {retry_after} сек.",
+                detail=f"Too many requests. Please try again in {retry_after} s.",
                 headers={"Retry-After": str(retry_after)},
             )
 

@@ -182,9 +182,9 @@ async def _workspace_connection(
 ) -> tuple[MetaConnection, object, object]:
     ws, member = await get_user_workspace_member(session, user)
     if not ws:
-        raise HTTPException(status_code=404, detail="Рабочее пространство не найдено")
+        raise HTTPException(status_code=404, detail="Workspace not found")
     if require_write:
-        ensure_workspace_write_access(user, member, "изменения подключения Meta")
+        ensure_workspace_write_access(user, member, "changing the Meta connection")
     caller_role = member.role if member else "buyer"
     stmt = select(MetaConnection).where(
         MetaConnection.id == connection_id,
@@ -195,7 +195,7 @@ async def _workspace_connection(
 
     connection = (await session.execute(stmt)).scalar_one_or_none()
     if not connection:
-        raise HTTPException(status_code=404, detail="Подключение Meta не найдено")
+        raise HTTPException(status_code=404, detail="Meta connection not found")
     return connection, ws, member
 
 
@@ -316,8 +316,8 @@ async def create_meta_invite(
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
         if not ws:
-            raise HTTPException(status_code=404, detail="Рабочее пространство не найдено")
-        ensure_workspace_write_access(user, member, "создания инвайт-ссылки Meta")
+            raise HTTPException(status_code=404, detail="Workspace not found")
+        ensure_workspace_write_access(user, member, "creating a Meta invite link")
 
         expires_at = now + timedelta(hours=payload.expires_in_hours)
         invite = MetaConnectionInvite(
@@ -340,7 +340,7 @@ async def create_meta_invite(
                 event_type="META_INVITE_CREATED",
                 status="SUCCESS",
                 action="CREATE_INVITE",
-                message=f"Создана инвайт-ссылка для подключения Facebook-профиля. Метка: «{payload.label}».",
+                message=f"Invite link created for connecting a Facebook profile. Label: “{payload.label}”.",
                 details={"label": payload.label, "expires_in_hours": payload.expires_in_hours},
                 correlation_id=secrets.token_hex(16),
             )
@@ -403,7 +403,7 @@ async def revoke_meta_invite(
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
         if not ws:
-            raise HTTPException(status_code=404, detail="Рабочее пространство не найдено")
+            raise HTTPException(status_code=404, detail="Workspace not found")
 
         stmt = select(MetaConnectionInvite).where(
             MetaConnectionInvite.id == invite_id,
@@ -415,11 +415,11 @@ async def revoke_meta_invite(
 
         invite = (await session.execute(stmt)).scalar_one_or_none()
         if not invite:
-            raise HTTPException(status_code=404, detail="Инвайт-ссылка не найдена")
+            raise HTTPException(status_code=404, detail="Invite link not found")
         if invite.status != "pending":
             raise HTTPException(
                 status_code=409,
-                detail=f"Нельзя отозвать инвайт со статусом «{invite.status}»",
+                detail=f"An invite with status “{invite.status}” cannot be revoked",
             )
 
         invite.status = "revoked"
@@ -433,7 +433,7 @@ async def revoke_meta_invite(
                 event_type="META_INVITE_REVOKED",
                 status="SUCCESS",
                 action="REVOKE_INVITE",
-                message=f"Инвайт-ссылка «{invite.label}» отозвана.",
+                message=f"Invite link “{invite.label}” revoked.",
                 details={"invite_id": invite.id, "label": invite.label},
                 correlation_id=secrets.token_hex(16),
             )
@@ -460,7 +460,7 @@ async def public_invite_info(token: str):
         ).scalar_one_or_none()
 
         if not invite:
-            raise HTTPException(status_code=404, detail="Инвайт-ссылка не найдена или уже использована")
+            raise HTTPException(status_code=404, detail="Invite link not found, or already used")
 
         # Determine effective status
         if invite.status == "pending" and _as_utc(invite.expires_at) <= now:
@@ -564,8 +564,8 @@ async def start_oauth(
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
         if not ws:
-            raise HTTPException(status_code=404, detail="Рабочее пространство не найдено")
-        ensure_workspace_write_access(user, member, "подключения Facebook-профиля")
+            raise HTTPException(status_code=404, detail="Workspace not found")
+        ensure_workspace_write_access(user, member, "connecting a Facebook profile")
 
         if reconnect_connection_id:
             await _workspace_connection(
@@ -730,7 +730,7 @@ async def oauth_callback(
                         Account.workspace_id == target_workspace_id,
                         Account.meta_connection_id == connection.id,
                     )
-                    .values(is_active=True, status_label="Активен")
+                    .values(is_active=True, status_label="Active")
                 )
 
             session.add(
@@ -743,7 +743,7 @@ async def oauth_callback(
                     event_type="META_CONNECTION_RECONNECTED" if reconnect_id else "META_CONNECTION_CONNECTED",
                     status="SUCCESS",
                     action="RECONNECT_CONNECTION" if reconnect_id else "CONNECT_CONNECTION",
-                    message="Подключение Meta успешно обновлено." if reconnect_id else "Подключение Meta успешно создано.",
+                    message="Meta connection updated." if reconnect_id else "Meta connection created.",
                     details={
                         "provider_user_id": provider_user_id,
                         "provider_user_name": provider_user_name,
@@ -895,7 +895,7 @@ async def delete_connection(
             account.meta_connection_id = None
             account.rules_enabled = False
             account.is_active = False
-            account.status_label = "Требуется подключение Meta"
+            account.status_label = "Meta connection required"
 
         session.add(
             AuditEvent(
@@ -908,7 +908,7 @@ async def delete_connection(
                 status="SUCCESS",
                 action="DELETE_CONNECTION",
                 message=(
-                    "Подключение Meta удалено; связанные кабинеты безопасно отключены."
+                    "Meta connection removed; the linked ad accounts were safely disconnected."
                 ),
                 before_state={
                     "connection_id": connection.id,
@@ -934,7 +934,7 @@ async def delete_connection(
         "connection_id": connection_id,
         "detached_account_count": len(account_ids),
         "detached_account_ids": account_ids,
-        "message": "Подключение Meta удалено. Связанные кабинеты отключены до переподключения.",
+        "message": "Meta connection removed. The linked ad accounts stay disconnected until you reconnect.",
     }
 
 
@@ -1015,7 +1015,7 @@ async def discover_accounts(
             await session.commit()
             raise HTTPException(
                 status_code=502,
-                detail="Meta не подтвердила подключение. Подключите профиль заново.",
+                detail="Meta did not confirm the connection. Connect the profile again.",
             ) from exc
 
         existing_assets = {
@@ -1042,7 +1042,7 @@ async def discover_accounts(
             )
             asset.name = str(raw.get("name") or account_id)
             asset.business_id = str(business.get("id") or "")
-            asset.business_name = str(business.get("name") or "Без Business Manager")
+            asset.business_name = str(business.get("name") or "No Business Manager")
             try:
                 asset.account_status = int(raw.get("account_status") or 0)
             except (TypeError, ValueError):
@@ -1140,7 +1140,7 @@ async def import_accounts(
         account_id = value if value.startswith("act_") else f"act_{value}"
         numeric_id = account_id.removeprefix("act_")
         if not numeric_id.isdigit() or not 5 <= len(numeric_id) <= 25:
-            raise HTTPException(status_code=422, detail=f"Некорректный ID кабинета: {value}")
+            raise HTTPException(status_code=422, detail=f"Invalid ad account ID: {value}")
         if account_id not in seen:
             seen.add(account_id)
             requested_ids.append(account_id)
@@ -1157,11 +1157,11 @@ async def import_accounts(
         caller_role = member.role if member else "buyer"
 
         if connection.status != "active":
-            raise HTTPException(status_code=409, detail="Сначала переподключите профиль Meta")
+            raise HTTPException(status_code=409, detail="Reconnect your Meta profile first")
         try:
             access_token = decrypt_meta_token(connection.access_token_encrypted)
         except MetaTokenError as exc:
-            raise HTTPException(status_code=503, detail="Ключ подключения Meta недоступен") from exc
+            raise HTTPException(status_code=503, detail="The Meta connection key is unavailable") from exc
 
         assets = {
             item.meta_account_id: item
@@ -1178,7 +1178,7 @@ async def import_accounts(
         if missing_ids:
             raise HTTPException(
                 status_code=422,
-                detail="Сначала обновите список доступных кабинетов Meta",
+                detail="Refresh the list of available Meta ad accounts first",
             )
 
         for account_id in requested_ids:
@@ -1187,7 +1187,7 @@ async def import_accounts(
                 account_info = await meta_client.get_account_info(account_id, access_token)
                 timezone_name = canonical_timezone_name(account_info.get("timezone_name"))
                 if resolve_account_clock(timezone_name) is None:
-                    raise RuntimeError("Meta не вернула поддерживаемый часовой пояс")
+                    raise RuntimeError("Meta did not return a supported time zone")
                 currency = normalize_currency(account_info.get("currency"))
                 async with session.begin_nested():
                     existing = (
@@ -1201,16 +1201,16 @@ async def import_accounts(
                             and ws is not None
                             and existing.workspace_id != ws.id
                         ):
-                            raise RuntimeError("Кабинет уже подключён в другом рабочем пространстве.")
+                            raise RuntimeError("This ad account is already connected in another workspace.")
                         if (
                             existing.workspace_id == (ws.id if ws else None)
                             and not entity_is_owned_by(existing, user)
                             and caller_role not in ("owner", "admin")
                         ):
-                            raise RuntimeError("Кабинет добавлен другим байером в этом воркспейсе. Изменение разрешено только владельцу или администратору воркспейса.")
+                            raise RuntimeError("This ad account was added by another buyer in this workspace. Only the workspace owner or an admin can change it.")
 
                     status_code = int(account_info.get("account_status") or 0)
-                    status_label = str(account_info.get("status_label") or f"Статус #{status_code}")
+                    status_label = str(account_info.get("status_label") or f"Status #{status_code}")
                     was_migrated = False
                     rules_count = 0
                     prev_connection_type = "none"
@@ -1266,9 +1266,9 @@ async def import_accounts(
                                 account_name=account.name,
                                 action="MIGRATE_TO_OAUTH",
                                 message=(
-                                    f"Кабинет {account_id} успешно переведён на OAuth-подключение "
+                                    f"Ad account {account_id} was moved to an OAuth connection "
                                     f"({connection.provider_user_name or connection.provider_user_id}). "
-                                    f"Назначенные правила сохранены ({rules_count} шт.)."
+                                    f"Assigned rules were preserved ({rules_count})."
                                 ),
                                 before_state={
                                     "connection_type": prev_connection_type,

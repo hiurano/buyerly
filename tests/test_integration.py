@@ -127,7 +127,7 @@ class MockMetaClient(MetaClient):
         *,
         priority: str = "normal",
     ):
-        return {"id": account_id, "name": "Underdog 3286", "timezone_name": "HST", "currency": "USD", "account_status": 1, "status_label": "Активен (ACTIVE)"}
+        return {"id": account_id, "name": "Underdog 3286", "timezone_name": "HST", "currency": "USD", "account_status": 1, "status_label": "Active (ACTIVE)"}
 
     async def get_adsets_insights(
         self,
@@ -1237,7 +1237,7 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             "id": "act_e2e_sweden_1083",
             "name": "Underdog 3286",
             "account_status": 2, # Disabled
-            "status_label": "Заблокирован в Meta (DISABLED / Policy Ban)",
+            "status_label": "Disabled in Meta (DISABLED / Policy Ban)",
             "timezone_name": "HST"
         })
         sent_alerts = []
@@ -1250,7 +1250,7 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(len(sent_alerts), 1)
         self.assertEqual(sent_alerts[0]["event_type"], "ACCOUNT_ISSUE")
-        self.assertIn("Заблокирован", sent_alerts[0]["local_time"])
+        self.assertIn("Disabled", sent_alerts[0]["local_time"])
 
     async def test_token_expired_alert(self):
         """Если токен Meta слетел → алерт TOKEN_EXPIRED."""

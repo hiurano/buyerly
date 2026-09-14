@@ -1114,8 +1114,8 @@ class MonitoringWorker:
                     category="MONITORING",
                     action="DETECT_ACCOUNT_DAY_BOUNDARY",
                     message=(
-                        f"В кабинете начались новые сутки: {decision.current_date} "
-                        f"в {local_time} ({clock.canonical_name}, {offset})"
+                        f"A new day started in the ad account: {decision.current_date} "
+                        f"at {local_time} ({clock.canonical_name}, {offset})"
                     ),
                     before_state={"last_day_start_date": previous_date},
                     after_state={"last_day_start_date": decision.current_date},
@@ -1542,7 +1542,7 @@ class MonitoringWorker:
                             acc.timezone_name = refreshed_timezone
                             acc.last_day_start_date = ""
                         status_code = acc_info.get("account_status", 1)
-                        status_label = acc_info.get("status_label", f"Статус #{status_code}")
+                        status_label = acc_info.get("status_label", f"Status #{status_code}")
                         acc.account_status = status_code
                         acc.status_label = status_label
                         if status_code != 1:
@@ -1794,8 +1794,8 @@ class MonitoringWorker:
                                         evaluation=eval_res,
                                         action=RuleAction.STOP.value,
                                         message=(
-                                            "STOP-кандидат найден. Buyerly повторно проверит "
-                                            f"метрики в течение {stop_confirmation_minutes} мин."
+                                            "A STOP candidate was found. Buyerly will re-check the "
+                                            f"metrics within {stop_confirmation_minutes} min."
                                         ),
                                         before_state=observed_state,
                                         after_state=desired_state,
@@ -1833,9 +1833,9 @@ class MonitoringWorker:
                                     evaluation=eval_res,
                                     action=eval_res.action.value,
                                     message={
-                                        "cooldown": f"Действие пропущено: cooldown {eval_res.cooldown_minutes} мин.",
-                                        "pending": "Действие уже начато в предыдущем цикле; дубль заблокирован.",
-                                        "reconciled": "Результат предыдущего действия подтверждён по текущему состоянию Meta.",
+                                        "cooldown": f"Action skipped: cooldown {eval_res.cooldown_minutes} min.",
+                                        "pending": "The action already started in a previous cycle; the duplicate was blocked.",
+                                        "reconciled": "The previous action's result was confirmed against Meta's current state.",
                                     }[claim_reason],
                                     before_state=observed_state,
                                     after_state=desired_state,

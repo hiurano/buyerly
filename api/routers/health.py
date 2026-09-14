@@ -161,14 +161,14 @@ async def account_health(account_id: str, user: User = Depends(get_current_user)
     async with async_session_maker() as session:
         workspace = await get_user_workspace(session, user)
         if workspace is None:
-            raise HTTPException(status_code=404, detail="Кабинет не найден")
+            raise HTTPException(status_code=404, detail="Ad account not found")
         account = (
             await session.execute(
                 select(Account).where(Account.workspace_id == workspace.id, Account.account_id == account_id)
             )
         ).scalar_one_or_none()
         if account is None:
-            raise HTTPException(status_code=404, detail="Кабинет не найден")
+            raise HTTPException(status_code=404, detail="Ad account not found")
         row = (
             await session.execute(
                 select(AccountHealth).where(

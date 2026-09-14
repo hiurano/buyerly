@@ -690,7 +690,7 @@ class MetaConnectionAsset(Base):
     meta_account_id = Column(String, nullable=False, index=True)
     name = Column(String, default="", nullable=False)
     business_id = Column(String, default="", nullable=False, index=True)
-    business_name = Column(String, default="Без Business Manager", nullable=False)
+    business_name = Column(String, default="No Business Manager", nullable=False)
     account_status = Column(Integer, default=1, nullable=False)
     currency = Column(String, default="UNKNOWN", nullable=False)
     timezone_name = Column(String, default="UTC", nullable=False)
@@ -751,7 +751,7 @@ class Account(Base):
     
     # Статус кабинета в Meta
     account_status = Column(Integer, default=1, nullable=False, doc="1: ACTIVE, 2: DISABLED, 3: UNSETTLED")
-    status_label = Column(String, default="Активен (ACTIVE)", nullable=False)
+    status_label = Column(String, default="Active (ACTIVE)", nullable=False)
     
     rules_enabled = Column(Boolean, default=False, nullable=False, doc="Включены ли авто-правила стопов")
     is_active = Column(Boolean, default=True, nullable=False, doc="Включен ли кабинет в системе")

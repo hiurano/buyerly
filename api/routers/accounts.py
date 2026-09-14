@@ -100,7 +100,7 @@ async def list_accounts(user: User = Depends(get_current_user)):
                     timezone_name=a.timezone_name or "UTC",
                     currency=normalize_currency(a.currency),
                     account_status=a.account_status,
-                    status_label=a.status_label or "Активен (ACTIVE)",
+                    status_label=a.status_label or "Active (ACTIVE)",
                     rules_enabled=a.rules_enabled,
                     is_active=a.is_active,
                     active_rules=active_rules_list,
@@ -126,10 +126,10 @@ async def create_account_group(
 ):
     name = payload.name.strip()
     if not name:
-        raise HTTPException(status_code=422, detail="Название группы не может быть пустым")
+        raise HTTPException(status_code=422, detail="The group name cannot be empty")
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "создания групп кабинетов")
+        ensure_workspace_write_access(user, member, "creating account groups")
 
         scope_clause = AccountGroup.workspace_id == ws.id if ws else owned_by(AccountGroup, user)
         duplicate = (
@@ -141,7 +141,7 @@ async def create_account_group(
             )
         ).scalar_one_or_none()
         if duplicate is not None:
-            raise HTTPException(status_code=409, detail="Группа с таким названием уже существует")
+            raise HTTPException(status_code=409, detail="A group with this name already exists")
 
         accounts = await _validate_account_group_members(session, user, payload.account_ids)
         group = AccountGroup(
@@ -158,7 +158,7 @@ async def create_account_group(
             await session.commit()
         except IntegrityError as exc:
             await session.rollback()
-            raise HTTPException(status_code=409, detail="Группа с таким названием уже существует") from exc
+            raise HTTPException(status_code=409, detail="A group with this name already exists") from exc
         invalidate_summary_cache(workspace_id=ws.id if ws else None, owner_user_id=user.id)
         items = await _account_group_items(session, user)
         return next(item for item in items if item.id == group.id)
@@ -172,10 +172,10 @@ async def update_account_group(
 ):
     name = payload.name.strip()
     if not name:
-        raise HTTPException(status_code=422, detail="Название группы не может быть пустым")
+        raise HTTPException(status_code=422, detail="The group name cannot be empty")
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "редактирования групп кабинетов")
+        ensure_workspace_write_access(user, member, "editing account groups")
 
         scope_clause = AccountGroup.workspace_id == ws.id if ws else owned_by(AccountGroup, user)
         group = (
@@ -187,7 +187,7 @@ async def update_account_group(
             )
         ).scalar_one_or_none()
         if group is None:
-            raise HTTPException(status_code=404, detail="Группа кабинетов не найдена")
+            raise HTTPException(status_code=404, detail="Account group not found")
         duplicate = (
             await session.execute(
                 select(AccountGroup.id).where(
@@ -198,7 +198,7 @@ async def update_account_group(
             )
         ).scalar_one_or_none()
         if duplicate is not None:
-            raise HTTPException(status_code=409, detail="Группа с таким названием уже существует")
+            raise HTTPException(status_code=409, detail="A group with this name already exists")
 
         accounts = await _validate_account_group_members(session, user, payload.account_ids)
         try:
@@ -211,7 +211,7 @@ async def update_account_group(
             await session.commit()
         except IntegrityError as exc:
             await session.rollback()
-            raise HTTPException(status_code=409, detail="Группа с таким названием уже существует") from exc
+            raise HTTPException(status_code=409, detail="A group with this name already exists") from exc
         invalidate_summary_cache(workspace_id=ws.id if ws else None, owner_user_id=user.id)
         items = await _account_group_items(session, user)
         return next(item for item in items if item.id == group.id)
@@ -224,7 +224,7 @@ async def delete_account_group(
 ):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "удаления групп кабинетов")
+        ensure_workspace_write_access(user, member, "deleting account groups")
 
         scope_clause = AccountGroup.workspace_id == ws.id if ws else owned_by(AccountGroup, user)
         group = (
@@ -236,12 +236,12 @@ async def delete_account_group(
             )
         ).scalar_one_or_none()
         if group is None:
-            raise HTTPException(status_code=404, detail="Группа кабинетов не найдена")
+            raise HTTPException(status_code=404, detail="Account group not found")
         await session.execute(delete(AccountGroupMember).where(AccountGroupMember.group_id == group.id))
         await session.delete(group)
         await session.commit()
         invalidate_summary_cache(workspace_id=ws.id if ws else None, owner_user_id=user.id)
-    return {"message": "Группа кабинетов удалена", "group_id": group_id}
+    return {"message": "Account group deleted", "group_id": group_id}
 
 
 @router.patch("/accounts/{account_id}/profile")
@@ -253,7 +253,7 @@ async def update_account_profile(
     """Update owner-only Buyerly labels without changing the Meta account name."""
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "редактирования кабинета")
+        ensure_workspace_write_access(user, member, "editing an ad account")
 
         acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
         scope_clause = (
@@ -270,14 +270,14 @@ async def update_account_profile(
                 await record_security_event_and_raise(
                     session,
                     status_code=404,
-                    detail="Кабинет не найден.",
+                    detail="Ad account not found.",
                     user=user,
                     workspace_id=ws.id if ws else None,
                     action="UPDATE_ACCOUNT_PROFILE",
                     resource_type="account",
                     resource_id=acc_id,
                 )
-            raise HTTPException(status_code=404, detail="Кабинет не найден.")
+            raise HTTPException(status_code=404, detail="Ad account not found.")
 
         account.custom_name = payload.custom_name.strip()
         account.note = payload.note.strip()
@@ -287,7 +287,7 @@ async def update_account_profile(
             "account_id": account.account_id,
             "custom_name": account.custom_name,
             "note": account.note,
-            "message": "Название и заметка сохранены",
+            "message": "Name and note saved",
         }
 
 
@@ -295,7 +295,7 @@ async def update_account_profile(
 async def delete_account(account_id: str, user: User = Depends(get_current_user)):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "удаления кабинета")
+        ensure_workspace_write_access(user, member, "deleting an ad account")
 
         acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
         scope_clause = (
@@ -313,20 +313,20 @@ async def delete_account(account_id: str, user: User = Depends(get_current_user)
                 await record_security_event_and_raise(
                     session,
                     status_code=404,
-                    detail="Кабинет не найден.",
+                    detail="Ad account not found.",
                     user=user,
                     workspace_id=ws.id if ws else None,
                     action="DELETE_ACCOUNT",
                     resource_type="account",
                     resource_id=acc_id,
                 )
-            raise HTTPException(status_code=404, detail="Кабинет не найден.")
+            raise HTTPException(status_code=404, detail="Ad account not found.")
 
         await session.execute(delete(AccountGroupMember).where(AccountGroupMember.account_id == acc.id))
         await session.execute(delete(Account).where(Account.account_id == acc_id))
         await session.commit()
         invalidate_summary_cache(workspace_id=ws.id if ws else None, owner_user_id=user.id)
-        return {"success": True, "message": f"Кабинет {acc_id} удален"}
+        return {"success": True, "message": f"Ad account {acc_id} deleted"}
 
 
 @router.post(
@@ -342,9 +342,9 @@ async def parse_raw_text(payload: ParseRawRequest, user: User = Depends(get_curr
 @router.post("/accounts/batch-add")
 async def batch_add_accounts(payload: BatchAddRequest, user: User = Depends(get_current_user)):
     if not payload.accounts:
-        raise HTTPException(status_code=400, detail="Список кабинетов пуст.")
+        raise HTTPException(status_code=400, detail="The ad account list is empty.")
     if not payload.access_token.strip():
-        raise HTTPException(status_code=400, detail="Укажите Access Token Meta.")
+        raise HTTPException(status_code=400, detail="Provide a Meta access token.")
 
     token = payload.access_token.strip()
     batch_name = (payload.batch_name or "-").strip()
@@ -354,7 +354,7 @@ async def batch_add_accounts(payload: BatchAddRequest, user: User = Depends(get_
 
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "добавления рекламных кабинетов")
+        ensure_workspace_write_access(user, member, "adding ad accounts")
         caller_role = member.role if member else "buyer"
         try:
             _ = encrypt_meta_token(token)
@@ -362,7 +362,7 @@ async def batch_add_accounts(payload: BatchAddRequest, user: User = Depends(get_
             logger.error("Manual Meta token encryption is unavailable: %s", exc)
             raise HTTPException(
                 status_code=503,
-                detail="Безопасное сохранение Meta Access Token временно недоступно.",
+                detail="Secure storage of the Meta access token is temporarily unavailable.",
             ) from exc
 
         for idx, item in enumerate(payload.accounts, start=1):
@@ -374,11 +374,11 @@ async def batch_add_accounts(payload: BatchAddRequest, user: User = Depends(get_
                 timezone_name = str(acc_info.get("timezone_name") or "").strip()
                 if resolve_account_clock(timezone_name) is None:
                     raise RuntimeError(
-                        "Meta не вернула поддерживаемый часовой пояс рекламного кабинета."
+                        "Meta did not return a supported time zone for the ad account."
                     )
                 fb_name = acc_info.get("name", acc_id)
                 status_code = acc_info.get("account_status", 1)
-                status_label = acc_info.get("status_label", "Активен (ACTIVE)")
+                status_label = acc_info.get("status_label", "Active (ACTIVE)")
                 currency = normalize_currency(acc_info.get("currency"))
 
                 if batch_name != "-" and len(batch_name) > 0:
@@ -399,7 +399,7 @@ async def batch_add_accounts(payload: BatchAddRequest, user: User = Depends(get_
                     ):
                         error_list.append({
                             "account_id": acc_id,
-                            "error": "Кабинет уже подключён в другом рабочем пространстве."
+                            "error": "This ad account is already connected in another workspace."
                         })
                         continue
 
@@ -411,7 +411,7 @@ async def batch_add_accounts(payload: BatchAddRequest, user: User = Depends(get_
                     ):
                         error_list.append({
                             "account_id": acc_id,
-                            "error": "Кабинет добавлен другим байером в этом воркспейсе. Изменение разрешено только владельцу или администратору воркспейса."
+                            "error": "This ad account was added by another buyer in this workspace. Only the workspace owner or an admin can change it."
                         })
                         continue
 

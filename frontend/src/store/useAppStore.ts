@@ -186,7 +186,7 @@ function groupToRuleGroup(group: RuleGroupPayload): RuleGroup {
 
 function requestErrorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
-  return 'Не удалось связаться с сервером. Попробуйте ещё раз.';
+  return 'Could not reach the server. Please try again.';
 }
 
 /**
@@ -524,10 +524,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({
         attachmentError:
           scope.level === 'account'
-            ? 'Это правило работает на весь кабинет. Измените его область на экране Rules.'
+            ? 'This rule runs on the whole ad account. Change its scope on the Rules screen.'
             : scope.level === 'campaign'
-            ? 'Это правило нацелено на отдельные кампании. Снимите его там или измените область на экране Rules.'
-            : 'Это правило нацелено на отдельные адсеты. Снимите его там или измените область на экране Rules.',
+            ? 'This rule targets individual campaigns. Detach it there, or change its scope on the Rules screen.'
+            : 'This rule targets individual ad sets. Detach it there, or change its scope on the Rules screen.',
       });
       return;
     }
@@ -670,7 +670,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (rule.needsReview && rule.status === 'paused') {
       set({
         rulesMutationError:
-          rule.reviewReason || 'Правило требует пересохранения перед включением.',
+          rule.reviewReason || 'This rule must be re-saved before it can be enabled.',
       });
       return;
     }

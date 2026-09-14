@@ -11,7 +11,7 @@ export const MetaConnectInviteView: React.FC<{ token: string }> = ({ token }) =>
     let active = true;
     apiRequest<PublicMetaInviteInfo>(`/api/meta/invites/public/${encodeURIComponent(token)}`)
       .then((result) => { if (active) setInvite(result); })
-      .catch((requestError: unknown) => { if (active) setError(requestError instanceof Error ? requestError.message : 'Ссылка недоступна.'); });
+      .catch((requestError: unknown) => { if (active) setError(requestError instanceof Error ? requestError.message : 'This link is unavailable.'); });
     return () => { active = false; };
   }, [token]);
 
@@ -19,12 +19,12 @@ export const MetaConnectInviteView: React.FC<{ token: string }> = ({ token }) =>
     <AuthFrame>
       <section className="buyerly-auth-card buyerly-invite-card">
         <BuyerlyBrand />
-        {!invite && !error && <span className="buyerly-auth-spinner" aria-label="Проверяем ссылку" />}
-        {(error || (invite && !invite.valid)) && <><h1>Ссылка недоступна</h1><p className="buyerly-auth-copy">{error || 'Эта ссылка уже использована, отозвана или истекла.'}</p></>}
+        {!invite && !error && <span className="buyerly-auth-spinner" aria-label="Checking link" />}
+        {(error || (invite && !invite.valid)) && <><h1>Link unavailable</h1><p className="buyerly-auth-copy">{error || 'This link has already been used, revoked, or has expired.'}</p></>}
         {invite?.valid && <>
-          <h1>Подключить Facebook</h1>
-          <p className="buyerly-auth-copy">Вы подключаете Facebook-профиль к workspace «{invite.workspace_name}».</p>
-          <a className="buyerly-auth-button buyerly-auth-link-button" href={`/api/meta/oauth/invite/${encodeURIComponent(token)}`}>Продолжить с Facebook</a>
+          <h1>Connect Facebook</h1>
+          <p className="buyerly-auth-copy">You are connecting a Facebook profile to the “{invite.workspace_name}” workspace.</p>
+          <a className="buyerly-auth-button buyerly-auth-link-button" href={`/api/meta/oauth/invite/${encodeURIComponent(token)}`}>Continue with Facebook</a>
         </>}
       </section>
     </AuthFrame>
@@ -35,8 +35,8 @@ export const MetaConnectSuccessView: React.FC = () => (
   <AuthFrame>
     <section className="buyerly-auth-card buyerly-invite-card">
       <BuyerlyBrand />
-      <h1>Facebook подключён</h1>
-      <p className="buyerly-auth-copy">Можно закрыть эту страницу. Владелец workspace сможет выбрать доступные рекламные кабинеты в Buyerly.</p>
+      <h1>Facebook connected</h1>
+      <p className="buyerly-auth-copy">You can close this page. The workspace owner can now choose the available ad accounts in Buyerly.</p>
     </section>
   </AuthFrame>
 );

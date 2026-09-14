@@ -73,7 +73,7 @@ class TestMetaErrorSubcodesClassification(unittest.TestCase):
         err_10 = classify_meta_token_error({"code": 10, "message": "Permission Denied"})
         self.assertEqual(err_10.code, 10)
         self.assertEqual(err_10.subcode_key, "ACCOUNT_PERMISSION_DENIED")
-        self.assertIn("Нет прав", err_10.title)
+        self.assertIn("No permissions", err_10.title)
 
         err_200 = classify_meta_token_error({"code": 200, "message": "Permission Denied"})
         self.assertEqual(err_200.code, 200)

@@ -17,13 +17,13 @@ from core.timezones import canonical_timezone_name
 logger = logging.getLogger(__name__)
 
 ACCOUNT_STATUS_MAP = {
-    1: "Активен (ACTIVE)",
-    2: "Заблокирован в Meta (DISABLED / Policy Ban)",
-    3: "Проблема с оплатой (UNSETTLED / Hold на карте)",
-    7: "На проверке безопасности (PENDING_RISK_REVIEW)",
-    8: "Ожидает списания средств (PENDING_SETTLEMENT)",
-    9: "Льготный период оплаты (IN_GRACE_PERIOD)",
-    101: "Кабинет закрыт (CLOSED)"
+    1: "Active (ACTIVE)",
+    2: "Disabled in Meta (DISABLED / Policy Ban)",
+    3: "Payment problem (UNSETTLED / card hold)",
+    7: "Under security review (PENDING_RISK_REVIEW)",
+    8: "Awaiting settlement (PENDING_SETTLEMENT)",
+    9: "Payment grace period (IN_GRACE_PERIOD)",
+    101: "Ad account closed (CLOSED)"
 }
 
 ACCOUNT_SUMMARY_FIELDS = (
@@ -35,57 +35,57 @@ META_TOKEN_SUBCODE_MAP: Dict[int, tuple[str, str, str, str]] = {
     # subcode: (subcode_key, title, description, action_hint)
     458: (
         "APP_REVOKED",
-        "🚫 Доступ отозван",
-        "Приложение удалено из бизнес-интеграций Facebook",
-        "Переподключите интеграцию в настройках Business Manager",
+        "🚫 Access revoked",
+        "The app was removed from Facebook business integrations",
+        "Reconnect the integration in Business Manager settings",
     ),
     459: (
         "CHECKPOINT",
-        "🔒 Чекпоинт / Бан профиля",
-        "Профиль Facebook отправлен на проверку безопасности (селфи / документы)",
-        "Зайдите в профиль через антидетект-браузер и пройдите чекпоинт",
+        "🔒 Checkpoint / profile ban",
+        "The Facebook profile was sent for a security review (selfie / documents)",
+        "Open the profile in an antidetect browser and clear the checkpoint",
     ),
     460: (
         "PASSWORD_CHANGED",
-        "🔑 Пароль изменён",
-        "Пароль аккаунта был изменён, все сессии сброшены",
-        "Авторизуйтесь заново с новым паролем",
+        "🔑 Password changed",
+        "The account password was changed; all sessions were reset",
+        "Sign in again with the new password",
     ),
     463: (
         "SESSION_EXPIRED",
-        "⏳ Срок токена истёк",
-        "Истёк 60-дневный срок действия долгоживущего токена",
-        "Обновите токен через бота (кнопка '➕ Добавить кабинеты')",
+        "⏳ Token expired",
+        "The 60-day lifetime of the long-lived token has expired",
+        "Refresh the token via the bot (the '➕ Add ad accounts' button)",
     ),
     464: (
         "UNCONFIRMED_USER",
-        "📧 Аккаунт не подтверждён",
-        "Пользователь не подтвердил email или телефон в Facebook",
-        "Подтвердите контактные данные в профиле FB",
+        "📧 Account not confirmed",
+        "The user has not confirmed their email or phone in Facebook",
+        "Confirm the contact details in the FB profile",
     ),
     467: (
         "ACCESS_TOKEN_INVALIDATED",
-        "🚪 Сессия завершена",
-        "Выполнен выход со всех устройств или сброс токена",
-        "Выпустите новый токен доступа",
+        "🚪 Session ended",
+        "Signed out on all devices, or the token was reset",
+        "Issue a new access token",
     ),
     490: (
         "LOGIN_APPROVAL_NEEDED",
-        "🛡 Требуется 2FA",
-        "Meta запросила подтверждение двухфакторной аутентификации",
-        "Подтвердите вход через приложение аутентификации",
+        "🛡 2FA required",
+        "Meta requested two-factor authentication confirmation",
+        "Confirm the sign-in in your authenticator app",
     ),
     492: (
         "DEVICE_SESSION_EXPIRED",
-        "📱 Сессия устройства устарела",
-        "Сессия мобильного/веб устройства устарела",
-        "Переавторизуйтесь в аккаунте",
+        "📱 Device session is stale",
+        "The mobile/web device session is stale",
+        "Sign in to the account again",
     ),
     1348001: (
         "ACCOUNT_PERMISSION_DENIED",
-        "🚫 Нет прав на кабинет",
-        "Пользователь не имеет роли администратора/рекламодателя в кабинете",
-        "Выдайте права пользователю в Business Manager",
+        "🚫 No permissions on the ad account",
+        "The user has no admin/advertiser role on the ad account",
+        "Grant the user permissions in Business Manager",
     ),
 }
 
@@ -150,19 +150,19 @@ def classify_meta_token_error(
         subcode_key, title, description, action_hint = META_TOKEN_SUBCODE_MAP[subcode]
     elif code in [10, 200]:
         subcode_key = "ACCOUNT_PERMISSION_DENIED"
-        title = "🚫 Нет прав на кабинет"
-        description = "Недостаточно прав для управления рекламным кабинетом в Meta"
-        action_hint = "Проверьте права пользователя в Business Manager"
+        title = "🚫 No permissions on the ad account"
+        description = "Insufficient permissions to manage this ad account in Meta"
+        action_hint = "Check the user's permissions in Business Manager"
     elif code in [102]:
         subcode_key = "API_SESSION_INVALID"
-        title = "🔌 Сессия API недействительна"
-        description = "Сессия API Meta завершена или сброшена"
-        action_hint = "Переподключите аккаунт через OAuth"
+        title = "🔌 API session is invalid"
+        description = "The Meta API session ended or was reset"
+        action_hint = "Reconnect the account via OAuth"
     else:
         subcode_key = "TOKEN_INVALID"
-        title = "🔑 Токен недействителен"
-        description = "Токен доступа Meta API стал недействительным или истёк"
-        action_hint = "Обновите токен через бота (кнопка '➕ Добавить кабинеты')"
+        title = "🔑 Token is invalid"
+        description = "The Meta API access token became invalid or expired"
+        action_hint = "Refresh the token via the bot (the '➕ Add ad accounts' button)"
 
     return MetaTokenAuthError(
         f"Token expired or invalid: {message}",
@@ -795,7 +795,7 @@ class MetaClient:
         status_code = data.get("account_status", 1)
         data["currency"] = normalize_currency(data.get("currency"))
         data["timezone_name"] = canonical_timezone_name(data.get("timezone_name"))
-        data["status_label"] = ACCOUNT_STATUS_MAP.get(status_code, f"Неизвестный статус ({status_code})")
+        data["status_label"] = ACCOUNT_STATUS_MAP.get(status_code, f"Unknown status ({status_code})")
         return data
 
     async def get_account_insights_summary(

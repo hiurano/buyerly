@@ -479,7 +479,7 @@ class TestRuleEngine(unittest.TestCase):
         
         res = RuleEngine.evaluate(adset_today, self.account, insights_by_window=insights)
         self.assertEqual(res.action, RuleAction.STOP)
-        self.assertIn("[Вчера]", res.reason)
+        self.assertIn("[Yesterday]", res.reason)
 
     def test_time_window_fallback_to_today(self):
         """Если insights_by_window не содержит нужного окна, используются данные today."""
