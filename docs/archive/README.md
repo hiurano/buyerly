@@ -1,0 +1,52 @@
+# Архив документации
+
+Исторические планы и снимки сохранены для контекста. Они не являются действующими инструкциями и не подтверждают выполнение или отмену задач. Актуальные источники — в [индексе документации](../README.md).
+
+## Планы
+
+- [implementation_plan_86eyr5qb9.md](plans/implementation_plan_86eyr5qb9.md)
+- [implementation_plan_86eyr5qba.md](plans/implementation_plan_86eyr5qba.md)
+- [implementation_plan_86eyr5qbd.md](plans/implementation_plan_86eyr5qbd.md)
+- [implementation_plan_86eyr5qbe.md](plans/implementation_plan_86eyr5qbe.md)
+- [implementation_plan_86eyr5v2f.md](plans/implementation_plan_86eyr5v2f.md)
+- [implementation_plan_86eyr5ywm.md](plans/implementation_plan_86eyr5ywm.md)
+- [implementation_plan_86eyr5z4q.md](plans/implementation_plan_86eyr5z4q.md)
+- [implementation_plan_86eyr5z4r.md](plans/implementation_plan_86eyr5z4r.md)
+- [implementation_plan_86eyr5z4t.md](plans/implementation_plan_86eyr5z4t.md)
+- [implementation_plan_86eyr5z4v.md](plans/implementation_plan_86eyr5z4v.md)
+- [implementation_plan_86eyr5z4w.md](plans/implementation_plan_86eyr5z4w.md)
+- [implementation_plan_86eyr5z4x.md](plans/implementation_plan_86eyr5z4x.md)
+- [implementation_plan_86eyr6073.md](plans/implementation_plan_86eyr6073.md)
+- [implementation_plan_86eyr6074.md](plans/implementation_plan_86eyr6074.md)
+- [implementation_plan_86eyr60pg.md](plans/implementation_plan_86eyr60pg.md)
+- [implementation_plan_86eyr60pp.md](plans/implementation_plan_86eyr60pp.md)
+- [implementation_plan_86eyr60pw.md](plans/implementation_plan_86eyr60pw.md)
+- [implementation_plan_86eyrx9bz.md](plans/implementation_plan_86eyrx9bz.md)
+- [implementation_plan_auth_onboarding_routing.md](plans/implementation_plan_auth_onboarding_routing.md)
+- [implementation_plan_guided_rule_builder.md](plans/implementation_plan_guided_rule_builder.md)
+- [implementation_plan_issue_105_live_ads_manager.md](plans/implementation_plan_issue_105_live_ads_manager.md)
+- [implementation_plan_issue_108_meta_campaign_inventory.md](plans/implementation_plan_issue_108_meta_campaign_inventory.md)
+- [implementation_plan_issue_112_live_ads_hierarchy.md](plans/implementation_plan_issue_112_live_ads_hierarchy.md)
+- [implementation_plan_issue_119_live_statistics.md](plans/implementation_plan_issue_119_live_statistics.md)
+- [implementation_plan_issue_133_live_inbox.md](plans/implementation_plan_issue_133_live_inbox.md)
+- [implementation_plan_meta_pilot_and_frontend_integration.md](plans/implementation_plan_meta_pilot_and_frontend_integration.md)
+- [implementation_plan_meta_trust_flow.md](plans/implementation_plan_meta_trust_flow.md)
+- [implementation_plan_remove_legacy_webapp.md](plans/implementation_plan_remove_legacy_webapp.md)
+- [implementation_plan_today_decision_center.md](plans/implementation_plan_today_decision_center.md)
+- [implementation_plan_ui_contract_governance.md](plans/implementation_plan_ui_contract_governance.md)
+- [implementation_plan_unified_ui_system.md](plans/implementation_plan_unified_ui_system.md)
+- [implementation_plan_visual_polish_console.md](plans/implementation_plan_visual_polish_console.md)
+
+## Снимки и аудиты
+
+- [PRODUCT_AUDIT_2026-08-17.md](snapshots/PRODUCT_AUDIT_2026-08-17.md)
+- [PROJECT_SPEC.md](snapshots/PROJECT_SPEC.md)
+- [SYSTEM_PREVIEW.md](snapshots/SYSTEM_PREVIEW.md)
+- [UX_BASELINE_2026-08-29.md](snapshots/UX_BASELINE_2026-08-29.md)
+- [before_cleanup_ARCHITECTURE.md](snapshots/before_cleanup_ARCHITECTURE.md)
+- [before_cleanup_PRODUCT_BACKLOG.md](snapshots/before_cleanup_PRODUCT_BACKLOG.md)
+- [before_cleanup_PROGRESS.md](snapshots/before_cleanup_PROGRESS.md)
+- [before_cleanup_README.md](snapshots/before_cleanup_README.md)
+- [before_cleanup_REMAINING_PRODUCT_WORK.md](snapshots/before_cleanup_REMAINING_PRODUCT_WORK.md)
+- [before_cleanup_WORKSPACES_AUTH_AND_INVITES.md](snapshots/before_cleanup_WORKSPACES_AUTH_AND_INVITES.md)
+- [security_audit_report.md](snapshots/security_audit_report.md)

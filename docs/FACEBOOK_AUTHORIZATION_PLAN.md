@@ -1,5 +1,7 @@
 # META-AUTH-001 — официальное подключение Facebook-профилей
 
+> Исторические записи и этапы могут быть заменены последующими изменениями. Текущая архитектура: [ARCHITECTURE.md](ARCHITECTURE.md); актуальные задачи: [PRODUCT_BACKLOG.md](PRODUCT_BACKLOG.md). Статус внешних сервисов проверяется отдельно.
+
 ## Frontend trust-flow contract
 
 Основной интерфейс подключения следует последовательности `Подключение → Выбор кабинетов → Проверка доступа → Готово`. До запуска OAuth Buyerly объясняет ценность подключения, назначение `ads_read`, `business_management` и `ads_management`, а также явно сообщает, что пароль/cookies Facebook не передаются Buyerly и автоматизации не включаются автоматически.
@@ -10,7 +12,7 @@ UI не имитирует прогресс: до завершения Meta/API 
 
 Приоритет: `P0`
 
-Связанный backlog: [BL-007](PRODUCT_BACKLOG.md#bl-007-официальное-подключение-meta-через-facebook-login)
+Историческая задача: [BL-007](archive/snapshots/before_cleanup_PRODUCT_BACKLOG.md#bl-007-официальное-подключение-meta-через-facebook-login). Текущие направления — в [бэклоге](PRODUCT_BACKLOG.md).
 
 Рабочая сессия по настройкам Meta: 18 августа 2026 года
 
