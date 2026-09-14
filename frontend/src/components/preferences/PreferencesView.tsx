@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useAppStore, type InterfaceTheme } from '@/store/useAppStore';
 import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
+import type { SessionUser } from '@/lib/types';
+import { ProfileSection } from './ProfileSection';
 
 const themeOptions: Array<{
   value: InterfaceTheme;
@@ -11,17 +13,33 @@ const themeOptions: Array<{
   { value: 'dark', label: 'Dark' },
 ];
 
-export const PreferencesView: React.FC = () => {
+type SettingsSection = 'preferences' | 'profile';
+
+/** Keywords the settings search matches against, per section. */
+const sectionKeywords: Record<SettingsSection, string> = {
+  preferences: 'preferences interface theme appearance',
+  profile: 'profile account email name avatar',
+};
+
+interface PreferencesViewProps {
+  user: SessionUser;
+  onUserChanged: () => void | Promise<unknown>;
+}
+
+export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, onUserChanged }) => {
   const { interfaceTheme, setInterfaceTheme, lastAppTab, setActiveTab } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+  const [section, setSection] = useState<SettingsSection>('preferences');
   const menuRef = useRef<HTMLDivElement>(null);
 
   const selectedTheme = themeOptions.find((option) => option.value === interfaceTheme) || themeOptions[0];
-  const preferencesVisible = useMemo(
-    () => 'preferences interface theme appearance'.includes(searchQuery.trim().toLowerCase()),
-    [searchQuery]
-  );
+  const visibleSections = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return (Object.keys(sectionKeywords) as SettingsSection[]).filter((key) =>
+      sectionKeywords[key].includes(query)
+    );
+  }, [searchQuery]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -97,12 +115,18 @@ export const PreferencesView: React.FC = () => {
         <nav className="preferences-nav-list">
           <div className="preferences-nav-group">
             <h2 className="preferences-nav-heading">Personal</h2>
-            {preferencesVisible ? (
+            {visibleSections.length === 0 && (
+              <div className="preferences-no-results">No settings found</div>
+            )}
+            {visibleSections.includes('preferences') && (
               <a
                 href="#preferences"
-                className="preferences-nav-item active"
-                data-active="true"
-                onClick={(e) => e.preventDefault()}
+                className={`preferences-nav-item ${section === 'preferences' ? 'active' : ''}`}
+                data-active={section === 'preferences'}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSection('preferences');
+                }}
               >
                 <svg
                   width="16"
@@ -126,8 +150,35 @@ export const PreferencesView: React.FC = () => {
                 </svg>
                 <span className="preferences-nav-label">Preferences</span>
               </a>
-            ) : (
-              <div className="preferences-no-results">No settings found</div>
+            )}
+            {visibleSections.includes('profile') && (
+              <a
+                href="#profile"
+                className={`preferences-nav-item ${section === 'profile' ? 'active' : ''}`}
+                data-active={section === 'profile'}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSection('profile');
+                }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  role="img"
+                  focusable="false"
+                  aria-hidden="true"
+                  className="preferences-nav-icon"
+                >
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M8 2C6.20507 2 4.75 3.45507 4.75 5.25C4.75 7.04493 6.20507 8.5 8 8.5C9.79493 8.5 11.25 7.04493 11.25 5.25C11.25 3.45507 9.79493 2 8 2ZM6.25 5.25C6.25 4.2835 7.0335 3.5 8 3.5C8.9665 3.5 9.75 4.2835 9.75 5.25C9.75 6.2165 8.9665 7 8 7C7.0335 7 6.25 6.2165 6.25 5.25Z"
+                  />
+                  <path d="M8 9.75C5.21979 9.75 2.9082 11.4568 2.28577 13.7568C2.17759 14.1566 2.41345 14.5683 2.81323 14.6764C3.21301 14.7846 3.62468 14.5487 3.73286 14.149C4.16576 12.4632 5.90104 11.25 8 11.25C10.099 11.25 11.8342 12.4632 12.2671 14.149C12.3753 14.5487 12.787 14.7846 13.1868 14.6764C13.5865 14.5683 13.8224 14.1566 13.7142 13.7568C13.0918 11.4568 10.7802 9.75 8 9.75Z" />
+                </svg>
+                <span className="preferences-nav-label">Profile</span>
+              </a>
             )}
           </div>
         </nav>
@@ -138,6 +189,12 @@ export const PreferencesView: React.FC = () => {
       <main className="preferences-main-canvas">
         <div className="preferences-scroll-container">
           <div className="preferences-content-column">
+            {section === 'profile' && (
+              <ProfileSection user={user} onUserChanged={onUserChanged} />
+            )}
+
+            {section === 'preferences' && (
+              <>
             {/* Page Title */}
             <div className="preferences-title-container">
               <h1 className="preferences-page-title">Preferences</h1>
@@ -238,6 +295,8 @@ export const PreferencesView: React.FC = () => {
                 </div>
               </section>
             </div>
+              </>
+            )}
           </div>
         </div>
       </main>

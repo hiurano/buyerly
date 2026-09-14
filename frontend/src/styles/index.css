@@ -1252,6 +1252,95 @@ html[data-theme='dark'] .linear-sidebar-badge,
   text-overflow: ellipsis;
 }
 
+/* Profile: hairline between rows of one card */
+.preferences-card-container--divided .preferences-row-item + .preferences-row-item {
+  border-top: 1px solid var(--color-border-primary);
+}
+
+.preferences-row-control {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.preferences-row-value {
+  color: var(--text-secondary);
+  font-family: var(--font-regular);
+  font-size: 13px;
+  font-weight: 450;
+  line-height: 16px;
+  flex-shrink: 0;
+}
+
+.preferences-row-edit-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: default;
+  transition: background var(--speed-quickTransition) var(--ease-out-quad),
+    color var(--speed-quickTransition) var(--ease-out-quad);
+}
+
+.preferences-row-edit-button:hover {
+  background: var(--item-hover-bg);
+  color: var(--text-primary);
+}
+
+.preferences-row-edit-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
+}
+
+/* Two-class selector deliberately: it must beat the h-9 utility that the
+   shared Input primitive carries, and utility order is not guaranteed. */
+.preferences-row-item .preferences-row-input {
+  width: 192px;
+  height: 30px;
+  flex-shrink: 0;
+}
+
+.preferences-row-error {
+  margin: 8px 0 0;
+  color: var(--rules-action-stop-text);
+  font-family: var(--font-regular);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.preferences-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: var(--preferences-control-bg);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.preferences-avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.preferences-avatar-initials {
+  color: var(--text-secondary);
+  font-family: var(--font-regular);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+}
+
 /* Theme Control & Combobox */
 .preferences-theme-control {
   position: relative;

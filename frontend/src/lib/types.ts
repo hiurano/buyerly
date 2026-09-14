@@ -17,6 +17,9 @@ export interface SessionUser {
   first_name: string;
   last_name: string;
   email: string | null;
+  email_verified: boolean;
+  unconfirmed_email: string | null;
+  avatar_url: string;
   onboarding_step: 'workspace' | 'personal_details' | 'invites' | 'completed';
   onboarding_completed: boolean;
   active_workspace: Workspace | null;
