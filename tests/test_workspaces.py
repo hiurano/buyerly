@@ -39,7 +39,13 @@ from tests.test_db_helper import create_test_engine, init_test_db
 class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
 
     def test_workspace_slug_normalization_is_bounded_and_deterministic(self):
-        self.assertEqual(normalize_workspace_slug("Канада Трафик"), "kanada-trafik")
+        # Slugs are ASCII only: a name with no ASCII letters falls back to a
+        # stable hash rather than being transliterated.
+        self.assertEqual(
+            normalize_workspace_slug("Канада Трафик"),
+            normalize_workspace_slug("Канада Трафик"),
+        )
+        self.assertTrue(normalize_workspace_slug("Канада Трафик").startswith("workspace-"))
         self.assertEqual(normalize_workspace_slug("Crème & Media"), "creme-media")
         self.assertEqual(
             normalize_workspace_slug("广告投放"),

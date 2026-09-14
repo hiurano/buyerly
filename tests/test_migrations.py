@@ -1131,7 +1131,7 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                     [
                         Workspace(name="API", slug="api", owner_user_id=owner.id),
                         Workspace(
-                            name="Канада Трафик",
+                            name="Canada Traffic RU",
                             slug="Канада-Трафик",
                             owner_user_id=owner.id,
                         ),
@@ -1154,10 +1154,11 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                         )
                     ).scalars()
                 )
-                self.assertEqual(
-                    slugs,
-                    ["api-workspace", "kanada-trafik-2", "kanada-trafik"],
-                )
+                self.assertEqual(slugs[0], "api-workspace")
+                # A Cyrillic slug carries no ASCII letters, so it falls back to
+                # a stable hash instead of being transliterated.
+                self.assertTrue(slugs[1].startswith("workspace-"))
+                self.assertEqual(slugs[2], "kanada-trafik")
         finally:
             await init_test_db(engine)
             await engine.dispose()

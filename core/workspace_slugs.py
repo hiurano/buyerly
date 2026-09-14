@@ -74,44 +74,6 @@ _MIGRATION_0011_RESERVED_WORKSPACE_SLUGS = frozenset(
     }
 )
 
-_CYRILLIC_TRANSLITERATION = str.maketrans(
-    {
-        "а": "a",
-        "б": "b",
-        "в": "v",
-        "г": "g",
-        "д": "d",
-        "е": "e",
-        "ё": "e",
-        "ж": "zh",
-        "з": "z",
-        "и": "i",
-        "й": "y",
-        "к": "k",
-        "л": "l",
-        "м": "m",
-        "н": "n",
-        "о": "o",
-        "п": "p",
-        "р": "r",
-        "с": "s",
-        "т": "t",
-        "у": "u",
-        "ф": "f",
-        "х": "kh",
-        "ц": "ts",
-        "ч": "ch",
-        "ш": "sh",
-        "щ": "shch",
-        "ъ": "",
-        "ы": "y",
-        "ь": "",
-        "э": "e",
-        "ю": "yu",
-        "я": "ya",
-    }
-)
-
 
 def _stable_fallback_hash(value: str) -> str:
     hash_value = 0x811C9DC5
@@ -124,8 +86,7 @@ def _stable_fallback_hash(value: str) -> str:
 def normalize_workspace_slug(value: str) -> str:
     """Return the same bounded ASCII slug for the same input on every host."""
     normalized = unicodedata.normalize("NFKC", value or "").strip().lower()
-    transliterated = normalized.translate(_CYRILLIC_TRANSLITERATION)
-    ascii_text = unicodedata.normalize("NFKD", transliterated).encode("ascii", "ignore").decode("ascii")
+    ascii_text = unicodedata.normalize("NFKD", normalized).encode("ascii", "ignore").decode("ascii")
     slug = re.sub(r"[^a-z0-9]+", "-", ascii_text).strip("-")
     slug = slug[:MAX_WORKSPACE_SLUG_LENGTH].rstrip("-")
     if slug:

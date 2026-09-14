@@ -92,8 +92,8 @@ META_TOKEN_SUBCODE_MAP: Dict[int, tuple[str, str, str, str]] = {
 
 class MetaTokenAuthError(PermissionError):
     """
-    Структурированное исключение авторизации/токена Meta Marketing API.
-    Наследуется от PermissionError для 100% обратной совместимости.
+    Structured authorization/token exception for the Meta Marketing API.
+    Inherits from PermissionError for full backward compatibility.
     """
 
     def __init__(
@@ -127,7 +127,7 @@ def classify_meta_token_error(
     fallback_message: str = "",
 ) -> MetaTokenAuthError:
     """
-    Классифицирует ошибку токена/прав Meta API на основе code, error_subcode и сообщений Meta.
+    Classify a Meta API token/permission error from code, error_subcode and Meta's messages.
     """
     raw_code = error_data.get("code")
     try:
@@ -183,12 +183,12 @@ class MetaRateLimitDeferred(RuntimeError):
 
 class MetaClient:
     """
-    Асинхронный клиент для работы с Meta Marketing API.
-    с поддержкой:
-      1. Экспоненциального Backoff и умных повторов при 429/5xx/Network Error.
-      2. Адаптивного ограничения запросов по заголовкам квоты Meta.
-      3. Канонической дедупликации метрик (Лиды, Реги, Покупки).
-      4. Повторного использования HTTP-соединений и кэша инвентаря адсетов.
+    Asynchronous client for the Meta Marketing API.
+    Supports:
+      1. Exponential backoff and smart retries on 429/5xx/network errors.
+      2. Adaptive request throttling driven by Meta's quota headers.
+      3. Canonical metric deduplication (leads, registrations, purchases).
+      4. HTTP connection reuse and an ad set inventory cache.
     """
 
     GRAPH_VERSION_PATTERN = re.compile(r"^v\d+\.\d+$")
@@ -558,8 +558,8 @@ class MetaClient:
 
     def _parse_usage_headers(self, headers: httpx.Headers, account_id: str = "") -> Dict[str, Any]:
         """
-        Парсит диагностический заголовок X-Business-Use-Case-Usage и X-App-Usage.
-        Если использование квоты достигает 80%, логирует предупреждение и флаг замедления.
+        Parse the X-Business-Use-Case-Usage and X-App-Usage diagnostic headers.
+        When quota usage reaches 80%, log a warning and raise the slow-down flag.
         """
         now = time.time()
         usage_info = {
@@ -571,12 +571,12 @@ class MetaClient:
             "updated_at": now,
         }
 
-        # 1. Проверяем заголовок X-Business-Use-Case-Usage (детальные лимиты по кабинету)
+        # 1. Check the X-Business-Use-Case-Usage header (per-account detailed limits)
         buc_header = headers.get("x-business-use-case-usage")
         if buc_header:
             try:
                 buc_data = json.loads(buc_header)
-                # Структура: {"act_123456": [{"type": "ads_management", "call_count": 10, ...}]}
+                # Shape: {"act_123456": [{"type": "ads_management", "call_count": 10, ...}]}
                 for acc_key, metrics_list in buc_data.items():
                     acc_norm = self._normalize_account_id(acc_key)
                     acc_usage = {
@@ -605,7 +605,7 @@ class MetaClient:
                         usage_info["total_time"] = max(usage_info["total_time"], tot_time)
                         usage_info["estimated_time_to_regain_access"] = max(usage_info["estimated_time_to_regain_access"], regain_mins)
 
-                        # Если стрелка на спидометре дошла до 80%
+                        # The needle has reached 80%
                         if call_cnt >= 80 or cpu_time >= 80 or tot_time >= 80:
                             acc_usage["is_high_usage"] = True
                             usage_info["is_high_usage"] = True
@@ -622,7 +622,7 @@ class MetaClient:
             except Exception as e:
                 logger.debug(f"Failed to parse x-business-use-case-usage header: {e}")
 
-        # 2. Проверяем заголовок X-App-Usage (общие лимиты приложения)
+        # 2. Check the X-App-Usage header (app-wide limits)
         app_header = headers.get("x-app-usage")
         if app_header:
             try:
@@ -671,7 +671,7 @@ class MetaClient:
         priority: str = "normal",
     ) -> httpx.Response:
         """
-        Централизованный исполнитель HTTP-запросов с Exponential Backoff + Jitter и мониторингом лимитов.
+        Central HTTP request executor with exponential backoff + jitter and limit monitoring.
         """
         await self._respect_usage_limit(account_id=account_id, priority=priority)
         client = await self._get_client()
@@ -775,7 +775,7 @@ class MetaClient:
         priority: str = "normal",
     ) -> Dict[str, Any]:
         """
-        Получает информацию о рекламном кабинете (таймзона, имя, статус, валюта).
+        Fetch ad account information (time zone, name, status, currency).
         """
         acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
         url = f"{self.base_url}/{acc_id}"
@@ -842,12 +842,12 @@ class MetaClient:
         priority: str = "normal",
     ) -> List[Dict[str, Any]]:
         """
-        Получает сводную информацию по всем адсетам кабинета за указанный период (today, yesterday, last_3d, last_7d):
-        текущий статус + независимые метрики Spend, Leads, Registrations и Purchases.
+        Fetch a summary of every ad set in the account for the given period (today, yesterday, last_3d, last_7d):
+        current status plus the independent Spend, Leads, Registrations and Purchases metrics.
         """
         acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
 
-        # 1. Получаем список всех адсетов и их текущие статусы
+        # 1. Fetch every ad set and its current status
         adsets_url = f"{self.base_url}/{acc_id}/adsets"
         adsets_params = {
             # campaign_id lets a rule be aimed at one campaign instead of the
@@ -885,7 +885,7 @@ class MetaClient:
                     request_started_at=request_started_at,
                 )
 
-        # 2. Получаем Insights за указанный период
+        # 2. Fetch insights for the given period
         insights_url = f"{self.base_url}/{acc_id}/insights"
         insights_params = {
             "level": "adset",
@@ -906,7 +906,7 @@ class MetaClient:
             if item.get("adset_id")
         }
 
-        # 3. Объединяем статус и метрики с канонической дедупликацией
+        # 3. Merge status and metrics with canonical deduplication
         unified_adsets = []
         processed_ids = set()
         for adset in adsets_list:
@@ -924,7 +924,7 @@ class MetaClient:
             cpc = self._safe_float(insight.get("cpc", 0.0))
             ctr = self._safe_float(insight.get("ctr", 0.0))
 
-            # Безопасный пропуск: мертвые архивные/удаленные адсеты без активности за отчетный период
+            # Safe skip: dead archived/deleted ad sets with no activity in the reporting period
             if (
                 effective_status in ("ARCHIVED", "DELETED")
                 and spend == 0
@@ -951,7 +951,7 @@ class MetaClient:
                 "currency": normalize_currency(currency),
             })
 
-        # Дополнительная страховка: адсеты со спендом из инсайтов, которых нет в списке активных
+        # Extra safety net: ad sets with spend in insights that are missing from the active list
         for a_id, insight in insights_data.items():
             if str(a_id) not in processed_ids:
                 normalized = self._normalize_basic_insight(insight)
@@ -1223,7 +1223,7 @@ class MetaClient:
         account_id: Optional[str] = None,
     ) -> bool:
         """
-        Переключает статус адсета: 'PAUSED' или 'ACTIVE' с поддержкой повторов.
+        Switch an ad set status: 'PAUSED' or 'ACTIVE', with retries.
         """
         if status not in ["PAUSED", "ACTIVE"]:
             raise ValueError(f"Invalid status: {status}. Must be 'PAUSED' or 'ACTIVE'.")
@@ -1358,7 +1358,7 @@ class MetaClient:
         status: str,
         account_id: Optional[str] = None,
     ) -> bool:
-        """Переключает статус объявления: 'PAUSED' или 'ACTIVE'."""
+        """Switch an ad status: 'PAUSED' or 'ACTIVE'."""
         if status not in ["PAUSED", "ACTIVE"]:
             raise ValueError(f"Invalid status: {status}. Must be 'PAUSED' or 'ACTIVE'.")
 
@@ -1421,10 +1421,10 @@ class MetaClient:
         status: str,
         account_id: Optional[str] = None,
     ) -> bool:
-        """Переключает статус кампании: 'PAUSED' или 'ACTIVE'.
+        """Switch a campaign status: 'PAUSED' or 'ACTIVE'.
 
-        Пауза кампании останавливает все её адсеты, поэтому запрос идёт с тем же
-        критическим приоритетом, что и остановка адсета.
+        Pausing a campaign stops all of its ad sets, so the request carries the
+        same critical priority as stopping an ad set.
         """
         if status not in ["PAUSED", "ACTIVE"]:
             raise ValueError(f"Invalid status: {status}. Must be 'PAUSED' or 'ACTIVE'.")
@@ -1551,7 +1551,7 @@ class MetaClient:
         account_id: Optional[str] = None,
     ) -> bool:
         """
-        Обновляет дневной бюджет в минимальных единицах валюты кабинета.
+        Update the daily budget in the ad account currency's minor units.
         """
         new_budget_units = to_meta_budget_units(new_daily_budget_dollars, currency)
 

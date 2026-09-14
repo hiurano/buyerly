@@ -4,74 +4,74 @@ from core.config import settings
 
 
 def get_main_menu_keyboard(is_admin: bool = False) -> ReplyKeyboardMarkup:
-    """Главное меню команд бота с кнопкой запуска Web App"""
+    """Bot main menu with a button that launches the Web App."""
     kb = []
     
     if settings.WEBAPP_URL:
-        kb.append([KeyboardButton(text="🚀 Открыть Buyerly App", web_app=WebAppInfo(url=settings.WEBAPP_URL))])
+        kb.append([KeyboardButton(text="🚀 Open Buyerly App", web_app=WebAppInfo(url=settings.WEBAPP_URL))])
         
     kb.extend([
         [
-            KeyboardButton(text="📊 Сводка"),
-            KeyboardButton(text="💵 Расходы")
+            KeyboardButton(text="📊 Summary"),
+            KeyboardButton(text="💵 Spend")
         ],
         [
-            KeyboardButton(text="🏢 Мои кабинеты"),
-            KeyboardButton(text="⚙️ Настройки")
+            KeyboardButton(text="🏢 My ad accounts"),
+            KeyboardButton(text="⚙️ Settings")
         ],
         [
-            KeyboardButton(text="➕ Добавить кабинеты"),
-            KeyboardButton(text="🔑 Инструкция по токену")
+            KeyboardButton(text="➕ Add ad accounts"),
+            KeyboardButton(text="🔑 Token guide")
         ]
     ])
     if is_admin:
-        kb.append([KeyboardButton(text="👑 Админ-панель")])
+        kb.append([KeyboardButton(text="👑 Admin panel")])
     return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
 def get_webapp_inline_keyboard() -> Optional[InlineKeyboardMarkup]:
-    """Инлайн кнопка для мгновенного перехода в Web App"""
+    """Inline button that opens the Web App straight away."""
     if settings.WEBAPP_URL:
         return InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🚀 Открыть веб-панель", web_app=WebAppInfo(url=settings.WEBAPP_URL))]
+            [InlineKeyboardButton(text="🚀 Open web panel", web_app=WebAppInfo(url=settings.WEBAPP_URL))]
         ])
     return None
 
 
 def get_cancel_keyboard() -> ReplyKeyboardMarkup:
-    """Клавиатура отмены пошагового мастера"""
-    kb = [[KeyboardButton(text="❌ Отменить добавление")]]
+    """Keyboard that cancels the step-by-step wizard."""
+    kb = [[KeyboardButton(text="❌ Cancel adding")]]
     return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
 def get_admin_approval_keyboard(telegram_id: str) -> InlineKeyboardMarkup:
-    """Инлайн-кнопки одобрения нового пользователя администратором"""
+    """Inline buttons for an admin to approve a new user."""
     kb = [
         [
-            InlineKeyboardButton(text="✅ Одобрить доступ", callback_data=f"approve_user:{telegram_id}"),
-            InlineKeyboardButton(text="❌ Отклонить", callback_data=f"reject_user:{telegram_id}")
+            InlineKeyboardButton(text="✅ Approve access", callback_data=f"approve_user:{telegram_id}"),
+            InlineKeyboardButton(text="❌ Reject", callback_data=f"reject_user:{telegram_id}")
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 def get_period_keyboard() -> InlineKeyboardMarkup:
-    """Выбор периода для аналитической сводки"""
+    """Period picker for the analytics summary."""
     kb = [
         [
-            InlineKeyboardButton(text="📅 Сегодня", callback_data="report_period:today"),
-            InlineKeyboardButton(text="⏮ Вчера", callback_data="report_period:yesterday")
+            InlineKeyboardButton(text="📅 Today", callback_data="report_period:today"),
+            InlineKeyboardButton(text="⏮ Yesterday", callback_data="report_period:yesterday")
         ],
         [
-            InlineKeyboardButton(text="📊 За 3 дня", callback_data="report_period:last_3d"),
-            InlineKeyboardButton(text="📈 За неделю (7д)", callback_data="report_period:last_7d")
+            InlineKeyboardButton(text="📊 Last 3 days", callback_data="report_period:last_3d"),
+            InlineKeyboardButton(text="📈 Last week (7d)", callback_data="report_period:last_7d")
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 def get_interval_keyboard(current_interval: int = 10) -> InlineKeyboardMarkup:
-    """Выбор интервала проверки (10, 15, 30, 60 мин)"""
+    """Check-interval picker (10, 15, 30, 60 min)."""
     intervals = [10, 15, 30, 60]
     buttons = []
     for m in intervals:
-        label = f"✅ {m} мин" if m == current_interval else f"{m} мин"
+        label = f"✅ {m} min" if m == current_interval else f"{m} min"
         buttons.append(InlineKeyboardButton(text=label, callback_data=f"set_interval:{m}"))
     
     kb = [
@@ -81,26 +81,26 @@ def get_interval_keyboard(current_interval: int = 10) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 def get_reactivate_keyboard(account_id: str, adset_id: str) -> InlineKeyboardMarkup:
-    """Интерактивная кнопка для включения адсета при долете лида/реги"""
+    """Interactive button that turns an ad set back on when a late lead/registration lands."""
     kb = [
         [
             InlineKeyboardButton(
-                text="✅ Включить адсет", 
+                text="✅ Turn ad set on", 
                 callback_data=f"reactivate:{account_id}:{adset_id}"
             ),
             InlineKeyboardButton(
-                text="❌ Оставить выключенным", 
+                text="❌ Leave it off", 
                 callback_data=f"dismiss:{account_id}:{adset_id}"
             )
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=kb)
 def get_pause_adset_keyboard(account_id: str, adset_id: str) -> InlineKeyboardMarkup:
-    """Инлайн-кнопка для ручной остановки адсета по алерту"""
+    """Inline button for stopping an ad set manually from an alert."""
     kb = [
         [
             InlineKeyboardButton(
-                text="🛑 Остановить адсет вручную", 
+                text="🛑 Stop ad set manually", 
                 callback_data=f"pause_adset:{account_id}:{adset_id}"
             )
         ]
@@ -115,7 +115,7 @@ def get_undo_action_keyboard(event_id: int) -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="↩️ Отменить действие",
+                    text="↩️ Undo action",
                     callback_data=f"undo_action:{int(event_id)}",
                 )
             ]
@@ -123,25 +123,25 @@ def get_undo_action_keyboard(event_id: int) -> InlineKeyboardMarkup:
     )
 
 def get_account_manage_keyboard(account_id: str, rules_enabled: bool) -> InlineKeyboardMarkup:
-    """Управление конкретным кабинетом: тумблер авто-правил, настройка лимитов, удаление"""
-    rules_btn_text = "🛑 Выключить авто-правила" if rules_enabled else "🛡 Включить авто-правила"
+    """Manage one ad account: automation toggle, limits, deletion."""
+    rules_btn_text = "🛑 Disable automation rules" if rules_enabled else "🛡 Enable automation rules"
     kb = [
         [
             InlineKeyboardButton(text=rules_btn_text, callback_data=f"toggle_rules:{account_id}")
         ],
         [
-            InlineKeyboardButton(text="🗑 Удалить", callback_data=f"delete_acc:{account_id}")
+            InlineKeyboardButton(text="🗑 Delete", callback_data=f"delete_acc:{account_id}")
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
 def get_admin_panel_keyboard() -> InlineKeyboardMarkup:
-    """Кнопки в админ-панели управления"""
+    """Buttons on the admin control panel."""
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="📧 Разрешенные Email", callback_data="admin_whitelist:1")
+                InlineKeyboardButton(text="📧 Allowed emails", callback_data="admin_whitelist:1")
             ]
         ]
     )
@@ -152,7 +152,7 @@ def get_admin_whitelist_keyboard(
     page: int = 1,
     total_pages: int = 1,
 ) -> InlineKeyboardMarkup:
-    """Клавиатура управления белым списком Email с пагинацией и безопасным callback_data"""
+    """Email allowlist keyboard with pagination and safe callback_data."""
     kb = []
 
     # Individual delete buttons for emails on current page
@@ -170,24 +170,24 @@ def get_admin_whitelist_keyboard(
     nav_row = []
     if page > 1:
         nav_row.append(
-            InlineKeyboardButton(text="◀️ Назад", callback_data=f"admin_whitelist:{page - 1}")
+            InlineKeyboardButton(text="◀️ Back", callback_data=f"admin_whitelist:{page - 1}")
         )
     nav_row.append(
-        InlineKeyboardButton(text=f"Стр. {page}/{total_pages}", callback_data="noop")
+        InlineKeyboardButton(text=f"Page {page}/{total_pages}", callback_data="noop")
     )
     if page < total_pages:
         nav_row.append(
-            InlineKeyboardButton(text="Вперед ▶️", callback_data=f"admin_whitelist:{page + 1}")
+            InlineKeyboardButton(text="Next ▶️", callback_data=f"admin_whitelist:{page + 1}")
         )
     if len(nav_row) > 1 or total_pages > 1:
         kb.append(nav_row)
 
     # Action buttons
     kb.append([
-        InlineKeyboardButton(text="➕ Добавить Email", callback_data="admin_add_email")
+        InlineKeyboardButton(text="➕ Add email", callback_data="admin_add_email")
     ])
     kb.append([
-        InlineKeyboardButton(text="🔙 Назад в Админ-панель", callback_data="admin_back_to_panel")
+        InlineKeyboardButton(text="🔙 Back to admin panel", callback_data="admin_back_to_panel")
     ])
 
     return InlineKeyboardMarkup(inline_keyboard=kb)

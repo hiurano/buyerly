@@ -288,7 +288,7 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
         # Add email via command
         await bot_handlers.cmd_allow_email(message, bot, state)
         message.answer.assert_called_once()
-        self.assertIn("успешно добавлен", message.answer.call_args[0][0])
+        self.assertIn("added to the allowlist", message.answer.call_args[0][0])
 
         async with self.sessions() as session:
             entry = (await session.execute(
@@ -305,7 +305,7 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
         )
         await bot_handlers.cmd_revoke_email(message2, bot, state)
         message2.answer.assert_called_once()
-        self.assertIn("удален из белого списка", message2.answer.call_args[0][0])
+        self.assertIn("removed from the allowlist", message2.answer.call_args[0][0])
 
         async with self.sessions() as session:
             entry2 = (await session.execute(
@@ -323,7 +323,7 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
 
         await bot_handlers.process_admin_add_email(message, state)
         message.answer.assert_called_once()
-        self.assertIn("Добавлены в белый список", message.answer.call_args[0][0])
+        self.assertIn("Added to the allowlist", message.answer.call_args[0][0])
 
         async with self.sessions() as session:
             emails = (await session.execute(select(AllowedEmail.email))).scalars().all()
@@ -351,7 +351,7 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
 
         await bot_handlers.cb_delete_allowed_email(callback)
         callback.answer.assert_called_once()
-        self.assertIn("удален из белого списка", callback.answer.call_args[0][0])
+        self.assertIn("removed from the allowlist", callback.answer.call_args[0][0])
 
         async with self.sessions() as session:
             entry_after = (await session.execute(

@@ -2,14 +2,14 @@
 set -euo pipefail
 
 # ==============================================================================
-# Buyerly — Скрипт полной очистки старого проекта geo-atlas с сервера
+# Buyerly - script that fully removes the old geo-atlas project from the server
 # ==============================================================================
 
 echo "========================================================"
 echo "🧹 [$(date +'%Y-%m-%d %H:%M:%S')] Purging legacy 'geo-atlas' from server"
 echo "========================================================"
 
-# 1. Остановка и удаление systemd служб и таймеров
+# 1. Stop and remove systemd services and timers
 echo "🛑 [1/3] Disabling & removing systemd services/timers..."
 systemctl stop geo-atlas.service geo-atlas-deploy.timer geo-atlas-deploy.service 2>/dev/null || true
 systemctl disable geo-atlas.service geo-atlas-deploy.timer geo-atlas-deploy.service 2>/dev/null || true
@@ -19,12 +19,12 @@ rm -f /etc/systemd/system/timers.target.wants/geo-atlas* 2>/dev/null || true
 systemctl daemon-reload 2>/dev/null || true
 systemctl reset-failed 2>/dev/null || true
 
-# 2. Удаление Docker-контейнеров и образов
+# 2. Remove Docker containers and images
 echo "🐳 [2/3] Removing Docker containers & images..."
 docker stop geo-atlas geo-atlas-app 2>/dev/null || true
 docker rm -f geo-atlas geo-atlas-app 2>/dev/null || true
 
-# 3. Удаление директорий проекта
+# 3. Remove the project directories
 echo "🗑 [3/3] Removing leftover project directories..."
 rm -rf /opt/geo-atlas /root/geo-atlas /var/www/geo-atlas /tmp/geo-atlas*
 

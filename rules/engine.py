@@ -15,13 +15,13 @@ from core.metrics import (
 )
 
 class RuleAction(str, Enum):
-    NOOP = "NOOP"                             # Всё в норме
-    STOP = "STOP"                             # Остановить адсет (PAUSE)
-    NOTIFY_ONLY = "NOTIFY_ONLY"               # Только уведомить в TG (без выключения в Meta)
-    PROPOSE_REACTIVATE = "PROPOSE_REACTIVATE" # Предложить включить обратно (кнопка в TG)
-    AUTO_REACTIVATE = "AUTO_REACTIVATE"       # Автоматически включить обратно (ACTIVE)
-    INCREASE_BUDGET = "INCREASE_BUDGET"       # Увеличить дневной бюджет адсета на N%
-    DECREASE_BUDGET = "DECREASE_BUDGET"       # Уменьшить дневной бюджет адсета на N%
+    NOOP = "NOOP"                             # Everything is within range
+    STOP = "STOP"                             # Stop the ad set (PAUSE)
+    NOTIFY_ONLY = "NOTIFY_ONLY"               # Notify in Telegram only (nothing is switched off in Meta)
+    PROPOSE_REACTIVATE = "PROPOSE_REACTIVATE" # Offer to turn it back on (a button in Telegram)
+    AUTO_REACTIVATE = "AUTO_REACTIVATE"       # Turn it back on automatically (ACTIVE)
+    INCREASE_BUDGET = "INCREASE_BUDGET"       # Raise the ad set daily budget by N%
+    DECREASE_BUDGET = "DECREASE_BUDGET"       # Lower the ad set daily budget by N%
 
 @dataclass
 class RuleEvaluationResult:
@@ -58,9 +58,9 @@ class RuleEvaluationResult:
 
 class RuleEngine:
     """
-    Движок правил с поддержкой динамических условий (Spend, CPL, CPReg, CPP,
+    Rule engine supporting dynamic conditions (Spend, CPL, CPReg, CPP,
     Leads, Registrations, Purchases, CTR, CPC),
-    логики AND/OR, действий управления бюджетом и множественных временных окон.
+    AND/OR logic, budget-control actions and multiple time windows.
     """
 
     @staticmethod
@@ -76,7 +76,7 @@ class RuleEngine:
 
     @staticmethod
     def _get_metric_value(metric: str, adset_data: Dict[str, Any]) -> tuple:
-        """Возвращает (значение метрики, читаемое название, единица измерения)."""
+        """Return (metric value, human-readable label, unit)."""
         reading = rule_metric_reading(metric, adset_data)
         return reading.value, reading.label, reading.unit
 
@@ -88,12 +88,12 @@ class RuleEngine:
         active_rules_override: Optional[List[Dict[str, Any]]] = None,
     ) -> RuleEvaluationResult:
         """
-        Оценивает сущность (адсет или кампанию) по пользовательским правилам
-        с поддержкой AND/OR логики и временных окон. Поддерживает множественные
-        правила на один кабинет с разрешением конфликтов.
+        Evaluate an entity (ad set or campaign) against the user's rules,
+        supporting AND/OR logic and time windows. Several rules can apply
+        to one ad account, with conflicts resolved.
 
-        Словарь описывает адсет или кампанию; уровень берётся из
-        ``entity_level``, по умолчанию адсет.
+        The dict describes an ad set or a campaign; the level comes from
+        ``entity_level``, defaulting to the ad set.
         """
         entity_level = str(entity.get("entity_level") or "adset")
         entity_id = str(entity.get("entity_id") or entity.get("adset_id") or "")

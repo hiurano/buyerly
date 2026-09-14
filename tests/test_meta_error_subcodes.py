@@ -17,10 +17,10 @@ from scheduler.worker import MonitoringWorker
 
 
 class TestMetaErrorSubcodesClassification(unittest.TestCase):
-    """Тесты классификации субкодов ошибок Meta API и создания MetaTokenAuthError."""
+    """Tests for Meta API error subcode classification and MetaTokenAuthError creation."""
 
     def test_known_subcodes_mapping(self):
-        """Проверка корректной классификации всех ключевых субкодов Meta."""
+        """Every key Meta subcode is classified correctly."""
         expected_subcodes = {
             458: "APP_REVOKED",
             459: "CHECKPOINT",
@@ -52,24 +52,24 @@ class TestMetaErrorSubcodesClassification(unittest.TestCase):
             self.assertEqual(err.fbtrace_id, "test_trace_123")
 
     def test_string_and_none_subcodes(self):
-        """Проверка безопасного приведения типов: строковый субкод и None."""
-        # Строковый субкод "459"
+        """Type coercion is safe: a string subcode and None."""
+        # String subcode "459"
         err_str = classify_meta_token_error({"code": 190, "error_subcode": "459", "message": "Checkpoint"})
         self.assertEqual(err_str.subcode, 459)
         self.assertEqual(err_str.subcode_key, "CHECKPOINT")
 
-        # Отсутствующий субкод (None)
+        # Missing subcode (None)
         err_none = classify_meta_token_error({"code": 190, "message": "Generic token error"})
         self.assertIsNone(err_none.subcode)
         self.assertEqual(err_none.subcode_key, "TOKEN_INVALID")
 
-        # Невалидная строка в субкоде ("invalid")
+        # Invalid string in the subcode ("invalid")
         err_invalid = classify_meta_token_error({"code": 190, "error_subcode": "invalid"})
         self.assertIsNone(err_invalid.subcode)
         self.assertEqual(err_invalid.subcode_key, "TOKEN_INVALID")
 
     def test_permission_error_codes_10_and_200(self):
-        """Проверка классификации кодов 10 и 200 как ошибки прав доступа."""
+        """Codes 10 and 200 are classified as permission errors."""
         err_10 = classify_meta_token_error({"code": 10, "message": "Permission Denied"})
         self.assertEqual(err_10.code, 10)
         self.assertEqual(err_10.subcode_key, "ACCOUNT_PERMISSION_DENIED")
@@ -80,17 +80,17 @@ class TestMetaErrorSubcodesClassification(unittest.TestCase):
         self.assertEqual(err_200.subcode_key, "ACCOUNT_PERMISSION_DENIED")
 
     def test_code_102_api_session_invalid(self):
-        """Проверка классификации кода 102 как ошибки API-сессии."""
+        """Code 102 is classified as an API session error."""
         err_102 = classify_meta_token_error({"code": 102, "message": "API Session Error"})
         self.assertEqual(err_102.code, 102)
         self.assertEqual(err_102.subcode_key, "API_SESSION_INVALID")
 
 
 class TestTelegramNotifierSubcodes(unittest.IsolatedAsyncioTestCase):
-    """Тесты форматирования сообщений в TelegramNotifier с субкодами и защитой от XSS/HTML Injection."""
+    """Tests for TelegramNotifier message formatting with subcodes and XSS/HTML injection protection."""
 
     async def test_telegram_alert_formatting_with_checkpoint(self):
-        """Проверка формирования информативного алерта о чекпоинте (subcode 459)."""
+        """A checkpoint alert (subcode 459) is built with useful detail."""
         bot_mock = MagicMock()
         bot_mock.send_message = AsyncMock()
         notifier = TelegramNotifier(bot=bot_mock, target_chat_id="123456")
@@ -102,24 +102,24 @@ class TestTelegramNotifierSubcodes(unittest.IsolatedAsyncioTestCase):
             account_id="act_111222333",
             target_chat_id="123456",
             subcode=459,
-            subcode_title="🔒 Чекпоинт / Бан профиля",
-            subcode_description="Профиль Facebook отправлен на проверку безопасности (селфи / документы)",
-            action_hint="Зайдите в профиль через антидетект-браузер и пройдите чекпоинт",
+            subcode_title="🔒 Checkpoint / profile ban",
+            subcode_description="The Facebook profile was sent for a security review (selfie / documents)",
+            action_hint="Open the profile in an antidetect browser and clear the checkpoint",
             user_msg="Your account has been temporarily locked.",
         )
 
         self.assertEqual(bot_mock.send_message.call_count, 1)
         _, kwargs = bot_mock.send_message.call_args
         text = kwargs["text"]
-        self.assertIn("🔒 Чекпоинт / Бан профиля", text)
+        self.assertIn("🔒 Checkpoint / profile ban", text)
         self.assertIn("(Subcode 459)", text)
-        self.assertIn("антидетект-браузер", text)
+        self.assertIn("antidetect browser", text)
         self.assertIn("temporarily locked", text)
         self.assertIn("Profit Ads 1", text)
         self.assertEqual(kwargs["parse_mode"], "HTML")
 
     async def test_telegram_alert_html_injection_safety(self):
-        """Проверка экранирования спецсимволов HTML в account_name и user_msg."""
+        """HTML special characters are escaped in account_name and user_msg."""
         bot_mock = MagicMock()
         bot_mock.send_message = AsyncMock()
         notifier = TelegramNotifier(bot=bot_mock, target_chat_id="123456")
@@ -134,9 +134,9 @@ class TestTelegramNotifierSubcodes(unittest.IsolatedAsyncioTestCase):
             account_id="act_999",
             target_chat_id="123456",
             subcode=463,
-            subcode_title="⏳ Срок токена истёк",
-            subcode_description="Истёк 60-дневный срок",
-            action_hint="Обновите токен",
+            subcode_title="⏳ Token expired",
+            subcode_description="The 60-day lifetime expired",
+            action_hint="Refresh the token",
             user_msg=dangerous_msg,
         )
 
@@ -151,7 +151,7 @@ class TestTelegramNotifierSubcodes(unittest.IsolatedAsyncioTestCase):
         self.assertIn("&lt;Token&gt; &amp; Session", text)
 
     async def test_telegram_alert_long_message_truncation(self):
-        """Проверка обрезки слишком длинного ответа Meta (защита от лимита 4096 символов)."""
+        """An over-long Meta response is truncated (guarding the 4096-character limit)."""
         bot_mock = MagicMock()
         bot_mock.send_message = AsyncMock()
         notifier = TelegramNotifier(bot=bot_mock, target_chat_id="123456")
@@ -165,15 +165,15 @@ class TestTelegramNotifierSubcodes(unittest.IsolatedAsyncioTestCase):
             account_id="act_123",
             target_chat_id="123456",
             subcode=460,
-            subcode_title="🔑 Пароль изменён",
-            subcode_description="Пароль был изменён",
-            action_hint="Авторизуйтесь заново",
+            subcode_title="🔑 Password changed",
+            subcode_description="The password was changed",
+            action_hint="Sign in again",
             user_msg=huge_error_msg,
         )
 
         _, kwargs = bot_mock.send_message.call_args
         text = kwargs["text"]
-        # user_msg обрезается до 350 символов
+        # user_msg is truncated to 350 characters
         self.assertNotIn("A" * 500, text)
         self.assertIn("A" * 350, text)
 
@@ -186,7 +186,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TestMonitoringWorkerTokenErrorHandling(unittest.IsolatedAsyncioTestCase):
-    """Интеграционные тесты обработки MetaTokenAuthError в MonitoringWorker."""
+    """Integration tests for MetaTokenAuthError handling in MonitoringWorker."""
 
     async def asyncSetUp(self):
         self.original_key = settings.META_TOKEN_ENCRYPTION_KEY
@@ -263,16 +263,16 @@ class TestMonitoringWorkerTokenErrorHandling(unittest.IsolatedAsyncioTestCase):
         await self.engine.dispose()
 
     async def test_worker_handles_checkpoint_subcode_in_snapshot(self):
-        """Воркер при получении subcode 459 деактивирует кабинет, обновляет MetaConnection и сохраняет AuditEvent."""
+        """On subcode 459 the worker deactivates the ad account, updates MetaConnection and saves an AuditEvent."""
         mock_meta = MagicMock()
         mock_error = MetaTokenAuthError(
             "Token expired or invalid: Checkpoint",
             code=190,
             subcode=459,
             subcode_key="CHECKPOINT",
-            title="🔒 Чекпоинт / Бан профиля",
-            description="Профиль Facebook отправлен на проверку безопасности",
-            action_hint="Зайдите через антидетект и пройдите чекпоинт",
+            title="🔒 Checkpoint / profile ban",
+            description="The Facebook profile was sent for a security review",
+            action_hint="Use an antidetect browser and clear the checkpoint",
             error_user_msg="Please log in to continue.",
         )
         mock_meta.get_account_info = AsyncMock(side_effect=mock_error)
@@ -285,14 +285,14 @@ class TestMonitoringWorkerTokenErrorHandling(unittest.IsolatedAsyncioTestCase):
         worker = MonitoringWorker(meta_client=mock_meta, telegram_notifier=mock_notifier)
         stats = await worker.run_cycle()
 
-        # Проверка доставки алерта
+        # Alert delivery
         self.assertEqual(len(sent_alerts), 1)
         self.assertEqual(sent_alerts[0]["event_type"], "TOKEN_EXPIRED")
         self.assertEqual(sent_alerts[0]["subcode"], 459)
-        self.assertIn("Чекпоинт", sent_alerts[0]["subcode_title"])
-        self.assertIn("антидетект", sent_alerts[0]["action_hint"])
+        self.assertIn("Checkpoint", sent_alerts[0]["subcode_title"])
+        self.assertIn("antidetect", sent_alerts[0]["action_hint"])
 
-        # Проверка состояния БД
+        # Database state
         async with self.session_maker() as session:
             from sqlalchemy import select
             acc = (await session.execute(select(Account).where(Account.id == self.account_id))).scalar_one()
@@ -300,7 +300,7 @@ class TestMonitoringWorkerTokenErrorHandling(unittest.IsolatedAsyncioTestCase):
 
             conn = (await session.execute(select(MetaConnection).where(MetaConnection.id == self.conn_id))).scalar_one()
             self.assertEqual(conn.status, "error")
-            self.assertIn("безопасности", conn.last_error)
+            self.assertIn("security review", conn.last_error)
 
             audit = (await session.execute(select(AuditEvent).where(AuditEvent.account_id == "act_777888999"))).scalar_one()
             self.assertEqual(audit.event_type, "TOKEN_EXPIRED")

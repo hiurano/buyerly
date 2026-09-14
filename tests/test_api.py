@@ -764,7 +764,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                             {
                                 "account_id": account.account_id,
                                 "data_status": "synced",
-                                "data_status_label": "Метрики получены",
+                                "data_status_label": "Metrics received",
                                 "spend": 123.45,
                                 "impressions": 9000,
                                 "clicks": 210,
