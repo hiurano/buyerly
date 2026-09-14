@@ -90,13 +90,13 @@ async def list_presets(user: User = Depends(get_current_user)):
 async def create_preset(payload: CreatePresetRequest, user: User = Depends(get_current_user)):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "создания правил")
+        ensure_workspace_write_access(user, member, "creating rules")
 
         condition_payloads = _validated_condition_payloads(payload.conditions)
         preset = RulePreset(
             workspace_id=ws.id if ws else None,
             owner_user_id=user.id,
-            name=payload.name.strip() or "Новое правило",
+            name=payload.name.strip() or "New rule",
             action=payload.action or "turn_off",
             level=payload.level,
             enabled=payload.enabled,
@@ -118,7 +118,7 @@ async def create_preset(payload: CreatePresetRequest, user: User = Depends(get_c
 async def update_preset(preset_id: int, payload: CreatePresetRequest, user: User = Depends(get_current_user)):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "редактирования правил")
+        ensure_workspace_write_access(user, member, "editing rules")
 
         condition_payloads = _validated_condition_payloads(payload.conditions)
         stmt = select(RulePreset).where(
@@ -128,7 +128,7 @@ async def update_preset(preset_id: int, payload: CreatePresetRequest, user: User
         res = await session.execute(stmt)
         preset = res.scalar_one_or_none()
         if not preset:
-            raise HTTPException(status_code=404, detail="Пресет не найден")
+            raise HTTPException(status_code=404, detail="Preset not found")
 
         preset.name = payload.name.strip() or preset.name
         preset.action = payload.action or "turn_off"
@@ -183,7 +183,7 @@ async def update_preset(preset_id: int, payload: CreatePresetRequest, user: User
 async def delete_preset(preset_id: int, user: User = Depends(get_current_user)):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "удаления правил")
+        ensure_workspace_write_access(user, member, "deleting rules")
 
         stmt = select(RulePreset).where(
             RulePreset.id == preset_id,
@@ -192,7 +192,7 @@ async def delete_preset(preset_id: int, user: User = Depends(get_current_user)):
         res = await session.execute(stmt)
         preset = res.scalar_one_or_none()
         if not preset:
-            raise HTTPException(status_code=404, detail="Пресет не найден")
+            raise HTTPException(status_code=404, detail="Preset not found")
 
         # Remove the exact preset ID from linked account snapshots in this workspace.
         acc_stmt = select(Account).where(Account.workspace_id == ws.id)
@@ -219,7 +219,7 @@ async def delete_preset(preset_id: int, user: User = Depends(get_current_user)):
                 rule_id=preset.id,
                 rule_name=preset.name,
                 action="DELETE",
-                message=f"Правило '{preset.name}' удалено.",
+                message=f"Rule '{preset.name}' deleted.",
                 before_state={
                     "action": preset.action,
                     "conditions": preset.conditions,
@@ -232,7 +232,7 @@ async def delete_preset(preset_id: int, user: User = Depends(get_current_user)):
         await session.execute(delete(RuleGroupItem).where(RuleGroupItem.preset_id == preset_id))
         await session.execute(delete(RulePreset).where(RulePreset.id == preset_id))
         await session.commit()
-        return {"success": True, "message": "Пресет удален"}
+        return {"success": True, "message": "Preset deleted"}
 
 
 @router.get("/rule-groups", response_model=List[RuleGroupResponse])
@@ -271,7 +271,7 @@ async def reorder_rule_groups(
 ):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "изменения порядка групп правил")
+        ensure_workspace_write_access(user, member, "reordering rule groups")
         groups = (
             await session.execute(
                 select(RuleGroup).where(RuleGroup.workspace_id == ws.id)
@@ -281,10 +281,10 @@ async def reorder_rule_groups(
 
         requested_ids = list(dict.fromkeys(payload.group_ids))
         if len(requested_ids) != len(payload.group_ids):
-            raise HTTPException(status_code=400, detail="Список групп содержит дубликаты.")
+            raise HTTPException(status_code=400, detail="The group list contains duplicates.")
         inaccessible_ids = [group_id for group_id in requested_ids if group_id not in group_map]
         if inaccessible_ids:
-            raise HTTPException(status_code=404, detail="Одна или несколько групп недоступны.")
+            raise HTTPException(status_code=404, detail="One or more groups are unavailable.")
 
         for idx, gid in enumerate(requested_ids):
             group_map[gid].position = idx
@@ -322,7 +322,7 @@ async def create_rule_group(
 ):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "создания групп правил")
+        ensure_workspace_write_access(user, member, "creating rule groups")
 
         presets = await _get_workspace_presets(
             session,
@@ -373,7 +373,7 @@ async def update_rule_group(
 ):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "редактирования групп правил")
+        ensure_workspace_write_access(user, member, "editing rule groups")
 
         group = (
             await session.execute(
@@ -384,7 +384,7 @@ async def update_rule_group(
             )
         ).scalar_one_or_none()
         if not group:
-            raise HTTPException(status_code=404, detail="Группа правил не найдена.")
+            raise HTTPException(status_code=404, detail="Rule group not found.")
 
         presets = await _get_workspace_presets(
             session,
@@ -418,7 +418,7 @@ async def delete_rule_group(
 ):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "удаления групп правил")
+        ensure_workspace_write_access(user, member, "deleting rule groups")
 
         group = (
             await session.execute(
@@ -429,11 +429,11 @@ async def delete_rule_group(
             )
         ).scalar_one_or_none()
         if not group:
-            raise HTTPException(status_code=404, detail="Группа правил не найдена.")
+            raise HTTPException(status_code=404, detail="Rule group not found.")
         await session.execute(delete(RuleGroupItem).where(RuleGroupItem.group_id == group.id))
         await session.delete(group)
         await session.commit()
-        return {"success": True, "message": "Группа удалена. Назначенные правила сохранены в кабинетах."}
+        return {"success": True, "message": "Group deleted. The assigned rules were kept on the ad accounts."}
 
 
 @router.post("/accounts/{account_id}/assign-rule")
@@ -442,10 +442,10 @@ async def assign_rule_to_account(
     payload: ApplyPresetRequest,
     user: User = Depends(get_current_user),
 ):
-    """Добавляет правило/пресет к списку правил кабинета."""
+    """Add a rule/preset to an ad account's rule list."""
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "привязки правил к кабинету")
+        ensure_workspace_write_access(user, member, "attaching rules to an ad account")
 
         acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
         stmt = select(Account).where(
@@ -456,7 +456,7 @@ async def assign_rule_to_account(
         res = await session.execute(stmt)
         acc = res.scalar_one_or_none()
         if not acc:
-            raise HTTPException(status_code=404, detail="Кабинет не найден.")
+            raise HTTPException(status_code=404, detail="Ad account not found.")
         await _ensure_stable_account_owner(session, acc)
 
         # If preset_id provided, load preset
@@ -468,13 +468,13 @@ async def assign_rule_to_account(
             p_res = await session.execute(p_stmt)
             preset = p_res.scalar_one_or_none()
             if not preset:
-                raise HTTPException(status_code=404, detail="Пресет не найден.")
+                raise HTTPException(status_code=404, detail="Preset not found.")
 
             new_rule = _preset_snapshot(preset)
             if new_rule.get("needs_review"):
                 raise HTTPException(
                     status_code=400,
-                    detail="Правило имеет небезопасные или устаревшие параметры. Откройте и пересохраните его.",
+                    detail="This rule has unsafe or outdated settings. Open it and save it again.",
                 )
             new_rule["scope"] = payload.scope.model_dump()
         else:
@@ -484,7 +484,7 @@ async def assign_rule_to_account(
 
         # Check if preset already attached
         if any(r.get("preset_id") == new_rule["preset_id"] for r in active_rules):
-            raise HTTPException(status_code=400, detail="Это правило уже привязано к кабинету.")
+            raise HTTPException(status_code=400, detail="This rule is already attached to the ad account.")
 
         active_rules.append(new_rule)
         _ensure_compatible_rule_set(active_rules)
@@ -496,7 +496,7 @@ async def assign_rule_to_account(
             "account_id": acc.account_id,
             "active_rules": active_rules,
             "rules_enabled": acc.rules_enabled,
-            "message": f"Правило '{new_rule['name']}' успешно добавлено к кабинету",
+            "message": f"Rule '{new_rule['name']}' added to the ad account",
         }
 
 
@@ -510,7 +510,7 @@ async def set_attached_rule_scope(
     """Re-aim an already attached rule at an account, campaigns or ad sets."""
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "изменения области действия правила")
+        ensure_workspace_write_access(user, member, "changing a rule's scope")
 
         acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
         acc = (
@@ -522,7 +522,7 @@ async def set_attached_rule_scope(
             )
         ).scalar_one_or_none()
         if not acc:
-            raise HTTPException(status_code=404, detail="Кабинет не найден.")
+            raise HTTPException(status_code=404, detail="Ad account not found.")
         await _ensure_stable_account_owner(session, acc)
 
         active_rules = _load_active_rules(acc.active_rules)
@@ -535,7 +535,7 @@ async def set_attached_rule_scope(
         if not matched:
             raise HTTPException(
                 status_code=404,
-                detail="Правило не привязано к этому кабинету.",
+                detail="This rule is not attached to this ad account.",
             )
 
         # Narrowing a scope can free a pair of rules that used to contradict
@@ -560,7 +560,7 @@ async def assign_rule_group_to_account(
     """Atomically attach every rule in a reusable group, skipping duplicates."""
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "назначения группы правил")
+        ensure_workspace_write_access(user, member, "assigning a rule group")
 
         acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
         account_stmt = select(Account).where(
@@ -569,7 +569,7 @@ async def assign_rule_group_to_account(
         )
         account = (await session.execute(account_stmt)).scalar_one_or_none()
         if not account:
-            raise HTTPException(status_code=404, detail="Кабинет не найден.")
+            raise HTTPException(status_code=404, detail="Ad account not found.")
         await _ensure_stable_account_owner(session, account)
 
         group_stmt = select(RuleGroup).where(
@@ -578,7 +578,7 @@ async def assign_rule_group_to_account(
         )
         group = (await session.execute(group_stmt)).scalar_one_or_none()
         if not group:
-            raise HTTPException(status_code=404, detail="Группа правил не найдена.")
+            raise HTTPException(status_code=404, detail="Rule group not found.")
 
         group_items = (
             await session.execute(
@@ -588,7 +588,7 @@ async def assign_rule_group_to_account(
             )
         ).scalars().all()
         if not group_items:
-            raise HTTPException(status_code=400, detail="В группе нет правил.")
+            raise HTTPException(status_code=400, detail="The group has no rules.")
 
         presets = await _get_workspace_presets(
             session,
@@ -602,7 +602,7 @@ async def assign_rule_group_to_account(
         if any(snapshot.get("needs_review") for snapshot in new_snapshots):
             raise HTTPException(
                 status_code=400,
-                detail="В группе есть небезопасное или устаревшее правило. Пересохраните его перед назначением.",
+                detail="The group contains an unsafe or outdated rule. Re-save it before assigning.",
             )
         active_rules.extend(new_snapshots)
         _ensure_compatible_rule_set(active_rules)
@@ -612,9 +612,9 @@ async def assign_rule_group_to_account(
 
         skipped_count = len(presets) - len(added_presets)
         message = (
-            f"Группа '{group.name}' назначена: добавлено правил — {len(added_presets)}"
+            f"Group '{group.name}' assigned: {len(added_presets)} rule(s) added"
             if added_presets
-            else f"Все правила группы '{group.name}' уже назначены кабинету"
+            else f"Every rule in group '{group.name}' is already assigned to this ad account"
         )
         return {
             "account_id": account.account_id,
@@ -634,10 +634,10 @@ async def detach_rule_from_account(
     preset_id: int,
     user: User = Depends(get_current_user),
 ):
-    """Удаляет конкретное правило из списка кабинета."""
+    """Remove a specific rule from an ad account's list."""
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "отвязки правил от кабинета")
+        ensure_workspace_write_access(user, member, "detaching rules from an ad account")
 
         acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
         stmt = select(Account).where(
@@ -648,7 +648,7 @@ async def detach_rule_from_account(
         res = await session.execute(stmt)
         acc = res.scalar_one_or_none()
         if not acc:
-            raise HTTPException(status_code=404, detail="Кабинет не найден.")
+            raise HTTPException(status_code=404, detail="Ad account not found.")
 
         active_rules = _load_active_rules(acc.active_rules)
 
@@ -656,7 +656,7 @@ async def detach_rule_from_account(
         active_rules = [r for r in active_rules if r.get("preset_id") != preset_id]
 
         if len(active_rules) == initial_len:
-            raise HTTPException(status_code=404, detail="Правило не найдено в этом кабинете.")
+            raise HTTPException(status_code=404, detail="This rule was not found on this ad account.")
 
         acc.active_rules = json.dumps(active_rules)
         if len(active_rules) == 0:
@@ -665,7 +665,7 @@ async def detach_rule_from_account(
         await session.commit()
         return {
             "status": "ok",
-            "message": "Правило успешно отвязано от кабинета.",
+            "message": "Rule detached from the ad account.",
             "active_rules": active_rules,
             "rules_enabled": acc.rules_enabled,
         }
@@ -675,7 +675,7 @@ async def detach_rule_from_account(
 async def toggle_rules(account_id: str, user: User = Depends(get_current_user)):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "включения/выключения правил")
+        ensure_workspace_write_access(user, member, "enabling/disabling rules")
 
         acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
         stmt = select(Account).where(
@@ -686,13 +686,13 @@ async def toggle_rules(account_id: str, user: User = Depends(get_current_user)):
         res = await session.execute(stmt)
         acc = res.scalar_one_or_none()
         if not acc:
-            raise HTTPException(status_code=404, detail="Кабинет не найден.")
+            raise HTTPException(status_code=404, detail="Ad account not found.")
 
         active_rules = _load_active_rules(acc.active_rules)
         if not acc.rules_enabled and not active_rules:
             raise HTTPException(
                 status_code=400,
-                detail="Сначала привяжите хотя бы одно правило к кабинету.",
+                detail="Attach at least one rule to the ad account first.",
             )
 
         if not acc.rules_enabled:
@@ -703,5 +703,5 @@ async def toggle_rules(account_id: str, user: User = Depends(get_current_user)):
         return {
             "account_id": acc.account_id,
             "rules_enabled": acc.rules_enabled,
-            "message": f"Авто-правила {'включены' if acc.rules_enabled else 'выключены'}",
+            "message": f"Automation rules {'enabled' if acc.rules_enabled else 'disabled'}",
         }

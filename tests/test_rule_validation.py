@@ -3,7 +3,7 @@ import unittest
 from core.metrics import validate_rule_set_compatibility, validate_runtime_rule
 
 
-def rule(*, action="turn_off", logic="and", conditions=None, name="Правило"):
+def rule(*, action="turn_off", logic="and", conditions=None, name="Rule"):
     return {
         "name": name,
         "action": action,
@@ -22,11 +22,11 @@ def rule(*, action="turn_off", logic="and", conditions=None, name="Правил�
 class TestRuleValidation(unittest.TestCase):
     def test_rejects_duplicate_conditions(self):
         condition = {"metric": "spend", "operator": "gte", "value": 5, "time_window": "today"}
-        with self.assertRaisesRegex(ValueError, "несколько раз"):
+        with self.assertRaisesRegex(ValueError, "more than once"):
             validate_runtime_rule(rule(conditions=[condition, condition.copy()]))
 
     def test_rejects_impossible_and_range(self):
-        with self.assertRaisesRegex(ValueError, "противоречат"):
+        with self.assertRaisesRegex(ValueError, "contradict"):
             validate_runtime_rule(
                 rule(
                     conditions=[
@@ -47,7 +47,7 @@ class TestRuleValidation(unittest.TestCase):
         )
 
     def test_rejects_or_that_is_always_true(self):
-        with self.assertRaisesRegex(ValueError, "срабатывать всегда"):
+        with self.assertRaisesRegex(ValueError, "always fire"):
             validate_runtime_rule(
                 rule(
                     action="notify_only",
@@ -60,7 +60,7 @@ class TestRuleValidation(unittest.TestCase):
             )
 
     def test_count_metrics_must_be_whole_numbers(self):
-        with self.assertRaisesRegex(ValueError, "целыми числами"):
+        with self.assertRaisesRegex(ValueError, "whole numbers"):
             validate_runtime_rule(
                 rule(
                     action="notify_only",
@@ -87,16 +87,16 @@ class TestRuleValidation(unittest.TestCase):
         )
 
     def test_rejects_opposite_actions_with_the_same_trigger(self):
-        stop = rule(action="turn_off", name="Выключить")
-        start = rule(action="turn_on", name="Включить")
-        with self.assertRaisesRegex(ValueError, "противоречат"):
+        stop = rule(action="turn_off", name="Turn off")
+        start = rule(action="turn_on", name="Turn on")
+        with self.assertRaisesRegex(ValueError, "contradict"):
             validate_rule_set_compatibility([stop, start])
 
     def test_accepts_opposite_actions_with_different_triggers(self):
-        stop = rule(action="turn_off", name="Выключить")
+        stop = rule(action="turn_off", name="Turn off")
         start = rule(
             action="turn_on",
-            name="Включить",
+            name="Turn on",
             conditions=[
                 {"metric": "leads", "operator": "gte", "value": 1, "time_window": "today"}
             ],

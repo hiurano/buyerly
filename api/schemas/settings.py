@@ -24,5 +24,5 @@ class AutomationSettingsUpdateRequest(BaseModel):
     @model_validator(mode="after")
     def validate_usage_thresholds(self):
         if self.usage_soft_limit_percent >= self.usage_hard_limit_percent:
-            raise ValueError("Мягкий порог квоты должен быть ниже жёсткого")
+            raise ValueError("The soft quota threshold must be lower than the hard one")
         return self

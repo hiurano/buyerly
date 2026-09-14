@@ -82,12 +82,12 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
         (document.activeElement as HTMLElement)?.isContentEditable
       ) return;
 
-      if (!event.ctrlKey && !event.altKey && !event.metaKey && (event.key === '[' || event.key === 'х' || event.key === 'Х')) {
+      if (!event.ctrlKey && !event.altKey && !event.metaKey && event.key === '[') {
         event.preventDefault();
         toggleSidebarCollapsed();
         return;
       }
-      if ((event.ctrlKey || event.altKey || event.metaKey) && ['i', 'I', 'ш', 'Ш'].includes(event.key)) {
+      if ((event.ctrlKey || event.altKey || event.metaKey) && ['i', 'I'].includes(event.key)) {
         event.preventDefault();
         toggleRightSidebar();
         return;
@@ -95,20 +95,20 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
 
       const key = event.key.toLowerCase();
       if (!event.ctrlKey && !event.altKey && !event.metaKey) {
-        if (key === 'g' || key === 'п') {
+        if (key === 'g') {
           setGPressed(true);
           clearTimeout(timer);
           timer = setTimeout(() => setGPressed(false), 1500);
           return;
         }
         if (gPressed) {
-          const shortcutTab = key === 'i' || key === 'ш'
+          const shortcutTab = key === 'i'
             ? 'inbox'
-            : key === 'c' || key === 'с'
+            : key === 'c'
               ? 'campaigns'
-              : key === 'r' || key === 'к'
+              : key === 'r'
                 ? 'rules'
-                : key === 's' || key === 'ы'
+                : key === 's'
                   ? 'statistics'
                   : null;
           if (shortcutTab) {

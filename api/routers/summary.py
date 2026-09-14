@@ -291,7 +291,7 @@ async def get_summary_report(
                     )
                     account_currency = normalize_currency(account_info.get("currency"))
                     if account_currency == UNKNOWN_CURRENCY:
-                        raise RuntimeError("Meta не вернула валюту рекламного кабинета")
+                        raise RuntimeError("Meta did not return the ad account currency")
                     acc.currency = account_currency
                     await session.commit()
                 account_insights = await meta_client.get_account_insights_summary(
@@ -456,7 +456,7 @@ async def get_summary_report(
                     "has_error": False,
                     "is_banned": not acc.is_active or acc.account_status in [2, 101],
                     "data_status": "synced",
-                    "data_status_label": "Account-level метрики получены из Meta независимо от текущего статуса",
+                    "data_status_label": "Account-level metrics came from Meta regardless of the current status",
                 })
             except Exception as e:
                 logger.error(f"Error fetching insights for {acc.account_id}: {e}")
@@ -475,7 +475,7 @@ async def get_summary_report(
                     "timezone_name": acc.timezone_name,
                     "currency": account_currency,
                     "account_status": acc.account_status,
-                    "status_label": "Ошибка синхронизации",
+                    "status_label": "Sync error",
                     "rules_enabled": acc.rules_enabled,
                     "spend": 0.0,
                     "clicks": 0,
@@ -504,9 +504,9 @@ async def get_summary_report(
                     "is_banned": is_blocked,
                     "data_status": "blocked" if is_blocked else "error",
                     "data_status_label": (
-                        "Исторические метрики недоступны для текущего статуса кабинета"
+                        "Historical metrics are unavailable for the account's current status"
                         if is_blocked
-                        else "Meta не вернула метрики"
+                        else "Meta returned no metrics"
                     ),
                 })
 
@@ -550,8 +550,8 @@ async def get_summary_report(
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=(
-                    "Meta не вернула данные ни по одному кабинету. "
-                    "Последний сохранённый снимок не изменён."
+                    "Meta returned no data for any ad account. "
+                    "The last saved snapshot is unchanged."
                 ),
             )
 

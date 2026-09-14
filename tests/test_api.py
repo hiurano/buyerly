@@ -764,7 +764,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                             {
                                 "account_id": account.account_id,
                                 "data_status": "synced",
-                                "data_status_label": "Метрики получены",
+                                "data_status_label": "Metrics received",
                                 "spend": 123.45,
                                 "impressions": 9000,
                                 "clicks": 210,
@@ -1267,7 +1267,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(first_assignment.status_code, 200)
         self.assertEqual(conflict.status_code, 409)
-        self.assertIn("противоречат", conflict.json()["detail"])
+        self.assertIn("contradict", conflict.json()["detail"])
 
         async with self.test_session_maker() as session:
             account = (
@@ -1365,7 +1365,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             )
             self.assertIn(group_id, [item["id"] for item in buyer_list.json()])
             self.assertEqual(
-                len([item for item in admin_list.json() if item["name"].startswith("Пример ·")]),
+                len([item for item in admin_list.json() if item["name"].startswith("Example ·")]),
                 2,
             )
             self.assertEqual(forbidden_update.status_code, 404)
@@ -1471,7 +1471,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             "timezone_name": "Europe/Stockholm",
             "name": "Imported account",
             "account_status": 1,
-            "status_label": "Активен",
+            "status_label": "Active",
             "currency": "EUR",
         }
         legacy_payload = {
@@ -1546,7 +1546,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             "timezone_name": "Europe/Stockholm",
             "name": "Reconnected account",
             "account_status": 1,
-            "status_label": "Активен",
+            "status_label": "Active",
             "currency": "EUR",
         }
         payload = {
@@ -1601,7 +1601,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             "timezone_name": "Mars/Olympus_Mons",
             "name": "Broken clock",
             "account_status": 1,
-            "status_label": "Активен",
+            "status_label": "Active",
             "currency": "USD",
         }
 
@@ -1621,7 +1621,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["success_count"], 0)
         self.assertEqual(response.json()["error_count"], 1)
-        self.assertIn("часовой пояс", response.json()["errors"][0]["error"])
+        self.assertIn("time zone", response.json()["errors"][0]["error"])
 
         async with self.test_session_maker() as session:
             rejected = (
@@ -1858,10 +1858,10 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(data["avg_ctr_outbound"], 2.5)
         self.assertEqual(data["avg_cpc_link"], 1.0)
         self.assertEqual(data["cost_per_landing_page_view"], 1.5)
-        self.assertIn("Не складываются", data["metric_definitions"]["leads"])
-        self.assertIn("Считаются отдельно", data["metric_definitions"]["registrations"])
-        self.assertIn("Считаются отдельно", data["metric_definitions"]["purchases"])
-        self.assertIn("независимо от их текущего статуса", data["metric_definitions"]["spend"])
+        self.assertIn("not added together", data["metric_definitions"]["leads"])
+        self.assertIn("Counted separately", data["metric_definitions"]["registrations"])
+        self.assertIn("Counted separately", data["metric_definitions"]["purchases"])
+        self.assertIn("regardless of their current status", data["metric_definitions"]["spend"])
         self.assertEqual(
             data["data_quality"],
             {
@@ -1966,7 +1966,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 )
 
         self.assertEqual(failed_refresh.status_code, 502)
-        self.assertIn("снимок не изменён", failed_refresh.json()["detail"])
+        self.assertIn("snapshot is unchanged", failed_refresh.json()["detail"])
         async with self.test_session_maker() as session:
             snapshot_count_after_failure = (
                 await session.execute(select(func.count()).select_from(SummarySnapshot))
@@ -2936,7 +2936,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 )
 
         self.assertEqual(response.status_code, 409)
-        self.assertIn("уже изменялся", response.json()["detail"])
+        self.assertIn("has changed since this event", response.json()["detail"])
         get_state.assert_not_awaited()
 
     async def test_budget_undo_restores_the_exact_previous_value(self):
@@ -3084,7 +3084,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                         json={"email": "deliveryfail@example.com"},
                     )
                     self.assertEqual(resp.status_code, 502)
-                    self.assertIn("Не удалось доставить письмо", resp.json()["detail"])
+                    self.assertIn("could not be delivered", resp.json()["detail"])
             async with self.test_session_maker() as session:
                 user = (
                     await session.execute(
@@ -3134,7 +3134,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 json={"email": "bruteforce@example.com", "code": "000000"},
             )
             self.assertEqual(fifth.status_code, 401)
-            self.assertIn("Превышено максимальное количество попыток", fifth.json()["detail"])
+            self.assertIn("Too many incorrect code attempts", fifth.json()["detail"])
 
             # Verify the code is now marked is_used in the database
             async with self.test_session_maker() as session:
@@ -3520,7 +3520,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 json={"email": "attacker@evil.com"},
             )
             self.assertEqual(res.status_code, 400)
-            self.assertIn("Прямое изменение email без подтверждения запрещено", res.json()["detail"])
+            self.assertIn("Changing the email directly without confirmation is not allowed", res.json()["detail"])
 
     async def test_email_change_verify_before_activate_flow(self):
         buyer_data = generate_valid_telegram_init_data(
@@ -3682,4 +3682,4 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 json={"new_email": "  Unique_User@Corp.com  "},
             )
             self.assertEqual(collision_res.status_code, 409)
-            self.assertIn("уже используется другим пользователем", collision_res.json()["detail"])
+            self.assertIn("already in use by another user", collision_res.json()["detail"])

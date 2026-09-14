@@ -15,7 +15,7 @@ interface ChangeEmailDialogProps {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Не удалось выполнить действие. Попробуйте ещё раз.';
+  return error instanceof Error ? error.message : 'The action could not be completed. Please try again.';
 }
 
 export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
@@ -43,7 +43,7 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
     const address = newEmail.trim().toLowerCase();
     if (!address) return;
     if (address === (currentEmail || '').trim().toLowerCase()) {
-      setError('Это ваш текущий адрес.');
+      setError('That is already your current address.');
       return;
     }
     setBusy(true);
@@ -94,7 +94,7 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
                 <button
                   className="ui-icon-button flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] transition-colors duration-150 cursor-default"
                   type="button"
-                  aria-label="Закрыть"
+                  aria-label="Close"
                 >
                   <LinearCloseIcon size={14} />
                 </button>
@@ -105,15 +105,15 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
               {step === 'address' ? (
                 <>
                   <p className="text-[13px] leading-[20px] text-[var(--text-secondary)]">
-                    Мы отправим шестизначный код подтверждения на новый адрес. Пока код не введён, вход
-                    остаётся на текущем адресе.
+                    We will send a six-digit confirmation code to the new address. Until the code is
+                    entered, you keep signing in with the current address.
                   </p>
                   <div className="flex flex-col gap-1.5">
                     <label
                       htmlFor="change-email-address"
                       className="text-[13px] font-medium text-[var(--text-primary)]"
                     >
-                      Новый адрес электронной почты
+                      New email address
                     </label>
                     <Input
                       id="change-email-address"
@@ -134,15 +134,15 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
               ) : (
                 <>
                   <p className="text-[13px] leading-[20px] text-[var(--text-secondary)]">
-                    Код отправлен на <span className="text-[var(--text-primary)]">{newEmail.trim().toLowerCase()}</span>.
-                    Введите его, чтобы завершить смену адреса.
+                    A code was sent to <span className="text-[var(--text-primary)]">{newEmail.trim().toLowerCase()}</span>.
+                    Enter it to finish changing your address.
                   </p>
                   <div className="flex flex-col gap-1.5">
                     <label
                       htmlFor="change-email-code"
                       className="text-[13px] font-medium text-[var(--text-primary)]"
                     >
-                      Код подтверждения
+                      Confirmation code
                     </label>
                     <Input
                       id="change-email-code"
@@ -179,19 +179,19 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
                     }}
                     disabled={busy}
                   >
-                    Назад
+                    Back
                   </Button>
                 )}
                 <Dialog.Close asChild>
-                  <Button disabled={busy}>Отмена</Button>
+                  <Button disabled={busy}>Cancel</Button>
                 </Dialog.Close>
                 {step === 'address' ? (
                   <Button variant="primary" onClick={requestCode} disabled={busy || !newEmail.trim()}>
-                    {busy ? 'Отправляем…' : 'Отправить код'}
+                    {busy ? 'Sending…' : 'Send code'}
                   </Button>
                 ) : (
                   <Button variant="primary" onClick={confirmCode} disabled={busy || !code.trim()}>
-                    {busy ? 'Подтверждаем…' : 'Подтвердить'}
+                    {busy ? 'Confirming…' : 'Confirm'}
                   </Button>
                 )}
               </div>

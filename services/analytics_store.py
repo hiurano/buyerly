@@ -352,7 +352,7 @@ class AnalyticsFactService:
                     "timezone_name": acc.timezone_name,
                     "currency": account_currency,
                     "account_status": acc.account_status,
-                    "status_label": "Нет сохранённых данных" if not is_blocked else "Заблокирован",
+                    "status_label": "No saved data" if not is_blocked else "Blocked",
                     "rules_enabled": acc.rules_enabled,
                     "spend": 0.0,
                     "clicks": 0,
@@ -381,9 +381,9 @@ class AnalyticsFactService:
                     "is_banned": is_blocked,
                     "data_status": "blocked" if is_blocked else "error",
                     "data_status_label": (
-                        "Исторические метрики недоступны для текущего статуса кабинета"
+                        "Historical metrics are unavailable for the account's current status"
                         if is_blocked
-                        else "Метрики ещё не синхронизированы в хранилище"
+                        else "Metrics are not synced to the store yet"
                     ),
                 })
                 continue
@@ -482,7 +482,7 @@ class AnalyticsFactService:
                 "has_error": False,
                 "is_banned": is_blocked,
                 "data_status": "synced",
-                "data_status_label": "Метрики загружены из Analytics Fact Store",
+                "data_status_label": "Metrics loaded from the Analytics Fact Store",
             })
 
         # 4. Currency totals & mixed currency logic (BL-015)

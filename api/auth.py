@@ -274,7 +274,7 @@ async def get_current_user(
                 if not user.is_approved:
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
-                        detail="Ваш аккаунт ожидает одобрения администратора."
+                        detail="Your account is awaiting administrator approval."
                     )
 
                 if token_source == "cookie" and request.method.upper() not in _SAFE_METHODS:
@@ -285,7 +285,7 @@ async def get_current_user(
                     ):
                         raise HTTPException(
                             status_code=status.HTTP_403_FORBIDDEN,
-                            detail="CSRF-проверка не пройдена",
+                            detail="CSRF check failed",
                         )
 
                 rotated_token = None
@@ -345,7 +345,7 @@ async def get_current_user(
             except (TypeError, ValueError):
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Некорректные данные пользователя Telegram",
+                    detail="Invalid Telegram user data",
                 )
             tg_id = str(tg_id_number)
             username = tg_user_info.get("username", "")
@@ -373,7 +373,7 @@ async def get_current_user(
             if not user.is_approved:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Ваш аккаунт ожидает одобрения администратора."
+                    detail="Your account is awaiting administrator approval."
                 )
 
             return user
@@ -382,7 +382,7 @@ async def get_current_user(
         if not settings.ENABLE_DEV_AUTH:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Требуется авторизация на сайте или через Telegram"
+                detail="Sign-in on the site or via Telegram is required"
             )
 
         # Dev / Local preview fallback (ONLY active when ENABLE_DEV_AUTH=True)

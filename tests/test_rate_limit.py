@@ -167,7 +167,7 @@ class TestApiRateLimitingAndDosProtection(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(rate_limited_res.status_code, 429)
             self.assertIn("Retry-After", rate_limited_res.headers)
-            self.assertIn("Слишком много запросов", rate_limited_res.json()["detail"])
+            self.assertIn("Too many requests", rate_limited_res.json()["detail"])
 
     async def test_login_identity_limit_cannot_be_bypassed_by_rotating_ips(self):
         original = settings.TRUSTED_PROXY_CIDRS
@@ -256,4 +256,4 @@ class TestApiRateLimitingAndDosProtection(unittest.IsolatedAsyncioTestCase):
                 headers=headers,
             )
             self.assertEqual(res.status_code, 413)
-            self.assertIn("Размер тела запроса превышает", res.json()["detail"])
+            self.assertIn("The request body exceeds", res.json()["detail"])

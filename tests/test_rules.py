@@ -17,7 +17,7 @@ class TestRuleEngine(unittest.TestCase):
     def setUp(self):
         self.account = Account(
             account_id="act_test_123",
-            name="Тестовый кабинет",
+            name="Test ad account",
             access_token="mock_token",
             timezone_name="UTC",
             currency="USD",
@@ -52,15 +52,15 @@ class TestRuleEngine(unittest.TestCase):
         self.account.active_rules = json.dumps([rule])
 
     # --------------------------------------------------------
-    # Базовые тесты: нет условий, неактивный адсет
+    # Baseline: no conditions, inactive ad set
     # --------------------------------------------------------
 
     def test_no_conditions_returns_noop(self):
-        """Без настроенных условий — NOOP."""
+        """With no conditions configured the result is NOOP."""
         adset = {"adset_id": "1", "adset_name": "Test", "status": "ACTIVE", "spend": 100.0, "leads": 0, "registrations": 0}
         res = RuleEngine.evaluate(adset, self.account)
         self.assertEqual(res.action, RuleAction.NOOP)
-        self.assertIn("Правила не настроены", res.reason)
+        self.assertIn("No rules are configured", res.reason)
 
     def test_unknown_action_fails_closed_instead_of_stopping(self):
         self.set_rule(
@@ -78,7 +78,7 @@ class TestRuleEngine(unittest.TestCase):
         }
         result = RuleEngine.evaluate(adset, self.account)
         self.assertEqual(result.action, RuleAction.NOOP)
-        self.assertIn("некорректны", result.reason)
+        self.assertIn("invalid", result.reason)
 
     def test_invalid_logic_window_and_non_finite_value_fail_closed(self):
         adset = {
@@ -121,11 +121,11 @@ class TestRuleEngine(unittest.TestCase):
         self.assertEqual(res.action, RuleAction.NOOP)
 
     # --------------------------------------------------------
-    # Метрика: spend
+    # Metric: spend
     # --------------------------------------------------------
 
     def test_spend_gte_turn_off(self):
-        """Спенд >= $15 → STOP."""
+        """Spend >= $15 → STOP."""
         self.set_rule(
             action="turn_off",
             conditions=[{"metric": "spend", "operator": "gte", "value": 15.0}],
@@ -137,10 +137,10 @@ class TestRuleEngine(unittest.TestCase):
         adset_over = {"adset_id": "1", "adset_name": "Test", "status": "ACTIVE", "spend": 15.5, "leads": 2, "registrations": 0}
         res = RuleEngine.evaluate(adset_over, self.account)
         self.assertEqual(res.action, RuleAction.STOP)
-        self.assertIn("Спенд (15.50 USD) ≥ 15.00 USD", res.reason)
+        self.assertIn("Spend (15.50 USD) ≥ 15.00 USD", res.reason)
 
     # --------------------------------------------------------
-    # Метрика: cpl (цена за лид)
+    # Metric: cpl (cost per lead)
     # --------------------------------------------------------
 
     def test_cpl_notify_only(self):
@@ -153,14 +153,14 @@ class TestRuleEngine(unittest.TestCase):
         adset = {"adset_id": "1", "adset_name": "Test", "status": "ACTIVE", "spend": 20.0, "leads": 2, "registrations": 0}
         res = RuleEngine.evaluate(adset, self.account)
         self.assertEqual(res.action, RuleAction.NOTIFY_ONLY)
-        self.assertIn("Цена за лид (CPL) (10.00 USD) ≥ 7.00 USD", res.reason)
+        self.assertIn("Cost per lead (CPL) (10.00 USD) ≥ 7.00 USD", res.reason)
 
     # --------------------------------------------------------
-    # Метрика: leads (количество лидов)
+    # Metric: leads (lead count)
     # --------------------------------------------------------
 
     def test_leads_count_metric(self):
-        """Лиды > 3 И CPL < $5 → STOP."""
+        """Leads > 3 AND CPL < $5 -> STOP."""
         self.set_rule(
             conditions=[
                 {"metric": "leads", "operator": "gte", "value": 3.0},
@@ -177,11 +177,11 @@ class TestRuleEngine(unittest.TestCase):
         self.assertEqual(RuleEngine.evaluate(adset_no_match, self.account).action, RuleAction.NOOP)
 
     # --------------------------------------------------------
-    # Удалённая метрика: общий CPA
+    # Removed metric: the combined CPA
     # --------------------------------------------------------
 
     def test_legacy_cpa_never_triggers(self):
-        """Старый CPA не должен менять Meta без ручного выбора новой метрики."""
+        """The legacy CPA must not change Meta until a new metric is chosen by hand."""
         self.set_rule(conditions=[{"metric": "cpa", "operator": "gte", "value": 10.0}])
 
         adset = {"adset_id": "1", "adset_name": "Test", "status": "ACTIVE", "spend": 22.0, "leads": 1, "registrations": 1}
@@ -205,7 +205,7 @@ class TestRuleEngine(unittest.TestCase):
         }
         res = RuleEngine.evaluate(adset, self.account)
         self.assertEqual(res.action, RuleAction.NOTIFY_ONLY)
-        self.assertIn("Цена покупки (CPP) (11.00 USD) > 10.00 USD", res.reason)
+        self.assertIn("Cost per purchase (CPP) (11.00 USD) > 10.00 USD", res.reason)
 
     def test_lead_stop_executes_even_when_registration_exists(self):
         """Explicit STOP conditions are honored even when registrations or purchases exist."""
@@ -275,7 +275,7 @@ class TestRuleEngine(unittest.TestCase):
         self.assertEqual(result.action, RuleAction.STOP)
 
     def test_zero_event_cost_is_unavailable(self):
-        """Нулевые лиды не превращают Spend в CPL и не запускают масштабирование."""
+        """Zero leads must not turn Spend into CPL, or trigger scaling."""
         self.set_rule(
             action="increase_budget",
             conditions=[{"metric": "cpl", "operator": "lt", "value": 10.0}],
@@ -295,7 +295,7 @@ class TestRuleEngine(unittest.TestCase):
         self.assertIsNone(result.cpl)
 
     def test_zero_spend_with_event_has_zero_cost(self):
-        """Реальный нулевой CPL не смешивается с отсутствующим значением."""
+        """A genuine zero CPL is not conflated with a missing value."""
         self.set_rule(
             action="notify_only",
             conditions=[{"metric": "cpl", "operator": "eq", "value": 0.0}],
@@ -314,7 +314,7 @@ class TestRuleEngine(unittest.TestCase):
         self.assertEqual(result.cpl, 0.0)
 
     # --------------------------------------------------------
-    # Метрика: ctr
+    # Metric: ctr
     # --------------------------------------------------------
 
     def test_ctr_metric(self):
@@ -330,11 +330,11 @@ class TestRuleEngine(unittest.TestCase):
         self.assertIn("CTR", res.reason)
 
     # --------------------------------------------------------
-    # AND-логика (все условия должны совпасть)
+    # AND logic (every condition must match)
     # --------------------------------------------------------
 
     def test_and_logic_all_match(self):
-        """AND: Спенд >= $10 И CPReg >= $5 → NOTIFY_ONLY."""
+        """AND: Spend >= $10 AND CPReg >= $5 → NOTIFY_ONLY."""
         self.set_rule(
             action="notify_only",
             logic="and",
@@ -369,11 +369,11 @@ class TestRuleEngine(unittest.TestCase):
         self.assertEqual(RuleEngine.evaluate(adset, self.account).action, RuleAction.STOP)
 
     # --------------------------------------------------------
-    # OR-логика (достаточно одного условия)
+    # OR logic (one matching condition is enough)
     # --------------------------------------------------------
 
     def test_or_logic_one_match(self):
-        """OR: Спенд >= $20 ИЛИ Лиды >= 5 → STOP. Только спенд совпал."""
+        """OR: Spend >= $20 OR Leads >= 5 → STOP. Only spend matched."""
         self.set_rule(
             logic="or",
             conditions=[
@@ -387,7 +387,7 @@ class TestRuleEngine(unittest.TestCase):
         self.assertEqual(RuleEngine.evaluate(adset, self.account).action, RuleAction.STOP)
 
     def test_or_logic_no_match(self):
-        """OR: ни одно не совпало → NOOP."""
+        """OR: nothing matched -> NOOP."""
         self.set_rule(
             logic="or",
             conditions=[
@@ -400,11 +400,11 @@ class TestRuleEngine(unittest.TestCase):
         self.assertEqual(RuleEngine.evaluate(adset, self.account).action, RuleAction.NOOP)
 
     # --------------------------------------------------------
-    # Действие: increase_budget
+    # Action: increase_budget
     # --------------------------------------------------------
 
     def test_increase_budget_action(self):
-        """CPL < $5 → INCREASE_BUDGET с процентом и потолком."""
+        """CPL < $5 -> INCREASE_BUDGET with a percentage and a cap."""
         self.set_rule(
             action="increase_budget",
             conditions=[{"metric": "cpl", "operator": "lt", "value": 5.0}],
@@ -419,7 +419,7 @@ class TestRuleEngine(unittest.TestCase):
         self.assertEqual(res.budget_max_daily, 500.0)
 
     # --------------------------------------------------------
-    # Действие: decrease_budget
+    # Action: decrease_budget
     # --------------------------------------------------------
 
     def test_decrease_budget_action(self):
@@ -436,7 +436,7 @@ class TestRuleEngine(unittest.TestCase):
         self.assertEqual(res.budget_change_percent, 30.0)
 
     # --------------------------------------------------------
-    # Действие: turn_on (реактивация)
+    # Action: turn_on (reactivation)
     # --------------------------------------------------------
 
     def test_turn_on_action(self):
@@ -461,11 +461,11 @@ class TestRuleEngine(unittest.TestCase):
         self.assertEqual(res.action, RuleAction.NOOP)
 
     # --------------------------------------------------------
-    # Time window: проверка передачи insights_by_window
+    # Time window: insights_by_window is passed through
     # --------------------------------------------------------
 
     def test_time_window_yesterday(self):
-        """Условие с time_window='yesterday' использует данные из insights_by_window."""
+        """A condition with time_window='yesterday' reads from insights_by_window."""
         self.set_rule(
             conditions=[
                 {"metric": "spend", "operator": "gte", "value": 50.0, "time_window": "yesterday"}
@@ -479,10 +479,10 @@ class TestRuleEngine(unittest.TestCase):
         
         res = RuleEngine.evaluate(adset_today, self.account, insights_by_window=insights)
         self.assertEqual(res.action, RuleAction.STOP)
-        self.assertIn("[Вчера]", res.reason)
+        self.assertIn("[Yesterday]", res.reason)
 
     def test_time_window_fallback_to_today(self):
-        """Если insights_by_window не содержит нужного окна, используются данные today."""
+        """When insights_by_window lacks the window, today's data is used."""
         self.set_rule(
             conditions=[
                 {"metric": "spend", "operator": "gte", "value": 10.0, "time_window": "last_3d"}
@@ -588,7 +588,7 @@ class TestRuleExecutionLevel(unittest.TestCase):
     def setUp(self):
         self.account = Account(
             account_id="act_test_123",
-            name="Тестовый кабинет",
+            name="Test ad account",
             access_token="mock_token",
             timezone_name="UTC",
             currency="USD",

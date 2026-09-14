@@ -97,7 +97,7 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
                 timezone_name="America/New_York",
                 is_active=True,
                 account_status=1,
-                status_label="Активен",
+                status_label="Active",
             )
             session.add(self.acc1)
 
@@ -111,7 +111,7 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
                 timezone_name="Europe/Berlin",
                 is_active=True,
                 account_status=1,
-                status_label="Активен",
+                status_label="Active",
             )
             session.add(self.acc2)
 
@@ -154,7 +154,7 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
                 timezone_name="UTC",
                 is_active=True,
                 account_status=1,
-                status_label="Активен",
+                status_label="Active",
             )
             session.add(self.acc3)
 

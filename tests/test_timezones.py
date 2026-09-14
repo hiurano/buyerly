@@ -52,11 +52,11 @@ class TestAccountTimezones(unittest.TestCase):
             utc_offset="UTC−10:00",
         )
 
-        self.assertIn("начались новые сутки", message)
+        self.assertIn("A new day has started", message)
         self.assertIn("18.08.2026", message)
         self.assertIn("Pacific/Honolulu", message)
-        self.assertNotIn("Спенд", message)
-        self.assertNotIn("Активных адсетов", message)
+        self.assertNotIn("Spend", message)
+        self.assertNotIn("Active ad sets", message)
 
 
 if __name__ == "__main__":

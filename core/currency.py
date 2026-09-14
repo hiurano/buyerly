@@ -54,5 +54,5 @@ def format_money(value: Optional[float], currency: Any) -> str:
         return "—"
     code = normalize_currency(currency)
     digits = 0 if code in ZERO_DECIMAL_CURRENCIES else 2
-    suffix = code if code != UNKNOWN_CURRENCY else "валюта не определена"
+    suffix = code if code != UNKNOWN_CURRENCY else "currency unknown"
     return f"{float(value):.{digits}f} {suffix}"

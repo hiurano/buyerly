@@ -15,13 +15,13 @@ from core.metrics import (
 )
 
 class RuleAction(str, Enum):
-    NOOP = "NOOP"                             # Всё в норме
-    STOP = "STOP"                             # Остановить адсет (PAUSE)
-    NOTIFY_ONLY = "NOTIFY_ONLY"               # Только уведомить в TG (без выключения в Meta)
-    PROPOSE_REACTIVATE = "PROPOSE_REACTIVATE" # Предложить включить обратно (кнопка в TG)
-    AUTO_REACTIVATE = "AUTO_REACTIVATE"       # Автоматически включить обратно (ACTIVE)
-    INCREASE_BUDGET = "INCREASE_BUDGET"       # Увеличить дневной бюджет адсета на N%
-    DECREASE_BUDGET = "DECREASE_BUDGET"       # Уменьшить дневной бюджет адсета на N%
+    NOOP = "NOOP"                             # Everything is within range
+    STOP = "STOP"                             # Stop the ad set (PAUSE)
+    NOTIFY_ONLY = "NOTIFY_ONLY"               # Notify in Telegram only (nothing is switched off in Meta)
+    PROPOSE_REACTIVATE = "PROPOSE_REACTIVATE" # Offer to turn it back on (a button in Telegram)
+    AUTO_REACTIVATE = "AUTO_REACTIVATE"       # Turn it back on automatically (ACTIVE)
+    INCREASE_BUDGET = "INCREASE_BUDGET"       # Raise the ad set daily budget by N%
+    DECREASE_BUDGET = "DECREASE_BUDGET"       # Lower the ad set daily budget by N%
 
 @dataclass
 class RuleEvaluationResult:
@@ -58,9 +58,9 @@ class RuleEvaluationResult:
 
 class RuleEngine:
     """
-    Движок правил с поддержкой динамических условий (Spend, CPL, CPReg, CPP,
+    Rule engine supporting dynamic conditions (Spend, CPL, CPReg, CPP,
     Leads, Registrations, Purchases, CTR, CPC),
-    логики AND/OR, действий управления бюджетом и множественных временных окон.
+    AND/OR logic, budget-control actions and multiple time windows.
     """
 
     @staticmethod
@@ -69,14 +69,14 @@ class RuleEngine:
         from core.metrics import MetricReading
 
         return compare_metric(
-            MetricReading(key="value", label="Значение", unit="", value=metric_val),
+            MetricReading(key="value", label="Value", unit="", value=metric_val),
             operator,
             target_val,
         )
 
     @staticmethod
     def _get_metric_value(metric: str, adset_data: Dict[str, Any]) -> tuple:
-        """Возвращает (значение метрики, читаемое название, единица измерения)."""
+        """Return (metric value, human-readable label, unit)."""
         reading = rule_metric_reading(metric, adset_data)
         return reading.value, reading.label, reading.unit
 
@@ -88,12 +88,12 @@ class RuleEngine:
         active_rules_override: Optional[List[Dict[str, Any]]] = None,
     ) -> RuleEvaluationResult:
         """
-        Оценивает сущность (адсет или кампанию) по пользовательским правилам
-        с поддержкой AND/OR логики и временных окон. Поддерживает множественные
-        правила на один кабинет с разрешением конфликтов.
+        Evaluate an entity (ad set or campaign) against the user's rules,
+        supporting AND/OR logic and time windows. Several rules can apply
+        to one ad account, with conflicts resolved.
 
-        Словарь описывает адсет или кампанию; уровень берётся из
-        ``entity_level``, по умолчанию адсет.
+        The dict describes an ad set or a campaign; the level comes from
+        ``entity_level``, defaulting to the ad set.
         """
         entity_level = str(entity.get("entity_level") or "adset")
         entity_id = str(entity.get("entity_id") or entity.get("adset_id") or "")
@@ -111,7 +111,7 @@ class RuleEngine:
         is_active = status == "ACTIVE" and effective_status == "ACTIVE"
         currency = normalize_currency(getattr(account, "currency", "UNKNOWN"))
 
-        def noop(reason="Метрики в пределах нормы."):
+        def noop(reason="Metrics are within range."):
             return RuleEvaluationResult(
                 action=RuleAction.NOOP,
                 entity_id=entity_id,
@@ -132,7 +132,7 @@ class RuleEngine:
             )
 
         if not getattr(account, "rules_enabled", False):
-            return noop("Правила выключены для этого кабинета.")
+            return noop("Rules are switched off for this ad account.")
 
         if active_rules_override is not None:
             active_rules = active_rules_override
@@ -144,7 +144,7 @@ class RuleEngine:
                 active_rules = []
 
         if not active_rules or not isinstance(active_rules, list) or len(active_rules) == 0:
-            return noop("Правила не настроены.")
+            return noop("No rules are configured.")
 
         account_workspace_id = getattr(account, "workspace_id", None)
         if account_workspace_id is not None:
@@ -155,12 +155,12 @@ class RuleEngine:
                 and rule.get("workspace_id") == account_workspace_id
             ]
             if not active_rules:
-                return noop("Правила этого рабочего пространства не настроены.")
+                return noop("This workspace's rules are not configured.")
 
         try:
             validate_rule_set_compatibility(active_rules)
         except (TypeError, ValueError) as error:
-            return noop(f"Автоматика остановлена: {error}")
+            return noop(f"Automation halted: {error}")
 
         def get_action_priority(action: RuleAction) -> int:
             priorities = {
@@ -258,7 +258,7 @@ class RuleEngine:
 
                 window_label = ""
                 if time_window != "today":
-                    window_labels = {"yesterday": "Вчера", "last_3d": "3 дня", "last_7d": "7 дней"}
+                    window_labels = {"yesterday": "Yesterday", "last_3d": "3 days", "last_7d": "7 days"}
                     window_label = f" [{window_labels.get(time_window, time_window)}]"
 
                 matches = compare_metric(reading, operator, target_val)
@@ -295,9 +295,9 @@ class RuleEngine:
 
         if not triggered_actions:
             return noop(
-                "Правила не настроены или некорректны; действия в Meta пропущены."
+                "Rules are missing or invalid; no actions were sent to Meta."
                 if invalid_rule_seen
-                else "Метрики в пределах нормы."
+                else "Metrics are within range."
             )
 
         # Sort by priority descending

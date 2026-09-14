@@ -44,9 +44,9 @@ def _open_image(content: bytes) -> Image.Image:
                 image.verify()
         return Image.open(io.BytesIO(content))
     except (Image.DecompressionBombError, Image.DecompressionBombWarning):
-        raise InvalidImageUpload("Изображение имеет небезопасно большое разрешение") from None
+        raise InvalidImageUpload("The image resolution is unsafely large") from None
     except (UnidentifiedImageError, OSError, SyntaxError, ValueError):
-        raise InvalidImageUpload("Файл не является корректным изображением") from None
+        raise InvalidImageUpload("The file is not a valid image") from None
 
 
 def canonicalize_image_upload(
@@ -57,28 +57,28 @@ def canonicalize_image_upload(
 ) -> tuple[bytes, str]:
     """Validate actual bytes and strip metadata by re-encoding the image."""
     if not content:
-        raise InvalidImageUpload("Файл изображения пуст")
+        raise InvalidImageUpload("The image file is empty")
     if len(content) > MAX_UPLOAD_BYTES:
-        raise InvalidImageUpload("Размер файла не должен превышать 5 МБ")
+        raise InvalidImageUpload("The file must not exceed 5 MB")
 
     claimed_extension = Path(filename or "").suffix.lower()
     claimed_format = _CLAIMED_FORMATS.get(claimed_extension)
     if claimed_format is None:
-        raise InvalidImageUpload("Поддерживаются только форматы PNG, JPG, WEBP")
+        raise InvalidImageUpload("Only PNG, JPG and WEBP formats are supported")
 
     image = _open_image(content)
     actual_format = (image.format or "").upper()
     if actual_format not in _FORMAT_EXTENSION:
         image.close()
-        raise InvalidImageUpload("Поддерживаются только форматы PNG, JPG, WEBP")
+        raise InvalidImageUpload("Only PNG, JPG and WEBP formats are supported")
     if claimed_format != actual_format:
         image.close()
-        raise InvalidImageUpload("Расширение файла не соответствует содержимому изображения")
+        raise InvalidImageUpload("The file extension does not match the image content")
 
     declared_mime = (content_type or "").split(";", 1)[0].strip().lower()
     if declared_mime not in ("", "application/octet-stream", _FORMAT_MIME[actual_format]):
         image.close()
-        raise InvalidImageUpload("Тип файла не соответствует содержимому изображения")
+        raise InvalidImageUpload("The file type does not match the image content")
 
     width, height = image.size
     if (
@@ -89,10 +89,10 @@ def canonicalize_image_upload(
         or width * height > MAX_SOURCE_PIXELS
     ):
         image.close()
-        raise InvalidImageUpload("Изображение имеет недопустимое разрешение")
+        raise InvalidImageUpload("The image resolution is not allowed")
     if getattr(image, "is_animated", False) or getattr(image, "n_frames", 1) != 1:
         image.close()
-        raise InvalidImageUpload("Анимированные изображения не поддерживаются")
+        raise InvalidImageUpload("Animated images are not supported")
 
     processed_image = image
     converted_image = None
@@ -116,7 +116,7 @@ def canonicalize_image_upload(
             converted_image.save(output, format="PNG", optimize=True)
         encoded = output.getvalue()
     except (OSError, ValueError):
-        raise InvalidImageUpload("Не удалось безопасно обработать изображение") from None
+        raise InvalidImageUpload("The image could not be processed safely") from None
     finally:
         if converted_image is not None:
             converted_image.close()
@@ -125,7 +125,7 @@ def canonicalize_image_upload(
         image.close()
 
     if len(encoded) > MAX_UPLOAD_BYTES:
-        raise InvalidImageUpload("Обработанное изображение превышает лимит 5 МБ")
+        raise InvalidImageUpload("The processed image exceeds the 5 MB limit")
     return encoded, _FORMAT_EXTENSION[actual_format]
 
 

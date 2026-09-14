@@ -27,7 +27,7 @@ REVERSIBLE_EVENT_TYPES = {
     "DECREASE_BUDGET",
 }
 MUTATING_EVENT_TYPES = REVERSIBLE_EVENT_TYPES | {"UNDO_ACTION"}
-ENTITY_NOUNS = {"adset": "ad set", "campaign": "кампания", "ad": "объявление"}
+ENTITY_NOUNS = {"adset": "ad set", "campaign": "campaign", "ad": "ad"}
 
 
 def undo_entity_level(event: AuditEvent) -> str:
@@ -105,18 +105,18 @@ def undo_spec_for_event(event: AuditEvent) -> UndoSpec:
             previous_budget = float(before["daily_budget"])
             changed_budget = float(after["daily_budget"])
         except (KeyError, TypeError, ValueError):
-            raise UndoError("В истории нет точных значений бюджета до и после действия.")
+            raise UndoError("The history has no exact before and after budget values for this action.")
         if not all(
             math.isfinite(value) and value >= 1.0
             for value in (previous_budget, changed_budget)
         ):
-            raise UndoError("Значения бюджета в истории небезопасны для отмены.")
+            raise UndoError("The budget values in the history are not safe to undo.")
         return UndoSpec(
             "budget",
             {"daily_budget": changed_budget},
             {"daily_budget": previous_budget},
         )
-    raise UndoError("Это действие нельзя безопасно отменить.")
+    raise UndoError("This action cannot be undone safely.")
 
 
 def state_matches(spec: UndoSpec, current: dict[str, Any], target: dict[str, Any]) -> bool:
@@ -196,7 +196,7 @@ async def reverse_audit_event(
         )
     ).scalar_one_or_none()
     if source is None:
-        raise UndoError("Событие не найдено.", 404)
+        raise UndoError("Event not found.", 404)
 
     # Tenant undo is always scoped by an explicit workspace. Legacy NULL rows
     # stay quarantined because ownership alone is ambiguous for multi-workspace
@@ -206,7 +206,7 @@ async def reverse_audit_event(
     )
 
     if not source_accessible:
-        raise UndoError("Доступ к этому действию запрещён.", 403)
+        raise UndoError("Access to this action is denied.", 403)
 
     existing_reversal = (
         await session.execute(
@@ -222,20 +222,20 @@ async def reverse_audit_event(
             "already_reverted": True,
             "original_event_id": source.id,
             "reversal_event_id": existing_reversal.id,
-            "message": "Действие уже отменено.",
+            "message": "This action has already been undone.",
         }
     if str(source.status).upper() != "SUCCESS":
-        raise UndoError("Отменять можно только успешно выполненное действие.")
+        raise UndoError("Only a successfully completed action can be undone.")
     spec = undo_spec_for_event(source)
     entity_level = undo_entity_level(source)
     entity_id = undo_entity_id(source)
     if not source.account_id or not entity_id:
-        raise UndoError("В истории нет кабинета или сущности для отмены.")
+        raise UndoError("The history has no ad account or entity to undo.")
     if spec.kind == "budget" and entity_level != "adset":
         # Only ad sets carry a budget a rule could have changed.
-        raise UndoError("Отмена изменения бюджета доступна только для ad set.")
+        raise UndoError("Undoing a budget change is supported for ad sets only.")
     if not event_is_within_undo_window(source, now=now_ts):
-        raise UndoError("Безопасное окно отмены 24 часа уже закрыто.")
+        raise UndoError("The 24-hour safe undo window has already closed.")
 
     newer_action = (
         await session.execute(
@@ -251,8 +251,8 @@ async def reverse_audit_event(
     ).scalar_one_or_none()
     if newer_action is not None:
         raise UndoError(
-            f"После этого события {ENTITY_NOUNS[entity_level]} уже изменялся. "
-            "Старая отмена заблокирована."
+            f"The {ENTITY_NOUNS[entity_level]} has changed since this event. "
+            "Undoing an older action is blocked."
         )
 
     account = (
@@ -265,7 +265,7 @@ async def reverse_audit_event(
     ).scalar_one_or_none()
 
     if account is None:
-        raise UndoError("Кабинет для этого действия не найден или недоступен.", 403)
+        raise UndoError("The ad account for this action was not found, or is unavailable.", 403)
 
     undo_state = (
         await session.execute(
@@ -289,7 +289,7 @@ async def reverse_audit_event(
     elif undo_state.status == "PENDING":
         pending_age = now_ts - _utc_timestamp(undo_state.updated_at)
         if pending_age < UNDO_PENDING_LEASE_SECONDS:
-            raise UndoError("Отмена уже выполняется. Обновите историю через пару минут.")
+            raise UndoError("An undo is already running. Refresh the history in a couple of minutes.")
         retry_after_crash = True
         undo_state.attempt_count += 1
         undo_state.correlation_id = uuid.uuid4().hex
@@ -332,14 +332,14 @@ async def reverse_audit_event(
             error=error,
             action_started=action_started,
         )
-        raise UndoError("Meta не вернула текущее состояние. Отмена не выполнялась.", 502)
+        raise UndoError("Meta did not return the current state. Nothing was undone.", 502)
 
     reconciled = retry_after_crash and state_matches(spec, current_state, spec.desired_state)
     if not reconciled and not state_matches(spec, current_state, spec.expected_state):
         undo_state.status = "ERROR"
         undo_state.last_error = "Meta state no longer matches the original action"
         await session.commit()
-        raise UndoError("Текущее состояние Meta уже отличается от результа исходного действия.")
+        raise UndoError("Meta's current state already differs from the result of the original action.")
 
     if not reconciled:
         try:
@@ -369,7 +369,7 @@ async def reverse_audit_event(
                 error=error,
                 action_started=action_started,
             )
-            raise UndoError("Meta не смогла отменить действие. Подробности сохранены в логах.", 502)
+            raise UndoError("Meta could not undo the action. Details were saved to the logs.", 502)
 
     reversal = build_audit_event(
         account=account,
@@ -378,7 +378,7 @@ async def reverse_audit_event(
         correlation_id=undo_state.correlation_id,
         category="MANUAL_ACTION",
         action=f"UNDO_{source.action or source.event_type}",
-        message=f"Действие №{source.id} безопасно отменено.",
+        message=f"Action #{source.id} was undone safely.",
         before_state=current_state,
         after_state=spec.desired_state,
         details={
@@ -447,7 +447,7 @@ async def reverse_audit_event(
     except Exception as error:
         await session.rollback()
         raise UndoError(
-            "Meta выполнила отмену, но Buyerly ещё не закрыл её в истории. Повторите через две минуты.",
+            "Meta applied the undo, but Buyerly has not closed it in the history yet. Try again in two minutes.",
             500,
         ) from error
 
@@ -456,7 +456,7 @@ async def reverse_audit_event(
         "already_reverted": False,
         "original_event_id": source.id,
         "reversal_event_id": reversal.id,
-        "message": "Действие отменено и подтверждено Meta.",
+        "message": "Action undone and confirmed by Meta.",
     }
 
 

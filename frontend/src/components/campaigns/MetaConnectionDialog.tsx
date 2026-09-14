@@ -15,7 +15,7 @@ interface MetaConnectionDialogProps {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Не удалось выполнить действие. Попробуйте ещё раз.';
+  return error instanceof Error ? error.message : 'The action could not be completed. Please try again.';
 }
 
 function accountLabel(asset: MetaConnectionAsset): string {
@@ -38,7 +38,7 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
   const groupedAssets = useMemo(() => {
     const groups = new Map<string, MetaConnectionAsset[]>();
     for (const asset of assets) {
-      const key = asset.business_name || 'Без Business Manager';
+      const key = asset.business_name || 'No Business Manager';
       groups.set(key, [...(groups.get(key) || []), asset]);
     }
     return [...groups.entries()];
@@ -142,7 +142,7 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
     try {
       await navigator.clipboard.writeText(invite.invite_url);
     } catch {
-      setError('Не удалось скопировать ссылку. Скопируйте её вручную.');
+      setError('Could not copy the link. Please copy it manually.');
     }
   };
 
@@ -161,7 +161,7 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
                 <Dialog.Title className="text-[15px] font-semibold text-[var(--text-primary)]">{title}</Dialog.Title>
               </div>
               <Dialog.Close asChild>
-                <button className="ui-icon-button flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] transition-colors duration-150 cursor-default" type="button" aria-label="Закрыть">
+                <button className="ui-icon-button flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] transition-colors duration-150 cursor-default" type="button" aria-label="Close">
                   <LinearCloseIcon size={14} />
                 </button>
               </Dialog.Close>
@@ -171,31 +171,31 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
               {step === 'choice' && (
                 <div className="space-y-2">
                   <Dialog.Description className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
-                    Выберите способ подключения рекламных кабинетов.
+                    Choose how to connect your ad accounts.
                   </Dialog.Description>
                 </div>
               )}
 
-              {step === 'creating_invite' && <p className="text-[13px] text-[var(--text-secondary)]" role="status">Создаём одноразовую ссылку…</p>}
+              {step === 'creating_invite' && <p className="text-[13px] text-[var(--text-secondary)]" role="status">Creating a one-time link…</p>}
 
               {step === 'invite_ready' && invite && (
                 <div className="space-y-3">
                   <Dialog.Description className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
-                    Откройте эту ссылку в браузере с нужным Facebook-профилем или отправьте владельцу профиля. Ссылка действует 24 часа и используется один раз.
+                    Open this link in a browser signed in to the right Facebook profile, or send it to the profile owner. The link is valid for 24 hours and can be used once.
                   </Dialog.Description>
-                  <input className="ui-input w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--item-hover-bg)] px-3 py-2 font-mono text-[12px] text-[var(--text-primary)]" readOnly value={invite.invite_url} aria-label="Одноразовая ссылка для подключения" />
+                  <input className="ui-input w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--item-hover-bg)] px-3 py-2 font-mono text-[12px] text-[var(--text-primary)]" readOnly value={invite.invite_url} aria-label="One-time connection link" />
                 </div>
               )}
 
-              {step === 'discovering' && <p className="text-[13px] text-[var(--text-secondary)]" role="status">Ищем доступные рекламные кабинеты…</p>}
+              {step === 'discovering' && <p className="text-[13px] text-[var(--text-secondary)]" role="status">Looking for available ad accounts…</p>}
 
               {step === 'selecting' && (
                 <div className="space-y-4">
                   <Dialog.Description className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
-                    Выберите кабинеты, которые нужно добавить в этот workspace.
+                    Choose the ad accounts to add to this workspace.
                   </Dialog.Description>
                   {groupedAssets.length === 0 ? (
-                    <p className="text-[13px] text-[var(--text-tertiary)]">Facebook не вернул доступных рекламных кабинетов для этого профиля.</p>
+                    <p className="text-[13px] text-[var(--text-tertiary)]">Facebook returned no available ad accounts for this profile.</p>
                   ) : groupedAssets.map(([businessName, businessAssets]) => (
                     <section key={businessName} className="space-y-1.5" aria-label={businessName}>
                       <h3 className="px-1 text-[12px] font-medium text-[var(--text-tertiary)]">{businessName}</h3>
@@ -207,7 +207,7 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
                             <label key={asset.account_id} className="flex min-h-10 cursor-default items-center gap-3 border-b border-[var(--color-border-primary)] px-3.5 last:border-b-0 transition-colors hover:bg-[var(--item-hover-bg)]">
                               <input type="checkbox" checked={imported || checked} disabled={imported} onChange={() => toggleAsset(asset)} className="h-4 w-4 rounded" />
                               <span className="min-w-0 flex-1 text-[13px] text-[var(--text-primary)]">{accountLabel(asset)}</span>
-                              <span className="text-[12px] text-[var(--text-tertiary)]">{imported ? 'Добавлен' : asset.currency}</span>
+                              <span className="text-[12px] text-[var(--text-tertiary)]">{imported ? 'Added' : asset.currency}</span>
                             </label>
                           );
                         })}
@@ -217,11 +217,11 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
                 </div>
               )}
 
-              {step === 'importing' && <p className="text-[13px] text-[var(--text-secondary)]" role="status">Добавляем выбранные кабинеты…</p>}
+              {step === 'importing' && <p className="text-[13px] text-[var(--text-secondary)]" role="status">Adding the selected ad accounts…</p>}
 
               {step === 'done' && (
                 <Dialog.Description className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
-                  Кабинеты добавлены. Автоправила для них выключены.
+                  Ad accounts added. Automation rules are switched off for them.
                 </Dialog.Description>
               )}
 
@@ -236,14 +236,14 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
                     type="button"
                     onClick={() => setStep('creating_invite')}
                   >
-                    Сгенерировать ссылку
+                    Generate link
                   </button>
                   <button
                     className="inline-flex h-7 items-center justify-center rounded-full bg-[#5e6ad2] px-3.5 text-[12px] font-medium text-white shadow-[0_1px_1px_rgba(0,0,0,0.04),0_3px_6px_-2px_rgba(0,0,0,0.02)] transition-colors duration-150 hover:bg-[#6875e5] active:duration-0 cursor-default select-none w-full sm:w-auto"
                     type="button"
                     onClick={continueWithFacebook}
                   >
-                    Войти через Facebook
+                    Sign in with Facebook
                   </button>
                 </>
               )}
@@ -253,7 +253,7 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
                   type="button"
                   onClick={copyInvite}
                 >
-                  Скопировать ссылку
+                  Copy link
                 </button>
               )}
               {step === 'selecting' && (
@@ -263,7 +263,7 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
                   disabled={selectedIds.size === 0}
                   onClick={importSelected}
                 >
-                  Добавить кабинеты
+                  Add ad accounts
                 </button>
               )}
               {step === 'done' && (
@@ -272,11 +272,11 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
                     className="inline-flex h-7 items-center justify-center rounded-full bg-[#5e6ad2] px-3.5 text-[12px] font-medium text-white shadow-[0_1px_1px_rgba(0,0,0,0.04),0_3px_6px_-2px_rgba(0,0,0,0.02)] transition-colors duration-150 hover:bg-[#6875e5] active:duration-0 cursor-default select-none w-full sm:w-auto"
                     type="button"
                   >
-                    Готово
+                    Done
                   </button>
                 </Dialog.Close>
               )}
-              {isBusy && <span className="text-[12px] text-[var(--text-tertiary)]" aria-live="polite">Подождите…</span>}
+              {isBusy && <span className="text-[12px] text-[var(--text-tertiary)]" aria-live="polite">Please wait…</span>}
             </footer>
           </Dialog.Content>
         </div>
