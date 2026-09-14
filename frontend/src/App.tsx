@@ -31,10 +31,18 @@ function activeWorkspace(user: SessionUser): Workspace | null {
 interface WorkspaceApplicationProps {
   route: Extract<Route, { kind: 'workspace' }>;
   workspace: Workspace;
+  user: SessionUser;
   navigate: (path: string, replace?: boolean) => void;
+  refreshUser: () => Promise<SessionUser>;
 }
 
-const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({ route, workspace, navigate }) => {
+const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
+  route,
+  workspace,
+  user,
+  navigate,
+  refreshUser,
+}) => {
   const {
     activeTab,
     setActiveTab,
@@ -136,7 +144,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({ route, work
     <TooltipProvider>
       <div className="app-shell flex h-screen w-screen overflow-hidden">
         {activeTab === 'preferences' ? (
-          <PreferencesView />
+          <PreferencesView user={user} onUserChanged={refreshUser} />
         ) : (
           <>
             <Sidebar />
@@ -319,5 +327,13 @@ export const App: React.FC = () => {
 
   if (route.kind !== 'workspace') return <AuthLoading dark label="Opening your workspace…" />;
   const routeWorkspace = user.workspaces.find((item) => item.slug === route.workspace) || workspace;
-  return <WorkspaceApplication route={route} workspace={routeWorkspace} navigate={navigate} />;
+  return (
+    <WorkspaceApplication
+      route={route}
+      workspace={routeWorkspace}
+      user={user}
+      navigate={navigate}
+      refreshUser={refreshUser}
+    />
+  );
 };

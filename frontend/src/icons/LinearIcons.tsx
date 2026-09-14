@@ -166,6 +166,24 @@ export const LinearCloseIcon: React.FC<IconProps> = ({ size = 16, className = ''
   </svg>
 );
 
+// 6b. Pencil, used by editable settings rows (16x16)
+export const LinearPencilIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    <path d="M12.146 1.146a2 2 0 0 1 2.828 2.828l-.94.94-2.828-2.829.94-.939Z" />
+    <path d="M10.5 2.793 13.328 5.62l-7.47 7.47a1.5 1.5 0 0 1-.693.394l-2.83.708a.5.5 0 0 1-.606-.607l.707-2.828a1.5 1.5 0 0 1 .395-.694l7.47-7.47Z" />
+  </svg>
+);
+
 // 7. Exact Linear Notification Actions (3 dots, 16x16)
 export const LinearDotsIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
