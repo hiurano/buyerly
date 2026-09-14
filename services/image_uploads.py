@@ -20,7 +20,7 @@ MAX_SOURCE_DIMENSION = 8192
 MAX_SOURCE_PIXELS = 20_000_000
 MAX_STORED_DIMENSION = 2048
 ORPHAN_GRACE_SECONDS = 24 * 60 * 60
-UPLOADS_ROOT = Path("webapp/uploads")
+UPLOADS_ROOT = Path(__file__).resolve().parents[1] / "uploads"
 
 _FORMAT_EXTENSION = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp"}
 _FORMAT_MIME = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}

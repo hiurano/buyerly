@@ -21,7 +21,7 @@ Buyerly follows the Linear design language. That decision is already encoded in 
 | Behavior, routing and API payloads | `frontend/src/components/`, `frontend/src/lib/routing.ts` and `frontend/src/lib/api.ts` | A visual refactor preserves behavior, workspace isolation and security boundaries unless the task explicitly changes them. |
 | Production web artifact | [`frontend/Dockerfile`](../frontend/Dockerfile) | Vite builds hashed assets from `frontend/`; manual CSS cache-version bumps are not used. |
 
-`webapp/` is not the authenticated production application. It is retained temporarily as legacy code, while `privacy.html`, `terms.html` and `data-deletion.html` are copied into the production image. Do not add new authenticated product behavior or UI foundations to `webapp/`.
+The retired interface has been removed. `frontend/` is the only product UI. Public legal documents and their assets live in `frontend/public/` and are included in the Vite production build. Runtime user images live in `uploads/` and the durable `buyerly-uploads` volume.
 
 ## Mandatory component recipes
 
@@ -75,7 +75,7 @@ A shared primitive owns its own geometry. If a page needs a different height for
 - status communicated only by color;
 - fixture campaigns, metrics or progress rendered as if received from Buyerly or Meta;
 - reporting success from a response that was never read — an endpoint returning HTTP 200 with a per-item `errors` array has not necessarily succeeded;
-- new authenticated product work in the legacy `webapp/` application.
+- reintroducing the retired authenticated interface.
 
 ## Known gaps
 
@@ -93,7 +93,7 @@ Every UI pull request must:
 2. Reuse an existing primitive from `frontend/src/ui/`. If none fits and the pattern will repeat, add and document a shared React primitive first.
 3. Change semantic values in `frontend/src/styles/tokens.css`; consume them from components or `frontend/src/styles/index.css`.
 4. Preserve ids, handlers, API payloads, workspace isolation and security boundaries unless explicitly in scope.
-5. Update `tests/test_react_frontend_contract.py` when the production UI contract changes. Legacy tests may remain only as retirement protection for `webapp/`.
+5. Update `tests/test_react_frontend_contract.py` when the production UI contract changes. Legal route and asset coverage lives in `tests/test_legal_pages.py`.
 6. Pass GitHub Actions, and check keyboard focus, disabled/busy/error states and overflow.
 7. Update `CHANGELOG.md` for user-visible or contract-level changes.
 

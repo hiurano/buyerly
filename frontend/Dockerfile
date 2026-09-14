@@ -14,7 +14,6 @@ FROM nginx:1.27-alpine
 
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
-COPY webapp/privacy.html webapp/terms.html webapp/data-deletion.html /usr/share/nginx/html/
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=4 \
     CMD wget -qO- http://127.0.0.1/health/live >/dev/null || exit 1
