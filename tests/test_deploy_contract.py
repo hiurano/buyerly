@@ -340,13 +340,14 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("cron:", self.restore_drill_workflow)
         self.assertIn("alembic upgrade head", self.restore_drill_workflow)
 
-    def test_ci_test_shards_cover_every_module_exactly_once(self):
-        """Every test module must land in exactly one CI shard.
+    def test_ci_test_shards_cover_every_test_exactly_once(self):
+        """Every test must land in exactly one CI shard.
 
-        The workflow splits the suite across parallel legs. A module that falls
+        The workflow splits the suite across parallel legs. A test that fell
         out of the split would silently stop running, and one counted twice
-        would waste a leg, so the assignment is verified against the shard
-        count declared in the workflow itself.
+        would waste a leg. The shard assignment is compared against unittest's
+        own discovery, so a test the sharding script fails to parse is caught
+        here rather than by nobody.
         """
         shard_line = re.search(r"shard: \[([0-9, ]+)\]", self.workflow)
         self.assertIsNotNone(shard_line, "deploy.yml must declare a shard matrix")
@@ -355,9 +356,18 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn(f"--total {len(shards)}", self.workflow)
 
         project_root = Path(__file__).resolve().parents[1]
-        expected = {
-            f"tests.{path.stem}" for path in (project_root / "tests").glob("test_*.py")
-        }
+
+        discovered = set()
+
+        def walk(suite):
+            for item in suite:
+                if isinstance(item, unittest.TestSuite):
+                    walk(item)
+                else:
+                    discovered.add(item.id().removeprefix("tests."))
+
+        walk(unittest.TestLoader().discover(str(project_root / "tests")))
+        self.assertTrue(discovered, "unittest discovered no tests")
 
         assigned = []
         for shard in shards:
@@ -374,12 +384,12 @@ class TestDeployContract(unittest.TestCase):
                 text=True,
                 check=True,
             )
-            modules = result.stdout.split()
-            self.assertTrue(modules, f"shard {shard} resolved to no modules")
-            assigned.extend(modules)
+            ids = result.stdout.split()
+            self.assertTrue(ids, f"shard {shard} resolved to no tests")
+            assigned.extend(test_id.removeprefix("tests.") for test_id in ids)
 
-        self.assertEqual(sorted(assigned), sorted(expected))
-        self.assertEqual(len(assigned), len(set(assigned)), "a module is assigned twice")
+        self.assertEqual(len(assigned), len(set(assigned)), "a test is assigned twice")
+        self.assertEqual(sorted(assigned), sorted(discovered))
 
 
 if __name__ == "__main__":

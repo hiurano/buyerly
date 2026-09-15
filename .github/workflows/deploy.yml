@@ -54,11 +54,12 @@ jobs:
 
     # The shards run in parallel, each against its own Postgres and Redis, so
     # the suite costs its slowest shard rather than its total. Keep the count
-    # in sync with --total below; scripts/ci_test_shard.py packs the modules.
+    # in sync with --total below; scripts/ci_test_shard.py packs the individual
+    # tests, because a single module (test_api) is too heavy to be a unit.
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
 
     services:
       postgres:
@@ -115,13 +116,13 @@ jobs:
           TRUSTED_PROXY_CIDRS: 127.0.0.1/32
         run: |
           set -o pipefail
-          modules=$(python scripts/ci_test_shard.py --shard ${{ matrix.shard }} --total 4)
-          if [ -z "${modules}" ]; then
-            echo "::error title=Empty test shard::Shard ${{ matrix.shard }} resolved to no modules"
+          test_ids=$(python scripts/ci_test_shard.py --shard ${{ matrix.shard }} --total 6)
+          if [ -z "${test_ids}" ]; then
+            echo "::error title=Empty test shard::Shard ${{ matrix.shard }} resolved to no tests"
             exit 1
           fi
-          echo "Shard ${{ matrix.shard }}/4: ${modules}"
-          python -m unittest ${modules} -v 2>&1 | tee /tmp/buyerly-test-output.log || {
+          echo "Shard ${{ matrix.shard }}/6: $(echo ${test_ids} | wc -w) tests"
+          python -m unittest ${test_ids} -v 2>&1 | tee /tmp/buyerly-test-output.log || {
             failure_excerpt=$(grep -E -B 12 -A 35 '^(FAIL|ERROR):|Traceback|AssertionError|^FAILED|^Ran [0-9]+' /tmp/buyerly-test-output.log | tail -n 180 | tr '\n' ' ' | sed 's/%/%25/g')
             echo "::error title=Unit test failure (shard ${{ matrix.shard }})::${failure_excerpt}"
             exit 1
