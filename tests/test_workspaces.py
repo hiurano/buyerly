@@ -56,16 +56,20 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             len(normalize_workspace_slug("a" * 100)),
             MAX_WORKSPACE_SLUG_LENGTH,
         )
+        # Only root segments the server serves are reserved; past URLs of the
+        # product are free to become workspace slugs.
         for system_slug in (
+            "api",
             "auth",
+            "connect",
             "create-workspace",
             "invite",
             "login",
-            "register",
-            "w",
-            "welcome",
+            "uploads",
         ):
             self.assertIn(system_slug, RESERVED_WORKSPACE_SLUGS)
+        for free_slug in ("register", "w", "welcome", "dashboard", "home"):
+            self.assertNotIn(free_slug, RESERVED_WORKSPACE_SLUGS)
 
     async def asyncSetUp(self):
         self.original_meta_token_key = settings.META_TOKEN_ENCRYPTION_KEY
@@ -308,8 +312,8 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 '/buyerly/welcome',
                 '/buyerly/inbox',
                 '/buyerly/inbox/1',
-                '/buyerly/ads/campaigns',
-                '/buyerly/ads/adsets/1',
+                '/buyerly/ads-manager/campaigns',
+                '/buyerly/ads-manager/adsets/1',
                 '/buyerly/rules',
                 '/buyerly/rules/1',
                 '/buyerly/statistics',
@@ -319,22 +323,16 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 res = await client.get(r)
                 self.assertEqual(res.status_code, 200, f'Route {r} should return 200')
 
-            for legacy_route in (
-                '/sign-in',
-                '/onboarding',
-                '/home',
-                '/dashboard',
-                '/accounts',
-                '/rules',
-                '/summary',
-                '/logs',
-                '/groups/1',
+            for reserved_route in (
+                '/api/unknown',
+                '/uploads',
+                '/static',
             ):
-                res = await client.get(legacy_route)
-                self.assertEqual(
+                res = await client.get(reserved_route)
+                self.assertNotEqual(
                     res.status_code,
-                    404,
-                    f'Legacy route {legacy_route} must not redirect or render the app',
+                    200,
+                    f'Reserved root {reserved_route} must not render the app',
                 )
 
     async def test_workspace_invite_model_schema_and_persistence(self):

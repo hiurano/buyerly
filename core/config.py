@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     )
     API_PORT: int = Field(default=8080, description="Web API and static files port")
     API_HOST: str = Field(default="0.0.0.0", description="Web API host")
-    SERVE_STATIC: bool = Field(default=True, description="Serve the bundled web app from FastAPI in local/legacy mode")
+    SERVE_STATIC: bool = Field(default=True, description="Serve the built React app from FastAPI in single-process local runs")
     ENABLE_DEV_AUTH: bool = Field(default=False, description="Enable dev auth fallback for local tests")
     CORS_ORIGINS: str = Field(
         default="",
