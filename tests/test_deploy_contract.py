@@ -368,6 +368,13 @@ class TestDeployContract(unittest.TestCase):
 
         walk(unittest.TestLoader().discover(str(project_root / "tests")))
         self.assertTrue(discovered, "unittest discovered no tests")
+        # Without the project dependencies installed, discovery yields import
+        # failures instead of test ids and the comparison below would be
+        # meaningless. CI always has them, so skip rather than report a
+        # difference that says nothing about the sharding.
+        unimportable = sorted(t for t in discovered if "_FailedTest" in t)
+        if unimportable:
+            self.skipTest(f"test modules are not importable here: {unimportable[:3]}")
 
         assigned = []
         for shard in shards:

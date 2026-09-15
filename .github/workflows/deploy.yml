@@ -128,6 +128,25 @@ jobs:
             exit 1
           }
 
+  # One check to require in branch protection. Requiring the shards directly
+  # would mean editing the protection rule every time their number changes.
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    needs: [frontend, test]
+    if: always()
+
+    steps:
+      - name: Verify every job succeeded
+        run: |
+          frontend='${{ needs.frontend.result }}'
+          tests='${{ needs.test.result }}'
+          echo "frontend=${frontend} tests=${tests}"
+          if [ "${frontend}" != "success" ] || [ "${tests}" != "success" ]; then
+            echo "::error title=CI failed::frontend=${frontend} tests=${tests}"
+            exit 1
+          fi
+
   deploy:
     name: Deploy to Production VPS
     needs: [frontend, test]
