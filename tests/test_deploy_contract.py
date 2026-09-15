@@ -1,3 +1,6 @@
+import re
+import subprocess
+import sys
 from pathlib import Path
 import unittest
 
@@ -336,6 +339,47 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("schedule:", self.restore_drill_workflow)
         self.assertIn("cron:", self.restore_drill_workflow)
         self.assertIn("alembic upgrade head", self.restore_drill_workflow)
+
+    def test_ci_test_shards_cover_every_module_exactly_once(self):
+        """Every test module must land in exactly one CI shard.
+
+        The workflow splits the suite across parallel legs. A module that falls
+        out of the split would silently stop running, and one counted twice
+        would waste a leg, so the assignment is verified against the shard
+        count declared in the workflow itself.
+        """
+        shard_line = re.search(r"shard: \[([0-9, ]+)\]", self.workflow)
+        self.assertIsNotNone(shard_line, "deploy.yml must declare a shard matrix")
+        shards = [int(value) for value in shard_line.group(1).split(",")]
+        self.assertEqual(shards, list(range(1, len(shards) + 1)))
+        self.assertIn(f"--total {len(shards)}", self.workflow)
+
+        project_root = Path(__file__).resolve().parents[1]
+        expected = {
+            f"tests.{path.stem}" for path in (project_root / "tests").glob("test_*.py")
+        }
+
+        assigned = []
+        for shard in shards:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(project_root / "scripts" / "ci_test_shard.py"),
+                    "--shard",
+                    str(shard),
+                    "--total",
+                    str(len(shards)),
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            modules = result.stdout.split()
+            self.assertTrue(modules, f"shard {shard} resolved to no modules")
+            assigned.extend(modules)
+
+        self.assertEqual(sorted(assigned), sorted(expected))
+        self.assertEqual(len(assigned), len(set(assigned)), "a module is assigned twice")
 
 
 if __name__ == "__main__":
