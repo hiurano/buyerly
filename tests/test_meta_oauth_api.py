@@ -111,7 +111,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
-                "/api/meta/oauth/start?return_path=/facebook-accounts",
+                "/api/meta/oauth/start?return_path=/buyerly/settings",
                 headers=self.headers,
             )
 
@@ -366,7 +366,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             start_resp = await client.post(
-                f"/api/meta/oauth/start?return_path=/facebook-accounts&reconnect_connection_id={self.connection_id}",
+                f"/api/meta/oauth/start?return_path=/buyerly/settings&reconnect_connection_id={self.connection_id}",
                 headers=self.headers,
             )
             self.assertEqual(start_resp.status_code, 200)
@@ -422,7 +422,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             start_resp = await client.post(
-                f"/api/meta/oauth/start?return_path=/facebook-accounts&reconnect_connection_id={self.connection_id}",
+                f"/api/meta/oauth/start?return_path=/buyerly/settings&reconnect_connection_id={self.connection_id}",
                 headers=self.headers,
             )
             self.assertEqual(start_resp.status_code, 200)
@@ -476,7 +476,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # Start OAuth in workspace 2
             start_resp = await client.post(
-                "/api/meta/oauth/start?return_path=/facebook-accounts",
+                "/api/meta/oauth/start?return_path=/buyerly/settings",
                 headers=self.headers,
             )
             self.assertEqual(start_resp.status_code, 200)
@@ -551,7 +551,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # Start OAuth while self.workspace_id is active
             start_resp = await client.post(
-                "/api/meta/oauth/start?return_path=/facebook-accounts",
+                "/api/meta/oauth/start?return_path=/buyerly/settings",
                 headers=self.headers,
             )
             self.assertEqual(start_resp.status_code, 200)
@@ -631,7 +631,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             start_resp = await client.post(
-                "/api/meta/oauth/start?return_path=/facebook-accounts",
+                "/api/meta/oauth/start?return_path=/buyerly/settings",
                 headers=self.headers,
             )
             self.assertEqual(start_resp.status_code, 200)

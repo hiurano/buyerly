@@ -13,58 +13,22 @@ export type Route =
   | { kind: 'unknown' };
 
 const SYSTEM_ROOTS = new Set([
+  // Root segments the server itself serves. Everything else is a workspace slug.
   'api',
-  'admin',
-  'app',
-  'accounts',
-  'action-history',
-  'add',
-  'add-accounts',
-  'automations',
+  'assets',
   'auth',
-  'collection',
-  'connections',
+  'connect',
   'create-workspace',
   'data-deletion',
-  'dashboard',
   'docs',
-  'efficiency',
-  'facebook-accounts',
-  'facebook-groups',
-  'fb-accounts',
-  'fb_accounts',
-  'groups',
   'health',
-  'home',
   'invite',
-  'invites',
-  'lists',
   'login',
-  'logs',
-  'main',
-  'null',
-  'openapi',
-  'openapi-json',
-  'openapi.json',
-  'onboarding',
   'privacy',
   'redoc',
-  'rule-groups',
-  'rules',
-  'settings',
-  'sign-in',
-  'sign-up',
-  'signup',
   'static',
-  'summary',
   'terms',
-  'today',
   'uploads',
-  'undefined',
-  'w',
-  'welcome',
-  'workspace',
-  'register',
 ]);
 
 export function parseRoute(location: Location = window.location): Route {
@@ -97,7 +61,7 @@ export function parseRoute(location: Location = window.location): Route {
     return { kind: 'workspace', workspace, tab: 'inbox', recordId: parts[2] };
   }
   if (
-    parts[1] === 'ads'
+    parts[1] === 'ads-manager'
     && parts.length >= 3
     && parts.length <= 4
     && ['campaigns', 'adsets', 'ads'].includes(parts[2])
@@ -127,7 +91,7 @@ export function pathForTab(
   tab: AppTab | 'preferences',
   entity: AdsManagerEntity = 'campaigns',
 ): string {
-  if (tab === 'campaigns') return `/${workspace}/ads/${entity}`;
+  if (tab === 'campaigns') return `/${workspace}/ads-manager/${entity}`;
   if (tab === 'preferences') return `/${workspace}/settings`;
   return `/${workspace}/${tab}`;
 }

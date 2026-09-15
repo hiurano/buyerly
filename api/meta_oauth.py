@@ -133,22 +133,25 @@ def _oauth_client() -> MetaOAuthClient:
     )
 
 
+_WORKSPACE = r"/[a-z0-9][a-z0-9-]{0,62}"
+
+
 def _safe_return_path(value: str) -> str:
     path = str(value or "").strip()
-    if path.endswith("/facebook-accounts") or path.endswith("/add-accounts") or path.endswith("/settings"):
-        return path
     if path == "/connect/meta/success":
         return path
-    if re.fullmatch(r"/[a-z0-9][a-z0-9-]{0,62}/ads/(campaigns|adsets|ads)", path):
+    if re.fullmatch(rf"{_WORKSPACE}/settings", path):
         return path
-    return "/facebook-accounts"
+    if re.fullmatch(rf"{_WORKSPACE}/ads-manager/(campaigns|adsets|ads)", path):
+        return path
+    return "/"
 
 
 async def _callback_return_path(state: str) -> str:
     """Recover the original internal destination for a cancelled OAuth flow."""
 
     if not state:
-        return "/facebook-accounts"
+        return "/"
     state_hash = hashlib.sha256(state.encode("utf-8")).hexdigest()
     async with async_session_maker() as session:
         oauth_state = (
@@ -552,7 +555,7 @@ async def oauth_config(user: User = Depends(get_current_user)):
     dependencies=[Depends(rate_limit_dep(limit=10, window_seconds=60, scope="oauth_start"))],
 )
 async def start_oauth(
-    return_path: str = Query(default="/facebook-accounts"),
+    return_path: str = Query(default="/"),
     reconnect_connection_id: int | None = Query(default=None),
     user: User = Depends(get_current_user),
 ):
@@ -622,7 +625,7 @@ async def oauth_callback(
             or _as_utc(oauth_state.expires_at) <= now
         ):
             return RedirectResponse(
-                _app_redirect("/facebook-accounts", meta_status="expired_state"),
+                _app_redirect("/", meta_status="expired_state"),
                 status_code=303,
             )
         claim = await session.execute(
@@ -636,7 +639,7 @@ async def oauth_callback(
         if int(claim.rowcount or 0) != 1:
             await session.rollback()
             return RedirectResponse(
-                _app_redirect("/facebook-accounts", meta_status="expired_state"),
+                _app_redirect("/", meta_status="expired_state"),
                 status_code=303,
             )
         await session.commit()

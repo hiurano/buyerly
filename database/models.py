@@ -643,7 +643,7 @@ class MetaOAuthState(Base):
         nullable=False,
         index=True,
     )
-    return_path = Column(String, default="/facebook-accounts", nullable=False)
+    return_path = Column(String, default="/", nullable=False)
     reconnect_connection_id = Column(
         Integer,
         ForeignKey("meta_connections.id", ondelete="SET NULL"),

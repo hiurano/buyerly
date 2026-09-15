@@ -163,7 +163,7 @@ class TestReactFrontendContract(unittest.TestCase):
             "parts[0] === 'auth'",
             "parts[0] === 'invite'",
             "parts[1] === 'inbox'",
-            "parts[1] === 'ads'",
+            "parts[1] === 'ads-manager'",
             "parts[1] === 'rules'",
             "parts[1] === 'statistics'",
             "parts[1] === 'settings'",
