@@ -188,6 +188,8 @@
 
 ### Removed
 
+- Removed unused React `CampaignRightSidebar` and `CampaignGroupHeader` files (567 lines). Neither component was imported by the production application; the live Ads Manager is unchanged.
+
 - Retired vanilla authenticated interface, its assets, Docker/Nginx configuration and legacy-only UI tests. React is the sole product frontend.
 
 
