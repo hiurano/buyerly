@@ -39,9 +39,18 @@ jobs:
           npm ci
           npm run build
 
+      - name: Upload built frontend
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 1
+          if-no-files-found: error
+
   test:
     name: Run Unit & Integration Tests (shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
+    needs: frontend
 
     # The shards run in parallel, each against its own Postgres and Redis, so
     # the suite costs its slowest shard rather than its total. Keep the count
@@ -78,6 +87,14 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v7
+
+      # test_legal_pages asserts the legal documents reach the Vite build, so
+      # the shards need the artifact the frontend job produced.
+      - name: Download built frontend
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
 
       - name: Set up Python
         uses: actions/setup-python@v7
