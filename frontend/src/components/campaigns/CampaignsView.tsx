@@ -546,8 +546,9 @@ export const CampaignsView: React.FC = () => {
                 onMouseDown={(event) => event.stopPropagation()}
                 onClick={(event) => {
                   event.stopPropagation();
+                  const anchor = event.currentTarget;
                   setIsDisplayOptionsOpen(false);
-                  setOpenFilterMenu((current) => current ? null : { mode: 'root', anchor: event.currentTarget });
+                  setOpenFilterMenu((current) => current ? null : { mode: 'root', anchor });
                 }}
               />
             </Tooltip>

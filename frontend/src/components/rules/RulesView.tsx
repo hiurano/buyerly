@@ -222,9 +222,10 @@ export const RulesView: React.FC = () => {
                   open={Boolean(openFilterMenu)}
                   onMouseDown={(event) => event.stopPropagation()}
                   onClick={(event) => {
+                    const anchor = event.currentTarget;
                     setIsRulesDisplayOptionsOpen(false);
                     setOpenFilterMenu((current) =>
-                      current ? null : { mode: 'root', anchor: event.currentTarget }
+                      current ? null : { mode: 'root', anchor }
                     );
                   }}
                 />
