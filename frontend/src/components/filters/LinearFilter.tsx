@@ -782,17 +782,19 @@ interface FilterButtonProps {
   active: boolean;
   open: boolean;
   onMouseDown?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  onPointerDown?: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 export const LinearFilterButton = React.forwardRef<HTMLButtonElement, FilterButtonProps>(
-  ({ active, open, onMouseDown, onClick }, ref) => (
+  ({ active, open, onMouseDown, onPointerDown, onClick }, ref) => (
     <button
       ref={ref}
       type="button"
       aria-label={active ? 'Add another filter' : 'Add filter'}
       aria-haspopup="dialog"
       aria-expanded={open}
+      onPointerDown={onPointerDown}
       onMouseDown={onMouseDown}
       onClick={onClick}
       className={`group relative flex h-[28px] w-[28px] items-center justify-center rounded-full border transition-all focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#8b8df8] ${
