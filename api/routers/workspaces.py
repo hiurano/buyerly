@@ -40,7 +40,7 @@ async def list_workspaces(user: User = Depends(get_current_user)):
 async def create_workspace(req: CreateWorkspaceRequest, user: User = Depends(get_current_user)):
     name = req.name.strip()
     if not name:
-        raise HTTPException(status_code=400, detail="Название воркспейса обязательно")
+        raise HTTPException(status_code=400, detail="A workspace name is required")
 
     requested_slug = req.slug.strip() if req.slug else name
     badge_color = req.badge_color or "#F5A300"
@@ -50,7 +50,7 @@ async def create_workspace(req: CreateWorkspaceRequest, user: User = Depends(get
         logo_url,
         user.id,
     ):
-        raise HTTPException(status_code=400, detail="Логотип не найден или принадлежит другому пользователю")
+        raise HTTPException(status_code=400, detail="Logo not found, or it belongs to another user")
 
     async with async_session_maker() as session:
         existing_membership = (
@@ -73,7 +73,7 @@ async def create_workspace(req: CreateWorkspaceRequest, user: User = Depends(get
         if existing_membership is None and allowlisted is None:
             raise HTTPException(
                 status_code=403,
-                detail="Создание воркспейса недоступно для invite-only сессии",
+                detail="Workspace creation is not available in an invite-only session",
             )
 
         try:
@@ -93,7 +93,7 @@ async def create_workspace(req: CreateWorkspaceRequest, user: User = Depends(get
             await session.flush()
         except IntegrityError as exc:
             await session.rollback()
-            raise HTTPException(status_code=409, detail="Это имя воркспейса уже занято") from exc
+            raise HTTPException(status_code=409, detail="That workspace name is already taken") from exc
 
         member = WorkspaceMember(workspace_id=ws.id, user_id=user.id, role="owner")
         session.add(member)
@@ -124,7 +124,7 @@ async def get_current_workspace_info(user: User = Depends(get_current_user)):
         workspaces = await get_user_workspaces_list(session, user)
         active_ws = next((w for w in workspaces if w.is_active), workspaces[0] if workspaces else None)
         if not active_ws:
-            raise HTTPException(status_code=404, detail="Воркспейс не найден")
+            raise HTTPException(status_code=404, detail="Workspace not found")
         return active_ws
 
 
@@ -138,7 +138,7 @@ async def switch_workspace(req: SwitchWorkspaceRequest, user: User = Depends(get
             target_ws = (await session.execute(select(Workspace).where(Workspace.slug == req.slug))).scalar_one_or_none()
 
         if not target_ws:
-            raise HTTPException(status_code=404, detail="Воркспейс не найден")
+            raise HTTPException(status_code=404, detail="Workspace not found")
 
         member = (
             await session.execute(
@@ -154,7 +154,7 @@ async def switch_workspace(req: SwitchWorkspaceRequest, user: User = Depends(get
                 await record_security_event_and_raise(
                     session,
                     status_code=403,
-                    detail="Нет доступа к данному воркспейсу",
+                    detail="You do not have access to this workspace",
                     user=user,
                     workspace_id=target_ws.id,
                     action="SWITCH_WORKSPACE",
@@ -165,7 +165,7 @@ async def switch_workspace(req: SwitchWorkspaceRequest, user: User = Depends(get
             await record_security_event_and_raise(
                 session,
                 status_code=403,
-                detail="Нет доступа к данному воркспейсу",
+                detail="You do not have access to this workspace",
                 user=user,
                 workspace_id=target_ws.id,
                 action="SWITCH_WORKSPACE",
@@ -191,7 +191,7 @@ async def update_workspace(
     async with async_session_maker() as session:
         ws = (await session.execute(select(Workspace).where(Workspace.id == workspace_id))).scalar_one_or_none()
         if not ws:
-            raise HTTPException(status_code=404, detail="Воркспейс не найден")
+            raise HTTPException(status_code=404, detail="Workspace not found")
 
         member = (
             await session.execute(
@@ -211,7 +211,7 @@ async def update_workspace(
             await record_security_event_and_raise(
                 session,
                 status_code=403,
-                detail="Недостаточно прав для редактирования воркспейса",
+                detail="You do not have permission to edit this workspace",
                 user=user,
                 workspace_id=ws.id,
                 action="UPDATE_WORKSPACE",
@@ -233,7 +233,7 @@ async def update_workspace(
             ) and not is_owned_workspace_logo(new_logo_url, user.id):
                 raise HTTPException(
                     status_code=400,
-                    detail="Логотип не найден или принадлежит другому пользователю",
+                    detail="Logo not found, or it belongs to another user",
                 )
             ws.logo_url = new_logo_url
 
@@ -250,12 +250,12 @@ async def delete_workspace(workspace_id: int, user: User = Depends(get_current_u
     async with async_session_maker() as session:
         ws = (await session.execute(select(Workspace).where(Workspace.id == workspace_id))).scalar_one_or_none()
         if not ws:
-            raise HTTPException(status_code=404, detail="Воркспейс не найден")
+            raise HTTPException(status_code=404, detail="Workspace not found")
         if ws.owner_user_id != user.id:
             await record_security_event_and_raise(
                 session,
                 status_code=403,
-                detail="Только владелец может удалить воркспейс",
+                detail="Only the owner can delete a workspace",
                 user=user,
                 workspace_id=workspace_id,
                 action="DELETE_WORKSPACE",
@@ -275,7 +275,7 @@ async def delete_workspace(workspace_id: int, user: User = Depends(get_current_u
             )
         ).scalar_one_or_none()
         if not other_member:
-            raise HTTPException(status_code=400, detail="Нельзя удалить единственный воркспейс")
+            raise HTTPException(status_code=400, detail="You cannot delete your only workspace")
 
         old_logo_url = ws.logo_url
         await session.execute(delete(WorkspaceMember).where(WorkspaceMember.workspace_id == workspace_id))
@@ -288,6 +288,6 @@ async def delete_workspace(workspace_id: int, user: User = Depends(get_current_u
         invalidate_summary_cache(workspace_id=workspace_id)
         return {
             "status": "ok",
-            "message": "Воркспейс удалён",
+            "message": "Workspace deleted",
             "next_workspace_id": other_member.workspace_id,
         }

@@ -72,12 +72,12 @@ async def list_stopped_adsets(user: User = Depends(get_current_user)):
 async def reactivate_adset(adset_id: str, user: User = Depends(get_current_user)):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "включения ad set")
+        ensure_workspace_write_access(user, member, "turning on an ad set")
 
         stopped_res = await session.execute(select(StoppedAdSet).where(StoppedAdSet.adset_id == adset_id))
         stopped_entry = stopped_res.scalar_one_or_none()
         if not stopped_entry:
-            raise HTTPException(status_code=404, detail="Запись об остановленном адсете не найдена.")
+            raise HTTPException(status_code=404, detail="No record found for the stopped ad set.")
 
         scope_clause = (
             or_(Account.workspace_id == ws.id, and_(Account.workspace_id.is_(None), owned_by(Account, user)))
@@ -92,7 +92,7 @@ async def reactivate_adset(adset_id: str, user: User = Depends(get_current_user)
             await record_security_event_and_raise(
                 session,
                 status_code=403,
-                detail="Доступ запрещен.",
+                detail="Access denied.",
                 user=user,
                 workspace_id=ws.id if ws else None,
                 action="REACTIVATE_ADSET",
@@ -136,7 +136,7 @@ async def reactivate_adset(adset_id: str, user: User = Depends(get_current_user)
                 logger.error("Failed to persist manual reactivation error: %s", audit_error)
             raise HTTPException(
                 status_code=500,
-                detail="Meta не смогла включить ad set. Подробности сохранены в логах.",
+                detail="Meta could not turn the ad set on. Details were saved to the logs.",
             )
 
         stopped_entry.is_resolved = True
@@ -157,7 +157,7 @@ async def reactivate_adset(adset_id: str, user: User = Depends(get_current_user)
                 correlation_id=uuid.uuid4().hex,
                 category="MANUAL_ACTION",
                 action="REACTIVATE_ADSET",
-                message="Ad set вручную включён пользователем.",
+                message="Ad set turned on manually by the user.",
                 before_state={"status": "PAUSED", "is_resolved": False},
                 after_state={"status": "ACTIVE", "is_resolved": True},
                 duration_ms=(time.perf_counter() - action_started) * 1000,
@@ -175,21 +175,21 @@ async def reactivate_adset(adset_id: str, user: User = Depends(get_current_user)
             return {
                 "success": True,
                 "warning": True,
-                "message": f"Адсет {adset_id} включен в Meta, но локальная база обновится при следующем запросе.",
+                "message": f"Ad set {adset_id} was turned on in Meta; the local database will catch up on the next request.",
             }
-        return {"success": True, "message": f"Адсет {adset_id} успешно включен!"}
+        return {"success": True, "message": f"Ad set {adset_id} turned on."}
 
 
 @router.post("/adsets/{adset_id}/dismiss")
 async def dismiss_adset(adset_id: str, user: User = Depends(get_current_user)):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "скрытия уведомления ad set")
+        ensure_workspace_write_access(user, member, "hiding an ad set notification")
 
         stopped_res = await session.execute(select(StoppedAdSet).where(StoppedAdSet.adset_id == adset_id))
         stopped_entry = stopped_res.scalar_one_or_none()
         if not stopped_entry:
-            raise HTTPException(status_code=404, detail="Запись не найдена.")
+            raise HTTPException(status_code=404, detail="Record not found.")
 
         scope_clause = (
             or_(Account.workspace_id == ws.id, and_(Account.workspace_id.is_(None), owned_by(Account, user)))
@@ -204,7 +204,7 @@ async def dismiss_adset(adset_id: str, user: User = Depends(get_current_user)):
             await record_security_event_and_raise(
                 session,
                 status_code=403,
-                detail="Доступ запрещен.",
+                detail="Access denied.",
                 user=user,
                 workspace_id=ws.id if ws else None,
                 action="DISMISS_ADSET",
@@ -221,7 +221,7 @@ async def dismiss_adset(adset_id: str, user: User = Depends(get_current_user)):
                 correlation_id=uuid.uuid4().hex,
                 category="MANUAL_ACTION",
                 action="HIDE_NOTIFICATION",
-                message="Карточка выполненной остановки скрыта пользователем. Ad set остался выключенным.",
+                message="The completed-stop card was hidden by the user. The ad set remains off.",
                 before_state={"status": "PAUSED", "is_resolved": False},
                 after_state={"status": "PAUSED", "is_resolved": True},
                 actor_type="user",
@@ -231,4 +231,4 @@ async def dismiss_adset(adset_id: str, user: User = Depends(get_current_user)):
             )
         )
         await session.commit()
-        return {"success": True, "message": "Карточка скрыта. Ad set остался выключенным."}
+        return {"success": True, "message": "Card hidden. The ad set remains off."}

@@ -31,31 +31,31 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    telegram_id = Column(String, unique=True, nullable=True, index=True, doc="Telegram User ID (для пушей)")
-    username = Column(String, unique=True, nullable=False, index=True, doc="Логин пользователя (e.g. Artem)")
+    telegram_id = Column(String, unique=True, nullable=True, index=True, doc="Telegram user ID (for push notifications)")
+    username = Column(String, unique=True, nullable=False, index=True, doc="User login (e.g. Artem)")
     full_name = Column(String, default="", nullable=False)
-    first_name = Column(String, default="", nullable=False, doc="Имя пользователя")
-    last_name = Column(String, default="", nullable=False, doc="Фамилия пользователя")
-    email = Column(String, unique=True, nullable=True, index=True, doc="Нормализованный уникальный рабочий Email")
-    email_verified_at = Column(DateTime(timezone=True), nullable=True, index=True, doc="Дата и время подтверждения email (UTC)")
-    unconfirmed_email = Column(String, nullable=True, index=True, doc="Новый запрашиваемый email до подтверждения OTP")
-    avatar_url = Column(String, default="", nullable=False, doc="URL или путь к аватару")
+    first_name = Column(String, default="", nullable=False, doc="First name")
+    last_name = Column(String, default="", nullable=False, doc="Last name")
+    email = Column(String, unique=True, nullable=True, index=True, doc="Normalized unique work email")
+    email_verified_at = Column(DateTime(timezone=True), nullable=True, index=True, doc="Date and time the email was confirmed (UTC)")
+    unconfirmed_email = Column(String, nullable=True, index=True, doc="Newly requested email, pending OTP confirmation")
+    avatar_url = Column(String, default="", nullable=False, doc="Avatar URL or path")
     onboarding_step = Column(
         String,
         default="personal_details",
         nullable=False,
-        doc="Текущий шаг онбординга ('personal_details', 'workspace', 'invites', 'completed')",
+        doc="Current onboarding step ('personal_details', 'workspace', 'invites', 'completed')",
     )
     onboarding_completed = Column(
         Boolean,
         default=False,
         nullable=False,
-        doc="Завершен ли полный онбординг пользователя",
+        doc="Whether the user finished the full onboarding",
     )
-    password_hash = Column(String, default="", nullable=False, doc="Версионированный защищённый хэш пароля")
+    password_hash = Column(String, default="", nullable=False, doc="Versioned secure password hash")
     auth_token = Column(String, unique=True, nullable=True, index=True, doc="Legacy browser token; migrated to web_sessions and cleared")
-    role = Column(String, default="admin", nullable=False, doc="'admin' или 'buyer'")
-    is_approved = Column(Boolean, default=True, nullable=False, doc="Одобрен ли доступ")
+    role = Column(String, default="admin", nullable=False, doc="'admin' or 'buyer'")
+    is_approved = Column(Boolean, default=True, nullable=False, doc="Whether access is approved")
     active_workspace_id = Column(
         Integer,
         ForeignKey(
@@ -66,7 +66,7 @@ class User(Base):
         ),
         nullable=True,
         index=True,
-        doc="ID активного воркспейса",
+        doc="Active workspace ID",
     )
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
@@ -106,11 +106,11 @@ class Workspace(Base):
     __tablename__ = "workspaces"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String, nullable=False, doc="Название воркспейса (e.g. 'Buyerly', 'Canada Traffic')")
+    name = Column(String, nullable=False, doc="Workspace name (e.g. 'Buyerly', 'Canada Traffic')")
     slug = Column(String, unique=True, nullable=False, index=True, doc="URL slug (e.g. 'buyerly', 'canada-traffic')")
-    badge_text = Column(String, default="B", nullable=False, doc="Символ или буква бейджа")
-    badge_color = Column(String, default="#F5A300", nullable=False, doc="Цвет бейджа (#F5A300, #7C3AED, etc.)")
-    logo_url = Column(String, default="", nullable=False, doc="URL или путь к логотипу компании")
+    badge_text = Column(String, default="B", nullable=False, doc="Badge symbol or letter")
+    badge_color = Column(String, default="#F5A300", nullable=False, doc="Badge color (#F5A300, #7C3AED, etc.)")
+    logo_url = Column(String, default="", nullable=False, doc="Company logo URL or path")
     owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
@@ -144,58 +144,58 @@ class WorkspaceInvite(Base):
         ForeignKey("workspaces.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
-        doc="ID воркспейса, куда приглашают",
+        doc="ID of the workspace being invited to",
     )
     token = Column(
         String,
         unique=True,
         nullable=False,
         index=True,
-        doc="Уникальный защищённый токен приглашения",
+        doc="Unique secure invite token",
     )
     email = Column(
         String,
         nullable=True,
         index=True,
-        doc="Email приглашённого (для персональных инвайтов)",
+        doc="Invitee email (for personal invites)",
     )
     role = Column(
         String,
         default="buyer",
         nullable=False,
-        doc="Роль при вступлении: 'admin', 'buyer', 'viewer'",
+        doc="Role on joining: 'admin', 'buyer', 'viewer'",
     )
     inviter_user_id = Column(
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
-        doc="ID пользователя, создавшего инвайт",
+        doc="ID of the user who created the invite",
     )
     status = Column(
         String,
         default="pending",
         nullable=False,
         index=True,
-        doc="Статус инвайта ('pending', 'accepted', 'revoked', 'expired')",
+        doc="Invite status ('pending', 'accepted', 'revoked', 'expired')",
     )
     max_uses = Column(
         Integer,
         default=1,
         nullable=False,
-        doc="Максимум использований (1 - разовый, 0 - безлимитный)",
+        doc="Maximum uses (1 = single use, 0 = unlimited)",
     )
     used_count = Column(
         Integer,
         default=0,
         nullable=False,
-        doc="Количество фактических использований инвайта",
+        doc="How many times the invite was actually used",
     )
     expires_at = Column(
         DateTime(timezone=True),
         nullable=True,
         index=True,
-        doc="Срок действия приглашения (UTC)",
+        doc="Invite expiry (UTC)",
     )
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(
@@ -223,38 +223,38 @@ class WorkspaceSupportGrant(Base):
         ForeignKey("workspaces.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
-        doc="ID воркспейса, к которому выдан временный доступ саппорта",
+        doc="ID of the workspace granted temporary support access",
     )
     user_id = Column(
         Integer,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
-        doc="ID администратора платформы, получившего доступ",
+        doc="ID of the platform administrator granted access",
     )
     role = Column(
         String,
         default="admin",
         nullable=False,
-        doc="Временная роль в воркспейсе на время сессии ('admin' или 'viewer')",
+        doc="Temporary workspace role for the session ('admin' or 'viewer')",
     )
     reason = Column(
         Text,
         nullable=False,
-        doc="Обязательная обоснованная причина доступа саппорта/диагностики",
+        doc="Mandatory justification for support/diagnostic access",
     )
     expires_at = Column(
         DateTime(timezone=True),
         nullable=False,
         index=True,
-        doc="Срок истечения сессии саппорта (UTC)",
+        doc="Support session expiry (UTC)",
     )
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     revoked_at = Column(
         DateTime(timezone=True),
         nullable=True,
         index=True,
-        doc="Время досрочного отзыва гранта (если отозван)",
+        doc="Time the grant was revoked early (if revoked)",
     )
 
     def __repr__(self):
@@ -277,29 +277,29 @@ class EmailVerificationCode(Base):
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    email = Column(String, nullable=False, index=True, doc="Email получателя кода")
+    email = Column(String, nullable=False, index=True, doc="Email of the code recipient")
     code = Column(String(10), default="", nullable=False, doc="Legacy field; new OTP values are never stored in plaintext")
-    code_hash = Column(String(64), nullable=False, doc="HMAC-SHA256 проверочного кода")
+    code_hash = Column(String(64), nullable=False, doc="HMAC-SHA256 of the verification code")
     link_token_hash = Column(
         String(64),
         unique=True,
         nullable=True,
         index=True,
-        doc="HMAC-SHA256 одноразового токена ссылки входа",
+        doc="HMAC-SHA256 of the one-time sign-in link token",
     )
     invite_id = Column(
         Integer,
         ForeignKey("workspace_invites.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
-        doc="Приглашение, которое разрешило этот вход",
+        doc="The invite that authorized this sign-in",
     )
-    purpose = Column(String(32), nullable=False, doc="Назначение кода: login/email_change/email_verification")
-    scope = Column(String(320), nullable=False, index=True, doc="Изолированная область одноразового кода")
-    expires_at = Column(DateTime(timezone=True), nullable=False, index=True, doc="Срок действия кода (UTC)")
-    is_used = Column(Boolean, default=False, nullable=False, doc="Был ли код использован")
-    failed_attempts = Column(Integer, default=0, nullable=False, doc="Количество неудачных попыток ввода кода")
-    delivered_at = Column(DateTime(timezone=True), nullable=True, index=True, doc="Код успешно передан почтовому провайдеру")
+    purpose = Column(String(32), nullable=False, doc="Code purpose: login/email_change/email_verification")
+    scope = Column(String(320), nullable=False, index=True, doc="Isolated scope of the one-time code")
+    expires_at = Column(DateTime(timezone=True), nullable=False, index=True, doc="Code expiry (UTC)")
+    is_used = Column(Boolean, default=False, nullable=False, doc="Whether the code was used")
+    failed_attempts = Column(Integer, default=0, nullable=False, doc="Number of failed code attempts")
+    delivered_at = Column(DateTime(timezone=True), nullable=True, index=True, doc="The code was handed to the mail provider successfully")
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     def __repr__(self):
@@ -310,9 +310,9 @@ class AllowedEmail(Base):
     __tablename__ = "allowed_emails"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    email = Column(String(320), nullable=False, unique=True, index=True, doc="Разрешенный адрес электронной почты (lowercase)")
-    added_by = Column(String(128), nullable=True, doc="Telegram ID или username администратора, добавившего адрес")
-    comment = Column(String(255), nullable=True, doc="Опциональный комментарий / имя байера")
+    email = Column(String(320), nullable=False, unique=True, index=True, doc="Allowlisted email address (lowercase)")
+    added_by = Column(String(128), nullable=True, doc="Telegram ID or username of the admin who added the address")
+    comment = Column(String(255), nullable=True, doc="Optional comment / buyer name")
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     def __repr__(self):
@@ -323,60 +323,60 @@ class AppSettings(Base):
     __tablename__ = "app_settings"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    poll_interval_minutes = Column(Integer, default=10, nullable=False, doc="Интервал опроса кабинетов (мин)")
+    poll_interval_minutes = Column(Integer, default=10, nullable=False, doc="Ad account polling interval (min)")
     critical_rule_interval_minutes = Column(
         Integer,
         default=2,
         nullable=False,
-        doc="Максимальный интервал проверки критических STOP-правил (мин)",
+        doc="Maximum check interval for critical STOP rules (min)",
     )
     stop_confirmation_minutes = Column(
         Integer,
         default=10,
         nullable=False,
-        doc="Сколько минут STOP-условие должно подтверждаться до выключения ad set",
+        doc="How many minutes a STOP condition must hold before the ad set is switched off",
     )
     inventory_cache_minutes = Column(
         Integer,
         default=5,
         nullable=False,
-        doc="Срок жизни кэша списка и статусов ad set (мин)",
+        doc="Cache lifetime for the ad set list and statuses (min)",
     )
     account_health_interval_minutes = Column(
         Integer,
         default=15,
         nullable=False,
-        doc="Интервал проверки валюты, таймзоны и статуса кабинета (мин)",
+        doc="Check interval for ad account currency, time zone and status (min)",
     )
     max_concurrent_accounts = Column(
         Integer,
         default=3,
         nullable=False,
-        doc="Максимум одновременно читаемых кабинетов Meta",
+        doc="Maximum Meta ad accounts read concurrently",
     )
     max_concurrent_actions = Column(
         Integer,
         default=3,
         nullable=False,
-        doc="Максимум одновременно выполняемых действий Meta",
+        doc="Maximum Meta actions executed concurrently",
     )
     usage_soft_limit_percent = Column(
         Integer,
         default=60,
         nullable=False,
-        doc="Порог адаптивного замедления Meta API (%)",
+        doc="Adaptive Meta API slow-down threshold (%)",
     )
     usage_hard_limit_percent = Column(
         Integer,
         default=80,
         nullable=False,
-        doc="Порог приостановки некритичных Meta API запросов (%)",
+        doc="Threshold for pausing non-critical Meta API requests (%)",
     )
     adaptive_polling_enabled = Column(
         Boolean,
         default=True,
         nullable=False,
-        doc="Автоматически уменьшать частоту при росте расхода квоты",
+        doc="Automatically reduce frequency as quota usage grows",
     )
     admin_chat_id = Column(String, default="", nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
@@ -401,27 +401,27 @@ class RulePreset(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     workspace_id = Column(Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=True, index=True)
     owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
-    name = Column(String, nullable=False, doc="Название пресета (e.g. 'Стоп CPL выше порога')")
+    name = Column(String, nullable=False, doc="Preset name (e.g. 'Stop when CPL exceeds threshold')")
     action = Column(String, default="turn_off", nullable=False, doc="'turn_off', 'turn_on', 'notify_only', 'increase_budget', 'decrease_budget'")
     enabled = Column(
         Boolean,
         default=True,
         nullable=False,
-        doc="Выключенное правило не исполняется воркером ни в одном кабинете",
+        doc="A disabled rule is never executed by the worker on any ad account",
     )
     level = Column(
         String,
         default="adset",
         nullable=False,
-        doc="Уровень исполнения: 'adset', 'campaign' или 'ad'; метрики читаются и действие применяется на нём",
+        doc="Execution level: 'adset', 'campaign' or 'ad'; metrics are read and the action is applied there",
     )
-    conditions = Column(JSONB, default=list, nullable=False, doc="JSONB список условий")
-    condition_logic = Column(String, default="and", nullable=False, doc="'and' или 'or' — логика объединения условий")
-    cooldown_minutes = Column(Integer, default=0, nullable=False, doc="Пауза между срабатываниями (мин, 0=нет)")
-    check_interval_minutes = Column(Integer, default=5, nullable=False, doc="Интервал проверки воркером (мин)")
-    notify_tg = Column(Boolean, default=True, nullable=False, doc="Уведомление в Telegram")
-    budget_change_percent = Column(Float, default=0.0, nullable=False, doc="На сколько % изменить бюджет")
-    budget_max_daily = Column(Float, default=0.0, nullable=False, doc="Макс. дневной бюджет в валюте кабинета, 0 = без ограничения")
+    conditions = Column(JSONB, default=list, nullable=False, doc="JSONB list of conditions")
+    condition_logic = Column(String, default="and", nullable=False, doc="'and' or 'or' - how conditions are combined")
+    cooldown_minutes = Column(Integer, default=0, nullable=False, doc="Pause between firings (min, 0 = none)")
+    check_interval_minutes = Column(Integer, default=5, nullable=False, doc="Worker check interval (min)")
+    notify_tg = Column(Boolean, default=True, nullable=False, doc="Telegram notification")
+    budget_change_percent = Column(Float, default=0.0, nullable=False, doc="Budget change, in percent")
+    budget_max_daily = Column(Float, default=0.0, nullable=False, doc="Max daily budget in the ad account currency, 0 = no cap")
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
@@ -443,7 +443,7 @@ class RuleGroup(Base):
         String,
         default="custom",
         nullable=False,
-        doc="Визуальный маркер группы: 'backlog', 'shield', 'rocket', 'flask' или 'custom'",
+        doc="Group marker: 'backlog', 'shield', 'rocket', 'flask' or 'custom'",
     )
     position = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
@@ -643,7 +643,7 @@ class MetaOAuthState(Base):
         nullable=False,
         index=True,
     )
-    return_path = Column(String, default="/facebook-accounts", nullable=False)
+    return_path = Column(String, default="/", nullable=False)
     reconnect_connection_id = Column(
         Integer,
         ForeignKey("meta_connections.id", ondelete="SET NULL"),
@@ -690,7 +690,7 @@ class MetaConnectionAsset(Base):
     meta_account_id = Column(String, nullable=False, index=True)
     name = Column(String, default="", nullable=False)
     business_id = Column(String, default="", nullable=False, index=True)
-    business_name = Column(String, default="Без Business Manager", nullable=False)
+    business_name = Column(String, default="No Business Manager", nullable=False)
     account_status = Column(Integer, default=1, nullable=False)
     currency = Column(String, default="UNKNOWN", nullable=False)
     timezone_name = Column(String, default="UTC", nullable=False)
@@ -703,18 +703,18 @@ class Account(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     workspace_id = Column(Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=True, index=True)
     account_id = Column(String, unique=True, nullable=False, index=True, doc="Facebook Ad Account ID (act_...)")
-    name = Column(String, nullable=False, doc="Понятное название кабинета")
+    name = Column(String, nullable=False, doc="Human-readable ad account name")
     custom_name = Column(
         String,
         default="",
         nullable=False,
-        doc="Внутреннее название кабинета в Buyerly; не перезаписывается данными Meta",
+        doc="Internal Buyerly name for the ad account; never overwritten by Meta data",
     )
     note = Column(
         Text,
         default="",
         nullable=False,
-        doc="Редактируемая внутренняя заметка владельца о кабинете",
+        doc="Editable internal owner note about the ad account",
     )
     access_token = Column(
         String,
@@ -736,25 +736,25 @@ class Account(Base):
         doc="Encrypted Meta OAuth connection used by this account",
     )
     
-    # Привязка к владельцу (мульти-пользовательская изоляция)
+    # Owner link (multi-user isolation)
     owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
-    batch_name = Column(String, default="", nullable=False, doc="Имя пачки кабинетов (если добавлялось пачкой)")
-    currency = Column(String, default="UNKNOWN", nullable=False, doc="ISO 4217 валюта рекламного кабинета из Meta")
+    batch_name = Column(String, default="", nullable=False, doc="Batch name (if the accounts were added as a batch)")
+    currency = Column(String, default="UNKNOWN", nullable=False, doc="ISO 4217 ad account currency from Meta")
     
-    # Часовой пояс и отслеживание локальной границы календарных суток
-    timezone_name = Column(String, default="UTC", nullable=False, doc="Часовой пояс рекламного кабинета")
-    last_started_date = Column(String, default="", nullable=False, doc="Legacy: прежняя дата обнаружения Spend")
-    last_day_start_date = Column(String, default="", nullable=False, doc="Последняя локальная дата, обработанная уведомлением новых суток")
+    # Time zone and tracking of the local calendar day boundary
+    timezone_name = Column(String, default="UTC", nullable=False, doc="Ad account time zone")
+    last_started_date = Column(String, default="", nullable=False, doc="Legacy: the previous date spend was detected")
+    last_day_start_date = Column(String, default="", nullable=False, doc="Last local date handled by the new-day notification")
     
-    # Привязанные правила (JSON)
-    active_rules = Column(Text, default="[]", nullable=False, doc="JSON массив объектов привязанных правил")
+    # Attached rules (JSON)
+    active_rules = Column(Text, default="[]", nullable=False, doc="JSON array of attached rule objects")
     
-    # Статус кабинета в Meta
+    # Ad account status in Meta
     account_status = Column(Integer, default=1, nullable=False, doc="1: ACTIVE, 2: DISABLED, 3: UNSETTLED")
-    status_label = Column(String, default="Активен (ACTIVE)", nullable=False)
+    status_label = Column(String, default="Active (ACTIVE)", nullable=False)
     
-    rules_enabled = Column(Boolean, default=False, nullable=False, doc="Включены ли авто-правила стопов")
-    is_active = Column(Boolean, default=True, nullable=False, doc="Включен ли кабинет в системе")
+    rules_enabled = Column(Boolean, default=False, nullable=False, doc="Whether automated stop rules are enabled")
+    is_active = Column(Boolean, default=True, nullable=False, doc="Whether the ad account is enabled in the system")
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     def __repr__(self):
@@ -867,7 +867,7 @@ class SummarySnapshot(Base):
     workspace_id = Column(Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=True, index=True)
     owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     period = Column(String, nullable=False, index=True)
-    payload = Column(JSONB, nullable=False, doc="Безопасный JSONB сводки без access token")
+    payload = Column(JSONB, nullable=False, doc="Safe summary JSONB with no access token")
     schema_version = Column(Integer, default=1, nullable=False)
     generated_at = Column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)
@@ -887,7 +887,7 @@ class AnalyticsViewPreference(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     scope = Column(String, default="summary", nullable=False, index=True)
-    config = Column(JSONB, default=dict, nullable=False, doc="Безопасный JSONB настроек представления")
+    config = Column(JSONB, default=dict, nullable=False, doc="Safe JSONB of view settings")
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
@@ -903,11 +903,11 @@ class StoppedAdSet(Base):
     adset_id = Column(String, unique=True, nullable=False, index=True)
     adset_name = Column(String, nullable=False)
     
-    stop_spend = Column(Float, nullable=False, doc="Спенд на момент отключения в валюте кабинета")
-    stop_leads = Column(Integer, default=0, nullable=False, doc="Лиды на момент отключения")
-    stop_registrations = Column(Integer, default=0, nullable=False, doc="Регистрации на момент отключения")
+    stop_spend = Column(Float, nullable=False, doc="Spend at switch-off time, in the ad account currency")
+    stop_leads = Column(Integer, default=0, nullable=False, doc="Leads at switch-off time")
+    stop_registrations = Column(Integer, default=0, nullable=False, doc="Registrations at switch-off time")
     
-    is_resolved = Column(Boolean, default=False, nullable=False, doc="Обработан ли долет (включен/отклонен)")
+    is_resolved = Column(Boolean, default=False, nullable=False, doc="Whether the late conversion was handled (turned on/dismissed)")
     stopped_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
@@ -935,11 +935,11 @@ class EventLog(Base):
     __tablename__ = "event_logs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    event_type = Column(String, nullable=False, index=True, doc="Тип события (ACCOUNT_DAY_STARTED, STOP, etc.)")
-    target_chat_id = Column(String, default="", index=True, doc="Кому отправлено (Telegram ID)")
-    account_id = Column(String, default="", index=True, doc="ID кабинета")
-    message = Column(Text, nullable=False, doc="Текст отправленного сообщения или события")
-    status = Column(String, default="SUCCESS", nullable=False, doc="Статус: SUCCESS или ERROR")
+    event_type = Column(String, nullable=False, index=True, doc="Event type (ACCOUNT_DAY_STARTED, STOP, etc.)")
+    target_chat_id = Column(String, default="", index=True, doc="Recipient (Telegram ID)")
+    account_id = Column(String, default="", index=True, doc="Ad account ID")
+    message = Column(Text, nullable=False, doc="Text of the sent message or event")
+    status = Column(String, default="SUCCESS", nullable=False, doc="Status: SUCCESS or ERROR")
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)
 
     def __repr__(self):
@@ -961,16 +961,16 @@ class AuditEvent(Base):
     status = Column(String, default="SUCCESS", nullable=False, index=True)
     account_id = Column(String, default="", nullable=False, index=True)
     account_name = Column(String, default="", nullable=False)
-    adset_id = Column(String, default="", nullable=False, index=True, doc="Пусто, если действие было не на адсете")
+    adset_id = Column(String, default="", nullable=False, index=True, doc="Empty when the action was not on an ad set")
     adset_name = Column(String, default="", nullable=False)
     entity_level = Column(
         String,
         default="adset",
         nullable=False,
         index=True,
-        doc="Уровень сущности, к которой применено действие: 'campaign', 'adset' или 'ad'",
+        doc="Level of the entity the action was applied to: 'campaign', 'adset' or 'ad'",
     )
-    entity_id = Column(String, default="", nullable=False, index=True, doc="Meta ID этой сущности")
+    entity_id = Column(String, default="", nullable=False, index=True, doc="Meta ID of this entity")
     entity_name = Column(String, default="", nullable=False)
     rule_id = Column(Integer, nullable=True, index=True)
     rule_name = Column(String, default="", nullable=False)
@@ -1014,7 +1014,7 @@ class RuleExecutionState(Base):
     execution_key = Column(String, unique=True, nullable=False, index=True)
     owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     account_id = Column(String, default="", nullable=False, index=True)
-    adset_id = Column(String, default="", nullable=False, index=True, doc="Пусто, если слот не про адсет")
+    adset_id = Column(String, default="", nullable=False, index=True, doc="Empty when the slot is not about an ad set")
     entity_level = Column(String, default="adset", nullable=False, index=True)
     entity_id = Column(String, default="", nullable=False, index=True)
     rule_key = Column(String, default="", nullable=False, index=True)
@@ -1075,20 +1075,20 @@ class AnalyticsEntityFact(Base):
     )
     account_id = Column(String, nullable=False, index=True, doc="Meta Ad Account ID (act_...)")
     entity_level = Column(String(16), nullable=False, index=True, doc="'account', 'campaign', 'adset', 'ad'")
-    entity_id = Column(String(64), nullable=False, index=True, doc="Meta ID сущности")
+    entity_id = Column(String(64), nullable=False, index=True, doc="Meta ID of the entity")
     entity_name = Column(String(255), default="", nullable=False)
     parent_entity_id = Column(String(64), default="", nullable=False, index=True)
-    date = Column(String(10), nullable=False, index=True, doc="Локальная дата кабинета (YYYY-MM-DD)")
+    date = Column(String(10), nullable=False, index=True, doc="Ad account local date (YYYY-MM-DD)")
     currency = Column(String(10), default="UNKNOWN", nullable=False)
 
-    # Метрики расхода и доставки
+    # Spend and delivery metrics
     spend = Column(Float, default=0.0, nullable=False)
     impressions = Column(Integer, default=0, nullable=False)
     reach = Column(Integer, default=0, nullable=False)
     frequency = Column(Float, default=0.0, nullable=False)
     cpm = Column(Float, default=0.0, nullable=False)
 
-    # Метрики кликов и вовлеченности
+    # Click and engagement metrics
     clicks = Column(Integer, default=0, nullable=False)
     unique_clicks = Column(Integer, default=0, nullable=False)
     link_clicks = Column(Integer, default=0, nullable=False)
@@ -1100,7 +1100,7 @@ class AnalyticsEntityFact(Base):
     ctr_link = Column(Float, nullable=True)
     ctr_outbound = Column(Float, nullable=True)
 
-    # Воронка конверсий
+    # Conversion funnel
     leads = Column(Integer, default=0, nullable=False)
     registrations = Column(Integer, default=0, nullable=False)
     purchases = Column(Integer, default=0, nullable=False)
@@ -1109,15 +1109,15 @@ class AnalyticsEntityFact(Base):
     cost_per_purchase = Column(Float, nullable=True)
     cost_per_landing_page_view = Column(Float, nullable=True)
 
-    # Расширенные события Meta
+    # Extended Meta events
     raw_actions = Column(JSONB, default=list, nullable=False)
 
-    # Статусы и бюджеты
+    # Statuses and budgets
     status = Column(String(32), default="UNKNOWN", nullable=False)
     effective_status = Column(String(32), default="UNKNOWN", nullable=False)
     daily_budget = Column(Float, default=0.0, nullable=False)
 
-    # Метаданные
+    # Metadata
     fetched_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 

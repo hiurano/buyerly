@@ -204,18 +204,18 @@ async def list_audit_events(
             and event_is_within_undo_window(row)
         )
         if not can_write_workspace:
-            undo_reason = "Роль Наблюдатель (Viewer) не может отменять действия."
+            undo_reason = "The Viewer role cannot undo actions."
         elif reversal_id is not None:
-            undo_reason = "Действие уже отменено."
+            undo_reason = "This action has already been undone."
         elif not is_reversible:
-            undo_reason = "Это событие не меняется обратной командой."
+            undo_reason = "This event cannot be reversed by an opposite command."
         elif latest_id != row.id:
             undo_reason = (
-                f"После этого события {ENTITY_NOUNS[undo_entity_level(row)]} "
-                "уже изменялся."
+                f"The {ENTITY_NOUNS[undo_entity_level(row)]} has changed "
+                "since this event."
             )
         elif not event_is_within_undo_window(row):
-            undo_reason = "Окно безопасной отмены 24 часа закрыто."
+            undo_reason = "The 24-hour safe undo window has closed."
         else:
             undo_reason = ""
         items.append({
@@ -273,7 +273,7 @@ async def undo_audit_event(
 ):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "отмены действия")
+        ensure_workspace_write_access(user, member, "undoing an action")
         try:
             return await undo_audit_action(
                 session,

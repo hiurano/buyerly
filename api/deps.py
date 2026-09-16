@@ -384,15 +384,15 @@ async def get_user_workspace_member(
 def ensure_workspace_write_access(
     user: User,
     member: Optional[WorkspaceMember],
-    action_description: str = "изменения данных",
+    action_description: str = "changing data",
 ) -> None:
     """Ensure user has write access to workspace (owner, admin, buyer). Viewers and non-members are blocked."""
     if not member:
-        raise HTTPException(status_code=403, detail=f"Нет доступа к воркспейсу для {action_description}")
+        raise HTTPException(status_code=403, detail=f"You do not have access to this workspace for {action_description}")
     if member.role == "viewer":
         raise HTTPException(
             status_code=403,
-            detail=f"Роль Наблюдатель (Viewer) имеет доступ только для чтения и не может выполнять {action_description}",
+            detail=f"The Viewer role is read-only and cannot perform {action_description}",
         )
 
 
@@ -513,7 +513,7 @@ async def _validate_account_group_members(
     if invalid:
         raise HTTPException(
             status_code=422,
-            detail=f"Кабинеты недоступны текущему пользователю: {', '.join(invalid[:5])}",
+            detail=f"Ad accounts unavailable to the current user: {', '.join(invalid[:5])}",
         )
     return [visible_by_id[account_id] for account_id in unique_ids]
 
@@ -579,9 +579,9 @@ def _preset_snapshot(preset: RulePreset) -> Dict[str, Any]:
                 "enabled": False,
                 "needs_review": True,
                 "review_reason": (
-                    "Замените старый общий CPA на CPL, CPReg или CPP."
+                    "Replace the legacy combined CPA with CPL, CPReg or CPP."
                     if has_legacy_cpa
-                    else "Правило сохранено в старом или небезопасном формате и требует пересохранения."
+                    else "The rule is stored in an old or unsafe format and must be re-saved."
                 ),
             }
         )
@@ -642,7 +642,7 @@ def _validated_condition_payloads(conditions: List[ConditionItem]) -> List[Dict[
     except ValueError as error:
         raise HTTPException(
             status_code=400,
-            detail="Используйте только актуальные метрики и операторы автоправил.",
+            detail="Use only current automation-rule metrics and operators.",
         ) from error
     normalized, _, _ = normalize_rule_conditions(payloads)
     return normalized
@@ -660,7 +660,7 @@ def _ensure_compatible_presets(presets: List[RulePreset]) -> None:
     if any(snapshot.get("needs_review") for snapshot in snapshots):
         raise HTTPException(
             status_code=400,
-            detail="В наборе есть небезопасное или устаревшее правило. Пересохраните его.",
+            detail="The set contains an unsafe or outdated rule. Re-save it.",
         )
     _ensure_compatible_rule_set(snapshots)
 
@@ -672,7 +672,7 @@ def _unique_preset_ids(preset_ids: List[int]) -> List[int]:
 def _clean_rule_group_name(value: str) -> str:
     name = value.strip()
     if not name:
-        raise HTTPException(status_code=400, detail="Введите название группы.")
+        raise HTTPException(status_code=400, detail="Enter a group name.")
     return name
 
 
@@ -694,7 +694,7 @@ async def _get_workspace_presets(
     if missing_ids:
         raise HTTPException(
             status_code=400,
-            detail=f"Правила не найдены или недоступны: {', '.join(map(str, missing_ids))}",
+            detail=f"Rules not found or unavailable: {', '.join(map(str, missing_ids))}",
         )
     return [by_id[preset_id] for preset_id in ordered_ids]
 
@@ -909,7 +909,7 @@ def _normalize_summary_view_config(config: Any, *, strict: bool = True) -> Dict[
     if invalid and strict:
         raise HTTPException(
             status_code=422,
-            detail=f"Неизвестные колонки аналитики: {', '.join(map(str, invalid))}",
+            detail=f"Unknown analytics columns: {', '.join(map(str, invalid))}",
         )
     requested = [key for key in requested if key in SUMMARY_TABLE_COLUMNS]
     requested_set = set(requested) | set(SUMMARY_REQUIRED_COLUMNS)
@@ -922,7 +922,7 @@ def _normalize_summary_view_config(config: Any, *, strict: bool = True) -> Dict[
     if invalid_order and strict:
         raise HTTPException(
             status_code=422,
-            detail=f"Неизвестные колонки в порядке аналитики: {', '.join(map(str, invalid_order))}",
+            detail=f"Unknown columns in the analytics order: {', '.join(map(str, invalid_order))}",
         )
     column_order = []
     for key in requested_order:
@@ -937,7 +937,7 @@ def _normalize_summary_view_config(config: Any, *, strict: bool = True) -> Dict[
     if invalid_width_keys and strict:
         raise HTTPException(
             status_code=422,
-            detail=f"Неизвестные колонки в ширине аналитики: {', '.join(map(str, invalid_width_keys))}",
+            detail=f"Unknown columns in the analytics widths: {', '.join(map(str, invalid_width_keys))}",
         )
     column_widths = {}
     for key in SUMMARY_TABLE_COLUMNS:
@@ -947,19 +947,19 @@ def _normalize_summary_view_config(config: Any, *, strict: bool = True) -> Dict[
             width = int(raw_width)
         except (TypeError, ValueError):
             if strict:
-                raise HTTPException(status_code=422, detail=f"Некорректная ширина колонки: {key}")
+                raise HTTPException(status_code=422, detail=f"Invalid column width: {key}")
             width = default_width
         if strict and not SUMMARY_COLUMN_MIN_WIDTH <= width <= SUMMARY_COLUMN_MAX_WIDTH:
             raise HTTPException(
                 status_code=422,
-                detail=f"Ширина колонки {key} должна быть от {SUMMARY_COLUMN_MIN_WIDTH} до {SUMMARY_COLUMN_MAX_WIDTH}px",
+                detail=f"Column width {key} must be between {SUMMARY_COLUMN_MIN_WIDTH} and {SUMMARY_COLUMN_MAX_WIDTH}px",
             )
         column_widths[key] = max(SUMMARY_COLUMN_MIN_WIDTH, min(SUMMARY_COLUMN_MAX_WIDTH, width))
 
     sort_column = str(config.get("sort_column") or "")
     if sort_column and sort_column not in SUMMARY_TABLE_COLUMNS:
         if strict:
-            raise HTTPException(status_code=422, detail=f"Неизвестная колонка сортировки: {sort_column}")
+            raise HTTPException(status_code=422, detail=f"Unknown sort column: {sort_column}")
         sort_column = ""
     sort_direction = str(config.get("sort_direction") or "desc")
     if sort_direction not in {"asc", "desc"}:
@@ -972,21 +972,21 @@ def _normalize_summary_view_config(config: Any, *, strict: bool = True) -> Dict[
     if invalid_filter_keys and strict:
         raise HTTPException(
             status_code=422,
-            detail=f"Неизвестные фильтры аналитики: {', '.join(map(str, invalid_filter_keys))}",
+            detail=f"Unknown analytics filters: {', '.join(map(str, invalid_filter_keys))}",
         )
     query_filter = str(raw_filters.get("query") or "").strip()
     if strict and len(query_filter) > 120:
-        raise HTTPException(status_code=422, detail="Поиск по кабинетам не должен превышать 120 символов")
+        raise HTTPException(status_code=422, detail="The ad account search must not exceed 120 characters")
     query_filter = query_filter[:120]
     status_filter = str(raw_filters.get("status") or "all")
     if status_filter not in SUMMARY_FILTER_STATUSES:
         if strict:
-            raise HTTPException(status_code=422, detail=f"Неизвестный фильтр статуса: {status_filter}")
+            raise HTTPException(status_code=422, detail=f"Unknown status filter: {status_filter}")
         status_filter = "all"
     group_filter = str(raw_filters.get("group_id") or "all").strip()
     if group_filter != "all" and (not group_filter.isdigit() or int(group_filter) <= 0):
         if strict:
-            raise HTTPException(status_code=422, detail="Фильтр группы должен быть 'all' или положительным ID")
+            raise HTTPException(status_code=422, detail="The group filter must be 'all' or a positive ID")
         group_filter = "all"
 
     period = str(config.get("period") or "today")
@@ -1303,10 +1303,10 @@ async def _persist_summary(
 # ----------------------------------------------------
 async def _confirm_admin_password(session, user: User, password: SecretStr) -> User:
     if user.role != "admin":
-        raise HTTPException(status_code=403, detail="Только администратор может изменять автоматику.")
+        raise HTTPException(status_code=403, detail="Only an administrator can change automation settings.")
     db_user = (
         await session.execute(select(User).where(User.id == user.id))
     ).scalar_one_or_none()
     if not db_user or not verify_password(password.get_secret_value(), db_user.password_hash):
-        raise HTTPException(status_code=403, detail="Неверный пароль учётной записи.")
+        raise HTTPException(status_code=403, detail="Incorrect account password.")
     return db_user

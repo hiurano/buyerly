@@ -61,7 +61,7 @@ class LoginResponse(BaseModel):
     username: str
     full_name: str
     role: str
-    message: str = "Авторизация успешна"
+    message: str = "Signed in successfully"
     redirect_url: Optional[str] = None
 
 
@@ -101,14 +101,14 @@ class UpdateProfileRequest(BaseModel):
         if not cleaned:
             return ""
         if any(c in cleaned for c in ("<", ">", '"', "'", "\r", "\n", "\t", "\0")):
-            raise ValueError("avatar_url содержит недопустимые символы")
+            raise ValueError("avatar_url contains invalid characters")
         if cleaned.startswith("//"):
-            raise ValueError("Протокол-относительные URL не поддерживаются")
+            raise ValueError("Protocol-relative URLs are not supported")
         if cleaned.startswith("/uploads/avatars/"):
             return cleaned
         if cleaned.startswith("http://") or cleaned.startswith("https://"):
             return cleaned
-        raise ValueError("avatar_url должен начинаться с https://, http:// или /uploads/avatars/")
+        raise ValueError("avatar_url must start with https://, http:// or /uploads/avatars/")
 
 
 class AllowedEmailItem(BaseModel):

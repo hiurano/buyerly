@@ -45,9 +45,9 @@ def _hierarchy_response(
 
 @router.get("/hierarchy")
 async def get_analytics_hierarchy(
-    parent_id: str = Query(..., description="Meta ID родительской сущности (account_id, campaign_id, adset_id)"),
-    level: str = Query("campaign", pattern="^(campaign|adset|ad)$", description="Уровень детализации"),
-    period: str = Query("today", pattern="^(today|yesterday|last_3d|last_7d)$", description="Отчетный период"),
+    parent_id: str = Query(..., description="Meta ID of the parent entity (account_id, campaign_id, adset_id)"),
+    level: str = Query("campaign", pattern="^(campaign|adset|ad)$", description="Breakdown level"),
+    period: str = Query("today", pattern="^(today|yesterday|last_3d|last_7d)$", description="Reporting period"),
     user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """Retrieve normalized metrics breakdown for child entities under a parent hierarchy node.
@@ -74,7 +74,7 @@ async def get_analytics_hierarchy(
             if acc_id not in user_acc_ids and parent_id not in user_acc_ids:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Рекламный кабинет не найден или недоступен в текущем воркспейсе",
+                    detail="Ad account not found, or not available in the current workspace",
                 )
 
         items = await AnalyticsFactService.get_hierarchy_breakdown(

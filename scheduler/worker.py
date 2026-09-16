@@ -45,9 +45,9 @@ DAY_BOUNDARY_NOTIFICATION_WINDOW_MINUTES = 5
 
 class MonitoringWorker:
     """
-    Фоновый воркер, выполняющий периодический опрос всех активных аккаунтов,
-    контроль часовых поясов, сброса суток и правил стопа/реактивации
-    с персональной доставкой уведомлений владельцу каждого кабинета.
+    Background worker that periodically polls every active account, tracks
+    time zones and day rollovers, applies stop/reactivation rules and
+    delivers notifications to each ad account's own owner.
     """
 
     def __init__(
@@ -1114,8 +1114,8 @@ class MonitoringWorker:
                     category="MONITORING",
                     action="DETECT_ACCOUNT_DAY_BOUNDARY",
                     message=(
-                        f"В кабинете начались новые сутки: {decision.current_date} "
-                        f"в {local_time} ({clock.canonical_name}, {offset})"
+                        f"A new day started in the ad account: {decision.current_date} "
+                        f"at {local_time} ({clock.canonical_name}, {offset})"
                     ),
                     before_state={"last_day_start_date": previous_date},
                     after_state={"last_day_start_date": decision.current_date},
@@ -1233,7 +1233,7 @@ class MonitoringWorker:
         }
 
         async with async_session_maker() as session:
-            # 1. Загружаем все активные аккаунты
+            # 1. Load every active account
             stmt = select(Account).where(Account.is_active == True)
             result = await session.execute(stmt)
             accounts = result.scalars().all()
@@ -1262,7 +1262,7 @@ class MonitoringWorker:
                     for owner in owner_rows
                 }
 
-            # Пакетная предзагрузка AutomationScheduleState (с чанкованием по 500)
+            # Batch-preload AutomationScheduleState (chunked by 500)
             account_ids = [str(acc.account_id) for acc in accounts]
             schedule_cache: dict[str, AutomationScheduleState] = {}
             for i in range(0, len(account_ids), 500):
@@ -1277,7 +1277,7 @@ class MonitoringWorker:
                 for row in chunk_rows:
                     schedule_cache[row.state_key] = row
 
-            # Пакетная предзагрузка MetaConnection (с чанкованием по 500)
+            # Batch-preload MetaConnection (chunked by 500)
             connection_ids = {
                 acc.meta_connection_id
                 for acc in accounts
@@ -1542,7 +1542,7 @@ class MonitoringWorker:
                             acc.timezone_name = refreshed_timezone
                             acc.last_day_start_date = ""
                         status_code = acc_info.get("account_status", 1)
-                        status_label = acc_info.get("status_label", f"Статус #{status_code}")
+                        status_label = acc_info.get("status_label", f"Status #{status_code}")
                         acc.account_status = status_code
                         acc.status_label = status_label
                         if status_code != 1:
@@ -1794,8 +1794,8 @@ class MonitoringWorker:
                                         evaluation=eval_res,
                                         action=RuleAction.STOP.value,
                                         message=(
-                                            "STOP-кандидат найден. Buyerly повторно проверит "
-                                            f"метрики в течение {stop_confirmation_minutes} мин."
+                                            "A STOP candidate was found. Buyerly will re-check the "
+                                            f"metrics within {stop_confirmation_minutes} min."
                                         ),
                                         before_state=observed_state,
                                         after_state=desired_state,
@@ -1833,9 +1833,9 @@ class MonitoringWorker:
                                     evaluation=eval_res,
                                     action=eval_res.action.value,
                                     message={
-                                        "cooldown": f"Действие пропущено: cooldown {eval_res.cooldown_minutes} мин.",
-                                        "pending": "Действие уже начато в предыдущем цикле; дубль заблокирован.",
-                                        "reconciled": "Результат предыдущего действия подтверждён по текущему состоянию Meta.",
+                                        "cooldown": f"Action skipped: cooldown {eval_res.cooldown_minutes} min.",
+                                        "pending": "The action already started in a previous cycle; the duplicate was blocked.",
+                                        "reconciled": "The previous action's result was confirmed against Meta's current state.",
                                     }[claim_reason],
                                     before_state=observed_state,
                                     after_state=desired_state,
@@ -1846,7 +1846,7 @@ class MonitoringWorker:
                                 )
                             continue
 
-                        # СТОП адсета
+                        # STOP the ad set
                         if eval_res.action == RuleAction.STOP:
                             action_started = time.perf_counter()
                             try:
@@ -1913,7 +1913,7 @@ class MonitoringWorker:
                                     duration_ms=(time.perf_counter() - action_started) * 1000,
                                 )
 
-                        # ТОЛЬКО УВЕДОМЛЕНИЕ (Send notification only)
+                        # NOTIFICATION ONLY (send notification only)
                         elif eval_res.action == RuleAction.NOTIFY_ONLY:
                             logger.info(f"NOTIFY ONLY {eval_res.entity_level}: {a_id} ({eval_res.entity_name}) - {eval_res.reason}")
                             self._finish_execution(
@@ -1941,7 +1941,7 @@ class MonitoringWorker:
                                     target_chat_id=notification_target
                                 )
 
-                        # ПРЕДЛОЖЕНИЕ ВКЛЮЧИТЬ (долет)
+                        # OFFER TO TURN ON (late conversion)
                         elif eval_res.action == RuleAction.PROPOSE_REACTIVATE:
                             stats["proposals_sent"] += 1
                             logger.info(f"PROPOSE REACTIVATE {eval_res.entity_level}: {a_id} ({eval_res.entity_name}) - {eval_res.reason}")
@@ -1971,7 +1971,7 @@ class MonitoringWorker:
                                     target_chat_id=notification_target
                                 )
 
-                        # АВТО-ВКЛЮЧЕНИЕ
+                        # AUTO TURN-ON
                         elif eval_res.action == RuleAction.AUTO_REACTIVATE:
                             action_started = time.perf_counter()
                             try:
@@ -2040,7 +2040,7 @@ class MonitoringWorker:
                                     duration_ms=(time.perf_counter() - action_started) * 1000,
                                 )
 
-                        # УВЕЛИЧЕНИЕ БЮДЖЕТА
+                        # BUDGET INCREASE
                         elif eval_res.action == RuleAction.INCREASE_BUDGET:
                             action_started = time.perf_counter()
                             try:
@@ -2096,7 +2096,7 @@ class MonitoringWorker:
                                     duration_ms=(time.perf_counter() - action_started) * 1000,
                                 )
 
-                        # УМЕНЬШЕНИЕ БЮДЖЕТА
+                        # BUDGET DECREASE
                         elif eval_res.action == RuleAction.DECREASE_BUDGET:
                             action_started = time.perf_counter()
                             try:
@@ -2163,7 +2163,7 @@ class MonitoringWorker:
                         error=e,
                     )
 
-                # Межаккаунтный случайный джиттер (0.5–1.5с) для сглаживания нагрузки на Meta API
+                # Random cross-account jitter (0.5-1.5s) to smooth the load on the Meta API
                 jitter = random.uniform(0.5, 1.5)
                 await asyncio.sleep(jitter)
 

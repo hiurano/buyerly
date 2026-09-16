@@ -5,7 +5,7 @@ from typing import Any, Mapping
 
 
 WORKSPACE_REVIEW_REASON = (
-    "Правило отключено: его workspace нельзя подтвердить для этого кабинета."
+    "Rule disabled: its workspace cannot be confirmed for this ad account."
 )
 
 

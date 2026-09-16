@@ -11,7 +11,7 @@ interface ProfileSectionProps {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Не удалось сохранить изменения. Попробуйте ещё раз.';
+  return error instanceof Error ? error.message : 'Could not save your changes. Please try again.';
 }
 
 function initials(user: SessionUser): string {
@@ -66,7 +66,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, onUserChan
             <div className="preferences-row-copy">
               <span className="preferences-row-title">Profile picture</span>
             </div>
-            <div className="preferences-avatar" aria-label="Изображение профиля">
+            <div className="preferences-avatar" aria-label="Profile picture">
               {user.avatar_url ? (
                 <img src={user.avatar_url} alt="" className="preferences-avatar-image" />
               ) : (
@@ -80,16 +80,16 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, onUserChan
               <span className="preferences-row-title">Email</span>
               {user.unconfirmed_email && (
                 <span className="preferences-row-desc">
-                  Ожидает подтверждения: {user.unconfirmed_email}
+                  Pending confirmation: {user.unconfirmed_email}
                 </span>
               )}
             </div>
             <div className="preferences-row-control">
-              <span className="preferences-row-value">{user.email || 'Не указан'}</span>
+              <span className="preferences-row-value">{user.email || 'Not set'}</span>
               <button
                 type="button"
                 className="preferences-row-edit-button"
-                aria-label="Изменить email"
+                aria-label="Change email"
                 onClick={() => setEmailDialogOpen(true)}
               >
                 <LinearPencilIcon size={13} />

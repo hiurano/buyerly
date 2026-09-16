@@ -345,7 +345,7 @@ class TestRuleSafetyContractMigration(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(second, 0)
         self.assertFalse(migrated[0]["enabled"])
         self.assertTrue(migrated[0]["needs_review"])
-        self.assertIn("отключено", migrated[0]["review_reason"])
+        self.assertIn("disabled", migrated[0]["review_reason"])
 
 
 class TestAuditUndoContractMigration(unittest.IsolatedAsyncioTestCase):
@@ -1058,7 +1058,7 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                         ) VALUES (
                             'act_legacy_manual', 'Legacy manual', '', '', :token,
                             '', 'USD', 'UTC', '', '', '[]', 1,
-                            'Активен (ACTIVE)', false, true, NOW()
+                            'Active (ACTIVE)', false, true, NOW()
                         )
                         """
                     ),
@@ -1131,7 +1131,7 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                     [
                         Workspace(name="API", slug="api", owner_user_id=owner.id),
                         Workspace(
-                            name="Канада Трафик",
+                            name="Canada Traffic RU",
                             slug="Канада-Трафик",
                             owner_user_id=owner.id,
                         ),
@@ -1154,10 +1154,11 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                         )
                     ).scalars()
                 )
-                self.assertEqual(
-                    slugs,
-                    ["api-workspace", "kanada-trafik-2", "kanada-trafik"],
-                )
+                self.assertEqual(slugs[0], "api-workspace")
+                # A Cyrillic slug carries no ASCII letters, so it falls back to
+                # a stable hash instead of being transliterated.
+                self.assertTrue(slugs[1].startswith("workspace-"))
+                self.assertEqual(slugs[2], "kanada-trafik")
         finally:
             await init_test_db(engine)
             await engine.dispose()

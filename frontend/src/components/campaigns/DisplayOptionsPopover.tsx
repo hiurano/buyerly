@@ -9,9 +9,10 @@ interface DisplayOptionsPopoverProps {
   onClose: () => void;
   anchorRef: React.RefObject<HTMLElement | null>;
   entity: AdsManagerEntity;
+  hasAccountGroups: boolean;
 }
 
-export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ isOpen, onClose, anchorRef, entity }) => {
+export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ isOpen, onClose, anchorRef, entity, hasAccountGroups }) => {
   const store = useAppStore();
   const popoverRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
@@ -68,8 +69,13 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
       <LinearDisplayOptions
         viewMode={store.campaignsViewMode}
         onViewModeChange={store.setCampaignsViewMode}
-        grouping={store.displayGrouping}
-        groupingOptions={[]}
+        grouping={!hasAccountGroups && store.displayGrouping === 'groups' ? 'none' : store.displayGrouping}
+        groupingOptions={[
+          { value: 'none', label: 'No grouping' },
+          { value: 'status', label: 'Status' },
+          ...(hasAccountGroups ? [{ value: 'groups', label: 'Account groups' }] : []),
+          { value: 'rules', label: 'Rules' },
+        ]}
         onGroupingChange={(value) => store.setDisplayGrouping(value as typeof store.displayGrouping)}
         ordering={ordering}
         orderingOptions={orderingOptions}
@@ -78,7 +84,7 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
         enabledProperties={store.displayProperties}
         onToggleProperty={store.toggleDisplayProperty}
         showViewModes={false}
-        showGrouping={false}
+        showGrouping
       />
     </div>,
     document.body

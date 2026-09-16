@@ -4,7 +4,23 @@
 
 ## [Unreleased]
 
+### Removed
+- Удалён резерв URL старого приложения. `RESERVED_WORKSPACE_SLUGS` и `SYSTEM_ROOTS` сокращены с ~50 имён до 15 корневых сегментов, которые сервер обслуживает сам: `api`, `assets`, `auth`, `connect`, `create-workspace`, `data-deletion`, `docs`, `health`, `invite`, `login`, `privacy`, `redoc`, `static`, `terms`, `uploads`. Попутно закрыта дыра — `assets` и `connect` реально заняты сервером, но зарезервированы не были. Слаги вроде `dashboard`, `home`, `register` или `w` теперь свободны под воркспейсы, а старые URL больше не отдают Not Found специально.
+- Из Meta OAuth убраны пути несуществующих страниц `/facebook-accounts` и `/add-accounts`. Whitelist `return_path` принимает только `/{workspace}/settings`, `/{workspace}/ads-manager/{entity}` и `/connect/meta/success`, фолбэк ведёт на `/`. Раньше отмена авторизации уводила пользователя на удалённую страницу старого приложения.
+- Удалены пустые каталоги `webapp/uploads/*`, оставшиеся от старого фронтенда: загрузки лежат в `uploads/`.
+- Из нижней панели утилит (`AppUtilityBar`) и футера сайдбара (`SidebarUtilityFooter`) удалены нереализованные кнопки-заглушки: справка («?»), «Agent» и «Chat history». Сами компоненты-контейнеры сохранены в разметке.
+
+### Changed
+- CI разбит на параллельные части. Тестовый job стал матрицей из 6 шардов, каждый со своими Postgres и Redis, а тесты распределяет `scripts/ci_test_shard.py`: жадная упаковка по весу, где async-тест считается в 10 раз дороже синхронного. Единица распределения — отдельный тест, а не модуль: в `test_api.py` 56 async-тестов в одном классе, и по модулям набор не разложить ровно. Сборка фронта вынесена в отдельный job `frontend` и передаётся шардам артефактом вместо пересборки в каждом.
+- URL Ads Manager переименован с `/{workspace}/ads/{entity}` на `/{workspace}/ads-manager/{entity}`: путь к вкладке Ads больше не выглядит как `/ads/ads`. Старый сегмент не поддерживается. Переименование затрагивает SPA-роуты FastAPI и whitelist `return_path` в Meta OAuth.
+- Интерфейс переведён на английский: собственные тексты React-приложения и сообщения API, которые оно показывает пользователю как есть — `detail` ошибок, поля `message`, записи журнала действий, определения и подписи метрик, примеры правил-пресетов, статусы кабинетов Meta и подсказки по ошибкам токена. Переведены также Telegram-бот целиком и текст, приходящий в UI как данные.
+- Слаг воркспейса теперь строго ASCII. Таблица транслитерации кириллицы удалена: название без латинских букв больше не превращается в `kanada-trafik`, а получает устойчивый `workspace-<хеш>` — тот же фолбэк, что и раньше применялся к иероглифам. Существующие воркспейсы сохраняют свои слаги.
+- Горячие клавиши перестали дублироваться на раскладке ЙЦУКЕН и работают только на латинских клавишах.
+- Русские `status_label` в уже сохранённых кабинетах перезапишутся английскими при следующем опросе Meta; миграция не требуется.
+
 ### Added
+
+- Ads Manager: Linear-style sidebar facets count the primary-filter result and apply one independent quick selection. Main filters are shareable in the URL; display controls group real rows by status, account groups or scoped rules. Multi-membership filters support any/all and exclusion.
 
 - В настройках появился раздел `Profile`: аватар, текущий email и полное имя. Email меняется прямо из интерфейса — модальное окно в два шага запрашивает новый адрес и шестизначный код. Эндпоинты `/api/auth/request-email-change` и `/api/auth/verify-email-change` существовали с самого начала, но ни один экран их не вызывал, поэтому сменить почту было невозможно без прямого обращения к API.
 - Раздел построен на существующих токенах и примитивах (`Input`, `Button`, геометрия диалога от `MetaConnectionDialog`); добавлены только `LinearPencilIcon` и классы строк профиля. Поля `Title`, `Username` и действие `Leave workspace`, присутствующие в эталонном экране Linear, намеренно не перенесены: под них нет серверной поддержки (`UpdateProfileRequest` не принимает `username`, у `User` нет `title`, а `leave_workspace` отклоняет владельца воркспейса), а нерабочий контрол нарушает п.5 `docs/UI_CONTRACT.md`.

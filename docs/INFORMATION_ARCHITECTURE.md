@@ -38,10 +38,10 @@ Buyerly использует workspace-first URL без технического
 | Настройка профиля и приглашение команды | `/{workspace}/welcome` |
 | Inbox | `/{workspace}/inbox` |
 | Элемент Inbox | `/{workspace}/inbox/{itemId}` |
-| Campaigns | `/{workspace}/ads/campaigns` |
-| Ad sets | `/{workspace}/ads/adsets` |
-| Ads | `/{workspace}/ads/ads` |
-| Конкретная рекламная сущность | `/{workspace}/ads/{entityType}/{entityId}` |
+| Campaigns | `/{workspace}/ads-manager/campaigns` |
+| Ad sets | `/{workspace}/ads-manager/adsets` |
+| Ads | `/{workspace}/ads-manager/ads` |
+| Конкретная рекламная сущность | `/{workspace}/ads-manager/{entityType}/{entityId}` |
 | Rules | `/{workspace}/rules` |
 | Правило | `/{workspace}/rules/{ruleId}` |
 | Statistics | `/{workspace}/statistics` |
@@ -104,7 +104,7 @@ Buyerly использует workspace-first URL без технического
 ## Definition of Done
 
 - Все пользовательские страницы доступны только по таблице канонических URL.
-- Legacy URL показывают Not Found и не выполняют redirect.
+- Зарезервированы только корневые сегменты, которые обслуживает сам сервер; остальные слаги свободны.
 - Вход по ссылке и коду одноразовый и закрыт whitelist/invite-политикой.
 - Занятый workspace URL не изменяется автоматически, а объясняется пользователю.
 - Owner и приглашённый участник проходят только относящиеся к ним шаги welcome.

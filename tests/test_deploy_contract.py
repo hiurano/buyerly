@@ -1,3 +1,6 @@
+import re
+import subprocess
+import sys
 from pathlib import Path
 import unittest
 
@@ -336,6 +339,64 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("schedule:", self.restore_drill_workflow)
         self.assertIn("cron:", self.restore_drill_workflow)
         self.assertIn("alembic upgrade head", self.restore_drill_workflow)
+
+    def test_ci_test_shards_cover_every_test_exactly_once(self):
+        """Every test must land in exactly one CI shard.
+
+        The workflow splits the suite across parallel legs. A test that fell
+        out of the split would silently stop running, and one counted twice
+        would waste a leg. The shard assignment is compared against unittest's
+        own discovery, so a test the sharding script fails to parse is caught
+        here rather than by nobody.
+        """
+        shard_line = re.search(r"shard: \[([0-9, ]+)\]", self.workflow)
+        self.assertIsNotNone(shard_line, "deploy.yml must declare a shard matrix")
+        shards = [int(value) for value in shard_line.group(1).split(",")]
+        self.assertEqual(shards, list(range(1, len(shards) + 1)))
+        self.assertIn(f"--total {len(shards)}", self.workflow)
+
+        project_root = Path(__file__).resolve().parents[1]
+
+        discovered = set()
+
+        def walk(suite):
+            for item in suite:
+                if isinstance(item, unittest.TestSuite):
+                    walk(item)
+                else:
+                    discovered.add(item.id().removeprefix("tests."))
+
+        walk(unittest.TestLoader().discover(str(project_root / "tests")))
+        self.assertTrue(discovered, "unittest discovered no tests")
+        # Without the project dependencies installed, discovery yields import
+        # failures instead of test ids and the comparison below would be
+        # meaningless. CI always has them, so skip rather than report a
+        # difference that says nothing about the sharding.
+        unimportable = sorted(t for t in discovered if "_FailedTest" in t)
+        if unimportable:
+            self.skipTest(f"test modules are not importable here: {unimportable[:3]}")
+
+        assigned = []
+        for shard in shards:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(project_root / "scripts" / "ci_test_shard.py"),
+                    "--shard",
+                    str(shard),
+                    "--total",
+                    str(len(shards)),
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            ids = result.stdout.split()
+            self.assertTrue(ids, f"shard {shard} resolved to no tests")
+            assigned.extend(test_id.removeprefix("tests.") for test_id in ids)
+
+        self.assertEqual(len(assigned), len(set(assigned)), "a test is assigned twice")
+        self.assertEqual(sorted(assigned), sorted(discovered))
 
 
 if __name__ == "__main__":

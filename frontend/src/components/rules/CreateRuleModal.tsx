@@ -310,8 +310,8 @@ export const CreateRuleModal: React.FC = () => {
         error instanceof Error
           ? error.message
           : isEditing
-          ? 'Не удалось сохранить правило.'
-          : 'Не удалось создать правило.',
+          ? 'Could not save the rule.'
+          : 'Could not create the rule.',
       );
     } finally {
       setIsSubmitting(false);

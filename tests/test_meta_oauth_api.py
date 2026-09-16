@@ -111,7 +111,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
-                "/api/meta/oauth/start?return_path=/facebook-accounts",
+                "/api/meta/oauth/start?return_path=/buyerly/settings",
                 headers=self.headers,
             )
 
@@ -144,7 +144,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
             "account_status": 1,
             "currency": "USD",
             "timezone_name": "Pacific/Honolulu",
-            "status_label": "Активен (ACTIVE)",
+            "status_label": "Active (ACTIVE)",
         }
 
         transport = httpx.ASGITransport(app=self.app)
@@ -358,7 +358,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
                 currency="USD",
                 rules_enabled=False,
                 is_active=False,
-                status_label="Требуется подключение Meta",
+                status_label="Meta connection required",
             )
             session.add(account)
             await session.commit()
@@ -366,7 +366,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             start_resp = await client.post(
-                f"/api/meta/oauth/start?return_path=/facebook-accounts&reconnect_connection_id={self.connection_id}",
+                f"/api/meta/oauth/start?return_path=/buyerly/settings&reconnect_connection_id={self.connection_id}",
                 headers=self.headers,
             )
             self.assertEqual(start_resp.status_code, 200)
@@ -407,7 +407,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
                 )
             ).scalar_one()
             self.assertTrue(acc.is_active)
-            self.assertEqual(acc.status_label, "Активен")
+            self.assertEqual(acc.status_label, "Active")
 
             audit = (
                 await session.execute(
@@ -422,7 +422,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             start_resp = await client.post(
-                f"/api/meta/oauth/start?return_path=/facebook-accounts&reconnect_connection_id={self.connection_id}",
+                f"/api/meta/oauth/start?return_path=/buyerly/settings&reconnect_connection_id={self.connection_id}",
                 headers=self.headers,
             )
             self.assertEqual(start_resp.status_code, 200)
@@ -476,7 +476,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # Start OAuth in workspace 2
             start_resp = await client.post(
-                "/api/meta/oauth/start?return_path=/facebook-accounts",
+                "/api/meta/oauth/start?return_path=/buyerly/settings",
                 headers=self.headers,
             )
             self.assertEqual(start_resp.status_code, 200)
@@ -551,7 +551,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # Start OAuth while self.workspace_id is active
             start_resp = await client.post(
-                "/api/meta/oauth/start?return_path=/facebook-accounts",
+                "/api/meta/oauth/start?return_path=/buyerly/settings",
                 headers=self.headers,
             )
             self.assertEqual(start_resp.status_code, 200)
@@ -631,7 +631,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             start_resp = await client.post(
-                "/api/meta/oauth/start?return_path=/facebook-accounts",
+                "/api/meta/oauth/start?return_path=/buyerly/settings",
                 headers=self.headers,
             )
             self.assertEqual(start_resp.status_code, 200)
@@ -785,7 +785,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
             "account_status": 1,
             "currency": "USD",
             "timezone_name": "America/Los_Angeles",
-            "status_label": "Активен (ACTIVE)",
+            "status_label": "Active (ACTIVE)",
         }
 
         transport = httpx.ASGITransport(app=self.app)
@@ -889,7 +889,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
             "account_status": 1,
             "currency": "USD",
             "timezone_name": "UTC",
-            "status_label": "Активен",
+            "status_label": "Active",
         }
 
         transport = httpx.ASGITransport(app=self.app)
@@ -914,7 +914,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(import_resp.status_code, 200)
         self.assertEqual(import_resp.json()["error_count"], 1)
-        self.assertIn("другом рабочем пространстве", import_resp.json()["errors"][0]["error"])
+        self.assertIn("another workspace", import_resp.json()["errors"][0]["error"])
 
 
 if __name__ == "__main__":

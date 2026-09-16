@@ -332,7 +332,7 @@ async def migrate_rule_safety_contract(conn) -> int:
             try:
                 validate_runtime_rule(rule)
             except (TypeError, ValueError):
-                review_reason = "Правило отключено: небезопасные или устаревшие параметры. Пересохраните его."
+                review_reason = "Rule disabled: unsafe or outdated settings. Re-save it."
                 if (
                     rule.get("enabled") is not False
                     or rule.get("needs_review") is not True

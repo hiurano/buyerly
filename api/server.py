@@ -55,7 +55,7 @@ def create_app() -> FastAPI:
                 if content_length > max_allowed_bytes:
                     return JSONResponse(
                         status_code=413,
-                        content={"detail": "Размер тела запроса превышает допустимый лимит."},
+                        content={"detail": "The request body exceeds the allowed size limit."},
                     )
             except ValueError:
                 pass
@@ -160,8 +160,8 @@ def create_app() -> FastAPI:
     @app.get("/{workspace_slug}/welcome")
     @app.get("/{workspace_slug}/inbox")
     @app.get("/{workspace_slug}/inbox/{item_id}")
-    @app.get("/{workspace_slug}/ads/{entity_type}")
-    @app.get("/{workspace_slug}/ads/{entity_type}/{entity_id}")
+    @app.get("/{workspace_slug}/ads-manager/{entity_type}")
+    @app.get("/{workspace_slug}/ads-manager/{entity_type}/{entity_id}")
     @app.get("/{workspace_slug}/rules")
     @app.get("/{workspace_slug}/rules/{rule_id}")
     @app.get("/{workspace_slug}/statistics")

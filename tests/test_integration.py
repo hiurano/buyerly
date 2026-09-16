@@ -127,7 +127,7 @@ class MockMetaClient(MetaClient):
         *,
         priority: str = "normal",
     ):
-        return {"id": account_id, "name": "Underdog 3286", "timezone_name": "HST", "currency": "USD", "account_status": 1, "status_label": "Активен (ACTIVE)"}
+        return {"id": account_id, "name": "Underdog 3286", "timezone_name": "HST", "currency": "USD", "account_status": 1, "status_label": "Active (ACTIVE)"}
 
     async def get_adsets_insights(
         self,
@@ -250,7 +250,7 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
 
             account = Account(
                 account_id="act_e2e_sweden_1083",
-                name="Underdog 3286 (Швеция)",
+                name="Underdog 3286 (Sweden)",
                 access_token="mock_token_123",
                 owner_user_id=user.id,
                 workspace_id=ws.id,
@@ -313,7 +313,7 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_rules_disabled_mode_skips_stopping(self):
-        """Если авто-правила выключены, адсеты не должны останавливаться."""
+        """With automation rules off, ad sets must not be stopped."""
         async with self.test_session_maker() as session:
             res = await session.execute(select(Account).where(Account.account_id == self.account_id))
             acc = res.scalar_one()
@@ -517,7 +517,7 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(mock_meta.ad_status_changes, [("ad_1", "PAUSED")])
 
     async def test_custom_rule_stops_adset(self):
-        """Пользовательское правило: Спенд >= $10 И Лиды = 0 → STOP."""
+        """Custom rule: Spend >= $10 AND Leads = 0 → STOP."""
         async with self.test_session_maker() as session:
             session.add(AppSettings(stop_confirmation_minutes=0))
             await session.commit()
@@ -1135,7 +1135,7 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(_json_val(state.details)["reconciled_after_restart"], True)
 
     async def test_budget_increase_action(self):
-        """Правило: CPL < $5 И Лиды >= 2 → увеличить бюджет на 20%, потолок $100."""
+        """Rule: CPL < $5 AND Leads >= 2 -> raise the budget by 20%, capped at $100."""
         async with self.test_session_maker() as session:
             res = await session.execute(select(Account).where(Account.account_id == self.account_id))
             acc = res.scalar_one()
@@ -1231,13 +1231,13 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(stopped.is_resolved)
 
     async def test_account_disabled_alert(self):
-        """Если кабинет заблокирован в Meta → алерт ACCOUNT_ISSUE."""
+        """A disabled ad account in Meta raises an ACCOUNT_ISSUE alert."""
         mock_meta = MockMetaClient()
         mock_meta.get_account_info = AsyncMock(return_value={
             "id": "act_e2e_sweden_1083",
             "name": "Underdog 3286",
             "account_status": 2, # Disabled
-            "status_label": "Заблокирован в Meta (DISABLED / Policy Ban)",
+            "status_label": "Disabled in Meta (DISABLED / Policy Ban)",
             "timezone_name": "HST"
         })
         sent_alerts = []
@@ -1250,10 +1250,10 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(len(sent_alerts), 1)
         self.assertEqual(sent_alerts[0]["event_type"], "ACCOUNT_ISSUE")
-        self.assertIn("Заблокирован", sent_alerts[0]["local_time"])
+        self.assertIn("Disabled", sent_alerts[0]["local_time"])
 
     async def test_token_expired_alert(self):
-        """Если токен Meta слетел → алерт TOKEN_EXPIRED."""
+        """A broken Meta token raises a TOKEN_EXPIRED alert."""
         mock_meta = MockMetaClient()
         mock_meta.get_account_info = AsyncMock(side_effect=PermissionError("Token expired"))
         sent_alerts = []
@@ -1287,11 +1287,11 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             self.assertIn("campaign inventory unavailable", health.last_error_message)
 
     def test_meta_client_usage_headers_parsing(self):
-        """Проверка парсинга заголовков X-Business-Use-Case-Usage."""
+        """Parsing of the X-Business-Use-Case-Usage headers."""
         import httpx
         client = MetaClient()
         
-        # 1. Нормальный расход (15%)
+        # 1. Normal usage (15%)
         headers_normal = httpx.Headers({
             "x-business-use-case-usage": '{"act_1083": [{"type": "ads_management", "call_count": 15, "total_cputime": 10, "total_time": 8, "estimated_time_to_regain_access": 0}]}'
         })
@@ -1299,7 +1299,7 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(res_normal["call_count"], 15)
         self.assertFalse(res_normal["is_high_usage"])
 
-        # 2. Высокий расход (85% -> Warning trigger)
+        # 2. High usage (85% -> warning trigger)
         headers_high = httpx.Headers({
             "x-business-use-case-usage": '{"act_1083": [{"type": "ads_management", "call_count": 85, "total_cputime": 60, "total_time": 50, "estimated_time_to_regain_access": 5}]}'
         })

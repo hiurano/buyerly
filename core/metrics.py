@@ -60,16 +60,16 @@ CONFLICTING_RULE_ACTIONS = frozenset(
 )
 
 METRIC_LABELS = {
-    "spend": "Спенд",
-    "cpl": "Цена за лид (CPL)",
-    "cpreg": "Цена регистрации (CPReg)",
-    "cpp": "Цена покупки (CPP)",
-    "leads": "Лиды",
-    "registrations": "Регистрации",
-    "purchases": "Покупки",
+    "spend": "Spend",
+    "cpl": "Cost per lead (CPL)",
+    "cpreg": "Cost per registration (CPReg)",
+    "cpp": "Cost per purchase (CPP)",
+    "leads": "Leads",
+    "registrations": "Registrations",
+    "purchases": "Purchases",
     "ctr": "CTR",
     "cpc": "CPC",
-    "legacy_cpa": "Старый общий CPA",
+    "legacy_cpa": "Legacy combined CPA",
 }
 
 METRIC_UNITS = {
@@ -86,28 +86,28 @@ METRIC_UNITS = {
 }
 
 SUMMARY_METRIC_DEFINITIONS = {
-    "spend": "Account-level Spend из Meta за выбранный период и в валюте кабинета. Включает расходы всех объявлений и ad set, которые откручивались в периоде, независимо от их текущего статуса. Разные валюты никогда не складываются в одну денежную сумму.",
-    "impressions": "Показы: сколько раз объявления были показаны на экране. Один человек может создать несколько показов.",
-    "reach": "Охват: сумма уникального охвата внутри каждого кабинета. При нескольких кабинетах аудитории могут пересекаться, поэтому это не глобально уникальные люди.",
-    "frequency": "Показы / суммарный охват кабинетов. Показывает среднее число показов на одного охваченного пользователя с учётом возможного пересечения между кабинетами.",
-    "cpm": "Spend / показы × 1 000. Стоимость тысячи показов.",
-    "leads": "События lead из Meta. Не складываются с регистрациями или покупками.",
-    "cost_per_lead": "Spend / лиды. Если лидов нет, значение отсутствует.",
-    "registrations": "События complete_registration из Meta. Считаются отдельно от лидов.",
-    "cost_per_registration": "Spend / регистрации. Если регистраций нет, значение отсутствует.",
-    "purchases": "События purchase из Meta. Считаются отдельно от лидов и регистраций.",
-    "cost_per_purchase": "Spend / покупки. Если покупок нет, значение отсутствует.",
-    "clicks": "Все клики из поля Meta clicks: ссылки, реакции и другие кликабельные элементы объявления.",
-    "unique_clicks": "Сумма людей с хотя бы одним кликом внутри каждого кабинета. Повторные клики дедуплицируются в кабинете, но один человек в разных кабинетах может учитываться повторно.",
-    "link_clicks": "Inline Link Clicks: клики по ссылкам и отдельным направлениям внутри объявления. Не равны всем кликам и не гарантируют загрузку сайта.",
-    "outbound_clicks": "Клики, которые ведут за пределы приложений и сервисов Meta.",
-    "landing_page_views": "Landing Page Views: случаи, когда после клика целевая страница действительно загрузилась и событие было доступно Meta.",
-    "ctr": "CTR All = все клики / показы × 100.",
-    "link_ctr": "Link CTR = Inline Link Clicks / показы × 100.",
-    "outbound_ctr": "Outbound CTR = исходящие клики / показы × 100.",
-    "cpc": "CPC All = Spend / все клики.",
+    "spend": "Account-level Spend from Meta for the selected period, in the ad account's currency. It includes spend from every ad and ad set that delivered during the period, regardless of their current status. Different currencies are never summed into a single monetary total.",
+    "impressions": "Impressions: how many times ads were rendered on screen. One person can generate several impressions.",
+    "reach": "Reach: the sum of unique reach within each ad account. Across several accounts the audiences can overlap, so this is not a globally unique count of people.",
+    "frequency": "Impressions / combined account reach. Shows the average number of impressions per reached person, allowing for possible overlap between accounts.",
+    "cpm": "Spend / impressions × 1,000. The cost of one thousand impressions.",
+    "leads": "Meta lead events. They are not added together with registrations or purchases.",
+    "cost_per_lead": "Spend / leads. With no leads, the value is unavailable.",
+    "registrations": "Meta complete_registration events. Counted separately from leads.",
+    "cost_per_registration": "Spend / registrations. With no registrations, the value is unavailable.",
+    "purchases": "Meta purchase events. Counted separately from leads and registrations.",
+    "cost_per_purchase": "Spend / purchases. With no purchases, the value is unavailable.",
+    "clicks": "Every click from Meta's clicks field: links, reactions and other clickable elements of the ad.",
+    "unique_clicks": "The sum of people with at least one click within each ad account. Repeat clicks are deduplicated inside an account, but one person can be counted again across different accounts.",
+    "link_clicks": "Inline Link Clicks: clicks on links and individual destinations inside the ad. They are not the same as all clicks and do not guarantee the site loaded.",
+    "outbound_clicks": "Clicks that lead outside Meta's apps and services.",
+    "landing_page_views": "Landing Page Views: cases where the destination page actually loaded after a click and the event was visible to Meta.",
+    "ctr": "CTR All = all clicks / impressions × 100.",
+    "link_ctr": "Link CTR = Inline Link Clicks / impressions × 100.",
+    "outbound_ctr": "Outbound CTR = outbound clicks / impressions × 100.",
+    "cpc": "CPC All = Spend / all clicks.",
     "cpc_link": "CPC Link = Spend / Inline Link Clicks.",
-    "cost_per_landing_page_view": "Spend / Landing Page Views. Если загрузок страницы нет, значение отсутствует.",
+    "cost_per_landing_page_view": "Spend / Landing Page Views. With no page loads, the value is unavailable.",
 }
 
 
@@ -147,7 +147,7 @@ def _number(data: Mapping[str, Any], key: str) -> float:
 
 def rule_metric_reading(metric: Any, data: Mapping[str, Any]) -> MetricReading:
     key = canonical_rule_metric(metric)
-    label = METRIC_LABELS.get(key, key or "Неизвестная метрика")
+    label = METRIC_LABELS.get(key, key or "Unknown metric")
     unit = METRIC_UNITS.get(key, "")
     spend = _number(data, "spend")
     leads = int(_number(data, "leads"))
@@ -180,7 +180,7 @@ def rule_metric_reading(metric: Any, data: Mapping[str, Any]) -> MetricReading:
             label=label,
             unit=unit,
             value=None,
-            unavailable_reason="Общий CPA объединял лиды и регистрации. Выберите CPL, CPReg или CPP.",
+            unavailable_reason="The combined CPA mixed leads and registrations. Choose CPL, CPReg or CPP instead.",
         )
     else:
         return MetricReading(
@@ -188,23 +188,23 @@ def rule_metric_reading(metric: Any, data: Mapping[str, Any]) -> MetricReading:
             label=label,
             unit=unit,
             value=None,
-            unavailable_reason="Метрика не поддерживается текущей версией Buyerly.",
+            unavailable_reason="This metric is not supported by the current version of Buyerly.",
         )
 
     if value is None:
         denominator_labels = {
-            "cpl": "лидов",
-            "cpreg": "регистраций",
-            "cpp": "покупок",
-            "cpc": "кликов",
-            "ctr": "показов",
+            "cpl": "leads",
+            "cpreg": "registrations",
+            "cpp": "purchases",
+            "cpc": "clicks",
+            "ctr": "impressions",
         }
         return MetricReading(
             key=key,
             label=label,
             unit=unit,
             value=None,
-            unavailable_reason=f"Нет {denominator_labels.get(key, 'данных')} для расчёта.",
+            unavailable_reason=f"No {denominator_labels.get(key, 'data')} to calculate from.",
         )
 
     return MetricReading(key=key, label=label, unit=unit, value=float(value))
@@ -269,7 +269,7 @@ def normalize_runtime_rule(rule: Mapping[str, Any]) -> tuple[dict[str, Any], boo
         if normalized_rule.get("needs_review") is not True:
             normalized_rule["needs_review"] = True
             changed = True
-        review_reason = "Замените старый общий CPA на CPL, CPReg или CPP."
+        review_reason = "Replace the legacy combined CPA with CPL, CPReg or CPP."
         if normalized_rule.get("review_reason") != review_reason:
             normalized_rule["review_reason"] = review_reason
             changed = True
@@ -306,21 +306,21 @@ def _condition_signature(condition: Mapping[str, Any]) -> tuple[str, str, float,
 
 def _metric_context_label(metric: str, time_window: str) -> str:
     metric_labels = {
-        "spend": "расход",
-        "cpl": "цена лида",
-        "cpreg": "цена регистрации",
-        "cpp": "цена покупки",
-        "leads": "количество лидов",
-        "registrations": "количество регистраций",
-        "purchases": "количество покупок",
-        "ctr": "кликабельность",
-        "cpc": "цена клика",
+        "spend": "spend",
+        "cpl": "cost per lead",
+        "cpreg": "cost per registration",
+        "cpp": "cost per purchase",
+        "leads": "lead count",
+        "registrations": "registration count",
+        "purchases": "purchase count",
+        "ctr": "click-through rate",
+        "cpc": "cost per click",
     }
     window_labels = {
-        "today": "сегодня",
-        "yesterday": "вчера",
-        "last_3d": "за последние 3 дня",
-        "last_7d": "за последние 7 дней",
+        "today": "today",
+        "yesterday": "yesterday",
+        "last_3d": "over the last 3 days",
+        "last_7d": "over the last 7 days",
     }
     return f"{metric_labels.get(metric, metric)} {window_labels.get(time_window, time_window)}"
 
@@ -395,14 +395,14 @@ def validate_rule_semantics(
 
     signatures = [_condition_signature(condition) for condition in conditions]
     if len(signatures) != len(set(signatures)):
-        raise ValueError("Одно и то же условие добавлено в правило несколько раз.")
+        raise ValueError("The same condition was added to the rule more than once.")
 
     count_metrics = {"leads", "registrations", "purchases"}
     for condition in conditions:
         metric = canonical_rule_metric(condition.get("metric"))
         value = float(condition.get("value", 0.0))
         if metric in count_metrics and not value.is_integer():
-            raise ValueError("Лиды, регистрации и покупки указываются только целыми числами.")
+            raise ValueError("Leads, registrations and purchases must be whole numbers.")
 
     grouped: dict[tuple[str, str], list[Mapping[str, Any]]] = {}
     for condition in conditions:
@@ -416,13 +416,13 @@ def validate_rule_semantics(
         label = _metric_context_label(metric, time_window)
         if logic == "and" and _and_group_is_empty(metric_conditions):
             raise ValueError(
-                f"Условия противоречат друг другу: «{label}» не может попасть "
-                "в указанный диапазон."
+                f"Conditions contradict each other: “{label}” cannot fall "
+                "into the given range."
             )
         if logic == "or" and _or_group_is_always_true(metric_conditions):
             raise ValueError(
-                f"Правило будет срабатывать всегда: условия для «{label}» "
-                "покрывают все возможные значения."
+                f"The rule would always fire: the conditions for “{label}” "
+                "cover every possible value."
             )
 
 
@@ -478,11 +478,11 @@ def validate_rule_set_compatibility(rules: Sequence[Mapping[str, Any]]) -> None:
                 continue
             if not _rule_scopes_can_overlap(first, second):
                 continue
-            first_name = str(first.get("name") or "Первое правило")
-            second_name = str(second.get("name") or "Второе правило")
+            first_name = str(first.get("name") or "First rule")
+            second_name = str(second.get("name") or "Second rule")
             raise ValueError(
-                f"Правила «{first_name}» и «{second_name}» противоречат друг другу: "
-                "у них одинаковые условия, но противоположные действия."
+                f"Rules “{first_name}” and “{second_name}” contradict each other: "
+                "they share the same conditions but take opposite actions."
             )
 
 
@@ -584,7 +584,7 @@ def validate_runtime_rule(rule: Mapping[str, Any]) -> None:
     level = normalize_rule_level(rule.get("level"))
     if level != "adset" and action in BUDGET_RULE_ACTIONS:
         raise ValueError(
-            "Изменение бюджета поддерживается только на уровне адсета."
+            "Budget changes are supported at the ad set level only."
         )
     logic = str(rule.get("logic", rule.get("condition_logic", "")))
     if logic not in RULE_LOGICS:

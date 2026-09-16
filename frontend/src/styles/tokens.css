@@ -51,6 +51,12 @@
   --sidebar-width: 244px;
   --header-height: 44px;
   --canvas-border-radius: 12px;
+  --facet-sidebar-width: 320px;
+  --facet-sidebar-padding: 12px;
+  --facet-sidebar-gap: 8px;
+  --facet-row-height: 42px;
+  --facet-font-size: 13px;
+  --facet-empty-padding: 24px;
   --control-border-radius: 8px;
 
   /* Statistics overview: restored individual metric cards. */

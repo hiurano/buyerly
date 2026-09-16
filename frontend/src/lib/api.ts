@@ -41,7 +41,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     if (typeof payload.detail === 'string') {
       detail = payload.detail;
     } else if (payload.detail?.code === 'meta_oauth_not_configured') {
-      detail = 'Вход через Facebook не настроен: отсутствуют ключи META_APP_ID / META_APP_SECRET в .env. Используйте «Сгенерировать ссылку».';
+      detail = 'Facebook login is not configured: META_APP_ID / META_APP_SECRET are missing from .env. Use “Generate link” instead.';
     } else if (typeof payload.detail?.message === 'string') {
       detail = payload.detail.message;
     } else if (typeof payload.message === 'string') {

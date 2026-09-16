@@ -104,7 +104,7 @@ class TestDocumentationContract(unittest.TestCase):
             "/auth/email/verify?token=…",
             "/create-workspace",
             "/{workspace}/inbox",
-            "/{workspace}/ads/campaigns",
+            "/{workspace}/ads-manager/campaigns",
             "/{workspace}/rules",
             "/{workspace}/statistics",
             "Admin",
@@ -112,7 +112,7 @@ class TestDocumentationContract(unittest.TestCase):
             "Viewer",
         ):
             self.assertIn(contract, ia)
-        self.assertIn("Legacy URL показывают Not Found", ia)
+        self.assertIn("Зарезервированы только корневые сегменты", ia)
         self.assertNotIn("Совместимые aliases", ia)
 
 

@@ -13,6 +13,7 @@ import { AdRow } from './AdRow';
 import { DisplayOptionsPopover } from './DisplayOptionsPopover';
 import { MetaConnectionDialog } from './MetaConnectionDialog';
 import { DataState } from '@/ui/DataState';
+import { Button } from '@/ui/Button';
 import { Tooltip } from '@/ui/Tooltip';
 import { LinearTabs } from '@/ui/LinearTabs';
 import {
@@ -23,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
 import {
+  LinearDataListGroupHeader,
   LinearDataListColumnHeader,
   LinearDataListStack,
   LinearDataListToolbar,
@@ -35,10 +37,13 @@ import {
   LinearFilterMenu,
 } from '@/components/filters/LinearFilter';
 import type { FilterMenuMode } from '@/components/filters/LinearFilter';
-import { createStatusFilterFields } from '@/components/filters/filterCatalogs';
-import { applyFilterClauses } from '@/components/filters/filterModel';
-import type { FilterClause } from '@/components/filters/filterModel';
+import { createLiveFields, filterView, groupView } from './campaignViewModel';
+import type { AccountGroupOption } from './campaignViewModel';
+import { useCampaignViewFilters } from './useCampaignViewFilters';
+import { LinearFacetSidebar } from '@/ui/LinearFacetSidebar';
+import type { FilterClause, FilterFieldDefinition } from '@/components/filters/filterModel';
 import {
+  LinearSidebarToggleIcon,
   LinearPlusIcon,
   LinearSidebarLeftToggleIcon,
   LinearSlidersIcon,
@@ -75,9 +80,9 @@ export const CampaignsView: React.FC = () => {
   const {
     campaignFilterTab,
     setCampaignFilterTab,
-    adsManagerFilters,
-    setAdsManagerFilters,
-    clearAdsManagerQuickFilter,
+    isRightSidebarOpen,
+    toggleRightSidebar,
+    displayGrouping,
     displayOrdering,
     setDisplayOrdering,
     displayProperties,
@@ -94,12 +99,19 @@ export const CampaignsView: React.FC = () => {
   const filterButtonRef = useRef<HTMLButtonElement>(null);
   const displayOptionsButtonRef = useRef<HTMLButtonElement>(null);
   const [openFilterMenu, setOpenFilterMenu] = useState<OpenFilterMenu | null>(null);
+  const [facetTab, setFacetTab] = useState('status');
+  const [accountGroups, setAccountGroups] = useState<AccountGroupOption[] | null>(null);
+  const [groupsError, setGroupsError] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [metaAccounts, setMetaAccounts] = useState<MetaAccount[]>([]);
   const [metaConnections, setMetaConnections] = useState<MetaConnection[]>([]);
   const [accountsState, setAccountsState] = useState<LoadState>('loading');
   const [accountsError, setAccountsError] = useState('');
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const { filters: adsManagerFilters, updateFilters: setAdsManagerFilters, quick, setQuick } = useCampaignViewFilters(
+    `${window.location.pathname}:${selectedAccountId ?? ''}:${campaignFilterTab}`,
+  );
   const [campaigns, setCampaigns] = useState<ReturnType<typeof hierarchyCampaignToRow>[]>([]);
   const [adSets, setAdSets] = useState<ReturnType<typeof hierarchyAdSetToRow>[]>([]);
   const [ads, setAds] = useState<ReturnType<typeof hierarchyAdToRow>[]>([]);
@@ -124,6 +136,8 @@ export const CampaignsView: React.FC = () => {
       setMetaConnections(connections);
       setHierarchyState(eligibleAccounts.length > 0 ? 'loading' : 'idle');
       setSelectedAccountId((current) => {
+        const sharedAccount = new URLSearchParams(window.location.search).get('account');
+        if (!current && sharedAccount && eligibleAccounts.some(account => account.account_id === sharedAccount)) return sharedAccount;
         if (current && eligibleAccounts.some((account) => account.account_id === current)) {
           return current;
         }
@@ -141,8 +155,21 @@ export const CampaignsView: React.FC = () => {
   }, [refreshMetaAccounts]);
 
   useEffect(() => {
-    clearAdsManagerQuickFilter();
-  }, [clearAdsManagerQuickFilter]);
+    const restoreAccount = () => {
+      const accountId = new URLSearchParams(window.location.search).get('account');
+      if (accountId && metaAccounts.some(account => account.account_id === accountId)) setSelectedAccountId(accountId);
+    };
+    window.addEventListener('popstate', restoreAccount);
+    return () => window.removeEventListener('popstate', restoreAccount);
+  }, [metaAccounts]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void apiRequest<AccountGroupOption[]>('/api/account-groups')
+      .then(groups => { if (!cancelled) setAccountGroups(groups); })
+      .catch(() => { if (!cancelled) setGroupsError(true); });
+    return () => { cancelled = true; };
+  }, []);
 
   // Rule attachments are per ad account, so they reload whenever it changes.
   useEffect(() => {
@@ -227,7 +254,9 @@ export const CampaignsView: React.FC = () => {
   }, [setIsDisplayOptionsOpen, toggleDisplayOptions]);
 
   const clearMetaCallback = () => {
-    window.history.replaceState({}, '', window.location.pathname);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('meta_connection');
+    window.history.replaceState(window.history.state, '', url);
     setReturnedConnectionId(null);
   };
 
@@ -247,11 +276,14 @@ export const CampaignsView: React.FC = () => {
     requestGenerationRef.current += 1;
     setHierarchyState('loading');
     setSelectedAccountId(accountId);
+    const url = new URL(window.location.href);
+    url.searchParams.set('account', accountId);
+    window.history.replaceState(window.history.state, '', url);
   };
 
-  const campaignFilterFields = useMemo(() => createStatusFilterFields(campaigns), [campaigns]);
-  const adSetFilterFields = useMemo(() => createStatusFilterFields(adSets), [adSets]);
-  const adFilterFields = useMemo(() => createStatusFilterFields(ads), [ads]);
+  const campaignFilterFields = useMemo(() => createLiveFields(campaigns, selectedAccount, accountGroups, 'campaigns', adSets), [campaigns, selectedAccount, accountGroups, adSets]);
+  const adSetFilterFields = useMemo(() => createLiveFields(adSets, selectedAccount, accountGroups, 'adsets', adSets), [adSets, selectedAccount, accountGroups]);
+  const adFilterFields = useMemo(() => createLiveFields(ads, selectedAccount, accountGroups, 'ads', adSets), [ads, selectedAccount, accountGroups, adSets]);
   const currentFilters = adsManagerFilters[campaignFilterTab];
   const currentFilterFields = (
     campaignFilterTab === 'campaigns'
@@ -260,8 +292,12 @@ export const CampaignsView: React.FC = () => {
         ? adSetFilterFields
         : adFilterFields
   ) as unknown as typeof campaignFilterFields;
-  const updateCurrentFilters = (clauses: FilterClause[]) =>
+  const updateCurrentFilters = (clauses: FilterClause[]) => {
     setAdsManagerFilters(campaignFilterTab, clauses);
+    const url = new URL(window.location.href);
+    if (selectedAccountId) url.searchParams.set('account', selectedAccountId);
+    window.history.replaceState(window.history.state, '', url);
+  };
   const showFilterMenu = (mode: FilterMenuMode, anchor: HTMLElement, fieldId?: string) =>
     setOpenFilterMenu({ mode, anchor, fieldId });
 
@@ -293,9 +329,24 @@ export const CampaignsView: React.FC = () => {
     return sorted;
   };
 
-  const filteredCampaigns = sortRows(applyFilterClauses(campaigns, campaignFilterFields, adsManagerFilters.campaigns));
-  const filteredAdSets = sortRows(applyFilterClauses(adSets, adSetFilterFields, adsManagerFilters.adsets));
-  const filteredAds = sortRows(applyFilterClauses(ads, adFilterFields, adsManagerFilters.ads));
+  const campaignView = filterView(campaigns, campaignFilterFields, adsManagerFilters.campaigns, quick);
+  const adSetView = filterView(adSets, adSetFilterFields, adsManagerFilters.adsets, quick);
+  const adView = filterView(ads, adFilterFields, adsManagerFilters.ads, quick);
+  const currentView = campaignFilterTab === 'campaigns' ? campaignView : campaignFilterTab === 'adsets' ? adSetView : adView;
+  const filteredCampaigns = sortRows(campaignView.visibleRows);
+  const filteredAdSets = sortRows(adSetView.visibleRows);
+  const filteredAds = sortRows(adView.visibleRows);
+  const clearFilters = () => { updateCurrentFilters([]); setQuick(null); };
+  const groupingField = displayGrouping === 'groups' ? 'group' : displayGrouping === 'rules' ? 'rule' : displayGrouping;
+  const renderGrouped = <T,>(rows: T[], fields: FilterFieldDefinition<T>[], render: (row: T) => React.ReactNode) =>
+    groupView(rows, fields, groupingField).map(group => (
+      <React.Fragment key={group.id}>
+        {group.label && <LinearDataListGroupHeader title={group.label} count={group.rows.length}
+          dotColor="var(--text-tertiary)" isCollapsed={Boolean(collapsedGroups[`${groupingField}:${group.id}`])}
+          onToggleCollapse={() => setCollapsedGroups(state => ({ ...state, [`${groupingField}:${group.id}`]: !state[`${groupingField}:${group.id}`] }))} />}
+        {(!group.label || !collapsedGroups[`${groupingField}:${group.id}`]) && group.rows.map(render)}
+      </React.Fragment>
+    ));
   const totalCurrent = campaignFilterTab === 'campaigns' ? campaigns.length : campaignFilterTab === 'adsets' ? adSets.length : ads.length;
   const filteredCurrentCount = campaignFilterTab === 'campaigns' ? filteredCampaigns.length : campaignFilterTab === 'adsets' ? filteredAdSets.length : filteredAds.length;
 
@@ -317,26 +368,26 @@ export const CampaignsView: React.FC = () => {
   const tableMinWidth = getAdsManagerTableMinWidth(tableColumns);
 
   const renderRows = () => {
-    if (currentFilters.length > 0 && filteredCurrentCount === 0) {
+    if ((currentFilters.length > 0 || quick) && filteredCurrentCount === 0) {
       return (
         <FilteredEmptyState
           noun={entityLabels[campaignFilterTab].plural}
           hiddenCount={totalCurrent}
-          onClear={() => updateCurrentFilters([])}
+          onClear={clearFilters}
         />
       );
     }
     if (campaignFilterTab === 'adsets') {
-      return filteredAdSets.map((adSet) => (
+      return renderGrouped(filteredAdSets, adSetFilterFields, (adSet) => (
         <AdSetRow key={adSet.id} adSet={adSet} properties={supportedProperties} readOnly />
       ));
     }
     if (campaignFilterTab === 'ads') {
-      return filteredAds.map((ad) => (
+      return renderGrouped(filteredAds, adFilterFields, (ad) => (
         <AdRow key={ad.id} ad={ad} properties={supportedProperties} readOnly />
       ));
     }
-    return filteredCampaigns.map((campaign) => (
+    return renderGrouped(filteredCampaigns, campaignFilterFields, (campaign) => (
       <CampaignRow
         key={campaign.id}
         campaign={campaign}
@@ -390,6 +441,11 @@ export const CampaignsView: React.FC = () => {
         />
       );
     }
+    if ((currentFilters.some(clause => clause.fieldId === 'group') || quick?.fieldId === 'group') && accountGroups === null) {
+      return <DataState title={groupsError ? 'Account group filters unavailable' : 'Loading account groups…'}
+        detail={groupsError ? 'Reload to retry, or clear the group filter.' : 'Waiting for group membership.'}
+        actionLabel={groupsError ? 'Clear filters' : undefined} onAction={groupsError ? clearFilters : undefined} />;
+    }
     if (totalCurrent === 0) {
       return (
         <DataState
@@ -419,6 +475,12 @@ export const CampaignsView: React.FC = () => {
             }}
           />
           <LinearDataListStack>{renderRows()}</LinearDataListStack>
+          {filteredCurrentCount > 0 && filteredCurrentCount < totalCurrent && (
+            <div className="campaign-filter-summary">
+              <span>{totalCurrent - filteredCurrentCount} {entityLabels[campaignFilterTab].plural} hidden by filters</span>
+              <Button size="compact" onClick={clearFilters}>Clear filters</Button>
+            </div>
+          )}
         </div>
       </LinearDataListViewport>
     );
@@ -462,7 +524,7 @@ export const CampaignsView: React.FC = () => {
           </button>
         </div>
 
-        <LinearDataListToolbar>
+        <LinearDataListToolbar className="campaign-view-toolbar">
           <LinearTabs
             tabs={[
               { id: 'campaigns', label: 'Campaigns', count: hierarchyState === 'ready' ? campaigns.length : undefined },
@@ -508,8 +570,15 @@ export const CampaignsView: React.FC = () => {
               onClose={() => setIsDisplayOptionsOpen(false)}
               anchorRef={displayOptionsButtonRef}
               entity={campaignFilterTab}
+              hasAccountGroups={accountGroups !== null}
             />
 
+            <Tooltip content={isRightSidebarOpen ? 'Close details' : 'Open details'}>
+              <button type="button" className="linear-icon-btn" aria-label={isRightSidebarOpen ? 'Close details' : 'Open details'}
+                aria-expanded={isRightSidebarOpen} onClick={toggleRightSidebar}>
+                <LinearSidebarToggleIcon size={16} isOpen={isRightSidebarOpen} />
+              </button>
+            </Tooltip>
             {selectedAccount && (
               <DropdownMenuAccount
                 account={selectedAccount}
@@ -540,7 +609,16 @@ export const CampaignsView: React.FC = () => {
         onClose={() => setOpenFilterMenu(null)}
       />
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">{renderData()}</div>
+      <div className="campaign-view-body">
+        <div className="campaign-view-list">{renderData()}</div>
+        {isRightSidebarOpen && hierarchyState === 'ready' && accountsState === 'ready' && (
+          <div className="campaign-view-details">
+            {groupsError && <p role="status" className="linear-facet-empty">Account groups unavailable. Reload to retry.</p>}
+            <LinearFacetSidebar facets={currentView.facets} activeTab={quick?.fieldId ?? facetTab} selection={quick}
+              onTabChange={id => { setFacetTab(id); setQuick(null); }} onSelect={setQuick} />
+          </div>
+        )}
+      </div>
 
       <MetaConnectionDialog
         open={isMetaDialogOpen || returnedConnectionId !== null}
