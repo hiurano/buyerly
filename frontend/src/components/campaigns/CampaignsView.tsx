@@ -542,8 +542,10 @@ export const CampaignsView: React.FC = () => {
                 ref={filterButtonRef}
                 active={currentFilters.length > 0}
                 open={Boolean(openFilterMenu)}
+                onPointerDown={(event) => event.stopPropagation()}
                 onMouseDown={(event) => event.stopPropagation()}
                 onClick={(event) => {
+                  event.stopPropagation();
                   setIsDisplayOptionsOpen(false);
                   setOpenFilterMenu((current) => current ? null : { mode: 'root', anchor: event.currentTarget });
                 }}
