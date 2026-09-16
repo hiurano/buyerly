@@ -70,7 +70,11 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   useEffect(() => {
     if (syncingRoute.current) return;
     const desiredPath = pathForTab(workspace.slug, activeTab, campaignFilterTab);
-    if (window.location.pathname !== desiredPath) navigate(desiredPath);
+    if (window.location.pathname !== desiredPath) {
+      const campaignQuery = activeTab === 'campaigns' && window.location.pathname.startsWith(`/${workspace.slug}/ads-manager/`)
+        ? window.location.search : '';
+      navigate(desiredPath + campaignQuery);
+    }
   }, [activeTab, campaignFilterTab, navigate, workspace.slug]);
 
   useEffect(() => {
