@@ -37,6 +37,7 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
+          node scripts/check-campaign-filters.cjs
           npm run build
 
       - name: Upload built frontend

@@ -242,7 +242,10 @@ class TestReactFrontendContract(unittest.TestCase):
         ):
             self.assertIn(contract, self.campaigns_view)
 
-        self.assertNotIn("CampaignRightSidebar", self.campaigns_view)
+        self.assertIn("LinearFacetSidebar", self.campaigns_view)
+        self.assertIn("currentView.facets", self.campaigns_view)
+        self.assertIn("useCampaignViewFilters", self.campaigns_view)
+        self.assertIn("groupView(rows, fields, groupingField)", self.campaigns_view)
         self.assertNotIn("toggleCampaignDelivery", self.campaigns_view)
         self.assertNotIn("disabled: true", self.campaigns_view)
         self.assertNotIn("Today · read-only", self.campaigns_view)
@@ -280,7 +283,8 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertIn("<LinearCheckbox checked={false} hidden />", row)
             self.assertIn("disabled={readOnly}", row)
         self.assertIn("showViewModes={false}", self.display_options)
-        self.assertIn("showGrouping={false}", self.display_options)
+        self.assertIn("showGrouping", self.display_options)
+        self.assertIn("Account groups", self.display_options)
         self.assertNotIn("Campaign groups", self.display_options)
         self.assertNotIn("'ROI'", self.display_options)
         self.assertIn("--action-primary:", self.tokens)

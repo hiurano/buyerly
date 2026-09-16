@@ -80,7 +80,7 @@ IconButton, Dialog, EmptyState and Skeleton are required product patterns but do
 
 - hierarchy is `Campaigns → Ad sets → Ads` and uses account/campaign data returned by the authenticated workspace API;
 - identity, name, parent relationship, delivery status and supported budget come from Meta inventory at campaign, ad set and ad level, while period metrics come from Insights; an entity remains visible when its period activity is zero;
-- level tabs, delivery-status filters, supported column visibility and ordering operate on the selected account's live hierarchy; demo-only grouping, board and ROI controls remain unavailable until their server data exists;
+- level tabs, primary and sidebar filters, grouping, supported column visibility and ordering operate on the selected account's live hierarchy; board and ROI controls remain unavailable until their server data exists;
 - Meta connection is a real OAuth flow: explanation, Facebook authorization, account discovery, explicit import and result;
 - imported ad accounts are not the same entity as campaigns and must not be rendered as campaign rows;
 - fixtures such as LuckySpin, RoyalBet, NeonSlots and AcePlay are development examples only and must not ship as current workspace data;
@@ -161,3 +161,20 @@ Full mobile support — touch-safe targets, wrapping toolbars, compact navigatio
 - no fixture is presented as live workspace or Meta data;
 - no document-level horizontal overflow at desktop widths;
 - API payloads, workspace isolation, roles and security boundaries are preserved unless explicitly in scope.
+
+## Ads Manager filter layers
+
+Main conditions are encoded in the URL along with the ad account and entity level.
+Multi-membership fields support include-all, include-any and both exclusion modes.
+`LinearFacetSidebar` counts the main-filter result before applying one quick selection.
+Selecting another value replaces that selection; changing facet tabs clears it.
+Quick selections are scoped to route/account/entity in session storage, outside the URL.
+Display grouping and ordering apply afterwards; a row can appear in multiple groups
+when it has multiple assignments, without changing the unique result count.
+
+Facet data comes from live inventory, `/api/account-groups`, and the selected
+account's rule snapshots. Account groups describe account membership, not custom
+campaign labels. Rule counts describe assignment scope, not automation enablement.
+Status, account groups and rules can also group rows. Board mode remains unavailable.
+The facet layout stacks below the list on narrow screens; viewport validation is
+still required before declaring the whole application mobile-ready.

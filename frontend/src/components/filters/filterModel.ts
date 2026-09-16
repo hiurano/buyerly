@@ -3,6 +3,10 @@ export type FilterValue = string | number | boolean;
 export type FilterOperator =
   | 'is'
   | 'is_not'
+  | 'includes_all'
+  | 'excludes_all'
+  | 'includes_any'
+  | 'excludes_any'
   | 'contains'
   | 'not_contains'
   | 'gt'
@@ -55,6 +59,10 @@ export interface FilterFieldDefinition<T> {
 export const FILTER_OPERATOR_LABELS: Record<FilterOperator, string> = {
   is: 'is',
   is_not: 'is not',
+  includes_all: 'include all of',
+  excludes_all: 'exclude if all',
+  includes_any: 'include any of',
+  excludes_any: 'exclude if any of',
   contains: 'contains',
   not_contains: 'does not contain',
   gt: 'is greater than',
@@ -88,11 +96,16 @@ export const matchesFilterClause = <T>(
 
   if (selectedValues.length === 0) return true;
 
-  if (clause.operator === 'is' || clause.operator === 'is_not') {
+  if (clause.operator === 'includes_all' || clause.operator === 'excludes_all') {
+    const all = selectedValues.every((selected) => itemValues.some((value) => equalValue(value, selected)));
+    return clause.operator === 'includes_all' ? all : !all;
+  }
+
+  if (['is', 'is_not', 'includes_any', 'excludes_any'].includes(clause.operator)) {
     const hasMatch = itemValues.some((itemValue) =>
       selectedValues.some((selectedValue) => equalValue(itemValue, selectedValue))
     );
-    return clause.operator === 'is' ? hasMatch : !hasMatch;
+    return clause.operator === 'is' || clause.operator === 'includes_any' ? hasMatch : !hasMatch;
   }
 
   const itemValue = itemValues[0];

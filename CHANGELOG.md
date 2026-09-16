@@ -20,6 +20,8 @@
 
 ### Added
 
+- Ads Manager: Linear-style sidebar facets count the primary-filter result and apply one independent quick selection. Main filters are shareable in the URL; display controls group real rows by status, account groups or scoped rules. Multi-membership filters support any/all and exclusion.
+
 - В настройках появился раздел `Profile`: аватар, текущий email и полное имя. Email меняется прямо из интерфейса — модальное окно в два шага запрашивает новый адрес и шестизначный код. Эндпоинты `/api/auth/request-email-change` и `/api/auth/verify-email-change` существовали с самого начала, но ни один экран их не вызывал, поэтому сменить почту было невозможно без прямого обращения к API.
 - Раздел построен на существующих токенах и примитивах (`Input`, `Button`, геометрия диалога от `MetaConnectionDialog`); добавлены только `LinearPencilIcon` и классы строк профиля. Поля `Title`, `Username` и действие `Leave workspace`, присутствующие в эталонном экране Linear, намеренно не перенесены: под них нет серверной поддержки (`UpdateProfileRequest` не принимает `username`, у `User` нет `title`, а `leave_workspace` отклоняет владельца воркспейса), а нерабочий контрол нарушает п.5 `docs/UI_CONTRACT.md`.
 - Inbox подключён к workspace-scoped журналу `/api/audit-events`: реальные события получили серверные фильтры, поиск, пагинацию, подробности и безопасный Undo только при `can_undo`; демо-welcome, локальные read/delete/archive/snooze и фиктивный unread badge удалены, а mobile layout переключается между списком и деталями без горизонтального overflow.
