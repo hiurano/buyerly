@@ -21,6 +21,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
 import {
@@ -514,14 +515,20 @@ export const CampaignsView: React.FC = () => {
             </div>
             <h2 className="text-[13px] font-medium tracking-[-0.01em] text-[var(--text-secondary)]">Ads Manager</h2>
           </div>
-          <button
-            className="inline-flex h-7 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-[12px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)]"
-            type="button"
-            onClick={openMetaDialog}
-          >
-            <LinearPlusIcon size={14} />
-            <span>Connect Facebook</span>
-          </button>
+          {selectedAccount ? (
+            <DropdownMenuAccount
+              account={selectedAccount}
+              accounts={metaAccounts}
+              selectedAccountId={selectedAccountId}
+              onSelect={selectAccount}
+              onConnect={openMetaDialog}
+            />
+          ) : (
+            <Button size="compact" className="shrink-0 gap-1.5 whitespace-nowrap" onClick={openMetaDialog}>
+              <LinearPlusIcon size={14} aria-hidden="true" />
+              <span>Connect Facebook</span>
+            </Button>
+          )}
         </div>
 
         <LinearDataListToolbar className="campaign-view-toolbar">
@@ -582,14 +589,6 @@ export const CampaignsView: React.FC = () => {
                 <LinearSidebarToggleIcon size={16} isOpen={isRightSidebarOpen} />
               </button>
             </Tooltip>
-            {selectedAccount && (
-              <DropdownMenuAccount
-                account={selectedAccount}
-                accounts={metaAccounts}
-                selectedAccountId={selectedAccountId}
-                onSelect={selectAccount}
-              />
-            )}
           </div>
         </LinearDataListToolbar>
 
@@ -646,6 +645,7 @@ interface DropdownMenuAccountProps {
   accounts: MetaAccount[];
   selectedAccountId: string | null;
   onSelect: (accountId: string) => void;
+  onConnect: () => void;
 }
 
 const DropdownMenuAccount: React.FC<DropdownMenuAccountProps> = ({
@@ -653,6 +653,7 @@ const DropdownMenuAccount: React.FC<DropdownMenuAccountProps> = ({
   accounts,
   selectedAccountId,
   onSelect,
+  onConnect,
 }) => {
   return (
     <DropdownMenu>
@@ -674,6 +675,13 @@ const DropdownMenuAccount: React.FC<DropdownMenuAccountProps> = ({
             {candidate.account_id === selectedAccountId && <span aria-hidden="true">✓</span>}
           </DropdownMenuItem>
         ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={onConnect}>
+          <span className="flex items-center gap-1.5">
+            <LinearPlusIcon size={14} aria-hidden="true" />
+            Add Facebook account
+          </span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
