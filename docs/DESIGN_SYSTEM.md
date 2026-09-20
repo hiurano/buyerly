@@ -178,3 +178,7 @@ campaign labels. Rule counts describe assignment scope, not automation enablemen
 Status, account groups and rules can also group rows. Board mode remains unavailable.
 The facet layout stacks below the list on narrow screens; viewport validation is
 still required before declaring the whole application mobile-ready.
+
+## Public website
+
+`/` is a static, text-only landing page. Public pages share Buyerly / Contact / Log in navigation and a footer with the operator identity, Contact and Legal (Privacy, Terms). Legal articles use a 624px reading column, linked contents and plain effective dates. The light palette and `--site-*` tokens come from `tokens.css`; the public scale is larger than the product UI. `/data-deletion` remains reachable through Privacy and by its existing URL.

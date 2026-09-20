@@ -133,16 +133,18 @@ def create_app() -> FastAPI:
         app.mount("/static", StaticFiles(directory=legal_assets_dir), name="legal-assets")
 
     public_documents = {
+        "/": "landing.html",
         "/privacy": "privacy.html",
         "/terms": "terms.html",
         "/data-deletion": "data-deletion.html",
     }
 
+    @app.get("/", include_in_schema=False)
     @app.get("/privacy", include_in_schema=False)
     @app.get("/terms", include_in_schema=False)
     @app.get("/data-deletion", include_in_schema=False)
     async def serve_public_document(request: Request):
-        document_path = os.path.join(public_dir, public_documents[request.url.path])
+        document_path = os.path.join(frontend_dir, public_documents[request.url.path])
         if os.path.exists(document_path):
             return FileResponse(
                 document_path,
@@ -150,7 +152,6 @@ def create_app() -> FastAPI:
             )
         return JSONResponse(status_code=404, content={"detail": "Document not found"})
 
-    @app.get("/")
     @app.get("/login")
     @app.get("/auth/email/verify")
     @app.get("/create-workspace")
