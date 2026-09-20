@@ -64,6 +64,8 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("buyerly-app:${EXPECTED_SHA}", self.script)
         self.assertIn('bash "${SCRIPT_DIR}/verify_docker_log_rotation.sh"', self.script)
         early_exit = self.script[:self.script.index("Creating a mandatory database backup")]
+        self.assertIn("INITIAL_ENV_HASH", early_exit)
+        self.assertIn("FINAL_ENV_HASH", early_exit)
         self.assertIn("post_deploy_smoke.py", early_exit)
         self.assertIn("is already deployed and healthy", self.script)
 
