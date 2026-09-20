@@ -216,9 +216,19 @@ if ! flock -w "${DEPLOY_LOCK_TIMEOUT_SECONDS}" 9; then
     exit 1
 fi
 
+INITIAL_ENV_HASH=""
+if [[ -f .env ]]; then
+    INITIAL_ENV_HASH=$(sha256sum .env 2>/dev/null || md5sum .env 2>/dev/null || cksum .env 2>/dev/null || true)
+fi
+
 ensure_postgres_password
 ensure_email_settings
 ensure_meta_token_encryption_key
+
+FINAL_ENV_HASH=""
+if [[ -f .env ]]; then
+    FINAL_ENV_HASH=$(sha256sum .env 2>/dev/null || md5sum .env 2>/dev/null || cksum .env 2>/dev/null || true)
+fi
 
 if [[ -n "${EXPECTED_SHA}" ]]; then
     CURRENT_REPO_SHA=$(git rev-parse HEAD 2>/dev/null || true)
@@ -232,7 +242,8 @@ if [[ -n "${EXPECTED_SHA}" ]]; then
     WORKER_HEALTH=$(docker inspect --format '{{.State.Health.Status}}' buyerly-worker 2>/dev/null || true)
     DB_HEALTH=$(docker inspect --format '{{.State.Health.Status}}' buyerly-db 2>/dev/null || true)
     REDIS_HEALTH=$(docker inspect --format '{{.State.Health.Status}}' buyerly-redis 2>/dev/null || true)
-    if [[ "${CURRENT_REPO_SHA}" == "${EXPECTED_SHA}" \
+    if [[ "${INITIAL_ENV_HASH}" == "${FINAL_ENV_HASH}" \
+          && "${CURRENT_REPO_SHA}" == "${EXPECTED_SHA}" \
           && "${DEPLOYED_API_IMAGE}" == "buyerly-app:${EXPECTED_SHA}" \
           && "${DEPLOYED_WEB_IMAGE}" == "buyerly-web:${EXPECTED_SHA}" \
           && "${DEPLOYED_BOT_IMAGE}" == "buyerly-app:${EXPECTED_SHA}" \
