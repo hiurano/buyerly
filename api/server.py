@@ -64,7 +64,8 @@ def create_app() -> FastAPI:
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        if request.url.path.startswith("/static/") or request.url.path == "/":
+        # Public HTML owns its cache policy; `/` is now a static landing page.
+        if request.url.path.startswith("/static/"):
             response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"
