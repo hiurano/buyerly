@@ -45,6 +45,19 @@ wait_for_container_file() {
     return 1
 }
 
+wait_for_ready() {
+    local endpoint="${1:-http://127.0.0.1:8080/health/ready}"
+    local deadline=$((SECONDS + HEALTH_TIMEOUT_SECONDS))
+    while (( SECONDS < deadline )); do
+        if curl -fsS "${endpoint}" >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 2
+    done
+    echo "[ERROR] ${endpoint} did not return 200 within ${HEALTH_TIMEOUT_SECONDS}s."
+    return 1
+}
+
 ensure_postgres_password() {
     if grep -q '^POSTGRES_PASSWORD=' .env 2>/dev/null; then
         return
@@ -63,10 +76,16 @@ ensure_postgres_password() {
 ensure_email_settings() {
     if [[ -f .env ]]; then
         if [[ -n "${RESEND_API_KEY:-}" ]]; then
+            local clean_key="${RESEND_API_KEY}"
+            clean_key="${clean_key#\"}"
+            clean_key="${clean_key%\"}"
+            clean_key="${clean_key#\'}"
+            clean_key="${clean_key%\'}"
+            clean_key=$(printf '%s' "${clean_key}" | tr -d ' \t\r\n')
             if grep -q '^RESEND_API_KEY=' .env 2>/dev/null; then
-                sed -i "s|^RESEND_API_KEY=.*|RESEND_API_KEY=${RESEND_API_KEY}|" .env
+                sed -i "s|^RESEND_API_KEY=.*|RESEND_API_KEY=${clean_key}|" .env
             else
-                printf '\nRESEND_API_KEY=%s\n' "${RESEND_API_KEY}" >> .env
+                printf '\nRESEND_API_KEY=%s\n' "${clean_key}" >> .env
             fi
         fi
         if ! grep -q '^EMAIL_FROM=' .env 2>/dev/null; then
@@ -187,6 +206,7 @@ rollback() {
         wait_for_container buyerly-worker
         docker compose up -d --no-deps web
         wait_for_container buyerly-web
+        wait_for_ready || true
         echo "[ROLLBACK] Previous service images restored."
         return
     fi
@@ -364,7 +384,11 @@ if ! wait_for_container buyerly-web; then
     rollback
     exit 1
 fi
-curl -fsS http://127.0.0.1:8080/health/ready >/dev/null
+if ! wait_for_ready; then
+    docker compose logs --tail=120 web api
+    rollback
+    exit 1
+fi
 if ! bash "${SCRIPT_DIR}/verify_docker_log_rotation.sh"; then
     rollback
     exit 1

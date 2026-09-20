@@ -83,6 +83,7 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("wait_for_container buyerly-telegram-bot", self.script)
         self.assertIn("wait_for_container buyerly-worker", self.script)
         self.assertIn("wait_for_container buyerly-web", self.script)
+        self.assertIn("wait_for_ready", self.script)
         self.assertIn("rollback", self.script)
 
     def test_docker_logs_are_bounded_for_every_service(self):

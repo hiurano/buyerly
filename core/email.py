@@ -35,9 +35,11 @@ async def send_email(
             if text_content:
                 payload["text"] = text_content
 
+            clean_key = settings.RESEND_API_KEY.strip("\"' \t\r\n")
             headers = {
-                "Authorization": f"Bearer {settings.RESEND_API_KEY.strip()}",
-                "Content-Type": "application/json"
+                "Authorization": f"Bearer {clean_key}",
+                "Content-Type": "application/json",
+                "User-Agent": "buyerly/1.0",
             }
 
             async with httpx.AsyncClient(timeout=10.0) as client:
