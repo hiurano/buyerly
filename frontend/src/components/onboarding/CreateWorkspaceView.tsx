@@ -79,7 +79,7 @@ export const CreateWorkspaceView: React.FC<CreateWorkspaceViewProps> = ({
       <section className="buyerly-workspace-create">
         <BuyerlyBrand />
         <h1>Create a workspace</h1>
-        <p className="buyerly-auth-copy">Move work forward across your media buying team.</p>
+        <p className="buyerly-auth-copy">Move work forward across your media buying&nbsp;team.</p>
         <form onSubmit={submit} noValidate>
           <label className="buyerly-auth-field buyerly-auth-field--labeled">
             <span>Name</span>

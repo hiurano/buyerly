@@ -123,7 +123,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <>
             <h1>Check your email</h1>
             <p className="buyerly-auth-copy">
-              We sent you a temporary login link and a six-digit code at <strong>{email}</strong>.
+              We sent you a temporary login link and a six-digit code to
+              <strong className="buyerly-auth-email">{email}</strong>
             </p>
             {error && <p className="buyerly-auth-error" role="alert">{error}</p>}
             <button className="buyerly-auth-button" type="button" onClick={() => setStage('code')}>
@@ -145,7 +146,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
         {stage === 'code' && (
           <form onSubmit={verifyCode} noValidate>
             <h1>Enter your login code</h1>
-            <p className="buyerly-auth-copy">Enter the code sent to <strong>{email}</strong>.</p>
+            <p className="buyerly-auth-copy">
+              Enter the code sent to
+              <strong className="buyerly-auth-email">{email}</strong>
+            </p>
             <label className="buyerly-auth-field buyerly-auth-code-field">
               <span className="sr-only">Six-digit login code</span>
               <input
