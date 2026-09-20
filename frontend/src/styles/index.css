@@ -1685,7 +1685,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 
 .buyerly-auth-card,
 .buyerly-workspace-create {
-  width: min(100%, 340px);
+  width: min(100%, 360px);
   text-align: center;
 }
 
@@ -1729,16 +1729,29 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 
 .buyerly-auth-copy {
   margin: -7px auto 24px;
-  max-width: 310px;
+  max-width: 100%;
   color: #6f7175;
   font-size: 13px;
   line-height: 1.55;
+  text-wrap: balance;
 }
 
 .buyerly-auth-copy strong {
-  display: block;
-  color: #44464a;
+  color: #202124;
   font-weight: 520;
+}
+
+.buyerly-auth-email {
+  display: block;
+  margin-top: 4px;
+  color: #202124;
+  font-weight: 520;
+  word-break: break-all;
+}
+
+.buyerly-auth-page--dark .buyerly-auth-copy strong,
+.buyerly-auth-page--dark .buyerly-auth-email {
+  color: #f4f4f5;
 }
 
 .buyerly-auth-field {
