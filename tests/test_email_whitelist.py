@@ -364,3 +364,71 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
                 select(AllowedEmail).where(AllowedEmail.id == entry_id)
             )).scalar_one_or_none()
             self.assertIsNone(entry_after)
+
+
+class TestEmailDelivery(unittest.IsolatedAsyncioTestCase):
+    async def test_send_email_strips_key_and_sets_user_agent(self):
+        from core.email import send_email
+        with patch("core.email.settings") as mock_settings, \
+             patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+            mock_settings.RESEND_API_KEY = "  \"re_clean_secret_key_123\" \r\n"
+            mock_settings.EMAIL_FROM = "Buyerly <team@buyerly.app>"
+            mock_post.return_value = SimpleNamespace(status_code=200, text='{"id": "msg_123"}')
+
+            result = await send_email(
+                to_email="  user@example.com  ",
+                subject="Test Subject",
+                html_content="<p>Hello</p>",
+                text_content="Hello",
+            )
+            self.assertTrue(result)
+            mock_post.assert_called_once()
+            args, kwargs = mock_post.call_args
+            headers = kwargs.get("headers", {})
+            self.assertEqual(headers.get("Authorization"), "Bearer re_clean_secret_key_123")
+            self.assertEqual(headers.get("User-Agent"), "buyerly/1.0")
+            self.assertEqual(headers.get("Content-Type"), "application/json")
+            payload = kwargs.get("json", {})
+            self.assertEqual(payload.get("to"), ["user@example.com"])
+            self.assertEqual(payload.get("from"), "Buyerly <team@buyerly.app>")
+            self.assertEqual(payload.get("subject"), "Test Subject")
+            self.assertEqual(payload.get("html"), "<p>Hello</p>")
+            self.assertEqual(payload.get("text"), "Hello")
+
+    async def test_send_email_handles_api_failure(self):
+        from core.email import send_email
+        with patch("core.email.settings") as mock_settings, \
+             patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+            mock_settings.RESEND_API_KEY = "re_some_key"
+            mock_settings.EMAIL_FROM = "Buyerly <team@buyerly.app>"
+            mock_post.return_value = SimpleNamespace(status_code=403, text='{"message": "Forbidden"}')
+
+            result = await send_email(
+                to_email="user@example.com",
+                subject="Test",
+                html_content="<p>Test</p>",
+            )
+            self.assertFalse(result)
+
+    async def test_send_email_dev_fallback_when_no_key(self):
+        from core.email import send_email
+        with patch("core.email.settings") as mock_settings:
+            mock_settings.RESEND_API_KEY = ""
+            mock_settings.EMAIL_FROM = "Buyerly <team@buyerly.app>"
+
+            result = await send_email(
+                to_email="user@example.com",
+                subject="Test",
+                html_content="<p>Test</p>",
+            )
+            self.assertTrue(result)
+
+    async def test_send_email_rejects_empty_recipient(self):
+        from core.email import send_email
+        result = await send_email(
+            to_email="   ",
+            subject="Test",
+            html_content="<p>Test</p>",
+        )
+        self.assertFalse(result)
+
