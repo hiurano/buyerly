@@ -6,6 +6,13 @@ ROOT = Path(__file__).parents[1]
 
 
 class TestReactFrontendContract(unittest.TestCase):
+    def test_public_typography_is_scoped_to_public_composition(self):
+        public_styles = (ROOT / "frontend/public/static/css/legal.css").read_text()
+        self.assertIn("var(--site-heading-size)", public_styles)
+        self.assertNotIn("--site-heading-size", self.styles)
+        self.assertIn("--site-heading-size", self.tokens)
+        self.assertNotIn("--site-heading-size:", public_styles)
+
     @classmethod
     def setUpClass(cls):
         cls.app = (ROOT / "frontend" / "src" / "App.tsx").read_text()

@@ -280,3 +280,35 @@ html[data-theme='light'] {
 html[data-theme='dark'] {
   color-scheme: dark;
 }
+
+/* Public website: long-form reading and marketing scale, independent of app density. */
+:root {
+  --site-width: 1200px;
+  --site-background: var(--bg-canvas);
+  --site-border-color: var(--color-border-secondary);
+  --site-reading-width: 624px;
+  --site-gutter: clamp(24px, 5vw, 72px);
+  --site-header-height: 72px;
+  --site-logo-size: 32px;
+  --site-brand-size: 22px;
+  --site-body-size: 16px;
+  --site-small-size: 13px;
+  --site-heading-size: clamp(40px, 5vw, 64px);
+  --site-heading-leading: 1.06;
+  --site-heading-tracking: -0.035em;
+  --site-section-size: 24px;
+  --site-lead-size: clamp(18px, 2vw, 22px);
+  --site-body-leading: 1.7;
+  --site-space-xs: 8px;
+  --site-space-sm: 16px;
+  --site-space-md: 24px;
+  --site-space-lg: 40px;
+  --site-space-xl: 64px;
+  --site-section-space: clamp(56px, 8vw, 112px);
+  --site-hero-space: clamp(88px, 12vw, 176px);
+  --site-footer-brand-width: 440px;
+  --site-footer-gap: clamp(32px, 6vw, 88px);
+  --site-focus-width: 2px;
+  --site-focus-offset: 4px;
+  --site-border-width: 1px;
+}

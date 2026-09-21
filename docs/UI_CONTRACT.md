@@ -77,6 +77,17 @@ A shared primitive owns its own geometry. If a page needs a different height for
 - reporting success from a response that was never read — an endpoint returning HTTP 200 with a per-item `errors` array has not necessarily succeeded;
 - reintroducing the retired authenticated interface.
 
+## Public website
+
+The static landing page and legal documents in `frontend/public/` use the
+Linear-inspired public website scale: up to 64px headings and 16px reading text,
+with semantic `--site-*` tokens. These values are scoped to public composition
+and do not change product control geometry or density. Public navigation uses
+native links and requires no React hydration. Vite emits shared tokens, public
+CSS and local fonts as fingerprinted assets. The landing page, Privacy and Terms
+share header/footer markup, verified by the public-page tests. Only Privacy and
+Terms are in footer Legal; deletion instructions remain linked from Privacy.
+
 ## Known gaps
 
 Recorded so that nobody has to rediscover them, and so this contract does not claim a standard the product has not met:

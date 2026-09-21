@@ -1,83 +1,69 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Instructions for deleting Buyerly account and Meta connection data.">
-  <title>Data Deletion Instructions — Buyerly</title>
+  <meta name="description" content="How to stop connected access and request deletion of your Buyerly data.">
+  <title>Data deletion — Buyerly</title>
   <link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg">
-  <link rel="stylesheet" href="/static/css/legal.css?v=2.0.0">
+  <link rel="stylesheet" href="/static/css/legal.css">
 </head>
 <body>
-  <main class="legal-shell">
-    <header class="legal-header">
-      <a class="legal-brand" href="/">
-        <img src="/static/icons/buyerly_logo_badge.svg" alt="Buyerly logo">
-        <span>buyerly</span>
-      </a>
-      <nav class="legal-nav" aria-label="Legal documents">
-        <a href="/privacy">Privacy</a>
-        <a href="/terms">Terms</a>
-        <a href="/data-deletion" aria-current="page">Data deletion</a>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="site-container site-header-inner">
+      <a class="site-brand" href="/" aria-label="Buyerly home"><img src="/static/icons/buyerly_logo_badge.svg" width="32" height="32" alt=""><span>Buyerly</span></a>
+      <nav class="site-nav" aria-label="Main navigation">
+        <a href="#contact">Contact</a>
+        <a href="/login">Log in</a>
       </nav>
-    </header>
-
-    <article class="legal-card">
-      <div class="legal-hero">
-        <p class="legal-kicker">Buyerly legal</p>
-        <h1>Data Deletion Instructions</h1>
-        <p class="legal-lead">You can revoke future Meta access immediately and ask Buyerly to delete the data associated with your Buyerly account or connected Facebook profile.</p>
-        <span class="legal-date">Effective 17 August 2026</span>
-      </div>
-
-      <div class="legal-content">
-        <section>
-          <h2>1. Revoke Meta access</h2>
-          <p>You can stop future access by removing Buyerly from the Business Integrations or Apps and Websites settings of the Facebook account that authorised the connection. Meta controls the exact location and wording of this setting.</p>
-          <p>Revoking access prevents new Meta API requests with that authorisation. It does not automatically remove information already stored by Buyerly, so complete the deletion request below as well.</p>
-        </section>
-
-        <section>
-          <h2>2. Send a deletion request</h2>
-          <ol>
-            <li>Email <a href="mailto:contact@buyerly.app">contact@buyerly.app</a> with the subject <strong>Buyerly data deletion request</strong>.</li>
-            <li>Include your Buyerly username or Telegram username and the display name of the connected Facebook profile or advertising account.</li>
-            <li>State whether you want to delete one Meta connection or your complete Buyerly account.</li>
-            <li>Complete the ownership verification we send through the Buyerly account or another channel already associated with it.</li>
-          </ol>
-          <div class="legal-notice"><strong>Never include</strong> your Facebook password, access token, cookies, two-factor code or recovery code in the request.</div>
-          <a class="legal-contact" href="mailto:contact@buyerly.app?subject=Buyerly%20data%20deletion%20request">Start a deletion request</a>
-        </section>
-
-        <section>
-          <h2>3. What we delete</h2>
-          <p>After verification, the requested scope may include:</p>
-          <ul>
-            <li>the encrypted Meta access token and connection status;</li>
-            <li>the Meta user identifier and display name stored for the connection;</li>
-            <li>Business Portfolio and advertising account mappings linked to that connection;</li>
-            <li>Buyerly profile information when the complete account is being deleted;</li>
-            <li>saved rules, preferences and performance data associated only with the deleted account.</li>
-          </ul>
-          <p>Limited security, transaction or audit records may be retained or de-identified when required to protect users, demonstrate completed actions, resolve disputes or comply with law. Residual encrypted copies disappear through the normal backup-retention cycle.</p>
-        </section>
-
-        <section>
-          <h2>4. Timing and confirmation</h2>
-          <p>We aim to verify and complete a valid deletion request within 30 days. If a legal or security obligation requires more time or limited retention, we will explain that in our response. We will confirm when the active Buyerly records covered by the request have been deleted or de-identified.</p>
-        </section>
-
-        <section>
-          <h2>5. Questions</h2>
-          <p>For questions about the deletion process, contact <a href="mailto:contact@buyerly.app">contact@buyerly.app</a>. More information about Buyerly's data practices is available in our <a href="/privacy">Privacy Policy</a>.</p>
-        </section>
-      </div>
-    </article>
-
-    <footer class="legal-footer">
-      <div>© 2026 Individual Entrepreneur Artem Petruchenko · Tax ID: 305879234. All rights reserved.</div>
-      <div class="legal-address">Georgia, Tbilisi, Vake District, Besarion Zhgenti Street, No. 49, Apartment 20</div>
-    </footer>
+    </div>
+  </header>
+  <main id="main" class="legal-article" tabindex="-1">
+    <h1>Data deletion</h1>
+    <p class="legal-date">Effective date: <time datetime="2026-09-20">September 20, 2026</time></p>
+    <p class="legal-intro">How to stop connected access and request deletion of your Buyerly data.</p>
+    <nav class="legal-contents" aria-label="On this page">
+      <ol>
+          <li><a href="#request">Send a deletion request</a></li>
+          <li><a href="#disconnect">Stop connected access</a></li>
+          <li><a href="#scope">What happens next</a></li>
+      </ol>
+    </nav>
+      <section id="request">
+        <h2>1. Send a deletion request</h2>
+        <p>Email <a href="mailto:contact@buyerly.app">contact@buyerly.app</a> from your Buyerly account email with the subject <strong>Buyerly data deletion request</strong>. Identify your workspace and say whether you want to delete a Meta connection or your Buyerly account. If you no longer have access to that email, contact us to arrange ownership verification.</p>
+        <p>We may ask for information needed to verify your authority over the account or workspace. Never send passwords, access tokens, cookies or sign-in codes.</p>
+      </section>
+      <section id="disconnect">
+        <h2>2. Stop connected access</h2>
+        <p>You can disconnect a Meta connection in Buyerly or remove Buyerly in Meta’s Business Integrations or Apps and Websites settings. Disconnecting in Buyerly deletes the stored connection token and disables linked advertising accounts in Buyerly. Revoking permission in Meta stops access under that authorisation.</p>
+        <p>Neither step by itself erases all historical records held by Buyerly. Send a deletion request for those records. This process does not delete campaigns or accounts on Meta.</p>
+      </section>
+      <section id="scope">
+        <h2>3. What happens next</h2>
+        <p>After verification, we delete the personal data covered by your request, including connection credentials and profile data as applicable. We assess related advertising data, rules and shared workspace records according to your authority and the rights of other members.</p>
+        <p>We explain any limited retention needed for security, legal obligations or disputes. Backup copies expire through the backup-retention cycle. We respond within applicable legal time limits and confirm the outcome. More information is in <a href="/privacy#deletion">Privacy</a>.</p>
+      </section>
   </main>
+  <footer class="site-footer">
+    <div class="site-container site-footer-grid">
+      <div class="site-operator">
+        <a class="site-brand" href="/" aria-label="Buyerly home"><img src="/static/icons/buyerly_logo_badge.svg" width="32" height="32" alt=""><span>Buyerly</span></a>
+        <p>Buyerly is operated by<br><strong>individual entrepreneur ARTEM PETRUCHENKO</strong></p>
+        <p>Identification Number: 305879234</p>
+        <address>Georgia, Tbilisi, Vake District, Besarion Zhgenti Street, No. 49, Apartment 20</address>
+        <p class="site-copyright">© 2026 Buyerly</p>
+      </div>
+      <section id="contact" aria-labelledby="contact-heading">
+        <h2 id="contact-heading">Contact</h2>
+        <a href="mailto:contact@buyerly.app">contact@buyerly.app</a>
+      </section>
+      <nav class="site-footer-links" aria-label="Legal">
+        <h2>Legal</h2>
+        <a href="/privacy">Privacy</a><a href="/terms">Terms</a>
+      </nav>
+    </div>
+  </footer>
 </body>
 </html>
