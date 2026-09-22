@@ -28,6 +28,8 @@
 
 ### Added
 
+- Публичный сайт: под героем лендинга появился ряд из трёх пунктов о том, что делает сервис, а в футере — колонка `Company` со ссылкой на новую страницу `/about` с юридическими данными оператора. Ряд построен по приёму лендинга Linear: лейбл и предложение идут одним кеглем, иерархию несут только вес (`--font-weight-medium`) и цвет (`--text-primary` / `--text-secondary`); новых значений в `tokens.css` не добавлено. Маршрут `/about` зарегистрирован в `api/server.py`, `frontend/vite.config.ts`, `frontend/nginx.conf`, а слаг `about` зарезервирован в `SYSTEM_ROOTS` и `RESERVED_WORKSPACE_SLUGS`, иначе воркспейс мог бы его занять.
+
 - Ads Manager: Linear-style sidebar facets count the primary-filter result and apply one independent quick selection. Main filters are shareable in the URL; display controls group real rows by status, account groups or scoped rules. Multi-membership filters support any/all and exclusion.
 
 - В настройках появился раздел `Profile`: аватар, текущий email и полное имя. Email меняется прямо из интерфейса — модальное окно в два шага запрашивает новый адрес и шестизначный код. Эндпоинты `/api/auth/request-email-change` и `/api/auth/verify-email-change` существовали с самого начала, но ни один экран их не вызывал, поэтому сменить почту было невозможно без прямого обращения к API.

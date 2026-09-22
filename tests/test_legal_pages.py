@@ -9,7 +9,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_ROOT = PROJECT_ROOT / "frontend" / "public"
 BUILD_ROOT = PROJECT_ROOT / "frontend" / "dist"
 DOCUMENTS = {
-    "landing.html": ("Your Meta Ads operations", "in one place."),
+    "landing.html": ("Your Meta Ads operations", "in one place.", "Routine work, automated"),
+    "about.html": ("About", "Company", "Get in touch"),
     "privacy.html": ("Privacy", "Data we use", "Your choices and deletion"),
     "terms.html": ("Terms", "Advertising and automation", "Ending access and changes"),
     "data-deletion.html": ("Data deletion", "Send a deletion request", "What happens next"),
@@ -41,7 +42,7 @@ class TestLegalPageFiles(unittest.TestCase):
         nginx = (PROJECT_ROOT / "frontend" / "nginx.conf").read_text()
         self.assertIn("location = / {", nginx)
         self.assertIn("try_files /landing.html =404", nginx)
-        self.assertIn("^/(privacy|terms|data-deletion)/?$", nginx)
+        self.assertIn("^/(about|privacy|terms|data-deletion)/?$", nginx)
         for filename in DOCUMENTS:
             source = (PUBLIC_ROOT / filename).read_text()
             built = (BUILD_ROOT / filename).read_text()

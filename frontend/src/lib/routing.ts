@@ -14,6 +14,7 @@ export type Route =
 
 const SYSTEM_ROOTS = new Set([
   // Root segments the server itself serves. Everything else is a workspace slug.
+  'about',
   'api',
   'assets',
   'auth',
