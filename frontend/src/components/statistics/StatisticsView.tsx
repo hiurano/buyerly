@@ -784,7 +784,7 @@ export const StatisticsView: React.FC = () => {
   const actionErrorMessage = (error: unknown): string => (
     error instanceof ApiError || error instanceof Error
       ? error.message
-      : 'The action could not be completed. Nothing was changed.'
+      : 'The action could not be confirmed. Check Meta before retrying.'
   );
 
   const runDelivery = useCallback(async (item: AnalyticsHierarchyItem, status: DeliveryStatus) => {
@@ -794,7 +794,7 @@ export const StatisticsView: React.FC = () => {
       const result = await setEntityDelivery(item.entity_level, item.entity_id, selectedAccountId, status);
       patchAction(item.entity_id, {
         busy: false,
-        previousStatus: rowActions[item.entity_id]?.status ?? (item.status === 'ACTIVE' ? 'ACTIVE' : 'PAUSED'),
+        previousStatus: result.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE',
         previousBudget: undefined,
         status: result.status,
         message: result.message,
@@ -829,8 +829,7 @@ export const StatisticsView: React.FC = () => {
     patchAction(item.entity_id, { undoing: true, error: '' });
     try {
       await undoAction(auditEventId);
-      // The reversal is itself a change the snapshot has not seen, so the row
-      // drops back to what the stored data says rather than inventing a state.
+      // Restore the previous confirmed value while preserving other actions.
       const previous = rowActions[item.entity_id];
       patchAction(item.entity_id, {
         status: previous?.previousStatus ?? previous?.status,

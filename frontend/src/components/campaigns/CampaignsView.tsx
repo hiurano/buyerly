@@ -396,7 +396,7 @@ export const CampaignsView: React.FC = () => {
       setDeliveryActions((current) => ({ ...current, [entityId]: { ...current[entityId], busy: false } }));
       setDeliveryNotice({
         tone: 'error',
-        text: error instanceof Error ? error.message : 'The change could not be sent to Meta. Nothing was changed.',
+        text: error instanceof Error ? error.message : 'The change could not be confirmed. Check Meta before retrying.',
       });
     }
   };
