@@ -119,6 +119,14 @@ class TestReactFrontendContract(unittest.TestCase):
             / "statistics"
             / "statisticsModel.ts"
         ).read_text()
+        cls.ad_accounts_section = (
+            ROOT
+            / "frontend"
+            / "src"
+            / "components"
+            / "preferences"
+            / "AdAccountsSection.tsx"
+        ).read_text()
         cls.inbox_view = (
             ROOT / "frontend" / "src" / "components" / "inbox" / "InboxView.tsx"
         ).read_text()
@@ -499,6 +507,33 @@ class TestReactFrontendContract(unittest.TestCase):
         # Drill-down stays in place: the same columns, a deeper parent.
         self.assertIn("aria-label=\"Statistics drill-down\"", self.statistics_view)
         self.assertIn("CHILD_LEVEL", self.statistics_view)
+
+    def test_statistics_judges_only_against_the_stored_account_target(self):
+        """The verdict comes from the ad account's own declaration, or not at all."""
+        # The target is read from the workspace API, never from a local constant.
+        self.assertIn("selectedAccount?.target_cost_per_result", self.statistics_view)
+        self.assertIn("selectedAccount?.primary_result === 'leads'", self.statistics_view)
+
+        # A stored target names the event it applies to, so it is used only
+        # while that event is the one on screen.
+        self.assertIn(
+            "declaredResultKind && resultKind === declaredResultKind",
+            self.statistics_view,
+        )
+
+        # Settings is where a target is declared, against the real endpoint.
+        for contract in (
+            "apiRequest<MetaAccount[]>('/api/accounts')",
+            "/cost-target`",
+            "method: 'PATCH'",
+            "primary_result: nextResult",
+            "Couldn't load ad accounts",
+            "Connect an ad account",
+        ):
+            self.assertIn(contract, self.ad_accounts_section)
+
+        # Clearing the declared result clears the target with it.
+        self.assertIn("const target = nextResult ? parsed : null;", self.ad_accounts_section)
 
     def test_inbox_uses_workspace_audit_events_without_notification_fixtures(self):
         for contract in (

@@ -88,7 +88,7 @@ const GROUPING_OPTIONS: SelectOption<Grouping>[] = [
 ];
 
 const RESULT_OPTIONS: SelectOption<ResultPreference>[] = [
-  { value: 'auto', label: 'Detect from volume' },
+  { value: 'auto', label: 'Automatic' },
   { value: 'leads', label: 'Leads' },
   { value: 'registrations', label: 'Registrations' },
   { value: 'purchases', label: 'Purchases' },
@@ -421,13 +421,24 @@ export const StatisticsView: React.FC = () => {
   const parentScope = parent ? LEVEL_LABELS[parent.level].singular : 'account';
   const items = useMemo(() => hierarchy?.items ?? [], [hierarchy]);
 
-  // The workspace API carries no stored cost target yet, so every value is
-  // reported without a verdict instead of being judged against an invented one.
-  const costTarget: number | null = null;
+  /** The conversion event this ad account declares it is buying, if any. */
+  const declaredResultKind: ResultKind | null = (
+    selectedAccount?.primary_result === 'leads'
+    || selectedAccount?.primary_result === 'registrations'
+    || selectedAccount?.primary_result === 'purchases'
+  ) ? selectedAccount.primary_result : null;
 
   const detectedResultKind = useMemo(() => detectPrimaryResult(items), [items]);
-  const resultKind: ResultKind = resultPreference === 'auto' ? detectedResultKind : resultPreference;
+  const resultKind: ResultKind = resultPreference === 'auto'
+    ? (declaredResultKind ?? detectedResultKind)
+    : resultPreference;
   const resultDefinition = RESULT_DEFINITIONS[resultKind];
+
+  // The stored target names the event it applies to, so it is used only while
+  // that event is the one on screen. Anything else is reported without a verdict.
+  const costTarget: number | null = declaredResultKind && resultKind === declaredResultKind
+    ? selectedAccount?.target_cost_per_result ?? null
+    : null;
 
   const summary = useMemo(() => {
     const spend = items.reduce((total, item) => total + item.spend, 0);
@@ -456,6 +467,17 @@ export const StatisticsView: React.FC = () => {
       currencyAvailable: currency !== null,
     };
   }, [costTarget, items, resultDefinition]);
+
+  /** Why the overview carries no verdict, stated for the current selection. */
+  const explainMissingTarget = (verdict: DecisionVerdict): DecisionVerdict => {
+    if (!verdict.quiet || !declaredResultKind || resultKind === declaredResultKind) return verdict;
+    const declared = RESULT_DEFINITIONS[declaredResultKind].noun;
+    return {
+      ...verdict,
+      label: `Target set for ${declared}`,
+      detail: `This ad account's cost target applies to ${declared}, not to the result shown here.`,
+    };
+  };
 
   const visibleItems = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -813,15 +835,17 @@ export const StatisticsView: React.FC = () => {
                   value={summary.costPerResult}
                   supporting="Primary decision metric"
                   emphasis
-                  verdict={summary.verdict}
+                  verdict={explainMissingTarget(summary.verdict)}
                 />
                 <MetricCard
                   label={resultDefinition.label}
                   value={formatCount(summary.results)}
                   supporting={`Meta ${resultDefinition.noun} actions`}
-                  footnote={resultPreference === 'auto'
-                    ? 'Detected from the highest conversion volume'
-                    : 'Chosen in display options'}
+                  footnote={resultPreference !== 'auto'
+                    ? 'Chosen in display options'
+                    : declaredResultKind
+                      ? 'Declared for this ad account in settings'
+                      : 'Detected from the highest conversion volume'}
                 />
                 <MetricCard
                   label="Delivery"

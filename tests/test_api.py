@@ -843,6 +843,97 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(forbidden.status_code, 404)
         self.assertEqual(invalid.status_code, 422)
 
+    async def test_account_cost_target_is_declared_validated_and_workspace_scoped(self):
+        """Statistics may judge a row only against a target stored for that account."""
+        async with self.test_session_maker() as session:
+            admin = (
+                await session.execute(
+                    select(User).where(User.telegram_id == "8634201356")
+                )
+            ).scalar_one()
+            session.add(
+                Account(
+                    account_id="act_888888888",
+                    name="Foreign target",
+                    owner_user_id=admin.id,
+                    workspace_id=admin.active_workspace_id,
+                    timezone_name="UTC",
+                    currency="USD",
+                )
+            )
+            await session.commit()
+
+        buyer_data = generate_valid_telegram_init_data(
+            settings.BOT_TOKEN,
+            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
+        )
+        headers = {"Authorization": f"tma {buyer_data}"}
+        target_url = "/api/accounts/act_1018756607700064/cost-target"
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            undeclared = await client.get("/api/accounts", headers=headers)
+            saved = await client.patch(
+                target_url,
+                headers=headers,
+                json={"primary_result": "leads", "target_cost_per_result": 42.5},
+            )
+            declared = await client.get("/api/accounts", headers=headers)
+            # A cost target without the event it applies to cannot be interpreted.
+            orphan_target = await client.patch(
+                target_url,
+                headers=headers,
+                json={"primary_result": "", "target_cost_per_result": 42.5},
+            )
+            not_positive = await client.patch(
+                target_url,
+                headers=headers,
+                json={"primary_result": "leads", "target_cost_per_result": 0},
+            )
+            unknown_result = await client.patch(
+                target_url,
+                headers=headers,
+                json={"primary_result": "clicks", "target_cost_per_result": 10},
+            )
+            cleared = await client.patch(
+                target_url,
+                headers=headers,
+                json={"primary_result": "", "target_cost_per_result": None},
+            )
+            after_clear = await client.get("/api/accounts", headers=headers)
+            foreign = await client.patch(
+                "/api/accounts/act_888888888/cost-target",
+                headers=headers,
+                json={"primary_result": "purchases", "target_cost_per_result": 10},
+            )
+
+        def row(response):
+            return next(
+                item
+                for item in response.json()
+                if item["account_id"] == "act_1018756607700064"
+            )
+
+        # An account that declared nothing reports no target, never a zero.
+        self.assertEqual(undeclared.status_code, 200)
+        self.assertEqual(row(undeclared)["primary_result"], "")
+        self.assertIsNone(row(undeclared)["target_cost_per_result"])
+
+        self.assertEqual(saved.status_code, 200)
+        self.assertEqual(row(declared)["primary_result"], "leads")
+        self.assertEqual(row(declared)["target_cost_per_result"], 42.5)
+
+        self.assertEqual(orphan_target.status_code, 422)
+        self.assertEqual(not_positive.status_code, 422)
+        self.assertEqual(unknown_result.status_code, 422)
+
+        # Clearing the declared result clears the target with it.
+        self.assertEqual(cleared.status_code, 200)
+        self.assertEqual(row(after_clear)["primary_result"], "")
+        self.assertIsNone(row(after_clear)["target_cost_per_result"])
+
+        # Another workspace's account is not found, not merely refused.
+        self.assertEqual(foreign.status_code, 404)
+
     async def test_toggle_rules_and_presets(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
         init_data = generate_valid_telegram_init_data(settings.BOT_TOKEN, user_info)
