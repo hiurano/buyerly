@@ -111,6 +111,14 @@ class TestReactFrontendContract(unittest.TestCase):
             / "statistics"
             / "StatisticsView.tsx"
         ).read_text()
+        cls.statistics_model = (
+            ROOT
+            / "frontend"
+            / "src"
+            / "components"
+            / "statistics"
+            / "statisticsModel.ts"
+        ).read_text()
         cls.inbox_view = (
             ROOT / "frontend" / "src" / "components" / "inbox" / "InboxView.tsx"
         ).read_text()
@@ -423,8 +431,9 @@ class TestReactFrontendContract(unittest.TestCase):
         for contract in (
             "apiRequest<MetaAccount[]>('/api/accounts')",
             "/api/analytics/hierarchy?parent_id=",
-            "encodeURIComponent(selectedAccountId)",
-            "&level=${level}&period=${period}",
+            "encodeURIComponent(parentId)",
+            "const parentId = parent ? parent.id : selectedAccountId;",
+            "&level=${queryLevel}&period=${period}",
             "requestGenerationRef",
             "Loading ad accounts…",
             "Loading ${levelLabel.plural}…",
@@ -454,6 +463,42 @@ class TestReactFrontendContract(unittest.TestCase):
             "roasTarget",
         ):
             self.assertNotIn(fixture_or_unsupported_control, self.statistics_view)
+
+    def test_statistics_primary_result_and_decision_layer_stay_derived(self):
+        """The decision layer reads live facts; it never invents a target."""
+        # The primary result is a semantic role resolved from real conversion
+        # volume, not a hard-coded metric for every advertiser.
+        for contract in (
+            "export function detectPrimaryResult",
+            "cost_per_lead",
+            "cost_per_registration",
+            "cost_per_purchase",
+        ):
+            self.assertIn(contract, self.statistics_model)
+
+        # A row below the volume floor is undecidable, which is a different
+        # statement from performing badly.
+        self.assertIn("MIN_RESULTS_FOR_DECISION = 10", self.statistics_model)
+        self.assertIn("state: 'insufficient'", self.statistics_model)
+
+        # No stored target means no verdict: the value is reported as is.
+        self.assertIn("if (target === null || target <= 0)", self.statistics_model)
+        self.assertIn("label: 'No target set'", self.statistics_model)
+
+        # Diagnostics are derived from returned facts and stay off the table.
+        self.assertIn("export function buildDiagnostics", self.statistics_model)
+        for diagnostic in ("Frequency", "CTR", "CPC", "CPM", "Landing page views"):
+            self.assertIn(diagnostic, self.statistics_model)
+        for diagnostic_column in (
+            "{ id: 'impressions'",
+            "{ id: 'clicks'",
+            "{ id: 'ctr'",
+        ):
+            self.assertNotIn(diagnostic_column, self.statistics_view)
+
+        # Drill-down stays in place: the same columns, a deeper parent.
+        self.assertIn("aria-label=\"Statistics drill-down\"", self.statistics_view)
+        self.assertIn("CHILD_LEVEL", self.statistics_view)
 
     def test_inbox_uses_workspace_audit_events_without_notification_fixtures(self):
         for contract in (

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Search } from 'lucide-react';
+import { ChevronRight, Search } from 'lucide-react';
 import { ApiError, apiRequest } from '@/lib/api';
 import type {
   AnalyticsHierarchyItem,
@@ -11,6 +11,21 @@ import {
   formatMetricMoney,
   metaAccountLabel,
 } from '@/components/campaigns/liveCampaigns';
+import {
+  CHILD_LEVEL,
+  DECISION_ORDER,
+  DECISION_PRESENTATION,
+  RESULT_DEFINITIONS,
+  buildDiagnostics,
+  decide,
+  detectPrimaryResult,
+  formatCount,
+  type DecisionState,
+  type DecisionVerdict,
+  type EntityLevel,
+  type ReportingPeriod,
+  type ResultKind,
+} from '@/components/statistics/statisticsModel';
 import {
   LinearCheckIcon,
   LinearFilterIcon,
@@ -32,24 +47,31 @@ import { DataState } from '@/ui/DataState';
 import {
   LinearDataListColumn,
   LinearDataListColumnHeader,
+  LinearDataListGroupHeader,
   LinearDataListRow,
   LinearDataListStack,
   LinearDataListToolbar,
   LinearDataListViewport,
 } from '@/ui/LinearDataList';
-import { LinearLabelPill } from '@/ui/LinearLabelPill';
 import { LinearTabs } from '@/ui/LinearTabs';
 import { Tooltip } from '@/ui/Tooltip';
 import { useAppStore } from '@/store/useAppStore';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
-type EntityLevel = AnalyticsHierarchyResponse['level'];
-type ReportingPeriod = AnalyticsHierarchyResponse['period'];
-type StatisticsSort = 'name' | 'status' | 'spend' | 'leads' | 'cpl' | 'impressions' | 'clicks' | 'ctr';
+type StatisticsSort = 'name' | 'spend' | 'results' | 'cost';
+type Grouping = 'none' | 'decision' | 'delivery';
+type ResultPreference = 'auto' | ResultKind;
 
 interface SelectOption<T extends string> {
   value: T;
   label: string;
+}
+
+/** One ancestor on the in-place drill-down path. */
+interface DrillStep {
+  id: string;
+  name: string;
+  level: EntityLevel;
 }
 
 const PERIOD_OPTIONS: SelectOption<ReportingPeriod>[] = [
@@ -59,37 +81,33 @@ const PERIOD_OPTIONS: SelectOption<ReportingPeriod>[] = [
   { value: 'last_7d', label: 'Last 7 days' },
 ];
 
+const GROUPING_OPTIONS: SelectOption<Grouping>[] = [
+  { value: 'none', label: 'No grouping' },
+  { value: 'decision', label: 'Decision status' },
+  { value: 'delivery', label: 'Delivery status' },
+];
+
+const RESULT_OPTIONS: SelectOption<ResultPreference>[] = [
+  { value: 'auto', label: 'Detect from volume' },
+  { value: 'leads', label: 'Leads' },
+  { value: 'registrations', label: 'Registrations' },
+  { value: 'purchases', label: 'Purchases' },
+];
+
 const LEVEL_LABELS: Record<EntityLevel, { singular: string; plural: string }> = {
   campaign: { singular: 'campaign', plural: 'campaigns' },
   adset: { singular: 'ad set', plural: 'ad sets' },
   ad: { singular: 'ad', plural: 'ads' },
 };
 
-const STATISTICS_COLUMNS: LinearDataListColumn[] = [
-  { id: 'name', label: 'Name', width: 'minmax(260px, 1fr)', sortable: true },
-  { id: 'status', label: 'Delivery', width: '120px', sortable: true },
-  { id: 'spend', label: 'Spend', width: '135px', align: 'right', sortable: true },
-  { id: 'leads', label: 'Leads', width: '90px', align: 'right', sortable: true },
-  { id: 'cpl', label: 'CPL', width: '120px', align: 'right', sortable: true },
-  { id: 'impressions', label: 'Impressions', width: '110px', align: 'right', sortable: true },
-  { id: 'clicks', label: 'Clicks', width: '90px', align: 'right', sortable: true },
-  { id: 'ctr', label: 'CTR', width: '90px', align: 'right', sortable: true },
-];
-
-const TABLE_MIN_WIDTH = 1080;
+const TABLE_MIN_WIDTH = 940;
 const KNOWN_CURRENCY = /^[A-Z]{3}$/;
+/** Periods whose spend can be read against a single day of budget. */
+const SINGLE_DAY_PERIODS: ReportingPeriod[] = ['today', 'yesterday'];
 
 function requestErrorMessage(error: unknown): string {
   if (error instanceof ApiError || error instanceof Error) return error.message;
   return 'Something went wrong. Please try again.';
-}
-
-function formatCount(value: number): string {
-  return new Intl.NumberFormat('en-US').format(value);
-}
-
-function formatPercent(value: number): string {
-  return Number.isFinite(value) ? `${value.toFixed(2)}%` : '—';
 }
 
 function formatFreshness(value: string | null): string {
@@ -118,6 +136,10 @@ function statusLabel(item: AnalyticsHierarchyItem): string {
   return humanizeMetaStatus(item.effective_status || item.status || 'UNKNOWN');
 }
 
+function isDelivering(item: AnalyticsHierarchyItem): boolean {
+  return (item.effective_status || item.status || '').trim().toUpperCase() === 'ACTIVE';
+}
+
 function statusDot(item: AnalyticsHierarchyItem): string {
   const normalized = (item.effective_status || item.status || '').trim().toUpperCase();
   if (normalized === 'ACTIVE') return 'var(--text-primary)';
@@ -125,60 +147,187 @@ function statusDot(item: AnalyticsHierarchyItem): string {
   return 'var(--text-tertiary)';
 }
 
-const SummaryMetric: React.FC<{
+/** A written verdict with a repeating color, never a color on its own. */
+const DecisionNote: React.FC<{ verdict: DecisionVerdict; className?: string }> = ({
+  verdict,
+  className = '',
+}) => (
+  <span className={`inline-flex min-w-0 items-center gap-1.5 ${className}`}>
+    <span
+      aria-hidden="true"
+      className="h-1.5 w-1.5 shrink-0 rounded-full"
+      style={{ backgroundColor: DECISION_PRESENTATION[verdict.state].dotColor }}
+    />
+    <span className={`truncate ${DECISION_PRESENTATION[verdict.state].textClass}`}>{verdict.label}</span>
+  </span>
+);
+
+const MetricCard: React.FC<{
   label: string;
   value: string;
   supporting: string;
-}> = ({ label, value, supporting }) => (
-  <article className="flex min-h-[var(--statistics-metric-height)] min-w-0 flex-col rounded-[var(--control-border-radius)] border border-[var(--card-border)] bg-[var(--card-bg)] p-4 shadow-[var(--canvas-shadow)]">
+  /** The primary decision KPI carries a stronger border than its neighbours. */
+  emphasis?: boolean;
+  verdict?: DecisionVerdict;
+  footnote?: string;
+}> = ({ label, value, supporting, emphasis = false, verdict, footnote }) => (
+  <article
+    className={`flex min-h-[var(--statistics-metric-height)] min-w-0 flex-col rounded-[var(--control-border-radius)] border bg-[var(--card-bg)] p-4 shadow-[var(--canvas-shadow)] ${
+      emphasis ? 'border-[var(--statistics-primary-card-border)]' : 'border-[var(--card-border)]'
+    }`}
+  >
     <div className="text-[12px] font-medium text-[var(--text-muted)]">{label}</div>
     <div className="mt-2.5 break-words text-[length:var(--statistics-metric-mobile-font-size)] font-medium leading-none tracking-[-0.03em] text-[var(--text-primary)] tabular-nums sm:text-[length:var(--statistics-metric-font-size)]">
       {value.replace(/\u00a0/g, ' ')}
     </div>
     <div className="mt-2 text-[12px] text-[var(--text-secondary)]">{supporting}</div>
+    {verdict && <DecisionNote verdict={verdict} className="mt-auto pt-2 text-[12px]" />}
+    {!verdict && footnote && <div className="mt-auto pt-2 text-[12px] text-[var(--text-muted)]">{footnote}</div>}
   </article>
 );
 
-const StatisticsRow: React.FC<{
+interface StatisticsRowProps {
   item: AnalyticsHierarchyItem;
+  columns: LinearDataListColumn[];
   compact: boolean;
-}> = ({ item, compact }) => (
-  <LinearDataListRow
-    layout="grid"
-    columns={STATISTICS_COLUMNS}
-    height={compact ? 44 : 52}
-    className="text-left"
-    style={{ minWidth: `${TABLE_MIN_WIDTH}px` }}
-  >
-    <div className="sticky left-0 z-[1] min-w-0 bg-[var(--bg-canvas)] transition-colors group-hover/row:bg-[var(--item-hover-bg)]">
-      <div className="truncate text-[14px] font-medium text-[var(--text-primary)]">{item.entity_name}</div>
-      <div className="mt-0.5 truncate font-mono text-[12px] text-[var(--text-muted)]">Meta ID {item.entity_id}</div>
-    </div>
+  resultKind: ResultKind;
+  verdict: DecisionVerdict;
+  /** Denominator caption for the spend cell, already resolved to real data. */
+  pace: { label: string; ratio: number | null };
+  childLabel: string | null;
+  onDrill: () => void;
+  expanded: boolean;
+  onToggleDiagnostics: () => void;
+}
 
+const StatisticsRow: React.FC<StatisticsRowProps> = ({
+  item,
+  columns,
+  compact,
+  resultKind,
+  verdict,
+  pace,
+  childLabel,
+  onDrill,
+  expanded,
+  onToggleDiagnostics,
+}) => {
+  const definition = RESULT_DEFINITIONS[resultKind];
+  const diagnosticsId = `statistics-diagnostics-${item.entity_id}`;
+
+  return (
     <div className="min-w-0">
-      <LinearLabelPill label={statusLabel(item)} dotColor={statusDot(item)} />
-    </div>
+      <LinearDataListRow
+        layout="grid"
+        columns={columns}
+        height={compact ? 48 : 56}
+        className="text-left"
+        style={{ minWidth: `${TABLE_MIN_WIDTH}px` }}
+      >
+        <div className="sticky left-0 z-[1] min-w-0 bg-[var(--bg-canvas)] transition-colors group-hover/row:bg-[var(--item-hover-bg)]">
+          {childLabel ? (
+            <button
+              type="button"
+              onClick={onDrill}
+              className="block w-full truncate rounded-[var(--control-border-radius)] text-left text-[14px] font-medium text-[var(--text-primary)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--focus-ring-color)]"
+              aria-label={`Show ${childLabel} in ${item.entity_name}`}
+            >
+              {item.entity_name}
+            </button>
+          ) : (
+            <div className="truncate text-[14px] font-medium text-[var(--text-primary)]">{item.entity_name}</div>
+          )}
+          <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[12px] text-[var(--text-muted)]">
+            <span
+              aria-hidden="true"
+              className="h-1.5 w-1.5 shrink-0 rounded-full"
+              style={{ backgroundColor: statusDot(item) }}
+            />
+            <span className="shrink-0">{statusLabel(item)}</span>
+            <span aria-hidden="true">·</span>
+            <span className="truncate font-mono">Meta ID {item.entity_id}</span>
+          </div>
+        </div>
 
-    <div className="text-right text-[14px] text-[var(--text-primary)] tabular-nums">
-      {formatMetricMoney(item.spend, item.currency)}
+        <div className="min-w-0 text-right">
+          <div className="text-[14px] text-[var(--text-primary)] tabular-nums">
+            {formatMetricMoney(item.spend, item.currency)}
+          </div>
+          <div className="mt-1 flex items-center justify-end gap-1.5">
+            {pace.ratio !== null && (
+              <span
+                aria-hidden="true"
+                className="h-[var(--statistics-pace-track-height)] w-[var(--statistics-pace-track-width)] overflow-hidden rounded-full bg-[var(--statistics-pace-track)]"
+              >
+                <span
+                  className="block h-full rounded-full bg-[var(--statistics-pace-fill)]"
+                  style={{ width: `${Math.min(Math.max(pace.ratio, 0), 1) * 100}%` }}
+                />
+              </span>
+            )}
+            <span className="truncate text-[12px] text-[var(--text-muted)] tabular-nums">{pace.label}</span>
+          </div>
+        </div>
+
+        <div className="text-right text-[14px] text-[var(--text-primary)] tabular-nums">
+          {formatCount(definition.count(item))}
+        </div>
+
+        <div className="min-w-0 text-right">
+          <div className="text-[14px] font-medium text-[var(--text-primary)] tabular-nums">
+            {formatMetricMoney(definition.cost(item), item.currency)}
+          </div>
+          {!verdict.quiet && <DecisionNote verdict={verdict} className="mt-1 justify-end text-[12px]" />}
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onToggleDiagnostics}
+            aria-expanded={expanded}
+            aria-controls={diagnosticsId}
+            aria-label={`${expanded ? 'Hide' : 'Show'} diagnostics for ${item.entity_name}`}
+            className="flex h-7 w-7 items-center justify-center rounded-[var(--control-border-radius)] text-[var(--text-tertiary)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--focus-ring-color)]"
+          >
+            <ChevronRight
+              size={14}
+              aria-hidden="true"
+              className="transition-transform"
+              style={{ transform: expanded ? 'rotate(90deg)' : 'none' }}
+            />
+          </button>
+        </div>
+      </LinearDataListRow>
+
+      {expanded && (
+        <div
+          id={diagnosticsId}
+          className="mt-1 rounded-[var(--control-border-radius)] bg-[var(--statistics-diagnostics-bg)] p-3"
+          style={{ minWidth: `${TABLE_MIN_WIDTH}px` }}
+        >
+          <p className="text-[12px] text-[var(--text-secondary)]">{verdict.detail}</p>
+          <div className="mt-3 grid gap-x-6 gap-y-4 md:grid-cols-3">
+            {buildDiagnostics(item, resultKind).map((section) => (
+              <section key={section.id} className="min-w-0">
+                <h4 className="text-[11px] font-medium uppercase tracking-[0.04em] text-[var(--text-muted)]">
+                  {section.title}
+                </h4>
+                <dl className="mt-2 flex flex-col gap-1.5">
+                  {section.entries.map((entry) => (
+                    <div key={entry.label} className="flex items-baseline justify-between gap-3">
+                      <dt className="min-w-0 truncate text-[12px] text-[var(--text-tertiary)]">{entry.label}</dt>
+                      <dd className="shrink-0 text-[12px] text-[var(--text-primary)] tabular-nums">{entry.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
-    <div className="text-right text-[14px] text-[var(--text-primary)] tabular-nums">
-      {formatCount(item.leads)}
-    </div>
-    <div className="text-right text-[14px] text-[var(--text-primary)] tabular-nums">
-      {formatMetricMoney(item.cost_per_lead, item.currency)}
-    </div>
-    <div className="text-right text-[14px] text-[var(--text-primary)] tabular-nums">
-      {formatCount(item.impressions)}
-    </div>
-    <div className="text-right text-[14px] text-[var(--text-primary)] tabular-nums">
-      {formatCount(item.clicks)}
-    </div>
-    <div className="text-right text-[14px] text-[var(--text-primary)] tabular-nums">
-      {formatPercent(item.ctr)}
-    </div>
-  </LinearDataListRow>
-);
+  );
+};
 
 export const StatisticsView: React.FC = () => {
   const {
@@ -192,6 +341,7 @@ export const StatisticsView: React.FC = () => {
   const [accountsError, setAccountsError] = useState('');
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [level, setLevel] = useState<EntityLevel>('campaign');
+  const [trail, setTrail] = useState<DrillStep[]>([]);
   const [period, setPeriod] = useState<ReportingPeriod>('last_7d');
   const [hierarchy, setHierarchy] = useState<AnalyticsHierarchyResponse | null>(null);
   const [hierarchyState, setHierarchyState] = useState<LoadState>('idle');
@@ -199,8 +349,15 @@ export const StatisticsView: React.FC = () => {
   const [reloadKey, setReloadKey] = useState(0);
   const [query, setQuery] = useState('');
   const [density, setDensity] = useState<'comfortable' | 'compact'>('comfortable');
+  const [grouping, setGrouping] = useState<Grouping>('none');
+  const [resultPreference, setResultPreference] = useState<ResultPreference>('auto');
   const [sortKey, setSortKey] = useState<StatisticsSort>('spend');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+
+  const parent = trail.length > 0 ? trail[trail.length - 1] : null;
+  const queryLevel: EntityLevel = parent ? (CHILD_LEVEL[parent.level] ?? level) : level;
+  const parentId = parent ? parent.id : selectedAccountId;
 
   const refreshAccounts = useCallback(async () => {
     setAccountsState('loading');
@@ -228,15 +385,16 @@ export const StatisticsView: React.FC = () => {
     const generation = ++requestGenerationRef.current;
     setHierarchy(null);
     setHierarchyError('');
-    if (!selectedAccountId) {
+    setExpandedRowId(null);
+    if (!parentId) {
       setHierarchyState('idle');
       return undefined;
     }
 
     setHierarchyState('loading');
     void apiRequest<AnalyticsHierarchyResponse>(
-      `/api/analytics/hierarchy?parent_id=${encodeURIComponent(selectedAccountId)}`
-      + `&level=${level}&period=${period}`,
+      `/api/analytics/hierarchy?parent_id=${encodeURIComponent(parentId)}`
+      + `&level=${queryLevel}&period=${period}`,
     )
       .then((response) => {
         if (generation !== requestGenerationRef.current) return;
@@ -252,18 +410,32 @@ export const StatisticsView: React.FC = () => {
     return () => {
       requestGenerationRef.current += 1;
     };
-  }, [level, period, reloadKey, selectedAccountId]);
+  }, [parentId, period, queryLevel, reloadKey]);
 
   const selectedAccount = accounts.find((account) => account.account_id === selectedAccountId) ?? null;
   const periodLabel = PERIOD_OPTIONS.find((option) => option.value === period)?.label ?? 'Last 7 days';
-  const levelLabel = LEVEL_LABELS[level];
-  const items = hierarchy?.items ?? [];
+  const levelLabel = LEVEL_LABELS[queryLevel];
+  const childLevel = CHILD_LEVEL[queryLevel] ?? null;
+  const childLabel = childLevel ? LEVEL_LABELS[childLevel].plural : null;
+  /** What the rows in view are a share of: the ad account, or the entity drilled into. */
+  const parentScope = parent ? LEVEL_LABELS[parent.level].singular : 'account';
+  const items = useMemo(() => hierarchy?.items ?? [], [hierarchy]);
+
+  // The workspace API carries no stored cost target yet, so every value is
+  // reported without a verdict instead of being judged against an invented one.
+  const costTarget: number | null = null;
+
+  const detectedResultKind = useMemo(() => detectPrimaryResult(items), [items]);
+  const resultKind: ResultKind = resultPreference === 'auto' ? detectedResultKind : resultPreference;
+  const resultDefinition = RESULT_DEFINITIONS[resultKind];
 
   const summary = useMemo(() => {
     const spend = items.reduce((total, item) => total + item.spend, 0);
-    const leads = items.reduce((total, item) => total + item.leads, 0);
-    const impressions = items.reduce((total, item) => total + item.impressions, 0);
-    const clicks = items.reduce((total, item) => total + item.clicks, 0);
+    const results = items.reduce((total, item) => total + resultDefinition.count(item), 0);
+    const delivering = items.filter(isDelivering).length;
+    const dailyBudget = items
+      .filter(isDelivering)
+      .reduce((total, item) => total + (item.daily_budget > 0 ? item.daily_budget : 0), 0);
     const currencies = new Set(
       items
         .map((item) => item.currency.trim().toUpperCase())
@@ -271,16 +443,19 @@ export const StatisticsView: React.FC = () => {
     );
     const allRowsHaveKnownCurrency = items.every((item) => KNOWN_CURRENCY.test(item.currency.trim().toUpperCase()));
     const currency = currencies.size === 1 && allRowsHaveKnownCurrency ? [...currencies][0] : null;
+    const costPerResult = currency && results > 0 ? spend / results : null;
     return {
+      spendValue: spend,
       spend: currency ? formatMetricMoney(spend, currency) : '—',
-      leads,
-      impressions,
-      clicks,
-      cpl: currency && leads > 0 ? formatMetricMoney(spend / leads, currency) : '—',
-      ctr: impressions > 0 ? formatPercent((clicks / impressions) * 100) : '—',
+      results,
+      delivering,
+      paused: items.length - delivering,
+      dailyBudget: currency && dailyBudget > 0 ? formatMetricMoney(dailyBudget, currency) : null,
+      costPerResult: costPerResult === null ? '—' : formatMetricMoney(costPerResult, currency as string),
+      verdict: decide(results, costPerResult, costTarget),
       currencyAvailable: currency !== null,
     };
-  }, [items]);
+  }, [costTarget, items, resultDefinition]);
 
   const visibleItems = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -298,20 +473,118 @@ export const StatisticsView: React.FC = () => {
     };
     return [...matching].sort((left, right) => {
       if (sortKey === 'name') return left.entity_name.localeCompare(right.entity_name) * direction;
-      if (sortKey === 'status') return statusLabel(left).localeCompare(statusLabel(right)) * direction;
-      if (sortKey === 'leads') return (left.leads - right.leads) * direction;
-      if (sortKey === 'cpl') return optionalMetric(left.cost_per_lead, right.cost_per_lead);
-      if (sortKey === 'impressions') return (left.impressions - right.impressions) * direction;
-      if (sortKey === 'clicks') return (left.clicks - right.clicks) * direction;
-      if (sortKey === 'ctr') return (left.ctr - right.ctr) * direction;
+      if (sortKey === 'results') {
+        return (resultDefinition.count(left) - resultDefinition.count(right)) * direction;
+      }
+      if (sortKey === 'cost') {
+        return optionalMetric(resultDefinition.cost(left), resultDefinition.cost(right));
+      }
       return (left.spend - right.spend) * direction;
     });
-  }, [items, query, sortDirection, sortKey]);
+  }, [items, query, resultDefinition, sortDirection, sortKey]);
+
+  const columns: LinearDataListColumn[] = useMemo(() => [
+    { id: 'name', label: LEVEL_LABELS[queryLevel].singular.replace(/^./, (c) => c.toUpperCase()), width: 'minmax(240px, 1fr)', sortable: true },
+    { id: 'spend', label: 'Spend', width: '230px', align: 'right', sortable: true },
+    { id: 'results', label: resultDefinition.label, width: '110px', align: 'right', sortable: true },
+    { id: 'cost', label: resultDefinition.costLabel, width: '200px', align: 'right', sortable: true },
+    { id: 'diagnostics', label: '', width: '40px', align: 'right' },
+  ], [queryLevel, resultDefinition]);
+
+  /**
+   * A row's spend is read against its own daily budget only for single-day
+   * periods, where that denominator is real. Otherwise it is reported as a
+   * share of the spend currently in view.
+   */
+  const paceFor = useCallback((item: AnalyticsHierarchyItem) => {
+    if (SINGLE_DAY_PERIODS.includes(period) && item.daily_budget > 0) {
+      const ratio = item.spend / item.daily_budget;
+      return { ratio, label: `${Math.round(ratio * 100)}% of daily budget` };
+    }
+    if (summary.spendValue > 0) {
+      const ratio = item.spend / summary.spendValue;
+      return { ratio, label: `${Math.round(ratio * 100)}% of ${parentScope} spend` };
+    }
+    return { ratio: null, label: 'No spend recorded' };
+  }, [parentScope, period, summary.spendValue]);
+
+  const verdictFor = useCallback((item: AnalyticsHierarchyItem) => (
+    decide(resultDefinition.count(item), resultDefinition.cost(item), costTarget)
+  ), [costTarget, resultDefinition]);
 
   const selectAccount = (accountId: string) => {
     if (accountId === selectedAccountId) return;
     requestGenerationRef.current += 1;
+    setTrail([]);
     setSelectedAccountId(accountId);
+  };
+
+  const selectLevel = (nextLevel: EntityLevel) => {
+    setTrail([]);
+    setLevel(nextLevel);
+  };
+
+  const drillInto = (item: AnalyticsHierarchyItem) => {
+    if (!childLevel) return;
+    setQuery('');
+    setTrail((current) => [...current, { id: item.entity_id, name: item.entity_name, level: queryLevel }]);
+  };
+
+  const renderRow = (item: AnalyticsHierarchyItem) => (
+    <StatisticsRow
+      key={item.entity_id}
+      item={item}
+      columns={columns}
+      compact={density === 'compact'}
+      resultKind={resultKind}
+      verdict={verdictFor(item)}
+      pace={paceFor(item)}
+      childLabel={childLabel}
+      onDrill={() => drillInto(item)}
+      expanded={expandedRowId === item.entity_id}
+      onToggleDiagnostics={() => setExpandedRowId((current) => (
+        current === item.entity_id ? null : item.entity_id
+      ))}
+    />
+  );
+
+  const renderGroups = () => {
+    if (grouping === 'decision') {
+      return DECISION_ORDER.map((state: DecisionState) => {
+        const groupItems = visibleItems.filter((item) => verdictFor(item).state === state);
+        if (groupItems.length === 0) return null;
+        const presentation = DECISION_PRESENTATION[state];
+        return (
+          <div key={state} style={{ minWidth: `${TABLE_MIN_WIDTH}px` }}>
+            <LinearDataListGroupHeader
+              title={presentation.title}
+              count={groupItems.length}
+              dotColor={presentation.dotColor}
+              description={presentation.description}
+            />
+            <LinearDataListStack>{groupItems.map(renderRow)}</LinearDataListStack>
+          </div>
+        );
+      });
+    }
+    if (grouping === 'delivery') {
+      const statuses = [...new Set(visibleItems.map(statusLabel))].sort();
+      return statuses.map((status) => {
+        const groupItems = visibleItems.filter((item) => statusLabel(item) === status);
+        return (
+          <div key={status} style={{ minWidth: `${TABLE_MIN_WIDTH}px` }}>
+            <LinearDataListGroupHeader
+              title={status}
+              count={groupItems.length}
+              dotColor={statusDot(groupItems[0])}
+              description={`Meta delivery status ${status.toLowerCase()}`}
+            />
+            <LinearDataListStack>{groupItems.map(renderRow)}</LinearDataListStack>
+          </div>
+        );
+      });
+    }
+    return visibleItems.map(renderRow);
   };
 
   const renderData = () => {
@@ -383,24 +656,21 @@ export const StatisticsView: React.FC = () => {
       <LinearDataListViewport horizontal>
         <div style={{ minWidth: `${TABLE_MIN_WIDTH}px` }}>
           <LinearDataListColumnHeader
-            columns={STATISTICS_COLUMNS}
+            columns={columns}
             minWidth={TABLE_MIN_WIDTH}
             sortKey={sortKey}
             sortDirection={sortDirection}
             onSort={(columnId) => {
+              if (columnId === 'diagnostics') return;
               if (sortKey === columnId) {
                 setSortDirection((current) => current === 'asc' ? 'desc' : 'asc');
               } else {
                 setSortKey(columnId as StatisticsSort);
-                setSortDirection(columnId === 'name' || columnId === 'status' || columnId === 'cpl' ? 'asc' : 'desc');
+                setSortDirection(columnId === 'name' || columnId === 'cost' ? 'asc' : 'desc');
               }
             }}
           />
-          <LinearDataListStack>
-            {visibleItems.map((item) => (
-              <StatisticsRow key={item.entity_id} item={item} compact={density === 'compact'} />
-            ))}
-          </LinearDataListStack>
+          <LinearDataListStack>{renderGroups()}</LinearDataListStack>
         </div>
       </LinearDataListViewport>
     );
@@ -458,11 +728,38 @@ export const StatisticsView: React.FC = () => {
                 </Button>
               </DropdownMenuTrigger>
             </Tooltip>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="!w-[var(--statistics-filter-width)] !max-w-[calc(100vw-24px)] max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto">
+              <DropdownMenuLabel>Primary result</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={resultPreference} onValueChange={(value) => setResultPreference(value as ResultPreference)}>
+                {RESULT_OPTIONS.map((option) => (
+                  <DropdownMenuRadioItem key={option.value} value={option.value}>
+                    <span>{option.label}</span>
+                    {resultPreference === option.value && <LinearCheckIcon size={13} aria-hidden="true" />}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Grouping</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={grouping} onValueChange={(value) => setGrouping(value as Grouping)}>
+                {GROUPING_OPTIONS.map((option) => (
+                  <DropdownMenuRadioItem key={option.value} value={option.value}>
+                    <span>{option.label}</span>
+                    {grouping === option.value && <LinearCheckIcon size={13} aria-hidden="true" />}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
               <DropdownMenuLabel>Row density</DropdownMenuLabel>
               <DropdownMenuRadioGroup value={density} onValueChange={(value) => setDensity(value as typeof density)}>
-                <DropdownMenuRadioItem value="comfortable">Comfortable</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="compact">Compact</DropdownMenuRadioItem>
+                {([
+                  { value: 'comfortable', label: 'Comfortable' },
+                  { value: 'compact', label: 'Compact' },
+                ] as const).map((option) => (
+                  <DropdownMenuRadioItem key={option.value} value={option.value}>
+                    <span>{option.label}</span>
+                    {density === option.value && <LinearCheckIcon size={13} aria-hidden="true" />}
+                  </DropdownMenuRadioItem>
+                ))}
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -475,6 +772,7 @@ export const StatisticsView: React.FC = () => {
             <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 px-2 text-[12px] text-[var(--text-muted)]">
               <span className="min-w-0 break-words text-[var(--text-secondary)]">
                 {selectedAccount ? metaAccountLabel(selectedAccount) : 'Select an account'} · {periodLabel}
+                {selectedAccount?.timezone_name ? ` · Reporting timezone ${selectedAccount.timezone_name}` : ''}
               </span>
               <span role="status">
                 {hierarchyState === 'loading'
@@ -483,6 +781,12 @@ export const StatisticsView: React.FC = () => {
                     ? `Stored Meta data · ${formatFreshness(hierarchy.data_as_of)}`
                     : 'Stored Meta data unavailable'}
               </span>
+            </div>
+          )}
+
+          {accounts.length > 0 && period === 'today' && (
+            <div className="min-w-0 px-2 text-[12px] text-[var(--text-secondary)]" role="status">
+              Today is still open: conversions reported for it are provisional and can keep arriving.
             </div>
           )}
 
@@ -498,10 +802,33 @@ export const StatisticsView: React.FC = () => {
                 </div>
               )}
               <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
-                <SummaryMetric label="Spend" value={summary.spend} supporting={`${periodLabel} total`} />
-                <SummaryMetric label="Cost per lead" value={summary.cpl} supporting="Spend ÷ lead actions" />
-                <SummaryMetric label="Leads" value={formatCount(summary.leads)} supporting="Meta lead actions" />
-                <SummaryMetric label="CTR" value={summary.ctr} supporting={`${formatCount(summary.clicks)} clicks · ${formatCount(summary.impressions)} impressions`} />
+                <MetricCard
+                  label="Spend"
+                  value={summary.spend}
+                  supporting={`${periodLabel} total`}
+                  footnote={summary.dailyBudget ? `${summary.dailyBudget} daily budget delivering` : 'Daily budget unavailable'}
+                />
+                <MetricCard
+                  label={resultDefinition.costLabel}
+                  value={summary.costPerResult}
+                  supporting="Primary decision metric"
+                  emphasis
+                  verdict={summary.verdict}
+                />
+                <MetricCard
+                  label={resultDefinition.label}
+                  value={formatCount(summary.results)}
+                  supporting={`Meta ${resultDefinition.noun} actions`}
+                  footnote={resultPreference === 'auto'
+                    ? 'Detected from the highest conversion volume'
+                    : 'Chosen in display options'}
+                />
+                <MetricCard
+                  label="Delivery"
+                  value={`${formatCount(summary.delivering)} of ${formatCount(items.length)}`}
+                  supporting={`${levelLabel.plural} delivering now`}
+                  footnote={`${formatCount(summary.paused)} not delivering in this period`}
+                />
               </div>
             </section>
           )}
@@ -515,10 +842,12 @@ export const StatisticsView: React.FC = () => {
                   { id: 'ad', label: 'Ads' },
                 ] as const).map((tab) => ({
                   ...tab,
-                  count: hierarchyState === 'ready' && tab.id === level ? hierarchy?.total : undefined,
+                  count: hierarchyState === 'ready' && trail.length === 0 && tab.id === level
+                    ? hierarchy?.total
+                    : undefined,
                 }))}
                 activeTabId={level}
-                onChange={(id) => setLevel(id as EntityLevel)}
+                onChange={(id) => selectLevel(id as EntityLevel)}
                 aria-label="Statistics entity level"
               />
 
@@ -534,6 +863,38 @@ export const StatisticsView: React.FC = () => {
                 />
               </label>
             </LinearDataListToolbar>
+
+            {trail.length > 0 && (
+              <nav aria-label="Statistics drill-down" className="flex min-w-0 flex-wrap items-center gap-1 px-2 pb-2 text-[12px]">
+                <button
+                  type="button"
+                  onClick={() => setTrail([])}
+                  className="rounded-[var(--control-border-radius)] px-1.5 py-0.5 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--focus-ring-color)]"
+                >
+                  {LEVEL_LABELS[level].plural.replace(/^./, (character) => character.toUpperCase())}
+                </button>
+                {trail.map((step, index) => {
+                  const isLast = index === trail.length - 1;
+                  return (
+                    <React.Fragment key={step.id}>
+                      <ChevronRight size={12} className="shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
+                      {isLast ? (
+                        <span aria-current="page" className="min-w-0 truncate px-1.5 py-0.5 text-[var(--text-primary)]">{step.name}</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setTrail((current) => current.slice(0, index + 1))}
+                          className="min-w-0 truncate rounded-[var(--control-border-radius)] px-1.5 py-0.5 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--focus-ring-color)]"
+                        >
+                          {step.name}
+                        </button>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </nav>
+            )}
+
             {renderData()}
           </section>
         </main>

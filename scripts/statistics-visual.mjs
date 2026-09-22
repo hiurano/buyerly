@@ -54,12 +54,31 @@ try {
         requests.push(Object.fromEntries(url.searchParams));
         if (mode === 'loading') await new Promise(resolve => setTimeout(resolve, 1200));
         if (mode === 'error') return route.fulfill({ status: 503, json: { detail: 'Temporarily unavailable' } });
-        const items = mode === 'empty' ? [] : [1, 2, 3, 4, 5].map(id => ({
-          entity_id: String(id), entity_name: `QA campaign ${id}`, currency: 'USD',
-          status: id === 2 ? 'PAUSED' : 'ACTIVE', effective_status: '',
-          spend: id * 1400, leads: id * 30, cost_per_lead: 46.67,
-          impressions: id * 40000, clicks: id * 200, ctr: 0.5,
-        }));
+        // The full fact shape: the screen derives its primary result, decision
+        // state and diagnostics from these fields alone.
+        const items = mode === 'empty' ? [] : [1, 2, 3, 4, 5].map(id => {
+          const impressions = id * 40000;
+          const clicks = id * 200;
+          // Row 2 stays under the decision floor so the undecidable state renders.
+          const leads = id === 2 ? 4 : id * 30;
+          const spend = id * 1400;
+          return {
+            entity_id: String(id), entity_name: `QA campaign ${id}`,
+            entity_level: url.searchParams.get('level'),
+            parent_entity_id: url.searchParams.get('parent_id'),
+            account_id: 'act_123', currency: 'USD',
+            status: id === 2 ? 'PAUSED' : 'ACTIVE', effective_status: '',
+            daily_budget: id * 1000, data_as_of: '2026-09-14T08:00:00Z',
+            spend, impressions, reach: impressions / 2, cpm: 35, clicks,
+            link_clicks: clicks * 0.8, outbound_clicks: clicks * 0.7,
+            landing_page_views: clicks * 0.6,
+            leads, registrations: 0, purchases: 0,
+            cost_per_lead: leads ? spend / leads : null,
+            cost_per_registration: null, cost_per_purchase: null,
+            cost_per_landing_page_view: 12.5,
+            cpc: spend / clicks, ctr: 0.5, cpc_link: 9.4, ctr_link: 0.4, ctr_outbound: 0.35,
+          };
+        });
         return route.fulfill({ json: {
           items, total: items.length, level: url.searchParams.get('level'),
           period: url.searchParams.get('period'), source: 'analytics_fact_store',
@@ -96,9 +115,35 @@ try {
     await page.getByRole('menuitemradio', { name: /Second QA account/ }).click();
     await page.getByText('QA campaign 1', { exact: true }).waitFor();
     assert.equal(requests.at(-1).parent_id, 'act_456');
+
+    // Decision grouping is a real view change, and the undecidable row is
+    // reported separately from a row that is simply performing badly.
+    await page.getByRole('button', { name: 'Display options', exact: true }).click();
+    await page.getByRole('menuitemradio', { name: 'Decision status', exact: true }).click();
+    await page.getByText('Not enough data', { exact: true }).first().waitFor();
+    await noOverflow();
+    await screenshot('grouped');
+
+    // Diagnostics open in place, under the row they explain.
+    await page.getByRole('button', { name: 'Show diagnostics for QA campaign 1', exact: true }).click();
+    await page.getByText('Frequency', { exact: true }).waitFor();
+    await noOverflow();
+    await screenshot('diagnostics');
+    await page.getByRole('button', { name: 'Hide diagnostics for QA campaign 1', exact: true }).click();
+
+    // Drilling into a campaign keeps the columns and deepens the parent.
+    await page.getByRole('button', { name: 'Show ad sets in QA campaign 1', exact: true }).click();
+    await page.getByRole('navigation', { name: 'Statistics drill-down' }).waitFor();
+    assert.equal(requests.at(-1).parent_id, '1');
+    assert.equal(requests.at(-1).level, 'adset');
+    await noOverflow();
+    await screenshot('drilldown');
+
+    // A level tab returns to the account-wide view.
     await page.getByRole('tab', { name: 'Ad sets', exact: true }).click();
     await page.getByText('QA campaign 1', { exact: true }).waitFor();
     assert.equal(requests.at(-1).level, 'adset');
+    assert.equal(requests.at(-1).parent_id, 'act_456');
     await page.getByRole('button', { name: 'Display options', exact: true }).click();
     await page.getByRole('menuitemradio', { name: 'Compact', exact: true }).click();
     await page.getByRole('searchbox').fill('no matching name');
