@@ -58,6 +58,10 @@ try {
       }
       if (url.pathname === '/api/analytics/hierarchy') {
         requests.push(Object.fromEntries(url.searchParams));
+        const period = url.searchParams.get('period');
+        const comparing = url.searchParams.get('compare') === 'previous';
+        // A day in progress has no honest baseline, exactly as the server says.
+        const comparable = comparing && period !== 'today';
         if (mode === 'loading') await new Promise(resolve => setTimeout(resolve, 1200));
         if (mode === 'error') return route.fulfill({ status: 503, json: { detail: 'Temporarily unavailable' } });
         // The full fact shape: the screen derives its primary result, decision
@@ -83,12 +87,31 @@ try {
             cost_per_registration: null, cost_per_purchase: null,
             cost_per_landing_page_view: 12.5,
             cpc: spend / clicks, ctr: 0.5, cpc_link: 9.4, ctr_link: 0.4, ctr_outbound: 0.35,
+            // Row 3 has no baseline, so the absent case renders too.
+            ...(comparable ? { previous: id === 3 ? null : {
+              spend: spend * 0.8, impressions, reach: impressions / 2, cpm: 30, clicks,
+              link_clicks: clicks * 0.8, outbound_clicks: clicks * 0.7,
+              landing_page_views: clicks * 0.6, leads: leads * 2, registrations: 0, purchases: 0,
+              cost_per_lead: leads ? (spend * 0.8) / (leads * 2) : null,
+              cost_per_registration: null, cost_per_purchase: null,
+              cost_per_landing_page_view: 11, cpc: 9, ctr: 0.5,
+              cpc_link: 9, ctr_link: 0.4, ctr_outbound: 0.35,
+            } } : {}),
           };
         });
         return route.fulfill({ json: {
           items, total: items.length, level: url.searchParams.get('level'),
-          period: url.searchParams.get('period'), source: 'analytics_fact_store',
+          period, source: 'analytics_fact_store',
           data_as_of: '2026-09-14T08:00:00Z',
+          comparison: {
+            requested: comparing,
+            available: comparable,
+            dates: comparable ? ['2026-09-07'] : [],
+            reason: comparing && !comparable
+              ? 'Today is still open and the fact store keeps whole-day totals, so it cannot be compared with an equal part of an earlier day.'
+              : '',
+            current_includes_open_day: period !== 'yesterday',
+          },
         } });
       }
       return route.fulfill({ json: [] });
@@ -106,8 +129,11 @@ try {
     await open();
     await page.getByText('QA campaign 1', { exact: true }).waitFor();
     assert.equal(await page.locator('article').count(), 4);
-    // The declared target turns cost per result into a verdict.
+    // The declared target turns cost per result into a verdict, and the
+    // baseline turns the period into a movement beside it.
     await page.getByText('17% above target', { exact: true }).first().waitFor();
+    assert.equal(requests.at(-1).compare, 'previous');
+    await page.getByText('No baseline', { exact: true }).first().waitFor();
     await noOverflow();
     await screenshot('overview');
     await page.getByRole('button', { name: 'Filter statistics', exact: true }).focus();
@@ -119,6 +145,13 @@ try {
     await page.getByRole('menuitemradio', { name: 'Today', exact: true }).click();
     await page.getByText('QA campaign 1', { exact: true }).waitFor();
     assert.equal(requests.at(-1).period, 'today');
+    assert.equal(requests.at(-1).compare, 'previous');
+    // A day in progress refuses the comparison and says why, instead of
+    // reporting a change that only reflects the hour.
+    await page.getByText('Comparison unavailable.', { exact: false }).waitFor();
+    assert.equal(await page.getByRole('columnheader', { name: /Change/ }).count(), 0);
+    await noOverflow();
+    await screenshot('no-comparison');
     await page.getByRole('button', { name: 'Filter statistics', exact: true }).click();
     await page.getByRole('menuitemradio', { name: /Second QA account/ }).click();
     await page.getByText('QA campaign 1', { exact: true }).waitFor();

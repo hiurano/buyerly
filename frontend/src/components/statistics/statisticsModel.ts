@@ -1,4 +1,8 @@
-import type { AnalyticsHierarchyItem, AnalyticsHierarchyResponse } from '@/lib/types';
+import type {
+  AnalyticsHierarchyItem,
+  AnalyticsHierarchyResponse,
+  AnalyticsPeriodMetrics,
+} from '@/lib/types';
 import { formatMetricMoney } from '@/components/campaigns/liveCampaigns';
 
 export type EntityLevel = AnalyticsHierarchyResponse['level'];
@@ -19,8 +23,8 @@ export interface ResultDefinition {
   noun: string;
   /** Card and column heading for the efficiency metric. */
   costLabel: string;
-  count: (item: AnalyticsHierarchyItem) => number;
-  cost: (item: AnalyticsHierarchyItem) => number | null;
+  count: (metrics: AnalyticsPeriodMetrics) => number;
+  cost: (metrics: AnalyticsPeriodMetrics) => number | null;
 }
 
 export const RESULT_DEFINITIONS: Record<ResultKind, ResultDefinition> = {
@@ -294,6 +298,54 @@ export function buildDiagnostics(
       ],
     },
   ];
+}
+
+export type ChangeDirection = 'up' | 'down' | 'flat' | 'unknown';
+
+export interface PeriodChange {
+  direction: ChangeDirection;
+  /** Written out in full, because the arrow alone is not a statement. */
+  label: string;
+}
+
+/** Below this the movement is noise dressed up as a number. */
+const FLAT_CHANGE = 0.005;
+
+/**
+ * Movement against the baseline window. This answers "did it change", never
+ * "is it good": whether a value is acceptable is the target's job, and the two
+ * must stay visually and semantically separate.
+ */
+export function changeBetween(
+  current: number | null,
+  previous: number | null | undefined,
+): PeriodChange {
+  if (current === null || previous === null || previous === undefined
+    || !Number.isFinite(current) || !Number.isFinite(previous)) {
+    return { direction: 'unknown', label: 'No baseline' };
+  }
+  if (previous === 0) {
+    // A share of zero has no meaning, so the move is described instead.
+    if (current === 0) return { direction: 'flat', label: 'No change' };
+    return { direction: 'up', label: 'From zero' };
+  }
+  const ratio = (current - previous) / previous;
+  if (Math.abs(ratio) < FLAT_CHANGE) return { direction: 'flat', label: 'No change' };
+  const magnitude = `${Math.abs(ratio * 100).toFixed(0)}%`;
+  return {
+    direction: ratio > 0 ? 'up' : 'down',
+    label: `${ratio > 0 ? '+' : '−'}${magnitude}`,
+  };
+}
+
+/** The result count and its cost in one baseline window, for one result kind. */
+export function baselineFor(
+  previous: AnalyticsPeriodMetrics | null | undefined,
+  kind: ResultKind,
+): { count: number | null; cost: number | null } {
+  if (!previous) return { count: null, cost: null };
+  const definition = RESULT_DEFINITIONS[kind];
+  return { count: definition.count(previous), cost: definition.cost(previous) };
 }
 
 export const CHILD_LEVEL: Partial<Record<EntityLevel, EntityLevel>> = {

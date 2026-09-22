@@ -16,13 +16,16 @@ import {
   DECISION_ORDER,
   DECISION_PRESENTATION,
   RESULT_DEFINITIONS,
+  baselineFor,
   buildDiagnostics,
+  changeBetween,
   decide,
   detectPrimaryResult,
   formatCount,
   type DecisionState,
   type DecisionVerdict,
   type EntityLevel,
+  type PeriodChange,
   type ReportingPeriod,
   type ResultKind,
 } from '@/components/statistics/statisticsModel';
@@ -58,8 +61,9 @@ import { Tooltip } from '@/ui/Tooltip';
 import { useAppStore } from '@/store/useAppStore';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
-type StatisticsSort = 'name' | 'spend' | 'results' | 'cost';
+type StatisticsSort = 'name' | 'spend' | 'results' | 'cost' | 'change';
 type Grouping = 'none' | 'decision' | 'delivery';
+type Comparison = 'none' | 'previous';
 type ResultPreference = 'auto' | ResultKind;
 
 interface SelectOption<T extends string> {
@@ -79,6 +83,11 @@ const PERIOD_OPTIONS: SelectOption<ReportingPeriod>[] = [
   { value: 'yesterday', label: 'Yesterday' },
   { value: 'last_3d', label: 'Last 3 days' },
   { value: 'last_7d', label: 'Last 7 days' },
+];
+
+const COMPARISON_OPTIONS: SelectOption<Comparison>[] = [
+  { value: 'none', label: 'No comparison' },
+  { value: 'previous', label: 'Previous period' },
 ];
 
 const GROUPING_OPTIONS: SelectOption<Grouping>[] = [
@@ -162,6 +171,23 @@ const DecisionNote: React.FC<{ verdict: DecisionVerdict; className?: string }> =
   </span>
 );
 
+const CHANGE_GLYPH: Record<PeriodChange['direction'], string> = {
+  up: '↑',
+  down: '↓',
+  flat: '→',
+  unknown: '·',
+};
+
+const ChangeNote: React.FC<{ change: PeriodChange; className?: string }> = ({
+  change,
+  className = '',
+}) => (
+  <span className={`inline-flex min-w-0 items-center gap-1 text-[var(--text-secondary)] ${className}`}>
+    <span aria-hidden="true" className="shrink-0 text-[var(--text-muted)]">{CHANGE_GLYPH[change.direction]}</span>
+    <span className="truncate tabular-nums">{change.label}</span>
+  </span>
+);
+
 const MetricCard: React.FC<{
   label: string;
   value: string;
@@ -169,8 +195,9 @@ const MetricCard: React.FC<{
   /** The primary decision KPI carries a stronger border than its neighbours. */
   emphasis?: boolean;
   verdict?: DecisionVerdict;
+  change?: PeriodChange;
   footnote?: string;
-}> = ({ label, value, supporting, emphasis = false, verdict, footnote }) => (
+}> = ({ label, value, supporting, emphasis = false, verdict, change, footnote }) => (
   <article
     className={`flex min-h-[var(--statistics-metric-height)] min-w-0 flex-col rounded-[var(--control-border-radius)] border bg-[var(--card-bg)] p-4 shadow-[var(--canvas-shadow)] ${
       emphasis ? 'border-[var(--statistics-primary-card-border)]' : 'border-[var(--card-border)]'
@@ -181,6 +208,7 @@ const MetricCard: React.FC<{
       {value.replace(/\u00a0/g, ' ')}
     </div>
     <div className="mt-2 text-[12px] text-[var(--text-secondary)]">{supporting}</div>
+    {change && <ChangeNote change={change} className="mt-1.5 text-[12px]" />}
     {verdict && <DecisionNote verdict={verdict} className="mt-auto pt-2 text-[12px]" />}
     {!verdict && footnote && <div className="mt-auto pt-2 text-[12px] text-[var(--text-muted)]">{footnote}</div>}
   </article>
@@ -189,6 +217,9 @@ const MetricCard: React.FC<{
 interface StatisticsRowProps {
   item: AnalyticsHierarchyItem;
   columns: LinearDataListColumn[];
+  minWidth: number;
+  /** Movement of the cost per result against the baseline, when there is one. */
+  change: PeriodChange | null;
   compact: boolean;
   resultKind: ResultKind;
   verdict: DecisionVerdict;
@@ -203,6 +234,8 @@ interface StatisticsRowProps {
 const StatisticsRow: React.FC<StatisticsRowProps> = ({
   item,
   columns,
+  minWidth,
+  change,
   compact,
   resultKind,
   verdict,
@@ -222,7 +255,7 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
         columns={columns}
         height={compact ? 48 : 56}
         className="text-left"
-        style={{ minWidth: `${TABLE_MIN_WIDTH}px` }}
+        style={{ minWidth: `${minWidth}px` }}
       >
         <div className="sticky left-0 z-[1] min-w-0 bg-[var(--bg-canvas)] transition-colors group-hover/row:bg-[var(--item-hover-bg)]">
           {childLabel ? (
@@ -280,6 +313,13 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
           {!verdict.quiet && <DecisionNote verdict={verdict} className="mt-1 justify-end text-[12px]" />}
         </div>
 
+        {change && (
+          <div className="min-w-0 text-right">
+            <ChangeNote change={change} className="justify-end text-[13px]" />
+            <div className="mt-1 truncate text-[12px] text-[var(--text-muted)]">vs previous</div>
+          </div>
+        )}
+
         <div className="flex justify-end">
           <button
             type="button"
@@ -303,7 +343,7 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
         <div
           id={diagnosticsId}
           className="mt-1 rounded-[var(--control-border-radius)] bg-[var(--statistics-diagnostics-bg)] p-3"
-          style={{ minWidth: `${TABLE_MIN_WIDTH}px` }}
+          style={{ minWidth: `${minWidth}px` }}
         >
           <p className="text-[12px] text-[var(--text-secondary)]">{verdict.detail}</p>
           <div className="mt-3 grid gap-x-6 gap-y-4 md:grid-cols-3">
@@ -343,6 +383,7 @@ export const StatisticsView: React.FC = () => {
   const [level, setLevel] = useState<EntityLevel>('campaign');
   const [trail, setTrail] = useState<DrillStep[]>([]);
   const [period, setPeriod] = useState<ReportingPeriod>('last_7d');
+  const [comparison, setComparison] = useState<Comparison>('previous');
   const [hierarchy, setHierarchy] = useState<AnalyticsHierarchyResponse | null>(null);
   const [hierarchyState, setHierarchyState] = useState<LoadState>('idle');
   const [hierarchyError, setHierarchyError] = useState('');
@@ -394,7 +435,7 @@ export const StatisticsView: React.FC = () => {
     setHierarchyState('loading');
     void apiRequest<AnalyticsHierarchyResponse>(
       `/api/analytics/hierarchy?parent_id=${encodeURIComponent(parentId)}`
-      + `&level=${queryLevel}&period=${period}`,
+      + `&level=${queryLevel}&period=${period}&compare=${comparison}`,
     )
       .then((response) => {
         if (generation !== requestGenerationRef.current) return;
@@ -410,7 +451,7 @@ export const StatisticsView: React.FC = () => {
     return () => {
       requestGenerationRef.current += 1;
     };
-  }, [parentId, period, queryLevel, reloadKey]);
+  }, [comparison, parentId, period, queryLevel, reloadKey]);
 
   const selectedAccount = accounts.find((account) => account.account_id === selectedAccountId) ?? null;
   const periodLabel = PERIOD_OPTIONS.find((option) => option.value === period)?.label ?? 'Last 7 days';
@@ -420,6 +461,9 @@ export const StatisticsView: React.FC = () => {
   /** What the rows in view are a share of: the ad account, or the entity drilled into. */
   const parentScope = parent ? LEVEL_LABELS[parent.level].singular : 'account';
   const items = useMemo(() => hierarchy?.items ?? [], [hierarchy]);
+  const comparisonMeta = hierarchy?.comparison;
+  const comparisonAvailable = comparisonMeta?.available ?? false;
+  const tableMinWidth = comparisonAvailable ? TABLE_MIN_WIDTH + 130 : TABLE_MIN_WIDTH;
 
   /** The conversion event this ad account declares it is buying, if any. */
   const declaredResultKind: ResultKind | null = (
@@ -455,8 +499,22 @@ export const StatisticsView: React.FC = () => {
     const allRowsHaveKnownCurrency = items.every((item) => KNOWN_CURRENCY.test(item.currency.trim().toUpperCase()));
     const currency = currencies.size === 1 && allRowsHaveKnownCurrency ? [...currencies][0] : null;
     const costPerResult = currency && results > 0 ? spend / results : null;
+    // The baseline covers the same rows: an entity that ran only in the earlier
+    // window is history, and contributes nothing to either side.
+    const hasBaseline = items.some((item) => item.previous);
+    const previousSpend = items.reduce((total, item) => total + (item.previous?.spend ?? 0), 0);
+    const previousResults = items.reduce(
+      (total, item) => total + (item.previous ? resultDefinition.count(item.previous) : 0),
+      0,
+    );
+    const previousCostPerResult = hasBaseline && currency && previousResults > 0
+      ? previousSpend / previousResults
+      : null;
     return {
       spendValue: spend,
+      spendChange: changeBetween(spend, hasBaseline ? previousSpend : null),
+      resultsChange: changeBetween(results, hasBaseline ? previousResults : null),
+      costChange: changeBetween(costPerResult, previousCostPerResult),
       spend: currency ? formatMetricMoney(spend, currency) : '—',
       results,
       delivering,
@@ -501,17 +559,35 @@ export const StatisticsView: React.FC = () => {
       if (sortKey === 'cost') {
         return optionalMetric(resultDefinition.cost(left), resultDefinition.cost(right));
       }
+      if (sortKey === 'change') {
+        const movement = (item: AnalyticsHierarchyItem) => {
+          const current = resultDefinition.cost(item);
+          const baseline = baselineFor(item.previous, resultKind).cost;
+          if (current === null || baseline === null || baseline === 0) return null;
+          return (current - baseline) / baseline;
+        };
+        return optionalMetric(movement(left), movement(right));
+      }
       return (left.spend - right.spend) * direction;
     });
-  }, [items, query, resultDefinition, sortDirection, sortKey]);
+  }, [items, query, resultDefinition, resultKind, sortDirection, sortKey]);
 
   const columns: LinearDataListColumn[] = useMemo(() => [
     { id: 'name', label: LEVEL_LABELS[queryLevel].singular.replace(/^./, (c) => c.toUpperCase()), width: 'minmax(240px, 1fr)', sortable: true },
     { id: 'spend', label: 'Spend', width: '230px', align: 'right', sortable: true },
     { id: 'results', label: resultDefinition.label, width: '110px', align: 'right', sortable: true },
     { id: 'cost', label: resultDefinition.costLabel, width: '200px', align: 'right', sortable: true },
+    ...(comparisonAvailable
+      ? [{ id: 'change', label: 'Change', width: '120px', align: 'right' as const, sortable: true }]
+      : []),
     { id: 'diagnostics', label: '', width: '40px', align: 'right' },
-  ], [queryLevel, resultDefinition]);
+  ], [comparisonAvailable, queryLevel, resultDefinition]);
+
+  /** Movement of the decision metric, which is what the Change column reports. */
+  const changeFor = useCallback((item: AnalyticsHierarchyItem): PeriodChange | null => {
+    if (!comparisonAvailable) return null;
+    return changeBetween(resultDefinition.cost(item), baselineFor(item.previous, resultKind).cost);
+  }, [comparisonAvailable, resultDefinition, resultKind]);
 
   /**
    * A row's spend is read against its own daily budget only for single-day
@@ -557,6 +633,8 @@ export const StatisticsView: React.FC = () => {
       key={item.entity_id}
       item={item}
       columns={columns}
+      minWidth={tableMinWidth}
+      change={changeFor(item)}
       compact={density === 'compact'}
       resultKind={resultKind}
       verdict={verdictFor(item)}
@@ -577,7 +655,7 @@ export const StatisticsView: React.FC = () => {
         if (groupItems.length === 0) return null;
         const presentation = DECISION_PRESENTATION[state];
         return (
-          <div key={state} style={{ minWidth: `${TABLE_MIN_WIDTH}px` }}>
+          <div key={state} style={{ minWidth: `${tableMinWidth}px` }}>
             <LinearDataListGroupHeader
               title={presentation.title}
               count={groupItems.length}
@@ -594,7 +672,7 @@ export const StatisticsView: React.FC = () => {
       return statuses.map((status) => {
         const groupItems = visibleItems.filter((item) => statusLabel(item) === status);
         return (
-          <div key={status} style={{ minWidth: `${TABLE_MIN_WIDTH}px` }}>
+          <div key={status} style={{ minWidth: `${tableMinWidth}px` }}>
             <LinearDataListGroupHeader
               title={status}
               count={groupItems.length}
@@ -676,10 +754,10 @@ export const StatisticsView: React.FC = () => {
 
     return (
       <LinearDataListViewport horizontal>
-        <div style={{ minWidth: `${TABLE_MIN_WIDTH}px` }}>
+        <div style={{ minWidth: `${tableMinWidth}px` }}>
           <LinearDataListColumnHeader
             columns={columns}
-            minWidth={TABLE_MIN_WIDTH}
+            minWidth={tableMinWidth}
             sortKey={sortKey}
             sortDirection={sortDirection}
             onSort={(columnId) => {
@@ -737,6 +815,16 @@ export const StatisticsView: React.FC = () => {
                   <DropdownMenuRadioItem key={option.value} value={option.value}>
                     <span>{option.label}</span>
                     {period === option.value && <LinearCheckIcon size={13} aria-hidden="true" />}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Compare with</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={comparison} onValueChange={(value) => setComparison(value as Comparison)}>
+                {COMPARISON_OPTIONS.map((option) => (
+                  <DropdownMenuRadioItem key={option.value} value={option.value}>
+                    <span>{option.label}</span>
+                    {comparison === option.value && <LinearCheckIcon size={13} aria-hidden="true" />}
                   </DropdownMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>
@@ -812,6 +900,18 @@ export const StatisticsView: React.FC = () => {
             </div>
           )}
 
+          {accounts.length > 0 && comparisonMeta?.requested && !comparisonMeta.available && comparisonMeta.reason && (
+            <div className="min-w-0 px-2 text-[12px] text-[var(--text-secondary)]" role="status">
+              Comparison unavailable. {comparisonMeta.reason}
+            </div>
+          )}
+
+          {accounts.length > 0 && comparisonAvailable && comparisonMeta?.current_includes_open_day && (
+            <div className="min-w-0 px-2 text-[12px] text-[var(--text-secondary)]" role="status">
+              The reported window still contains today, so every change keeps moving until the day closes.
+            </div>
+          )}
+
           {hierarchyState === 'ready' && items.length > 0 && (
             <section className="min-w-0 rounded-[var(--canvas-border-radius)] bg-[var(--bg-sidebar)] p-2" aria-labelledby="statistics-overview-heading">
               <div className="flex min-h-10 flex-wrap items-center justify-between gap-2 px-2 py-2">
@@ -828,6 +928,7 @@ export const StatisticsView: React.FC = () => {
                   label="Spend"
                   value={summary.spend}
                   supporting={`${periodLabel} total`}
+                  change={comparisonAvailable ? summary.spendChange : undefined}
                   footnote={summary.dailyBudget ? `${summary.dailyBudget} daily budget delivering` : 'Daily budget unavailable'}
                 />
                 <MetricCard
@@ -835,12 +936,14 @@ export const StatisticsView: React.FC = () => {
                   value={summary.costPerResult}
                   supporting="Primary decision metric"
                   emphasis
+                  change={comparisonAvailable ? summary.costChange : undefined}
                   verdict={explainMissingTarget(summary.verdict)}
                 />
                 <MetricCard
                   label={resultDefinition.label}
                   value={formatCount(summary.results)}
                   supporting={`Meta ${resultDefinition.noun} actions`}
+                  change={comparisonAvailable ? summary.resultsChange : undefined}
                   footnote={resultPreference !== 'auto'
                     ? 'Chosen in display options'
                     : declaredResultKind

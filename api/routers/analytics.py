@@ -5,7 +5,7 @@ queries (Account -> Campaign -> AdSet -> Ad) directly from the Analytics Fact St
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
@@ -24,6 +24,7 @@ def _hierarchy_response(
     level: str,
     period: str,
     items: List[Dict[str, Any]],
+    comparison: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     freshness_values = [
         str(item["data_as_of"])
@@ -38,8 +39,20 @@ def _hierarchy_response(
         # The oldest per-entity timestamp is the conservative freshness of the
         # whole result set: every visible row is at least this fresh.
         "data_as_of": min(freshness_values) if freshness_values else None,
+        "comparison": comparison or _no_comparison(),
         "total": len(items),
         "items": items,
+    }
+
+
+def _no_comparison(requested: bool = False) -> Dict[str, Any]:
+    """The shape returned when no baseline was asked for or none could be built."""
+    return {
+        "requested": requested,
+        "available": False,
+        "dates": [],
+        "reason": "",
+        "current_includes_open_day": False,
     }
 
 
@@ -48,6 +61,11 @@ async def get_analytics_hierarchy(
     parent_id: str = Query(..., description="Meta ID of the parent entity (account_id, campaign_id, adset_id)"),
     level: str = Query("campaign", pattern="^(campaign|adset|ad)$", description="Breakdown level"),
     period: str = Query("today", pattern="^(today|yesterday|last_3d|last_7d)$", description="Reporting period"),
+    compare: str = Query(
+        "none",
+        pattern="^(none|previous)$",
+        description="Baseline to measure the period against: the equal-length window before it",
+    ),
     user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """Retrieve normalized metrics breakdown for child entities under a parent hierarchy node.
@@ -59,11 +77,15 @@ async def get_analytics_hierarchy(
         ws = await get_user_workspace(session, user)
         ws_id = ws.id if ws else getattr(user, "active_workspace_id", None)
         if not ws_id:
-            return _hierarchy_response(parent_id, level, period, [])
+            return _hierarchy_response(
+                parent_id, level, period, [], _no_comparison(compare == "previous")
+            )
 
         accounts = await get_user_accounts(session, user, workspace_id=ws_id)
         if not accounts:
-            return _hierarchy_response(parent_id, level, period, [])
+            return _hierarchy_response(
+                parent_id, level, period, [], _no_comparison(compare == "previous")
+            )
 
         # Account-wide hierarchy views are available only for accounts in the
         # active workspace. Direct campaign/ad set parents remain protected by
@@ -77,13 +99,14 @@ async def get_analytics_hierarchy(
                     detail="Ad account not found, or not available in the current workspace",
                 )
 
-        items = await AnalyticsFactService.get_hierarchy_breakdown(
+        items, comparison = await AnalyticsFactService.get_hierarchy_breakdown(
             session=session,
             workspace_id=ws_id,
             parent_entity_id=parent_id,
             entity_level=level,
             period=period,
             user_accounts=accounts,
+            compare=compare == "previous",
         )
 
-        return _hierarchy_response(parent_id, level, period, items)
+        return _hierarchy_response(parent_id, level, period, items, comparison)

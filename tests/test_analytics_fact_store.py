@@ -25,6 +25,7 @@ from meta_api.client import MetaClient
 from services.analytics_store import (
     AnalyticsFactService,
     resolve_account_period_dates,
+    resolve_previous_period_dates,
 )
 from tests.test_api import generate_valid_telegram_init_data
 from tests.test_db_helper import create_test_engine, init_test_db
@@ -400,7 +401,7 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
             await session.commit()
 
             # Query campaigns for Workspace 1
-            breakdown_w1 = await AnalyticsFactService.get_hierarchy_breakdown(
+            breakdown_w1, _ = await AnalyticsFactService.get_hierarchy_breakdown(
                 session,
                 workspace_id=self.ws1.id,
                 parent_entity_id=self.acc1.account_id,
@@ -412,7 +413,7 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(breakdown_w1[0]["cost_per_lead"], 8.0)
 
             # An authorized account parent returns the selected level account-wide.
-            account_adsets = await AnalyticsFactService.get_hierarchy_breakdown(
+            account_adsets, _ = await AnalyticsFactService.get_hierarchy_breakdown(
                 session,
                 workspace_id=self.ws1.id,
                 parent_entity_id=self.acc1.account_id,
@@ -423,7 +424,7 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
             self.assertEqual([item["entity_id"] for item in account_adsets], ["adset_alpha_1"])
 
             # Existing direct-parent drill-down remains available.
-            direct_adsets = await AnalyticsFactService.get_hierarchy_breakdown(
+            direct_adsets, _ = await AnalyticsFactService.get_hierarchy_breakdown(
                 session,
                 workspace_id=self.ws1.id,
                 parent_entity_id="cmp_alpha_1",
@@ -434,7 +435,7 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
             self.assertEqual([item["entity_id"] for item in direct_adsets], ["adset_alpha_1"])
 
             # Verify Tenant Isolation: Workspace 1 query MUST NOT see Workspace 2 campaigns
-            breakdown_leak_attempt = await AnalyticsFactService.get_hierarchy_breakdown(
+            breakdown_leak_attempt, _ = await AnalyticsFactService.get_hierarchy_breakdown(
                 session,
                 workspace_id=self.ws1.id,
                 parent_entity_id=self.acc3.account_id,
@@ -688,6 +689,94 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
                     headers=headers_w1,
                 )
                 self.assertEqual(res_alien.status_code, 404)
+
+    async def test_analytics_hierarchy_compares_against_the_preceding_window(self):
+        """The baseline is the equal-length window immediately before the reported one."""
+        timezone_name = self.acc1.timezone_name
+        reported = resolve_account_period_dates(timezone_name, "yesterday")[0]
+        baseline = resolve_previous_period_dates(timezone_name, "yesterday")[0]
+        self.assertNotEqual(reported, baseline)
+
+        def campaign(entity_id, day, spend, leads):
+            return {
+                "entity_level": "campaign",
+                "entity_id": entity_id,
+                "entity_name": entity_id,
+                "parent_entity_id": self.acc1.account_id,
+                "date": day,
+                "currency": "USD",
+                "spend": spend,
+                "impressions": 1000,
+                "clicks": 50,
+                "leads": leads,
+            }
+
+        async with self.test_session_maker() as session:
+            await AnalyticsFactService.upsert_entity_facts(
+                session,
+                workspace_id=self.ws1.id,
+                account_id=self.acc1.account_id,
+                facts=[
+                    # Same spend, more leads: cost per lead fell against the baseline.
+                    campaign("cmp_improved", baseline, 100.0, 4),
+                    campaign("cmp_improved", reported, 100.0, 10),
+                    # Started inside the reported window, so it has no baseline.
+                    campaign("cmp_new", reported, 50.0, 2),
+                    # Ran only before the reported window: it must not become a row.
+                    campaign("cmp_gone", baseline, 70.0, 7),
+                ],
+            )
+            await session.commit()
+
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
+            init_data_w1 = generate_valid_telegram_init_data(
+                settings.BOT_TOKEN,
+                {"id": 11111111, "first_name": "Buyer One", "username": "buyer1"},
+            )
+            headers_w1 = {"Authorization": f"tma {init_data_w1}"}
+            base_url = (
+                f"/api/analytics/hierarchy?parent_id={self.acc1.account_id}"
+                "&level=campaign"
+            )
+            compared = await ac.get(f"{base_url}&period=yesterday&compare=previous", headers=headers_w1)
+            plain = await ac.get(f"{base_url}&period=yesterday", headers=headers_w1)
+            open_period = await ac.get(f"{base_url}&period=today&compare=previous", headers=headers_w1)
+            rejected = await ac.get(f"{base_url}&period=yesterday&compare=sideways", headers=headers_w1)
+
+        self.assertEqual(compared.status_code, 200)
+        payload = compared.json()
+        comparison = payload["comparison"]
+        self.assertTrue(comparison["requested"])
+        self.assertTrue(comparison["available"])
+        self.assertEqual(comparison["dates"], [baseline])
+        # A closed day carries no day in progress, so the change is final.
+        self.assertFalse(comparison["current_includes_open_day"])
+
+        rows = {item["entity_id"]: item for item in payload["items"]}
+        # The reported window defines the rows: a campaign that only ran in the
+        # baseline window is history, not a row to act on.
+        self.assertEqual(set(rows), {"cmp_improved", "cmp_new"})
+        self.assertEqual(rows["cmp_improved"]["cost_per_lead"], 10.0)
+        self.assertEqual(rows["cmp_improved"]["previous"]["leads"], 4)
+        self.assertEqual(rows["cmp_improved"]["previous"]["cost_per_lead"], 25.0)
+        # No baseline is reported as absent, never as a zero that reads as -100%.
+        self.assertIsNone(rows["cmp_new"]["previous"])
+
+        # Without a comparison the rows keep their previous shape exactly.
+        self.assertEqual(plain.status_code, 200)
+        self.assertFalse(plain.json()["comparison"]["requested"])
+        self.assertNotIn("previous", plain.json()["items"][0])
+
+        # A day in progress cannot be compared with an equal part of an earlier day.
+        self.assertEqual(open_period.status_code, 200)
+        open_comparison = open_period.json()["comparison"]
+        self.assertTrue(open_comparison["requested"])
+        self.assertFalse(open_comparison["available"])
+        self.assertIn("still open", open_comparison["reason"])
+        self.assertTrue(open_comparison["current_includes_open_day"])
+
+        self.assertEqual(rejected.status_code, 422)
 
     async def test_retention_cleanup(self):
         async with self.test_session_maker() as session:

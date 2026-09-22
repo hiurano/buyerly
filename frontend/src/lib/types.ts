@@ -107,17 +107,8 @@ export interface MetaInviteCreated {
   expires_at: string;
 }
 
-export interface AnalyticsHierarchyItem {
-  entity_id: string;
-  entity_name: string;
-  entity_level: 'campaign' | 'adset' | 'ad';
-  parent_entity_id: string;
-  account_id: string;
-  currency: string;
-  status: string;
-  effective_status: string;
-  daily_budget: number;
-  data_as_of: string | null;
+/** What one reporting window measures. The baseline reports the same shape. */
+export interface AnalyticsPeriodMetrics {
   spend: number;
   impressions: number;
   reach: number;
@@ -140,12 +131,40 @@ export interface AnalyticsHierarchyItem {
   ctr_outbound: number;
 }
 
+export interface AnalyticsHierarchyItem extends AnalyticsPeriodMetrics {
+  entity_id: string;
+  entity_name: string;
+  entity_level: 'campaign' | 'adset' | 'ad';
+  parent_entity_id: string;
+  account_id: string;
+  currency: string;
+  status: string;
+  effective_status: string;
+  daily_budget: number;
+  data_as_of: string | null;
+  /**
+   * The same metrics over the equal-length window before this one. Absent when
+   * no comparison was requested; null when the entity did not exist then.
+   */
+  previous?: AnalyticsPeriodMetrics | null;
+}
+
+/** The baseline the rows were measured against, or why there is none. */
+export interface AnalyticsComparison {
+  requested: boolean;
+  available: boolean;
+  dates: string[];
+  reason: string;
+  current_includes_open_day: boolean;
+}
+
 export interface AnalyticsHierarchyResponse {
   parent_id: string;
   level: 'campaign' | 'adset' | 'ad';
   period: 'today' | 'yesterday' | 'last_3d' | 'last_7d';
   source: 'analytics_fact_store';
   data_as_of: string | null;
+  comparison?: AnalyticsComparison;
   total: number;
   items: AnalyticsHierarchyItem[];
 }
