@@ -16,6 +16,8 @@
 - Развёртывание: `scripts/deploy.sh` теперь использует цикл ожидания готовности (`wait_for_ready`) для `/health/ready` после запуска `buyerly-web` вместо одиночного запроса `curl`, предотвращая сбои деплоя из-за 502 Bad Gateway при инициализации апстрима Nginx.
 - Почтовый клиент: исходящие запросы к Resend API в `core/email.py` теперь отправляют явный заголовок `User-Agent: buyerly/1.0`, предотвращая блокировку со стороны Cloudflare WAF (HTTP 403 / ошибка 1010), а API-ключ `RESEND_API_KEY` очищается от кавычек, пробелов и переносов строк в коде и `scripts/deploy.sh`.
 
+- Участники workspace с подтверждённым email могут повторно входить после использования приглашения; при проверке кода доступ и одобрение проверяются заново.
+
 ### Changed
 - Public home page replaces the root login redirect, with visible operator details matching the registry extract. Privacy and Terms are rewritten around email access, workspaces, connected Meta data and manual deletion, with a shared Linear-inspired layout. Footer Legal contains only Privacy and Terms; the existing deletion URL remains available from Privacy.
 - Автодеплой: `scripts/deploy.sh` теперь отслеживает изменение конфигурации в `.env` (например, обновление `RESEND_API_KEY`) и выполняет перезапуск контейнеров даже при повторном запуске на том же коммите `main`.

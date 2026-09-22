@@ -1,9 +1,11 @@
 import unittest
+from datetime import datetime, timezone
+from urllib.parse import parse_qs, urlsplit
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import httpx
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import api.auth as api_auth_module
@@ -112,6 +114,65 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(resp.status_code, 403)
             self.assertIn("not on the allowlist", resp.json()["detail"])
+
+    async def _seed_joined_member(self):
+        async with self.sessions() as session:
+            user = await session.get(User, self.buyer_id)
+            user.email_verified_at = datetime.now(timezone.utc)
+            ws = Workspace(name="Joined", slug="joined", owner_user_id=self.admin_id)
+            session.add(ws)
+            await session.flush()
+            session.add(WorkspaceMember(workspace_id=ws.id, user_id=user.id, role="buyer"))
+            session.add(WorkspaceInvite(
+                workspace_id=ws.id, inviter_user_id=self.admin_id,
+                email=user.email, role="buyer", token="spent-invitation-token",
+                status="accepted", max_uses=1, used_count=1,
+            ))
+            await session.commit()
+
+    async def test_joined_member_can_repeat_login_with_code_and_link(self):
+        await self._seed_joined_member()
+        with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock, return_value=True) as send:
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+                for use_link in (False, True):
+                    response = await client.post("/api/auth/request-temporary-password", json={"email": "buyer@buyerly.com"})
+                    self.assertEqual(response.status_code, 200, response.text)
+                    _, code, link = send.call_args.args
+                    endpoint = "verify-email-link" if use_link else "verify-temporary-password"
+                    payload = {"token": parse_qs(urlsplit(link).query)["token"][0]} if use_link else {"email": "buyer@buyerly.com", "code": code}
+                    response = await client.post(f"/api/auth/{endpoint}", json=payload)
+                    self.assertEqual(response.status_code, 200, response.text)
+                    self.assertIsNone(response.json()["redirect_url"])
+                    self.assertTrue(client.cookies.get("buyerly_session"))
+                    client.cookies.clear()
+        async with self.sessions() as session:
+            self.assertIsNone((await session.execute(select(AllowedEmail).where(AllowedEmail.email == "buyer@buyerly.com"))).scalar_one_or_none())
+
+    async def test_membership_removal_invalidates_issued_login(self):
+        await self._seed_joined_member()
+        with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock, return_value=True) as send:
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+                response = await client.post("/api/auth/request-temporary-password", json={"email": "buyer@buyerly.com"})
+                self.assertEqual(response.status_code, 200, response.text)
+                code = send.call_args.args[1]
+                async with self.sessions() as session:
+                    await session.execute(delete(WorkspaceMember).where(WorkspaceMember.user_id == self.buyer_id))
+                    await session.commit()
+                response = await client.post("/api/auth/verify-temporary-password", json={"email": "buyer@buyerly.com", "code": code})
+                self.assertEqual(response.status_code, 403, response.text)
+                self.assertIsNone(client.cookies.get("buyerly_session"))
+
+    async def test_unapproved_or_unverified_member_cannot_request_login(self):
+        await self._seed_joined_member()
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+            for approved, verified in ((False, True), (True, False)):
+                async with self.sessions() as session:
+                    user = await session.get(User, self.buyer_id)
+                    user.is_approved = approved
+                    user.email_verified_at = datetime.now(timezone.utc) if verified else None
+                    await session.commit()
+                response = await client.post("/api/auth/request-temporary-password", json={"email": "buyer@buyerly.com"})
+                self.assertEqual(response.status_code, 403, response.text)
 
     async def test_whitelisted_email_allowed_on_request_temporary_password(self):
         async with self.sessions() as session:
@@ -431,4 +492,3 @@ class TestEmailDelivery(unittest.IsolatedAsyncioTestCase):
             html_content="<p>Test</p>",
         )
         self.assertFalse(result)
-
