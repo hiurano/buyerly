@@ -82,6 +82,24 @@ def _invite_is_active(invite: WorkspaceInvite, now: datetime) -> bool:
     return invite.max_uses == 0 or invite.used_count < invite.max_uses
 
 
+async def _has_approved_membership(session, email: str) -> bool:
+    """Existing verified members may sign in after their invitation is spent."""
+    membership = (
+        await session.execute(
+            select(WorkspaceMember.id)
+            .join(User, User.id == WorkspaceMember.user_id)
+            .where(
+                func.lower(User.email) == email,
+                User.email_verified_at.is_not(None),
+                User.is_approved.is_(True),
+            )
+            .limit(1)
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    return membership is not None
+
+
 async def _resolve_login_authorization(
     session,
     email: str,
@@ -114,6 +132,9 @@ async def _resolve_login_authorization(
         select(AllowedEmail).where(func.lower(AllowedEmail.email) == clean_email)
     )
     if allowed_res.scalar_one_or_none() is not None:
+        return True, None
+
+    if await _has_approved_membership(session, clean_email):
         return True, None
 
     invite_res = await session.execute(
@@ -164,8 +185,8 @@ async def _complete_passwordless_login(
     email_clean = email.strip().lower()
     if invite_id is None:
         # Preserve the authorization context captured when the email was sent.
-        # A whitelist login must still be whitelisted; it must not silently gain
-        # access through an invitation created after the token was issued.
+        # Recheck direct access (allowlist or approved membership), never fall
+        # back to an invitation created after the token was issued.
         allowed_email = (
             await session.execute(
                 select(AllowedEmail).where(
@@ -173,7 +194,8 @@ async def _complete_passwordless_login(
                 ).with_for_update()
             )
         ).scalar_one_or_none()
-        is_allowed, invite = allowed_email is not None, None
+        is_allowed = allowed_email is not None or await _has_approved_membership(session, email_clean)
+        invite = None
     else:
         is_allowed, invite = await _resolve_login_authorization(
             session,
