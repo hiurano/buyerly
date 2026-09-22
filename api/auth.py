@@ -8,7 +8,7 @@ import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
-from fastapi import Header, HTTPException, Query, Request, Response, status
+from fastapi import Depends, Header, HTTPException, Query, Request, Response, status
 from sqlalchemy import select, update
 
 from core.config import settings
@@ -182,7 +182,7 @@ def validate_telegram_init_data(
         return None
 
 
-async def get_current_user(
+async def _get_authenticated_user(
     request: Request,
     response: Response,
     authorization: Optional[str] = Header(None),
@@ -412,3 +412,22 @@ async def get_current_user(
         await session.commit()
         await session.refresh(fallback_user)
         return fallback_user
+
+
+async def get_current_user(
+    user: User = Depends(_get_authenticated_user),
+    x_workspace_slug: Optional[str] = Header(None),
+) -> User:
+    """Bind browser requests to their route without changing other tabs' scope."""
+    if x_workspace_slug is not None:
+        from api.deps import get_user_workspace
+
+        if not x_workspace_slug.strip():
+            raise HTTPException(status_code=403, detail="Workspace access denied")
+        async with async_session_maker() as session:
+            workspace = await get_user_workspace(session, user, slug=x_workspace_slug)
+            if workspace is None:
+                raise HTTPException(status_code=403, detail="Workspace access denied")
+            # Authentication returns a detached User. Keep this scope request-local.
+            user.active_workspace_id = workspace.id
+    return user

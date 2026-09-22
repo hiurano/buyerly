@@ -6,6 +6,12 @@ ROOT = Path(__file__).parents[1]
 
 
 class TestReactFrontendContract(unittest.TestCase):
+    def test_workspace_routes_scope_api_requests(self):
+        api = (ROOT / "frontend/src/lib/api.ts").read_text()
+        self.assertIn("const route = parseRoute()", api)
+        self.assertIn("headers.set('X-Workspace-Slug', route.workspace)", api)
+        self.assertIn("key={routeWorkspace.id}", self.app)
+
     def test_public_typography_is_scoped_to_public_composition(self):
         public_styles = (ROOT / "frontend/public/static/css/legal.css").read_text()
         self.assertIn("var(--site-heading-size)", public_styles)

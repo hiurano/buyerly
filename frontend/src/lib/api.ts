@@ -1,3 +1,5 @@
+import { parseRoute } from './routing';
+
 export class ApiError extends Error {
   readonly status: number;
 
@@ -21,6 +23,10 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   const method = (init.method || 'GET').toUpperCase();
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
+  const route = parseRoute();
+  if (route.kind === 'workspace' || route.kind === 'welcome') {
+    headers.set('X-Workspace-Slug', route.workspace);
+  }
   if (init.body && !(init.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
