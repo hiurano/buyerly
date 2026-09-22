@@ -172,6 +172,11 @@
   --statistics-pace-track: lch(13.845% 1.3 272 / 1);
   --statistics-pace-fill: var(--text-tertiary);
   --statistics-diagnostics-bg: lch(7.32% 0.85 272 / 1);
+  /* Trend: one series, stepped for this surface and checked against the
+     lightness band, chroma floor and 3:1 contrast. Never a status color —
+     those are reserved for decisions and must not mark a mere line. */
+  --statistics-trend-line: #7b86e2;
+  --statistics-trend-muted: var(--text-tertiary);
 
   /* Preferences Specific Tokens (Dark default) */
   --preferences-card-bg: lch(9.232% 0.85 272 / 1);
@@ -285,6 +290,9 @@ html[data-theme='light'] {
   --statistics-pace-track: lch(89.54% 0.5 282 / 1);
   --statistics-pace-fill: var(--text-tertiary);
   --statistics-diagnostics-bg: lch(97.94% 0.5 282 / 1);
+  /* Stepped for the light surface rather than flipped from the dark value. */
+  --statistics-trend-line: #5e6ad2;
+  --statistics-trend-muted: var(--text-tertiary);
 
   /* Preferences Specific Tokens (Light) */
   --preferences-card-bg: lch(100% 0 282 / 1);     /* #fefeff */

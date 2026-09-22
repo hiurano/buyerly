@@ -26,6 +26,7 @@ from services.analytics_store import (
     AnalyticsFactService,
     resolve_account_period_dates,
     resolve_previous_period_dates,
+    resolve_recent_dates,
 )
 from tests.test_api import generate_valid_telegram_init_data
 from tests.test_db_helper import create_test_engine, init_test_db
@@ -777,6 +778,79 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(open_comparison["current_includes_open_day"])
 
         self.assertEqual(rejected.status_code, 422)
+
+    async def test_analytics_timeseries_reports_one_point_per_local_day(self):
+        """A day the fact store never received is a gap, not a day without spend."""
+        timezone_name = self.acc1.timezone_name
+        window = resolve_recent_dates(timezone_name, 5)
+        self.assertEqual(len(window), 5)
+        self.assertEqual(window, sorted(window), "the window runs oldest day first")
+
+        async with self.test_session_maker() as session:
+            await AnalyticsFactService.upsert_entity_facts(
+                session,
+                workspace_id=self.ws1.id,
+                account_id=self.acc1.account_id,
+                facts=[
+                    {
+                        "entity_level": "campaign",
+                        "entity_id": f"cmp_trend_{index}",
+                        "entity_name": "Trend campaign",
+                        "parent_entity_id": self.acc1.account_id,
+                        "date": day,
+                        "currency": "USD",
+                        "spend": 100.0,
+                        "impressions": 1000,
+                        "clicks": 50,
+                        "leads": 5,
+                    }
+                    # The middle day of the window is deliberately never reported.
+                    for index, day in enumerate(window)
+                    if day != window[2]
+                ],
+            )
+            await session.commit()
+
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
+            init_data_w1 = generate_valid_telegram_init_data(
+                settings.BOT_TOKEN,
+                {"id": 11111111, "first_name": "Buyer One", "username": "buyer1"},
+            )
+            headers_w1 = {"Authorization": f"tma {init_data_w1}"}
+            series = await ac.get(
+                f"/api/analytics/timeseries?parent_id={self.acc1.account_id}&level=campaign&days=5",
+                headers=headers_w1,
+            )
+            too_long = await ac.get(
+                f"/api/analytics/timeseries?parent_id={self.acc1.account_id}&level=campaign&days=365",
+                headers=headers_w1,
+            )
+            alien = await ac.get(
+                f"/api/analytics/timeseries?parent_id={self.acc3.account_id}&level=campaign&days=5",
+                headers=headers_w1,
+            )
+
+        self.assertEqual(series.status_code, 200)
+        payload = series.json()
+        self.assertEqual(payload["source"], "analytics_fact_store")
+        self.assertEqual([point["date"] for point in payload["points"]], window)
+        # The last local date is still in progress and is named as such.
+        self.assertEqual(payload["open_day"], window[-1])
+        self.assertEqual(payload["currency"], "USD")
+
+        by_date = {point["date"]: point for point in payload["points"]}
+        self.assertTrue(by_date[window[0]]["has_data"])
+        self.assertEqual(by_date[window[0]]["cost_per_lead"], 20.0)
+        # The unreported day is flagged, and carries no invented cost.
+        self.assertFalse(by_date[window[2]]["has_data"])
+        self.assertIsNone(by_date[window[2]]["cost_per_lead"])
+
+        # The window length is validated, not trusted from the query string.
+        self.assertEqual(too_long.status_code, 422)
+
+        # Another workspace's ad account is not readable through the trend either.
+        self.assertEqual(alien.status_code, 404)
 
     async def test_retention_cleanup(self):
         async with self.test_session_maker() as session:

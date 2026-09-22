@@ -94,8 +94,32 @@ def _comparison_meta(
     }
 
 
+# The longest trend the screen may ask for. Ad-level facts are pruned at 60
+# days, so nothing beyond this is guaranteed to exist.
+MAX_TREND_DAYS = 30
+DEFAULT_TREND_DAYS = 14
+
+
+def resolve_recent_dates(
+    timezone_name: str,
+    days: int,
+    now_utc: Optional[datetime] = None,
+) -> List[str]:
+    """The local dates of the last `days` days, oldest first, ending today."""
+    now = now_utc or datetime.now(timezone.utc)
+    clock = resolve_account_clock(timezone_name)
+    local_today = (now.astimezone(clock.zone) if clock else now).date()
+    span = max(1, min(int(days), MAX_TREND_DAYS))
+    return [(local_today - timedelta(days=offset)).isoformat() for offset in reversed(range(span))]
+
+
 def _period_metrics(entity_facts: List[Any]) -> Dict[str, Any]:
-    """Aggregate one entity's daily facts into the metrics one period reports."""
+    """Aggregate a set of daily facts into the metrics one window reports.
+
+    Spend, clicks and conversions add up. Reach does not: the same person can be
+    reached on two days or by two entities, so the maximum is kept as the
+    conservative floor rather than inventing a sum.
+    """
     spend = sum(f.spend for f in entity_facts)
     impressions = sum(f.impressions for f in entity_facts)
     # Reach does not add up across days: the same person can be reached twice.
@@ -813,6 +837,79 @@ class AnalyticsFactService:
         # Sort by spend descending
         results.sort(key=lambda x: x["spend"], reverse=True)
         return results, comparison
+
+    @staticmethod
+    async def get_entity_timeseries(
+        session,
+        workspace_id: int,
+        parent_entity_id: str,
+        entity_level: str,
+        days: int = DEFAULT_TREND_DAYS,
+        user_accounts: Optional[List[Account]] = None,
+    ) -> Dict[str, Any]:
+        """Daily totals for everything under one parent, oldest day first.
+
+        One point per local date in the window, so a day Meta never reported is
+        a stated gap rather than a dip to zero. Strict multi-tenancy: the same
+        workspace and parent checks as the hierarchy breakdown.
+        """
+        valid_levels = {"campaign", "adset", "ad"}
+        if entity_level not in valid_levels:
+            return {"timezone": "UTC", "days": 0, "open_day": "", "points": []}
+
+        target_account = None
+        normalized_parent = (
+            parent_entity_id
+            if parent_entity_id.startswith("act_")
+            else f"act_{parent_entity_id}"
+        )
+        if user_accounts:
+            for acc in user_accounts:
+                if acc.account_id in {parent_entity_id, normalized_parent}:
+                    target_account = acc
+                    break
+
+        timezone_name = target_account.timezone_name if target_account else "UTC"
+        dates = resolve_recent_dates(timezone_name, days)
+        hierarchy_scope = (
+            AnalyticsEntityFact.account_id == target_account.account_id
+            if target_account
+            else AnalyticsEntityFact.parent_entity_id == parent_entity_id
+        )
+        stmt = (
+            select(AnalyticsEntityFact)
+            .where(
+                AnalyticsEntityFact.workspace_id == workspace_id,
+                hierarchy_scope,
+                AnalyticsEntityFact.entity_level == entity_level,
+                AnalyticsEntityFact.date.in_(dates),
+            )
+            .order_by(AnalyticsEntityFact.date.asc())
+        )
+        rows = (await session.execute(stmt)).scalars().all()
+
+        by_date: Dict[str, List[AnalyticsEntityFact]] = {}
+        currencies: Set[str] = set()
+        for r in rows:
+            by_date.setdefault(r.date, []).append(r)
+            currencies.add(r.currency)
+
+        points = []
+        for day in dates:
+            day_facts = by_date.get(day)
+            point: Dict[str, Any] = {"date": day, "has_data": bool(day_facts)}
+            point.update(_period_metrics(day_facts or []))
+            points.append(point)
+
+        return {
+            "timezone": canonical_timezone_name(timezone_name),
+            "days": len(dates),
+            # The last local date is still in progress, so its totals keep growing.
+            "open_day": dates[-1] if dates else "",
+            # A single currency is a precondition for reading money on one axis.
+            "currency": currencies.pop() if len(currencies) == 1 else "",
+            "points": points,
+        }
 
     @staticmethod
     async def cleanup_expired_facts(
