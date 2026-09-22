@@ -41,7 +41,7 @@ The live token vocabulary is defined in `frontend/src/styles/tokens.css`. Its cu
 | Action | `--action-primary`, `--action-primary-hover` | Accessible primary actions distinct from warnings |
 | Interaction | hover, focus, selected and disabled tokens | Explicit control states |
 | Elevation and motion | shadow, speed and easing tokens | Menus, dialogs and state transitions |
-| Domain | Ads Manager, Rules, Preferences and filter tokens | Stable product-specific semantics |
+| Domain | Ads Manager, Rules, Statistics, Preferences and filter tokens | Stable product-specific semantics |
 
 New reusable values belong in this file with a semantic name. Page-local Tailwind literals are acceptable only when truly one-off; a repeated literal is a missing token.
 
@@ -94,12 +94,22 @@ IconButton, Dialog, EmptyState and Skeleton are required product patterns but do
 
 ### Statistics
 
+Statistics is an operational console, not an analytics dashboard. Its order is
+spend → economics → volume → where → why, and a metric earns a place on the
+first screen only by causing a frequent decision.
+
 - keeps the restored individual overview cards, header filter/display menus and search beside the entity tabs (below them on mobile); this user-requested composition is a scoped exception to the divided-summary-surface principle;
 
 - selects one imported workspace account and reads campaign, ad-set or ad facts through the workspace-isolated hierarchy API;
-- supported periods are Today, Yesterday, Last 3 days and Last 7 days, matching the API vocabulary;
-- the overview is derived from the currently loaded rows and identifies the Analytics Fact Store freshness timestamp;
-- comparison, KPI targets, revenue/ROAS, decision groups and delivery mutations stay absent until server contracts exist;
+- supported periods are Today, Yesterday, Last 3 days and Last 7 days, matching the API vocabulary; Today is labelled as an open period whose conversions are still provisional;
+- the context line names the account, period and the account's reporting timezone, and identifies the Analytics Fact Store freshness timestamp;
+- the overview is four cards — spend, cost per result, result volume, delivery — derived from the currently loaded rows;
+- **Primary result** is a semantic role, not a fixed metric: the conversion event with the highest real volume is used, and it can be overridden in display options. The cost card follows the same choice;
+- the table carries only entity identity and delivery, spend, results and cost per result. CTR, CPC, CPM, frequency, reach, impressions, link and funnel metrics live in a per-row diagnostics panel that opens in place;
+- clicking an entity drills into its children with the same columns and a breadcrumb back; a level tab returns to the account-wide view;
+- **a row below the result floor is reported as undecidable, which is a different statement from performing badly.** No row is colored as a problem on a sample too small to judge;
+- KPI targets are not stored by the API yet, so rows report cost per result without a verdict and the overview states the absent target once rather than on every line. Decision grouping exists and becomes a full four-state split when a stored target lands;
+- comparison to a previous period, trend series, revenue/ROAS and delivery mutations stay absent until server contracts exist;
 - every number carries a real period, freshness and data-status meaning;
 - unavailable or unsupported metrics render as unavailable, never as zero unless the API returned a true zero;
 - mixed currency is not silently aggregated.
