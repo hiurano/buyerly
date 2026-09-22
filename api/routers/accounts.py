@@ -33,7 +33,7 @@ from api.schemas import (
 from bot.handlers import parse_fb_raw_accounts
 from core.currency import normalize_currency
 from core.meta_tokens import MetaTokenError, encrypt_meta_token
-from core.ownership import entity_is_owned_by, owned_by
+from core.ownership import owned_by
 from core.rate_limit import rate_limit_dep
 from core.timezones import resolve_account_clock
 from database.db import async_session_maker
@@ -406,7 +406,7 @@ async def batch_add_accounts(payload: BatchAddRequest, user: User = Depends(get_
                     # Intraworkspace RBAC check: only account owner or workspace owner/admin can overwrite token
                     if (
                         existing.workspace_id == (ws.id if ws else None)
-                        and not entity_is_owned_by(existing, user)
+                        and existing.owner_user_id != user.id
                         and caller_role not in ("owner", "admin")
                     ):
                         error_list.append({

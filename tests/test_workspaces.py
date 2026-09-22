@@ -14,6 +14,7 @@ import api.routes as api_routes_module
 import api.server as api_server_module
 from api.server import create_app
 from core.config import settings
+from core.meta_tokens import decrypt_meta_token, encrypt_meta_token
 from core.rate_limit import limiter
 from core.workspace_slugs import (
     MAX_WORKSPACE_SLUG_LENGTH,
@@ -805,6 +806,52 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             # 6. Victor is blocked from deleting accounts
             del_acc_res = await client.delete('/api/accounts/act_111111', headers=viewer_headers)
             self.assertEqual(del_acc_res.status_code, 403)
+
+    async def test_token_replacement_requires_account_owner_or_workspace_admin(self):
+        async with self.test_session_maker() as session:
+            account = (await session.execute(select(Account).where(Account.account_id == "act_111111"))).scalar_one()
+            original_owner = account.owner_user_id
+            workspace_id = account.workspace_id
+            colleague = User(
+                telegram_id="777009999", username="colleague", role="buyer",
+                is_approved=True, active_workspace_id=workspace_id,
+            )
+            session.add(colleague)
+            await session.flush()
+            colleague_id = colleague.id
+            member = WorkspaceMember(workspace_id=workspace_id, user_id=colleague_id, role="buyer")
+            session.add(member)
+            await session.commit()
+            member_id = member.id
+        auth = generate_valid_telegram_init_data(settings.BOT_TOKEN, {"id": 777009999, "first_name": "Colleague"})
+        info = {"name": "Updated", "account_status": 1, "timezone_name": "UTC", "currency": "USD"}
+        with patch.object(api_routes_module.meta_client, "get_account_info", new=AsyncMock(return_value=info)):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
+                for role, owns_account, allowed in (("buyer", False, False), ("buyer", True, True), ("admin", False, True), ("owner", False, True)):
+                    with self.subTest(role=role, owns_account=owns_account):
+                        async with self.test_session_maker() as session:
+                            member = await session.get(WorkspaceMember, member_id)
+                            member.role = role
+                            account = (await session.execute(select(Account).where(Account.account_id == "act_111111"))).scalar_one()
+                            account.owner_user_id = colleague_id if owns_account else original_owner
+                            account.name = "Original"
+                            account.access_token_encrypted = encrypt_meta_token("original-test-token")
+                            original_ciphertext = account.access_token_encrypted
+                            await session.commit()
+                        response = await client.post(
+                            "/api/accounts/batch-add", headers={"Authorization": f"tma {auth}"},
+                            json={"accounts": [{"account_id": "act_111111"}], "access_token": "replacement-test-token"},
+                        )
+                        self.assertEqual(response.status_code, 200, response.text)
+                        self.assertEqual(response.json()["success_count"], int(allowed))
+                        self.assertEqual(response.json()["error_count"], int(not allowed))
+                        async with self.test_session_maker() as session:
+                            account = (await session.execute(select(Account).where(Account.account_id == "act_111111"))).scalar_one()
+                            if allowed:
+                                self.assertEqual(decrypt_meta_token(account.access_token_encrypted), "replacement-test-token")
+                            else:
+                                self.assertEqual(account.name, "Original")
+                                self.assertEqual(account.access_token_encrypted, original_ciphertext)
 
     async def test_batch_add_accounts_cannot_take_over_account_from_another_workspace(self):
         # Create second user in a separate workspace
