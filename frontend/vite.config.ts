@@ -8,6 +8,7 @@ import fs from 'node:fs';
 function publicWebsite(): Plugin {
   const routes: Record<string, string> = {
     '/': 'landing.html',
+    '/about': 'about.html',
     '/privacy': 'privacy.html',
     '/terms': 'terms.html',
     '/data-deletion': 'data-deletion.html',

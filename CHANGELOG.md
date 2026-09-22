@@ -11,10 +11,13 @@
 - Из нижней панели утилит (`AppUtilityBar`) и футера сайдбара (`SidebarUtilityFooter`) удалены нереализованные кнопки-заглушки: справка («?»), «Agent» и «Chat history». Сами компоненты-контейнеры сохранены в разметке.
 
 ### Fixed
+- API-запросы React привязаны к workspace текущего URL с проверкой членства на сервере; разные вкладки больше не используют общий сохранённый workspace для операций.
 - Вёрстка экранов входа и создания воркспейса: исправлен перенос строк и оформление email. Ширина карточек увеличена до 360px, включён `text-wrap: balance`, в описании «Move work forward across your media buying team.» исключён перенос одиночного слова «team.» на новую строку, а на экранах ввода и отправки кода убрана изолированная точка на отдельной строке после email.
 - Замена Meta-токена существующего кабинета внутри workspace доступна его владельцу либо owner/admin команды; роль buyer больше не проходит проверку только за счёт общего workspace.
 - Развёртывание: `scripts/deploy.sh` теперь использует цикл ожидания готовности (`wait_for_ready`) для `/health/ready` после запуска `buyerly-web` вместо одиночного запроса `curl`, предотвращая сбои деплоя из-за 502 Bad Gateway при инициализации апстрима Nginx.
 - Почтовый клиент: исходящие запросы к Resend API в `core/email.py` теперь отправляют явный заголовок `User-Agent: buyerly/1.0`, предотвращая блокировку со стороны Cloudflare WAF (HTTP 403 / ошибка 1010), а API-ключ `RESEND_API_KEY` очищается от кавычек, пробелов и переносов строк в коде и `scripts/deploy.sh`.
+
+- Участники workspace с подтверждённым email могут повторно входить после использования приглашения; при проверке кода доступ и одобрение проверяются заново.
 
 ### Changed
 - Public home page replaces the root login redirect, with visible operator details matching the registry extract. Privacy and Terms are rewritten around email access, workspaces, connected Meta data and manual deletion, with a shared Linear-inspired layout. Footer Legal contains only Privacy and Terms; the existing deletion URL remains available from Privacy.
@@ -28,6 +31,8 @@
 - Русские `status_label` в уже сохранённых кабинетах перезапишутся английскими при следующем опросе Meta; миграция не требуется.
 
 ### Added
+
+- Публичный сайт: под героем лендинга появился ряд из трёх пунктов о том, что делает сервис, а в футере — колонка `Company` со ссылкой на новую страницу `/about` с юридическими данными оператора. Ряд построен по приёму лендинга Linear: лейбл и предложение идут одним кеглем, иерархию несут только вес (`--font-weight-medium`) и цвет (`--text-primary` / `--text-secondary`); новых значений в `tokens.css` не добавлено. Маршрут `/about` зарегистрирован в `api/server.py`, `frontend/vite.config.ts`, `frontend/nginx.conf`, а слаг `about` зарезервирован в `SYSTEM_ROOTS` и `RESERVED_WORKSPACE_SLUGS`, иначе воркспейс мог бы его занять.
 
 - Ads Manager: Linear-style sidebar facets count the primary-filter result and apply one independent quick selection. Main filters are shareable in the URL; display controls group real rows by status, account groups or scoped rules. Multi-membership filters support any/all and exclusion.
 

@@ -9,6 +9,7 @@ RESERVED_WORKSPACE_SLUGS = frozenset(
     {
         # Root segments the server itself serves. Nothing else is reserved:
         # a workspace slug may look like any past URL of the product.
+        "about",
         "api",
         "assets",
         "auth",

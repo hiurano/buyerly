@@ -22,9 +22,12 @@ a:focus-visible { outline: var(--site-focus-width) solid var(--focus-ring-color)
 .site-nav a { padding-block: var(--site-space-xs); text-decoration: none; color: var(--text-secondary); }
 h1 { margin: 0; font-size: var(--site-heading-size); font-weight: var(--font-weight-medium); line-height: var(--site-heading-leading); letter-spacing: var(--site-heading-tracking); }
 .landing-main { padding-block: var(--site-hero-space); }
-.landing-main p { margin: var(--site-space-lg) 0 0; color: var(--text-secondary); font-size: var(--site-lead-size); line-height: 1.5; }
+.landing-main > p { margin: var(--site-space-lg) 0 0; color: var(--text-secondary); font-size: var(--site-lead-size); line-height: 1.5; }
+.landing-capabilities { margin-top: var(--site-section-space); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--site-space-lg); }
+.landing-capabilities h2 { margin: 0; font-size: inherit; font-weight: var(--font-weight-medium); }
+.landing-capabilities p { margin: var(--site-space-xs) 0 0; color: var(--text-secondary); }
 .site-footer { border-top: var(--site-border-width) solid var(--site-border-color); padding-block: var(--site-space-xl); }
-.site-footer-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--site-footer-gap); font-size: var(--site-small-size); color: var(--text-secondary); }
+.site-footer-grid { display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); gap: var(--site-footer-gap); font-size: var(--site-small-size); color: var(--text-secondary); }
 .site-footer h2 { margin: 0 0 var(--site-space-md); color: var(--text-primary); font-size: inherit; font-weight: var(--font-weight-semibold); }
 .site-footer p { margin: var(--site-space-sm) 0 0; }
 .site-operator { max-width: var(--site-footer-brand-width); }
@@ -49,6 +52,7 @@ h1 { margin: 0; font-size: var(--site-heading-size); font-weight: var(--font-wei
 .skip-link { position: absolute; transform: translateY(-150%); left: var(--site-gutter); top: var(--site-space-sm); background: var(--site-background); padding: var(--site-space-xs); }
 .skip-link:focus { transform: none; }
 @media (max-width: 767px) {
+  .landing-capabilities { grid-template-columns: minmax(0, 1fr); }
   .site-footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .site-operator { grid-column: 1 / -1; }
   .desktop-break { display: none; }

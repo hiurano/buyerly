@@ -135,12 +135,14 @@ def create_app() -> FastAPI:
 
     public_documents = {
         "/": "landing.html",
+        "/about": "about.html",
         "/privacy": "privacy.html",
         "/terms": "terms.html",
         "/data-deletion": "data-deletion.html",
     }
 
     @app.get("/", include_in_schema=False)
+    @app.get("/about", include_in_schema=False)
     @app.get("/privacy", include_in_schema=False)
     @app.get("/terms", include_in_schema=False)
     @app.get("/data-deletion", include_in_schema=False)
