@@ -5,7 +5,7 @@ aggregations for Meta advertising metrics across all hierarchy levels:
 Account -> Campaign -> AdSet -> Ad.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 import logging
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -42,6 +42,100 @@ def resolve_account_period_dates(
         return [(local_today - timedelta(days=i)).isoformat() for i in range(7)]
     else:
         return [local_today.isoformat()]
+
+
+# Reporting windows whose length is fixed and fully in the past once resolved.
+# `today` is absent on purpose: see resolve_previous_period_dates.
+_COMPARABLE_PERIOD_LENGTHS = {"yesterday": 1, "last_3d": 3, "last_7d": 7}
+
+# A day in progress is part of these windows, so their totals keep growing.
+_PERIODS_INCLUDING_TODAY = {"today", "last_3d", "last_7d"}
+
+TODAY_NOT_COMPARABLE = (
+    "Today is still open and the fact store keeps whole-day totals, so it cannot "
+    "be compared with an equal part of an earlier day."
+)
+
+
+def resolve_previous_period_dates(
+    timezone_name: str,
+    period: str = "today",
+    now_utc: Optional[datetime] = None,
+) -> List[str]:
+    """Local dates of the equal-length window immediately before the reported one.
+
+    `today` has no honest baseline here: comparing a day in progress against a
+    whole earlier day makes the current day look worse for no reason other than
+    the hour, and daily facts cannot be cut to the same time of day.
+    """
+    length = _COMPARABLE_PERIOD_LENGTHS.get(period)
+    if length is None:
+        return []
+    current = resolve_account_period_dates(timezone_name, period, now_utc)
+    oldest = date.fromisoformat(min(current))
+    return [(oldest - timedelta(days=offset)).isoformat() for offset in range(1, length + 1)]
+
+
+def _comparison_meta(
+    requested: bool,
+    previous_dates: List[str],
+    period: str,
+) -> Dict[str, Any]:
+    """Describe the baseline the rows were measured against, or why there is none."""
+    available = bool(requested and previous_dates)
+    return {
+        "requested": bool(requested),
+        "available": available,
+        "dates": list(previous_dates) if available else [],
+        "reason": TODAY_NOT_COMPARABLE if requested and not previous_dates else "",
+        # The reported window still contains a day in progress, so its totals,
+        # and with them the change, keep moving until that day closes.
+        "current_includes_open_day": period in _PERIODS_INCLUDING_TODAY,
+    }
+
+
+def _period_metrics(entity_facts: List[Any]) -> Dict[str, Any]:
+    """Aggregate one entity's daily facts into the metrics one period reports."""
+    spend = sum(f.spend for f in entity_facts)
+    impressions = sum(f.impressions for f in entity_facts)
+    # Reach does not add up across days: the same person can be reached twice.
+    reach = max((f.reach for f in entity_facts), default=0)
+    clicks = sum(f.clicks for f in entity_facts)
+    link_clicks = sum(f.link_clicks for f in entity_facts)
+    outbound_clicks = sum(f.outbound_clicks for f in entity_facts)
+    landing_page_views = sum(f.landing_page_views for f in entity_facts)
+    leads = sum(f.leads for f in entity_facts)
+    regs = sum(f.registrations for f in entity_facts)
+    purchases = sum(f.purchases for f in entity_facts)
+
+    cpc = (spend / clicks) if clicks > 0 else 0.0
+    ctr = ((clicks / impressions) * 100) if impressions > 0 else 0.0
+    cpm = ((spend / impressions) * 1000) if impressions > 0 else 0.0
+    ctr_link = ((link_clicks / impressions) * 100) if impressions > 0 else 0.0
+    ctr_outbound = ((outbound_clicks / impressions) * 100) if impressions > 0 else 0.0
+
+    return {
+        "spend": round(spend, 2),
+        "impressions": impressions,
+        "reach": reach,
+        "cpm": round(cpm, 2),
+        "clicks": clicks,
+        "link_clicks": link_clicks,
+        "outbound_clicks": outbound_clicks,
+        "landing_page_views": landing_page_views,
+        "cpc": round(cpc, 2),
+        "ctr": round(ctr, 2),
+        "cpc_link": cost_per_event(spend, link_clicks, digits=2),
+        "ctr_link": round(ctr_link, 2),
+        "ctr_outbound": round(ctr_outbound, 2),
+        "leads": leads,
+        "registrations": regs,
+        "purchases": purchases,
+        "cost_per_lead": cost_per_event(spend, leads, digits=2),
+        "cost_per_registration": cost_per_event(spend, regs, digits=2),
+        "cost_per_purchase": cost_per_event(spend, purchases, digits=2),
+        "cost_per_landing_page_view": cost_per_event(spend, landing_page_views, digits=2),
+    }
 
 
 def _safe_float(val: Any, default: float = 0.0) -> float:
@@ -624,14 +718,19 @@ class AnalyticsFactService:
         entity_level: str,
         period: str = "today",
         user_accounts: Optional[List[Account]] = None,
-    ) -> List[Dict[str, Any]]:
+        compare: bool = False,
+    ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """Retrieve drill-down rows (Campaigns for Account, AdSets for Campaign, Ads for AdSet).
+
+        Returns the rows and the comparison metadata describing the baseline the
+        rows were measured against, which may be unavailable for a period whose
+        window is still open.
 
         Strict multi-tenancy enforcement: checks workspace_id and validates parent ownership.
         """
         valid_levels = {"campaign", "adset", "ad"}
         if entity_level not in valid_levels:
-            return []
+            return [], _comparison_meta(compare, [], period)
 
         # An authorized account parent requests an account-wide view for the
         # selected level. Other parent IDs retain direct hierarchy drill-down.
@@ -649,54 +748,49 @@ class AnalyticsFactService:
 
         timezone_name = target_account.timezone_name if target_account else "UTC"
         dates = resolve_account_period_dates(timezone_name, period)
+        previous_dates = (
+            resolve_previous_period_dates(timezone_name, period) if compare else []
+        )
+        comparison = _comparison_meta(compare, previous_dates, period)
 
         hierarchy_scope = (
             AnalyticsEntityFact.account_id == target_account.account_id
             if target_account
             else AnalyticsEntityFact.parent_entity_id == parent_entity_id
         )
+        # Both windows are read in one pass and split in Python, so the baseline
+        # costs one query rather than doubling the round trips.
         stmt = (
             select(AnalyticsEntityFact)
             .where(
                 AnalyticsEntityFact.workspace_id == workspace_id,
                 hierarchy_scope,
                 AnalyticsEntityFact.entity_level == entity_level,
-                AnalyticsEntityFact.date.in_(dates),
+                AnalyticsEntityFact.date.in_(list(dates) + list(previous_dates)),
             )
             .order_by(AnalyticsEntityFact.entity_id.asc(), AnalyticsEntityFact.date.asc())
         )
         rows = (await session.execute(stmt)).scalars().all()
         if not rows:
-            return []
+            return [], comparison
 
-        # Group facts by entity_id across the target date range
+        current_window = set(dates)
+        previous_window = set(previous_dates)
         grouped: Dict[str, List[AnalyticsEntityFact]] = {}
+        previous_grouped: Dict[str, List[AnalyticsEntityFact]] = {}
         for r in rows:
-            grouped.setdefault(r.entity_id, []).append(r)
+            if r.date in current_window:
+                grouped.setdefault(r.entity_id, []).append(r)
+            elif r.date in previous_window:
+                previous_grouped.setdefault(r.entity_id, []).append(r)
 
         results = []
         for entity_id, entity_facts in grouped.items():
             first_fact = entity_facts[-1]  # Latest snapshot for status/budget
             fetched_at_values = [fact.fetched_at for fact in entity_facts if fact.fetched_at]
             data_as_of = _utc_iso(max(fetched_at_values)) if fetched_at_values else None
-            spend = sum(f.spend for f in entity_facts)
-            impressions = sum(f.impressions for f in entity_facts)
-            reach = max((f.reach for f in entity_facts), default=0)
-            clicks = sum(f.clicks for f in entity_facts)
-            link_clicks = sum(f.link_clicks for f in entity_facts)
-            outbound_clicks = sum(f.outbound_clicks for f in entity_facts)
-            landing_page_views = sum(f.landing_page_views for f in entity_facts)
-            leads = sum(f.leads for f in entity_facts)
-            regs = sum(f.registrations for f in entity_facts)
-            purchases = sum(f.purchases for f in entity_facts)
 
-            cpc = (spend / clicks) if clicks > 0 else 0.0
-            ctr = ((clicks / impressions) * 100) if impressions > 0 else 0.0
-            cpm = ((spend / impressions) * 1000) if impressions > 0 else 0.0
-            ctr_link = ((link_clicks / impressions) * 100) if impressions > 0 else 0.0
-            ctr_outbound = ((outbound_clicks / impressions) * 100) if impressions > 0 else 0.0
-
-            results.append({
+            item = {
                 "entity_id": entity_id,
                 "entity_name": first_fact.entity_name or f"{entity_level.capitalize()} {entity_id}",
                 "entity_level": entity_level,
@@ -707,31 +801,18 @@ class AnalyticsFactService:
                 "effective_status": first_fact.effective_status,
                 "daily_budget": first_fact.daily_budget,
                 "data_as_of": data_as_of,
-                "spend": round(spend, 2),
-                "impressions": impressions,
-                "reach": reach,
-                "cpm": round(cpm, 2),
-                "clicks": clicks,
-                "link_clicks": link_clicks,
-                "outbound_clicks": outbound_clicks,
-                "landing_page_views": landing_page_views,
-                "cpc": round(cpc, 2),
-                "ctr": round(ctr, 2),
-                "cpc_link": cost_per_event(spend, link_clicks, digits=2),
-                "ctr_link": round(ctr_link, 2),
-                "ctr_outbound": round(ctr_outbound, 2),
-                "leads": leads,
-                "registrations": regs,
-                "purchases": purchases,
-                "cost_per_lead": cost_per_event(spend, leads, digits=2),
-                "cost_per_registration": cost_per_event(spend, regs, digits=2),
-                "cost_per_purchase": cost_per_event(spend, purchases, digits=2),
-                "cost_per_landing_page_view": cost_per_event(spend, landing_page_views, digits=2),
-            })
+            }
+            item.update(_period_metrics(entity_facts))
+            if comparison["available"]:
+                # An entity that did not exist in the baseline window has no
+                # previous value, which is reported as absent rather than zero.
+                baseline_facts = previous_grouped.get(entity_id)
+                item["previous"] = _period_metrics(baseline_facts) if baseline_facts else None
+            results.append(item)
 
         # Sort by spend descending
         results.sort(key=lambda x: x["spend"], reverse=True)
-        return results
+        return results, comparison
 
     @staticmethod
     async def cleanup_expired_facts(

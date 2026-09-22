@@ -463,7 +463,6 @@ class TestReactFrontendContract(unittest.TestCase):
             "Retargeting — 30 days",
             "New Offer — Validation",
             "ROAS",
-            "Previous period",
             "28-day baseline",
             "Updated 2 min ago",
             "LinearToggle",
@@ -507,6 +506,33 @@ class TestReactFrontendContract(unittest.TestCase):
         # Drill-down stays in place: the same columns, a deeper parent.
         self.assertIn("aria-label=\"Statistics drill-down\"", self.statistics_view)
         self.assertIn("CHILD_LEVEL", self.statistics_view)
+
+    def test_statistics_compares_only_against_a_baseline_the_server_built(self):
+        """Change is a movement, never a verdict, and today refuses to be compared."""
+        # The baseline is asked for explicitly and read back from the response.
+        self.assertIn("&compare=${comparison}", self.statistics_view)
+        self.assertIn("hierarchy?.comparison", self.statistics_view)
+        self.assertIn("comparisonMeta?.available ?? false", self.statistics_view)
+
+        # The column exists only while a baseline stands behind it.
+        self.assertIn("...(comparisonAvailable", self.statistics_view)
+        self.assertIn("label: 'Change'", self.statistics_view)
+
+        # A window containing a day in progress says so, and an impossible
+        # comparison reports the server's reason rather than a number.
+        self.assertIn("Comparison unavailable.", self.statistics_view)
+        self.assertIn("still contains today", self.statistics_view)
+
+        # Movement is written out and carries no decision color of its own.
+        self.assertIn("export function changeBetween", self.statistics_model)
+        self.assertIn("label: 'No baseline'", self.statistics_model)
+        self.assertIn("label: 'From zero'", self.statistics_model)
+        # The change note takes a neutral color, so "better than last week" can
+        # never be mistaken for "inside target".
+        self.assertIn(
+            "inline-flex min-w-0 items-center gap-1 text-[var(--text-secondary)]",
+            self.statistics_view,
+        )
 
     def test_statistics_judges_only_against_the_stored_account_target(self):
         """The verdict comes from the ad account's own declaration, or not at all."""
