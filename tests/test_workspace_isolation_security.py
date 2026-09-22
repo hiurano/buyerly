@@ -169,6 +169,38 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
         )
         return {"Authorization": f"tma {tma_data}"}
 
+    async def test_route_workspace_scopes_reads_and_writes_without_switching_user(self):
+        async with self.test_session_maker() as session:
+            session.add(WorkspaceMember(
+                workspace_id=self.ws_b.id, user_id=self.tenant_a_user.id, role="buyer"
+            ))
+            await session.commit()
+        headers = {**self._headers_for(self.tenant_a_user), "X-Workspace-Slug": self.ws_b.slug}
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
+            response = await client.get("/api/accounts", headers=headers)
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual([row["account_id"] for row in response.json()], [self.acc_b.account_id])
+            response = await client.patch(
+                f"/api/accounts/{self.acc_b.account_id}/profile", headers=headers,
+                json={"custom_name": "Route B", "note": ""},
+            )
+            self.assertEqual(response.status_code, 200, response.text)
+            # A second tab explicitly remains in A.
+            response = await client.get("/api/accounts", headers={**headers, "X-Workspace-Slug": self.ws_a.slug})
+            self.assertEqual([row["account_id"] for row in response.json()], [self.acc_a.account_id])
+        async with self.test_session_maker() as session:
+            user = await session.get(User, self.tenant_a_user.id)
+            self.assertEqual(user.active_workspace_id, self.ws_a.id)
+            self.assertEqual((await session.get(Account, self.acc_b.id)).custom_name, "Route B")
+
+    async def test_route_workspace_rejects_missing_membership_without_fallback(self):
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
+            for slug in (self.ws_b.slug, "missing-workspace", ""):
+                response = await client.get("/api/accounts", headers={
+                    **self._headers_for(self.tenant_a_user), "X-Workspace-Slug": slug,
+                })
+                self.assertEqual(response.status_code, 403, response.text)
+
     async def test_global_admin_cannot_leak_or_mutate_foreign_accounts(self):
         """Verify global admin cannot see or mutate foreign workspace accounts without membership."""
         admin_headers = self._headers_for(self.admin_user)
