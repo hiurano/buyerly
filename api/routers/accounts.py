@@ -19,6 +19,7 @@ from api.deps import (
     get_user_workspace,
     get_user_workspace_member,
     invalidate_summary_cache,
+    load_writable_account,
     record_security_event_and_raise,
 )
 from api.schemas import (
@@ -253,40 +254,6 @@ async def delete_account_group(
     return {"message": "Account group deleted", "group_id": group_id}
 
 
-async def _load_writable_account(session, user, ws, account_id: str, action: str) -> Account:
-    """Return the workspace's ad account, or refuse without leaking its existence.
-
-    A row that exists in another workspace is a cross-workspace attempt, so it is
-    recorded as a security event and still answered with the same 404.
-    """
-    acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
-    scope_clause = (
-        or_(Account.workspace_id == ws.id, and_(Account.workspace_id.is_(None), owned_by(Account, user)))
-        if ws
-        else owned_by(Account, user)
-    )
-    stmt = select(Account).where(Account.account_id == acc_id, scope_clause)
-    account = (await session.execute(stmt)).scalar_one_or_none()
-    if account:
-        return account
-
-    exists_any = (
-        await session.execute(select(Account.id).where(Account.account_id == acc_id))
-    ).scalar_one_or_none()
-    if exists_any is not None:
-        await record_security_event_and_raise(
-            session,
-            status_code=404,
-            detail="Ad account not found.",
-            user=user,
-            workspace_id=ws.id if ws else None,
-            action=action,
-            resource_type="account",
-            resource_id=acc_id,
-        )
-    raise HTTPException(status_code=404, detail="Ad account not found.")
-
-
 @router.patch("/accounts/{account_id}/profile")
 async def update_account_profile(
     account_id: str,
@@ -298,7 +265,7 @@ async def update_account_profile(
         ws, member = await get_user_workspace_member(session, user)
         ensure_workspace_write_access(user, member, "editing an ad account")
 
-        account = await _load_writable_account(
+        account = await load_writable_account(
             session, user, ws, account_id, "UPDATE_ACCOUNT_PROFILE"
         )
 
@@ -330,7 +297,7 @@ async def update_account_cost_target(
         ws, member = await get_user_workspace_member(session, user)
         ensure_workspace_write_access(user, member, "editing an ad account")
 
-        account = await _load_writable_account(
+        account = await load_writable_account(
             session, user, ws, account_id, "UPDATE_ACCOUNT_COST_TARGET"
         )
 

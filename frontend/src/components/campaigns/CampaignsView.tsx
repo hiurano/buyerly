@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { setEntityDelivery, undoAction, type DeliveryControl, type EntityLevel } from '@/lib/delivery';
 import { ApiError, apiRequest } from '@/lib/api';
 import type {
   AnalyticsHierarchyResponse,
@@ -118,6 +119,10 @@ export const CampaignsView: React.FC = () => {
   const [ads, setAds] = useState<ReturnType<typeof hierarchyAdToRow>[]>([]);
   const [hierarchyState, setHierarchyState] = useState<LoadState>('idle');
   const [hierarchyError, setHierarchyError] = useState('');
+  // Delivery this session wrote to Meta, held apart from the stored snapshot
+  // until its next sync, plus the last recoverable failure.
+  const [deliveryActions, setDeliveryActions] = useState<Record<string, { busy: boolean; status?: 'active' | 'paused' }>>({});
+  const [deliveryNotice, setDeliveryNotice] = useState<{ tone: 'ok' | 'error'; text: string; undoId?: number | null; entityId?: string; previousStatus?: 'active' | 'paused'; undoing?: boolean } | null>(null);
   const [hierarchyReloadKey, setHierarchyReloadKey] = useState(0);
   const [isMetaDialogOpen, setIsMetaDialogOpen] = useState(false);
   const [returnedConnectionId, setReturnedConnectionId] = useState<number | null>(
@@ -368,6 +373,65 @@ export const CampaignsView: React.FC = () => {
   const tableColumns = getAdsManagerColumns(campaignFilterTab, supportedProperties);
   const tableMinWidth = getAdsManagerTableMinWidth(tableColumns);
 
+  const runDelivery = async (level: EntityLevel, entityId: string, next: boolean) => {
+    if (!selectedAccountId) return;
+    setDeliveryActions((current) => ({ ...current, [entityId]: { ...current[entityId], busy: true } }));
+    setDeliveryNotice(null);
+    try {
+      const result = await setEntityDelivery(
+        level, entityId, selectedAccountId, next ? 'ACTIVE' : 'PAUSED',
+      );
+      setDeliveryActions((current) => ({
+        ...current,
+        [entityId]: { busy: false, status: result.status === 'ACTIVE' ? 'active' : 'paused' },
+      }));
+      setDeliveryNotice({
+        tone: 'ok',
+        undoId: result.audit_event_id,
+        entityId,
+        previousStatus: next ? 'paused' : 'active',
+        text: `${result.message} Stored Meta data still shows the previous value until its next sync.`,
+      });
+    } catch (error) {
+      setDeliveryActions((current) => ({ ...current, [entityId]: { ...current[entityId], busy: false } }));
+      setDeliveryNotice({
+        tone: 'error',
+        text: error instanceof Error ? error.message : 'The change could not be sent to Meta. Nothing was changed.',
+      });
+    }
+  };
+
+  const runUndoDelivery = async () => {
+    const notice = deliveryNotice;
+    if (!notice?.undoId || !notice.entityId || notice.undoing) return;
+    setDeliveryNotice({ ...notice, undoing: true });
+    try {
+      await undoAction(notice.undoId);
+      setDeliveryActions((current) => ({
+        ...current, [notice.entityId!]: { busy: false, status: notice.previousStatus },
+      }));
+      setDeliveryNotice({ tone: 'ok', text: 'Action undone. Stored Meta data will update on its next sync.' });
+    } catch (error) {
+      setDeliveryNotice({ ...notice, undoing: false, tone: 'error',
+        text: error instanceof Error ? error.message : 'Undo could not be confirmed. Check Meta before retrying.' });
+    }
+  };
+
+  /** A live control, or nothing when the row cannot honestly be acted on. */
+  const deliveryControl = (
+    level: EntityLevel,
+    entityId: string,
+    status: 'active' | 'paused' | 'unknown',
+  ): DeliveryControl | undefined => {
+    if (!selectedAccountId || status === 'unknown') return undefined;
+    const local = deliveryActions[entityId];
+    return {
+      status: local?.status ?? status,
+      busy: Boolean(local?.busy || deliveryNotice?.undoing),
+      onChange: (next) => void runDelivery(level, entityId, next),
+    };
+  };
+
   const renderRows = () => {
     if ((currentFilters.length > 0 || quick) && filteredCurrentCount === 0) {
       return (
@@ -380,12 +444,12 @@ export const CampaignsView: React.FC = () => {
     }
     if (campaignFilterTab === 'adsets') {
       return renderGrouped(filteredAdSets, adSetFilterFields, (adSet) => (
-        <AdSetRow key={adSet.id} adSet={adSet} properties={supportedProperties} readOnly />
+        <AdSetRow key={adSet.id} adSet={adSet} properties={supportedProperties} readOnly delivery={deliveryControl('adset', adSet.id, adSet.status)} />
       ));
     }
     if (campaignFilterTab === 'ads') {
       return renderGrouped(filteredAds, adFilterFields, (ad) => (
-        <AdRow key={ad.id} ad={ad} properties={supportedProperties} readOnly />
+        <AdRow key={ad.id} ad={ad} properties={supportedProperties} readOnly delivery={deliveryControl('ad', ad.id, ad.status)} />
       ));
     }
     return renderGrouped(filteredCampaigns, campaignFilterFields, (campaign) => (
@@ -394,6 +458,7 @@ export const CampaignsView: React.FC = () => {
         campaign={campaign}
         properties={supportedProperties}
         readOnly
+        delivery={deliveryControl('campaign', campaign.id, campaign.status)}
         showIdentifier
       />
     ));
@@ -460,6 +525,24 @@ export const CampaignsView: React.FC = () => {
 
     return (
       <LinearDataListViewport className="campaign-list-container" horizontal>
+        {deliveryNotice && (
+          <div
+            role={deliveryNotice.tone === 'error' ? 'alert' : 'status'}
+            className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-[var(--control-border-radius)] bg-[var(--item-hover-bg)] px-3 py-2"
+          >
+            <span className={`min-w-0 text-[12px] ${deliveryNotice.tone === 'error' ? 'text-[var(--statistics-state-attention)]' : 'text-[var(--text-secondary)]'}`}>
+              {deliveryNotice.text}
+            </span>
+            <span className="flex items-center gap-2">
+              {deliveryNotice.undoId && (
+                <Button size="compact" disabled={deliveryNotice.undoing} onClick={() => void runUndoDelivery()}>
+                  {deliveryNotice.undoing ? 'Undoing…' : 'Undo'}
+                </Button>
+              )}
+              <Button size="compact" disabled={deliveryNotice.undoing} onClick={() => setDeliveryNotice(null)}>Dismiss</Button>
+            </span>
+          </div>
+        )}
         <div style={{ minWidth: `${tableMinWidth}px` }}>
           <LinearDataListColumnHeader
             columns={tableColumns}

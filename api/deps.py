@@ -381,6 +381,40 @@ async def get_user_workspace_member(
     return ws, member
 
 
+async def load_writable_account(session, user, ws, account_id: str, action: str) -> Account:
+    """Return the workspace's ad account, or refuse without leaking its existence.
+
+    A row that exists in another workspace is a cross-workspace attempt, so it is
+    recorded as a security event and still answered with the same 404.
+    """
+    acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
+    scope_clause = (
+        or_(Account.workspace_id == ws.id, and_(Account.workspace_id.is_(None), owned_by(Account, user)))
+        if ws
+        else owned_by(Account, user)
+    )
+    stmt = select(Account).where(Account.account_id == acc_id, scope_clause)
+    account = (await session.execute(stmt)).scalar_one_or_none()
+    if account:
+        return account
+
+    exists_any = (
+        await session.execute(select(Account.id).where(Account.account_id == acc_id))
+    ).scalar_one_or_none()
+    if exists_any is not None:
+        await record_security_event_and_raise(
+            session,
+            status_code=404,
+            detail="Ad account not found.",
+            user=user,
+            workspace_id=ws.id if ws else None,
+            action=action,
+            resource_type="account",
+            resource_id=acc_id,
+        )
+    raise HTTPException(status_code=404, detail="Ad account not found.")
+
+
 def ensure_workspace_write_access(
     user: User,
     member: Optional[WorkspaceMember],

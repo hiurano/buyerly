@@ -231,9 +231,10 @@ async def reverse_audit_event(
     entity_id = undo_entity_id(source)
     if not source.account_id or not entity_id:
         raise UndoError("The history has no ad account or entity to undo.")
-    if spec.kind == "budget" and entity_level != "adset":
-        # Only ad sets carry a budget a rule could have changed.
-        raise UndoError("Undoing a budget change is supported for ad sets only.")
+    if spec.kind == "budget" and entity_level not in {"adset", "campaign"}:
+        # An ad has no budget of its own; a campaign has one under campaign
+        # budget optimization, and an ad set has one otherwise.
+        raise UndoError("Undoing a budget change is supported for ad sets and campaigns only.")
     if not event_is_within_undo_window(source, now=now_ts):
         raise UndoError("The 24-hour safe undo window has already closed.")
 
@@ -352,11 +353,13 @@ async def reverse_audit_event(
                     account_id=account.account_id,
                 )
             else:
-                await meta_client.update_adset_budget(
+                await meta_client.update_entity_budget(
                     entity_id,
                     access_token,
                     float(spec.desired_state["daily_budget"]),
                     currency=currency,
+                    entity_level=entity_level,
+                    account_id=account.account_id,
                 )
         except Exception as error:
             await _mark_failed(

@@ -64,6 +64,7 @@ from api.routers import (
     admin_support_router,
     adsets_router,
     audit_router,
+    delivery_router,
     auth_router,
     members_router,
     onboarding_router,
@@ -142,6 +143,7 @@ router.include_router(summary_router)
 router.include_router(settings_router)
 router.include_router(audit_router)
 router.include_router(adsets_router)
+router.include_router(delivery_router)
 router.include_router(health_router)
 router.include_router(analytics_router)
 
@@ -149,10 +151,12 @@ router.include_router(analytics_router)
 import api.routers.accounts
 import api.routers.adsets
 import api.routers.audit
+import api.routers.delivery
 import api.routers.summary
 
 api.routers.accounts.meta_client = meta_client
 api.routers.adsets.meta_client = meta_client
+api.routers.delivery.meta_client = meta_client
 api.routers.audit.meta_client = meta_client
 api.routers.summary.meta_client = meta_client
 
@@ -169,6 +173,7 @@ class _RoutesModule(sys.modules[__name__].__class__):
             import api.routers.analytics
             import api.routers.audit
             import api.routers.auth
+            import api.routers.delivery
             import api.routers.members
             import api.routers.onboarding
             import api.routers.rules
@@ -185,6 +190,7 @@ class _RoutesModule(sys.modules[__name__].__class__):
             api.routers.analytics.async_session_maker = value
             api.routers.audit.async_session_maker = value
             api.routers.auth.async_session_maker = value
+            api.routers.delivery.async_session_maker = value
             api.routers.members.async_session_maker = value
             api.routers.onboarding.async_session_maker = value
             api.routers.rules.async_session_maker = value
@@ -196,10 +202,12 @@ class _RoutesModule(sys.modules[__name__].__class__):
             import api.routers.accounts
             import api.routers.adsets
             import api.routers.audit
+            import api.routers.delivery
             import api.routers.summary
 
             api.routers.accounts.meta_client = value
             api.routers.adsets.meta_client = value
+            api.routers.delivery.meta_client = value
             api.routers.audit.meta_client = value
             api.routers.summary.meta_client = value
 

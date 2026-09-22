@@ -119,6 +119,13 @@ class TestReactFrontendContract(unittest.TestCase):
             / "statistics"
             / "statisticsModel.ts"
         ).read_text()
+        cls.delivery_lib = (
+            ROOT / "frontend" / "src" / "lib" / "delivery.ts"
+        ).read_text()
+        cls.campaigns_row_sources = "\n".join(
+            (ROOT / "frontend" / "src" / "components" / "campaigns" / name).read_text()
+            for name in ("CampaignRow.tsx", "AdSetRow.tsx", "AdRow.tsx")
+        )
         cls.trend_chart = (
             ROOT
             / "frontend"
@@ -312,13 +319,14 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("roi: '—'", self.live_campaigns)
         self.assertIn("showIdentifier", self.campaign_row)
         self.assertIn("readOnly ? undefined", self.campaign_row)
+        # Selection stays read-only; delivery is now a real write, so the toggle
+        # is driven by the control the view hands down rather than by readOnly.
         self.assertIn("<LinearCheckbox checked={false} hidden />", self.campaign_row)
-        self.assertIn("onChange={readOnly ? undefined", self.campaign_row)
-        self.assertIn("disabled={readOnly}", self.campaign_row)
-        self.assertIn("Campaign controls are not connected yet", self.campaign_row)
+        self.assertIn("onChange={delivery ? delivery.onChange : undefined}", self.campaign_row)
+        self.assertIn("disabled={!delivery}", self.campaign_row)
         for row in (self.adset_row, self.ad_row):
             self.assertIn("<LinearCheckbox checked={false} hidden />", row)
-            self.assertIn("disabled={readOnly}", row)
+            self.assertIn("disabled={!delivery}", row)
         self.assertIn("showViewModes={false}", self.display_options)
         self.assertIn("showGrouping", self.display_options)
         self.assertIn("Account groups", self.display_options)
@@ -473,7 +481,6 @@ class TestReactFrontendContract(unittest.TestCase):
             "ROAS",
             "28-day baseline",
             "Updated 2 min ago",
-            "LinearToggle",
             "cplTarget",
             "roasTarget",
         ):
@@ -541,6 +548,38 @@ class TestReactFrontendContract(unittest.TestCase):
             "inline-flex min-w-0 items-center gap-1 text-[var(--text-secondary)]",
             self.statistics_view,
         )
+
+    def test_manual_delivery_actions_are_real_writes_with_a_way_back(self):
+        """A control that looks like it stops spending must really stop it."""
+        # One client for both screens, aimed at the real endpoints.
+        for contract in (
+            "/api/entities/${level}/${encodeURIComponent(entityId)}/delivery",
+            "/api/entities/${level}/${encodeURIComponent(entityId)}/budget",
+            "method: 'POST'",
+            "method: 'PATCH'",
+            # Undo reuses the audit history rather than a parallel mechanism.
+            "/api/audit-events/${auditEventId}/undo",
+        ):
+            self.assertIn(contract, self.delivery_lib)
+
+        # A large budget step is confirmed before it is sent, not explained after.
+        self.assertIn("SIGNIFICANT_BUDGET_CHANGE = 0.25", self.delivery_lib)
+
+        # Statistics acts on the row and offers the way back beside it.
+        for contract in ("<LinearToggle", "setEntityDelivery", "setEntityBudget", "undoAction"):
+            self.assertIn(contract, self.statistics_view)
+        # What this session wrote is never merged silently into stored data.
+        self.assertIn(
+            "Stored Meta data still shows the previous value until its next sync.",
+            self.statistics_view,
+        )
+
+        # Ads Manager no longer ships a toggle that claims to be unfinished.
+        self.assertNotIn("controls are not connected yet", self.campaigns_row_sources)
+        self.assertIn("delivery ? delivery.onChange : undefined", self.campaigns_row_sources)
+        # The local-only delivery flip is gone: it changed the screen, not Meta.
+        for dead in ("toggleCampaignDelivery", "toggleAdSetDelivery", "toggleAdDelivery"):
+            self.assertNotIn(dead, self.app_store)
 
     def test_statistics_trend_is_one_series_on_one_axis(self):
         """The trend answers whether a movement lasted, and nothing else."""

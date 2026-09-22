@@ -1465,13 +1465,14 @@ class MetaClient:
             "GET",
             url,
             params={
-                "fields": "id,name,status,effective_status,daily_budget",
+                "fields": "id,account_id,name,status,effective_status,daily_budget",
                 "access_token": access_token,
             },
             account_id=adset_id,
         )
         payload = response.json()
         return {
+            "account_id": str(payload.get("account_id") or ""),
             "adset_id": str(payload.get("id") or adset_id),
             "adset_name": str(payload.get("name") or ""),
             "status": str(payload.get("status") or "UNKNOWN").upper(),
@@ -1499,9 +1500,9 @@ class MetaClient:
             return await self.get_adset_state(entity_id, access_token, currency=currency)
 
         fields = (
-            "id,name,status,effective_status"
+            "id,account_id,name,status,effective_status"
             if entity_level == "ad"
-            else "id,name,status,effective_status,daily_budget"
+            else "id,account_id,name,status,effective_status,daily_budget"
         )
         response = await self._request_with_retry(
             "GET",
@@ -1511,6 +1512,7 @@ class MetaClient:
         )
         payload = response.json()
         return {
+            "account_id": str(payload.get("account_id") or ""),
             "entity_id": str(payload.get("id") or entity_id),
             "entity_name": str(payload.get("name") or ""),
             "status": str(payload.get("status") or "UNKNOWN").upper(),
@@ -1542,20 +1544,29 @@ class MetaClient:
             entity_id, access_token, status, account_id=account_id
         )
 
-    async def update_adset_budget(
+    async def update_entity_budget(
         self,
-        adset_id: str,
+        entity_id: str,
         access_token: str,
         new_daily_budget_dollars: float,
         currency: str = "UNKNOWN",
+        entity_level: str = "adset",
         account_id: Optional[str] = None,
     ) -> bool:
+        """Write the daily budget on whichever entity actually holds it.
+
+        A campaign using campaign budget optimization carries the budget itself;
+        otherwise it lives on the ad set. The Graph request is the same shape for
+        both, so the level only decides the target id and the log line. An ad has
+        no budget of its own and is refused before any request is made.
         """
-        Update the daily budget in the ad account currency's minor units.
-        """
+        level = entity_level if entity_level in {"campaign", "adset"} else "adset"
+        if entity_level == "ad":
+            raise ValueError("An ad has no budget of its own.")
+
         new_budget_units = to_meta_budget_units(new_daily_budget_dollars, currency)
 
-        url = f"{self.base_url}/{adset_id}"
+        url = f"{self.base_url}/{entity_id}"
         payload = {
             "daily_budget": str(new_budget_units),
             "access_token": access_token
@@ -1565,21 +1576,22 @@ class MetaClient:
             "POST",
             url,
             data=payload,
-            account_id=adset_id,
+            account_id=entity_id,
             priority="critical",
         )
         if resp.status_code == 200 and resp.json().get("success") is True:
             for _, rows in self._inventory_cache.values():
                 for row in rows:
-                    if str(row.get("id")) == str(adset_id):
+                    if str(row.get("id")) == str(entity_id):
                         row["daily_budget"] = str(new_budget_units)
             if self._cache_provider is not None:
                 acc_id = self._normalize_account_id(account_id or "")
                 if acc_id:
                     await self._cache_provider.invalidate(acc_id)
             logger.info(
-                "Successfully updated adset %s daily budget to %.2f %s",
-                adset_id,
+                "Successfully updated %s %s daily budget to %.2f %s",
+                level,
+                entity_id,
                 new_daily_budget_dollars,
                 normalize_currency(currency),
             )
@@ -1587,8 +1599,26 @@ class MetaClient:
         else:
             error_data = resp.json().get("error", {})
             error_msg = error_data.get("message", resp.text)
-            logger.error(f"Failed to update adset {adset_id} budget: {error_msg}")
+            logger.error(f"Failed to update {level} {entity_id} budget: {error_msg}")
             raise RuntimeError(f"Meta API Error ({resp.status_code}): {error_msg}")
+
+    async def update_adset_budget(
+        self,
+        adset_id: str,
+        access_token: str,
+        new_daily_budget_dollars: float,
+        currency: str = "UNKNOWN",
+        account_id: Optional[str] = None,
+    ) -> bool:
+        """Ad-set budget write, kept for the callers that only ever touch ad sets."""
+        return await self.update_entity_budget(
+            entity_id=adset_id,
+            access_token=access_token,
+            new_daily_budget_dollars=new_daily_budget_dollars,
+            currency=currency,
+            entity_level="adset",
+            account_id=account_id,
+        )
 
     async def invalidate_inventory_cache(self, account_id: str) -> None:
         """Invalidate inventory cache in memory and in the external provider."""

@@ -84,7 +84,9 @@ IconButton, Dialog, EmptyState and Skeleton are required product patterns but do
 - Meta connection is a real OAuth flow: explanation, Facebook authorization, account discovery, explicit import and result;
 - imported ad accounts are not the same entity as campaigns and must not be rendered as campaign rows;
 - fixtures such as LuckySpin, RoyalBet, NeonSlots and AcePlay are development examples only and must not ship as current workspace data;
-- toggles and mutations need explicit busy, success and recoverable error states; no rule is enabled as a side effect of importing an account.
+- delivery toggles are real writes into Meta, sharing the endpoints and the undo path with Statistics; they carry explicit busy, success and recoverable error states, and the view states that stored data lags the change until its next sync;
+- row selection stays read-only until bulk actions exist: a control is either connected or absent, never present and inert;
+- no rule is enabled as a side effect of importing an account.
 
 ### Rules
 
@@ -114,7 +116,10 @@ first screen only by causing a frequent decision.
 - **Today refuses to be compared.** The fact store keeps whole-day totals, so a day in progress cannot be matched against an equal part of an earlier day; the screen reports that instead of a change that only reflects the hour. A multi-day window containing today says that its change keeps moving;
 - an entity with no baseline reports "No baseline" rather than a change from zero, and an entity that ran only in the baseline window is history, not a row;
 - **one trend, one metric, one axis, and only on request.** The primary decision card carries a sparkline; the full chart is opened by a button and plots the cost per result per day over a fixed 14-day window, independent of the reporting period, because its job is to say whether a movement lasted. It draws the stored target as a reference line, breaks the line where a day was never reported, leaves the open day's marker hollow, and ships a values table so no number depends on hovering. The series colour is its own token, validated against each theme's surface, and never a decision colour;
-- revenue/ROAS and delivery mutations stay absent until server contracts exist;
+- **a decision becomes an action on the row that justified it.** Pause and resume sit on the row; the daily budget is edited inside the opened diagnostics panel, where it is already explained. A budget is only ever changed where one exists — never created, because that would change how Meta optimizes rather than how much it spends — and never on an ad;
+- **what this session wrote is never merged silently into stored data.** The fact store is a snapshot and will not show the change until its next sync, so the row shows what was sent, says the snapshot has not caught up, and offers Undo through the audit history that already owns reversal;
+- a budget step of 25% or more is confirmed before it is sent, naming the consequence: Meta can return the entity to its learning phase;
+- revenue/ROAS stays absent until a server contract exists;
 - every number carries a real period, freshness and data-status meaning;
 - unavailable or unsupported metrics render as unavailable, never as zero unless the API returned a true zero;
 - mixed currency is not silently aggregated.

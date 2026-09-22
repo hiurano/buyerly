@@ -934,6 +934,214 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         # Another workspace's account is not found, not merely refused.
         self.assertEqual(foreign.status_code, 404)
 
+    async def test_manual_delivery_and_budget_actions_are_audited_and_scoped(self):
+        """The first writes into Meta: authorized, verified, recorded, reversible."""
+        async with self.test_session_maker() as session:
+            admin = (
+                await session.execute(
+                    select(User).where(User.telegram_id == "8634201356")
+                )
+            ).scalar_one()
+            session.add(
+                Account(
+                    account_id="act_777777777",
+                    name="Foreign delivery",
+                    owner_user_id=admin.id,
+                    workspace_id=admin.active_workspace_id,
+                    timezone_name="UTC",
+                    currency="USD",
+                )
+            )
+            await session.commit()
+
+        buyer_data = generate_valid_telegram_init_data(
+            settings.BOT_TOKEN,
+            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
+        )
+        headers = {"Authorization": f"tma {buyer_data}"}
+        account_id = "act_1018756607700064"
+        delivery_url = "/api/entities/campaign/cmp_live_1/delivery"
+        budget_url = "/api/entities/campaign/cmp_live_1/budget"
+
+        def state(status="ACTIVE", daily_budget=100.0):
+            return {
+                "entity_id": "cmp_live_1",
+                "account_id": account_id,
+                "entity_name": "Live campaign",
+                "status": status,
+                "effective_status": status,
+                "daily_budget": daily_budget,
+                "currency": "USD",
+            }
+
+        transport = httpx.ASGITransport(app=self.app)
+        client_args = dict(transport=transport, base_url="http://test")
+
+        # A successful pause, and the same call again once Meta reports PAUSED.
+        with patch.object(
+            api_routes_module.meta_client, "get_entity_state",
+            new=AsyncMock(side_effect=[state(), state("PAUSED")]),
+        ), patch.object(
+            api_routes_module.meta_client, "set_entity_status",
+            new=AsyncMock(return_value=True),
+        ) as status_write:
+            async with httpx.AsyncClient(**client_args) as client:
+                paused = await client.post(
+                    delivery_url, headers=headers,
+                    json={"account_id": account_id, "status": "PAUSED"},
+                )
+                repeated = await client.post(
+                    delivery_url, headers=headers,
+                    json={"account_id": account_id, "status": "PAUSED"},
+                )
+
+        self.assertEqual(paused.status_code, 200)
+        self.assertTrue(paused.json()["changed"])
+        self.assertIsNotNone(paused.json()["audit_event_id"])
+        # An entity already in the requested state is never written twice.
+        self.assertEqual(repeated.status_code, 200)
+        self.assertFalse(repeated.json()["changed"])
+        self.assertIsNone(repeated.json()["audit_event_id"])
+        self.assertEqual(status_write.await_count, 1)
+
+        # Meta refusing the write is a recoverable failure that is still recorded.
+        with patch.object(
+            api_routes_module.meta_client, "get_entity_state",
+            new=AsyncMock(return_value=state()),
+        ), patch.object(
+            api_routes_module.meta_client, "set_entity_status",
+            new=AsyncMock(side_effect=RuntimeError("Meta API Error (400): nope")),
+        ):
+            async with httpx.AsyncClient(**client_args) as client:
+                failed = await client.post(
+                    delivery_url, headers=headers,
+                    json={"account_id": account_id, "status": "PAUSED"},
+                )
+        self.assertEqual(failed.status_code, 502)
+
+        async with self.test_session_maker() as session:
+            events = (
+                await session.execute(
+                    select(AuditEvent).where(AuditEvent.entity_id == "cmp_live_1")
+                )
+            ).scalars().all()
+        by_status = {event.status: event for event in events}
+        # Exactly two rows: the change and the refusal. The no-op wrote nothing.
+        self.assertEqual(len(events), 2)
+        self.assertEqual(by_status["SUCCESS"].event_type, "MANUAL_PAUSE")
+        self.assertEqual(by_status["SUCCESS"].entity_level, "campaign")
+        self.assertEqual(by_status["SUCCESS"].category, "MANUAL_ACTION")
+        self.assertEqual(by_status["ERROR"].event_type, "MANUAL_PAUSE")
+
+        # An authorized account must not authorize a different account's entity.
+        with patch.object(
+            api_routes_module.meta_client, "get_entity_state",
+            new=AsyncMock(return_value={**state(), "account_id": "777777777"}),
+        ), patch.object(
+            api_routes_module.meta_client, "set_entity_status", new=AsyncMock(),
+        ) as foreign_write:
+            async with httpx.AsyncClient(**client_args) as client:
+                wrong_entity = await client.post(
+                    delivery_url, headers=headers,
+                    json={"account_id": account_id, "status": "PAUSED"},
+                )
+        self.assertEqual(wrong_entity.status_code, 404)
+        foreign_write.assert_not_awaited()
+
+        # If the durable intent cannot be saved, no mutation may reach Meta.
+        with patch.object(
+            api_routes_module.meta_client, "get_entity_state", new=AsyncMock(return_value=state()),
+        ), patch("api.routers.delivery._commit_quietly", new=AsyncMock(return_value=False)), patch.object(
+            api_routes_module.meta_client, "set_entity_status", new=AsyncMock(),
+        ) as unaudited_write:
+            async with httpx.AsyncClient(**client_args) as client:
+                unavailable = await client.post(
+                    delivery_url, headers=headers,
+                    json={"account_id": account_id, "status": "PAUSED"},
+                )
+        self.assertEqual(unavailable.status_code, 503)
+        unaudited_write.assert_not_awaited()
+
+        # Budget: only where a budget already exists, and never on an ad.
+        with patch.object(
+            api_routes_module.meta_client, "get_entity_state",
+            new=AsyncMock(side_effect=[state(daily_budget=100.0), state(daily_budget=0.0)]),
+        ), patch.object(
+            api_routes_module.meta_client, "update_entity_budget",
+            new=AsyncMock(return_value=True),
+        ):
+            async with httpx.AsyncClient(**client_args) as client:
+                raised = await client.patch(
+                    budget_url, headers=headers,
+                    json={"account_id": account_id, "daily_budget": 150.0},
+                )
+                without_budget = await client.patch(
+                    budget_url, headers=headers,
+                    json={"account_id": account_id, "daily_budget": 150.0},
+                )
+
+        self.assertEqual(raised.status_code, 200)
+        self.assertEqual(raised.json()["previous_daily_budget"], 100.0)
+        # A budget is moved, never created: that would change how Meta optimizes.
+        self.assertEqual(without_budget.status_code, 409)
+
+        async with httpx.AsyncClient(**client_args) as client:
+            ad_budget = await client.patch(
+                "/api/entities/ad/ad_live_1/budget", headers=headers,
+                json={"account_id": account_id, "daily_budget": 150.0},
+            )
+            below_floor = await client.patch(
+                budget_url, headers=headers,
+                json={"account_id": account_id, "daily_budget": 0.5},
+            )
+            foreign = await client.post(
+                "/api/entities/campaign/cmp_live_1/delivery", headers=headers,
+                json={"account_id": "act_777777777", "status": "PAUSED"},
+            )
+        self.assertEqual(ad_budget.status_code, 400)
+        self.assertEqual(below_floor.status_code, 422)
+        # Another workspace's ad account is not found, not merely refused.
+        self.assertEqual(foreign.status_code, 404)
+
+        # The campaign budget audit can be reversed through the existing API.
+        with patch.object(
+            api_routes_module.meta_client, "get_entity_state",
+            new=AsyncMock(return_value=state(daily_budget=150.0)),
+        ), patch.object(
+            api_routes_module.meta_client, "update_entity_budget", new=AsyncMock(return_value=True),
+        ) as undo_budget:
+            async with httpx.AsyncClient(**client_args) as client:
+                undone = await client.post(
+                    f"/api/audit-events/{raised.json()['audit_event_id']}/undo", headers=headers,
+                )
+        self.assertEqual(undone.status_code, 200)
+        undo_budget.assert_awaited_once_with(
+            "cmp_live_1", "mock_token", 100.0, currency="USD",
+            entity_level="campaign", account_id=account_id,
+        )
+
+        # The Viewer role is read-only, and is stopped before Meta is touched.
+        async with self.test_session_maker() as session:
+            member = (
+                await session.execute(
+                    select(WorkspaceMember).where(
+                        WorkspaceMember.workspace_id == self.ws_buyer_id
+                    )
+                )
+            ).scalars().first()
+            member.role = "viewer"
+            await session.commit()
+        with patch.object(
+            api_routes_module.meta_client, "get_entity_state",
+            new=AsyncMock(side_effect=AssertionError("Meta must not be read for a viewer")),
+        ):
+            async with httpx.AsyncClient(**client_args) as client:
+                viewer = await client.post(
+                    delivery_url, headers=headers,
+                    json={"account_id": account_id, "status": "PAUSED"},
+                )
+        self.assertEqual(viewer.status_code, 403)
+
     async def test_toggle_rules_and_presets(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
         init_data = generate_valid_telegram_init_data(settings.BOT_TOKEN, user_info)
@@ -3063,7 +3271,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             ),
             patch.object(
                 api_routes_module.meta_client,
-                "update_adset_budget",
+                "update_entity_budget",
                 new=AsyncMock(return_value=True),
             ) as update_budget,
         ):
@@ -3076,7 +3284,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(response.status_code, 200)
         update_budget.assert_awaited_once_with(
-            "undo_budget_adset", "mock_token", 50.0, currency="USD"
+            "undo_budget_adset", "mock_token", 50.0, currency="USD",
+            entity_level="adset", account_id="act_1018756607700064"
         )
 
     async def test_account_cannot_attach_another_owners_preset(self):

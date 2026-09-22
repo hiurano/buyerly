@@ -42,6 +42,7 @@ try {
     page.on('pageerror', error => errors.push(error.message));
     let mode = 'ready';
     const requests = [];
+    const budgetWrites = [];
     await page.route('**/api/**', async route => {
       const url = new URL(route.request().url());
       if (url.pathname === '/api/accounts') {
@@ -56,6 +57,25 @@ try {
             primary_result: '', target_cost_per_result: null },
         ] });
       }
+      if (url.pathname.endsWith('/budget')) {
+        const body = route.request().postDataJSON();
+        budgetWrites.push(body);
+        return route.fulfill({ json: { entity_id: '1', level: 'campaign',
+          daily_budget: body.daily_budget, previous_daily_budget: 1000,
+          changed: true, audit_event_id: 4243, message: 'Campaign daily budget updated.' } });
+      }
+      if (url.pathname.includes('/delivery')) {
+        // Rows sort by spend descending, so entity 1 is the last row on screen.
+        // It always fails, which is how the recoverable error path renders.
+        if (url.pathname.includes('/1/')) {
+          return route.fulfill({ status: 502, json: { detail: 'Meta could not change this campaign. The attempt was saved to the history.' } });
+        }
+        return route.fulfill({ json: {
+          entity_id: '1', level: 'campaign', status: 'PAUSED', changed: true,
+          audit_event_id: 4242, message: 'Campaign turned off.',
+        } });
+      }
+      if (url.pathname.includes('/undo')) return route.fulfill({ json: { ok: true } });
       if (url.pathname === '/api/analytics/timeseries') {
         // Fourteen days with one reported gap, so the broken line renders.
         const points = Array.from({ length: 14 }, (_, day) => {
@@ -161,6 +181,22 @@ try {
     await noOverflow();
     await screenshot('overview');
 
+    // Pausing is a real write: the row shows what was sent, says the stored
+    // snapshot has not caught up, and offers the way back.
+    await page.getByRole('switch', { name: 'Turn this campaign off' }).first().click();
+    await page.getByText('Stored Meta data still shows the previous value until its next sync.', { exact: false }).waitFor();
+    await page.getByRole('button', { name: 'Undo', exact: true }).waitFor();
+    await noOverflow();
+    await screenshot('paused');
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    await page.getByRole('switch', { name: 'Turn this campaign off' }).first().waitFor();
+
+    // A refusal from Meta is recoverable and stated, never silent.
+    await page.getByRole('switch', { name: 'Turn this campaign off' }).last().click();
+    await page.getByText('Meta could not change this campaign.', { exact: false }).waitFor();
+    await screenshot('delivery-error');
+    await page.getByRole('button', { name: 'Dismiss', exact: true }).first().click();
+
     // The trend is one chart, opened on request, and every value stays
     // readable without a pointer.
     await page.getByRole('button', { name: 'Show trend', exact: true }).click();
@@ -204,6 +240,21 @@ try {
     await page.getByText('Frequency', { exact: true }).waitFor();
     await noOverflow();
     await screenshot('diagnostics');
+    const budget = page.getByRole('textbox', { name: 'Daily budget for this campaign in USD' });
+    await budget.fill('1100');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await page.getByText('Campaign daily budget updated.', { exact: false }).waitFor();
+    assert.equal(budgetWrites.at(-1).daily_budget, 1100);
+    await page.getByRole('button', { name: 'Dismiss', exact: true }).last().click();
+    assert.equal(await budget.inputValue(), '1100');
+    await budget.fill('1500');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    assert.equal(budgetWrites.length, 1);
+    await page.getByRole('button', { name: 'Confirm change', exact: true }).click();
+    await page.getByText('Campaign daily budget updated.', { exact: false }).waitFor();
+    assert.equal(budgetWrites.at(-1).daily_budget, 1500);
+    await noOverflow();
+    await screenshot('budget-saved');
     await page.getByRole('button', { name: 'Hide diagnostics for QA campaign 1', exact: true }).click();
 
     // Drilling into a campaign keeps the columns and deepens the parent.
