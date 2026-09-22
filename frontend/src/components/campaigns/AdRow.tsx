@@ -2,17 +2,20 @@ import React from 'react';
 import { AdItem, useAppStore } from '@/store/useAppStore';
 import { LinearCheckbox } from '@/ui/LinearCheckbox';
 import { LinearToggle } from '@/ui/LinearToggle';
+import type { DeliveryControl } from '@/lib/delivery';
 import { LinearDataListRow } from '@/ui/LinearDataList';
 import { getAdsManagerColumns } from './tableColumns';
 
 interface AdRowProps {
   ad: AdItem;
   readOnly?: boolean;
+  /** Present when the row may really change delivery in Meta. */
+  delivery?: DeliveryControl;
   properties?: Record<string, boolean>;
 }
 
-export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, properties }) => {
-  const { toggleAdDelivery, selectedCampaignIds, toggleCampaignSelection, displayProperties: storedDisplayProperties } = useAppStore();
+export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, delivery, properties }) => {
+  const { selectedCampaignIds, toggleCampaignSelection, displayProperties: storedDisplayProperties } = useAppStore();
 
   const displayProperties = properties ?? storedDisplayProperties;
   const isSelected = !readOnly && selectedCampaignIds.includes(ad.id);
@@ -39,10 +42,13 @@ export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, properties }
             <span className="inline-flex h-5 w-8 items-center justify-center text-[12px] text-[var(--text-muted)]" aria-label="Delivery status unavailable">—</span>
           ) : (
             <LinearToggle
-              checked={isDeliveryOn}
-              onChange={readOnly ? undefined : () => toggleAdDelivery(ad.id)}
-              disabled={readOnly}
-              tooltipContent={readOnly ? `${ad.statusLabel}. Ad controls are not connected yet` : isDeliveryOn ? 'Pause ad' : 'Resume ad'}
+              checked={delivery ? delivery.status === 'active' : isDeliveryOn}
+              busy={delivery?.busy}
+              onChange={delivery ? delivery.onChange : undefined}
+              disabled={!delivery}
+              tooltipContent={delivery
+                ? ((delivery.status === 'active') ? 'Turn this ad off' : 'Turn this ad on')
+                : `${ad.statusLabel}. Ad controls are not available for this account`}
             />
           )
         )}

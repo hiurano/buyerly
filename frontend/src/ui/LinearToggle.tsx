@@ -6,6 +6,8 @@ interface LinearToggleProps {
   onChange?: (checked: boolean) => void;
   tooltipContent?: string;
   disabled?: boolean;
+  /** A write is in flight: the control is inert but not reported as disabled. */
+  busy?: boolean;
   className?: string;
 }
 
@@ -14,14 +16,17 @@ export const LinearToggle: React.FC<LinearToggleProps> = ({
   onChange,
   tooltipContent,
   disabled = false,
+  busy = false,
   className = '',
 }) => {
+  const interactive = Boolean(onChange) && !disabled && !busy;
+  const toggle = () => {
+    if (interactive && onChange) onChange(!checked);
+  };
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!disabled && onChange) {
-      onChange(!checked);
-    }
+    toggle();
   };
 
   const defaultTooltip = checked ? 'Pause campaign' : 'Resume campaign';
@@ -32,9 +37,16 @@ export const LinearToggle: React.FC<LinearToggleProps> = ({
       role="switch"
       aria-checked={checked}
       aria-disabled={disabled}
+      aria-busy={busy || undefined}
       aria-label={accessibleLabel}
-      tabIndex={-1}
+      tabIndex={interactive ? 0 : -1}
       onClick={handleClick}
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        event.stopPropagation();
+        toggle();
+      }}
       style={{
         width: '28px',
         height: '16px',
@@ -44,15 +56,15 @@ export const LinearToggle: React.FC<LinearToggleProps> = ({
         alignItems: 'center',
         flexShrink: 0,
         position: 'relative',
-        cursor: disabled ? 'not-allowed' : 'pointer',
+        cursor: disabled ? 'not-allowed' : busy ? 'progress' : 'pointer',
         backgroundColor: checked
           ? '#eab308'
           : 'var(--toggle-unchecked-bg)',
-        opacity: disabled ? 0.5 : 1,
+        opacity: disabled ? 0.5 : busy ? 0.7 : 1,
         transition: 'background-color 0.15s ease-out',
         userSelect: 'none',
       }}
-      className={`group/toggle hover:brightness-110 ${className}`}
+      className={`group/toggle hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring-color)] ${className}`}
     >
       {/* Invisible Native Input */}
       <input

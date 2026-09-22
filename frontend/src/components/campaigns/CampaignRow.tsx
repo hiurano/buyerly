@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { CampaignItem, useAppStore } from '@/store/useAppStore';
 import { LinearCheckbox } from '@/ui/LinearCheckbox';
 import { LinearToggle } from '@/ui/LinearToggle';
+import type { DeliveryControl } from '@/lib/delivery';
 import { LinearLabelPill } from '@/ui/LinearLabelPill';
 import { LinearDataListRow } from '@/ui/LinearDataList';
 import { LabelSelectorPopover } from './LabelSelectorPopover';
@@ -12,6 +13,8 @@ import { getAdsManagerColumns } from './tableColumns';
 interface CampaignRowProps {
   campaign: CampaignItem;
   readOnly?: boolean;
+  /** Present when the row may really change delivery in Meta. */
+  delivery?: DeliveryControl;
   properties?: Record<string, boolean>;
   showIdentifier?: boolean;
 }
@@ -19,13 +22,13 @@ interface CampaignRowProps {
 export const CampaignRow: React.FC<CampaignRowProps> = ({
   campaign,
   readOnly = false,
+  delivery,
   properties,
   showIdentifier = false,
 }) => {
   const {
     selectedCampaignIds,
     toggleCampaignSelection,
-    toggleCampaignDelivery,
     campaignAttachedRules,
     setFocusedCampaignId,
     displayProperties: storedDisplayProperties,
@@ -108,12 +111,13 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
               </span>
             ) : (
               <LinearToggle
-                checked={isDeliveryOn}
-                onChange={readOnly ? undefined : () => toggleCampaignDelivery(campaign.id)}
-                disabled={readOnly}
-                tooltipContent={readOnly
-                  ? `${campaign.statusLabel}. Campaign controls are not connected yet`
-                  : isDeliveryOn ? 'Pause campaign' : 'Resume campaign'}
+                checked={delivery ? delivery.status === 'active' : isDeliveryOn}
+                busy={delivery?.busy}
+                onChange={delivery ? delivery.onChange : undefined}
+                disabled={!delivery}
+                tooltipContent={delivery
+                  ? ((delivery.status === 'active') ? 'Turn this campaign off' : 'Turn this campaign on')
+                  : `${campaign.statusLabel}. Campaign controls are not available for this account`}
               />
             )
           )}

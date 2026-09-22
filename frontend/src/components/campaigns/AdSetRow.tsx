@@ -2,6 +2,7 @@ import React from 'react';
 import { AdSetItem, useAppStore } from '@/store/useAppStore';
 import { LinearCheckbox } from '@/ui/LinearCheckbox';
 import { LinearToggle } from '@/ui/LinearToggle';
+import type { DeliveryControl } from '@/lib/delivery';
 import { LinearDataListRow } from '@/ui/LinearDataList';
 import { getAdsManagerColumns } from './tableColumns';
 import { RuleAttachmentCell } from './RuleAttachmentCell';
@@ -9,12 +10,13 @@ import { RuleAttachmentCell } from './RuleAttachmentCell';
 interface AdSetRowProps {
   adSet: AdSetItem;
   readOnly?: boolean;
+  /** Present when the row may really change delivery in Meta. */
+  delivery?: DeliveryControl;
   properties?: Record<string, boolean>;
 }
 
-export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, properties }) => {
+export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, delivery, properties }) => {
   const {
-    toggleAdSetDelivery,
     selectedCampaignIds,
     toggleCampaignSelection,
     displayProperties: storedDisplayProperties,
@@ -47,10 +49,13 @@ export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, pro
             <span className="inline-flex h-5 w-8 items-center justify-center text-[12px] text-[var(--text-muted)]" aria-label="Delivery status unavailable">—</span>
           ) : (
             <LinearToggle
-              checked={isDeliveryOn}
-              onChange={readOnly ? undefined : () => toggleAdSetDelivery(adSet.id)}
-              disabled={readOnly}
-              tooltipContent={readOnly ? `${adSet.statusLabel}. Ad set controls are not connected yet` : isDeliveryOn ? 'Pause ad set' : 'Resume ad set'}
+              checked={delivery ? delivery.status === 'active' : isDeliveryOn}
+              busy={delivery?.busy}
+              onChange={delivery ? delivery.onChange : undefined}
+              disabled={!delivery}
+              tooltipContent={delivery
+                ? ((delivery.status === 'active') ? 'Turn this ad set off' : 'Turn this ad set on')
+                : `${adSet.statusLabel}. Ad set controls are not available for this account`}
             />
           )
         )}

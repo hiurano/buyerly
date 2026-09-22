@@ -47,7 +47,7 @@ function humanizeMetaStatus(value: string): string {
 }
 
 function campaignDelivery(item: AnalyticsHierarchyItem): Pick<CampaignItem, 'status' | 'statusLabel'> {
-  const rawStatus = item.effective_status || item.status || 'UNKNOWN';
+  const rawStatus = item.status || item.effective_status || 'UNKNOWN';
   const normalized = rawStatus.trim().toUpperCase();
   return {
     status: normalized === 'ACTIVE'
@@ -55,7 +55,7 @@ function campaignDelivery(item: AnalyticsHierarchyItem): Pick<CampaignItem, 'sta
       : normalized === 'PAUSED' || normalized.endsWith('_PAUSED')
         ? 'paused'
         : 'unknown',
-    statusLabel: humanizeMetaStatus(rawStatus),
+    statusLabel: humanizeMetaStatus(item.effective_status || rawStatus),
   };
 }
 

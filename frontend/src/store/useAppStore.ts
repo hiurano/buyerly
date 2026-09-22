@@ -241,10 +241,7 @@ interface AppState {
   selectedCampaignIds: string[];
   toggleCampaignSelection: (id: string) => void;
   clearCampaignSelection: () => void;
-  toggleCampaignDelivery: (id: string) => void;
   toggleCampaignGroup: (id: string, groupId: string) => void;
-  toggleAdSetDelivery: (id: string) => void;
-  toggleAdDelivery: (id: string) => void;
   focusedCampaignId: string;
   setFocusedCampaignId: (id: string) => void;
   /** Ad account whose rule attachments are currently loaded. */
@@ -428,17 +425,6 @@ export const useAppStore = create<AppState>((set, get) => ({
         : [...state.selectedCampaignIds, id],
     })),
   clearCampaignSelection: () => set({ selectedCampaignIds: [] }),
-  toggleCampaignDelivery: (id) =>
-    set((state) => ({
-      campaigns: state.campaigns.map((c) =>
-        c.id === id
-          ? {
-              ...c,
-              status: c.status === 'paused' ? 'active' : 'paused',
-            }
-          : c
-      ),
-    })),
   toggleCampaignGroup: (id, groupId) =>
     set((state) => ({
       campaigns: state.campaigns.map((c) =>
@@ -450,28 +436,6 @@ export const useAppStore = create<AppState>((set, get) => ({
                 : [...c.groupIds, groupId],
             }
           : c
-      ),
-    })),
-  toggleAdSetDelivery: (id) =>
-    set((state) => ({
-      adSets: state.adSets.map((s) =>
-        s.id === id
-          ? {
-              ...s,
-              status: s.status === 'paused' ? 'active' : 'paused',
-            }
-          : s
-      ),
-    })),
-  toggleAdDelivery: (id) =>
-    set((state) => ({
-      ads: state.ads.map((a) =>
-        a.id === id
-          ? {
-              ...a,
-              status: a.status === 'paused' ? 'active' : 'paused',
-            }
-          : a
       ),
     })),
   focusedCampaignId: '',

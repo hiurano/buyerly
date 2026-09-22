@@ -8,6 +8,14 @@ import type {
   MetaAccount,
 } from '@/lib/types';
 import { Sparkline, TrendChart, type TrendPoint } from '@/components/statistics/TrendChart';
+import { BudgetField } from '@/components/statistics/BudgetField';
+import {
+  setEntityBudget,
+  setEntityDelivery,
+  undoAction,
+  type DeliveryStatus,
+} from '@/lib/delivery';
+import { LinearToggle } from '@/ui/LinearToggle';
 import {
   eligibleMetaAccounts,
   formatMetricMoney,
@@ -71,6 +79,24 @@ type ResultPreference = 'auto' | ResultKind;
 interface SelectOption<T extends string> {
   value: T;
   label: string;
+}
+
+/**
+ * The result of an action this session sent to Meta. The fact store is a
+ * snapshot and will not show the change until its next sync, so what the user
+ * just did is held here and labelled as such rather than silently merged into
+ * stored data.
+ */
+interface RowAction {
+  busy?: boolean;
+  status?: DeliveryStatus;
+  dailyBudget?: number;
+  message?: string;
+  error?: string;
+  undoId?: number | null;
+  undoing?: boolean;
+  previousStatus?: DeliveryStatus;
+  previousBudget?: number;
 }
 
 /** One ancestor on the in-place drill-down path. */
@@ -236,6 +262,12 @@ interface StatisticsRowProps {
   onDrill: () => void;
   expanded: boolean;
   onToggleDiagnostics: () => void;
+  /** Absent when the account cannot be acted on, which hides the controls. */
+  action: RowAction | undefined;
+  onSetDelivery: ((status: DeliveryStatus) => void) | null;
+  onSetBudget: ((dailyBudget: number) => void) | null;
+  onUndo: (() => void) | null;
+  onDismissAction: () => void;
 }
 
 const StatisticsRow: React.FC<StatisticsRowProps> = ({
@@ -251,9 +283,20 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
   onDrill,
   expanded,
   onToggleDiagnostics,
+  action,
+  onSetDelivery,
+  onSetBudget,
+  onUndo,
+  onDismissAction,
 }) => {
   const definition = RESULT_DEFINITIONS[resultKind];
   const diagnosticsId = `statistics-diagnostics-${item.entity_id}`;
+  const noun = LEVEL_LABELS[item.entity_level].singular;
+  // What this session wrote wins over the snapshot, and says so on the row.
+  const liveStatus: DeliveryStatus = action?.status
+    ?? (item.status === 'ACTIVE' ? 'ACTIVE' : 'PAUSED');
+  const liveBudget = action?.dailyBudget ?? item.daily_budget;
+  const budgetEditable = Boolean(onSetBudget) && liveBudget > 0;
 
   return (
     <div className="min-w-0">
@@ -278,12 +321,23 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
             <div className="truncate text-[14px] font-medium text-[var(--text-primary)]">{item.entity_name}</div>
           )}
           <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[12px] text-[var(--text-muted)]">
-            <span
-              aria-hidden="true"
-              className="h-1.5 w-1.5 shrink-0 rounded-full"
-              style={{ backgroundColor: statusDot(item) }}
-            />
-            <span className="shrink-0">{statusLabel(item)}</span>
+            {onSetDelivery ? (
+              <LinearToggle
+                checked={liveStatus === 'ACTIVE'}
+                busy={action?.busy || action?.undoing}
+                onChange={(next) => onSetDelivery(next ? 'ACTIVE' : 'PAUSED')}
+                tooltipContent={liveStatus === 'ACTIVE' ? `Turn this ${noun} off` : `Turn this ${noun} on`}
+              />
+            ) : (
+              <span
+                aria-hidden="true"
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: statusDot(item) }}
+              />
+            )}
+            <span className="shrink-0">
+              {action?.status ? (action.status === 'ACTIVE' ? 'Active' : 'Paused') : statusLabel(item)}
+            </span>
             <span aria-hidden="true">·</span>
             <span className="truncate font-mono">Meta ID {item.entity_id}</span>
           </div>
@@ -346,6 +400,28 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
         </div>
       </LinearDataListRow>
 
+      {(action?.message || action?.error) && (
+        <div
+          className="mt-1 flex flex-wrap items-center justify-between gap-2 rounded-[var(--control-border-radius)] bg-[var(--statistics-diagnostics-bg)] px-3 py-2"
+          style={{ minWidth: `${minWidth}px` }}
+          role={action.error ? 'alert' : 'status'}
+        >
+          <span className={`min-w-0 text-[12px] ${action.error ? 'text-[var(--statistics-state-attention)]' : 'text-[var(--text-secondary)]'}`}>
+            {action.error
+              ? action.error
+              : `${action.message} Stored Meta data still shows the previous value until its next sync.`}
+          </span>
+          <span className="flex shrink-0 items-center gap-2">
+            {!action.error && action.undoId && onUndo && (
+              <Button size="compact" disabled={action.undoing || action.busy} onClick={onUndo}>
+                {action.undoing ? 'Undoing…' : 'Undo'}
+              </Button>
+            )}
+            <Button size="compact" onClick={onDismissAction}>Dismiss</Button>
+          </span>
+        </div>
+      )}
+
       {expanded && (
         <div
           id={diagnosticsId}
@@ -353,8 +429,28 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
           style={{ minWidth: `${minWidth}px` }}
         >
           <p className="text-[12px] text-[var(--text-secondary)]">{verdict.detail}</p>
+          {onSetBudget && liveBudget > 0 && (
+            <div className="mt-3 border-t border-[var(--color-border-primary)] pt-3">
+              <BudgetField
+                current={liveBudget}
+                currency={item.currency}
+                entityNoun={noun}
+                busy={Boolean(action?.busy || action?.undoing)}
+                onSave={onSetBudget}
+                formatMoney={(value) => formatMetricMoney(value, item.currency)}
+              />
+            </div>
+          )}
+
           <div className="mt-3 grid gap-x-6 gap-y-4 md:grid-cols-3">
-            {buildDiagnostics(item, resultKind).map((section) => (
+            {buildDiagnostics(item, resultKind).map((section) => ({
+              ...section,
+              // The editable field above already states the budget; repeating
+              // the stored one beside it reads as a failed save.
+              entries: budgetEditable
+                ? section.entries.filter((entry) => entry.label !== 'Daily budget')
+                : section.entries,
+            })).map((section) => (
               <section key={section.id} className="min-w-0">
                 <h4 className="text-[11px] font-medium uppercase tracking-[0.04em] text-[var(--text-muted)]">
                   {section.title}
@@ -404,6 +500,7 @@ export const StatisticsView: React.FC = () => {
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const [trend, setTrend] = useState<AnalyticsTimeseriesResponse | null>(null);
   const [trendOpen, setTrendOpen] = useState(false);
+  const [rowActions, setRowActions] = useState<Record<string, RowAction>>({});
 
   const parent = trail.length > 0 ? trail[trail.length - 1] : null;
   const queryLevel: EntityLevel = parent ? (CHILD_LEVEL[parent.level] ?? level) : level;
@@ -674,6 +771,76 @@ export const StatisticsView: React.FC = () => {
     setTrail((current) => [...current, { id: item.entity_id, name: item.entity_name, level: queryLevel }]);
   };
 
+  const patchAction = useCallback((entityId: string, patch: RowAction | null) => {
+    setRowActions((current) => {
+      if (patch === null) {
+        const { [entityId]: _removed, ...rest } = current;
+        return rest;
+      }
+      return { ...current, [entityId]: { ...current[entityId], ...patch } };
+    });
+  }, []);
+
+  const actionErrorMessage = (error: unknown): string => (
+    error instanceof ApiError || error instanceof Error
+      ? error.message
+      : 'The action could not be confirmed. Check Meta before retrying.'
+  );
+
+  const runDelivery = useCallback(async (item: AnalyticsHierarchyItem, status: DeliveryStatus) => {
+    if (!selectedAccountId) return;
+    patchAction(item.entity_id, { busy: true, error: '', message: '' });
+    try {
+      const result = await setEntityDelivery(item.entity_level, item.entity_id, selectedAccountId, status);
+      patchAction(item.entity_id, {
+        busy: false,
+        previousStatus: result.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE',
+        previousBudget: undefined,
+        status: result.status,
+        message: result.message,
+        undoId: result.changed ? result.audit_event_id : null,
+        error: '',
+      });
+    } catch (error) {
+      patchAction(item.entity_id, { busy: false, error: actionErrorMessage(error) });
+    }
+  }, [patchAction, selectedAccountId, rowActions]);
+
+  const runBudget = useCallback(async (item: AnalyticsHierarchyItem, dailyBudget: number) => {
+    if (!selectedAccountId) return;
+    patchAction(item.entity_id, { busy: true, error: '', message: '' });
+    try {
+      const result = await setEntityBudget(item.entity_level, item.entity_id, selectedAccountId, dailyBudget);
+      patchAction(item.entity_id, {
+        busy: false,
+        previousBudget: result.previous_daily_budget,
+        previousStatus: undefined,
+        dailyBudget: result.daily_budget,
+        message: result.message,
+        undoId: result.changed ? result.audit_event_id : null,
+        error: '',
+      });
+    } catch (error) {
+      patchAction(item.entity_id, { busy: false, error: actionErrorMessage(error) });
+    }
+  }, [patchAction, selectedAccountId, rowActions]);
+
+  const runUndo = useCallback(async (item: AnalyticsHierarchyItem, auditEventId: number) => {
+    patchAction(item.entity_id, { undoing: true, error: '' });
+    try {
+      await undoAction(auditEventId);
+      // Restore the previous confirmed value while preserving other actions.
+      const previous = rowActions[item.entity_id];
+      patchAction(item.entity_id, {
+        status: previous?.previousStatus ?? previous?.status,
+        dailyBudget: previous?.previousBudget ?? previous?.dailyBudget,
+        undoId: null, undoing: false, message: 'Action undone.', error: '',
+      });
+    } catch (error) {
+      patchAction(item.entity_id, { undoing: false, error: actionErrorMessage(error) });
+    }
+  }, [patchAction, rowActions]);
+
   const renderRow = (item: AnalyticsHierarchyItem) => (
     <StatisticsRow
       key={item.entity_id}
@@ -691,6 +858,16 @@ export const StatisticsView: React.FC = () => {
       onToggleDiagnostics={() => setExpandedRowId((current) => (
         current === item.entity_id ? null : item.entity_id
       ))}
+      action={rowActions[item.entity_id]}
+      onSetDelivery={selectedAccountId && ['ACTIVE', 'PAUSED'].includes(item.status) ? (status) => void runDelivery(item, status) : null}
+      // An ad carries no budget of its own, so the field is never offered there.
+      onSetBudget={selectedAccountId && item.entity_level !== 'ad'
+        ? (dailyBudget) => void runBudget(item, dailyBudget)
+        : null}
+      onUndo={rowActions[item.entity_id]?.undoId
+        ? () => void runUndo(item, rowActions[item.entity_id].undoId as number)
+        : null}
+      onDismissAction={() => patchAction(item.entity_id, { message: '', error: '' })}
     />
   );
 
