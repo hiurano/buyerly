@@ -4,8 +4,10 @@ import { ApiError, apiRequest } from '@/lib/api';
 import type {
   AnalyticsHierarchyItem,
   AnalyticsHierarchyResponse,
+  AnalyticsTimeseriesResponse,
   MetaAccount,
 } from '@/lib/types';
+import { Sparkline, TrendChart, type TrendPoint } from '@/components/statistics/TrendChart';
 import {
   eligibleMetaAccounts,
   formatMetricMoney,
@@ -196,16 +198,21 @@ const MetricCard: React.FC<{
   emphasis?: boolean;
   verdict?: DecisionVerdict;
   change?: PeriodChange;
+  trend?: React.ReactNode;
   footnote?: string;
-}> = ({ label, value, supporting, emphasis = false, verdict, change, footnote }) => (
+}> = ({ label, value, supporting, emphasis = false, verdict, change, trend, footnote }) => (
   <article
     className={`flex min-h-[var(--statistics-metric-height)] min-w-0 flex-col rounded-[var(--control-border-radius)] border bg-[var(--card-bg)] p-4 shadow-[var(--canvas-shadow)] ${
       emphasis ? 'border-[var(--statistics-primary-card-border)]' : 'border-[var(--card-border)]'
     }`}
   >
     <div className="text-[12px] font-medium text-[var(--text-muted)]">{label}</div>
-    <div className="mt-2.5 break-words text-[length:var(--statistics-metric-mobile-font-size)] font-medium leading-none tracking-[-0.03em] text-[var(--text-primary)] tabular-nums sm:text-[length:var(--statistics-metric-font-size)]">
-      {value.replace(/\u00a0/g, ' ')}
+    <div className="mt-2.5 flex min-w-0 items-end justify-between gap-3">
+      <span className="min-w-0 break-words text-[length:var(--statistics-metric-mobile-font-size)] font-medium leading-none tracking-[-0.03em] text-[var(--text-primary)] tabular-nums sm:text-[length:var(--statistics-metric-font-size)]">
+        {value.replace(/\u00a0/g, ' ')}
+      </span>
+      {/* The glyph yields to the number: on a narrow card there is no room for both. */}
+      {trend && <span className="hidden shrink-0 sm:block">{trend}</span>}
     </div>
     <div className="mt-2 text-[12px] text-[var(--text-secondary)]">{supporting}</div>
     {change && <ChangeNote change={change} className="mt-1.5 text-[12px]" />}
@@ -395,6 +402,8 @@ export const StatisticsView: React.FC = () => {
   const [sortKey, setSortKey] = useState<StatisticsSort>('spend');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const [trend, setTrend] = useState<AnalyticsTimeseriesResponse | null>(null);
+  const [trendOpen, setTrendOpen] = useState(false);
 
   const parent = trail.length > 0 ? trail[trail.length - 1] : null;
   const queryLevel: EntityLevel = parent ? (CHILD_LEVEL[parent.level] ?? level) : level;
@@ -452,6 +461,29 @@ export const StatisticsView: React.FC = () => {
       requestGenerationRef.current += 1;
     };
   }, [comparison, parentId, period, queryLevel, reloadKey]);
+
+  // The trend window is fixed at two weeks and does not follow the reporting
+  // period: its job is to say whether a movement lasted, not to restate it.
+  useEffect(() => {
+    setTrend(null);
+    if (!parentId) return undefined;
+    let current = true;
+    void apiRequest<AnalyticsTimeseriesResponse>(
+      `/api/analytics/timeseries?parent_id=${encodeURIComponent(parentId)}`
+      + `&level=${queryLevel}&days=14`,
+    )
+      .then((response) => {
+        if (current) setTrend(response);
+      })
+      .catch(() => {
+        // A missing trend is not worth an error state: the numbers above it
+        // are unaffected, and the card simply renders without its glyph.
+        if (current) setTrend(null);
+      });
+    return () => {
+      current = false;
+    };
+  }, [parentId, queryLevel, reloadKey]);
 
   const selectedAccount = accounts.find((account) => account.account_id === selectedAccountId) ?? null;
   const periodLabel = PERIOD_OPTIONS.find((option) => option.value === period)?.label ?? 'Last 7 days';
@@ -536,6 +568,20 @@ export const StatisticsView: React.FC = () => {
       detail: `This ad account's cost target applies to ${declared}, not to the result shown here.`,
     };
   };
+
+  const trendPoints: TrendPoint[] = useMemo(() => (
+    (trend?.points ?? []).map((point) => ({
+      date: point.date,
+      hasData: point.has_data,
+      value: point.has_data ? resultDefinition.cost(point) : null,
+    }))
+  ), [resultDefinition, trend]);
+
+  const trendCurrency = trend?.currency || '';
+  const trendReadable = trendPoints.filter((point) => point.hasData && point.value !== null);
+  // Two readable points is the minimum that can show a direction at all, and a
+  // mixed-currency window cannot be put on one money axis.
+  const trendUsable = trendReadable.length >= 2 && trendCurrency !== '';
 
   const visibleItems = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -936,6 +982,9 @@ export const StatisticsView: React.FC = () => {
                   value={summary.costPerResult}
                   supporting="Primary decision metric"
                   emphasis
+                  trend={trendUsable ? (
+                    <Sparkline points={trendPoints} label={resultDefinition.costLabel} />
+                  ) : undefined}
                   change={comparisonAvailable ? summary.costChange : undefined}
                   verdict={explainMissingTarget(summary.verdict)}
                 />
@@ -957,6 +1006,44 @@ export const StatisticsView: React.FC = () => {
                   footnote={`${formatCount(summary.paused)} not delivering in this period`}
                 />
               </div>
+
+              {trendUsable && (
+                <div className="mt-2 min-w-0 rounded-[var(--control-border-radius)] border border-[var(--card-border)] bg-[var(--card-bg)] p-3">
+                  <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-[13px] font-medium text-[var(--text-primary)]">
+                      {resultDefinition.costLabel} per day
+                    </h3>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[12px] text-[var(--text-muted)]">
+                        Last {formatCount(trendPoints.length)} days · {trend?.timezone}
+                      </span>
+                      <Button
+                        size="compact"
+                        aria-expanded={trendOpen}
+                        aria-controls="statistics-trend-chart"
+                        onClick={() => setTrendOpen((open) => !open)}
+                      >
+                        {trendOpen ? 'Hide trend' : 'Show trend'}
+                      </Button>
+                    </div>
+                  </div>
+                  {trendOpen && (
+                    <div id="statistics-trend-chart" className="mt-2">
+                      <TrendChart
+                        points={trendPoints}
+                        label={resultDefinition.costLabel}
+                        formatValue={(value) => formatMetricMoney(value, trendCurrency)}
+                        target={costTarget}
+                        openDay={trend?.open_day ?? ''}
+                      />
+                      <p className="mt-2 text-[12px] text-[var(--text-secondary)]">
+                        The last point is today and still moving. A day the fact store never
+                        received is a gap, not a day without spend.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </section>
           )}
 

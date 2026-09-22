@@ -158,6 +158,25 @@ export interface AnalyticsComparison {
   current_includes_open_day: boolean;
 }
 
+/** One local day of a trend. `has_data` false means the day was never reported. */
+export interface AnalyticsTrendPoint extends AnalyticsPeriodMetrics {
+  date: string;
+  has_data: boolean;
+}
+
+export interface AnalyticsTimeseriesResponse {
+  parent_id: string;
+  level: 'campaign' | 'adset' | 'ad';
+  source: 'analytics_fact_store';
+  timezone: string;
+  days: number;
+  /** The local day still in progress; its point is not final. */
+  open_day: string;
+  /** Empty when the window mixes currencies, so money stays off one axis. */
+  currency: string;
+  points: AnalyticsTrendPoint[];
+}
+
 export interface AnalyticsHierarchyResponse {
   parent_id: string;
   level: 'campaign' | 'adset' | 'ad';

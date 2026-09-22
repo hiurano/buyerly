@@ -119,6 +119,14 @@ class TestReactFrontendContract(unittest.TestCase):
             / "statistics"
             / "statisticsModel.ts"
         ).read_text()
+        cls.trend_chart = (
+            ROOT
+            / "frontend"
+            / "src"
+            / "components"
+            / "statistics"
+            / "TrendChart.tsx"
+        ).read_text()
         cls.ad_accounts_section = (
             ROOT
             / "frontend"
@@ -533,6 +541,35 @@ class TestReactFrontendContract(unittest.TestCase):
             "inline-flex min-w-0 items-center gap-1 text-[var(--text-secondary)]",
             self.statistics_view,
         )
+
+    def test_statistics_trend_is_one_series_on_one_axis(self):
+        """The trend answers whether a movement lasted, and nothing else."""
+        # A fixed window, asked for separately from the reporting period.
+        self.assertIn("/api/analytics/timeseries?parent_id=", self.statistics_view)
+        self.assertIn("&level=${queryLevel}&days=14", self.statistics_view)
+
+        # No chart occupies the first screen until it is asked for.
+        self.assertIn("{trendOpen ? 'Hide trend' : 'Show trend'}", self.statistics_view)
+        self.assertIn('aria-controls="statistics-trend-chart"', self.statistics_view)
+
+        # A reported gap breaks the line instead of dropping it to zero.
+        self.assertIn("function segmentsOf", self.trend_chart)
+        self.assertIn("No data for this day", self.trend_chart)
+
+        # The series colour is its own token, never a decision colour, and the
+        # target is the one dashed rule because it is a threshold.
+        self.assertIn("var(--statistics-trend-line)", self.trend_chart)
+        self.assertNotIn("statistics-state-", self.trend_chart)
+        self.assertIn('strokeDasharray="4 4"', self.trend_chart)
+
+        # Every value stays reachable without a pointer.
+        self.assertIn("Show values", self.trend_chart)
+        self.assertIn("<table", self.trend_chart)
+        self.assertIn("ArrowLeft", self.trend_chart)
+
+        # One metric on one axis: no second series and no second scale.
+        for forbidden in ("yAxisRight", "secondAxis", "series2"):
+            self.assertNotIn(forbidden, self.trend_chart)
 
     def test_statistics_judges_only_against_the_stored_account_target(self):
         """The verdict comes from the ad account's own declaration, or not at all."""

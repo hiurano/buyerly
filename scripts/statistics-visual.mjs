@@ -56,6 +56,30 @@ try {
             primary_result: '', target_cost_per_result: null },
         ] });
       }
+      if (url.pathname === '/api/analytics/timeseries') {
+        // Fourteen days with one reported gap, so the broken line renders.
+        const points = Array.from({ length: 14 }, (_, day) => {
+          const has_data = day !== 6;
+          const leads = has_data ? 30 : 0;
+          const spend = has_data ? (40 + day) * leads : 0;
+          return {
+            date: `2026-09-${String(day + 1).padStart(2, '0')}`, has_data,
+            spend, impressions: 1000, reach: 500, cpm: 30, clicks: 50,
+            link_clicks: 40, outbound_clicks: 35, landing_page_views: 30,
+            leads, registrations: 0, purchases: 0,
+            cost_per_lead: has_data ? 40 + day : null,
+            cost_per_registration: null, cost_per_purchase: null,
+            cost_per_landing_page_view: 11, cpc: 9, ctr: 0.5,
+            cpc_link: 9, ctr_link: 0.4, ctr_outbound: 0.35,
+          };
+        });
+        return route.fulfill({ json: {
+          parent_id: url.searchParams.get('parent_id'), level: url.searchParams.get('level'),
+          source: 'analytics_fact_store', timezone: 'America/New_York',
+          days: points.length, open_day: points[points.length - 1].date,
+          currency: 'USD', points,
+        } });
+      }
       if (url.pathname === '/api/analytics/hierarchy') {
         requests.push(Object.fromEntries(url.searchParams));
         const period = url.searchParams.get('period');
@@ -136,6 +160,16 @@ try {
     await page.getByText('No baseline', { exact: true }).first().waitFor();
     await noOverflow();
     await screenshot('overview');
+
+    // The trend is one chart, opened on request, and every value stays
+    // readable without a pointer.
+    await page.getByRole('button', { name: 'Show trend', exact: true }).click();
+    await page.locator('#statistics-trend-chart svg').waitFor();
+    await page.getByText('Show values', { exact: true }).click();
+    await page.getByRole('cell', { name: 'No data', exact: true }).first().waitFor();
+    await noOverflow();
+    await screenshot('trend');
+    await page.getByRole('button', { name: 'Hide trend', exact: true }).click();
     await page.getByRole('button', { name: 'Filter statistics', exact: true }).focus();
     await page.keyboard.press('Enter');
     await page.getByRole('menuitemradio', { name: 'Today', exact: true }).waitFor();

@@ -113,7 +113,8 @@ first screen only by causing a frequent decision.
 - **comparison is a movement, never a verdict.** A period can be measured against the equal-length window before it; the change is written out with a direction and carries no decision color, so "better than last week" can never be mistaken for "inside target";
 - **Today refuses to be compared.** The fact store keeps whole-day totals, so a day in progress cannot be matched against an equal part of an earlier day; the screen reports that instead of a change that only reflects the hour. A multi-day window containing today says that its change keeps moving;
 - an entity with no baseline reports "No baseline" rather than a change from zero, and an entity that ran only in the baseline window is history, not a row;
-- trend series, revenue/ROAS and delivery mutations stay absent until server contracts exist;
+- **one trend, one metric, one axis, and only on request.** The primary decision card carries a sparkline; the full chart is opened by a button and plots the cost per result per day over a fixed 14-day window, independent of the reporting period, because its job is to say whether a movement lasted. It draws the stored target as a reference line, breaks the line where a day was never reported, leaves the open day's marker hollow, and ships a values table so no number depends on hovering. The series colour is its own token, validated against each theme's surface, and never a decision colour;
+- revenue/ROAS and delivery mutations stay absent until server contracts exist;
 - every number carries a real period, freshness and data-status meaning;
 - unavailable or unsupported metrics render as unavailable, never as zero unless the API returned a true zero;
 - mixed currency is not silently aggregated.

@@ -264,6 +264,7 @@ Meta возвращает браузер на служебный callback `/api/
 | Метод и путь | Параметры/тело | Назначение |
 |---|---|---|
 | `GET /api/summary` | `period=today|yesterday|last_3d|last_7d`, `force=false|true` | возвращает сохранённую или свежую account-level сводку Meta |
+| `GET /api/analytics/timeseries` | `parent_id`, `level=campaign|adset|ad`, `days=2..30` | суточные итоги по всем сущностям под одним родителем, старый день первым; одна точка на каждую локальную дату окна, поэтому день, который хранилище не получало, помечен `has_data=false`, а не выглядит как день без расхода; `open_day` называет ещё не закрытый день, `currency` пуста при смешанных валютах |
 | `GET /api/analytics/hierarchy` | `parent_id`, `level=campaign|adset|ad`, `period=today|yesterday|last_3d|last_7d`, `compare=none|previous` | возвращает нормализованные дочерние сущности и метрики из Analytics Fact Store; campaign-уровень сохраняет полный Meta inventory, включая кампании без активности за период; `source` и `data_as_of` описывают источник и консервативную свежесть набора; `compare=previous` добавляет объект `comparison` и поле `previous` в каждую строку |
 | `GET /api/analytics-view` | — | сохранённое представление таблицы пользователя |
 | `PUT /api/analytics-view` | view payload | сохраняет вид, колонки, порядок, ширины, сортировку, фильтры и период |
