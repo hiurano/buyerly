@@ -333,6 +333,7 @@ export const App: React.FC = () => {
   const routeWorkspace = user.workspaces.find((item) => item.slug === route.workspace) || workspace;
   return (
     <WorkspaceApplication
+      key={routeWorkspace.id}
       route={route}
       workspace={routeWorkspace}
       user={user}
