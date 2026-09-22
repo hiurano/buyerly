@@ -45,9 +45,15 @@ try {
     await page.route('**/api/**', async route => {
       const url = new URL(route.request().url());
       if (url.pathname === '/api/accounts') {
+        // The first account declares a target, the second declares nothing, so
+        // one run covers both the judged and the unjudged path.
         return route.fulfill({ json: mode === 'no-accounts' ? [] : [
-          { account_id: 'act_123', name: 'Visual QA account', is_active: true },
-          { account_id: 'act_456', name: 'Second QA account', is_active: true },
+          { account_id: 'act_123', name: 'Visual QA account', is_active: true,
+            currency: 'USD', timezone_name: 'America/New_York',
+            primary_result: 'leads', target_cost_per_result: 40 },
+          { account_id: 'act_456', name: 'Second QA account', is_active: true,
+            currency: 'USD', timezone_name: 'America/New_York',
+            primary_result: '', target_cost_per_result: null },
         ] });
       }
       if (url.pathname === '/api/analytics/hierarchy') {
@@ -100,6 +106,8 @@ try {
     await open();
     await page.getByText('QA campaign 1', { exact: true }).waitFor();
     assert.equal(await page.locator('article').count(), 4);
+    // The declared target turns cost per result into a verdict.
+    await page.getByText('17% above target', { exact: true }).first().waitFor();
     await noOverflow();
     await screenshot('overview');
     await page.getByRole('button', { name: 'Filter statistics', exact: true }).focus();

@@ -49,6 +49,7 @@ from api.schemas.rules import (
 from api.schemas.accounts import (
     AccountLatestMetrics,
     AccountItem,
+    AccountCostTargetRequest,
     AccountProfileUpdateRequest,
     AccountGroupRequest,
     AccountGroupItem,
@@ -107,6 +108,7 @@ __all__ = [
     "ApplyPresetRequest",
     "AccountLatestMetrics",
     "AccountItem",
+    "AccountCostTargetRequest",
     "AccountProfileUpdateRequest",
     "AccountGroupRequest",
     "AccountGroupItem",

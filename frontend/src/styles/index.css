@@ -1307,6 +1307,23 @@ html[data-theme='dark'] .linear-sidebar-badge,
   flex-shrink: 0;
 }
 
+/* A row that already carries a control beside the field gets the shorter one. */
+.preferences-row-item .preferences-row-input--narrow {
+  width: 148px;
+}
+
+/* Explanatory copy under a section heading, above its card. */
+.preferences-section-note {
+  margin: -4px 0 12px;
+  padding: 0 16px;
+  max-width: 560px;
+  color: var(--text-tertiary);
+  font-family: var(--font-regular);
+  font-size: 12px;
+  font-weight: 450;
+  line-height: 18px;
+}
+
 .preferences-row-error {
   margin: 8px 0 0;
   color: var(--rules-action-stop-text);

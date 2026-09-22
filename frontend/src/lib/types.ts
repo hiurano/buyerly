@@ -67,6 +67,10 @@ export interface MetaAccount {
   status_label?: string;
   rules_enabled?: boolean;
   is_active?: boolean;
+  /** Conversion event this ad account declares as its primary result; '' when undeclared. */
+  primary_result?: '' | 'leads' | 'registrations' | 'purchases';
+  /** Target cost per primary result in the ad account currency; null when undeclared. */
+  target_cost_per_result?: number | null;
   /** Runtime rule snapshots attached to this ad account, each with its scope. */
   active_rules?: AttachedRule[];
 }

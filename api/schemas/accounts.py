@@ -1,6 +1,11 @@
 from typing import List, Optional, Dict, Any, Literal
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from api.schemas.health import AccountHealthItem
+
+
+# The conversion events Statistics can treat as the primary result. Empty
+# means the ad account has not declared one.
+PrimaryResult = Literal["", "leads", "registrations", "purchases"]
 
 
 class AccountLatestMetrics(BaseModel):
@@ -52,9 +57,34 @@ class AccountItem(BaseModel):
     is_active: bool
     active_rules: List[Dict[str, Any]] = Field(default_factory=list)
     group_ids: List[int] = Field(default_factory=list)
+    primary_result: PrimaryResult = ""
+    target_cost_per_result: Optional[float] = None
     latest_metrics: Optional[AccountLatestMetrics] = None
     health: AccountHealthItem = Field(default_factory=AccountHealthItem)
     created_at: str
+
+
+class AccountCostTargetRequest(BaseModel):
+    """The ad account's declared primary result and the cost target for it.
+
+    An empty ``primary_result`` clears both: Statistics then falls back to
+    detecting the result from volume and reports cost without a verdict.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    primary_result: PrimaryResult = ""
+    # Meta reports cost in the ad account currency, so the target is stored in
+    # that currency too. The upper bound only rejects obvious input mistakes.
+    target_cost_per_result: Optional[float] = Field(default=None, gt=0, le=1_000_000)
+
+    @model_validator(mode="after")
+    def _target_needs_a_declared_result(self) -> "AccountCostTargetRequest":
+        if self.target_cost_per_result is not None and not self.primary_result:
+            raise ValueError(
+                "A cost target needs a primary result to apply to."
+            )
+        return self
 
 
 class AccountProfileUpdateRequest(BaseModel):

@@ -108,7 +108,8 @@ first screen only by causing a frequent decision.
 - the table carries only entity identity and delivery, spend, results and cost per result. CTR, CPC, CPM, frequency, reach, impressions, link and funnel metrics live in a per-row diagnostics panel that opens in place;
 - clicking an entity drills into its children with the same columns and a breadcrumb back; a level tab returns to the account-wide view;
 - **a row below the result floor is reported as undecidable, which is a different statement from performing badly.** No row is colored as a problem on a sample too small to judge;
-- KPI targets are not stored by the API yet, so rows report cost per result without a verdict and the overview states the absent target once rather than on every line. Decision grouping exists and becomes a full four-state split when a stored target lands;
+- **the verdict comes from the ad account's own declaration, or not at all.** An ad account declares its primary result and the cost target for it in Settings → Ad accounts; Statistics then reports each row as on target, watch or needs attention. A target names the event it applies to, so it is used only while that event is the one on screen;
+- an ad account that has declared nothing reports cost per result without a verdict, and the overview states the absent target once rather than on every line;
 - comparison to a previous period, trend series, revenue/ROAS and delivery mutations stay absent until server contracts exist;
 - every number carries a real period, freshness and data-status meaning;
 - unavailable or unsupported metrics render as unavailable, never as zero unless the API returned a true zero;
@@ -117,6 +118,8 @@ first screen only by causing a frequent decision.
 ### Settings
 
 - profile, workspace and connection settings preserve role and workspace boundaries;
+- **Ad accounts** is where an ad account declares the conversion event it is buying and the cost target for it. Clearing the declared result clears the target with it, because a cost target without the event it applies to cannot be interpreted;
+- the target is stored and shown in the ad account's own currency, and is never converted between currencies;
 - secrets and full access tokens are never display data.
 
 ### Auth and onboarding

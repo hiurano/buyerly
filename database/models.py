@@ -755,6 +755,23 @@ class Account(Base):
     
     rules_enabled = Column(Boolean, default=False, nullable=False, doc="Whether automated stop rules are enabled")
     is_active = Column(Boolean, default=True, nullable=False, doc="Whether the ad account is enabled in the system")
+
+    # Statistics decision contract: the conversion event this ad account is
+    # actually buying, and the cost it is worth buying at. Empty and NULL mean
+    # the buyer has not declared them, which Statistics reports rather than
+    # guessing a target.
+    primary_result = Column(
+        String,
+        default="",
+        nullable=False,
+        doc="Declared primary conversion event: '', 'leads', 'registrations' or 'purchases'",
+    )
+    target_cost_per_result = Column(
+        Float,
+        nullable=True,
+        doc="Target cost per primary result in the ad account currency; NULL when undeclared",
+    )
+
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     def __repr__(self):
