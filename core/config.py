@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     APP_VERSION: str = Field(default="dev", description="Deployed Git commit SHA")
-    BOT_TOKEN: str = Field(default="", description="Telegram Bot Token from @BotFather")
+    BOT_TOKEN: str = Field(default="", description="Telegram bot token; only verifies legacy Mini App sign-in")
     DATABASE_URL: str = Field(
         default="postgresql+asyncpg://buyerly:buyerly_secret@localhost:5432/buyerly",
         description="Async SQLAlchemy database URL",
@@ -18,8 +18,8 @@ class Settings(BaseSettings):
         description="Comma-separated proxy networks allowed to supply forwarding headers",
     )
     DEFAULT_POLL_INTERVAL_MINUTES: int = Field(default=5, description="Monitoring interval in minutes")
-    ADMIN_CHAT_ID: str = Field(default="", description="Default Telegram Chat ID for alerts")
-    WEBAPP_URL: str = Field(default="", description="Public HTTPS URL for Telegram Web App")
+    ADMIN_CHAT_ID: str = Field(default="", description="Legacy Telegram ID of the bootstrap and dev-auth super-admin")
+    WEBAPP_URL: str = Field(default="", description="Public HTTPS URL of the web app")
     META_GRAPH_VERSION: str = Field(
         default="v26.0",
         description="Pinned Meta Graph API version (for example v26.0)",

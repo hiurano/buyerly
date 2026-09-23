@@ -50,7 +50,6 @@ class RulePresetItem(BaseModel):
     condition_logic: str = "and"
     cooldown_minutes: int = 0
     check_interval_minutes: int = 5
-    notify_tg: bool = True
     budget_change_percent: float = 0.0
     budget_max_daily: float = 0.0
     currency_mode: Literal["account"] = "account"
@@ -80,7 +79,6 @@ class CreatePresetRequest(BaseModel):
     condition_logic: Literal["and", "or"] = "and"
     cooldown_minutes: int = Field(default=0, ge=0, le=10_080)
     check_interval_minutes: int = Field(default=5, ge=1, le=1_440)
-    notify_tg: bool = True
     budget_change_percent: float = Field(default=0.0, ge=0, le=100, allow_inf_nan=False)
     budget_max_daily: float = Field(default=0.0, ge=0, le=10_000_000, allow_inf_nan=False)
 

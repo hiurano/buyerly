@@ -12,7 +12,6 @@ from meta_api.client import (
     MetaTokenAuthError,
     classify_meta_token_error,
 )
-from bot.notifier import TelegramNotifier
 from scheduler.worker import MonitoringWorker
 
 
@@ -84,98 +83,6 @@ class TestMetaErrorSubcodesClassification(unittest.TestCase):
         err_102 = classify_meta_token_error({"code": 102, "message": "API Session Error"})
         self.assertEqual(err_102.code, 102)
         self.assertEqual(err_102.subcode_key, "API_SESSION_INVALID")
-
-
-class TestTelegramNotifierSubcodes(unittest.IsolatedAsyncioTestCase):
-    """Tests for TelegramNotifier message formatting with subcodes and XSS/HTML injection protection."""
-
-    async def test_telegram_alert_formatting_with_checkpoint(self):
-        """A checkpoint alert (subcode 459) is built with useful detail."""
-        bot_mock = MagicMock()
-        bot_mock.send_message = AsyncMock()
-        notifier = TelegramNotifier(bot=bot_mock, target_chat_id="123456")
-        notifier._save_event_log = AsyncMock()
-
-        await notifier.send_alert(
-            event_type="TOKEN_EXPIRED",
-            account_name="Profit Ads 1",
-            account_id="act_111222333",
-            target_chat_id="123456",
-            subcode=459,
-            subcode_title="🔒 Checkpoint / profile ban",
-            subcode_description="The Facebook profile was sent for a security review (selfie / documents)",
-            action_hint="Open the profile in an antidetect browser and clear the checkpoint",
-            user_msg="Your account has been temporarily locked.",
-        )
-
-        self.assertEqual(bot_mock.send_message.call_count, 1)
-        _, kwargs = bot_mock.send_message.call_args
-        text = kwargs["text"]
-        self.assertIn("🔒 Checkpoint / profile ban", text)
-        self.assertIn("(Subcode 459)", text)
-        self.assertIn("antidetect browser", text)
-        self.assertIn("temporarily locked", text)
-        self.assertIn("Profit Ads 1", text)
-        self.assertEqual(kwargs["parse_mode"], "HTML")
-
-    async def test_telegram_alert_html_injection_safety(self):
-        """HTML special characters are escaped in account_name and user_msg."""
-        bot_mock = MagicMock()
-        bot_mock.send_message = AsyncMock()
-        notifier = TelegramNotifier(bot=bot_mock, target_chat_id="123456")
-        notifier._save_event_log = AsyncMock()
-
-        dangerous_name = "Agency <Media> & Co <script>alert(1)</script>"
-        dangerous_msg = "Error validating <Token> & Session for user <12345>"
-
-        await notifier.send_alert(
-            event_type="TOKEN_EXPIRED",
-            account_name=dangerous_name,
-            account_id="act_999",
-            target_chat_id="123456",
-            subcode=463,
-            subcode_title="⏳ Token expired",
-            subcode_description="The 60-day lifetime expired",
-            action_hint="Refresh the token",
-            user_msg=dangerous_msg,
-        )
-
-        self.assertEqual(bot_mock.send_message.call_count, 1)
-        _, kwargs = bot_mock.send_message.call_args
-        text = kwargs["text"]
-        self.assertNotIn("<script>", text)
-        self.assertNotIn("<Token>", text)
-        self.assertIn("&lt;script&gt;", text)
-        self.assertIn("&lt;Media&gt;", text)
-        self.assertIn("&amp; Co", text)
-        self.assertIn("&lt;Token&gt; &amp; Session", text)
-
-    async def test_telegram_alert_long_message_truncation(self):
-        """An over-long Meta response is truncated (guarding the 4096-character limit)."""
-        bot_mock = MagicMock()
-        bot_mock.send_message = AsyncMock()
-        notifier = TelegramNotifier(bot=bot_mock, target_chat_id="123456")
-        notifier._save_event_log = AsyncMock()
-
-        huge_error_msg = "A" * 1000
-
-        await notifier.send_alert(
-            event_type="TOKEN_EXPIRED",
-            account_name="Test Account",
-            account_id="act_123",
-            target_chat_id="123456",
-            subcode=460,
-            subcode_title="🔑 Password changed",
-            subcode_description="The password was changed",
-            action_hint="Sign in again",
-            user_msg=huge_error_msg,
-        )
-
-        _, kwargs = bot_mock.send_message.call_args
-        text = kwargs["text"]
-        # user_msg is truncated to 350 characters
-        self.assertNotIn("A" * 500, text)
-        self.assertIn("A" * 350, text)
 
 
 from cryptography.fernet import Fernet
@@ -278,19 +185,8 @@ class TestMonitoringWorkerTokenErrorHandling(unittest.IsolatedAsyncioTestCase):
         mock_meta.get_account_info = AsyncMock(side_effect=mock_error)
         mock_meta.get_adsets_and_insights = AsyncMock(return_value=[])
 
-        sent_alerts = []
-        async def mock_notifier(**kwargs):
-            sent_alerts.append(kwargs)
-
-        worker = MonitoringWorker(meta_client=mock_meta, telegram_notifier=mock_notifier)
-        stats = await worker.run_cycle()
-
-        # Alert delivery
-        self.assertEqual(len(sent_alerts), 1)
-        self.assertEqual(sent_alerts[0]["event_type"], "TOKEN_EXPIRED")
-        self.assertEqual(sent_alerts[0]["subcode"], 459)
-        self.assertIn("Checkpoint", sent_alerts[0]["subcode_title"])
-        self.assertIn("antidetect", sent_alerts[0]["action_hint"])
+        worker = MonitoringWorker(meta_client=mock_meta)
+        await worker.run_cycle()
 
         # Database state
         async with self.session_maker() as session:
@@ -308,6 +204,8 @@ class TestMonitoringWorkerTokenErrorHandling(unittest.IsolatedAsyncioTestCase):
             details = audit.details if isinstance(audit.details, dict) else json.loads(audit.details)
             self.assertEqual(details["error_subcode"], 459)
             self.assertEqual(details["subcode_key"], "CHECKPOINT")
+            self.assertIn("Checkpoint", details["subcode_title"])
+            self.assertIn("antidetect", details["action_hint"])
 
 
 if __name__ == "__main__":

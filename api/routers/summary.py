@@ -27,7 +27,7 @@ from api.deps import (
     get_user_workspace,
 )
 from api.schemas import AnalyticsViewPreferenceRequest
-from bot.handlers import get_short_account_label
+from core.accounts import get_short_account_label
 from core.currency import UNKNOWN_CURRENCY, normalize_currency
 from core.metrics import SUMMARY_METRIC_DEFINITIONS
 from core.meta_tokens import resolve_account_access_token

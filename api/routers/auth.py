@@ -709,22 +709,6 @@ async def update_profile(req: UpdateProfileRequest, user: User = Depends(get_cur
         elif req.first_name is not None or req.last_name is not None:
             db_user.full_name = f"{db_user.first_name} {db_user.last_name}".strip()
 
-        if req.telegram_id is not None:
-            new_telegram_id = req.telegram_id.strip()
-            if not new_telegram_id:
-                raise HTTPException(status_code=400, detail="Telegram ID cannot be empty")
-            collision = (
-                await session.execute(
-                    select(User.id).where(
-                        User.telegram_id == new_telegram_id,
-                        User.id != db_user.id,
-                    )
-                )
-            ).scalar_one_or_none()
-            if collision is not None:
-                raise HTTPException(status_code=409, detail="This Telegram ID is already in use")
-
-            db_user.telegram_id = new_telegram_id
         await session.commit()
         if old_avatar_url and old_avatar_url != db_user.avatar_url:
             delete_local_upload(
@@ -740,7 +724,6 @@ async def update_profile(req: UpdateProfileRequest, user: User = Depends(get_cur
             "last_name": db_user.last_name,
             "email": db_user.email,
             "avatar_url": db_user.avatar_url,
-            "telegram_id": db_user.telegram_id,
         }
 
 
@@ -858,7 +841,6 @@ async def get_me(user: User = Depends(get_current_user)):
         onboarding_done = bool(getattr(db_user, "onboarding_completed", False))
 
         return UserProfileResponse(
-            telegram_id=db_user.telegram_id,
             username=db_user.username or "",
             full_name=db_user.full_name or "",
             first_name=getattr(db_user, "first_name", "") or "",

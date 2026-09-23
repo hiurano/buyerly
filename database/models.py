@@ -419,7 +419,8 @@ class RulePreset(Base):
     condition_logic = Column(String, default="and", nullable=False, doc="'and' or 'or' - how conditions are combined")
     cooldown_minutes = Column(Integer, default=0, nullable=False, doc="Pause between firings (min, 0 = none)")
     check_interval_minutes = Column(Integer, default=5, nullable=False, doc="Worker check interval (min)")
-    notify_tg = Column(Boolean, default=True, nullable=False, doc="Telegram notification")
+    # Legacy Telegram flag: no longer read or exposed, kept so existing rows stay valid.
+    notify_tg = Column(Boolean, default=True, nullable=False)
     budget_change_percent = Column(Float, default=0.0, nullable=False, doc="Budget change, in percent")
     budget_max_daily = Column(Float, default=0.0, nullable=False, doc="Max daily budget in the ad account currency, 0 = no cap")
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)

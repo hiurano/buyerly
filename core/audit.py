@@ -58,7 +58,6 @@ def build_audit_event(
             "cpl": evaluation.cpl,
             "cpreg": evaluation.cpreg,
             "cpp": evaluation.cpp,
-            "notify_tg": evaluation.notify_tg,
             "cooldown_minutes": evaluation.cooldown_minutes,
             "currency": evaluation.currency,
         }

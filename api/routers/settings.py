@@ -6,7 +6,6 @@ from sqlalchemy import select
 from api.auth import get_current_user
 from api.deps import _confirm_admin_password, _load_json_object, _utc_iso
 from api.schemas import AutomationSettingsUpdateRequest, SetIntervalRequest
-from core.config import settings
 from database.db import async_session_maker
 from database.models import AppSettings, AutomationRuntimeState, User
 
@@ -48,7 +47,6 @@ async def get_settings(user: User = Depends(get_current_user)):
             "adaptive_polling_enabled": (
                 app_settings.adaptive_polling_enabled if app_settings else True
             ),
-            "admin_chat_id": settings.ADMIN_CHAT_ID,
             "user_role": user.role,
             "runtime": runtime,
         }

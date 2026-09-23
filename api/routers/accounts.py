@@ -32,7 +32,7 @@ from api.schemas import (
     ParsedAccountItem,
     ParseRawRequest,
 )
-from bot.handlers import parse_fb_raw_accounts
+from core.accounts import parse_fb_raw_accounts
 from core.currency import normalize_currency
 from core.meta_tokens import MetaTokenError, encrypt_meta_token
 from core.ownership import owned_by

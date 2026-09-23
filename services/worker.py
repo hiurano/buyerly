@@ -3,11 +3,8 @@ import signal
 from datetime import datetime, timezone
 from pathlib import Path
 
-from aiogram import Bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from bot.notifier import TelegramNotifier
-from core.config import settings
 from core.runtime import configure_logging
 from scheduler.worker import MonitoringWorker
 
@@ -25,20 +22,8 @@ async def _run_day_boundary_tick(worker: MonitoringWorker) -> None:
 
 async def main() -> None:
     logger = configure_logging("worker")
-    if not settings.BOT_TOKEN:
-        raise RuntimeError("BOT_TOKEN is required for worker notifications")
-    bot = Bot(token=settings.BOT_TOKEN)
-    await bot.get_me()
-    notifier = TelegramNotifier(
-        bot=bot,
-        target_chat_id=settings.ADMIN_CHAT_ID,
-    )
-    monitoring_worker = MonitoringWorker(
-        telegram_notifier=notifier.send_alert
-    )
-    day_boundary_worker = MonitoringWorker(
-        telegram_notifier=notifier.send_alert
-    )
+    monitoring_worker = MonitoringWorker()
+    day_boundary_worker = MonitoringWorker()
 
     heartbeat_file = Path("/tmp/buyerly-worker-heartbeat")
     day_boundary_cycle_file = Path(
@@ -99,7 +84,6 @@ async def main() -> None:
         Path("/tmp/buyerly-worker-ready").unlink(missing_ok=True)
         await monitoring_worker.meta_client.aclose()
         await day_boundary_worker.meta_client.aclose()
-        await bot.session.close()
 
 
 if __name__ == "__main__":

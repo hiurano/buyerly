@@ -12,7 +12,6 @@ import api.auth as api_auth_module
 import api.routes as api_routes_module
 import api.routers.auth as auth_router_module
 import api.server as api_server_module
-import bot.handlers as bot_handlers
 import database.db as database_db_module
 from api.server import create_app
 from core.config import settings
@@ -36,7 +35,6 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
         self.mock_limiter.return_value = (True, 0)
 
         self.original_auth_session_maker = auth_router_module.async_session_maker
-        self.original_bot_session_maker = bot_handlers.async_session_maker
         self.original_api_session_maker = api_auth_module.async_session_maker
         self.original_routes_session_maker = api_routes_module.async_session_maker
         self.original_server_session_maker = api_server_module.async_session_maker
@@ -58,7 +56,6 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
         await init_test_db(self.engine)
 
         auth_router_module.async_session_maker = self.sessions
-        bot_handlers.async_session_maker = self.sessions
         api_auth_module.async_session_maker = self.sessions
         api_routes_module.async_session_maker = self.sessions
         api_server_module.async_session_maker = self.sessions
@@ -96,7 +93,6 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         self.limiter_patcher.stop()
         auth_router_module.async_session_maker = self.original_auth_session_maker
-        bot_handlers.async_session_maker = self.original_bot_session_maker
         api_auth_module.async_session_maker = self.original_api_session_maker
         api_routes_module.async_session_maker = self.original_routes_session_maker
         api_server_module.async_session_maker = self.original_server_session_maker
@@ -342,89 +338,6 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
                     select(WebSession).where(WebSession.user_id == target_user_id)
                 )).scalars().all()
                 self.assertEqual(len(active_sessions), 0)
-
-    async def test_bot_allow_and_revoke_commands(self):
-        message = SimpleNamespace(
-            from_user=SimpleNamespace(id=123456789, username="admin_user", full_name="Admin"),
-            text="/allow_email telegram.buyer@agency.com Media Buyer Alex",
-            answer=AsyncMock(),
-        )
-        bot = AsyncMock()
-        state = AsyncMock()
-
-        # Add email via command
-        await bot_handlers.cmd_allow_email(message, bot, state)
-        message.answer.assert_called_once()
-        self.assertIn("added to the allowlist", message.answer.call_args[0][0])
-
-        async with self.sessions() as session:
-            entry = (await session.execute(
-                select(AllowedEmail).where(AllowedEmail.email == "telegram.buyer@agency.com")
-            )).scalar_one_or_none()
-            self.assertIsNotNone(entry)
-            self.assertEqual(entry.comment, "Media Buyer Alex")
-
-        # Revoke email via command
-        message2 = SimpleNamespace(
-            from_user=SimpleNamespace(id=123456789, username="admin_user", full_name="Admin"),
-            text="/revoke_email telegram.buyer@agency.com",
-            answer=AsyncMock(),
-        )
-        await bot_handlers.cmd_revoke_email(message2, bot, state)
-        message2.answer.assert_called_once()
-        self.assertIn("removed from the allowlist", message2.answer.call_args[0][0])
-
-        async with self.sessions() as session:
-            entry2 = (await session.execute(
-                select(AllowedEmail).where(AllowedEmail.email == "telegram.buyer@agency.com")
-            )).scalar_one_or_none()
-            self.assertIsNone(entry2)
-
-    async def test_bot_add_email_fsm_message_handler(self):
-        state = AsyncMock()
-        message = SimpleNamespace(
-            from_user=SimpleNamespace(id=123456789, username="admin_user", full_name="Admin"),
-            text="batch1@team.com, batch2@team.com batch3@team.com",
-            answer=AsyncMock(),
-        )
-
-        await bot_handlers.process_admin_add_email(message, state)
-        message.answer.assert_called_once()
-        self.assertIn("Added to the allowlist", message.answer.call_args[0][0])
-
-        async with self.sessions() as session:
-            emails = (await session.execute(select(AllowedEmail.email))).scalars().all()
-            self.assertIn("batch1@team.com", emails)
-            self.assertIn("batch2@team.com", emails)
-            self.assertIn("batch3@team.com", emails)
-
-    async def test_bot_delete_callback_safe_id(self):
-        async with self.sessions() as session:
-            entry = AllowedEmail(
-                email="super.long.email.that.would.exceed.sixty.four.bytes.limit@domain.company.com",
-                added_by="admin",
-            )
-            session.add(entry)
-            await session.commit()
-            await session.refresh(entry)
-            entry_id = entry.id
-
-        callback = SimpleNamespace(
-            from_user=SimpleNamespace(id=123456789, username="admin_user", full_name="Admin"),
-            data=f"del_em:{entry_id}",
-            answer=AsyncMock(),
-            message=SimpleNamespace(edit_text=AsyncMock()),
-        )
-
-        await bot_handlers.cb_delete_allowed_email(callback)
-        callback.answer.assert_called_once()
-        self.assertIn("removed from the allowlist", callback.answer.call_args[0][0])
-
-        async with self.sessions() as session:
-            entry_after = (await session.execute(
-                select(AllowedEmail).where(AllowedEmail.id == entry_id)
-            )).scalar_one_or_none()
-            self.assertIsNone(entry_after)
 
 
 class TestEmailDelivery(unittest.IsolatedAsyncioTestCase):

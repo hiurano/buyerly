@@ -104,7 +104,6 @@ async def create_preset(payload: CreatePresetRequest, user: User = Depends(get_c
             condition_logic=payload.condition_logic or "and",
             cooldown_minutes=payload.cooldown_minutes or 0,
             check_interval_minutes=payload.check_interval_minutes or 5,
-            notify_tg=payload.notify_tg if payload.notify_tg is not None else True,
             budget_change_percent=payload.budget_change_percent or 0.0,
             budget_max_daily=payload.budget_max_daily or 0.0,
         )
@@ -141,8 +140,6 @@ async def update_preset(preset_id: int, payload: CreatePresetRequest, user: User
             preset.cooldown_minutes = payload.cooldown_minutes
         if payload.check_interval_minutes is not None:
             preset.check_interval_minutes = payload.check_interval_minutes
-        if payload.notify_tg is not None:
-            preset.notify_tg = payload.notify_tg
         if payload.budget_change_percent is not None:
             preset.budget_change_percent = payload.budget_change_percent
         if payload.budget_max_daily is not None:

@@ -104,7 +104,6 @@ def _auth_boundary() -> dict:
 def _runtime_versions() -> dict:
     containers = {
         "buyerly-api": f"buyerly-app:{EXPECTED_SHA}",
-        "buyerly-telegram-bot": f"buyerly-app:{EXPECTED_SHA}",
         "buyerly-worker": f"buyerly-app:{EXPECTED_SHA}",
         "buyerly-web": f"buyerly-web:{EXPECTED_SHA}",
     }

@@ -11,7 +11,6 @@ class WorkspaceMemberItem(BaseModel):
     last_name: str = ""
     email: Optional[str] = None
     avatar_url: str = ""
-    telegram_id: Optional[str] = None
     role: str
     joined_at: str
     is_current_user: bool = False

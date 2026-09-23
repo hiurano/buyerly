@@ -6,7 +6,7 @@ import hashlib
 import time
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, Callable, Awaitable, Any, List, Dict
+from typing import Optional, Callable, Any, List, Dict
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -19,7 +19,6 @@ from database.models import (
     MetaConnection,
     RuleExecutionState,
     StoppedAdSet,
-    User,
     Workspace,
 )
 from core.audit import build_audit_event
@@ -47,17 +46,15 @@ class MonitoringWorker:
     """
     Background worker that periodically polls every active account, tracks
     time zones and day rollovers, applies stop/reactivation rules and
-    delivers notifications to each ad account's own owner.
+    records every decision in the audit log.
     """
 
     def __init__(
         self, 
         meta_client: Optional[MetaClient] = None,
-        telegram_notifier: Optional[Callable[..., Awaitable[None]]] = None,
         clock: Optional[Callable[[], float]] = None,
     ):
         self.meta_client = meta_client or MetaClient(cache_provider=PostgreSQLInventoryCache())
-        self.telegram_notifier = telegram_notifier
         # A wall clock is intentionally used: persisted timestamps must remain
         # meaningful after a process restart, unlike time.monotonic().
         self._clock = clock or time.time
@@ -433,7 +430,6 @@ class MonitoringWorker:
         account: Account,
         *,
         success: bool,
-        notification_target: str = "",
         emit_transition_event: bool = True,
         error: Any = None,
         cause: str | None = None,
@@ -470,16 +466,6 @@ class MonitoringWorker:
                     "error_code": health_error_code,
                     "consecutive_failures": health_failures,
                 },
-            )
-        if emit_transition_event and self.telegram_notifier:
-            await self.telegram_notifier(
-                event_type="ACCOUNT_HEALTH_RECOVERED" if success else "ACCOUNT_HEALTH_ALERT",
-                account_name=account.name,
-                account_id=account.account_id,
-                target_chat_id=notification_target,
-                health_status=health_status,
-                health_cause=health_cause,
-                health_message=health_message,
             )
 
     @staticmethod
@@ -861,8 +847,7 @@ class MonitoringWorker:
     async def _record_stopped_adset(session, account: Account, result: RuleEvaluationResult) -> None:
         """Track a stopped ad set so a late conversion can propose reactivation.
 
-        Only ad sets are tracked: the reactivation flow and its Telegram buttons
-        act on ad sets.
+        Only ad sets are tracked: the reactivation flow acts on ad sets.
         """
         if not result.is_adset:
             return
@@ -918,7 +903,7 @@ class MonitoringWorker:
         details: Any = None,
         duration_ms: int = 0,
     ) -> Optional[int]:
-        """Persist audit independently from Telegram without breaking automation."""
+        """Persist audit without breaking automation."""
 
         try:
             if account.workspace_id is None:
@@ -969,7 +954,6 @@ class MonitoringWorker:
         acc: Account,
         error: Exception,
         connection_cache: dict[int, MetaConnection],
-        notification_target: str,
     ) -> None:
         logger.error("Token error for account %s: %s", acc.account_id, error)
         acc.is_active = False
@@ -1009,18 +993,6 @@ class MonitoringWorker:
                 "fbtrace_id": fbtrace_id,
             },
         )
-        if self.telegram_notifier:
-            await self.telegram_notifier(
-                event_type="TOKEN_EXPIRED",
-                account_name=acc.name,
-                account_id=acc.account_id,
-                target_chat_id=notification_target,
-                subcode=subcode,
-                subcode_title=title,
-                subcode_description=description,
-                action_hint=action_hint,
-                user_msg=user_msg,
-            )
 
     async def run_day_boundary_cycle(self) -> dict:
         """Notify once when each connected account enters a new local date."""
@@ -1040,27 +1012,8 @@ class MonitoringWorker:
         async with async_session_maker() as session:
             accounts = (await session.execute(select(Account))).scalars().all()
             stats["accounts_seen"] = len(accounts)
-            owner_user_ids = {
-                account.owner_user_id
-                for account in accounts
-                if account.owner_user_id is not None
-            }
-            owner_chat_ids = {}
-            if owner_user_ids:
-                owners = (
-                    await session.execute(
-                        select(User).where(User.id.in_(owner_user_ids))
-                    )
-                ).scalars().all()
-                owner_chat_ids = {
-                    owner.id: str(owner.telegram_id or "")
-                    for owner in owners
-                }
-
             for account in accounts:
                 account_id = str(account.account_id)
-                account_name = str(account.name)
-                notification_target = owner_chat_ids.get(account.owner_user_id) or ""
                 clock = resolve_account_clock(account.timezone_name)
                 if clock is None:
                     stats["invalid_timezones"] += 1
@@ -1105,7 +1058,6 @@ class MonitoringWorker:
 
                 offset = utc_offset_label(local_now)
                 local_time = local_now.strftime("%H:%M")
-                local_date = local_now.strftime("%d.%m.%Y")
                 audit_event_id = await self._persist_audit_event(
                     session,
                     account,
@@ -1132,17 +1084,6 @@ class MonitoringWorker:
                     )
                     continue
 
-                if self.telegram_notifier:
-                    await self.telegram_notifier(
-                        event_type="ACCOUNT_DAY_STARTED",
-                        account_name=account_name,
-                        account_id=account_id,
-                        target_chat_id=notification_target,
-                        timezone_name=clock.canonical_name,
-                        local_time=local_time,
-                        local_date=local_date,
-                        utc_offset=offset,
-                    )
                 stats["days_notified"] += 1
                 logger.info(
                     "Account %s entered local date %s at %s (%s, %s)",
@@ -1245,23 +1186,6 @@ class MonitoringWorker:
                 )
                 return stats
 
-            owner_user_ids = {
-                account.owner_user_id
-                for account in accounts
-                if account.owner_user_id is not None
-            }
-            owner_chat_ids = {}
-            if owner_user_ids:
-                owner_rows = (
-                    await session.execute(
-                        select(User).where(User.id.in_(owner_user_ids))
-                    )
-                ).scalars().all()
-                owner_chat_ids = {
-                    owner.id: str(owner.telegram_id or "")
-                    for owner in owner_rows
-                }
-
             # Batch-preload AutomationScheduleState (chunked by 500)
             account_ids = [str(acc.account_id) for acc in accounts]
             schedule_cache: dict[str, AutomationScheduleState] = {}
@@ -1348,7 +1272,6 @@ class MonitoringWorker:
             prepared_accounts = []
             for acc in accounts:
                 account_ref = str(acc.account_id)
-                notification_target = owner_chat_ids.get(acc.owner_user_id) or ""
                 if acc.meta_connection_id and acc.meta_connection_id in connection_cache:
                     conn = connection_cache[acc.meta_connection_id]
                     if (
@@ -1367,7 +1290,6 @@ class MonitoringWorker:
                             session,
                             acc,
                             success=False,
-                            notification_target=notification_target,
                             error="Meta connection workspace mismatch",
                             cause="system",
                             signals={"token_healthy": False},
@@ -1384,7 +1306,6 @@ class MonitoringWorker:
                             session,
                             acc,
                             success=False,
-                            notification_target=notification_target,
                             error=f"Meta connection requires user action: {conn.status}",
                             cause="user",
                             signals={"token_healthy": False, "connection_status": conn.status},
@@ -1470,7 +1391,6 @@ class MonitoringWorker:
                         session,
                         acc,
                         success=False,
-                        notification_target=notification_target,
                         error=error,
                         signals={"token_healthy": False},
                     )
@@ -1479,7 +1399,6 @@ class MonitoringWorker:
                     {
                         "account": acc,
                         "account_ref": account_ref,
-                        "notification_target": notification_target,
                         "now": now,
                         "due_rules": due_rules,
                         "health_due": health_due or currency_refresh_due,
@@ -1505,7 +1424,6 @@ class MonitoringWorker:
             for item, snapshot in zip(prepared_accounts, snapshots):
                 acc = item["account"]
                 account_ref = item["account_ref"]
-                notification_target = item["notification_target"]
                 now = item["now"]
                 due_rules = item["due_rules"]
                 access_token = item["access_token"]
@@ -1516,13 +1434,11 @@ class MonitoringWorker:
                             acc,
                             snapshot,
                             connection_cache,
-                            notification_target,
                         )
                         await self._set_account_health(
                             session,
                             acc,
                             success=False,
-                            notification_target=notification_target,
                             emit_transition_event=False,
                             error=snapshot,
                             cause="user",
@@ -1560,19 +1476,10 @@ class MonitoringWorker:
                                 after_state={"is_active": False, "account_status": status_code},
                                 details={"status_label": status_label},
                             )
-                            if self.telegram_notifier:
-                                await self.telegram_notifier(
-                                    event_type="ACCOUNT_ISSUE",
-                                    account_name=acc.name,
-                                    account_id=acc.account_id,
-                                    target_chat_id=notification_target,
-                                    local_time=status_label
-                                )
                             await self._set_account_health(
                                 session,
                                 acc,
                                 success=False,
-                                notification_target=notification_target,
                                 emit_transition_event=False,
                                 error=f"Account status: {status_label}",
                                 cause="user",
@@ -1590,7 +1497,6 @@ class MonitoringWorker:
                             session,
                             acc,
                             success=False,
-                            notification_target=notification_target,
                             error=window_errors[0],
                             signals={"token_healthy": True, "account_active": True},
                         )
@@ -1625,7 +1531,6 @@ class MonitoringWorker:
                             session,
                             acc,
                             success=False,
-                            notification_target=notification_target,
                             error=f"Meta hierarchy sync failed: {hierarchy_error}",
                             signals={
                                 "token_healthy": True,
@@ -1640,7 +1545,6 @@ class MonitoringWorker:
                             session,
                             acc,
                             success=True,
-                            notification_target=notification_target,
                             signals={
                                 "token_healthy": True,
                                 "account_active": True,
@@ -1714,8 +1618,6 @@ class MonitoringWorker:
                             insights_by_window=current_adset_windows,
                             active_rules_override=due_rules,
                         )
-                        
-                        should_notify_tg = eval_res.notify_tg
                         if eval_res.action == RuleAction.NOOP:
                             if stop_rules_due:
                                 await self._reset_stop_confirmations(
@@ -1872,7 +1774,7 @@ class MonitoringWorker:
                                     status="SUCCESS",
                                     now=now,
                                 )
-                                audit_event_id = await self._persist_audit_event(
+                                await self._persist_audit_event(
                                     session,
                                     acc,
                                     event_type="STOP",
@@ -1883,15 +1785,6 @@ class MonitoringWorker:
                                     duration_ms=(time.perf_counter() - action_started) * 1000,
                                 )
 
-                                if should_notify_tg and self.telegram_notifier:
-                                    await self.telegram_notifier(
-                                        event_type="STOP",
-                                        eval_result=eval_res,
-                                        account_name=acc.name,
-                                        account_id=acc.account_id,
-                                        target_chat_id=notification_target,
-                                        audit_event_id=audit_event_id,
-                                    )
                             except Exception as e:
                                 logger.error(f"Error pausing adset {a_id}: {e}")
                                 stats["errors"].append(f"Pause error {a_id}: {e}")
@@ -1920,7 +1813,6 @@ class MonitoringWorker:
                                 execution_state,
                                 status="SUCCESS",
                                 now=now,
-                                details={"telegram_requested": should_notify_tg},
                             )
                             await self._persist_audit_event(
                                 session,
@@ -1930,16 +1822,7 @@ class MonitoringWorker:
                                 evaluation=eval_res,
                                 before_state={"status": adset.get("status", "UNKNOWN")},
                                 after_state={"status": adset.get("status", "UNKNOWN")},
-                                details={"telegram_requested": should_notify_tg},
                             )
-                            if should_notify_tg and self.telegram_notifier:
-                                await self.telegram_notifier(
-                                    event_type="NOTIFY_ONLY",
-                                    eval_result=eval_res,
-                                    account_name=acc.name,
-                                    account_id=acc.account_id,
-                                    target_chat_id=notification_target
-                                )
 
                         # OFFER TO TURN ON (late conversion)
                         elif eval_res.action == RuleAction.PROPOSE_REACTIVATE:
@@ -1949,7 +1832,6 @@ class MonitoringWorker:
                                 execution_state,
                                 status="SUCCESS",
                                 now=now,
-                                details={"telegram_requested": should_notify_tg},
                             )
                             await self._persist_audit_event(
                                 session,
@@ -1959,17 +1841,8 @@ class MonitoringWorker:
                                 evaluation=eval_res,
                                 before_state={"status": adset.get("status", "UNKNOWN")},
                                 after_state={"status": adset.get("status", "UNKNOWN")},
-                                details={"telegram_requested": should_notify_tg},
                             )
 
-                            if should_notify_tg and self.telegram_notifier:
-                                await self.telegram_notifier(
-                                    event_type="PROPOSE_REACTIVATE",
-                                    eval_result=eval_res,
-                                    account_name=acc.name,
-                                    account_id=acc.account_id,
-                                    target_chat_id=notification_target
-                                )
 
                         # AUTO TURN-ON
                         elif eval_res.action == RuleAction.AUTO_REACTIVATE:
@@ -1997,7 +1870,7 @@ class MonitoringWorker:
                                     status="SUCCESS",
                                     now=now,
                                 )
-                                audit_event_id = await self._persist_audit_event(
+                                await self._persist_audit_event(
                                     session,
                                     acc,
                                     event_type="AUTO_REACTIVATE",
@@ -2010,15 +1883,6 @@ class MonitoringWorker:
                                 
                                 logger.info(f"AUTO REACTIVATED {eval_res.entity_level}: {a_id} ({eval_res.entity_name})")
 
-                                if should_notify_tg and self.telegram_notifier:
-                                    await self.telegram_notifier(
-                                        event_type="AUTO_REACTIVATE",
-                                        eval_result=eval_res,
-                                        account_name=acc.name,
-                                        account_id=acc.account_id,
-                                        target_chat_id=notification_target,
-                                        audit_event_id=audit_event_id,
-                                    )
                             except Exception as e:
                                 logger.error(f"Error auto-reactivating adset {a_id}: {e}")
                                 stats["errors"].append(f"Auto-reactivate error {a_id}: {e}")
@@ -2054,7 +1918,7 @@ class MonitoringWorker:
                                     )
                                 stats["budgets_changed"] += 1
                                 self._finish_execution(execution_state, status="SUCCESS", now=now)
-                                audit_event_id = await self._persist_audit_event(
+                                await self._persist_audit_event(
                                     session,
                                     acc,
                                     event_type="INCREASE_BUDGET",
@@ -2064,17 +1928,6 @@ class MonitoringWorker:
                                     after_state={"daily_budget": new_budget},
                                     duration_ms=(time.perf_counter() - action_started) * 1000,
                                 )
-                                if should_notify_tg and self.telegram_notifier:
-                                    await self.telegram_notifier(
-                                        event_type="INCREASE_BUDGET",
-                                        eval_result=eval_res,
-                                        account_name=acc.name,
-                                        account_id=acc.account_id,
-                                        target_chat_id=notification_target,
-                                        old_budget=current_budget,
-                                        new_budget=new_budget,
-                                        audit_event_id=audit_event_id,
-                                    )
                             except Exception as e:
                                 logger.error(f"Error increasing budget for adset {a_id}: {e}")
                                 stats["errors"].append(f"Budget increase error {a_id}: {e}")
@@ -2110,7 +1963,7 @@ class MonitoringWorker:
                                     )
                                 stats["budgets_changed"] += 1
                                 self._finish_execution(execution_state, status="SUCCESS", now=now)
-                                audit_event_id = await self._persist_audit_event(
+                                await self._persist_audit_event(
                                     session,
                                     acc,
                                     event_type="DECREASE_BUDGET",
@@ -2120,17 +1973,6 @@ class MonitoringWorker:
                                     after_state={"daily_budget": new_budget},
                                     duration_ms=(time.perf_counter() - action_started) * 1000,
                                 )
-                                if should_notify_tg and self.telegram_notifier:
-                                    await self.telegram_notifier(
-                                        event_type="DECREASE_BUDGET",
-                                        eval_result=eval_res,
-                                        account_name=acc.name,
-                                        account_id=acc.account_id,
-                                        target_chat_id=notification_target,
-                                        old_budget=current_budget,
-                                        new_budget=new_budget,
-                                        audit_event_id=audit_event_id,
-                                    )
                             except Exception as e:
                                 logger.error(f"Error decreasing budget for adset {a_id}: {e}")
                                 stats["errors"].append(f"Budget decrease error {a_id}: {e}")
@@ -2159,7 +2001,6 @@ class MonitoringWorker:
                         session,
                         acc,
                         success=False,
-                        notification_target=notification_target,
                         error=e,
                     )
 

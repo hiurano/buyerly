@@ -28,7 +28,6 @@ EXAMPLE_PRESETS: tuple[dict[str, Any], ...] = (
         "condition_logic": "and",
         "cooldown_minutes": 60,
         "check_interval_minutes": 5,
-        "notify_tg": True,
     },
     {
         "key": "stop_expensive_lead",
@@ -41,7 +40,6 @@ EXAMPLE_PRESETS: tuple[dict[str, Any], ...] = (
         "condition_logic": "and",
         "cooldown_minutes": 120,
         "check_interval_minutes": 5,
-        "notify_tg": True,
     },
     {
         "key": "notify_expensive_registration",
@@ -54,7 +52,6 @@ EXAMPLE_PRESETS: tuple[dict[str, Any], ...] = (
         "condition_logic": "and",
         "cooldown_minutes": 120,
         "check_interval_minutes": 10,
-        "notify_tg": True,
     },
     {
         "key": "scale_purchases",
@@ -67,7 +64,6 @@ EXAMPLE_PRESETS: tuple[dict[str, Any], ...] = (
         "condition_logic": "and",
         "cooldown_minutes": 360,
         "check_interval_minutes": 15,
-        "notify_tg": True,
         "budget_change_percent": 20,
         "budget_max_daily": 300,
     },
@@ -82,7 +78,6 @@ EXAMPLE_PRESETS: tuple[dict[str, Any], ...] = (
         "condition_logic": "and",
         "cooldown_minutes": 180,
         "check_interval_minutes": 15,
-        "notify_tg": True,
         "budget_change_percent": 20,
     },
     {
@@ -95,7 +90,6 @@ EXAMPLE_PRESETS: tuple[dict[str, Any], ...] = (
         "condition_logic": "and",
         "cooldown_minutes": 1440,
         "check_interval_minutes": 15,
-        "notify_tg": True,
     },
 )
 
@@ -136,7 +130,6 @@ def _runtime_payload(definition: dict[str, Any]) -> dict[str, Any]:
         "logic": definition.get("condition_logic", "and"),
         "cooldown_minutes": definition.get("cooldown_minutes", 0),
         "check_interval": definition.get("check_interval_minutes", 5),
-        "notify_tg": definition.get("notify_tg", True),
         "budget_change_percent": definition.get("budget_change_percent", 0),
         "budget_max_daily": definition.get("budget_max_daily", 0),
     }
@@ -180,7 +173,6 @@ async def ensure_rule_examples(session, user: User, *, workspace_id: int) -> boo
             condition_logic=definition.get("condition_logic", "and"),
             cooldown_minutes=definition.get("cooldown_minutes", 0),
             check_interval_minutes=definition.get("check_interval_minutes", 5),
-            notify_tg=definition.get("notify_tg", True),
             budget_change_percent=definition.get("budget_change_percent", 0),
             budget_max_daily=definition.get("budget_max_daily", 0),
         )

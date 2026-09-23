@@ -43,7 +43,6 @@ class TestRuleEngine(unittest.TestCase):
             "conditions": conditions or [],
             "logic": logic,
             "cooldown_minutes": 0,
-            "notify_tg": True,
             "budget_change_percent": budget_change_percent,
             "budget_max_daily": budget_max_daily,
         }
@@ -605,7 +604,6 @@ class TestRuleExecutionLevel(unittest.TestCase):
             "conditions": [{"metric": "spend", "operator": "gte", "value": 50.0}],
             "logic": "and",
             "cooldown_minutes": 0,
-            "notify_tg": True,
         }
         rule.update(overrides)
         return rule

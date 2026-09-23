@@ -74,7 +74,6 @@ export interface RulePresetPayload {
   condition_logic: 'and' | 'or';
   cooldown_minutes: number;
   check_interval_minutes: number;
-  notify_tg: boolean;
   budget_change_percent: number;
   budget_max_daily: number;
   currency_mode: 'account';
@@ -107,7 +106,6 @@ export interface RulePresetWriteRequest {
   condition_logic: 'and' | 'or';
   cooldown_minutes: number;
   check_interval_minutes: number;
-  notify_tg: boolean;
   budget_change_percent: number;
   budget_max_daily: number;
 }
@@ -363,7 +361,6 @@ export function presetToWriteRequest(
     condition_logic: preset.condition_logic,
     cooldown_minutes: preset.cooldown_minutes,
     check_interval_minutes: preset.check_interval_minutes,
-    notify_tg: preset.notify_tg,
     budget_change_percent: preset.budget_change_percent,
     budget_max_daily: preset.budget_max_daily,
     ...overrides,

@@ -74,7 +74,6 @@ async def get_onboarding_status(user: User = Depends(get_current_user)):
             step = "completed"
 
         profile = UserProfileResponse(
-            telegram_id=db_user.telegram_id,
             username=db_user.username or "",
             full_name=db_user.full_name or "",
             first_name=getattr(db_user, "first_name", "") or "",
@@ -149,7 +148,6 @@ async def submit_onboarding_personal_details(
         await session.commit()
 
         profile = UserProfileResponse(
-            telegram_id=db_user.telegram_id,
             username=db_user.username or "",
             full_name=db_user.full_name or "",
             first_name=db_user.first_name or "",

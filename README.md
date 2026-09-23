@@ -10,14 +10,14 @@ Production-интерфейс написан на React; прежний vanilla-
 - **Rules** — создание правил и групп, условия AND/OR, периоды проверки, включение/выключение и назначения. Изменение бюджета поддерживается на уровне ad set.
 - **Statistics** — метрики выбранного кабинета по кампаниям, ad set и объявлениям из Analytics Fact Store с указанием состояния данных.
 - **Settings и onboarding** — профиль, workspace, подключения, вход по одноразовой email-ссылке или коду; доступ по whitelist либо приглашению.
-- **Telegram и worker** — команды, уведомления, периодическая синхронизация Meta и выполнение правил с аудитом.
+- **Worker** — периодическая синхронизация Meta и выполнение правил с аудитом.
 
 Наличие backend API не означает наличие соответствующего экрана. Текущие поверхности описаны в [дизайн-системе](docs/DESIGN_SYSTEM.md), ограничения и будущие задачи — в [бэклоге](docs/PRODUCT_BACKLOG.md).
 
 ## Архитектура
 
 `web` (React/Vite + Nginx) → `api` (FastAPI) → PostgreSQL 16.
-Отдельно работают Telegram `bot`, `worker` (APScheduler) и Redis для rate limiting.
+Отдельно работают `worker` (APScheduler) и Redis для rate limiting.
 Одноразовый сервис `migrate` выполняет миграции Alembic перед запуском приложения.
 
 ## Запуск
@@ -62,7 +62,7 @@ gh run view <run-id> --log-failed
 | `database/`, `alembic/` | Модели, подключение и миграции PostgreSQL |
 | `meta_api/` | Meta HTTP-клиент и OAuth |
 | `rules/`, `scheduler/` | Оценка правил и фоновое выполнение |
-| `bot/`, `services/` | Telegram, точки запуска и прикладные сервисы |
+| `services/` | Точки запуска и прикладные сервисы |
 | `scripts/` | Деплой, backup/restore и обслуживание |
 | `tests/` | Облачные проверки |
 | `uploads/` | Runtime-файлы; не хранятся в Git |

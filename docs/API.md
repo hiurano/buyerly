@@ -44,12 +44,12 @@ Production: `https://buyerly.app`.
 | `POST /api/auth/verify-email-change` | `code` | верифицирует OTP и активирует подтверждённый email |
 | `POST /api/auth/login` | `username`, `password` | проверяет только постоянный пароль, создаёт ограниченную по времени HttpOnly web-сессию и возвращает профиль/роль |
 | `POST /api/auth/change-password` | `old_password`, `new_password` | меняет пароль; минимум 8 символов |
-| `POST /api/auth/update-profile` | `first_name?`, `last_name?`, `email?`, `avatar_url?`, `full_name?`, `telegram_id?` | обновляет персональные данные профиля и адрес Telegram-доставки |
+| `POST /api/auth/update-profile` | `first_name?`, `last_name?`, `email?`, `avatar_url?`, `full_name?` | обновляет персональные данные профиля |
 | `POST /api/auth/logout` | — | немедленно отзывает текущую web-сессию |
 | `GET /api/auth/sessions` | — | список активных устройств с датами создания, истечения и последней активности |
 | `DELETE /api/auth/sessions/{session_id}` | — | отзывает выбранную собственную web-сессию |
 | `POST /api/auth/logout-all` | — | отзывает все web-сессии пользователя |
-| `GET /api/me` | — | `telegram_id`, `username`, `full_name`, `first_name`, `last_name`, `email`, `email_verified`, `unconfirmed_email`, `avatar_url`, `role`, `is_approved`, `active_workspace`, `workspaces` |
+| `GET /api/me` | — | `username`, `full_name`, `first_name`, `last_name`, `email`, `email_verified`, `unconfirmed_email`, `avatar_url`, `role`, `is_approved`, `active_workspace`, `workspaces` |
 | `GET /api/admin/overview` | — | сводная таблица всех пользователей, воркспейсов и инвайтов (только админ) |
 | `GET /api/auth/admin/allowed-emails` | — | список разрешенных email-адресов в белом списке (только админ) |
 | `POST /api/auth/admin/allowed-emails` | `email`, `comment?` | добавление email-адреса в белый список (только админ) |
@@ -57,8 +57,6 @@ Production: `https://buyerly.app`.
 | `POST /api/admin/support-sessions` | `workspace_id`, `reason`, `duration_minutes?` | создание ограниченной по времени сессии техподдержки администратора платформы (5–240 мин) с обязательным обоснованием |
 | `GET /api/admin/support-sessions` | `active_only?` | список активных или исторических сессий техподдержки администратора платформы |
 | `POST /api/admin/support-sessions/{grant_id}/revoke` | — | досрочный отзыв временной сессии техподдержки администратора |
-
-Изменение `telegram_id` не меняет внутреннего владельца данных: кабинеты, правила, сводки и история продолжают принадлежать тому же пользователю внутри воркспейса.
 
 ## Воркспейсы (Workspaces)
 

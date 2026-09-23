@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Removed
+- Удалены Telegram-бот и уведомления в Telegram: сервис `bot` (`buyerly-telegram-bot`), пакет `bot/` и зависимость `aiogram`. Worker запускается без `BOT_TOKEN`, события кабинетов и срабатывания правил остаются в Audit Log. Из правил убрана галочка «Notify in Telegram» (`notify_tg`), из профиля — поле `telegram_id` в `update-profile` и ответах API. Вход через Telegram Mini App пока сохранён и работает только при заданном `BOT_TOKEN`.
 - Удалён резерв URL старого приложения. `RESERVED_WORKSPACE_SLUGS` и `SYSTEM_ROOTS` сокращены с ~50 имён до 15 корневых сегментов, которые сервер обслуживает сам: `api`, `assets`, `auth`, `connect`, `create-workspace`, `data-deletion`, `docs`, `health`, `invite`, `login`, `privacy`, `redoc`, `static`, `terms`, `uploads`. Попутно закрыта дыра — `assets` и `connect` реально заняты сервером, но зарезервированы не были. Слаги вроде `dashboard`, `home`, `register` или `w` теперь свободны под воркспейсы, а старые URL больше не отдают Not Found специально.
 - Из Meta OAuth убраны пути несуществующих страниц `/facebook-accounts` и `/add-accounts`. Whitelist `return_path` принимает только `/{workspace}/settings`, `/{workspace}/ads-manager/{entity}` и `/connect/meta/success`, фолбэк ведёт на `/`. Раньше отмена авторизации уводила пользователя на удалённую страницу старого приложения.
 - Удалены пустые каталоги `webapp/uploads/*`, оставшиеся от старого фронтенда: загрузки лежат в `uploads/`.

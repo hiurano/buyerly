@@ -17,8 +17,8 @@ from core.metrics import (
 class RuleAction(str, Enum):
     NOOP = "NOOP"                             # Everything is within range
     STOP = "STOP"                             # Stop the ad set (PAUSE)
-    NOTIFY_ONLY = "NOTIFY_ONLY"               # Notify in Telegram only (nothing is switched off in Meta)
-    PROPOSE_REACTIVATE = "PROPOSE_REACTIVATE" # Offer to turn it back on (a button in Telegram)
+    NOTIFY_ONLY = "NOTIFY_ONLY"               # Record the match only (nothing is switched off in Meta)
+    PROPOSE_REACTIVATE = "PROPOSE_REACTIVATE" # Record a suggestion to turn it back on
     AUTO_REACTIVATE = "AUTO_REACTIVATE"       # Turn it back on automatically (ACTIVE)
     INCREASE_BUDGET = "INCREASE_BUDGET"       # Raise the ad set daily budget by N%
     DECREASE_BUDGET = "DECREASE_BUDGET"       # Lower the ad set daily budget by N%
@@ -42,7 +42,6 @@ class RuleEvaluationResult:
     budget_change_percent: float = 0.0
     budget_max_daily: float = 0.0
     cooldown_minutes: int = 0
-    notify_tg: bool = True
     rule_id: Optional[int] = None
     rule_name: str = ""
     conditions_snapshot: List[Dict[str, Any]] = field(default_factory=list)
@@ -125,7 +124,6 @@ class RuleEngine:
                 cpp=cpp,
                 reason=reason,
                 cooldown_minutes=0,
-                notify_tg=False,
                 currency=currency,
                 entity_level=entity_level,
                 campaign_id=campaign_id,
@@ -286,7 +284,6 @@ class RuleEngine:
                     "budget_change": float(rule.get("budget_change_percent", 0.0)),
                     "budget_max": float(rule.get("budget_max_daily", 0.0)),
                     "cooldown_minutes": int(rule.get("cooldown_minutes", 0)),
-                    "notify_tg": rule.get("notify_tg", True),
                     "rule_id": rule.get("preset_id"),
                     "rule_name": rule_name,
                     "conditions": conditions,
@@ -321,7 +318,6 @@ class RuleEngine:
             budget_change_percent=highest_priority_action["budget_change"],
             budget_max_daily=highest_priority_action["budget_max"],
             cooldown_minutes=highest_priority_action["cooldown_minutes"],
-            notify_tg=highest_priority_action["notify_tg"],
             rule_id=highest_priority_action["rule_id"],
             rule_name=highest_priority_action["rule_name"],
             conditions_snapshot=highest_priority_action["conditions"],

@@ -13,7 +13,6 @@ def rule(*, action="turn_off", logic="and", conditions=None, name="Rule"):
         ],
         "cooldown_minutes": 0,
         "check_interval": 5,
-        "notify_tg": True,
         "budget_change_percent": 0,
         "budget_max_daily": 0,
     }

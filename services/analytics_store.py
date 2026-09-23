@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from bot.handlers import get_short_account_label
+from core.accounts import get_short_account_label
 from core.currency import UNKNOWN_CURRENCY, normalize_currency
 from core.metrics import SUMMARY_METRIC_DEFINITIONS, cost_per_event
 from core.timezones import canonical_timezone_name, resolve_account_clock
