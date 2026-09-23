@@ -13,7 +13,6 @@ class TestDeployContract(unittest.TestCase):
         cls.compose = (project_root / "docker-compose.yml").read_text()
         cls.worker_service = (project_root / "services" / "worker.py").read_text()
         cls.monitoring_worker = (project_root / "scheduler" / "worker.py").read_text()
-        cls.notifier = (project_root / "bot" / "notifier.py").read_text()
         cls.dockerfile = (project_root / "Dockerfile").read_text()
         cls.workflow = (project_root / ".github" / "workflows" / "deploy.yml").read_text()
         cls.codeowners = (project_root / ".github" / "CODEOWNERS").read_text()
@@ -70,17 +69,17 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("is already deployed and healthy", self.script)
 
     def test_production_roles_are_separate_services(self):
-        for service in ("db:", "api:", "web:", "bot:", "worker:", "migrate:"):
+        for service in ("db:", "api:", "web:", "worker:", "migrate:"):
             self.assertIn(f"  {service}", self.compose)
         self.assertIn("postgres:16-alpine", self.compose)
         self.assertIn('command: ["python", "-m", "services.api"]', self.compose)
-        self.assertIn('command: ["python", "-m", "services.bot"]', self.compose)
+        self.assertNotIn("  bot:", self.compose)
+        self.assertNotIn("services.bot", self.compose)
         self.assertIn('command: ["python", "-m", "services.worker"]', self.compose)
 
     def test_cutover_has_migration_healthcheck_and_rollback(self):
         self.assertIn("docker compose run --rm migrate", self.script)
         self.assertIn("wait_for_container buyerly-api", self.script)
-        self.assertIn("wait_for_container buyerly-telegram-bot", self.script)
         self.assertIn("wait_for_container buyerly-worker", self.script)
         self.assertIn("wait_for_container buyerly-web", self.script)
         self.assertIn("wait_for_ready", self.script)
@@ -97,7 +96,6 @@ class TestDeployContract(unittest.TestCase):
             "buyerly-redis",
             "buyerly-api",
             "buyerly-web",
-            "buyerly-telegram-bot",
             "buyerly-worker",
         ):
             self.assertIn(container_name, self.log_verification_script)
@@ -221,7 +219,7 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("run_day_boundary_cycle", self.worker_service)
 
     def test_old_spend_started_notification_cannot_return(self):
-        executable_contract = self.monitoring_worker + self.notifier
+        executable_contract = self.monitoring_worker
         self.assertNotIn('event_type="DAY_START"', executable_contract)
         self.assertNotIn("start_spend", executable_contract)
         self.assertNotIn("starts_notified", executable_contract)
@@ -290,13 +288,13 @@ class TestDeployContract(unittest.TestCase):
         self.assertNotIn("--profile legacy", self.script)
         self.assertNotIn("PREVIOUS_LEGACY_IMAGE", self.script)
         self.assertNotIn("buyerly-bot", self.script)
+        self.assertNotIn("buyerly-telegram-bot", self.script)
 
     def test_runtime_image_uses_explicit_production_sources(self):
         self.assertNotIn("COPY . .", self.dockerfile)
         for runtime_dir in (
             "alembic",
             "api",
-            "bot",
             "core",
             "database",
             "meta_api",

@@ -2,12 +2,11 @@
 
 ## Состав production
 
-Docker Compose запускает `buyerly-web`, `buyerly-api`, `buyerly-telegram-bot`, `buyerly-worker`, `buyerly-db` и `buyerly-redis`. Публичный порт `8080` принадлежит только веб-сервису; API доступен через его reverse proxy. PostgreSQL хранится в томе `buyerly-postgres`, Redis AOF для общих rate limits — в `buyerly-redis`, журналы — в `/opt/buyerly/logs`.
+Docker Compose запускает `buyerly-web`, `buyerly-api`, `buyerly-worker`, `buyerly-db` и `buyerly-redis`. Публичный порт `8080` принадлежит только веб-сервису; API доступен через его reverse proxy. PostgreSQL хранится в томе `buyerly-postgres`, Redis AOF для общих rate limits — в `buyerly-redis`, журналы — в `/opt/buyerly/logs`.
 
 Минимальные значения для production в `/opt/buyerly/.env`:
 
 ```dotenv
-BOT_TOKEN=...
 POSTGRES_PASSWORD=...
 WEBAPP_URL=https://buyerly.app
 TRUSTED_PROXY_CIDRS=172.16.0.0/12
@@ -19,8 +18,9 @@ OTP_PEPPER=...
 
 Если `POSTGRES_PASSWORD` отсутствует, deploy-скрипт один раз создаёт случайное значение локально на сервере и ограничивает права файла `.env`.
 `OTP_PEPPER` должен быть отдельным длинным случайным секретом; fallback на
-`BOT_TOKEN` сохранён только для совместимости. `ADMIN_CHAT_ID` необязателен и
-нужен только для Telegram-алертов.
+`BOT_TOKEN` сохранён только для совместимости. Telegram-бота и уведомлений в
+Telegram нет: `BOT_TOKEN` задают, только если нужен старый вход через Telegram
+Mini App.
 
 Для рабочего подключения Facebook дополнительно обязательны:
 
@@ -56,7 +56,8 @@ production override. `CORS_ORIGINS` нужен только для явно ра
 cross-origin клиентов; `ENABLE_DEV_AUTH` в production всегда должен оставаться
 `false`.
 
-Допустимые операционные overrides: `ADMIN_CHAT_ID`,
+Допустимые операционные overrides: `ADMIN_CHAT_ID` (legacy Telegram ID
+супер-админа для bootstrap и dev-входа),
 `DEFAULT_POLL_INTERVAL_MINUTES`, `TELEGRAM_INIT_DATA_MAX_AGE_SECONDS`,
 `WEB_SESSION_TTL_HOURS` и `WEB_SESSION_ROTATE_MINUTES`. Пара
 `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD` используется только при
@@ -74,7 +75,7 @@ cross-origin клиентов; `ENABLE_DEV_AUTH` в production всегда до
 2. создаёт проверенный бэкап текущей базы PostgreSQL;
 3. получает точный commit из `main` и собирает версионные образы;
 4. проверяет готовность PostgreSQL и Redis, затем запускает миграцию схемы;
-5. запускает API, бота и worker, затем переключает публичный web;
+5. запускает API и worker, затем переключает публичный web;
 6. выполняет блокирующий read-only smoke для API/auth/workspace/Meta/summary/worker/DB и проверяет параметры ротации журналов; при ошибке возвращает предыдущие образы;
 7. удаляет только устаревшие Buyerly image tags, dangling images и build cache, сохраняя активные контейнеры и два последних полных релиза.
 
@@ -97,11 +98,10 @@ docker compose ps
 curl -fsS http://127.0.0.1:8080/health/ready
 docker compose logs --tail=100 api
 docker compose logs --tail=100 worker
-docker compose logs --tail=100 bot
 docker compose logs --tail=100 redis
 ```
 
-Файлы журналов разделены по процессам: `api.log`, `bot.log`, `worker.log`, `database-migration.log`.
+Файлы журналов разделены по процессам: `api.log`, `worker.log`, `database-migration.log`.
 
 Docker stdout/stderr каждого сервиса использует `json-file` с пятью сжатыми
 файлами не более 20 MB каждый (до 100 MB на контейнер). Проверка фактически

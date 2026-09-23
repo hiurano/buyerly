@@ -48,7 +48,7 @@ def to_meta_budget_units(value: Any, currency: Any) -> int:
 
 
 def format_money(value: Optional[float], currency: Any) -> str:
-    """Unambiguous server-side display used by Telegram and logs."""
+    """Unambiguous server-side display used by logs and audit messages."""
 
     if value is None:
         return "—"

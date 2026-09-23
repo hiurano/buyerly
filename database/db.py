@@ -186,11 +186,6 @@ async def migrate_legacy_account_rules(conn) -> int:
             "logic": row.get("rule_condition_logic") or "and",
             "cooldown_minutes": int(row.get("rule_cooldown_minutes") or 0),
             "check_interval": int(row.get("rule_check_interval") or 5),
-            "notify_tg": (
-                True
-                if row.get("rule_notify_tg") is None
-                else bool(row.get("rule_notify_tg"))
-            ),
             "budget_change_percent": float(
                 row.get("rule_budget_change_percent") or 0.0
             ),

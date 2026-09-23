@@ -11,13 +11,11 @@ flowchart LR
     A --> D[(PostgreSQL)]
     A --> R[(Redis)]
     A --> E[Resend]
-    B[Telegram bot] --> D
     K[Worker / APScheduler] --> D
     K <--> M[Meta API]
-    K --> B
 ```
 
-Состав production задаёт [docker-compose.yml](../docker-compose.yml): `web`, `api`, `bot`, `worker`, `db`, `redis` и одноразовый `migrate`. Точки запуска находятся в `services/`. Образ Python использует Python 3.12, frontend собирается на Node.js 22. PostgreSQL 16 хранит данные, Redis обслуживает общий rate limit.
+Состав production задаёт [docker-compose.yml](../docker-compose.yml): `web`, `api`, `worker`, `db`, `redis` и одноразовый `migrate`. Точки запуска находятся в `services/`. Образ Python использует Python 3.12, frontend собирается на Node.js 22. PostgreSQL 16 хранит данные, Redis обслуживает общий rate limit.
 
 ## Frontend и HTTP
 

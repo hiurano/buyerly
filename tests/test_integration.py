@@ -268,7 +268,6 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
                         ],
                         "logic": "and",
                         "cooldown_minutes": 0,
-                        "notify_tg": True,
                         "budget_change_percent": 0.0,
                         "budget_max_daily": 0.0,
                     }
@@ -324,15 +323,10 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
         expected_reporting_date = datetime.now(
             ZoneInfo("Pacific/Honolulu")
         ).date().isoformat()
-        sent_alerts = []
-        async def mock_notifier(**kwargs):
-            sent_alerts.append(kwargs)
 
-        worker = MonitoringWorker(meta_client=mock_meta, telegram_notifier=mock_notifier)
+        worker = MonitoringWorker(meta_client=mock_meta)
         stats = await worker.run_cycle()
 
-        # Calendar day notifications are handled by a separate minute job.
-        self.assertEqual(sent_alerts, [])
         self.assertEqual(stats["adsets_stopped"], 0)
         self.assertEqual(mock_meta.adsets_state["adset_1"]["status"], "ACTIVE")
         self.assertEqual(mock_meta.adsets_state["adset_2"]["status"], "ACTIVE")
@@ -358,7 +352,6 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             ],
             "logic": "and",
             "cooldown_minutes": 0,
-            "notify_tg": True,
             "budget_change_percent": 0.0,
             "budget_max_daily": 0.0,
         }
@@ -378,14 +371,9 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
         """Spend rolls up: $15.50 + $1.00 crosses $16 only at campaign level."""
         await self._set_rule()
         mock_meta = MockMetaClient()
-        sent_alerts = []
-
-        async def mock_notifier(**kwargs):
-            sent_alerts.append(kwargs)
 
         worker = MonitoringWorker(
             meta_client=mock_meta,
-            telegram_notifier=mock_notifier,
             clock=lambda: 10_000.0,
         )
         stats = await worker.run_cycle()
@@ -413,7 +401,6 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             # An ad set column must never hold a campaign id.
             self.assertEqual(event.adset_id, "")
 
-        self.assertIn("STOP", [alert["event_type"] for alert in sent_alerts])
 
     async def test_campaign_rule_reads_the_real_campaign_status(self):
         """A paused campaign whose ad sets are still ACTIVE must not be stopped."""
@@ -446,14 +433,9 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             ],
         )
         mock_meta = MockMetaClient()
-        sent_alerts = []
-
-        async def mock_notifier(**kwargs):
-            sent_alerts.append(kwargs)
 
         worker = MonitoringWorker(
             meta_client=mock_meta,
-            telegram_notifier=mock_notifier,
             clock=lambda: 10_000.0,
         )
         stats = await worker.run_cycle()
@@ -479,7 +461,6 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(event.entity_name, "Creative A")
             self.assertEqual(event.adset_id, "")
 
-        self.assertIn("STOP", [alert["event_type"] for alert in sent_alerts])
 
     async def test_ad_rule_scoped_to_an_adset_only_touches_that_adsets_ads(self):
         await self._set_rule(
@@ -522,15 +503,10 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             session.add(AppSettings(stop_confirmation_minutes=0))
             await session.commit()
         mock_meta = MockMetaClient()
-        sent_alerts = []
         now = [10_000.0]
-
-        async def mock_notifier(**kwargs):
-            sent_alerts.append(kwargs)
 
         worker = MonitoringWorker(
             meta_client=mock_meta,
-            telegram_notifier=mock_notifier,
             clock=lambda: now[0],
         )
 
@@ -541,8 +517,6 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(mock_meta.adsets_state["adset_1"]["status"], "PAUSED")
         self.assertEqual(mock_meta.adsets_state["adset_2"]["status"], "ACTIVE")
 
-        event_types = [a["event_type"] for a in sent_alerts]
-        self.assertIn("STOP", event_types)
 
         async with self.test_session_maker() as session:
             stored = (await session.execute(select(StoppedAdSet))).scalars().all()
@@ -598,40 +572,25 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             account.owner_user_id = None
             await session.commit()
 
-        sent_alerts = []
-
-        async def mock_notifier(**kwargs):
-            sent_alerts.append(kwargs)
-
         meta_client = MockMetaClient()
         meta_client.get_account_info = AsyncMock()
         worker = MonitoringWorker(
             meta_client=meta_client,
-            telegram_notifier=mock_notifier,
             clock=lambda: now[0],
         )
         stats = await worker.run_day_boundary_cycle()
 
         self.assertEqual(stats["days_notified"], 1)
         self.assertEqual(stats["invalid_timezones"], 0)
-        self.assertEqual(len(sent_alerts), 1)
-        self.assertEqual(sent_alerts[0]["event_type"], "ACCOUNT_DAY_STARTED")
-        self.assertEqual(sent_alerts[0]["local_time"], "00:00")
-        self.assertEqual(sent_alerts[0]["local_date"], "18.08.2026")
-        self.assertEqual(sent_alerts[0]["timezone_name"], "Pacific/Honolulu")
-        self.assertEqual(sent_alerts[0]["utc_offset"], "UTC−10:00")
-        self.assertNotIn("start_spend", sent_alerts[0])
         meta_client.get_account_info.assert_not_awaited()
 
         now[0] += 60
         restarted_worker = MonitoringWorker(
             meta_client=meta_client,
-            telegram_notifier=mock_notifier,
             clock=lambda: now[0],
         )
         repeated = await restarted_worker.run_day_boundary_cycle()
         self.assertEqual(repeated["days_notified"], 0)
-        self.assertEqual(len(sent_alerts), 1)
 
         async with self.test_session_maker() as session:
             account = (
@@ -649,17 +608,18 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(events[0].status, "SUCCESS")
             self.assertEqual(events[0].owner_user_id, expected_owner_user_id)
             self.assertEqual(events[0].workspace_id, expected_workspace_id)
+            details = _json_val(events[0].details)
+            self.assertEqual(details["local_time"], "00:00")
+            self.assertEqual(details["local_date"], "2026-08-18")
+            self.assertEqual(details["timezone_name"], "Pacific/Honolulu")
+            self.assertEqual(details["utc_offset"], "UTC−10:00")
+            self.assertNotIn("start_spend", details)
 
     async def test_first_observation_anchors_date_without_midday_notification(self):
         hawaii = ZoneInfo("Pacific/Honolulu")
         now = datetime(2026, 8, 18, 12, 30, tzinfo=hawaii).timestamp()
-        sent_alerts = []
-
-        async def mock_notifier(**kwargs):
-            sent_alerts.append(kwargs)
 
         worker = MonitoringWorker(
-            telegram_notifier=mock_notifier,
             clock=lambda: now,
         )
 
@@ -667,7 +627,6 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(stats["dates_initialized"], 1)
         self.assertEqual(stats["days_notified"], 0)
-        self.assertEqual(sent_alerts, [])
         async with self.test_session_maker() as session:
             account = (
                 await session.execute(select(Account).where(Account.account_id == self.account_id))
@@ -695,7 +654,6 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
                     ],
                     "logic": "and",
                     "cooldown_minutes": 0,
-                    "notify_tg": False,
                 }
             ])
             session.add(AppSettings(stop_confirmation_minutes=0))
@@ -724,7 +682,7 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             ).scalar_one()
             self.assertEqual(audit_event.status, "SUCCESS")
             self.assertEqual(audit_event.rule_id, 3)
-            self.assertFalse(_json_val(audit_event.details)["notify_tg"])
+            self.assertNotIn("notify_tg", _json_val(audit_event.details))
 
     async def test_failed_rule_action_is_audited_and_secret_safe(self):
         async with self.test_session_maker() as session:
@@ -855,7 +813,6 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
                     "logic": "and",
                     "check_interval": 5,
                     "cooldown_minutes": 0,
-                    "notify_tg": False,
                 }
             ])
             await session.commit()
@@ -1003,7 +960,6 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
                     ],
                     "logic": "and",
                     "check_interval": 5,
-                    "notify_tg": False,
                 },
                 {
                     "preset_id": 6,
@@ -1015,7 +971,6 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
                     ],
                     "logic": "and",
                     "check_interval": 60,
-                    "notify_tg": False,
                 },
             ])
             await session.commit()
@@ -1054,7 +1009,6 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
                     "logic": "and",
                     "check_interval": 5,
                     "cooldown_minutes": 30,
-                    "notify_tg": False,
                     "budget_change_percent": 20.0,
                     "budget_max_daily": 100.0,
                 }
@@ -1100,7 +1054,6 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
                     "logic": "and",
                     "check_interval": 5,
                     "cooldown_minutes": 30,
-                    "notify_tg": False,
                     "budget_change_percent": 20.0,
                     "budget_max_daily": 100.0,
                 }
@@ -1151,7 +1104,6 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
                     ],
                     "logic": "and",
                     "cooldown_minutes": 0,
-                    "notify_tg": True,
                     "budget_change_percent": 20.0,
                     "budget_max_daily": 100.0,
                 }
@@ -1165,11 +1117,7 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
         mock_meta.adsets_state["adset_2"]["leads"] = 3
         mock_meta.adsets_state["adset_2"]["daily_budget"] = 50.0
 
-        sent_alerts = []
-        async def mock_notifier(**kwargs):
-            sent_alerts.append(kwargs)
-
-        worker = MonitoringWorker(meta_client=mock_meta, telegram_notifier=mock_notifier)
+        worker = MonitoringWorker(meta_client=mock_meta)
         stats = await worker.run_cycle()
 
         self.assertGreaterEqual(stats.get("budgets_changed", 0), 1)
@@ -1193,7 +1141,6 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
                     ],
                     "logic": "and",
                     "check_interval": 5,
-                    "notify_tg": False,
                 }
             ])
             session.add(
@@ -1214,17 +1161,11 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
         mock_meta.adsets_state["adset_1"]["effective_status"] = "PAUSED"
         mock_meta.adsets_state["adset_1"]["leads"] = 2
 
-        sent_alerts = []
-
-        async def mock_notifier(**kwargs):
-            sent_alerts.append(kwargs)
-
-        worker = MonitoringWorker(meta_client=mock_meta, telegram_notifier=mock_notifier)
+        worker = MonitoringWorker(meta_client=mock_meta)
         stats = await worker.run_cycle()
 
         self.assertEqual(stats["adsets_reactivated"], 1)
         self.assertEqual(mock_meta.status_changes, [("adset_1", "ACTIVE")])
-        self.assertNotIn("AUTO_REACTIVATE", [alert["event_type"] for alert in sent_alerts])
 
         async with self.test_session_maker() as session:
             stopped = (await session.execute(select(StoppedAdSet))).scalar_one()
@@ -1240,32 +1181,34 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             "status_label": "Disabled in Meta (DISABLED / Policy Ban)",
             "timezone_name": "HST"
         })
-        sent_alerts = []
 
-        async def mock_notifier(**kwargs):
-            sent_alerts.append(kwargs)
-
-        worker = MonitoringWorker(meta_client=mock_meta, telegram_notifier=mock_notifier)
+        worker = MonitoringWorker(meta_client=mock_meta)
         stats = await worker.run_cycle()
 
-        self.assertEqual(len(sent_alerts), 1)
-        self.assertEqual(sent_alerts[0]["event_type"], "ACCOUNT_ISSUE")
-        self.assertIn("Disabled", sent_alerts[0]["local_time"])
+        async with self.test_session_maker() as session:
+            events = (
+                await session.execute(
+                    select(AuditEvent).where(AuditEvent.event_type == "ACCOUNT_ISSUE")
+                )
+            ).scalars().all()
+        self.assertEqual(len(events), 1)
+        self.assertIn("Disabled", events[0].message)
 
     async def test_token_expired_alert(self):
         """A broken Meta token raises a TOKEN_EXPIRED alert."""
         mock_meta = MockMetaClient()
         mock_meta.get_account_info = AsyncMock(side_effect=PermissionError("Token expired"))
-        sent_alerts = []
 
-        async def mock_notifier(**kwargs):
-            sent_alerts.append(kwargs)
-
-        worker = MonitoringWorker(meta_client=mock_meta, telegram_notifier=mock_notifier)
+        worker = MonitoringWorker(meta_client=mock_meta)
         stats = await worker.run_cycle()
 
-        self.assertEqual(len(sent_alerts), 1)
-        self.assertEqual(sent_alerts[0]["event_type"], "TOKEN_EXPIRED")
+        async with self.test_session_maker() as session:
+            events = (
+                await session.execute(
+                    select(AuditEvent).where(AuditEvent.event_type == "TOKEN_EXPIRED")
+                )
+            ).scalars().all()
+        self.assertEqual(len(events), 1)
 
     async def test_hierarchy_sync_failure_degrades_health_without_hiding_error(self):
         mock_meta = MockMetaClient()

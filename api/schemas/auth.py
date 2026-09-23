@@ -6,7 +6,6 @@ from api.schemas.workspaces import WorkspaceItem
 
 
 class UserProfileResponse(BaseModel):
-    telegram_id: Optional[str] = None
     username: str
     full_name: str
     first_name: str = ""
@@ -90,7 +89,6 @@ class UpdateProfileRequest(BaseModel):
     last_name: Optional[str] = Field(None, max_length=100)
     email: Optional[str] = Field(None, max_length=255)
     avatar_url: Optional[str] = Field(None, max_length=500)
-    telegram_id: Optional[str] = Field(None, max_length=64)
 
     @field_validator("avatar_url")
     @classmethod

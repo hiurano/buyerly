@@ -11,7 +11,6 @@ containers=(
     buyerly-redis
     buyerly-api
     buyerly-web
-    buyerly-telegram-bot
     buyerly-worker
 )
 

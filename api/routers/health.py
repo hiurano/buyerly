@@ -149,7 +149,7 @@ async def health_overview(user: User = Depends(get_current_user)):
                 "backup_age_critical_hours": 48,
             },
             "alert_routes": {
-                "account_transition": "Telegram owner/admin + Audit Log",
+                "account_transition": "Audit Log",
                 "release_or_platform": "GitHub Actions + production runbook",
             },
             "generated_at": datetime.now(timezone.utc).isoformat(),

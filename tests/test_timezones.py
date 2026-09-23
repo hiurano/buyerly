@@ -1,7 +1,6 @@
 import unittest
 from datetime import datetime
 
-from bot.notifier import format_account_day_started_message
 from core.timezones import (
     evaluate_day_boundary,
     resolve_account_clock,
@@ -41,22 +40,6 @@ class TestAccountTimezones(unittest.TestCase):
         self.assertEqual(after_restart.reason, "missed_window")
         self.assertFalse(first_observation.should_notify)
         self.assertEqual(first_observation.reason, "initialized")
-
-    def test_message_has_calendar_context_and_no_spend_claim(self):
-        message = format_account_day_started_message(
-            account_name="Example",
-            account_id="act_123",
-            local_date="18.08.2026",
-            local_time="00:00",
-            timezone_name="Pacific/Honolulu",
-            utc_offset="UTC−10:00",
-        )
-
-        self.assertIn("A new day has started", message)
-        self.assertIn("18.08.2026", message)
-        self.assertIn("Pacific/Honolulu", message)
-        self.assertNotIn("Spend", message)
-        self.assertNotIn("Active ad sets", message)
 
 
 if __name__ == "__main__":

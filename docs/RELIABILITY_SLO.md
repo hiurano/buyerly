@@ -30,11 +30,11 @@ Every failure is attributed to one domain:
 - `meta`: Meta/Graph outage, rate limiting, or quota pressure;
 - `system`: Buyerly code, database, network, configuration, or workspace-isolation failure.
 
-Only a status/cause transition creates an `ACCOUNT_HEALTH` audit event and Telegram notification. Repeated identical failures update the durable counter without alert spam. Recovery also creates one audit event and one owner/admin notification.
+Only a status/cause transition creates an `ACCOUNT_HEALTH` audit event. Repeated identical failures update the durable counter without alert spam. Recovery also creates one audit event.
 
 ## Alert routing and response
 
-Account transitions route to the account owner's Telegram ID, falling back to the configured admin chat, and are always retained in the workspace Audit Log independently of notification delivery. Release, API, database, worker-wide, disk, and backup alerts route through GitHub Actions/deploy output to the platform owner, who follows the relevant incident runbook.
+Account transitions are recorded in the workspace Audit Log; there is no push delivery. Release, API, database, worker-wide, disk, and backup alerts route through GitHub Actions/deploy output to the platform owner, who follows the relevant incident runbook.
 
 Response expectations:
 

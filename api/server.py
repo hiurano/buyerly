@@ -35,7 +35,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Buyerly Web App & API",
         version="1.0.0",
-        description="FastAPI Backend & Telegram Mini App for Buyerly AI Media Buyer",
+        description="FastAPI backend for Buyerly AI Media Buyer",
         lifespan=lifespan,
     )
 

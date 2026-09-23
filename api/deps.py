@@ -14,7 +14,7 @@ from api.schemas import (
     RulePresetItem,
     WorkspaceItem,
 )
-from bot.handlers import get_short_account_label
+from core.accounts import get_short_account_label
 from core.metrics import (
     cost_per_event,
     normalize_rule_scope,
@@ -594,7 +594,6 @@ def _preset_snapshot(preset: RulePreset) -> Dict[str, Any]:
         "logic": preset.condition_logic,
         "cooldown_minutes": preset.cooldown_minutes,
         "check_interval": preset.check_interval_minutes,
-        "notify_tg": preset.notify_tg,
         "budget_change_percent": preset.budget_change_percent,
         "budget_max_daily": preset.budget_max_daily,
         "currency_mode": "account",
@@ -657,7 +656,6 @@ def _preset_response(
         condition_logic=preset.condition_logic or "and",
         cooldown_minutes=preset.cooldown_minutes or 0,
         check_interval_minutes=preset.check_interval_minutes or 5,
-        notify_tg=preset.notify_tg if preset.notify_tg is not None else True,
         budget_change_percent=preset.budget_change_percent or 0.0,
         budget_max_daily=preset.budget_max_daily or 0.0,
         created_at=preset.created_at.strftime("%Y-%m-%d %H:%M") if preset.created_at else "",

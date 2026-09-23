@@ -193,16 +193,15 @@ normalize_repository_ownership() {
 
 rollback() {
     echo "[ROLLBACK] Stopping the failed service set..."
-    docker compose stop web api bot worker 2>/dev/null || true
+    docker compose stop web api worker 2>/dev/null || true
 
     if [[ -n "${PREVIOUS_APP_IMAGE}" && -n "${PREVIOUS_WEB_IMAGE}" \
           && -n "${PREVIOUS_SHA}" ]]; then
         docker tag "${PREVIOUS_APP_IMAGE}" "buyerly-app:${PREVIOUS_SHA}"
         docker tag "${PREVIOUS_WEB_IMAGE}" "buyerly-web:${PREVIOUS_SHA}"
         export APP_VERSION="${PREVIOUS_SHA}"
-        docker compose up -d --no-deps api bot worker
+        docker compose up -d --no-deps api worker
         wait_for_container buyerly-api
-        wait_for_container buyerly-telegram-bot
         wait_for_container buyerly-worker
         docker compose up -d --no-deps web
         wait_for_container buyerly-web
@@ -254,11 +253,9 @@ if [[ -n "${EXPECTED_SHA}" ]]; then
     CURRENT_REPO_SHA=$(git rev-parse HEAD 2>/dev/null || true)
     DEPLOYED_API_IMAGE=$(docker inspect --format '{{.Config.Image}}' buyerly-api 2>/dev/null || true)
     DEPLOYED_WEB_IMAGE=$(docker inspect --format '{{.Config.Image}}' buyerly-web 2>/dev/null || true)
-    DEPLOYED_BOT_IMAGE=$(docker inspect --format '{{.Config.Image}}' buyerly-telegram-bot 2>/dev/null || true)
     DEPLOYED_WORKER_IMAGE=$(docker inspect --format '{{.Config.Image}}' buyerly-worker 2>/dev/null || true)
     API_HEALTH=$(docker inspect --format '{{.State.Health.Status}}' buyerly-api 2>/dev/null || true)
     WEB_HEALTH=$(docker inspect --format '{{.State.Health.Status}}' buyerly-web 2>/dev/null || true)
-    BOT_HEALTH=$(docker inspect --format '{{.State.Health.Status}}' buyerly-telegram-bot 2>/dev/null || true)
     WORKER_HEALTH=$(docker inspect --format '{{.State.Health.Status}}' buyerly-worker 2>/dev/null || true)
     DB_HEALTH=$(docker inspect --format '{{.State.Health.Status}}' buyerly-db 2>/dev/null || true)
     REDIS_HEALTH=$(docker inspect --format '{{.State.Health.Status}}' buyerly-redis 2>/dev/null || true)
@@ -266,11 +263,9 @@ if [[ -n "${EXPECTED_SHA}" ]]; then
           && "${CURRENT_REPO_SHA}" == "${EXPECTED_SHA}" \
           && "${DEPLOYED_API_IMAGE}" == "buyerly-app:${EXPECTED_SHA}" \
           && "${DEPLOYED_WEB_IMAGE}" == "buyerly-web:${EXPECTED_SHA}" \
-          && "${DEPLOYED_BOT_IMAGE}" == "buyerly-app:${EXPECTED_SHA}" \
           && "${DEPLOYED_WORKER_IMAGE}" == "buyerly-app:${EXPECTED_SHA}" \
           && "${API_HEALTH}" == "healthy" \
           && "${WEB_HEALTH}" == "healthy" \
-          && "${BOT_HEALTH}" == "healthy" \
           && "${WORKER_HEALTH}" == "healthy" \
           && "${DB_HEALTH}" == "healthy" \
           && "${REDIS_HEALTH}" == "healthy" ]]; then
@@ -353,14 +348,14 @@ if ! docker compose run --rm migrate; then
 fi
 
 echo "[6/8] Switching traffic to the separated services..."
-docker compose up -d --no-deps api bot worker
+docker compose up -d --no-deps api worker
 if ! wait_for_container buyerly-api; then
     docker compose logs --tail=120 api migrate db
     rollback
     exit 1
 fi
-if ! wait_for_container buyerly-telegram-bot || ! wait_for_container buyerly-worker; then
-    docker compose logs --tail=120 bot worker
+if ! wait_for_container buyerly-worker; then
+    docker compose logs --tail=120 worker
     rollback
     exit 1
 fi
@@ -406,5 +401,5 @@ if ! bash "${SCRIPT_DIR}/cleanup_docker_artifacts.sh"; then
 fi
 CHECK_PATH="${APP_DIR}" bash "${SCRIPT_DIR}/check_disk_usage.sh"
 
-echo "[SUCCESS] Buyerly ${TARGET_SHA} deployed as web/api/bot/worker/db."
+echo "[SUCCESS] Buyerly ${TARGET_SHA} deployed as web/api/worker/db."
 docker compose ps

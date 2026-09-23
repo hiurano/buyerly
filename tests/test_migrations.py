@@ -152,7 +152,6 @@ class TestLegacyAccountRulesMigration(unittest.IsolatedAsyncioTestCase):
                     "logic": "or",
                     "cooldown_minutes": 30,
                     "check_interval": 15,
-                    "notify_tg": True,
                     "budget_change_percent": 15.0,
                     "budget_max_daily": 150.0,
                 }

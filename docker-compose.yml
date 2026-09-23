@@ -106,20 +106,6 @@ services:
       api:
         condition: service_healthy
 
-  bot:
-    <<: *app
-    container_name: buyerly-telegram-bot
-    command: ["python", "-m", "services.bot"]
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD", "python", "-c", "from pathlib import Path; assert Path('/tmp/buyerly-bot-ready').is_file()"]
-      interval: 10s
-      timeout: 5s
-      retries: 8
-      start_period: 15s
-
   worker:
     <<: *app
     container_name: buyerly-worker

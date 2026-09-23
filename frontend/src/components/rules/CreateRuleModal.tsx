@@ -140,7 +140,6 @@ export const CreateRuleModal: React.FC = () => {
   const [conditions, setConditions] = useState<ConditionDraft[]>([EMPTY_CONDITION]);
   const [budgetChangePercent, setBudgetChangePercent] = useState('20');
   const [budgetMaxDaily, setBudgetMaxDaily] = useState('');
-  const [notifyTg, setNotifyTg] = useState(true);
   const [createMore, setCreateMore] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -184,7 +183,6 @@ export const CreateRuleModal: React.FC = () => {
     setConditions([EMPTY_CONDITION]);
     setBudgetChangePercent('20');
     setBudgetMaxDaily('');
-    setNotifyTg(true);
     setSubmitError('');
   };
 
@@ -210,7 +208,6 @@ export const CreateRuleModal: React.FC = () => {
     setBudgetMaxDaily(
       preset.budget_max_daily > 0 ? String(preset.budget_max_daily) : '',
     );
-    setNotifyTg(preset.notify_tg);
     setSubmitError('');
   };
 
@@ -287,7 +284,6 @@ export const CreateRuleModal: React.FC = () => {
       condition_logic: conditionLogic,
       cooldown_minutes: editedRule ? editedRule.preset.cooldown_minutes : 0,
       check_interval_minutes: checkInterval,
-      notify_tg: notifyTg,
       // Non-budget actions must send exactly zero for both budget fields.
       budget_change_percent: isBudgetAction ? budgetPercent : 0,
       budget_max_daily: action === 'increase_budget' ? budgetCeiling : 0,
@@ -621,13 +617,6 @@ export const CreateRuleModal: React.FC = () => {
                 >
                   + Add condition
                 </button>
-
-                <FormCheckbox
-                  checked={notifyTg}
-                  onChange={setNotifyTg}
-                  label="Notify in Telegram when this rule fires"
-                  className="mt-1"
-                />
               </div>
 
               {submitError && (
