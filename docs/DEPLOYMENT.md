@@ -56,7 +56,8 @@ production override. `CORS_ORIGINS` нужен только для явно ра
 cross-origin клиентов; `ENABLE_DEV_AUTH` в production всегда должен оставаться
 `false`.
 
-Допустимые операционные overrides:
+Допустимые операционные overrides: `ADMIN_CHAT_ID` (legacy Telegram ID
+супер-админа для bootstrap и dev-входа),
 `DEFAULT_POLL_INTERVAL_MINUTES`, `TELEGRAM_INIT_DATA_MAX_AGE_SECONDS`,
 `WEB_SESSION_TTL_HOURS` и `WEB_SESSION_ROTATE_MINUTES`. Пара
 `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD` используется только при
@@ -74,7 +75,7 @@ cross-origin клиентов; `ENABLE_DEV_AUTH` в production всегда до
 2. создаёт проверенный бэкап текущей базы PostgreSQL;
 3. получает точный commit из `main` и собирает версионные образы;
 4. проверяет готовность PostgreSQL и Redis, затем запускает миграцию схемы;
-5. запускает API, бота и worker, затем переключает публичный web;
+5. запускает API и worker, затем переключает публичный web;
 6. выполняет блокирующий read-only smoke для API/auth/workspace/Meta/summary/worker/DB и проверяет параметры ротации журналов; при ошибке возвращает предыдущие образы;
 7. удаляет только устаревшие Buyerly image tags, dangling images и build cache, сохраняя активные контейнеры и два последних полных релиза.
 
