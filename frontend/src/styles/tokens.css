@@ -115,6 +115,8 @@
   --dock-clear-btn-bg: lch(13.861% 1.139 272 / 1);
   --command-menu-shadow: 0px 9px 48px 0px lch(0% 0 0 / 0.32), 0px 6px 24px 0px lch(0% 0 0 / 0.3), 0px 1px 1px 0px lch(0% 0 0 / 0.2);
   --motion-dock-enter-duration: 450ms;
+  /* Above the app sidebar (96) and its resize handle (97). */
+  --layer-command-menu: 100;
   --tab-active-bg: lch(16.706% 0.979 272 / 1);
   --tab-inactive-bg: transparent;
   --sidebar-card-border: var(--card-border);

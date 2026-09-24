@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { Command } from 'cmdk';
 import type { SelectionAction } from '@/ui/useRowSelection';
 
@@ -23,9 +24,10 @@ export const SelectionCommandMenu: React.FC<SelectionCommandMenuProps> = ({
 }) => {
   if (!open) return null;
 
-  return (
+  // Portalled: the list's own stacking context must not let the app sidebar paint over it.
+  return createPortal(
     <div
-      className="fixed inset-0 z-[95] flex items-start justify-center px-4 pt-[13vh]"
+      className="fixed inset-0 z-[var(--layer-command-menu)] flex items-start justify-center px-4 pt-[13vh]"
       onMouseDown={() => onOpenChange(false)}
     >
       <div
@@ -64,7 +66,7 @@ export const SelectionCommandMenu: React.FC<SelectionCommandMenuProps> = ({
                     onOpenChange(false);
                     action.run();
                   }}
-                  className="mx-0 flex h-[46px] cursor-default items-center gap-3 rounded-[var(--control-border-radius)] px-3 text-[13px] text-[var(--text-primary)] data-[selected=true]:bg-[var(--item-hover-bg)]"
+                  className="mx-0 flex h-[46px] cursor-default items-center gap-3 rounded-[var(--control-border-radius)] px-3 text-[13px] text-[var(--text-primary)] data-[selected=true]:bg-[var(--data-row-hover-bg)]"
                 >
                   <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[var(--text-tertiary)]" aria-hidden="true">
                     {action.icon}
@@ -79,6 +81,7 @@ export const SelectionCommandMenu: React.FC<SelectionCommandMenuProps> = ({
           </Command.List>
         </Command>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
