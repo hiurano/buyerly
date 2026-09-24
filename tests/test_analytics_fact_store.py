@@ -28,8 +28,7 @@ from services.analytics_store import (
     resolve_previous_period_dates,
     resolve_recent_dates,
 )
-from tests.test_api import generate_valid_telegram_init_data
-from tests.test_db_helper import create_test_engine, init_test_db
+from tests.test_db_helper import create_test_engine, init_test_db, session_headers
 
 
 class FakeResponse:
@@ -55,8 +54,6 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
         api_auth_module.async_session_maker = self.test_session_maker
         analytics_router_module.async_session_maker = self.test_session_maker
         api_server_module.async_session_maker = self.test_session_maker
-
-        settings.BOT_TOKEN = "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
         settings.ADMIN_CHAT_ID = "8634201356"
 
         async with self.test_session_maker() as session:
@@ -650,11 +647,8 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
 
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
-            init_data_w1 = generate_valid_telegram_init_data(
-                settings.BOT_TOKEN,
-                {"id": 11111111, "first_name": "Buyer One", "username": "buyer1"},
-            )
-            headers_w1 = {"Authorization": f"tma {init_data_w1}"}
+            auth_w1 = await session_headers(self.test_session_maker, {"id": 11111111, "first_name": "Buyer One", "username": "buyer1"})
+            headers_w1 = {**auth_w1}
 
             # Authorized query for own account's campaigns
             res = await ac.get(
@@ -731,11 +725,8 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
 
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
-            init_data_w1 = generate_valid_telegram_init_data(
-                settings.BOT_TOKEN,
-                {"id": 11111111, "first_name": "Buyer One", "username": "buyer1"},
-            )
-            headers_w1 = {"Authorization": f"tma {init_data_w1}"}
+            auth_w1 = await session_headers(self.test_session_maker, {"id": 11111111, "first_name": "Buyer One", "username": "buyer1"})
+            headers_w1 = {**auth_w1}
             base_url = (
                 f"/api/analytics/hierarchy?parent_id={self.acc1.account_id}"
                 "&level=campaign"
@@ -813,11 +804,8 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
 
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
-            init_data_w1 = generate_valid_telegram_init_data(
-                settings.BOT_TOKEN,
-                {"id": 11111111, "first_name": "Buyer One", "username": "buyer1"},
-            )
-            headers_w1 = {"Authorization": f"tma {init_data_w1}"}
+            auth_w1 = await session_headers(self.test_session_maker, {"id": 11111111, "first_name": "Buyer One", "username": "buyer1"})
+            headers_w1 = {**auth_w1}
             series = await ac.get(
                 f"/api/analytics/timeseries?parent_id={self.acc1.account_id}&level=campaign&days=5",
                 headers=headers_w1,

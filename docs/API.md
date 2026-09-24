@@ -13,8 +13,6 @@ Production: `https://buyerly.app`.
 | Web session | Secure + HttpOnly cookie `buyerly_session` | прямой вход по логину, паролю или OTP |
 | CSRF | cookie `buyerly_csrf` + `X-CSRF-Token` | обязательная защита изменяющих запросов web-сессии |
 | Legacy web token | `Authorization: Bearer <token>` | одноразовый переход старой сессии на cookie до истечения |
-| Telegram Mini App | `Authorization: tma <initData>` | подписанные Telegram `initData` |
-| Telegram Mini App | `X-Init-Data: <initData>` | совместимый вариант |
 
 `dev_user_id` работает только в локальной среде при явно включённом `ENABLE_DEV_AUTH`; в production fallback выключен. Обычный пользователь получает только свои данные. Администратор имеет расширенный операционный обзор там, где это предусмотрено endpoint.
 

@@ -31,10 +31,9 @@ from database.models import (
     WorkspaceMember,
     RulePreset,
 )
-from tests.test_api import generate_valid_telegram_init_data
 
 
-from tests.test_db_helper import create_test_engine, init_test_db
+from tests.test_db_helper import create_test_engine, init_test_db, session_headers
 
 
 class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
@@ -84,8 +83,6 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
         api_routes_module.async_session_maker = self.test_session_maker
         api_auth_module.async_session_maker = self.test_session_maker
         api_server_module.async_session_maker = self.test_session_maker
-
-        settings.BOT_TOKEN = '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11'
         settings.ADMIN_CHAT_ID = '8634201356'
 
         async with self.test_session_maker() as session:
@@ -141,11 +138,8 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
         await self.test_engine.dispose()
 
     async def test_workspace_lifecycle_and_data_isolation(self):
-        artem_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'},
-        )
-        headers = {'Authorization': f'tma {artem_data}'}
+        artem_data = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
+        headers = {**artem_data}
         transport = httpx.ASGITransport(app=self.app)
 
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
@@ -252,11 +246,8 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(del_only.status_code, 400)
 
     async def test_workspace_creation_rejects_occupied_and_reserved_slugs(self):
-        artem_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'},
-        )
-        headers = {'Authorization': f'tma {artem_data}'}
+        artem_data = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
+        headers = {**artem_data}
         transport = httpx.ASGITransport(app=self.app)
 
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
@@ -389,17 +380,11 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(public_link.max_uses, 0)
 
     async def test_workspace_members_api_lifecycle(self):
-        artem_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'},
-        )
-        artem_headers = {'Authorization': f'tma {artem_data}'}
+        artem_data = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
+        artem_headers = {**artem_data}
 
-        bob_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {'id': 777000222, 'first_name': 'Bob', 'username': 'bob'},
-        )
-        bob_headers = {'Authorization': f'tma {bob_data}'}
+        bob_data = await session_headers(self.test_session_maker, {'id': 777000222, 'first_name': 'Bob', 'username': 'bob'})
+        bob_headers = {**bob_data}
 
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
@@ -517,17 +502,11 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(artem_m.role, 'admin')
 
     async def test_workspace_invites_api_lifecycle(self):
-        artem_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'},
-        )
-        artem_headers = {'Authorization': f'tma {artem_data}'}
+        artem_data = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
+        artem_headers = {**artem_data}
 
-        dave_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {'id': 777000444, 'first_name': 'Dave', 'username': 'dave'},
-        )
-        dave_headers = {'Authorization': f'tma {dave_data}'}
+        dave_data = await session_headers(self.test_session_maker, {'id': 777000444, 'first_name': 'Dave', 'username': 'dave'})
+        dave_headers = {**dave_data}
 
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
@@ -636,7 +615,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
 
     async def test_single_use_invite_is_atomic_and_winner_retry_is_idempotent(self):
         artem_headers = {
-            'Authorization': f"tma {generate_valid_telegram_init_data(settings.BOT_TOKEN, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})}"
+            **(await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'}))
         }
         async with self.test_session_maker() as session:
             contenders = [
@@ -667,7 +646,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
 
         contender_headers = [
             {
-                'Authorization': f"tma {generate_valid_telegram_init_data(settings.BOT_TOKEN, {'id': int(telegram_id), 'first_name': username, 'username': username})}"
+                **(await session_headers(self.test_session_maker, {'id': int(telegram_id), 'first_name': username, 'username': username}))
             }
             for telegram_id, username in (
                 ('777001001', 'invite_contender_one'),
@@ -726,17 +705,11 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(memberships), 1)
 
     async def test_workspace_resource_scoping_and_viewer_rbac_protection(self):
-        artem_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'},
-        )
-        artem_headers = {'Authorization': f'tma {artem_data}'}
+        artem_data = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
+        artem_headers = {**artem_data}
 
-        viewer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {'id': 777000555, 'first_name': 'Victor', 'username': 'victor_viewer'},
-        )
-        viewer_headers = {'Authorization': f'tma {viewer_data}'}
+        viewer_data = await session_headers(self.test_session_maker, {'id': 777000555, 'first_name': 'Victor', 'username': 'victor_viewer'})
+        viewer_headers = {**viewer_data}
 
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
@@ -823,7 +796,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             session.add(member)
             await session.commit()
             member_id = member.id
-        auth = generate_valid_telegram_init_data(settings.BOT_TOKEN, {"id": 777009999, "first_name": "Colleague"})
+        auth = await session_headers(self.test_session_maker, {"id": 777009999, "first_name": "Colleague"})
         info = {"name": "Updated", "account_status": 1, "timezone_name": "UTC", "currency": "USD"}
         with patch.object(api_routes_module.meta_client, "get_account_info", new=AsyncMock(return_value=info)):
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
@@ -839,7 +812,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                             original_ciphertext = account.access_token_encrypted
                             await session.commit()
                         response = await client.post(
-                            "/api/accounts/batch-add", headers={"Authorization": f"tma {auth}"},
+                            "/api/accounts/batch-add", headers={**auth},
                             json={"accounts": [{"account_id": "act_111111"}], "access_token": "replacement-test-token"},
                         )
                         self.assertEqual(response.status_code, 200, response.text)
@@ -880,11 +853,8 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             hacker.active_workspace_id = ws_other.id
             await session.commit()
 
-        hacker_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {'id': 777000999, 'first_name': 'Hacker', 'username': 'hacker'},
-        )
-        hacker_headers = {'Authorization': f'tma {hacker_data}'}
+        hacker_data = await session_headers(self.test_session_maker, {'id': 777000999, 'first_name': 'Hacker', 'username': 'hacker'})
+        hacker_headers = {**hacker_data}
 
         mock_meta_info = {
             'id': 'act_111111',
@@ -945,11 +915,8 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             original_owner_id = artem.id
             await session.commit()
 
-        admin_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {'id': 777000555, 'first_name': 'Workspace', 'username': 'workspace_admin'},
-        )
-        headers = {'Authorization': f'tma {admin_data}'}
+        admin_data = await session_headers(self.test_session_maker, {'id': 777000555, 'first_name': 'Workspace', 'username': 'workspace_admin'})
+        headers = {**admin_data}
         mock_meta_info = {
             'id': 'act_111111',
             'name': 'Refreshed Account',
@@ -980,11 +947,8 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(account.owner_user_id, original_owner_id)
 
     async def test_targeted_workspace_invite_rejects_mismatched_email(self):
-        artem_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'},
-        )
-        artem_headers = {'Authorization': f'tma {artem_data}'}
+        artem_data = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
+        artem_headers = {**artem_data}
 
         now_dt = datetime.now(timezone.utc)
         async with self.test_session_maker() as session:
@@ -1013,17 +977,11 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             ws_id = ws.id
             await session.commit()
 
-        imposter_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {'id': 777000888, 'first_name': 'Imposter', 'username': 'imposter'},
-        )
-        imposter_headers = {'Authorization': f'tma {imposter_data}'}
+        imposter_data = await session_headers(self.test_session_maker, {'id': 777000888, 'first_name': 'Imposter', 'username': 'imposter'})
+        imposter_headers = {**imposter_data}
 
-        recipient_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {'id': 777000777, 'first_name': 'Legit', 'username': 'recipient'},
-        )
-        recipient_headers = {'Authorization': f'tma {recipient_data}'}
+        recipient_data = await session_headers(self.test_session_maker, {'id': 777000777, 'first_name': 'Legit', 'username': 'recipient'})
+        recipient_headers = {**recipient_data}
 
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
@@ -1051,11 +1009,8 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(recipient_accept.json()['status'], 'ok')
 
     async def test_targeted_workspace_invite_requires_verified_email(self):
-        artem_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'},
-        )
-        artem_headers = {'Authorization': f'tma {artem_data}'}
+        artem_data = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
+        artem_headers = {**artem_data}
 
         # Unverified recipient has matching email string but email_verified_at is None
         async with self.test_session_maker() as session:
@@ -1085,10 +1040,10 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             await session.commit()
 
         unverified_headers = {
-            'Authorization': f"tma {generate_valid_telegram_init_data(settings.BOT_TOKEN, {'id': 777000999, 'first_name': 'Unverified', 'username': 'unverified_user'})}"
+            **(await session_headers(self.test_session_maker, {'id': 777000999, 'first_name': 'Unverified', 'username': 'unverified_user'}))
         }
         no_email_headers = {
-            'Authorization': f"tma {generate_valid_telegram_init_data(settings.BOT_TOKEN, {'id': 777000555, 'first_name': 'NoEmail', 'username': 'no_email_user'})}"
+            **(await session_headers(self.test_session_maker, {'id': 777000555, 'first_name': 'NoEmail', 'username': 'no_email_user'}))
         }
 
         transport = httpx.ASGITransport(app=self.app)
@@ -1132,11 +1087,8 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(verified_accept.json()['status'], 'ok')
 
     async def test_invite_audit_logging_no_raw_tokens(self):
-        artem_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'},
-        )
-        artem_headers = {'Authorization': f'tma {artem_data}'}
+        artem_data = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
+        artem_headers = {**artem_data}
 
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:

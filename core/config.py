@@ -4,7 +4,6 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     APP_VERSION: str = Field(default="dev", description="Deployed Git commit SHA")
-    BOT_TOKEN: str = Field(default="", description="Telegram bot token; only verifies legacy Mini App sign-in")
     DATABASE_URL: str = Field(
         default="postgresql+asyncpg://buyerly:buyerly_secret@localhost:5432/buyerly",
         description="Async SQLAlchemy database URL",
@@ -46,11 +45,6 @@ class Settings(BaseSettings):
         default="",
         description="Comma-separated list of allowed CORS origins (e.g. https://buyerly.app)",
     )
-    TELEGRAM_INIT_DATA_MAX_AGE_SECONDS: int = Field(
-        default=86400,
-        ge=60,
-        description="Maximum accepted age of Telegram Mini App initData",
-    )
     WEB_SESSION_TTL_HOURS: int = Field(
         default=24,
         ge=1,
@@ -81,7 +75,7 @@ class Settings(BaseSettings):
     )
     OTP_PEPPER: str = Field(
         default="",
-        description="Optional dedicated HMAC secret for OTP storage; BOT_TOKEN is the compatibility fallback",
+        description="Required HMAC secret for OTP storage",
     )
     EMAIL_FROM: str = Field(
         default="Buyerly <team@buyerly.app>",

@@ -23,8 +23,7 @@ from database.models import (
     WorkspaceMember,
     WorkspaceSupportGrant,
 )
-from tests.test_api import generate_valid_telegram_init_data
-from tests.test_db_helper import create_test_engine, init_test_db
+from tests.test_db_helper import create_test_engine, init_test_db, session_headers
 
 
 class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
@@ -40,8 +39,6 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
         api_routes_module.async_session_maker = self.test_session_maker
         api_auth_module.async_session_maker = self.test_session_maker
         api_server_module.async_session_maker = self.test_session_maker
-
-        settings.BOT_TOKEN = "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
         settings.ADMIN_CHAT_ID = "8634201356"
 
         async with self.test_session_maker() as session:
@@ -162,12 +159,8 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         await self.test_engine.dispose()
 
-    def _headers_for(self, user: User) -> dict:
-        tma_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": int(user.telegram_id), "first_name": user.full_name, "username": user.username},
-        )
-        return {"Authorization": f"tma {tma_data}"}
+    async def _headers_for(self, user: User) -> dict:
+        return await session_headers(self.test_session_maker, {"id": int(user.telegram_id), "first_name": user.full_name, "username": user.username})
 
     async def test_route_workspace_scopes_reads_and_writes_without_switching_user(self):
         async with self.test_session_maker() as session:
@@ -175,7 +168,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
                 workspace_id=self.ws_b.id, user_id=self.tenant_a_user.id, role="buyer"
             ))
             await session.commit()
-        headers = {**self._headers_for(self.tenant_a_user), "X-Workspace-Slug": self.ws_b.slug}
+        headers = {**await self._headers_for(self.tenant_a_user), "X-Workspace-Slug": self.ws_b.slug}
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
             response = await client.get("/api/accounts", headers=headers)
             self.assertEqual(response.status_code, 200, response.text)
@@ -197,13 +190,13 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
             for slug in (self.ws_b.slug, "missing-workspace", ""):
                 response = await client.get("/api/accounts", headers={
-                    **self._headers_for(self.tenant_a_user), "X-Workspace-Slug": slug,
+                    **await self._headers_for(self.tenant_a_user), "X-Workspace-Slug": slug,
                 })
                 self.assertEqual(response.status_code, 403, response.text)
 
     async def test_global_admin_cannot_leak_or_mutate_foreign_accounts(self):
         """Verify global admin cannot see or mutate foreign workspace accounts without membership."""
-        admin_headers = self._headers_for(self.admin_user)
+        admin_headers = await self._headers_for(self.admin_user)
         transport = httpx.ASGITransport(app=self.app)
 
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -240,7 +233,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
 
     async def test_global_admin_cannot_switch_workspace_without_grant(self):
         """Admin cannot switch to Tenant B workspace without explicit membership or support grant."""
-        admin_headers = self._headers_for(self.admin_user)
+        admin_headers = await self._headers_for(self.admin_user)
         transport = httpx.ASGITransport(app=self.app)
 
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -298,7 +291,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
             preset_id = preset.id
             group_id = group.id
 
-        viewer_headers = self._headers_for(viewer_user)
+        viewer_headers = await self._headers_for(viewer_user)
         transport = httpx.ASGITransport(app=self.app)
 
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -458,7 +451,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
             foreign_preset_id = foreign_preset.id
             foreign_group_id = foreign_group.id
 
-        headers = self._headers_for(self.tenant_a_user)
+        headers = await self._headers_for(self.tenant_a_user)
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             presets = await client.get("/api/presets", headers=headers)
@@ -537,12 +530,12 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
 
     async def test_admin_support_session_lifecycle(self):
         """Admin creates bounded support session, accesses workspace, and revokes session."""
-        admin_headers = self._headers_for(self.admin_user)
+        admin_headers = await self._headers_for(self.admin_user)
         transport = httpx.ASGITransport(app=self.app)
 
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # 1. Non-admin cannot create support session
-            tenant_headers = self._headers_for(self.tenant_a_user)
+            tenant_headers = await self._headers_for(self.tenant_a_user)
             denied_res = await client.post(
                 "/api/admin/support-sessions",
                 headers=tenant_headers,
@@ -618,7 +611,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
 
     async def test_audit_events_and_undo_strict_workspace_scoping(self):
         """Verify audit events are strictly isolated per workspace and cross-workspace undo is blocked."""
-        admin_headers = self._headers_for(self.admin_user)
+        admin_headers = await self._headers_for(self.admin_user)
         transport = httpx.ASGITransport(app=self.app)
 
         async with self.test_session_maker() as session:

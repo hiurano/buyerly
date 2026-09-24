@@ -40,9 +40,9 @@ def email_scope(user_id: int) -> str:
 
 
 def _hash_code(code: str) -> str:
-    pepper = settings.OTP_PEPPER or settings.BOT_TOKEN
+    pepper = settings.OTP_PEPPER
     if not pepper:
-        raise RuntimeError("OTP_PEPPER or BOT_TOKEN must be configured")
+        raise RuntimeError("OTP_PEPPER must be configured")
     return hmac.new(
         pepper.encode("utf-8"),
         code.encode("utf-8"),
