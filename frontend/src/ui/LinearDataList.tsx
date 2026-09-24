@@ -3,6 +3,7 @@ import React from 'react';
 export const LINEAR_DATA_LIST = {
   toolbarHeight: 43,
   rowHeight: 44,
+  rowHeightComfortable: 56,
   groupHeaderHeight: 36,
   radius: 8,
   rowGap: 2,
@@ -25,6 +26,43 @@ export interface LinearDataListColumn {
 
 export const getLinearDataListTemplate = (columns: LinearDataListColumn[]) =>
   columns.map((column) => column.width).join(' ');
+
+/**
+ * The Name column every entity table starts with. Its header label is inset to
+ * start on the same pixel as the row title, past the selection slot and, when
+ * shown, the status toggle; the sortable header pill adds 6px of its own.
+ */
+export const linearDataNameColumn = ({
+  width,
+  statusVisible = true,
+  label = 'Name',
+}: {
+  width: string;
+  statusVisible?: boolean;
+  label?: string;
+}): LinearDataListColumn => ({
+  id: 'name',
+  label,
+  width,
+  headerInset: statusVisible ? 64 : 24,
+  sortable: true,
+});
+
+/**
+ * The narrowest width at which every column keeps its declared size. A
+ * `minmax(Npx, …)` column counts as N; the viewport scrolls horizontally below it.
+ */
+export const getLinearDataListMinWidth = (columns: LinearDataListColumn[]) => {
+  const columnWidth = columns.reduce((total, column) => {
+    const minimum = /^minmax\((\d+)px/.exec(column.width);
+    return total + (minimum ? Number(minimum[1]) : Number.parseInt(column.width, 10) || 0);
+  }, 0);
+  return (
+    columnWidth
+    + Math.max(columns.length - 1, 0) * LINEAR_DATA_LIST.columnGap
+    + LINEAR_DATA_LIST.rowPaddingX * 2
+  );
+};
 
 export const LinearDataListToolbar: React.FC<React.PropsWithChildren<{ className?: string }>> = ({
   children,
@@ -261,5 +299,152 @@ export const LinearDataListGroupHeader: React.FC<LinearDataListGroupHeaderProps>
         </button>
       )}
     </div>
+  </div>
+);
+
+interface LinearDataListGroupProps extends Omit<LinearDataListGroupHeaderProps, 'className'> {
+  children: React.ReactNode;
+}
+
+/** A group header and its rows; the rows are left out while the group is collapsed. */
+export const LinearDataListGroup: React.FC<LinearDataListGroupProps> = ({ children, ...header }) => (
+  <div>
+    <LinearDataListGroupHeader {...header} />
+    {!header.isCollapsed && <LinearDataListStack className="pb-2 pt-0.5">{children}</LinearDataListStack>}
+  </div>
+);
+
+interface LinearDataTableProps
+  extends Pick<LinearDataListColumnHeaderProps, 'columns' | 'sortKey' | 'sortDirection' | 'onSort'> {
+  children: React.ReactNode;
+  /** Rendered above the column header at viewport width, e.g. an action notice. */
+  before?: React.ReactNode;
+  /** Rendered below the rows at table width, e.g. a filter summary. */
+  after?: React.ReactNode;
+  className?: string;
+}
+
+/**
+ * The one table surface for entity lists: a horizontally scrollable viewport,
+ * a sortable column header and the row stack, all sharing one minimum width.
+ */
+export const LinearDataTable: React.FC<LinearDataTableProps> = ({
+  columns,
+  sortKey,
+  sortDirection,
+  onSort,
+  before,
+  after,
+  className,
+  children,
+}) => {
+  const minWidth = getLinearDataListMinWidth(columns);
+  return (
+    <LinearDataListViewport className={className} horizontal>
+      {before}
+      <div style={{ minWidth: `${minWidth}px` }}>
+        <LinearDataListColumnHeader
+          columns={columns}
+          minWidth={minWidth}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+          onSort={onSort}
+        />
+        <LinearDataListStack>{children}</LinearDataListStack>
+        {after}
+      </div>
+    </LinearDataListViewport>
+  );
+};
+
+interface LinearDataPrimaryCellProps {
+  /** Selection checkbox and status control, in that order. */
+  leading?: React.ReactNode;
+  title: React.ReactNode;
+  /** Pills or badges that follow the title on the same line. */
+  badge?: React.ReactNode;
+  subtitle?: React.ReactNode;
+  /** An inactive entity keeps its row but recedes. */
+  dimmed?: boolean;
+  /** Full name for hover when the title truncates. */
+  hint?: string;
+  /** Pins the cell while the table scrolls horizontally. */
+  sticky?: boolean;
+}
+
+/** The Name cell: leading controls, a truncating title and one line of context. */
+export const LinearDataPrimaryCell: React.FC<LinearDataPrimaryCellProps> = ({
+  leading,
+  title,
+  badge,
+  subtitle,
+  dimmed = false,
+  hint,
+  sticky = false,
+}) => (
+  <div
+    className={`flex min-w-0 items-center gap-3 ${
+      sticky
+        ? 'sticky left-0 z-[1] bg-[var(--bg-canvas)] transition-colors group-hover/row:bg-[var(--data-row-hover-bg)]'
+        : ''
+    }`}
+  >
+    {leading}
+    <div className="flex min-w-0 flex-col" title={hint}>
+      <div className="flex min-w-0 items-center gap-2">
+        <span
+          className={`min-w-0 truncate text-[13px] font-medium ${
+            dimmed ? 'text-[var(--text-tertiary)]' : 'text-[var(--text-primary)]'
+          }`}
+        >
+          {title}
+        </span>
+        {badge}
+      </div>
+      {subtitle && (
+        <div className="flex min-w-0 items-center gap-1.5 text-[11px] leading-4 text-[var(--text-muted)]">
+          {subtitle}
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+interface LinearDataMetricCellProps {
+  value: React.ReactNode;
+  /** Secondary figure on the same line, e.g. cost beside a result count. */
+  suffix?: React.ReactNode;
+  /** A second line under the value: pace, verdict or comparison basis. */
+  caption?: React.ReactNode;
+  /** The row's decision metric reads in primary text. */
+  emphasis?: boolean;
+  /** Overrides the value color for a semantic tone. */
+  valueClassName?: string;
+}
+
+/** A right-aligned number with tabular figures and an optional caption. */
+export const LinearDataMetricCell: React.FC<LinearDataMetricCellProps> = ({
+  value,
+  suffix,
+  caption,
+  emphasis = false,
+  valueClassName,
+}) => (
+  <div className="min-w-0 text-right">
+    <div
+      className={`truncate whitespace-nowrap text-[12px] tabular-nums ${
+        valueClassName ?? (emphasis
+          ? 'font-medium text-[var(--text-primary)]'
+          : 'font-[450] text-[var(--text-secondary)]')
+      }`}
+    >
+      {value}
+      {suffix && <span className="ml-1 text-[var(--text-muted)]">{suffix}</span>}
+    </div>
+    {caption && (
+      <div className="mt-0.5 flex min-w-0 items-center justify-end gap-1.5 text-[11px] leading-4 text-[var(--text-muted)] tabular-nums">
+        {caption}
+      </div>
+    )}
   </div>
 );

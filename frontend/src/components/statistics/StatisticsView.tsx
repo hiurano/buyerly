@@ -15,7 +15,7 @@ import {
   undoAction,
   type DeliveryStatus,
 } from '@/lib/delivery';
-import { LinearToggle } from '@/ui/LinearToggle';
+import { EntityRowControls } from '@/components/campaigns/EntityRowCells';
 import {
   eligibleMetaAccounts,
   formatMetricMoney,
@@ -59,12 +59,14 @@ import { Input } from '@/ui/Input';
 import { DataState } from '@/ui/DataState';
 import {
   LinearDataListColumn,
-  LinearDataListColumnHeader,
-  LinearDataListGroupHeader,
+  LINEAR_DATA_LIST,
+  LinearDataListGroup,
   LinearDataListRow,
-  LinearDataListStack,
   LinearDataListToolbar,
-  LinearDataListViewport,
+  LinearDataMetricCell,
+  linearDataNameColumn,
+  LinearDataPrimaryCell,
+  LinearDataTable,
 } from '@/ui/LinearDataList';
 import { LinearTabs } from '@/ui/LinearTabs';
 import { Tooltip } from '@/ui/Tooltip';
@@ -137,7 +139,6 @@ const LEVEL_LABELS: Record<EntityLevel, { singular: string; plural: string }> = 
   ad: { singular: 'ad', plural: 'ads' },
 };
 
-const TABLE_MIN_WIDTH = 940;
 const KNOWN_CURRENCY = /^[A-Z]{3}$/;
 /** Periods whose spend can be read against a single day of budget. */
 const SINGLE_DAY_PERIODS: ReportingPeriod[] = ['today', 'yesterday'];
@@ -250,7 +251,6 @@ const MetricCard: React.FC<{
 interface StatisticsRowProps {
   item: AnalyticsHierarchyItem;
   columns: LinearDataListColumn[];
-  minWidth: number;
   /** Movement of the cost per result against the baseline, when there is one. */
   change: PeriodChange | null;
   compact: boolean;
@@ -273,7 +273,6 @@ interface StatisticsRowProps {
 const StatisticsRow: React.FC<StatisticsRowProps> = ({
   item,
   columns,
-  minWidth,
   change,
   compact,
   resultKind,
@@ -303,82 +302,75 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
       <LinearDataListRow
         layout="grid"
         columns={columns}
-        height={compact ? 48 : 56}
+        height={compact ? LINEAR_DATA_LIST.rowHeight : LINEAR_DATA_LIST.rowHeightComfortable}
         className="text-left"
-        style={{ minWidth: `${minWidth}px` }}
       >
-        <div className="sticky left-0 z-[1] min-w-0 bg-[var(--bg-canvas)] transition-colors group-hover/row:bg-[var(--item-hover-bg)]">
-          {childLabel ? (
+        <LinearDataPrimaryCell
+          sticky
+          leading={(
+            <EntityRowControls
+              noun={noun}
+              status={item.status === 'ACTIVE' ? 'active' : 'paused'}
+              statusLabel={statusLabel(item)}
+              delivery={onSetDelivery ? {
+                status: liveStatus === 'ACTIVE' ? 'active' : 'paused',
+                busy: Boolean(action?.busy || action?.undoing),
+                onChange: (next) => onSetDelivery(next ? 'ACTIVE' : 'PAUSED'),
+              } : undefined}
+              showStatus
+              readOnly
+              selected={false}
+              onToggleSelected={() => undefined}
+            />
+          )}
+          title={childLabel ? (
             <button
               type="button"
               onClick={onDrill}
-              className="block w-full truncate rounded-[var(--control-border-radius)] text-left text-[14px] font-medium text-[var(--text-primary)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--focus-ring-color)]"
+              className="block max-w-full truncate rounded-[var(--control-border-radius)] text-left underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--focus-ring-color)]"
               aria-label={`Show ${childLabel} in ${item.entity_name}`}
             >
               {item.entity_name}
             </button>
-          ) : (
-            <div className="truncate text-[14px] font-medium text-[var(--text-primary)]">{item.entity_name}</div>
-          )}
-          <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[12px] text-[var(--text-muted)]">
-            {onSetDelivery ? (
-              <LinearToggle
-                checked={liveStatus === 'ACTIVE'}
-                busy={action?.busy || action?.undoing}
-                onChange={(next) => onSetDelivery(next ? 'ACTIVE' : 'PAUSED')}
-                tooltipContent={liveStatus === 'ACTIVE' ? `Turn this ${noun} off` : `Turn this ${noun} on`}
-              />
-            ) : (
-              <span
-                aria-hidden="true"
-                className="h-1.5 w-1.5 shrink-0 rounded-full"
-                style={{ backgroundColor: statusDot(item) }}
-              />
-            )}
-            <span className="shrink-0">
-              {action?.status ? (action.status === 'ACTIVE' ? 'Active' : 'Paused') : statusLabel(item)}
-            </span>
-            <span aria-hidden="true">·</span>
-            <span className="truncate font-mono">Meta ID {item.entity_id}</span>
-          </div>
-        </div>
+          ) : item.entity_name}
+          subtitle={<span className="truncate font-mono">{item.entity_id}</span>}
+          dimmed={liveStatus !== 'ACTIVE'}
+          hint={item.entity_name}
+        />
 
-        <div className="min-w-0 text-right">
-          <div className="text-[14px] text-[var(--text-primary)] tabular-nums">
-            {formatMetricMoney(item.spend, item.currency)}
-          </div>
-          <div className="mt-1 flex items-center justify-end gap-1.5">
-            {pace.ratio !== null && (
-              <span
-                aria-hidden="true"
-                className="h-[var(--statistics-pace-track-height)] w-[var(--statistics-pace-track-width)] overflow-hidden rounded-full bg-[var(--statistics-pace-track)]"
-              >
+        <LinearDataMetricCell
+          value={formatMetricMoney(item.spend, item.currency)}
+          caption={(
+            <>
+              {pace.ratio !== null && (
                 <span
-                  className="block h-full rounded-full bg-[var(--statistics-pace-fill)]"
-                  style={{ width: `${Math.min(Math.max(pace.ratio, 0), 1) * 100}%` }}
-                />
-              </span>
-            )}
-            <span className="truncate text-[12px] text-[var(--text-muted)] tabular-nums">{pace.label}</span>
-          </div>
-        </div>
+                  aria-hidden="true"
+                  className="h-[var(--statistics-pace-track-height)] w-[var(--statistics-pace-track-width)] shrink-0 overflow-hidden rounded-full bg-[var(--statistics-pace-track)]"
+                >
+                  <span
+                    className="block h-full rounded-full bg-[var(--statistics-pace-fill)]"
+                    style={{ width: `${Math.min(Math.max(pace.ratio, 0), 1) * 100}%` }}
+                  />
+                </span>
+              )}
+              <span className="truncate">{pace.label}</span>
+            </>
+          )}
+        />
 
-        <div className="text-right text-[14px] text-[var(--text-primary)] tabular-nums">
-          {formatCount(definition.count(item))}
-        </div>
+        <LinearDataMetricCell value={formatCount(definition.count(item))} />
 
-        <div className="min-w-0 text-right">
-          <div className="text-[14px] font-medium text-[var(--text-primary)] tabular-nums">
-            {formatMetricMoney(definition.cost(item), item.currency)}
-          </div>
-          {!verdict.quiet && <DecisionNote verdict={verdict} className="mt-1 justify-end text-[12px]" />}
-        </div>
+        <LinearDataMetricCell
+          emphasis
+          value={formatMetricMoney(definition.cost(item), item.currency)}
+          caption={!verdict.quiet && <DecisionNote verdict={verdict} />}
+        />
 
         {change && (
-          <div className="min-w-0 text-right">
-            <ChangeNote change={change} className="justify-end text-[13px]" />
-            <div className="mt-1 truncate text-[12px] text-[var(--text-muted)]">vs previous</div>
-          </div>
+          <LinearDataMetricCell
+            value={<ChangeNote change={change} className="justify-end" />}
+            caption="vs previous"
+          />
         )}
 
         <div className="flex justify-end">
@@ -403,7 +395,6 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
       {(action?.message || action?.error) && (
         <div
           className="mt-1 flex flex-wrap items-center justify-between gap-2 rounded-[var(--control-border-radius)] bg-[var(--statistics-diagnostics-bg)] px-3 py-2"
-          style={{ minWidth: `${minWidth}px` }}
           role={action.error ? 'alert' : 'status'}
         >
           <span className={`min-w-0 text-[12px] ${action.error ? 'text-[var(--statistics-state-attention)]' : 'text-[var(--text-secondary)]'}`}>
@@ -426,7 +417,6 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
         <div
           id={diagnosticsId}
           className="mt-1 rounded-[var(--control-border-radius)] bg-[var(--statistics-diagnostics-bg)] p-3"
-          style={{ minWidth: `${minWidth}px` }}
         >
           <p className="text-[12px] text-[var(--text-secondary)]">{verdict.detail}</p>
           {onSetBudget && liveBudget > 0 && (
@@ -492,7 +482,7 @@ export const StatisticsView: React.FC = () => {
   const [hierarchyError, setHierarchyError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
   const [query, setQuery] = useState('');
-  const [density, setDensity] = useState<'comfortable' | 'compact'>('comfortable');
+  const [density, setDensity] = useState<'comfortable' | 'compact'>('compact');
   const [grouping, setGrouping] = useState<Grouping>('none');
   const [resultPreference, setResultPreference] = useState<ResultPreference>('auto');
   const [sortKey, setSortKey] = useState<StatisticsSort>('spend');
@@ -592,7 +582,6 @@ export const StatisticsView: React.FC = () => {
   const items = useMemo(() => hierarchy?.items ?? [], [hierarchy]);
   const comparisonMeta = hierarchy?.comparison;
   const comparisonAvailable = comparisonMeta?.available ?? false;
-  const tableMinWidth = comparisonAvailable ? TABLE_MIN_WIDTH + 130 : TABLE_MIN_WIDTH;
 
   /** The conversion event this ad account declares it is buying, if any. */
   const declaredResultKind: ResultKind | null = (
@@ -716,10 +705,10 @@ export const StatisticsView: React.FC = () => {
   }, [items, query, resultDefinition, resultKind, sortDirection, sortKey]);
 
   const columns: LinearDataListColumn[] = useMemo(() => [
-    { id: 'name', label: LEVEL_LABELS[queryLevel].singular.replace(/^./, (c) => c.toUpperCase()), width: 'minmax(240px, 1fr)', sortable: true },
-    { id: 'spend', label: 'Spend', width: '230px', align: 'right', sortable: true },
-    { id: 'results', label: resultDefinition.label, width: '110px', align: 'right', sortable: true },
-    { id: 'cost', label: resultDefinition.costLabel, width: '200px', align: 'right', sortable: true },
+    linearDataNameColumn({ width: 'minmax(260px, 1fr)' }),
+    { id: 'spend', label: 'Spend', width: '180px', align: 'right', sortable: true },
+    { id: 'results', label: resultDefinition.label, width: '100px', align: 'right', sortable: true },
+    { id: 'cost', label: resultDefinition.costLabel, width: '140px', align: 'right', sortable: true },
     ...(comparisonAvailable
       ? [{ id: 'change', label: 'Change', width: '120px', align: 'right' as const, sortable: true }]
       : []),
@@ -846,7 +835,6 @@ export const StatisticsView: React.FC = () => {
       key={item.entity_id}
       item={item}
       columns={columns}
-      minWidth={tableMinWidth}
       change={changeFor(item)}
       compact={density === 'compact'}
       resultKind={resultKind}
@@ -878,15 +866,15 @@ export const StatisticsView: React.FC = () => {
         if (groupItems.length === 0) return null;
         const presentation = DECISION_PRESENTATION[state];
         return (
-          <div key={state} style={{ minWidth: `${tableMinWidth}px` }}>
-            <LinearDataListGroupHeader
-              title={presentation.title}
-              count={groupItems.length}
-              dotColor={presentation.dotColor}
-              description={presentation.description}
-            />
-            <LinearDataListStack>{groupItems.map(renderRow)}</LinearDataListStack>
-          </div>
+          <LinearDataListGroup
+            key={state}
+            title={presentation.title}
+            count={groupItems.length}
+            dotColor={presentation.dotColor}
+            description={presentation.description}
+          >
+            {groupItems.map(renderRow)}
+          </LinearDataListGroup>
         );
       });
     }
@@ -895,15 +883,15 @@ export const StatisticsView: React.FC = () => {
       return statuses.map((status) => {
         const groupItems = visibleItems.filter((item) => statusLabel(item) === status);
         return (
-          <div key={status} style={{ minWidth: `${tableMinWidth}px` }}>
-            <LinearDataListGroupHeader
-              title={status}
-              count={groupItems.length}
-              dotColor={statusDot(groupItems[0])}
-              description={`Meta delivery status ${status.toLowerCase()}`}
-            />
-            <LinearDataListStack>{groupItems.map(renderRow)}</LinearDataListStack>
-          </div>
+          <LinearDataListGroup
+            key={status}
+            title={status}
+            count={groupItems.length}
+            dotColor={statusDot(groupItems[0])}
+            description={`Meta delivery status ${status.toLowerCase()}`}
+          >
+            {groupItems.map(renderRow)}
+          </LinearDataListGroup>
         );
       });
     }
@@ -976,26 +964,22 @@ export const StatisticsView: React.FC = () => {
     }
 
     return (
-      <LinearDataListViewport horizontal>
-        <div style={{ minWidth: `${tableMinWidth}px` }}>
-          <LinearDataListColumnHeader
-            columns={columns}
-            minWidth={tableMinWidth}
-            sortKey={sortKey}
-            sortDirection={sortDirection}
-            onSort={(columnId) => {
-              if (columnId === 'diagnostics') return;
-              if (sortKey === columnId) {
-                setSortDirection((current) => current === 'asc' ? 'desc' : 'asc');
-              } else {
-                setSortKey(columnId as StatisticsSort);
-                setSortDirection(columnId === 'name' || columnId === 'cost' ? 'asc' : 'desc');
-              }
-            }}
-          />
-          <LinearDataListStack>{renderGroups()}</LinearDataListStack>
-        </div>
-      </LinearDataListViewport>
+      <LinearDataTable
+        columns={columns}
+        sortKey={sortKey}
+        sortDirection={sortDirection}
+        onSort={(columnId) => {
+          if (columnId === 'diagnostics') return;
+          if (sortKey === columnId) {
+            setSortDirection((current) => current === 'asc' ? 'desc' : 'asc');
+          } else {
+            setSortKey(columnId as StatisticsSort);
+            setSortDirection(columnId === 'name' || columnId === 'cost' ? 'asc' : 'desc');
+          }
+        }}
+      >
+        {renderGroups()}
+      </LinearDataTable>
     );
   };
 

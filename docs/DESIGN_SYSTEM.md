@@ -54,6 +54,7 @@ Implemented shared primitives:
 | Button | `Button` | primary/secondary, hover, keyboard focus, disabled |
 | Tabs | `LinearTabs` | selected, hover, keyboard focus, overflow |
 | DataList | `LinearDataList` | loading, empty, populated, partial/error |
+| DataTable | `LinearDataTable`, `LinearDataPrimaryCell`, `LinearDataMetricCell` | sortable header, horizontal scroll, grouped and flat rows |
 | Checkbox | `LinearCheckbox` | unchecked, checked, focus, disabled |
 | Toggle | `LinearToggle` | on, off, focus, disabled/busy where applicable |
 | DropdownMenu | `DropdownMenu` | open, selected, keyboard navigation, dismiss |

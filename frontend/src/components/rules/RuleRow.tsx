@@ -3,7 +3,7 @@ import { RuleItem, useAppStore } from '@/store/useAppStore';
 import { LinearCheckbox } from '@/ui/LinearCheckbox';
 import { LinearToggle } from '@/ui/LinearToggle';
 
-import { LinearDataListRow } from '@/ui/LinearDataList';
+import { LinearDataListRow, LinearDataMetricCell, LinearDataPrimaryCell } from '@/ui/LinearDataList';
 import { LinearLabelPill } from '@/ui/LinearLabelPill';
 import { ruleActionTone } from '@/lib/rules';
 import type { RuleActionTone } from '@/lib/rules';
@@ -72,33 +72,39 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
       selected={isSelected}
       className="cursor-pointer"
     >
-      <div className="flex min-w-0 items-center gap-3">
-        <LinearCheckbox checked={isSelected} onChange={() => toggleRuleSelection(rule.id)} />
-        {rulesDisplayProperties.status !== false && (
-          <div onClick={(e) => e.stopPropagation()}>
-            <LinearToggle
-              checked={isDeliveryOn}
-              disabled={rule.needsReview && !isDeliveryOn}
-              tooltipContent={
-                rule.needsReview && !isDeliveryOn
-                  ? rule.reviewReason || 'Re-save this rule before switching it on'
-                  : isDeliveryOn
-                  ? 'Pause rule'
-                  : 'Resume rule'
-              }
-              onChange={() => void toggleRuleStatus(rule.id)}
-            />
-          </div>
+      <LinearDataPrimaryCell
+        leading={(
+          <>
+            <LinearCheckbox checked={isSelected} onChange={() => toggleRuleSelection(rule.id)} />
+            {rulesDisplayProperties.status !== false && (
+              <div onClick={(e) => e.stopPropagation()}>
+                <LinearToggle
+                  checked={isDeliveryOn}
+                  disabled={rule.needsReview && !isDeliveryOn}
+                  tooltipContent={
+                    rule.needsReview && !isDeliveryOn
+                      ? rule.reviewReason || 'Re-save this rule before switching it on'
+                      : isDeliveryOn
+                      ? 'Pause rule'
+                      : 'Resume rule'
+                  }
+                  onChange={() => void toggleRuleStatus(rule.id)}
+                />
+              </div>
+            )}
+          </>
         )}
-        <span className="truncate text-[13px] font-[450]" style={{ color: isDeliveryOn ? 'var(--text-primary)' : 'var(--text-muted)' }}>{rule.name}</span>
-        {rule.needsReview && (
+        title={rule.name}
+        badge={rule.needsReview && (
           <LinearLabelPill
             label="Needs review"
             dotColor="var(--rules-action-stop-text)"
             className="shrink-0"
           />
         )}
-      </div>
+        dimmed={!isDeliveryOn}
+        hint={rule.name}
+      />
 
       {rulesDisplayProperties.condition !== false && (
           <div className="flex min-w-0 items-center overflow-hidden">
@@ -163,16 +169,7 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
       )}
 
       {rulesDisplayProperties.lastRun !== false && (
-          <span
-            style={{
-              fontSize: '12px',
-              fontWeight: 450,
-              color: 'var(--text-tertiary)',
-            }}
-            className="truncate text-right whitespace-nowrap"
-          >
-            {rule.lastRun}
-          </span>
+        <LinearDataMetricCell value={rule.lastRun} valueClassName="font-[450] text-[var(--text-tertiary)]" />
       )}
 
         <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>

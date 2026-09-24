@@ -1,15 +1,8 @@
-import { LinearDataListColumn } from '@/ui/LinearDataList';
+import { LinearDataListColumn, linearDataNameColumn } from '@/ui/LinearDataList';
 
 export const getRulesColumns = (properties: Record<string, boolean>): LinearDataListColumn[] => {
   const columns: LinearDataListColumn[] = [
-    {
-      id: 'name',
-      label: 'Name',
-      width: 'minmax(280px, 1fr)',
-      // Compensate for the sortable header pill's 6px internal padding.
-      headerInset: properties.status !== false ? 64 : 24,
-      sortable: true,
-    },
+    linearDataNameColumn({ width: 'minmax(260px, 1fr)', statusVisible: properties.status !== false }),
   ];
 
   if (properties.condition !== false) columns.push({ id: 'condition', label: 'Condition', width: '220px' });
@@ -21,12 +14,4 @@ export const getRulesColumns = (properties: Record<string, boolean>): LinearData
   columns.push({ id: 'actions', label: '', width: '32px' });
 
   return columns;
-};
-
-export const getRulesTableMinWidth = (columns: LinearDataListColumn[]) => {
-  const width = columns.reduce((total, column) => {
-    if (column.width.startsWith('minmax')) return total + 280;
-    return total + (Number.parseInt(column.width, 10) || 0);
-  }, 0);
-  return width + Math.max(columns.length - 1, 0) * 6 + 24;
 };
