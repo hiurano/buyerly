@@ -548,7 +548,6 @@ export const CampaignsView: React.FC = () => {
         readOnly
         selectable
         delivery={deliveryControl('campaign', campaign.id, campaign.status)}
-        showIdentifier
       />
     ));
   };

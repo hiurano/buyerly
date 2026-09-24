@@ -346,9 +346,8 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
               {item.entity_name}
             </button>
           ) : item.entity_name}
-          subtitle={<span className="truncate font-mono">{item.entity_id}</span>}
           dimmed={liveStatus !== 'ACTIVE'}
-          hint={item.entity_name}
+          hint={`${item.entity_name} · ${item.entity_id}`}
         />
 
         <LinearDataMetricCell

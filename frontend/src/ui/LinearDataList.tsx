@@ -363,21 +363,19 @@ interface LinearDataPrimaryCellProps {
   title: React.ReactNode;
   /** Pills or badges that follow the title on the same line. */
   badge?: React.ReactNode;
-  subtitle?: React.ReactNode;
   /** An inactive entity keeps its row but recedes. */
   dimmed?: boolean;
-  /** Full name for hover when the title truncates. */
+  /** Full name and Meta ID on hover; the row itself shows only the name. */
   hint?: string;
   /** Pins the cell while the table scrolls horizontally. */
   sticky?: boolean;
 }
 
-/** The Name cell: leading controls, a truncating title and one line of context. */
+/** The Name cell: leading controls, a truncating title and an optional badge. */
 export const LinearDataPrimaryCell: React.FC<LinearDataPrimaryCellProps> = ({
   leading,
   title,
   badge,
-  subtitle,
   dimmed = false,
   hint,
   sticky = false,
@@ -401,11 +399,6 @@ export const LinearDataPrimaryCell: React.FC<LinearDataPrimaryCellProps> = ({
         </span>
         {badge}
       </div>
-      {subtitle && (
-        <div className="flex min-w-0 items-center gap-1.5 text-[11px] leading-4 text-[var(--text-muted)]">
-          {subtitle}
-        </div>
-      )}
     </div>
   </div>
 );
