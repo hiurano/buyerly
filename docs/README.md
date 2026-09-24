@@ -13,6 +13,7 @@
 | Деплой и восстановление | [DEPLOYMENT.md](DEPLOYMENT.md), [INCIDENT_RUNBOOKS.md](INCIDENT_RUNBOOKS.md), [RELIABILITY_SLO.md](RELIABILITY_SLO.md) |
 | Миграции БД | [database_modernization_and_migrations.md](database_modernization_and_migrations.md) |
 | Дальнейшие задачи | [PRODUCT_BACKLOG.md](PRODUCT_BACKLOG.md) |
+| Аудит и этапы генеральной уборки | [PROJECT_CLEANUP_AUDIT.md](PROJECT_CLEANUP_AUDIT.md), [implementation_plan.md](../implementation_plan.md) |
 | Выпущенные изменения | [CHANGELOG.md](../CHANGELOG.md) |
 
 ## Материалы, требующие проверки внешнего состояния

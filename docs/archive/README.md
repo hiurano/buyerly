@@ -4,6 +4,7 @@
 
 ## Планы
 
+- [implementation_plan_public_website.md](plans/implementation_plan_public_website.md)
 - [implementation_plan_86eyr5qb9.md](plans/implementation_plan_86eyr5qb9.md)
 - [implementation_plan_86eyr5qba.md](plans/implementation_plan_86eyr5qba.md)
 - [implementation_plan_86eyr5qbd.md](plans/implementation_plan_86eyr5qbd.md)
