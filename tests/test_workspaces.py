@@ -383,9 +383,6 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
         artem_data = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
         artem_headers = {**artem_data}
 
-        bob_data = await session_headers(self.test_session_maker, {'id': 777000222, 'first_name': 'Bob', 'username': 'bob'})
-        bob_headers = {**bob_data}
-
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
             # Create Bob and Charlie in DB
@@ -446,6 +443,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(patch_self.status_code, 400)
 
+            bob_headers = await session_headers(self.test_session_maker, {'id': 777000222, 'first_name': 'Bob', 'username': 'bob'})
             # 4. Bob (admin) promotes Charlie to admin
             patch_charlie = await client.patch(
                 f'/api/workspaces/{ws_id}/members/{charlie_id}',
@@ -504,9 +502,6 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
     async def test_workspace_invites_api_lifecycle(self):
         artem_data = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
         artem_headers = {**artem_data}
-
-        dave_data = await session_headers(self.test_session_maker, {'id': 777000444, 'first_name': 'Dave', 'username': 'dave'})
-        dave_headers = {**dave_data}
 
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
@@ -590,6 +585,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(check_revoked.json()['valid'])
             self.assertEqual(check_revoked.json()['status'], 'revoked')
 
+            dave_headers = await session_headers(self.test_session_maker, {'id': 777000444, 'first_name': 'Dave', 'username': 'dave'})
             # Dave tries to accept revoked token -> 400
             accept_revoked = await client.post(f'/api/invites/{invite_token}/accept', headers=dave_headers)
             self.assertEqual(accept_revoked.status_code, 400)
@@ -708,9 +704,6 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
         artem_data = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
         artem_headers = {**artem_data}
 
-        viewer_data = await session_headers(self.test_session_maker, {'id': 777000555, 'first_name': 'Victor', 'username': 'victor_viewer'})
-        viewer_headers = {**viewer_data}
-
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
             # Create Victor (viewer in Buyerly)
@@ -730,6 +723,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 await session.commit()
                 ws_id = ws.id
 
+            viewer_headers = await session_headers(self.test_session_maker, {'id': 777000555, 'first_name': 'Victor', 'username': 'victor_viewer'})
             # 1. Victor can read accounts and presets
             accs_res = await client.get('/api/accounts', headers=viewer_headers)
             self.assertEqual(accs_res.status_code, 200)
