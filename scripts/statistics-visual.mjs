@@ -21,15 +21,21 @@ import { createRoot } from 'react-dom/client';
 import { StatisticsView } from './src/components/statistics/StatisticsView';
 import { Sidebar } from './src/components/sidebar/Sidebar';
 import { TooltipProvider } from './src/ui/Tooltip';
+import { ToastRegion } from './src/ui/ToastRegion';
+import { useUndoShortcuts } from './src/lib/undoHistory';
 import { useAppStore } from './src/store/useAppStore';
 import './src/styles/index.css';
 useAppStore.setState({ activeTab: 'statistics', isSidebarCollapsed: innerWidth < 768 });
 document.documentElement.dataset.theme = 'dark';
-createRoot(document.getElementById('root')!).render(
-  <TooltipProvider><div className="app-shell flex h-screen w-screen overflow-hidden">
-    <Sidebar /><main className="linear-floating-canvas"><StatisticsView /></main>
-  </div></TooltipProvider>
-);
+const Shell = () => {
+  useUndoShortcuts();
+  return (
+    <TooltipProvider><div className="app-shell flex h-screen w-screen overflow-hidden">
+      <Sidebar /><main className="linear-floating-canvas"><StatisticsView /></main>
+    </div><ToastRegion /></TooltipProvider>
+  );
+};
+createRoot(document.getElementById('root')!).render(<Shell />);
 `);
 const server = await createServer({ root, server: { port: 5173, host: '127.0.0.1' } });
 let browser;
@@ -181,21 +187,32 @@ try {
     await noOverflow();
     await screenshot('overview');
 
-    // Pausing is a real write: the row shows what was sent, says the stored
-    // snapshot has not caught up, and offers the way back.
+    // Pausing is a real write that shows on the row and says nothing; Ctrl+Z is
+    // the way back, and only the undo is announced.
+    const notifications = page.getByRole('region', { name: 'Notifications alt+T' });
+    const offNow = () => page.getByRole('switch', { name: 'Turn this campaign off' }).count();
+    const settle = async expected => {
+      for (let tries = 0; tries < 50 && await offNow() !== expected; tries += 1) await page.waitForTimeout(100);
+      return offNow();
+    };
+    const offSwitches = await offNow();
     await page.getByRole('switch', { name: 'Turn this campaign off' }).first().click();
-    await page.getByText('Stored Meta data still shows the previous value until its next sync.', { exact: false }).waitFor();
-    await page.getByRole('button', { name: 'Undo', exact: true }).waitFor();
+    assert.equal(await settle(offSwitches - 1), offSwitches - 1, `${width}: the paused row shows it`);
+    assert.equal(await notifications.getByText(/./).count(), 0, `${width}: a change raises no message`);
     await noOverflow();
     await screenshot('paused');
-    await page.getByRole('button', { name: 'Undo', exact: true }).click();
-    await page.getByRole('switch', { name: 'Turn this campaign off' }).first().waitFor();
+    await page.keyboard.press('Control+z');
+    await notifications.getByText('Undo', { exact: true }).waitFor();
+    assert.equal(await settle(offSwitches), offSwitches, `${width}: undo returns the campaign to delivering`);
+    await screenshot('undone');
 
     // A refusal from Meta is recoverable and stated, never silent.
     await page.getByRole('switch', { name: 'Turn this campaign off' }).last().click();
-    await page.getByText('Meta could not change this campaign.', { exact: false }).waitFor();
+    await notifications.getByText('Meta could not change this campaign.', { exact: false }).waitFor();
     await screenshot('delivery-error');
-    await page.getByRole('button', { name: 'Dismiss', exact: true }).first().click();
+    for (let open = await notifications.getByRole('button', { name: 'Dismiss notification' }).count(); open > 0; open -= 1) {
+      await notifications.getByRole('button', { name: 'Dismiss notification' }).first().click();
+    }
 
     // The trend is one chart, opened on request, and every value stays
     // readable without a pointer.
@@ -242,17 +259,22 @@ try {
     await screenshot('diagnostics');
     const budget = page.getByRole('textbox', { name: 'Daily budget for this campaign in USD' });
     await budget.fill('1100');
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await page.getByText('Campaign daily budget updated.', { exact: false }).waitFor();
+    await Promise.all([
+      page.waitForResponse(response => response.url().endsWith('/budget')),
+      page.getByRole('button', { name: 'Save', exact: true }).click(),
+    ]);
     assert.equal(budgetWrites.at(-1).daily_budget, 1100);
-    await page.getByRole('button', { name: 'Dismiss', exact: true }).last().click();
     assert.equal(await budget.inputValue(), '1100');
     await budget.fill('1500');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     assert.equal(budgetWrites.length, 1);
-    await page.getByRole('button', { name: 'Confirm change', exact: true }).click();
-    await page.getByText('Campaign daily budget updated.', { exact: false }).waitFor();
+    await Promise.all([
+      page.waitForResponse(response => response.url().endsWith('/budget')),
+      page.getByRole('button', { name: 'Confirm change', exact: true }).click(),
+    ]);
     assert.equal(budgetWrites.at(-1).daily_budget, 1500);
+    // A saved budget shows in the field and says nothing.
+    assert.equal(await notifications.getByText('Campaign daily budget updated.', { exact: false }).count(), 0);
     await noOverflow();
     await screenshot('budget-saved');
     await page.getByRole('button', { name: 'Hide diagnostics for QA campaign 1', exact: true }).click();

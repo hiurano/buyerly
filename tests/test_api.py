@@ -1646,13 +1646,19 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(foreign_restore.status_code, 404)
 
-            # The group comes back without the rule that is still deleted.
+            # The rule left the group when it was deleted, so the group comes
+            # back with the rules it held at its own deletion.
             restored_group = await client.post(
                 f"/api/deleted-items/{group_item_id}/restore", headers=buyer_headers
             )
             self.assertEqual(restored_group.status_code, 200)
             self.assertEqual(restored_group.json()["entity_id"], group["id"])
-            self.assertEqual(restored_group.json()["missing_rule_ids"], [stop_id])
+            self.assertEqual(restored_group.json()["missing_rule_ids"], [])
+            groups = (await client.get("/api/rule-groups", headers=buyer_headers)).json()
+            self.assertEqual(
+                next(item for item in groups if item["id"] == group["id"])["preset_ids"],
+                [notify_id],
+            )
 
             # The rule comes back under its id, into that group and onto the
             # account with the scope it had there.

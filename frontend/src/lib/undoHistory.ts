@@ -62,12 +62,14 @@ async function step(direction: 'undo' | 'redo'): Promise<void> {
   }
 }
 
+/** Inputs that are not text (a checkbox, a switch) leave Ctrl+Z to the history. */
+const NON_TEXT_INPUTS = new Set(['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'color', 'file']);
+
 const isTypingTarget = (target: EventTarget | null) => {
   const element = target as HTMLElement | null;
-  return Boolean(
-    element
-    && (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.isContentEditable),
-  );
+  if (!element) return false;
+  if (element.tagName === 'INPUT') return !NON_TEXT_INPUTS.has((element as HTMLInputElement).type);
+  return element.tagName === 'TEXTAREA' || element.isContentEditable;
 };
 
 /**
