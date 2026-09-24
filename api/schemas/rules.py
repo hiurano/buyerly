@@ -127,3 +127,25 @@ class ApplyPresetRequest(BaseModel):
 
     preset_id: int = Field(gt=0)
     scope: RuleScopeItem = Field(default_factory=RuleScopeItem)
+
+
+class DeletedItemResponse(BaseModel):
+    id: int
+    kind: Literal["rule", "rule_group"]
+    entity_id: int
+    name: str
+    deleted_at: str
+    # Past this moment the item is gone for good.
+    purge_at: str
+    deleted_by: str = ""
+
+
+class RestoreDeletedItemResponse(BaseModel):
+    kind: Literal["rule", "rule_group"]
+    entity_id: int
+    name: str
+    # Ad accounts a restored rule could not return to: gone, or now running a
+    # rule it would contradict.
+    skipped_account_ids: List[str] = Field(default_factory=list)
+    # Rules of a restored group that were deleted in the meantime.
+    missing_rule_ids: List[int] = Field(default_factory=list)

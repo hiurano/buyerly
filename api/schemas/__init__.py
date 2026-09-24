@@ -45,6 +45,8 @@ from api.schemas.rules import (
     RuleGroupsReorderRequest,
     RuleScopeItem,
     ApplyPresetRequest,
+    DeletedItemResponse,
+    RestoreDeletedItemResponse,
 )
 from api.schemas.delivery import (
     EntityBudgetRequest,
@@ -111,6 +113,8 @@ __all__ = [
     "RuleGroupsReorderRequest",
     "RuleScopeItem",
     "ApplyPresetRequest",
+    "DeletedItemResponse",
+    "RestoreDeletedItemResponse",
     "EntityBudgetRequest",
     "EntityDeliveryRequest",
     "EntityLevel",

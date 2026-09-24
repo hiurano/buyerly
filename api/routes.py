@@ -71,6 +71,7 @@ from api.routers import (
     rules_router,
     settings_router,
     summary_router,
+    trash_router,
     workspaces_router,
     health_router,
     analytics_router,
@@ -137,6 +138,7 @@ router.include_router(members_router)
 router.include_router(onboarding_router)
 router.include_router(accounts_router)
 router.include_router(rules_router)
+router.include_router(trash_router)
 router.include_router(summary_router)
 router.include_router(settings_router)
 router.include_router(audit_router)

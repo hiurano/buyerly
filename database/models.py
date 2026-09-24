@@ -472,6 +472,30 @@ class RuleGroupItem(Base):
         return f"<RuleGroupItem(group={self.group_id}, preset={self.preset_id}, position={self.position})>"
 
 
+class DeletedItem(Base):
+    """A deleted rule or rule group, kept restorable for a retention window.
+
+    Deletion still removes the live row, so the worker, the rule engine and
+    every list query never see it. The snapshot holds exactly what deletion
+    removed — the row itself, its group memberships and, for a rule, the ad
+    account attachments — so a restore puts it back under the same id.
+    """
+
+    __tablename__ = "deleted_items"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    workspace_id = Column(Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True)
+    kind = Column(String, nullable=False, doc="'rule' or 'rule_group'")
+    entity_id = Column(Integer, nullable=False, doc="Id the entity had, and gets back on restore")
+    name = Column(String, default="", nullable=False)
+    snapshot = Column(JSONB, default=dict, nullable=False)
+    deleted_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    deleted_at = Column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)
+
+    def __repr__(self):
+        return f"<DeletedItem(kind='{self.kind}', entity_id={self.entity_id}, name='{self.name}')>"
+
+
 class RuleExamplesBootstrap(Base):
     """One-time marker so deleted examples are never silently recreated."""
 

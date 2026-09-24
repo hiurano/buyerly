@@ -63,6 +63,7 @@ POST_BASELINE_TABLES: set[str] = {
     "account_health",
     "allowed_emails",
     "analytics_entity_daily_facts",
+    "deleted_items",
     "meta_connection_invites",
 }
 REQUIRED_COLUMN_TYPES = {
