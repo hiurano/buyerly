@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### Changed
+- Вход по логину и паролю стал основным: на `/login` форма «Username or email» + пароль (`POST /api/auth/login`). Логином принимаются только `username` и email аккаунта; вход по отображаемому имени и `telegram_id` убран.
+- Вход по одноразовому коду и ссылке из письма остался только для приглашений в workspace: без `invite_token` `request-temporary-password` отвечает 403, а выданные ранее код или ссылка без приглашения больше не открывают сессию. Вернуть прежнее поведение можно через `EMAIL_LOGIN_WITHOUT_INVITE=true`.
+
+### Added
+- `scripts/set_user_password.py`: создаёт пользователя для входа по паролю или задаёт существующему новый username и пароль (`--email` переименовывает аккаунт с этим email, сохраняя его данные). Пароль вводится интерактивно: `docker compose exec api python -m scripts.set_user_password <username>`.
+
 ### Removed
 - Удалён вход через Telegram Mini App: заголовки `Authorization: tma <initData>` и `X-Init-Data`, настройки `BOT_TOKEN` и `TELEGRAM_INIT_DATA_MAX_AGE_SECONDS`. `OTP_PEPPER` теперь обязателен, запасного `BOT_TOKEN` больше нет. API-тесты авторизуются через web-сессию (cookie + CSRF).
 - Удалены Telegram-бот и уведомления в Telegram: сервис `bot` (`buyerly-telegram-bot`), пакет `bot/` и зависимость `aiogram`. Worker запускается без `BOT_TOKEN`, события кабинетов и срабатывания правил остаются в Audit Log. Из правил убрана галочка «Notify in Telegram» (`notify_tg`), из профиля — поле `telegram_id` в `update-profile` и ответах API. Вход через Telegram Mini App пока сохранён и работает только при заданном `BOT_TOKEN`.

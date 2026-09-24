@@ -3,7 +3,7 @@ import { apiRequest } from '@/lib/api';
 import type { LoginResult } from '@/lib/types';
 import { AuthFrame, BuyerlyBrand } from './AuthFrame';
 
-type LoginStage = 'intro' | 'email' | 'check' | 'code';
+type LoginStage = 'password' | 'email' | 'check' | 'code';
 
 interface LoginViewProps {
   inviteToken?: string;
@@ -18,11 +18,36 @@ export const LoginView: React.FC<LoginViewProps> = ({
   startWithEmail = false,
   onAuthenticated,
 }) => {
-  const [stage, setStage] = useState<LoginStage>(startWithEmail ? 'email' : 'intro');
+  const [stage, setStage] = useState<LoginStage>(startWithEmail ? 'email' : 'password');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [email, setEmail] = useState(initialEmail);
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  const logInWithPassword = async (event: FormEvent) => {
+    event.preventDefault();
+    const normalizedIdentifier = identifier.trim();
+    if (!normalizedIdentifier || !password) {
+      setError('Enter your username and password');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      const result = await apiRequest<LoginResult>('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ username: normalizedIdentifier, password }),
+      });
+      await onAuthenticated(result);
+    } catch (loginError) {
+      setPassword('');
+      setError(loginError instanceof Error ? loginError.message : 'Invalid username or password');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const requestLogin = async (event?: FormEvent) => {
     event?.preventDefault();
@@ -76,13 +101,53 @@ export const LoginView: React.FC<LoginViewProps> = ({
       <section className="buyerly-auth-card">
         <BuyerlyBrand />
 
-        {stage === 'intro' && (
-          <>
+        {stage === 'password' && (
+          <form onSubmit={logInWithPassword} noValidate>
             <h1>Log in to Buyerly</h1>
-            <button className="buyerly-auth-button" type="button" onClick={() => setStage('email')}>
-              Continue with email
+            <label className="buyerly-auth-field">
+              <span className="sr-only">Username or email</span>
+              <input
+                type="text"
+                name="username"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                autoFocus
+                placeholder="Username or email"
+                value={identifier}
+                onChange={(event) => setIdentifier(event.target.value)}
+                aria-invalid={Boolean(error)}
+              />
+            </label>
+            <label className="buyerly-auth-field">
+              <span className="sr-only">Password</span>
+              <input
+                type="password"
+                name="password"
+                autoComplete="current-password"
+                placeholder="Password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                aria-invalid={Boolean(error)}
+              />
+            </label>
+            {error && <p className="buyerly-auth-error" role="alert">{error}</p>}
+            <button className="buyerly-auth-button" type="submit" disabled={busy}>
+              {busy ? 'Logging in…' : 'Log in'}
             </button>
-          </>
+            {inviteToken && (
+              <button
+                className="buyerly-auth-text-button"
+                type="button"
+                onClick={() => {
+                  setError('');
+                  setStage('email');
+                }}
+              >
+                Continue with email
+              </button>
+            )}
+          </form>
         )}
 
         {stage === 'email' && (
@@ -111,7 +176,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               type="button"
               onClick={() => {
                 setError('');
-                setStage('intro');
+                setStage('password');
               }}
             >
               Back to login
@@ -135,7 +200,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               type="button"
               onClick={() => {
                 setError('');
-                setStage('intro');
+                setStage('password');
               }}
             >
               Back to login

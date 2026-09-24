@@ -62,6 +62,19 @@ cross-origin клиентов; `ENABLE_DEV_AUTH` в production всегда до
 первом запуске пустой установки и после создания администратора должна быть
 удалена. Полный перечень с безопасными значениями находится в `.env.example`.
 
+Вход в приложение — по логину (username или email) и паролю. Одноразовый код и
+ссылка на email работают только для входа по приглашению в workspace;
+`EMAIL_LOGIN_WITHOUT_INVITE` (по умолчанию `false`) при значении `true` возвращает
+их для всех. Пользователя для входа
+по паролю создаёт или обновляет команда внутри API-контейнера (пароль
+запрашивается интерактивно и нигде не сохраняется открытым текстом):
+
+```bash
+docker compose exec api python -m scripts.set_user_password <username>
+# переименовать существующий email-аккаунт, сохранив его workspaces:
+docker compose exec api python -m scripts.set_user_password <username> --email <email>
+```
+
 Поддерживаемый почтовый transport — Resend REST API; SMTP-параметры runtime не
 использует.
 

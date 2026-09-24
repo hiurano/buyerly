@@ -179,7 +179,10 @@ class TestReactFrontendContract(unittest.TestCase):
             / "RuleSelectorPopover.tsx"
         ).read_text()
 
-    def test_login_surface_is_email_only_and_explains_both_credentials(self):
+    def test_login_surface_is_password_first_with_invite_only_email(self):
+        self.assertIn("'/api/auth/login'", self.login)
+        self.assertIn('autoComplete="current-password"', self.login)
+        self.assertIn("{inviteToken && (", self.login)
         self.assertIn("Continue with email", self.login)
         self.assertIn("temporary login link and a six-digit code", self.login)
         self.assertIn("Enter code manually", self.login)

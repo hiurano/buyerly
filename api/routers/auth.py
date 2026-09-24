@@ -67,6 +67,11 @@ from services.otp import (
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Auth & Profile"])
 
+EMAIL_LOGIN_INVITE_ONLY_DETAIL = (
+    "Email sign-in is available only through a workspace invitation. "
+    "Log in with your username and password."
+)
+
 
 def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
@@ -183,6 +188,10 @@ async def _complete_passwordless_login(
     response: Response,
 ) -> LoginResponse:
     email_clean = email.strip().lower()
+    if invite_id is None and not settings.EMAIL_LOGIN_WITHOUT_INVITE:
+        # Email sign-in is reserved for invitations; keep the credential consumed.
+        await session.commit()
+        raise HTTPException(status_code=403, detail=EMAIL_LOGIN_INVITE_ONLY_DETAIL)
     if invite_id is None:
         # Preserve the authorization context captured when the email was sent.
         # Recheck direct access (allowlist or approved membership), never fall
@@ -273,6 +282,8 @@ async def request_temporary_password(req: RequestTemporaryPasswordRequest):
     email_clean = req.email.strip().lower()
     if "@" not in email_clean or "." not in email_clean:
         raise HTTPException(status_code=400, detail="Invalid email address")
+    if not req.invite_token and not settings.EMAIL_LOGIN_WITHOUT_INVITE:
+        raise HTTPException(status_code=403, detail=EMAIL_LOGIN_INVITE_ONLY_DETAIL)
 
     async with async_session_maker() as session:
         is_allowed, invite = await _resolve_login_authorization(
@@ -342,26 +353,24 @@ async def request_temporary_password(req: RequestTemporaryPasswordRequest):
 )
 async def login_user(req: LoginRequest, request: Request, response: Response):
     async with async_session_maker() as session:
-        uname = req.username.strip()
+        identifier = req.username.strip().lower()
 
-        # Prefer stable identifiers (username, email, or telegram_id). A display name is accepted only when unique.
-        stmt = select(User).where(
-            (func.lower(User.username) == uname.lower())
-            | (func.lower(User.email) == uname.lower())
-            | (User.telegram_id == uname)
-        )
-        res = await session.execute(stmt)
-        user = res.scalar_one_or_none()
-
-        if not user and uname:
-            display_name_result = await session.execute(
+        # Only stable identifiers sign in: the username or the account email.
+        # An exact username match wins if another account uses it as an email.
+        matches = (
+            await session.execute(
                 select(User)
-                .where(func.lower(User.full_name) == uname.lower())
+                .where(
+                    (func.lower(User.username) == identifier)
+                    | (func.lower(User.email) == identifier)
+                )
                 .limit(2)
             )
-            display_name_matches = display_name_result.scalars().all()
-            if len(display_name_matches) == 1:
-                user = display_name_matches[0]
+        ).scalars().all()
+        user = next(
+            (item for item in matches if item.username.lower() == identifier),
+            matches[0] if len(matches) == 1 else None,
+        )
 
         if not user or not verify_password(req.password, user.password_hash):
             raise HTTPException(status_code=401, detail="Invalid username or password")

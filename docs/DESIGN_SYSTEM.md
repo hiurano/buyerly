@@ -133,7 +133,7 @@ first screen only by causing a frequent decision.
 
 ### Auth and onboarding
 
-- passwordless login, workspace creation and initial profile setup remain separate, comprehensible states;
+- password login (email code or link only for invitations), workspace creation and initial profile setup remain separate, comprehensible states;
 - blocked invitation or whitelist checks surface a clear next action;
 - authenticated product navigation is unavailable until the session and workspace are resolved.
 
