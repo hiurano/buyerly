@@ -17,7 +17,6 @@ interface CampaignRowProps {
   /** Present when the row may really change delivery in Meta. */
   delivery?: DeliveryControl;
   properties?: Record<string, boolean>;
-  showIdentifier?: boolean;
 }
 
 export const CampaignRow: React.FC<CampaignRowProps> = ({
@@ -26,7 +25,6 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
   selectable = false,
   delivery,
   properties,
-  showIdentifier = false,
 }) => {
   const {
     selectedCampaignIds,
@@ -104,7 +102,6 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
             />
           )}
           title={campaign.name}
-          subtitle={showIdentifier ? <span className="truncate font-mono">{campaign.identifier}</span> : undefined}
           dimmed={isDeliveryKnown && !isDeliveryOn}
           hint={`${campaign.name} · ${campaign.identifier}`}
         />

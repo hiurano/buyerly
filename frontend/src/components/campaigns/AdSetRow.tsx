@@ -54,11 +54,6 @@ export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, sel
           />
         )}
         title={adSet.name}
-        subtitle={(
-          <span className="truncate">
-            {adSet.campaignName} · <span className="font-mono">{adSet.identifier}</span>
-          </span>
-        )}
         dimmed={isDeliveryKnown && !isDeliveryOn}
         hint={`${adSet.name} · ${adSet.identifier}`}
       />

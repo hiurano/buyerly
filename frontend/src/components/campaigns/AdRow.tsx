@@ -47,9 +47,8 @@ export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, selectable =
           />
         )}
         title={ad.name}
-        subtitle={<span className="truncate">{ad.campaignName} › {ad.adSetName}</span>}
         dimmed={isDeliveryKnown && !isDeliveryOn}
-        hint={ad.name}
+        hint={`${ad.name} · ${ad.identifier}`}
       />
 
       {displayProperties.ctr !== false && <LinearDataMetricCell value={ad.ctr} />}
