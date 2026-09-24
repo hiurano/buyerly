@@ -41,6 +41,7 @@ from database.models import (
     MetaOAuthState,
     User,
 )
+from api.meta_dependencies import get_meta_client
 from meta_api.client import MetaClient
 from meta_api.oauth import (
     REQUIRED_META_SCOPES,
@@ -55,7 +56,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/meta", tags=["Meta OAuth"])
 OAUTH_STATE_TTL_MINUTES = 10
 INVITE_DEFAULT_TTL_HOURS = 24
-meta_client = MetaClient()
 
 
 class MetaAccountImportRequest(BaseModel):
@@ -1135,6 +1135,7 @@ async def import_accounts(
     connection_id: int,
     payload: MetaAccountImportRequest,
     user: User = Depends(get_current_user),
+    meta_client: MetaClient = Depends(get_meta_client),
 ):
     requested_ids: list[str] = []
     seen: set[str] = set()

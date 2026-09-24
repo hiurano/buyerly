@@ -15,20 +15,34 @@ from core.rate_limit import limiter
 from core.workspace_slugs import RESERVED_WORKSPACE_SLUGS
 from database.db import async_session_maker
 from services.image_uploads import UPLOADS_ROOT, cleanup_stale_workspace_logos
+from meta_api.client import MetaClient
+from services.inventory_cache import PostgreSQLInventoryCache
 
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # A second lifespan on the same app must not reuse its closed client.
+    if app.state.meta_client is None:
+        app.state.meta_client = _create_meta_client()
+    client = app.state.meta_client
     try:
-        async with async_session_maker() as session:
-            removed = await cleanup_stale_workspace_logos(session)
-        if removed:
-            logger.info("Removed %s stale workspace logo uploads", removed)
-    except Exception:
-        logger.exception("Failed to clean stale workspace logo uploads")
-    yield
+        try:
+            async with async_session_maker() as session:
+                removed = await cleanup_stale_workspace_logos(session)
+            if removed:
+                logger.info("Removed %s stale workspace logo uploads", removed)
+        except Exception:
+            logger.exception("Failed to clean stale workspace logo uploads")
+        yield
+    finally:
+        app.state.meta_client = None
+        await client.aclose()
+
+
+def _create_meta_client() -> MetaClient:
+    return MetaClient(cache_provider=PostgreSQLInventoryCache(session_factory=async_session_maker))
 
 
 def create_app() -> FastAPI:
@@ -38,6 +52,8 @@ def create_app() -> FastAPI:
         description="FastAPI backend for Buyerly AI Media Buyer",
         lifespan=lifespan,
     )
+    # MetaClient opens HTTP connections lazily. Assembly itself performs no I/O.
+    app.state.meta_client = _create_meta_client()
 
     # Security, payload size limit, and caching headers middleware
     @app.middleware("http")

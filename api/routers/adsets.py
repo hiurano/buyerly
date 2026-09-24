@@ -21,11 +21,11 @@ from core.ownership import entity_is_owned_by, owned_by
 from database.db import async_session_maker
 from database.models import Account, StoppedAdSet, User
 from meta_api.client import MetaClient
-from services.inventory_cache import AdsetInventoryService, PostgreSQLInventoryCache
+from api.meta_dependencies import get_meta_client
+from services.inventory_cache import AdsetInventoryService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["AdSets"])
-meta_client = MetaClient(cache_provider=PostgreSQLInventoryCache())
 
 
 @router.get("/adsets/stopped")
@@ -69,7 +69,11 @@ async def list_stopped_adsets(user: User = Depends(get_current_user)):
 
 
 @router.post("/adsets/{adset_id}/reactivate")
-async def reactivate_adset(adset_id: str, user: User = Depends(get_current_user)):
+async def reactivate_adset(
+    adset_id: str,
+    user: User = Depends(get_current_user),
+    meta_client: MetaClient = Depends(get_meta_client),
+):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
         ensure_workspace_write_access(user, member, "turning on an ad set")

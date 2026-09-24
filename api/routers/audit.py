@@ -26,11 +26,10 @@ from core.action_undo import (
 from database.db import async_session_maker
 from database.models import AuditEvent, User
 from meta_api.client import MetaClient
-from services.inventory_cache import PostgreSQLInventoryCache
+from api.meta_dependencies import get_meta_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Audit & Undo"])
-meta_client = MetaClient(cache_provider=PostgreSQLInventoryCache())
 
 
 @router.get("/audit-events")
@@ -270,6 +269,7 @@ async def list_audit_events(
 async def undo_audit_event(
     event_id: int,
     user: User = Depends(get_current_user),
+    meta_client: MetaClient = Depends(get_meta_client),
 ):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)

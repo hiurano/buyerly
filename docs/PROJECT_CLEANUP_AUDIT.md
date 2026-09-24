@@ -130,6 +130,15 @@ Worker закрывает свои клиенты явно в `services/worker.p
 Нужен один явный владелец API clients, правильный cache provider и teardown;
 не удалять возможность подмены клиента в тестах до замены test fixtures.
 
+Актуализация C02 (2026-09-25): выводы повторно подтверждены на `b0ff681`.
+Исправление назначает владельцем MetaClient конкретный FastAPI app, сохраняет
+PostgreSQL provider и освобождает HTTP transport в lifespan `finally`.
+Все Meta routers и OAuth account import получают клиент через request dependency;
+тестовые подмены привязаны к app. Повторный lifespan создаёт новый клиент.
+MetaOAuthClient использует отдельный context-managed HTTP transport на каждый
+запрос и дополнительного shutdown не требует. Worker не изменён.
+Проверки и статус PR: [C02 в плане](../implementation_plan.md#c02--исправить-meta-cache-wiring-и-lifecycle-a02-a25).
+
 ### A03. Workspace/account/request scope в Zustand
 
 [useAppStore.ts](../frontend/src/store/useAppStore.ts):450, 602:

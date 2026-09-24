@@ -26,11 +26,11 @@ from core.meta_tokens import resolve_account_access_token
 from database.db import async_session_maker
 from database.models import Account, User
 from meta_api.client import MetaClient
-from services.inventory_cache import AdsetInventoryService, PostgreSQLInventoryCache
+from api.meta_dependencies import get_meta_client
+from services.inventory_cache import AdsetInventoryService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Delivery actions"])
-meta_client = MetaClient(cache_provider=PostgreSQLInventoryCache())
 
 ENTITY_NOUNS = {"campaign": "campaign", "adset": "ad set", "ad": "ad"}
 # A budget that differs by less than a cent of the account currency is the same
@@ -99,6 +99,7 @@ async def _commit_quietly(session, what: str) -> bool:
 
 
 async def _prepare(
+    meta_client: MetaClient,
     session,
     user: User,
     level: str,
@@ -154,6 +155,7 @@ async def set_entity_delivery(
     level: str = Path(..., pattern="^(campaign|adset|ad)$"),
     entity_id: str = Path(..., min_length=1, max_length=64),
     user: User = Depends(get_current_user),
+    meta_client: MetaClient = Depends(get_meta_client),
 ):
     """Turn one campaign, ad set or ad on or off.
 
@@ -163,6 +165,7 @@ async def set_entity_delivery(
     noun = ENTITY_NOUNS[level]
     async with async_session_maker() as session:
         account, access_token, state = await _prepare(
+            meta_client,
             session,
             user,
             level,
@@ -274,6 +277,7 @@ async def set_entity_budget(
     level: str = Path(..., pattern="^(campaign|adset|ad)$"),
     entity_id: str = Path(..., min_length=1, max_length=64),
     user: User = Depends(get_current_user),
+    meta_client: MetaClient = Depends(get_meta_client),
 ):
     """Change the daily budget of the entity that holds it.
 
@@ -287,6 +291,7 @@ async def set_entity_budget(
     noun = ENTITY_NOUNS[level]
     async with async_session_maker() as session:
         account, access_token, state = await _prepare(
+            meta_client,
             session,
             user,
             level,

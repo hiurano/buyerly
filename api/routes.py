@@ -123,13 +123,11 @@ from api.schemas import (
     WorkspaceItem,
 )
 from database.db import async_session_maker
-from meta_api.client import MetaClient
 
 logger = logging.getLogger(__name__)
 
 # Master API Router (prefix="/api")
 router = APIRouter(prefix="/api")
-meta_client = MetaClient()
 
 # Mount all modular domain routers
 router.include_router(auth_router)
@@ -146,20 +144,6 @@ router.include_router(adsets_router)
 router.include_router(delivery_router)
 router.include_router(health_router)
 router.include_router(analytics_router)
-
-# Sync meta_client reference to routers using it
-import api.routers.accounts
-import api.routers.adsets
-import api.routers.audit
-import api.routers.delivery
-import api.routers.summary
-
-api.routers.accounts.meta_client = meta_client
-api.routers.adsets.meta_client = meta_client
-api.routers.delivery.meta_client = meta_client
-api.routers.audit.meta_client = meta_client
-api.routers.summary.meta_client = meta_client
-
 
 class _RoutesModule(sys.modules[__name__].__class__):
     """Custom module class to propagate dynamically patched attributes (e.g. in tests) to submodules."""
@@ -198,25 +182,12 @@ class _RoutesModule(sys.modules[__name__].__class__):
             api.routers.summary.async_session_maker = value
             api.routers.workspaces.async_session_maker = value
             api.routers.health.async_session_maker = value
-        elif name == "meta_client":
-            import api.routers.accounts
-            import api.routers.adsets
-            import api.routers.audit
-            import api.routers.delivery
-            import api.routers.summary
-
-            api.routers.accounts.meta_client = value
-            api.routers.adsets.meta_client = value
-            api.routers.delivery.meta_client = value
-            api.routers.audit.meta_client = value
-            api.routers.summary.meta_client = value
 
 
 sys.modules[__name__].__class__ = _RoutesModule
 
 __all__ = [
     "router",
-    "meta_client",
     "async_session_maker",
     "_summary_cache",
     "invalidate_summary_cache",
