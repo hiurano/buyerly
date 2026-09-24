@@ -329,7 +329,10 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("hierarchyAdToRow", self.live_campaigns)
         self.assertIn("formatDailyBudget(item.daily_budget, item.currency)", self.live_campaigns)
         self.assertIn("roi: '—'", self.live_campaigns)
-        self.assertIn("showIdentifier", self.campaign_row)
+        # Like Ads Manager, a row shows only the name; the Meta ID lives in the hover hint.
+        self.assertIn("hint={`${campaign.name} · ${campaign.identifier}`}", self.campaign_row)
+        for row in (self.campaign_row, self.adset_row, self.ad_row):
+            self.assertNotIn("subtitle=", row)
         self.assertIn("readOnly ? undefined", self.campaign_row)
         # Delivery is a real write, so the toggle is driven by the control the
         # view hands down. All three levels share one set of leading controls,
