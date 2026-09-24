@@ -204,7 +204,7 @@ Meta возвращает браузер на служебный callback `/api/
 | `GET /api/presets` | — | список пресетов текущего владельца |
 | `POST /api/presets` | rule payload, включая `level` | создаёт пресет; `level` — уровень исполнения `adset` (по умолчанию), `campaign` или `ad`; действия с бюджетом допустимы только на `adset` |
 | `PUT /api/presets/{preset_id}` | полный rule payload | обновляет пресет и его назначенные snapshot |
-| `DELETE /api/presets/{preset_id}` | — | удаляет пресет, назначения и ссылки в группах |
+| `DELETE /api/presets/{preset_id}` | — | удаляет пресет, назначения и ссылки в группах; сохраняет его в «Recently deleted» и возвращает `deleted_item_id` |
 
 Полный rule payload:
 
@@ -247,7 +247,16 @@ Meta возвращает браузер на служебный callback `/api/
 | `POST /api/rule-groups` | `name`, `description`, `preset_ids` | создаёт группу из 1–50 своих пресетов |
 | `PUT /api/rule-groups/reorder` | `group_ids` | обновляет порядок следования групп |
 | `PUT /api/rule-groups/{group_id}` | полный group payload | меняет название, описание и состав |
-| `DELETE /api/rule-groups/{group_id}` | — | удаляет группу; уже назначенные кабинетам правила сохраняются |
+| `DELETE /api/rule-groups/{group_id}` | — | удаляет группу; уже назначенные кабинетам правила сохраняются; группа попадает в «Recently deleted», ответ содержит `deleted_item_id` |
+
+## Recently deleted
+
+Удалённые правила и группы 30 дней хранятся в workspace и могут быть восстановлены; затем они стираются автоматически. Ручного окончательного удаления нет.
+
+| Метод и путь | Тело | Назначение |
+|---|---|---|
+| `GET /api/deleted-items` | — | удалённые правила и группы workspace, новые первыми: `id`, `kind` (`rule` или `rule_group`), `entity_id`, `name`, `deleted_at`, `purge_at`, `deleted_by` |
+| `POST /api/deleted-items/{item_id}/restore` | — | восстанавливает запись под прежним id. Правило возвращается в уцелевшие группы и на рекламные аккаунты с прежним scope; `skipped_account_ids` перечисляет аккаунты, которых уже нет или где оно противоречит другому правилу. Для группы `missing_rule_ids` перечисляет её правила, которые сами удалены. Требует права на запись; чужая или истёкшая запись — `404` |
 
 ```json
 {

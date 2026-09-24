@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pause, Play } from 'lucide-react';
-import { useAppStore } from '@/store/useAppStore';
+import { Pause, Play, Trash2 } from 'lucide-react';
+import { useAppStore, type RuleFilterTab } from '@/store/useAppStore';
 import { RuleColumn } from './RuleColumn';
 import { RulesListView } from './RulesListView';
+import { RecentlyDeletedView } from './RecentlyDeletedView';
+import { deletionPrompt, runBulkRulesEnabled, runPendingDeletion } from './ruleActions';
 import { CreateRuleModal } from './CreateRuleModal';
 import { RuleDisplayOptionsPopover } from './RuleDisplayOptionsPopover';
 import { RuleRightSidebar } from './RuleRightSidebar';
@@ -25,7 +27,8 @@ import { LinearTabs } from '@/ui/LinearTabs';
 import { DataState } from '@/ui/DataState';
 import { LinearDataListToolbar } from '@/ui/LinearDataList';
 import { Tooltip } from '@/ui/Tooltip';
-import { Button } from '@/ui/Button';
+import { ConfirmDialog } from '@/ui/ConfirmDialog';
+import { toast } from '@/ui/toast';
 import { SelectionDock } from '@/ui/SelectionDock';
 import { SelectionCommandMenu } from '@/ui/SelectionCommandMenu';
 import { useRowSelection, type SelectionAction } from '@/ui/useRowSelection';
@@ -61,8 +64,11 @@ export const RulesView: React.FC = () => {
     loadRules,
     selectedRuleIds,
     setRuleSelection,
-    setRulesEnabled,
+    pendingDeletion,
+    requestDeletion,
+    cancelDeletion,
   } = useAppStore();
+  const showingDeleted = ruleFilterTab === 'deleted';
 
   useEffect(() => {
     void loadRules();
@@ -92,48 +98,26 @@ export const RulesView: React.FC = () => {
       : rules.filter((rule) => rule.status === ruleFilterTab).length;
   const hiddenCount = totalForTab - filteredRules.length;
 
-  // Bulk pause/resume of the selected rules, with the written result of the last run.
-  const [bulkNotice, setBulkNotice] = useState<{
-    tone: 'ok' | 'error';
-    text: string;
-    undo?: { ids: string[]; enabled: boolean };
-    undoing?: boolean;
-  } | null>(null);
+  // A change shows on the rows themselves; a failed write is the only thing
+  // reported on its own, as a toast, and the list stays as it is.
+  useEffect(() => {
+    if (!rulesMutationError) return;
+    toast.error("Couldn't save the change", rulesMutationError);
+    clearRulesMutationError();
+  }, [clearRulesMutationError, rulesMutationError]);
 
-  const runBulkEnabled = async (enabled: boolean) => {
-    setBulkNotice(null);
-    const ids = selectedRuleIds.filter((id) => rules.some((rule) => rule.id === id));
-    const outcome = await setRulesEnabled(ids, enabled);
-    const done = outcome.changed.length + outcome.unchanged.length;
-    const parts = [`${enabled ? 'Resumed' : 'Paused'} ${done} of ${ids.length} ${ids.length === 1 ? 'rule' : 'rules'}.`];
-    if (outcome.failed.length > 0) parts.push(`${outcome.failed.length} failed: ${outcome.failed[0].error}`);
-    if (outcome.skipped.length > 0) {
-      parts.push(`${outcome.skipped.length} skipped: re-save ${outcome.skipped.length === 1 ? 'it' : 'them'} before switching on.`);
-    }
-    setBulkNotice({
-      tone: outcome.failed.length > 0 ? 'error' : 'ok',
-      text: parts.join(' '),
-      undo: outcome.changed.length > 0 ? { ids: outcome.changed, enabled: !enabled } : undefined,
-    });
-  };
-
-  const runBulkUndo = async () => {
-    const notice = bulkNotice;
-    if (!notice?.undo || notice.undoing) return;
-    setBulkNotice({ ...notice, undoing: true });
-    const outcome = await setRulesEnabled(notice.undo.ids, notice.undo.enabled);
-    setBulkNotice(outcome.failed.length === 0 && outcome.skipped.length === 0
-      ? { tone: 'ok', text: 'Action undone.' }
-      : {
-        tone: 'error',
-        text: `${outcome.failed.length + outcome.skipped.length} of ${notice.undo.ids.length} rules could not be restored.`
-          + (outcome.failed[0] ? ` ${outcome.failed[0].error}` : ''),
-      });
-  };
-
+  const liveSelection = () => selectedRuleIds.filter((id) => rules.some((rule) => rule.id === id));
   const selectionActions: SelectionAction[] = [
-    { id: 'pause', label: 'Pause rules', shortcut: 'p', icon: <Pause size={14} />, run: () => void runBulkEnabled(false) },
-    { id: 'resume', label: 'Resume rules', shortcut: 'r', icon: <Play size={14} />, run: () => void runBulkEnabled(true) },
+    { id: 'pause', label: 'Pause rules', shortcut: 'p', icon: <Pause size={14} />, run: () => void runBulkRulesEnabled(liveSelection(), false) },
+    { id: 'resume', label: 'Resume rules', shortcut: 'r', icon: <Play size={14} />, run: () => void runBulkRulesEnabled(liveSelection(), true) },
+    {
+      id: 'delete',
+      label: 'Delete rules',
+      shortcut: 'Delete',
+      withModifier: true,
+      icon: <Trash2 size={14} />,
+      run: () => requestDeletion('rule', liveSelection()),
+    },
   ];
   const visibleRuleIds = useMemo(() => filteredRules.map((rule) => rule.id), [filteredRules]);
   const selection = useRowSelection({
@@ -142,12 +126,14 @@ export const RulesView: React.FC = () => {
     setSelection: setRuleSelection,
     actions: selectionActions,
     // Selection lives in the list; the board has no row checkboxes.
-    enabled: rulesLoadState === 'ready' && rulesViewMode === 'list',
+    enabled: rulesLoadState === 'ready' && rulesViewMode === 'list' && !showingDeleted,
   });
 
   useEffect(() => {
-    if (rulesViewMode !== 'list') setRuleSelection([]);
-  }, [rulesViewMode, setRuleSelection]);
+    if (rulesViewMode !== 'list' || showingDeleted) setRuleSelection([]);
+  }, [rulesViewMode, setRuleSelection, showingDeleted]);
+
+  const deletion = pendingDeletion ? deletionPrompt(pendingDeletion.kind, pendingDeletion.ids) : null;
 
   const hasFilters = rulesFilterClauses.length > 0;
 
@@ -208,6 +194,7 @@ export const RulesView: React.FC = () => {
     { id: 'all', label: 'All rules' },
     { id: 'active', label: 'Active' },
     { id: 'paused', label: 'Paused' },
+    { id: 'deleted', label: 'Recently deleted' },
   ];
 
   return (
@@ -273,7 +260,7 @@ export const RulesView: React.FC = () => {
             <LinearTabs
               tabs={ruleTabs}
               activeTabId={ruleFilterTab}
-              onChange={(id) => setRuleFilterTab(id as 'all' | 'active' | 'paused')}
+              onChange={(id) => setRuleFilterTab(id as RuleFilterTab)}
             />
           </div>
 
@@ -368,51 +355,13 @@ export const RulesView: React.FC = () => {
         onClose={() => setOpenFilterMenu(null)}
       />
 
-      {/* Failed write: the list stays on screen, the reason sits above it. */}
-      {rulesMutationError && (
-        <div
-          role="alert"
-          className="mx-5 mb-2 flex items-start justify-between gap-3 rounded-[6px] border px-3 py-2"
-          style={{
-            borderColor: 'var(--rules-action-stop-border)',
-            backgroundColor: 'var(--rules-action-stop-bg)',
-          }}
-        >
-          <span className="text-[13px]" style={{ color: 'var(--rules-action-stop-text)' }}>
-            {rulesMutationError}
-          </span>
-          <button
-            type="button"
-            onClick={clearRulesMutationError}
-            className="shrink-0 text-[12px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      {bulkNotice && (
-        <div
-          role={bulkNotice.tone === 'error' ? 'alert' : 'status'}
-          className="mx-5 mb-2 flex flex-wrap items-center justify-between gap-2 rounded-[var(--control-border-radius)] bg-[var(--item-hover-bg)] px-3 py-2"
-        >
-          <span className={`min-w-0 text-[12px] ${bulkNotice.tone === 'error' ? 'text-[var(--rules-action-stop-text)]' : 'text-[var(--text-secondary)]'}`}>
-            {bulkNotice.text}
-          </span>
-          <span className="flex shrink-0 items-center gap-2">
-            {bulkNotice.undo && (
-              <Button size="compact" disabled={bulkNotice.undoing} onClick={() => void runBulkUndo()}>
-                {bulkNotice.undoing ? 'Undoing…' : 'Undo'}
-              </Button>
-            )}
-            <Button size="compact" disabled={bulkNotice.undoing} onClick={() => setBulkNotice(null)}>Dismiss</Button>
-          </span>
-        </div>
-      )}
-
       {/* 2. Main Content Area (Split: Left content, Right sidebar) */}
       <div className="flex flex-1 overflow-hidden" style={{ flexDirection: 'row' }}>
-        {rulesLoadState === 'loading' || rulesLoadState === 'idle' ? (
+        {showingDeleted ? (
+          <div className="flex min-w-0 flex-1">
+            <RecentlyDeletedView />
+          </div>
+        ) : rulesLoadState === 'loading' || rulesLoadState === 'idle' ? (
           <DataState
             title="Loading rules…"
             detail="Reading the automation rules saved in this workspace."
@@ -528,6 +477,15 @@ export const RulesView: React.FC = () => {
         onOpenChange={selection.setMenuOpen}
         scopeLabel={`${selection.count} ${selection.count === 1 ? 'rule' : 'rules'}`}
         actions={selectionActions}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deletion)}
+        title={deletion?.title ?? ''}
+        description={deletion?.description ?? ''}
+        confirmLabel="Delete"
+        onConfirm={() => void runPendingDeletion()}
+        onCancel={cancelDeletion}
       />
 
       {/* Linear Fast Create Rule Modal */}

@@ -51,11 +51,13 @@ Implemented shared primitives:
 
 | Component | Production source | Required states |
 |---|---|---|
-| Button | `Button` | primary/secondary, hover, keyboard focus, disabled |
+| Button | `Button` | primary/secondary/danger, hover, keyboard focus, disabled |
 | Tabs | `LinearTabs` | selected, hover, keyboard focus, overflow |
 | DataList | `LinearDataList` | loading, empty, populated, partial/error |
 | DataTable | `LinearDataTable`, `LinearDataPrimaryCell`, `LinearDataMetricCell` | sortable header, horizontal scroll, grouped and flat rows |
-| Selection | `useRowSelection`, `SelectionDock`, `SelectionCommandMenu` | hover-revealed checkbox, X / Ctrl+A / Esc, dock over the list, Ctrl+K actions menu |
+| Selection | `useRowSelection`, `SelectionDock`, `SelectionCommandMenu` | hover-revealed checkbox, X / Ctrl+A / Esc, dock over the list, Ctrl+K actions menu, Ctrl+Delete where deleting is offered |
+| Toast | `ToastRegion`, `toast` | success (deletion), undo, redo, error; auto-dismiss after 8s unless hovered or focused; errors stay until dismissed |
+| ConfirmDialog | `ConfirmDialog` | question, consequence, Cancel and a focused confirming button; Enter confirms, Esc cancels |
 | Checkbox | `LinearCheckbox` | unchecked, checked, focus, disabled |
 | Toggle | `LinearToggle` | on, off, focus, disabled/busy where applicable |
 | DropdownMenu | `DropdownMenu` | open, selected, keyboard navigation, dismiss |
@@ -65,7 +67,17 @@ Implemented shared primitives:
 | LabelPill | `LinearLabelPill` | neutral and semantic text-labelled states |
 | DisplayOptions | `LinearDisplayOptions` | current selection and real state update |
 
-IconButton, Dialog, EmptyState and Skeleton are required product patterns but do not yet have one canonical React primitive. Existing implementations are migration debt. When a task touches or repeats one of these patterns, create the shared primitive in `frontend/src/ui/` before spreading another implementation.
+IconButton, form Dialog, EmptyState and Skeleton are required product patterns but do not yet have one canonical React primitive. Existing implementations are migration debt. When a task touches or repeats one of these patterns, create the shared primitive in `frontend/src/ui/` before spreading another implementation.
+
+## Action feedback
+
+Buyerly reports actions the way Linear does, measured in the product on 2026-09-25:
+
+- **a change is shown, not announced.** Pause, resume, a budget, a rule switched on or off — single or bulk — shows its result on the rows and raises no message. A bulk action keeps the selection so the next action can follow;
+- **every change can be taken back.** Ctrl/Cmd+Z undoes the last change of this session and Ctrl/Cmd+Shift+Z (or Ctrl+Y) redoes it. Each step is confirmed by a toast, "Undo pause 2 campaigns." A step the server does not confirm is reported and dropped from the history. Text fields keep their own undo, and an open dialog owns the keyboard;
+- **deleting is confirmed, then reported.** The dialog names what is deleted and where it goes, with the confirming button focused so Enter confirms. After it the selection is cleared and a toast links to Recently deleted. Redo deletes again without asking;
+- **a toast is only for deletion, undo/redo and failure.** Toasts stack at the bottom right, 384px wide, 24px from the right edge and 52px from the bottom, in an `aria-live="polite"` region that Alt+T focuses. A toast leaves after 8 seconds, but not while it is hovered or focused; an error stays until it is dismissed, because it reports something that did not happen;
+- a partial bulk result is reported only for what did not happen: "Paused 4 of 5 campaigns — 1 failed: …".
 
 ## Current production screens
 
@@ -86,8 +98,8 @@ IconButton, Dialog, EmptyState and Skeleton are required product patterns but do
 - Meta connection is a real OAuth flow: explanation, Facebook authorization, account discovery, explicit import and result;
 - imported ad accounts are not the same entity as campaigns and must not be rendered as campaign rows;
 - fixtures such as LuckySpin, RoyalBet, NeonSlots and AcePlay are development examples only and must not ship as current workspace data;
-- delivery toggles are real writes into Meta, sharing the endpoints and the undo path with Statistics; they carry explicit busy, success and recoverable error states, and the view states that stored data lags the change until its next sync;
-- rows can be selected for bulk Pause and Resume, which write delivery through the same audited single-entity endpoint and report every entity as changed, unchanged, skipped or failed, with one Undo for the whole run;
+- delivery toggles are real writes into Meta, sharing the endpoints and the undo path with Statistics; a row is busy while the write runs and then shows the delivery Meta confirmed, and a failure is reported as a toast;
+- rows can be selected for bulk Pause and Resume, which write delivery through the same audited single-entity endpoint; entities that changed are taken back together with Ctrl+Z, and only what failed or was skipped is reported;
 - no rule is enabled as a side effect of importing an account.
 
 ### Rules
@@ -95,6 +107,7 @@ IconButton, Dialog, EmptyState and Skeleton are required product patterns but do
 - server-owned rule definitions and assignments are distinguished from local editor state;
 - dangerous actions require explicit conditions, scope and review;
 - account coverage and active/inactive state use real workspace-scoped data.
+- deleting a rule or a group is confirmed first, then reported with a link to **Recently deleted**; a deleted rule stops running at once. Recently deleted is a tab of Rules that keeps rules and groups for 30 days: a restore brings a rule back under its id, into the groups that still exist and onto the ad accounts it ran on with the scope it had, and says which ad accounts could not take it back. There is no manual permanent delete;
 
 ### Statistics
 
@@ -119,7 +132,7 @@ first screen only by causing a frequent decision.
 - an entity with no baseline reports "No baseline" rather than a change from zero, and an entity that ran only in the baseline window is history, not a row;
 - **one trend, one metric, one axis, and only on request.** The primary decision card carries a sparkline; the full chart is opened by a button and plots the cost per result per day over a fixed 14-day window, independent of the reporting period, because its job is to say whether a movement lasted. It draws the stored target as a reference line, breaks the line where a day was never reported, leaves the open day's marker hollow, and ships a values table so no number depends on hovering. The series colour is its own token, validated against each theme's surface, and never a decision colour;
 - **a decision becomes an action on the row that justified it.** Pause and resume sit on the row; the daily budget is edited inside the opened diagnostics panel, where it is already explained. A budget is only ever changed where one exists — never created, because that would change how Meta optimizes rather than how much it spends — and never on an ad;
-- **what this session wrote is never merged silently into stored data.** The fact store is a snapshot and will not show the change until its next sync, so the row shows what was sent, says the snapshot has not caught up, and offers Undo through the audit history that already owns reversal;
+- **what this session wrote is shown on the row, not announced.** The fact store is a snapshot that catches up on its next sync, so the row shows the value Meta confirmed from this session over the stored one; the way back is Ctrl+Z, through the audit history that already owns reversal;
 - a budget step of 25% or more is confirmed before it is sent, naming the consequence: Meta can return the entity to its learning phase;
 - revenue/ROAS stays absent until a server contract exists;
 - every number carries a real period, freshness and data-status meaning;

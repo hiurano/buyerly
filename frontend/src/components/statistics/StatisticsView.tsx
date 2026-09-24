@@ -10,14 +10,17 @@ import type {
 import { Sparkline, TrendChart, type TrendPoint } from '@/components/statistics/TrendChart';
 import { BudgetField } from '@/components/statistics/BudgetField';
 import {
-  describeBulkDelivery,
+  deliveryHistoryEntry,
+  describeEntities,
+  reportBulkDelivery,
   setDeliveryForMany,
   setEntityBudget,
   setEntityDelivery,
   undoAction,
-  undoActions,
   type DeliveryStatus,
 } from '@/lib/delivery';
+import { pushHistory } from '@/lib/undoHistory';
+import { toast } from '@/ui/toast';
 import { EntityRowControls } from '@/components/campaigns/EntityRowCells';
 import {
   eligibleMetaAccounts,
@@ -90,21 +93,14 @@ interface SelectOption<T extends string> {
 }
 
 /**
- * The result of an action this session sent to Meta. The fact store is a
- * snapshot and will not show the change until its next sync, so what the user
- * just did is held here and labelled as such rather than silently merged into
- * stored data.
+ * What this session sent to Meta for a row. The fact store is a snapshot that
+ * catches up on its next sync, so the row shows the confirmed value from here
+ * instead; the way back is Ctrl+Z.
  */
 interface RowAction {
   busy?: boolean;
   status?: DeliveryStatus;
   dailyBudget?: number;
-  message?: string;
-  error?: string;
-  undoId?: number | null;
-  undoing?: boolean;
-  previousStatus?: DeliveryStatus;
-  previousBudget?: number;
 }
 
 /** One ancestor on the in-place drill-down path. */
@@ -272,8 +268,6 @@ interface StatisticsRowProps {
   action: RowAction | undefined;
   onSetDelivery: ((status: DeliveryStatus) => void) | null;
   onSetBudget: ((dailyBudget: number) => void) | null;
-  onUndo: (() => void) | null;
-  onDismissAction: () => void;
   /** Whether the row is part of the bulk selection. */
   selected: boolean;
   onToggleSelected: () => void;
@@ -294,15 +288,13 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
   action,
   onSetDelivery,
   onSetBudget,
-  onUndo,
-  onDismissAction,
   selected,
   onToggleSelected,
 }) => {
   const definition = RESULT_DEFINITIONS[resultKind];
   const diagnosticsId = `statistics-diagnostics-${item.entity_id}`;
   const noun = LEVEL_LABELS[item.entity_level].singular;
-  // What this session wrote wins over the snapshot, and says so on the row.
+  // What this session wrote wins over the snapshot.
   const liveStatus: DeliveryStatus = action?.status
     ?? (item.status === 'ACTIVE' ? 'ACTIVE' : 'PAUSED');
   const liveBudget = action?.dailyBudget ?? item.daily_budget;
@@ -327,7 +319,7 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
               statusLabel={statusLabel(item)}
               delivery={onSetDelivery ? {
                 status: liveStatus === 'ACTIVE' ? 'active' : 'paused',
-                busy: Boolean(action?.busy || action?.undoing),
+                busy: Boolean(action?.busy),
                 onChange: (next) => onSetDelivery(next ? 'ACTIVE' : 'PAUSED'),
               } : undefined}
               showStatus
@@ -404,27 +396,6 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
         </div>
       </LinearDataListRow>
 
-      {(action?.message || action?.error) && (
-        <div
-          className="mt-1 flex flex-wrap items-center justify-between gap-2 rounded-[var(--control-border-radius)] bg-[var(--statistics-diagnostics-bg)] px-3 py-2"
-          role={action.error ? 'alert' : 'status'}
-        >
-          <span className={`min-w-0 text-[12px] ${action.error ? 'text-[var(--statistics-state-attention)]' : 'text-[var(--text-secondary)]'}`}>
-            {action.error
-              ? action.error
-              : `${action.message} Stored Meta data still shows the previous value until its next sync.`}
-          </span>
-          <span className="flex shrink-0 items-center gap-2">
-            {!action.error && action.undoId && onUndo && (
-              <Button size="compact" disabled={action.undoing || action.busy} onClick={onUndo}>
-                {action.undoing ? 'Undoing…' : 'Undo'}
-              </Button>
-            )}
-            <Button size="compact" onClick={onDismissAction}>Dismiss</Button>
-          </span>
-        </div>
-      )}
-
       {expanded && (
         <div
           id={diagnosticsId}
@@ -437,7 +408,7 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
                 current={liveBudget}
                 currency={item.currency}
                 entityNoun={noun}
-                busy={Boolean(action?.busy || action?.undoing)}
+                busy={Boolean(action?.busy)}
                 onSave={onSetBudget}
                 formatMoney={(value) => formatMetricMoney(value, item.currency)}
               />
@@ -503,15 +474,8 @@ export const StatisticsView: React.FC = () => {
   const [trend, setTrend] = useState<AnalyticsTimeseriesResponse | null>(null);
   const [trendOpen, setTrendOpen] = useState(false);
   const [rowActions, setRowActions] = useState<Record<string, RowAction>>({});
-  // Rows picked for a bulk action, and the written result of the last one.
+  // Rows picked for a bulk action.
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [bulkNotice, setBulkNotice] = useState<{
-    tone: 'ok' | 'error';
-    text: string;
-    undoIds: number[];
-    reverts: Record<string, DeliveryStatus>;
-    undoing?: boolean;
-  } | null>(null);
 
   const parent = trail.length > 0 ? trail[trail.length - 1] : null;
   const queryLevel: EntityLevel = parent ? (CHILD_LEVEL[parent.level] ?? level) : level;
@@ -797,111 +761,106 @@ export const StatisticsView: React.FC = () => {
       : 'The action could not be confirmed. Check Meta before retrying.'
   );
 
+  /** Shows delivery this session wrote on the given rows. */
+  const showDelivery = useCallback((entityIds: string[], status: DeliveryStatus) => {
+    entityIds.forEach((entityId) => patchAction(entityId, { busy: false, status }));
+  }, [patchAction]);
+
+  /** One row's toggle: the row shows the result, Ctrl+Z takes it back, only a failure speaks. */
   const runDelivery = useCallback(async (item: AnalyticsHierarchyItem, status: DeliveryStatus) => {
     if (!selectedAccountId) return;
-    patchAction(item.entity_id, { busy: true, error: '', message: '' });
+    const accountId = selectedAccountId;
+    const verb = status === 'ACTIVE' ? 'resume' : 'pause';
+    patchAction(item.entity_id, { busy: true });
     try {
-      const result = await setEntityDelivery(item.entity_level, item.entity_id, selectedAccountId, status);
-      patchAction(item.entity_id, {
-        busy: false,
-        previousStatus: result.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE',
-        previousBudget: undefined,
-        status: result.status,
-        message: result.message,
-        undoId: result.changed ? result.audit_event_id : null,
-        error: '',
-      });
+      const result = await setEntityDelivery(item.entity_level, item.entity_id, accountId, status);
+      showDelivery([item.entity_id], result.status);
+      if (result.changed && result.audit_event_id) {
+        pushHistory(deliveryHistoryEntry({
+          label: `${verb} ${item.entity_name}`,
+          accountId,
+          targets: [{ level: item.entity_level, entityId: item.entity_id }],
+          status,
+          auditEventIds: [result.audit_event_id],
+          onStatus: showDelivery,
+        }));
+      }
     } catch (error) {
-      patchAction(item.entity_id, { busy: false, error: actionErrorMessage(error) });
+      patchAction(item.entity_id, { busy: false });
+      toast.show({ tone: 'error', title: `Couldn't ${verb}`, message: item.entity_name, description: actionErrorMessage(error) });
     }
-  }, [patchAction, selectedAccountId, rowActions]);
+  }, [patchAction, selectedAccountId, showDelivery]);
 
+  /** A budget edit, reversible through the audit row it wrote. */
   const runBudget = useCallback(async (item: AnalyticsHierarchyItem, dailyBudget: number) => {
     if (!selectedAccountId) return;
-    patchAction(item.entity_id, { busy: true, error: '', message: '' });
+    const accountId = selectedAccountId;
+    patchAction(item.entity_id, { busy: true });
     try {
-      const result = await setEntityBudget(item.entity_level, item.entity_id, selectedAccountId, dailyBudget);
-      patchAction(item.entity_id, {
-        busy: false,
-        previousBudget: result.previous_daily_budget,
-        previousStatus: undefined,
-        dailyBudget: result.daily_budget,
-        message: result.message,
-        undoId: result.changed ? result.audit_event_id : null,
-        error: '',
-      });
+      const result = await setEntityBudget(item.entity_level, item.entity_id, accountId, dailyBudget);
+      patchAction(item.entity_id, { busy: false, dailyBudget: result.daily_budget });
+      const previousBudget = result.previous_daily_budget;
+      if (result.changed && result.audit_event_id && previousBudget !== undefined) {
+        let reversible = result.audit_event_id;
+        pushHistory({
+          label: `set the daily budget of ${item.entity_name} to ${formatMetricMoney(result.daily_budget, item.currency)}`,
+          undo: async () => {
+            await undoAction(reversible);
+            patchAction(item.entity_id, { dailyBudget: previousBudget });
+          },
+          redo: async () => {
+            const again = await setEntityBudget(item.entity_level, item.entity_id, accountId, result.daily_budget);
+            if (!again.audit_event_id) throw new Error('Meta did not record the change, so it cannot be undone again.');
+            reversible = again.audit_event_id;
+            patchAction(item.entity_id, { dailyBudget: again.daily_budget });
+          },
+        });
+      }
     } catch (error) {
-      patchAction(item.entity_id, { busy: false, error: actionErrorMessage(error) });
-    }
-  }, [patchAction, selectedAccountId, rowActions]);
-
-  const runUndo = useCallback(async (item: AnalyticsHierarchyItem, auditEventId: number) => {
-    patchAction(item.entity_id, { undoing: true, error: '' });
-    try {
-      await undoAction(auditEventId);
-      // Restore the previous confirmed value while preserving other actions.
-      const previous = rowActions[item.entity_id];
-      patchAction(item.entity_id, {
-        status: previous?.previousStatus ?? previous?.status,
-        dailyBudget: previous?.previousBudget ?? previous?.dailyBudget,
-        undoId: null, undoing: false, message: 'Action undone.', error: '',
+      patchAction(item.entity_id, { busy: false });
+      toast.show({
+        tone: 'error',
+        title: "Couldn't change the budget",
+        message: `of ${item.entity_name}`,
+        description: actionErrorMessage(error),
       });
-    } catch (error) {
-      patchAction(item.entity_id, { undoing: false, error: actionErrorMessage(error) });
     }
-  }, [patchAction, rowActions]);
+  }, [patchAction, selectedAccountId]);
 
   // A selection belongs to one account, level, drill-down and period.
   useEffect(() => {
     setSelectedIds([]);
-    setBulkNotice(null);
   }, [selectedAccountId, queryLevel, parentId, period]);
 
-  /** Pauses or resumes every selected row that can be acted on, reporting each outcome. */
+  /** Pauses or resumes every selected row that can be acted on; only what failed is reported. */
   const runBulkDelivery = async (status: DeliveryStatus) => {
     if (!selectedAccountId) return;
+    const accountId = selectedAccountId;
     const selected = items.filter((item) => selectedIds.includes(item.entity_id));
     // The same rows that show a live toggle: delivery Meta lets us change.
     const eligible = selected.filter((item) => ['ACTIVE', 'PAUSED'].includes(item.status));
-    const previous = Object.fromEntries(eligible.map((item) => [
-      item.entity_id,
-      rowActions[item.entity_id]?.status ?? (item.status as DeliveryStatus),
-    ]));
-    setBulkNotice(null);
-    eligible.forEach((item) => patchAction(item.entity_id, { busy: true, error: '', message: '' }));
+    eligible.forEach((item) => patchAction(item.entity_id, { busy: true }));
     const outcome = await setDeliveryForMany(
       eligible.map((item) => ({ level: item.entity_level, entityId: item.entity_id })),
-      selectedAccountId,
+      accountId,
       status,
     );
     const confirmed = new Set([...outcome.changed.map((entry) => entry.entityId), ...outcome.unchanged]);
     eligible.forEach((item) => patchAction(item.entity_id, confirmed.has(item.entity_id)
-      ? { busy: false, status, undoId: null }
+      ? { busy: false, status }
       : { busy: false }));
-    setBulkNotice({
-      tone: outcome.failed.length > 0 ? 'error' : 'ok',
-      text: describeBulkDelivery(outcome, status, levelLabel, selected.length - eligible.length),
-      undoIds: outcome.changed.flatMap((entry) => (entry.auditEventId ? [entry.auditEventId] : [])),
-      reverts: Object.fromEntries(outcome.changed.map((entry) => [entry.entityId, previous[entry.entityId]])),
-    });
-  };
-
-  const runBulkUndo = async () => {
-    const notice = bulkNotice;
-    if (!notice || notice.undoIds.length === 0 || notice.undoing) return;
-    setBulkNotice({ ...notice, undoing: true });
-    const { failed, error } = await undoActions(notice.undoIds);
-    if (failed === 0) {
-      Object.entries(notice.reverts).forEach(([entityId, status]) => patchAction(entityId, { status }));
-      setBulkNotice({ tone: 'ok', text: 'Action undone. Stored Meta data will update on its next sync.', undoIds: [], reverts: {} });
-    } else {
-      setBulkNotice({
-        ...notice,
-        undoing: false,
-        tone: 'error',
-        text: `${failed} of ${notice.undoIds.length} changes could not be undone: ${error} Check Meta before retrying.`,
-      });
+    const changed = eligible.filter((item) => outcome.changed.some((entry) => entry.entityId === item.entity_id));
+    if (changed.length > 0) {
+      pushHistory(deliveryHistoryEntry({
+        label: `${status === 'ACTIVE' ? 'resume' : 'pause'} ${describeEntities(changed.map((item) => item.entity_name), levelLabel)}`,
+        accountId,
+        targets: changed.map((item) => ({ level: item.entity_level, entityId: item.entity_id })),
+        status,
+        auditEventIds: outcome.changed.flatMap((entry) => (entry.auditEventId ? [entry.auditEventId] : [])),
+        onStatus: showDelivery,
+      }));
     }
+    reportBulkDelivery(outcome, status, levelLabel, selected.length - eligible.length);
   };
 
   const selectionActions: SelectionAction[] = [
@@ -939,10 +898,6 @@ export const StatisticsView: React.FC = () => {
       onSetBudget={selectedAccountId && item.entity_level !== 'ad'
         ? (dailyBudget) => void runBudget(item, dailyBudget)
         : null}
-      onUndo={rowActions[item.entity_id]?.undoId
-        ? () => void runUndo(item, rowActions[item.entity_id].undoId as number)
-        : null}
-      onDismissAction={() => patchAction(item.entity_id, { message: '', error: '' })}
       selected={selectedIds.includes(item.entity_id)}
       onToggleSelected={() => selection.toggle(item.entity_id)}
     />
@@ -1055,24 +1010,6 @@ export const StatisticsView: React.FC = () => {
     return (
       <LinearDataTable
         columns={columns}
-        before={bulkNotice && (
-          <div
-            role={bulkNotice.tone === 'error' ? 'alert' : 'status'}
-            className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-[var(--control-border-radius)] bg-[var(--statistics-diagnostics-bg)] px-3 py-2"
-          >
-            <span className={`min-w-0 text-[12px] ${bulkNotice.tone === 'error' ? 'text-[var(--statistics-state-attention)]' : 'text-[var(--text-secondary)]'}`}>
-              {bulkNotice.text}
-            </span>
-            <span className="flex shrink-0 items-center gap-2">
-              {bulkNotice.undoIds.length > 0 && (
-                <Button size="compact" disabled={bulkNotice.undoing} onClick={() => void runBulkUndo()}>
-                  {bulkNotice.undoing ? 'Undoing…' : 'Undo'}
-                </Button>
-              )}
-              <Button size="compact" disabled={bulkNotice.undoing} onClick={() => setBulkNotice(null)}>Dismiss</Button>
-            </span>
-          </div>
-        )}
         sortKey={sortKey}
         sortDirection={sortDirection}
         onSort={(columnId) => {

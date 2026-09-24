@@ -31,6 +31,10 @@ import type {
   RulePresetWriteRequest,
   RuleScope,
 } from '@/lib/rules';
+import type { DeletedKind } from '@/lib/trash';
+import { pushHistory } from '@/lib/undoHistory';
+
+export type RuleFilterTab = 'active' | 'paused' | 'all' | 'deleted';
 
 export interface CampaignItem {
   id: string;
@@ -308,8 +312,9 @@ interface AppState {
   rulesMutationError: string;
   clearRulesMutationError: () => void;
   loadRules: () => Promise<void>;
-  ruleFilterTab: 'active' | 'paused' | 'all';
-  setRuleFilterTab: (tab: 'active' | 'paused' | 'all') => void;
+  /** `deleted` shows Recently deleted instead of the live rules. */
+  ruleFilterTab: RuleFilterTab;
+  setRuleFilterTab: (tab: RuleFilterTab) => void;
   selectedRuleId: string | null;
   setSelectedRuleId: (id: string | null) => void;
   toggleRuleStatus: (id: string) => Promise<void>;
@@ -320,9 +325,14 @@ interface AppState {
   ) => Promise<{ changed: string[]; unchanged: string[]; skipped: string[]; failed: { id: string; error: string }[] }>;
   addRule: (payload: RulePresetWriteRequest, groupId?: string) => Promise<void>;
   addRuleGroup: (name: string, icon?: RuleGroupIcon) => Promise<void>;
-  deleteRuleGroup: (id: string) => Promise<void>;
   addRuleToGroup: (groupId: string, ruleId: string) => Promise<void>;
-  deleteRule: (id: string) => Promise<void>;
+  /** Deletes without asking and returns its Recently deleted entry; throws on failure. */
+  deleteRuleGroup: (id: string) => Promise<number>;
+  deleteRule: (id: string) => Promise<number>;
+  /** Rules or a group waiting on the delete confirmation. */
+  pendingDeletion: { kind: DeletedKind; ids: string[] } | null;
+  requestDeletion: (kind: DeletedKind, ids: string[]) => void;
+  cancelDeletion: () => void;
   isCreateRuleModalOpen: boolean;
   createRuleTargetGroupId?: string;
   /** Rule being edited in the shared modal; null while creating a new one. */
@@ -654,6 +664,11 @@ export const useAppStore = create<AppState>((set, get) => ({
         presetToWriteRequest(rule.preset, { enabled }),
       );
       await get().loadRules();
+      pushHistory({
+        label: `${enabled ? 'resume' : 'pause'} ${rule.name}`,
+        undo: () => applyRulesEnabled([id], !enabled),
+        redo: () => applyRulesEnabled([id], enabled),
+      });
     } catch (error) {
       set({ rulesMutationError: requestErrorMessage(error) });
     }
@@ -723,13 +738,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   deleteRuleGroup: async (id) => {
-    set({ rulesMutationError: '' });
-    try {
-      await deleteRuleGroupRequest(Number(id));
-      await get().loadRules();
-    } catch (error) {
-      set({ rulesMutationError: requestErrorMessage(error) });
-    }
+    const response = await deleteRuleGroupRequest(Number(id));
+    set((state) => ({
+      selectedFilterRuleGroupId:
+        state.selectedFilterRuleGroupId === id ? null : state.selectedFilterRuleGroupId,
+    }));
+    return response.deleted_item_id;
   },
 
   addRuleToGroup: async (groupId, ruleId) => {
@@ -766,17 +780,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   deleteRule: async (id) => {
-    set({ rulesMutationError: '' });
-    try {
-      await deleteRulePreset(Number(id));
-      set((state) => ({
-        selectedRuleId: state.selectedRuleId === id ? null : state.selectedRuleId,
-      }));
-      await get().loadRules();
-    } catch (error) {
-      set({ rulesMutationError: requestErrorMessage(error) });
-    }
+    const response = await deleteRulePreset(Number(id));
+    set((state) => ({
+      selectedRuleId: state.selectedRuleId === id ? null : state.selectedRuleId,
+      selectedRuleIds: state.selectedRuleIds.filter((item) => item !== id),
+    }));
+    return response.deleted_item_id;
   },
+  pendingDeletion: null,
+  requestDeletion: (kind, ids) => {
+    if (ids.length > 0) set({ pendingDeletion: { kind, ids } });
+  },
+  cancelDeletion: () => set({ pendingDeletion: null }),
   isCreateRuleModalOpen: false,
   createRuleTargetGroupId: undefined,
   editingRuleId: null,
@@ -884,3 +899,19 @@ export const useAppStore = create<AppState>((set, get) => ({
   rulesFilterClauses: [],
   setRulesFilterClauses: (clauses) => set({ rulesFilterClauses: clauses }),
 }));
+
+/**
+ * Switches rules on or off for undo and redo, and throws unless every one of
+ * them is confirmed in the requested state — a rule deleted since, or held for
+ * review, is a failure here rather than a silent skip.
+ */
+export async function applyRulesEnabled(ids: string[], enabled: boolean): Promise<void> {
+  const outcome = await useAppStore.getState().setRulesEnabled(ids, enabled);
+  if (outcome.failed.length > 0) throw new Error(outcome.failed[0].error);
+  if (outcome.skipped.length > 0) {
+    throw new Error('A rule held for review must be re-saved before it can be switched on.');
+  }
+  if (outcome.changed.length + outcome.unchanged.length < ids.length) {
+    throw new Error('Some of these rules no longer exist.');
+  }
+}

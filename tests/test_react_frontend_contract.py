@@ -125,6 +125,17 @@ class TestReactFrontendContract(unittest.TestCase):
         cls.entity_row_cells = (
             ROOT / "frontend" / "src" / "components" / "campaigns" / "EntityRowCells.tsx"
         ).read_text()
+        cls.rule_actions = (
+            ROOT / "frontend" / "src" / "components" / "rules" / "ruleActions.ts"
+        ).read_text()
+        cls.recently_deleted_view = (
+            ROOT / "frontend" / "src" / "components" / "rules" / "RecentlyDeletedView.tsx"
+        ).read_text()
+        cls.toast_lib = (ROOT / "frontend" / "src" / "ui" / "toast.ts").read_text()
+        cls.undo_history = (
+            ROOT / "frontend" / "src" / "lib" / "undoHistory.ts"
+        ).read_text()
+        cls.trash_lib = (ROOT / "frontend" / "src" / "lib" / "trash.ts").read_text()
         cls.rules_list_view = (
             ROOT / "frontend" / "src" / "components" / "rules" / "RulesListView.tsx"
         ).read_text()
@@ -178,6 +189,12 @@ class TestReactFrontendContract(unittest.TestCase):
         ).read_text()
         cls.rule_row_menu = (
             ROOT / "frontend" / "src" / "components" / "rules" / "RuleRowMenu.tsx"
+        ).read_text()
+        cls.rule_card = (
+            ROOT / "frontend" / "src" / "components" / "rules" / "RuleCard.tsx"
+        ).read_text()
+        cls.rule_column = (
+            ROOT / "frontend" / "src" / "components" / "rules" / "RuleColumn.tsx"
         ).read_text()
         cls.rule_selector_popover = (
             ROOT
@@ -463,15 +480,23 @@ class TestReactFrontendContract(unittest.TestCase):
         # Bulk delivery goes through the audited single-entity endpoint, entity by
         # entity, and reports every outcome instead of a blanket success.
         for contract in ("export async function setDeliveryForMany", "outcome.failed.push",
-                         "export async function undoActions", "export function describeBulkDelivery"):
+                         "export async function undoActions", "export function reportBulkDelivery",
+                         "export function deliveryHistoryEntry"):
             self.assertIn(contract, self.delivery_lib)
+        # The way back reverses the recorded audit rows.
+        self.assertIn("await undoActions(reversible)", self.delivery_lib)
         for view in (self.campaigns_view, self.statistics_view):
             self.assertIn("setDeliveryForMany(", view)
-            self.assertIn("undoActions(", view)
+            self.assertIn("pushHistory(deliveryHistoryEntry(", view)
+            self.assertIn("reportBulkDelivery(", view)
         # Rules held for review are never switched on in bulk either.
         self.assertIn("setRulesEnabled: async (ids, enabled)", self.app_store)
         self.assertIn("if (enabled && rule.needsReview)", self.app_store)
-        self.assertIn("setRulesEnabled(", rules_view)
+        self.assertIn("setRulesEnabled(", self.rule_actions)
+        self.assertIn("runBulkRulesEnabled(", rules_view)
+        # Ctrl+Delete deletes the selection, after the same confirmation.
+        self.assertIn("withModifier: true", rules_view)
+        self.assertIn("requestDeletion('rule', liveSelection())", rules_view)
 
         # Selected rows use the Linear selection colours from tokens, not a literal.
         self.assertIn("--row-selected-hover-bg", self.tokens)
@@ -649,14 +674,9 @@ class TestReactFrontendContract(unittest.TestCase):
         # A large budget step is confirmed before it is sent, not explained after.
         self.assertIn("SIGNIFICANT_BUDGET_CHANGE = 0.25", self.delivery_lib)
 
-        # Statistics acts on the row and offers the way back beside it.
-        for contract in ("<EntityRowControls", "setEntityDelivery", "setEntityBudget", "undoAction"):
+        # Statistics acts on the row, and Ctrl+Z is the way back.
+        for contract in ("<EntityRowControls", "setEntityDelivery", "setEntityBudget", "undoAction", "pushHistory("):
             self.assertIn(contract, self.statistics_view)
-        # What this session wrote is never merged silently into stored data.
-        self.assertIn(
-            "Stored Meta data still shows the previous value until its next sync.",
-            self.statistics_view,
-        )
 
         # Ads Manager no longer ships a toggle that claims to be unfinished.
         self.assertNotIn("controls are not connected yet", self.campaigns_row_sources)
@@ -664,6 +684,53 @@ class TestReactFrontendContract(unittest.TestCase):
         # The local-only delivery flip is gone: it changed the screen, not Meta.
         for dead in ("toggleCampaignDelivery", "toggleAdSetDelivery", "toggleAdDelivery"):
             self.assertNotIn(dead, self.app_store)
+
+    def test_actions_report_the_way_linear_does(self):
+        """A change shows on the row; toasts are for deletion, undo/redo and failure."""
+        # No screen keeps its own success banner above or under the table.
+        for view in (self.campaigns_view, self.statistics_view, self.rules_view):
+            for dead in (
+                "bulkNotice",
+                "deliveryNotice",
+                "still shows the previous value",
+                "Action undone",
+                ">Dismiss<",
+            ):
+                self.assertNotIn(dead, view)
+        self.assertNotIn("next sync", self.delivery_lib)
+
+        # One notification region, mounted once, bottom right, announced politely.
+        region = (ROOT / "frontend" / "src" / "ui" / "ToastRegion.tsx").read_text()
+        self.assertIn("<ToastRegion />", self.app)
+        for contract in ('aria-live="polite"', 'aria-label="Notifications alt+T"', "--toast-offset-bottom"):
+            self.assertIn(contract, region)
+        self.assertIn("TOAST_DURATION_MS = 8000", self.toast_lib)
+        self.assertIn("export type ToastTone = 'success' | 'error' | 'undo' | 'redo'", self.toast_lib)
+        # Geometry comes from tokens, measured in Linear.
+        for token in ("--toast-width: 384px", "--toast-offset-right: 24px", "--layer-toast", "--action-danger"):
+            self.assertIn(token, self.tokens)
+
+        # Ctrl+Z / Ctrl+Shift+Z walk one history per workspace.
+        self.assertIn("useUndoShortcuts();", self.app)
+        for contract in ("key === 'z' && event.shiftKey", "title: direction === 'undo' ? 'Undo' : 'Redo'", "clearHistory();"):
+            self.assertIn(contract, self.undo_history)
+
+        # Deleting is confirmed, reported, restorable, and redo does not ask again.
+        confirm = (ROOT / "frontend" / "src" / "ui" / "ConfirmDialog.tsx").read_text()
+        self.assertIn("confirmRef.current?.focus()", confirm)
+        self.assertIn("<ConfirmDialog", self.rules_view)
+        for contract in ("View recently deleted", "restoreMany(itemIds)", "setRuleSelection([])"):
+            self.assertIn(contract, self.rule_actions)
+        for menu in (self.rule_row_menu, self.rule_card, self.rule_column):
+            self.assertIn("requestDeletion(", menu)
+            self.assertNotIn("void deleteRule", menu)
+
+        # Recently deleted is its own view over the server's thirty-day trash.
+        for contract in ("'/api/deleted-items'", "/api/deleted-items/${itemId}/restore", "TRASH_RETENTION_DAYS = 30"):
+            self.assertIn(contract, self.trash_lib)
+        self.assertIn("{ id: 'deleted', label: 'Recently deleted' }", self.rules_view)
+        self.assertIn("<RecentlyDeletedView />", self.rules_view)
+        self.assertIn("event.key !== '#'", self.recently_deleted_view)
 
     def test_statistics_trend_is_one_series_on_one_axis(self):
         """The trend answers whether a movement lasted, and nothing else."""

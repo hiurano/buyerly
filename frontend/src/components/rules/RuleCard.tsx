@@ -35,7 +35,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({
   isSelected,
   onSelect,
 }) => {
-  const { ruleGroups, addRuleToGroup, deleteRule, openEditRuleModal } = useAppStore();
+  const { ruleGroups, addRuleToGroup, requestDeletion, openEditRuleModal } = useAppStore();
 
   return (
     <ContextMenu>
@@ -219,7 +219,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({
 
         {/* Delete Item */}
         <ContextMenuItem
-          onClick={() => void deleteRule(rule.id)}
+          onClick={() => requestDeletion('rule', [rule.id])}
           className="text-[#e4e7e8] hover:text-white"
         >
           <div className="flex items-center gap-2">

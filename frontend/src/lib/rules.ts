@@ -267,8 +267,14 @@ export function updateRulePreset(
   });
 }
 
-export function deleteRulePreset(presetId: number): Promise<{ success: boolean }> {
-  return apiRequest<{ success: boolean }>(`/api/presets/${presetId}`, {
+/** The deletion keeps the rule restorable; `deleted_item_id` is its entry in Recently deleted. */
+export interface DeleteResponse {
+  success: boolean;
+  deleted_item_id: number;
+}
+
+export function deleteRulePreset(presetId: number): Promise<DeleteResponse> {
+  return apiRequest<DeleteResponse>(`/api/presets/${presetId}`, {
     method: 'DELETE',
   });
 }
@@ -292,8 +298,8 @@ export function updateRuleGroup(
   });
 }
 
-export function deleteRuleGroup(groupId: number): Promise<{ success: boolean }> {
-  return apiRequest<{ success: boolean }>(`/api/rule-groups/${groupId}`, {
+export function deleteRuleGroup(groupId: number): Promise<DeleteResponse> {
+  return apiRequest<DeleteResponse>(`/api/rule-groups/${groupId}`, {
     method: 'DELETE',
   });
 }

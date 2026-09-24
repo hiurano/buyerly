@@ -1,4 +1,6 @@
 import { apiRequest } from '@/lib/api';
+import type { HistoryEntry } from '@/lib/undoHistory';
+import { toast } from '@/ui/toast';
 
 export type EntityLevel = 'campaign' | 'adset' | 'ad';
 
@@ -138,28 +140,87 @@ export async function undoActions(auditEventIds: number[]): Promise<{ failed: nu
   return { failed, error };
 }
 
+export interface EntityNoun {
+  singular: string;
+  plural: string;
+}
+
+/** The name for one entity, "3 campaigns" for several. */
+export function describeEntities(names: string[], noun: EntityNoun): string {
+  return names.length === 1 ? names[0] : `${names.length} ${noun.plural}`;
+}
+
 /**
- * The written result of a bulk delivery change, e.g.
- * "Paused 4 of 5 campaigns. 1 failed: Rate limit reached."
+ * A bulk change says nothing when every entity is in the requested state; the
+ * rows show it. Anything that failed or was skipped is reported as a toast, e.g.
+ * "Paused 4 of 5 campaigns — 1 failed: Rate limit reached."
  */
-export function describeBulkDelivery(
+export function reportBulkDelivery(
   outcome: BulkDeliveryOutcome,
   status: DeliveryStatus,
-  noun: { singular: string; plural: string },
+  noun: EntityNoun,
   skipped = 0,
-): string {
+): void {
+  if (outcome.failed.length === 0 && skipped === 0) return;
   const total = outcome.changed.length + outcome.unchanged.length + outcome.failed.length + skipped;
   const done = outcome.changed.length + outcome.unchanged.length;
   const verb = status === 'PAUSED' ? 'Paused' : 'Resumed';
-  const parts = [`${verb} ${done} of ${total} ${total === 1 ? noun.singular : noun.plural}.`];
+  const parts: string[] = [];
   if (outcome.failed.length > 0) {
     parts.push(`${outcome.failed.length} failed: ${outcome.failed[0].error}`);
   }
   if (skipped > 0) {
     parts.push(`${skipped} skipped: delivery cannot be changed from here.`);
   }
-  if (outcome.changed.length > 0) {
-    parts.push('Stored Meta data still shows the previous value until its next sync.');
-  }
-  return parts.join(' ');
+  toast.show({
+    tone: 'error',
+    title: `${verb} ${done} of ${total} ${total === 1 ? noun.singular : noun.plural}`,
+    description: parts.join(' '),
+  });
+}
+
+/**
+ * The way back from a delivery change this session made, for Ctrl+Z, and the
+ * way forward again for Ctrl+Shift+Z. Undo reverses the recorded audit rows —
+ * each entity that changed was in the opposite state before — and redo writes
+ * the same delivery again. Both throw unless Meta confirmed every entity.
+ */
+export function deliveryHistoryEntry({
+  label,
+  accountId,
+  targets,
+  status,
+  auditEventIds,
+  onStatus,
+}: {
+  label: string;
+  accountId: string;
+  /** The entities that changed. */
+  targets: BulkDeliveryTarget[];
+  /** What was written. */
+  status: DeliveryStatus;
+  auditEventIds: number[];
+  /** Shows the given delivery on those rows. */
+  onStatus: (entityIds: string[], status: DeliveryStatus) => void;
+}): HistoryEntry {
+  let reversible = auditEventIds;
+  const previous: DeliveryStatus = status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
+  return {
+    label,
+    undo: async () => {
+      const { failed, error } = await undoActions(reversible);
+      if (failed > 0) {
+        throw new Error(`${failed} of ${reversible.length} changes could not be undone: ${error} Check Meta before retrying.`);
+      }
+      onStatus(targets.map((target) => target.entityId), previous);
+    },
+    redo: async () => {
+      const outcome = await setDeliveryForMany(targets, accountId, status);
+      reversible = outcome.changed.flatMap((item) => (item.auditEventId ? [item.auditEventId] : []));
+      onStatus([...outcome.changed.map((item) => item.entityId), ...outcome.unchanged], status);
+      if (outcome.failed.length > 0) {
+        throw new Error(`${outcome.failed.length} of ${targets.length} failed: ${outcome.failed[0].error}`);
+      }
+    },
+  };
 }

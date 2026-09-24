@@ -6,7 +6,7 @@ import os
 import tempfile
 import unittest
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -33,6 +33,7 @@ from database.models import (
     AllowedEmail,
     AppSettings,
     AuditEvent,
+    DeletedItem,
     EmailVerificationCode,
     RuleGroup,
     RuleGroupItem,
@@ -1574,6 +1575,133 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 await session.execute(select(RuleGroupItem).where(RuleGroupItem.group_id == group_id))
             ).scalars().all()
             self.assertEqual(group_items, [])
+
+    async def test_deleted_rules_and_groups_are_restorable_for_thirty_days(self):
+        async with self.test_session_maker() as session:
+            buyer = (await session.execute(select(User).where(User.telegram_id == "8948797431"))).scalar_one()
+            presets = [
+                RulePreset(
+                    owner_user_id=buyer.id,
+                    workspace_id=buyer.active_workspace_id,
+                    name="Stop no leads",
+                    action="turn_off",
+                    conditions=[{"metric": "spend", "operator": "gte", "value": 10}],
+                ),
+                RulePreset(
+                    owner_user_id=buyer.id,
+                    workspace_id=buyer.active_workspace_id,
+                    name="Notify high CPL",
+                    action="notify_only",
+                    conditions=[{"metric": "cpl", "operator": "gte", "value": 7}],
+                ),
+            ]
+            session.add_all(presets)
+            await session.commit()
+            for preset in presets:
+                await session.refresh(preset)
+            stop_id, notify_id = presets[0].id, presets[1].id
+            buyer_workspace_id = buyer.active_workspace_id
+
+        buyer_headers = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        admin_headers = await session_headers(self.test_session_maker, {"id": 8634201356, "first_name": "Admin", "username": "admin_user"})
+        scope = {"level": "campaign", "ids": ["120200000000001"]}
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            group = (await client.post(
+                "/api/rule-groups",
+                headers=buyer_headers,
+                json={"name": "Launch safety", "preset_ids": [stop_id, notify_id]},
+            )).json()
+            attached = await client.post(
+                "/api/accounts/act_1018756607700064/assign-rule",
+                headers=buyer_headers,
+                json={"preset_id": stop_id, "scope": scope},
+            )
+            self.assertEqual(attached.status_code, 200)
+
+            deleted_rule = await client.delete(f"/api/presets/{stop_id}", headers=buyer_headers)
+            deleted_group = await client.delete(f"/api/rule-groups/{group['id']}", headers=buyer_headers)
+            self.assertEqual(deleted_rule.status_code, 200)
+            self.assertEqual(deleted_group.status_code, 200)
+            rule_item_id = deleted_rule.json()["deleted_item_id"]
+            group_item_id = deleted_group.json()["deleted_item_id"]
+
+            # Deletion still takes the rule off the account.
+            account = (await client.get("/api/accounts", headers=buyer_headers)).json()[0]
+            self.assertEqual(account["active_rules"], [])
+            self.assertFalse(account["rules_enabled"])
+
+            listed = (await client.get("/api/deleted-items", headers=buyer_headers)).json()
+            self.assertEqual(
+                [(item["kind"], item["name"]) for item in listed],
+                [("rule_group", "Launch safety"), ("rule", "Stop no leads")],
+            )
+            self.assertTrue(all(item["purge_at"] > item["deleted_at"] for item in listed))
+
+            # Another workspace neither sees nor restores it.
+            admin_listed = (await client.get("/api/deleted-items", headers=admin_headers)).json()
+            self.assertNotIn(rule_item_id, [item["id"] for item in admin_listed])
+            foreign_restore = await client.post(
+                f"/api/deleted-items/{rule_item_id}/restore", headers=admin_headers
+            )
+            self.assertEqual(foreign_restore.status_code, 404)
+
+            # The rule left the group when it was deleted, so the group comes
+            # back with the rules it held at its own deletion.
+            restored_group = await client.post(
+                f"/api/deleted-items/{group_item_id}/restore", headers=buyer_headers
+            )
+            self.assertEqual(restored_group.status_code, 200)
+            self.assertEqual(restored_group.json()["entity_id"], group["id"])
+            self.assertEqual(restored_group.json()["missing_rule_ids"], [])
+            groups = (await client.get("/api/rule-groups", headers=buyer_headers)).json()
+            self.assertEqual(
+                next(item for item in groups if item["id"] == group["id"])["preset_ids"],
+                [notify_id],
+            )
+
+            # The rule comes back under its id, into that group and onto the
+            # account with the scope it had there.
+            restored_rule = await client.post(
+                f"/api/deleted-items/{rule_item_id}/restore", headers=buyer_headers
+            )
+            self.assertEqual(restored_rule.status_code, 200)
+            self.assertEqual(restored_rule.json()["entity_id"], stop_id)
+            self.assertEqual(restored_rule.json()["skipped_account_ids"], [])
+
+            groups = (await client.get("/api/rule-groups", headers=buyer_headers)).json()
+            restored = next(item for item in groups if item["id"] == group["id"])
+            self.assertEqual(sorted(restored["preset_ids"]), sorted([stop_id, notify_id]))
+            account = (await client.get("/api/accounts", headers=buyer_headers)).json()[0]
+            self.assertEqual([rule["preset_id"] for rule in account["active_rules"]], [stop_id])
+            self.assertEqual(account["active_rules"][0]["scope"], scope)
+            self.assertTrue(account["rules_enabled"])
+
+            self.assertEqual((await client.get("/api/deleted-items", headers=buyer_headers)).json(), [])
+            repeated = await client.post(
+                f"/api/deleted-items/{rule_item_id}/restore", headers=buyer_headers
+            )
+            self.assertEqual(repeated.status_code, 404)
+
+        # Past thirty days an item is gone for good.
+        async with self.test_session_maker() as session:
+            expired = DeletedItem(
+                workspace_id=buyer_workspace_id,
+                kind="rule",
+                entity_id=987654,
+                name="Old rule",
+                snapshot={},
+                deleted_at=datetime.now(timezone.utc) - timedelta(days=31),
+            )
+            session.add(expired)
+            await session.commit()
+            await session.refresh(expired)
+            expired_id = expired.id
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            listed = (await client.get("/api/deleted-items", headers=buyer_headers)).json()
+            self.assertEqual(listed, [])
+            gone = await client.post(f"/api/deleted-items/{expired_id}/restore", headers=buyer_headers)
+            self.assertEqual(gone.status_code, 404)
 
     async def test_rule_groups_reorder(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}

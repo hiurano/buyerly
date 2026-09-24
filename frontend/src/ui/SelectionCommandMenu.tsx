@@ -72,8 +72,13 @@ export const SelectionCommandMenu: React.FC<SelectionCommandMenuProps> = ({
                     {action.icon}
                   </span>
                   <span className="min-w-0 flex-1 truncate">{action.label}</span>
+                  {action.withModifier && (
+                    <kbd className="flex h-5 min-w-5 items-center justify-center rounded-[4px] border border-[var(--color-border-secondary)] px-1 font-sans text-[11px] text-[var(--text-tertiary)]">
+                      Ctrl
+                    </kbd>
+                  )}
                   <kbd className="flex h-5 min-w-5 items-center justify-center rounded-[4px] border border-[var(--color-border-secondary)] px-1 font-sans text-[11px] text-[var(--text-tertiary)]">
-                    {action.shortcut.toUpperCase()}
+                    {action.shortcut.length === 1 ? action.shortcut.toUpperCase() : action.shortcut}
                   </kbd>
                 </Command.Item>
               ))}

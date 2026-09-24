@@ -22,7 +22,7 @@ interface RuleRowMenuProps {
  * delete it. Built from the shared menu primitives rather than a new popover.
  */
 export const RuleRowMenu: React.FC<RuleRowMenuProps> = ({ rule }) => {
-  const { openEditRuleModal, toggleRuleOnAccount, deleteRule, ruleAccounts } =
+  const { openEditRuleModal, toggleRuleOnAccount, requestDeletion, ruleAccounts } =
     useAppStore();
 
   const attachedIds = new Set(rule.preset.attached_account_ids);
@@ -99,7 +99,7 @@ export const RuleRowMenu: React.FC<RuleRowMenuProps> = ({ rule }) => {
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem onClick={() => void deleteRule(rule.id)}>
+        <DropdownMenuItem onClick={() => requestDeletion('rule', [rule.id])}>
           <span style={{ color: 'var(--rules-action-stop-text)' }}>Delete rule</span>
         </DropdownMenuItem>
       </DropdownMenuContent>

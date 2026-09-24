@@ -35,10 +35,18 @@ from api.schemas import (
     RulePresetItem,
 )
 from core.rule_examples import ensure_rule_examples
+from core.trash import (
+    KIND_RULE,
+    KIND_RULE_GROUP,
+    group_snapshot,
+    preset_snapshot,
+    purge_expired,
+)
 from database.db import async_session_maker
 from database.models import (
     Account,
     AuditEvent,
+    DeletedItem,
     RuleGroup,
     RuleGroupItem,
     RulePreset,
@@ -191,18 +199,48 @@ async def delete_preset(preset_id: int, user: User = Depends(get_current_user)):
         if not preset:
             raise HTTPException(status_code=404, detail="Preset not found")
 
-        # Remove the exact preset ID from linked account snapshots in this workspace.
+        # Remove the exact preset ID from linked account snapshots in this workspace,
+        # remembering each attachment so a restore can put it back.
         acc_stmt = select(Account).where(Account.workspace_id == ws.id)
         acc_res = await session.execute(acc_stmt)
         affected_account_ids = []
+        attachments = []
         for acc in acc_res.scalars().all():
             active_rules = _load_active_rules(acc.active_rules)
+            removed = [r for r in active_rules if r.get("preset_id") == preset_id]
             remaining_rules = [r for r in active_rules if r.get("preset_id") != preset_id]
-            if len(remaining_rules) != len(active_rules):
+            if removed:
                 affected_account_ids.append(acc.account_id)
                 acc.active_rules = json.dumps(remaining_rules)
+                switched_off = not remaining_rules and bool(acc.rules_enabled)
                 if not remaining_rules:
                     acc.rules_enabled = False
+                attachments.append(
+                    {
+                        "account_id": acc.account_id,
+                        "scope": removed[0].get("scope") or {"level": "account", "ids": []},
+                        "switched_account_off": switched_off,
+                    }
+                )
+
+        group_items = [
+            {"group_id": item.group_id, "position": item.position}
+            for item in (
+                await session.execute(
+                    select(RuleGroupItem).where(RuleGroupItem.preset_id == preset_id)
+                )
+            ).scalars().all()
+        ]
+        await purge_expired(session, ws.id)
+        trash_item = DeletedItem(
+            workspace_id=ws.id,
+            kind=KIND_RULE,
+            entity_id=preset.id,
+            name=preset.name,
+            snapshot=preset_snapshot(preset, group_items, attachments),
+            deleted_by_user_id=user.id,
+        )
+        session.add(trash_item)
 
         session.add(
             AuditEvent(
@@ -229,7 +267,11 @@ async def delete_preset(preset_id: int, user: User = Depends(get_current_user)):
         await session.execute(delete(RuleGroupItem).where(RuleGroupItem.preset_id == preset_id))
         await session.execute(delete(RulePreset).where(RulePreset.id == preset_id))
         await session.commit()
-        return {"success": True, "message": "Preset deleted"}
+        return {
+            "success": True,
+            "message": "Preset deleted",
+            "deleted_item_id": trash_item.id,
+        }
 
 
 @router.get("/rule-groups", response_model=List[RuleGroupResponse])
@@ -427,10 +469,32 @@ async def delete_rule_group(
         ).scalar_one_or_none()
         if not group:
             raise HTTPException(status_code=404, detail="Rule group not found.")
+        items = [
+            {"preset_id": item.preset_id, "position": item.position}
+            for item in (
+                await session.execute(
+                    select(RuleGroupItem).where(RuleGroupItem.group_id == group.id)
+                )
+            ).scalars().all()
+        ]
+        await purge_expired(session, ws.id)
+        trash_item = DeletedItem(
+            workspace_id=ws.id,
+            kind=KIND_RULE_GROUP,
+            entity_id=group.id,
+            name=group.name,
+            snapshot=group_snapshot(group, items),
+            deleted_by_user_id=user.id,
+        )
+        session.add(trash_item)
         await session.execute(delete(RuleGroupItem).where(RuleGroupItem.group_id == group.id))
         await session.delete(group)
         await session.commit()
-        return {"success": True, "message": "Group deleted. The assigned rules were kept on the ad accounts."}
+        return {
+            "success": True,
+            "message": "Group deleted. The assigned rules were kept on the ad accounts.",
+            "deleted_item_id": trash_item.id,
+        }
 
 
 @router.post("/accounts/{account_id}/assign-rule")
