@@ -44,8 +44,8 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
         # OTP hashing needs a pepper, and the module must not rely on another
         # test file having set one earlier in the same process: CI splits the
         # suite across shards, so each module runs on its own.
-        self.original_bot_token = settings.BOT_TOKEN
-        settings.BOT_TOKEN = "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+        self.original_otp_pepper = settings.OTP_PEPPER
+        settings.OTP_PEPPER = "test-otp-pepper"
 
         self.engine = create_test_engine()
         self.sessions = async_sessionmaker(
@@ -98,7 +98,7 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
         api_server_module.async_session_maker = self.original_server_session_maker
         database_db_module.async_session_maker = self.original_db_session_maker
         settings.ADMIN_CHAT_ID = self.original_admin_chat_id
-        settings.BOT_TOKEN = self.original_bot_token
+        settings.OTP_PEPPER = self.original_otp_pepper
         await self.engine.dispose()
 
     async def test_unlisted_email_rejected_on_request_temporary_password(self):

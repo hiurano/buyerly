@@ -17,10 +17,8 @@ OTP_PEPPER=...
 ```
 
 Если `POSTGRES_PASSWORD` отсутствует, deploy-скрипт один раз создаёт случайное значение локально на сервере и ограничивает права файла `.env`.
-`OTP_PEPPER` должен быть отдельным длинным случайным секретом; fallback на
-`BOT_TOKEN` сохранён только для совместимости. Telegram-бота и уведомлений в
-Telegram нет: `BOT_TOKEN` задают, только если нужен старый вход через Telegram
-Mini App.
+`OTP_PEPPER` обязателен: это отдельный длинный случайный секрет, без него
+выдача OTP-кодов завершается ошибкой. Интеграции с Telegram нет.
 
 Для рабочего подключения Facebook дополнительно обязательны:
 
@@ -58,7 +56,7 @@ cross-origin клиентов; `ENABLE_DEV_AUTH` в production всегда до
 
 Допустимые операционные overrides: `ADMIN_CHAT_ID` (legacy Telegram ID
 супер-админа для bootstrap и dev-входа),
-`DEFAULT_POLL_INTERVAL_MINUTES`, `TELEGRAM_INIT_DATA_MAX_AGE_SECONDS`,
+`DEFAULT_POLL_INTERVAL_MINUTES`,
 `WEB_SESSION_TTL_HOURS` и `WEB_SESSION_ROTATE_MINUTES`. Пара
 `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD` используется только при
 первом запуске пустой установки и после создания администратора должна быть

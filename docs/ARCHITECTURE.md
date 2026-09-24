@@ -29,7 +29,7 @@ Vite собирает `frontend/dist`; Nginx отдаёт файлы и прок
 
 `workspace_id` ограничивает доступ к бизнес-данным. Членство задаёт роль `owner`, `admin`, `buyer` или `viewer`; backend проверяет права при чтении и изменениях. `owner_user_id` не заменяет workspace-проверку.
 
-Основной web-вход использует email-ссылку или OTP и создаёт серверную сессию. В БД хранится хэш секрета, browser cookie защищена HttpOnly, изменения через cookie требуют CSRF. В [api/auth.py](../api/auth.py) также остаются Telegram initData и переходная обработка legacy bearer token; их наличие не означает сохранение старого интерфейса.
+Основной web-вход использует email-ссылку или OTP и создаёт серверную сессию. В БД хранится хэш секрета, browser cookie защищена HttpOnly, изменения через cookie требуют CSRF. В [api/auth.py](../api/auth.py) также остаётся переходная обработка legacy bearer token; её наличие не означает сохранение старого интерфейса.
 
 Схема развивается через Alembic. Production migration runner применяет миграции под advisory lock; создание схемы через приложение не заменяет этот путь.
 

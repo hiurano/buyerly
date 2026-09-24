@@ -1,11 +1,9 @@
 import asyncio
 import hashlib
-import hmac
 import io
 import json
 import os
 import tempfile
-import time
 import unittest
 import urllib.parse
 from datetime import datetime, timezone
@@ -21,7 +19,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 import api.auth as api_auth_module
 import api.routes as api_routes_module
 import api.server as api_server_module
-from api.auth import validate_telegram_init_data
 from api.server import create_app
 from core.config import settings
 from core.meta_tokens import decrypt_meta_token
@@ -52,23 +49,7 @@ from database.models import (
 )
 
 
-from tests.test_db_helper import create_test_engine, init_test_db
-
-
-def generate_valid_telegram_init_data(bot_token: str, user_dict: dict, auth_date: int = None) -> str:
-    if auth_date is None:
-        auth_date = int(time.time())
-    user_str = json.dumps(user_dict, separators=(",", ":"), ensure_ascii=False)
-    params = {
-        "auth_date": str(auth_date),
-        "query_id": "AAHdF6IQAAAAAN0XohDhrOrc",
-        "user": user_str
-    }
-    data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(params.items()))
-    secret_key = hmac.new(b"WebAppData", bot_token.encode("utf-8"), hashlib.sha256).digest()
-    hash_val = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
-    params["hash"] = hash_val
-    return urllib.parse.urlencode(params)
+from tests.test_db_helper import create_test_engine, init_test_db, session_headers
 
 
 class TestWebApi(unittest.IsolatedAsyncioTestCase):
@@ -87,7 +68,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         api_auth_module.async_session_maker = self.test_session_maker
         api_server_module.async_session_maker = self.test_session_maker
 
-        settings.BOT_TOKEN = "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+        settings.OTP_PEPPER = "test-otp-pepper"
         settings.ADMIN_CHAT_ID = "8634201356"
 
         # Populate initial test user & account
@@ -176,54 +157,6 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("ws:10:today", api_routes_module._summary_cache)
         self.assertNotIn("user:20:today", api_routes_module._summary_cache)
         self.assertIn("ws:30:today", api_routes_module._summary_cache)
-
-    def test_init_data_validation(self):
-        user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
-        now = 2_000_000_000
-        valid_init_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            user_info,
-            auth_date=now,
-        )
-        
-        # Valid signature
-        res = validate_telegram_init_data(valid_init_data, settings.BOT_TOKEN, now=now)
-        self.assertIsNotNone(res)
-        self.assertEqual(res["user"]["id"], 8948797431)
-
-        # Tampered signature
-        tampered_init_data = valid_init_data.replace("buyer_nick", "hacker")
-        tampered_res = validate_telegram_init_data(
-            tampered_init_data,
-            settings.BOT_TOKEN,
-            now=now,
-        )
-        self.assertIsNone(tampered_res)
-
-        stale_init_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            user_info,
-            auth_date=now - 86401,
-        )
-        stale_res = validate_telegram_init_data(
-            stale_init_data,
-            settings.BOT_TOKEN,
-            now=now,
-            max_age_seconds=86400,
-        )
-        self.assertIsNone(stale_res)
-
-        future_init_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            user_info,
-            auth_date=now + 61,
-        )
-        future_res = validate_telegram_init_data(
-            future_init_data,
-            settings.BOT_TOKEN,
-            now=now,
-        )
-        self.assertIsNone(future_res)
 
     async def test_health_endpoints(self):
         transport = httpx.ASGITransport(app=self.app)
@@ -414,11 +347,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             )
             await session.commit()
 
-        init_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {init_data}"}
+        auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**auth}
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             overview = await client.get("/api/health/overview", headers=headers)
@@ -432,11 +362,11 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
     async def test_get_accounts_endpoint(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
-        init_data = generate_valid_telegram_init_data(settings.BOT_TOKEN, user_info)
+        auth = await session_headers(self.test_session_maker, user_info)
 
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            headers = {"Authorization": f"tma {init_data}"}
+            headers = {**auth}
             resp = await client.get("/api/accounts", headers=headers)
             self.assertEqual(resp.status_code, 200)
             data = resp.json()
@@ -478,16 +408,10 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             )
             await session.commit()
 
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        admin_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8634201356, "first_name": "Admin", "username": "admin_user"},
-        )
-        buyer_headers = {"Authorization": f"tma {buyer_data}"}
-        admin_headers = {"Authorization": f"tma {admin_data}"}
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        admin_data = await session_headers(self.test_session_maker, {"id": 8634201356, "first_name": "Admin", "username": "admin_user"})
+        buyer_headers = {**buyer_data}
+        admin_headers = {**admin_data}
         transport = httpx.ASGITransport(app=self.app)
 
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -588,11 +512,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             )
 
     async def test_account_group_names_are_atomic_and_unique_per_workspace(self):
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {buyer_data}"}
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**buyer_data}
         transport = httpx.ASGITransport(app=self.app)
 
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -727,11 +648,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             )
             await session.commit()
 
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {buyer_data}"}
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**buyer_data}
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             accounts = await client.get("/api/accounts", headers=headers)
@@ -792,11 +710,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             )
             await session.commit()
 
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {buyer_data}"}
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**buyer_data}
         target_url = "/api/accounts/act_1018756607700064/cost-target"
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -883,11 +798,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             )
             await session.commit()
 
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {buyer_data}"}
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**buyer_data}
         account_id = "act_1018756607700064"
         delivery_url = "/api/entities/campaign/cmp_live_1/delivery"
         budget_url = "/api/entities/campaign/cmp_live_1/budget"
@@ -1073,11 +985,11 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
     async def test_toggle_rules_and_presets(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
-        init_data = generate_valid_telegram_init_data(settings.BOT_TOKEN, user_info)
+        auth = await session_headers(self.test_session_maker, user_info)
 
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            headers = {"Authorization": f"tma {init_data}"}
+            headers = {**auth}
 
             invalid_interval = await client.post(
                 "/api/presets",
@@ -1240,8 +1152,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
     async def test_disabled_preset_stops_running_and_reports_its_attachments(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
-        init_data = generate_valid_telegram_init_data(settings.BOT_TOKEN, user_info)
-        headers = {"Authorization": f"tma {init_data}"}
+        auth = await session_headers(self.test_session_maker, user_info)
+        headers = {**auth}
         account_id = "act_1018756607700064"
 
         payload = {
@@ -1312,8 +1224,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
     async def test_rule_group_icon_round_trips(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
-        init_data = generate_valid_telegram_init_data(settings.BOT_TOKEN, user_info)
-        headers = {"Authorization": f"tma {init_data}"}
+        auth = await session_headers(self.test_session_maker, user_info)
+        headers = {**auth}
 
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -1356,8 +1268,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
     async def test_rule_scope_is_attached_re_aimed_and_survives_preset_edits(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
-        init_data = generate_valid_telegram_init_data(settings.BOT_TOKEN, user_info)
-        headers = {"Authorization": f"tma {init_data}"}
+        auth = await session_headers(self.test_session_maker, user_info)
+        headers = {**auth}
         account_id = "act_1018756607700064"
 
         payload = {
@@ -1458,11 +1370,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(missing.status_code, 404)
 
     async def test_account_rejects_rules_with_opposite_actions_and_same_trigger(self):
-        init_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {init_data}"}
+        auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**auth}
         condition = [
             {"metric": "spend", "operator": "gte", "value": 10, "time_window": "today"}
         ]
@@ -1539,16 +1448,10 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             buyer_ids = [preset.id for preset in buyer_presets]
             foreign_id = foreign_preset.id
 
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        admin_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8634201356, "first_name": "Admin", "username": "admin_user"},
-        )
-        buyer_headers = {"Authorization": f"tma {buyer_data}"}
-        admin_headers = {"Authorization": f"tma {admin_data}"}
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        admin_data = await session_headers(self.test_session_maker, {"id": 8634201356, "first_name": "Admin", "username": "admin_user"})
+        buyer_headers = {**buyer_data}
+        admin_headers = {**admin_data}
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             foreign_response = await client.post(
@@ -1641,8 +1544,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
     async def test_rule_groups_reorder(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
-        init_data = generate_valid_telegram_init_data(settings.BOT_TOKEN, user_info)
-        headers = {"Authorization": f"tma {init_data}"}
+        auth = await session_headers(self.test_session_maker, user_info)
+        headers = {**auth}
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             resp1 = await client.post("/api/rule-groups", headers=headers, json={"name": "Group Alpha", "preset_ids": []})
@@ -1674,7 +1577,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
     async def test_parse_raw_endpoint(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
-        init_data = generate_valid_telegram_init_data(settings.BOT_TOKEN, user_info)
+        auth = await session_headers(self.test_session_maker, user_info)
         raw_fb_text = """
         Ad account ID: 1083480094013618
         Швеция 1083
@@ -1682,7 +1585,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         """
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            headers = {"Authorization": f"tma {init_data}"}
+            headers = {**auth}
             resp = await client.post("/api/accounts/parse-raw", headers=headers, json={"raw_text": raw_fb_text})
             self.assertEqual(resp.status_code, 200)
             items = resp.json()
@@ -1692,8 +1595,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
     async def test_batch_import_never_enables_rules_for_a_new_account(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
-        init_data = generate_valid_telegram_init_data(settings.BOT_TOKEN, user_info)
-        headers = {"Authorization": f"tma {init_data}"}
+        auth = await session_headers(self.test_session_maker, user_info)
+        headers = {**auth}
 
         meta_account = {
             "timezone_name": "Europe/Stockholm",
@@ -1743,8 +1646,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
     async def test_manual_reimport_marks_existing_account_as_system_user(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
-        init_data = generate_valid_telegram_init_data(settings.BOT_TOKEN, user_info)
-        headers = {"Authorization": f"tma {init_data}"}
+        auth = await session_headers(self.test_session_maker, user_info)
+        headers = {**auth}
         account_id = "act_1018756607700064"
 
         async with self.test_session_maker() as session:
@@ -1819,7 +1722,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
     async def test_batch_import_rejects_account_without_supported_meta_timezone(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
-        init_data = generate_valid_telegram_init_data(settings.BOT_TOKEN, user_info)
+        auth = await session_headers(self.test_session_maker, user_info)
         payload = {
             "accounts": [{"account_id": "act_missing_timezone", "name": "Broken clock"}],
             "batch_name": "-",
@@ -1842,7 +1745,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
                 response = await client.post(
                     "/api/accounts/batch-add",
-                    headers={"Authorization": f"tma {init_data}"},
+                    headers={**auth},
                     json=payload,
                 )
 
@@ -1860,16 +1763,10 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertIsNone(rejected)
 
     async def test_analytics_view_is_saved_per_user_and_validated(self):
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        admin_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8634201356, "first_name": "Admin", "username": "admin_user"},
-        )
-        buyer_headers = {"Authorization": f"tma {buyer_data}"}
-        admin_headers = {"Authorization": f"tma {admin_data}"}
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        admin_data = await session_headers(self.test_session_maker, {"id": 8634201356, "first_name": "Admin", "username": "admin_user"})
+        buyer_headers = {**buyer_data}
+        admin_headers = {**admin_data}
         transport = httpx.ASGITransport(app=self.app)
 
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -2049,11 +1946,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 "purchases": 1,
             }
 
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {buyer_data}"}
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**buyer_data}
         transport = httpx.ASGITransport(app=self.app)
         mocked_insights = AsyncMock(side_effect=insights_side_effect)
         with patch.object(api_routes_module.meta_client, "get_account_insights_summary", new=mocked_insights):
@@ -2126,11 +2020,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(snapshot_count, 1)
 
     async def test_summary_survives_reload_and_keeps_previous_snapshot(self):
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {buyer_data}"}
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**buyer_data}
         transport = httpx.ASGITransport(app=self.app)
 
         first_metrics = {
@@ -2227,10 +2118,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 "purchases": 0,
             }
 
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         with patch.object(
             api_routes_module.meta_client,
             "get_account_insights_summary",
@@ -2240,7 +2128,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
                 response = await client.get(
                     "/api/summary?period=today&force=true",
-                    headers={"Authorization": f"tma {buyer_data}"},
+                    headers={**buyer_data},
                 )
 
         self.assertEqual(response.status_code, 200)
@@ -2286,11 +2174,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             ws1_id = buyer.active_workspace_id
             ws2_id = ws_second.id
 
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {buyer_data}"}
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**buyer_data}
         transport = httpx.ASGITransport(app=self.app)
 
         async def insights_router(account_id, access_token, date_preset):
@@ -2397,11 +2282,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             session.add(acc2)
             await session.commit()
 
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {buyer_data}"}
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**buyer_data}
         transport = httpx.ASGITransport(app=self.app)
 
         async def insights_2acc(account_id, access_token, date_preset):
@@ -2459,11 +2341,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             await session.commit()
             empty_ws_id = ws_empty.id
 
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {buyer_data}"}
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**buyer_data}
         transport = httpx.ASGITransport(app=self.app)
 
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -2513,11 +2392,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             ws1_id = buyer.active_workspace_id
             ws2_id = ws_other.id
 
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {buyer_data}"}
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**buyer_data}
         transport = httpx.ASGITransport(app=self.app)
 
         insights_mock = AsyncMock()
@@ -2549,11 +2425,11 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
     async def test_settings_endpoint(self):
         admin_info = {"id": 8634201356, "first_name": "Admin", "username": "admin_user"}
-        admin_init_data = generate_valid_telegram_init_data(settings.BOT_TOKEN, admin_info)
+        admin_auth = await session_headers(self.test_session_maker, admin_info)
 
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            headers = {"Authorization": f"tma {admin_init_data}"}
+            headers = {**admin_auth}
 
             # Get settings
             s_resp = await client.get("/api/settings", headers=headers)
@@ -2651,23 +2527,17 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             )
             await session.commit()
 
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        admin_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8634201356, "first_name": "Admin", "username": "admin_user"},
-        )
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        admin_data = await session_headers(self.test_session_maker, {"id": 8634201356, "first_name": "Admin", "username": "admin_user"})
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             forbidden = await client.post(
                 "/api/adsets/admin_adset_1/dismiss",
-                headers={"Authorization": f"tma {buyer_data}"},
+                headers={**buyer_data},
             )
             allowed = await client.post(
                 "/api/adsets/admin_adset_1/dismiss",
-                headers={"Authorization": f"tma {admin_data}"},
+                headers={**admin_data},
             )
 
         self.assertEqual(forbidden.status_code, 403)
@@ -2731,27 +2601,21 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             )
             await session.commit()
 
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        admin_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8634201356, "first_name": "Admin", "username": "admin_user"},
-        )
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        admin_data = await session_headers(self.test_session_maker, {"id": 8634201356, "first_name": "Admin", "username": "admin_user"})
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             buyer_response = await client.get(
                 "/api/audit-events?category=rule_action&search=Buyer",
-                headers={"Authorization": f"tma {buyer_data}"},
+                headers={**buyer_data},
             )
             buyer_error_filter = await client.get(
                 "/api/audit-events?status=ERROR",
-                headers={"Authorization": f"tma {buyer_data}"},
+                headers={**buyer_data},
             )
             admin_response = await client.get(
                 "/api/audit-events?page_size=1",
-                headers={"Authorization": f"tma {admin_data}"},
+                headers={**admin_data},
             )
 
         self.assertEqual(buyer_response.status_code, 200)
@@ -2780,10 +2644,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             )
             await session.commit()
 
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         transport = httpx.ASGITransport(app=self.app)
         with patch.object(
             api_routes_module.meta_client,
@@ -2793,7 +2654,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
                 response = await client.post(
                     "/api/adsets/buyer_failed_adset/reactivate",
-                    headers={"Authorization": f"tma {buyer_data}"},
+                    headers={**buyer_data},
                 )
 
         self.assertEqual(response.status_code, 500)
@@ -2846,11 +2707,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             await session.refresh(source)
             source_id = source.id
 
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {buyer_data}"}
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**buyer_data}
         transport = httpx.ASGITransport(app=self.app)
         current_state = {
             "adset_id": "undo_stop_adset",
@@ -2956,11 +2814,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             entity_id="camp_undo_1",
             entity_name="Sweden scale",
         )
-        init_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {init_data}"}
+        auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**auth}
         transport = httpx.ASGITransport(app=self.app)
 
         with (
@@ -3028,11 +2883,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             entity_id="ad_undo_1",
             entity_name="Creative A",
         )
-        init_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {init_data}"}
+        auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**auth}
         transport = httpx.ASGITransport(app=self.app)
 
         with (
@@ -3075,11 +2927,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             entity_id="camp_undo_2",
             entity_name="Already resumed",
         )
-        init_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {init_data}"}
+        auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**auth}
         transport = httpx.ASGITransport(app=self.app)
 
         with (
@@ -3147,10 +2996,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             await session.commit()
             source_id = source.id
 
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         with patch.object(
             api_routes_module.meta_client,
             "get_adset_state",
@@ -3160,7 +3006,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
                 response = await client.post(
                     f"/api/audit-events/{source_id}/undo",
-                    headers={"Authorization": f"tma {buyer_data}"},
+                    headers={**buyer_data},
                 )
 
         self.assertEqual(response.status_code, 409)
@@ -3188,10 +3034,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             await session.refresh(source)
             source_id = source.id
 
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         with (
             patch.object(
                 api_routes_module.meta_client,
@@ -3208,7 +3051,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
                 response = await client.post(
                     f"/api/audit-events/{source_id}/undo",
-                    headers={"Authorization": f"tma {buyer_data}"},
+                    headers={**buyer_data},
                 )
 
         self.assertEqual(response.status_code, 200)
@@ -3232,15 +3075,12 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             await session.refresh(foreign_preset)
             preset_id = foreign_preset.id
 
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 "/api/accounts/act_1018756607700064/assign-rule",
-                headers={"Authorization": f"tma {buyer_data}"},
+                headers={**buyer_data},
                 json={"preset_id": preset_id},
             )
 
@@ -3248,11 +3088,11 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
     async def test_delete_account(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
-        init_data = generate_valid_telegram_init_data(settings.BOT_TOKEN, user_info)
+        auth = await session_headers(self.test_session_maker, user_info)
 
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            headers = {"Authorization": f"tma {init_data}"}
+            headers = {**auth}
 
             del_resp = await client.delete("/api/accounts/act_1018756607700064", headers=headers)
             self.assertEqual(del_resp.status_code, 200)
@@ -3264,7 +3104,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
     async def test_unauthorized_direct_access_blocked(self):
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            # Request without Telegram initData header
+            # Request without a session
             resp = await client.get("/api/me")
             self.assertEqual(resp.status_code, 401)
 
@@ -3535,11 +3375,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 self.assertIsNone(user)
 
     async def test_avatar_and_logo_disallow_svg(self):
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {buyer_data}"}
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**buyer_data}
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             avatar_svg = await client.post(
@@ -3564,11 +3401,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(disguised_text.status_code, 400)
 
     async def test_image_uploads_are_canonical_owned_and_cleaned(self):
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {buyer_data}"}
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**buyer_data}
         transport = httpx.ASGITransport(app=self.app)
 
         png_buffer = io.BytesIO()
@@ -3690,11 +3524,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                     self.assertFalse(third_logo_path.exists())
 
     async def test_update_profile_avatar_url_validation(self):
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {buyer_data}"}
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**buyer_data}
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # 1. Malicious schemes and XSS payloads must be rejected with 422
@@ -3735,11 +3566,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(unowned_local_avatar.status_code, 400)
 
     async def test_update_profile_cannot_bypass_email_verification(self):
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {buyer_data}"}
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**buyer_data}
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # Direct modification of email in update-profile must be rejected
@@ -3752,11 +3580,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertIn("Changing the email directly without confirmation is not allowed", res.json()["detail"])
 
     async def test_email_change_verify_before_activate_flow(self):
-        buyer_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
-        )
-        headers = {"Authorization": f"tma {buyer_data}"}
+        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        headers = {**buyer_data}
         delivered = {}
 
         async def capture_code(email, code):
@@ -3837,11 +3662,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             session.add(old_user)
             await session.commit()
 
-        user_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797999, "first_name": "Old", "username": "old_buyer"},
-        )
-        headers = {"Authorization": f"tma {user_data}"}
+        user_data = await session_headers(self.test_session_maker, {"id": 8948797999, "first_name": "Old", "username": "old_buyer"})
+        headers = {**user_data}
         delivered = {}
 
         async def capture_code(email, code):
@@ -3897,11 +3719,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             session.add_all([user1, user2])
             await session.commit()
 
-        user2_data = generate_valid_telegram_init_data(
-            settings.BOT_TOKEN,
-            {"id": 8948797222, "first_name": "Two", "username": "user_two"},
-        )
-        headers = {"Authorization": f"tma {user2_data}"}
+        user2_data = await session_headers(self.test_session_maker, {"id": 8948797222, "first_name": "Two", "username": "user_two"})
+        headers = {**user2_data}
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # User 2 tries to claim User 1's email with different case / spaces -> 409 Conflict
