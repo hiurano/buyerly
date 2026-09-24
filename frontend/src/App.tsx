@@ -8,6 +8,8 @@ import { CommandMenu } from '@/components/command/CommandMenu';
 import { PreferencesView } from '@/components/preferences/PreferencesView';
 import { AppUtilityBar } from '@/components/layout/AppUtilityBar';
 import { TooltipProvider } from '@/ui/Tooltip';
+import { ToastRegion } from '@/ui/ToastRegion';
+import { useUndoShortcuts } from '@/lib/undoHistory';
 import { useAppStore } from '@/store/useAppStore';
 import { apiRequest } from '@/lib/api';
 import type { LoginResult, SessionUser, Workspace } from '@/lib/types';
@@ -52,6 +54,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     toggleSidebarCollapsed,
     interfaceTheme,
   } = useAppStore();
+  useUndoShortcuts();
   const [gPressed, setGPressed] = useState(false);
   const syncingRoute = useRef(true);
 
@@ -162,6 +165,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
         )}
         <AppUtilityBar />
       </div>
+      <ToastRegion />
     </TooltipProvider>
   );
 };

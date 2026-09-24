@@ -2019,6 +2019,15 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   animation: selectionDockEnter var(--motion-dock-enter-duration) var(--ease-out-cubic) both;
 }
 
+@keyframes toastEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.toast-enter {
+  animation: toastEnter var(--motion-toast-enter-duration) var(--ease-out-cubic) both;
+}
+
 /* A pinned Name cell paints the row's own state so it never covers the selection. */
 .linear-data-row .linear-data-sticky { background-color: var(--bg-canvas); }
 .linear-data-row:hover .linear-data-sticky { background-color: var(--data-row-hover-bg); }

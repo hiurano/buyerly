@@ -1,13 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pause, Play } from 'lucide-react';
 import {
-  describeBulkDelivery,
+  deliveryHistoryEntry,
+  describeEntities,
+  reportBulkDelivery,
   setDeliveryForMany,
   setEntityDelivery,
-  undoActions,
   type DeliveryControl,
+  type DeliveryStatus,
   type EntityLevel,
 } from '@/lib/delivery';
+import { pushHistory } from '@/lib/undoHistory';
+import { toast } from '@/ui/toast';
 import { ApiError, apiRequest } from '@/lib/api';
 import type {
   AnalyticsHierarchyResponse,
@@ -87,16 +91,6 @@ const entityLevels: Record<AdsManagerEntity, EntityLevel> = {
   ads: 'ad',
 };
 
-type DeliveryNotice = {
-  tone: 'ok' | 'error';
-  text: string;
-  /** Audit rows that reverse what this notice reports. */
-  undoIds?: number[];
-  /** Delivery each changed entity returns to on undo. */
-  reverts?: Record<string, 'active' | 'paused'>;
-  undoing?: boolean;
-};
-
 const entityLabels: Record<AdsManagerEntity, { plural: string; singular: string }> = {
   campaigns: { plural: 'campaigns', singular: 'campaign' },
   adsets: { plural: 'ad sets', singular: 'ad set' },
@@ -146,10 +140,9 @@ export const CampaignsView: React.FC = () => {
   const [ads, setAds] = useState<ReturnType<typeof hierarchyAdToRow>[]>([]);
   const [hierarchyState, setHierarchyState] = useState<LoadState>('idle');
   const [hierarchyError, setHierarchyError] = useState('');
-  // Delivery this session wrote to Meta, held apart from the stored snapshot
-  // until its next sync, plus the last recoverable failure.
+  // Delivery this session wrote to Meta, shown on the row over the stored
+  // snapshot, which only catches up on its next sync.
   const [deliveryActions, setDeliveryActions] = useState<Record<string, { busy: boolean; status?: 'active' | 'paused' }>>({});
-  const [deliveryNotice, setDeliveryNotice] = useState<DeliveryNotice | null>(null);
   const [hierarchyReloadKey, setHierarchyReloadKey] = useState(0);
   const [isMetaDialogOpen, setIsMetaDialogOpen] = useState(false);
   const [returnedConnectionId, setReturnedConnectionId] = useState<number | null>(
@@ -402,29 +395,46 @@ export const CampaignsView: React.FC = () => {
   }), [campaignFilterTab, displayProperties, supportsBudget]);
   const tableColumns = getAdsManagerColumns(campaignFilterTab, supportedProperties);
 
+  /** Shows delivery this session wrote on the given rows. */
+  const showDelivery = useCallback((entityIds: string[], status: DeliveryStatus) => {
+    const local = status === 'ACTIVE' ? 'active' : 'paused';
+    setDeliveryActions((current) => ({
+      ...current,
+      ...Object.fromEntries(entityIds.map((id) => [id, { busy: false, status: local }])),
+    }));
+  }, []);
+
+  const rowName = (entityId: string) => (
+    [...campaigns, ...adSets, ...ads].find((row) => row.id === entityId)?.name ?? entityLabels[campaignFilterTab].singular
+  );
+
+  /** One row's toggle: the row shows the result, Ctrl+Z takes it back, only a failure speaks. */
   const runDelivery = async (level: EntityLevel, entityId: string, next: boolean) => {
     if (!selectedAccountId) return;
+    const accountId = selectedAccountId;
+    const status: DeliveryStatus = next ? 'ACTIVE' : 'PAUSED';
+    const name = rowName(entityId);
     setDeliveryActions((current) => ({ ...current, [entityId]: { ...current[entityId], busy: true } }));
-    setDeliveryNotice(null);
     try {
-      const result = await setEntityDelivery(
-        level, entityId, selectedAccountId, next ? 'ACTIVE' : 'PAUSED',
-      );
-      setDeliveryActions((current) => ({
-        ...current,
-        [entityId]: { busy: false, status: result.status === 'ACTIVE' ? 'active' : 'paused' },
-      }));
-      setDeliveryNotice({
-        tone: 'ok',
-        undoIds: result.audit_event_id ? [result.audit_event_id] : [],
-        reverts: { [entityId]: next ? 'paused' : 'active' },
-        text: `${result.message} Stored Meta data still shows the previous value until its next sync.`,
-      });
+      const result = await setEntityDelivery(level, entityId, accountId, status);
+      showDelivery([entityId], result.status);
+      if (result.changed && result.audit_event_id) {
+        pushHistory(deliveryHistoryEntry({
+          label: `${next ? 'resume' : 'pause'} ${name}`,
+          accountId,
+          targets: [{ level, entityId }],
+          status,
+          auditEventIds: [result.audit_event_id],
+          onStatus: showDelivery,
+        }));
+      }
     } catch (error) {
       setDeliveryActions((current) => ({ ...current, [entityId]: { ...current[entityId], busy: false } }));
-      setDeliveryNotice({
+      toast.show({
         tone: 'error',
-        text: error instanceof Error ? error.message : 'The change could not be confirmed. Check Meta before retrying.',
+        title: `Couldn't ${next ? 'resume' : 'pause'}`,
+        message: name,
+        description: error instanceof Error ? error.message : 'The change could not be confirmed. Check Meta before retrying.',
       });
     }
   };
@@ -437,12 +447,9 @@ export const CampaignsView: React.FC = () => {
     const level = entityLevels[campaignFilterTab];
     const rows = currentRows.filter((row) => selectedCampaignIds.includes(row.id));
     const eligible = rows.filter((row) => row.status !== 'unknown');
-    const status = next === 'active' ? 'ACTIVE' : 'PAUSED';
-    const previous = Object.fromEntries(eligible.map((row) => [
-      row.id,
-      deliveryActions[row.id]?.status ?? (row.status as 'active' | 'paused'),
-    ]));
-    setDeliveryNotice(null);
+    const status: DeliveryStatus = next === 'active' ? 'ACTIVE' : 'PAUSED';
+    const accountId = selectedAccountId;
+    const noun = entityLabels[campaignFilterTab];
     setDeliveryActions((current) => ({
       ...current,
       ...Object.fromEntries(eligible.map((row) => [row.id, { ...current[row.id], busy: true }])),
@@ -460,33 +467,18 @@ export const CampaignsView: React.FC = () => {
         confirmed.has(row.id) ? { busy: false, status: next } : { ...current[row.id], busy: false },
       ])),
     }));
-    setDeliveryNotice({
-      tone: outcome.failed.length > 0 ? 'error' : 'ok',
-      text: describeBulkDelivery(outcome, status, entityLabels[campaignFilterTab], rows.length - eligible.length),
-      undoIds: outcome.changed.flatMap((item) => (item.auditEventId ? [item.auditEventId] : [])),
-      reverts: Object.fromEntries(outcome.changed.map((item) => [item.entityId, previous[item.entityId]])),
-    });
-  };
-
-  const runUndoDelivery = async () => {
-    const notice = deliveryNotice;
-    if (!notice?.undoIds?.length || notice.undoing) return;
-    setDeliveryNotice({ ...notice, undoing: true });
-    const { failed, error } = await undoActions(notice.undoIds);
-    if (failed === 0) {
-      setDeliveryActions((current) => ({
-        ...current,
-        ...Object.fromEntries(Object.entries(notice.reverts ?? {}).map(([id, status]) => [id, { busy: false, status }])),
+    const changed = outcome.changed;
+    if (changed.length > 0) {
+      pushHistory(deliveryHistoryEntry({
+        label: `${next === 'active' ? 'resume' : 'pause'} ${describeEntities(changed.map((item) => rowName(item.entityId)), noun)}`,
+        accountId,
+        targets: changed.map((item) => ({ level, entityId: item.entityId })),
+        status,
+        auditEventIds: changed.flatMap((item) => (item.auditEventId ? [item.auditEventId] : [])),
+        onStatus: showDelivery,
       }));
-      setDeliveryNotice({ tone: 'ok', text: 'Action undone. Stored Meta data will update on its next sync.' });
-    } else {
-      setDeliveryNotice({
-        ...notice,
-        undoing: false,
-        tone: 'error',
-        text: `${failed} of ${notice.undoIds.length} changes could not be undone: ${error} Check Meta before retrying.`,
-      });
     }
+    reportBulkDelivery(outcome, status, noun, rows.length - eligible.length);
   };
 
   const selectionNoun = entityLabels[campaignFilterTab];
@@ -515,7 +507,7 @@ export const CampaignsView: React.FC = () => {
     const local = deliveryActions[entityId];
     return {
       status: local?.status ?? status,
-      busy: Boolean(local?.busy || deliveryNotice?.undoing),
+      busy: Boolean(local?.busy),
       onChange: (next) => void runDelivery(level, entityId, next),
     };
   };
@@ -625,24 +617,6 @@ export const CampaignsView: React.FC = () => {
             setSortDirection(columnId === 'name' ? 'asc' : 'desc');
           }
         }}
-        before={deliveryNotice && (
-          <div
-            role={deliveryNotice.tone === 'error' ? 'alert' : 'status'}
-            className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-[var(--control-border-radius)] bg-[var(--item-hover-bg)] px-3 py-2"
-          >
-            <span className={`min-w-0 text-[12px] ${deliveryNotice.tone === 'error' ? 'text-[var(--statistics-state-attention)]' : 'text-[var(--text-secondary)]'}`}>
-              {deliveryNotice.text}
-            </span>
-            <span className="flex items-center gap-2">
-              {Boolean(deliveryNotice.undoIds?.length) && (
-                <Button size="compact" disabled={deliveryNotice.undoing} onClick={() => void runUndoDelivery()}>
-                  {deliveryNotice.undoing ? 'Undoing…' : 'Undo'}
-                </Button>
-              )}
-              <Button size="compact" disabled={deliveryNotice.undoing} onClick={() => setDeliveryNotice(null)}>Dismiss</Button>
-            </span>
-          </div>
-        )}
         after={filteredCurrentCount > 0 && filteredCurrentCount < totalCurrent && (
           <div className="campaign-filter-summary">
             <span>{totalCurrent - filteredCurrentCount} {entityLabels[campaignFilterTab].plural} hidden by filters</span>

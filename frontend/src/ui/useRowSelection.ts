@@ -5,11 +5,20 @@ import type React from 'react';
 export interface SelectionAction {
   id: string;
   label: string;
-  /** Single letter that runs the action while rows are selected. */
+  /** Key that runs the action while rows are selected: a letter, or `Delete`. */
   shortcut: string;
+  /** Held with Ctrl/Cmd, as Linear does for Delete. Plain letters stay unmodified. */
+  withModifier?: boolean;
   icon: React.ReactNode;
   run: () => void;
 }
+
+/** Cmd+Backspace is what a Mac keyboard sends for Ctrl+Delete. */
+const matchesShortcut = (action: SelectionAction, event: KeyboardEvent) => {
+  const key = event.key.toLowerCase();
+  const shortcut = action.shortcut.toLowerCase();
+  return key === shortcut || (shortcut === 'delete' && key === 'backspace');
+};
 
 interface UseRowSelectionOptions {
   selectedIds: string[];
@@ -109,8 +118,16 @@ export function useRowSelection({
         setMenuOpen(true);
         return;
       }
+      if (modified && !event.altKey && !event.shiftKey) {
+        const action = actions.find((item) => item.withModifier && matchesShortcut(item, event));
+        if (action) {
+          event.preventDefault();
+          action.run();
+        }
+        return;
+      }
       if (plain && !afterGoTo) {
-        const action = actions.find((item) => item.shortcut.toLowerCase() === key);
+        const action = actions.find((item) => !item.withModifier && matchesShortcut(item, event));
         if (action) {
           event.preventDefault();
           action.run();

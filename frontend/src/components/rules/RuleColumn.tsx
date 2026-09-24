@@ -25,7 +25,7 @@ export const RuleColumn: React.FC<RuleColumnProps> = ({
   isSystemColumn = false,
   onAddRule,
 }) => {
-  const { selectedRuleId, setSelectedRuleId, deleteRuleGroup, openCreateRuleModal } = useAppStore();
+  const { selectedRuleId, setSelectedRuleId, requestDeletion, openCreateRuleModal } = useAppStore();
 
   const handleDefaultAdd = () => {
     if (onAddRule) {
@@ -155,7 +155,7 @@ export const RuleColumn: React.FC<RuleColumnProps> = ({
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onClick={() => void deleteRuleGroup(id)}
+                    onClick={() => requestDeletion('rule_group', [id])}
                     className="text-[#f87171] hover:text-[#f87171] focus:text-[#f87171]"
                   >
                     <span>Delete group</span>

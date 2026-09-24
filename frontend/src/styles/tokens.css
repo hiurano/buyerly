@@ -117,6 +117,25 @@
   --motion-dock-enter-duration: 450ms;
   /* Above the app sidebar (96) and its resize handle (97). */
   --layer-command-menu: 100;
+  /* Toasts sit over everything except a modal dialog (500). */
+  --layer-toast: 110;
+
+  /* Toasts: Linear's notification region, measured in the product on 2026-09-25. */
+  --toast-width: 384px;
+  --toast-offset-right: 24px;
+  --toast-offset-bottom: 52px;
+  --toast-gap: 8px;
+  --toast-padding: 12px;
+  --toast-bg: var(--card-bg);
+  --toast-shadow: 0 0 0 1px lch(100% 0 272 / 0.1), 0 6px 18px lch(0% 0 0 / 0.3), 0 3px 9px lch(0% 0 0 / 0.3), 0 1px 1px lch(0% 0 0 / 0.2);
+  --toast-success-icon: #4cb782;
+  --toast-error-icon: #f87171;
+  --motion-toast-enter-duration: 180ms;
+
+  /* Destructive confirmation: Linear's red, not the decision colours. */
+  --action-danger: lch(58% 73 29 / 1);
+  --action-danger-hover: lch(53% 73 29 / 1);
+  --action-danger-text: lch(100% 5 286.91 / 1);
   --tab-active-bg: lch(16.706% 0.979 272 / 1);
   --tab-inactive-bg: transparent;
   --sidebar-card-border: var(--card-border);
@@ -242,6 +261,9 @@ html[data-theme='light'] {
   --dock-border: transparent;
   --dock-clear-btn-bg: lch(96.914% 0 282 / 1);
   --command-menu-shadow: 0px 9px 48px 0px lch(0% 0 0 / 0.08), 0px 6px 24px 0px lch(0% 0 0 / 0.1), 0px 1px 1px 0px lch(0% 0 0 / 0.04);
+  --toast-shadow: 0 0 0 1px lch(0% 0 0 / 0.103), 0 6px 18px lch(0% 0 0 / 0.02), 0 3px 9px lch(0% 0 0 / 0.04), 0 1px 1px lch(0% 0 0 / 0.04);
+  --toast-success-icon: #2da562;
+  --toast-error-icon: #b42318;
   --tab-active-bg: lch(93.483% 0.5 282 / 1);      /* #eeeef0 */
   --tab-inactive-bg: transparent;
   --sidebar-card-border: lch(97.3% 0 282 / 1);
