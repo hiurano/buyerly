@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Changed
+- Таблицы Ads Manager, Rules и Statistics собраны из одних общих компонентов в `frontend/src/ui/LinearDataList.tsx`: `LinearDataTable` (прокрутка, заголовок колонок, сортировка, минимальная ширина), `LinearDataListGroup`, `LinearDataPrimaryCell` (ячейка Name) и `LinearDataMetricCell` (числовые ячейки). Правка этих компонентов меняет таблицы на всех трёх вкладках. Эталоном взят вид Ads Manager: в Statistics текст в ячейках стал 13/12px вместо 14px, а плотность «Compact» теперь даёт стандартную высоту строки 44px. В Ads Manager числа во всех уровнях выводятся одинаково — табличными цифрами без моноширинного шрифта. Переключатель статуса кампании, адсета и объявления вынесен в общий `EntityRowControls`.
 - Вход по логину и паролю стал основным: на `/login` форма «Username or email» + пароль (`POST /api/auth/login`). Логином принимаются только `username` и email аккаунта; вход по отображаемому имени и `telegram_id` убран.
 - Вход по одноразовому коду и ссылке из письма остался только для приглашений в workspace: без `invite_token` `request-temporary-password` отвечает 403, а выданные ранее код или ссылка без приглашения больше не открывают сессию. Вернуть прежнее поведение можно через `EMAIL_LOGIN_WITHOUT_INVITE=true`.
 

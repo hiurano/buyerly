@@ -26,11 +26,9 @@ import {
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
 import {
-  LinearDataListGroupHeader,
-  LinearDataListColumnHeader,
-  LinearDataListStack,
+  LinearDataListGroup,
   LinearDataListToolbar,
-  LinearDataListViewport,
+  LinearDataTable,
 } from '@/ui/LinearDataList';
 import {
   ActiveFilterFormula,
@@ -50,7 +48,7 @@ import {
   LinearSidebarLeftToggleIcon,
   LinearSlidersIcon,
 } from '@/icons/LinearIcons';
-import { getAdsManagerColumns, getAdsManagerTableMinWidth } from './tableColumns';
+import { getAdsManagerColumns } from './tableColumns';
 import {
   eligibleMetaAccounts,
   hierarchyAdSetToRow,
@@ -347,10 +345,13 @@ export const CampaignsView: React.FC = () => {
   const renderGrouped = <T,>(rows: T[], fields: FilterFieldDefinition<T>[], render: (row: T) => React.ReactNode) =>
     groupView(rows, fields, groupingField).map(group => (
       <React.Fragment key={group.id}>
-        {group.label && <LinearDataListGroupHeader title={group.label} count={group.rows.length}
-          dotColor="var(--text-tertiary)" isCollapsed={Boolean(collapsedGroups[`${groupingField}:${group.id}`])}
-          onToggleCollapse={() => setCollapsedGroups(state => ({ ...state, [`${groupingField}:${group.id}`]: !state[`${groupingField}:${group.id}`] }))} />}
-        {(!group.label || !collapsedGroups[`${groupingField}:${group.id}`]) && group.rows.map(render)}
+        {group.label ? (
+          <LinearDataListGroup title={group.label} count={group.rows.length}
+            dotColor="var(--text-tertiary)" isCollapsed={Boolean(collapsedGroups[`${groupingField}:${group.id}`])}
+            onToggleCollapse={() => setCollapsedGroups(state => ({ ...state, [`${groupingField}:${group.id}`]: !state[`${groupingField}:${group.id}`] }))}>
+            {group.rows.map(render)}
+          </LinearDataListGroup>
+        ) : group.rows.map(render)}
       </React.Fragment>
     ));
   const totalCurrent = campaignFilterTab === 'campaigns' ? campaigns.length : campaignFilterTab === 'adsets' ? adSets.length : ads.length;
@@ -371,7 +372,6 @@ export const CampaignsView: React.FC = () => {
     created: false,
   }), [campaignFilterTab, displayProperties, supportsBudget]);
   const tableColumns = getAdsManagerColumns(campaignFilterTab, supportedProperties);
-  const tableMinWidth = getAdsManagerTableMinWidth(tableColumns);
 
   const runDelivery = async (level: EntityLevel, entityId: string, next: boolean) => {
     if (!selectedAccountId) return;
@@ -524,8 +524,20 @@ export const CampaignsView: React.FC = () => {
     }
 
     return (
-      <LinearDataListViewport className="campaign-list-container" horizontal>
-        {deliveryNotice && (
+      <LinearDataTable
+        className="campaign-list-container"
+        columns={tableColumns}
+        sortKey={effectiveOrdering === 'manual' ? undefined : effectiveOrdering}
+        sortDirection={sortDirection}
+        onSort={(columnId) => {
+          if (effectiveOrdering === columnId) {
+            setSortDirection((current) => current === 'asc' ? 'desc' : 'asc');
+          } else {
+            setDisplayOrdering(columnId as typeof displayOrdering);
+            setSortDirection(columnId === 'name' ? 'asc' : 'desc');
+          }
+        }}
+        before={deliveryNotice && (
           <div
             role={deliveryNotice.tone === 'error' ? 'alert' : 'status'}
             className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-[var(--control-border-radius)] bg-[var(--item-hover-bg)] px-3 py-2"
@@ -543,30 +555,15 @@ export const CampaignsView: React.FC = () => {
             </span>
           </div>
         )}
-        <div style={{ minWidth: `${tableMinWidth}px` }}>
-          <LinearDataListColumnHeader
-            columns={tableColumns}
-            minWidth={tableMinWidth}
-            sortKey={effectiveOrdering === 'manual' ? undefined : effectiveOrdering}
-            sortDirection={sortDirection}
-            onSort={(columnId) => {
-              if (effectiveOrdering === columnId) {
-                setSortDirection((current) => current === 'asc' ? 'desc' : 'asc');
-              } else {
-                setDisplayOrdering(columnId as typeof displayOrdering);
-                setSortDirection(columnId === 'name' ? 'asc' : 'desc');
-              }
-            }}
-          />
-          <LinearDataListStack>{renderRows()}</LinearDataListStack>
-          {filteredCurrentCount > 0 && filteredCurrentCount < totalCurrent && (
-            <div className="campaign-filter-summary">
-              <span>{totalCurrent - filteredCurrentCount} {entityLabels[campaignFilterTab].plural} hidden by filters</span>
-              <Button size="compact" onClick={clearFilters}>Clear filters</Button>
-            </div>
-          )}
-        </div>
-      </LinearDataListViewport>
+        after={filteredCurrentCount > 0 && filteredCurrentCount < totalCurrent && (
+          <div className="campaign-filter-summary">
+            <span>{totalCurrent - filteredCurrentCount} {entityLabels[campaignFilterTab].plural} hidden by filters</span>
+            <Button size="compact" onClick={clearFilters}>Clear filters</Button>
+          </div>
+        )}
+      >
+        {renderRows()}
+      </LinearDataTable>
     );
   };
 

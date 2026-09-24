@@ -122,9 +122,18 @@ class TestReactFrontendContract(unittest.TestCase):
         cls.delivery_lib = (
             ROOT / "frontend" / "src" / "lib" / "delivery.ts"
         ).read_text()
+        cls.entity_row_cells = (
+            ROOT / "frontend" / "src" / "components" / "campaigns" / "EntityRowCells.tsx"
+        ).read_text()
+        cls.rules_list_view = (
+            ROOT / "frontend" / "src" / "components" / "rules" / "RulesListView.tsx"
+        ).read_text()
+        cls.linear_data_list = (
+            ROOT / "frontend" / "src" / "ui" / "LinearDataList.tsx"
+        ).read_text()
         cls.campaigns_row_sources = "\n".join(
             (ROOT / "frontend" / "src" / "components" / "campaigns" / name).read_text()
-            for name in ("CampaignRow.tsx", "AdSetRow.tsx", "AdRow.tsx")
+            for name in ("CampaignRow.tsx", "AdSetRow.tsx", "AdRow.tsx", "EntityRowCells.tsx")
         )
         cls.trend_chart = (
             ROOT
@@ -324,12 +333,13 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("readOnly ? undefined", self.campaign_row)
         # Selection stays read-only; delivery is now a real write, so the toggle
         # is driven by the control the view hands down rather than by readOnly.
-        self.assertIn("<LinearCheckbox checked={false} hidden />", self.campaign_row)
-        self.assertIn("onChange={delivery ? delivery.onChange : undefined}", self.campaign_row)
-        self.assertIn("disabled={!delivery}", self.campaign_row)
-        for row in (self.adset_row, self.ad_row):
-            self.assertIn("<LinearCheckbox checked={false} hidden />", row)
-            self.assertIn("disabled={!delivery}", row)
+        # All three levels share one set of leading controls.
+        self.assertIn("<LinearCheckbox checked={false} hidden />", self.entity_row_cells)
+        self.assertIn("onChange={delivery ? delivery.onChange : undefined}", self.entity_row_cells)
+        self.assertIn("disabled={!delivery}", self.entity_row_cells)
+        for row in (self.campaign_row, self.adset_row, self.ad_row):
+            self.assertIn("<EntityRowControls", row)
+            self.assertIn("delivery={delivery}", row)
         self.assertIn("showViewModes={false}", self.display_options)
         self.assertIn("showGrouping", self.display_options)
         self.assertIn("Account groups", self.display_options)
@@ -427,6 +437,29 @@ class TestReactFrontendContract(unittest.TestCase):
         # Detaching an account must say what it removes before it is clicked.
         self.assertIn("attached_scopes", self.rules_lib)
         self.assertIn("attached_scopes", self.rule_row_menu)
+
+    def test_entity_tables_share_one_table_and_cell_primitive(self):
+        """Ads Manager, Rules and Statistics render one table, not three."""
+        for primitive in (
+            "export const LinearDataTable",
+            "export const LinearDataListGroup",
+            "export const LinearDataPrimaryCell",
+            "export const LinearDataMetricCell",
+            "export const getLinearDataListMinWidth",
+        ):
+            self.assertIn(primitive, self.linear_data_list)
+
+        for view in (self.campaigns_view, self.rules_list_view, self.statistics_view):
+            self.assertIn("<LinearDataTable", view)
+            self.assertNotIn("<LinearDataListColumnHeader", view)
+        for row in (self.campaign_row, self.adset_row, self.ad_row, self.rule_row, self.statistics_view):
+            self.assertIn("<LinearDataPrimaryCell", row)
+        for source in (self.campaigns_row_sources, self.statistics_view):
+            self.assertIn("<LinearDataMetricCell", source)
+
+        # Minimum table width has one formula instead of a copy per screen.
+        self.assertNotIn("getAdsManagerTableMinWidth", self.ads_manager_columns)
+        self.assertNotIn("TABLE_MIN_WIDTH", self.statistics_view)
 
     def test_campaign_rule_attachment_is_served_by_the_api(self):
         # Attaching a rule to a campaign writes a scope through the API rather

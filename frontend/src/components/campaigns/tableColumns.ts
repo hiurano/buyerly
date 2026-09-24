@@ -75,11 +75,3 @@ export const getAdsManagerColumns = (
 
   return columns;
 };
-
-export const getAdsManagerTableMinWidth = (columns: LinearDataListColumn[]) => {
-  const columnWidth = columns.reduce((total, column) => {
-    if (column.width.startsWith('minmax')) return total + 260;
-    return total + (Number.parseInt(column.width, 10) || 0);
-  }, 0);
-  return columnWidth + Math.max(columns.length - 1, 0) * 6 + 24;
-};

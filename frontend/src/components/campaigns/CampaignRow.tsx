@@ -1,10 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { CampaignItem, useAppStore } from '@/store/useAppStore';
-import { LinearCheckbox } from '@/ui/LinearCheckbox';
-import { LinearToggle } from '@/ui/LinearToggle';
 import type { DeliveryControl } from '@/lib/delivery';
 import { LinearLabelPill } from '@/ui/LinearLabelPill';
-import { LinearDataListRow } from '@/ui/LinearDataList';
+import { LinearDataListRow, LinearDataMetricCell, LinearDataPrimaryCell } from '@/ui/LinearDataList';
+import { EntityRowControls, ResultsCpaCell } from './EntityRowCells';
 import { LabelSelectorPopover } from './LabelSelectorPopover';
 import { RuleAttachmentCell } from './RuleAttachmentCell';
 import type { RuleAttachmentCellHandle } from './RuleAttachmentCell';
@@ -90,71 +89,43 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
         selected={isSelected}
         className={`campaign-data-row ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}
       >
-        <div className="flex min-w-0 items-center gap-3">
-          {/* Keep the selection slot so read-only rows retain the established Name alignment. */}
-          {readOnly ? (
-            <LinearCheckbox checked={false} hidden />
-          ) : (
-            <LinearCheckbox
-              checked={isSelected}
-              onChange={() => toggleCampaignSelection(campaign.id)}
+        <LinearDataPrimaryCell
+          leading={(
+            <EntityRowControls
+              noun="campaign"
+              status={campaign.status}
+              statusLabel={campaign.statusLabel}
+              delivery={delivery}
+              showStatus={displayProperties.status !== false}
+              readOnly={readOnly}
+              selected={isSelected}
+              onToggleSelected={() => toggleCampaignSelection(campaign.id)}
             />
           )}
-          {displayProperties.status !== false && (
-            !isDeliveryKnown ? (
-              <span
-                className="inline-flex h-5 w-8 items-center justify-center text-[12px] text-[var(--text-muted)]"
-                title="Delivery status is not available in this snapshot"
-                aria-label="Delivery status unavailable"
-              >
-                —
-              </span>
-            ) : (
-              <LinearToggle
-                checked={delivery ? delivery.status === 'active' : isDeliveryOn}
-                busy={delivery?.busy}
-                onChange={delivery ? delivery.onChange : undefined}
-                disabled={!delivery}
-                tooltipContent={delivery
-                  ? ((delivery.status === 'active') ? 'Turn this campaign off' : 'Turn this campaign on')
-                  : `${campaign.statusLabel}. Campaign controls are not available for this account`}
-              />
-            )
-          )}
-          <span className="flex min-w-0 flex-col" title={`${campaign.name} · ${campaign.identifier}`}>
-            <span
-              className="truncate text-[13px] font-medium"
-              style={{ color: isDeliveryKnown && !isDeliveryOn ? 'var(--text-tertiary)' : 'var(--text-primary)' }}
-            >
-              {campaign.name}
-            </span>
-            {showIdentifier && (
-              <span className="truncate font-mono text-[10px] leading-3 text-[var(--text-muted)]">
-                {campaign.identifier}
-              </span>
-            )}
-          </span>
-        </div>
+          title={campaign.name}
+          subtitle={showIdentifier ? <span className="truncate font-mono">{campaign.identifier}</span> : undefined}
+          dimmed={isDeliveryKnown && !isDeliveryOn}
+          hint={`${campaign.name} · ${campaign.identifier}`}
+        />
 
-        {displayProperties.budget !== false && (
-          <div className="truncate text-right text-[12px] font-[450] text-[var(--text-secondary)]">{campaign.budget}</div>
-        )}
+        {displayProperties.budget !== false && <LinearDataMetricCell value={campaign.budget} />}
 
         {(displayProperties.results !== false || displayProperties.cpa !== false) && (
-          <div className="flex min-w-0 items-center justify-end gap-1 truncate whitespace-nowrap text-[12px] font-[450]">
-            {displayProperties.results !== false && <span>{campaign.leadsCount} leads</span>}
-            {displayProperties.cpa !== false && <span className="text-[var(--text-tertiary)]">({campaign.cpa})</span>}
-          </div>
+          <ResultsCpaCell
+            leadsCount={campaign.leadsCount}
+            cpa={campaign.cpa}
+            showResults={displayProperties.results !== false}
+            showCpa={displayProperties.cpa !== false}
+          />
         )}
 
-        {displayProperties.spend !== false && (
-          <div className="truncate text-right text-[12px] font-[450] text-[var(--text-secondary)]">{campaign.spend}</div>
-        )}
+        {displayProperties.spend !== false && <LinearDataMetricCell value={campaign.spend} />}
 
         {displayProperties.roi !== false && (
-          <div className={`truncate text-right text-[12px] font-semibold ${isDeliveryOn ? isPositiveRoi ? 'text-emerald-500' : 'text-rose-500' : 'text-[var(--text-muted)]'}`}>
-            {campaign.roi}
-          </div>
+          <LinearDataMetricCell
+            value={campaign.roi}
+            valueClassName={`font-semibold ${isDeliveryOn ? isPositiveRoi ? 'text-emerald-500' : 'text-rose-500' : 'text-[var(--text-muted)]'}`}
+          />
         )}
 
         {displayProperties.rules !== false && (
@@ -220,7 +191,7 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
         )}
 
         {displayProperties.created && (
-          <div className="truncate text-right text-[12px] text-[var(--text-tertiary)]">{campaign.date}</div>
+          <LinearDataMetricCell value={campaign.date} valueClassName="text-[var(--text-tertiary)]" />
         )}
       </LinearDataListRow>
 

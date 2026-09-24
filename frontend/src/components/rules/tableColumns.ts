@@ -22,11 +22,3 @@ export const getRulesColumns = (properties: Record<string, boolean>): LinearData
 
   return columns;
 };
-
-export const getRulesTableMinWidth = (columns: LinearDataListColumn[]) => {
-  const width = columns.reduce((total, column) => {
-    if (column.width.startsWith('minmax')) return total + 280;
-    return total + (Number.parseInt(column.width, 10) || 0);
-  }, 0);
-  return width + Math.max(columns.length - 1, 0) * 6 + 24;
-};

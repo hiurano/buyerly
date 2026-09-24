@@ -33,6 +33,7 @@ Use the existing primitives from `frontend/src/ui/`:
 | Text input | `Input` | Shared height, radius, focus ring and disabled state; a page may set width, not geometry. |
 | Tabs | `LinearTabs` | Selected state, keyboard focus and overflow remain accessible. |
 | Data list | `LinearDataList` | One outer data surface; loading, empty, populated and error states are explicit. |
+| Entity table | `LinearDataTable`, `LinearDataListGroup`, `LinearDataPrimaryCell`, `LinearDataMetricCell` | Every entity table (Ads Manager, Rules, Statistics) is built from these; a screen chooses its columns, not its cell typography, row geometry or scroll behaviour. |
 | Data states | `DataState` | Loading, empty, unavailable and error blocks are rendered through it rather than re-invented per screen. |
 | Checkbox | `LinearCheckbox`, `FormCheckbox` | Labelled state is operable by keyboard and not communicated by color alone. `FormCheckbox` is for form rows where `LinearCheckbox` does not apply. |
 | Toggle | `LinearToggle` | Has an accessible name, clear checked state and disabled/busy handling when applicable. |
