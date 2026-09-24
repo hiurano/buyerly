@@ -15,7 +15,7 @@ import {
   undoAction,
   type DeliveryStatus,
 } from '@/lib/delivery';
-import { LinearToggle } from '@/ui/LinearToggle';
+import { EntityRowControls } from '@/components/campaigns/EntityRowCells';
 import {
   eligibleMetaAccounts,
   formatMetricMoney,
@@ -64,6 +64,7 @@ import {
   LinearDataListRow,
   LinearDataListToolbar,
   LinearDataMetricCell,
+  linearDataNameColumn,
   LinearDataPrimaryCell,
   LinearDataTable,
 } from '@/ui/LinearDataList';
@@ -306,17 +307,21 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
       >
         <LinearDataPrimaryCell
           sticky
-          leading={onSetDelivery ? (
-            <LinearToggle
-              checked={liveStatus === 'ACTIVE'}
-              busy={action?.busy || action?.undoing}
-              onChange={(next) => onSetDelivery(next ? 'ACTIVE' : 'PAUSED')}
-              tooltipContent={liveStatus === 'ACTIVE' ? `Turn this ${noun} off` : `Turn this ${noun} on`}
+          leading={(
+            <EntityRowControls
+              noun={noun}
+              status={item.status === 'ACTIVE' ? 'active' : 'paused'}
+              statusLabel={statusLabel(item)}
+              delivery={onSetDelivery ? {
+                status: liveStatus === 'ACTIVE' ? 'active' : 'paused',
+                busy: Boolean(action?.busy || action?.undoing),
+                onChange: (next) => onSetDelivery(next ? 'ACTIVE' : 'PAUSED'),
+              } : undefined}
+              showStatus
+              readOnly
+              selected={false}
+              onToggleSelected={() => undefined}
             />
-          ) : (
-            <span aria-hidden="true" className="inline-flex h-5 w-8 shrink-0 items-center justify-center">
-              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: statusDot(item) }} />
-            </span>
           )}
           title={childLabel ? (
             <button
@@ -328,15 +333,7 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
               {item.entity_name}
             </button>
           ) : item.entity_name}
-          subtitle={(
-            <>
-              <span className="shrink-0">
-                {action?.status ? (action.status === 'ACTIVE' ? 'Active' : 'Paused') : statusLabel(item)}
-              </span>
-              <span aria-hidden="true">·</span>
-              <span className="truncate font-mono">Meta ID {item.entity_id}</span>
-            </>
-          )}
+          subtitle={<span className="truncate font-mono">{item.entity_id}</span>}
           dimmed={liveStatus !== 'ACTIVE'}
           hint={item.entity_name}
         />
@@ -485,7 +482,7 @@ export const StatisticsView: React.FC = () => {
   const [hierarchyError, setHierarchyError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
   const [query, setQuery] = useState('');
-  const [density, setDensity] = useState<'comfortable' | 'compact'>('comfortable');
+  const [density, setDensity] = useState<'comfortable' | 'compact'>('compact');
   const [grouping, setGrouping] = useState<Grouping>('none');
   const [resultPreference, setResultPreference] = useState<ResultPreference>('auto');
   const [sortKey, setSortKey] = useState<StatisticsSort>('spend');
@@ -708,10 +705,10 @@ export const StatisticsView: React.FC = () => {
   }, [items, query, resultDefinition, resultKind, sortDirection, sortKey]);
 
   const columns: LinearDataListColumn[] = useMemo(() => [
-    { id: 'name', label: LEVEL_LABELS[queryLevel].singular.replace(/^./, (c) => c.toUpperCase()), width: 'minmax(240px, 1fr)', sortable: true },
-    { id: 'spend', label: 'Spend', width: '230px', align: 'right', sortable: true },
-    { id: 'results', label: resultDefinition.label, width: '110px', align: 'right', sortable: true },
-    { id: 'cost', label: resultDefinition.costLabel, width: '200px', align: 'right', sortable: true },
+    linearDataNameColumn({ width: 'minmax(260px, 1fr)' }),
+    { id: 'spend', label: 'Spend', width: '180px', align: 'right', sortable: true },
+    { id: 'results', label: resultDefinition.label, width: '100px', align: 'right', sortable: true },
+    { id: 'cost', label: resultDefinition.costLabel, width: '140px', align: 'right', sortable: true },
     ...(comparisonAvailable
       ? [{ id: 'change', label: 'Change', width: '120px', align: 'right' as const, sortable: true }]
       : []),

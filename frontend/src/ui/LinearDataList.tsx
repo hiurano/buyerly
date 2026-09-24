@@ -28,6 +28,27 @@ export const getLinearDataListTemplate = (columns: LinearDataListColumn[]) =>
   columns.map((column) => column.width).join(' ');
 
 /**
+ * The Name column every entity table starts with. Its header label is inset to
+ * start on the same pixel as the row title, past the selection slot and, when
+ * shown, the status toggle; the sortable header pill adds 6px of its own.
+ */
+export const linearDataNameColumn = ({
+  width,
+  statusVisible = true,
+  label = 'Name',
+}: {
+  width: string;
+  statusVisible?: boolean;
+  label?: string;
+}): LinearDataListColumn => ({
+  id: 'name',
+  label,
+  width,
+  headerInset: statusVisible ? 64 : 24,
+  sortable: true,
+});
+
+/**
  * The narrowest width at which every column keeps its declared size. A
  * `minmax(Npx, …)` column counts as N; the viewport scrolls horizontally below it.
  */

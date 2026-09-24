@@ -457,6 +457,14 @@ class TestReactFrontendContract(unittest.TestCase):
         for source in (self.campaigns_row_sources, self.statistics_view):
             self.assertIn("<LinearDataMetricCell", source)
 
+        # The Name column and its leading controls line up the same everywhere.
+        rules_columns = (
+            ROOT / "frontend" / "src" / "components" / "rules" / "tableColumns.ts"
+        ).read_text()
+        for source in (self.ads_manager_columns, rules_columns, self.statistics_view):
+            self.assertIn("linearDataNameColumn(", source)
+        self.assertIn("<EntityRowControls", self.statistics_view)
+
         # Minimum table width has one formula instead of a copy per screen.
         self.assertNotIn("getAdsManagerTableMinWidth", self.ads_manager_columns)
         self.assertNotIn("TABLE_MIN_WIDTH", self.statistics_view)
@@ -602,7 +610,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("SIGNIFICANT_BUDGET_CHANGE = 0.25", self.delivery_lib)
 
         # Statistics acts on the row and offers the way back beside it.
-        for contract in ("<LinearToggle", "setEntityDelivery", "setEntityBudget", "undoAction"):
+        for contract in ("<EntityRowControls", "setEntityDelivery", "setEntityBudget", "undoAction"):
             self.assertIn(contract, self.statistics_view)
         # What this session wrote is never merged silently into stored data.
         self.assertIn(

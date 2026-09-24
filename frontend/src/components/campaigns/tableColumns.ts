@@ -1,16 +1,9 @@
-import { LinearDataListColumn } from '@/ui/LinearDataList';
+import { LinearDataListColumn, linearDataNameColumn } from '@/ui/LinearDataList';
 
 export type AdsManagerTableTab = 'campaigns' | 'adsets' | 'ads';
 
-const primaryColumn = (statusVisible: boolean): LinearDataListColumn => ({
-  id: 'name',
-  label: 'Name',
-  width: 'minmax(260px, 1fr)',
-  // The sortable header pill adds 6px of internal padding; compensate so its
-  // label starts on the same pixel as the row title.
-  headerInset: statusVisible ? 64 : 24,
-  sortable: true,
-});
+const primaryColumn = (statusVisible: boolean) =>
+  linearDataNameColumn({ width: 'minmax(260px, 1fr)', statusVisible });
 
 export const getAdsManagerColumns = (
   tab: AdsManagerTableTab,
