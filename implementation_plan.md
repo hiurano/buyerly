@@ -2,7 +2,7 @@
 
 Дата: 2026-09-25. База: `91a0c95` (main после PR #171).
 Основание: [аудит A01–A25](docs/PROJECT_CLEANUP_AUDIT.md).
-Статус: **планирование завершено; C01–C24 ещё не реализованы**.
+Статус: **C01 реализован в PR #174, CI зелёный, ожидает подтверждения на merge; C02–C24 ещё не реализованы**.
 Прежний план сохранён в [архиве public website](docs/archive/plans/implementation_plan_public_website.md).
 
 ## Цель и критерии готовности
@@ -49,7 +49,7 @@ C20 желательно завершить до C17/C18, чтобы visual gate
 
 | Этап | Зависимости | Масштаб | Статус |
 |---|---|---|---|
-| C01 Test DB guard | — | Малый | Ожидает |
+| C01 Test DB guard | — | Малый | [PR #174](https://github.com/hiurano/buyerly/pull/174): CI зелёный, ожидает подтверждения на merge |
 | C02 Meta client/cache/lifecycle | C01 | Средний | Ожидает |
 | C03 Async workspace/account state | — | Средний | Ожидает |
 | C04 Parent hierarchy contract | C01 | Малый | Ожидает |
@@ -86,6 +86,20 @@ target и отказ до создания engine/соединения. Секр
 **Готово:** missing/production-like/unconfirmed DSN отклоняется без соединения
 и DDL, CI test DB проходит. **Проверки:** чистые tests с fake engine factory
 и полный CI для разрешённой БД. Не тестировать guard на пользовательской schema.
+
+Реализация C01: fallback удалён; разрешён только `postgresql+asyncpg`, пользователь
+`buyerly`, БД `buyerly_test`, loopback host (`localhost`, `127.0.0.1`, `::1`),
+порт 5432 (либо не указан), без query-параметров. Обязательно отдельное
+`TEST_DATABASE_DISPOSABLE=buyerly_test`; CI задаёт его для disposable service.
+Перед DDL повторно проверяются подтверждение и совпадение URL переданного engine
+с `TEST_DATABASE_URL`. Ошибки не содержат DSN и credentials. Импорт runtime Base
+отложен до успешной проверки, чтобы чистые guard tests не создавали runtime engine.
+Локально: 4 unit tests с fake engine прошли, compileall и diff check прошли.
+[PR #174](https://github.com/hiurano/buyerly/pull/174): полный
+[CI run 36059867936](https://github.com/hiurano/buyerly/actions/runs/36059867936)
+для реализации `668bfff` завершился успешно. Слияние требует подтверждения пользователя.
+Ограничение: guard проверяет конфигурацию, а не содержимое сервера; разрешённая
+локальная БД должна быть одноразовой. Пользовательская schema не проверялась.
 
 ### C02 — Исправить Meta cache wiring и lifecycle (A02, A25)
 
