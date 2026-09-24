@@ -34,13 +34,13 @@ Production: `https://buyerly.app`.
 
 | Метод и путь | Тело | Результат |
 |---|---|---|
-| `POST /api/auth/request-temporary-password` | `email`, `invite_token?` | после проверки whitelist/invite высылает одно письмо с одноразовой ссылкой и 6-значным кодом |
+| `POST /api/auth/request-temporary-password` | `email`, `invite_token?` | только вход по приглашению (без `invite_token` — 403, если не включён `EMAIL_LOGIN_WITHOUT_INVITE`); после проверки invite высылает одно письмо с одноразовой ссылкой и 6-значным кодом |
 | `POST /api/auth/verify-temporary-password` | `email`, `code` | атомарно потребляет общий login credential, повторно проверяет доступ и открывает web-сессию |
 | `POST /api/auth/verify-email-link` | `token` | атомарно потребляет тот же login credential по ссылке; после этого код также недействителен |
 | `POST /api/auth/request-email-verification` | — | высылает 6-значный одноразовый код на текущий неподтверждённый email |
 | `POST /api/auth/request-email-change` | `new_email` | высылает 6-значный код подтверждения для привязки нового email |
 | `POST /api/auth/verify-email-change` | `code` | верифицирует OTP и активирует подтверждённый email |
-| `POST /api/auth/login` | `username`, `password` | проверяет только постоянный пароль, создаёт ограниченную по времени HttpOnly web-сессию и возвращает профиль/роль |
+| `POST /api/auth/login` | `username`, `password` | основной вход: `username` — логин или email аккаунта; проверяет постоянный пароль, создаёт ограниченную по времени HttpOnly web-сессию и возвращает профиль/роль |
 | `POST /api/auth/change-password` | `old_password`, `new_password` | меняет пароль; минимум 8 символов |
 | `POST /api/auth/update-profile` | `first_name?`, `last_name?`, `email?`, `avatar_url?`, `full_name?` | обновляет персональные данные профиля |
 | `POST /api/auth/logout` | — | немедленно отзывает текущую web-сессию |

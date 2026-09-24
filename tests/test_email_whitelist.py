@@ -46,6 +46,8 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
         # suite across shards, so each module runs on its own.
         self.original_otp_pepper = settings.OTP_PEPPER
         settings.OTP_PEPPER = "test-otp-pepper"
+        self.original_email_login_without_invite = settings.EMAIL_LOGIN_WITHOUT_INVITE
+        settings.EMAIL_LOGIN_WITHOUT_INVITE = True
 
         self.engine = create_test_engine()
         self.sessions = async_sessionmaker(
@@ -99,6 +101,7 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
         database_db_module.async_session_maker = self.original_db_session_maker
         settings.ADMIN_CHAT_ID = self.original_admin_chat_id
         settings.OTP_PEPPER = self.original_otp_pepper
+        settings.EMAIL_LOGIN_WITHOUT_INVITE = self.original_email_login_without_invite
         await self.engine.dispose()
 
     async def test_unlisted_email_rejected_on_request_temporary_password(self):
@@ -338,6 +341,106 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
                     select(WebSession).where(WebSession.user_id == target_user_id)
                 )).scalars().all()
                 self.assertEqual(len(active_sessions), 0)
+
+
+    async def _seed_pending_invite(self, token="password-first-invite-token"):
+        from datetime import timedelta
+        async with self.sessions() as session:
+            ws = Workspace(name="Invite WS", slug="invite-ws", owner_user_id=self.admin_id)
+            session.add(ws)
+            await session.flush()
+            session.add(WorkspaceInvite(
+                workspace_id=ws.id,
+                inviter_user_id=self.admin_id,
+                email="newcomer@agency.com",
+                role="buyer",
+                token=token,
+                used_count=0,
+                max_uses=1,
+                expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+            ))
+            await session.commit()
+        return token
+
+    async def test_email_login_without_invite_is_disabled_by_default(self):
+        await self._seed_joined_member()
+        settings.EMAIL_LOGIN_WITHOUT_INVITE = False
+        with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock, return_value=True) as send:
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+                response = await client.post("/api/auth/request-temporary-password", json={"email": "buyer@buyerly.com"})
+        self.assertEqual(response.status_code, 403, response.text)
+        self.assertIn("only through a workspace invitation", response.json()["detail"])
+        send.assert_not_called()
+
+    async def test_issued_non_invite_code_and_link_stop_working_when_disabled(self):
+        await self._seed_joined_member()
+        with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock, return_value=True) as send:
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+                for use_link in (False, True):
+                    settings.EMAIL_LOGIN_WITHOUT_INVITE = True
+                    response = await client.post("/api/auth/request-temporary-password", json={"email": "buyer@buyerly.com"})
+                    self.assertEqual(response.status_code, 200, response.text)
+                    _, code, link = send.call_args.args
+                    settings.EMAIL_LOGIN_WITHOUT_INVITE = False
+                    endpoint = "verify-email-link" if use_link else "verify-temporary-password"
+                    payload = {"token": parse_qs(urlsplit(link).query)["token"][0]} if use_link else {"email": "buyer@buyerly.com", "code": code}
+                    response = await client.post(f"/api/auth/{endpoint}", json=payload)
+                    self.assertEqual(response.status_code, 403, response.text)
+                    self.assertIsNone(client.cookies.get("buyerly_session"))
+
+    async def test_invite_email_login_still_works_when_disabled(self):
+        token = await self._seed_pending_invite()
+        settings.EMAIL_LOGIN_WITHOUT_INVITE = False
+        with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock, return_value=True) as send:
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+                response = await client.post(
+                    "/api/auth/request-temporary-password",
+                    json={"email": "newcomer@agency.com", "invite_token": token},
+                )
+                self.assertEqual(response.status_code, 200, response.text)
+                code = send.call_args.args[1]
+                response = await client.post(
+                    "/api/auth/verify-temporary-password",
+                    json={"email": "newcomer@agency.com", "code": code},
+                )
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(response.json()["redirect_url"], f"/invite/{token}")
+                self.assertTrue(client.cookies.get("buyerly_session"))
+
+    async def test_password_login_accepts_only_username_or_email(self):
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+            for identifier, expected in (
+                ("buyer_user", 200),
+                ("BUYER@buyerly.com", 200),
+                ("Buyer User", 401),
+                ("987654321", 401),
+            ):
+                client.cookies.clear()
+                response = await client.post(
+                    "/api/auth/login",
+                    json={"username": identifier, "password": "buyerpassword123"},
+                )
+                self.assertEqual(response.status_code, expected, identifier)
+                if expected == 200:
+                    self.assertEqual(response.json()["username"], "buyer_user")
+
+    async def test_password_login_prefers_exact_username_over_email_match(self):
+        async with self.sessions() as session:
+            session.add(User(
+                username="buyer@buyerly.com.alias",
+                email="buyer_user",
+                password_hash=hash_password("otherpassword123"),
+                role="buyer",
+                is_approved=True,
+            ))
+            await session.commit()
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+            response = await client.post(
+                "/api/auth/login",
+                json={"username": "buyer_user", "password": "buyerpassword123"},
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["username"], "buyer_user")
 
 
 class TestEmailDelivery(unittest.IsolatedAsyncioTestCase):

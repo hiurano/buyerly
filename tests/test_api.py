@@ -68,6 +68,10 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         api_auth_module.async_session_maker = self.test_session_maker
         api_server_module.async_session_maker = self.test_session_maker
 
+        # These tests cover the email code/link flow on its own; the
+        # invite-only default is covered in tests/test_email_whitelist.py.
+        self.original_email_login_without_invite = settings.EMAIL_LOGIN_WITHOUT_INVITE
+        settings.EMAIL_LOGIN_WITHOUT_INVITE = True
         settings.OTP_PEPPER = "test-otp-pepper"
         settings.ADMIN_CHAT_ID = "8634201356"
 
@@ -138,6 +142,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self):
         settings.META_TOKEN_ENCRYPTION_KEY = self.original_meta_token_key
+        settings.EMAIL_LOGIN_WITHOUT_INVITE = self.original_email_login_without_invite
         await self.test_engine.dispose()
 
     def test_summary_cache_invalidation_matches_workspace_or_owner(self):
