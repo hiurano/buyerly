@@ -792,7 +792,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             member_id = member.id
         auth = await session_headers(self.test_session_maker, {"id": 777009999, "first_name": "Colleague"})
         info = {"name": "Updated", "account_status": 1, "timezone_name": "UTC", "currency": "USD"}
-        with patch.object(api_routes_module.meta_client, "get_account_info", new=AsyncMock(return_value=info)):
+        with patch.object(self.app.state.meta_client, "get_account_info", new=AsyncMock(return_value=info)):
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
                 for role, owns_account, allowed in (("buyer", False, False), ("buyer", True, True), ("admin", False, True), ("owner", False, True)):
                     with self.subTest(role=role, owns_account=owns_account):
@@ -860,7 +860,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
         }
 
         transport = httpx.ASGITransport(app=self.app)
-        with patch.object(api_routes_module.meta_client, 'get_account_info', new=AsyncMock(return_value=mock_meta_info)):
+        with patch.object(self.app.state.meta_client, 'get_account_info', new=AsyncMock(return_value=mock_meta_info)):
             async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
                 res = await client.post(
                     '/api/accounts/batch-add',
@@ -921,7 +921,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
         }
 
         transport = httpx.ASGITransport(app=self.app)
-        with patch.object(api_routes_module.meta_client, 'get_account_info', new=AsyncMock(return_value=mock_meta_info)):
+        with patch.object(self.app.state.meta_client, 'get_account_info', new=AsyncMock(return_value=mock_meta_info)):
             async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
                 response = await client.post(
                     '/api/accounts/batch-add',

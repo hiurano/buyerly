@@ -151,7 +151,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
         with (
             patch.object(meta_oauth_module, "_oauth_client", return_value=fake_oauth),
             patch.object(
-                meta_oauth_module.meta_client,
+                self.app.state.meta_client,
                 "get_account_info",
                 new=AsyncMock(return_value=account_info),
             ),
@@ -792,7 +792,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
         with (
             patch.object(meta_oauth_module, "_oauth_client", return_value=fake_oauth),
             patch.object(
-                meta_oauth_module.meta_client,
+                self.app.state.meta_client,
                 "get_account_info",
                 new=AsyncMock(return_value=account_info),
             ),
@@ -896,7 +896,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
         with (
             patch.object(meta_oauth_module, "_oauth_client", return_value=fake_oauth),
             patch.object(
-                meta_oauth_module.meta_client,
+                self.app.state.meta_client,
                 "get_account_info",
                 new=AsyncMock(return_value=account_info),
             ),

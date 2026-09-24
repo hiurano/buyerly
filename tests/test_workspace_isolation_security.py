@@ -686,7 +686,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
 
             with (
                 patch.object(
-                    api_routes_module.meta_client,
+                    self.app.state.meta_client,
                     "get_adset_state",
                     new=AsyncMock(
                         return_value={
@@ -696,7 +696,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
                     ),
                 ),
                 patch.object(
-                    api_routes_module.meta_client,
+                    self.app.state.meta_client,
                     "set_adset_status",
                     new=AsyncMock(return_value=True),
                 ),

@@ -35,12 +35,11 @@ from core.ownership import owned_by
 from database.db import async_session_maker
 from database.models import AnalyticsViewPreference, User
 from meta_api.client import MetaClient
-from services.inventory_cache import PostgreSQLInventoryCache
+from api.meta_dependencies import get_meta_client
 from services.analytics_store import AnalyticsFactService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Analytics & Summary"])
-meta_client = MetaClient(cache_provider=PostgreSQLInventoryCache())
 
 
 @router.get("/analytics-view")
@@ -117,6 +116,7 @@ async def get_summary_report(
     period: str = Query("today", pattern="^(today|yesterday|last_3d|last_7d)$"),
     force: bool = Query(False),
     user: User = Depends(get_current_user),
+    meta_client: MetaClient = Depends(get_meta_client),
 ):
     async with async_session_maker() as session:
         ws = await get_user_workspace(session, user)

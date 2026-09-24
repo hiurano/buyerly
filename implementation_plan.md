@@ -2,7 +2,7 @@
 
 Дата: 2026-09-25. База: `91a0c95` (main после PR #171).
 Основание: [аудит A01–A25](docs/PROJECT_CLEANUP_AUDIT.md).
-Статус: **C01 реализован в PR #174, CI зелёный, ожидает подтверждения на merge; C02–C24 ещё не реализованы**.
+Статус: **C01 слит (PR #174, `b0ff681`); C02 реализован в PR #176, CI реализации зелёный, ожидает подтверждения на merge; C03–C24 ещё не реализованы**.
 Прежний план сохранён в [архиве public website](docs/archive/plans/implementation_plan_public_website.md).
 
 ## Цель и критерии готовности
@@ -35,7 +35,7 @@ branch stacking запрещён. При общей директории с др
 
 Задание для следующего чата:
 
-> Выполни C01 из implementation_plan.md. Прочитай AGENTS.md и связанные выводы
+> Выполни C03 из implementation_plan.md. Прочитай AGENTS.md и связанные выводы
 > docs/PROJECT_CLEANUP_AUDIT.md, сверь их с текущим main. Работай в отдельной ветке,
 > выполни только этот этап, открой PR и проверь CI. Обнови статус этапа.
 > Не сливай PR без моего подтверждения.
@@ -49,8 +49,8 @@ C20 желательно завершить до C17/C18, чтобы visual gate
 
 | Этап | Зависимости | Масштаб | Статус |
 |---|---|---|---|
-| C01 Test DB guard | — | Малый | [PR #174](https://github.com/hiurano/buyerly/pull/174): CI зелёный, ожидает подтверждения на merge |
-| C02 Meta client/cache/lifecycle | C01 | Средний | Ожидает |
+| C01 Test DB guard | — | Малый | [PR #174](https://github.com/hiurano/buyerly/pull/174): слит, `b0ff681`, CI зелёный |
+| C02 Meta client/cache/lifecycle | C01 | Средний | [PR #176](https://github.com/hiurano/buyerly/pull/176): CI реализации зелёный, ожидает подтверждения на merge |
 | C03 Async workspace/account state | — | Средний | Ожидает |
 | C04 Parent hierarchy contract | C01 | Малый | Ожидает |
 | C05 Timezone drill-down | C04 | Средний | Ожидает |
@@ -97,7 +97,7 @@ target и отказ до создания engine/соединения. Секр
 Локально: 4 unit tests с fake engine прошли, compileall и diff check прошли.
 [PR #174](https://github.com/hiurano/buyerly/pull/174): полный
 [CI run 36059867936](https://github.com/hiurano/buyerly/actions/runs/36059867936)
-для реализации `668bfff` завершился успешно. Слияние требует подтверждения пользователя.
+для реализации `668bfff` завершился успешно. Слит в `main`: merge-коммит `b0ff681`.
 Ограничение: guard проверяет конфигурацию, а не содержимое сервера; разрешённая
 локальная БД должна быть одноразовой. Пользовательская schema не проверялась.
 
@@ -110,6 +110,23 @@ PostgreSQL provider при обычной app assembly и закрывать cli
 доходит до него, повторное создание app не переиспользует закрытый/чужой client.
 **Проверки:** app wiring/lifespan с fake Meta, cache integration в CI.
 Worker behavior сохранить; полную переделку dependencies оставить C10.
+
+Реализация C02 сверена с `main` на `b0ff681`: A02/A25 подтверждены.
+`create_app` владеет одним MetaClient с PostgreSQLInventoryCache, общий для
+Meta routers и импорта OAuth accounts через `get_meta_client(request)`.
+Глобальные router clients и их переприсваивание удалены; подмены в API tests
+перенесены на `self.app.state.meta_client`, также доступны dependency overrides.
+Lifespan закрывает клиент в `finally`, повторный запуск создаёт новый экземпляр.
+MetaOAuthClient уже закрывает HTTP transport внутри каждого запроса; worker
+не изменён. DB module propagation и остальные dependencies остаются для C10.
+Проверки: четыре DB-free lifecycle/assembly tests, compileall; в CI добавлена
+интеграция delivery → реальный MetaClient → PostgreSQL cache invalidation
+с fake Meta transport. [PR #176](https://github.com/hiurano/buyerly/pull/176):
+полный [CI run 36065431954](https://github.com/hiurano/buyerly/actions/runs/36065431954)
+для реализации `dc9cc44` прошёл: frontend, 6 test shards и итоговый CI.
+Актуальный head после записи результата проверяется повторно в checks PR.
+Ограничение: запросы к реальному Meta и влияние на квоты не измерялись;
+production deployment не выполнялся. Merge требует подтверждения пользователя.
 
 ### C03 — Ограничить async state текущим контекстом (A03)
 
@@ -376,4 +393,4 @@ Dev tooling отделить от production requirements при необход�
 Невыполненные продуктовые решения перенести в основной backlog со ссылкой сюда;
 не считать их закрытыми автоматически.
 
-Рекомендуемый следующий чат: **C01 — защита тестовой БД**.
+Рекомендуемый следующий чат: **C03 — async state текущего контекста**.

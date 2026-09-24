@@ -783,6 +783,34 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         # Another workspace's account is not found, not merely refused.
         self.assertEqual(foreign.status_code, 404)
 
+    async def test_delivery_invalidates_app_postgresql_inventory_cache(self):
+        from services.inventory_cache import PostgreSQLInventoryCache
+
+        meta = self.app.state.meta_client
+        provider = meta._cache_provider
+        self.assertIsInstance(provider, PostgreSQLInventoryCache)
+        account_id = "act_1018756607700064"
+        rows = [{"id": "adset_cached", "status": "ACTIVE"}]
+        await provider.set_inventory(account_id, rows)
+        # A separate provider sees the same persisted inventory.
+        reader = PostgreSQLInventoryCache(session_factory=self.test_session_maker)
+        self.assertEqual(await reader.get_inventory(account_id), rows)
+        headers = await session_headers(self.test_session_maker, {"id": 8948797431})
+        state = {"account_id": account_id, "entity_name": "Campaign", "status": "ACTIVE"}
+        with patch.object(meta, "get_entity_state", AsyncMock(return_value=state)), patch.object(
+            meta, "_request_with_retry", AsyncMock(return_value=httpx.Response(200, json={"success": True})),
+        ), patch.object(provider, "invalidate", wraps=provider.invalidate) as invalidate:
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
+                response = await client.post(
+                    "/api/entities/campaign/cmp_cached/delivery",
+                    headers=headers,
+                    json={"account_id": account_id, "status": "PAUSED"},
+                )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertTrue(response.json()["changed"])
+        invalidate.assert_awaited_once_with(account_id)
+        self.assertIsNone(await reader.get_inventory(account_id))
+
     async def test_manual_delivery_and_budget_actions_are_audited_and_scoped(self):
         """The first writes into Meta: authorized, verified, recorded, reversible."""
         async with self.test_session_maker() as session:
@@ -825,10 +853,10 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         # A successful pause, and the same call again once Meta reports PAUSED.
         with patch.object(
-            api_routes_module.meta_client, "get_entity_state",
+            self.app.state.meta_client, "get_entity_state",
             new=AsyncMock(side_effect=[state(), state("PAUSED")]),
         ), patch.object(
-            api_routes_module.meta_client, "set_entity_status",
+            self.app.state.meta_client, "set_entity_status",
             new=AsyncMock(return_value=True),
         ) as status_write:
             async with httpx.AsyncClient(**client_args) as client:
@@ -852,10 +880,10 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         # Meta refusing the write is a recoverable failure that is still recorded.
         with patch.object(
-            api_routes_module.meta_client, "get_entity_state",
+            self.app.state.meta_client, "get_entity_state",
             new=AsyncMock(return_value=state()),
         ), patch.object(
-            api_routes_module.meta_client, "set_entity_status",
+            self.app.state.meta_client, "set_entity_status",
             new=AsyncMock(side_effect=RuntimeError("Meta API Error (400): nope")),
         ):
             async with httpx.AsyncClient(**client_args) as client:
@@ -881,10 +909,10 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         # An authorized account must not authorize a different account's entity.
         with patch.object(
-            api_routes_module.meta_client, "get_entity_state",
+            self.app.state.meta_client, "get_entity_state",
             new=AsyncMock(return_value={**state(), "account_id": "777777777"}),
         ), patch.object(
-            api_routes_module.meta_client, "set_entity_status", new=AsyncMock(),
+            self.app.state.meta_client, "set_entity_status", new=AsyncMock(),
         ) as foreign_write:
             async with httpx.AsyncClient(**client_args) as client:
                 wrong_entity = await client.post(
@@ -896,9 +924,9 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         # If the durable intent cannot be saved, no mutation may reach Meta.
         with patch.object(
-            api_routes_module.meta_client, "get_entity_state", new=AsyncMock(return_value=state()),
+            self.app.state.meta_client, "get_entity_state", new=AsyncMock(return_value=state()),
         ), patch("api.routers.delivery._commit_quietly", new=AsyncMock(return_value=False)), patch.object(
-            api_routes_module.meta_client, "set_entity_status", new=AsyncMock(),
+            self.app.state.meta_client, "set_entity_status", new=AsyncMock(),
         ) as unaudited_write:
             async with httpx.AsyncClient(**client_args) as client:
                 unavailable = await client.post(
@@ -910,10 +938,10 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         # Budget: only where a budget already exists, and never on an ad.
         with patch.object(
-            api_routes_module.meta_client, "get_entity_state",
+            self.app.state.meta_client, "get_entity_state",
             new=AsyncMock(side_effect=[state(daily_budget=100.0), state(daily_budget=0.0)]),
         ), patch.object(
-            api_routes_module.meta_client, "update_entity_budget",
+            self.app.state.meta_client, "update_entity_budget",
             new=AsyncMock(return_value=True),
         ):
             async with httpx.AsyncClient(**client_args) as client:
@@ -951,10 +979,10 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         # The campaign budget audit can be reversed through the existing API.
         with patch.object(
-            api_routes_module.meta_client, "get_entity_state",
+            self.app.state.meta_client, "get_entity_state",
             new=AsyncMock(return_value=state(daily_budget=150.0)),
         ), patch.object(
-            api_routes_module.meta_client, "update_entity_budget", new=AsyncMock(return_value=True),
+            self.app.state.meta_client, "update_entity_budget", new=AsyncMock(return_value=True),
         ) as undo_budget:
             async with httpx.AsyncClient(**client_args) as client:
                 undone = await client.post(
@@ -978,7 +1006,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             member.role = "viewer"
             await session.commit()
         with patch.object(
-            api_routes_module.meta_client, "get_entity_state",
+            self.app.state.meta_client, "get_entity_state",
             new=AsyncMock(side_effect=AssertionError("Meta must not be read for a viewer")),
         ):
             async with httpx.AsyncClient(**client_args) as client:
@@ -1620,7 +1648,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         transport = httpx.ASGITransport(app=self.app)
         with patch.object(
-            api_routes_module.meta_client,
+            self.app.state.meta_client,
             "get_account_info",
             new=AsyncMock(return_value=meta_account),
         ):
@@ -1693,7 +1721,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         transport = httpx.ASGITransport(app=self.app)
         with patch.object(
-            api_routes_module.meta_client,
+            self.app.state.meta_client,
             "get_account_info",
             new=AsyncMock(return_value=meta_account),
         ):
@@ -1743,7 +1771,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         transport = httpx.ASGITransport(app=self.app)
         with patch.object(
-            api_routes_module.meta_client,
+            self.app.state.meta_client,
             "get_account_info",
             new=AsyncMock(return_value=meta_account),
         ):
@@ -1955,7 +1983,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         headers = {**buyer_data}
         transport = httpx.ASGITransport(app=self.app)
         mocked_insights = AsyncMock(side_effect=insights_side_effect)
-        with patch.object(api_routes_module.meta_client, "get_account_insights_summary", new=mocked_insights):
+        with patch.object(self.app.state.meta_client, "get_account_insights_summary", new=mocked_insights):
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
                 fresh = await client.get("/api/summary?period=today&force=true", headers=headers)
                 cached = await client.get("/api/summary?period=today", headers=headers)
@@ -2040,7 +2068,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         second_metrics = {**first_metrics, "spend": 125.0, "clicks": 60}
 
         with patch.object(
-            api_routes_module.meta_client,
+            self.app.state.meta_client,
             "get_account_insights_summary",
             new=AsyncMock(side_effect=[first_metrics, second_metrics]),
         ) as mocked_insights:
@@ -2079,7 +2107,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("access_token", snapshots[0].payload)
 
         with patch.object(
-            api_routes_module.meta_client,
+            self.app.state.meta_client,
             "get_account_insights_summary",
             new=AsyncMock(side_effect=RuntimeError("Meta unavailable")),
         ):
@@ -2125,7 +2153,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         with patch.object(
-            api_routes_module.meta_client,
+            self.app.state.meta_client,
             "get_account_insights_summary",
             new=AsyncMock(side_effect=insights),
         ):
@@ -2205,7 +2233,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             }
 
         with patch.object(
-            api_routes_module.meta_client,
+            self.app.state.meta_client,
             "get_account_insights_summary",
             new=AsyncMock(side_effect=insights_router),
         ) as mocked_insights:
@@ -2303,7 +2331,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             }
 
         with patch.object(
-            api_routes_module.meta_client,
+            self.app.state.meta_client,
             "get_account_insights_summary",
             new=AsyncMock(side_effect=insights_2acc),
         ):
@@ -2402,7 +2430,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         transport = httpx.ASGITransport(app=self.app)
 
         insights_mock = AsyncMock()
-        with patch.object(api_routes_module.meta_client, "get_account_insights_summary", new=insights_mock):
+        with patch.object(self.app.state.meta_client, "get_account_insights_summary", new=insights_mock):
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
                 # 1. WS1 first refresh -> spend=100
                 insights_mock.return_value = {"spend": 100.0, "clicks": 10, "impressions": 100}
@@ -2652,7 +2680,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         transport = httpx.ASGITransport(app=self.app)
         with patch.object(
-            api_routes_module.meta_client,
+            self.app.state.meta_client,
             "set_adset_status",
             new=AsyncMock(side_effect=RuntimeError("access_token=private-secret")),
         ):
@@ -2724,12 +2752,12 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         }
         with (
             patch.object(
-                api_routes_module.meta_client,
+                self.app.state.meta_client,
                 "get_adset_state",
                 new=AsyncMock(return_value=current_state),
             ) as get_state,
             patch.object(
-                api_routes_module.meta_client,
+                self.app.state.meta_client,
                 "set_adset_status",
                 new=AsyncMock(return_value=True),
             ) as set_status,
@@ -2825,7 +2853,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch.object(
-                api_routes_module.meta_client,
+                self.app.state.meta_client,
                 "get_entity_state",
                 new=AsyncMock(
                     return_value={
@@ -2838,7 +2866,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 ),
             ) as get_state,
             patch.object(
-                api_routes_module.meta_client,
+                self.app.state.meta_client,
                 "set_entity_status",
                 new=AsyncMock(return_value=True),
             ) as set_status,
@@ -2894,7 +2922,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch.object(
-                api_routes_module.meta_client,
+                self.app.state.meta_client,
                 "get_entity_state",
                 new=AsyncMock(
                     return_value={
@@ -2907,7 +2935,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 ),
             ),
             patch.object(
-                api_routes_module.meta_client,
+                self.app.state.meta_client,
                 "set_entity_status",
                 new=AsyncMock(return_value=True),
             ) as set_status,
@@ -2938,7 +2966,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch.object(
-                api_routes_module.meta_client,
+                self.app.state.meta_client,
                 "get_entity_state",
                 new=AsyncMock(
                     return_value={
@@ -2952,7 +2980,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 ),
             ),
             patch.object(
-                api_routes_module.meta_client,
+                self.app.state.meta_client,
                 "set_entity_status",
                 new=AsyncMock(return_value=True),
             ) as set_status,
@@ -3003,7 +3031,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         with patch.object(
-            api_routes_module.meta_client,
+            self.app.state.meta_client,
             "get_adset_state",
             new=AsyncMock(),
         ) as get_state:
@@ -3042,12 +3070,12 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         with (
             patch.object(
-                api_routes_module.meta_client,
+                self.app.state.meta_client,
                 "get_adset_state",
                 new=AsyncMock(return_value={"status": "ACTIVE", "daily_budget": 60.0}),
             ),
             patch.object(
-                api_routes_module.meta_client,
+                self.app.state.meta_client,
                 "update_entity_budget",
                 new=AsyncMock(return_value=True),
             ) as update_budget,

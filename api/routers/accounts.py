@@ -48,11 +48,10 @@ from database.models import (
 )
 from services.account_health import health_payload
 from meta_api.client import MetaClient
-from services.inventory_cache import PostgreSQLInventoryCache
+from api.meta_dependencies import get_meta_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Accounts & Groups"])
-meta_client = MetaClient(cache_provider=PostgreSQLInventoryCache())
 
 
 @router.get("/accounts", response_model=List[AccountItem])
@@ -364,7 +363,11 @@ async def parse_raw_text(payload: ParseRawRequest, user: User = Depends(get_curr
 
 
 @router.post("/accounts/batch-add")
-async def batch_add_accounts(payload: BatchAddRequest, user: User = Depends(get_current_user)):
+async def batch_add_accounts(
+    payload: BatchAddRequest,
+    user: User = Depends(get_current_user),
+    meta_client: MetaClient = Depends(get_meta_client),
+):
     if not payload.accounts:
         raise HTTPException(status_code=400, detail="The ad account list is empty.")
     if not payload.access_token.strip():
