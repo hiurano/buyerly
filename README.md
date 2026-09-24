@@ -42,7 +42,7 @@ Frontend запускается командой `npm run dev` из `frontend/` 
 
 ## Проверки и изменения
 
-Локальный запуск тестов запрещён [AGENTS.md](AGENTS.md). Сборка React и тесты выполняются исключительно в GitHub Actions через [.github/workflows/deploy.yml](.github/workflows/deploy.yml).
+Сборка React и тесты выполняются в GitHub Actions через [.github/workflows/deploy.yml](.github/workflows/deploy.yml).
 
 ```bash
 gh run watch <run-id> --exit-status
