@@ -1,17 +1,36 @@
 import os
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from database.db import Base
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import ArgumentError
+from sqlalchemy.ext.asyncio import create_async_engine
+
+
+def _validate_test_db_url(value):
+    """Allow only the local disposable CI database, never a runtime fallback."""
+    error = "Test database refused: use the local buyerly_test database and set TEST_DATABASE_DISPOSABLE=buyerly_test"
+    try:
+        url = make_url(value)
+        allowed = (
+            url.drivername == "postgresql+asyncpg"
+            and url.host in {"localhost", "127.0.0.1", "::1"}
+            and url.port in {None, 5432}
+            and url.username == "buyerly"
+            and url.database == "buyerly_test"
+            and not url.query
+            and os.getenv("TEST_DATABASE_DISPOSABLE") == "buyerly_test"
+        )
+    except (TypeError, ValueError, ArgumentError):
+        # Parser errors can contain credentials. Do not propagate their text.
+        raise RuntimeError(error) from None
+    if not allowed:
+        raise RuntimeError(error)
+    return url
 
 
 def get_test_db_url() -> str:
-    return os.getenv(
-        "TEST_DATABASE_URL",
-        os.getenv(
-            "DATABASE_URL",
-            "postgresql+asyncpg://buyerly:buyerly_secret@localhost:5432/buyerly_test",
-        ),
-    )
+    value = os.getenv("TEST_DATABASE_URL", "")
+    _validate_test_db_url(value)
+    return value
 
 
 def create_test_engine():
@@ -19,6 +38,14 @@ def create_test_engine():
 
 
 async def init_test_db(engine):
+    # Recheck the actual engine before begin(), including callers bypassing
+    # create_test_engine or an environment changed since engine creation.
+    expected = make_url(get_test_db_url())
+    actual = _validate_test_db_url(engine.url)
+    if actual != expected:
+        raise RuntimeError("Test database refused: engine does not match TEST_DATABASE_URL")
+    from database.db import Base
+
     async with engine.begin() as conn:
         await conn.execute(text("DROP SCHEMA public CASCADE"))
         await conn.execute(text("CREATE SCHEMA public"))
