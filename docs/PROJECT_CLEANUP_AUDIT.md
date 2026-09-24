@@ -130,7 +130,7 @@ Worker закрывает свои клиенты явно в `services/worker.p
 Нужен один явный владелец API clients, правильный cache provider и teardown;
 не удалять возможность подмены клиента в тестах до замены test fixtures.
 
-Актуализация C02 (2026-09-25): выводы повторно подтверждены на `b0ff681`.
+Актуализация C02 ([PR #176](https://github.com/hiurano/buyerly/pull/176), 2026-09-25): выводы повторно подтверждены на `b0ff681`.
 Исправление назначает владельцем MetaClient конкретный FastAPI app, сохраняет
 PostgreSQL provider и освобождает HTTP transport в lifespan `finally`.
 Все Meta routers и OAuth account import получают клиент через request dependency;

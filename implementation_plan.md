@@ -2,7 +2,7 @@
 
 Дата: 2026-09-25. База: `91a0c95` (main после PR #171).
 Основание: [аудит A01–A25](docs/PROJECT_CLEANUP_AUDIT.md).
-Статус: **C01 слит (PR #174, `b0ff681`); C02 реализован, ожидает CI и review; C03–C24 ещё не реализованы**.
+Статус: **C01 слит (PR #174, `b0ff681`); C02 реализован в PR #176, CI реализации зелёный, ожидает подтверждения на merge; C03–C24 ещё не реализованы**.
 Прежний план сохранён в [архиве public website](docs/archive/plans/implementation_plan_public_website.md).
 
 ## Цель и критерии готовности
@@ -50,7 +50,7 @@ C20 желательно завершить до C17/C18, чтобы visual gate
 | Этап | Зависимости | Масштаб | Статус |
 |---|---|---|---|
 | C01 Test DB guard | — | Малый | [PR #174](https://github.com/hiurano/buyerly/pull/174): слит, `b0ff681`, CI зелёный |
-| C02 Meta client/cache/lifecycle | C01 | Средний | Реализован; ожидает CI и review |
+| C02 Meta client/cache/lifecycle | C01 | Средний | [PR #176](https://github.com/hiurano/buyerly/pull/176): CI реализации зелёный, ожидает подтверждения на merge |
 | C03 Async workspace/account state | — | Средний | Ожидает |
 | C04 Parent hierarchy contract | C01 | Малый | Ожидает |
 | C05 Timezone drill-down | C04 | Средний | Ожидает |
@@ -121,7 +121,10 @@ MetaOAuthClient уже закрывает HTTP transport внутри каждо
 не изменён. DB module propagation и остальные dependencies остаются для C10.
 Проверки: четыре DB-free lifecycle/assembly tests, compileall; в CI добавлена
 интеграция delivery → реальный MetaClient → PostgreSQL cache invalidation
-с fake Meta transport. Полный CI и ссылка на PR будут внесены после запуска.
+с fake Meta transport. [PR #176](https://github.com/hiurano/buyerly/pull/176):
+полный [CI run 36065431954](https://github.com/hiurano/buyerly/actions/runs/36065431954)
+для реализации `dc9cc44` прошёл: frontend, 6 test shards и итоговый CI.
+Актуальный head после записи результата проверяется повторно в checks PR.
 Ограничение: запросы к реальному Meta и влияние на квоты не измерялись;
 production deployment не выполнялся. Merge требует подтверждения пользователя.
 
