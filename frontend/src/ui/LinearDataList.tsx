@@ -120,9 +120,9 @@ export const LinearDataListRow = React.forwardRef<HTMLDivElement, LinearDataList
       role="row"
       data-selected={selected ? 'true' : 'false'}
       aria-selected={selected}
-      className={`group/row relative ${layout === 'grid' ? 'grid' : 'flex'} w-full select-none items-center outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--focus-ring-color)] ${
+      className={`linear-data-row group/row relative ${layout === 'grid' ? 'grid' : 'flex'} w-full select-none items-center outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--focus-ring-color)] ${
         selected
-          ? 'bg-[var(--row-selected-bg)]'
+          ? 'bg-[var(--row-selected-bg)] hover:bg-[var(--row-selected-hover-bg)]'
           : 'bg-transparent hover:bg-[var(--data-row-hover-bg)]'
       } ${className}`}
       style={{
@@ -385,7 +385,7 @@ export const LinearDataPrimaryCell: React.FC<LinearDataPrimaryCellProps> = ({
   <div
     className={`flex min-w-0 items-center gap-3 ${
       sticky
-        ? 'sticky left-0 z-[1] bg-[var(--bg-canvas)] transition-colors group-hover/row:bg-[var(--data-row-hover-bg)]'
+        ? 'linear-data-sticky sticky left-0 z-[1] transition-colors'
         : ''
     }`}
   >

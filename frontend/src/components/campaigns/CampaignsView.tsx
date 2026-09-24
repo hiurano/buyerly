@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { setEntityDelivery, undoAction, type DeliveryControl, type EntityLevel } from '@/lib/delivery';
+import { Pause, Play } from 'lucide-react';
+import {
+  describeBulkDelivery,
+  setDeliveryForMany,
+  setEntityDelivery,
+  undoActions,
+  type DeliveryControl,
+  type EntityLevel,
+} from '@/lib/delivery';
 import { ApiError, apiRequest } from '@/lib/api';
 import type {
   AnalyticsHierarchyResponse,
@@ -41,6 +49,9 @@ import { createLiveFields, filterView, groupView } from './campaignViewModel';
 import type { AccountGroupOption } from './campaignViewModel';
 import { useCampaignViewFilters } from './useCampaignViewFilters';
 import { LinearFacetSidebar } from '@/ui/LinearFacetSidebar';
+import { SelectionDock } from '@/ui/SelectionDock';
+import { SelectionCommandMenu } from '@/ui/SelectionCommandMenu';
+import { useRowSelection, type SelectionAction } from '@/ui/useRowSelection';
 import type { FilterClause, FilterFieldDefinition } from '@/components/filters/filterModel';
 import {
   LinearSidebarToggleIcon,
@@ -70,6 +81,22 @@ function requestErrorMessage(error: unknown): string {
   return 'Something went wrong. Please try again.';
 }
 
+const entityLevels: Record<AdsManagerEntity, EntityLevel> = {
+  campaigns: 'campaign',
+  adsets: 'adset',
+  ads: 'ad',
+};
+
+type DeliveryNotice = {
+  tone: 'ok' | 'error';
+  text: string;
+  /** Audit rows that reverse what this notice reports. */
+  undoIds?: number[];
+  /** Delivery each changed entity returns to on undo. */
+  reverts?: Record<string, 'active' | 'paused'>;
+  undoing?: boolean;
+};
+
 const entityLabels: Record<AdsManagerEntity, { plural: string; singular: string }> = {
   campaigns: { plural: 'campaigns', singular: 'campaign' },
   adsets: { plural: 'ad sets', singular: 'ad set' },
@@ -90,6 +117,8 @@ export const CampaignsView: React.FC = () => {
     toggleDisplayOptions,
     setIsDisplayOptionsOpen,
     clearCampaignSelection,
+    selectedCampaignIds,
+    setCampaignSelection,
     isSidebarCollapsed,
     toggleSidebarCollapsed,
     loadAccountRuleAttachments,
@@ -120,7 +149,7 @@ export const CampaignsView: React.FC = () => {
   // Delivery this session wrote to Meta, held apart from the stored snapshot
   // until its next sync, plus the last recoverable failure.
   const [deliveryActions, setDeliveryActions] = useState<Record<string, { busy: boolean; status?: 'active' | 'paused' }>>({});
-  const [deliveryNotice, setDeliveryNotice] = useState<{ tone: 'ok' | 'error'; text: string; undoId?: number | null; entityId?: string; previousStatus?: 'active' | 'paused'; undoing?: boolean } | null>(null);
+  const [deliveryNotice, setDeliveryNotice] = useState<DeliveryNotice | null>(null);
   const [hierarchyReloadKey, setHierarchyReloadKey] = useState(0);
   const [isMetaDialogOpen, setIsMetaDialogOpen] = useState(false);
   const [returnedConnectionId, setReturnedConnectionId] = useState<number | null>(
@@ -387,9 +416,8 @@ export const CampaignsView: React.FC = () => {
       }));
       setDeliveryNotice({
         tone: 'ok',
-        undoId: result.audit_event_id,
-        entityId,
-        previousStatus: next ? 'paused' : 'active',
+        undoIds: result.audit_event_id ? [result.audit_event_id] : [],
+        reverts: { [entityId]: next ? 'paused' : 'active' },
         text: `${result.message} Stored Meta data still shows the previous value until its next sync.`,
       });
     } catch (error) {
@@ -401,21 +429,81 @@ export const CampaignsView: React.FC = () => {
     }
   };
 
+  const currentRows = campaignFilterTab === 'campaigns' ? campaigns : campaignFilterTab === 'adsets' ? adSets : ads;
+
+  /** Pauses or resumes every selected row of the current level, reporting each outcome. */
+  const runBulkDelivery = async (next: 'active' | 'paused') => {
+    if (!selectedAccountId) return;
+    const level = entityLevels[campaignFilterTab];
+    const rows = currentRows.filter((row) => selectedCampaignIds.includes(row.id));
+    const eligible = rows.filter((row) => row.status !== 'unknown');
+    const status = next === 'active' ? 'ACTIVE' : 'PAUSED';
+    const previous = Object.fromEntries(eligible.map((row) => [
+      row.id,
+      deliveryActions[row.id]?.status ?? (row.status as 'active' | 'paused'),
+    ]));
+    setDeliveryNotice(null);
+    setDeliveryActions((current) => ({
+      ...current,
+      ...Object.fromEntries(eligible.map((row) => [row.id, { ...current[row.id], busy: true }])),
+    }));
+    const outcome = await setDeliveryForMany(
+      eligible.map((row) => ({ level, entityId: row.id })),
+      selectedAccountId,
+      status,
+    );
+    const confirmed = new Set([...outcome.changed.map((item) => item.entityId), ...outcome.unchanged]);
+    setDeliveryActions((current) => ({
+      ...current,
+      ...Object.fromEntries(eligible.map((row) => [
+        row.id,
+        confirmed.has(row.id) ? { busy: false, status: next } : { ...current[row.id], busy: false },
+      ])),
+    }));
+    setDeliveryNotice({
+      tone: outcome.failed.length > 0 ? 'error' : 'ok',
+      text: describeBulkDelivery(outcome, status, entityLabels[campaignFilterTab], rows.length - eligible.length),
+      undoIds: outcome.changed.flatMap((item) => (item.auditEventId ? [item.auditEventId] : [])),
+      reverts: Object.fromEntries(outcome.changed.map((item) => [item.entityId, previous[item.entityId]])),
+    });
+  };
+
   const runUndoDelivery = async () => {
     const notice = deliveryNotice;
-    if (!notice?.undoId || !notice.entityId || notice.undoing) return;
+    if (!notice?.undoIds?.length || notice.undoing) return;
     setDeliveryNotice({ ...notice, undoing: true });
-    try {
-      await undoAction(notice.undoId);
+    const { failed, error } = await undoActions(notice.undoIds);
+    if (failed === 0) {
       setDeliveryActions((current) => ({
-        ...current, [notice.entityId!]: { busy: false, status: notice.previousStatus },
+        ...current,
+        ...Object.fromEntries(Object.entries(notice.reverts ?? {}).map(([id, status]) => [id, { busy: false, status }])),
       }));
       setDeliveryNotice({ tone: 'ok', text: 'Action undone. Stored Meta data will update on its next sync.' });
-    } catch (error) {
-      setDeliveryNotice({ ...notice, undoing: false, tone: 'error',
-        text: error instanceof Error ? error.message : 'Undo could not be confirmed. Check Meta before retrying.' });
+    } else {
+      setDeliveryNotice({
+        ...notice,
+        undoing: false,
+        tone: 'error',
+        text: `${failed} of ${notice.undoIds.length} changes could not be undone: ${error} Check Meta before retrying.`,
+      });
     }
   };
+
+  const selectionNoun = entityLabels[campaignFilterTab];
+  const selectionActions: SelectionAction[] = [
+    { id: 'pause', label: 'Pause delivery', shortcut: 'p', icon: <Pause size={14} />, run: () => void runBulkDelivery('paused') },
+    { id: 'resume', label: 'Resume delivery', shortcut: 'r', icon: <Play size={14} />, run: () => void runBulkDelivery('active') },
+  ];
+  const visibleRowIds = useMemo(() => (
+    campaignFilterTab === 'campaigns' ? filteredCampaigns : campaignFilterTab === 'adsets' ? filteredAdSets : filteredAds
+  ).map((row) => row.id), [campaignFilterTab, filteredAds, filteredAdSets, filteredCampaigns]);
+  const selection = useRowSelection({
+    selectedIds: selectedCampaignIds,
+    visibleIds: visibleRowIds,
+    setSelection: setCampaignSelection,
+    actions: selectionActions,
+    enabled: accountsState === 'ready' && hierarchyState === 'ready' && Boolean(selectedAccountId),
+  });
 
   /** A live control, or nothing when the row cannot honestly be acted on. */
   const deliveryControl = (
@@ -444,12 +532,12 @@ export const CampaignsView: React.FC = () => {
     }
     if (campaignFilterTab === 'adsets') {
       return renderGrouped(filteredAdSets, adSetFilterFields, (adSet) => (
-        <AdSetRow key={adSet.id} adSet={adSet} properties={supportedProperties} readOnly delivery={deliveryControl('adset', adSet.id, adSet.status)} />
+        <AdSetRow key={adSet.id} adSet={adSet} properties={supportedProperties} readOnly selectable delivery={deliveryControl('adset', adSet.id, adSet.status)} />
       ));
     }
     if (campaignFilterTab === 'ads') {
       return renderGrouped(filteredAds, adFilterFields, (ad) => (
-        <AdRow key={ad.id} ad={ad} properties={supportedProperties} readOnly delivery={deliveryControl('ad', ad.id, ad.status)} />
+        <AdRow key={ad.id} ad={ad} properties={supportedProperties} readOnly selectable delivery={deliveryControl('ad', ad.id, ad.status)} />
       ));
     }
     return renderGrouped(filteredCampaigns, campaignFilterFields, (campaign) => (
@@ -458,6 +546,7 @@ export const CampaignsView: React.FC = () => {
         campaign={campaign}
         properties={supportedProperties}
         readOnly
+        selectable
         delivery={deliveryControl('campaign', campaign.id, campaign.status)}
         showIdentifier
       />
@@ -546,7 +635,7 @@ export const CampaignsView: React.FC = () => {
               {deliveryNotice.text}
             </span>
             <span className="flex items-center gap-2">
-              {deliveryNotice.undoId && (
+              {Boolean(deliveryNotice.undoIds?.length) && (
                 <Button size="compact" disabled={deliveryNotice.undoing} onClick={() => void runUndoDelivery()}>
                   {deliveryNotice.undoing ? 'Undoing…' : 'Undo'}
                 </Button>
@@ -692,7 +781,10 @@ export const CampaignsView: React.FC = () => {
       />
 
       <div className="campaign-view-body">
-        <div className="campaign-view-list">{renderData()}</div>
+        <div className="campaign-view-list relative">
+          {renderData()}
+          <SelectionDock count={selection.count} onOpenActions={() => selection.setMenuOpen(true)} onClear={selection.clear} />
+        </div>
         {isRightSidebarOpen && hierarchyState === 'ready' && accountsState === 'ready' && (
           <div className="campaign-view-details">
             {groupsError && <p role="status" className="linear-facet-empty">Account groups unavailable. Reload to retry.</p>}
@@ -701,6 +793,13 @@ export const CampaignsView: React.FC = () => {
           </div>
         )}
       </div>
+
+      <SelectionCommandMenu
+        open={selection.menuOpen}
+        onOpenChange={selection.setMenuOpen}
+        scopeLabel={`${selection.count} ${selection.count === 1 ? selectionNoun.singular : selectionNoun.plural}`}
+        actions={selectionActions}
+      />
 
       <MetaConnectionDialog
         open={isMetaDialogOpen || returnedConnectionId !== null}

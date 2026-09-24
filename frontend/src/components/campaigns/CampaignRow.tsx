@@ -12,6 +12,8 @@ import { getAdsManagerColumns } from './tableColumns';
 interface CampaignRowProps {
   campaign: CampaignItem;
   readOnly?: boolean;
+  /** Rows can be selected for bulk actions. */
+  selectable?: boolean;
   /** Present when the row may really change delivery in Meta. */
   delivery?: DeliveryControl;
   properties?: Record<string, boolean>;
@@ -21,6 +23,7 @@ interface CampaignRowProps {
 export const CampaignRow: React.FC<CampaignRowProps> = ({
   campaign,
   readOnly = false,
+  selectable = false,
   delivery,
   properties,
   showIdentifier = false,
@@ -39,7 +42,7 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
   const groupColumnRef = useRef<HTMLDivElement>(null);
   const ruleCellRef = useRef<RuleAttachmentCellHandle>(null);
 
-  const isSelected = !readOnly && selectedCampaignIds.includes(campaign.id);
+  const isSelected = selectable && selectedCampaignIds.includes(campaign.id);
   const isDeliveryKnown = campaign.status !== 'unknown';
   const isDeliveryOn = campaign.status === 'active';
   const displayProperties = properties ?? storedDisplayProperties;
@@ -67,6 +70,7 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
   return (
     <>
       <LinearDataListRow
+        data-row-id={campaign.id}
         layout="grid"
         columns={columns}
         tabIndex={readOnly ? undefined : 0}
@@ -75,9 +79,6 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             setFocusedCampaignId(campaign.id);
-          } else if (e.key === 'x' || e.key === 'X') {
-            e.preventDefault();
-            toggleCampaignSelection(campaign.id);
           } else if (!readOnly && (e.key === 'l' || e.key === 'L')) {
             e.preventDefault();
             openLabelSelector();
@@ -97,7 +98,7 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
               statusLabel={campaign.statusLabel}
               delivery={delivery}
               showStatus={displayProperties.status !== false}
-              readOnly={readOnly}
+              selectable={selectable}
               selected={isSelected}
               onToggleSelected={() => toggleCampaignSelection(campaign.id)}
             />

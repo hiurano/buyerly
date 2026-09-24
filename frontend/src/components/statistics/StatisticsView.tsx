@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronRight, Search } from 'lucide-react';
+import { ChevronRight, Pause, Play, Search } from 'lucide-react';
 import { ApiError, apiRequest } from '@/lib/api';
 import type {
   AnalyticsHierarchyItem,
@@ -10,9 +10,12 @@ import type {
 import { Sparkline, TrendChart, type TrendPoint } from '@/components/statistics/TrendChart';
 import { BudgetField } from '@/components/statistics/BudgetField';
 import {
+  describeBulkDelivery,
+  setDeliveryForMany,
   setEntityBudget,
   setEntityDelivery,
   undoAction,
+  undoActions,
   type DeliveryStatus,
 } from '@/lib/delivery';
 import { EntityRowControls } from '@/components/campaigns/EntityRowCells';
@@ -69,6 +72,9 @@ import {
   LinearDataTable,
 } from '@/ui/LinearDataList';
 import { LinearTabs } from '@/ui/LinearTabs';
+import { SelectionDock } from '@/ui/SelectionDock';
+import { SelectionCommandMenu } from '@/ui/SelectionCommandMenu';
+import { useRowSelection, type SelectionAction } from '@/ui/useRowSelection';
 import { Tooltip } from '@/ui/Tooltip';
 import { useAppStore } from '@/store/useAppStore';
 
@@ -268,6 +274,9 @@ interface StatisticsRowProps {
   onSetBudget: ((dailyBudget: number) => void) | null;
   onUndo: (() => void) | null;
   onDismissAction: () => void;
+  /** Whether the row is part of the bulk selection. */
+  selected: boolean;
+  onToggleSelected: () => void;
 }
 
 const StatisticsRow: React.FC<StatisticsRowProps> = ({
@@ -287,6 +296,8 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
   onSetBudget,
   onUndo,
   onDismissAction,
+  selected,
+  onToggleSelected,
 }) => {
   const definition = RESULT_DEFINITIONS[resultKind];
   const diagnosticsId = `statistics-diagnostics-${item.entity_id}`;
@@ -298,8 +309,10 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
   const budgetEditable = Boolean(onSetBudget) && liveBudget > 0;
 
   return (
-    <div className="min-w-0">
+    <div className="min-w-0" data-row-slot>
       <LinearDataListRow
+        data-row-id={item.entity_id}
+        selected={selected}
         layout="grid"
         columns={columns}
         height={compact ? LINEAR_DATA_LIST.rowHeight : LINEAR_DATA_LIST.rowHeightComfortable}
@@ -318,9 +331,9 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
                 onChange: (next) => onSetDelivery(next ? 'ACTIVE' : 'PAUSED'),
               } : undefined}
               showStatus
-              readOnly
-              selected={false}
-              onToggleSelected={() => undefined}
+              selectable
+              selected={selected}
+              onToggleSelected={onToggleSelected}
             />
           )}
           title={childLabel ? (
@@ -491,6 +504,15 @@ export const StatisticsView: React.FC = () => {
   const [trend, setTrend] = useState<AnalyticsTimeseriesResponse | null>(null);
   const [trendOpen, setTrendOpen] = useState(false);
   const [rowActions, setRowActions] = useState<Record<string, RowAction>>({});
+  // Rows picked for a bulk action, and the written result of the last one.
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkNotice, setBulkNotice] = useState<{
+    tone: 'ok' | 'error';
+    text: string;
+    undoIds: number[];
+    reverts: Record<string, DeliveryStatus>;
+    undoing?: boolean;
+  } | null>(null);
 
   const parent = trail.length > 0 ? trail[trail.length - 1] : null;
   const queryLevel: EntityLevel = parent ? (CHILD_LEVEL[parent.level] ?? level) : level;
@@ -830,6 +852,72 @@ export const StatisticsView: React.FC = () => {
     }
   }, [patchAction, rowActions]);
 
+  // A selection belongs to one account, level, drill-down and period.
+  useEffect(() => {
+    setSelectedIds([]);
+    setBulkNotice(null);
+  }, [selectedAccountId, queryLevel, parentId, period]);
+
+  /** Pauses or resumes every selected row that can be acted on, reporting each outcome. */
+  const runBulkDelivery = async (status: DeliveryStatus) => {
+    if (!selectedAccountId) return;
+    const selected = items.filter((item) => selectedIds.includes(item.entity_id));
+    // The same rows that show a live toggle: delivery Meta lets us change.
+    const eligible = selected.filter((item) => ['ACTIVE', 'PAUSED'].includes(item.status));
+    const previous = Object.fromEntries(eligible.map((item) => [
+      item.entity_id,
+      rowActions[item.entity_id]?.status ?? (item.status as DeliveryStatus),
+    ]));
+    setBulkNotice(null);
+    eligible.forEach((item) => patchAction(item.entity_id, { busy: true, error: '', message: '' }));
+    const outcome = await setDeliveryForMany(
+      eligible.map((item) => ({ level: item.entity_level, entityId: item.entity_id })),
+      selectedAccountId,
+      status,
+    );
+    const confirmed = new Set([...outcome.changed.map((entry) => entry.entityId), ...outcome.unchanged]);
+    eligible.forEach((item) => patchAction(item.entity_id, confirmed.has(item.entity_id)
+      ? { busy: false, status, undoId: null }
+      : { busy: false }));
+    setBulkNotice({
+      tone: outcome.failed.length > 0 ? 'error' : 'ok',
+      text: describeBulkDelivery(outcome, status, levelLabel, selected.length - eligible.length),
+      undoIds: outcome.changed.flatMap((entry) => (entry.auditEventId ? [entry.auditEventId] : [])),
+      reverts: Object.fromEntries(outcome.changed.map((entry) => [entry.entityId, previous[entry.entityId]])),
+    });
+  };
+
+  const runBulkUndo = async () => {
+    const notice = bulkNotice;
+    if (!notice || notice.undoIds.length === 0 || notice.undoing) return;
+    setBulkNotice({ ...notice, undoing: true });
+    const { failed, error } = await undoActions(notice.undoIds);
+    if (failed === 0) {
+      Object.entries(notice.reverts).forEach(([entityId, status]) => patchAction(entityId, { status }));
+      setBulkNotice({ tone: 'ok', text: 'Action undone. Stored Meta data will update on its next sync.', undoIds: [], reverts: {} });
+    } else {
+      setBulkNotice({
+        ...notice,
+        undoing: false,
+        tone: 'error',
+        text: `${failed} of ${notice.undoIds.length} changes could not be undone: ${error} Check Meta before retrying.`,
+      });
+    }
+  };
+
+  const selectionActions: SelectionAction[] = [
+    { id: 'pause', label: 'Pause delivery', shortcut: 'p', icon: <Pause size={14} />, run: () => void runBulkDelivery('PAUSED') },
+    { id: 'resume', label: 'Resume delivery', shortcut: 'r', icon: <Play size={14} />, run: () => void runBulkDelivery('ACTIVE') },
+  ];
+  const visibleRowIds = useMemo(() => visibleItems.map((item) => item.entity_id), [visibleItems]);
+  const selection = useRowSelection({
+    selectedIds,
+    visibleIds: visibleRowIds,
+    setSelection: setSelectedIds,
+    actions: selectionActions,
+    enabled: hierarchyState === 'ready' && Boolean(selectedAccountId),
+  });
+
   const renderRow = (item: AnalyticsHierarchyItem) => (
     <StatisticsRow
       key={item.entity_id}
@@ -856,6 +944,8 @@ export const StatisticsView: React.FC = () => {
         ? () => void runUndo(item, rowActions[item.entity_id].undoId as number)
         : null}
       onDismissAction={() => patchAction(item.entity_id, { message: '', error: '' })}
+      selected={selectedIds.includes(item.entity_id)}
+      onToggleSelected={() => selection.toggle(item.entity_id)}
     />
   );
 
@@ -966,6 +1056,24 @@ export const StatisticsView: React.FC = () => {
     return (
       <LinearDataTable
         columns={columns}
+        before={bulkNotice && (
+          <div
+            role={bulkNotice.tone === 'error' ? 'alert' : 'status'}
+            className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-[var(--control-border-radius)] bg-[var(--statistics-diagnostics-bg)] px-3 py-2"
+          >
+            <span className={`min-w-0 text-[12px] ${bulkNotice.tone === 'error' ? 'text-[var(--statistics-state-attention)]' : 'text-[var(--text-secondary)]'}`}>
+              {bulkNotice.text}
+            </span>
+            <span className="flex shrink-0 items-center gap-2">
+              {bulkNotice.undoIds.length > 0 && (
+                <Button size="compact" disabled={bulkNotice.undoing} onClick={() => void runBulkUndo()}>
+                  {bulkNotice.undoing ? 'Undoing…' : 'Undo'}
+                </Button>
+              )}
+              <Button size="compact" disabled={bulkNotice.undoing} onClick={() => setBulkNotice(null)}>Dismiss</Button>
+            </span>
+          </div>
+        )}
         sortKey={sortKey}
         sortDirection={sortDirection}
         onSort={(columnId) => {
@@ -984,7 +1092,7 @@ export const StatisticsView: React.FC = () => {
   };
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-transparent">
+    <div className="relative flex h-full w-full flex-col overflow-hidden bg-transparent">
       <header className="flex h-11 shrink-0 items-center justify-between border-b border-[var(--color-border-primary)] px-[14px]">
         <div className="flex min-w-0 items-center gap-2">
           {isSidebarCollapsed && (
@@ -1274,6 +1382,13 @@ export const StatisticsView: React.FC = () => {
           </section>
         </main>
       </div>
+      <SelectionDock count={selection.count} onOpenActions={() => selection.setMenuOpen(true)} onClear={selection.clear} />
+      <SelectionCommandMenu
+        open={selection.menuOpen}
+        onOpenChange={selection.setMenuOpen}
+        scopeLabel={`${selection.count} ${selection.count === 1 ? levelLabel.singular : levelLabel.plural}`}
+        actions={selectionActions}
+      />
     </div>
   );
 };

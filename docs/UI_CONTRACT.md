@@ -34,6 +34,7 @@ Use the existing primitives from `frontend/src/ui/`:
 | Tabs | `LinearTabs` | Selected state, keyboard focus and overflow remain accessible. |
 | Data list | `LinearDataList` | One outer data surface; loading, empty, populated and error states are explicit. |
 | Entity table | `LinearDataTable`, `LinearDataListGroup`, `LinearDataPrimaryCell`, `LinearDataMetricCell` | Every entity table (Ads Manager, Rules, Statistics) is built from these; a screen chooses its columns, not its cell typography, row geometry or scroll behaviour. |
+| Row selection | `useRowSelection`, `SelectionDock`, `SelectionCommandMenu` | Linear selection model: the checkbox appears on row hover and stays on selected rows; X toggles the row under the pointer, Ctrl/Cmd+A selects visible rows, Esc clears; the dock sits over its own list and Actions / Ctrl+K opens the actions for the selection. A screen offers a checkbox only where its selection has a real bulk action. |
 | Data states | `DataState` | Loading, empty, unavailable and error blocks are rendered through it rather than re-invented per screen. |
 | Checkbox | `LinearCheckbox`, `FormCheckbox` | Labelled state is operable by keyboard and not communicated by color alone. `FormCheckbox` is for form rows where `LinearCheckbox` does not apply. |
 | Toggle | `LinearToggle` | Has an accessible name, clear checked state and disabled/busy handling when applicable. |

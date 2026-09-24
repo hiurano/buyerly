@@ -4,7 +4,6 @@ import { InboxView } from '@/components/inbox/InboxView';
 import { CampaignsView } from '@/components/campaigns/CampaignsView';
 import { RulesView } from '@/components/rules/RulesView';
 import { StatisticsView } from '@/components/statistics/StatisticsView';
-import { SelectionDock } from '@/components/selection/SelectionDock';
 import { CommandMenu } from '@/components/command/CommandMenu';
 import { PreferencesView } from '@/components/preferences/PreferencesView';
 import { AppUtilityBar } from '@/components/layout/AppUtilityBar';
@@ -158,7 +157,6 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
               {activeTab === 'rules' && <RulesView />}
               {activeTab === 'statistics' && <StatisticsView />}
             </main>
-            <SelectionDock />
             <CommandMenu />
           </>
         )}
