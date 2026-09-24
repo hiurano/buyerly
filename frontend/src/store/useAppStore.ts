@@ -241,6 +241,7 @@ interface AppState {
   selectedCampaignIds: string[];
   toggleCampaignSelection: (id: string) => void;
   clearCampaignSelection: () => void;
+  setCampaignSelection: (ids: string[]) => void;
   toggleCampaignGroup: (id: string, groupId: string) => void;
   focusedCampaignId: string;
   setFocusedCampaignId: (id: string) => void;
@@ -312,6 +313,11 @@ interface AppState {
   selectedRuleId: string | null;
   setSelectedRuleId: (id: string | null) => void;
   toggleRuleStatus: (id: string) => Promise<void>;
+  /** Enables or pauses each rule; rules held for review are never enabled. */
+  setRulesEnabled: (
+    ids: string[],
+    enabled: boolean,
+  ) => Promise<{ changed: string[]; unchanged: string[]; skipped: string[]; failed: { id: string; error: string }[] }>;
   addRule: (payload: RulePresetWriteRequest, groupId?: string) => Promise<void>;
   addRuleGroup: (name: string, icon?: RuleGroupIcon) => Promise<void>;
   deleteRuleGroup: (id: string) => Promise<void>;
@@ -352,6 +358,7 @@ interface AppState {
   selectedRuleIds: string[];
   toggleRuleSelection: (id: string) => void;
   clearRuleSelection: () => void;
+  setRuleSelection: (ids: string[]) => void;
   focusedRuleId: string | null;
   setFocusedRuleId: (id: string | null) => void;
 
@@ -425,6 +432,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         : [...state.selectedCampaignIds, id],
     })),
   clearCampaignSelection: () => set({ selectedCampaignIds: [] }),
+  setCampaignSelection: (ids) => set({ selectedCampaignIds: ids }),
   toggleCampaignGroup: (id, groupId) =>
     set((state) => ({
       campaigns: state.campaigns.map((c) =>
@@ -651,6 +659,37 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
+  setRulesEnabled: async (ids, enabled) => {
+    const outcome = {
+      changed: [] as string[],
+      unchanged: [] as string[],
+      skipped: [] as string[],
+      failed: [] as { id: string; error: string }[],
+    };
+    set({ rulesMutationError: '' });
+    for (const id of ids) {
+      const rule = get().rules.find((item) => item.id === id);
+      if (!rule) continue;
+      if ((rule.status !== 'paused') === enabled) {
+        outcome.unchanged.push(id);
+        continue;
+      }
+      // Same guard as the row toggle: a rule held back must be re-saved first.
+      if (enabled && rule.needsReview) {
+        outcome.skipped.push(id);
+        continue;
+      }
+      try {
+        await updateRulePreset(rule.presetId, presetToWriteRequest(rule.preset, { enabled }));
+        outcome.changed.push(id);
+      } catch (error) {
+        outcome.failed.push({ id, error: requestErrorMessage(error) });
+      }
+    }
+    if (outcome.changed.length > 0) await get().loadRules();
+    return outcome;
+  },
+
   addRule: async (payload, groupId) => {
     set({ rulesMutationError: '' });
     try {
@@ -837,6 +876,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         : [...state.selectedRuleIds, id],
     })),
   clearRuleSelection: () => set({ selectedRuleIds: [] }),
+  setRuleSelection: (ids) => set({ selectedRuleIds: ids }),
   focusedRuleId: null,
   setFocusedRuleId: (id) => set({ focusedRuleId: id }),
 

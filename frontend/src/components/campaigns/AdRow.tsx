@@ -8,22 +8,25 @@ import { EntityRowControls, ResultsCpaCell } from './EntityRowCells';
 interface AdRowProps {
   ad: AdItem;
   readOnly?: boolean;
+  /** Rows can be selected for bulk actions. */
+  selectable?: boolean;
   /** Present when the row may really change delivery in Meta. */
   delivery?: DeliveryControl;
   properties?: Record<string, boolean>;
 }
 
-export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, delivery, properties }) => {
+export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, selectable = false, delivery, properties }) => {
   const { selectedCampaignIds, toggleCampaignSelection, displayProperties: storedDisplayProperties } = useAppStore();
 
   const displayProperties = properties ?? storedDisplayProperties;
-  const isSelected = !readOnly && selectedCampaignIds.includes(ad.id);
+  const isSelected = selectable && selectedCampaignIds.includes(ad.id);
   const isDeliveryKnown = ad.status !== 'unknown';
   const isDeliveryOn = ad.status === 'active';
   const columns = getAdsManagerColumns('ads', displayProperties);
 
   return (
     <LinearDataListRow
+      data-row-id={ad.id}
       layout="grid"
       columns={columns}
       tabIndex={readOnly ? undefined : 0}
@@ -38,7 +41,7 @@ export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, delivery, pr
             statusLabel={ad.statusLabel}
             delivery={delivery}
             showStatus={displayProperties.status !== false}
-            readOnly={readOnly}
+            selectable={selectable}
             selected={isSelected}
             onToggleSelected={() => toggleCampaignSelection(ad.id)}
           />

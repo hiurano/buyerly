@@ -56,6 +56,7 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
 
   return (
     <LinearDataListRow
+      data-row-id={rule.id}
       layout="grid"
       columns={columns}
       tabIndex={0}
@@ -64,9 +65,6 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           setFocusedRuleId(rule.id);
-        } else if (e.key === 'x' || e.key === 'X') {
-          e.preventDefault();
-          toggleRuleSelection(rule.id);
         }
       }}
       selected={isSelected}

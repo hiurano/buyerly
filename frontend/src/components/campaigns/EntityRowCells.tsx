@@ -12,7 +12,8 @@ interface EntityRowControlsProps {
   /** Present when the row may really change delivery in Meta. */
   delivery?: DeliveryControl;
   showStatus: boolean;
-  readOnly: boolean;
+  /** False where rows cannot be selected; the slot is kept for alignment. */
+  selectable: boolean;
   selected: boolean;
   onToggleSelected: () => void;
 }
@@ -24,7 +25,7 @@ export const EntityRowControls: React.FC<EntityRowControlsProps> = ({
   statusLabel,
   delivery,
   showStatus,
-  readOnly,
+  selectable,
   selected,
   onToggleSelected,
 }) => {
@@ -32,7 +33,7 @@ export const EntityRowControls: React.FC<EntityRowControlsProps> = ({
   return (
     <>
       {/* Keep the selection slot so read-only rows retain the established Name alignment. */}
-      {readOnly ? (
+      {!selectable ? (
         <LinearCheckbox checked={false} hidden />
       ) : (
         <LinearCheckbox checked={selected} onChange={onToggleSelected} />

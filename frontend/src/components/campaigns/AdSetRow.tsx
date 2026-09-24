@@ -9,12 +9,14 @@ import { RuleAttachmentCell } from './RuleAttachmentCell';
 interface AdSetRowProps {
   adSet: AdSetItem;
   readOnly?: boolean;
+  /** Rows can be selected for bulk actions. */
+  selectable?: boolean;
   /** Present when the row may really change delivery in Meta. */
   delivery?: DeliveryControl;
   properties?: Record<string, boolean>;
 }
 
-export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, delivery, properties }) => {
+export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, selectable = false, delivery, properties }) => {
   const {
     selectedCampaignIds,
     toggleCampaignSelection,
@@ -23,7 +25,7 @@ export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, del
   } = useAppStore();
 
   const displayProperties = properties ?? storedDisplayProperties;
-  const isSelected = !readOnly && selectedCampaignIds.includes(adSet.id);
+  const isSelected = selectable && selectedCampaignIds.includes(adSet.id);
   const isDeliveryKnown = adSet.status !== 'unknown';
   const isDeliveryOn = adSet.status === 'active';
   const isPositiveRoi = adSet.roi.startsWith('+');
@@ -31,6 +33,7 @@ export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, del
 
   return (
     <LinearDataListRow
+      data-row-id={adSet.id}
       layout="grid"
       columns={columns}
       tabIndex={readOnly ? undefined : 0}
@@ -45,7 +48,7 @@ export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, del
             statusLabel={adSet.statusLabel}
             delivery={delivery}
             showStatus={displayProperties.status !== false}
-            readOnly={readOnly}
+            selectable={selectable}
             selected={isSelected}
             onToggleSelected={() => toggleCampaignSelection(adSet.id)}
           />

@@ -55,6 +55,7 @@ Implemented shared primitives:
 | Tabs | `LinearTabs` | selected, hover, keyboard focus, overflow |
 | DataList | `LinearDataList` | loading, empty, populated, partial/error |
 | DataTable | `LinearDataTable`, `LinearDataPrimaryCell`, `LinearDataMetricCell` | sortable header, horizontal scroll, grouped and flat rows |
+| Selection | `useRowSelection`, `SelectionDock`, `SelectionCommandMenu` | hover-revealed checkbox, X / Ctrl+A / Esc, dock over the list, Ctrl+K actions menu |
 | Checkbox | `LinearCheckbox` | unchecked, checked, focus, disabled |
 | Toggle | `LinearToggle` | on, off, focus, disabled/busy where applicable |
 | DropdownMenu | `DropdownMenu` | open, selected, keyboard navigation, dismiss |
@@ -86,7 +87,7 @@ IconButton, Dialog, EmptyState and Skeleton are required product patterns but do
 - imported ad accounts are not the same entity as campaigns and must not be rendered as campaign rows;
 - fixtures such as LuckySpin, RoyalBet, NeonSlots and AcePlay are development examples only and must not ship as current workspace data;
 - delivery toggles are real writes into Meta, sharing the endpoints and the undo path with Statistics; they carry explicit busy, success and recoverable error states, and the view states that stored data lags the change until its next sync;
-- row selection stays read-only until bulk actions exist: a control is either connected or absent, never present and inert;
+- rows can be selected for bulk Pause and Resume, which write delivery through the same audited single-entity endpoint and report every entity as changed, unchanged, skipped or failed, with one Undo for the whole run;
 - no rule is enabled as a side effect of importing an account.
 
 ### Rules

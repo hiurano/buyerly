@@ -331,9 +331,9 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("roi: '—'", self.live_campaigns)
         self.assertIn("showIdentifier", self.campaign_row)
         self.assertIn("readOnly ? undefined", self.campaign_row)
-        # Selection stays read-only; delivery is now a real write, so the toggle
-        # is driven by the control the view hands down rather than by readOnly.
-        # All three levels share one set of leading controls.
+        # Delivery is a real write, so the toggle is driven by the control the
+        # view hands down. All three levels share one set of leading controls,
+        # and a row that cannot be selected keeps the checkbox slot for alignment.
         self.assertIn("<LinearCheckbox checked={false} hidden />", self.entity_row_cells)
         self.assertIn("onChange={delivery ? delivery.onChange : undefined}", self.entity_row_cells)
         self.assertIn("disabled={!delivery}", self.entity_row_cells)
@@ -437,6 +437,43 @@ class TestReactFrontendContract(unittest.TestCase):
         # Detaching an account must say what it removes before it is clicked.
         self.assertIn("attached_scopes", self.rules_lib)
         self.assertIn("attached_scopes", self.rule_row_menu)
+
+    def test_row_selection_drives_real_bulk_actions(self):
+        """A checkbox is shown only where selected rows can actually be acted on."""
+        ui = ROOT / "frontend" / "src" / "ui"
+        hook = (ui / "useRowSelection.ts").read_text()
+        dock = (ui / "SelectionDock.tsx").read_text()
+        menu = (ui / "SelectionCommandMenu.tsx").read_text()
+        rules_view = self.rules_view
+
+        # One dock, one menu and one keyboard model for every list.
+        for view in (self.campaigns_view, self.statistics_view, rules_view):
+            for contract in ("useRowSelection(", "<SelectionDock", "<SelectionCommandMenu"):
+                self.assertIn(contract, view)
+        for key in ("'[data-row-id]:hover'", "key === 'a'", "key === 'x'", "'Escape'", "key === 'k'"):
+            self.assertIn(key, hook)
+        self.assertIn("onClick={onOpenActions}", dock)
+        self.assertIn("onClick={onClear}", dock)
+        self.assertIn("Command.Input", menu)
+        self.assertFalse((ROOT / "frontend" / "src" / "components" / "selection" / "SelectionDock.tsx").exists())
+
+        # Bulk delivery goes through the audited single-entity endpoint, entity by
+        # entity, and reports every outcome instead of a blanket success.
+        for contract in ("export async function setDeliveryForMany", "outcome.failed.push",
+                         "export async function undoActions", "export function describeBulkDelivery"):
+            self.assertIn(contract, self.delivery_lib)
+        for view in (self.campaigns_view, self.statistics_view):
+            self.assertIn("setDeliveryForMany(", view)
+            self.assertIn("undoActions(", view)
+        # Rules held for review are never switched on in bulk either.
+        self.assertIn("setRulesEnabled: async (ids, enabled)", self.app_store)
+        self.assertIn("if (enabled && rule.needsReview)", self.app_store)
+        self.assertIn("setRulesEnabled(", rules_view)
+
+        # Selected rows use the Linear selection colours from tokens, not a literal.
+        self.assertIn("--row-selected-hover-bg", self.tokens)
+        self.assertIn("--checkbox-checked-bg", self.tokens)
+        self.assertNotIn("#eab308", (ui / "LinearCheckbox.tsx").read_text())
 
     def test_entity_tables_share_one_table_and_cell_primitive(self):
         """Ads Manager, Rules and Statistics render one table, not three."""

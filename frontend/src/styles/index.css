@@ -1987,3 +1987,40 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 .campaign-view-toolbar { height: auto !important; min-height: var(--facet-row-height); flex-wrap: wrap; gap: var(--facet-sidebar-gap); padding-block: var(--facet-sidebar-gap); }
 .campaign-view-toolbar > * { max-width: 100%; }
 .campaign-view-toolbar > div:last-child { flex-wrap: wrap; }
+
+/*
+ * Adjacent selected rows read as one block, as in Linear: the inner corners are
+ * squared and the row gap between them is filled with the selection colour.
+ * A row wrapped in [data-row-slot] (Statistics keeps its action panels beside
+ * the row) joins only while nothing is rendered under it.
+ */
+.linear-data-row[data-selected='true']:has(+ .linear-data-row[data-selected='true']),
+[data-row-slot]:has(> .linear-data-row[data-selected='true']:last-child):has(+ [data-row-slot] > .linear-data-row[data-selected='true']) > .linear-data-row {
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  box-shadow: 0 2px 0 0 var(--row-selected-bg);
+}
+
+.linear-data-row[data-selected='true'] + .linear-data-row[data-selected='true'],
+[data-row-slot]:has(> .linear-data-row[data-selected='true']:last-child) + [data-row-slot] > .linear-data-row[data-selected='true'] {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
+
+/* The selection dock rises into place with a small overshoot; it leaves at once. */
+@keyframes selectionDockEnter {
+  0% { opacity: 0; transform: translateY(16px); }
+  33% { opacity: 1; transform: translateY(3px); }
+  60% { transform: translateY(-0.8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.selection-dock-enter {
+  animation: selectionDockEnter var(--motion-dock-enter-duration) var(--ease-out-cubic) both;
+}
+
+/* A pinned Name cell paints the row's own state so it never covers the selection. */
+.linear-data-row .linear-data-sticky { background-color: var(--bg-canvas); }
+.linear-data-row:hover .linear-data-sticky { background-color: var(--data-row-hover-bg); }
+.linear-data-row[data-selected='true'] .linear-data-sticky { background-color: var(--row-selected-bg); }
+.linear-data-row[data-selected='true']:hover .linear-data-sticky { background-color: var(--row-selected-hover-bg); }

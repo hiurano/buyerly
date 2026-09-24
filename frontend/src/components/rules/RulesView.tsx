@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Pause, Play } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { RuleColumn } from './RuleColumn';
 import { RulesListView } from './RulesListView';
@@ -24,6 +25,10 @@ import { LinearTabs } from '@/ui/LinearTabs';
 import { DataState } from '@/ui/DataState';
 import { LinearDataListToolbar } from '@/ui/LinearDataList';
 import { Tooltip } from '@/ui/Tooltip';
+import { Button } from '@/ui/Button';
+import { SelectionDock } from '@/ui/SelectionDock';
+import { SelectionCommandMenu } from '@/ui/SelectionCommandMenu';
+import { useRowSelection, type SelectionAction } from '@/ui/useRowSelection';
 
 interface OpenFilterMenu {
   mode: FilterMenuMode;
@@ -54,6 +59,9 @@ export const RulesView: React.FC = () => {
     rulesMutationError,
     clearRulesMutationError,
     loadRules,
+    selectedRuleIds,
+    setRuleSelection,
+    setRulesEnabled,
   } = useAppStore();
 
   useEffect(() => {
@@ -83,6 +91,64 @@ export const RulesView: React.FC = () => {
       ? rules.length
       : rules.filter((rule) => rule.status === ruleFilterTab).length;
   const hiddenCount = totalForTab - filteredRules.length;
+
+  // Bulk pause/resume of the selected rules, with the written result of the last run.
+  const [bulkNotice, setBulkNotice] = useState<{
+    tone: 'ok' | 'error';
+    text: string;
+    undo?: { ids: string[]; enabled: boolean };
+    undoing?: boolean;
+  } | null>(null);
+
+  const runBulkEnabled = async (enabled: boolean) => {
+    setBulkNotice(null);
+    const ids = selectedRuleIds.filter((id) => rules.some((rule) => rule.id === id));
+    const outcome = await setRulesEnabled(ids, enabled);
+    const done = outcome.changed.length + outcome.unchanged.length;
+    const parts = [`${enabled ? 'Resumed' : 'Paused'} ${done} of ${ids.length} ${ids.length === 1 ? 'rule' : 'rules'}.`];
+    if (outcome.failed.length > 0) parts.push(`${outcome.failed.length} failed: ${outcome.failed[0].error}`);
+    if (outcome.skipped.length > 0) {
+      parts.push(`${outcome.skipped.length} skipped: re-save ${outcome.skipped.length === 1 ? 'it' : 'them'} before switching on.`);
+    }
+    setBulkNotice({
+      tone: outcome.failed.length > 0 ? 'error' : 'ok',
+      text: parts.join(' '),
+      undo: outcome.changed.length > 0 ? { ids: outcome.changed, enabled: !enabled } : undefined,
+    });
+  };
+
+  const runBulkUndo = async () => {
+    const notice = bulkNotice;
+    if (!notice?.undo || notice.undoing) return;
+    setBulkNotice({ ...notice, undoing: true });
+    const outcome = await setRulesEnabled(notice.undo.ids, notice.undo.enabled);
+    setBulkNotice(outcome.failed.length === 0 && outcome.skipped.length === 0
+      ? { tone: 'ok', text: 'Action undone.' }
+      : {
+        tone: 'error',
+        text: `${outcome.failed.length + outcome.skipped.length} of ${notice.undo.ids.length} rules could not be restored.`
+          + (outcome.failed[0] ? ` ${outcome.failed[0].error}` : ''),
+      });
+  };
+
+  const selectionActions: SelectionAction[] = [
+    { id: 'pause', label: 'Pause rules', shortcut: 'p', icon: <Pause size={14} />, run: () => void runBulkEnabled(false) },
+    { id: 'resume', label: 'Resume rules', shortcut: 'r', icon: <Play size={14} />, run: () => void runBulkEnabled(true) },
+  ];
+  const visibleRuleIds = useMemo(() => filteredRules.map((rule) => rule.id), [filteredRules]);
+  const selection = useRowSelection({
+    selectedIds: selectedRuleIds,
+    visibleIds: visibleRuleIds,
+    setSelection: setRuleSelection,
+    actions: selectionActions,
+    // Selection lives in the list; the board has no row checkboxes.
+    enabled: rulesLoadState === 'ready' && rulesViewMode === 'list',
+  });
+
+  useEffect(() => {
+    if (rulesViewMode !== 'list') setRuleSelection([]);
+  }, [rulesViewMode, setRuleSelection]);
+
   const hasFilters = rulesFilterClauses.length > 0;
 
   const showFilterMenu = (mode: FilterMenuMode, anchor: HTMLElement, fieldId?: string) => {
@@ -325,6 +391,25 @@ export const RulesView: React.FC = () => {
         </div>
       )}
 
+      {bulkNotice && (
+        <div
+          role={bulkNotice.tone === 'error' ? 'alert' : 'status'}
+          className="mx-5 mb-2 flex flex-wrap items-center justify-between gap-2 rounded-[var(--control-border-radius)] bg-[var(--item-hover-bg)] px-3 py-2"
+        >
+          <span className={`min-w-0 text-[12px] ${bulkNotice.tone === 'error' ? 'text-[var(--rules-action-stop-text)]' : 'text-[var(--text-secondary)]'}`}>
+            {bulkNotice.text}
+          </span>
+          <span className="flex shrink-0 items-center gap-2">
+            {bulkNotice.undo && (
+              <Button size="compact" disabled={bulkNotice.undoing} onClick={() => void runBulkUndo()}>
+                {bulkNotice.undoing ? 'Undoing…' : 'Undo'}
+              </Button>
+            )}
+            <Button size="compact" disabled={bulkNotice.undoing} onClick={() => setBulkNotice(null)}>Dismiss</Button>
+          </span>
+        </div>
+      )}
+
       {/* 2. Main Content Area (Split: Left content, Right sidebar) */}
       <div className="flex flex-1 overflow-hidden" style={{ flexDirection: 'row' }}>
         {rulesLoadState === 'loading' || rulesLoadState === 'idle' ? (
@@ -352,7 +437,10 @@ export const RulesView: React.FC = () => {
             <FilteredEmptyState noun="rules" hiddenCount={hiddenCount} onClear={() => setRulesFilterClauses([])} />
           </div>
         ) : rulesViewMode === 'list' ? (
-          <RulesListView filteredRules={filteredRules} />
+          <div className="relative flex min-w-0 flex-1">
+            <RulesListView filteredRules={filteredRules} />
+            <SelectionDock count={selection.count} onOpenActions={() => selection.setMenuOpen(true)} onClear={selection.clear} />
+          </div>
         ) : (
           /* Left: Linear Board Container (Horizontal Scroll) */
           <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden px-5 py-3">
@@ -434,6 +522,13 @@ export const RulesView: React.FC = () => {
         {/* Right Details Sidebar */}
         <RuleRightSidebar />
       </div>
+
+      <SelectionCommandMenu
+        open={selection.menuOpen}
+        onOpenChange={selection.setMenuOpen}
+        scopeLabel={`${selection.count} ${selection.count === 1 ? 'rule' : 'rules'}`}
+        actions={selectionActions}
+      />
 
       {/* Linear Fast Create Rule Modal */}
       <CreateRuleModal />
