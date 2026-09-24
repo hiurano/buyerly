@@ -241,6 +241,14 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn('export APP_VERSION="${PREVIOUS_SHA}"', self.script)
         self.assertNotIn('export APP_VERSION="${CURRENT_SHA}"', self.script)
 
+    def test_env_app_version_follows_the_running_release(self):
+        # A manual `docker compose up` reads APP_VERSION from .env; a stale value
+        # silently rolls api/worker back to an old image.
+        self.assertIn('record_running_version "${TARGET_SHA}"', self.script)
+        self.assertIn('record_running_version "${PREVIOUS_SHA}"', self.script)
+        smoke = self.script.rindex("post_deploy_smoke.py\"; then")
+        self.assertLess(smoke, self.script.index('record_running_version "${TARGET_SHA}"'))
+
     def test_remote_deploy_failure_exposes_only_safe_stage_diagnostics(self):
         self.assertIn("appleboy/ssh-action@v1.2.5", self.workflow)
         self.assertIn("capture_stdout: true", self.workflow)

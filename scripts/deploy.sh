@@ -191,6 +191,18 @@ normalize_repository_ownership() {
     fi
 }
 
+# Compose reads APP_VERSION from .env when it is not exported, so a manual
+# `docker compose up` must resolve to the release that is actually running.
+record_running_version() {
+    local sha="$1"
+    if grep -q '^APP_VERSION=' .env 2>/dev/null; then
+        sed -i "s|^APP_VERSION=.*|APP_VERSION=${sha}|" .env
+    else
+        printf 'APP_VERSION=%s\n' "${sha}" >> .env
+    fi
+    chmod 600 .env
+}
+
 rollback() {
     echo "[ROLLBACK] Stopping the failed service set..."
     docker compose stop web api worker 2>/dev/null || true
@@ -206,6 +218,7 @@ rollback() {
         docker compose up -d --no-deps web
         wait_for_container buyerly-web
         wait_for_ready || true
+        record_running_version "${PREVIOUS_SHA}"
         echo "[ROLLBACK] Previous service images restored."
         return
     fi
@@ -394,6 +407,7 @@ if ! APP_DIR="${APP_DIR}" EXPECTED_SHA="${TARGET_SHA}" \
     rollback
     exit 1
 fi
+record_running_version "${TARGET_SHA}"
 
 echo "[8/8] Removing aged artifacts after successful cutover..."
 if ! bash "${SCRIPT_DIR}/cleanup_docker_artifacts.sh"; then
