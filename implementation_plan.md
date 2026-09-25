@@ -2,7 +2,7 @@
 
 Дата: 2026-09-25. База: `91a0c95` (main после PR #171).
 Основание: [аудит A01–A25](docs/PROJECT_CLEANUP_AUDIT.md).
-Статус: **C01 слит (PR #174, `b0ff681`); C02 слит (PR #176, `fb77c48`), post-merge CI/CD зелёный; C03 реализован в PR #179, ожидает подтверждения на merge; C04–C24 ещё не реализованы**.
+Статус: **C01 слит (PR #174, `b0ff681`); C02 слит (PR #176, `fb77c48`), post-merge CI/CD зелёный; C03 слит (PR #179, `d9fd84d`), post-merge CI/CD зелёный; C04–C24 ещё не реализованы**.
 Прежний план сохранён в [архиве public website](docs/archive/plans/implementation_plan_public_website.md).
 
 ## Цель и критерии готовности
@@ -35,7 +35,7 @@ branch stacking запрещён. При общей директории с др
 
 Задание для следующего чата:
 
-> После слияния C03 выполни C04 из implementation_plan.md. Прочитай AGENTS.md и связанные выводы
+> Выполни C04 из implementation_plan.md. Прочитай AGENTS.md и связанные выводы
 > docs/PROJECT_CLEANUP_AUDIT.md, сверь их с текущим main. Работай в отдельной ветке,
 > выполни только этот этап, открой PR и проверь CI. Обнови статус этапа.
 > Не сливай PR без моего подтверждения.
@@ -51,7 +51,7 @@ C20 желательно завершить до C17/C18, чтобы visual gate
 |---|---|---|---|
 | C01 Test DB guard | — | Малый | [PR #174](https://github.com/hiurano/buyerly/pull/174): слит, `b0ff681`, CI зелёный |
 | C02 Meta client/cache/lifecycle | C01 | Средний | [PR #176](https://github.com/hiurano/buyerly/pull/176): слит, `fb77c48`, post-merge CI/CD зелёный |
-| C03 Async workspace/account state | — | Средний | [PR #179](https://github.com/hiurano/buyerly/pull/179): реализован, ожидает подтверждения на merge |
+| C03 Async workspace/account state | — | Средний | [PR #179](https://github.com/hiurano/buyerly/pull/179): слит, `d9fd84d`, post-merge CI/CD зелёный |
 | C04 Parent hierarchy contract | C01 | Малый | Ожидает |
 | C05 Timezone drill-down | C04 | Средний | Ожидает |
 | C06 Backup cron environment | — | Средний | Ожидает |
@@ -163,6 +163,7 @@ App, смену workspace, сброс редактора/selection, Escape, ош
 [основной CI](https://github.com/hiurano/buyerly/actions/runs/36138772150) и
 [Statistics visual](https://github.com/hiurano/buyerly/actions/runs/36138772191)
 успешны; итоговые проверки обновлённого head доступны в checks PR #179.
+PR слит в `d9fd84d`; [post-merge CI/CD](https://github.com/hiurano/buyerly/actions/runs/36141588379) успешен.
 Ограничения: browser API синтетический, реальные рекламные действия не выполнялись;
 уже отправленная mutation может завершиться на сервере после перехода, её
 результат не переносится в новый workspace. Это не аудит mobile всего продукта.
@@ -421,4 +422,4 @@ Dev tooling отделить от production requirements при необход�
 Невыполненные продуктовые решения перенести в основной backlog со ссылкой сюда;
 не считать их закрытыми автоматически.
 
-Рекомендуемый следующий чат: **C03 — async state текущего контекста**.
+Рекомендуемый следующий чат: **C04 — parent hierarchy contract**.
