@@ -57,28 +57,33 @@ async function deleteOne(kind: DeletedKind, id: string): Promise<number> {
 
 /** Deletes each item; reports which went to Recently deleted and which failed. */
 async function deleteMany(kind: DeletedKind, ids: string[]) {
+  const inScope = useAppStore.getState().captureScope();
   const deleted: { id: string; itemId: number }[] = [];
   const failed: { id: string; error: string }[] = [];
   for (const id of ids) {
+    if (!inScope()) break;
     try {
       deleted.push({ id, itemId: await deleteOne(kind, id) });
     } catch (error) {
       failed.push({ id, error: errorMessage(error) });
     }
   }
-  await useAppStore.getState().loadRules();
+  if (inScope()) await useAppStore.getState().loadRules();
   return { deleted, failed };
 }
 
 async function restoreMany(itemIds: number[]): Promise<void> {
+  const inScope = useAppStore.getState().captureScope();
   let failure = '';
   for (const itemId of itemIds) {
+    if (!inScope()) return;
     try {
       await restoreDeletedItem(itemId);
     } catch (error) {
       failure ||= errorMessage(error);
     }
   }
+  if (!inScope()) return;
   await useAppStore.getState().loadRules();
   if (failure) throw new Error(failure);
 }
@@ -97,7 +102,10 @@ export async function runPendingDeletion(): Promise<void> {
 
   useAppStore.getState().cancelDeletion();
   if (kind === 'rule') useAppStore.getState().setRuleSelection([]);
+  const inScope = useAppStore.getState().captureScope();
   const { deleted, failed } = await deleteMany(kind, ids);
+  // Finished after the workspace was left: its history and toasts went with it.
+  if (!inScope()) return;
 
   if (deleted.length > 0) {
     let itemIds = deleted.map((entry) => entry.itemId);
@@ -140,7 +148,9 @@ export async function runPendingDeletion(): Promise<void> {
  * back together; anything that did not is the only thing reported.
  */
 export async function runBulkRulesEnabled(ids: string[], enabled: boolean): Promise<void> {
+  const inScope = useAppStore.getState().captureScope();
   const outcome = await useAppStore.getState().setRulesEnabled(ids, enabled);
+  if (!inScope()) return;
   if (outcome.changed.length > 0) {
     const changed = outcome.changed;
     pushHistory({
@@ -168,17 +178,21 @@ export async function runBulkRulesEnabled(ids: string[], enabled: boolean): Prom
  * appears only when part of it could not come back.
  */
 export async function restoreFromTrash(item: DeletedItem): Promise<boolean> {
+  const inScope = useAppStore.getState().captureScope();
   try {
     const result = await restoreDeletedItem(item.id);
+    if (!inScope()) return true;
     await useAppStore.getState().loadRules();
+    if (!inScope()) return true;
     const kind = item.kind;
     const entityId = String(result.entity_id);
     let itemId = item.id;
     pushHistory({
       label: `restore ${item.name}`,
       undo: async () => {
+        const current = useAppStore.getState().captureScope();
         itemId = await deleteOne(kind, entityId);
-        await useAppStore.getState().loadRules();
+        if (current()) await useAppStore.getState().loadRules();
       },
       redo: () => restoreMany([itemId]),
     });
@@ -186,6 +200,7 @@ export async function restoreFromTrash(item: DeletedItem): Promise<boolean> {
     if (gaps) toast.show({ tone: 'success', title: 'Restored', message: item.name, description: gaps });
     return true;
   } catch (error) {
+    if (!inScope()) return false;
     toast.show({ tone: 'error', title: "Couldn't restore", message: item.name, description: errorMessage(error) });
     return false;
   }

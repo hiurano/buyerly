@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Sidebar } from '@/components/sidebar/Sidebar';
 import { InboxView } from '@/components/inbox/InboxView';
 import { CampaignsView } from '@/components/campaigns/CampaignsView';
@@ -175,6 +175,15 @@ export const App: React.FC = () => {
   const [user, setUser] = useState<SessionUser | null | undefined>(undefined);
   const route = useMemo(() => parseRoute(), [locationVersion]);
 
+  const resolvedWorkspace = user && route.kind === 'workspace'
+    ? user.workspaces.find(item => item.slug === route.workspace) : null;
+  const desiredScope = resolvedWorkspace && user?.onboarding_completed
+    ? `${user.username}:${resolvedWorkspace.id}` : null;
+  const workspaceScope = useAppStore(state => state.workspaceScope);
+  useLayoutEffect(() => {
+    useAppStore.getState().setWorkspaceScope(desiredScope, resolvedWorkspace?.slug);
+  }, [desiredScope, resolvedWorkspace?.slug]);
+
   const navigate = useCallback((path: string, replace = false) => {
     const method = replace ? 'replaceState' : 'pushState';
     window.history[method]({}, '', path);
@@ -207,6 +216,7 @@ export const App: React.FC = () => {
   }, [navigate]);
 
   const handleAuthenticated = useCallback(async (result: LoginResult) => {
+    useAppStore.getState().setWorkspaceScope(null);
     const nextUser = await refreshUser();
     enterUserDestination(nextUser, result.redirect_url);
   }, [enterUserDestination, refreshUser]);
@@ -332,10 +342,11 @@ export const App: React.FC = () => {
   }
 
   if (route.kind !== 'workspace') return <AuthLoading dark label="Opening your workspace…" />;
-  const routeWorkspace = user.workspaces.find((item) => item.slug === route.workspace) || workspace;
+  if (!resolvedWorkspace || workspaceScope !== desiredScope) return <AuthLoading />;
+  const routeWorkspace = resolvedWorkspace;
   return (
     <WorkspaceApplication
-      key={routeWorkspace.id}
+      key={desiredScope}
       route={route}
       workspace={routeWorkspace}
       user={user}

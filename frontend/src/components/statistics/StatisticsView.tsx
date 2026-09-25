@@ -730,6 +730,7 @@ export const StatisticsView: React.FC = () => {
   const selectAccount = (accountId: string) => {
     if (accountId === selectedAccountId) return;
     requestGenerationRef.current += 1;
+    setRowActions({});
     setTrail([]);
     setSelectedAccountId(accountId);
   };
@@ -771,10 +772,14 @@ export const StatisticsView: React.FC = () => {
     if (!selectedAccountId) return;
     const accountId = selectedAccountId;
     const verb = status === 'ACTIVE' ? 'resume' : 'pause';
+    const inWorkspace = useAppStore.getState().captureScope();
+    const generation = requestGenerationRef.current;
+    const onAccount = () => inWorkspace() && generation === requestGenerationRef.current;
     patchAction(item.entity_id, { busy: true });
     try {
       const result = await setEntityDelivery(item.entity_level, item.entity_id, accountId, status);
-      showDelivery([item.entity_id], result.status);
+      if (!inWorkspace()) return;
+      if (onAccount()) showDelivery([item.entity_id], result.status);
       if (result.changed && result.audit_event_id) {
         pushHistory(deliveryHistoryEntry({
           label: `${verb} ${item.entity_name}`,
@@ -782,11 +787,12 @@ export const StatisticsView: React.FC = () => {
           targets: [{ level: item.entity_level, entityId: item.entity_id }],
           status,
           auditEventIds: [result.audit_event_id],
-          onStatus: showDelivery,
+          onStatus: (ids, status) => { if (onAccount()) showDelivery(ids, status); },
         }));
       }
     } catch (error) {
-      patchAction(item.entity_id, { busy: false });
+      if (!inWorkspace()) return;
+      if (onAccount()) patchAction(item.entity_id, { busy: false });
       toast.show({ tone: 'error', title: `Couldn't ${verb}`, message: item.entity_name, description: actionErrorMessage(error) });
     }
   }, [patchAction, selectedAccountId, showDelivery]);
@@ -795,29 +801,37 @@ export const StatisticsView: React.FC = () => {
   const runBudget = useCallback(async (item: AnalyticsHierarchyItem, dailyBudget: number) => {
     if (!selectedAccountId) return;
     const accountId = selectedAccountId;
+    const inWorkspace = useAppStore.getState().captureScope();
+    const generation = requestGenerationRef.current;
+    const onAccount = () => inWorkspace() && generation === requestGenerationRef.current;
     patchAction(item.entity_id, { busy: true });
     try {
       const result = await setEntityBudget(item.entity_level, item.entity_id, accountId, dailyBudget);
-      patchAction(item.entity_id, { busy: false, dailyBudget: result.daily_budget });
+      if (!inWorkspace()) return;
+      if (onAccount()) patchAction(item.entity_id, { busy: false, dailyBudget: result.daily_budget });
       const previousBudget = result.previous_daily_budget;
       if (result.changed && result.audit_event_id && previousBudget !== undefined) {
         let reversible = result.audit_event_id;
         pushHistory({
           label: `set the daily budget of ${item.entity_name} to ${formatMetricMoney(result.daily_budget, item.currency)}`,
           undo: async () => {
+            if (!inWorkspace()) return;
             await undoAction(reversible);
+            if (!onAccount()) return;
             patchAction(item.entity_id, { dailyBudget: previousBudget });
           },
           redo: async () => {
+            if (!inWorkspace()) return;
             const again = await setEntityBudget(item.entity_level, item.entity_id, accountId, result.daily_budget);
             if (!again.audit_event_id) throw new Error('Meta did not record the change, so it cannot be undone again.');
             reversible = again.audit_event_id;
-            patchAction(item.entity_id, { dailyBudget: again.daily_budget });
+            if (onAccount()) patchAction(item.entity_id, { dailyBudget: again.daily_budget });
           },
         });
       }
     } catch (error) {
-      patchAction(item.entity_id, { busy: false });
+      if (!inWorkspace()) return;
+      if (onAccount()) patchAction(item.entity_id, { busy: false });
       toast.show({
         tone: 'error',
         title: "Couldn't change the budget",
@@ -836,6 +850,9 @@ export const StatisticsView: React.FC = () => {
   const runBulkDelivery = async (status: DeliveryStatus) => {
     if (!selectedAccountId) return;
     const accountId = selectedAccountId;
+    const inWorkspace = useAppStore.getState().captureScope();
+    const generation = requestGenerationRef.current;
+    const onAccount = () => inWorkspace() && generation === requestGenerationRef.current;
     const selected = items.filter((item) => selectedIds.includes(item.entity_id));
     // The same rows that show a live toggle: delivery Meta lets us change.
     const eligible = selected.filter((item) => ['ACTIVE', 'PAUSED'].includes(item.status));
@@ -844,9 +861,11 @@ export const StatisticsView: React.FC = () => {
       eligible.map((item) => ({ level: item.entity_level, entityId: item.entity_id })),
       accountId,
       status,
+      inWorkspace,
     );
+    if (!inWorkspace()) return;
     const confirmed = new Set([...outcome.changed.map((entry) => entry.entityId), ...outcome.unchanged]);
-    eligible.forEach((item) => patchAction(item.entity_id, confirmed.has(item.entity_id)
+    if (onAccount()) eligible.forEach((item) => patchAction(item.entity_id, confirmed.has(item.entity_id)
       ? { busy: false, status }
       : { busy: false }));
     const changed = eligible.filter((item) => outcome.changed.some((entry) => entry.entityId === item.entity_id));
@@ -857,7 +876,7 @@ export const StatisticsView: React.FC = () => {
         targets: changed.map((item) => ({ level: item.entity_level, entityId: item.entity_id })),
         status,
         auditEventIds: outcome.changed.flatMap((entry) => (entry.auditEventId ? [entry.auditEventId] : [])),
-        onStatus: showDelivery,
+        onStatus: (ids, status) => { if (onAccount()) showDelivery(ids, status); },
       }));
     }
     reportBulkDelivery(outcome, status, levelLabel, selected.length - eligible.length);

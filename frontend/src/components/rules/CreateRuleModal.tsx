@@ -272,6 +272,8 @@ export const CreateRuleModal: React.FC = () => {
     e.preventDefault();
     if (!canSubmit || !builtConditions) return;
 
+    const current = useAppStore.getState().captureScope();
+    if (!current()) return;
     setIsSubmitting(true);
     setSubmitError('');
     const payload = {
@@ -292,9 +294,11 @@ export const CreateRuleModal: React.FC = () => {
     try {
       if (editedRule) {
         await updateRule(editedRule.id, payload);
+        if (!current()) return;
         closeCreateRuleModal();
       } else {
         await addRule(payload, selectedGroupId || undefined);
+        if (!current()) return;
         if (createMore) {
           resetForm();
         } else {
@@ -302,6 +306,7 @@ export const CreateRuleModal: React.FC = () => {
         }
       }
     } catch (error) {
+      if (!current()) return;
       setSubmitError(
         error instanceof Error
           ? error.message
@@ -310,7 +315,7 @@ export const CreateRuleModal: React.FC = () => {
           : 'Could not create the rule.',
       );
     } finally {
-      setIsSubmitting(false);
+      if (current()) setIsSubmitting(false);
     }
   };
 

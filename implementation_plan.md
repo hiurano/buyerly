@@ -2,7 +2,7 @@
 
 Дата: 2026-09-25. База: `91a0c95` (main после PR #171).
 Основание: [аудит A01–A25](docs/PROJECT_CLEANUP_AUDIT.md).
-Статус: **C01 слит (PR #174, `b0ff681`); C02 реализован в PR #176, CI реализации зелёный, ожидает подтверждения на merge; C03–C24 ещё не реализованы**.
+Статус: **C01 слит (PR #174, `b0ff681`); C02 слит (PR #176, `fb77c48`), post-merge CI/CD зелёный; C03 реализован в PR #179, ожидает подтверждения на merge; C04–C24 ещё не реализованы**.
 Прежний план сохранён в [архиве public website](docs/archive/plans/implementation_plan_public_website.md).
 
 ## Цель и критерии готовности
@@ -35,7 +35,7 @@ branch stacking запрещён. При общей директории с др
 
 Задание для следующего чата:
 
-> Выполни C03 из implementation_plan.md. Прочитай AGENTS.md и связанные выводы
+> После слияния C03 выполни C04 из implementation_plan.md. Прочитай AGENTS.md и связанные выводы
 > docs/PROJECT_CLEANUP_AUDIT.md, сверь их с текущим main. Работай в отдельной ветке,
 > выполни только этот этап, открой PR и проверь CI. Обнови статус этапа.
 > Не сливай PR без моего подтверждения.
@@ -50,8 +50,8 @@ C20 желательно завершить до C17/C18, чтобы visual gate
 | Этап | Зависимости | Масштаб | Статус |
 |---|---|---|---|
 | C01 Test DB guard | — | Малый | [PR #174](https://github.com/hiurano/buyerly/pull/174): слит, `b0ff681`, CI зелёный |
-| C02 Meta client/cache/lifecycle | C01 | Средний | [PR #176](https://github.com/hiurano/buyerly/pull/176): CI реализации зелёный, ожидает подтверждения на merge |
-| C03 Async workspace/account state | — | Средний | Ожидает |
+| C02 Meta client/cache/lifecycle | C01 | Средний | [PR #176](https://github.com/hiurano/buyerly/pull/176): слит, `fb77c48`, post-merge CI/CD зелёный |
+| C03 Async workspace/account state | — | Средний | [PR #179](https://github.com/hiurano/buyerly/pull/179): реализован, ожидает подтверждения на merge |
 | C04 Parent hierarchy contract | C01 | Малый | Ожидает |
 | C05 Timezone drill-down | C04 | Средний | Ожидает |
 | C06 Backup cron environment | — | Средний | Ожидает |
@@ -126,7 +126,8 @@ MetaOAuthClient уже закрывает HTTP transport внутри каждо
 для реализации `dc9cc44` прошёл: frontend, 6 test shards и итоговый CI.
 Актуальный head после записи результата проверяется повторно в checks PR.
 Ограничение: запросы к реальному Meta и влияние на квоты не измерялись;
-production deployment не выполнялся. Merge требует подтверждения пользователя.
+[post-merge CI/CD run 36066322841](https://github.com/hiurano/buyerly/actions/runs/36066322841)
+на `fb77c48` завершился успешно, включая Deploy to Production VPS. C02 слит.
 
 ### C03 — Ограничить async state текущим контекстом (A03)
 
@@ -139,6 +140,33 @@ reset domain/editor/selection при смене scope/logout. Проверять
 разрешённые preferences/тема сохраняются. **Проверки:** delayed A/B workspace,
 A/B account, failed B, logout/login, mutation completion after navigation,
 build и browser checks. Backend RBAC не менять.
+
+
+Реализация C03: [PR #179](https://github.com/hiurano/buyerly/pull/179), ветка
+`fix/workspace-scoped-client-state`. A03 подтверждён на `fb77c48`; итоговая ветка
+перенесена на `c12ea3a` после слияния #177/#178, поэтому проверки охватывают
+появившиеся Undo/Recently deleted. App устанавливает user/workspace scope до
+монтирования потребителей; смена workspace/logout сбрасывает domain data,
+selection, editor и pending deletion. Workspace generation и отдельные счётчики
+загрузок отсекают поздние ответы/ошибки. Account attachments очищаются до ожидания
+B; ошибка B не оставляет A доступным для записи. Составные mutations проверяют
+контекст между запросами и перед reload, history/toasts; завершившийся после
+перехода Undo не восстанавливает старую историю. Тема и display/layout preferences
+сохраняются. Backend RBAC и payloads не изменены.
+
+Проверки: `check-scoped-state.cjs` исполняет настоящий store/API с delayed responses
+(workspace/account A/B, failed B, logout/login ABA, stale mutation targets,
+completion after navigation, delete/restore/undo continuations);
+`check-campaign-filters.cjs`, TypeScript и Vite build. Chromium проверяет настоящий
+App, смену workspace, сброс редактора/selection, Escape, ошибки, поздний Undo и
+отсутствие document overflow на 390/768/1024/1440px. Предыдущий head `b568384`:
+[основной CI](https://github.com/hiurano/buyerly/actions/runs/36138772150) и
+[Statistics visual](https://github.com/hiurano/buyerly/actions/runs/36138772191)
+успешны; итоговые проверки обновлённого head доступны в checks PR #179.
+Ограничения: browser API синтетический, реальные рекламные действия не выполнялись;
+уже отправленная mutation может завершиться на сервере после перехода, её
+результат не переносится в новый workspace. Это не аудит mobile всего продукта.
+PR не слит; требуется подтверждение пользователя.
 
 ### C04 — Вернуть настоящий parent каждой entity (A04)
 

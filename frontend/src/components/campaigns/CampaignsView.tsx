@@ -150,6 +150,7 @@ export const CampaignsView: React.FC = () => {
   );
 
   const refreshMetaAccounts = useCallback(async () => {
+    const inScope = useAppStore.getState().captureScope();
     setAccountsState('loading');
     setAccountsError('');
     try {
@@ -157,6 +158,7 @@ export const CampaignsView: React.FC = () => {
         apiRequest<MetaAccount[]>('/api/accounts'),
         apiRequest<MetaConnection[]>('/api/meta/connections').catch(() => []),
       ]);
+      if (!inScope()) return;
       const eligibleAccounts = eligibleMetaAccounts(accounts);
       setMetaAccounts(eligibleAccounts);
       setMetaConnections(connections);
@@ -171,6 +173,7 @@ export const CampaignsView: React.FC = () => {
       });
       setAccountsState('ready');
     } catch (error) {
+      if (!inScope()) return;
       setAccountsError(requestErrorMessage(error));
       setAccountsState('error');
     }
@@ -205,6 +208,7 @@ export const CampaignsView: React.FC = () => {
   useEffect(() => {
     const generation = ++requestGenerationRef.current;
     clearCampaignSelection();
+    setDeliveryActions({});
     setCampaigns([]);
     setAdSets([]);
     setAds([]);
@@ -408,16 +412,28 @@ export const CampaignsView: React.FC = () => {
     [...campaigns, ...adSets, ...ads].find((row) => row.id === entityId)?.name ?? entityLabels[campaignFilterTab].singular
   );
 
+  // A write that finishes after the user left the workspace stays out of its
+  // history and toasts; one that finishes after an account switch still records
+  // its undo, but no longer paints rows of the account now on screen.
+  const captureAccountScope = () => {
+    const inScope = useAppStore.getState().captureScope();
+    const generation = requestGenerationRef.current;
+    return () => inScope() && generation === requestGenerationRef.current;
+  };
+
   /** One row's toggle: the row shows the result, Ctrl+Z takes it back, only a failure speaks. */
   const runDelivery = async (level: EntityLevel, entityId: string, next: boolean) => {
-    if (!selectedAccountId) return;
+    if (!selectedAccountId || hierarchyState !== 'ready') return;
+    const inWorkspace = useAppStore.getState().captureScope();
+    const onAccount = captureAccountScope();
     const accountId = selectedAccountId;
     const status: DeliveryStatus = next ? 'ACTIVE' : 'PAUSED';
     const name = rowName(entityId);
     setDeliveryActions((current) => ({ ...current, [entityId]: { ...current[entityId], busy: true } }));
     try {
       const result = await setEntityDelivery(level, entityId, accountId, status);
-      showDelivery([entityId], result.status);
+      if (!inWorkspace()) return;
+      if (onAccount()) showDelivery([entityId], result.status);
       if (result.changed && result.audit_event_id) {
         pushHistory(deliveryHistoryEntry({
           label: `${next ? 'resume' : 'pause'} ${name}`,
@@ -425,11 +441,14 @@ export const CampaignsView: React.FC = () => {
           targets: [{ level, entityId }],
           status,
           auditEventIds: [result.audit_event_id],
-          onStatus: showDelivery,
+          onStatus: (ids, status) => { if (onAccount()) showDelivery(ids, status); },
         }));
       }
     } catch (error) {
-      setDeliveryActions((current) => ({ ...current, [entityId]: { ...current[entityId], busy: false } }));
+      if (!inWorkspace()) return;
+      if (onAccount()) {
+        setDeliveryActions((current) => ({ ...current, [entityId]: { ...current[entityId], busy: false } }));
+      }
       toast.show({
         tone: 'error',
         title: `Couldn't ${next ? 'resume' : 'pause'}`,
@@ -443,7 +462,9 @@ export const CampaignsView: React.FC = () => {
 
   /** Pauses or resumes every selected row of the current level, reporting each outcome. */
   const runBulkDelivery = async (next: 'active' | 'paused') => {
-    if (!selectedAccountId) return;
+    if (!selectedAccountId || hierarchyState !== 'ready') return;
+    const inWorkspace = useAppStore.getState().captureScope();
+    const onAccount = captureAccountScope();
     const level = entityLevels[campaignFilterTab];
     const rows = currentRows.filter((row) => selectedCampaignIds.includes(row.id));
     const eligible = rows.filter((row) => row.status !== 'unknown');
@@ -458,15 +479,19 @@ export const CampaignsView: React.FC = () => {
       eligible.map((row) => ({ level, entityId: row.id })),
       selectedAccountId,
       status,
+      inWorkspace,
     );
+    if (!inWorkspace()) return;
     const confirmed = new Set([...outcome.changed.map((item) => item.entityId), ...outcome.unchanged]);
-    setDeliveryActions((current) => ({
-      ...current,
-      ...Object.fromEntries(eligible.map((row) => [
-        row.id,
-        confirmed.has(row.id) ? { busy: false, status: next } : { ...current[row.id], busy: false },
-      ])),
-    }));
+    if (onAccount()) {
+      setDeliveryActions((current) => ({
+        ...current,
+        ...Object.fromEntries(eligible.map((row) => [
+          row.id,
+          confirmed.has(row.id) ? { busy: false, status: next } : { ...current[row.id], busy: false },
+        ])),
+      }));
+    }
     const changed = outcome.changed;
     if (changed.length > 0) {
       pushHistory(deliveryHistoryEntry({
@@ -475,7 +500,7 @@ export const CampaignsView: React.FC = () => {
         targets: changed.map((item) => ({ level, entityId: item.entityId })),
         status,
         auditEventIds: changed.flatMap((item) => (item.auditEventId ? [item.auditEventId] : [])),
-        onStatus: showDelivery,
+        onStatus: (ids, status) => { if (onAccount()) showDelivery(ids, status); },
       }));
     }
     reportBulkDelivery(outcome, status, noun, rows.length - eligible.length);

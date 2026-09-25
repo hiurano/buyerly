@@ -25,6 +25,9 @@ import { ToastRegion } from './src/ui/ToastRegion';
 import { useUndoShortcuts } from './src/lib/undoHistory';
 import { useAppStore } from './src/store/useAppStore';
 import './src/styles/index.css';
+// Enter a workspace the way App does, so writes count as in scope.
+history.replaceState({}, '', '/preview/statistics');
+useAppStore.getState().setWorkspaceScope('preview:1', 'preview');
 useAppStore.setState({ activeTab: 'statistics', isSidebarCollapsed: innerWidth < 768 });
 document.documentElement.dataset.theme = 'dark';
 const Shell = () => {

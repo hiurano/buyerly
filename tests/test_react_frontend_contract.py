@@ -10,7 +10,8 @@ class TestReactFrontendContract(unittest.TestCase):
         api = (ROOT / "frontend/src/lib/api.ts").read_text()
         self.assertIn("const route = parseRoute()", api)
         self.assertIn("headers.set('X-Workspace-Slug', route.workspace)", api)
-        self.assertIn("key={routeWorkspace.id}", self.app)
+        self.assertIn("key={desiredScope}", self.app)
+        self.assertIn("workspaceScope !== desiredScope", self.app)
 
     def test_public_typography_is_scoped_to_public_composition(self):
         public_styles = (ROOT / "frontend/public/static/css/legal.css").read_text()
@@ -481,7 +482,7 @@ class TestReactFrontendContract(unittest.TestCase):
                          "export function deliveryHistoryEntry"):
             self.assertIn(contract, self.delivery_lib)
         # The way back reverses the recorded audit rows.
-        self.assertIn("await undoActions(reversible)", self.delivery_lib)
+        self.assertIn("await undoActions(reversible, inScope)", self.delivery_lib)
         for view in (self.campaigns_view, self.statistics_view):
             self.assertIn("setDeliveryForMany(", view)
             self.assertIn("pushHistory(deliveryHistoryEntry(", view)

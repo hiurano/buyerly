@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { parseRoute } from '@/lib/routing';
 import type { FilterClause } from '@/components/filters/filterModel';
 import { ApiError, apiRequest } from '@/lib/api';
 import type { MetaAccount } from '@/lib/types';
@@ -213,6 +214,12 @@ function entityRuleIndex(
 }
 
 interface AppState {
+  workspaceScope: string | null;
+  workspaceSlug: string | null;
+  scopeGeneration: number;
+  setWorkspaceScope: (scope: string | null, slug?: string) => void;
+  captureScope: () => () => boolean;
+  attachmentsLoadState: RulesLoadState;
   isSearchOpen: boolean;
   setSearchOpen: (open: boolean) => void;
   workspaceName: string;
@@ -377,7 +384,55 @@ interface AppState {
   setRulesFilterClauses: (clauses: FilterClause[]) => void;
 }
 
-export const useAppStore = create<AppState>((set, get) => ({
+// Only domain/editor state is reset. Theme, layout and display preferences survive.
+function emptyAccountState() {
+  return {
+    campaigns: [], adSets: [], ads: [], selectedCampaignIds: [], focusedCampaignId: '',
+    attachedRulesAccountId: null, attachedRuleScopes: {}, campaignAttachedRules: {},
+    adSetAttachedRules: {}, attachmentError: '', attachmentsLoadState: 'idle' as RulesLoadState,
+    adsManagerQuickFilter: null, selectedFilterGroupId: null, selectedFilterRuleId: null,
+    selectedFilterPlatform: null, collapsedGroups: [],
+  };
+}
+function emptyWorkspaceState() {
+  return {
+    ...emptyAccountState(), workspaceName: 'buyerly', campaignGroups: [],
+    rules: [], ruleGroups: [], ruleAccounts: [], rulesLoadState: 'idle' as RulesLoadState,
+    rulesError: '', rulesMutationError: '', selectedRuleId: null, selectedRuleIds: [],
+    focusedRuleId: null, editingRuleId: null, isCreateRuleModalOpen: false,
+    createRuleTargetGroupId: undefined, selectedFilterRuleGroupId: null,
+    rulesFilterClauses: [], rulesCollapsedGroups: [], pendingDeletion: null,
+    adsManagerFilters: { campaigns: [], adsets: [], ads: [] },
+    isSearchOpen: false, isDisplayOptionsOpen: false, isRulesDisplayOptionsOpen: false,
+  };
+}
+
+/** Thrown by a write asked for after its workspace was left. */
+export const OUT_OF_SCOPE = 'This workspace is no longer open.';
+
+export const useAppStore = create<AppState>((set, get) => {
+  let rulesRequest = 0;
+  let attachmentsRequest = 0;
+  return ({
+  workspaceScope: null,
+  workspaceSlug: null,
+  scopeGeneration: 0,
+  setWorkspaceScope: (scope, slug) => {
+    if (get().workspaceScope === scope && get().workspaceSlug === (slug ?? null)) return;
+    rulesRequest += 1;
+    attachmentsRequest += 1;
+    set({ ...emptyWorkspaceState(), workspaceScope: scope, workspaceSlug: slug ?? null, scopeGeneration: get().scopeGeneration + 1 });
+  },
+  captureScope: () => {
+    const { workspaceScope, workspaceSlug, scopeGeneration } = get();
+    return () => {
+      const current = parseRoute();
+      return workspaceScope !== null && get().workspaceScope === workspaceScope
+        && get().scopeGeneration === scopeGeneration && current.kind === 'workspace'
+        && current.workspace === workspaceSlug;
+    };
+  },
+  attachmentsLoadState: 'idle',
   isSearchOpen: false,
   setSearchOpen: (open) => set({ isSearchOpen: open }),
   workspaceName: 'buyerly',
@@ -466,34 +521,42 @@ export const useAppStore = create<AppState>((set, get) => ({
   clearAttachmentError: () => set({ attachmentError: '' }),
 
   loadAccountRuleAttachments: async (accountId) => {
-    if (!accountId) {
-      set({
-        attachedRulesAccountId: null,
-        attachedRuleScopes: {},
-        campaignAttachedRules: {},
-        adSetAttachedRules: {},
-      });
-      return;
-    }
+    const inScope = get().captureScope();
+    if (!inScope()) return;
+    const request = ++attachmentsRequest;
+    const current = () => inScope() && request === attachmentsRequest;
+    // Invalidate the old account before awaiting anything, including failed B.
+    set({ ...(get().attachedRulesAccountId !== accountId ? emptyAccountState() : {}),
+      attachedRulesAccountId: accountId, attachedRuleScopes: {}, campaignAttachedRules: {},
+      adSetAttachedRules: {}, attachmentError: '',
+      attachmentsLoadState: accountId ? 'loading' : 'idle' });
+    if (!accountId) return;
     try {
       const accounts = await apiRequest<MetaAccount[]>('/api/accounts');
+      if (!current()) return;
       const account = accounts.find((item) => item.account_id === accountId);
+      if (!account) throw new Error('Account unavailable');
       const scopes: Record<string, RuleScope> = {};
-      for (const rule of account?.active_rules ?? []) {
+      for (const rule of account.active_rules ?? []) {
         scopes[String(rule.preset_id)] = attachedRuleScope(rule);
       }
       set({
-        attachedRulesAccountId: accountId,
         attachedRuleScopes: scopes,
         campaignAttachedRules: entityRuleIndex(scopes, 'campaign'),
         adSetAttachedRules: entityRuleIndex(scopes, 'adset'),
+        attachmentsLoadState: 'ready',
       });
     } catch (error) {
-      set({ attachmentError: requestErrorMessage(error) });
+      if (!current()) return;
+      set({ attachmentError: requestErrorMessage(error), attachmentsLoadState: 'error' });
     }
   },
 
   toggleRuleForEntity: async (level, entityId, ruleId) => {
+    const inScope = get().captureScope();
+    const request = attachmentsRequest;
+    const current = () => inScope() && request === attachmentsRequest;
+    if (!current() || get().attachmentsLoadState !== 'ready') return;
     const { attachedRulesAccountId, attachedRuleScopes } = get();
     if (!attachedRulesAccountId) return;
 
@@ -535,8 +598,10 @@ export const useAppStore = create<AppState>((set, get) => ({
           });
         }
       }
+      if (!current()) return;
       await get().loadAccountRuleAttachments(attachedRulesAccountId);
     } catch (error) {
+      if (!current()) return;
       set({ attachmentError: requestErrorMessage(error) });
     }
   },
@@ -618,6 +683,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   clearRulesMutationError: () => set({ rulesMutationError: '' }),
 
   loadRules: async () => {
+    const inScope = get().captureScope();
+    if (!inScope()) return;
+    const request = ++rulesRequest;
+    const current = () => inScope() && request === rulesRequest;
     set({ rulesLoadState: 'loading', rulesError: '' });
     try {
       const [presets, groups, accounts] = await Promise.all([
@@ -627,6 +696,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         // hide the rules themselves.
         apiRequest<MetaAccount[]>('/api/accounts').catch(() => []),
       ]);
+      if (!current()) return;
       const groupIndex = buildGroupIndex(groups);
       set({
         rules: presets.map((preset) => presetToRuleItem(preset, groupIndex)),
@@ -635,6 +705,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         rulesLoadState: 'ready',
       });
     } catch (error) {
+      if (!current()) return;
       set({ rulesError: requestErrorMessage(error), rulesLoadState: 'error' });
     }
   },
@@ -645,6 +716,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSelectedRuleId: (id) => set({ selectedRuleId: id }),
 
   toggleRuleStatus: async (id) => {
+    const current = get().captureScope();
+    if (!current()) return;
     const rule = get().rules.find((item) => item.id === id);
     if (!rule) return;
     // A rule the runtime holds back cannot be switched on from the list; the
@@ -663,26 +736,32 @@ export const useAppStore = create<AppState>((set, get) => ({
         rule.presetId,
         presetToWriteRequest(rule.preset, { enabled }),
       );
+      if (!current()) return;
       await get().loadRules();
+      if (!current()) return;
       pushHistory({
         label: `${enabled ? 'resume' : 'pause'} ${rule.name}`,
         undo: () => applyRulesEnabled([id], !enabled),
         redo: () => applyRulesEnabled([id], enabled),
       });
     } catch (error) {
+      if (!current()) return;
       set({ rulesMutationError: requestErrorMessage(error) });
     }
   },
 
   setRulesEnabled: async (ids, enabled) => {
+    const current = get().captureScope();
     const outcome = {
       changed: [] as string[],
       unchanged: [] as string[],
       skipped: [] as string[],
       failed: [] as { id: string; error: string }[],
     };
+    if (!current()) return outcome;
     set({ rulesMutationError: '' });
     for (const id of ids) {
+      if (!current()) return outcome;
       const rule = get().rules.find((item) => item.id === id);
       if (!rule) continue;
       if ((rule.status !== 'paused') === enabled) {
@@ -698,17 +777,21 @@ export const useAppStore = create<AppState>((set, get) => ({
         await updateRulePreset(rule.presetId, presetToWriteRequest(rule.preset, { enabled }));
         outcome.changed.push(id);
       } catch (error) {
+        if (!current()) return outcome;
         outcome.failed.push({ id, error: requestErrorMessage(error) });
       }
     }
-    if (outcome.changed.length > 0) await get().loadRules();
+    if (current() && outcome.changed.length > 0) await get().loadRules();
     return outcome;
   },
 
   addRule: async (payload, groupId) => {
+    const current = get().captureScope();
+    if (!current()) return;
     set({ rulesMutationError: '' });
     try {
       const preset = await createRulePreset(payload);
+      if (!current()) return;
       if (groupId) {
         const group = get().ruleGroups.find((item) => item.id === groupId);
         if (group) {
@@ -720,33 +803,46 @@ export const useAppStore = create<AppState>((set, get) => ({
           });
         }
       }
+      if (!current()) return;
       await get().loadRules();
     } catch (error) {
+      if (!current()) return;
       set({ rulesMutationError: requestErrorMessage(error) });
       throw error;
     }
   },
 
   addRuleGroup: async (name, icon = 'custom') => {
+    const current = get().captureScope();
+    if (!current()) return;
     set({ rulesMutationError: '' });
     try {
       await createRuleGroup({ name, description: '', icon, preset_ids: [] });
+      if (!current()) return;
       await get().loadRules();
     } catch (error) {
+      if (!current()) return;
       set({ rulesMutationError: requestErrorMessage(error) });
     }
   },
 
   deleteRuleGroup: async (id) => {
+    const current = get().captureScope();
+    if (!current()) throw new Error(OUT_OF_SCOPE);
+    if (!get().ruleGroups.some((item) => item.id === id)) throw new Error('This group no longer exists.');
     const response = await deleteRuleGroupRequest(Number(id));
-    set((state) => ({
-      selectedFilterRuleGroupId:
-        state.selectedFilterRuleGroupId === id ? null : state.selectedFilterRuleGroupId,
-    }));
+    if (current()) {
+      set((state) => ({
+        selectedFilterRuleGroupId:
+          state.selectedFilterRuleGroupId === id ? null : state.selectedFilterRuleGroupId,
+      }));
+    }
     return response.deleted_item_id;
   },
 
   addRuleToGroup: async (groupId, ruleId) => {
+    const current = get().captureScope();
+    if (!current() || !(get().rules.some(item => item.id === ruleId) && get().ruleGroups.some(item => item.id === groupId))) return;
     const { ruleGroups } = get();
     const presetId = Number(ruleId);
     // Group membership is stored as the group's full preset list, so moving a
@@ -758,6 +854,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ rulesMutationError: '' });
     try {
       for (const group of affected) {
+        if (!current()) return;
         const currentIds = group.ruleIds.map(Number);
         const nextIds =
           group.id === groupId
@@ -773,18 +870,25 @@ export const useAppStore = create<AppState>((set, get) => ({
           preset_ids: nextIds,
         });
       }
+      if (!current()) return;
       await get().loadRules();
     } catch (error) {
+      if (!current()) return;
       set({ rulesMutationError: requestErrorMessage(error) });
     }
   },
 
   deleteRule: async (id) => {
+    const current = get().captureScope();
+    if (!current()) throw new Error(OUT_OF_SCOPE);
+    if (!get().rules.some((item) => item.id === id)) throw new Error('This rule no longer exists.');
     const response = await deleteRulePreset(Number(id));
-    set((state) => ({
-      selectedRuleId: state.selectedRuleId === id ? null : state.selectedRuleId,
-      selectedRuleIds: state.selectedRuleIds.filter((item) => item !== id),
-    }));
+    if (current()) {
+      set((state) => ({
+        selectedRuleId: state.selectedRuleId === id ? null : state.selectedRuleId,
+        selectedRuleIds: state.selectedRuleIds.filter((item) => item !== id),
+      }));
+    }
     return response.deleted_item_id;
   },
   pendingDeletion: null,
@@ -815,17 +919,23 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
 
   updateRule: async (ruleId, payload) => {
+    const current = get().captureScope();
+    if (!current() || !(get().rules.some(item => item.id === ruleId))) return;
     set({ rulesMutationError: '' });
     try {
       await updateRulePreset(Number(ruleId), payload);
+      if (!current()) return;
       await get().loadRules();
     } catch (error) {
+      if (!current()) return;
       set({ rulesMutationError: requestErrorMessage(error) });
       throw error;
     }
   },
 
   toggleRuleOnAccount: async (ruleId, accountId) => {
+    const current = get().captureScope();
+    if (!current() || !(get().ruleAccounts.some(item => item.account_id === accountId))) return;
     const rule = get().rules.find((item) => item.id === ruleId);
     if (!rule) return;
     set({ rulesMutationError: '' });
@@ -837,8 +947,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         // to campaigns happens in Ads Manager.
         await assignRuleToAccount(accountId, rule.presetId, ACCOUNT_SCOPE);
       }
+      if (!current()) return;
       await get().loadRules();
     } catch (error) {
+      if (!current()) return;
       set({ rulesMutationError: requestErrorMessage(error) });
     }
   },
@@ -898,7 +1010,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Rules Filter State
   rulesFilterClauses: [],
   setRulesFilterClauses: (clauses) => set({ rulesFilterClauses: clauses }),
-}));
+});
+});
 
 /**
  * Switches rules on or off for undo and redo, and throws unless every one of
