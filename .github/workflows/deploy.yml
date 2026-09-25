@@ -38,6 +38,7 @@ jobs:
         run: |
           npm ci
           node scripts/check-campaign-filters.cjs
+          node scripts/check-scoped-state.cjs
           npm run build
 
       - name: Upload built frontend
@@ -47,6 +48,20 @@ jobs:
           path: frontend/dist
           retention-days: 1
           if-no-files-found: error
+
+      - name: Check workspace state in Chromium
+        working-directory: frontend
+        run: |
+          npm install --no-save --package-lock=false playwright@1.58.2
+          npx playwright install --with-deps chromium
+          node ../scripts/scoped-state-browser.mjs
+
+      - name: Upload scoped state browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scoped-state-browser
+          path: /tmp/buyerly-scoped-state
 
   test:
     name: Run Unit & Integration Tests (shard ${{ matrix.shard }})

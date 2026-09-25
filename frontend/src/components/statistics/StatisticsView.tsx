@@ -771,9 +771,11 @@ export const StatisticsView: React.FC = () => {
     if (!selectedAccountId) return;
     const accountId = selectedAccountId;
     const verb = status === 'ACTIVE' ? 'resume' : 'pause';
+    const inWorkspace = useAppStore.getState().captureScope();
     patchAction(item.entity_id, { busy: true });
     try {
       const result = await setEntityDelivery(item.entity_level, item.entity_id, accountId, status);
+      if (!inWorkspace()) return;
       showDelivery([item.entity_id], result.status);
       if (result.changed && result.audit_event_id) {
         pushHistory(deliveryHistoryEntry({
@@ -786,6 +788,7 @@ export const StatisticsView: React.FC = () => {
         }));
       }
     } catch (error) {
+      if (!inWorkspace()) return;
       patchAction(item.entity_id, { busy: false });
       toast.show({ tone: 'error', title: `Couldn't ${verb}`, message: item.entity_name, description: actionErrorMessage(error) });
     }
@@ -795,9 +798,11 @@ export const StatisticsView: React.FC = () => {
   const runBudget = useCallback(async (item: AnalyticsHierarchyItem, dailyBudget: number) => {
     if (!selectedAccountId) return;
     const accountId = selectedAccountId;
+    const inWorkspace = useAppStore.getState().captureScope();
     patchAction(item.entity_id, { busy: true });
     try {
       const result = await setEntityBudget(item.entity_level, item.entity_id, accountId, dailyBudget);
+      if (!inWorkspace()) return;
       patchAction(item.entity_id, { busy: false, dailyBudget: result.daily_budget });
       const previousBudget = result.previous_daily_budget;
       if (result.changed && result.audit_event_id && previousBudget !== undefined) {
@@ -817,6 +822,7 @@ export const StatisticsView: React.FC = () => {
         });
       }
     } catch (error) {
+      if (!inWorkspace()) return;
       patchAction(item.entity_id, { busy: false });
       toast.show({
         tone: 'error',
@@ -836,6 +842,7 @@ export const StatisticsView: React.FC = () => {
   const runBulkDelivery = async (status: DeliveryStatus) => {
     if (!selectedAccountId) return;
     const accountId = selectedAccountId;
+    const inWorkspace = useAppStore.getState().captureScope();
     const selected = items.filter((item) => selectedIds.includes(item.entity_id));
     // The same rows that show a live toggle: delivery Meta lets us change.
     const eligible = selected.filter((item) => ['ACTIVE', 'PAUSED'].includes(item.status));
@@ -844,7 +851,9 @@ export const StatisticsView: React.FC = () => {
       eligible.map((item) => ({ level: item.entity_level, entityId: item.entity_id })),
       accountId,
       status,
+      inWorkspace,
     );
+    if (!inWorkspace()) return;
     const confirmed = new Set([...outcome.changed.map((entry) => entry.entityId), ...outcome.unchanged]);
     eligible.forEach((item) => patchAction(item.entity_id, confirmed.has(item.entity_id)
       ? { busy: false, status }

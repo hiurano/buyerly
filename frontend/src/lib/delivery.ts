@@ -101,11 +101,13 @@ export async function setDeliveryForMany(
   targets: BulkDeliveryTarget[],
   accountId: string,
   status: DeliveryStatus,
+  isCurrent: () => boolean = () => true,
 ): Promise<BulkDeliveryOutcome> {
   const outcome: BulkDeliveryOutcome = { changed: [], unchanged: [], failed: [] };
   const queue = [...targets];
   const worker = async () => {
     for (let target = queue.shift(); target; target = queue.shift()) {
+      if (!isCurrent()) return;
       try {
         const result = await setEntityDelivery(target.level, target.entityId, accountId, status);
         if (result.changed) {
