@@ -255,6 +255,7 @@
 - Удалены неиспользуемые `RuleFilterPopover` и `ActiveRuleFilterBar` (751 строка) вместе с мёртвым срезом стора (`RuleFilters`, `rulesFilters`, `isRulesFilterOpen` и связанные действия). Экран Rules фильтрует через `LinearFilterMenu`; удалённые компоненты не импортировались ни из одного места с момента переезда на новый фронтенд и содержали состояния вроде `Triggered`, которых нет в API.
 
 ### Fixed
+- C04: строки `GET /api/analytics/hierarchy` возвращают собственный `parent_entity_id` из fact store вместо `parent_id` запроса. На account-wide запросе adsets снова привязаны к своим campaigns, а ads к своим adsets, поэтому таблицы Campaigns показывают правильные названия родителей. Добавлены backend-регрессия на две campaigns и check мапперов в CI.
 - C03 ([PR #179](https://github.com/hiurano/buyerly/pull/179)): поздние ответы правил и привязок кабинета больше не заменяют данные текущего workspace/account. При смене workspace/session очищаются выбор, редактор и pending deletion; отложенные mutations и Undo не запускают продолжения и не возвращают историю в новый workspace. Тема и настройки отображения сохраняются.
 
 

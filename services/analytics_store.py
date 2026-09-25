@@ -818,7 +818,9 @@ class AnalyticsFactService:
                 "entity_id": entity_id,
                 "entity_name": first_fact.entity_name or f"{entity_level.capitalize()} {entity_id}",
                 "entity_level": entity_level,
-                "parent_entity_id": parent_entity_id,
+                # The stored parent, not the query parent: an account-wide query
+                # spans adsets of many campaigns and ads of many adsets.
+                "parent_entity_id": first_fact.parent_entity_id,
                 "account_id": first_fact.account_id,
                 "currency": first_fact.currency,
                 "status": first_fact.status,

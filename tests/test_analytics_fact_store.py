@@ -442,6 +442,85 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(len(breakdown_leak_attempt), 0)
 
+    async def test_hierarchy_rows_keep_their_own_parent(self):
+        async with self.test_session_maker() as session:
+            self.acc1.timezone_name = "UTC"
+            today_str = datetime.now(timezone.utc).date().isoformat()
+
+            def fact(level, entity_id, parent_id, spend):
+                return {
+                    "entity_level": level,
+                    "entity_id": entity_id,
+                    "entity_name": entity_id,
+                    "parent_entity_id": parent_id,
+                    "date": today_str,
+                    "currency": "USD",
+                    "spend": spend,
+                }
+
+            await AnalyticsFactService.upsert_entity_facts(
+                session,
+                workspace_id=self.ws1.id,
+                account_id=self.acc1.account_id,
+                facts=[
+                    fact("campaign", "cmp_a", self.acc1.account_id, 60.0),
+                    fact("campaign", "cmp_b", self.acc1.account_id, 40.0),
+                    fact("adset", "set_a1", "cmp_a", 30.0),
+                    fact("adset", "set_a2", "cmp_a", 20.0),
+                    fact("adset", "set_b1", "cmp_b", 10.0),
+                    fact("ad", "ad_a1_x", "set_a1", 9.0),
+                    fact("ad", "ad_a2_x", "set_a2", 8.0),
+                    fact("ad", "ad_a2_y", "set_a2", 7.0),
+                    fact("ad", "ad_b1_x", "set_b1", 6.0),
+                ],
+            )
+            # Another workspace reusing a campaign ID must not join the drill-down.
+            await AnalyticsFactService.upsert_entity_facts(
+                session,
+                workspace_id=self.ws2.id,
+                account_id=self.acc3.account_id,
+                facts=[fact("adset", "set_foreign", "cmp_a", 500.0)],
+            )
+            await session.commit()
+
+            async def parents(parent_id, level):
+                items, _ = await AnalyticsFactService.get_hierarchy_breakdown(
+                    session,
+                    workspace_id=self.ws1.id,
+                    parent_entity_id=parent_id,
+                    entity_level=level,
+                    period="today",
+                    user_accounts=[self.acc1],
+                )
+                return {item["entity_id"]: item["parent_entity_id"] for item in items}
+
+            account_id = self.acc1.account_id
+            self.assertEqual(
+                await parents(account_id, "campaign"),
+                {"cmp_a": account_id, "cmp_b": account_id},
+            )
+            self.assertEqual(
+                await parents(account_id, "adset"),
+                {"set_a1": "cmp_a", "set_a2": "cmp_a", "set_b1": "cmp_b"},
+            )
+            self.assertEqual(
+                await parents(account_id, "ad"),
+                {
+                    "ad_a1_x": "set_a1",
+                    "ad_a2_x": "set_a2",
+                    "ad_a2_y": "set_a2",
+                    "ad_b1_x": "set_b1",
+                },
+            )
+            self.assertEqual(
+                await parents("cmp_a", "adset"),
+                {"set_a1": "cmp_a", "set_a2": "cmp_a"},
+            )
+            self.assertEqual(
+                await parents("set_a2", "ad"),
+                {"ad_a2_x": "set_a2", "ad_a2_y": "set_a2"},
+            )
+
     async def test_meta_client_get_hierarchical_insights(self):
         client = MetaClient()
         client._fetch_paginated_data = AsyncMock(

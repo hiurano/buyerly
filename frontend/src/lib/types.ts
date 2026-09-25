@@ -135,6 +135,7 @@ export interface AnalyticsHierarchyItem extends AnalyticsPeriodMetrics {
   entity_id: string;
   entity_name: string;
   entity_level: 'campaign' | 'adset' | 'ad';
+  /** The row's own parent (account, campaign or adset), not the query parent. */
   parent_entity_id: string;
   account_id: string;
   currency: string;
