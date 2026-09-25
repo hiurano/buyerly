@@ -687,7 +687,9 @@ export const useAppStore = create<AppState>((set, get) => {
     if (!inScope()) return;
     const request = ++rulesRequest;
     const current = () => inScope() && request === rulesRequest;
-    set({ rulesLoadState: 'loading', rulesError: '' });
+    // A refresh after a mutation keeps the loaded list on screen; only the
+    // first load of a workspace shows the loading state.
+    if (get().rulesLoadState !== 'ready') set({ rulesLoadState: 'loading', rulesError: '' });
     try {
       const [presets, groups, accounts] = await Promise.all([
         fetchRulePresets(),

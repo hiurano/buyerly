@@ -118,7 +118,7 @@ async def create_web_session(
     )
     return web_session
 
-async def _get_authenticated_user(
+async def get_authenticated_user(
     request: Request,
     response: Response,
     authorization: Optional[str] = Header(None),
@@ -293,7 +293,7 @@ async def _get_authenticated_user(
 
 
 async def get_current_user(
-    user: User = Depends(_get_authenticated_user),
+    user: User = Depends(get_authenticated_user),
     x_workspace_slug: Optional[str] = Header(None),
 ) -> User:
     """Bind browser requests to their route without changing other tabs' scope."""

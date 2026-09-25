@@ -194,6 +194,17 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
                 })
                 self.assertEqual(response.status_code, 403, response.text)
 
+    async def test_profile_ignores_foreign_route_workspace(self):
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
+            for slug in (self.ws_b.slug, "missing-workspace", ""):
+                response = await client.get("/api/me", headers={
+                    **await self._headers_for(self.tenant_a_user), "X-Workspace-Slug": slug,
+                })
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(
+                    [item["slug"] for item in response.json()["workspaces"]], [self.ws_a.slug],
+                )
+
     async def test_global_admin_cannot_leak_or_mutate_foreign_accounts(self):
         """Verify global admin cannot see or mutate foreign workspace accounts without membership."""
         admin_headers = await self._headers_for(self.admin_user)
