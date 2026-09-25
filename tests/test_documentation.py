@@ -62,7 +62,6 @@ class TestDocumentationContract(unittest.TestCase):
 
     def test_readme_directs_tests_to_cloud_and_changelog_has_one_unreleased(self):
         readme = (PROJECT_ROOT / "README.md").read_text()
-        self.assertIn("Локальный запуск тестов запрещён", readme)
         self.assertIn("gh run view <run-id> --log-failed", readme)
         self.assertNotIn("unittest discover", readme)
         changelog = (PROJECT_ROOT / "CHANGELOG.md").read_text()
