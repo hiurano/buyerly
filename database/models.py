@@ -6,6 +6,7 @@ from sqlalchemy import (
     String,
     Float,
     Boolean,
+    CheckConstraint,
     DateTime,
     Text,
     ForeignKey,
@@ -307,16 +308,41 @@ class EmailVerificationCode(Base):
 
 
 class AllowedEmail(Base):
+    """One allowlist grant: a pre-registration email or an existing account.
+
+    A username is resolved once, when the admin adds it, and the grant is kept
+    on the immutable ``user_id``: renaming the account keeps its access, and a
+    later owner of the old username gets nothing.
+    """
+
     __tablename__ = "allowed_emails"
+    __table_args__ = (
+        CheckConstraint(
+            "(email IS NULL) <> (user_id IS NULL)",
+            name="ck_allowed_emails_email_xor_user",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    email = Column(String(320), nullable=False, unique=True, index=True, doc="Allowlisted email address (lowercase)")
+    email = Column(String(320), nullable=True, unique=True, index=True, doc="Allowlisted email address (lowercase); NULL for an account grant")
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
+        unique=True,
+        index=True,
+        doc="Allowlisted existing account; NULL for an email grant",
+    )
     added_by = Column(String(128), nullable=True, doc="Telegram ID or username of the admin who added the address")
     comment = Column(String(255), nullable=True, doc="Optional comment / buyer name")
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     def __repr__(self):
-        return f"<AllowedEmail(id={self.id}, email='{self.email}')>"
+        return f"<AllowedEmail(id={self.id}, email='{self.email}', user_id={self.user_id})>"
+
+    @property
+    def kind(self) -> str:
+        return "user" if self.user_id is not None else "email"
 
 
 class AppSettings(Base):

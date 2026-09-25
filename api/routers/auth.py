@@ -5,6 +5,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy.exc import IntegrityError
 
 from api.auth import clear_session_cookies, create_web_session, get_authenticated_user, get_current_user
 from api.deps import _utc_iso, get_user_workspaces_list
@@ -48,6 +49,14 @@ from database.models import (
     Workspace,
     WorkspaceInvite,
     WorkspaceMember,
+)
+from services.allowlist import (
+    AmbiguousUsername,
+    UsernameNotFound,
+    has_email_login_grant,
+    normalize_email,
+    resolve_username,
+    revoke_grant,
 )
 from services.image_uploads import delete_local_upload, is_owned_avatar
 from services.otp import (
@@ -133,10 +142,7 @@ async def _resolve_login_authorization(
             return False, None
         return True, invite
 
-    allowed_res = await session.execute(
-        select(AllowedEmail).where(func.lower(AllowedEmail.email) == clean_email)
-    )
-    if allowed_res.scalar_one_or_none() is not None:
+    if await has_email_login_grant(session, clean_email):
         return True, None
 
     if await _has_approved_membership(session, clean_email):
@@ -196,14 +202,10 @@ async def _complete_passwordless_login(
         # Preserve the authorization context captured when the email was sent.
         # Recheck direct access (allowlist or approved membership), never fall
         # back to an invitation created after the token was issued.
-        allowed_email = (
-            await session.execute(
-                select(AllowedEmail).where(
-                    func.lower(AllowedEmail.email) == email_clean
-                ).with_for_update()
-            )
-        ).scalar_one_or_none()
-        is_allowed = allowed_email is not None or await _has_approved_membership(session, email_clean)
+        is_allowed = (
+            await has_email_login_grant(session, email_clean, lock=True)
+            or await _has_approved_membership(session, email_clean)
+        )
         invite = None
     else:
         is_allowed, invite = await _resolve_login_authorization(
@@ -932,76 +934,108 @@ async def get_admin_overview(user: User = Depends(get_current_user)):
         }
 
 
+def _allowlist_item(entry: AllowedEmail, account: User | None) -> AllowedEmailItem:
+    return AllowedEmailItem(
+        id=entry.id,
+        kind=entry.kind,
+        email=entry.email,
+        user_id=entry.user_id,
+        username=account.username if account is not None else None,
+        added_by=entry.added_by,
+        comment=entry.comment,
+        created_at=entry.created_at,
+    )
+
+
 @router.get("/auth/admin/allowed-emails", response_model=List[AllowedEmailItem])
 async def list_allowed_emails(user: User = Depends(get_current_user)):
-    """List all allowed email addresses in the whitelist (admin only)."""
+    """List the allowlist: email grants and account grants (admin only)."""
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="Administrators only")
     async with async_session_maker() as session:
-        result = await session.execute(
-            select(AllowedEmail).order_by(AllowedEmail.created_at.desc())
-        )
-        emails = result.scalars().all()
-        return [
-            AllowedEmailItem(
-                id=e.id,
-                email=e.email,
-                added_by=e.added_by,
-                comment=e.comment,
-                created_at=e.created_at,
+        rows = (
+            await session.execute(
+                select(AllowedEmail, User)
+                .outerjoin(User, User.id == AllowedEmail.user_id)
+                .order_by(AllowedEmail.created_at.desc(), AllowedEmail.id.desc())
             )
-            for e in emails
-        ]
+        ).all()
+        return [_allowlist_item(entry, account) for entry, account in rows]
 
 
 @router.post("/auth/admin/allowed-emails", response_model=AllowedEmailItem)
 async def add_allowed_email(req: AddAllowedEmailRequest, user: User = Depends(get_current_user)):
-    """Add an email address to the whitelist (admin only)."""
+    """Allowlist an email, or an existing account by username (admin only).
+
+    A username is resolved to its account now and the grant is kept on the
+    account id. Adding the same email or account again returns the existing
+    grant instead of a duplicate.
+    """
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="Administrators only")
-    clean_email = req.email.strip().lower()
-    if "@" not in clean_email or "." not in clean_email or len(clean_email) < 5:
-        raise HTTPException(status_code=400, detail="Invalid email address")
+    comment = req.comment.strip() if req.comment else None
+    added_by = user.username or str(user.id)
 
     async with async_session_maker() as session:
+        account: User | None = None
+        if req.username is not None:
+            try:
+                account = await resolve_username(session, req.username)
+            except AmbiguousUsername:
+                raise HTTPException(
+                    status_code=409,
+                    detail="This username matches several accounts; add the user by email instead",
+                ) from None
+            except UsernameNotFound:
+                raise HTTPException(status_code=404, detail="No account with this username") from None
+            match = AllowedEmail.user_id == account.id
+            new_entry = AllowedEmail(user_id=account.id, added_by=added_by, comment=comment)
+        else:
+            clean_email = normalize_email(req.email)
+            if "@" not in clean_email or "." not in clean_email or len(clean_email) < 5:
+                raise HTTPException(status_code=400, detail="Invalid email address")
+            match = func.lower(AllowedEmail.email) == clean_email
+            new_entry = AllowedEmail(email=clean_email, added_by=added_by, comment=comment)
+
         existing = (
-            await session.execute(
-                select(AllowedEmail).where(func.lower(AllowedEmail.email) == clean_email)
-            )
+            await session.execute(select(AllowedEmail).where(match).with_for_update())
         ).scalar_one_or_none()
-        if existing:
-            if req.comment and req.comment != existing.comment:
-                existing.comment = req.comment.strip()
-                await session.commit()
-            return AllowedEmailItem(
-                id=existing.id,
-                email=existing.email,
-                added_by=existing.added_by,
-                comment=existing.comment,
-                created_at=existing.created_at,
-            )
+        if existing is None:
+            session.add(new_entry)
+            try:
+                await session.flush()
+            except IntegrityError:
+                # A concurrent add of the same target won; return its grant.
+                await session.rollback()
+                existing = (
+                    await session.execute(select(AllowedEmail).where(match).with_for_update())
+                ).scalar_one_or_none()
+                if existing is None:
+                    # The account was deleted while the grant was being added.
+                    raise HTTPException(status_code=409, detail="The allowlist changed; please retry")
+                if account is not None:
+                    account = await session.get(User, account.id)
+        entry = existing or new_entry
+        if existing is not None and comment and comment != existing.comment:
+            existing.comment = comment
 
-        new_entry = AllowedEmail(
-            email=clean_email,
-            added_by=user.username or str(user.id),
-            comment=req.comment.strip() if req.comment else None,
-        )
-        session.add(new_entry)
+        if account is not None and not account.is_approved:
+            # Granting an account by name is the admin approving that account:
+            # it is how access comes back after an explicit revocation.
+            account.is_approved = True
+
         await session.commit()
-        await session.refresh(new_entry)
-
-        return AllowedEmailItem(
-            id=new_entry.id,
-            email=new_entry.email,
-            added_by=new_entry.added_by,
-            comment=new_entry.comment,
-            created_at=new_entry.created_at,
-        )
+        await session.refresh(entry)
+        return _allowlist_item(entry, account)
 
 
 @router.delete("/auth/admin/allowed-emails/{email_id}")
 async def delete_allowed_email(email_id: int, user: User = Depends(get_current_user)):
-    """Delete an email address from the whitelist and revoke active sessions (admin only)."""
+    """Remove an allowlist grant and revoke the accounts it covered (admin only).
+
+    Other grants for a revoked account (its email and its account grant) are
+    removed too, so revocation cannot be undone by the remaining one.
+    """
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="Administrators only")
 
@@ -1014,25 +1048,15 @@ async def delete_allowed_email(email_id: int, user: User = Depends(get_current_u
             )
         ).scalar_one_or_none()
         if not entry:
-            raise HTTPException(status_code=404, detail="Email not found on the allowlist")
+            raise HTTPException(status_code=404, detail="Entry not found on the allowlist")
 
-        target_email = entry.email.lower()
-
-        # Find matching users and revoke access / sessions
-        matched_users = (
-            await session.execute(
-                select(User).where(func.lower(User.email) == target_email)
-            )
-        ).scalars().all()
-
-        for u in matched_users:
-            if u.role != "admin":
-                u.is_approved = False
-                await session.execute(
-                    delete(WebSession).where(WebSession.user_id == u.id)
-                )
-
-        await session.delete(entry)
+        target = entry.email or f"user #{entry.user_id}"
+        removed, revoked = await revoke_grant(session, entry)
         await session.commit()
 
-        return {"ok": True, "message": f"Email {target_email} removed from the allowlist"}
+        return {
+            "ok": True,
+            "message": f"{target} removed from the allowlist",
+            "removed_ids": [grant.id for grant in removed],
+            "revoked_user_ids": [account.id for account in revoked],
+        }
