@@ -56,3 +56,6 @@ frontend/.vite/
 
 # Runtime user uploads
 /uploads/
+
+# Database dumps from backup_db.sh; deploy.sh runs git clean right after taking one
+/backups/
