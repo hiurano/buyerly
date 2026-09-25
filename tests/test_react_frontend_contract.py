@@ -482,7 +482,7 @@ class TestReactFrontendContract(unittest.TestCase):
                          "export function deliveryHistoryEntry"):
             self.assertIn(contract, self.delivery_lib)
         # The way back reverses the recorded audit rows.
-        self.assertIn("await undoActions(reversible)", self.delivery_lib)
+        self.assertIn("await undoActions(reversible, inScope)", self.delivery_lib)
         for view in (self.campaigns_view, self.statistics_view):
             self.assertIn("setDeliveryForMany(", view)
             self.assertIn("pushHistory(deliveryHistoryEntry(", view)
