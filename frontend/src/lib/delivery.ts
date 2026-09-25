@@ -1,6 +1,7 @@
 import { apiRequest } from '@/lib/api';
 import type { HistoryEntry } from '@/lib/undoHistory';
 import { toast } from '@/ui/toast';
+import { useAppStore } from '@/store/useAppStore';
 
 export type EntityLevel = 'campaign' | 'adset' | 'ad';
 
@@ -128,10 +129,11 @@ export async function setDeliveryForMany(
 }
 
 /** Reverses each recorded action; reports how many could not be undone. */
-export async function undoActions(auditEventIds: number[]): Promise<{ failed: number; error: string }> {
+export async function undoActions(auditEventIds: number[], isCurrent: () => boolean = () => true): Promise<{ failed: number; error: string }> {
   let failed = 0;
   let error = '';
   for (const id of auditEventIds) {
+    if (!isCurrent()) break;
     try {
       await undoAction(id);
     } catch (cause) {
@@ -205,19 +207,24 @@ export function deliveryHistoryEntry({
   /** Shows the given delivery on those rows. */
   onStatus: (entityIds: string[], status: DeliveryStatus) => void;
 }): HistoryEntry {
+  const inScope = useAppStore.getState().captureScope();
   let reversible = auditEventIds;
   const previous: DeliveryStatus = status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
   return {
     label,
     undo: async () => {
-      const { failed, error } = await undoActions(reversible);
+      if (!inScope()) return;
+      const { failed, error } = await undoActions(reversible, inScope);
+      if (!inScope()) return;
       if (failed > 0) {
         throw new Error(`${failed} of ${reversible.length} changes could not be undone: ${error} Check Meta before retrying.`);
       }
       onStatus(targets.map((target) => target.entityId), previous);
     },
     redo: async () => {
-      const outcome = await setDeliveryForMany(targets, accountId, status);
+      if (!inScope()) return;
+      const outcome = await setDeliveryForMany(targets, accountId, status, inScope);
+      if (!inScope()) return;
       reversible = outcome.changed.flatMap((item) => (item.auditEventId ? [item.auditEventId] : []));
       onStatus([...outcome.changed.map((item) => item.entityId), ...outcome.unchanged], status);
       if (outcome.failed.length > 0) {

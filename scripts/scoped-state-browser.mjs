@@ -102,12 +102,31 @@ try {
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !window.testStore.getState().isCreateRuleModalOpen);
 
+    // An in-flight Undo must not repopulate the new workspace's history/toasts.
+    await page.evaluate(async () => {
+      const { pushHistory } = await import('/src/lib/undoHistory.ts');
+      pushHistory({ label: 'old workspace action', undo: async () => {
+        await fetch('/api/test-undo', { method: 'POST' });
+        window.undoFinished = true;
+      }, redo: async () => { window.staleRedo = true; } });
+    });
+    const undoRequest = page.waitForRequest(req => req.url().endsWith('/api/test-undo'));
+    await page.keyboard.press('Control+z');
+    await undoRequest;
     failBeta = true;
     await navigate('/beta/rules');
     await page.getByText('Beta unavailable', { exact: true }).waitFor();
+    await delayedWrite.fulfill({ json: {} });
+    await page.waitForFunction(() => window.undoFinished);
+    await page.keyboard.press('Control+Shift+z');
+    assert.equal(await page.evaluate(() => Boolean(window.staleRedo)), false);
+    assert.equal(await page.evaluate(async () => {
+      const { useToastStore } = await import('/src/ui/toast.ts');
+      return useToastStore.getState().toasts.length;
+    }), 0);
     assert.equal(await page.getByText('alpha rule', { exact: true }).count(), 0);
     await page.evaluate(() => window.testStore.getState().deleteRule('1').catch(() => {}));
-    assert.equal(writes.length, 1);
+    assert.equal(writes.length, 2);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `overflow at ${width}`);
     await page.screenshot({ path: `${output}/rules-error-${width}.png`, fullPage: true });
     assert.deepEqual(errors, []);

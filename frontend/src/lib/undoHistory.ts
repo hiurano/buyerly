@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { toast } from '@/ui/toast';
+import { useAppStore } from '@/store/useAppStore';
 
 /**
  * One change this session made, with the way back and the way forward again.
@@ -18,6 +19,7 @@ const MAX_ENTRIES = 50;
 const past: HistoryEntry[] = [];
 let future: HistoryEntry[] = [];
 let running = false;
+let generation = 0;
 
 /** Records a change the user just made. A new change discards what could be redone. */
 export function pushHistory(entry: HistoryEntry): void {
@@ -27,6 +29,8 @@ export function pushHistory(entry: HistoryEntry): void {
 }
 
 export function clearHistory(): void {
+  generation += 1;
+  running = false;
   past.length = 0;
   future = [];
 }
@@ -39,9 +43,13 @@ async function step(direction: 'undo' | 'redo'): Promise<void> {
   const source = direction === 'undo' ? past : future;
   const entry = source.pop();
   if (!entry) return;
+  const started = generation;
+  const inScope = useAppStore.getState().captureScope();
+  if (!inScope()) return;
   running = true;
   try {
     await entry[direction]();
+    if (started !== generation || !inScope()) return;
     (direction === 'undo' ? future : past).push(entry);
     toast.show({
       tone: direction,
@@ -49,6 +57,7 @@ async function step(direction: 'undo' | 'redo'): Promise<void> {
       message: `${entry.label}.`,
     });
   } catch (error) {
+    if (started !== generation || !inScope()) return;
     // What the server holds is no longer what this entry describes, so it is
     // dropped rather than offered again.
     toast.show({
@@ -58,7 +67,7 @@ async function step(direction: 'undo' | 'redo'): Promise<void> {
       description: failureMessage(error),
     });
   } finally {
-    running = false;
+    if (started === generation) running = false;
   }
 }
 

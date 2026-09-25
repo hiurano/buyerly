@@ -157,6 +157,12 @@ MetaOAuthClient использует отдельный context-managed HTTP tra
 завершение уже отправленной mutation после перехода. Простого `AbortController`
 без проверки перед `set()` недостаточно.
 
+Исправление после аудита: C03 — [PR #179](https://github.com/hiurano/buyerly/pull/179).
+Scope generation, reset и проверки после await покрыты исполняемым store harness
+и Chromium; актуальный статус и ограничения записаны в
+[плане C03](../implementation_plan.md#c03--ограничить-async-state-текущим-контекстом-a03).
+Исходное наблюдение выше остаётся снимком базы аудита.
+
 ### A04. Истинный parent строки analytics
 
 [analytics_store.py](../services/analytics_store.py)::get_hierarchy_breakdown,

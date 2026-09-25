@@ -738,6 +738,7 @@ export const useAppStore = create<AppState>((set, get) => {
       );
       if (!current()) return;
       await get().loadRules();
+      if (!current()) return;
       pushHistory({
         label: `${enabled ? 'resume' : 'pause'} ${rule.name}`,
         undo: () => applyRulesEnabled([id], !enabled),

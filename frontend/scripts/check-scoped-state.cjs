@@ -115,6 +115,31 @@ async function main() {
   take('/api/accounts').reply([{ account_id: 'B', active_rules: [] }]); await switched;
   attachmentWrite.reply({ success: true }); await toggle;
   assert.equal(pending.length, 0); assert.equal(state().attachedRulesAccountId, 'B');
+
+  // A deletion batch must not re-read B's same-numbered ids or reload B.
+  const { runPendingDeletion, restoreFromTrash } = load(path.join(root, 'components/rules/ruleActions.ts'));
+  await seed(); state().requestDeletion('rule', ['1', '2']);
+  const deletion = runPendingDeletion(); const deleting = take('/api/presets/1', 'DELETE');
+  await seed('b'); deleting.reply({ deleted_item_id: 11 }); await deletion;
+  assert.equal(pending.length, 0);
+
+  // Scope changes during the follow-up read also suppress history/toasts.
+  const { useToastStore } = load(path.join(root, 'ui/toast.ts'));
+  const restoration = restoreFromTrash({ id: 11, kind: 'rule', name: 'Old rule' });
+  take('/api/deleted-items/11/restore', 'POST').reply({ entity_id: 1, skipped_account_ids: ['A'], missing_rule_ids: [] });
+  await new Promise(resolve => setImmediate(resolve));
+  const restoreReads = rulesReplies(); enter('a'); replyRules(restoreReads, [preset(1)]); await restoration;
+  assert.deepEqual(useToastStore.getState().toasts, []);
+
+  // Delivery undo stops its queue after leaving the recorded workspace.
+  const { deliveryHistoryEntry } = load(path.join(root, 'lib/delivery.ts'));
+  let paints = 0;
+  const entry = deliveryHistoryEntry({ label: 'pause', accountId: 'A', targets: [{ level: 'campaign', entityId: '1' }],
+    status: 'PAUSED', auditEventIds: [11, 12], onStatus: () => { paints += 1; } });
+  const undo = entry.undo(); const undoWrite = pending.shift(); assert.ok(undoWrite);
+  enter('b'); undoWrite.reply({}); await undo;
+  assert.equal(pending.length, 0); assert.equal(paints, 0);
+  await entry.redo(); assert.equal(pending.length, 0);
   console.log('Scoped state: workspace/account races, failures, ABA logout, stale targets and mutation continuations passed');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

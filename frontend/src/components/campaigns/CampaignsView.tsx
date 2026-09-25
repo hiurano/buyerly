@@ -441,7 +441,7 @@ export const CampaignsView: React.FC = () => {
           targets: [{ level, entityId }],
           status,
           auditEventIds: [result.audit_event_id],
-          onStatus: showDelivery,
+          onStatus: (ids, status) => { if (onAccount()) showDelivery(ids, status); },
         }));
       }
     } catch (error) {
@@ -500,7 +500,7 @@ export const CampaignsView: React.FC = () => {
         targets: changed.map((item) => ({ level, entityId: item.entityId })),
         status,
         auditEventIds: changed.flatMap((item) => (item.auditEventId ? [item.auditEventId] : [])),
-        onStatus: showDelivery,
+        onStatus: (ids, status) => { if (onAccount()) showDelivery(ids, status); },
       }));
     }
     reportBulkDelivery(outcome, status, noun, rows.length - eligible.length);
