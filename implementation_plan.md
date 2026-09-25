@@ -2,7 +2,7 @@
 
 Дата: 2026-09-25. База: `91a0c95` (main после PR #171).
 Основание: [аудит A01–A25](docs/PROJECT_CLEANUP_AUDIT.md).
-Статус: **C01 слит (PR #174, `b0ff681`); C02 слит (PR #176, `fb77c48`), post-merge CI/CD зелёный; C03 слит (PR #179, `d9fd84d`), post-merge CI/CD зелёный; C04–C24 ещё не реализованы**.
+Статус: **C01 слит (PR #174, `b0ff681`); C02 слит (PR #176, `fb77c48`), post-merge CI/CD зелёный; C03 слит (PR #179, `d9fd84d`), post-merge CI/CD зелёный; C04 — PR #184 на review; C05–C24 ещё не реализованы**.
 Прежний план сохранён в [архиве public website](docs/archive/plans/implementation_plan_public_website.md).
 
 ## Цель и критерии готовности
@@ -52,7 +52,7 @@ C20 желательно завершить до C17/C18, чтобы visual gate
 | C01 Test DB guard | — | Малый | [PR #174](https://github.com/hiurano/buyerly/pull/174): слит, `b0ff681`, CI зелёный |
 | C02 Meta client/cache/lifecycle | C01 | Средний | [PR #176](https://github.com/hiurano/buyerly/pull/176): слит, `fb77c48`, post-merge CI/CD зелёный |
 | C03 Async workspace/account state | — | Средний | [PR #179](https://github.com/hiurano/buyerly/pull/179): слит, `d9fd84d`, post-merge CI/CD зелёный |
-| C04 Parent hierarchy contract | C01 | Малый | Ожидает |
+| C04 Parent hierarchy contract | C01 | Малый | [PR #184](https://github.com/hiurano/buyerly/pull/184): открыт, ждёт review |
 | C05 Timezone drill-down | C04 | Средний | Ожидает |
 | C06 Backup cron environment | — | Средний | Ожидает |
 | C07 Atomic backup/restore formats | C06 | Средний | Ожидает |
@@ -177,6 +177,19 @@ contract/docs и tests; mappers только при необходимости.
 campaign → adset → ad, tenant filtering прежний.
 **Проверки:** две campaigns с несколькими adsets/ads, API/service regression
 и mapper test на форме реального ответа. Внешний вид таблиц не перерабатывать.
+
+Реализация C04: [PR #184](https://github.com/hiurano/buyerly/pull/184), ветка
+`fix/analytics-entity-parent`. A04 подтверждён на `9857507`: строка hierarchy
+получала `parent_id` запроса. Теперь `parent_entity_id` берётся из факта строки;
+прямой drill-down и фильтрация по workspace/account не изменились. Фронтовые мапперы уже
+читали это поле; contract описан в `types.ts` и API.md.
+Проверки: service regression на две campaigns (3 adsets, 4 ads), account-wide
+на трёх уровнях, прямой drill-down campaign/adset, чужой workspace с тем же
+campaign ID; `check-hierarchy-parents.cjs` в CI на данных в форме ответа;
+локально `tsc --noEmit` и existing checks. Python regression выполняется только в CI:
+локальной disposable БД нет. Ограничения: реальный Meta не проверялся,
+timezone drill-down остаётся C05.
+PR не слит; требуется подтверждение пользователя.
 
 ### C05 — Считать drill-down в timezone кабинета (A05)
 
