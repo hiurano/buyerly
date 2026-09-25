@@ -6,7 +6,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import delete, func, or_, select, update
 
-from api.auth import clear_session_cookies, create_web_session, get_current_user
+from api.auth import clear_session_cookies, create_web_session, get_authenticated_user, get_current_user
 from api.deps import _utc_iso, get_user_workspaces_list
 from api.schemas import (
     AddAllowedEmailRequest,
@@ -841,7 +841,9 @@ async def logout_all_web_sessions(
 
 
 @router.get("/me", response_model=UserProfileResponse)
-async def get_me(user: User = Depends(get_current_user)):
+async def get_me(user: User = Depends(get_authenticated_user)):
+    # The profile lists every workspace, so it is not bound to the route's
+    # X-Workspace-Slug: a URL for a foreign workspace must not read as logged out.
     async with async_session_maker() as session:
         db_user = (await session.execute(select(User).where(User.id == user.id))).scalar_one()
         workspaces = await get_user_workspaces_list(session, db_user)
