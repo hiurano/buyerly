@@ -2,7 +2,7 @@
 
 Дата: 2026-09-25. База: `91a0c95` (main после PR #171).
 Основание: [аудит A01–A25](docs/PROJECT_CLEANUP_AUDIT.md).
-Статус: **C01 слит (PR #174, `b0ff681`); C02 слит (PR #176, `fb77c48`), post-merge CI/CD зелёный; C03 слит (PR #179, `d9fd84d`), post-merge CI/CD зелёный; C04 — PR #184 на review; C05–C24 ещё не реализованы**.
+Статус: **C01 слит (PR #174, `b0ff681`); C02 слит (PR #176, `fb77c48`), post-merge CI/CD зелёный; C03 слит (PR #179, `d9fd84d`), post-merge CI/CD зелёный; C04 слит (PR #184, `e986ed8`), post-merge CI/CD зелёный со второй попытки; C05–C24 ещё не реализованы**.
 Прежний план сохранён в [архиве public website](docs/archive/plans/implementation_plan_public_website.md).
 
 ## Цель и критерии готовности
@@ -35,7 +35,7 @@ branch stacking запрещён. При общей директории с др
 
 Задание для следующего чата:
 
-> Выполни C04 из implementation_plan.md. Прочитай AGENTS.md и связанные выводы
+> Выполни C05 из implementation_plan.md. Прочитай AGENTS.md и связанные выводы
 > docs/PROJECT_CLEANUP_AUDIT.md, сверь их с текущим main. Работай в отдельной ветке,
 > выполни только этот этап, открой PR и проверь CI. Обнови статус этапа.
 > Не сливай PR без моего подтверждения.
@@ -52,7 +52,7 @@ C20 желательно завершить до C17/C18, чтобы visual gate
 | C01 Test DB guard | — | Малый | [PR #174](https://github.com/hiurano/buyerly/pull/174): слит, `b0ff681`, CI зелёный |
 | C02 Meta client/cache/lifecycle | C01 | Средний | [PR #176](https://github.com/hiurano/buyerly/pull/176): слит, `fb77c48`, post-merge CI/CD зелёный |
 | C03 Async workspace/account state | — | Средний | [PR #179](https://github.com/hiurano/buyerly/pull/179): слит, `d9fd84d`, post-merge CI/CD зелёный |
-| C04 Parent hierarchy contract | C01 | Малый | [PR #184](https://github.com/hiurano/buyerly/pull/184): открыт, ждёт review |
+| C04 Parent hierarchy contract | C01 | Малый | [PR #184](https://github.com/hiurano/buyerly/pull/184): слит, `e986ed8`, post-merge CI/CD зелёный со второй попытки |
 | C05 Timezone drill-down | C04 | Средний | Ожидает |
 | C06 Backup cron environment | — | Средний | Ожидает |
 | C07 Atomic backup/restore formats | C06 | Средний | Ожидает |
@@ -189,7 +189,11 @@ campaign ID; `check-hierarchy-parents.cjs` в CI на данных в форме
 локально `tsc --noEmit` и existing checks. Python regression выполняется только в CI:
 локальной disposable БД нет. Ограничения: реальный Meta не проверялся,
 timezone drill-down остаётся C05.
-PR не слит; требуется подтверждение пользователя.
+PR слит в `e986ed8`. Первая попытка [post-merge CI/CD](https://github.com/hiurano/buyerly/actions/runs/36182766942)
+упала на деплое: на VPS (1,9 ГБ RAM, swap не было) кончилась память при сборке
+web-образа, SSH-команда оборвалась по 10-минутному таймауту, VPS перезагрузился,
+прод остался на `9857507`. Код C04 к сбою не причастен. После добавления swap
+повторная попытка того же run успешна, `e986ed8` на проде.
 
 ### C05 — Считать drill-down в timezone кабинета (A05)
 
@@ -212,6 +216,12 @@ root/non-root и timezone расписания.
 обязательных параметров не выглядит как encrypted/offsite success.
 **Проверки:** fake cron/docker/upload commands, bash syntax, CI.
 Не устанавливать cron на NixOS и не менять VPS в этом PR.
+
+Контекст на 2026-09-26: на VPS backup cron не установлен (нет
+`/etc/cron.d/buyerly-backup` и записей в crontab), бэкап делает только шаг 1
+`deploy.sh`, без encryption и offsite: `S3_*` и `BACKUP_ENCRYPTION_KEY` есть
+только в `.env`. До [PR #185](https://github.com/hiurano/buyerly/pull/185)
+`git clean -ffd` на шаге 2 сразу удалял и этот архив: `backups/` не был в `.gitignore`.
 
 ### C07 — Atomic backup и правильный restore format (A07)
 
@@ -434,4 +444,4 @@ Dev tooling отделить от production requirements при необход�
 Невыполненные продуктовые решения перенести в основной backlog со ссылкой сюда;
 не считать их закрытыми автоматически.
 
-Рекомендуемый следующий чат: **C04 — parent hierarchy contract**.
+Рекомендуемый следующий чат: **C05 — timezone drill-down**.
