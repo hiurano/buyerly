@@ -292,6 +292,34 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("git status --short --untracked-files=all", self.script)
         self.assertIn("Production source tree does not match", self.script)
 
+    def test_pre_deploy_backup_survives_the_source_cleanup(self):
+        # backup_db.sh writes the mandatory dump inside APP_DIR, then deploy.sh
+        # removes untracked files: only an ignored directory outlives git clean.
+        backup_position = self.script.index('bash "${SCRIPT_DIR}/backup_db.sh"')
+        clean_position = self.script.index("git clean -ffd -q")
+        self.assertLess(backup_position, clean_position)
+        self.assertNotRegex(self.script, r"git clean[^\n]* -\w*[xX]")
+        backup_dir = re.search(
+            r'BACKUP_DIR="\$\{BACKUP_DIR:-/opt/buyerly/([^}"]+)\}"',
+            self.backup_script,
+        ).group(1)
+        result = subprocess.run(
+            [
+                "git",
+                "check-ignore",
+                "-q",
+                f"{backup_dir}/buyerly_postgres_20260101_000000.sql.gz",
+            ],
+            cwd=Path(__file__).resolve().parents[1],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 128:
+            self.skipTest(f"not a git work tree: {result.stderr.strip()}")
+        self.assertEqual(result.returncode, 0, f"git clean would delete {backup_dir}/")
+        # Kept dumps are plaintext unless BACKUP_ENCRYPTION_KEY is set.
+        self.assertIn("umask 077", self.backup_script)
+
     def test_legacy_monolith_cannot_return(self):
         self.assertNotIn("--profile legacy", self.script)
         self.assertNotIn("PREVIOUS_LEGACY_IMAGE", self.script)

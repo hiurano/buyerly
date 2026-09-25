@@ -17,6 +17,8 @@ if ! flock -n 9; then
     exit 0
 fi
 
+# Dumps stay on disk and are plaintext without BACKUP_ENCRYPTION_KEY.
+umask 077
 mkdir -p "${BACKUP_DIR}"
 
 postgres_state=$(docker inspect -f '{{.State.Status}}' "${POSTGRES_CONTAINER}" 2>/dev/null || true)
