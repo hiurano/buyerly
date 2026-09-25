@@ -392,6 +392,12 @@ class TestReactFrontendContract(unittest.TestCase):
         ):
             self.assertIn(contract, self.rules_view)
 
+        # Refreshing after a mutation must not swap the list for "Loading rules…".
+        self.assertIn(
+            "if (get().rulesLoadState !== 'ready') set({ rulesLoadState: 'loading'",
+            self.app_store,
+        )
+
         # A rule is switched on or off; there is no third runtime state to show.
         self.assertNotIn("'triggered'", self.app_store)
 
