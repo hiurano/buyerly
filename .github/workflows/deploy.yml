@@ -39,6 +39,7 @@ jobs:
           npm ci
           node scripts/check-campaign-filters.cjs
           node scripts/check-scoped-state.cjs
+          node scripts/check-hierarchy-parents.cjs
           npm run build
 
       - name: Upload built frontend

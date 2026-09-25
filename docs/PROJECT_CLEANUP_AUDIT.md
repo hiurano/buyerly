@@ -182,6 +182,10 @@ entity IDs, но не сохранение parent chain.
 parent, проверить минимум две campaigns с несколькими adsets/ads, а также прямой
 drill-down и workspace isolation. Согласовать HTTP/TS contract и документацию.
 
+Исправление после аудита: C04 — строка берёт `parent_entity_id` из факта; статус и
+проверки записаны в [плане C04](../implementation_plan.md#c04--вернуть-настоящий-parent-каждой-entity-a04).
+Исходное наблюдение выше остаётся снимком базы аудита.
+
 ### A05. Timezone при прямом drill-down
 
 [analytics_store.py](../services/analytics_store.py),
