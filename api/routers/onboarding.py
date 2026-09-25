@@ -29,7 +29,8 @@ from core.email import send_workspace_invitation_email
 from core.rate_limit import rate_limit_dep
 from core.workspace_slugs import normalize_workspace_slug
 from database.db import async_session_maker
-from database.models import AllowedEmail, AuditEvent, User, Workspace, WorkspaceInvite, WorkspaceMember
+from database.models import AuditEvent, User, Workspace, WorkspaceInvite, WorkspaceMember
+from services.allowlist import find_account_grant, grant_covers
 from services.image_uploads import (
     InvalidImageUpload,
     MAX_UPLOAD_BYTES,
@@ -296,17 +297,8 @@ async def submit_onboarding_workspace(
         raise HTTPException(status_code=400, detail="Logo not found, or it belongs to another user")
 
     async with async_session_maker() as session:
-        clean_user_email = (user.email or "").strip().lower()
-        allowlisted = None
-        if clean_user_email:
-            allowlisted = (
-                await session.execute(
-                    select(AllowedEmail.id).where(
-                        AllowedEmail.email == clean_user_email
-                    ).with_for_update()
-                )
-            ).scalar_one_or_none()
-        if allowlisted is None:
+        grant = await find_account_grant(session, user, lock=True)
+        if grant is None:
             raise HTTPException(
                 status_code=403,
                 detail="Only allowlisted users can create a workspace",
@@ -319,7 +311,9 @@ async def submit_onboarding_workspace(
                 select(User).where(User.id == user.id).with_for_update()
             )
         ).scalar_one()
-        if (db_user.email or "").strip().lower() != clean_user_email:
+        if not db_user.is_approved:
+            raise HTTPException(status_code=403, detail="Your account is awaiting administrator approval.")
+        if not grant_covers(grant, db_user):
             raise HTTPException(status_code=409, detail="The user's email has changed; please retry")
 
         existing_membership = (

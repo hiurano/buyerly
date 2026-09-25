@@ -19,7 +19,8 @@ from api.schemas import (
     WorkspaceItem,
 )
 from database.db import async_session_maker
-from database.models import AllowedEmail, User, Workspace, WorkspaceMember
+from database.models import User, Workspace, WorkspaceMember
+from services.allowlist import find_account_grant
 from services.image_uploads import (
     delete_workspace_logo_if_unreferenced,
     is_owned_workspace_logo,
@@ -60,16 +61,9 @@ async def create_workspace(req: CreateWorkspaceRequest, user: User = Depends(get
                 ).limit(1)
             )
         ).scalar_one_or_none()
-        clean_user_email = (user.email or "").strip().lower()
         allowlisted = None
-        if clean_user_email:
-            allowlisted = (
-                await session.execute(
-                    select(AllowedEmail.id).where(
-                        AllowedEmail.email == clean_user_email
-                    )
-                )
-            ).scalar_one_or_none()
+        if existing_membership is None:
+            allowlisted = await find_account_grant(session, user)
         if existing_membership is None and allowlisted is None:
             raise HTTPException(
                 status_code=403,

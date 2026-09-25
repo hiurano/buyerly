@@ -49,9 +49,9 @@ Production: `https://buyerly.app`.
 | `POST /api/auth/logout-all` | — | отзывает все web-сессии пользователя |
 | `GET /api/me` | — | `username`, `full_name`, `first_name`, `last_name`, `email`, `email_verified`, `unconfirmed_email`, `avatar_url`, `role`, `is_approved`, `active_workspace`, `workspaces` |
 | `GET /api/admin/overview` | — | сводная таблица всех пользователей, воркспейсов и инвайтов (только админ) |
-| `GET /api/auth/admin/allowed-emails` | — | список разрешенных email-адресов в белом списке (только админ) |
-| `POST /api/auth/admin/allowed-emails` | `email`, `comment?` | добавление email-адреса в белый список (только админ) |
-| `DELETE /api/auth/admin/allowed-emails/{email_id}` | — | удаление email-адреса из белого списка с отзывом активных сессий (только админ) |
+| `GET /api/auth/admin/allowed-emails` | — | белый список (только админ): записи `kind: "email"` (email до регистрации) и `kind: "user"` (существующий аккаунт: `user_id` и его текущий `username`) |
+| `POST /api/auth/admin/allowed-emails` | `email` или `username`, `comment?` | добавление в белый список (только админ). `username` ищется без учёта регистра и пробелов по краям; разрешение привязывается к `user_id`, смена ника его не переносит. Неизвестный ник — 404, совпадающий с несколькими аккаунтами — 409. Повторное добавление возвращает существующую запись. Добавление по нику снимает блокировку `is_approved=false` с этого аккаунта |
+| `DELETE /api/auth/admin/allowed-emails/{email_id}` | — | отзыв записи (только админ): у охваченных аккаунтов (кроме админов) снимается одобрение и удаляются сессии, а вместе с записью удаляются и остальные записи этих аккаунтов (по email и по `user_id`). Ответ: `removed_ids`, `revoked_user_ids` |
 | `POST /api/admin/support-sessions` | `workspace_id`, `reason`, `duration_minutes?` | создание ограниченной по времени сессии техподдержки администратора платформы (5–240 мин) с обязательным обоснованием |
 | `GET /api/admin/support-sessions` | `active_only?` | список активных или исторических сессий техподдержки администратора платформы |
 | `POST /api/admin/support-sessions/{grant_id}/revoke` | — | досрочный отзыв временной сессии техподдержки администратора |

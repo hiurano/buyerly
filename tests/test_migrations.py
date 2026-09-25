@@ -1233,6 +1233,69 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
             await init_test_db(engine)
             await engine.dispose()
 
+    async def test_allowlist_user_grants_keep_existing_email_grants(self):
+        from alembic.config import Config
+        from alembic import command
+        from sqlalchemy.exc import IntegrityError
+        import os
+
+        engine = create_test_engine()
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text("DROP SCHEMA public CASCADE"))
+                await conn.execute(text("CREATE SCHEMA public"))
+
+            root = os.path.dirname(os.path.dirname(__file__))
+            alembic_cfg = Config(os.path.join(root, "alembic.ini"))
+            alembic_cfg.set_main_option("script_location", os.path.join(root, "alembic"))
+            command.upgrade(alembic_cfg, "0026_deleted_items")
+
+            async with engine.begin() as conn:
+                await conn.execute(
+                    text(
+                        "INSERT INTO allowed_emails (email, added_by, created_at) "
+                        "VALUES ('kept@agency.com', 'admin', NOW())"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "INSERT INTO users (username, full_name, first_name, last_name, avatar_url, "
+                        "onboarding_step, onboarding_completed, password_hash, role, is_approved, created_at) "
+                        "VALUES ('granted', '', '', '', '', 'workspace', false, '', 'buyer', true, NOW())"
+                    )
+                )
+
+            command.upgrade(alembic_cfg, "head")
+
+            async with engine.begin() as conn:
+                kept = (
+                    await conn.execute(text("SELECT email, user_id FROM allowed_emails"))
+                ).all()
+                self.assertEqual([tuple(row) for row in kept], [("kept@agency.com", None)])
+                await conn.execute(
+                    text(
+                        "INSERT INTO allowed_emails (user_id, created_at) "
+                        "SELECT id, NOW() FROM users WHERE username = 'granted'"
+                    )
+                )
+            for bad_row in (
+                "(NULL, NULL)",
+                "('both@agency.com', (SELECT id FROM users WHERE username = 'granted'))",
+            ):
+                with self.assertRaises(IntegrityError):
+                    async with engine.begin() as conn:
+                        await conn.execute(
+                            text(f"INSERT INTO allowed_emails (email, user_id) VALUES {bad_row}")
+                        )
+
+            command.downgrade(alembic_cfg, "0026_deleted_items")
+            async with engine.connect() as conn:
+                remaining = (await conn.execute(text("SELECT email FROM allowed_emails"))).scalars().all()
+            self.assertEqual(remaining, ["kept@agency.com"])
+        finally:
+            await init_test_db(engine)
+            await engine.dispose()
+
     async def test_alembic_upgrade_head_applies_successfully(self):
         from alembic.config import Config
         from alembic import command

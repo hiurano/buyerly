@@ -442,6 +442,214 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.json()["username"], "buyer_user")
 
+    # --- Allowlist by username (account grants) ---
+
+    async def _add_user(self, username, *, email=None, verified=False, role="buyer"):
+        async with self.sessions() as session:
+            user = User(
+                username=username,
+                email=email,
+                email_verified_at=datetime.now(timezone.utc) if verified else None,
+                password_hash=hash_password("accountpassword123"),
+                role=role,
+                is_approved=True,
+            )
+            session.add(user)
+            await session.commit()
+            return user.id
+
+    async def _login(self, client, username, password="accountpassword123"):
+        client.cookies.clear()
+        response = await client.post("/api/auth/login", json={"username": username, "password": password})
+        self.assertEqual(response.status_code, 200, response.text)
+        return {"X-CSRF-Token": client.cookies.get("buyerly_csrf")}
+
+    async def _admin_add(self, client, payload):
+        headers = await self._login(client, "admin_user", "adminpassword123")
+        return await client.post("/api/auth/admin/allowed-emails", headers=headers, json=payload)
+
+    async def _create_first_workspace(self, client, username, name, password="accountpassword123"):
+        headers = await self._login(client, username, password)
+        return await client.post("/api/onboarding/workspace", headers=headers, json={"name": name})
+
+    async def test_admin_allowlists_account_without_email_by_username(self):
+        user_id = await self._add_user("no_email_buyer")
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+            first = await self._admin_add(client, {"username": "  No_Email_Buyer ", "comment": "Lead"})
+            self.assertEqual(first.status_code, 200, first.text)
+            data = first.json()
+            self.assertEqual(data["kind"], "user")
+            self.assertEqual(data["user_id"], user_id)
+            self.assertEqual(data["username"], "no_email_buyer")
+            self.assertIsNone(data["email"])
+
+            again = await self._admin_add(client, {"username": "no_email_buyer"})
+            self.assertEqual(again.status_code, 200, again.text)
+            self.assertEqual(again.json()["id"], data["id"])
+            self.assertEqual(again.json()["comment"], "Lead")
+
+            listed = (await client.get("/api/auth/admin/allowed-emails")).json()
+            self.assertEqual([item["id"] for item in listed if item["user_id"] == user_id], [data["id"]])
+
+            response = await self._create_first_workspace(client, "no_email_buyer", "Solo Team")
+            self.assertEqual(response.status_code, 200, response.text)
+
+    async def test_account_grant_also_allows_regular_workspace_creation(self):
+        await self._add_user("direct_creator")
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+            self.assertEqual((await self._admin_add(client, {"username": "direct_creator"})).status_code, 200)
+            headers = await self._login(client, "direct_creator")
+            response = await client.post("/api/workspaces", headers=headers, json={"name": "Direct Team"})
+            self.assertEqual(response.status_code, 200, response.text)
+
+    async def test_user_without_grant_cannot_create_first_workspace(self):
+        await self._add_user("not_listed", email="not.listed@agency.com", verified=True)
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+            response = await self._create_first_workspace(client, "not_listed", "Nope")
+            self.assertEqual(response.status_code, 403, response.text)
+            self.assertIn("Only allowlisted users", response.json()["detail"])
+            headers = await self._login(client, "not_listed")
+            response = await client.post("/api/workspaces", headers=headers, json={"name": "Nope"})
+            self.assertEqual(response.status_code, 403, response.text)
+
+    async def test_email_grant_still_allows_first_workspace(self):
+        async with self.sessions() as session:
+            session.add(AllowedEmail(email="buyer@buyerly.com", added_by="admin"))
+            await session.commit()
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+            response = await self._create_first_workspace(client, "buyer_user", "Email Team", "buyerpassword123")
+            self.assertEqual(response.status_code, 200, response.text)
+
+    async def test_renamed_account_keeps_grant_and_new_owner_of_name_gets_none(self):
+        original_id = await self._add_user("old_nick")
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+            self.assertEqual((await self._admin_add(client, {"username": "old_nick"})).status_code, 200)
+            async with self.sessions() as session:
+                (await session.get(User, original_id)).username = "new_nick"
+                await session.commit()
+            await self._add_user("old_nick")
+
+            listed = (await client.get("/api/auth/admin/allowed-emails")).json()
+            grant = next(item for item in listed if item["kind"] == "user")
+            self.assertEqual((grant["user_id"], grant["username"]), (original_id, "new_nick"))
+
+            response = await self._create_first_workspace(client, "old_nick", "Impostor")
+            self.assertEqual(response.status_code, 403, response.text)
+            response = await self._create_first_workspace(client, "new_nick", "Original")
+            self.assertEqual(response.status_code, 200, response.text)
+
+    async def test_unknown_ambiguous_or_malformed_username_is_rejected(self):
+        await self._add_user("Twin")
+        await self._add_user("twin")
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+            for payload, status in (
+                ({"username": "nobody_here"}, 404),
+                ({"username": "   "}, 404),
+                ({"username": " TWIN "}, 409),
+                ({"username": "buyer_user", "email": "buyer@buyerly.com"}, 422),
+                ({"comment": "no target"}, 422),
+            ):
+                response = await self._admin_add(client, payload)
+                self.assertEqual(response.status_code, status, (payload, response.text))
+        async with self.sessions() as session:
+            self.assertEqual((await session.execute(select(func.count(AllowedEmail.id)))).scalar_one(), 0)
+
+    async def test_buyer_cannot_add_account_grant(self):
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+            headers = await self._login(client, "buyer_user", "buyerpassword123")
+            response = await client.post(
+                "/api/auth/admin/allowed-emails", headers=headers, json={"username": "buyer_user"}
+            )
+            self.assertEqual(response.status_code, 403, response.text)
+        async with self.sessions() as session:
+            self.assertEqual((await session.execute(select(func.count(AllowedEmail.id)))).scalar_one(), 0)
+
+    async def test_account_grant_allows_email_sign_in_to_verified_email(self):
+        await self._add_user("mail_owner", email="mail.owner@agency.com", verified=True)
+        await self._add_user("unverified_owner", email="unverified@agency.com")
+        with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock, return_value=True):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+                for username in ("mail_owner", "unverified_owner"):
+                    self.assertEqual((await self._admin_add(client, {"username": username})).status_code, 200)
+                client.cookies.clear()
+                for email, status in (("mail.owner@agency.com", 200), ("unverified@agency.com", 403)):
+                    response = await client.post("/api/auth/request-temporary-password", json={"email": email})
+                    self.assertEqual(response.status_code, status, (email, response.text))
+
+    async def _seed_double_grant(self):
+        user_id = await self._add_user("double_grant", email="double@agency.com", verified=True)
+        async with self.sessions() as session:
+            email_grant = AllowedEmail(email="double@agency.com", added_by="admin")
+            user_grant = AllowedEmail(user_id=user_id, added_by="admin")
+            session.add_all([email_grant, user_grant])
+            await session.commit()
+            return user_id, email_grant.id, user_grant.id
+
+    async def test_revoking_either_grant_removes_both_and_drops_sessions(self):
+        for revoke_account_grant in (False, True):
+            async with self.sessions() as session:
+                await session.execute(delete(AllowedEmail))
+                await session.execute(delete(User).where(User.username == "double_grant"))
+                await session.commit()
+            user_id, email_grant_id, user_grant_id = await self._seed_double_grant()
+            target_id = user_grant_id if revoke_account_grant else email_grant_id
+            with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock, return_value=True):
+                async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+                    await self._login(client, "double_grant")
+                    headers = await self._login(client, "admin_user", "adminpassword123")
+                    response = await client.delete(f"/api/auth/admin/allowed-emails/{target_id}", headers=headers)
+                    self.assertEqual(response.status_code, 200, response.text)
+                    self.assertEqual(sorted(response.json()["removed_ids"]), sorted([email_grant_id, user_grant_id]))
+                    self.assertEqual(response.json()["revoked_user_ids"], [user_id])
+
+                    client.cookies.clear()
+                    response = await client.post(
+                        "/api/auth/request-temporary-password", json={"email": "double@agency.com"}
+                    )
+                    self.assertEqual(response.status_code, 403, response.text)
+                    response = await client.post(
+                        "/api/auth/login", json={"username": "double_grant", "password": "accountpassword123"}
+                    )
+                    self.assertEqual(response.status_code, 403, response.text)
+
+            async with self.sessions() as session:
+                self.assertFalse((await session.get(User, user_id)).is_approved)
+                self.assertEqual(
+                    (await session.execute(select(func.count(AllowedEmail.id)))).scalar_one(), 0
+                )
+                self.assertEqual(
+                    (await session.execute(
+                        select(func.count(WebSession.id)).where(WebSession.user_id == user_id)
+                    )).scalar_one(),
+                    0,
+                )
+
+    async def test_regranting_revoked_account_by_username_restores_access(self):
+        user_id, email_grant_id, _ = await self._seed_double_grant()
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+            headers = await self._login(client, "admin_user", "adminpassword123")
+            response = await client.delete(f"/api/auth/admin/allowed-emails/{email_grant_id}", headers=headers)
+            self.assertEqual(response.status_code, 200, response.text)
+            response = await self._admin_add(client, {"username": "double_grant"})
+            self.assertEqual(response.status_code, 200, response.text)
+            response = await self._create_first_workspace(client, "double_grant", "Back Again")
+            self.assertEqual(response.status_code, 200, response.text)
+        async with self.sessions() as session:
+            self.assertTrue((await session.get(User, user_id)).is_approved)
+
+    async def test_revoking_admin_email_grant_keeps_admin_access(self):
+        async with self.sessions() as session:
+            entry = AllowedEmail(email="admin@buyerly.com", added_by="admin")
+            session.add(entry)
+            await session.commit()
+            entry_id = entry.id
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+            headers = await self._login(client, "admin_user", "adminpassword123")
+            response = await client.delete(f"/api/auth/admin/allowed-emails/{entry_id}", headers=headers)
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(response.json()["revoked_user_ids"], [])
+            self.assertEqual((await client.get("/api/auth/admin/allowed-emails")).status_code, 200)
+
 
 class TestEmailDelivery(unittest.IsolatedAsyncioTestCase):
     async def test_send_email_strips_key_and_sets_user_agent(self):
