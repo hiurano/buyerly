@@ -23,6 +23,16 @@ class RuleAction(str, Enum):
     INCREASE_BUDGET = "INCREASE_BUDGET"       # Raise the ad set daily budget by N%
     DECREASE_BUDGET = "DECREASE_BUDGET"       # Lower the ad set daily budget by N%
 
+
+# What each stored rule `action` does once its conditions match.
+RULE_ACTION_BY_TYPE = {
+    "turn_off": RuleAction.STOP,
+    "notify_only": RuleAction.NOTIFY_ONLY,
+    "turn_on": RuleAction.AUTO_REACTIVATE,
+    "increase_budget": RuleAction.INCREASE_BUDGET,
+    "decrease_budget": RuleAction.DECREASE_BUDGET,
+}
+
 @dataclass
 class RuleEvaluationResult:
     action: RuleAction
@@ -171,14 +181,6 @@ class RuleEngine:
                 RuleAction.NOOP: 0
             }
             return priorities.get(action, 0)
-            
-        action_map = {
-            "turn_off": RuleAction.STOP,
-            "notify_only": RuleAction.NOTIFY_ONLY,
-            "turn_on": RuleAction.AUTO_REACTIVATE,
-            "increase_budget": RuleAction.INCREASE_BUDGET,
-            "decrease_budget": RuleAction.DECREASE_BUDGET,
-        }
 
         triggered_actions = []
         invalid_rule_seen = False
@@ -270,7 +272,7 @@ class RuleEngine:
             triggered = any_match if condition_logic == "or" else all_match
 
             if triggered:
-                rule_action = action_map.get(action_type)
+                rule_action = RULE_ACTION_BY_TYPE.get(action_type)
                 if rule_action is None:
                     invalid_rule_seen = True
                     continue

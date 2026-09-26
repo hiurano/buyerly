@@ -2897,6 +2897,10 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(first.status_code, 200)
         self.assertFalse(first.json()["already_reverted"])
+        self.assertEqual(
+            first.json()["message"],
+            "Action undone and confirmed by Meta. Rules won't turn this ad set off again today.",
+        )
         self.assertEqual(second.status_code, 200)
         self.assertTrue(second.json()["already_reverted"])
         get_state.assert_awaited_once_with("undo_stop_adset", "mock_token", currency="USD")

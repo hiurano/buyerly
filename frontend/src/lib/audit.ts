@@ -93,6 +93,16 @@ export function auditEventTitle(event: AuditEventItem): string {
   return humanizeAuditValue(event.action || event.event_type || event.category);
 }
 
+const UNDO_ENTITY_NOUNS: Record<string, string> = { campaign: 'campaign', adset: 'ad set', ad: 'ad' };
+
+/** Undoing a rule's action also keeps the rules from repeating it on that entity until the day ends. */
+export function auditUndoHint(event: AuditEventItem): string {
+  const restore = 'Buyerly will ask Meta to restore the state recorded before this action.';
+  if (event.category !== 'RULE_ACTION' || event.actor_type !== 'system') return restore;
+  const noun = UNDO_ENTITY_NOUNS[event.entity_level || 'adset'] ?? 'ad set';
+  return `${restore} Rules won't repeat it on this ${noun} today.`;
+}
+
 export function auditEventTarget(event: AuditEventItem): string {
   return (
     event.entity_name ||

@@ -5,6 +5,7 @@ import type { AuditEventItem, AuditEventListResponse, AuditInboxFilter } from '@
 import {
   auditEventTarget,
   auditEventTitle,
+  auditUndoHint,
   fetchAuditEvents,
   formatAuditTimestamp,
   humanizeAuditValue,
@@ -351,7 +352,7 @@ export const InboxView: React.FC = () => {
                     <p className="mt-1 text-[14px] leading-relaxed text-[var(--text-tertiary)]">
                       {selectedEvent.is_reverted
                         ? 'This action has already been undone.'
-                        : 'Buyerly will ask Meta to restore the state recorded before this action.'}
+                        : auditUndoHint(selectedEvent)}
                     </p>
                     {selectedEvent.can_undo && (
                       <Button
