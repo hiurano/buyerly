@@ -154,7 +154,9 @@ class _RoutesModule(sys.modules[__name__].__class__):
         super().__setattr__(name, value)
         if name == "async_session_maker":
             import api.deps
+            import api.meta_oauth
             import api.routers.accounts
+            import api.routers.admin_support
             import api.routers.adsets
             import api.routers.analytics
             import api.routers.audit
@@ -165,13 +167,16 @@ class _RoutesModule(sys.modules[__name__].__class__):
             import api.routers.rules
             import api.routers.settings
             import api.routers.summary
+            import api.routers.trash
             import api.routers.workspaces
             import api.routers.health
             import database.db
 
             database.db.async_session_maker = value
             api.deps.async_session_maker = value
+            api.meta_oauth.async_session_maker = value
             api.routers.accounts.async_session_maker = value
+            api.routers.admin_support.async_session_maker = value
             api.routers.adsets.async_session_maker = value
             api.routers.analytics.async_session_maker = value
             api.routers.audit.async_session_maker = value
@@ -182,6 +187,7 @@ class _RoutesModule(sys.modules[__name__].__class__):
             api.routers.rules.async_session_maker = value
             api.routers.settings.async_session_maker = value
             api.routers.summary.async_session_maker = value
+            api.routers.trash.async_session_maker = value
             api.routers.workspaces.async_session_maker = value
             api.routers.health.async_session_maker = value
 
