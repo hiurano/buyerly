@@ -2,7 +2,7 @@
 
 Дата: 2026-09-25. База: `91a0c95` (main после PR #171).
 Основание: [аудит A01–A25](docs/PROJECT_CLEANUP_AUDIT.md).
-Статус: **C01 слит (PR #174, `b0ff681`); C02 слит (PR #176, `fb77c48`), post-merge CI/CD зелёный; C03 слит (PR #179, `d9fd84d`), post-merge CI/CD зелёный; C04 слит (PR #184, `e986ed8`), post-merge CI/CD зелёный со второй попытки; C05–C24 ещё не реализованы**.
+Статус: **C01 слит (PR #174, `b0ff681`); C02 слит (PR #176, `fb77c48`), post-merge CI/CD зелёный; C03 слит (PR #179, `d9fd84d`), post-merge CI/CD зелёный; C04 слит (PR #184, `e986ed8`), post-merge CI/CD зелёный со второй попытки; C05 — PR #206 на review; C06–C24 ещё не реализованы**.
 Прежний план сохранён в [архиве public website](docs/archive/plans/implementation_plan_public_website.md).
 
 ## Цель и критерии готовности
@@ -53,7 +53,7 @@ C20 желательно завершить до C17/C18, чтобы visual gate
 | C02 Meta client/cache/lifecycle | C01 | Средний | [PR #176](https://github.com/hiurano/buyerly/pull/176): слит, `fb77c48`, post-merge CI/CD зелёный |
 | C03 Async workspace/account state | — | Средний | [PR #179](https://github.com/hiurano/buyerly/pull/179): слит, `d9fd84d`, post-merge CI/CD зелёный |
 | C04 Parent hierarchy contract | C01 | Малый | [PR #184](https://github.com/hiurano/buyerly/pull/184): слит, `e986ed8`, post-merge CI/CD зелёный со второй попытки |
-| C05 Timezone drill-down | C04 | Средний | Ожидает |
+| C05 Timezone drill-down | C04 | Средний | [PR #206](https://github.com/hiurano/buyerly/pull/206): открыт, ждёт review |
 | C06 Backup cron environment | — | Средний | Ожидает |
 | C07 Atomic backup/restore formats | C06 | Средний | Ожидает |
 | C08 Полнота DR | C07 | Несколько PR | Ожидает |
@@ -204,6 +204,24 @@ fact/timezone tests. Найти разрешённый account для campaign/a
 и open_day согласованы, parent lookup строго workspace-scoped.
 **Проверки:** fixed clock около полуночи, UTC−/UTC+, DST, чужой/неизвестный parent,
 comparison/trend. Семантику Today comparison не менять.
+
+Реализация C05: [PR #206](https://github.com/hiurano/buyerly/pull/206), ветка
+`fix/analytics-drilldown-timezone`. A05 подтверждён на `ddc1568`: для campaign/adset
+parent окна считались по UTC. Теперь `_resolve_hierarchy_parent` находит кабинет
+до расчёта дат: parent-кабинет — среди аккаунтов workspace, campaign/adset — по
+фактам этого workspace, и их кабинет тоже должен в нём состоять. Прямой drill-down
+ограничен этим кабинетом, часы читаются один раз на запрос. Parent без кабинета
+(чужой, неизвестный, пустой, от удалённого кабинета, неоднозначный) получает 404
+в hierarchy и timeseries вместо пустого ответа по UTC; проверка только
+parent-кабинета в роутере удалена как дублирующая.
+Проверки: fixed clock около местной полуночи для UTC−4, UTC+9 и первого вечера
+после DST (UTC−5); drill-down и account-wide на одну дату, yesterday и baseline,
+trend/open_day/timezone, Today без сравнения; отказ для пяти видов parent; API:
+drill-down, 404 и timezone тренда. Локально на одноразовых Postgres 16 и Redis
+через Nix прошли `test_analytics_fact_store` (14) и `test_documentation`;
+контрольный прогон с UTC для drill-down падает. Полный набор — CI в PR.
+Ограничения: реальный Meta не проверялся; UI и схема не менялись, откат —
+предыдущий образ. PR не слит; требуется подтверждение пользователя.
 
 ### C06 — Явно настроить environment backup cron (A06)
 
