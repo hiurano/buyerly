@@ -237,8 +237,9 @@ empty file, cleanup. Restore только в disposable CI DB; старые back
 ### C08 — Проверить заявленный recovery path целиком (A08)
 
 **C08-a, `test/production-backup-restore-path`:** isolated CI исполняет
-production scripts, проверяет восстановленные контрольные rows и Alembic head,
-а не только копию pipeline из YAML.
+production scripts, проверяет восстановленные контрольные rows и Alembic head.
+Ночной `restore-drill.yml`, копировавший pipeline в YAML, удалён в
+[PR #202](https://github.com/hiurano/buyerly/pull/202), так что эта проверка пишется с нуля.
 **C08-b, `feat/uploads-backup-recovery`:** после определения recovery scope
 добавить uploads, references/permissions и согласованность DB/files; key/config
 dependencies описать отдельно.

@@ -193,13 +193,13 @@ bash scripts/restore_db.sh --latest-local
 bash scripts/restore_db.sh --download-latest-offsite
 ```
 
-### Автоматические учения по восстановлению (Restore Drills)
+### Учения по восстановлению (Restore Drills)
 
 Для проверки целостности бэкапа без риска задеть боевую базу используется изолированный скрипт:
 ```bash
 bash scripts/drill_restore.sh
 ```
-Drill создает временную изолированную БД `buyerly_restore_drill`, разворачивает дамп, валидирует таблицы, Alembic-миграцию и JSONB-поля, после чего автоматически очищает тестовые ресурсы. В GitHub Actions учения запускаются автоматически каждую ночь по расписанию (`.github/workflows/restore-drill.yml`).
+Drill создает временную изолированную БД `buyerly_restore_drill`, разворачивает дамп, валидирует таблицы, Alembic-миграцию и JSONB-поля, после чего автоматически очищает тестовые ресурсы. Скрипт запускается на сервере вручную: по расписанию drill не выполняется ни на VPS, ни в CI.
 
 `migrate` изменяет production-схему только через `alembic upgrade head`. Одновременный запуск блокируется PostgreSQL advisory lock; после миграции контейнер сверяет текущий revision с Alembic head и проверяет наличие всех таблиц и колонок из моделей. Для исторической базы без `alembic_version` разрешён только одноразовый переход на явно зафиксированный baseline `0009_web_sessions`, причём перед stamp выполняется fail-closed проверка схемы. `create_all()` и ручные `ALTER TABLE` в production-runner не используются.
 

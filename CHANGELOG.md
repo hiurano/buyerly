@@ -238,6 +238,8 @@
   - Актуализирован план и чек-лист интеграции в `docs/FACEBOOK_AUTHORIZATION_PLAN.md`: зафиксированы `App ID` (`1363654095968021`), `Login Configuration ID` (`1796379231385440`), настройки редиректов `https://buyerly.app/api/meta/oauth/callback`, привязка домена и публичных политик.
 
 ### Removed
+- Удалён ночной workflow `Automated PostgreSQL Restore Drill` (`.github/workflows/restore-drill.yml`, [PR #202](https://github.com/hiurano/buyerly/pull/202)). Он поднимал пустой PostgreSQL на раннере GitHub, накатывал миграции, вставлял две синтетические строки, шифровал дамп, восстанавливал его в соседнюю базу и проверял список таблиц. Production-бэкапы и скрипты `backup_db.sh`, `restore_db.sh`, `drill_restore.sh` он не вызывал, VPS и S3 не трогал, поэтому зелёные прогоны ничего не говорили о настоящих бэкапах: на VPS нет backup cron и offsite, а архив деплоя до #185 удалялся через секунды. Накат миграций на пустую базу проверяет `test_alembic_upgrade_head_applies_successfully` в основном CI на каждом push и PR. Ручной `scripts/drill_restore.sh` по реальному бэкапу остался, проверку production scripts в CI добавит C08-a.
+
 - Плашки с результатом действия под строкой в Statistics и над таблицами Statistics, Ads Manager и Rules, их кнопки Undo и Dismiss, а также фраза о том, что сохранённые данные Meta обновятся при следующей синхронизации. Отмена теперь только через Ctrl+Z, отмена в Inbox осталась как была.
 
 - Удалён вход через Telegram Mini App: заголовки `Authorization: tma <initData>` и `X-Init-Data`, настройки `BOT_TOKEN` и `TELEGRAM_INIT_DATA_MAX_AGE_SECONDS`. `OTP_PEPPER` теперь обязателен, запасного `BOT_TOKEN` больше нет. API-тесты авторизуются через web-сессию (cookie + CSRF).
