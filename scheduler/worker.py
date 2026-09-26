@@ -5,15 +5,17 @@ import json
 import hashlib
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, time as day_time, timezone
 from typing import Optional, Callable, Any, List, Dict
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import aliased
 
 from database.db import async_session_maker
 from database.models import (
     Account,
     AppSettings,
+    AuditEvent,
     AutomationRuntimeState,
     AutomationScheduleState,
     MetaConnection,
@@ -32,7 +34,7 @@ from core.timezones import (
 )
 from meta_api.client import MetaClient
 from core.metrics import normalize_rule_level
-from rules.engine import RuleEngine, RuleAction, RuleEvaluationResult
+from rules.engine import RULE_ACTION_BY_TYPE, RuleEngine, RuleAction, RuleEvaluationResult
 from services.inventory_cache import AdsetInventoryService, PostgreSQLInventoryCache
 from services.account_health import record_account_health
 from services.analytics_store import AnalyticsFactService, resolve_account_period_dates
@@ -790,6 +792,89 @@ class MonitoringWorker:
         if reset_count:
             await session.commit()
         return reset_count
+
+    async def _load_undone_rule_actions(
+        self,
+        session,
+        account: Account,
+        *,
+        now: float,
+    ) -> dict[str, set[str]]:
+        """Rule actions the buyer undid today in this ad account, by entity.
+
+        An undo overrules the rules: repeating the same action on the same
+        entity minutes later would take the decision back. The ad account's
+        day bounds it, like the `today` window most rules read.
+        """
+        clock = resolve_account_clock(account.timezone_name)
+        local_now = datetime.fromtimestamp(now, clock.zone if clock else timezone.utc)
+        day_start = datetime.combine(local_now.date(), day_time.min, tzinfo=local_now.tzinfo)
+        source = aliased(AuditEvent)
+        rows = await session.execute(
+            select(AuditEvent.entity_id, source.event_type)
+            .join(source, AuditEvent.reverts_event_id == source.id)
+            .where(
+                AuditEvent.workspace_id == account.workspace_id,
+                AuditEvent.account_id == str(account.account_id),
+                AuditEvent.event_type == "UNDO_ACTION",
+                AuditEvent.status == "SUCCESS",
+                AuditEvent.created_at >= day_start.astimezone(timezone.utc),
+                source.category == "RULE_ACTION",
+                source.actor_type == "system",
+            )
+        )
+        undone: dict[str, set[str]] = {}
+        for entity_id, event_type in rows:
+            undone.setdefault(str(entity_id), set()).add(str(event_type))
+        return undone
+
+    @staticmethod
+    def _rules_not_undone(
+        rules: list[dict[str, Any]],
+        undone: Optional[set[str]],
+    ) -> list[dict[str, Any]]:
+        """Drop the rules whose action the buyer undid on this entity today."""
+        if not undone:
+            return rules
+        kept = []
+        for rule in rules:
+            action = RULE_ACTION_BY_TYPE.get(str(rule.get("action") or ""))
+            if action is None or action.value not in undone:
+                kept.append(rule)
+        return kept
+
+    async def _is_cooling_down(
+        self,
+        session,
+        account: Account,
+        evaluation: RuleEvaluationResult,
+        *,
+        now: float,
+    ) -> bool:
+        """Whether this rule already acted on this entity within its cooldown.
+
+        Checked before a STOP confirmation starts, so a rule waiting out its
+        cooldown stays quiet instead of recording a candidate and a skip in the
+        history on every check. A PENDING slot still goes through the claim so
+        it gets reconciled.
+        """
+        cooldown_seconds = max(0, int(evaluation.cooldown_minutes or 0)) * 60
+        if cooldown_seconds <= 0:
+            return False
+        execution_key, _ = self._execution_key(account, evaluation)
+        state = (
+            await session.execute(
+                select(RuleExecutionState).where(
+                    RuleExecutionState.execution_key == execution_key
+                )
+            )
+        ).scalar_one_or_none()
+        return (
+            state is not None
+            and state.status != "PENDING"
+            and state.last_success_at is not None
+            and now - float(state.last_success_at) < cooldown_seconds
+        )
 
     @staticmethod
     def _finish_execution(
@@ -1560,6 +1645,11 @@ class MonitoringWorker:
                     stop_rules_due = any(
                         self._is_critical_stop_rule(rule) for rule in due_rules
                     )
+                    undone_actions = await self._load_undone_rule_actions(
+                        session,
+                        acc,
+                        now=now,
+                    )
 
                     entities: list[dict[str, Any]] = [
                         {
@@ -1616,7 +1706,10 @@ class MonitoringWorker:
                             entity=adset,
                             account=acc,
                             insights_by_window=current_adset_windows,
-                            active_rules_override=due_rules,
+                            active_rules_override=self._rules_not_undone(
+                                due_rules,
+                                undone_actions.get(a_id),
+                            ),
                         )
                         if eval_res.action == RuleAction.NOOP:
                             if stop_rules_due:
@@ -1671,6 +1764,10 @@ class MonitoringWorker:
                         else:
                             observed_state = {"status": adset.get("status", "UNKNOWN")}
                             desired_state = dict(observed_state)
+
+                        if await self._is_cooling_down(session, acc, eval_res, now=now):
+                            stats["actions_skipped"] += 1
+                            continue
 
                         if eval_res.action == RuleAction.STOP:
                             confirmed, confirmation_reason, confirmation_state = (
