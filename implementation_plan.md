@@ -2,7 +2,7 @@
 
 Дата: 2026-09-25. База: `91a0c95` (main после PR #171).
 Основание: [аудит A01–A25](docs/PROJECT_CLEANUP_AUDIT.md).
-Статус: **C01 слит (PR #174, `b0ff681`); C02 слит (PR #176, `fb77c48`), post-merge CI/CD зелёный; C03 слит (PR #179, `d9fd84d`), post-merge CI/CD зелёный; C04 слит (PR #184, `e986ed8`), post-merge CI/CD зелёный со второй попытки; C05 — PR #206 на review; C06–C24 ещё не реализованы**.
+Статус: **C01 слит (PR #174, `b0ff681`); C02 слит (PR #176, `fb77c48`), post-merge CI/CD зелёный; C03 слит (PR #179, `d9fd84d`), post-merge CI/CD зелёный; C04 слит (PR #184, `e986ed8`), post-merge CI/CD зелёный со второй попытки; C05 слит (PR #206, `44e03d2`), post-merge CI/CD зелёный; C06–C24 ещё не реализованы**.
 Прежний план сохранён в [архиве public website](docs/archive/plans/implementation_plan_public_website.md).
 
 ## Цель и критерии готовности
@@ -35,7 +35,7 @@ branch stacking запрещён. При общей директории с др
 
 Задание для следующего чата:
 
-> Выполни C05 из implementation_plan.md. Прочитай AGENTS.md и связанные выводы
+> Выполни C06 из implementation_plan.md. Прочитай AGENTS.md и связанные выводы
 > docs/PROJECT_CLEANUP_AUDIT.md, сверь их с текущим main. Работай в отдельной ветке,
 > выполни только этот этап, открой PR и проверь CI. Обнови статус этапа.
 > Не сливай PR без моего подтверждения.
@@ -53,7 +53,7 @@ C20 желательно завершить до C17/C18, чтобы visual gate
 | C02 Meta client/cache/lifecycle | C01 | Средний | [PR #176](https://github.com/hiurano/buyerly/pull/176): слит, `fb77c48`, post-merge CI/CD зелёный |
 | C03 Async workspace/account state | — | Средний | [PR #179](https://github.com/hiurano/buyerly/pull/179): слит, `d9fd84d`, post-merge CI/CD зелёный |
 | C04 Parent hierarchy contract | C01 | Малый | [PR #184](https://github.com/hiurano/buyerly/pull/184): слит, `e986ed8`, post-merge CI/CD зелёный со второй попытки |
-| C05 Timezone drill-down | C04 | Средний | [PR #206](https://github.com/hiurano/buyerly/pull/206): открыт, ждёт review |
+| C05 Timezone drill-down | C04 | Средний | [PR #206](https://github.com/hiurano/buyerly/pull/206): слит, `44e03d2`, post-merge CI/CD зелёный |
 | C06 Backup cron environment | — | Средний | Ожидает |
 | C07 Atomic backup/restore formats | C06 | Средний | Ожидает |
 | C08 Полнота DR | C07 | Несколько PR | Ожидает |
@@ -221,7 +221,10 @@ drill-down, 404 и timezone тренда. Локально на одноразо
 через Nix прошли `test_analytics_fact_store` (14) и `test_documentation`;
 контрольный прогон с UTC для drill-down падает. Полный набор — CI в PR.
 Ограничения: реальный Meta не проверялся; UI и схема не менялись, откат —
-предыдущий образ. PR не слит; требуется подтверждение пользователя.
+предыдущий образ. [CI run 36245699934](https://github.com/hiurano/buyerly/actions/runs/36245699934)
+на `0be77ab` прошёл: frontend и 6 test shards. PR слит в `44e03d2`;
+[post-merge CI/CD](https://github.com/hiurano/buyerly/actions/runs/36246056555) успешен,
+включая Deploy to Production VPS.
 
 ### C06 — Явно настроить environment backup cron (A06)
 
@@ -463,4 +466,4 @@ Dev tooling отделить от production requirements при необход�
 Невыполненные продуктовые решения перенести в основной backlog со ссылкой сюда;
 не считать их закрытыми автоматически.
 
-Рекомендуемый следующий чат: **C05 — timezone drill-down**.
+Рекомендуемый следующий чат: **C06 — backup cron environment**.
