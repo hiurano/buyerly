@@ -1,7 +1,7 @@
 import asyncio
 import json
 import unittest
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 from zoneinfo import ZoneInfo
 from sqlalchemy import select
@@ -796,6 +796,122 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             self.assertIsInstance(state.details, dict)
             self.assertEqual(details["first_seen_at"], now[0])
             self.assertEqual(details["observations"], 1)
+
+    async def test_an_undone_rule_stop_waits_for_the_next_account_day(self):
+        hawaii = ZoneInfo("Pacific/Honolulu")
+        noon = datetime(2026, 9, 26, 12, 0, tzinfo=hawaii).timestamp()
+        now = [noon]
+        async with self.test_session_maker() as session:
+            session.add(AppSettings(stop_confirmation_minutes=0))
+            await session.commit()
+        mock_meta = MockMetaClient()
+        worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: now[0])
+
+        await worker.run_cycle()
+        self.assertEqual(mock_meta.status_changes, [("adset_1", "PAUSED")])
+
+        # The buyer undoes the stop: Meta runs the ad set again and the history
+        # links the reversal to the rule's action.
+        mock_meta.adsets_state["adset_1"]["status"] = "ACTIVE"
+        mock_meta.adsets_state["adset_1"]["effective_status"] = "ACTIVE"
+        async with self.test_session_maker() as session:
+            stop = (
+                await session.execute(
+                    select(AuditEvent).where(AuditEvent.event_type == "STOP")
+                )
+            ).scalar_one()
+            session.add(
+                AuditEvent(
+                    workspace_id=stop.workspace_id,
+                    owner_user_id=stop.owner_user_id,
+                    actor_type="user",
+                    actor_id=str(stop.owner_user_id),
+                    category="MANUAL_ACTION",
+                    event_type="UNDO_ACTION",
+                    status="SUCCESS",
+                    account_id=stop.account_id,
+                    adset_id="adset_1",
+                    entity_level="adset",
+                    entity_id="adset_1",
+                    action="UNDO_STOP",
+                    reverts_event_id=stop.id,
+                    created_at=datetime.fromtimestamp(noon + 60, timezone.utc),
+                )
+            )
+            await session.commit()
+
+        # For the rest of the ad account's day the rule leaves the ad set
+        # alone, although its conditions still match.
+        for minutes in (5, 30, 11 * 60 + 50):
+            now[0] = noon + minutes * 60
+            await worker.run_cycle()
+        self.assertEqual(mock_meta.status_changes, [("adset_1", "PAUSED")])
+
+        # Midnight in Hawaii ends the undo's hold.
+        now[0] = datetime(2026, 9, 27, 0, 5, tzinfo=hawaii).timestamp()
+        await worker.run_cycle()
+        self.assertEqual(
+            mock_meta.status_changes,
+            [("adset_1", "PAUSED"), ("adset_1", "PAUSED")],
+        )
+
+    async def test_a_rule_waiting_out_its_cooldown_stays_out_of_the_history(self):
+        async with self.test_session_maker() as session:
+            session.add(
+                AppSettings(
+                    critical_rule_interval_minutes=2,
+                    stop_confirmation_minutes=5,
+                )
+            )
+            account = (
+                await session.execute(select(Account).where(Account.account_id == self.account_id))
+            ).scalar_one()
+            rules = json.loads(account.active_rules)
+            rules[0]["cooldown_minutes"] = 60
+            account.active_rules = json.dumps(rules)
+            await session.commit()
+
+        start = 5_000.0
+        now = [start]
+        mock_meta = MockMetaClient()
+        worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: now[0])
+
+        await worker.run_cycle()
+        now[0] = start + 6 * 60
+        await worker.run_cycle()
+        self.assertEqual(mock_meta.status_changes, [("adset_1", "PAUSED")])
+
+        async def recorded_checks():
+            async with self.test_session_maker() as session:
+                return (
+                    await session.execute(
+                        select(AuditEvent.event_type)
+                        .where(
+                            AuditEvent.event_type.in_(
+                                ("STOP_CONFIRMATION_STARTED", "RULE_ACTION_COOLDOWN")
+                            )
+                        )
+                        .order_by(AuditEvent.id)
+                    )
+                ).scalars().all()
+
+        # The ad set is turned back on in Meta while the rule cools down. Checks
+        # three minutes apart would confirm a new candidate and then skip it.
+        mock_meta.adsets_state["adset_1"]["status"] = "ACTIVE"
+        mock_meta.adsets_state["adset_1"]["effective_status"] = "ACTIVE"
+        for minutes in range(9, 34, 3):
+            now[0] = start + minutes * 60
+            await worker.run_cycle()
+        self.assertEqual(mock_meta.status_changes, [("adset_1", "PAUSED")])
+        self.assertEqual(await recorded_checks(), ["STOP_CONFIRMATION_STARTED"])
+
+        # Once the cooldown is over the rule looks for a candidate again.
+        now[0] = start + 70 * 60
+        await worker.run_cycle()
+        self.assertEqual(
+            await recorded_checks(),
+            ["STOP_CONFIRMATION_STARTED", "STOP_CONFIRMATION_STARTED"],
+        )
 
     async def test_rule_check_interval_is_enforced_without_extra_meta_calls(self):
         async with self.test_session_maker() as session:

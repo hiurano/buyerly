@@ -28,6 +28,14 @@ REVERSIBLE_EVENT_TYPES = {
 }
 MUTATING_EVENT_TYPES = REVERSIBLE_EVENT_TYPES | {"UNDO_ACTION"}
 ENTITY_NOUNS = {"adset": "ad set", "campaign": "campaign", "ad": "ad"}
+# Undoing a rule's action keeps the rules from repeating it on the same entity
+# until the ad account's day ends; the worker reads the undo from the history.
+RULE_HOLD_PHRASES = {
+    "STOP": "turn this {noun} off",
+    "AUTO_REACTIVATE": "turn this {noun} on",
+    "INCREASE_BUDGET": "raise this {noun}'s budget",
+    "DECREASE_BUDGET": "lower this {noun}'s budget",
+}
 
 
 def undo_entity_level(event: AuditEvent) -> str:
@@ -117,6 +125,16 @@ def undo_spec_for_event(event: AuditEvent) -> UndoSpec:
             {"daily_budget": previous_budget},
         )
     raise UndoError("This action cannot be undone safely.")
+
+
+def rule_hold_notice(event: AuditEvent, entity_level: str) -> str:
+    """What the rules stop repeating today once this action is undone."""
+    if event.category != "RULE_ACTION" or event.actor_type != "system":
+        return ""
+    phrase = RULE_HOLD_PHRASES.get(str(event.event_type or "").upper())
+    if phrase is None:
+        return ""
+    return f"Rules won't {phrase.format(noun=ENTITY_NOUNS[entity_level])} again today."
 
 
 def state_matches(spec: UndoSpec, current: dict[str, Any], target: dict[str, Any]) -> bool:
@@ -454,12 +472,15 @@ async def reverse_audit_event(
             500,
         ) from error
 
+    hold_notice = rule_hold_notice(source, entity_level)
     return {
         "success": True,
         "already_reverted": False,
         "original_event_id": source.id,
         "reversal_event_id": reversal.id,
-        "message": "Action undone and confirmed by Meta.",
+        "message": " ".join(
+            part for part in ("Action undone and confirmed by Meta.", hold_notice) if part
+        ),
     }
 
 
