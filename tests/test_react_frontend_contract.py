@@ -850,6 +850,20 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertNotIn("before_state", self.inbox_view)
         self.assertNotIn("after_state", self.inbox_view)
 
+    def test_inbox_names_events_in_plain_words(self):
+        # A stop candidate, a cooldown skip and the stop itself all carry action
+        # STOP, so the title comes from the event type; the row names the entity.
+        for contract in (
+            "AUDIT_EVENT_TITLES[event.event_type]",
+            "STOP_CONFIRMATION_STARTED: 'Rechecking before turning off'",
+            "STOP: 'Turned off'",
+            "NOTIFY_ONLY: 'Rule alert'",
+            "MANUAL_PAUSE: 'Turned off manually'",
+            "UNDO_ACTION: 'Undone'",
+        ):
+            self.assertIn(contract, self.audit_lib)
+        self.assertIn("auditEventSummary(item)", self.inbox_item_row)
+
 
 if __name__ == "__main__":
     unittest.main()

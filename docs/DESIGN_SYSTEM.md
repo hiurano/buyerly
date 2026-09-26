@@ -87,6 +87,7 @@ Buyerly reports actions the way Linear does, measured in the product on 2026-09-
 - reads the append-only activity stream from `/api/audit-events`; it does not invent read, archive, snooze or delete state that the audit model does not store;
 - supports server-backed status filters, search and pagination, while detail renders presentation-safe event fields instead of raw state payloads;
 - offers Undo only when the server returns `can_undo`, and leaves authorization and safety checks to the workspace-scoped undo endpoint;
+- titles say what happened in plain words from the event type, not the raw action, and the row's second line starts with the affected campaign, ad set or ad;
 - each interactive row has a real destination or handler;
 - switches from the desktop master/detail split to one pane at a time below `md`, with an explicit Back action from event detail.
 
