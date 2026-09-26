@@ -200,6 +200,11 @@ window и trend могут относиться к другим датам, че
 произвольному account ID клиента. Тесты: фиксированное время, timezone по обе
 стороны UTC, campaign/adset parents, DST, чужой/неизвестный parent.
 
+Исправление после аудита: C05 — кабинет campaign/adset parent находится по фактам
+workspace до расчёта окон, неизвестный или чужой parent получает 404; статус и
+проверки записаны в [плане C05](../implementation_plan.md#c05--считать-drill-down-в-timezone-кабинета-a05).
+Исходное наблюдение выше остаётся снимком базы аудита.
+
 ### A06. Окружение backup cron
 
 [setup_backup_cron.sh](../scripts/setup_backup_cron.sh):12, 27 запускает

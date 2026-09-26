@@ -1,7 +1,7 @@
 import json
 import time
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import AsyncMock, patch
 import httpx
 from sqlalchemy import select
@@ -24,6 +24,7 @@ from database.models import (
 from meta_api.client import MetaClient
 from services.analytics_store import (
     AnalyticsFactService,
+    HierarchyParentNotFound,
     resolve_account_period_dates,
     resolve_previous_period_dates,
     resolve_recent_dates,
@@ -405,6 +406,7 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
                 parent_entity_id=self.acc1.account_id,
                 entity_level="campaign",
                 period="today",
+                user_accounts=[self.acc1],
             )
             self.assertEqual(len(breakdown_w1), 1)
             self.assertEqual(breakdown_w1[0]["entity_id"], "cmp_alpha_1")
@@ -433,14 +435,15 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
             self.assertEqual([item["entity_id"] for item in direct_adsets], ["adset_alpha_1"])
 
             # Verify Tenant Isolation: Workspace 1 query MUST NOT see Workspace 2 campaigns
-            breakdown_leak_attempt, _ = await AnalyticsFactService.get_hierarchy_breakdown(
-                session,
-                workspace_id=self.ws1.id,
-                parent_entity_id=self.acc3.account_id,
-                entity_level="campaign",
-                period="today",
-            )
-            self.assertEqual(len(breakdown_leak_attempt), 0)
+            with self.assertRaises(HierarchyParentNotFound):
+                await AnalyticsFactService.get_hierarchy_breakdown(
+                    session,
+                    workspace_id=self.ws1.id,
+                    parent_entity_id=self.acc3.account_id,
+                    entity_level="campaign",
+                    period="today",
+                    user_accounts=[self.acc1, self.acc2],
+                )
 
     async def test_hierarchy_rows_keep_their_own_parent(self):
         async with self.test_session_maker() as session:
@@ -520,6 +523,163 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
                 await parents("set_a2", "ad"),
                 {"ad_a2_x": "set_a2", "ad_a2_y": "set_a2"},
             )
+
+    async def test_drill_down_reads_the_account_local_day(self):
+        """A campaign parent reads its ad account's dates, on either side of UTC."""
+        cases = (
+            # West of UTC in the evening: UTC has already started the next day.
+            ("America/New_York", datetime(2026, 9, 26, 2, 30, tzinfo=timezone.utc), "2026-09-25"),
+            # East of UTC just after midnight: UTC is still on the previous day.
+            ("Asia/Tokyo", datetime(2026, 9, 25, 15, 30, tzinfo=timezone.utc), "2026-09-26"),
+            # The first evening after the clocks went back: UTC-5 now, not UTC-4.
+            ("America/New_York", datetime(2026, 11, 2, 4, 30, tzinfo=timezone.utc), "2026-11-01"),
+        )
+
+        async def breakdown(session, parent_id, period, now, compare=False):
+            items, comparison = await AnalyticsFactService.get_hierarchy_breakdown(
+                session,
+                workspace_id=self.ws1.id,
+                parent_entity_id=parent_id,
+                entity_level="adset",
+                period=period,
+                user_accounts=[self.acc1],
+                compare=compare,
+                now_utc=now,
+            )
+            return {item["entity_id"]: item for item in items}, comparison
+
+        async with self.test_session_maker() as session:
+            for index, (zone, now, local_today) in enumerate(cases):
+                with self.subTest(zone=zone, now=now.isoformat()):
+                    # Reading UTC's date instead would land on another day.
+                    self.assertNotEqual(now.date().isoformat(), local_today)
+                    self.acc1.timezone_name = zone
+                    campaign, adset = f"cmp_clock_{index}", f"set_clock_{index}"
+                    today = date.fromisoformat(local_today)
+                    window = [(today - timedelta(days=back)).isoformat() for back in (2, 1, 0)]
+                    spend_by_day = dict(zip(window, (10.0, 20.0, 40.0)))
+                    await AnalyticsFactService.upsert_entity_facts(
+                        session,
+                        workspace_id=self.ws1.id,
+                        account_id=self.acc1.account_id,
+                        facts=[
+                            {
+                                "entity_level": level,
+                                "entity_id": entity_id,
+                                "entity_name": entity_id,
+                                "parent_entity_id": parent_id,
+                                "date": day,
+                                "currency": "USD",
+                                "spend": spend,
+                            }
+                            for day, spend in spend_by_day.items()
+                            for level, entity_id, parent_id in (
+                                ("campaign", campaign, self.acc1.account_id),
+                                ("adset", adset, campaign),
+                            )
+                        ],
+                    )
+                    await session.commit()
+
+                    drilled, today_comparison = await breakdown(
+                        session, campaign, "today", now, compare=True
+                    )
+                    self.assertEqual({key: row["spend"] for key, row in drilled.items()}, {adset: 40.0})
+                    # The account-wide view of the same level shows the same day.
+                    account_wide, _ = await breakdown(session, self.acc1.account_id, "today", now)
+                    self.assertEqual(account_wide[adset]["spend"], 40.0)
+                    # A day in progress stays without a baseline at every depth.
+                    self.assertFalse(today_comparison["available"])
+                    self.assertTrue(today_comparison["current_includes_open_day"])
+
+                    yesterday, comparison = await breakdown(
+                        session, campaign, "yesterday", now, compare=True
+                    )
+                    self.assertEqual(yesterday[adset]["spend"], 20.0)
+                    self.assertEqual(comparison["dates"], [window[0]])
+                    self.assertEqual(yesterday[adset]["previous"]["spend"], 10.0)
+
+                    trend = await AnalyticsFactService.get_entity_timeseries(
+                        session,
+                        workspace_id=self.ws1.id,
+                        parent_entity_id=campaign,
+                        entity_level="adset",
+                        days=3,
+                        user_accounts=[self.acc1],
+                        now_utc=now,
+                    )
+                    self.assertEqual(trend["timezone"], zone)
+                    self.assertEqual([point["date"] for point in trend["points"]], window)
+                    self.assertEqual([point["spend"] for point in trend["points"]], [10.0, 20.0, 40.0])
+                    self.assertEqual(trend["open_day"], local_today)
+
+    async def test_drill_down_refuses_a_parent_outside_the_workspace_accounts(self):
+        """A parent with no account in this workspace is refused, never read on UTC."""
+
+        def fact(level, entity_id, parent_id):
+            return {
+                "entity_level": level,
+                "entity_id": entity_id,
+                "entity_name": entity_id,
+                "parent_entity_id": parent_id,
+                "date": "2026-09-25",
+                "currency": "USD",
+                "spend": 10.0,
+            }
+
+        async with self.test_session_maker() as session:
+            await AnalyticsFactService.upsert_entity_facts(
+                session,
+                workspace_id=self.ws2.id,
+                account_id=self.acc3.account_id,
+                facts=[
+                    fact("campaign", "cmp_foreign", self.acc3.account_id),
+                    fact("adset", "set_foreign", "cmp_foreign"),
+                ],
+            )
+            # Facts kept in this workspace from an ad account it no longer holds.
+            await AnalyticsFactService.upsert_entity_facts(
+                session,
+                workspace_id=self.ws1.id,
+                account_id="act_1099",
+                facts=[
+                    fact("campaign", "cmp_detached", "act_1099"),
+                    fact("adset", "set_detached", "cmp_detached"),
+                ],
+            )
+            # One campaign ID stored under two accounts has no single clock.
+            for account in (self.acc1, self.acc2):
+                await AnalyticsFactService.upsert_entity_facts(
+                    session,
+                    workspace_id=self.ws1.id,
+                    account_id=account.account_id,
+                    facts=[fact("adset", f"set_{account.account_id}", "cmp_split")],
+                )
+            await session.commit()
+
+            async def assert_refused(parent_id):
+                with self.assertRaises(HierarchyParentNotFound):
+                    await AnalyticsFactService.get_hierarchy_breakdown(
+                        session,
+                        workspace_id=self.ws1.id,
+                        parent_entity_id=parent_id,
+                        entity_level="adset",
+                        user_accounts=[self.acc1, self.acc2],
+                    )
+                with self.assertRaises(HierarchyParentNotFound):
+                    await AnalyticsFactService.get_entity_timeseries(
+                        session,
+                        workspace_id=self.ws1.id,
+                        parent_entity_id=parent_id,
+                        entity_level="adset",
+                        user_accounts=[self.acc1, self.acc2],
+                    )
+
+            for parent_id in ("cmp_foreign", "cmp_detached", "cmp_missing", ""):
+                with self.subTest(parent_id=parent_id):
+                    await assert_refused(parent_id)
+            with self.assertLogs("services.analytics_store", level="WARNING"):
+                await assert_refused("cmp_split")
 
     async def test_meta_client_get_hierarchical_insights(self):
         client = MetaClient()
@@ -764,6 +924,21 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
                 )
                 self.assertEqual(res_alien.status_code, 404)
 
+            # A campaign parent reads the ad sets stored under it.
+            direct = await ac.get(
+                "/api/analytics/hierarchy?parent_id=cmp_api_zero&level=adset&period=today",
+                headers=headers_w1,
+            )
+            self.assertEqual(direct.status_code, 200)
+            self.assertEqual([item["entity_id"] for item in direct.json()["items"]], ["adset_api_zero"])
+
+            # A campaign this workspace does not hold is refused, not shown as empty.
+            unknown = await ac.get(
+                "/api/analytics/hierarchy?parent_id=cmp_unknown&level=adset&period=today",
+                headers=headers_w1,
+            )
+            self.assertEqual(unknown.status_code, 404)
+
     async def test_analytics_hierarchy_compares_against_the_preceding_window(self):
         """The baseline is the equal-length window immediately before the reported one."""
         timezone_name = self.acc1.timezone_name
@@ -879,6 +1054,23 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
                     if day != window[2]
                 ],
             )
+            await AnalyticsFactService.upsert_entity_facts(
+                session,
+                workspace_id=self.ws1.id,
+                account_id=self.acc1.account_id,
+                facts=[
+                    {
+                        "entity_level": "adset",
+                        "entity_id": "set_trend",
+                        "entity_name": "Trend ad set",
+                        "parent_entity_id": "cmp_trend_0",
+                        "date": day,
+                        "currency": "USD",
+                        "spend": 40.0,
+                    }
+                    for day in window
+                ],
+            )
             await session.commit()
 
         transport = httpx.ASGITransport(app=self.app)
@@ -895,6 +1087,14 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
             )
             alien = await ac.get(
                 f"/api/analytics/timeseries?parent_id={self.acc3.account_id}&level=campaign&days=5",
+                headers=headers_w1,
+            )
+            drilled = await ac.get(
+                "/api/analytics/timeseries?parent_id=cmp_trend_0&level=adset&days=5",
+                headers=headers_w1,
+            )
+            unknown = await ac.get(
+                "/api/analytics/timeseries?parent_id=cmp_unknown&level=adset&days=5",
                 headers=headers_w1,
             )
 
@@ -918,6 +1118,14 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
 
         # Another workspace's ad account is not readable through the trend either.
         self.assertEqual(alien.status_code, 404)
+
+        # A campaign parent keeps its ad account's clock and names it.
+        self.assertEqual(drilled.status_code, 200)
+        drilled_payload = drilled.json()
+        self.assertEqual(drilled_payload["timezone"], timezone_name)
+        self.assertEqual([point["date"] for point in drilled_payload["points"]], window)
+        self.assertEqual(drilled_payload["open_day"], window[-1])
+        self.assertEqual(unknown.status_code, 404)
 
     async def test_retention_cleanup(self):
         async with self.test_session_maker() as session:

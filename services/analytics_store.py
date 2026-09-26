@@ -183,6 +183,75 @@ def _utc_iso(value: datetime) -> str:
     return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+class HierarchyParentNotFound(LookupError):
+    """The parent is neither an ad account of the workspace nor stored under one."""
+
+
+async def _resolve_hierarchy_parent(
+    session,
+    workspace_id: int,
+    parent_entity_id: str,
+    entity_level: str,
+    user_accounts: Optional[List[Account]],
+) -> Tuple[Account, Any]:
+    """The ad account a drill-down belongs to, and the clause selecting its facts.
+
+    Fact dates are account-local, so the account must be known before any
+    window is resolved. An account parent must be one of `user_accounts` and
+    reads the level account-wide. A campaign or ad set parent is found in this
+    workspace's facts, and the account they were stored under must still be
+    one of `user_accounts`: the client never names the account. Any other
+    parent raises HierarchyParentNotFound.
+    """
+    accounts = {acc.account_id: acc for acc in user_accounts or []}
+    normalized_parent = (
+        parent_entity_id
+        if parent_entity_id.startswith("act_")
+        else f"act_{parent_entity_id}"
+    )
+    account = accounts.get(parent_entity_id) or accounts.get(normalized_parent)
+    if account is not None:
+        return account, AnalyticsEntityFact.account_id == account.account_id
+    # Campaigns hang directly off an account and an act_ parent names one;
+    # an empty parent is what account rows store for "none".
+    if (
+        entity_level == "campaign"
+        or not parent_entity_id
+        or parent_entity_id.startswith("act_")
+    ):
+        raise HierarchyParentNotFound(parent_entity_id)
+
+    owners = (
+        await session.execute(
+            select(AnalyticsEntityFact.account_id)
+            .where(
+                AnalyticsEntityFact.workspace_id == workspace_id,
+                AnalyticsEntityFact.account_id.in_(list(accounts)),
+                or_(
+                    AnalyticsEntityFact.entity_id == parent_entity_id,
+                    AnalyticsEntityFact.parent_entity_id == parent_entity_id,
+                ),
+            )
+            .distinct()
+            .limit(2)
+        )
+    ).scalars().all()
+    if len(owners) > 1:
+        # Meta IDs are unique, so this is inconsistent data; no single clock fits it.
+        logger.warning(
+            "Analytics parent %s is stored under several accounts in workspace %s",
+            parent_entity_id,
+            workspace_id,
+        )
+    if len(owners) != 1:
+        raise HierarchyParentNotFound(parent_entity_id)
+    account = accounts[owners[0]]
+    return account, and_(
+        AnalyticsEntityFact.account_id == account.account_id,
+        AnalyticsEntityFact.parent_entity_id == parent_entity_id,
+    )
+
+
 class AnalyticsFactService:
     """Core domain service for the PostgreSQL-backed Analytics Fact Store."""
 
@@ -743,6 +812,7 @@ class AnalyticsFactService:
         period: str = "today",
         user_accounts: Optional[List[Account]] = None,
         compare: bool = False,
+        now_utc: Optional[datetime] = None,
     ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """Retrieve drill-down rows (Campaigns for Account, AdSets for Campaign, Ads for AdSet).
 
@@ -750,38 +820,27 @@ class AnalyticsFactService:
         rows were measured against, which may be unavailable for a period whose
         window is still open.
 
-        Strict multi-tenancy enforcement: checks workspace_id and validates parent ownership.
+        Strict multi-tenancy enforcement: checks workspace_id and validates parent
+        ownership, raising HierarchyParentNotFound for a parent outside
+        `user_accounts`. Every depth reads the dates of the parent's ad account.
         """
         valid_levels = {"campaign", "adset", "ad"}
         if entity_level not in valid_levels:
             return [], _comparison_meta(compare, [], period)
 
-        # An authorized account parent requests an account-wide view for the
-        # selected level. Other parent IDs retain direct hierarchy drill-down.
-        target_account = None
-        normalized_parent = (
-            parent_entity_id
-            if parent_entity_id.startswith("act_")
-            else f"act_{parent_entity_id}"
+        account, hierarchy_scope = await _resolve_hierarchy_parent(
+            session, workspace_id, parent_entity_id, entity_level, user_accounts
         )
-        if user_accounts:
-            for acc in user_accounts:
-                if acc.account_id in {parent_entity_id, normalized_parent}:
-                    target_account = acc
-                    break
-
-        timezone_name = target_account.timezone_name if target_account else "UTC"
-        dates = resolve_account_period_dates(timezone_name, period)
+        # One reading of the clock, so the reported and baseline windows cannot
+        # fall on different sides of midnight.
+        now = now_utc or datetime.now(timezone.utc)
+        timezone_name = account.timezone_name
+        dates = resolve_account_period_dates(timezone_name, period, now)
         previous_dates = (
-            resolve_previous_period_dates(timezone_name, period) if compare else []
+            resolve_previous_period_dates(timezone_name, period, now) if compare else []
         )
         comparison = _comparison_meta(compare, previous_dates, period)
 
-        hierarchy_scope = (
-            AnalyticsEntityFact.account_id == target_account.account_id
-            if target_account
-            else AnalyticsEntityFact.parent_entity_id == parent_entity_id
-        )
         # Both windows are read in one pass and split in Python, so the baseline
         # costs one query rather than doubling the round trips.
         stmt = (
@@ -848,6 +907,7 @@ class AnalyticsFactService:
         entity_level: str,
         days: int = DEFAULT_TREND_DAYS,
         user_accounts: Optional[List[Account]] = None,
+        now_utc: Optional[datetime] = None,
     ) -> Dict[str, Any]:
         """Daily totals for everything under one parent, oldest day first.
 
@@ -859,25 +919,11 @@ class AnalyticsFactService:
         if entity_level not in valid_levels:
             return {"timezone": "UTC", "days": 0, "open_day": "", "points": []}
 
-        target_account = None
-        normalized_parent = (
-            parent_entity_id
-            if parent_entity_id.startswith("act_")
-            else f"act_{parent_entity_id}"
+        account, hierarchy_scope = await _resolve_hierarchy_parent(
+            session, workspace_id, parent_entity_id, entity_level, user_accounts
         )
-        if user_accounts:
-            for acc in user_accounts:
-                if acc.account_id in {parent_entity_id, normalized_parent}:
-                    target_account = acc
-                    break
-
-        timezone_name = target_account.timezone_name if target_account else "UTC"
-        dates = resolve_recent_dates(timezone_name, days)
-        hierarchy_scope = (
-            AnalyticsEntityFact.account_id == target_account.account_id
-            if target_account
-            else AnalyticsEntityFact.parent_entity_id == parent_entity_id
-        )
+        timezone_name = account.timezone_name
+        dates = resolve_recent_dates(timezone_name, days, now_utc)
         stmt = (
             select(AnalyticsEntityFact)
             .where(

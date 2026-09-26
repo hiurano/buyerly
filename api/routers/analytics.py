@@ -17,6 +17,7 @@ from services.analytics_store import (
     DEFAULT_TREND_DAYS,
     MAX_TREND_DAYS,
     AnalyticsFactService,
+    HierarchyParentNotFound,
 )
 
 logger = logging.getLogger(__name__)
@@ -60,21 +61,12 @@ def _no_comparison(requested: bool = False) -> Dict[str, Any]:
     }
 
 
-def _assert_parent_is_in_workspace(parent_id: str, level: str, accounts) -> None:
-    """Refuse an account-wide view of an ad account this workspace does not hold.
-
-    Direct campaign and ad-set parents stay protected by the workspace filter in
-    the fact store, so only the account-wide case needs this check.
-    """
-    if level != "campaign" and not parent_id.startswith("act_"):
-        return
-    acc_id = parent_id if parent_id.startswith("act_") else f"act_{parent_id}"
-    user_acc_ids = {a.account_id for a in accounts}
-    if acc_id not in user_acc_ids and parent_id not in user_acc_ids:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ad account not found, or not available in the current workspace",
-        )
+def _parent_not_found() -> HTTPException:
+    """A parent this workspace does not hold; another workspace's looks the same."""
+    return HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Ad account, campaign or ad set not found, or not available in the current workspace",
+    )
 
 
 @router.get("/hierarchy")
@@ -108,17 +100,18 @@ async def get_analytics_hierarchy(
                 parent_id, level, period, [], _no_comparison(compare == "previous")
             )
 
-        _assert_parent_is_in_workspace(parent_id, level, accounts)
-
-        items, comparison = await AnalyticsFactService.get_hierarchy_breakdown(
-            session=session,
-            workspace_id=ws_id,
-            parent_entity_id=parent_id,
-            entity_level=level,
-            period=period,
-            user_accounts=accounts,
-            compare=compare == "previous",
-        )
+        try:
+            items, comparison = await AnalyticsFactService.get_hierarchy_breakdown(
+                session=session,
+                workspace_id=ws_id,
+                parent_entity_id=parent_id,
+                entity_level=level,
+                period=period,
+                user_accounts=accounts,
+                compare=compare == "previous",
+            )
+        except HierarchyParentNotFound:
+            raise _parent_not_found() from None
 
         return _hierarchy_response(parent_id, level, period, items, comparison)
 
@@ -159,16 +152,17 @@ async def get_analytics_timeseries(
         if not accounts:
             return empty
 
-        _assert_parent_is_in_workspace(parent_id, level, accounts)
-
-        series = await AnalyticsFactService.get_entity_timeseries(
-            session=session,
-            workspace_id=ws_id,
-            parent_entity_id=parent_id,
-            entity_level=level,
-            days=days,
-            user_accounts=accounts,
-        )
+        try:
+            series = await AnalyticsFactService.get_entity_timeseries(
+                session=session,
+                workspace_id=ws_id,
+                parent_entity_id=parent_id,
+                entity_level=level,
+                days=days,
+                user_accounts=accounts,
+            )
+        except HierarchyParentNotFound:
+            raise _parent_not_found() from None
         return {
             "parent_id": parent_id,
             "level": level,
