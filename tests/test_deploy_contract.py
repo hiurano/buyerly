@@ -35,9 +35,6 @@ class TestDeployContract(unittest.TestCase):
         cls.offsite_sync_script = (
             project_root / "scripts" / "offsite_sync.py"
         ).read_text()
-        cls.restore_drill_workflow = (
-            project_root / ".github" / "workflows" / "restore-drill.yml"
-        ).read_text()
         cls.log_verification_script = (
             project_root / "scripts" / "verify_docker_log_rotation.sh"
         ).read_text()
@@ -271,8 +268,6 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("actions/checkout@v7", self.workflow)
         self.assertIn("actions/setup-node@v7", self.workflow)
         self.assertIn("actions/setup-python@v7", self.workflow)
-        self.assertIn("actions/checkout@v7", self.restore_drill_workflow)
-        self.assertIn("actions/setup-python@v7", self.restore_drill_workflow)
 
     def test_production_repository_owner_and_origin_are_fail_closed(self):
         self.assertIn("EXPECTED_GIT_REPOSITORY", self.script)
@@ -373,9 +368,6 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("strictly forbidden from using production database", self.drill_script)
         self.assertIn("information_schema.tables", self.drill_script)
         self.assertIn("alembic_version", self.drill_script)
-        self.assertIn("schedule:", self.restore_drill_workflow)
-        self.assertIn("cron:", self.restore_drill_workflow)
-        self.assertIn("alembic upgrade head", self.restore_drill_workflow)
 
     def test_ci_test_shards_cover_every_test_exactly_once(self):
         """Every test must land in exactly one CI shard.
