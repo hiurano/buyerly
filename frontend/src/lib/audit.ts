@@ -89,8 +89,41 @@ export function humanizeAuditValue(value: string): string {
     .join(' ');
 }
 
+/**
+ * Plain names for what the automation and the buyer did. The raw action is
+ * too coarse here: a stop candidate, a cooldown skip and the stop itself all
+ * carry action STOP. Budget titles stay neutral because a manual budget edit
+ * records the same event types as a rule.
+ */
+const AUDIT_EVENT_TITLES: Record<string, string> = {
+  STOP: 'Turned off',
+  AUTO_REACTIVATE: 'Turned on',
+  MANUAL_PAUSE: 'Turned off manually',
+  MANUAL_REACTIVATE: 'Turned on manually',
+  INCREASE_BUDGET: 'Budget raised',
+  DECREASE_BUDGET: 'Budget lowered',
+  NOTIFY_ONLY: 'Rule alert',
+  PROPOSE_REACTIVATE: 'Suggested turning on',
+  STOP_CONFIRMATION_STARTED: 'Rechecking before turning off',
+  RULE_ACTION_COOLDOWN: "Skipped during the rule's pause",
+  RULE_ACTION_PENDING: 'Waiting for Meta',
+  RULE_ACTION_RECONCILED: 'Confirmed with Meta',
+  UNDO_ACTION: 'Undone',
+  UNDO_ACTION_FAILED: 'Undo failed',
+  ACCOUNT_DAY_STARTED: 'New day in the ad account',
+  ACCOUNT_HEALTH_ALERT: 'Ad account needs attention',
+  ACCOUNT_HEALTH_RECOVERED: 'Ad account is back to normal',
+  ACCOUNT_ISSUE: 'Ad account issue',
+  TOKEN_EXPIRED: 'Meta access expired',
+  DELETE_RULE_PRESET: 'Rule deleted',
+  RESTORE_RULE_PRESET: 'Rule restored',
+};
+
 export function auditEventTitle(event: AuditEventItem): string {
-  return humanizeAuditValue(event.action || event.event_type || event.category);
+  return (
+    AUDIT_EVENT_TITLES[event.event_type] ??
+    humanizeAuditValue(event.action || event.event_type || event.category)
+  );
 }
 
 export function auditEventTarget(event: AuditEventItem): string {
@@ -103,6 +136,13 @@ export function auditEventTarget(event: AuditEventItem): string {
     event.account_id ||
     'Workspace event'
   );
+}
+
+/** The row's second line: which campaign, ad set or ad, then what was recorded. */
+export function auditEventSummary(event: AuditEventItem): string {
+  const entity = event.entity_name || event.adset_name;
+  if (!event.message) return auditEventTarget(event);
+  return entity ? `${entity} · ${event.message}` : event.message;
 }
 
 export function formatAuditRelativeTime(value: string, now: number = Date.now()): string {

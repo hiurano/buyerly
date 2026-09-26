@@ -1,6 +1,7 @@
 import React from 'react';
 import type { AuditEventItem } from '@/lib/audit';
 import {
+  auditEventSummary,
   auditEventTarget,
   auditEventTitle,
   formatAuditRelativeTime,
@@ -44,7 +45,7 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({ item, isSelected, on
       </div>
       <div className="mt-1 flex min-w-0 items-center justify-between gap-3">
         <span className="truncate text-[13px] text-[var(--text-tertiary)]">
-          {item.message || auditEventTarget(item)}
+          {auditEventSummary(item)}
         </span>
         <span className="shrink-0 text-[12px] font-medium text-[var(--text-tertiary)]">
           {humanizeAuditValue(item.display_status)}
