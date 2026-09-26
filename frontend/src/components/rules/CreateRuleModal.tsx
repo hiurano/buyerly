@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
 } from '@/ui/DropdownMenu';
 import { Button } from '@/ui/Button';
 import { FormCheckbox } from '@/ui/FormCheckbox';
@@ -99,6 +100,23 @@ function formatInterval(minutes: number): string {
   return 'Once a day';
 }
 
+/**
+ * How long the rule leaves an entity alone after acting on it (the backend
+ * cooldown). Without it a condition that keeps matching repeats the action on
+ * every check: a budget change compounds and a notification repeats itself.
+ */
+const REPEAT_INTERVALS = [60, 180, 360, 720, 1440];
+const DEFAULT_REPEAT_MINUTES = 1440;
+
+function formatRepeat(minutes: number): string {
+  if (minutes <= 0) return 'Every check';
+  if (minutes === 60) return 'Every hour';
+  if (minutes === 1440) return 'Once a day';
+  if (minutes % 1440 === 0) return `Every ${minutes / 1440} days`;
+  if (minutes % 60 === 0) return `Every ${minutes / 60}h`;
+  return `Every ${minutes}m`;
+}
+
 interface ConditionDraft {
   metric: RuleMetric;
   operator: RuleOperator;
@@ -136,6 +154,7 @@ export const CreateRuleModal: React.FC = () => {
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [timeWindow, setTimeWindow] = useState<RuleTimeWindow>('today');
   const [checkInterval, setCheckInterval] = useState(5);
+  const [repeatMinutes, setRepeatMinutes] = useState(DEFAULT_REPEAT_MINUTES);
   const [conditionLogic, setConditionLogic] = useState<'and' | 'or'>('and');
   const [conditions, setConditions] = useState<ConditionDraft[]>([EMPTY_CONDITION]);
   const [budgetChangePercent, setBudgetChangePercent] = useState('20');
@@ -179,6 +198,7 @@ export const CreateRuleModal: React.FC = () => {
     setLevel('adset');
     setTimeWindow('today');
     setCheckInterval(5);
+    setRepeatMinutes(DEFAULT_REPEAT_MINUTES);
     setConditionLogic('and');
     setConditions([EMPTY_CONDITION]);
     setBudgetChangePercent('20');
@@ -194,6 +214,7 @@ export const CreateRuleModal: React.FC = () => {
     setLevel(preset.level);
     setTimeWindow(preset.conditions[0]?.time_window ?? 'today');
     setCheckInterval(preset.check_interval_minutes);
+    setRepeatMinutes(preset.cooldown_minutes);
     setConditionLogic(preset.condition_logic);
     setConditions(
       preset.conditions.length === 0
@@ -284,7 +305,7 @@ export const CreateRuleModal: React.FC = () => {
       enabled: editedRule ? editedRule.preset.enabled : true,
       conditions: builtConditions,
       condition_logic: conditionLogic,
-      cooldown_minutes: editedRule ? editedRule.preset.cooldown_minutes : 0,
+      cooldown_minutes: repeatMinutes,
       check_interval_minutes: checkInterval,
       // Non-budget actions must send exactly zero for both budget fields.
       budget_change_percent: isBudgetAction ? budgetPercent : 0,
@@ -464,9 +485,29 @@ export const CreateRuleModal: React.FC = () => {
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" sideOffset={4}>
+                    <DropdownMenuLabel>How often the rule reads the metrics</DropdownMenuLabel>
                     {CHECK_INTERVALS.map((value) => (
                       <DropdownMenuItem key={value} onClick={() => setCheckInterval(value)}>
                         <span>{formatInterval(value)}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button type="button" className={PILL_CLASS}>
+                      <span className="text-[var(--text-tertiary)]">Repeat:</span>
+                      <span className="text-[var(--text-primary)]">{formatRepeat(repeatMinutes)}</span>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" sideOffset={4}>
+                    <DropdownMenuLabel>
+                      How often it may act on the same {RULE_LEVEL_LABELS[level].toLowerCase()}
+                    </DropdownMenuLabel>
+                    {REPEAT_INTERVALS.map((value) => (
+                      <DropdownMenuItem key={value} onClick={() => setRepeatMinutes(value)}>
+                        <span>{formatRepeat(value)}</span>
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>

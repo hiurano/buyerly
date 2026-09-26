@@ -1034,6 +1034,55 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             execution = (await session.execute(select(RuleExecutionState))).scalars().all()
             self.assertTrue(any(row.status == "SUCCESS" for row in execution))
 
+    async def test_a_budget_rule_saved_from_the_editor_scales_once_a_day(self):
+        # The editor now saves "Repeat: Once a day" (cooldown 1440) next to a
+        # five-minute check; before #194 the same rule compounded every check.
+        async with self.test_session_maker() as session:
+            account = (
+                await session.execute(select(Account).where(Account.account_id == self.account_id))
+            ).scalar_one()
+            account.active_rules = json.dumps([
+                {
+                    "preset_id": 23,
+                    "workspace_id": account.workspace_id,
+                    "name": "Scale on leads",
+                    "action": "increase_budget",
+                    "conditions": [{"metric": "leads", "operator": "gte", "value": 1.0}],
+                    "logic": "and",
+                    "check_interval": 5,
+                    "cooldown_minutes": 1440,
+                    "budget_change_percent": 20.0,
+                    "budget_max_daily": 70.0,
+                }
+            ])
+            await session.commit()
+
+        start = 20_000.0
+        now = [start]
+        mock_meta = MockMetaClient()
+        mock_meta.adsets_state["adset_2"]["leads"] = 2
+        mock_meta.adsets_state["adset_2"]["daily_budget"] = 50.0
+        worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: now[0])
+        await worker.run_cycle()
+        self.assertEqual(mock_meta.budget_changes, [("adset_2", 60.0)])
+
+        # An hour of five-minute checks, with a worker restart halfway, while
+        # the condition keeps matching.
+        for minutes in range(5, 65, 5):
+            now[0] = start + minutes * 60
+            if minutes == 30:
+                worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: now[0])
+            await worker.run_cycle()
+        self.assertEqual(mock_meta.budget_changes, [("adset_2", 60.0)])
+
+        # A day later the rule scales again, stopping at the daily ceiling.
+        now[0] = start + 1441 * 60
+        await worker.run_cycle()
+        self.assertEqual(
+            mock_meta.budget_changes,
+            [("adset_2", 60.0), ("adset_2", 70.0)],
+        )
+
     async def test_pending_budget_action_is_reconciled_from_meta_state(self):
         now = [8_000.0]
         mock_meta = MockMetaClient()

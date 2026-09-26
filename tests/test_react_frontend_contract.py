@@ -462,6 +462,19 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("attached_scopes", self.rules_lib)
         self.assertIn("attached_scopes", self.rule_row_menu)
 
+    def test_the_rule_editor_sets_how_often_a_rule_may_repeat(self):
+        # New rules were saved with cooldown 0 and no way to change it (#194):
+        # a budget rule compounded on every check and a notification repeated.
+        for contract in (
+            "Repeat:",
+            "REPEAT_INTERVALS",
+            "DEFAULT_REPEAT_MINUTES = 1440",
+            "setRepeatMinutes(preset.cooldown_minutes)",
+            "cooldown_minutes: repeatMinutes",
+        ):
+            self.assertIn(contract, self.create_rule_modal)
+        self.assertNotIn("preset.cooldown_minutes : 0", self.create_rule_modal)
+
     def test_row_selection_drives_real_bulk_actions(self):
         """A checkbox is shown only where selected rows can actually be acted on."""
         ui = ROOT / "frontend" / "src" / "ui"
