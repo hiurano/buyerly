@@ -64,6 +64,17 @@ jobs:
           name: scoped-state-browser
           path: /tmp/buyerly-scoped-state
 
+      - name: Check invitation authentication in Chromium
+        working-directory: frontend
+        run: node ../scripts/invite-auth-browser.mjs
+
+      - name: Upload invitation authentication browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: invite-auth-browser
+          path: /tmp/buyerly-invite-auth
+
   test:
     name: Run Unit & Integration Tests (shard ${{ matrix.shard }})
     runs-on: ubuntu-latest

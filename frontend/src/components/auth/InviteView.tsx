@@ -41,7 +41,8 @@ export const InviteView: React.FC<InviteViewProps> = ({
     };
   }, [token]);
 
-  if (showLogin && invite) {
+  // Signing in can return to this same route, preserving the local login state.
+  if (!user && showLogin && invite) {
     return (
       <LoginView
         inviteToken={token}
