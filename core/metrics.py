@@ -25,6 +25,7 @@ PUBLIC_RULE_METRICS = frozenset(
         "purchases",
         "ctr",
         "cpc",
+        "clicks",
     }
 )
 
@@ -69,6 +70,7 @@ METRIC_LABELS = {
     "purchases": "Purchases",
     "ctr": "CTR",
     "cpc": "CPC",
+    "clicks": "Clicks",
     "legacy_cpa": "Legacy combined CPA",
 }
 
@@ -82,6 +84,7 @@ METRIC_UNITS = {
     "purchases": "",
     "ctr": "%",
     "cpc": "currency",
+    "clicks": "",
     "legacy_cpa": "currency",
 }
 
@@ -164,6 +167,8 @@ def rule_metric_reading(metric: Any, data: Mapping[str, Any]) -> MetricReading:
         value = float(registrations)
     elif key == "purchases":
         value = float(purchases)
+    elif key == "clicks":
+        value = float(clicks)
     elif key == "cpl":
         value = cost_per_event(spend, leads)
     elif key == "cpreg":
@@ -397,12 +402,12 @@ def validate_rule_semantics(
     if len(signatures) != len(set(signatures)):
         raise ValueError("The same condition was added to the rule more than once.")
 
-    count_metrics = {"leads", "registrations", "purchases"}
+    count_metrics = {"leads", "registrations", "purchases", "clicks"}
     for condition in conditions:
         metric = canonical_rule_metric(condition.get("metric"))
         value = float(condition.get("value", 0.0))
         if metric in count_metrics and not value.is_integer():
-            raise ValueError("Leads, registrations and purchases must be whole numbers.")
+            raise ValueError("Leads, registrations, purchases and clicks must be whole numbers.")
 
     grouped: dict[tuple[str, str], list[Mapping[str, Any]]] = {}
     for condition in conditions:
