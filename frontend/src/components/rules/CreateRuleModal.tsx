@@ -52,6 +52,7 @@ const METRICS: RuleMetric[] = [
   'cpp',
   'cpc',
   'ctr',
+  'clicks',
   'leads',
   'registrations',
   'purchases',
@@ -59,6 +60,7 @@ const METRICS: RuleMetric[] = [
 
 /** Counts cannot be fractional — the backend rejects a non-integer value. */
 const COUNT_METRICS: ReadonlySet<RuleMetric> = new Set([
+  'clicks',
   'leads',
   'registrations',
   'purchases',

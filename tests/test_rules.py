@@ -175,6 +175,30 @@ class TestRuleEngine(unittest.TestCase):
         adset_no_match = {"adset_id": "1", "adset_name": "Test", "status": "ACTIVE", "spend": 6.0, "leads": 2, "registrations": 0}
         self.assertEqual(RuleEngine.evaluate(adset_no_match, self.account).action, RuleAction.NOOP)
 
+    def test_clicks_count_metric(self):
+        """A buyer's early cut: Spend >= $3.50 AND Clicks <= 1 -> STOP."""
+        self.set_rule(
+            conditions=[
+                {"metric": "spend", "operator": "gte", "value": 3.5},
+                {"metric": "clicks", "operator": "lte", "value": 1.0},
+            ]
+        )
+        base = {"adset_id": "1", "adset_name": "Test", "status": "ACTIVE", "spend": 3.6, "leads": 0}
+
+        stopped = RuleEngine.evaluate({**base, "clicks": 1}, self.account)
+        self.assertEqual(stopped.action, RuleAction.STOP)
+        self.assertIn("Clicks (1) ≤ 1", stopped.reason)
+        self.assertEqual(RuleEngine.evaluate({**base, "clicks": 2}, self.account).action, RuleAction.NOOP)
+        # Meta omits clicks for an ad set that has none; that reads as zero.
+        self.assertEqual(RuleEngine.evaluate(base, self.account).action, RuleAction.STOP)
+
+        with self.assertRaisesRegex(ValueError, "whole numbers"):
+            validate_rule_semantics(
+                [{"metric": "clicks", "operator": "lte", "value": 1.5, "time_window": "today"}],
+                "and",
+                "turn_off",
+            )
+
     # --------------------------------------------------------
     # Removed metric: the combined CPA
     # --------------------------------------------------------
