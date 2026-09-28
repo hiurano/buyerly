@@ -22,6 +22,8 @@ import { NotFoundView } from '@/components/auth/NotFoundView';
 import { CreateWorkspaceView } from '@/components/onboarding/CreateWorkspaceView';
 import { WelcomeView } from '@/components/onboarding/WelcomeView';
 import { MetaConnectInviteView, MetaConnectSuccessView } from '@/components/auth/MetaConnectInviteView';
+import { ApprovalDialog } from '@/webmcp/ApprovalDialog';
+import { useWebMcpTools } from '@/webmcp/register';
 
 const RETURN_ROUTE_KEY = 'buyerly-return-route';
 
@@ -55,6 +57,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     interfaceTheme,
   } = useAppStore();
   useUndoShortcuts();
+  useWebMcpTools(workspace);
   const [gPressed, setGPressed] = useState(false);
   const syncingRoute = useRef(true);
 
@@ -166,6 +169,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
         <AppUtilityBar />
       </div>
       <ToastRegion />
+      <ApprovalDialog />
     </TooltipProvider>
   );
 };

@@ -61,6 +61,23 @@ Vite собирает `frontend/dist`; Nginx отдаёт файлы и прок
 
 [core/action_undo.py](../core/action_undo.py) проверяет workspace, успешность исходного действия, окно 24 часа, последующие изменения и текущее состояние Meta. Отмена поддерживаемого действия создаёт отдельное событие.
 
+## ИИ-агент в браузере (WebMCP)
+
+[frontend/src/webmcp/](../frontend/src/webmcp/) предлагает ИИ-агенту браузера инструменты открытого workspace через WebMCP (`document.modelContext.registerTool`): агент вызывает готовые действия Buyerly вместо поиска кнопок на экране. Нового backend API нет. Каждый инструмент вызывает тот же `/api/*`, что и интерфейс, поэтому сессия, CSRF, `X-Workspace-Slug` и серверные проверки роли действуют как обычно: агент может ровно то, что может этот человек.
+
+[register.ts](../frontend/src/webmcp/register.ts) регистрирует инструменты, только если браузер поддерживает WebMCP (`document.modelContext`, в Chrome 149 — `navigator.modelContext`) и функция включена: сборкой с `VITE_WEBMCP=1` или в отдельном браузере через `localStorage.setItem('buyerly-webmcp', 'on')`. В production она выключена до ручной проверки. Инструменты живут, пока открыт их workspace: при смене workspace их снимает `AbortSignal`, а каждый запрос ещё раз проверяет, что workspace тот же. WebMCP в Chrome пока работает только с флагом `chrome://flags/#enable-webmcp-testing` или с токеном origin trial (Chrome 149–156, до 2026-11-16); токен не подключён.
+
+Инструменты ([tools.ts](../frontend/src/webmcp/tools.ts)):
+
+- чтение: `list_ad_accounts`, `get_performance`, `list_rules`, `list_recent_rule_actions`, `list_stopped_adsets`, `describe_rule_options`;
+- изменения: `create_rule` (по умолчанию `notify_only`, `turn_off` — только по явной просьбе человека), `attach_rule` (только правила-уведомления и выключения), `detach_rule`.
+
+Перед каждым изменением человек видит окно Buyerly ([ApprovalDialog.tsx](../frontend/src/webmcp/ApprovalDialog.tsx)). Текст в нём строится из самого запроса, а не из слов агента. Параметра, пропускающего подтверждение, нет. Кнопка подтверждения становится активной через 600 мс и не срабатывает от `click()` из скрипта, а Enter и Esc отклоняют. Отказ возвращается агенту как `{"error": "User declined"}`. В истории изменение выглядит так же, как сделанное вручную: создание и привязка правил событий аудита не пишут.
+
+Агенту сознательно не даны: включение и выключение автоматизации, пауза и запуск рекламы, бюджеты, бюджетные правила и правила включения, удаление правил, undo, участники, приглашения и подключения Meta. Это деньги и доступы, и решение о них остаётся за человеком в интерфейсе.
+
+Chrome не сверяет аргументы агента со схемой и не передаёт агенту текст исключения. Поэтому инструменты проверяют вход сами ([input.ts](../frontend/src/webmcp/input.ts)) и возвращают ошибки значением `{"error", "status"}`. Названия из Meta попадают только в ответы инструментов, как данные с пометкой `untrustedContentHint`, и никогда — в их описания. Проверка — [scripts/webmcp-browser.mjs](../scripts/webmcp-browser.mjs): она работает с настоящим WebMCP, если он есть в браузере, а иначе с заменой, которая ведёт себя так же.
+
 ## Эксплуатация
 
 Тесты и сборка выполняются только в GitHub Actions. Деплой main зависит от успешных тестов и выполняет серверные проверки. Подробности: [DEPLOYMENT.md](DEPLOYMENT.md), [INCIDENT_RUNBOOKS.md](INCIDENT_RUNBOOKS.md), [RELIABILITY_SLO.md](RELIABILITY_SLO.md). История прежней архитектуры сохранена в [архиве](archive/README.md).
