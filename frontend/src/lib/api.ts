@@ -50,6 +50,12 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
       detail = 'Facebook login is not configured: META_APP_ID / META_APP_SECRET are missing from .env. Use “Generate link” instead.';
     } else if (typeof payload.detail?.message === 'string') {
       detail = payload.detail.message;
+    } else if (Array.isArray(payload.detail) && payload.detail.some((item: any) => typeof item?.msg === 'string')) {
+      // FastAPI validation: a list of {loc, msg}; a model check reads "Value error, <reason>".
+      detail = payload.detail
+        .filter((item: any) => typeof item?.msg === 'string')
+        .map((item: any) => item.msg.replace(/^Value error, /, ''))
+        .join(' ');
     } else if (typeof payload.message === 'string') {
       detail = payload.message;
     }

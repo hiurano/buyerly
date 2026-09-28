@@ -75,6 +75,21 @@ jobs:
           name: invite-auth-browser
           path: /tmp/buyerly-invite-auth
 
+      # The runner's Google Chrome has WebMCP behind a flag; Playwright's
+      # Chromium does not, and the check then uses a stand-in instead.
+      - name: Check WebMCP tools in Chromium
+        working-directory: frontend
+        run: |
+          export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="$(command -v google-chrome || true)"
+          node ../scripts/webmcp-browser.mjs
+
+      - name: Upload WebMCP browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webmcp-browser
+          path: /tmp/buyerly-webmcp
+
   test:
     name: Run Unit & Integration Tests (shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
