@@ -6,13 +6,17 @@ import { AuthFrame, BuyerlyBrand } from '@/components/auth/AuthFrame';
 interface CreateWorkspaceViewProps {
   user: SessionUser;
   onCreated: (workspace: Workspace) => void;
-  onSignedOut: () => void | Promise<void>;
+  /** First workspace: offers another email instead. */
+  onSignedOut?: () => void | Promise<void>;
+  /** Another workspace for a member, opened from the workspace menu as in Linear. */
+  onBack?: () => void;
 }
 
 export const CreateWorkspaceView: React.FC<CreateWorkspaceViewProps> = ({
   user,
   onCreated,
   onSignedOut,
+  onBack,
 }) => {
   const [name, setName] = useState('');
   const [availability, setAvailability] = useState<'idle' | 'checking' | 'available' | 'unavailable'>('idle');
@@ -55,7 +59,7 @@ export const CreateWorkspaceView: React.FC<CreateWorkspaceViewProps> = ({
     setBusy(true);
     setMessage('');
     try {
-      const workspace = await apiRequest<Workspace>('/api/onboarding/workspace', {
+      const workspace = await apiRequest<Workspace>(onBack ? '/api/workspaces' : '/api/onboarding/workspace', {
         method: 'POST',
         body: JSON.stringify({ name: name.trim() }),
       });
@@ -76,6 +80,17 @@ export const CreateWorkspaceView: React.FC<CreateWorkspaceViewProps> = ({
 
   return (
     <AuthFrame>
+      {onBack && (
+        <>
+          <button className="buyerly-auth-back" type="button" onClick={onBack}>
+            ‹ Back to Buyerly
+          </button>
+          <p className="buyerly-auth-corner">
+            Logged in as
+            <strong>{user.email || user.username}</strong>
+          </p>
+        </>
+      )}
       <section className="buyerly-workspace-create">
         <BuyerlyBrand />
         <h1>Create a workspace</h1>
@@ -104,10 +119,12 @@ export const CreateWorkspaceView: React.FC<CreateWorkspaceViewProps> = ({
             {busy ? 'Creating…' : 'Create workspace'}
           </button>
         </form>
-        <footer className="buyerly-workspace-create__account">
-          <span>Using {user.email}</span>
-          <button type="button" onClick={onSignedOut}>Use a different email</button>
-        </footer>
+        {onSignedOut && (
+          <footer className="buyerly-workspace-create__account">
+            <span>Using {user.email}</span>
+            <button type="button" onClick={onSignedOut}>Use a different email</button>
+          </footer>
+        )}
       </section>
     </AuthFrame>
   );

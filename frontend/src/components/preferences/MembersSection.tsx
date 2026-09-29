@@ -6,6 +6,7 @@ import { Button } from '@/ui/Button';
 import { DataState } from '@/ui/DataState';
 import { LinearCloseIcon } from '@/icons/LinearIcons';
 import { toast } from '@/ui/toast';
+import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -162,13 +163,7 @@ const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onClose, o
             className="ui-dialog pointer-events-auto w-full max-w-[456px] rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] p-4 text-left outline-none animate-scale-in shadow-[var(--dialog-elevation-shadow)]"
           >
             <div className="flex items-center gap-2">
-              <span
-                aria-hidden="true"
-                className="flex h-4 w-4 items-center justify-center rounded-[4px] text-[8px] font-semibold text-white"
-                style={{ backgroundColor: workspace.badge_color || '#F5A300' }}
-              >
-                {workspace.badge_text || workspace.name.charAt(0)}
-              </span>
+              <WorkspaceAvatar workspace={workspace} size={16} />
               <Dialog.Title className="m-0 flex-1 text-[14px] font-medium text-[var(--text-primary)]">
                 Invite to your workspace
               </Dialog.Title>
