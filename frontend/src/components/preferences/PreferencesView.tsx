@@ -4,6 +4,8 @@ import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
 import type { SessionUser } from '@/lib/types';
 import { ProfileSection } from './ProfileSection';
 import { AdAccountsSection } from './AdAccountsSection';
+import { LinearToggle } from '@/ui/LinearToggle';
+import { findModelContext, setWebMcpEnabled, useWebMcpEnabled } from '@/webmcp/register';
 
 const themeOptions: Array<{
   value: InterfaceTheme;
@@ -18,7 +20,7 @@ type SettingsSection = 'preferences' | 'profile' | 'ad-accounts';
 
 /** Keywords the settings search matches against, per section. */
 const sectionKeywords: Record<SettingsSection, string> = {
-  preferences: 'preferences interface theme appearance',
+  preferences: 'preferences interface theme appearance ai assistant agent webmcp chrome',
   profile: 'profile account email name avatar',
   'ad-accounts': 'ad accounts cost target primary result statistics cpa cpl currency',
 };
@@ -34,6 +36,10 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, onUserCh
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [section, setSection] = useState<SettingsSection>('preferences');
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const assistantOn = useWebMcpEnabled();
+  const assistantSupported = findModelContext() !== null;
+  const assistantForced = import.meta.env.VITE_WEBMCP === '1';
 
   const selectedTheme = themeOptions.find((option) => option.value === interfaceTheme) || themeOptions[0];
   const visibleSections = useMemo(() => {
@@ -328,6 +334,32 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, onUserCh
                       </div>
                     )}
                   </div>
+                </div>
+              </section>
+            </div>
+
+            {/* Section: AI assistant */}
+            <div className="preferences-section">
+              <div className="preferences-section-header">
+                <h3 className="preferences-section-title">AI assistant</h3>
+              </div>
+
+              <section className="preferences-card-container">
+                <div className="preferences-row-item">
+                  <div className="preferences-row-copy">
+                    <span className="preferences-row-title">Let your browser's AI assistant use Buyerly</span>
+                    <span className="preferences-row-desc">
+                      {assistantSupported
+                        ? 'It reads stats and sets up alerts, asking you before each change. This browser only.'
+                        : 'Not available in this browser yet. Use Chrome 149 or newer.'}
+                    </span>
+                  </div>
+                  <LinearToggle
+                    checked={assistantOn}
+                    onChange={setWebMcpEnabled}
+                    disabled={!assistantSupported || assistantForced}
+                    tooltipContent={assistantOn ? 'Turn off for the AI assistant' : 'Turn on for the AI assistant'}
+                  />
                 </div>
               </section>
             </div>

@@ -1,11 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import type { Workspace } from '@/lib/types';
 import { workspaceTools } from './tools';
 import type { ModelContext, WebMcpTool } from './types';
 
-/** Opts one browser in while the build keeps WebMCP off: `localStorage.setItem('buyerly-webmcp', 'on')`. */
+/** Opts one browser in while the build keeps WebMCP off: Settings → Preferences, or `localStorage.setItem('buyerly-webmcp', 'on')`. */
 const OPT_IN_KEY = 'buyerly-webmcp';
+const OPT_IN_EVENT = 'buyerly-webmcp-change';
 
 /**
  * Chrome 150 moved the entry point from `navigator` to `document` and warns
@@ -24,6 +25,34 @@ export function webMcpEnabled(): boolean {
   } catch {
     return false;
   }
+}
+
+/** Turns the tools on or off in this browser; every open workspace re-registers at once. */
+export function setWebMcpEnabled(on: boolean): void {
+  try {
+    if (on) window.localStorage.setItem(OPT_IN_KEY, 'on');
+    else window.localStorage.removeItem(OPT_IN_KEY);
+  } catch {
+    // Storage is blocked: the switch cannot stick in this browser.
+  }
+  window.dispatchEvent(new Event(OPT_IN_EVENT));
+}
+
+function subscribeToOptIn(onChange: () => void): () => void {
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === OPT_IN_KEY || event.key === null) onChange();
+  };
+  window.addEventListener(OPT_IN_EVENT, onChange);
+  window.addEventListener('storage', onStorage);
+  return () => {
+    window.removeEventListener(OPT_IN_EVENT, onChange);
+    window.removeEventListener('storage', onStorage);
+  };
+}
+
+/** Whether the tools are on here, following the switch in this and other tabs. */
+export function useWebMcpEnabled(): boolean {
+  return useSyncExternalStore(subscribeToOptIn, webMcpEnabled, () => false);
 }
 
 /** Every tool lives until `signal` aborts. */
@@ -60,9 +89,10 @@ export function registerTools(modelContext: ModelContext, tools: WebMcpTool[], s
  */
 export function useWebMcpTools(workspace: Pick<Workspace, 'slug' | 'role'>): void {
   const { slug, role } = workspace;
+  const enabled = useWebMcpEnabled();
   useEffect(() => {
     const modelContext = findModelContext();
-    if (!modelContext || !webMcpEnabled()) return;
+    if (!modelContext || !enabled) return;
     const controller = new AbortController();
     const tools = workspaceTools({
       workspace: slug,
@@ -72,5 +102,5 @@ export function useWebMcpTools(workspace: Pick<Workspace, 'slug' | 'role'>): voi
     });
     registerTools(modelContext, tools, controller.signal);
     return () => controller.abort();
-  }, [slug, role]);
+  }, [slug, role, enabled]);
 }
