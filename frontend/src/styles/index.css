@@ -1851,6 +1851,53 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   text-decoration: none;
 }
 
+/* Linear's first sign-in choice is filled with the accent; the rest stay outlined. */
+.buyerly-auth-button--primary {
+  border-color: transparent;
+  background: var(--action-primary);
+  color: #fff;
+}
+
+.buyerly-auth-button--primary:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--action-primary-hover);
+}
+
+/* Linear's account screens: "Back to …" top left, "Logged in as <email>" top right. */
+.buyerly-auth-back {
+  position: fixed;
+  top: 24px;
+  left: 24px;
+  border: 0;
+  background: transparent;
+  color: #626469;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.buyerly-auth-back:hover {
+  color: #202124;
+}
+
+.buyerly-auth-corner {
+  position: fixed;
+  top: 22px;
+  right: 24px;
+  margin: 0;
+  color: #77797e;
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.buyerly-auth-corner strong {
+  display: block;
+  color: #202124;
+  font-size: 12px;
+  font-weight: 540;
+}
+
 .buyerly-auth-text-button {
   margin-top: 14px;
   border: 0;

@@ -89,6 +89,7 @@ Slug нормализуется в ASCII и ограничивается 60 си
 | `POST /api/workspaces/{id}/invites` | `email?`, `role`, `max_uses?`, `expires_in_days?` | создание персонального инвайта (с письмом через Resend) или публичной ссылки |
 | `GET /api/workspaces/{id}/invites` | — | список активных и истекших приглашений воркспейса |
 | `DELETE /api/workspaces/{id}/invites/{invite_id}` | — | атомарный отзыв активного приглашения относительно конкурентного принятия |
+| `POST /api/workspaces/{id}/invites/{invite_id}/resend` | — | owner/admin: заново отправляет письмо по ждущему персональному приглашению (в т. ч. истёкшему) с той же ссылкой и новым сроком 7 дней; отозванное, принятое и публичную ссылку — 400, сбой письма — 502 |
 | `GET /api/invites/{token}` | — | публичная проверка валидности токена приглашения перед вступлением |
 | `POST /api/invites/{token}/accept` | — | атомарное принятие инвайта и добавление в команду; повтор уже вступившего пользователя идемпотентен |
 
@@ -368,6 +369,7 @@ curl -fsS https://buyerly.app/api/me \
 | `POST /api/workspaces/{workspace_id}/invites` | создание приглашения в воркспейс по email или ссылке |
 | `GET /api/workspaces/{workspace_id}/invites` | получение списка активных приглашений воркспейса |
 | `DELETE /api/workspaces/{workspace_id}/invites/{invite_id}` | отзыв/удаление приглашения |
+| `POST /api/workspaces/{workspace_id}/invites/{invite_id}/resend` | повторная отправка письма по ждущему персональному приглашению |
 | `GET /api/invites/{token}` | получение публичной информации о приглашении по токену |
 | `POST /api/invites/{token}/accept` | принятие приглашения и вступление в воркспейс |
 

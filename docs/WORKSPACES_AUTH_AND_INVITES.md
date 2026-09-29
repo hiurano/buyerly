@@ -2,7 +2,11 @@
 
 ## Текущий web-сценарий
 
-Публичной регистрации нет. На `/login` пользователь входит по логину (username или email) и паролю; аккаунты с паролем заводит оператор командой `python -m scripts.set_user_password`. Вход по email доступен только из приглашения (`/invite/{token}`), если не включён `EMAIL_LOGIN_WITHOUT_INVITE`: письмо содержит одноразовую ссылку и код. Ссылка открывает `/auth/email/verify`; успешный обмен создаёт серверную сессию.
+Публичной регистрации нет. `/login` устроен как в Linear: первый экран «Log in to Buyerly» предлагает «Continue with email» и «Log in with password». По паролю входят по логину (username или email); аккаунты с паролем заводит оператор командой `python -m scripts.set_user_password`. По email письмо содержит одноразовую ссылку и код. Ссылка открывает `/auth/email/verify`; успешный обмен создаёт серверную сессию. Сервер высылает письмо без приглашения только при `EMAIL_LOGIN_WITHOUT_INVITE=true` (тогда — участникам workspace и почтам из белого списка), иначе вход по email работает только из приглашения.
+
+Страница приглашения `/invite/<token>` повторяет Linear. Персональное приглашение называет почту: «To accept the invitation please log in as <email>.» и кнопку «Log in». Если в браузере вошёл другой человек, в углу видно «Logged in as <его почта>», а «Log in» сначала завершает его сессию. Когда вошла приглашённая почта, приглашение принимается само, без отдельной кнопки «Join». Публичную ссылку без почты вошедший человек принимает кнопкой «Join workspace».
+
+Меню workspace: «Invite and manage members» открывает Settings → Members (`/<workspace>/settings/members`) — участники и ждущие приглашения, кнопка Invite (несколько почт через запятую), в меню строки приглашения «Resend invite» и «Revoke invite». «Log out» (или Alt+Shift+Q) завершает сессию этого браузера и открывает `/login`.
 
 Пользователь без workspace проходит `/create-workspace`, затем `/<workspace>/welcome`. Приглашение в команду открывается по `/invite/<token>`. Основные маршруты и переходы описаны в [INFORMATION_ARCHITECTURE.md](INFORMATION_ARCHITECTURE.md).
 

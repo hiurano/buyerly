@@ -3,7 +3,7 @@ import { apiRequest } from '@/lib/api';
 import type { LoginResult } from '@/lib/types';
 import { AuthFrame, BuyerlyBrand } from './AuthFrame';
 
-type LoginStage = 'password' | 'email' | 'check' | 'code';
+type LoginStage = 'start' | 'password' | 'email' | 'check' | 'code';
 
 interface LoginViewProps {
   inviteToken?: string;
@@ -12,19 +12,29 @@ interface LoginViewProps {
   onAuthenticated: (result: LoginResult) => void | Promise<void>;
 }
 
+/**
+ * Linear's sign-in: a first screen of choices, then "What's your email
+ * address?", "Check your email" with the emailed link, and the same code by
+ * hand. Buyerly keeps its username-and-password login as the second choice.
+ */
 export const LoginView: React.FC<LoginViewProps> = ({
   inviteToken,
   initialEmail = '',
   startWithEmail = false,
   onAuthenticated,
 }) => {
-  const [stage, setStage] = useState<LoginStage>(startWithEmail ? 'email' : 'password');
+  const [stage, setStage] = useState<LoginStage>(startWithEmail ? 'email' : 'start');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState(initialEmail);
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  const goTo = (next: LoginStage) => {
+    setError('');
+    setStage(next);
+  };
 
   const logInWithPassword = async (event: FormEvent) => {
     event.preventDefault();
@@ -67,6 +77,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
         }),
       });
       setEmail(normalizedEmail);
+      setCode('');
       setStage('check');
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Could not send the email');
@@ -78,7 +89,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const verifyCode = async (event: FormEvent) => {
     event.preventDefault();
     if (!/^\d{6}$/.test(code)) {
-      setError('Enter the six-digit code');
+      setError('Please enter a valid verification code.');
       return;
     }
     setBusy(true);
@@ -90,7 +101,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
       });
       await onAuthenticated(result);
     } catch (verifyError) {
-      setError(verifyError instanceof Error ? verifyError.message : 'The code is invalid');
+      setError(verifyError instanceof Error ? verifyError.message : 'Please enter a valid verification code.');
     } finally {
       setBusy(false);
     }
@@ -100,6 +111,18 @@ export const LoginView: React.FC<LoginViewProps> = ({
     <AuthFrame>
       <section className="buyerly-auth-card">
         <BuyerlyBrand />
+
+        {stage === 'start' && (
+          <>
+            <h1>Log in to Buyerly</h1>
+            <button className="buyerly-auth-button buyerly-auth-button--primary" type="button" onClick={() => goTo('email')}>
+              Continue with email
+            </button>
+            <button className="buyerly-auth-button" type="button" onClick={() => goTo('password')}>
+              Log in with password
+            </button>
+          </>
+        )}
 
         {stage === 'password' && (
           <form onSubmit={logInWithPassword} noValidate>
@@ -135,18 +158,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
             <button className="buyerly-auth-button" type="submit" disabled={busy}>
               {busy ? 'Logging in…' : 'Log in'}
             </button>
-            {inviteToken && (
-              <button
-                className="buyerly-auth-text-button"
-                type="button"
-                onClick={() => {
-                  setError('');
-                  setStage('email');
-                }}
-              >
-                Continue with email
-              </button>
-            )}
+            <button className="buyerly-auth-text-button" type="button" onClick={() => goTo('start')}>
+              Back to login
+            </button>
           </form>
         )}
 
@@ -162,7 +176,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 autoFocus
                 placeholder="Enter your email address…"
                 value={email}
-                readOnly={Boolean(initialEmail)}
                 onChange={(event) => setEmail(event.target.value)}
                 aria-invalid={Boolean(error)}
               />
@@ -171,14 +184,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
             <button className="buyerly-auth-button" type="submit" disabled={busy}>
               {busy ? 'Sending…' : 'Continue with email'}
             </button>
-            <button
-              className="buyerly-auth-text-button"
-              type="button"
-              onClick={() => {
-                setError('');
-                setStage('password');
-              }}
-            >
+            <button className="buyerly-auth-text-button" type="button" onClick={() => goTo('start')}>
               Back to login
             </button>
           </form>
@@ -188,21 +194,16 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <>
             <h1>Check your email</h1>
             <p className="buyerly-auth-copy">
-              We sent you a temporary login link and a six-digit code to
+              We’ve sent you a temporary login link.
+              <br />
+              Please check your inbox at
               <strong className="buyerly-auth-email">{email}</strong>
             </p>
             {error && <p className="buyerly-auth-error" role="alert">{error}</p>}
-            <button className="buyerly-auth-button" type="button" onClick={() => setStage('code')}>
+            <button className="buyerly-auth-button" type="button" onClick={() => goTo('code')}>
               Enter code manually
             </button>
-            <button
-              className="buyerly-auth-text-button"
-              type="button"
-              onClick={() => {
-                setError('');
-                setStage('password');
-              }}
-            >
+            <button className="buyerly-auth-text-button" type="button" onClick={() => goTo('start')}>
               Back to login
             </button>
           </>
@@ -210,31 +211,33 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
         {stage === 'code' && (
           <form onSubmit={verifyCode} noValidate>
-            <h1>Enter your login code</h1>
+            <h1>Check your email</h1>
             <p className="buyerly-auth-copy">
-              Enter the code sent to
+              We’ve sent you a temporary login code.
+              <br />
+              Please check your inbox at
               <strong className="buyerly-auth-email">{email}</strong>
             </p>
             <label className="buyerly-auth-field buyerly-auth-code-field">
-              <span className="sr-only">Six-digit login code</span>
+              <span className="sr-only">Login code</span>
               <input
                 type="text"
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 autoFocus
                 maxLength={6}
-                placeholder="000000"
+                placeholder="Enter code"
                 value={code}
                 onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
                 aria-invalid={Boolean(error)}
               />
             </label>
             {error && <p className="buyerly-auth-error" role="alert">{error}</p>}
-            <button className="buyerly-auth-button" type="submit" disabled={busy}>
-              {busy ? 'Checking…' : 'Continue'}
+            <button className="buyerly-auth-button buyerly-auth-button--primary" type="submit" disabled={busy}>
+              {busy ? 'Checking…' : 'Continue with login code'}
             </button>
-            <button className="buyerly-auth-text-button" type="button" onClick={() => setStage('check')}>
-              Back to email
+            <button className="buyerly-auth-text-button" type="button" onClick={() => goTo('start')}>
+              Back to login
             </button>
           </form>
         )}

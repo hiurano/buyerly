@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { apiRequest } from '@/lib/api';
 import { useAppStore } from '@/store/useAppStore';
+import { toast } from '@/ui/toast';
 import { Tooltip } from '@/ui/Tooltip';
 import { BuyerlyLogoAvatar } from '@/icons/LinearIcons';
 import {
@@ -10,8 +12,31 @@ import {
   DropdownMenuSeparator,
 } from '@/ui/DropdownMenu';
 
+/** Ends this browser's session and reloads into the login screen, dropping all in-memory workspace state. */
+async function logOut() {
+  try {
+    await apiRequest('/api/auth/logout', { method: 'POST', body: JSON.stringify({}) });
+  } catch (error) {
+    toast.error("Couldn't log out", error instanceof Error ? error.message : undefined);
+    return;
+  }
+  window.location.assign('/login');
+}
+
 export const SidebarHeader: React.FC = () => {
-  const { workspaceName, setSearchOpen, setActiveTab } = useAppStore();
+  const { workspaceName, setSearchOpen, setActiveTab, setSettingsSection } = useAppStore();
+
+  // Linear: Alt+Shift+Q logs out from anywhere in the app.
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.altKey && event.shiftKey && !event.ctrlKey && !event.metaKey && event.code === 'KeyQ') {
+        event.preventDefault();
+        void logOut();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <div
@@ -80,7 +105,12 @@ export const SidebarHeader: React.FC = () => {
             <div className="h-[6px] w-full" />
 
             {/* 1. Settings */}
-            <DropdownMenuItem onSelect={() => setActiveTab('preferences')}>
+            <DropdownMenuItem
+              onSelect={() => {
+                setSettingsSection('preferences');
+                setActiveTab('preferences');
+              }}
+            >
               <span className="truncate">Settings</span>
               <div className="flex shrink-0 items-center gap-[3px]">
                 <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
@@ -96,7 +126,12 @@ export const SidebarHeader: React.FC = () => {
             </DropdownMenuItem>
 
             {/* 2. Invite and manage members */}
-            <DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => {
+                setSettingsSection('members');
+                setActiveTab('preferences');
+              }}
+            >
               <span className="truncate">Invite and manage members</span>
             </DropdownMenuItem>
 
@@ -124,7 +159,7 @@ export const SidebarHeader: React.FC = () => {
             </DropdownMenuItem>
 
             {/* 4. Log out */}
-            <DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => void logOut()}>
               <span className="truncate">Log out</span>
               <div className="flex shrink-0 items-center gap-[3px]">
                 <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">

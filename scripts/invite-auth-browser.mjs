@@ -1,4 +1,7 @@
 // Exercise the real App with an isolated, synthetic invitation API.
+// The flow follows Linear: the invite page names the email to log in as, the
+// emailed code or link signs that email in, and the invite is then accepted
+// without a second "Join" step. Someone else's session is logged out first.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -18,10 +21,11 @@ const workspace = {
 const inviteToken = 'inv_browser_test';
 const invitePath = `/invite/${inviteToken}`;
 const email = 'invitee@example.test';
+const otherEmail = 'someone-else@example.test';
 const scenarios = [390, 768, 1024, 1440].flatMap(width =>
   ['code', 'link'].map(method => ({ width, method })),
 );
-scenarios.push({ width: 1440, method: 'session' });
+scenarios.push({ width: 1440, method: 'session' }, { width: 390, method: 'other' }, { width: 1440, method: 'other' });
 
 let browser;
 try {
@@ -35,7 +39,7 @@ try {
     const errors = [];
     const writes = [];
     let documents = 0;
-    let authenticated = method === 'session';
+    let authenticated = method === 'session' || method === 'other';
     const user = {
       username: 'invitee', full_name: '', first_name: '', last_name: '',
       email, email_verified: true, unconfirmed_email: null, avatar_url: '',
@@ -43,6 +47,10 @@ try {
       onboarding_step: method === 'session' ? 'completed' : 'workspace',
       active_workspace: null, workspaces: [],
     };
+    // Someone else is logged in until the invite page logs them out.
+    let sessionUser = method === 'other'
+      ? { ...user, username: 'someone', email: otherEmail, onboarding_completed: true, onboarding_step: 'completed' }
+      : user;
     let releaseVerification;
     const verificationGate = new Promise(resolve => { releaseVerification = resolve; });
     page.on('pageerror', error => errors.push(error.message));
@@ -55,7 +63,7 @@ try {
       if (verb !== 'GET') writes.push({ path, body });
       if (verb === 'GET' && path === '/api/me') {
         return route.fulfill(authenticated
-          ? { json: user }
+          ? { json: sessionUser }
           : { status: 401, json: { detail: 'Not authenticated' } });
       }
       if (verb === 'GET' && path === `/api/invites/${inviteToken}`) {
@@ -64,6 +72,10 @@ try {
           workspace_slug: workspace.slug, workspace_badge_text: workspace.badge_text,
           inviter_name: 'Team Owner', role: 'buyer', target_email: email,
         } });
+      }
+      if (verb === 'POST' && path === '/api/auth/logout') {
+        authenticated = false;
+        return route.fulfill({ json: { status: 'ok' } });
       }
       if (verb === 'POST' && path === '/api/auth/request-temporary-password') {
         return route.fulfill({ json: { message: 'Email sent' } });
@@ -74,12 +86,13 @@ try {
         }
         await verificationGate;
         authenticated = true;
+        sessionUser = user;
         return route.fulfill({ json: {
           username: user.username, full_name: '', role: 'buyer', message: 'Logged in', redirect_url: invitePath,
         } });
       }
       if (verb === 'POST' && path === `/api/invites/${inviteToken}/accept`) {
-        assert.ok(authenticated, 'Invitation acceptance requires a session');
+        assert.ok(authenticated && sessionUser === user, 'Only the invited email accepts the invitation');
         user.active_workspace = workspace;
         user.workspaces = [workspace];
         if (!user.onboarding_completed) user.onboarding_step = 'personal_details';
@@ -110,46 +123,48 @@ try {
     );
     try {
       await page.goto(`${origin}${invitePath}`);
-      await page.getByRole('heading', { name: 'Join Invite Team', exact: true }).waitFor();
+
       if (method !== 'session') {
-        await page.getByRole('button', { name: 'Continue with email', exact: true }).click();
+        await page.getByRole('heading', { name: 'Team Owner has invited you to Invite Team', exact: true }).waitFor();
+        // Logged out, or logged in as someone else, the page names the email to log in as.
+        await page.getByText(`To accept the invitation please log in as${email}.`).waitFor();
+        assert.equal(await page.getByRole('button', { name: 'Join workspace', exact: true }).count(), 0);
+        if (method === 'other') {
+          await page.getByText(`Logged in as${otherEmail}`).waitFor();
+        }
+        await assertNoOverflow();
+        await page.screenshot({ path: `${output}/${method}-invite-${width}.png`, fullPage: true });
+        await page.getByRole('button', { name: 'Log in', exact: true }).click();
+        if (method === 'other') {
+          assert.deepEqual(writes.slice(0, 1), [{ path: '/api/auth/logout', body: {} }], 'The other account is logged out first');
+          writes.length = 0;
+        }
+        await page.getByRole('heading', { name: 'What’s your email address?', exact: true }).waitFor();
         assert.equal(await page.getByRole('textbox', { name: 'Email address', exact: true }).inputValue(), email);
         await page.getByRole('button', { name: 'Continue with email', exact: true }).click();
         await page.getByRole('heading', { name: 'Check your email', exact: true }).waitFor();
         assert.deepEqual(writes, [{ path: '/api/auth/request-temporary-password', body: { email, invite_token: inviteToken } }]);
-        if (method === 'code') {
+        if (method === 'link') {
+          await page.goto(`${origin}/auth/email/verify?token=link_browser_test`);
+          await page.getByText('Logging you in securely…', { exact: true }).waitFor();
+        } else {
           await page.getByRole('button', { name: 'Enter code manually', exact: true }).click();
-          const code = page.getByRole('textbox', { name: 'Six-digit login code', exact: true });
+          const code = page.getByRole('textbox', { name: 'Login code', exact: true });
           await code.fill('111111');
-          await page.getByRole('button', { name: 'Continue', exact: true }).click();
+          await page.getByRole('button', { name: 'Continue with login code', exact: true }).click();
           await page.getByRole('alert').waitFor();
           assert.equal(await page.getByRole('alert').innerText(), 'Invalid or expired temporary password');
-          assert.equal(await page.getByRole('button', { name: 'Join workspace', exact: true }).count(), 0);
           await assertNoOverflow();
           await code.fill('123456');
-          await page.getByRole('button', { name: 'Continue', exact: true }).click();
+          await page.getByRole('button', { name: 'Continue with login code', exact: true }).click();
           const checking = page.getByRole('button', { name: 'Checking…', exact: true });
           await checking.waitFor();
           assert.equal(await checking.isDisabled(), true);
-        } else {
-          await page.goto(`${origin}/auth/email/verify?token=link_browser_test`);
-          await page.getByText('Logging you in securely…', { exact: true }).waitFor();
         }
         releaseVerification();
       }
 
-      const join = page.getByRole('button', { name: 'Join workspace', exact: true });
-      await join.waitFor();
-      assert.equal(new URL(page.url()).pathname, invitePath);
-      assert.equal(await page.getByRole('textbox', { name: 'Six-digit login code', exact: true }).count(), 0);
-      assert.equal(writes.filter(write => write.path.endsWith('/accept')).length, 0, 'Joining remains an explicit step');
-      assert.equal(documents, method === 'link' ? 2 : 1, 'Authentication must return to the invitation without reloading');
-      await assertNoOverflow();
-      await page.screenshot({ path: `${output}/${method}-join-${width}.png`, fullPage: true });
-      await join.focus();
-      assert.equal(await join.evaluate(element => element === document.activeElement), true);
-      await page.keyboard.press('Enter');
-
+      // Linear: once the invited email is logged in, the invitation is accepted without another step.
       if (method !== 'session') {
         await page.getByRole('heading', { name: 'Set up your profile', exact: true }).waitFor();
         assert.equal(new URL(page.url()).pathname, `/${workspace.slug}/welcome`);
@@ -161,7 +176,7 @@ try {
       }
       await page.waitForURL(`**/${workspace.slug}/inbox`);
       await page.getByText('No workspace events yet', { exact: true }).waitFor();
-      assert.equal(documents, method === 'link' ? 2 : 1, 'Joining and onboarding must not reload the page');
+      assert.equal(documents, method === 'link' ? 2 : 1, 'Signing in, accepting and onboarding must not reload the page');
       assert.deepEqual(writes.filter(write => write.path.endsWith('/accept')),
         [{ path: `/api/invites/${inviteToken}/accept`, body: {} }]);
       assert.deepEqual(writes.filter(write => write.path === '/api/onboarding/personal-details'), method === 'session' ? []
@@ -170,7 +185,7 @@ try {
         : method === 'link' ? [{ path: '/api/auth/verify-email-link', body: { token: 'link_browser_test' } }]
           : ['111111', '123456'].map(code => ({ path: '/api/auth/verify-temporary-password', body: { email, code } })));
       assert.deepEqual(errors, []);
-      console.log(`Invitation ${method}: authentication, explicit acceptance and workspace entry passed at ${width}px`);
+      console.log(`Invitation ${method}: log in as the invited email and automatic acceptance passed at ${width}px`);
     } catch (error) {
       await page.screenshot({ path: `${output}/${method}-failure-${width}.png`, fullPage: true });
       throw error;

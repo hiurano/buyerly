@@ -1,4 +1,4 @@
-import type { AppTab, AdsManagerEntity } from '@/store/useAppStore';
+import type { AppTab, AdsManagerEntity, SettingsSection } from '@/store/useAppStore';
 
 export type Route =
   | { kind: 'root' }
@@ -9,7 +9,14 @@ export type Route =
   | { kind: 'meta-connect-invite'; token: string }
   | { kind: 'meta-connect-success' }
   | { kind: 'welcome'; workspace: string }
-  | { kind: 'workspace'; workspace: string; tab: AppTab | 'preferences'; entity?: AdsManagerEntity; recordId?: string }
+  | {
+      kind: 'workspace';
+      workspace: string;
+      tab: AppTab | 'preferences';
+      entity?: AdsManagerEntity;
+      recordId?: string;
+      settingsSection?: SettingsSection;
+    }
   | { kind: 'unknown' };
 
 const SYSTEM_ROOTS = new Set([
@@ -84,6 +91,9 @@ export function parseRoute(location: Location = window.location): Route {
   if (parts[1] === 'settings' && parts.length === 2) {
     return { kind: 'workspace', workspace, tab: 'preferences' };
   }
+  if (parts[1] === 'settings' && parts.length === 3 && parts[2] === 'members') {
+    return { kind: 'workspace', workspace, tab: 'preferences', settingsSection: 'members' };
+  }
   return { kind: 'unknown' };
 }
 
@@ -91,9 +101,12 @@ export function pathForTab(
   workspace: string,
   tab: AppTab | 'preferences',
   entity: AdsManagerEntity = 'campaigns',
+  settingsSection: SettingsSection = 'preferences',
 ): string {
   if (tab === 'campaigns') return `/${workspace}/ads-manager/${entity}`;
-  if (tab === 'preferences') return `/${workspace}/settings`;
+  if (tab === 'preferences') {
+    return settingsSection === 'members' ? `/${workspace}/settings/members` : `/${workspace}/settings`;
+  }
   return `/${workspace}/${tab}`;
 }
 

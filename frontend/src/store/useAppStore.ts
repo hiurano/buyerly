@@ -141,6 +141,8 @@ export interface AdsManagerQuickFilter {
 }
 export type AppTab = 'inbox' | 'campaigns' | 'rules' | 'statistics';
 export type ActiveTab = AppTab | 'preferences';
+/** Settings pages; `members` also has its own address under /<workspace>/settings. */
+export type SettingsSection = 'preferences' | 'profile' | 'ad-accounts' | 'members';
 export type InterfaceTheme = 'system' | 'light' | 'dark';
 
 /**
@@ -233,6 +235,8 @@ interface AppState {
   activeTab: ActiveTab;
   lastAppTab: AppTab;
   setActiveTab: (tab: ActiveTab) => void;
+  settingsSection: SettingsSection;
+  setSettingsSection: (section: SettingsSection) => void;
   interfaceTheme: InterfaceTheme;
   setInterfaceTheme: (theme: InterfaceTheme) => void;
 
@@ -452,6 +456,8 @@ export const useAppStore = create<AppState>((set, get) => {
       activeTab: tab,
       lastAppTab: tab === 'preferences' ? state.lastAppTab : tab,
     })),
+  settingsSection: 'preferences',
+  setSettingsSection: (section) => set({ settingsSection: section }),
   interfaceTheme:
     typeof window !== 'undefined' &&
     (window.localStorage.getItem('buyerly-interface-theme') === 'light' ||
