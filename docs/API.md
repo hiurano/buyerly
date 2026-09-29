@@ -369,6 +369,7 @@ curl -fsS https://buyerly.app/api/me \
 | `POST /api/workspaces/{workspace_id}/invites` | создание приглашения в воркспейс по email или ссылке |
 | `GET /api/workspaces/{workspace_id}/invites` | получение списка активных приглашений воркспейса |
 | `DELETE /api/workspaces/{workspace_id}/invites/{invite_id}` | отзыв/удаление приглашения |
+| `POST /api/workspaces/{workspace_id}/invites/{invite_id}/resend` | повторная отправка письма по ждущему персональному приглашению |
 | `GET /api/invites/{token}` | получение публичной информации о приглашении по токену |
 | `POST /api/invites/{token}/accept` | принятие приглашения и вступление в воркспейс |
 
