@@ -334,6 +334,16 @@ try {
     await openWorkspace(page, '/alpha/rules');
     await page.getByText('Example stop', { exact: true }).first().waitFor();
     assert.deepEqual(await toolNames(page), []);
+
+    // The switch in Settings → Preferences turns the tools on and off without a reload.
+    await navigate(page, '/alpha/settings');
+    const assistantSwitch = page.getByRole('switch', { name: 'Turn on for the AI assistant' });
+    await assistantSwitch.click();
+    await waitForTools(page);
+    assert.equal(await page.evaluate(() => window.localStorage.getItem('buyerly-webmcp')), 'on');
+    await page.getByRole('switch', { name: 'Turn off for the AI assistant' }).click();
+    await page.waitForFunction(async () => (await document.modelContext.getTools()).length === 0);
+    assert.equal(await page.evaluate(() => window.localStorage.getItem('buyerly-webmcp')), null);
     assert.deepEqual(problems, []);
     await context.close();
   }
