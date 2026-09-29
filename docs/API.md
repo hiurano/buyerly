@@ -306,13 +306,16 @@ Inbox, как в Linear, показывает события workspace как у
 
 | Метод и путь | Параметры | Назначение |
 |---|---|---|
-| `GET /api/inbox` | `offset`, `limit`, `ordering=newest\|oldest`, `unread_only?`, `show_snoozed?`, `unread_first?` | уведомления активного workspace с полями события плюс `is_read` и `snoozed_until`; `has_more` для подгрузки, `unread_count` |
+| `GET /api/inbox` | `offset`, `limit`, `ordering=newest\|oldest`, `unread_only?`, `show_snoozed?`, `unread_first?`, `filter?` | уведомления активного workspace с полями события плюс `is_read` и `snoozed_until`; `has_more` для подгрузки, `unread_count`, `hidden_by_filters` |
+| `GET /api/inbox/facets` | `unread_only?`, `show_snoozed?` | значения и счётчики для фильтра: `type`, `from`, `account`, `status` |
 | `GET /api/inbox/unread-count` | — | число непрочитанных для бокового меню и заголовка вкладки |
 | `POST /api/inbox/{event_id}/read` | `{"read": bool}` | отметить прочитанным или непрочитанным |
 | `POST /api/inbox/{event_id}/delete` | — | убрать уведомление из своего Inbox |
 | `POST /api/inbox/{event_id}/snooze` | `{"until": datetime\|null}` | отложить до времени в будущем; вернётся непрочитанным. `null` снимает отложенность |
 | `POST /api/inbox/delete-all` | — | очистить свой Inbox |
 | `POST /api/inbox/delete-all-read` | — | убрать все прочитанные |
+
+Фильтр как в Linear: `filter` — JSON-список `[{"field": "type"|"from"|"account"|"status", "operator": "is"|"is_not", "values": [...]}]`. `type` — `event_type`; `from` — `user:<actor_id>`, `rule:<rule_id>` или `buyerly`; `account` — `account_id` (пустая строка — без рекламного аккаунта); `status` — статус события. Неизвестное поле или оператор — `400`.
 
 Непрочитанным считается событие после отметки участника `inbox_read_before`, кроме его собственных действий. Отметка ставится при вступлении в workspace; при выкатке 0028 всё прежнее стало прочитанным. Действия отвечают `404` для события чужого workspace и возвращают новый `unread_count`.
 

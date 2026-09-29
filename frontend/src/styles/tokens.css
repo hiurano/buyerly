@@ -109,6 +109,8 @@
   --row-selected-bg: lch(13.2% 6 282 / 1);
   --inbox-unread-dot: lch(47.918% 59.303 288.421 / 1); /* Linear unread notification dot */
   --inbox-error-bg: lch(66% 80 48 / 1);
+  --inbox-filter-bg: lch(9.345% 0.85 272 / 1); /* Linear Inbox filter box */
+  --inbox-filter-chip-bg: lch(10.149% 0.689 272 / 1);
   --row-selected-hover-bg: lch(15.8% 6 282 / 1);
   --checkbox-checked-bg: #5e6ad2;
   --checkbox-checked-fg: lch(100% 5 286.91 / 1);
@@ -258,6 +260,8 @@ html[data-theme='light'] {
   --row-selected-bg: lch(92.254% 5.903 282.518 / 1);       /* Linear selected row */
   --inbox-unread-dot: lch(47.918% 59.303 288.421 / 1);
   --inbox-error-bg: lch(58% 79 48 / 1);
+  --inbox-filter-bg: lch(97.5% 0.5 282 / 1);
+  --inbox-filter-chip-bg: lch(99.5% 0 282 / 1);
   --row-selected-hover-bg: lch(88.754% 5.903 282.518 / 1); /* Linear selected row under the pointer */
   --checkbox-checked-bg: lch(53% 52.26 286.91 / 1);        /* Linear accent */
   --checkbox-checked-fg: lch(100% 5 286.91 / 1);

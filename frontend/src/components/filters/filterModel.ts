@@ -54,6 +54,8 @@ export interface FilterFieldDefinition<T> {
   pluralLabel?: string;
   placeholder?: string;
   keywords?: string[];
+  /** Known values with nothing to match, which Linear folds into one line. */
+  unmatchedCount?: number;
 }
 
 export const FILTER_OPERATOR_LABELS: Record<FilterOperator, string> = {
@@ -72,6 +74,10 @@ export const FILTER_OPERATOR_LABELS: Record<FilterOperator, string> = {
   before: 'is before',
   after: 'is after',
 };
+
+/** Linear says "is any of" once a clause holds more than one value. */
+export const filterOperatorLabel = (operator: FilterOperator, valueCount: number) =>
+  operator === 'is' && valueCount > 1 ? 'is any of' : FILTER_OPERATOR_LABELS[operator];
 
 const asArray = (value: FilterValue | FilterValue[] | null | undefined): FilterValue[] => {
   if (value === null || value === undefined) return [];

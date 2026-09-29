@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   CalendarDays,
   Check,
+  Circle,
   ChevronRight,
   CircleDashed,
   Gauge,
@@ -10,16 +11,20 @@ import {
   Layers3,
   Plus,
   Type,
+  UserRound,
   X,
 } from 'lucide-react';
 import {
   LinearBacklogDashedIcon,
   LinearBoltIcon,
   LinearFilterIcon,
+  LinearInboxUnreadIcon,
+  LinearProjectCubeIcon,
 } from '@/icons/LinearIcons';
 import {
   FILTER_OPERATOR_LABELS,
   FilterClause,
+  filterOperatorLabel,
   FilterFieldDefinition,
   FilterOption,
   getFilterValueAccessibleName,
@@ -50,6 +55,10 @@ interface FilterMenuProps<T> {
   onChange: (clauses: FilterClause[]) => void;
   onClose: () => void;
   fieldId?: string;
+  /** Singular and plural noun for option counts, e.g. ["notification", "notifications"]. */
+  countNoun?: [string, string];
+  childWidth?: number;
+  rootPlaceholder?: string;
 }
 
 interface MenuPosition {
@@ -78,16 +87,17 @@ const getAnchorPosition = (anchor: HTMLElement, width: number): MenuPosition => 
 const getChildPosition = (
   rowRect: DOMRect,
   rootPosition: MenuPosition,
-  estimatedHeight: number
+  estimatedHeight: number,
+  childWidth: number = CHILD_WIDTH,
 ): MenuPosition => {
   const roomOnLeft = rootPosition.left + CHILD_OVERLAP - VIEWPORT_GAP;
   const preferredLeft =
-    roomOnLeft >= CHILD_WIDTH
-      ? rootPosition.left - CHILD_WIDTH + CHILD_OVERLAP
+    roomOnLeft >= childWidth
+      ? rootPosition.left - childWidth + CHILD_OVERLAP
       : rootPosition.left + ROOT_WIDTH - CHILD_OVERLAP;
 
   return {
-    left: clamp(preferredLeft, VIEWPORT_GAP, window.innerWidth - CHILD_WIDTH - VIEWPORT_GAP),
+    left: clamp(preferredLeft, VIEWPORT_GAP, window.innerWidth - childWidth - VIEWPORT_GAP),
     top: clamp(rowRect.top - 44, VIEWPORT_GAP, window.innerHeight - estimatedHeight - VIEWPORT_GAP),
   };
 };
@@ -97,6 +107,10 @@ const FilterFieldIcon: React.FC<{ fieldId: string; type: FilterFieldDefinition<u
   type,
 }) => {
   const props = { size: 15, strokeWidth: 1.8, 'aria-hidden': true } as const;
+  if (fieldId === 'notificationType') return <LinearInboxUnreadIcon size={14} />;
+  if (fieldId === 'from') return <UserRound {...props} />;
+  if (fieldId === 'adAccount') return <LinearProjectCubeIcon size={14} />;
+  if (fieldId === 'eventStatus') return <Circle {...props} />;
   if (fieldId === 'status') return <LinearBacklogDashedIcon size={14} />;
   if (fieldId.includes('group') || fieldId.includes('campaign') || fieldId.includes('adSet')) {
     return <Layers3 {...props} />;
@@ -225,6 +239,8 @@ const MenuOption: React.FC<{
     aria-selected={selected}
     onMouseEnter={onMouseEnter}
     onClick={onClick}
+    // Keep focus in the search field so Escape and arrows keep working after a click.
+    onMouseDown={(event) => event.preventDefault()}
     style={{
       display: 'flex',
       height: 32,
@@ -255,6 +271,8 @@ const MenuOption: React.FC<{
         role="checkbox"
         aria-checked={Boolean(selected)}
         style={{
+          // As in Linear, the box shows on the highlighted row and on selected ones.
+          visibility: selected || highlighted ? 'visible' : 'hidden',
           display: 'inline-flex',
           width: 14,
           height: 14,
@@ -313,6 +331,9 @@ export const LinearFilterMenu = <T,>({
   onChange,
   onClose,
   fieldId,
+  countNoun = ['issue', 'issues'],
+  childWidth = CHILD_WIDTH,
+  rootPlaceholder = 'Add Filter…',
 }: FilterMenuProps<T>) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const childRef = useRef<HTMLDivElement>(null);
@@ -334,7 +355,7 @@ export const LinearFilterMenu = <T,>({
 
   useEffect(() => {
     if (!isOpen || !anchorElement) return;
-    const width = mode === 'root' ? ROOT_WIDTH : CHILD_WIDTH;
+    const width = mode === 'root' ? ROOT_WIDTH : childWidth;
 
     const updatePosition = () => setRootPosition(getAnchorPosition(anchorElement, width));
     updatePosition();
@@ -357,7 +378,7 @@ export const LinearFilterMenu = <T,>({
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
-  }, [isOpen, anchorElement, fieldId, mode]);
+  }, [isOpen, anchorElement, fieldId, mode, childWidth]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -454,7 +475,7 @@ export const LinearFilterMenu = <T,>({
     setEditorValue(String(clauses.find((clause) => clause.fieldId === field.id)?.values[0] ?? ''));
     const optionCount = field.options?.length ?? 2;
     const estimatedHeight = Math.min(340, 50 + optionCount * 32);
-    setChildPosition(getChildPosition(row.getBoundingClientRect(), rootPosition, estimatedHeight));
+    setChildPosition(getChildPosition(row.getBoundingClientRect(), rootPosition, estimatedHeight, childWidth));
     window.setTimeout(() => childInputRef.current?.focus(), 20);
   };
 
@@ -546,7 +567,7 @@ export const LinearFilterMenu = <T,>({
         <>
           <SearchRow
             ref={childInputRef}
-            label="Filter…"
+            label={mode === 'value' ? field.label : 'Filter…'}
             value={childSearch}
             onChange={(value) => {
               setChildSearch(value);
@@ -574,7 +595,7 @@ export const LinearFilterMenu = <T,>({
                       meta={
                         option.count === undefined
                           ? undefined
-                          : `${option.count} ${option.count === 1 ? 'issue' : 'issues'}`
+                          : `${option.count} ${option.count === 1 ? countNoun[0] : countNoun[1]}`
                       }
                     />
                   </React.Fragment>
@@ -582,6 +603,15 @@ export const LinearFilterMenu = <T,>({
               })
             )}
           </div>
+          {field.unmatchedCount ? (
+            <>
+              <SectionSeparator />
+              <div style={{ display: 'flex', height: 32, alignItems: 'center', gap: 8, padding: '0 14px 6px', color: MENU_TEXT }}>
+                <FilterFieldIcon fieldId={field.id} type={field.type as FilterFieldDefinition<unknown>['type']} />
+                {field.unmatchedCount} {field.unmatchedCount === 1 ? 'option' : 'options'} not matching any {countNoun[1]}
+              </div>
+            </>
+          ) : null}
         </>
       );
     }
@@ -648,7 +678,7 @@ export const LinearFilterMenu = <T,>({
       <>
         <SearchRow
           ref={childInputRef}
-          label={activeClause ? FILTER_OPERATOR_LABELS[activeClause.operator] : 'Operator'}
+          label={activeClause ? filterOperatorLabel(activeClause.operator, activeClause.values.length) : 'Operator'}
           value={childSearch}
           onChange={(value) => {
             setChildSearch(value);
@@ -677,7 +707,7 @@ export const LinearFilterMenu = <T,>({
           {operators.map((operator, index) => (
             <MenuOption
               key={operator}
-              label={FILTER_OPERATOR_LABELS[operator]}
+              label={filterOperatorLabel(operator, activeClause?.values.length ?? 0)}
               selected={activeClause?.operator === operator}
               highlighted={childHighlightedIndex === index}
               onMouseEnter={() => setChildHighlightedIndex(index)}
@@ -696,7 +726,7 @@ export const LinearFilterMenu = <T,>({
     <MenuSurface ref={rootRef} position={rootPosition} width={ROOT_WIDTH} label="Add filter">
       <SearchRow
         ref={rootInputRef}
-        label="Add Filter…"
+        label={rootPlaceholder}
         value={rootSearch}
         onChange={(value) => {
           setRootSearch(value);
@@ -766,7 +796,7 @@ export const LinearFilterMenu = <T,>({
         <MenuSurface
           ref={childRef}
           position={mode === 'root' ? childPosition : rootPosition}
-          width={CHILD_WIDTH}
+          width={childWidth}
           label={mode === 'operator' ? `${activeField.label} operator` : `${activeField.label} values`}
           strongShadow
         >
@@ -870,7 +900,7 @@ export const ActiveFilterFormula = <T,>({
                 onClick={(event) => onOpenMenu('operator', event.currentTarget, field.id)}
                 style={{ height: 22, padding: '0 6px', border: 0, borderLeft: '1px solid var(--color-border-secondary)', background: 'transparent', color: MENU_MUTED, font: 'inherit', cursor: 'pointer' }}
               >
-                {FILTER_OPERATOR_LABELS[clause.operator]}
+                {filterOperatorLabel(clause.operator, clause.values.length)}
               </button>
               <button
                 type="button"
