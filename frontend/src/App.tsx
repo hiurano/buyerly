@@ -59,6 +59,8 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     toggleRightSidebar,
     toggleSidebarCollapsed,
     interfaceTheme,
+    inboxUnreadCount,
+    refreshInboxUnreadCount,
   } = useAppStore();
   useUndoShortcuts();
   useWebMcpTools(workspace);
@@ -90,7 +92,6 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
       if (route.settingsSection === 'members') setSettingsSection('members');
       else if (current === 'members') setSettingsSection('preferences');
     }
-    document.title = `${workspace.name} — Buyerly`;
     queueMicrotask(() => {
       syncingRoute.current = false;
     });
@@ -99,12 +100,30 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   useEffect(() => {
     if (syncingRoute.current) return;
     const desiredPath = pathForTab(workspace.slug, activeTab, campaignFilterTab, settingsSection);
-    if (window.location.pathname !== desiredPath) {
+    if (window.location.pathname !== desiredPath && !(activeTab === 'inbox' && window.location.pathname.startsWith(`${desiredPath}/`))) {
       const campaignQuery = activeTab === 'campaigns' && window.location.pathname.startsWith(`/${workspace.slug}/ads-manager/`)
         ? window.location.search : '';
       navigate(desiredPath + campaignQuery);
     }
   }, [activeTab, campaignFilterTab, navigate, settingsSection, workspace.slug]);
+
+  useEffect(() => {
+    // Linear keeps the unread count fresh in the sidebar and the tab title.
+    void refreshInboxUnreadCount();
+    const interval = window.setInterval(() => void refreshInboxUnreadCount(), 60_000);
+    const onFocus = () => void refreshInboxUnreadCount();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [refreshInboxUnreadCount, workspace.slug]);
+
+  useEffect(() => {
+    document.title = activeTab === 'inbox'
+      ? (inboxUnreadCount > 0 ? `Inbox (${inboxUnreadCount})` : 'Inbox')
+      : `${workspace.name} — Buyerly`;
+  }, [activeTab, inboxUnreadCount, workspace.name]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -183,7 +202,14 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
             <>
               <Sidebar />
               <main className="linear-floating-canvas">
-                {activeTab === 'inbox' && <InboxView />}
+                {activeTab === 'inbox' && (
+                  <InboxView
+                    openEventId={route.tab === 'inbox' ? route.recordId : undefined}
+                    onOpenEvent={(eventId) => navigate(
+                      eventId === null ? `/${workspace.slug}/inbox` : `/${workspace.slug}/inbox/${eventId}`,
+                    )}
+                  />
+                )}
                 {activeTab === 'campaigns' && <CampaignsView />}
                 {activeTab === 'rules' && <RulesView />}
                 {activeTab === 'statistics' && <StatisticsView />}

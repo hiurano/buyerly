@@ -83,6 +83,10 @@ try {
         invites.find(invite => invite.id === Number(revoke[1])).status = 'revoked';
         return route.fulfill({ json: { status: 'ok', message: 'Invite revoked' } });
       }
+      if (verb === 'GET' && path === '/api/inbox') {
+        return route.fulfill({ json: { items: [], has_more: false, unread_count: 0 } });
+      }
+      if (verb === 'GET' && path === '/api/inbox/unread-count') return route.fulfill({ json: { unread_count: 0 } });
       if (verb === 'GET' && path === '/api/audit-events') {
         return route.fulfill({ json: { items: [], page: 1, page_size: 25, total: 0, total_pages: 0, status_counts: {} } });
       }
@@ -100,7 +104,7 @@ try {
     const row = (text) => table.getByRole('row').filter({ hasText: text });
     try {
       await page.goto(`${origin}/${workspace.slug}/inbox`);
-      await page.getByText('No workspace events yet', { exact: true }).waitFor();
+      await page.getByText('No notifications', { exact: true }).waitFor();
 
       // Workspace menu → Invite and manage members opens Settings → Members at its own address.
       await page.getByRole('button', { name: `${workspace.name} Workspace Menu` }).click();
@@ -155,7 +159,7 @@ try {
       // Log out ends the session and lands on Linear's sign-in choices.
       await page.getByRole('link', { name: /Back to app/i }).click().catch(() => {});
       await page.goto(`${origin}/${workspace.slug}/inbox`);
-      await page.getByText('No workspace events yet', { exact: true }).waitFor();
+      await page.getByText('No notifications', { exact: true }).waitFor();
       if (logout === 'menu') {
         await page.getByRole('button', { name: `${workspace.name} Workspace Menu` }).click();
         await page.getByRole('menuitem', { name: 'Log out' }).click();

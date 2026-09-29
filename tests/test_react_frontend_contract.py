@@ -173,6 +173,7 @@ class TestReactFrontendContract(unittest.TestCase):
             / "InboxItemRow.tsx"
         ).read_text()
         cls.audit_lib = (ROOT / "frontend" / "src" / "lib" / "audit.ts").read_text()
+        cls.inbox_lib = (ROOT / "frontend" / "src" / "lib" / "inbox.ts").read_text()
         cls.sidebar = (
             ROOT / "frontend" / "src" / "components" / "sidebar" / "Sidebar.tsx"
         ).read_text()
@@ -808,48 +809,42 @@ class TestReactFrontendContract(unittest.TestCase):
         # Clearing the declared result clears the target with it.
         self.assertIn("const target = nextResult ? parsed : null;", self.ad_accounts_section)
 
-    def test_inbox_uses_workspace_audit_events_without_notification_fixtures(self):
+    def test_inbox_is_linear_notifications_over_workspace_events(self):
+        # Linear's Inbox: per-person read, delete and snooze over the shared
+        # audit events, with Undo still coming from the audit API.
         for contract in (
-            "/api/audit-events?${params.toString()}",
-            "/api/audit-events/${eventId}/undo",
+            "/api/inbox?${params.toString()}",
+            "/api/inbox/${eventId}/read",
+            "/api/inbox/${eventId}/delete",
+            "/api/inbox/${eventId}/snooze",
+            "/api/inbox/delete-all-read",
+            "/api/inbox/unread-count",
+        ):
+            self.assertIn(contract, self.inbox_lib)
+        for contract in (
             "requestGenerationRef",
-            "Loading workspace events…",
             "Couldn't load Inbox",
-            "No workspace events yet",
-            "No matching events",
-            "fetchAuditEvents",
+            "No unreads",
+            "Show all notifications",
+            "No notification selected",
+            "unread notification",
+            "Delete all read",
+            "Go to settings",
+            'aria-label="Show unreads only"',
+            'aria-label="Display options"',
+            'aria-label="Snooze notification"',
+            'aria-label="Delete notification"',
             "undoAuditEvent",
-            "<LinearTabs",
-            "<LinearDataListStack",
-            "<DataState",
-            "<Input",
-            "<Button",
-            "md:w-[400px]",
             "md:hidden",
         ):
-            source = self.audit_lib if contract.startswith("/api/") else self.inbox_view
-            self.assertIn(contract, source)
+            self.assertIn(contract, self.inbox_view)
+        for contract in ("Mark as read", "Mark as unread", "Delete notification", "Snooze", "--inbox-unread-dot"):
+            self.assertIn(contract, self.inbox_item_row)
+        self.assertIn("inboxUnreadCount", self.sidebar)
 
-        combined = "\n".join((self.inbox_view, self.inbox_item_row, self.app_store))
-        for fixture_or_unsupported_control in (
-            "Welcome to Buyerly",
-            "Automated Rules Engine",
-            "Live Campaign Telemetry",
-            "Snooze notification",
-            "Delete notification",
-            "Delete all read",
-            "markAllNotificationsAsRead",
-            "deleteAllNotifications",
-            "deleteAllReadNotifications",
-            "toggleNotificationReadStatus",
-            "archiveNotification",
-            "selectedNotificationId",
-            "NotificationItem",
-        ):
-            self.assertNotIn(fixture_or_unsupported_control, combined)
-
-        self.assertNotIn("notifications", self.app_store)
-        self.assertNotIn("unreadCount", self.sidebar)
+        # Linear's Inbox header has no search, status tabs or pages.
+        for removed in ("<LinearTabs", "Search workspace events", "Workspace activity", "Previous", "total_pages"):
+            self.assertNotIn(removed, self.inbox_view)
         self.assertNotIn("before_state", self.inbox_view)
         self.assertNotIn("after_state", self.inbox_view)
 

@@ -131,6 +131,17 @@ class WorkspaceMember(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     role = Column(String, default="owner", nullable=False, doc="'owner', 'admin', 'buyer', 'viewer'")
     joined_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    inbox_read_before = Column(
+        DateTime(timezone=True),
+        default=utcnow,
+        nullable=False,
+        doc="Inbox events up to this moment count as read unless marked otherwise",
+    )
+    inbox_deleted_before = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        doc="Read Inbox events up to this moment are deleted for this member",
+    )
 
     def __repr__(self):
         return f"<WorkspaceMember(workspace_id={self.workspace_id}, user_id={self.user_id}, role='{self.role}')>"
@@ -1057,6 +1068,29 @@ class AuditEvent(Base):
             f"<AuditEvent(type='{self.event_type}', account='{self.account_id}', "
             f"status='{self.status}', time='{self.created_at}')>"
         )
+
+
+class InboxNotificationState(Base):
+    """One member's read, delete and snooze state for one audit event in Inbox.
+
+    Deleting or snoozing only hides the event from this person's Inbox; the
+    audit event itself stays, so history and undo keep working.
+    """
+
+    __tablename__ = "inbox_notification_states"
+    __table_args__ = (
+        UniqueConstraint("user_id", "audit_event_id", name="uq_inbox_state_user_event"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    audit_event_id = Column(
+        Integer, ForeignKey("audit_events.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    is_read = Column(Boolean, nullable=False, default=False)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    snoozed_until = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
 
 class AutomationScheduleState(Base):

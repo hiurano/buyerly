@@ -1,37 +1,67 @@
-import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Search } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { ApiError } from '@/lib/api';
-import type { AuditEventItem, AuditEventListResponse, AuditInboxFilter } from '@/lib/audit';
 import {
   auditEventTarget,
   auditEventTitle,
   auditUndoHint,
-  fetchAuditEvents,
   formatAuditTimestamp,
   humanizeAuditValue,
   undoAuditEvent,
 } from '@/lib/audit';
+import {
+  INBOX_PAGE_SIZE,
+  deleteAllInbox,
+  deleteInboxNotification,
+  fetchInbox,
+  formatSnoozeTime,
+  markInboxRead,
+  snoozeInboxNotification,
+  snoozeOptions,
+  type InboxActionResponse,
+  type InboxItem,
+} from '@/lib/inbox';
 import { InboxItemRow } from './InboxItemRow';
+import { InboxDisplayOptionsPopover } from './InboxDisplayOptionsPopover';
 import {
   BuyerlyLogoAvatar,
+  LinearClockOutlineIcon,
+  LinearDotsIcon,
   LinearEmptyInboxIllustration,
+  LinearInboxDeleteIcon,
+  LinearInboxUnreadIcon,
   LinearSidebarLeftToggleIcon,
+  LinearSlidersIcon,
 } from '@/icons/LinearIcons';
 import { Button } from '@/ui/Button';
 import { DataState } from '@/ui/DataState';
-import { Input } from '@/ui/Input';
-import { LinearDataListStack } from '@/ui/LinearDataList';
-import { LinearLabelPill } from '@/ui/LinearLabelPill';
-import { LinearTabs } from '@/ui/LinearTabs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/ui/DropdownMenu';
 import { Tooltip } from '@/ui/Tooltip';
 import { useAppStore } from '@/store/useAppStore';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type ActionState = 'idle' | 'loading';
 
+interface InboxViewProps {
+  /** The notification open on the right, from the /<workspace>/inbox/<id> address. */
+  openEventId?: string;
+  onOpenEvent: (eventId: number | null) => void;
+}
+
 function requestErrorMessage(error: unknown): string {
   if (error instanceof ApiError || error instanceof Error) return error.message;
   return 'Something went wrong. Please try again.';
+}
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
 }
 
 function MetadataRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -43,106 +73,236 @@ function MetadataRow({ label, value }: { label: string; value: React.ReactNode }
   );
 }
 
-function statusDot(status: string): string {
-  const normalized = status.toUpperCase();
-  if (normalized === 'SUCCESS') return 'var(--text-primary)';
-  if (normalized === 'REVERTED') return 'var(--text-muted)';
-  return 'var(--text-tertiary)';
-}
+const MenuKey: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <kbd className="font-sans text-[12px] font-[500] text-[var(--text-muted)]">{children}</kbd>
+);
 
-export const InboxView: React.FC = () => {
-  const { isSidebarCollapsed, toggleSidebarCollapsed } = useAppStore();
+const headerButtonClass = (active = false) =>
+  `flex h-7 w-7 shrink-0 items-center justify-center rounded-full outline-none transition-colors ${
+    active
+      ? 'bg-[var(--item-active-bg)] text-[var(--text-primary)]'
+      : 'text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'
+  }`;
+
+export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }) => {
+  const {
+    isSidebarCollapsed,
+    toggleSidebarCollapsed,
+    setActiveTab,
+    inboxUnreadCount,
+    setInboxUnreadCount,
+    inboxDisplay,
+    setInboxDisplay,
+  } = useAppStore();
   const [loadState, setLoadState] = useState<LoadState>('loading');
-  const [response, setResponse] = useState<AuditEventListResponse | null>(null);
+  const [items, setItems] = useState<InboxItem[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadError, setLoadError] = useState('');
-  const [filter, setFilter] = useState<AuditInboxFilter>('all');
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
+  const [isDisplayOpen, setIsDisplayOpen] = useState(false);
+  const [isSnoozeOpen, setIsSnoozeOpen] = useState(false);
   const [actionState, setActionState] = useState<ActionState>('idle');
   const [actionMessage, setActionMessage] = useState('');
   const [actionError, setActionError] = useState('');
-  const [reloadToken, setReloadToken] = useState(0);
   const requestGenerationRef = useRef(0);
+  const itemsRef = useRef<InboxItem[]>([]);
+  const listRef = useRef<HTMLDivElement>(null);
+  const displayButtonRef = useRef<HTMLButtonElement>(null);
+  itemsRef.current = items;
 
-  const loadEvents = useCallback(async () => {
+  const selectedId = openEventId && /^\d+$/.test(openEventId) ? Number(openEventId) : null;
+  const selectedItem = useMemo(
+    () => items.find((item) => item.id === selectedId) ?? null,
+    [items, selectedId],
+  );
+
+  const load = useCallback(async (quiet: boolean) => {
     const generation = ++requestGenerationRef.current;
-    setLoadState('loading');
-    setLoadError('');
+    if (!quiet) setLoadState('loading');
     try {
-      const nextResponse = await fetchAuditEvents({ page, filter, search });
+      const response = await fetchInbox({
+        offset: 0,
+        // A background refresh keeps everything already scrolled into view.
+        limit: Math.min(100, Math.max(INBOX_PAGE_SIZE, itemsRef.current.length)),
+        ...inboxDisplay,
+      });
       if (generation !== requestGenerationRef.current) return;
-      setResponse(nextResponse);
-      setSelectedEventId((current) =>
-        nextResponse.items.some((item) => item.id === current) ? current : null,
-      );
+      setItems(response.items);
+      setHasMore(response.has_more);
+      setInboxUnreadCount(response.unread_count);
+      setLoadError('');
       setLoadState('ready');
     } catch (error) {
-      if (generation !== requestGenerationRef.current) return;
+      if (generation !== requestGenerationRef.current || quiet) return;
       setLoadError(requestErrorMessage(error));
-      setSelectedEventId(null);
       setLoadState('error');
     }
-  }, [filter, page, search, reloadToken]);
+  }, [inboxDisplay, setInboxUnreadCount]);
 
   useEffect(() => {
-    void loadEvents();
+    itemsRef.current = [];
+    void load(false);
     return () => {
       requestGenerationRef.current += 1;
     };
-  }, [loadEvents]);
+  }, [load, reloadToken]);
 
-  const events = response?.items ?? [];
-  const selectedEvent = useMemo(
-    () => events.find((item) => item.id === selectedEventId) ?? null,
-    [events, selectedEventId],
-  );
-  const statusCounts = response?.status_counts ?? {};
-  const allCount = Object.entries(statusCounts).reduce(
-    (total, [status, count]) => status === 'REVERTED' ? total : total + count,
-    0,
-  );
+  useEffect(() => {
+    const interval = window.setInterval(() => void load(true), 60_000);
+    return () => window.clearInterval(interval);
+  }, [load]);
 
-  const selectFilter = (id: string) => {
-    setFilter(id as AuditInboxFilter);
-    setPage(1);
-    setSelectedEventId(null);
+  const loadMore = useCallback(async () => {
+    if (!hasMore || isLoadingMore || loadState !== 'ready') return;
+    const generation = requestGenerationRef.current;
+    setIsLoadingMore(true);
+    try {
+      const response = await fetchInbox({ offset: itemsRef.current.length, ...inboxDisplay });
+      if (generation !== requestGenerationRef.current) return;
+      setItems((current) => {
+        const known = new Set(current.map((item) => item.id));
+        return [...current, ...response.items.filter((item) => !known.has(item.id))];
+      });
+      setHasMore(response.has_more);
+      setInboxUnreadCount(response.unread_count);
+    } catch {
+      // Scrolling again retries.
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [hasMore, inboxDisplay, isLoadingMore, loadState, setInboxUnreadCount]);
+
+  const applyResponse = useCallback(
+    (response: InboxActionResponse) => setInboxUnreadCount(response.unread_count),
+    [setInboxUnreadCount],
+  );
+  const reportError = useCallback((error: unknown) => setActionError(requestErrorMessage(error)), []);
+
+  const openItem = useCallback((item: InboxItem | null) => {
     setActionMessage('');
     setActionError('');
-  };
+    onOpenEvent(item ? item.id : null);
+  }, [onOpenEvent]);
 
-  const submitSearch = (event: FormEvent) => {
-    event.preventDefault();
-    setSearch(searchInput.trim());
-    setPage(1);
-    setSelectedEventId(null);
-  };
+  /** After a notification leaves the list, Linear opens the next one. */
+  const removeItem = useCallback((item: InboxItem) => {
+    const current = itemsRef.current;
+    const index = current.findIndex((entry) => entry.id === item.id);
+    const remaining = current.filter((entry) => entry.id !== item.id);
+    setItems(remaining);
+    if (item.id === selectedId) {
+      openItem(remaining[Math.min(index, remaining.length - 1)] ?? null);
+    }
+  }, [openItem, selectedId]);
 
-  const clearSearch = () => {
-    setSearchInput('');
-    setSearch('');
-    setPage(1);
-    setSelectedEventId(null);
-  };
+  const setRead = useCallback((item: InboxItem, read: boolean) => {
+    if (item.is_read === read) return;
+    setItems((current) => current.map((entry) => (entry.id === item.id ? { ...entry, is_read: read } : entry)));
+    markInboxRead(item.id, read).then(applyResponse).catch(reportError);
+  }, [applyResponse, reportError]);
 
-  const selectEvent = (event: AuditEventItem) => {
-    setSelectedEventId(event.id);
-    setActionMessage('');
-    setActionError('');
-  };
+  const toggleRead = useCallback((item: InboxItem) => setRead(item, !item.is_read), [setRead]);
+
+  const deleteItem = useCallback((item: InboxItem) => {
+    removeItem(item);
+    deleteInboxNotification(item.id).then(applyResponse).catch(reportError);
+  }, [applyResponse, removeItem, reportError]);
+
+  const snoozeItem = useCallback((item: InboxItem, until: Date) => {
+    if (inboxDisplay.showSnoozed) {
+      setItems((current) => current.map((entry) => (
+        entry.id === item.id ? { ...entry, is_read: false, snoozed_until: until.toISOString() } : entry
+      )));
+    } else {
+      removeItem(item);
+    }
+    snoozeInboxNotification(item.id, until).then(applyResponse).catch(reportError);
+  }, [applyResponse, inboxDisplay.showSnoozed, removeItem, reportError]);
+
+  const deleteAll = useCallback(async (onlyRead: boolean) => {
+    try {
+      applyResponse(await deleteAllInbox(onlyRead));
+      openItem(null);
+      setReloadToken((current) => current + 1);
+    } catch (error) {
+      reportError(error);
+    }
+  }, [applyResponse, openItem, reportError]);
+
+  // Opening a notification reads it, as in Linear. Only on opening: U on the
+  // open one must leave it unread.
+  const autoReadIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!selectedItem) {
+      if (selectedId === null) autoReadIdRef.current = null;
+      return;
+    }
+    if (autoReadIdRef.current === selectedItem.id) return;
+    autoReadIdRef.current = selectedItem.id;
+    if (!selectedItem.is_read) setRead(selectedItem, true);
+  }, [selectedId, selectedItem, setRead]);
+
+  useEffect(() => {
+    if (selectedId === null) return;
+    listRef.current
+      ?.querySelector(`[data-inbox-event-id="${selectedId}"]`)
+      ?.scrollIntoView({ block: 'nearest' });
+  }, [selectedId]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (isTypingTarget(event.target)) return;
+      if (document.querySelector('[role="menu"], [role="dialog"], .linear-display-select-menu')) return;
+      const current = itemsRef.current;
+      const index = current.findIndex((item) => item.id === selectedId);
+      const selected = index >= 0 ? current[index] : null;
+      const key = event.key;
+      if (key === 'ArrowDown' || key === 'j' || key === 'J') {
+        const next = current[index + 1] ?? (index < 0 ? current[0] : null);
+        if (next) {
+          event.preventDefault();
+          openItem(next);
+        }
+      } else if (key === 'ArrowUp' || key === 'k' || key === 'K') {
+        const previous = index > 0 ? current[index - 1] : index < 0 ? current[0] : null;
+        if (previous) {
+          event.preventDefault();
+          openItem(previous);
+        }
+      } else if (key === 'Escape' && selected) {
+        event.preventDefault();
+        openItem(null);
+      } else if ((key === 'Backspace' || key === 'Delete') && event.shiftKey) {
+        event.preventDefault();
+        void deleteAll(true);
+      } else if ((key === 'Backspace' || key === 'Delete') && selected) {
+        event.preventDefault();
+        deleteItem(selected);
+      } else if ((key === 'u' || key === 'U') && selected) {
+        event.preventDefault();
+        toggleRead(selected);
+      } else if ((key === 'h' || key === 'H') && selected) {
+        event.preventDefault();
+        setIsSnoozeOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [deleteAll, deleteItem, openItem, selectedId, toggleRead]);
 
   const handleUndo = async () => {
-    if (!selectedEvent?.can_undo || actionState === 'loading') return;
+    if (!selectedItem?.can_undo || actionState === 'loading') return;
     setActionState('loading');
     setActionMessage('');
     setActionError('');
     try {
-      const result = await undoAuditEvent(selectedEvent.id);
+      const result = await undoAuditEvent(selectedItem.id);
       setActionMessage(result.message);
-      setReloadToken((current) => current + 1);
+      void load(true);
     } catch (error) {
-      setActionError(requestErrorMessage(error));
+      reportError(error);
     } finally {
       setActionState('idle');
     }
@@ -150,7 +310,7 @@ export const InboxView: React.FC = () => {
 
   const renderList = () => {
     if (loadState === 'loading') {
-      return <DataState title="Loading workspace events…" detail="Reading the latest activity from this workspace." />;
+      return <div className="flex-1" aria-busy="true" aria-label="Loading notifications" />;
     }
     if (loadState === 'error') {
       return (
@@ -163,45 +323,62 @@ export const InboxView: React.FC = () => {
         />
       );
     }
-    if (events.length === 0) {
-      const filtered = filter !== 'all' || Boolean(search);
+    if (items.length === 0) {
+      if (inboxDisplay.unreadOnly) {
+        return (
+          <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
+            <p className="text-[13px] font-medium text-[var(--text-tertiary)]">No unreads</p>
+            <button
+              type="button"
+              onClick={() => setInboxDisplay({ unreadOnly: false })}
+              className="text-[13px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            >
+              Show all notifications
+            </button>
+          </div>
+        );
+      }
       return (
-        <DataState
-          title={filtered ? 'No matching events' : 'No workspace events yet'}
-          detail={filtered
-            ? 'Try another status or search term.'
-            : 'Rule runs and other recorded workspace activity will appear here.'}
-          actionLabel={filtered ? 'Clear filters' : undefined}
-          onAction={filtered ? () => {
-            setFilter('all');
-            clearSearch();
-          } : undefined}
-        />
+        <div className="flex flex-1 items-center justify-center px-6">
+          <p className="text-[13px] font-medium text-[var(--text-tertiary)]">No notifications</p>
+        </div>
       );
     }
     return (
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <LinearDataListStack className="p-2">
-          {events.map((item) => (
-            <InboxItemRow
-              key={item.id}
-              item={item}
-              isSelected={item.id === selectedEventId}
-              onSelect={() => selectEvent(item)}
-            />
-          ))}
-        </LinearDataListStack>
+      <div
+        ref={listRef}
+        role="listbox"
+        aria-label="Notifications"
+        className="min-h-0 flex-1 overflow-y-auto py-2"
+        onScroll={(event) => {
+          const element = event.currentTarget;
+          if (element.scrollHeight - element.scrollTop - element.clientHeight < 200) void loadMore();
+        }}
+      >
+        {items.map((item) => (
+          <InboxItemRow
+            key={item.id}
+            item={item}
+            isSelected={item.id === selectedId}
+            onSelect={() => openItem(item)}
+            onToggleRead={toggleRead}
+            onDelete={deleteItem}
+            onSnooze={snoozeItem}
+          />
+        ))}
       </div>
     );
   };
 
+  const unreadLabel = inboxUnreadCount === 1 ? '1 unread notification' : `${inboxUnreadCount} unread notifications`;
+
   return (
     <div className="flex h-full min-w-0 overflow-hidden bg-transparent">
       <section
-        aria-label="Workspace event list"
-        className={`${selectedEvent ? 'hidden md:flex' : 'flex'} h-full min-w-0 w-full flex-col border-[var(--color-border-primary)] md:w-[400px] md:shrink-0 md:border-r`}
+        aria-label="Inbox"
+        className={`${selectedItem ? 'hidden md:flex' : 'flex'} h-full min-w-0 w-full flex-col border-[var(--color-border-primary)] md:w-[34%] md:min-w-[240px] md:max-w-[400px] md:shrink-0 md:border-r`}
       >
-        <header className="flex min-h-11 shrink-0 items-center gap-2 px-3">
+        <header className="flex h-[43px] shrink-0 items-center gap-1 px-2.5">
           {isSidebarCollapsed && (
             <Tooltip content="Open sidebar" shortcut="[" side="bottom" sideOffset={6}>
               <button
@@ -214,108 +391,128 @@ export const InboxView: React.FC = () => {
               </button>
             </Tooltip>
           )}
-          <div className="min-w-0">
-            <h1 className="text-[14px] font-medium text-[var(--text-primary)]">Inbox</h1>
-            <p className="truncate text-[12px] text-[var(--text-muted)]">Workspace activity</p>
-          </div>
+          <h1 className="pl-2 pr-1 text-[13px] font-medium leading-4 text-[var(--text-secondary)]">Inbox</h1>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" aria-label="Notification actions" className={headerButtonClass()}>
+                <LinearDotsIcon size={14} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent style={{ width: '184px' }}>
+              <DropdownMenuItem onSelect={() => void deleteAll(false)}>
+                <span className="flex items-center gap-2.5">
+                  <LinearInboxDeleteIcon size={16} />
+                  Delete all
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void deleteAll(true)}>
+                <span className="flex items-center gap-2.5">
+                  <LinearInboxDeleteIcon size={16} />
+                  Delete all read
+                </span>
+                <MenuKey>⇧ ⌫</MenuKey>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => setActiveTab('preferences')}>
+                <span className="flex items-center gap-2.5">
+                  <LinearSlidersIcon size={16} />
+                  Go to settings
+                </span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <div className="flex-1" />
+          <Tooltip content={inboxDisplay.unreadOnly ? 'Show all notifications' : 'Show unreads only'}>
+            <button
+              type="button"
+              aria-label="Show unreads only"
+              aria-pressed={inboxDisplay.unreadOnly}
+              onClick={() => setInboxDisplay({ unreadOnly: !inboxDisplay.unreadOnly })}
+              className={headerButtonClass(inboxDisplay.unreadOnly)}
+            >
+              <LinearInboxUnreadIcon size={16} />
+            </button>
+          </Tooltip>
+          <Tooltip content="Display options" shortcut="V">
+            <button
+              ref={displayButtonRef}
+              type="button"
+              aria-label="Display options"
+              aria-expanded={isDisplayOpen}
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={() => setIsDisplayOpen((current) => !current)}
+              className={headerButtonClass(isDisplayOpen)}
+            >
+              <LinearSlidersIcon size={14} />
+            </button>
+          </Tooltip>
+          <InboxDisplayOptionsPopover
+            isOpen={isDisplayOpen}
+            onClose={() => setIsDisplayOpen(false)}
+            anchorRef={displayButtonRef}
+          />
         </header>
 
-        <div className="border-y border-[var(--color-border-primary)] px-3 py-2">
-          <form className="flex min-w-0 items-center gap-2" onSubmit={submitSearch} role="search">
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={15} aria-hidden="true" />
-              <Input
-                value={searchInput}
-                onChange={(event) => setSearchInput(event.target.value)}
-                placeholder="Search workspace events"
-                aria-label="Search workspace events"
-                className="w-full pl-9"
-              />
-            </div>
-            <Button type="submit" className="h-9 text-[14px]">Search</Button>
-          </form>
-          {search && (
-            <div className="mt-2 flex items-center justify-between gap-2 text-[13px] text-[var(--text-tertiary)]">
-              <span className="min-w-0 truncate">Results for “{search}”</span>
-              <button type="button" onClick={clearSearch} className="shrink-0 text-[14px] text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-                Clear
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="overflow-x-auto border-b border-[var(--color-border-primary)] px-3 py-2">
-          <LinearTabs
-            tabs={[
-              { id: 'all', label: 'All', count: allCount },
-              { id: 'error', label: 'Errors', count: statusCounts.ERROR ?? 0 },
-              { id: 'reverted', label: 'Reverted', count: statusCounts.REVERTED ?? 0 },
-            ]}
-            activeTabId={filter}
-            onChange={selectFilter}
-            aria-label="Inbox event status"
-          />
-        </div>
-
         {renderList()}
-
-        {loadState === 'ready' && events.length > 0 && response && (
-          <footer className="flex min-h-12 shrink-0 items-center justify-between gap-2 border-t border-[var(--color-border-primary)] px-3">
-            <span className="text-[12px] text-[var(--text-muted)]">
-              Page {response.page} of {response.total_pages} · {response.total} events
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                size="compact"
-                className="text-[14px]"
-                disabled={page <= 1}
-                onClick={() => {
-                  setPage((current) => Math.max(1, current - 1));
-                  setSelectedEventId(null);
-                }}
-              >
-                Previous
-              </Button>
-              <Button
-                size="compact"
-                className="text-[14px]"
-                disabled={page >= response.total_pages}
-                onClick={() => {
-                  setPage((current) => current + 1);
-                  setSelectedEventId(null);
-                }}
-              >
-                Next
-              </Button>
-            </div>
-          </footer>
-        )}
       </section>
 
       <section
-        aria-label="Workspace event details"
-        className={`${selectedEvent ? 'flex' : 'hidden md:flex'} h-full min-w-0 flex-1 flex-col overflow-hidden`}
+        aria-label="Notification"
+        className={`${selectedItem ? 'flex' : 'hidden md:flex'} h-full min-w-0 flex-1 flex-col overflow-hidden`}
       >
-        {selectedEvent ? (
+        {selectedItem ? (
           <>
-            <header className="flex min-h-11 shrink-0 items-center justify-between gap-3 border-b border-[var(--color-border-primary)] px-3 sm:px-5">
+            <header className="flex h-[43px] shrink-0 items-center justify-between gap-3 px-2.5 sm:px-4">
               <div className="flex min-w-0 items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedEventId(null)}
+                  onClick={() => openItem(null)}
                   className="linear-icon-btn md:hidden"
-                  aria-label="Back to workspace events"
+                  aria-label="Back to Inbox"
                 >
                   <ArrowLeft size={16} aria-hidden="true" />
                 </button>
-                <span className="truncate text-[14px] font-medium text-[var(--text-primary)]">
-                  {auditEventTarget(selectedEvent)}
+                <span className="truncate text-[13px] font-medium text-[var(--text-secondary)]">
+                  {auditEventTitle(selectedItem)} · {auditEventTarget(selectedItem)}
                 </span>
               </div>
-              <LinearLabelPill
-                label={humanizeAuditValue(selectedEvent.display_status)}
-                dotColor={statusDot(selectedEvent.display_status)}
-              />
+              <div className="flex shrink-0 items-center gap-1">
+                <DropdownMenu open={isSnoozeOpen} onOpenChange={setIsSnoozeOpen}>
+                  <Tooltip content="Snooze notification" shortcut="H">
+                    <DropdownMenuTrigger asChild>
+                      <button type="button" aria-label="Snooze notification" className={headerButtonClass(isSnoozeOpen)}>
+                        <LinearClockOutlineIcon size={16} />
+                      </button>
+                    </DropdownMenuTrigger>
+                  </Tooltip>
+                  <DropdownMenuContent
+                    align="end"
+                    style={{ width: '320px' }}
+                    // Focus back on the button would pop its tooltip and eat the next Escape.
+                    onCloseAutoFocus={(event) => event.preventDefault()}
+                  >
+                    {snoozeOptions().map((option) => (
+                      <DropdownMenuItem key={option.id} onSelect={() => snoozeItem(selectedItem, option.until)}>
+                        <span className="flex items-center gap-2.5">
+                          <LinearClockOutlineIcon size={16} />
+                          {option.label}
+                        </span>
+                        <span className="text-[12px] text-[var(--text-tertiary)]">{formatSnoozeTime(option.until)}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Tooltip content="Delete notification" shortcut="⌫">
+                  <button
+                    type="button"
+                    aria-label="Delete notification"
+                    onClick={() => deleteItem(selectedItem)}
+                    className={headerButtonClass()}
+                  >
+                    <LinearInboxDeleteIcon size={16} />
+                  </button>
+                </Tooltip>
+              </div>
             </header>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8">
@@ -324,37 +521,39 @@ export const InboxView: React.FC = () => {
                   <BuyerlyLogoAvatar size={40} shape="rounded" />
                   <div className="min-w-0">
                     <h2 className="break-words text-[22px] font-medium leading-7 tracking-[-0.015em] text-[var(--text-primary)]">
-                      {auditEventTitle(selectedEvent)}
+                      {auditEventTitle(selectedItem)}
                     </h2>
                     <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
-                      {formatAuditTimestamp(selectedEvent.created_at)}
+                      {formatAuditTimestamp(selectedItem.created_at)}
+                      {selectedItem.snoozed_until && ` · Snoozed until ${formatSnoozeTime(new Date(selectedItem.snoozed_until))}`}
                     </p>
                   </div>
                 </div>
 
                 <p className="mt-6 text-[14px] leading-relaxed text-[var(--text-secondary)]">
-                  {selectedEvent.message || 'No additional message was recorded for this event.'}
+                  {selectedItem.message || 'No additional message was recorded for this event.'}
                 </p>
 
                 <dl className="mt-7 border-t border-[var(--color-border-primary)]">
-                  <MetadataRow label="Target" value={auditEventTarget(selectedEvent)} />
-                  {selectedEvent.entity_level && <MetadataRow label="Entity level" value={humanizeAuditValue(selectedEvent.entity_level)} />}
-                  {selectedEvent.account_name && <MetadataRow label="Ad account" value={selectedEvent.account_name} />}
-                  {selectedEvent.rule_name && <MetadataRow label="Rule" value={selectedEvent.rule_name} />}
-                  <MetadataRow label="Category" value={humanizeAuditValue(selectedEvent.category)} />
-                  <MetadataRow label="Event type" value={humanizeAuditValue(selectedEvent.event_type)} />
-                  {selectedEvent.duration_ms !== null && <MetadataRow label="Duration" value={`${selectedEvent.duration_ms} ms`} />}
+                  <MetadataRow label="Target" value={auditEventTarget(selectedItem)} />
+                  {selectedItem.entity_level && <MetadataRow label="Entity level" value={humanizeAuditValue(selectedItem.entity_level)} />}
+                  {selectedItem.account_name && <MetadataRow label="Ad account" value={selectedItem.account_name} />}
+                  {selectedItem.rule_name && <MetadataRow label="Rule" value={selectedItem.rule_name} />}
+                  <MetadataRow label="Status" value={humanizeAuditValue(selectedItem.display_status)} />
+                  <MetadataRow label="Category" value={humanizeAuditValue(selectedItem.category)} />
+                  <MetadataRow label="Event type" value={humanizeAuditValue(selectedItem.event_type)} />
+                  {selectedItem.duration_ms !== null && <MetadataRow label="Duration" value={`${selectedItem.duration_ms} ms`} />}
                 </dl>
 
-                {(selectedEvent.can_undo || selectedEvent.is_reverted) && (
+                {(selectedItem.can_undo || selectedItem.is_reverted) && (
                   <section className="mt-7 rounded-[var(--control-border-radius)] border border-[var(--color-border-primary)] bg-[var(--card-bg)] p-4" aria-labelledby="inbox-undo-heading">
                     <h3 id="inbox-undo-heading" className="text-[14px] font-medium text-[var(--text-primary)]">Undo</h3>
                     <p className="mt-1 text-[14px] leading-relaxed text-[var(--text-tertiary)]">
-                      {selectedEvent.is_reverted
+                      {selectedItem.is_reverted
                         ? 'This action has already been undone.'
-                        : auditUndoHint(selectedEvent)}
+                        : auditUndoHint(selectedItem)}
                     </p>
-                    {selectedEvent.can_undo && (
+                    {selectedItem.can_undo && (
                       <Button
                         variant="primary"
                         className="mt-4 text-[14px]"
@@ -375,10 +574,10 @@ export const InboxView: React.FC = () => {
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-6 px-6 text-center">
             <LinearEmptyInboxIllustration />
-            <div>
-              <h2 className="text-[14px] font-medium text-[var(--text-primary)]">Select a workspace event</h2>
-              <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">Event details and eligible actions will appear here.</p>
-            </div>
+            <p className="text-[13px] font-medium text-[var(--text-tertiary)]">
+              {inboxUnreadCount > 0 ? unreadLabel : 'No notification selected'}
+            </p>
+            {actionError && <p className="text-[13px] text-[var(--text-primary)]" role="alert">{actionError}</p>}
           </div>
         )}
       </section>

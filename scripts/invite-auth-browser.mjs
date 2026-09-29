@@ -107,6 +107,11 @@ try {
         });
         return route.fulfill({ json: { user, active_workspace: workspace, onboarding_completed: true, onboarding_step: 'completed' } });
       }
+      if (verb === 'GET' && path === '/api/inbox') {
+        assert.equal(request.headers()['x-workspace-slug'], workspace.slug);
+        return route.fulfill({ json: { items: [], has_more: false, unread_count: 0 } });
+      }
+      if (verb === 'GET' && path === '/api/inbox/unread-count') return route.fulfill({ json: { unread_count: 0 } });
       if (verb === 'GET' && path === '/api/audit-events') {
         assert.equal(request.headers()['x-workspace-slug'], workspace.slug);
         return route.fulfill({ json: { items: [], page: 1, page_size: 25, total: 0, total_pages: 0, status_counts: {} } });
@@ -175,7 +180,7 @@ try {
         await name.press('Enter');
       }
       await page.waitForURL(`**/${workspace.slug}/inbox`);
-      await page.getByText('No workspace events yet', { exact: true }).waitFor();
+      await page.getByText('No notifications', { exact: true }).waitFor();
       assert.equal(documents, method === 'link' ? 2 : 1, 'Signing in, accepting and onboarding must not reload the page');
       assert.deepEqual(writes.filter(write => write.path.endsWith('/accept')),
         [{ path: `/api/invites/${inviteToken}/accept`, body: {} }]);

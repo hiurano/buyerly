@@ -34,6 +34,7 @@ import type {
 } from '@/lib/rules';
 import type { DeletedKind } from '@/lib/trash';
 import { pushHistory } from '@/lib/undoHistory';
+import { fetchInboxUnreadCount, type InboxOrdering } from '@/lib/inbox';
 
 export type RuleFilterTab = 'active' | 'paused' | 'all' | 'deleted';
 
@@ -144,6 +145,13 @@ export type ActiveTab = AppTab | 'preferences';
 /** Settings pages; `members` also has its own address under /<workspace>/settings. */
 export type SettingsSection = 'preferences' | 'profile' | 'ad-accounts' | 'members';
 export type InterfaceTheme = 'system' | 'light' | 'dark';
+/** Inbox header toggles and Display options, as in Linear. */
+export interface InboxDisplay {
+  unreadOnly: boolean;
+  ordering: InboxOrdering;
+  showSnoozed: boolean;
+  unreadFirst: boolean;
+}
 
 /**
  * A preset belongs to at most one group in the UI. The API models membership
@@ -225,6 +233,11 @@ interface AppState {
   isSearchOpen: boolean;
   setSearchOpen: (open: boolean) => void;
   workspaceName: string;
+  inboxUnreadCount: number;
+  setInboxUnreadCount: (count: number) => void;
+  refreshInboxUnreadCount: () => Promise<void>;
+  inboxDisplay: InboxDisplay;
+  setInboxDisplay: (patch: Partial<InboxDisplay>) => void;
   setWorkspaceName: (name: string) => void;
   sidebarWidth: number;
   setSidebarWidth: (width: number) => void;
@@ -400,7 +413,7 @@ function emptyAccountState() {
 }
 function emptyWorkspaceState() {
   return {
-    ...emptyAccountState(), workspaceName: 'buyerly', campaignGroups: [],
+    ...emptyAccountState(), workspaceName: 'buyerly', inboxUnreadCount: 0, campaignGroups: [],
     rules: [], ruleGroups: [], ruleAccounts: [], rulesLoadState: 'idle' as RulesLoadState,
     rulesError: '', rulesMutationError: '', selectedRuleId: null, selectedRuleIds: [],
     focusedRuleId: null, editingRuleId: null, isCreateRuleModalOpen: false,
@@ -441,6 +454,19 @@ export const useAppStore = create<AppState>((set, get) => {
   setSearchOpen: (open) => set({ isSearchOpen: open }),
   workspaceName: 'buyerly',
   setWorkspaceName: (name) => set({ workspaceName: name }),
+  inboxUnreadCount: 0,
+  setInboxUnreadCount: (count) => set({ inboxUnreadCount: count }),
+  refreshInboxUnreadCount: async () => {
+    const inScope = get().captureScope();
+    try {
+      const { unread_count: count } = await fetchInboxUnreadCount();
+      if (inScope() && typeof count === 'number') set({ inboxUnreadCount: count });
+    } catch {
+      // The badge keeps its last value; Inbox itself reports load errors.
+    }
+  },
+  inboxDisplay: { unreadOnly: false, ordering: 'newest', showSnoozed: false, unreadFirst: false },
+  setInboxDisplay: (patch) => set((state) => ({ inboxDisplay: { ...state.inboxDisplay, ...patch } })),
   sidebarWidth: 244,
   setSidebarWidth: (width) =>
     set({ sidebarWidth: Math.min(Math.max(width, 200), 400) }),

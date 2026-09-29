@@ -23,7 +23,7 @@ const Check = () => (
   </svg>
 );
 
-const LinearSelect: React.FC<LinearSelectProps> = ({ value, options, onChange, onOpenChange }) => {
+export const LinearSelect: React.FC<LinearSelectProps> = ({ value, options, onChange, onOpenChange }) => {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);

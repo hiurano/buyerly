@@ -97,6 +97,17 @@ jobs:
           name: workspace-switcher-browser
           path: /tmp/buyerly-workspace-switcher
 
+      - name: Check Inbox in Chromium
+        working-directory: frontend
+        run: node ../scripts/inbox-browser.mjs
+
+      - name: Upload Inbox browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inbox-browser
+          path: /tmp/buyerly-inbox
+
       # The runner's Google Chrome has WebMCP behind a flag; Playwright's
       # Chromium does not, and the check then uses a stand-in instead.
       - name: Check WebMCP tools in Chromium
