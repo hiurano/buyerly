@@ -302,7 +302,19 @@ View payload принимает `view_mode` (`all`, `overview`, `delivery`, `tra
 
 Статусы истории: `SUCCESS` (Выполнено), `ERROR` (Ошибка), `SKIPPED` (Пропущено); исходное событие с успешной отменой отображается как `REVERTED`. Ответ каждого элемента содержит `before_state`, `after_state`, `correlation_id`, `can_undo` и `undo_reason`.
 
-Production Inbox использует этот endpoint как workspace activity stream: фильтрует по `status`, ищет через `search`, переключает страницы через `page`/`page_size` и показывает Undo только при `can_undo=true`. Интерфейс не выводит сырые `before_state`, `after_state` и `details`, а audit API не моделируется как read/delete/archive notification storage.
+Inbox, как в Linear, показывает события workspace как уведомления человека. Сами события общие и append-only; поверх них у каждого участника своё состояние: прочитано, удалено, отложено. Удаление из Inbox не трогает историю и отмену. Интерфейс не выводит сырые `before_state`, `after_state` и `details`.
+
+| Метод и путь | Параметры | Назначение |
+|---|---|---|
+| `GET /api/inbox` | `offset`, `limit`, `ordering=newest\|oldest`, `unread_only?`, `show_snoozed?`, `unread_first?` | уведомления активного workspace с полями события плюс `is_read` и `snoozed_until`; `has_more` для подгрузки, `unread_count` |
+| `GET /api/inbox/unread-count` | — | число непрочитанных для бокового меню и заголовка вкладки |
+| `POST /api/inbox/{event_id}/read` | `{"read": bool}` | отметить прочитанным или непрочитанным |
+| `POST /api/inbox/{event_id}/delete` | — | убрать уведомление из своего Inbox |
+| `POST /api/inbox/{event_id}/snooze` | `{"until": datetime\|null}` | отложить до времени в будущем; вернётся непрочитанным. `null` снимает отложенность |
+| `POST /api/inbox/delete-all` | — | очистить свой Inbox |
+| `POST /api/inbox/delete-all-read` | — | убрать все прочитанные |
+
+Непрочитанным считается событие после отметки участника `inbox_read_before`, кроме его собственных действий. Отметка ставится при вступлении в workspace; при выкатке 0028 всё прежнее стало прочитанным. Действия отвечают `404` для события чужого workspace и возвращают новый `unread_count`.
 
 Отмена доступна только для успешного STOP/START/изменения бюджета, если событие является последним изменением этого ad set, текущее состояние Meta совпадает с ожидаемым, действие ещё не отменено и не прошло 24 часа. Повторный запрос идемпотентен. История append-only: исходная запись не удаляется, создаётся связанное событие отмены.
 

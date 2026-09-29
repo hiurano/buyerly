@@ -73,6 +73,10 @@ try {
         if (scope === 'alpha' && delayAlphaRules) { delayedAlphaRules.push(route); return; }
         return route.fulfill({ json: [preset(scope === 'alpha' ? 1 : 2, `${scope} rule`)] });
       }
+      if (verb === 'GET' && path === '/api/inbox') {
+        return route.fulfill({ json: { items: [], has_more: false, unread_count: 0 } });
+      }
+      if (verb === 'GET' && path === '/api/inbox/unread-count') return route.fulfill({ json: { unread_count: 0 } });
       if (verb === 'GET' && path === '/api/audit-events') {
         return route.fulfill({ json: { items: [], page: 1, page_size: 25, total: 0, total_pages: 0, status_counts: {} } });
       }
@@ -132,9 +136,9 @@ try {
       await page.keyboard.press('2');
       await page.waitForURL(`${origin}/beta/inbox`);
       await page.getByRole('button', { name: 'Beta Workspace Menu' }).waitFor();
-      await page.getByText('No workspace events yet', { exact: true }).waitFor();
+      await page.getByText('No notifications', { exact: true }).waitFor();
       assert.equal(await palette.count(), 0);
-      await page.waitForFunction(() => document.title === 'Beta — Buyerly');
+      await page.waitForFunction(() => document.title === 'Inbox');
       assert.deepEqual(writes.filter(write => write.path === '/api/workspaces/switch')
         .map(write => [write.body.slug, write.scope]), [['beta', 'beta']]);
 

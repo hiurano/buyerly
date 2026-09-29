@@ -56,6 +56,11 @@ POST_BASELINE_COLUMNS = {
         "entity_level",
         "entity_id",
     },
+    # Added by the Inbox read-state migration (0028).
+    "workspace_members": {
+        "inbox_read_before",
+        "inbox_deleted_before",
+    },
 }
 
 # Tables that were added after the legacy baseline and may be absent on pre-migration databases.
@@ -64,6 +69,7 @@ POST_BASELINE_TABLES: set[str] = {
     "allowed_emails",
     "analytics_entity_daily_facts",
     "deleted_items",
+    "inbox_notification_states",
     "meta_connection_invites",
 }
 REQUIRED_COLUMN_TYPES = {

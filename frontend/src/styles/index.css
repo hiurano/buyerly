@@ -606,6 +606,16 @@ html[data-theme='dark'] .linear-sidebar-badge,
   color: var(--text-primary);
 }
 
+/* Linear's unread count after Inbox: plain muted digits, no pill. */
+.linear-sidebar-count {
+  font-size: 12px;
+  font-weight: 450;
+  line-height: 15px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
 /* Ads Manager rows preserve the primary name before secondary properties. */
 .campaign-list-container {
   container-name: campaign-list;

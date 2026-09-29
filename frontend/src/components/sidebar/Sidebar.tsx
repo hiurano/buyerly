@@ -19,6 +19,7 @@ export const Sidebar: React.FC = () => {
     resetSidebarWidth,
     activeTab,
     setActiveTab,
+    inboxUnreadCount,
   } = useAppStore();
   const [isDragging, setIsDragging] = useState(false);
 
@@ -140,6 +141,11 @@ export const Sidebar: React.FC = () => {
                   Inbox
                 </span>
               </div>
+              {inboxUnreadCount > 0 && (
+                <span className="linear-sidebar-count" aria-label={`${inboxUnreadCount} unread`}>
+                  {inboxUnreadCount}
+                </span>
+              )}
             </button>
           </Tooltip>
 

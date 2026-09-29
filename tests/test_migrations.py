@@ -942,12 +942,13 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                 )
                 session.add(workspace)
                 await session.flush()
-                session.add(
-                    WorkspaceMember(
-                        workspace_id=workspace.id,
-                        user_id=first_owner.id,
-                        role="owner",
-                    )
+                # Raw SQL: the model now has columns this old revision lacks.
+                await session.execute(
+                    text(
+                        "INSERT INTO workspace_members (workspace_id, user_id, role, joined_at) "
+                        "VALUES (:workspace_id, :user_id, 'owner', NOW())"
+                    ),
+                    {"workspace_id": workspace.id, "user_id": first_owner.id},
                 )
                 first_owner.active_workspace_id = workspace.id
                 session.add_all(
