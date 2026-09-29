@@ -3,7 +3,7 @@ import logging
 import secrets
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import delete, func, select
 
 from api.auth import get_current_user
@@ -57,6 +57,49 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Rules & Presets"])
 
 
+def _record_assistant_change(
+    session,
+    request: Request,
+    *,
+    ws,
+    user: User,
+    event_type: str,
+    action: str,
+    message: str,
+    preset_id: int,
+    preset_name: str,
+    account: Account | None = None,
+    details: dict | None = None,
+) -> None:
+    """Leave an Inbox row when the browser's AI assistant changed rules.
+
+    The WebMCP tools mark their writes with `X-Buyerly-Agent: webmcp` after the
+    person approved them in Buyerly's own dialog. The header is not proof of
+    anything; it only explains in the history who asked for the change.
+    """
+    if request.headers.get("x-buyerly-agent") != "webmcp":
+        return
+    session.add(
+        AuditEvent(
+            workspace_id=ws.id,
+            owner_user_id=account.owner_user_id if account else user.id,
+            actor_type="user",
+            actor_id=str(user.telegram_id or user.id),
+            category="MANUAL_ACTION",
+            event_type=event_type,
+            status="SUCCESS",
+            account_id=account.account_id if account else "",
+            account_name=(account.name or "") if account else "",
+            rule_id=preset_id,
+            rule_name=preset_name,
+            action=action,
+            message=message,
+            details={"via": "webmcp", **(details or {})},
+            correlation_id=secrets.token_hex(16),
+        )
+    )
+
+
 def _grouped_preset_ids(presets_by_group: dict) -> List[int]:
     """Flatten grouped presets into the unique id list an audit lookup needs."""
     return list(
@@ -95,7 +138,11 @@ async def list_presets(user: User = Depends(get_current_user)):
 
 
 @router.post("/presets", response_model=RulePresetItem)
-async def create_preset(payload: CreatePresetRequest, user: User = Depends(get_current_user)):
+async def create_preset(
+    payload: CreatePresetRequest,
+    request: Request,
+    user: User = Depends(get_current_user),
+):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
         ensure_workspace_write_access(user, member, "creating rules")
@@ -116,6 +163,19 @@ async def create_preset(payload: CreatePresetRequest, user: User = Depends(get_c
             budget_max_daily=payload.budget_max_daily or 0.0,
         )
         session.add(preset)
+        await session.flush()
+        _record_assistant_change(
+            session,
+            request,
+            ws=ws,
+            user=user,
+            event_type="ASSISTANT_CREATE_RULE",
+            action="CREATE",
+            message=f"Rule '{preset.name}' created by the AI assistant.",
+            preset_id=preset.id,
+            preset_name=preset.name,
+            details={"rule_action": preset.action, "conditions": preset.conditions},
+        )
         await session.commit()
         await session.refresh(preset)
         return _preset_response(preset)
@@ -501,6 +561,7 @@ async def delete_rule_group(
 async def assign_rule_to_account(
     account_id: str,
     payload: ApplyPresetRequest,
+    request: Request,
     user: User = Depends(get_current_user),
 ):
     """Add a rule/preset to an ad account's rule list."""
@@ -550,7 +611,24 @@ async def assign_rule_to_account(
         active_rules.append(new_rule)
         _ensure_compatible_rule_set(active_rules)
         acc.active_rules = json.dumps(active_rules)
+        automation_was_on = bool(acc.rules_enabled)
         acc.rules_enabled = True
+        _record_assistant_change(
+            session,
+            request,
+            ws=ws,
+            user=user,
+            event_type="ASSISTANT_ATTACH_RULE",
+            action="ATTACH",
+            message=f"Rule '{new_rule['name']}' attached by the AI assistant.",
+            preset_id=new_rule["preset_id"],
+            preset_name=new_rule["name"],
+            account=acc,
+            details={
+                "scope": new_rule["scope"],
+                "turned_automation_on": not automation_was_on,
+            },
+        )
 
         await session.commit()
         return {
@@ -693,6 +771,7 @@ async def assign_rule_group_to_account(
 async def detach_rule_from_account(
     account_id: str,
     preset_id: int,
+    request: Request,
     user: User = Depends(get_current_user),
 ):
     """Remove a specific rule from an ad account's list."""
@@ -713,6 +792,7 @@ async def detach_rule_from_account(
 
         active_rules = _load_active_rules(acc.active_rules)
 
+        detached = next((r for r in active_rules if r.get("preset_id") == preset_id), None)
         initial_len = len(active_rules)
         active_rules = [r for r in active_rules if r.get("preset_id") != preset_id]
 
@@ -722,6 +802,19 @@ async def detach_rule_from_account(
         acc.active_rules = json.dumps(active_rules)
         if len(active_rules) == 0:
             acc.rules_enabled = False
+        _record_assistant_change(
+            session,
+            request,
+            ws=ws,
+            user=user,
+            event_type="ASSISTANT_DETACH_RULE",
+            action="DETACH",
+            message=f"Rule '{detached.get('name', preset_id)}' detached by the AI assistant.",
+            preset_id=preset_id,
+            preset_name=str(detached.get("name", "")),
+            account=acc,
+            details={"turned_automation_off": not active_rules},
+        )
 
         await session.commit()
         return {
