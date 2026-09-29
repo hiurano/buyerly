@@ -1184,6 +1184,66 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(delete_audit.workspace_id, self.ws_buyer_id)
         self.assertEqual(delete_audit.action, "DELETE")
 
+    async def test_assistant_rule_changes_leave_inbox_rows(self):
+        user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
+        headers = await session_headers(self.test_session_maker, user_info)
+        assistant = {**headers, "X-Buyerly-Agent": "webmcp"}
+        account_id = "act_1018756607700064"
+        payload = {
+            "name": "$4 и 0 лидов",
+            "action": "notify_only",
+            "conditions": [
+                {"metric": "spend", "operator": "gte", "value": 4.0, "time_window": "today"},
+                {"metric": "leads", "operator": "eq", "value": 0, "time_window": "today"},
+            ],
+        }
+
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            # The person's own edits in Rules stay out of Inbox.
+            own = (await client.post("/api/presets", headers=headers, json=payload)).json()
+            self.assertEqual((await client.post(
+                f"/api/accounts/{account_id}/assign-rule", headers=headers, json={"preset_id": own["id"]},
+            )).status_code, 200)
+            self.assertEqual((await client.post(
+                f"/api/accounts/{account_id}/detach-rule/{own['id']}", headers=headers,
+            )).status_code, 200)
+
+            created = (await client.post("/api/presets", headers=assistant, json=payload)).json()
+            self.assertEqual((await client.post(
+                f"/api/accounts/{account_id}/assign-rule", headers=assistant, json={"preset_id": created["id"]},
+            )).status_code, 200)
+            self.assertEqual((await client.post(
+                f"/api/accounts/{account_id}/detach-rule/{created['id']}", headers=assistant,
+            )).status_code, 200)
+
+        async with self.test_session_maker() as session:
+            events = (
+                await session.execute(
+                    select(AuditEvent)
+                    .where(AuditEvent.event_type.like("ASSISTANT_%"))
+                    .order_by(AuditEvent.id)
+                )
+            ).scalars().all()
+        self.assertEqual(
+            [(e.event_type, e.rule_id, e.account_id) for e in events],
+            [
+                ("ASSISTANT_CREATE_RULE", created["id"], ""),
+                ("ASSISTANT_ATTACH_RULE", created["id"], account_id),
+                ("ASSISTANT_DETACH_RULE", created["id"], account_id),
+            ],
+        )
+        for event in events:
+            self.assertEqual(event.workspace_id, self.ws_buyer_id)
+            self.assertEqual(event.category, "MANUAL_ACTION")
+            self.assertEqual(event.actor_type, "user")
+            self.assertEqual(event.details["via"], "webmcp")
+            self.assertEqual(event.rule_name, "$4 и 0 лидов")
+        self.assertEqual(events[0].details["rule_action"], "notify_only")
+        self.assertTrue(events[1].details["turned_automation_on"])
+        self.assertEqual(events[1].details["scope"], {"level": "account", "ids": []})
+        self.assertTrue(events[2].details["turned_automation_off"])
+
     async def test_disabled_preset_stops_running_and_reports_its_attachments(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
         auth = await session_headers(self.test_session_maker, user_info)

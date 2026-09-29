@@ -252,10 +252,12 @@ export function fetchRuleGroups(): Promise<RuleGroupPayload[]> {
 
 export function createRulePreset(
   payload: RulePresetWriteRequest,
+  headers?: HeadersInit,
 ): Promise<RulePresetPayload> {
   return apiRequest<RulePresetPayload>('/api/presets', {
     method: 'POST',
     body: JSON.stringify(payload),
+    headers,
   });
 }
 
@@ -318,12 +320,14 @@ export function assignRuleToAccount(
   accountId: string,
   presetId: number,
   scope: RuleScope,
+  headers?: HeadersInit,
 ): Promise<AccountRulesResponse> {
   return apiRequest<AccountRulesResponse>(
     `/api/accounts/${encodeURIComponent(accountId)}/assign-rule`,
     {
       method: 'POST',
       body: JSON.stringify({ preset_id: presetId, scope }),
+      headers,
     },
   );
 }
@@ -345,10 +349,11 @@ export function setAttachedRuleScope(
 export function detachRuleFromAccount(
   accountId: string,
   presetId: number,
+  headers?: HeadersInit,
 ): Promise<AccountRulesResponse> {
   return apiRequest<AccountRulesResponse>(
     `/api/accounts/${encodeURIComponent(accountId)}/detach-rule/${presetId}`,
-    { method: 'POST' },
+    { method: 'POST', headers },
   );
 }
 

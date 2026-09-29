@@ -117,6 +117,9 @@ const AUDIT_EVENT_TITLES: Record<string, string> = {
   TOKEN_EXPIRED: 'Meta access expired',
   DELETE_RULE_PRESET: 'Rule deleted',
   RESTORE_RULE_PRESET: 'Rule restored',
+  ASSISTANT_CREATE_RULE: 'AI assistant created a rule',
+  ASSISTANT_ATTACH_RULE: 'AI assistant attached a rule',
+  ASSISTANT_DETACH_RULE: 'AI assistant detached a rule',
 };
 
 export function auditEventTitle(event: AuditEventItem): string {

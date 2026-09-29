@@ -32,6 +32,9 @@ import type { JsonSchema, ToolExecuteOptions, WebMcpTool } from './types';
  * access, and stay with the person in Buyerly's own interface.
  */
 
+/** Marks the approved writes so the server records them in Inbox as the assistant's. */
+const ASSISTANT_HEADERS = { 'X-Buyerly-Agent': 'webmcp' };
+
 export interface ToolContext {
   /** Slug of the workspace the tools were registered for. */
   workspace: string;
@@ -659,7 +662,7 @@ export function workspaceTools(context: ToolContext): WebMcpTool[] {
     if (outcome !== 'approved') return refusal(outcome);
 
     ensureInScope(context);
-    const created = await createRulePreset(payload);
+    const created = await createRulePreset(payload, ASSISTANT_HEADERS);
     refreshRuleViews();
     return { created: compactRule(created), next_step: 'Call attach_rule to run it on an ad account.' };
   });
@@ -742,7 +745,7 @@ export function workspaceTools(context: ToolContext): WebMcpTool[] {
     if (outcome !== 'approved') return refusal(outcome);
 
     ensureInScope(context);
-    const response = await assignRuleToAccount(accountId, rule.id, scope);
+    const response = await assignRuleToAccount(accountId, rule.id, scope, ASSISTANT_HEADERS);
     refreshRuleViews(accountId);
     return withoutNulls({
       attached: { rule_id: rule.id, account_id: accountId, scope },
@@ -799,7 +802,7 @@ export function workspaceTools(context: ToolContext): WebMcpTool[] {
     if (outcome !== 'approved') return refusal(outcome);
 
     ensureInScope(context);
-    const response = await detachRuleFromAccount(accountId, input.rule_id);
+    const response = await detachRuleFromAccount(accountId, input.rule_id, ASSISTANT_HEADERS);
     refreshRuleViews(accountId);
     return {
       detached: { rule_id: input.rule_id, account_id: accountId },
