@@ -5,6 +5,7 @@ import { CampaignsView } from '@/components/campaigns/CampaignsView';
 import { RulesView } from '@/components/rules/RulesView';
 import { StatisticsView } from '@/components/statistics/StatisticsView';
 import { CommandMenu } from '@/components/command/CommandMenu';
+import { WorkspaceSwitcher } from '@/components/command/WorkspaceSwitcher';
 import { PreferencesView } from '@/components/preferences/PreferencesView';
 import { AppUtilityBar } from '@/components/layout/AppUtilityBar';
 import { TooltipProvider } from '@/ui/Tooltip';
@@ -24,6 +25,7 @@ import { WelcomeView } from '@/components/onboarding/WelcomeView';
 import { MetaConnectInviteView, MetaConnectSuccessView } from '@/components/auth/MetaConnectInviteView';
 import { ApprovalDialog } from '@/webmcp/ApprovalDialog';
 import { useWebMcpTools } from '@/webmcp/register';
+import { WorkspaceSessionProvider, type WorkspaceSession } from '@/lib/workspaceSession';
 
 const RETURN_ROUTE_KEY = 'buyerly-return-route';
 
@@ -60,6 +62,20 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   } = useAppStore();
   useUndoShortcuts();
   useWebMcpTools(workspace);
+  const session = useMemo<WorkspaceSession>(() => ({
+    user,
+    workspace,
+    switchWorkspace: (slug) => {
+      if (slug === workspace.slug) return;
+      // The address alone scopes the app and every API request to the chosen workspace.
+      navigate(`/${slug}/inbox`);
+      // Remembered so the next visit to Buyerly opens it; the switch above does not wait for it.
+      apiRequest('/api/workspaces/switch', { method: 'POST', body: JSON.stringify({ slug }) })
+        .then(() => refreshUser())
+        .catch(() => {});
+    },
+    openCreateWorkspace: () => navigate('/create-workspace'),
+  }), [navigate, refreshUser, user, workspace]);
   const [gPressed, setGPressed] = useState(false);
   const syncingRoute = useRef(true);
 
@@ -158,27 +174,30 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   }, [interfaceTheme]);
 
   return (
-    <TooltipProvider>
-      <div className="app-shell flex h-screen w-screen overflow-hidden">
-        {activeTab === 'preferences' ? (
-          <PreferencesView user={user} workspace={workspace} onUserChanged={refreshUser} />
-        ) : (
-          <>
-            <Sidebar />
-            <main className="linear-floating-canvas">
-              {activeTab === 'inbox' && <InboxView />}
-              {activeTab === 'campaigns' && <CampaignsView />}
-              {activeTab === 'rules' && <RulesView />}
-              {activeTab === 'statistics' && <StatisticsView />}
-            </main>
-            <CommandMenu />
-          </>
-        )}
-        <AppUtilityBar />
-      </div>
-      <ToastRegion />
-      <ApprovalDialog />
-    </TooltipProvider>
+    <WorkspaceSessionProvider value={session}>
+      <TooltipProvider>
+        <div className="app-shell flex h-screen w-screen overflow-hidden">
+          {activeTab === 'preferences' ? (
+            <PreferencesView user={user} workspace={workspace} onUserChanged={refreshUser} />
+          ) : (
+            <>
+              <Sidebar />
+              <main className="linear-floating-canvas">
+                {activeTab === 'inbox' && <InboxView />}
+                {activeTab === 'campaigns' && <CampaignsView />}
+                {activeTab === 'rules' && <RulesView />}
+                {activeTab === 'statistics' && <StatisticsView />}
+              </main>
+              <CommandMenu />
+            </>
+          )}
+          <AppUtilityBar />
+        </div>
+        <WorkspaceSwitcher />
+        <ToastRegion />
+        <ApprovalDialog />
+      </TooltipProvider>
+    </WorkspaceSessionProvider>
   );
 };
 
@@ -269,7 +288,7 @@ export const App: React.FC = () => {
       if (route.kind !== 'welcome' || route.workspace !== workspace.slug) navigate(welcomePath, true);
       return;
     }
-    if (route.kind === 'root' || route.kind === 'login' || route.kind === 'create-workspace' || route.kind === 'welcome') {
+    if (route.kind === 'root' || route.kind === 'login' || route.kind === 'welcome') {
       navigate(`/${workspace.slug}/inbox`, true);
       return;
     }
@@ -327,6 +346,19 @@ export const App: React.FC = () => {
   if (user === null) return <LoginView onAuthenticated={handleAuthenticated} />;
 
   const workspace = activeWorkspace(user);
+  if (workspace && user.onboarding_completed && route.kind === 'create-workspace') {
+    // Linear's "Create or join a workspace…" from the workspace menu.
+    return (
+      <CreateWorkspaceView
+        user={user}
+        onBack={() => navigate(`/${workspace.slug}/inbox`)}
+        onCreated={async (createdWorkspace) => {
+          await refreshUser();
+          navigate(`/${createdWorkspace.slug}/inbox`, true);
+        }}
+      />
+    );
+  }
   if (!workspace) {
     return (
       <CreateWorkspaceView

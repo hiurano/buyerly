@@ -3,13 +3,19 @@ import { apiRequest } from '@/lib/api';
 import { useAppStore } from '@/store/useAppStore';
 import { toast } from '@/ui/toast';
 import { Tooltip } from '@/ui/Tooltip';
-import { BuyerlyLogoAvatar } from '@/icons/LinearIcons';
+import { BuyerlyLogoAvatar, LinearCheckIcon } from '@/icons/LinearIcons';
+import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
+import { useWorkspaceSession } from '@/lib/workspaceSession';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuLabel,
 } from '@/ui/DropdownMenu';
 
 /** Ends this browser's session and reloads into the login screen, dropping all in-memory workspace state. */
@@ -25,6 +31,7 @@ async function logOut() {
 
 export const SidebarHeader: React.FC = () => {
   const { workspaceName, setSearchOpen, setActiveTab, setSettingsSection } = useAppStore();
+  const { user, workspace, switchWorkspace, openCreateWorkspace } = useWorkspaceSession();
 
   // Linear: Alt+Shift+Q logs out from anywhere in the app.
   useEffect(() => {
@@ -101,7 +108,7 @@ export const SidebarHeader: React.FC = () => {
           </DropdownMenuTrigger>
 
           {/* Exact Linear Workspace Menu Popover */}
-          <DropdownMenuContent align="start" sideOffset={4}>
+          <DropdownMenuContent align="start" sideOffset={4} style={{ width: 228 }}>
             <div className="h-[6px] w-full" />
 
             {/* 1. Settings */}
@@ -137,26 +144,76 @@ export const SidebarHeader: React.FC = () => {
 
             <DropdownMenuSeparator />
 
-            {/* 3. Switch workspace */}
-            <DropdownMenuItem>
-              <span className="truncate">Switch workspace</span>
-              <div className="flex shrink-0 items-center gap-[6px]">
-                <div className="flex items-center gap-[3px]">
-                  <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
-                    O
-                  </kbd>
-                  <span className="text-[12px] font-[450] text-[#9d9d9e] mx-[1px]">
-                    then
+            {/* 3. Switch workspace: this account's workspaces, numbered, then Account actions (Linear) */}
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <span className="truncate">Switch workspace</span>
+                <div className="flex shrink-0 items-center gap-[6px]">
+                  <div className="flex items-center gap-[3px]">
+                    <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
+                      O
+                    </kbd>
+                    <span className="text-[12px] font-[450] text-[#9d9d9e] mx-[1px]">
+                      then
+                    </span>
+                    <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
+                      W
+                    </kbd>
+                  </div>
+                  <span className="text-[7px] text-[#636364] flex items-center justify-end w-[12px]">
+                    ▶
                   </span>
-                  <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
-                    W
-                  </kbd>
                 </div>
-                <span className="text-[7px] text-[#636364] flex items-center justify-end w-[12px]">
-                  ▶
-                </span>
-              </div>
-            </DropdownMenuItem>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent
+                sideOffset={0}
+                alignOffset={-36}
+                style={{ width: 'auto', minWidth: 209, maxWidth: 320 }}
+                onKeyDown={(event) => {
+                  // Linear: a workspace's number opens it straight from the menu.
+                  if (event.ctrlKey || event.altKey || event.metaKey || !/^[1-9]$/.test(event.key)) return;
+                  const target = user.workspaces[Number(event.key) - 1];
+                  if (!target) return;
+                  event.preventDefault();
+                  switchWorkspace(target.slug);
+                }}
+              >
+                <DropdownMenuLabel
+                  className="truncate"
+                  style={{ height: 30, padding: '4px 12px 0 14px', fontSize: 13, fontWeight: 450, lineHeight: '26px' }}
+                >
+                  {user.email || user.username}
+                </DropdownMenuLabel>
+                {user.workspaces.map((item, index) => (
+                  <DropdownMenuItem key={item.id} onSelect={() => switchWorkspace(item.slug)}>
+                    <span className="flex min-w-0 items-center gap-[8px]">
+                      <WorkspaceAvatar workspace={item} />
+                      <span className="truncate">{item.name}</span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-[6px]">
+                      {item.id === workspace.id && (
+                        <span className="text-[var(--text-primary)]" aria-label="Current workspace">
+                          <LinearCheckIcon size={16} />
+                        </span>
+                      )}
+                      {index < 9 && (
+                        <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
+                          {index + 1}
+                        </kbd>
+                      )}
+                    </span>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuLabel
+                  style={{ height: 30, padding: '8px 14px', fontSize: 12, fontWeight: 500, lineHeight: '14px' }}
+                >
+                  Account
+                </DropdownMenuLabel>
+                <DropdownMenuItem onSelect={openCreateWorkspace}>
+                  <span className="truncate">Create or join a workspace…</span>
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
 
             {/* 4. Log out */}
             <DropdownMenuItem onSelect={() => void logOut()}>
