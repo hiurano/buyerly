@@ -609,6 +609,65 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 dave_member = (await session.execute(select(WorkspaceMember).where(WorkspaceMember.workspace_id == ws_id, WorkspaceMember.user_id == dave_db.id))).scalar_one()
                 self.assertEqual(dave_member.role, 'viewer')
 
+    async def test_resend_invite_emails_again_and_renews_expiry(self):
+        artem_headers = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
+        async with self.test_session_maker() as session:
+            ws_id = (await session.execute(select(Workspace).where(Workspace.slug == 'buyerly'))).scalar_one().id
+            viewer = User(telegram_id='777000555', username='vera', full_name='Vera Viewer', role='buyer', is_approved=True)
+            session.add(viewer)
+            await session.flush()
+            session.add(WorkspaceMember(workspace_id=ws_id, user_id=viewer.id, role='viewer'))
+            await session.commit()
+        viewer_headers = await session_headers(self.test_session_maker, {'id': 777000555, 'first_name': 'Vera', 'username': 'vera'})
+
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
+            with patch('api.routers.members.send_workspace_invitation_email', new_callable=AsyncMock, return_value=True) as send:
+                personal = (await client.post(
+                    f'/api/workspaces/{ws_id}/invites',
+                    json={'email': 'Late@Buyerly.app', 'role': 'buyer'},
+                    headers=artem_headers,
+                )).json()
+                public = (await client.post(
+                    f'/api/workspaces/{ws_id}/invites',
+                    json={'role': 'viewer', 'max_uses': 0},
+                    headers=artem_headers,
+                )).json()
+                send.reset_mock()
+
+                # The invite ran out: a resend makes the same link valid for 7 more days.
+                async with self.test_session_maker() as session:
+                    stored = await session.get(WorkspaceInvite, personal['id'])
+                    stored.expires_at = datetime(2020, 1, 1, tzinfo=timezone.utc)
+                    await session.commit()
+                self.assertFalse((await client.get(f"/api/invites/{personal['token']}")).json()['valid'])
+
+                resend = await client.post(f"/api/workspaces/{ws_id}/invites/{personal['id']}/resend", headers=artem_headers)
+                self.assertEqual(resend.status_code, 200, resend.text)
+                send.assert_awaited_once()
+                self.assertEqual(send.await_args.kwargs['to_email'], 'late@buyerly.app')
+                self.assertEqual(send.await_args.kwargs['invite_token'], personal['token'])
+                check = (await client.get(f"/api/invites/{personal['token']}")).json()
+                self.assertTrue(check['valid'])
+                self.assertGreater(datetime.fromisoformat(check['expires_at'].replace('Z', '+00:00')), datetime.now(timezone.utc))
+
+                # Only admins resend, and only a personal invite that is still waiting.
+                send.reset_mock()
+                denied = await client.post(f"/api/workspaces/{ws_id}/invites/{personal['id']}/resend", headers=viewer_headers)
+                self.assertEqual(denied.status_code, 403, denied.text)
+                link = await client.post(f"/api/workspaces/{ws_id}/invites/{public['id']}/resend", headers=artem_headers)
+                self.assertEqual(link.status_code, 400, link.text)
+                await client.delete(f"/api/workspaces/{ws_id}/invites/{personal['id']}", headers=artem_headers)
+                revoked = await client.post(f"/api/workspaces/{ws_id}/invites/{personal['id']}/resend", headers=artem_headers)
+                self.assertEqual(revoked.status_code, 400, revoked.text)
+                send.assert_not_awaited()
+
+            async with self.test_session_maker() as session:
+                events = (await session.execute(
+                    select(AuditEvent).where(AuditEvent.event_type == 'INVITE_SEND', AuditEvent.workspace_id == ws_id)
+                )).scalars().all()
+                self.assertTrue(any((event.details or {}).get('resend') for event in events))
+
     async def test_single_use_invite_is_atomic_and_winner_retry_is_idempotent(self):
         artem_headers = {
             **(await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'}))

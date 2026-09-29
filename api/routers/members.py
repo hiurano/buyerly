@@ -683,6 +683,99 @@ async def revoke_workspace_invite(
         return {"status": "ok", "message": "Invite revoked"}
 
 
+@router.post(
+    "/workspaces/{workspace_id}/invites/{invite_id}/resend",
+    dependencies=[Depends(rate_limit_dep(limit=5, window_seconds=60, scope="invite_resend"))],
+)
+async def resend_workspace_invite(
+    workspace_id: int,
+    invite_id: int,
+    user: User = Depends(get_current_user),
+):
+    """Email a pending personal invitation again, with a fresh 7-day expiry."""
+    async with async_session_maker() as session:
+        ws = (await session.execute(select(Workspace).where(Workspace.id == workspace_id))).scalar_one_or_none()
+        if not ws:
+            raise HTTPException(status_code=404, detail="Workspace not found")
+
+        caller_member = (
+            await session.execute(
+                select(WorkspaceMember).where(
+                    WorkspaceMember.workspace_id == workspace_id,
+                    WorkspaceMember.user_id == user.id,
+                )
+            )
+        ).scalar_one_or_none()
+        caller_role = caller_member.role if caller_member else None
+        if not caller_role and user.role == "admin":
+            grant = await _active_support_grant(session, user.id, workspace_id)
+            if grant:
+                caller_role = grant.role or "admin"
+        if not caller_role:
+            await record_security_event_and_raise(
+                session,
+                status_code=403,
+                detail="You do not have access to this workspace",
+                user=user,
+                workspace_id=workspace_id,
+                action="RESEND_INVITE",
+                resource_type="workspace",
+                resource_id=str(workspace_id),
+            )
+
+        if caller_role not in ("owner", "admin"):
+            raise HTTPException(status_code=403, detail="You do not have permission to resend invites")
+
+        invite = (
+            await session.execute(
+                select(WorkspaceInvite).where(
+                    WorkspaceInvite.id == invite_id,
+                    WorkspaceInvite.workspace_id == workspace_id,
+                ).with_for_update()
+            )
+        ).scalar_one_or_none()
+        if not invite:
+            raise HTTPException(status_code=404, detail="Invite not found")
+        # "expired" is only ever derived or stored for a pending invite whose date passed.
+        if not invite.email or invite.status not in ("pending", "expired"):
+            raise HTTPException(status_code=400, detail="Only a pending email invite can be resent")
+
+        invite.status = "pending"
+        invite.expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+        await session.commit()
+
+        inviter_name = user.full_name or user.username or "A colleague"
+        try:
+            send_ok = await send_workspace_invitation_email(
+                to_email=invite.email,
+                workspace_name=ws.name,
+                inviter_name=inviter_name,
+                role=invite.role,
+                invite_token=invite.token,
+            )
+        except Exception as e:
+            send_ok = False
+            logger.error("Failed to resend invitation email to %s: %s", invite.email, e)
+
+        session.add(
+            AuditEvent(
+                workspace_id=workspace_id,
+                owner_user_id=user.id,
+                actor_type="user",
+                actor_id=str(user.id),
+                category="WORKSPACE_INVITE",
+                event_type="INVITE_SEND",
+                status="SUCCESS" if send_ok else "FAILED",
+                message=f"Invite resent to {invite.email}: {'success' if send_ok else 'error'}",
+                details={"invite_id": invite.id, "email": invite.email, "resend": True},
+            )
+        )
+        await session.commit()
+        if not send_ok:
+            raise HTTPException(status_code=502, detail="The invitation email could not be delivered")
+        return {"status": "ok", "message": "Invite resent", "expires_at": _utc_iso(invite.expires_at)}
+
+
 @router.get(
     "/invites/{token}",
     response_model=PublicInviteInfoResponse,

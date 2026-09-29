@@ -1,9 +1,10 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { useAppStore, type InterfaceTheme } from '@/store/useAppStore';
+import { useAppStore, type InterfaceTheme, type SettingsSection } from '@/store/useAppStore';
 import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
-import type { SessionUser } from '@/lib/types';
+import type { SessionUser, Workspace } from '@/lib/types';
 import { ProfileSection } from './ProfileSection';
 import { AdAccountsSection } from './AdAccountsSection';
+import { MembersSection } from './MembersSection';
 import { LinearToggle } from '@/ui/LinearToggle';
 import { findModelContext, setWebMcpEnabled, useWebMcpEnabled } from '@/webmcp/register';
 
@@ -16,25 +17,31 @@ const themeOptions: Array<{
   { value: 'dark', label: 'Dark' },
 ];
 
-type SettingsSection = 'preferences' | 'profile' | 'ad-accounts';
-
 /** Keywords the settings search matches against, per section. */
 const sectionKeywords: Record<SettingsSection, string> = {
   preferences: 'preferences interface theme appearance ai assistant agent webmcp chrome',
   profile: 'profile account email name avatar',
   'ad-accounts': 'ad accounts cost target primary result statistics cpa cpl currency',
+  members: 'members invite invitations people team users roles',
 };
 
 interface PreferencesViewProps {
   user: SessionUser;
+  workspace: Workspace;
   onUserChanged: () => void | Promise<unknown>;
 }
 
-export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, onUserChanged }) => {
-  const { interfaceTheme, setInterfaceTheme, lastAppTab, setActiveTab } = useAppStore();
+export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspace, onUserChanged }) => {
+  const {
+    interfaceTheme,
+    setInterfaceTheme,
+    lastAppTab,
+    setActiveTab,
+    settingsSection: section,
+    setSettingsSection: setSection,
+  } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
-  const [section, setSection] = useState<SettingsSection>('preferences');
   const menuRef = useRef<HTMLDivElement>(null);
 
   const assistantOn = useWebMcpEnabled();
@@ -216,6 +223,33 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, onUserCh
                 <span className="preferences-nav-label">Ad accounts</span>
               </a>
             )}
+            {visibleSections.includes('members') && (
+              <a
+                href="#members"
+                className={`preferences-nav-item ${section === 'members' ? 'active' : ''}`}
+                data-active={section === 'members'}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSection('members');
+                }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  role="img"
+                  focusable="false"
+                  aria-hidden="true"
+                  className="preferences-nav-icon"
+                >
+                  <path d="M6 7.5C7.51878 7.5 8.75 6.26878 8.75 4.75C8.75 3.23122 7.51878 2 6 2C4.48122 2 3.25 3.23122 3.25 4.75C3.25 6.26878 4.48122 7.5 6 7.5ZM6 6C5.30964 6 4.75 5.44036 4.75 4.75C4.75 4.05964 5.30964 3.5 6 3.5C6.69036 3.5 7.25 4.05964 7.25 4.75C7.25 5.44036 6.69036 6 6 6Z" />
+                  <path d="M1.5 13.25C1.5 11.1789 3.17893 9.5 5.25 9.5H6.75C8.82107 9.5 10.5 11.1789 10.5 13.25C10.5 13.6642 10.1642 14 9.75 14C9.33579 14 9 13.6642 9 13.25C9 12.0074 7.99264 11 6.75 11H5.25C4.00736 11 3 12.0074 3 13.25C3 13.6642 2.66421 14 2.25 14C1.83579 14 1.5 13.6642 1.5 13.25Z" />
+                  <path d="M10.75 7.5C11.9926 7.5 13 6.49264 13 5.25C13 4.00736 11.9926 3 10.75 3C10.3358 3 10 3.33579 10 3.75C10 4.16421 10.3358 4.5 10.75 4.5C11.1642 4.5 11.5 4.83579 11.5 5.25C11.5 5.66421 11.1642 6 10.75 6C10.3358 6 10 6.33579 10 6.75C10 7.16421 10.3358 7.5 10.75 7.5Z" />
+                  <path d="M11.5 9.75C11.5 9.33579 11.8358 9 12.25 9C13.7688 9 15 10.2312 15 11.75V13.25C15 13.6642 14.6642 14 14.25 14C13.8358 14 13.5 13.6642 13.5 13.25V11.75C13.5 11.0596 12.9404 10.5 12.25 10.5C11.8358 10.5 11.5 10.1642 11.5 9.75Z" />
+                </svg>
+                <span className="preferences-nav-label">Members</span>
+              </a>
+            )}
           </div>
 
           {visibleSections.length === 0 && (
@@ -234,6 +268,8 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, onUserCh
             )}
 
             {section === 'ad-accounts' && <AdAccountsSection />}
+
+            {section === 'members' && <MembersSection workspace={workspace} />}
 
             {section === 'preferences' && (
               <>

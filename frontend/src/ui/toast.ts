@@ -3,9 +3,10 @@ import { create } from 'zustand';
 /**
  * What a toast reports. Linear never reports a plain success: a change shows
  * on the row itself. A toast appears only for a deletion, an undo or redo,
- * and anything that failed.
+ * anything that failed, and news that happened outside the screen (`info`,
+ * e.g. "Invite sent" — the invitee was notified by email).
  */
-export type ToastTone = 'success' | 'error' | 'undo' | 'redo';
+export type ToastTone = 'success' | 'error' | 'undo' | 'redo' | 'info';
 
 export interface ToastOptions {
   tone: ToastTone;

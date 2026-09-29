@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CircleAlert, CircleCheck, Redo2, Undo2 } from 'lucide-react';
+import { CircleAlert, CircleCheck, Info, Redo2, Undo2 } from 'lucide-react';
 import { LinearCloseIcon } from '@/icons/LinearIcons';
 import { TOAST_DURATION_MS, useToastStore, type ToastItem, type ToastTone } from '@/ui/toast';
 
@@ -9,6 +9,7 @@ const TONE_ICON: Record<ToastTone, React.ReactNode> = {
   error: <CircleAlert size={16} className="text-[var(--toast-error-icon)]" />,
   undo: <Undo2 size={16} className="text-[var(--text-secondary)]" />,
   redo: <Redo2 size={16} className="text-[var(--text-secondary)]" />,
+  info: <Info size={16} className="text-[var(--text-secondary)]" />,
 };
 
 /**

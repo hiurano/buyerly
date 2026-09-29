@@ -51,6 +51,8 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     setActiveTab,
     campaignFilterTab,
     setCampaignFilterTab,
+    settingsSection,
+    setSettingsSection,
     setWorkspaceName,
     toggleRightSidebar,
     toggleSidebarCollapsed,
@@ -66,21 +68,27 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     setWorkspaceName(workspace.name);
     setActiveTab(route.tab);
     if (route.entity) setCampaignFilterTab(route.entity);
+    if (route.tab === 'preferences') {
+      const { settingsSection: current } = useAppStore.getState();
+      // Only Members has its own address; plain /settings keeps any other open section.
+      if (route.settingsSection === 'members') setSettingsSection('members');
+      else if (current === 'members') setSettingsSection('preferences');
+    }
     document.title = `${workspace.name} — Buyerly`;
     queueMicrotask(() => {
       syncingRoute.current = false;
     });
-  }, [route.entity, route.tab, setActiveTab, setCampaignFilterTab, setWorkspaceName, workspace.name]);
+  }, [route.entity, route.settingsSection, route.tab, setActiveTab, setCampaignFilterTab, setSettingsSection, setWorkspaceName, workspace.name]);
 
   useEffect(() => {
     if (syncingRoute.current) return;
-    const desiredPath = pathForTab(workspace.slug, activeTab, campaignFilterTab);
+    const desiredPath = pathForTab(workspace.slug, activeTab, campaignFilterTab, settingsSection);
     if (window.location.pathname !== desiredPath) {
       const campaignQuery = activeTab === 'campaigns' && window.location.pathname.startsWith(`/${workspace.slug}/ads-manager/`)
         ? window.location.search : '';
       navigate(desiredPath + campaignQuery);
     }
-  }, [activeTab, campaignFilterTab, navigate, workspace.slug]);
+  }, [activeTab, campaignFilterTab, navigate, settingsSection, workspace.slug]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -153,7 +161,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     <TooltipProvider>
       <div className="app-shell flex h-screen w-screen overflow-hidden">
         {activeTab === 'preferences' ? (
-          <PreferencesView user={user} onUserChanged={refreshUser} />
+          <PreferencesView user={user} workspace={workspace} onUserChanged={refreshUser} />
         ) : (
           <>
             <Sidebar />
@@ -304,6 +312,11 @@ export const App: React.FC = () => {
           setUser(nextUser);
           navigate(onboardingCompleted ? `/${workspaceSlug}/inbox` : `/${workspaceSlug}/welcome`, true);
         }}
+        onSignedOut={() => {
+          useAppStore.getState().setWorkspaceScope(null);
+          setUser(null);
+        }}
+        onBack={() => navigate('/', true)}
       />
     );
   }
