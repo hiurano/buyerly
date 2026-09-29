@@ -536,6 +536,11 @@ try {
     const { created: rule } = await finishTool(page, call);
     const attaching = await startTool(page, 'attach_rule', { rule_id: rule.rule_id, account_id: 'act_100' });
     const shown = await approve(page, 'Attach rule', [`Attach “${name}” to “Alpha Leads”?`, 'Covers the whole ad account.']);
+    assert.equal(
+      shown.includes('Automation is off in this ad account, so attaching turns it on.'),
+      name === cheatSheet[0][0],
+      shown,
+    );
     if (name === '$7, 0 registrations, under 2 leads') {
       assert.ok(shown.includes('Alert in Inbox when an ad set has spend ≥ USD 7.00, registrations = 0 and leads < 2 today.'), shown);
     }

@@ -728,13 +728,17 @@ export function workspaceTools(context: ToolContext): WebMcpTool[] {
       const others = attached.map((item) => `“${item.name}”`).join(', ');
       warnings.push(`Automation is off in this ad account. Attaching turns it back on, so ${others} will run again too.`);
     }
+    const details = [
+      describeRuleEffect(rule, account.currency),
+      describeScope(scope, names),
+      describeRuleCadence(rule),
+    ];
+    if (!account.rules_enabled && attached.length === 0) {
+      details.push('Automation is off in this ad account, so attaching turns it on.');
+    }
     const outcome = await requestApproval({
       title: `Attach “${rule.name}” to “${accountName(account)}”?`,
-      details: [
-        describeRuleEffect(rule, account.currency),
-        describeScope(scope, names),
-        describeRuleCadence(rule),
-      ],
+      details,
       warning: warnings.length > 0 ? warnings.join(' ') : undefined,
       approveLabel: 'Attach rule',
       tone: warnings.length > 0 ? 'danger' : 'primary',
