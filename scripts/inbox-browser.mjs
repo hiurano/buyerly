@@ -110,6 +110,10 @@ try {
     const rows = list.getByRole('option');
     const row = (text) => rows.filter({ hasText: text });
     const pathname = () => new URL(page.url()).pathname;
+    // Lists refetch after a toggle; wait for the new rows instead of reading the old ones.
+    const waitForRows = (count) => page.waitForFunction(
+      (expected) => document.querySelectorAll('[data-inbox-event-id]').length === expected, count,
+    );
     const phone = width < 768;
     const assertNoOverflow = async (where) => assert.equal(
       await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true,
@@ -117,8 +121,7 @@ try {
     );
     try {
       await page.goto(`${origin}/${workspace.slug}/inbox`);
-      await rows.first().waitFor();
-      assert.equal(await rows.count(), 4);
+      await waitForRows(4);
       // Two unread: Linear's dot before the title, the count in the sidebar and tab title.
       assert.equal(await list.getByRole('option', { name: /^Unread: / }).count(), 2);
       await page.waitForFunction(() => document.title === 'Inbox (2)');
@@ -182,9 +185,8 @@ try {
 
       // Show unreads only, then Linear's empty state once they are read.
       await page.getByRole('button', { name: 'Show unreads only' }).click();
-      await rows.first().waitFor();
       // The snoozed one is unread but hidden, so only the one just marked shows.
-      assert.equal(await rows.count(), 1);
+      await waitForRows(1);
       await row('Older stop').click();
       await page.keyboard.press('Escape');
       await page.getByRole('button', { name: 'Show unreads only' }).click();
@@ -192,7 +194,7 @@ try {
       await page.getByText('No unreads', { exact: true }).waitFor();
       await page.screenshot({ path: `${output}/no-unreads-${width}.png` });
       await page.getByRole('button', { name: 'Show all notifications' }).click();
-      await rows.first().waitFor();
+      await waitForRows(2);
 
       // Display options: Show snoozed brings the snoozed one back.
       await page.getByRole('button', { name: 'Display options' }).click();
