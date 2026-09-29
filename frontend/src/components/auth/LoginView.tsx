@@ -118,9 +118,13 @@ export const LoginView: React.FC<LoginViewProps> = ({
             <button className="buyerly-auth-button buyerly-auth-button--primary" type="button" onClick={() => goTo('email')}>
               Continue with email
             </button>
-            <button className="buyerly-auth-button" type="button" onClick={() => goTo('password')}>
-              Log in with password
-            </button>
+            {/* Temporary: one account still logs in with a password. Linear has only email here. */}
+            <p className="buyerly-auth-footnote">
+              Have a password?{' '}
+              <button type="button" onClick={() => goTo('password')}>
+                Log in with password
+              </button>
+            </p>
           </>
         )}
 

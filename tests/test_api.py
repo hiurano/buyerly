@@ -69,10 +69,6 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         api_auth_module.async_session_maker = self.test_session_maker
         api_server_module.async_session_maker = self.test_session_maker
 
-        # These tests cover the email code/link flow on its own; the
-        # invite-only default is covered in tests/test_email_whitelist.py.
-        self.original_email_login_without_invite = settings.EMAIL_LOGIN_WITHOUT_INVITE
-        settings.EMAIL_LOGIN_WITHOUT_INVITE = True
         settings.OTP_PEPPER = "test-otp-pepper"
         settings.ADMIN_CHAT_ID = "8634201356"
 
@@ -143,7 +139,6 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self):
         settings.META_TOKEN_ENCRYPTION_KEY = self.original_meta_token_key
-        settings.EMAIL_LOGIN_WITHOUT_INVITE = self.original_email_login_without_invite
         await self.test_engine.dispose()
 
     def test_summary_cache_invalidation_matches_workspace_or_owner(self):
@@ -307,6 +302,44 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             )
             changed_buyer = result.scalar_one()
         self.assertTrue(verify_password(new_password, changed_buyer.password_hash))
+
+    async def test_email_only_account_sets_a_password_for_password_login(self):
+        async with self.test_session_maker() as session:
+            buyer = (await session.execute(select(User).where(User.username == "buyer_nick"))).scalar_one()
+            buyer.password_hash = ""  # accounts created by email sign-in have no password
+            buyer.auth_token = "test-web-token"
+            await session.commit()
+
+        headers = {"Authorization": "Bearer test-web-token"}
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            before = await client.get("/api/me", headers=headers)
+            self.assertEqual(before.status_code, 200, before.text)
+            self.assertFalse(before.json()["has_password"])
+            self.assertNotIn("password_hash", before.json())
+
+            # Without a password yet, the first one is set without a current password.
+            set_first = await client.post(
+                "/api/auth/change-password",
+                headers=headers,
+                json={"new_password": "first-password"},
+            )
+            self.assertEqual(set_first.status_code, 200, set_first.text)
+            self.assertTrue((await client.get("/api/me", headers=headers)).json()["has_password"])
+
+            login = await client.post(
+                "/api/auth/login",
+                json={"username": "buyer_nick", "password": "first-password"},
+            )
+            self.assertEqual(login.status_code, 200, login.text)
+
+            # From now on a change needs the current password.
+            replace_without_current = await client.post(
+                "/api/auth/change-password",
+                headers=headers,
+                json={"new_password": "second-password"},
+            )
+            self.assertEqual(replace_without_current.status_code, 400)
 
     async def test_health_overview_is_workspace_isolated_and_secret_safe(self):
         async with self.test_session_maker() as session:

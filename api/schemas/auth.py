@@ -14,6 +14,8 @@ class UserProfileResponse(BaseModel):
     email_verified: bool = False
     unconfirmed_email: Optional[str] = None
     avatar_url: str = ""
+    # Whether username-and-password login works; the hash itself never leaves the server.
+    has_password: bool = False
     role: str
     is_approved: bool
     onboarding_step: str = "completed"
