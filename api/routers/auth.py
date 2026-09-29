@@ -76,12 +76,6 @@ from services.otp import (
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Auth & Profile"])
 
-EMAIL_LOGIN_INVITE_ONLY_DETAIL = (
-    "Email sign-in is available only through a workspace invitation. "
-    "Log in with your username and password."
-)
-
-
 def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
@@ -194,10 +188,6 @@ async def _complete_passwordless_login(
     response: Response,
 ) -> LoginResponse:
     email_clean = email.strip().lower()
-    if invite_id is None and not settings.EMAIL_LOGIN_WITHOUT_INVITE:
-        # Email sign-in is reserved for invitations; keep the credential consumed.
-        await session.commit()
-        raise HTTPException(status_code=403, detail=EMAIL_LOGIN_INVITE_ONLY_DETAIL)
     if invite_id is None:
         # Preserve the authorization context captured when the email was sent.
         # Recheck direct access (allowlist or approved membership), never fall
@@ -284,8 +274,6 @@ async def request_temporary_password(req: RequestTemporaryPasswordRequest):
     email_clean = req.email.strip().lower()
     if "@" not in email_clean or "." not in email_clean:
         raise HTTPException(status_code=400, detail="Invalid email address")
-    if not req.invite_token and not settings.EMAIL_LOGIN_WITHOUT_INVITE:
-        raise HTTPException(status_code=403, detail=EMAIL_LOGIN_INVITE_ONLY_DETAIL)
 
     async with async_session_maker() as session:
         is_allowed, invite = await _resolve_login_authorization(
@@ -862,6 +850,7 @@ async def get_me(user: User = Depends(get_authenticated_user)):
             email_verified=bool(getattr(db_user, "email_verified_at", None)),
             unconfirmed_email=getattr(db_user, "unconfirmed_email", None),
             avatar_url=getattr(db_user, "avatar_url", "") or "",
+            has_password=bool(db_user.password_hash),
             role=db_user.role,
             is_approved=db_user.is_approved,
             onboarding_step=getattr(db_user, "onboarding_step", "completed") or "completed",

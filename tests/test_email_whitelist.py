@@ -46,8 +46,6 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
         # suite across shards, so each module runs on its own.
         self.original_otp_pepper = settings.OTP_PEPPER
         settings.OTP_PEPPER = "test-otp-pepper"
-        self.original_email_login_without_invite = settings.EMAIL_LOGIN_WITHOUT_INVITE
-        settings.EMAIL_LOGIN_WITHOUT_INVITE = True
 
         self.engine = create_test_engine()
         self.sessions = async_sessionmaker(
@@ -101,7 +99,6 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
         database_db_module.async_session_maker = self.original_db_session_maker
         settings.ADMIN_CHAT_ID = self.original_admin_chat_id
         settings.OTP_PEPPER = self.original_otp_pepper
-        settings.EMAIL_LOGIN_WITHOUT_INVITE = self.original_email_login_without_invite
         await self.engine.dispose()
 
     async def test_unlisted_email_rejected_on_request_temporary_password(self):
@@ -362,35 +359,18 @@ class TestEmailWhitelistAccess(unittest.IsolatedAsyncioTestCase):
             await session.commit()
         return token
 
-    async def test_email_login_without_invite_is_disabled_by_default(self):
-        await self._seed_joined_member()
-        settings.EMAIL_LOGIN_WITHOUT_INVITE = False
+    async def test_email_without_membership_allowlist_or_invite_gets_no_login_code(self):
+        # Email sign-in is open to people already in Buyerly, never to strangers.
         with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock, return_value=True) as send:
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
-                response = await client.post("/api/auth/request-temporary-password", json={"email": "buyer@buyerly.com"})
+                response = await client.post("/api/auth/request-temporary-password", json={"email": "stranger@elsewhere.com"})
         self.assertEqual(response.status_code, 403, response.text)
-        self.assertIn("only through a workspace invitation", response.json()["detail"])
         send.assert_not_called()
+        async with self.sessions() as session:
+            self.assertIsNone((await session.execute(select(User).where(User.email == "stranger@elsewhere.com"))).scalar_one_or_none())
 
-    async def test_issued_non_invite_code_and_link_stop_working_when_disabled(self):
-        await self._seed_joined_member()
-        with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock, return_value=True) as send:
-            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
-                for use_link in (False, True):
-                    settings.EMAIL_LOGIN_WITHOUT_INVITE = True
-                    response = await client.post("/api/auth/request-temporary-password", json={"email": "buyer@buyerly.com"})
-                    self.assertEqual(response.status_code, 200, response.text)
-                    _, code, link = send.call_args.args
-                    settings.EMAIL_LOGIN_WITHOUT_INVITE = False
-                    endpoint = "verify-email-link" if use_link else "verify-temporary-password"
-                    payload = {"token": parse_qs(urlsplit(link).query)["token"][0]} if use_link else {"email": "buyer@buyerly.com", "code": code}
-                    response = await client.post(f"/api/auth/{endpoint}", json=payload)
-                    self.assertEqual(response.status_code, 403, response.text)
-                    self.assertIsNone(client.cookies.get("buyerly_session"))
-
-    async def test_invite_email_login_still_works_when_disabled(self):
+    async def test_invite_email_login_returns_to_the_invitation(self):
         token = await self._seed_pending_invite()
-        settings.EMAIL_LOGIN_WITHOUT_INVITE = False
         with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock, return_value=True) as send:
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
                 response = await client.post(

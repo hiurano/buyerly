@@ -4,6 +4,7 @@ import type { SessionUser } from '@/lib/types';
 import { Input } from '@/ui/Input';
 import { LinearPencilIcon } from '@/icons/LinearIcons';
 import { ChangeEmailDialog } from './ChangeEmailDialog';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
 
 interface ProfileSectionProps {
   user: SessionUser;
@@ -26,6 +27,8 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, onUserChan
   const [savingName, setSavingName] = useState(false);
   const [error, setError] = useState('');
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const hasPassword = Boolean(user.has_password);
 
   useEffect(() => {
     setFullName(user.full_name || '');
@@ -116,6 +119,27 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, onUserChan
             />
           </div>
 
+          <div className="preferences-row-item">
+            <div className="preferences-row-copy">
+              <span className="preferences-row-title">Password</span>
+              <span className="preferences-row-desc">
+                {hasPassword
+                  ? `Log in with ${user.email || user.username} and your password, or with a code from your email.`
+                  : 'You log in with a code from your email. Set a password to also log in with it.'}
+              </span>
+            </div>
+            <div className="preferences-row-control">
+              <button
+                type="button"
+                className="preferences-row-edit-button"
+                aria-label={hasPassword ? 'Change password' : 'Set password'}
+                onClick={() => setPasswordDialogOpen(true)}
+              >
+                <LinearPencilIcon size={13} />
+              </button>
+            </div>
+          </div>
+
         </section>
 
         {error && (
@@ -129,6 +153,13 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, onUserChan
         open={emailDialogOpen}
         currentEmail={user.email}
         onOpenChange={setEmailDialogOpen}
+        onChanged={onUserChanged}
+      />
+
+      <ChangePasswordDialog
+        open={passwordDialogOpen}
+        hasPassword={hasPassword}
+        onOpenChange={setPasswordDialogOpen}
         onChanged={onUserChanged}
       />
     </>

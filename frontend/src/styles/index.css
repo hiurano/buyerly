@@ -1863,6 +1863,26 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   background: var(--action-primary-hover);
 }
 
+/* Linear's small line under the sign-in buttons ("Don't have an account? Sign up"). */
+.buyerly-auth-footnote {
+  margin: 22px 0 0;
+  color: #77797e;
+  font-size: 12px;
+}
+
+.buyerly-auth-footnote button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #202124;
+  font: inherit;
+  cursor: pointer;
+}
+
+.buyerly-auth-footnote button:hover {
+  text-decoration: underline;
+}
+
 /* Linear's account screens: "Back to …" top left, "Logged in as <email>" top right. */
 .buyerly-auth-back {
   position: fixed;

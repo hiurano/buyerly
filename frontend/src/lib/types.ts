@@ -20,6 +20,8 @@ export interface SessionUser {
   email_verified: boolean;
   unconfirmed_email: string | null;
   avatar_url: string;
+  /** Username-and-password login works for this account. */
+  has_password?: boolean;
   onboarding_step: 'workspace' | 'personal_details' | 'invites' | 'completed';
   onboarding_completed: boolean;
   active_workspace: Workspace | null;

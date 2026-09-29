@@ -34,7 +34,7 @@ Production: `https://buyerly.app`.
 
 | Метод и путь | Тело | Результат |
 |---|---|---|
-| `POST /api/auth/request-temporary-password` | `email`, `invite_token?` | только вход по приглашению (без `invite_token` — 403, если не включён `EMAIL_LOGIN_WITHOUT_INVITE`); после проверки invite высылает одно письмо с одноразовой ссылкой и 6-значным кодом |
+| `POST /api/auth/request-temporary-password` | `email`, `invite_token?` | вход по почте: участнику workspace, почте из белого списка или по действующему приглашению (`invite_token`, либо ждущее приглашение на эту почту) высылает одно письмо с одноразовой ссылкой и 6-значным кодом; незнакомой почте — 403 без письма |
 | `POST /api/auth/verify-temporary-password` | `email`, `code` | атомарно потребляет общий login credential, повторно проверяет доступ и открывает web-сессию |
 | `POST /api/auth/verify-email-link` | `token` | атомарно потребляет тот же login credential по ссылке; после этого код также недействителен |
 | `POST /api/auth/request-email-verification` | — | высылает 6-значный одноразовый код на текущий неподтверждённый email |

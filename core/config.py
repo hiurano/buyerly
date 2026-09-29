@@ -69,10 +69,6 @@ class Settings(BaseSettings):
         default="",
         description="Optional first admin password for an empty installation",
     )
-    EMAIL_LOGIN_WITHOUT_INVITE: bool = Field(
-        default=False,
-        description="Allow email code/link sign-in without a workspace invitation",
-    )
     RESEND_API_KEY: str = Field(
         default="",
         description="Resend.com API Key for sending transactional emails",
