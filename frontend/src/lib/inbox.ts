@@ -11,7 +11,23 @@ export interface InboxListResponse {
   items: InboxItem[];
   has_more: boolean;
   unread_count: number;
+  hidden_by_filters: number;
 }
+
+/** One Linear-style filter clause, sent to the server as is. */
+export interface InboxFilterClause {
+  field: 'type' | 'from' | 'account' | 'status';
+  operator: 'is' | 'is_not';
+  values: string[];
+}
+
+export interface InboxFacetValue {
+  value: string;
+  label?: string;
+  count: number;
+}
+
+export type InboxFacets = Record<InboxFilterClause['field'], InboxFacetValue[]>;
 
 export interface InboxActionResponse {
   success: boolean;
@@ -27,6 +43,7 @@ export interface InboxQuery {
   unreadOnly: boolean;
   showSnoozed: boolean;
   unreadFirst: boolean;
+  filters?: InboxFilterClause[];
 }
 
 export const INBOX_PAGE_SIZE = 50;
@@ -38,6 +55,7 @@ export function fetchInbox({
   unreadOnly,
   showSnoozed,
   unreadFirst,
+  filters = [],
 }: InboxQuery): Promise<InboxListResponse> {
   const params = new URLSearchParams({
     offset: String(offset),
@@ -47,7 +65,38 @@ export function fetchInbox({
   if (unreadOnly) params.set('unread_only', 'true');
   if (showSnoozed) params.set('show_snoozed', 'true');
   if (unreadFirst) params.set('unread_first', 'true');
+  if (filters.length) params.set('filter', JSON.stringify(filters));
   return apiRequest<InboxListResponse>(`/api/inbox?${params.toString()}`);
+}
+
+export function fetchInboxFacets(unreadOnly: boolean, showSnoozed: boolean): Promise<InboxFacets> {
+  const params = new URLSearchParams();
+  if (unreadOnly) params.set('unread_only', 'true');
+  if (showSnoozed) params.set('show_snoozed', 'true');
+  return apiRequest<InboxFacets>(`/api/inbox/facets?${params.toString()}`);
+}
+
+/** Linear keeps the filter in the address as base64 JSON, so a filtered Inbox can be shared. */
+export function encodeInboxFilter(clauses: InboxFilterClause[]): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(clauses));
+  return btoa(String.fromCharCode(...bytes)).replace(/=+$/, '');
+}
+
+export function decodeInboxFilter(value: string | null): InboxFilterClause[] {
+  if (!value) return [];
+  try {
+    const bytes = Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
+    const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes));
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((clause): clause is InboxFilterClause =>
+      Boolean(clause)
+      && ['type', 'from', 'account', 'status'].includes(clause.field)
+      && ['is', 'is_not'].includes(clause.operator)
+      && Array.isArray(clause.values)
+      && clause.values.every((entry: unknown) => typeof entry === 'string'));
+  } catch {
+    return [];
+  }
 }
 
 export function fetchInboxUnreadCount(): Promise<{ unread_count: number }> {

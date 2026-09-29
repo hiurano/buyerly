@@ -47,6 +47,14 @@ function inboxState() {
   const visible = (row, showSnoozed) => !row.deleted && (showSnoozed || !row.snoozed);
   const unread = () => rows.filter(row => visible(row, false) && !row.read).length;
   const item = ({ read, deleted, snoozed, ...fields }) => ({ ...fields, is_read: read, snoozed_until: snoozed });
+  const fieldValue = (row, field) => ({
+    type: row.event_type,
+    status: row.status,
+    account: row.account_id,
+    from: row.actor_type === 'user' ? `user:${row.actor_id}` : row.rule_id ? `rule:${row.rule_id}` : 'buyerly',
+  })[field];
+  const matches = (row, clauses) => clauses.every(({ field, operator, values }) =>
+    values.includes(fieldValue(row, field)) === (operator === 'is'));
   return {
     rows,
     unread,
@@ -54,9 +62,27 @@ function inboxState() {
       const showSnoozed = params.get('show_snoozed') === 'true';
       let items = rows.filter(row => visible(row, showSnoozed));
       if (params.get('unread_only') === 'true') items = items.filter(row => !row.read);
+      const unfiltered = items.length;
+      const clauses = JSON.parse(params.get('filter') || '[]');
+      items = items.filter(row => matches(row, clauses));
+      const hidden = unfiltered - items.length;
       if (params.get('ordering') === 'oldest') items = [...items].reverse();
       if (params.get('unread_first') === 'true') items = [...items].sort((a, b) => Number(a.read) - Number(b.read));
-      return { items: items.map(item), has_more: false, unread_count: unread() };
+      return { items: items.map(item), has_more: false, unread_count: unread(), hidden_by_filters: hidden };
+    },
+    facets() {
+      const shown = rows.filter(row => visible(row, false));
+      const facet = (field, label) => Object.values(shown.reduce((groups, row) => {
+        const value = fieldValue(row, field);
+        groups[value] ??= { value, label: label?.(row), count: 0 };
+        groups[value].count += 1;
+        return groups;
+      }, {}));
+      return {
+        type: facet('type'), status: facet('status'),
+        account: facet('account', row => row.account_name),
+        from: facet('from', row => row.rule_name || 'Buyerly'),
+      };
     },
     find: (id) => rows.find(row => row.id === id),
   };
@@ -85,6 +111,7 @@ try {
       if (verb !== 'GET') writes.push({ verb, path, body });
       if (verb === 'GET' && path === '/api/me') return route.fulfill({ json: owner });
       if (verb === 'GET' && path === '/api/inbox') return route.fulfill({ json: state.list(url.searchParams) });
+      if (verb === 'GET' && path === '/api/inbox/facets') return route.fulfill({ json: state.facets() });
       if (verb === 'GET' && path === '/api/inbox/unread-count') return route.fulfill({ json: { unread_count: state.unread() } });
       const action = path.match(/^\/api\/inbox\/(\d+)\/(read|delete|snooze)$/);
       if (verb === 'POST' && action) {
@@ -134,6 +161,32 @@ try {
       }
       await assertNoOverflow('list');
       await page.screenshot({ path: `${output}/list-${width}.png` });
+
+      // Filter, as in Linear: F opens "Add Filter…", Notification type lists the types with counts.
+      await page.keyboard.press('f');
+      await page.getByRole('dialog', { name: 'Add filter' }).getByRole('option', { name: /Notification type/ }).click();
+      const typeValues = page.getByRole('dialog', { name: 'Notification type values' });
+      assert.match(await typeValues.getByRole('option', { name: /Turned off/ }).innerText(), /2 notifications/);
+      await typeValues.getByText(/options not matching any notifications/).waitFor();
+      await page.screenshot({ path: `${output}/filter-menu-${width}.png` });
+      await typeValues.getByRole('option', { name: /Rule alert/ }).click();
+      await page.keyboard.press('Escape');
+      await page.keyboard.press('Escape');
+      await waitForRows(1);
+      const bar = page.locator('[aria-label="Active filters"]');
+      assert.match(await bar.innerText(), /Notification type\s*is\s*Rule alert/);
+      await page.getByText('hidden by filters').waitFor();
+      assert.match(await page.getByText('hidden by filters').locator('..').innerText(), /3 notifications hidden by filters/);
+      assert.match(page.url(), /\?filter=/);
+      // "is" turns into "is not", as in Linear's operator menu.
+      await bar.getByRole('button', { name: 'is', exact: true }).click();
+      await page.getByRole('dialog', { name: 'Notification type operator' }).getByRole('option', { name: 'is not' }).click();
+      await waitForRows(3);
+      await page.screenshot({ path: `${output}/filter-bar-${width}.png` });
+      await page.getByRole('button', { name: /Clear Filters/ }).click();
+      await waitForRows(4);
+      assert.doesNotMatch(page.url(), /filter=/);
+      assert.equal(await bar.count(), 0);
 
       // Opening a notification reads it and gives it its own address.
       await row('CPL is $14').click();

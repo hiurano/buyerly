@@ -1,10 +1,11 @@
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import and_, false, func, or_, select, update
+from sqlalchemy import String, and_, case, cast, false, func, literal, or_, select, update
 
 from api.auth import get_current_user
 from api.deps import (
@@ -374,6 +375,68 @@ async def _inbox_member(session, user):
     return ws, member
 
 
+def _inbox_from_key():
+    """Who a notification is from, as Linear's From filter sees it."""
+    return case(
+        (AuditEvent.actor_type == "user", literal("user:") + AuditEvent.actor_id),
+        (AuditEvent.rule_id.is_not(None), literal("rule:") + cast(AuditEvent.rule_id, String)),
+        else_=literal("buyerly"),
+    )
+
+
+# Linear's Inbox filter properties, mapped onto audit events. Issue priority
+# has no counterpart in ad events and is left out.
+INBOX_FILTER_COLUMNS = {
+    "type": lambda: AuditEvent.event_type,
+    "from": _inbox_from_key,
+    "account": lambda: AuditEvent.account_id,
+    "status": lambda: AuditEvent.status,
+}
+
+
+def _parse_inbox_filter(raw: Optional[str]) -> list[dict]:
+    if not raw:
+        return []
+    try:
+        clauses = json.loads(raw)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail="Filter is not valid JSON.") from error
+    if not isinstance(clauses, list) or len(clauses) > len(INBOX_FILTER_COLUMNS):
+        raise HTTPException(status_code=400, detail="Filter must be a list of clauses.")
+    parsed = []
+    for clause in clauses:
+        if (
+            not isinstance(clause, dict)
+            or clause.get("field") not in INBOX_FILTER_COLUMNS
+            or clause.get("operator") not in {"is", "is_not"}
+            or not isinstance(clause.get("values"), list)
+            or not all(isinstance(value, str) for value in clause["values"])
+            or len(clause["values"]) > 100
+        ):
+            raise HTTPException(status_code=400, detail="Unsupported filter clause.")
+        if clause["values"]:
+            parsed.append(clause)
+    return parsed
+
+
+def _inbox_filter_conditions(clauses: list[dict]):
+    conditions = []
+    for clause in clauses:
+        column = INBOX_FILTER_COLUMNS[clause["field"]]()
+        matches = column.in_(clause["values"])
+        conditions.append(matches if clause["operator"] == "is" else ~matches)
+    return conditions
+
+
+def _inbox_view_filters(ws, is_read, deleted, snoozed, *, unread_only, show_snoozed):
+    filters = [AuditEvent.workspace_id == ws.id, ~deleted]
+    if not show_snoozed:
+        filters.append(~snoozed)
+    if unread_only:
+        filters.append(~is_read)
+    return filters
+
+
 @router.get("/inbox")
 async def list_inbox(
     offset: int = Query(0, ge=0),
@@ -382,17 +445,31 @@ async def list_inbox(
     unread_only: bool = Query(False),
     show_snoozed: bool = Query(False),
     unread_first: bool = Query(False),
+    filter_: Optional[str] = Query(None, alias="filter", max_length=4000),
     user: User = Depends(get_current_user),
 ):
     """One member's Inbox, newest first unless asked otherwise."""
+    clauses = _parse_inbox_filter(filter_)
     async with async_session_maker() as session:
         ws, member = await _inbox_member(session, user)
         join_on, is_read, deleted, snoozed = _inbox_columns(user, member)
-        filters = [AuditEvent.workspace_id == ws.id, ~deleted]
-        if not show_snoozed:
-            filters.append(~snoozed)
-        if unread_only:
-            filters.append(~is_read)
+        view_filters = _inbox_view_filters(
+            ws, is_read, deleted, snoozed, unread_only=unread_only, show_snoozed=show_snoozed
+        )
+        filters = view_filters + _inbox_filter_conditions(clauses)
+        hidden_by_filters = 0
+        if clauses:
+            def count(conditions):
+                return (
+                    select(func.count(AuditEvent.id))
+                    .select_from(AuditEvent)
+                    .outerjoin(InboxNotificationState, join_on)
+                    .where(*conditions)
+                )
+            hidden_by_filters = (
+                (await session.execute(count(view_filters))).scalar_one()
+                - (await session.execute(count(filters))).scalar_one()
+            )
         time_order = (
             (AuditEvent.created_at.asc(), AuditEvent.id.asc())
             if ordering == "oldest"
@@ -429,6 +506,89 @@ async def list_inbox(
         "items": items,
         "has_more": len(result) > limit,
         "unread_count": unread_count,
+        "hidden_by_filters": hidden_by_filters,
+    }
+
+
+async def _actor_names(session, actor_ids: set[str]) -> dict[str, str]:
+    """Names for user actors, recorded by user id or by Telegram id."""
+    if not actor_ids:
+        return {}
+    numeric_ids = [int(value) for value in actor_ids if value.isdigit() and len(value) < 10]
+    users = (
+        await session.execute(
+            select(User).where(
+                or_(User.telegram_id.in_(actor_ids), User.id.in_(numeric_ids or [-1]))
+            )
+        )
+    ).scalars().all()
+    names = {}
+    for account in users:
+        name = account.full_name or account.username
+        if account.telegram_id and account.telegram_id in actor_ids:
+            names[account.telegram_id] = name
+        if str(account.id) in actor_ids:
+            names.setdefault(str(account.id), name)
+    return names
+
+
+@router.get("/inbox/facets")
+async def inbox_facets(
+    unread_only: bool = Query(False),
+    show_snoozed: bool = Query(False),
+    user: User = Depends(get_current_user),
+):
+    """Values and counts for each Inbox filter, over what the list shows unfiltered."""
+    async with async_session_maker() as session:
+        ws, member = await _inbox_member(session, user)
+        join_on, is_read, deleted, snoozed = _inbox_columns(user, member)
+        view_filters = _inbox_view_filters(
+            ws, is_read, deleted, snoozed, unread_only=unread_only, show_snoozed=show_snoozed
+        )
+
+        async def grouped(column, label=None):
+            columns = [column, func.count(AuditEvent.id)]
+            if label is not None:
+                columns.append(func.max(label))
+            return (
+                await session.execute(
+                    select(*columns)
+                    .select_from(AuditEvent)
+                    .outerjoin(InboxNotificationState, join_on)
+                    .where(*view_filters)
+                    .group_by(column)
+                    .order_by(func.count(AuditEvent.id).desc(), column)
+                )
+            ).all()
+
+        types = await grouped(AuditEvent.event_type)
+        statuses = await grouped(AuditEvent.status)
+        accounts = await grouped(AuditEvent.account_id, AuditEvent.account_name)
+        from_key = _inbox_from_key()
+        senders = await grouped(from_key, AuditEvent.rule_name)
+        names = await _actor_names(
+            session,
+            {key.split(":", 1)[1] for key, _, _ in senders if key.startswith("user:")},
+        )
+
+    def sender_label(key, rule_name):
+        if key.startswith("user:"):
+            return names.get(key.split(":", 1)[1], "Someone")
+        if key.startswith("rule:"):
+            return rule_name or "Rule"
+        return "Buyerly"
+
+    return {
+        "type": [{"value": value, "count": count} for value, count in types],
+        "from": [
+            {"value": key, "label": sender_label(key, rule_name), "count": count}
+            for key, count, rule_name in senders
+        ],
+        "account": [
+            {"value": value, "label": name or value, "count": count}
+            for value, count, name in accounts
+        ],
+        "status": [{"value": value, "count": count} for value, count in statuses],
     }
 
 

@@ -203,6 +203,45 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(rest["has_more"])
         self.assertEqual(len(first["items"]) + len(rest["items"]), 4)
 
+    async def test_filter_by_type_and_from_reports_hidden_count(self):
+        import json
+
+        only_alerts = json.dumps([{"field": "type", "operator": "is", "values": ["NOTIFY_ONLY"]}])
+        body = await self.inbox(self.owner_headers, filter=only_alerts)
+        self.assertEqual([item["message"] for item in body["items"]], ["rule alert"])
+        self.assertEqual(body["hidden_by_filters"], 3)
+
+        not_owner = json.dumps([{"field": "from", "operator": "is_not", "values": [f"user:{OWNER['id']}"]}])
+        body = await self.inbox(self.owner_headers, filter=not_owner)
+        self.assertNotIn("owner change", self.read_map(body))
+        self.assertEqual(body["hidden_by_filters"], 1)
+
+        refused = await self.client.get(
+            "/api/inbox", headers=self.owner_headers,
+            params={"filter": json.dumps([{"field": "message", "operator": "is", "values": ["x"]}])},
+        )
+        self.assertEqual(refused.status_code, 400)
+
+    async def test_facets_count_values_and_name_senders(self):
+        response = await self.client.get("/api/inbox/facets", headers=self.owner_headers)
+        self.assertEqual(response.status_code, 200)
+        facets = response.json()
+        self.assertEqual(
+            {entry["value"]: entry["count"] for entry in facets["type"]},
+            {"STOP": 3, "NOTIFY_ONLY": 1},
+        )
+        senders = {entry["value"]: (entry["label"], entry["count"]) for entry in facets["from"]}
+        self.assertEqual(senders[f"user:{OWNER['id']}"], ("Owner", 1))
+        self.assertEqual(senders["buyerly"], ("Buyerly", 3))
+        self.assertEqual(facets["account"], [{"value": "act_1", "label": "Account", "count": 4}])
+        # Other workspaces never leak into the counts.
+        self.assertNotIn("other workspace", str(facets))
+
+        unread = (await self.client.get(
+            "/api/inbox/facets", headers=self.owner_headers, params={"unread_only": "true"}
+        )).json()
+        self.assertEqual(sum(entry["count"] for entry in unread["type"]), 2)
+
     async def test_cannot_touch_another_workspace_event(self):
         for path, body in (
             ("read", {"read": True}),

@@ -6,21 +6,32 @@ import {
   auditEventTitle,
   auditUndoHint,
   formatAuditTimestamp,
+  auditEventTypeTitle,
   humanizeAuditValue,
+  KNOWN_AUDIT_EVENT_TYPES,
   undoAuditEvent,
 } from '@/lib/audit';
 import {
   INBOX_PAGE_SIZE,
+  decodeInboxFilter,
   deleteAllInbox,
   deleteInboxNotification,
+  encodeInboxFilter,
   fetchInbox,
+  fetchInboxFacets,
   formatSnoozeTime,
   markInboxRead,
   snoozeInboxNotification,
   snoozeOptions,
   type InboxActionResponse,
+  type InboxFacets,
+  type InboxFacetValue,
+  type InboxFilterClause,
   type InboxItem,
 } from '@/lib/inbox';
+import { LinearFilterButton, LinearFilterMenu, type FilterMenuMode } from '@/components/filters/LinearFilter';
+import type { FilterClause, FilterFieldDefinition } from '@/components/filters/filterModel';
+import { InboxFilterBar, InboxFilterFooter } from './InboxFilterBar';
 import { InboxItemRow } from './InboxItemRow';
 import { InboxDisplayOptionsPopover } from './InboxDisplayOptionsPopover';
 import {
@@ -77,6 +88,84 @@ const MenuKey: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <kbd className="font-sans text-[12px] font-[500] text-[var(--text-muted)]">{children}</kbd>
 );
 
+/**
+ * Linear's Inbox filter properties and their Buyerly counterparts: Project is
+ * the ad account, Issue status type the event status. Issue priority has no
+ * counterpart in ad events.
+ */
+const FILTER_FIELDS: Array<{
+  id: string;
+  field: InboxFilterClause['field'];
+  label: string;
+  pluralLabel: string;
+  optionLabel: (value: InboxFacetValue) => string;
+}> = [
+  {
+    id: 'notificationType',
+    field: 'type',
+    label: 'Notification type',
+    pluralLabel: 'types',
+    optionLabel: (value) => auditEventTypeTitle(value.value),
+  },
+  { id: 'from', field: 'from', label: 'From', pluralLabel: 'senders', optionLabel: (value) => value.label || value.value },
+  {
+    id: 'adAccount',
+    field: 'account',
+    label: 'Ad account',
+    pluralLabel: 'ad accounts',
+    optionLabel: (value) => (value.value ? value.label || value.value : 'No ad account'),
+  },
+  {
+    id: 'eventStatus',
+    field: 'status',
+    label: 'Status',
+    pluralLabel: 'statuses',
+    optionLabel: (value) => humanizeAuditValue(value.value),
+  },
+];
+
+const toMenuClause = (clause: InboxFilterClause): FilterClause => ({
+  fieldId: FILTER_FIELDS.find((entry) => entry.field === clause.field)?.id ?? clause.field,
+  operator: clause.operator,
+  values: clause.values,
+});
+
+const fromMenuClauses = (clauses: FilterClause[]): InboxFilterClause[] =>
+  clauses.flatMap((clause) => {
+    const entry = FILTER_FIELDS.find((candidate) => candidate.id === clause.fieldId);
+    if (!entry || (clause.operator !== 'is' && clause.operator !== 'is_not')) return [];
+    return [{ field: entry.field, operator: clause.operator, values: clause.values.map(String) }];
+  });
+
+function inboxFilterFields(
+  facets: InboxFacets | null,
+  filters: InboxFilterClause[],
+): FilterFieldDefinition<unknown>[] {
+  return FILTER_FIELDS.map((entry) => {
+    const present = facets?.[entry.field] ?? [];
+    // A chosen value stays in the menu even when nothing matches it any more.
+    const chosen = filters.find((clause) => clause.field === entry.field)?.values ?? [];
+    const values = [
+      ...present,
+      ...chosen.filter((value) => !present.some((facet) => facet.value === value)).map((value) => ({ value, count: 0 })),
+    ];
+    return {
+      id: entry.id,
+      label: entry.label,
+      section: 'inbox',
+      type: 'enum',
+      operators: ['is', 'is_not'],
+      defaultOperator: 'is',
+      getValue: () => null,
+      pluralLabel: entry.pluralLabel,
+      options: values.map((value) => ({ value: value.value, label: entry.optionLabel(value), count: value.count })),
+      unmatchedCount: entry.field === 'type' && facets
+        ? KNOWN_AUDIT_EVENT_TYPES.filter((type) => !values.some((value) => value.value === type)).length
+        : undefined,
+    };
+  });
+}
+
 const headerButtonClass = (active = false) =>
   `flex h-7 w-7 shrink-0 items-center justify-center rounded-full outline-none transition-colors ${
     active
@@ -109,7 +198,15 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
   const itemsRef = useRef<InboxItem[]>([]);
   const listRef = useRef<HTMLDivElement>(null);
   const displayButtonRef = useRef<HTMLButtonElement>(null);
+  const filterButtonRef = useRef<HTMLButtonElement>(null);
   itemsRef.current = items;
+  // Filters live in the address, as in Linear, so a filtered Inbox survives reloads and links.
+  const [filters, setFilters] = useState<InboxFilterClause[]>(
+    () => decodeInboxFilter(new URLSearchParams(window.location.search).get('filter')),
+  );
+  const [hiddenByFilters, setHiddenByFilters] = useState(0);
+  const [facets, setFacets] = useState<InboxFacets | null>(null);
+  const [filterMenu, setFilterMenu] = useState<{ mode: FilterMenuMode; anchor: HTMLElement; fieldId?: string } | null>(null);
 
   const selectedId = openEventId && /^\d+$/.test(openEventId) ? Number(openEventId) : null;
   const selectedItem = useMemo(
@@ -126,10 +223,12 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
         // A background refresh keeps everything already scrolled into view.
         limit: Math.min(100, Math.max(INBOX_PAGE_SIZE, itemsRef.current.length)),
         ...inboxDisplay,
+        filters,
       });
       if (generation !== requestGenerationRef.current) return;
       setItems(response.items);
       setHasMore(response.has_more);
+      setHiddenByFilters(response.hidden_by_filters ?? 0);
       setInboxUnreadCount(response.unread_count);
       setLoadError('');
       setLoadState('ready');
@@ -138,7 +237,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
       setLoadError(requestErrorMessage(error));
       setLoadState('error');
     }
-  }, [inboxDisplay, setInboxUnreadCount]);
+  }, [filters, inboxDisplay, setInboxUnreadCount]);
 
   useEffect(() => {
     itemsRef.current = [];
@@ -158,7 +257,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
     const generation = requestGenerationRef.current;
     setIsLoadingMore(true);
     try {
-      const response = await fetchInbox({ offset: itemsRef.current.length, ...inboxDisplay });
+      const response = await fetchInbox({ offset: itemsRef.current.length, ...inboxDisplay, filters });
       if (generation !== requestGenerationRef.current) return;
       setItems((current) => {
         const known = new Set(current.map((item) => item.id));
@@ -171,7 +270,29 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
     } finally {
       setIsLoadingMore(false);
     }
-  }, [hasMore, inboxDisplay, isLoadingMore, loadState, setInboxUnreadCount]);
+  }, [filters, hasMore, inboxDisplay, isLoadingMore, loadState, setInboxUnreadCount]);
+
+  const applyFilters = useCallback((next: InboxFilterClause[]) => {
+    setFilters(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next.length) params.set('filter', encodeInboxFilter(next));
+    else params.delete('filter');
+    const search = params.toString();
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${search ? `?${search}` : ''}`);
+  }, []);
+
+  const openFilterMenu = useCallback((mode: FilterMenuMode, anchor: HTMLElement, fieldId?: string) => {
+    setIsDisplayOpen(false);
+    setFilterMenu({ mode, anchor, fieldId });
+    // Counts are read fresh each time, like Linear's "2 notifications" next to each value.
+    fetchInboxFacets(inboxDisplay.unreadOnly, inboxDisplay.showSnoozed).then(setFacets).catch(() => {});
+  }, [inboxDisplay.showSnoozed, inboxDisplay.unreadOnly]);
+
+  const filterFields = useMemo(
+    () => inboxFilterFields(facets, filters),
+    [facets, filters],
+  );
+  const filterClauses = useMemo(() => filters.map(toMenuClause), [filters]);
 
   const applyResponse = useCallback(
     (response: InboxActionResponse) => setInboxUnreadCount(response.unread_count),
@@ -286,11 +407,14 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
       } else if ((key === 'h' || key === 'H') && selected) {
         event.preventDefault();
         setIsSnoozeOpen(true);
+      } else if ((key === 'f' || key === 'F') && !event.shiftKey && filterButtonRef.current) {
+        event.preventDefault();
+        openFilterMenu('root', filterButtonRef.current);
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [deleteAll, deleteItem, openItem, selectedId, toggleRead]);
+  }, [deleteAll, deleteItem, openFilterMenu, openItem, selectedId, toggleRead]);
 
   const handleUndo = async () => {
     if (!selectedItem?.can_undo || actionState === 'loading') return;
@@ -324,6 +448,13 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
       );
     }
     if (items.length === 0) {
+      if (filters.length) {
+        return (
+          <div className="flex-1">
+            <InboxFilterFooter hiddenCount={hiddenByFilters} onClear={() => applyFilters([])} />
+          </div>
+        );
+      }
       if (inboxDisplay.unreadOnly) {
         return (
           <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
@@ -366,6 +497,9 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
             onSnooze={snoozeItem}
           />
         ))}
+        {filters.length > 0 && (
+          <InboxFilterFooter hiddenCount={hiddenByFilters} onClear={() => applyFilters([])} />
+        )}
       </div>
     );
   };
@@ -378,7 +512,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
         aria-label="Inbox"
         className={`${selectedItem ? 'hidden md:flex' : 'flex'} h-full min-w-0 w-full flex-col border-[var(--color-border-primary)] md:w-[34%] md:min-w-[240px] md:max-w-[400px] md:shrink-0 md:border-r`}
       >
-        <header className="flex h-[43px] shrink-0 items-center gap-1 px-2.5">
+        <header className="flex h-[44px] shrink-0 items-center gap-1 border-b border-[var(--color-border-primary)] px-2.5">
           {isSidebarCollapsed && (
             <Tooltip content="Open sidebar" shortcut="[" side="bottom" sideOffset={6}>
               <button
@@ -433,6 +567,18 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
               <LinearInboxUnreadIcon size={16} />
             </button>
           </Tooltip>
+          <Tooltip content="Filter" shortcut="F">
+            <LinearFilterButton
+              ref={filterButtonRef}
+              active={filters.length > 0}
+              open={Boolean(filterMenu)}
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                if (filterMenu) setFilterMenu(null);
+                else openFilterMenu('root', event.currentTarget);
+              }}
+            />
+          </Tooltip>
           <Tooltip content="Display options" shortcut="V">
             <button
               ref={displayButtonRef}
@@ -453,6 +599,26 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
           />
         </header>
 
+        <InboxFilterBar
+          fields={filterFields}
+          clauses={filterClauses}
+          onChange={(next) => applyFilters(fromMenuClauses(next))}
+          onOpenMenu={openFilterMenu}
+        />
+        <LinearFilterMenu
+          isOpen={Boolean(filterMenu)}
+          mode={filterMenu?.mode ?? 'root'}
+          anchorElement={filterMenu?.anchor ?? null}
+          fieldId={filterMenu?.fieldId}
+          fields={filterFields}
+          clauses={filterClauses}
+          onChange={(next) => applyFilters(fromMenuClauses(next))}
+          onClose={() => setFilterMenu(null)}
+          countNoun={['notification', 'notifications']}
+          childWidth={311}
+          rootPlaceholder={filterMenu?.anchor === filterButtonRef.current ? 'Add Filter…' : 'Filter notifications by…'}
+        />
+
         {renderList()}
       </section>
 
@@ -462,7 +628,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
       >
         {selectedItem ? (
           <>
-            <header className="flex h-[43px] shrink-0 items-center justify-between gap-3 px-2.5 sm:px-4">
+            <header className="flex h-[44px] shrink-0 items-center justify-between gap-3 border-b border-[var(--color-border-primary)] px-2.5 sm:px-4">
               <div className="flex min-w-0 items-center gap-2">
                 <button
                   type="button"

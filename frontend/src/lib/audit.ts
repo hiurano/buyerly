@@ -122,6 +122,13 @@ const AUDIT_EVENT_TITLES: Record<string, string> = {
   ASSISTANT_DETACH_RULE: 'AI assistant detached a rule',
 };
 
+/** The Notification type filter names event types the way the rows title them. */
+export function auditEventTypeTitle(eventType: string): string {
+  return AUDIT_EVENT_TITLES[eventType] ?? humanizeAuditValue(eventType);
+}
+
+export const KNOWN_AUDIT_EVENT_TYPES = Object.keys(AUDIT_EVENT_TITLES);
+
 export function auditEventTitle(event: AuditEventItem): string {
   return (
     AUDIT_EVENT_TITLES[event.event_type] ??

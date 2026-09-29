@@ -841,6 +841,9 @@ class TestReactFrontendContract(unittest.TestCase):
         for contract in ("Mark as read", "Mark as unread", "Delete notification", "Snooze", "--inbox-unread-dot"):
             self.assertIn(contract, self.inbox_item_row)
         self.assertIn("inboxUnreadCount", self.sidebar)
+        for contract in ("fetchInboxFacets", "InboxFilterBar", "encodeInboxFilter", "Filter notifications by…"):
+            self.assertIn(contract, self.inbox_view)
+        self.assertIn("/api/inbox/facets", self.inbox_lib)
 
         # Linear's Inbox header has no search, status tabs or pages.
         for removed in ("<LinearTabs", "Search workspace events", "Workspace activity", "Previous", "total_pages"):

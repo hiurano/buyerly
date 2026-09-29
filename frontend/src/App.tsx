@@ -205,8 +205,10 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
                 {activeTab === 'inbox' && (
                   <InboxView
                     openEventId={route.tab === 'inbox' ? route.recordId : undefined}
+                    // The query keeps Inbox filters while notifications open and close.
                     onOpenEvent={(eventId) => navigate(
-                      eventId === null ? `/${workspace.slug}/inbox` : `/${workspace.slug}/inbox/${eventId}`,
+                      (eventId === null ? `/${workspace.slug}/inbox` : `/${workspace.slug}/inbox/${eventId}`)
+                        + window.location.search,
                     )}
                   />
                 )}
