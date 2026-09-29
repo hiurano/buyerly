@@ -147,7 +147,7 @@ export const SidebarHeader: React.FC = () => {
             {/* 3. Switch workspace: this account's workspaces, numbered, then Account actions (Linear) */}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
-                <span className="truncate">Switch workspace</span>
+                <span className="whitespace-nowrap">Switch workspace</span>
                 <div className="flex shrink-0 items-center gap-[6px]">
                   <div className="flex items-center gap-[3px]">
                     <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
