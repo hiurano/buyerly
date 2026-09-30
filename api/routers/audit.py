@@ -320,6 +320,28 @@ class InboxSnoozeRequest(BaseModel):
     until: Optional[datetime] = None
 
 
+def _inbox_returned(now: datetime):
+    """The snooze ran out and the member has not touched the notification since.
+
+    Linear then shows it on top, unread, with "Unsnoozed 2 minutes ago".
+    """
+    state = InboxNotificationState
+    return and_(
+        state.snoozed_until.is_not(None),
+        state.snoozed_until <= now,
+        state.updated_at < state.snoozed_until,
+    )
+
+
+def _inbox_moved_at(now: datetime):
+    """When a notification landed in Inbox: its snooze end once that has passed."""
+    state = InboxNotificationState
+    return case(
+        (and_(state.snoozed_until.is_not(None), state.snoozed_until <= now), state.snoozed_until),
+        else_=AuditEvent.created_at,
+    )
+
+
 def _own_actor_ids(user: User) -> list[str]:
     return [value for value in {str(user.id), str(user.telegram_id or "")} if value]
 
@@ -339,7 +361,9 @@ def _inbox_columns(user: User, member):
         AuditEvent.created_at <= read_before,
         and_(AuditEvent.actor_type == "user", AuditEvent.actor_id.in_(_own_actor_ids(user))),
     )
-    is_read = func.coalesce(state.is_read, implicit_read)
+    # A snooze that ran out brings the notification back unread, until the
+    # member touches it again.
+    is_read = and_(func.coalesce(state.is_read, implicit_read), ~_inbox_returned(now))
     deleted = state.deleted_at.is_not(None)
     if deleted_before is not None:
         deleted = or_(
@@ -470,15 +494,23 @@ async def list_inbox(
                 (await session.execute(count(view_filters))).scalar_one()
                 - (await session.execute(count(filters))).scalar_one()
             )
+        now = datetime.now(timezone.utc)
+        # A notification back from snooze counts from when it came back, as in Linear.
+        moved_at = _inbox_moved_at(now)
         time_order = (
-            (AuditEvent.created_at.asc(), AuditEvent.id.asc())
+            (moved_at.asc(), AuditEvent.id.asc())
             if ordering == "oldest"
-            else (AuditEvent.created_at.desc(), AuditEvent.id.desc())
+            else (moved_at.desc(), AuditEvent.id.desc())
         )
         order_by = ((is_read.asc(),) if unread_first else ()) + time_order
         result = (
             await session.execute(
-                select(AuditEvent, is_read, InboxNotificationState.snoozed_until)
+                select(
+                    AuditEvent,
+                    is_read,
+                    InboxNotificationState.snoozed_until,
+                    _inbox_returned(now),
+                )
                 .select_from(AuditEvent)
                 .outerjoin(InboxNotificationState, join_on)
                 .where(*filters)
@@ -490,17 +522,17 @@ async def list_inbox(
         page = result[:limit]
         items = await serialize_audit_events(
             session,
-            [row for row, _, _ in page],
+            [row for row, _, _, _ in page],
             workspace_id=ws.id,
             can_write_workspace=member.role != "viewer",
             user=user,
         )
-        now = datetime.now(timezone.utc)
-        for item, (_, read, snoozed_until) in zip(items, page):
+        for item, (_, read, snoozed_until, returned) in zip(items, page):
             item["is_read"] = bool(read)
             item["snoozed_until"] = (
                 _utc_iso(snoozed_until) if snoozed_until and snoozed_until > now else None
             )
+            item["unsnoozed_at"] = _utc_iso(snoozed_until) if returned else None
         unread_count = await _inbox_unread_count(session, user, member, ws.id)
     return {
         "items": items,
@@ -644,6 +676,9 @@ async def _update_inbox_state(user: User, event_id: int, **values):
             session.add(state)
         for key, value in values.items():
             setattr(state, key, value)
+        # Any touch counts, even one that changes nothing: reading a notification
+        # back from snooze must end its "Unsnoozed" state.
+        state.updated_at = datetime.now(timezone.utc)
         await session.commit()
         unread_count = await _inbox_unread_count(session, user, member, ws.id)
     return {"success": True, "unread_count": unread_count}
@@ -678,8 +713,9 @@ async def snooze_inbox_notification(
         until = until.replace(tzinfo=timezone.utc)
     if until <= datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Pick a time in the future.")
-    # A snoozed notification comes back unread, as in Linear.
-    return await _update_inbox_state(user, event_id, snoozed_until=until, is_read=False)
+    # Snoozing keeps the read state, as in Linear; the notification turns
+    # unread only when the snooze runs out (see _inbox_returned).
+    return await _update_inbox_state(user, event_id, snoozed_until=until)
 
 
 async def _delete_inbox_bulk(user: User, *, only_read: bool):
@@ -698,6 +734,7 @@ async def _delete_inbox_bulk(user: User, *, only_read: bool):
         ]
         if only_read:
             state_filters.append(InboxNotificationState.is_read.is_(True))
+            state_filters.append(~_inbox_returned(now))
         await session.execute(
             update(InboxNotificationState).where(*state_filters).values(deleted_at=now)
         )

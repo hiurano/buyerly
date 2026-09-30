@@ -1,17 +1,28 @@
 import React, { useRef, useState } from 'react';
 import { auditEventSummary, auditEventTarget, auditEventTitle } from '@/lib/audit';
-import { formatInboxAge, formatSnoozeTime, snoozeOptions, type InboxItem } from '@/lib/inbox';
+import {
+  formatInboxAge,
+  formatInboxMoment,
+  formatSnoozedFor,
+  formatSnoozeTime,
+  formatUnsnoozedAgo,
+  matchesTyped,
+  snoozeOptions,
+  type InboxItem,
+} from '@/lib/inbox';
 import { parseSnoozeQuery } from '@/lib/snoozeQuery';
 import {
   BuyerlyLogoAvatar,
   LinearClockOutlineIcon,
   LinearInboxDeleteIcon,
   LinearInboxUnreadIcon,
+  LinearTrashIcon,
 } from '@/icons/LinearIcons';
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuSub,
   ContextMenuSubContent,
   ContextMenuSubTrigger,
@@ -24,6 +35,7 @@ export interface InboxItemActions {
   onDelete: (item: InboxItem) => void;
   onSnooze: (item: InboxItem, until: Date) => void;
   onCustomSnooze: (item: InboxItem) => void;
+  onUnsnooze: (item: InboxItem) => void;
 }
 
 interface InboxItemRowProps extends InboxItemActions {
@@ -36,26 +48,46 @@ const MenuKey: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <kbd className="font-sans text-[12px] font-[500] text-[var(--text-muted)]">{children}</kbd>
 );
 
-const SnoozeRow: React.FC<{ label: string; hint?: string; onSelect: () => void }> = ({ label, hint, onSelect }) => (
+const SnoozeRow: React.FC<{
+  label: string;
+  hint?: string;
+  icon?: React.ReactNode;
+  onSelect: () => void;
+}> = ({ label, hint, icon = <LinearClockOutlineIcon size={16} />, onSelect }) => (
   <ContextMenuItem onSelect={onSelect}>
     <span className="flex items-center gap-2.5">
-      <LinearClockOutlineIcon size={16} />
+      {icon}
       {label}
     </span>
     {hint && <span className="text-[12px] text-[var(--text-tertiary)]">{hint}</span>}
   </ContextMenuItem>
 );
 
-/** Linear's right-click Snooze: a search on top ("Try: 4 pm, 2 days…"), the ready choices and Custom…. */
+/**
+ * Linear's right-click Snooze: a search on top ("Try: 4 pm, 2 days…"), then
+ * Unsnooze for a snoozed one, the ready choices and Custom….
+ */
 const SnoozeSubmenu: React.FC<{
   item: InboxItem;
   onSnooze: (item: InboxItem, until: Date) => void;
   onCustomSnooze: (item: InboxItem) => void;
-}> = ({ item, onSnooze, onCustomSnooze }) => {
+  onUnsnooze: (item: InboxItem) => void;
+}> = ({ item, onSnooze, onCustomSnooze, onUnsnooze }) => {
   const [query, setQuery] = useState('');
   const typed = query.trim().length > 0;
   const suggestions = typed ? parseSnoozeQuery(query) : [];
   const rowsRef = useRef<HTMLDivElement>(null);
+  const unsnoozeRow = item.snoozed_until && matchesTyped(UNSNOOZE_LABEL, query) && (
+    <SnoozeRow
+      label={UNSNOOZE_LABEL}
+      hint={formatSnoozedFor(item.snoozed_until)}
+      icon={<LinearTrashIcon size={16} />}
+      onSelect={() => onUnsnooze(item)}
+    />
+  );
+  const customRow = matchesTyped('Custom…', query) && (
+    <SnoozeRow label="Custom…" onSelect={() => onCustomSnooze(item)} />
+  );
   return (
     <ContextMenuSubContent
       sideOffset={-3}
@@ -84,11 +116,23 @@ const SnoozeSubmenu: React.FC<{
       </div>
       <div ref={rowsRef} className="py-[6px]">
         {typed
-          ? suggestions.map((row) => (
-            <SnoozeRow key={row.id} label={row.label} hint={row.hint} onSelect={() => onSnooze(item, row.until)} />
-          ))
+          ? (
+            <>
+              {unsnoozeRow}
+              {suggestions.map((row) => (
+                <SnoozeRow key={row.id} label={row.label} hint={row.hint} onSelect={() => onSnooze(item, row.until)} />
+              ))}
+              {customRow}
+            </>
+          )
           : (
             <>
+              {unsnoozeRow && (
+                <>
+                  {unsnoozeRow}
+                  <ContextMenuSeparator />
+                </>
+              )}
               {snoozeOptions().map((option) => (
                 <SnoozeRow
                   key={option.id}
@@ -97,7 +141,7 @@ const SnoozeSubmenu: React.FC<{
                   onSelect={() => onSnooze(item, option.until)}
                 />
               ))}
-              <SnoozeRow label="Custom…" onSelect={() => onCustomSnooze(item)} />
+              {customRow}
             </>
           )}
       </div>
@@ -105,7 +149,9 @@ const SnoozeSubmenu: React.FC<{
   );
 };
 
-/** Linear's notification row: avatar, title with the unread dot, then summary and age. */
+const UNSNOOZE_LABEL = 'Unsnooze notification';
+
+/** Linear's notification row: avatar, title with the unread dot, summary and age, then how long it is snoozed. */
 export const InboxItemRow: React.FC<InboxItemRowProps> = ({
   item,
   isSelected,
@@ -114,8 +160,15 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
   onDelete,
   onSnooze,
   onCustomSnooze,
+  onUnsnooze,
 }) => {
   const unread = !item.is_read;
+  // Linear's third line: "Snoozed for 2d", or "Unsnoozed 2 minutes ago" until it is read.
+  const snoozeLine = item.snoozed_until
+    ? { text: formatSnoozedFor(item.snoozed_until), at: item.snoozed_until }
+    : item.unsnoozed_at
+      ? { text: formatUnsnoozedAgo(item.unsnoozed_at), at: item.unsnoozed_at }
+      : null;
   const titleColor = isSelected || unread ? 'text-[var(--text-secondary)]' : 'text-[var(--text-tertiary)]';
   return (
     <ContextMenu>
@@ -130,14 +183,17 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
           className="group block cursor-default px-2.5 outline-none"
         >
           <div
-            className={`flex h-[55px] items-center gap-3 rounded-[8px] px-2 ${
+            className={`flex min-h-[55px] items-start gap-3 rounded-[8px] px-2 ${
               isSelected
                 ? 'bg-[var(--item-active-bg)]'
                 : 'hover:bg-[var(--item-hover-bg)] group-data-[state=open]:bg-[var(--item-hover-bg)]'
             }`}
           >
-            <BuyerlyLogoAvatar size={32} shape="circle" />
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-2.5">
+            {/* The avatar stays level with the first two lines when a third one is added. */}
+            <span className="flex h-[55px] shrink-0 items-center">
+              <BuyerlyLogoAvatar size={32} shape="circle" />
+            </span>
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-[11px]">
               <div className={`flex min-w-0 items-center gap-1.5 ${titleColor}`}>
                 {unread && (
                   <span
@@ -163,6 +219,16 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
                 )}
                 <span className="shrink-0">{formatInboxAge(item.created_at)}</span>
               </div>
+              {snoozeLine && (
+                <div className="flex h-[22px] items-end">
+                  <span
+                    title={formatInboxMoment(snoozeLine.at)}
+                    className="truncate text-[12px] font-[450] leading-[15px] text-[var(--text-tertiary)]"
+                  >
+                    {snoozeLine.text}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -193,7 +259,7 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
               <SubmenuArrow />
             </span>
           </ContextMenuSubTrigger>
-          <SnoozeSubmenu item={item} onSnooze={onSnooze} onCustomSnooze={onCustomSnooze} />
+          <SnoozeSubmenu item={item} onSnooze={onSnooze} onCustomSnooze={onCustomSnooze} onUnsnooze={onUnsnooze} />
         </ContextMenuSub>
       </ContextMenuContent>
     </ContextMenu>

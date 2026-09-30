@@ -2,7 +2,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import api.auth as api_auth_module
@@ -11,7 +11,7 @@ import api.server as api_server_module
 from api.server import create_app
 from core.config import settings
 from core.rate_limit import limiter
-from database.models import AuditEvent, User, Workspace, WorkspaceMember
+from database.models import AuditEvent, InboxNotificationState, User, Workspace, WorkspaceMember
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
 
 OWNER = {"id": 7100000001, "first_name": "Owner", "username": "inbox_owner"}
@@ -130,28 +130,92 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
         history = await self.client.get("/api/audit-events", headers=self.owner_headers)
         self.assertIn("rule alert", [item["message"] for item in history.json()["items"]])
 
-    async def test_snooze_hides_until_the_time_and_returns_unread(self):
+    async def snooze(self, event_id, until):
+        return await self.client.post(
+            f"/api/inbox/{event_id}/snooze",
+            headers=self.owner_headers,
+            json={"until": until.isoformat() if until else None},
+        )
+
+    async def test_snooze_hides_until_the_time_and_keeps_read_state(self):
         await self.client.post(
             f"/api/inbox/{self.rule_stop.id}/read", headers=self.owner_headers, json={"read": True}
         )
-        until = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
-        response = await self.client.post(
-            f"/api/inbox/{self.rule_stop.id}/snooze", headers=self.owner_headers, json={"until": until}
-        )
+        response = await self.snooze(self.rule_stop.id, datetime.now(timezone.utc) + timedelta(hours=1))
         self.assertEqual(response.status_code, 200)
         self.assertNotIn("rule stop", self.read_map(await self.inbox(self.owner_headers)))
         snoozed = await self.inbox(self.owner_headers, show_snoozed="true")
         item = next(entry for entry in snoozed["items"] if entry["message"] == "rule stop")
-        self.assertFalse(item["is_read"])
+        # Linear leaves a snoozed notification as read or unread as it was.
+        self.assertTrue(item["is_read"])
         self.assertIsNotNone(item["snoozed_until"])
-        # Snoozed notifications stay out of the unread count until they come back.
+        self.assertIsNone(item["unsnoozed_at"])
         self.assertEqual(snoozed["unread_count"], 1)
 
-        past = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
-        refused = await self.client.post(
-            f"/api/inbox/{self.rule_stop.id}/snooze", headers=self.owner_headers, json={"until": past}
-        )
+        refused = await self.snooze(self.rule_stop.id, datetime.now(timezone.utc) - timedelta(minutes=1))
         self.assertEqual(refused.status_code, 400)
+
+    async def test_unsnooze_puts_it_back_in_place_as_it_was(self):
+        await self.client.post(
+            f"/api/inbox/{self.rule_stop.id}/read", headers=self.owner_headers, json={"read": True}
+        )
+        await self.snooze(self.rule_stop.id, datetime.now(timezone.utc) + timedelta(days=2))
+        response = await self.snooze(self.rule_stop.id, None)
+        self.assertEqual(response.status_code, 200)
+        body = await self.inbox(self.owner_headers)
+        self.assertEqual(
+            [item["message"] for item in body["items"]],
+            ["owner change", "rule alert", "rule stop", "before mark"],
+        )
+        item = body["items"][2]
+        self.assertTrue(item["is_read"])
+        self.assertIsNone(item["snoozed_until"])
+        self.assertIsNone(item["unsnoozed_at"])
+
+    async def run_out_snooze(self, event_id, minutes_ago):
+        """Snooze, then move the clock: the snooze ended minutes_ago."""
+        await self.snooze(event_id, datetime.now(timezone.utc) + timedelta(hours=1))
+        ended = datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)
+        async with self.session_maker() as session:
+            await session.execute(
+                update(InboxNotificationState)
+                .where(InboxNotificationState.audit_event_id == event_id)
+                .values(snoozed_until=ended, updated_at=ended - timedelta(hours=1))
+            )
+            await session.commit()
+        return ended
+
+    async def test_run_out_snooze_comes_back_on_top_and_unread(self):
+        await self.client.post(
+            f"/api/inbox/{self.rule_stop.id}/read", headers=self.owner_headers, json={"read": True}
+        )
+        await self.run_out_snooze(self.rule_stop.id, minutes_ago=2)
+        body = await self.inbox(self.owner_headers)
+        self.assertEqual(
+            [item["message"] for item in body["items"]],
+            ["rule stop", "owner change", "rule alert", "before mark"],
+        )
+        item = body["items"][0]
+        self.assertFalse(item["is_read"])
+        self.assertIsNone(item["snoozed_until"])
+        self.assertIsNotNone(item["unsnoozed_at"])
+        self.assertEqual(body["unread_count"], 2)
+        oldest = await self.inbox(self.owner_headers, ordering="oldest")
+        self.assertEqual(oldest["items"][-1]["message"], "rule stop")
+
+        # "Delete all read" goes by what the member sees: it is unread now.
+        await self.client.post("/api/inbox/delete-all-read", headers=self.owner_headers)
+        self.assertIn("rule stop", self.read_map(await self.inbox(self.owner_headers)))
+
+        # Reading it ends "Unsnoozed …" even though it was stored as read already.
+        response = await self.client.post(
+            f"/api/inbox/{self.rule_stop.id}/read", headers=self.owner_headers, json={"read": True}
+        )
+        self.assertEqual(response.json()["unread_count"], 1)
+        body = await self.inbox(self.owner_headers)
+        self.assertEqual(body["items"][0]["message"], "rule stop")
+        self.assertTrue(body["items"][0]["is_read"])
+        self.assertIsNone(body["items"][0]["unsnoozed_at"])
 
     async def test_delete_all_read_keeps_unread(self):
         await self.client.post(

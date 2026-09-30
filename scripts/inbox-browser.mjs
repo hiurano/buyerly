@@ -46,7 +46,9 @@ function inboxState() {
   ];
   const visible = (row, showSnoozed) => !row.deleted && (showSnoozed || !row.snoozed);
   const unread = () => rows.filter(row => visible(row, false) && !row.read).length;
-  const item = ({ read, deleted, snoozed, ...fields }) => ({ ...fields, is_read: read, snoozed_until: snoozed });
+  const item = ({ read, deleted, snoozed, unsnoozed, ...fields }) => ({
+    ...fields, is_read: read, snoozed_until: snoozed, unsnoozed_at: unsnoozed ?? null,
+  });
   const fieldValue = (row, field) => ({
     type: row.event_type,
     status: row.status,
@@ -118,7 +120,8 @@ try {
         const row = state.find(Number(action[1]));
         if (action[2] === 'read') row.read = body.read;
         if (action[2] === 'delete') row.deleted = true;
-        if (action[2] === 'snooze') Object.assign(row, { snoozed: body.until, read: false });
+        // Snoozing keeps the read state, as in Linear; until null is Unsnooze.
+        if (action[2] === 'snooze') row.snoozed = body.until;
         return route.fulfill({ json: { success: true, unread_count: state.unread() } });
       }
       if (verb === 'POST' && path === '/api/inbox/delete-all-read') {
@@ -337,7 +340,7 @@ try {
 
       // Show unreads only, then Linear's empty state once they are read.
       await page.getByRole('button', { name: 'Show unreads only' }).click();
-      // The snoozed one is unread but hidden, so only the one just marked shows.
+      // The snoozed one is hidden, so only the one just marked shows.
       await waitForRows(1);
       await row('Older stop').click();
       await page.keyboard.press('Escape');
@@ -353,15 +356,54 @@ try {
       const display = page.getByRole('dialog', { name: 'Display options' });
       await display.getByText('Ordering').waitFor();
       await page.screenshot({ path: `${output}/display-${width}.png` });
+      // One whose snooze ran out comes back unread with "Unsnoozed …" (the server puts it on top).
+      Object.assign(state.find(1), { read: false, unsnoozed: minutesAgo(2) });
       await display.getByRole('switch', { name: 'Show snoozed' }).click();
       await row('Meta access expired').waitFor();
       await page.keyboard.press('Escape');
+      const metaRow = page.locator('[data-inbox-event-id="2"]');
+      // Snoozed five days ahead at 9:00: Linear rounds what is left to 4d or 5d.
+      const snoozedLine = metaRow.getByText(/^Snoozed for [45]d$/);
+      await snoozedLine.waitFor();
+      assert.match(await snoozedLine.getAttribute('title'), /^[A-Z][a-z]{2} \d{1,2}(, \d{4})?, 9:00 AM$/, 'snooze time on hover');
+      const metaBox = await metaRow.boundingBox();
+      assert.ok(Math.abs(metaBox.height - 79) <= 1, `a snoozed row grows by one line, got ${metaBox.height}`);
+      await page.locator('[data-inbox-event-id="1"]').getByText('Unsnoozed 2 minutes ago', { exact: true }).waitFor();
+      await page.screenshot({ path: `${output}/snoozed-rows-${width}.png` });
 
-      // Shift+Backspace deletes every read notification.
+      // Unsnooze comes first for a snoozed one, as in Linear, and puts it back as it was.
+      if (!phone) {
+        await row('Meta access expired').click({ button: 'right' });
+        const metaMenu = page.getByRole('menu').filter({ hasText: 'Delete notification' });
+        const snoozeEntry = metaMenu.getByRole('menuitem', { name: /Snooze/ });
+        await snoozeEntry.hover();
+        const unsnoozeSub = page.getByRole('menu').filter({ hasText: 'Unsnooze notification' });
+        await unsnoozeSub.waitFor();
+        const unsnooze = unsnoozeSub.getByRole('menuitem').first();
+        assert.match(await unsnooze.innerText(), /^Unsnooze notification\s+Snoozed for [45]d$/);
+        const [entryBox, unsnoozeBox] = await Promise.all([snoozeEntry.boundingBox(), unsnooze.boundingBox()]);
+        assert.ok(Math.abs(entryBox.y - unsnoozeBox.y) <= 1, 'Unsnooze level with Snooze');
+        await page.screenshot({ path: `${output}/row-unsnooze-${width}.png` });
+        await unsnooze.click();
+      } else {
+        await row('Meta access expired').click();
+        await page.keyboard.press('h');
+        const unsnooze = palette.getByRole('option').first();
+        assert.match(await unsnooze.innerText(), /^Unsnooze notification\s+Snoozed for [45]d$/);
+        await page.screenshot({ path: `${output}/palette-unsnooze-${width}.png` });
+        await unsnooze.click();
+        await palette.waitFor({ state: 'detached' });
+        await page.keyboard.press('Escape');
+      }
+      assert.deepEqual(writes.at(-1), { verb: 'POST', path: '/api/inbox/2/snooze', body: { until: null } });
+      await snoozedLine.waitFor({ state: 'detached' });
+      await row('Meta access expired').waitFor();
+
+      // Shift+Backspace deletes every read notification; the one back from snooze is unread.
       await page.keyboard.press('Shift+Backspace');
       assert.equal(writes.at(-1).path, '/api/inbox/delete-all-read');
-      await row('Older stop').waitFor({ state: 'detached' });
-      await row('Meta access expired').waitFor();
+      await row('Meta access expired').waitFor({ state: 'detached' });
+      await row('Older stop').waitFor();
       await assertNoOverflow('after delete all read');
 
       assert.deepEqual(errors, []);
