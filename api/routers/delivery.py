@@ -72,7 +72,7 @@ def _record(
         after_state=after_state,
         duration_ms=(time.perf_counter() - started) * 1000,
         actor_type="user",
-        actor_id=user.telegram_id,
+        actor_id=str(user.telegram_id or user.id),
         entity_level=entity_level,
         entity_id=entity_id,
         entity_name=entity_name,

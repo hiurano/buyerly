@@ -845,6 +845,31 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         invalidate.assert_awaited_once_with(account_id)
         self.assertIsNone(await reader.get_inventory(account_id))
 
+    async def test_manual_action_by_member_without_telegram_names_the_author(self):
+        headers = await session_headers(self.test_session_maker, {"id": 8948797431})
+        async with self.test_session_maker() as session:
+            buyer = (
+                await session.execute(select(User).where(User.telegram_id == "8948797431"))
+            ).scalar_one()
+            buyer.telegram_id = None
+            await session.commit()
+        account_id = "act_1018756607700064"
+        meta = self.app.state.meta_client
+        state = {"account_id": account_id, "entity_name": "Campaign", "status": "ACTIVE"}
+        with patch.object(meta, "get_entity_state", AsyncMock(return_value=state)), patch.object(
+            meta, "set_entity_status", AsyncMock(return_value=True),
+        ):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
+                response = await client.post(
+                    "/api/entities/campaign/cmp_no_telegram/delivery",
+                    headers=headers,
+                    json={"account_id": account_id, "status": "PAUSED"},
+                )
+        self.assertEqual(response.status_code, 200, response.text)
+        async with self.test_session_maker() as session:
+            event = await session.get(AuditEvent, response.json()["audit_event_id"])
+        self.assertEqual(event.actor_id, str(buyer.id))
+
     async def test_manual_delivery_and_budget_actions_are_audited_and_scoped(self):
         """The first writes into Meta: authorized, verified, recorded, reversible."""
         async with self.test_session_maker() as session:

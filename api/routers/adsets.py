@@ -128,7 +128,7 @@ async def reactivate_adset(
                     after_state={"status": "PAUSED", "is_resolved": False},
                     duration_ms=(time.perf_counter() - action_started) * 1000,
                     actor_type="user",
-                    actor_id=user.telegram_id,
+                    actor_id=str(user.telegram_id or user.id),
                     adset_id=adset_id,
                     adset_name=stopped_entry.adset_name,
                 )
@@ -166,7 +166,7 @@ async def reactivate_adset(
                 after_state={"status": "ACTIVE", "is_resolved": True},
                 duration_ms=(time.perf_counter() - action_started) * 1000,
                 actor_type="user",
-                actor_id=user.telegram_id,
+                actor_id=str(user.telegram_id or user.id),
                 adset_id=adset_id,
                 adset_name=stopped_entry.adset_name,
             )
@@ -229,7 +229,7 @@ async def dismiss_adset(adset_id: str, user: User = Depends(get_current_user)):
                 before_state={"status": "PAUSED", "is_resolved": False},
                 after_state={"status": "PAUSED", "is_resolved": True},
                 actor_type="user",
-                actor_id=user.telegram_id,
+                actor_id=str(user.telegram_id or user.id),
                 adset_id=adset_id,
                 adset_name=stopped_entry.adset_name,
             )

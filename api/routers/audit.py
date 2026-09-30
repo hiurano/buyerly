@@ -573,16 +573,19 @@ async def inbox_facets(
 
     def sender_label(key, rule_name):
         if key.startswith("user:"):
-            return names.get(key.split(":", 1)[1], "Someone")
+            return names.get(key.split(":", 1)[1])
         if key.startswith("rule:"):
             return rule_name or "Rule"
         return "Buyerly"
 
     return {
         "type": [{"value": value, "count": count} for value, count in types],
+        # A user nobody can be named for is left out, as Linear lists only
+        # people it knows under From. Older manual actions recorded no author.
         "from": [
-            {"value": key, "label": sender_label(key, rule_name), "count": count}
+            {"value": key, "label": label, "count": count}
             for key, count, rule_name in senders
+            if (label := sender_label(key, rule_name))
         ],
         "account": [
             {"value": value, "label": name or value, "count": count}
