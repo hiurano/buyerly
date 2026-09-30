@@ -172,10 +172,4 @@ export function snoozeOptions(now: Date = new Date()): SnoozeOption[] {
   ];
 }
 
-/** "Wed, 30 Sep, 4:05 AM", as Linear labels a snooze time. */
-export function formatSnoozeTime(date: Date): string {
-  const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(date);
-  const month = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(date);
-  const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(date);
-  return `${weekday}, ${date.getDate()} ${month}, ${time}`;
-}
+export { formatSnoozeTime } from './snoozeQuery';

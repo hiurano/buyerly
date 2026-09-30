@@ -243,14 +243,58 @@ try {
       // On a phone the list hides behind the open notification, so count the DOM.
       assert.equal(await page.locator('[data-inbox-event-id]').count(), 3);
 
-      // H opens Snooze; the notification leaves the list until then.
+      // H opens Linear's snooze palette: the notification above a search, then the choices and Custom….
       await page.keyboard.press('h');
-      const snoozeMenu = page.getByRole('menu');
-      await snoozeMenu.getByRole('menuitem', { name: /An hour from now/ }).waitFor();
+      const palette = page.getByRole('dialog', { name: 'Snooze notification', exact: true });
+      const paletteSearch = palette.getByPlaceholder('Snooze notification until…');
+      await paletteSearch.waitFor();
+      await palette.getByText(/Meta access expired/).waitFor();
+      for (const name of ['An hour from now', 'Tomorrow', 'Next week', 'A month from now', 'Custom…']) {
+        await palette.getByRole('option', { name: new RegExp(name) }).waitFor();
+      }
       await page.screenshot({ path: `${output}/snooze-${width}.png` });
-      await snoozeMenu.getByRole('menuitem', { name: /Tomorrow/ }).click();
+      // Typed time replaces the choices with what it reads as; nonsense reads as nothing.
+      await paletteSearch.fill('2 days');
+      const inTwoDays = palette.getByRole('option', { name: /^In 2 days/ });
+      await inTwoDays.waitFor();
+      assert.equal(await palette.getByRole('option').count(), 1);
+      await page.screenshot({ path: `${output}/snooze-typed-${width}.png` });
+      await paletteSearch.fill('asdf');
+      await inTwoDays.waitFor({ state: 'detached' });
+      assert.equal(await palette.getByRole('option').count(), 0);
+      await paletteSearch.fill('4 pm');
+      await palette.getByRole('option', { name: /at 4:00 PM/ }).waitFor();
+      await page.keyboard.press('Escape');
+      await palette.waitFor({ state: 'detached' });
+      assert.match(page.url(), /\/inbox\/2$/, 'Escape closes the palette, not the notification');
+
+      // The header clock opens the same palette with Linear's "Try: …" hint; Custom… picks a day.
+      await page.getByRole('button', { name: 'Snooze notification', exact: true }).click();
+      await palette.getByPlaceholder('Try: 4 pm, 2 days, in 5 weeks…').waitFor();
+      await palette.getByRole('option', { name: 'Custom…' }).click();
+      const calendar = page.getByRole('dialog', { name: 'Snooze notification until' });
+      await calendar.getByRole('button', { name: 'Apply' }).waitFor();
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const dayName = (date) => new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(date);
+      assert.equal(await calendar.getByRole('button', { name: dayName(tomorrow) }).getAttribute('aria-pressed'), 'true', 'tomorrow picked');
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      // The calendar starts at tomorrow's month, so yesterday shows only when that is the same month.
+      if (yesterday.getMonth() === tomorrow.getMonth()) {
+        assert.ok(await calendar.getByRole('button', { name: dayName(yesterday) }).isDisabled(), 'past days are off');
+      }
+      await page.screenshot({ path: `${output}/snooze-custom-${width}.png` });
+      const inFiveDays = new Date();
+      inFiveDays.setDate(inFiveDays.getDate() + 5);
+      // Two months show, from tomorrow's, so five days ahead is always on screen.
+      await calendar.getByRole('button', { name: dayName(inFiveDays) }).click();
+      await calendar.getByRole('button', { name: 'Apply' }).click();
+      await calendar.waitFor({ state: 'detached' });
       assert.equal(writes.at(-1).path, '/api/inbox/2/snooze');
-      assert.ok(Date.parse(writes.at(-1).body.until) > Date.now());
+      const until = new Date(writes.at(-1).body.until);
+      assert.equal(until.toDateString(), inFiveDays.toDateString(), 'Apply snoozes to the picked day');
+      assert.equal(`${until.getHours()}:${until.getMinutes()}`, '9:0', 'at 9:00, as Linear');
       assert.equal(await row('Meta access expired').count(), 0);
 
       // Escape closes the notification.
@@ -274,6 +318,16 @@ try {
         ]);
         assert.ok(Math.abs(firstBox.y - itemBox.y) <= 1, 'first snooze choice level with Snooze');
         assert.ok(subBox.x > itemBox.x, 'snooze choices to the right');
+        // The search sits above the choices and reads typed time, as in Linear.
+        const subSearch = snoozeSub.getByPlaceholder('Try: 4 pm, 2 days, in 5 weeks…');
+        assert.ok((await subSearch.boundingBox()).y < firstBox.y, 'search above the choices');
+        await snoozeSub.getByRole('menuitem', { name: 'Custom…' }).waitFor();
+        await subSearch.click();
+        await page.keyboard.type('in 5 weeks');
+        const searchedSub = page.getByRole('menu').filter({ has: page.getByPlaceholder('Try: 4 pm, 2 days, in 5 weeks…') });
+        await searchedSub.getByRole('menuitem', { name: /^In 5 weeks/ }).waitFor();
+        assert.equal(await searchedSub.getByRole('menuitem').count(), 1);
+        await page.screenshot({ path: `${output}/row-snooze-typed-${width}.png` });
         await rowMenu.getByRole('menuitem', { name: /Mark as unread/ }).hover();
         await snoozeSub.waitFor({ state: 'detached' });
       }
