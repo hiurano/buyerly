@@ -64,7 +64,7 @@ export const ContextMenuItem: React.FC<
     {...props}
   >
     {/* Inner Hover/Focus/Highlighted Pill */}
-    <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] h-[32px] rounded-[8px] bg-transparent group-hover:bg-[var(--item-hover-bg)] group-focus:bg-[var(--item-hover-bg)] group-data-[highlighted]:bg-[var(--item-hover-bg)] group-hover:duration-0" />
+    <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] h-[32px] rounded-[8px] bg-transparent group-hover:bg-[var(--menu-item-highlight)] group-focus:bg-[var(--menu-item-highlight)] group-data-[highlighted]:bg-[var(--menu-item-highlight)] group-hover:duration-0" />
 
     {/* Item Content Layer */}
     <div className="relative z-10 flex w-full items-center justify-between gap-2.5 group-hover:text-[var(--text-primary)] group-data-[highlighted]:text-[var(--text-primary)] whitespace-nowrap">
@@ -81,7 +81,7 @@ export const ContextMenuSubTrigger: React.FC<
     {...props}
   >
     {/* Inner Hover Pill */}
-    <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] h-[32px] rounded-[8px] bg-transparent group-hover:bg-[var(--item-hover-bg)] group-focus:bg-[var(--item-hover-bg)] group-data-[highlighted]:bg-[var(--item-hover-bg)] group-data-[state=open]:bg-[var(--item-hover-bg)] group-hover:duration-0" />
+    <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] h-[32px] rounded-[8px] bg-transparent group-hover:bg-[var(--menu-item-highlight)] group-focus:bg-[var(--menu-item-highlight)] group-data-[highlighted]:bg-[var(--menu-item-highlight)] group-data-[state=open]:bg-[var(--menu-item-highlight)] group-hover:duration-0" />
 
     {/* Item Content Layer */}
     <div className="relative z-10 flex w-full items-center justify-between gap-2.5 group-hover:text-[var(--text-primary)] group-data-[highlighted]:text-[var(--text-primary)] whitespace-nowrap">
