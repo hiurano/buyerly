@@ -24,6 +24,7 @@ from database.models import (
     Workspace,
 )
 from core.audit import build_audit_event
+from core.logging_config import redact_secrets
 from core.currency import normalize_currency
 from core.meta_tokens import resolve_account_access_token
 from core.timezones import (
@@ -384,6 +385,14 @@ class MonitoringWorker:
             "accounts_observed": len(usage_snapshot.get("accounts") or {}),
             "updated_at": usage_snapshot.get("updated_at"),
         }
+        errors = list(stats.get("errors") or [])
+        if errors:
+            logger.warning(
+                "Monitoring cycle %s finished with %d error(s): %s",
+                stats.get("cycle_id"),
+                len(errors),
+                "; ".join(redact_secrets(str(error))[:240] for error in errors[:5]),
+            )
         payload = {
             "cycle_id": stats.get("cycle_id"),
             "started_at": started_at,
@@ -406,8 +415,10 @@ class MonitoringWorker:
                     "proposals_sent",
                 )
             ),
-            "errors_count": len(stats.get("errors") or []),
-            "recent_errors": list(stats.get("errors") or [])[:5],
+            # Error texts name ad accounts and may carry Meta credentials, and
+            # this row is shared by every workspace: keep only the count here.
+            # Per-account causes live in the workspace-scoped account health.
+            "errors_count": len(errors),
             "usage": usage,
         }
         try:

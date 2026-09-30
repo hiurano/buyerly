@@ -32,6 +32,7 @@ from database.models import (
     ActionUndoState,
     AllowedEmail,
     AppSettings,
+    AutomationRuntimeState,
     AuditEvent,
     DeletedItem,
     EmailVerificationCode,
@@ -2701,6 +2702,88 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 res1_3 = await client.get("/api/summary?period=today&force=true", headers=headers)
                 self.assertEqual(res1_3.json()["total_spend"], 150.0)
                 self.assertEqual(res1_3.json()["snapshot"]["previous"]["total_spend"], 120.0)
+
+    async def test_settings_runtime_hides_other_workspace_errors(self):
+        """#203: a worker error in one workspace never reaches another one."""
+        import scheduler.worker as worker_module
+
+        secret = "SYNTHETIC_NOT_A_REAL_TOKEN"
+        foreign_account = "act_SYNTHETIC_OTHER_WORKSPACE"
+        error_text = f"Account {foreign_account}: Meta failed: access_token={secret}"
+        async with self.test_session_maker() as session:
+            # A row written before the fix still holds the raw error texts.
+            session.add(
+                AutomationRuntimeState(
+                    state_key="monitoring",
+                    payload={
+                        "cycle_id": "old",
+                        "errors_count": 1,
+                        "recent_errors": [error_text],
+                        "usage": {"max_percent": 7, "accounts": {foreign_account: 7}},
+                    },
+                )
+            )
+            await session.commit()
+
+        auth = await session_headers(
+            self.test_session_maker,
+            {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
+        )
+        transport = httpx.ASGITransport(app=self.app)
+
+        async def read_settings():
+            async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.get("/api/settings", headers=auth)
+            self.assertEqual(response.status_code, 200)
+            return response
+
+        legacy = await read_settings()
+        self.assertNotIn(secret, legacy.text)
+        self.assertNotIn(foreign_account, legacy.text)
+        self.assertEqual(legacy.json()["runtime"]["errors_count"], 1)
+        self.assertEqual(legacy.json()["runtime"]["usage"], {"max_percent": 7})
+
+        worker = worker_module.MonitoringWorker(meta_client=object())
+        errors = [
+            error_text,
+            "Pause error 42: Authorization: Bearer SYNTHETIC_BEARER_VALUE",
+            'Login failed: password="SYNTHETIC_PASSWORD"',
+            "Budget increase error 7: " + "x" * 5000,
+        ]
+        with patch.object(worker_module, "async_session_maker", self.test_session_maker), \
+                self.assertLogs(worker_module.logger, level="WARNING") as logs:
+            await worker._persist_runtime_state(
+                stats={"cycle_id": "new", "errors": errors},
+                started_at=datetime.now(timezone.utc).isoformat(),
+                duration_ms=5,
+            )
+
+        async with self.test_session_maker() as session:
+            stored = (await session.get(AutomationRuntimeState, "monitoring")).payload
+        self.assertNotIn("recent_errors", stored)
+        self.assertEqual(stored["errors_count"], 4)
+        # The operator still sees why the cycle failed, without credentials.
+        log_text = "\n".join(logs.output)
+        self.assertIn(foreign_account, log_text)
+        self.assertIn("Meta failed", log_text)
+        for credential in (secret, "SYNTHETIC_BEARER_VALUE", "SYNTHETIC_PASSWORD"):
+            self.assertNotIn(credential, log_text)
+        self.assertNotIn("x" * 300, log_text)
+
+        # A viewer of the other workspace reads the same settings.
+        async with self.test_session_maker() as session:
+            member = (
+                await session.execute(
+                    select(WorkspaceMember).where(WorkspaceMember.workspace_id == self.ws_buyer_id)
+                )
+            ).scalars().first()
+            member.role = "viewer"
+            await session.commit()
+        response = await read_settings()
+        for leaked in (secret, foreign_account, "SYNTHETIC_BEARER_VALUE", "SYNTHETIC_PASSWORD"):
+            self.assertNotIn(leaked, response.text)
+        self.assertEqual(response.json()["runtime"]["cycle_id"], "new")
+        self.assertEqual(response.json()["runtime"]["errors_count"], 4)
 
     async def test_settings_endpoint(self):
         admin_info = {"id": 8634201356, "first_name": "Admin", "username": "admin_user"}

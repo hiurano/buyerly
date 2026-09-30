@@ -9,7 +9,7 @@ _SECRET_PATTERNS = (
     re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b"),
     re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}\b"),
     re.compile(r"\bre_[A-Za-z0-9_]{20,}\b"),
-    re.compile(r"(?i)(password(?:=|%3D|:\s*\"|:\s*'))([^&\"'\s]+)"),
+    re.compile(r"(?i)(password(?:=|%3D|:\s*)[\"']?)([^&\"'\s]+)"),
 )
 
 

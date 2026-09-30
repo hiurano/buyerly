@@ -12,6 +12,34 @@ from database.models import AppSettings, AutomationRuntimeState, User
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Settings"])
 
+# The monitoring row is shared by every workspace, so only global aggregates
+# leave it. Rows written before #203 still hold raw error texts with foreign
+# account IDs and Meta credentials; an allowlist keeps those out.
+_PUBLIC_RUNTIME_KEYS = (
+    "cycle_id",
+    "started_at",
+    "finished_at",
+    "duration_ms",
+    "accounts_checked",
+    "accounts_skipped",
+    "rules_checked",
+    "adsets_checked",
+    "actions_count",
+    "errors_count",
+    "last_backup_at",
+    "synthetic",
+    "updated_at",
+)
+_PUBLIC_USAGE_KEYS = ("max_percent", "app", "accounts_observed", "updated_at")
+
+
+def _public_runtime(payload: dict) -> dict:
+    runtime = {key: payload[key] for key in _PUBLIC_RUNTIME_KEYS if key in payload}
+    usage = payload.get("usage")
+    if isinstance(usage, dict):
+        runtime["usage"] = {key: usage[key] for key in _PUBLIC_USAGE_KEYS if key in usage}
+    return runtime
+
 
 @router.get("/settings")
 async def get_settings(user: User = Depends(get_current_user)):
@@ -25,7 +53,7 @@ async def get_settings(user: User = Depends(get_current_user)):
                 )
             )
         ).scalar_one_or_none()
-        runtime = _load_json_object(runtime_row.payload) if runtime_row else {}
+        runtime = _public_runtime(_load_json_object(runtime_row.payload) if runtime_row else {})
         if runtime_row and "updated_at" not in runtime:
             runtime["updated_at"] = _utc_iso(runtime_row.updated_at)
         return {
