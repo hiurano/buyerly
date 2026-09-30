@@ -234,8 +234,9 @@ class BackupSettingsTests(unittest.TestCase):
         log_file = self.tmp / "home" / ".local" / "state" / "buyerly" / "backup.log"
         self.assertIn(f">> {log_file} 2>&1", line)
         self.assertEqual(stat.S_IMODE(log_file.stat().st_mode), 0o600)
-        self.assertIn("server time", result.stdout)
-        self.assertNotIn("UTC", result.stdout)
+        # The zone is whatever the machine runs in (UTC on CI, EEST on the VPS).
+        self.assertIn("03:00 server time (", result.stdout)
+        self.assertNotIn("03:00 UTC", result.stdout)
 
     @unittest.skipIf(os.geteuid() == 0, "the user-crontab branch runs as a normal user")
     def test_cron_job_is_not_installed_with_broken_settings(self):
