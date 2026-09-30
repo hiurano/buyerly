@@ -576,7 +576,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
               <LinearInboxUnreadIcon size={16} />
             </button>
           </Tooltip>
-          <Tooltip content="Filter" shortcut="F">
+          <Tooltip content="Filter" shortcut="F" disabled={Boolean(filterMenu)}>
             <LinearFilterButton
               ref={filterButtonRef}
               active={filters.length > 0}
@@ -588,7 +588,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
               }}
             />
           </Tooltip>
-          <Tooltip content="Display options" shortcut="V">
+          <Tooltip content="Display options" shortcut="V" disabled={isDisplayOpen}>
             <button
               ref={displayButtonRef}
               type="button"
@@ -653,7 +653,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <DropdownMenu open={isSnoozeOpen} onOpenChange={setIsSnoozeOpen}>
-                  <Tooltip content="Snooze notification" shortcut="H">
+                  <Tooltip content="Snooze notification" shortcut="H" disabled={isSnoozeOpen}>
                     <DropdownMenuTrigger asChild>
                       <button type="button" aria-label="Snooze notification" className={headerButtonClass(isSnoozeOpen)}>
                         <LinearClockOutlineIcon size={16} />

@@ -168,7 +168,9 @@
   --filter-menu-text: var(--text-secondary);
   --filter-menu-text-active: var(--text-primary);
   --filter-menu-muted: var(--text-tertiary);
-  --filter-menu-highlight: var(--item-hover-bg);
+  /* Linear: a highlighted menu row is ~8 lightness above the menu (12.7 → 20.8). */
+  --filter-menu-highlight: lch(17.3% 1.3 272 / 1);
+  --menu-item-highlight: var(--filter-menu-highlight);
   --filter-checkbox-border: lch(54.1% 0 272 / 1);
   --filter-checkbox-selected: #5e6ad2;
   --filter-trigger-bg: transparent;
@@ -301,6 +303,7 @@ html[data-theme='light'] {
   --filter-menu-text-active: lch(10% 0 282 / 1);
   --filter-menu-muted: lch(40% 1 282 / 1);
   --filter-menu-highlight: lch(95% 0 282 / 1);
+  --menu-item-highlight: var(--item-hover-bg);
   --filter-checkbox-border: lch(54.1% 0 282 / 1);
   --filter-checkbox-selected: #5e6ad2;
   --filter-trigger-bg: lch(99.997% 0.5 282 / 1);

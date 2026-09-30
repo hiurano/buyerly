@@ -124,7 +124,10 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
           <ContextMenuSubContent sideOffset={-3} alignOffset={-7} style={{ width: '300px', padding: '6px 0px' }}>
             {snoozeOptions().map((option) => (
               <ContextMenuItem key={option.id} onSelect={() => onSnooze(item, option.until)}>
-                <span>{option.label}</span>
+                <span className="flex items-center gap-2.5">
+                  <LinearClockOutlineIcon size={16} />
+                  {option.label}
+                </span>
                 <span className="text-[12px] text-[var(--text-tertiary)]">{formatSnoozeTime(option.until)}</span>
               </ContextMenuItem>
             ))}

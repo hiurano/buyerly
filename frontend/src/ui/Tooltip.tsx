@@ -17,6 +17,8 @@ export interface TooltipProps {
   side?: 'top' | 'right' | 'bottom' | 'left';
   align?: 'start' | 'center' | 'end';
   sideOffset?: number;
+  /** Hidden while the button's own menu is open, as in Linear. */
+  disabled?: boolean;
 }
 
 export const Tooltip: React.FC<TooltipProps> = ({
@@ -26,6 +28,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
   side = 'bottom',
   align = 'center',
   sideOffset = 6,
+  disabled = false,
 }) => {
   // Parse shortcut like "G I" into ["G", "then", "I"], "Shift V" into ["⇧", "V"], "Alt I" into ["⌥", "I"]
   const renderShortcut = () => {
@@ -115,7 +118,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
   };
 
   return (
-    <TooltipPrimitive.Root delayDuration={300}>
+    <TooltipPrimitive.Root delayDuration={300} open={disabled ? false : undefined}>
       <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
       <TooltipPrimitive.Portal>
         <TooltipPrimitive.Content
