@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   CalendarDays,
@@ -43,6 +43,46 @@ const ROOT_WIDTH = 262;
 const CHILD_WIDTH = 230;
 const VIEWPORT_GAP = 8;
 const CHILD_OVERLAP = 3;
+// Measured in Linear: a submenu gets its own search field from five values on
+// (Priority, Status), not with one to three (Project, Labels, Notification type).
+const CHILD_SEARCH_MIN_OPTIONS = 5;
+const SEARCH_ROW_HEIGHT = 37;
+const LIST_PADDING = 6;
+const MENU_EXIT_MS = 140;
+
+// Opened from the keyboard (F), Linear highlights the first row; opened with the
+// mouse, nothing is highlighted until the pointer or an arrow key picks a row.
+let lastInputWasKeyboard = false;
+if (typeof window !== 'undefined') {
+  window.addEventListener('keydown', () => { lastInputWasKeyboard = true; }, true);
+  window.addEventListener('pointerdown', () => { lastInputWasKeyboard = false; }, true);
+}
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+const sign = (a: Point, b: Point, c: Point) => (a.x - c.x) * (b.y - c.y) - (b.x - c.x) * (a.y - c.y);
+
+const isInTriangle = (point: Point, a: Point, b: Point, c: Point) => {
+  const d1 = sign(point, a, b);
+  const d2 = sign(point, b, c);
+  const d3 = sign(point, c, a);
+  const hasNegative = d1 < 0 || d2 < 0 || d3 < 0;
+  const hasPositive = d1 > 0 || d2 > 0 || d3 > 0;
+  return !(hasNegative && hasPositive);
+};
+
+/**
+ * Linear keeps the open submenu while the pointer heads for it, even across
+ * other rows: the move from `from` to `to` stays inside the triangle between
+ * `from` and the submenu's near edge.
+ */
+const isMovingTowardSubmenu = (from: Point, to: Point, submenu: DOMRect) => {
+  const edgeX = submenu.left >= from.x ? submenu.left : submenu.right;
+  return isInTriangle(to, from, { x: edgeX, y: submenu.top }, { x: edgeX, y: submenu.bottom });
+};
 
 export type FilterMenuMode = 'root' | 'operator' | 'value';
 
@@ -84,21 +124,31 @@ const getAnchorPosition = (anchor: HTMLElement, width: number): MenuPosition => 
   return { left, top };
 };
 
-const getChildPosition = (
-  rowRect: DOMRect,
-  rootPosition: MenuPosition,
-  estimatedHeight: number,
-  childWidth: number = CHILD_WIDTH,
-): MenuPosition => {
-  const roomOnLeft = rootPosition.left + CHILD_OVERLAP - VIEWPORT_GAP;
-  const preferredLeft =
-    roomOnLeft >= childWidth
-      ? rootPosition.left - childWidth + CHILD_OVERLAP
-      : rootPosition.left + ROOT_WIDTH - CHILD_OVERLAP;
+// Linear scales the menu from the point under the trigger, 4.5px above its top edge.
+const getTransformOrigin = (anchor: HTMLElement, position: MenuPosition) => {
+  const rect = anchor.getBoundingClientRect();
+  return `${Math.max(0, rect.left - position.left)}px ${rect.bottom - position.top}px`;
+};
 
+/**
+ * As in Linear: the submenu opens to the right of the menu and flips left only
+ * when it does not fit, with its first value level with the hovered row.
+ */
+const getChildPosition = (
+  rowTop: number,
+  rootPosition: MenuPosition,
+  size: { width: number; height: number },
+  hasSearch: boolean,
+): MenuPosition => {
+  const rightLeft = rootPosition.left + ROOT_WIDTH - CHILD_OVERLAP;
+  const left =
+    rightLeft + size.width <= window.innerWidth - VIEWPORT_GAP
+      ? rightLeft
+      : rootPosition.left - size.width + CHILD_OVERLAP;
+  const top = rowTop - 1 - LIST_PADDING - (hasSearch ? SEARCH_ROW_HEIGHT : 0);
   return {
-    left: clamp(preferredLeft, VIEWPORT_GAP, window.innerWidth - childWidth - VIEWPORT_GAP),
-    top: clamp(rowRect.top - 44, VIEWPORT_GAP, window.innerHeight - estimatedHeight - VIEWPORT_GAP),
+    left: clamp(left, VIEWPORT_GAP, window.innerWidth - size.width - VIEWPORT_GAP),
+    top: clamp(top, VIEWPORT_GAP, window.innerHeight - size.height - VIEWPORT_GAP),
   };
 };
 
@@ -124,17 +174,30 @@ const FilterFieldIcon: React.FC<{ fieldId: string; type: FilterFieldDefinition<u
 
 const MenuSurface = React.forwardRef<
   HTMLDivElement,
-  React.PropsWithChildren<{ position: MenuPosition; width: number; label: string; strongShadow?: boolean }>
->(({ position, width, label, strongShadow = false, children }, ref) => (
+  React.PropsWithChildren<{
+    position: MenuPosition;
+    /** A number fixes the width; "content" sizes to the values, as Linear's submenus do. */
+    width: number | 'content';
+    minWidth?: number;
+    label: string;
+    strongShadow?: boolean;
+    /** Entering and leaving animation; submenus appear at once. */
+    motion?: 'enter' | 'exit' | 'none';
+    transformOrigin?: string;
+  }>
+>(({ position, width, minWidth, label, strongShadow = false, motion = 'none', transformOrigin, children }, ref) => (
   <div
     ref={ref}
     role="dialog"
     aria-label={label}
+    className={motion === 'enter' ? 'linear-menu-enter' : motion === 'exit' ? 'linear-menu-exit' : undefined}
     style={{
       position: 'fixed',
       left: position.left,
       top: position.top,
-      width,
+      width: width === 'content' ? 'max-content' : width,
+      minWidth,
+      maxWidth: width === 'content' ? 400 : undefined,
       boxSizing: 'border-box',
       maxHeight: `calc(100vh - ${VIEWPORT_GAP * 2}px)`,
       overflow: 'hidden',
@@ -149,8 +212,7 @@ const MenuSurface = React.forwardRef<
       fontSize: 13,
       fontWeight: 450,
       lineHeight: '19.5px',
-      animation: 'linearPopoverScale 120ms cubic-bezier(0.16, 1, 0.3, 1)',
-      transformOrigin: 'top right',
+      transformOrigin,
     }}
   >
     {children}
@@ -231,12 +293,14 @@ const MenuOption: React.FC<{
   highlighted: boolean;
   selected?: boolean;
   multiSelect?: boolean;
-  onMouseEnter: () => void;
+  expanded?: boolean;
+  onMouseEnter?: () => void;
   onClick: (event: React.MouseEvent<HTMLDivElement>) => void;
-}> = ({ label, icon, meta, highlighted, selected, multiSelect, onMouseEnter, onClick }) => (
+}> = ({ label, icon, meta, highlighted, selected, multiSelect, expanded, onMouseEnter, onClick }) => (
   <div
     role="option"
     aria-selected={selected}
+    aria-expanded={expanded}
     onMouseEnter={onMouseEnter}
     onClick={onClick}
     // Keep focus in the search field so Escape and arrows keep working after a click.
@@ -309,7 +373,7 @@ const MenuOption: React.FC<{
       {label}
     </span>
     {meta && (
-      <span style={{ flexShrink: 0, color: MENU_MUTED, fontSize: 12, zIndex: 1 }}>
+      <span style={{ flexShrink: 0, marginLeft: 12, color: MENU_MUTED, fontSize: 12, zIndex: 1 }}>
         {meta}
       </span>
     )}
@@ -339,36 +403,63 @@ export const LinearFilterMenu = <T,>({
   const childRef = useRef<HTMLDivElement>(null);
   const rootInputRef = useRef<HTMLInputElement>(null);
   const childInputRef = useRef<HTMLInputElement>(null);
+  const childListRef = useRef<HTMLDivElement>(null);
+  const lastPointerRef = useRef<Point | null>(null);
   const [rootPosition, setRootPosition] = useState<MenuPosition>({ left: 0, top: 0 });
+  const [transformOrigin, setTransformOrigin] = useState('0 0');
+  const [childRowTop, setChildRowTop] = useState(0);
   const [childPosition, setChildPosition] = useState<MenuPosition>({ left: 0, top: 0 });
   const [rootSearch, setRootSearch] = useState('');
   const [childSearch, setChildSearch] = useState('');
   const [activeFieldId, setActiveFieldId] = useState<string | null>(fieldId ?? null);
-  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [childHighlightedIndex, setChildHighlightedIndex] = useState(0);
   const [editorValue, setEditorValue] = useState('');
+  // Stays mounted after the parent closes the menu, for Linear's closing fade.
+  const [isVisible, setIsVisible] = useState(isOpen);
+  const shownModeRef = useRef(mode);
+  if (isOpen) shownModeRef.current = mode;
+  const shownMode = shownModeRef.current;
+  const isClosing = !isOpen && isVisible;
 
   const activeField = fields.find((field) => field.id === activeFieldId) ?? null;
   const activeClause = activeField
     ? clauses.find((clause) => clause.fieldId === activeField.id)
     : undefined;
+  const childHasSearch =
+    shownMode !== 'root' ||
+    (activeField?.type === 'enum' && (activeField.options?.length ?? 0) >= CHILD_SEARCH_MIN_OPTIONS);
 
   useEffect(() => {
+    if (isOpen) {
+      setIsVisible(true);
+      return;
+    }
+    const timer = window.setTimeout(() => setIsVisible(false), MENU_EXIT_MS);
+    return () => window.clearTimeout(timer);
+  }, [isOpen]);
+
+  useLayoutEffect(() => {
     if (!isOpen || !anchorElement) return;
     const width = mode === 'root' ? ROOT_WIDTH : childWidth;
 
-    const updatePosition = () => setRootPosition(getAnchorPosition(anchorElement, width));
+    const updatePosition = () => {
+      const position = getAnchorPosition(anchorElement, width);
+      setRootPosition(position);
+      setTransformOrigin(getTransformOrigin(anchorElement, position));
+    };
     updatePosition();
     setRootSearch('');
     setChildSearch('');
-    setHighlightedIndex(0);
+    setHighlightedIndex(mode === 'root' && !lastInputWasKeyboard ? -1 : 0);
     setChildHighlightedIndex(0);
     setActiveFieldId(fieldId ?? null);
     setEditorValue('');
+    lastPointerRef.current = null;
 
     const focusTimer = window.setTimeout(() => {
       if (mode === 'root') rootInputRef.current?.focus();
-      else childInputRef.current?.focus();
+      else (childInputRef.current ?? childListRef.current)?.focus();
     }, 20);
 
     window.addEventListener('resize', updatePosition);
@@ -379,6 +470,12 @@ export const LinearFilterMenu = <T,>({
       window.removeEventListener('scroll', updatePosition, true);
     };
   }, [isOpen, anchorElement, fieldId, mode, childWidth]);
+
+  useLayoutEffect(() => {
+    if (shownMode !== 'root' || !activeFieldId || !childRef.current) return;
+    const { offsetWidth: width, offsetHeight: height } = childRef.current;
+    setChildPosition(getChildPosition(childRowTop, rootPosition, { width, height }, childHasSearch));
+  }, [shownMode, activeFieldId, childRowTop, rootPosition, childHasSearch]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -445,7 +542,8 @@ export const LinearFilterMenu = <T,>({
     });
   }, [activeField, activeClause, childSearch]);
 
-  if (!isOpen || !anchorElement) return null;
+  if (!isOpen && !isVisible) return null;
+  if (isOpen && !anchorElement) return null;
 
   const applyOption = (field: FilterFieldDefinition<T>, option: FilterOption) => {
     const current = clauses.find((clause) => clause.fieldId === field.id);
@@ -468,15 +566,37 @@ export const LinearFilterMenu = <T,>({
     }
   };
 
-  const openField = (field: FilterFieldDefinition<T>, row: HTMLElement) => {
-    setActiveFieldId(field.id);
-    setChildSearch('');
-    setChildHighlightedIndex(0);
-    setEditorValue(String(clauses.find((clause) => clause.fieldId === field.id)?.values[0] ?? ''));
-    const optionCount = field.options?.length ?? 2;
-    const estimatedHeight = Math.min(340, 50 + optionCount * 32);
-    setChildPosition(getChildPosition(row.getBoundingClientRect(), rootPosition, estimatedHeight, childWidth));
-    window.setTimeout(() => childInputRef.current?.focus(), 20);
+  const rootRowAt = (index: number) =>
+    rootRef.current?.querySelectorAll<HTMLElement>('[data-filter-root-option]')[index];
+
+  // Unscaled, so a submenu opened while the menu is still growing lands level with its row.
+  const rowTopOf = (row: HTMLElement) =>
+    rootPosition.top + 1 + row.offsetTop - (row.closest('[role="listbox"]')?.scrollTop ?? 0);
+
+  /**
+   * Linear opens a property's values as soon as its row is hovered or reached
+   * with the arrows; a click, Enter or → also moves the keyboard into them.
+   */
+  const openField = (field: FilterFieldDefinition<T>, row: HTMLElement, focusChild: boolean) => {
+    if (field.id !== activeFieldId) {
+      setActiveFieldId(field.id);
+      setChildSearch('');
+      setEditorValue(String(clauses.find((clause) => clause.fieldId === field.id)?.values[0] ?? ''));
+      setChildRowTop(rowTopOf(row));
+    }
+    setChildHighlightedIndex(focusChild ? 0 : -1);
+    if (focusChild) {
+      window.setTimeout(() => (childInputRef.current ?? childListRef.current)?.focus(), 0);
+    } else if (document.activeElement !== rootInputRef.current) {
+      rootInputRef.current?.focus();
+    }
+  };
+
+  const previewRootEntry = (index: number) => {
+    const entry = rootEntries[index];
+    const row = rootRowAt(index);
+    if (entry?.kind === 'field' && row) openField(entry.field, row, false);
+    else setActiveFieldId(null);
   };
 
   const activateRootEntry = (entry: RootEntry<T>, row?: HTMLElement) => {
@@ -484,7 +604,25 @@ export const LinearFilterMenu = <T,>({
       applyOption(entry.field, entry.option);
       return;
     }
-    if (row) openField(entry.field, row);
+    if (row) openField(entry.field, row, true);
+  };
+
+  const handleRootPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const point = { x: event.clientX, y: event.clientY };
+    const previous = lastPointerRef.current;
+    lastPointerRef.current = point;
+    const row = (event.target as HTMLElement).closest<HTMLElement>('[data-filter-root-option]');
+    const index = Number(row?.dataset.index);
+    const entry = rootEntries[index];
+    if (!row || !entry) return;
+    const isOpenField = entry.kind === 'field' && entry.field.id === activeFieldId;
+    if (index === highlightedIndex && (isOpenField || entry.kind === 'value')) return;
+    const submenu = childRef.current?.getBoundingClientRect();
+    if (activeFieldId && !isOpenField && previous && submenu && isMovingTowardSubmenu(previous, point, submenu)) {
+      return;
+    }
+    setHighlightedIndex(index);
+    previewRootEntry(index);
   };
 
   const handleRootKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -495,22 +633,30 @@ export const LinearFilterMenu = <T,>({
     }
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
+      const count = rootEntries.length;
+      if (count === 0) return;
       const direction = event.key === 'ArrowDown' ? 1 : -1;
-      setHighlightedIndex((index) =>
-        (index + direction + Math.max(rootEntries.length, 1)) % Math.max(rootEntries.length, 1)
-      );
+      const next =
+        highlightedIndex < 0
+          ? direction === 1 ? 0 : count - 1
+          : (highlightedIndex + direction + count) % count;
+      setHighlightedIndex(next);
+      previewRootEntry(next);
       return;
     }
     if (event.key === 'Enter' || event.key === 'ArrowRight') {
       event.preventDefault();
-      const entry = rootEntries[highlightedIndex];
-      const row = rootRef.current?.querySelectorAll<HTMLElement>('[data-filter-root-option]')[highlightedIndex];
-      if (entry) activateRootEntry(entry, row);
+      const index = Math.max(highlightedIndex, 0);
+      const entry = rootEntries[index];
+      if (entry) {
+        setHighlightedIndex(index);
+        activateRootEntry(entry, rootRowAt(index));
+      }
     }
   };
 
   const closeChild = () => {
-    if (mode === 'root') {
+    if (shownMode === 'root') {
       setActiveFieldId(null);
       rootInputRef.current?.focus();
     } else {
@@ -518,23 +664,29 @@ export const LinearFilterMenu = <T,>({
     }
   };
 
-  const handleChildKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Escape' || event.key === 'ArrowLeft') {
+  const handleChildKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key === 'ArrowLeft') {
       event.preventDefault();
       closeChild();
       return;
     }
-    if (event.key === 'Backspace' && childSearch === '' && mode === 'root') {
+    if (event.key === 'Backspace' && childSearch === '' && shownMode === 'root') {
       event.preventDefault();
       closeChild();
       return;
     }
     if (activeField?.type === 'enum') {
-      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      const count = childOptions.length;
+      if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && count > 0) {
         event.preventDefault();
         const direction = event.key === 'ArrowDown' ? 1 : -1;
         setChildHighlightedIndex((index) =>
-          (index + direction + Math.max(childOptions.length, 1)) % Math.max(childOptions.length, 1)
+          index < 0 ? (direction === 1 ? 0 : count - 1) : (index + direction + count) % count
         );
       } else if (event.key === 'Enter') {
         event.preventDefault();
@@ -565,19 +717,29 @@ export const LinearFilterMenu = <T,>({
       const selectedCount = childOptions.filter((option) => currentValues.has(option.value)).length;
       return (
         <>
-          <SearchRow
-            ref={childInputRef}
-            label={mode === 'value' ? field.label : 'Filter…'}
-            value={childSearch}
-            onChange={(value) => {
-              setChildSearch(value);
-              setChildHighlightedIndex(0);
-            }}
-            onKeyDown={handleChildKeyDown}
-          />
-          <div role="listbox" aria-label={`${field.label} values`} style={{ maxHeight: 330, overflowY: 'auto', padding: '6px 0' }}>
+          {childHasSearch && (
+            <SearchRow
+              ref={childInputRef}
+              label={shownMode === 'value' ? field.label : 'Filter…'}
+              value={childSearch}
+              onChange={(value) => {
+                setChildSearch(value);
+                setChildHighlightedIndex(0);
+              }}
+              onKeyDown={handleChildKeyDown}
+            />
+          )}
+          <div
+            ref={childListRef}
+            role="listbox"
+            aria-label={`${field.label} values`}
+            // Without a search field the list itself takes the keyboard, as in Linear.
+            tabIndex={childHasSearch ? undefined : -1}
+            onKeyDown={childHasSearch ? undefined : handleChildKeyDown}
+            style={{ maxHeight: 330, overflowY: 'auto', padding: `${LIST_PADDING}px 0`, outline: 'none' }}
+          >
             {childOptions.length === 0 ? (
-              <div style={{ padding: '18px 14px', color: MENU_MUTED, textAlign: 'center' }}>No matching values</div>
+              <div style={{ padding: '6px 14px', color: MENU_MUTED }}>No matching options</div>
             ) : (
               childOptions.map((option, index) => {
                 const selected = currentValues.has(option.value);
@@ -617,7 +779,7 @@ export const LinearFilterMenu = <T,>({
     }
 
     return (
-      <div style={{ padding: 10 }}>
+      <div style={{ width: shownMode === 'root' ? CHILD_WIDTH : undefined, padding: 10 }}>
         <label style={{ display: 'block', marginBottom: 7, color: MENU_MUTED, fontSize: 12 }}>
           {field.label}
         </label>
@@ -629,7 +791,8 @@ export const LinearFilterMenu = <T,>({
           value={editorValue}
           onChange={(event) => setEditorValue(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === 'Escape' || event.key === 'ArrowLeft') closeChild();
+            if (event.key === 'Escape') onClose();
+            if (event.key === 'ArrowLeft' && event.currentTarget.selectionStart === 0) closeChild();
             if (event.key === 'Enter') applyEditorValue();
           }}
           placeholder={field.placeholder ?? 'Enter a value…'}
@@ -722,8 +885,17 @@ export const LinearFilterMenu = <T,>({
     );
   };
 
+  const menuMotion = isClosing ? 'exit' : 'enter';
+
   const renderRoot = () => (
-    <MenuSurface ref={rootRef} position={rootPosition} width={ROOT_WIDTH} label="Add filter">
+    <MenuSurface
+      ref={rootRef}
+      position={rootPosition}
+      width={ROOT_WIDTH}
+      label="Add filter"
+      motion={menuMotion}
+      transformOrigin={transformOrigin}
+    >
       <SearchRow
         ref={rootInputRef}
         label={rootPlaceholder}
@@ -731,11 +903,17 @@ export const LinearFilterMenu = <T,>({
         onChange={(value) => {
           setRootSearch(value);
           setHighlightedIndex(0);
+          setActiveFieldId(null);
         }}
         onKeyDown={handleRootKeyDown}
         shortcut="F"
       />
-      <div role="listbox" aria-label="Filter properties" style={{ maxHeight: 'calc(100vh - 100px)', overflowY: 'auto', padding: '6px 0' }}>
+      <div
+        role="listbox"
+        aria-label="Filter properties"
+        onPointerMove={handleRootPointerMove}
+        style={{ maxHeight: 'calc(100vh - 100px)', overflowY: 'auto', padding: `${LIST_PADDING}px 0` }}
+      >
         {rootEntries.length === 0 ? (
           <div style={{ padding: '18px 14px', color: MENU_MUTED, textAlign: 'center' }}>No filters found</div>
         ) : (
@@ -747,16 +925,20 @@ export const LinearFilterMenu = <T,>({
               entry.kind === 'value' && entry.option
                 ? clause?.values.map(String).includes(entry.option.value)
                 : false;
+            const isOpenField = entry.kind === 'field' && activeFieldId === entry.field.id;
             return (
               <React.Fragment key={entry.key}>
                 {showSeparator && <SectionSeparator />}
-                <div data-filter-root-option="true">
+                <div data-filter-root-option="true" data-index={index}>
                   <MenuOption
                     label={entry.kind === 'value' && entry.option ? entry.option.label : entry.field.label}
-                    highlighted={highlightedIndex === index || activeFieldId === entry.field.id}
+                    highlighted={highlightedIndex === index || isOpenField}
                     selected={isValueSelected}
-                    onMouseEnter={() => setHighlightedIndex(index)}
-                    onClick={(event) => activateRootEntry(entry, event.currentTarget)}
+                    expanded={entry.kind === 'field' ? isOpenField : undefined}
+                    onClick={(event) => {
+                      setHighlightedIndex(index);
+                      activateRootEntry(entry, event.currentTarget);
+                    }}
                     icon={
                       <FilterFieldIcon
                         fieldId={entry.field.id}
@@ -784,21 +966,26 @@ export const LinearFilterMenu = <T,>({
   );
 
   const childBody = activeField
-    ? mode === 'operator'
+    ? shownMode === 'operator'
       ? renderOperatorBody(activeField)
       : renderValueBody(activeField)
     : null;
+  const isSubmenu = shownMode === 'root';
 
   return createPortal(
     <>
-      {mode === 'root' && renderRoot()}
-      {activeField && childBody && (
+      {isSubmenu && renderRoot()}
+      {/* A submenu vanishes at once when the menu closes; a menu opened from a chip fades like any other. */}
+      {activeField && childBody && !(isSubmenu && isClosing) && (
         <MenuSurface
           ref={childRef}
-          position={mode === 'root' ? childPosition : rootPosition}
-          width={childWidth}
-          label={mode === 'operator' ? `${activeField.label} operator` : `${activeField.label} values`}
+          position={isSubmenu ? childPosition : rootPosition}
+          width={isSubmenu ? 'content' : childWidth}
+          minWidth={isSubmenu ? (childHasSearch ? CHILD_WIDTH : 175) : undefined}
+          label={shownMode === 'operator' ? `${activeField.label} operator` : `${activeField.label} values`}
           strongShadow
+          motion={isSubmenu ? 'none' : menuMotion}
+          transformOrigin={isSubmenu ? undefined : transformOrigin}
         >
           {childBody}
         </MenuSurface>
@@ -827,7 +1014,7 @@ export const LinearFilterButton = React.forwardRef<HTMLButtonElement, FilterButt
       onPointerDown={onPointerDown}
       onMouseDown={onMouseDown}
       onClick={onClick}
-      className={`group relative flex h-[28px] w-[28px] items-center justify-center rounded-full border transition-all focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#8b8df8] ${
+      className={`group relative flex h-[28px] w-[28px] items-center justify-center rounded-full border transition-[border-color,background-color,color,opacity,fill,stroke] duration-150 ease-[ease] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#8b8df8] ${
         open || active
           ? 'border-transparent bg-[var(--filter-trigger-active-bg)] text-[var(--text-primary)]'
           : 'border-transparent bg-[var(--filter-trigger-bg)] text-[var(--text-tertiary)] hover:bg-[var(--filter-trigger-active-bg)] hover:text-[var(--text-primary)]'

@@ -164,14 +164,45 @@ try {
 
       // Filter, as in Linear: F opens "Add Filter…", Notification type lists the types with counts.
       await page.keyboard.press('f');
-      await page.getByRole('dialog', { name: 'Add filter' }).getByRole('option', { name: /Notification type/ }).click();
+      const addFilter = page.getByRole('dialog', { name: 'Add filter' });
+      assert.equal(await addFilter.getAttribute('class'), 'linear-menu-enter');
+      const typeRow = addFilter.getByRole('option', { name: /Notification type/ });
       const typeValues = page.getByRole('dialog', { name: 'Notification type values' });
+      const fromValues = page.getByRole('dialog', { name: 'From values' });
+      // Hovering a property opens its values, no click needed, as in Linear.
+      await typeRow.hover();
+      await typeValues.waitFor();
       assert.match(await typeValues.getByRole('option', { name: /Turned off/ }).innerText(), /2 notifications/);
       await typeValues.getByText(/options not matching any notifications/).waitFor();
+      // Fewer than five values: no search field, nothing highlighted until the pointer gets there.
+      assert.equal(await typeValues.getByRole('searchbox').count(), 0);
+      if (!phone) {
+        assert.equal(await typeValues.getByRole('checkbox', { checked: false }).first().isVisible(), false);
+        // To the right of the menu, with the first value level with the hovered row.
+        const [rowBox, menuBox, valuesBox, firstValueBox] = await Promise.all([
+          typeRow.boundingBox(), addFilter.boundingBox(), typeValues.boundingBox(),
+          typeValues.getByRole('option').first().boundingBox(),
+        ]);
+        assert.ok(Math.abs(valuesBox.x - (menuBox.x + menuBox.width - 3)) <= 1, 'values open to the right');
+        assert.ok(Math.abs(firstValueBox.y - rowBox.y) <= 1, 'first value level with the row');
+        // Heading for the values across the From row keeps them open; stopping on From opens its own.
+        const fromBox = await addFilter.getByRole('option', { name: /From/ }).boundingBox();
+        await page.mouse.move(rowBox.x + 120, rowBox.y + rowBox.height / 2);
+        await page.mouse.move(rowBox.x + 180, fromBox.y + fromBox.height / 2, { steps: 4 });
+        await typeValues.waitFor();
+        assert.equal(await fromValues.count(), 0);
+        await page.mouse.move(rowBox.x + 170, fromBox.y + fromBox.height / 2, { steps: 2 });
+        await fromValues.waitFor();
+        await typeRow.hover();
+      }
+      await typeValues.waitFor();
       await page.screenshot({ path: `${output}/filter-menu-${width}.png` });
       await typeValues.getByRole('option', { name: /Rule alert/ }).click();
+      // Escape closes the whole menu, as in Linear: the submenu goes at once, the menu fades out.
       await page.keyboard.press('Escape');
-      await page.keyboard.press('Escape');
+      assert.equal(await typeValues.count(), 0);
+      assert.equal(await addFilter.getAttribute('class'), 'linear-menu-exit');
+      await addFilter.waitFor({ state: 'detached' });
       await waitForRows(1);
       const bar = page.locator('[aria-label="Active filters"]');
       assert.match(await bar.innerText(), /Notification type\s*is\s*Rule alert/);

@@ -896,6 +896,32 @@ html[data-theme='dark'] .linear-sidebar-badge,
   }
 }
 
+/* Linear's menus, measured frame by frame: opacity 0→1 in ~40ms, scale 0.98→1
+   easing out over ~250ms; on close the scale drops back to 0.98 and it fades out. */
+.linear-menu-enter {
+  animation:
+    linearMenuFadeIn 40ms linear,
+    linearMenuScaleIn 250ms cubic-bezier(0.25, 0.95, 0.6, 1);
+}
+
+.linear-menu-exit {
+  transform: scale(0.98);
+  pointer-events: none;
+  animation: linearMenuFadeOut 140ms cubic-bezier(0.2, 0.65, 0.2, 1) forwards;
+}
+
+@keyframes linearMenuFadeIn {
+  from { opacity: 0; }
+}
+
+@keyframes linearMenuScaleIn {
+  from { transform: scale(0.98); }
+}
+
+@keyframes linearMenuFadeOut {
+  to { opacity: 0; }
+}
+
 .animate-scale-in {
   animation: fadeIn 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }

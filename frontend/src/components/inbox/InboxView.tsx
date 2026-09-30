@@ -167,7 +167,7 @@ function inboxFilterFields(
 }
 
 const headerButtonClass = (active = false) =>
-  `flex h-7 w-7 shrink-0 items-center justify-center rounded-full outline-none transition-colors ${
+  `flex h-7 w-7 shrink-0 items-center justify-center rounded-full outline-none transition-[border-color,background-color,color,opacity,fill,stroke] duration-150 ease-[ease] ${
     active
       ? 'bg-[var(--item-active-bg)] text-[var(--text-primary)]'
       : 'text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'
