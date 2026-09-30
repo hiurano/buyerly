@@ -22,7 +22,6 @@ import {
   formatSnoozeTime,
   markInboxRead,
   snoozeInboxNotification,
-  snoozeOptions,
   type InboxActionResponse,
   type InboxFacets,
   type InboxFacetValue,
@@ -34,6 +33,8 @@ import type { FilterClause, FilterFieldDefinition } from '@/components/filters/f
 import { InboxFilterBar, InboxFilterFooter } from './InboxFilterBar';
 import { InboxItemRow } from './InboxItemRow';
 import { InboxDisplayOptionsPopover } from './InboxDisplayOptionsPopover';
+import { SnoozeCalendarDialog } from './SnoozeCalendarDialog';
+import { SNOOZE_SEARCH_HINT, SnoozePalette } from './SnoozePalette';
 import {
   BuyerlyLogoAvatar,
   LinearClockOutlineIcon,
@@ -196,7 +197,9 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
   const [loadError, setLoadError] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
   const [isDisplayOpen, setIsDisplayOpen] = useState(false);
-  const [isSnoozeOpen, setIsSnoozeOpen] = useState(false);
+  // H and the header clock open the same palette; only the search hint differs.
+  const [snoozePalette, setSnoozePalette] = useState<'key' | 'button' | null>(null);
+  const [customSnoozeItem, setCustomSnoozeItem] = useState<InboxItem | null>(null);
   const [actionState, setActionState] = useState<ActionState>('idle');
   const [actionMessage, setActionMessage] = useState('');
   const [actionError, setActionError] = useState('');
@@ -347,6 +350,16 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
     snoozeInboxNotification(item.id, until).then(applyResponse).catch(reportError);
   }, [applyResponse, inboxDisplay.showSnoozed, removeItem, reportError]);
 
+  const closeSnoozePalette = useCallback((open: boolean) => {
+    if (!open) setSnoozePalette(null);
+  }, []);
+
+  const snoozeSelected = useCallback((until: Date) => {
+    if (selectedItem) snoozeItem(selectedItem, until);
+  }, [selectedItem, snoozeItem]);
+
+  const customSnoozeSelected = useCallback(() => setCustomSnoozeItem(selectedItem), [selectedItem]);
+
   const deleteAll = useCallback(async (onlyRead: boolean) => {
     try {
       applyResponse(await deleteAllInbox(onlyRead));
@@ -413,7 +426,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
         toggleRead(selected);
       } else if ((key === 'h' || key === 'H') && selected) {
         event.preventDefault();
-        setIsSnoozeOpen(true);
+        setSnoozePalette('key');
       } else if ((key === 'f' || key === 'F') && !event.shiftKey && filterButtonRef.current) {
         event.preventDefault();
         openFilterMenu('root', filterButtonRef.current);
@@ -504,6 +517,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
             onToggleRead={toggleRead}
             onDelete={deleteItem}
             onSnooze={snoozeItem}
+            onCustomSnooze={setCustomSnoozeItem}
           />
         ))}
         {filters.length > 0 && (
@@ -652,31 +666,24 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
                 </span>
               </div>
               <div className="flex shrink-0 items-center gap-1">
-                <DropdownMenu open={isSnoozeOpen} onOpenChange={setIsSnoozeOpen}>
-                  <Tooltip content="Snooze notification" shortcut="H" disabled={isSnoozeOpen}>
-                    <DropdownMenuTrigger asChild>
-                      <button type="button" aria-label="Snooze notification" className={headerButtonClass(isSnoozeOpen)}>
-                        <LinearClockOutlineIcon size={16} />
-                      </button>
-                    </DropdownMenuTrigger>
-                  </Tooltip>
-                  <DropdownMenuContent
-                    align="end"
-                    style={{ width: '320px' }}
-                    // Focus back on the button would pop its tooltip and eat the next Escape.
-                    onCloseAutoFocus={(event) => event.preventDefault()}
+                <Tooltip content="Snooze notification" shortcut="H" disabled={snoozePalette !== null}>
+                  <button
+                    type="button"
+                    aria-label="Snooze notification"
+                    onClick={() => setSnoozePalette('button')}
+                    className={headerButtonClass(snoozePalette !== null)}
                   >
-                    {snoozeOptions().map((option) => (
-                      <DropdownMenuItem key={option.id} onSelect={() => snoozeItem(selectedItem, option.until)}>
-                        <span className="flex items-center gap-2.5">
-                          <LinearClockOutlineIcon size={16} />
-                          {option.label}
-                        </span>
-                        <span className="text-[12px] text-[var(--text-tertiary)]">{formatSnoozeTime(option.until)}</span>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                    <LinearClockOutlineIcon size={16} />
+                  </button>
+                </Tooltip>
+                <SnoozePalette
+                  open={snoozePalette !== null}
+                  onOpenChange={closeSnoozePalette}
+                  notificationLabel={`${auditEventTitle(selectedItem)}: ${auditEventTarget(selectedItem)}`}
+                  placeholder={snoozePalette === 'button' ? SNOOZE_SEARCH_HINT : 'Snooze notification until…'}
+                  onSnooze={snoozeSelected}
+                  onCustom={customSnoozeSelected}
+                />
                 <Tooltip content="Delete notification" shortcut="⌫">
                   <button
                     type="button"
@@ -756,6 +763,14 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
           </div>
         )}
       </section>
+      <SnoozeCalendarDialog
+        open={customSnoozeItem !== null}
+        onOpenChange={(open) => { if (!open) setCustomSnoozeItem(null); }}
+        onApply={(until) => {
+          if (customSnoozeItem) snoozeItem(customSnoozeItem, until);
+          setCustomSnoozeItem(null);
+        }}
+      />
     </div>
   );
 };

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { auditEventSummary, auditEventTarget, auditEventTitle } from '@/lib/audit';
 import { formatInboxAge, formatSnoozeTime, snoozeOptions, type InboxItem } from '@/lib/inbox';
+import { parseSnoozeQuery } from '@/lib/snoozeQuery';
 import {
   BuyerlyLogoAvatar,
   LinearClockOutlineIcon,
@@ -22,6 +23,7 @@ export interface InboxItemActions {
   onToggleRead: (item: InboxItem) => void;
   onDelete: (item: InboxItem) => void;
   onSnooze: (item: InboxItem, until: Date) => void;
+  onCustomSnooze: (item: InboxItem) => void;
 }
 
 interface InboxItemRowProps extends InboxItemActions {
@@ -34,6 +36,75 @@ const MenuKey: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <kbd className="font-sans text-[12px] font-[500] text-[var(--text-muted)]">{children}</kbd>
 );
 
+const SnoozeRow: React.FC<{ label: string; hint?: string; onSelect: () => void }> = ({ label, hint, onSelect }) => (
+  <ContextMenuItem onSelect={onSelect}>
+    <span className="flex items-center gap-2.5">
+      <LinearClockOutlineIcon size={16} />
+      {label}
+    </span>
+    {hint && <span className="text-[12px] text-[var(--text-tertiary)]">{hint}</span>}
+  </ContextMenuItem>
+);
+
+/** Linear's right-click Snooze: a search on top ("Try: 4 pm, 2 days…"), the ready choices and Custom…. */
+const SnoozeSubmenu: React.FC<{
+  item: InboxItem;
+  onSnooze: (item: InboxItem, until: Date) => void;
+  onCustomSnooze: (item: InboxItem) => void;
+}> = ({ item, onSnooze, onCustomSnooze }) => {
+  const [query, setQuery] = useState('');
+  const typed = query.trim().length > 0;
+  const suggestions = typed ? parseSnoozeQuery(query) : [];
+  const rowsRef = useRef<HTMLDivElement>(null);
+  return (
+    <ContextMenuSubContent
+      sideOffset={-3}
+      // The first choice stays level with Snooze; the search sits above it (36px + 1px line).
+      alignOffset={-44}
+      style={{ width: 'max-content', minWidth: '300px' }}
+    >
+      <div className="border-b border-[var(--color-border-primary)] px-[14px]">
+        <input
+          autoFocus
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            // Letters belong to the search, not to the menu's jump-to-item typing.
+            if (event.key.length === 1 || event.key === 'Backspace' || event.key === 'Delete') event.stopPropagation();
+            if (event.key === 'Enter') {
+              // Enter takes the first row; choosing it closes the menu like a click.
+              event.preventDefault();
+              rowsRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.click();
+            }
+          }}
+          placeholder="Try: 4 pm, 2 days, in 5 weeks…"
+          aria-label="Snooze until"
+          className="h-[36px] w-full bg-transparent pb-[9px] pt-[10px] text-[13px] text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none"
+        />
+      </div>
+      <div ref={rowsRef} className="py-[6px]">
+        {typed
+          ? suggestions.map((row) => (
+            <SnoozeRow key={row.id} label={row.label} hint={row.hint} onSelect={() => onSnooze(item, row.until)} />
+          ))
+          : (
+            <>
+              {snoozeOptions().map((option) => (
+                <SnoozeRow
+                  key={option.id}
+                  label={option.label}
+                  hint={formatSnoozeTime(option.until)}
+                  onSelect={() => onSnooze(item, option.until)}
+                />
+              ))}
+              <SnoozeRow label="Custom…" onSelect={() => onCustomSnooze(item)} />
+            </>
+          )}
+      </div>
+    </ContextMenuSubContent>
+  );
+};
+
 /** Linear's notification row: avatar, title with the unread dot, then summary and age. */
 export const InboxItemRow: React.FC<InboxItemRowProps> = ({
   item,
@@ -42,6 +113,7 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
   onToggleRead,
   onDelete,
   onSnooze,
+  onCustomSnooze,
 }) => {
   const unread = !item.is_read;
   const titleColor = isSelected || unread ? 'text-[var(--text-secondary)]' : 'text-[var(--text-tertiary)]';
@@ -121,17 +193,7 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
               <SubmenuArrow />
             </span>
           </ContextMenuSubTrigger>
-          <ContextMenuSubContent sideOffset={-3} alignOffset={-7} style={{ width: '300px', padding: '6px 0px' }}>
-            {snoozeOptions().map((option) => (
-              <ContextMenuItem key={option.id} onSelect={() => onSnooze(item, option.until)}>
-                <span className="flex items-center gap-2.5">
-                  <LinearClockOutlineIcon size={16} />
-                  {option.label}
-                </span>
-                <span className="text-[12px] text-[var(--text-tertiary)]">{formatSnoozeTime(option.until)}</span>
-              </ContextMenuItem>
-            ))}
-          </ContextMenuSubContent>
+          <SnoozeSubmenu item={item} onSnooze={onSnooze} onCustomSnooze={onCustomSnooze} />
         </ContextMenuSub>
       </ContextMenuContent>
     </ContextMenu>
