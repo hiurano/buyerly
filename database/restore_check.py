@@ -238,11 +238,14 @@ async def _check_data(engine) -> None:
     if not_validated:
         _fail(stage, f"{not_validated} of {total} foreign keys are not validated")
     if users == 0 or workspaces == 0:
-        _fail(stage, f"{users} users and {workspaces} workspaces; an empty database is not a usable restore")
+        _fail(
+            stage,
+            f"users {users}, workspaces {workspaces}; an empty database is not a usable restore",
+        )
     _report(
         True,
         stage,
-        f"{users} users, {workspaces} workspaces; all {total} foreign keys hold",
+        f"users {users}, workspaces {workspaces}; all {total} foreign keys hold",
     )
 
 
@@ -286,8 +289,8 @@ async def _check_application_read(engine) -> None:
     _report(
         True,
         stage,
-        f"{loaded} rows of {len(models)} models loaded; "
-        f"{len(tokens)} Meta tokens decrypt",
+        f"{loaded} rows of {len(models)} models load; "
+        f"Meta tokens decrypt: {len(tokens)} of {len(tokens)}",
     )
 
 
