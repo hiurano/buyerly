@@ -24,7 +24,7 @@ export const ContextMenuContent: React.FC<ContextMenuPrimitive.ContextMenuConten
         padding: '6px 0px',
         ...style,
       }}
-      className={`border rounded-[12px] shadow-[var(--dropdown-shadow)] z-[600] overflow-hidden select-none animate-scale-in outline-none ${className}`}
+      className={`border rounded-[12px] shadow-[var(--dropdown-shadow)] z-[600] overflow-hidden select-none linear-menu origin-[var(--radix-context-menu-content-transform-origin)] outline-none ${className}`}
       {...props}
     />
   </ContextMenuPrimitive.Portal>
@@ -50,7 +50,7 @@ export const ContextMenuSubContent: React.FC<ContextMenuPrimitive.ContextMenuSub
         padding: '0px',
         ...style,
       }}
-      className={`border rounded-[12px] shadow-[var(--dropdown-shadow)] z-[600] overflow-hidden select-none animate-scale-in outline-none ${className}`}
+      className={`border rounded-[12px] shadow-[var(--dropdown-shadow)] z-[600] overflow-hidden select-none outline-none ${className}`}
       {...props}
     />
   </ContextMenuPrimitive.Portal>
@@ -64,7 +64,7 @@ export const ContextMenuItem: React.FC<
     {...props}
   >
     {/* Inner Hover/Focus/Highlighted Pill */}
-    <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] h-[32px] rounded-[8px] bg-transparent transition-colors duration-100 group-hover:bg-[var(--item-hover-bg)] group-focus:bg-[var(--item-hover-bg)] group-data-[highlighted]:bg-[var(--item-hover-bg)] group-hover:duration-0" />
+    <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] h-[32px] rounded-[8px] bg-transparent group-hover:bg-[var(--item-hover-bg)] group-focus:bg-[var(--item-hover-bg)] group-data-[highlighted]:bg-[var(--item-hover-bg)] group-hover:duration-0" />
 
     {/* Item Content Layer */}
     <div className="relative z-10 flex w-full items-center justify-between gap-2.5 group-hover:text-[var(--text-primary)] group-data-[highlighted]:text-[var(--text-primary)] whitespace-nowrap">
@@ -81,7 +81,7 @@ export const ContextMenuSubTrigger: React.FC<
     {...props}
   >
     {/* Inner Hover Pill */}
-    <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] h-[32px] rounded-[8px] bg-transparent transition-colors duration-100 group-hover:bg-[var(--item-hover-bg)] group-focus:bg-[var(--item-hover-bg)] group-data-[highlighted]:bg-[var(--item-hover-bg)] group-data-[state=open]:bg-[var(--item-hover-bg)] group-hover:duration-0" />
+    <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] h-[32px] rounded-[8px] bg-transparent group-hover:bg-[var(--item-hover-bg)] group-focus:bg-[var(--item-hover-bg)] group-data-[highlighted]:bg-[var(--item-hover-bg)] group-data-[state=open]:bg-[var(--item-hover-bg)] group-hover:duration-0" />
 
     {/* Item Content Layer */}
     <div className="relative z-10 flex w-full items-center justify-between gap-2.5 group-hover:text-[var(--text-primary)] group-data-[highlighted]:text-[var(--text-primary)] whitespace-nowrap">

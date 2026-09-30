@@ -16,6 +16,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/ui/ContextMenu';
+import { SubmenuArrow } from '@/ui/SubmenuArrow';
 
 export interface InboxItemActions {
   onToggleRead: (item: InboxItem) => void;
@@ -115,9 +116,12 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
               <LinearClockOutlineIcon size={16} />
               Snooze
             </span>
-            <MenuKey>H</MenuKey>
+            <span className="flex items-center gap-2">
+              <MenuKey>H</MenuKey>
+              <SubmenuArrow />
+            </span>
           </ContextMenuSubTrigger>
-          <ContextMenuSubContent style={{ width: '300px', padding: '6px 0px' }}>
+          <ContextMenuSubContent sideOffset={-3} alignOffset={-7} style={{ width: '300px', padding: '6px 0px' }}>
             {snoozeOptions().map((option) => (
               <ContextMenuItem key={option.id} onSelect={() => onSnooze(item, option.until)}>
                 <span>{option.label}</span>

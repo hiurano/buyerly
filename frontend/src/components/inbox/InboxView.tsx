@@ -166,8 +166,14 @@ function inboxFilterFields(
   });
 }
 
+const OPEN_LAYER_SELECTOR = [
+  '[role="menu"]:not([data-state="closed"])',
+  '[role="dialog"]:not(.linear-menu-exit)',
+  '.linear-display-select-menu',
+].join(', ');
+
 const headerButtonClass = (active = false) =>
-  `flex h-7 w-7 shrink-0 items-center justify-center rounded-full outline-none transition-colors ${
+  `flex h-7 w-7 shrink-0 items-center justify-center rounded-full outline-none transition-[border-color,background-color,color,opacity,fill,stroke] duration-150 ease-[ease] ${
     active
       ? 'bg-[var(--item-active-bg)] text-[var(--text-primary)]'
       : 'text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'
@@ -375,7 +381,8 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
       if (isTypingTarget(event.target)) return;
-      if (document.querySelector('[role="menu"], [role="dialog"], .linear-display-select-menu')) return;
+      // A menu still fading out after closing no longer holds the keyboard.
+      if (document.querySelector(OPEN_LAYER_SELECTOR)) return;
       const current = itemsRef.current;
       const index = current.findIndex((item) => item.id === selectedId);
       const selected = index >= 0 ? current[index] : null;
@@ -412,8 +419,10 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
         openFilterMenu('root', filterButtonRef.current);
       }
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    // Capture phase: a Radix menu fading out after a choice still listens for Escape
+    // and would swallow it; open menus are skipped above, so they keep their keys.
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [deleteAll, deleteItem, openFilterMenu, openItem, selectedId, toggleRead]);
 
   const handleUndo = async () => {
