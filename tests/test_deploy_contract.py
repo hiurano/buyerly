@@ -374,8 +374,9 @@ class TestDeployContract(unittest.TestCase):
         )
         self.assertIn("DRILL_DB", self.drill_script)
         self.assertIn("strictly forbidden from using production database", self.drill_script)
-        self.assertIn("information_schema.tables", self.drill_script)
-        self.assertIn("alembic_version", self.drill_script)
+        # Schema, data and application checks run in the release's own code
+        # (tests/test_restore_check.py), not as table-name probes in shell.
+        self.assertIn("python -m database.restore_check", self.drill_script)
 
     def test_ci_test_shards_cover_every_test_exactly_once(self):
         """Every test must land in exactly one CI shard.

@@ -1,9 +1,20 @@
 #!/usr/bin/env bash
+# Restores a local backup into a throwaway database next to production and
+# checks, stage by stage, that the running release could work on it (#204):
+#
+#   1. archive      restore_db.sh decrypts and unpacks it, finds pg_dump's end
+#                   marker and applies it in one transaction;
+#   2-5.            python -m database.restore_check in the API container:
+#                   schema version (policy in that module), schema contract,
+#                   data (foreign keys, users, workspaces), application read.
+#
+#   bash scripts/drill_restore.sh [backup file]
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_DIR="${BACKUP_DIR:-/opt/buyerly/backups}"
 POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-buyerly-db}"
+API_CONTAINER="${API_CONTAINER:-buyerly-api}"
 POSTGRES_USER="${POSTGRES_USER:-buyerly}"
 DRILL_DB="${DRILL_DB:-buyerly_restore_drill}"
 BACKUP_FILE="${1:-}"
@@ -20,12 +31,14 @@ echo " Container:      ${POSTGRES_CONTAINER}"
 echo " Ephemeral DB:   ${DRILL_DB}"
 echo "=================================================="
 
-# Check PostgreSQL container
-postgres_state=$(docker inspect -f '{{.State.Status}}' "${POSTGRES_CONTAINER}" 2>/dev/null || true)
-if [[ "${postgres_state}" != "running" ]]; then
-    echo "[ERROR] PostgreSQL container '${POSTGRES_CONTAINER}' is not running (state: '${postgres_state:-missing}')."
-    exit 1
-fi
+# The database holds the sandbox; the API container runs the release's checks.
+for container in "${POSTGRES_CONTAINER}" "${API_CONTAINER}"; do
+    state=$(docker inspect -f '{{.State.Status}}' "${container}" 2>/dev/null || true)
+    if [[ "${state}" != "running" ]]; then
+        echo "[ERROR] Container '${container}' is not running (state: '${state:-missing}')."
+        exit 1
+    fi
+done
 
 # Locate backup file if not explicitly provided
 if [[ -z "${BACKUP_FILE}" ]]; then
@@ -62,49 +75,24 @@ docker exec "${POSTGRES_CONTAINER}" psql \
     --dbname="postgres" \
     --command="CREATE DATABASE ${DRILL_DB};"
 
-echo "[INFO] Executing restore into sandbox database..."
-POSTGRES_CONTAINER="${POSTGRES_CONTAINER}" \
-POSTGRES_DB="${DRILL_DB}" \
-POSTGRES_USER="${POSTGRES_USER}" \
-bash "${SCRIPT_DIR}/restore_db.sh" --file "${BACKUP_FILE}" --target-container "${POSTGRES_CONTAINER}" --target-db "${DRILL_DB}" --target-user "${POSTGRES_USER}" --yes
-
-echo "[INFO] Running schema and integrity assertions..."
-
-# 1. Check essential tables
-required_tables=("accounts" "rule_presets" "rule_groups" "automation_runtime_states" "audit_events" "analytics_entity_daily_facts" "users" "workspaces" "alembic_version")
-for table in "${required_tables[@]}"; do
-    exists=$(docker exec "${POSTGRES_CONTAINER}" psql \
-        --username="${POSTGRES_USER}" \
-        --dbname="${DRILL_DB}" \
-        --tuples-only \
-        --no-align \
-        --command="SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = '${table}';")
-    if [[ "${exists}" != "1" ]]; then
-        echo "[ERROR] Sanity check failed: required table '${table}' is missing after restore."
-        exit 1
-    fi
-done
-
-# 2. Check Alembic version presence
-alembic_rev=$(docker exec "${POSTGRES_CONTAINER}" psql \
-    --username="${POSTGRES_USER}" \
-    --dbname="${DRILL_DB}" \
-    --tuples-only \
-    --no-align \
-    --command="SELECT version_num FROM alembic_version LIMIT 1;")
-if [[ -z "${alembic_rev}" ]]; then
-    echo "[ERROR] Sanity check failed: alembic_version table is empty."
+echo "[INFO] Stage 1/5 archive: restoring into the sandbox database..."
+if ! POSTGRES_CONTAINER="${POSTGRES_CONTAINER}" \
+    POSTGRES_DB="${DRILL_DB}" \
+    POSTGRES_USER="${POSTGRES_USER}" \
+    bash "${SCRIPT_DIR}/restore_db.sh" --file "${BACKUP_FILE}" --target-container "${POSTGRES_CONTAINER}" --target-db "${DRILL_DB}" --target-user "${POSTGRES_USER}" --yes; then
+    echo "  [FAIL] archive: the backup did not decrypt, unpack or apply."
+    echo "[FAIL] Restore drill failed at the archive stage."
     exit 1
 fi
-echo "[INFO] Restored database Alembic revision: ${alembic_rev}"
+echo "  [OK]   archive: decrypted, unpacked, complete dump applied in one transaction"
 
-# 3. Check JSONB query functionality
-docker exec "${POSTGRES_CONTAINER}" psql \
-    --username="${POSTGRES_USER}" \
-    --dbname="${DRILL_DB}" \
-    --command="SELECT count(*) FROM automation_runtime_states WHERE jsonb_typeof(payload) = 'object';" >/dev/null
+echo "[INFO] Stages 2-5 in ${API_CONTAINER} with the release's migrations and models:"
+if ! docker exec "${API_CONTAINER}" python -m database.restore_check --database "${DRILL_DB}"; then
+    echo "[FAIL] Restore drill failed: the backup unpacks, but this release cannot run on the restored database."
+    exit 1
+fi
 
 echo "=================================================="
-echo " [SUCCESS] Restore drill completed successfully!"
-echo " Backup integrity and schema invariants verified."
+echo " [SUCCESS] The backup restores into a database this release can run on:"
+echo " archive, schema version, schema contract, data and application read passed."
 echo "=================================================="
