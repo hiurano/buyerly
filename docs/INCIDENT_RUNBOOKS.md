@@ -103,3 +103,9 @@ a fully successful result.
    ```
 6. Verify `/health/ready` returns 200 and all worker heartbeats are active.
 
+What this restores: the PostgreSQL database as of the newest nightly (03:00 server time) or pre-deploy
+backup. Not included: the `buyerly-uploads` volume (avatars, workspace logos) — users re-upload them.
+`META_TOKEN_ENCRYPTION_KEY` must be the old value from the lost `.env`, or every stored Meta connection
+has to be re-authorized. Rehearse this path without touching production with
+`sudo bash scripts/offsite_restore_drill.sh --negative` (see `DEPLOYMENT.md`).
+

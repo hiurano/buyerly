@@ -465,5 +465,48 @@ class OffsiteDownloadTests(unittest.TestCase):
         self.assertFalse(dest.exists())
 
 
+
+class OffsiteErrorTests(unittest.TestCase):
+    """A storage error is reported as such, not as "no backups"."""
+
+    def setUp(self):
+        self.module = load_offsite_sync()
+        denied = (403, b"<Error><Code>AccessDenied</Code></Error>", {})
+        patches = [
+            mock.patch.object(self.module.S3Client, "_request", lambda *args, **kwargs: denied),
+            mock.patch.dict(os.environ, {
+                "S3_ENDPOINT_URL": "https://r2.example.test",
+                "S3_BUCKET": "b",
+                "S3_ACCESS_KEY_ID": "a",
+                "S3_SECRET_ACCESS_KEY": "s",
+            }),
+        ]
+        for patch in patches:
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def run_main(self, *args):
+        with mock.patch("sys.argv", ["offsite_sync.py", *args]), \
+                contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            code = self.module.main()
+        return code, err.getvalue()
+
+    def test_denied_listing_fails_with_the_http_status(self):
+        for args in (("--download-latest", "--dest-dir", "."), ("--list",)):
+            with self.subTest(args=args):
+                code, err = self.run_main(*args)
+
+                self.assertEqual(code, 1)
+                self.assertIn("HTTP 403", err)
+                self.assertNotIn("No remote backups found", err)
+
+    def test_denied_listing_only_skips_pruning(self):
+        client = self.module.S3Client("https://r2.example.test", "b", "a", "s")
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(client.prune_old_backups(), 0)
+        self.assertIn("Skipping prune", err.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()
