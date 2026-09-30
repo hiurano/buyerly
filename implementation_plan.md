@@ -54,7 +54,7 @@ C20 желательно завершить до C17/C18, чтобы visual gate
 | C03 Async workspace/account state | — | Средний | [PR #179](https://github.com/hiurano/buyerly/pull/179): слит, `d9fd84d`, post-merge CI/CD зелёный |
 | C04 Parent hierarchy contract | C01 | Малый | [PR #184](https://github.com/hiurano/buyerly/pull/184): слит, `e986ed8`, post-merge CI/CD зелёный со второй попытки |
 | C05 Timezone drill-down | C04 | Средний | [PR #206](https://github.com/hiurano/buyerly/pull/206): слит, `44e03d2`, post-merge CI/CD зелёный |
-| C06 Backup cron environment | — | Средний | Ожидает |
+| C06 Backup cron environment | — | Средний | PR открыт, ветка `fix/backup-cron-environment` (#197) |
 | C07 Atomic backup/restore formats | C06 | Средний | Ожидает |
 | C08 Полнота DR | C07 | Несколько PR | Ожидает |
 | C09 Python dependency lock | — | Средний | Ожидает |
@@ -243,6 +243,21 @@ root/non-root и timezone расписания.
 `deploy.sh`, без encryption и offsite: `S3_*` и `BACKUP_ENCRYPTION_KEY` есть
 только в `.env`. До [PR #185](https://github.com/hiurano/buyerly/pull/185)
 `git clean -ffd` на шаге 2 сразу удалял и этот архив: `backups/` не был в `.gitignore`.
+
+Реализация C06 (#197), ветка `fix/backup-cron-environment`. Общий
+`scripts/backup_env.sh` читает из `.env` только семь ключей бэкапа
+(`BACKUP_ENCRYPTION_KEY`, `S3_*`, `OFFSITE_RETENTION_DAYS`) как текст, без `source`;
+непустое значение из environment главнее. Его подключают `backup_db.sh` (cron и шаг 1
+`deploy.sh`) и `restore_db.sh` (runbook DR). Offsite включается заполненными
+`S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY`; тогда пустой endpoint/bucket/secret или
+отсутствие ключа шифрования — ошибка до дампа, а не тихий локальный plaintext.
+`backup_db.sh --check-config` печатает режим без значений. `setup_backup_cron.sh`
+перед установкой прогоняет эту проверку в `env -i`, передаёт `BUYERLY_ENV_FILE`
+в строку cron, пишет лог non-root в `~/.local/state/buyerly/backup.log` и
+называет время «03:00 server time»: cron берёт часовой пояс системы, на VPS это EEST.
+Проверки: `tests/test_backup_env.py` (12) с fake docker/python3/crontab в пустом
+environment, на старых скриптах падают 11 из 12; `bash -n`, ShellCheck без новых замечаний.
+Cron на VPS этот PR не ставит.
 
 ### C07 — Atomic backup и правильный restore format (A07)
 

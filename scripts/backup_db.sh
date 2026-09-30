@@ -7,8 +7,61 @@ DATA_DIR="${DATA_DIR:-/opt/buyerly/data}"
 POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-buyerly-db}"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 KEEP_BACKUPS="${KEEP_BACKUPS:-30}"
-OFFSITE_RETENTION_DAYS="${OFFSITE_RETENTION_DAYS:-60}"
 BACKUP_LOCK_FILE="${BACKUP_LOCK_FILE:-/tmp/buyerly-backup.lock}"
+
+CHECK_CONFIG_ONLY=false
+case "${1:-}" in
+    "") ;;
+    --check-config) CHECK_CONFIG_ONLY=true ;;
+    *)
+        echo "Usage: $0 [--check-config]"
+        exit 1
+        ;;
+esac
+
+# shellcheck source=scripts/backup_env.sh
+source "${SCRIPT_DIR}/backup_env.sh"
+load_backup_env
+OFFSITE_RETENTION_DAYS="${OFFSITE_RETENTION_DAYS:-60}"
+
+# Offsite is on as soon as S3 credentials are filled in (.env.example ships
+# the endpoint and bucket, not the keys). From then on a missing piece is an
+# error: the old code quietly skipped the upload, and a nightly job that
+# looks fine but never leaves the box is worse than one that fails.
+offsite_enabled=false
+config_errors=()
+if [[ -n "${S3_ACCESS_KEY_ID:-}" || -n "${S3_SECRET_ACCESS_KEY:-}" ]]; then
+    offsite_enabled=true
+    missing_s3=$(missing_offsite_keys)
+    if [[ -n "${missing_s3}" ]]; then
+        config_errors+=("off-site upload is configured, but these are empty: ${missing_s3}")
+    fi
+    if [[ -z "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
+        config_errors+=("off-site upload needs BACKUP_ENCRYPTION_KEY; plaintext dumps are not sent off the server")
+    fi
+fi
+if [[ ! "${OFFSITE_RETENTION_DAYS}" =~ ^[1-9][0-9]*$ ]]; then
+    config_errors+=("OFFSITE_RETENTION_DAYS must be a positive whole number of days")
+fi
+
+# Names and modes only: key values must never reach the cron log.
+encryption_mode="off (BACKUP_ENCRYPTION_KEY is empty, dumps are plaintext)"
+[[ -n "${BACKUP_ENCRYPTION_KEY:-}" ]] && encryption_mode="on"
+offsite_mode="off (S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY are empty)"
+[[ "${offsite_enabled}" == "true" ]] && offsite_mode="on, retention ${OFFSITE_RETENTION_DAYS} days"
+echo "[INFO] Backup settings from ${BACKUP_ENV_SOURCE:-the environment}: encryption ${encryption_mode}; off-site ${offsite_mode}."
+
+if (( ${#config_errors[@]} > 0 )); then
+    for error in "${config_errors[@]}"; do
+        echo "[ERROR] ${error}." >&2
+    done
+    echo "[ERROR] Backup settings are incomplete; no backup was made." >&2
+    exit 1
+fi
+if [[ "${CHECK_CONFIG_ONLY}" == "true" ]]; then
+    echo "[SUCCESS] Backup settings are consistent."
+    exit 0
+fi
 
 # Concurrency lock to prevent race conditions
 exec 9>"${BACKUP_LOCK_FILE}"
@@ -75,14 +128,16 @@ ls -tp "${BACKUP_DIR}"/${pattern} 2>/dev/null \
     | tail -n +$((KEEP_BACKUPS + 1)) \
     | xargs -r rm -f --
 
-# Off-site S3 synchronization if configured
-if [[ -n "${S3_BUCKET:-}" && -n "${S3_ACCESS_KEY_ID:-}" && -n "${S3_SECRET_ACCESS_KEY:-}" ]]; then
+offsite_result="off"
+if [[ "${offsite_enabled}" == "true" ]]; then
     echo "[INFO] Triggering off-site S3 backup sync..."
     if python3 "${SCRIPT_DIR}/offsite_sync.py" --upload "${target_file}" --prune --retention-days "${OFFSITE_RETENTION_DAYS}"; then
         echo "[SUCCESS] Off-site S3 backup sync completed."
+        offsite_result="uploaded"
     else
         echo "[WARNING] Off-site S3 sync failed, but local backup is verified and intact."
+        offsite_result="FAILED"
     fi
 fi
 
-echo "[SUCCESS] Database backup created and verified: ${target_file}"
+echo "[SUCCESS] Database backup created and verified: ${target_file} (off-site: ${offsite_result})"

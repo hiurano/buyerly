@@ -50,7 +50,18 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# The key and S3 settings live in .env, like for backup_db.sh; the disaster
+# recovery runbook fills in .env and then runs this script.
+# shellcheck source=scripts/backup_env.sh
+source "${SCRIPT_DIR}/backup_env.sh"
+load_backup_env
+
 if [[ "${DOWNLOAD_LATEST_OFFSITE}" == "true" ]]; then
+    missing_s3=$(missing_offsite_keys)
+    if [[ -n "${missing_s3}" ]]; then
+        echo "[ERROR] Off-site download needs these settings, which are empty: ${missing_s3}."
+        exit 1
+    fi
     mkdir -p "${BACKUP_DIR}"
     echo "[INFO] Downloading the latest backup from off-site S3 storage..."
     latest_download="${BACKUP_DIR}/latest_offsite_restore.sql.gz.enc"
@@ -95,7 +106,7 @@ trap 'rm -rf -- "${work_dir}"' EXIT
 
 if [[ "${FILE_PATH}" =~ \.enc$ ]]; then
     if [[ -z "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
-        echo "[ERROR] BACKUP_ENCRYPTION_KEY environment variable is required to decrypt ${FILE_PATH}."
+        echo "[ERROR] BACKUP_ENCRYPTION_KEY (environment or ${BACKUP_ENV_SOURCE:-.env}) is required to decrypt ${FILE_PATH}."
         exit 1
     fi
     echo "[INFO] Decrypting and verifying encrypted archive..."
