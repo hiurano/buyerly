@@ -162,7 +162,7 @@ class RestoreCheckTests(unittest.IsolatedAsyncioTestCase):
         for stage in ("schema version", "schema contract", "data", "application read"):
             self.assertIn(f"[OK]   {stage}:", output)
         self.assertIn(f"revision {head_revision()} is this release's head", output)
-        self.assertIn("1 Meta tokens decrypt", output)
+        self.assertIn("Meta tokens decrypt: 1 of 1", output)
         self.assertNotIn("control-token", output)
 
     async def test_fictitious_schema_from_the_issue_fails(self):
@@ -278,7 +278,7 @@ class RestoreCheckTests(unittest.IsolatedAsyncioTestCase):
         ok, output = await self.run_check()
 
         self.assertFalse(ok)
-        self.assertIn("[FAIL] data: 0 users and 0 workspaces", output)
+        self.assertIn("[FAIL] data: users 0, workspaces 0", output)
 
     async def test_tokens_the_release_cannot_decrypt_fail_the_application_read(self):
         await upgrade(self.engine)
@@ -442,6 +442,10 @@ class DrillScriptTests(unittest.IsolatedAsyncioTestCase):
         for stage in ("archive", "schema version", "schema contract", "data", "application read"):
             self.assertIn(f"[OK]   {stage}:", output)
         self.assertIn("[SUCCESS] The backup restores", output)
+        # One line per stage: restore_db.sh's log and psql's query results
+        # (a setval per sequence) stay out of a passing drill.
+        self.assertNotIn("setval", output)
+        self.assertNotIn("Target database:", output)
 
     async def test_fictitious_schema_from_the_issue_fails_the_drill(self):
         await reset_schema(self.engine)
@@ -460,6 +464,20 @@ class DrillScriptTests(unittest.IsolatedAsyncioTestCase):
                 self.assertIn("[FAIL] schema version:", output)
                 self.assertNotIn("[SUCCESS] The backup restores", output)
                 backup.unlink()
+
+    async def test_damaged_archive_fails_the_drill_and_shows_why(self):
+        await upgrade(self.engine)
+        await add_control_records(self.engine)
+        backup = self.backup(key="drill key")
+        backup.write_bytes(backup.read_bytes()[: backup.stat().st_size // 2])
+
+        drill = self.run_script("drill_restore.sh", str(backup), key="drill key")
+
+        output = drill.stdout + drill.stderr
+        self.assertNotEqual(drill.returncode, 0, output)
+        self.assertIn("[FAIL] archive:", output)
+        self.assertIn("Target database was not changed", output)
+        self.assertNotIn("[SUCCESS]", output)
 
 
 if __name__ == "__main__":

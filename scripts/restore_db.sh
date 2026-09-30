@@ -183,7 +183,8 @@ fi
 
 # One transaction: an SQL error part-way through (disk full, incompatible
 # schema, lock conflict) rolls everything back, so the target keeps its old
-# data instead of being left half-dropped.
+# data instead of being left half-dropped. Query results (setval and the
+# like) are discarded; errors still reach stderr.
 echo "[INFO] Applying dump in a single transaction..."
 if ! docker exec -i "${POSTGRES_CONTAINER}" psql \
         --username="${POSTGRES_USER}" \
@@ -191,7 +192,7 @@ if ! docker exec -i "${POSTGRES_CONTAINER}" psql \
         --no-psqlrc \
         --set=ON_ERROR_STOP=1 \
         --single-transaction \
-        --quiet < "${dump_file}"; then
+        --quiet < "${dump_file}" >/dev/null; then
     echo "[ERROR] Restore failed and was rolled back. Target database '${POSTGRES_DB}' keeps its previous data."
     exit 1
 fi
