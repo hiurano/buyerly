@@ -54,8 +54,8 @@ C20 желательно завершить до C17/C18, чтобы visual gate
 | C03 Async workspace/account state | — | Средний | [PR #179](https://github.com/hiurano/buyerly/pull/179): слит, `d9fd84d`, post-merge CI/CD зелёный |
 | C04 Parent hierarchy contract | C01 | Малый | [PR #184](https://github.com/hiurano/buyerly/pull/184): слит, `e986ed8`, post-merge CI/CD зелёный со второй попытки |
 | C05 Timezone drill-down | C04 | Средний | [PR #206](https://github.com/hiurano/buyerly/pull/206): слит, `44e03d2`, post-merge CI/CD зелёный |
-| C06 Backup cron environment | — | Средний | PR открыт, ветка `fix/backup-cron-environment` (#197) |
-| C07 Atomic backup/restore formats | C06 | Средний | PR открыт, ветка `fix/backup-artifact-integrity` (#198) |
+| C06 Backup cron environment | — | Средний | [PR #249](https://github.com/hiurano/buyerly/pull/249): слит, `63bdcd5`, post-merge CI/CD зелёный |
+| C07 Atomic backup/restore formats | C06 | Средний | [PR #250](https://github.com/hiurano/buyerly/pull/250) (#198) |
 | C08 Полнота DR | C07 | Несколько PR | Ожидает |
 | C09 Python dependency lock | — | Средний | Ожидает |
 | C10 API/test dependencies | C01, C02 | Средний | Ожидает |
