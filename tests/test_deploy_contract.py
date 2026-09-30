@@ -364,6 +364,14 @@ class TestDeployContract(unittest.TestCase):
     def test_database_restore_and_drill_contracts(self):
         self.assertIn("openssl enc -d -aes-256-cbc", self.restore_script)
         self.assertIn("ON_ERROR_STOP=1", self.restore_script)
+        self.assertIn("--single-transaction", self.restore_script)
+        self.assertIn("-- PostgreSQL database dump complete", self.restore_script)
+        # The archive is decoded and checked before psql runs, never streamed into it.
+        self.assertNotRegex(self.restore_script, r"gzip -dc[^\n]*\\\n\s*\|\s*docker exec")
+        self.assertLess(
+            self.restore_script.index("dump complete"),
+            self.restore_script.index("docker exec -i"),
+        )
         self.assertIn("DRILL_DB", self.drill_script)
         self.assertIn("strictly forbidden from using production database", self.drill_script)
         self.assertIn("information_schema.tables", self.drill_script)

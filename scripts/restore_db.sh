@@ -81,6 +81,51 @@ echo " Target database:  ${POSTGRES_DB}"
 echo " Target user:      ${POSTGRES_USER}"
 echo "=================================================="
 
+
+# The archive is decoded and checked in full before the target database is
+# touched: a truncated file, a corrupted gzip stream or a wrong key must fail
+# while the old data is still intact. Streaming straight into psql would
+# apply the first part of the dump before the error at the end is noticed.
+# The decoded dump goes next to the archive (disk), not to /tmp, which may be
+# RAM-backed on a small box.
+RESTORE_WORK_DIR="${RESTORE_WORK_DIR:-$(dirname "${FILE_PATH}")}"
+umask 077
+work_dir=$(mktemp -d "${RESTORE_WORK_DIR}/.buyerly_restore.XXXXXX")
+trap 'rm -rf -- "${work_dir}"' EXIT
+
+if [[ "${FILE_PATH}" =~ \.enc$ ]]; then
+    if [[ -z "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
+        echo "[ERROR] BACKUP_ENCRYPTION_KEY environment variable is required to decrypt ${FILE_PATH}."
+        exit 1
+    fi
+    echo "[INFO] Decrypting and verifying encrypted archive..."
+    if ! openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 -pass "env:BACKUP_ENCRYPTION_KEY" \
+            -in "${FILE_PATH}" -out "${work_dir}/dump.sql.gz" \
+            || ! gzip -dc "${work_dir}/dump.sql.gz" > "${work_dir}/dump.sql"; then
+        echo "[ERROR] Cannot decrypt or decompress ${FILE_PATH} (wrong key or damaged archive). Target database was not changed."
+        exit 1
+    fi
+    rm -f -- "${work_dir}/dump.sql.gz"
+    dump_file="${work_dir}/dump.sql"
+elif [[ "${FILE_PATH}" =~ \.gz$ ]]; then
+    echo "[INFO] Decompressing and verifying gzipped archive..."
+    if ! gzip -dc "${FILE_PATH}" > "${work_dir}/dump.sql"; then
+        echo "[ERROR] Cannot decompress ${FILE_PATH} (damaged archive). Target database was not changed."
+        exit 1
+    fi
+    dump_file="${work_dir}/dump.sql"
+else
+    dump_file="${FILE_PATH}"
+fi
+
+# pg_dump writes this trailer only after the whole dump was produced, so its
+# absence means the dump itself was cut short even if the archive is valid.
+if ! tail -c 4096 "${dump_file}" | grep -qx -- '-- PostgreSQL database dump complete'; then
+    echo "[ERROR] ${FILE_PATH} is not a complete pg_dump (end-of-dump marker missing). Target database was not changed."
+    exit 1
+fi
+echo "[INFO] Archive verified: complete pg_dump."
+
 if [[ "${CONFIRM_YES}" != "true" ]]; then
     read -r -p "WARNING: Restoring will overwrite existing data in '${POSTGRES_DB}'. Continue? [y/N]: " answer
     if [[ "${answer}" != [yY] && "${answer}" != [yY][eE][sS] ]]; then
@@ -95,35 +140,19 @@ if [[ "${postgres_state}" != "running" ]]; then
     exit 1
 fi
 
-echo "[INFO] Starting stream restoration..."
-if [[ "${FILE_PATH}" =~ \.enc$ ]]; then
-    if [[ -z "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
-        echo "[ERROR] BACKUP_ENCRYPTION_KEY environment variable is required to decrypt ${FILE_PATH}."
-        exit 1
-    fi
-    echo "[INFO] Decrypting and restoring encrypted archive..."
-    openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 -pass "env:BACKUP_ENCRYPTION_KEY" -in "${FILE_PATH}" \
-        | gzip -dc \
-        | docker exec -i "${POSTGRES_CONTAINER}" psql \
-            --username="${POSTGRES_USER}" \
-            --dbname="${POSTGRES_DB}" \
-            --set=ON_ERROR_STOP=1 \
-            --quiet
-elif [[ "${FILE_PATH}" =~ \.gz$ ]]; then
-    echo "[INFO] Decompressing and restoring gzipped archive..."
-    gzip -dc "${FILE_PATH}" \
-        | docker exec -i "${POSTGRES_CONTAINER}" psql \
-            --username="${POSTGRES_USER}" \
-            --dbname="${POSTGRES_DB}" \
-            --set=ON_ERROR_STOP=1 \
-            --quiet
-else
-    echo "[INFO] Restoring plain SQL dump..."
-    docker exec -i "${POSTGRES_CONTAINER}" psql \
+# One transaction: an SQL error part-way through (disk full, incompatible
+# schema, lock conflict) rolls everything back, so the target keeps its old
+# data instead of being left half-dropped.
+echo "[INFO] Applying dump in a single transaction..."
+if ! docker exec -i "${POSTGRES_CONTAINER}" psql \
         --username="${POSTGRES_USER}" \
         --dbname="${POSTGRES_DB}" \
+        --no-psqlrc \
         --set=ON_ERROR_STOP=1 \
-        --quiet < "${FILE_PATH}"
+        --single-transaction \
+        --quiet < "${dump_file}"; then
+    echo "[ERROR] Restore failed and was rolled back. Target database '${POSTGRES_DB}' keeps its previous data."
+    exit 1
 fi
 
 echo "[SUCCESS] PostgreSQL database '${POSTGRES_DB}' restored successfully from ${FILE_PATH}."
