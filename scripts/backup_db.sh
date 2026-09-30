@@ -73,6 +73,9 @@ fi
 # Dumps stay on disk and are plaintext without BACKUP_ENCRYPTION_KEY.
 umask 077
 mkdir -p "${BACKUP_DIR}"
+# We hold the lock, so any unfinished file is from a run that was killed
+# before its trap could fire (SIGKILL, power loss).
+rm -f -- "${BACKUP_DIR}"/.incomplete_buyerly_postgres_*
 
 postgres_state=$(docker inspect -f '{{.State.Status}}' "${POSTGRES_CONTAINER}" 2>/dev/null || true)
 if [[ "${postgres_state}" != "running" ]]; then
@@ -80,32 +83,53 @@ if [[ "${postgres_state}" != "running" ]]; then
     exit 0
 fi
 
-if [[ -n "${BACKUP_ENCRYPTION_KEY:-}" ]]; then
-    target_file="${BACKUP_DIR}/buyerly_postgres_${TIMESTAMP}.sql.gz.enc"
-    echo "[INFO] Creating encrypted PostgreSQL backup: ${target_file}"
-    docker exec "${POSTGRES_CONTAINER}" pg_dump \
-        --username=buyerly \
-        --dbname=buyerly \
-        --clean \
-        --if-exists \
-        --no-owner \
-        --no-privileges \
-        | gzip -c \
-        | openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -salt -pass "env:BACKUP_ENCRYPTION_KEY" > "${target_file}"
-else
-    target_file="${BACKUP_DIR}/buyerly_postgres_${TIMESTAMP}.sql.gz"
-    echo "[INFO] Creating PostgreSQL backup: ${target_file}"
-    docker exec "${POSTGRES_CONTAINER}" pg_dump \
-        --username=buyerly \
-        --dbname=buyerly \
-        --clean \
-        --if-exists \
-        --no-owner \
-        --no-privileges \
-        | gzip -c > "${target_file}"
-    gzip -t "${target_file}"
-fi
+target_name="buyerly_postgres_${TIMESTAMP}.sql.gz"
+[[ -n "${BACKUP_ENCRYPTION_KEY:-}" ]] && target_name="${target_name}.enc"
+target_file="${BACKUP_DIR}/${target_name}"
+# The dump is written under a name that restore --latest-local and rotation
+# never match, checked, and only then renamed into place (same directory, so
+# the rename is atomic). A dump cut short by a pg_dump, gzip, openssl or disk
+# error is removed instead of looking like the newest good backup.
+partial_file="${BACKUP_DIR}/.incomplete_${target_name}"
+trap 'rm -f -- "${partial_file}"' EXIT
 
+dump_database() {
+    docker exec "${POSTGRES_CONTAINER}" pg_dump \
+        --username=buyerly \
+        --dbname=buyerly \
+        --clean \
+        --if-exists \
+        --no-owner \
+        --no-privileges
+}
+
+# Reads the archive back the way restore_db.sh does and checks pg_dump's
+# end-of-dump trailer, so a truncated dump is caught even when the gzip and
+# encryption layers around it are intact.
+archive_is_complete() {
+    if [[ "$1" == *.enc ]]; then
+        openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 -pass "env:BACKUP_ENCRYPTION_KEY" -in "$1" | gzip -dc
+    else
+        gzip -dc "$1"
+    fi | tail -c 4096 | grep -qx -- '-- PostgreSQL database dump complete'
+}
+
+echo "[INFO] Creating PostgreSQL backup: ${target_file}"
+if [[ "${target_name}" == *.enc ]]; then
+    if ! dump_database | gzip -c \
+            | openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -salt -pass "env:BACKUP_ENCRYPTION_KEY" > "${partial_file}"; then
+        echo "[ERROR] pg_dump, gzip or encryption failed; no backup was published." >&2
+        exit 1
+    fi
+elif ! dump_database | gzip -c > "${partial_file}"; then
+    echo "[ERROR] pg_dump or gzip failed; no backup was published." >&2
+    exit 1
+fi
+if ! archive_is_complete "${partial_file}"; then
+    echo "[ERROR] The new archive does not read back as a complete pg_dump; no backup was published." >&2
+    exit 1
+fi
+mv -f -- "${partial_file}" "${target_file}"
 test -s "${target_file}"
 backup_completed_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 if docker exec "${POSTGRES_CONTAINER}" psql \
