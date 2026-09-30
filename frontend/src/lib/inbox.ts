@@ -5,6 +5,8 @@ import type { AuditEventItem } from './audit';
 export interface InboxItem extends AuditEventItem {
   is_read: boolean;
   snoozed_until: string | null;
+  /** When the snooze ran out, while the notification waits unread on top. */
+  unsnoozed_at: string | null;
 }
 
 export interface InboxListResponse {
@@ -142,6 +144,91 @@ export function formatInboxAge(value: string, now: number = Date.now()): string 
   const weeks = Math.floor(days / 7);
   if (weeks < 5) return `${weeks}w`;
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(parsed);
+}
+
+const MINUTE_MS = 60_000;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
+const WEEK_MS = 7 * DAY_MS;
+const MONTH_MS = 4.35 * WEEK_MS;
+const YEAR_MS = 12 * MONTH_MS;
+
+type DistanceUnit = 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year';
+
+const SHORT_UNITS: Record<DistanceUnit, string> = {
+  minute: 'min', hour: 'h', day: 'd', week: 'w', month: 'mo', year: 'y',
+};
+
+/** Linear rounds a part up once it is two thirds of the way to the next one. */
+function roundTwoThirds(value: number): number {
+  const whole = Math.floor(value);
+  return Math.max(1, whole + (value - whole >= 0.66 ? 1 : 0));
+}
+
+/** Linear's distance between two times as [amount, unit], or null under a minute. */
+function linearDistance(ms: number): [number, DistanceUnit] | null {
+  if (ms < MINUTE_MS) return null;
+  if (ms < HOUR_MS) {
+    const minutes = Math.round(ms / MINUTE_MS);
+    return minutes === 60 ? [1, 'hour'] : [minutes, 'minute'];
+  }
+  if (ms < 8 * HOUR_MS) {
+    const hours = Math.floor(ms / HOUR_MS);
+    const minutes = Math.round((ms - hours * HOUR_MS) / MINUTE_MS);
+    return [minutes >= 0.66 * 60 ? hours + 1 : hours, 'hour'];
+  }
+  if (ms < DAY_MS) return [Math.round(ms / HOUR_MS), 'hour'];
+  if (ms < 5 * DAY_MS) {
+    const days = Math.floor(ms / DAY_MS);
+    const hours = Math.round((ms - days * DAY_MS) / HOUR_MS);
+    return [hours >= 0.66 * 24 ? days + 1 : days, 'day'];
+  }
+  if (ms < MONTH_MS) {
+    const days = Math.round(ms / DAY_MS);
+    return days % 7 === 0 ? [days / 7, 'week'] : [days, 'day'];
+  }
+  if (ms < 10 * WEEK_MS) return [roundTwoThirds(ms / WEEK_MS), 'week'];
+  if (ms < YEAR_MS) {
+    const months = roundTwoThirds(ms / MONTH_MS);
+    return months === 12 ? [1, 'year'] : [months, 'month'];
+  }
+  return [roundTwoThirds(ms / YEAR_MS), 'year'];
+}
+
+/** "Snoozed for 59min", "Snoozed for 2d", "Snoozed for 3w"; under a minute Linear says "Snoozed for now". */
+export function formatSnoozedFor(value: string, now: number = Date.now()): string {
+  const distance = linearDistance(Math.abs(Date.parse(value) - now));
+  return `Snoozed for ${distance ? `${distance[0]}${SHORT_UNITS[distance[1]]}` : 'now'}`;
+}
+
+/** "Unsnoozed just now", "Unsnoozed 2 minutes ago", "Unsnoozed 1 day ago". */
+export function formatUnsnoozedAgo(value: string, now: number = Date.now()): string {
+  const distance = linearDistance(Math.abs(now - Date.parse(value)));
+  if (!distance) return 'Unsnoozed just now';
+  const [amount, unit] = distance;
+  return `Unsnoozed ${amount} ${unit}${amount === 1 ? '' : 's'} ago`;
+}
+
+/** The hover title on those lines: "Oct 3, 9:00 AM", with the year when it is not this one. */
+export function formatInboxMoment(value: string, now: Date = new Date()): string {
+  const date = new Date(value);
+  const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  if (date.getFullYear() !== now.getFullYear()) options.year = 'numeric';
+  const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(date);
+  return `${new Intl.DateTimeFormat('en-US', options).format(date)}, ${time}`;
+}
+
+/** Linear's command search: the letters in order, anywhere ("uz" finds "Unsnooze"). */
+export function matchesTyped(label: string, typed: string): boolean {
+  const letters = typed.trim().toLowerCase().replace(/\s+/g, '');
+  if (!letters) return true;
+  const text = label.toLowerCase();
+  let position = 0;
+  for (const letter of letters) {
+    position = text.indexOf(letter, position) + 1;
+    if (position === 0) return false;
+  }
+  return true;
 }
 
 export interface SnoozeOption {

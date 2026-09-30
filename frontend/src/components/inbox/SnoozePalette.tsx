@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Command } from 'cmdk';
-import { LinearClockOutlineIcon } from '@/icons/LinearIcons';
-import { formatSnoozeTime, snoozeOptions } from '@/lib/inbox';
+import { LinearClockOutlineIcon, LinearTrashIcon } from '@/icons/LinearIcons';
+import { formatSnoozedFor, formatSnoozeTime, matchesTyped, snoozeOptions } from '@/lib/inbox';
 import { parseSnoozeQuery } from '@/lib/snoozeQuery';
 
 interface SnoozePaletteProps {
@@ -12,8 +12,11 @@ interface SnoozePaletteProps {
   notificationLabel: string;
   /** H says "Snooze notification until…", the header button the "Try: …" hint. */
   placeholder: string;
+  /** Set when the notification is snoozed: Unsnooze then comes first. */
+  snoozedUntil: string | null;
   onSnooze: (until: Date) => void;
   onCustom: () => void;
+  onUnsnooze: () => void;
 }
 
 export const SNOOZE_SEARCH_HINT = 'Try: 4 pm, 2 days, in 5 weeks…';
@@ -22,20 +25,24 @@ interface Row {
   id: string;
   label: string;
   hint: string;
+  icon?: React.ReactNode;
   onSelect: () => void;
 }
 
 /**
- * Linear's snooze palette (H or the clock in the open notification): the four
- * ready choices and Custom…, or, once something is typed, what it reads as.
+ * Linear's snooze palette (H or the clock in the open notification): Unsnooze
+ * for a snoozed one, the four ready choices and Custom…, or, once something is
+ * typed, what it reads as plus the named rows whose letters match.
  */
 export const SnoozePalette: React.FC<SnoozePaletteProps> = ({
   open,
   onOpenChange,
   notificationLabel,
   placeholder,
+  snoozedUntil,
   onSnooze,
   onCustom,
+  onUnsnooze,
 }) => {
   const [query, setQuery] = useState('');
   const [active, setActive] = useState('');
@@ -50,17 +57,20 @@ export const SnoozePalette: React.FC<SnoozePaletteProps> = ({
       onOpenChange(false);
       onSnooze(until);
     };
-    if (query.trim()) {
-      return parseSnoozeQuery(query).map((row) => ({ ...row, onSelect: choose(row.until) }));
-    }
-    return [
-      ...snoozeOptions().map((option) => ({
-        id: option.id,
-        label: option.label,
-        hint: formatSnoozeTime(option.until),
-        onSelect: choose(option.until),
-      })),
-      {
+    const unsnooze: Row[] = snoozedUntil && matchesTyped('Unsnooze notification', query)
+      ? [{
+        id: 'unsnooze',
+        label: 'Unsnooze notification',
+        hint: formatSnoozedFor(snoozedUntil),
+        icon: <LinearTrashIcon size={16} />,
+        onSelect: () => {
+          onOpenChange(false);
+          onUnsnooze();
+        },
+      }]
+      : [];
+    const custom: Row[] = matchesTyped('Custom…', query)
+      ? [{
         id: 'custom',
         label: 'Custom…',
         hint: '',
@@ -68,14 +78,18 @@ export const SnoozePalette: React.FC<SnoozePaletteProps> = ({
           onOpenChange(false);
           onCustom();
         },
-      },
-    ];
-  }, [onCustom, onOpenChange, onSnooze, open, query]);
-
-  // Every new reading of the text starts on its first row, as in Linear.
-  useEffect(() => {
-    setActive(rows[0]?.id ?? '');
-  }, [rows]);
+      }]
+      : [];
+    const times = query.trim()
+      ? parseSnoozeQuery(query).map((row) => ({ ...row, onSelect: choose(row.until) }))
+      : snoozeOptions().map((option) => ({
+        id: option.id,
+        label: option.label,
+        hint: formatSnoozeTime(option.until),
+        onSelect: choose(option.until),
+      }));
+    return [...unsnooze, ...times, ...custom];
+  }, [onCustom, onOpenChange, onSnooze, onUnsnooze, open, query, snoozedUntil]);
 
   // Every new reading of the text starts on its first row, as in Linear.
   useEffect(() => {
@@ -118,7 +132,7 @@ export const SnoozePalette: React.FC<SnoozePaletteProps> = ({
                 >
                   <span className="pointer-events-none absolute inset-x-[7px] inset-y-[2px] rounded-[8px] group-data-[selected=true]:bg-[var(--item-hover-bg)]" />
                   <span className="relative z-10 flex min-w-0 flex-1 items-center gap-[12px]">
-                    <span className="text-[var(--text-tertiary)]"><LinearClockOutlineIcon size={16} /></span>
+                    <span className="text-[var(--text-tertiary)]">{row.icon ?? <LinearClockOutlineIcon size={16} />}</span>
                     <span className="truncate">{row.label}</span>
                   </span>
                   {row.hint && (

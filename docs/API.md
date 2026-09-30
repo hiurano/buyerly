@@ -306,12 +306,12 @@ Inbox, как в Linear, показывает события workspace как у
 
 | Метод и путь | Параметры | Назначение |
 |---|---|---|
-| `GET /api/inbox` | `offset`, `limit`, `ordering=newest\|oldest`, `unread_only?`, `show_snoozed?`, `unread_first?`, `filter?` | уведомления активного workspace с полями события плюс `is_read` и `snoozed_until`; `has_more` для подгрузки, `unread_count`, `hidden_by_filters` |
+| `GET /api/inbox` | `offset`, `limit`, `ordering=newest\|oldest`, `unread_only?`, `show_snoozed?`, `unread_first?`, `filter?` | уведомления активного workspace с полями события плюс `is_read`, `snoozed_until` и `unsnoozed_at` (когда кончилась отложка, пока уведомление не прочитано); вернувшееся из отложки стоит по времени возврата; `has_more` для подгрузки, `unread_count`, `hidden_by_filters` |
 | `GET /api/inbox/facets` | `unread_only?`, `show_snoozed?` | значения и счётчики для фильтра: `type`, `from`, `account`, `status` |
 | `GET /api/inbox/unread-count` | — | число непрочитанных для бокового меню и заголовка вкладки |
 | `POST /api/inbox/{event_id}/read` | `{"read": bool}` | отметить прочитанным или непрочитанным |
 | `POST /api/inbox/{event_id}/delete` | — | убрать уведомление из своего Inbox |
-| `POST /api/inbox/{event_id}/snooze` | `{"until": datetime\|null}` | отложить до времени в будущем; вернётся непрочитанным. `null` снимает отложенность |
+| `POST /api/inbox/{event_id}/snooze` | `{"until": datetime\|null}` | отложить до времени в будущем, прочитанность не меняется; когда время придёт, уведомление станет непрочитанным и поднимется наверх. `null` (Unsnooze) снимает отложенность и оставляет уведомление на месте |
 | `POST /api/inbox/delete-all` | — | очистить свой Inbox |
 | `POST /api/inbox/delete-all-read` | — | убрать все прочитанные |
 

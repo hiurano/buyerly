@@ -342,13 +342,21 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
   const snoozeItem = useCallback((item: InboxItem, until: Date) => {
     if (inboxDisplay.showSnoozed) {
       setItems((current) => current.map((entry) => (
-        entry.id === item.id ? { ...entry, is_read: false, snoozed_until: until.toISOString() } : entry
+        entry.id === item.id ? { ...entry, snoozed_until: until.toISOString(), unsnoozed_at: null } : entry
       )));
     } else {
       removeItem(item);
     }
     snoozeInboxNotification(item.id, until).then(applyResponse).catch(reportError);
   }, [applyResponse, inboxDisplay.showSnoozed, removeItem, reportError]);
+
+  // Linear's Unsnooze leaves the notification where it is, read or unread as it was.
+  const unsnoozeItem = useCallback((item: InboxItem) => {
+    setItems((current) => current.map((entry) => (
+      entry.id === item.id ? { ...entry, snoozed_until: null } : entry
+    )));
+    snoozeInboxNotification(item.id, null).then(applyResponse).catch(reportError);
+  }, [applyResponse, reportError]);
 
   const closeSnoozePalette = useCallback((open: boolean) => {
     if (!open) setSnoozePalette(null);
@@ -359,6 +367,10 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
   }, [selectedItem, snoozeItem]);
 
   const customSnoozeSelected = useCallback(() => setCustomSnoozeItem(selectedItem), [selectedItem]);
+
+  const unsnoozeSelected = useCallback(() => {
+    if (selectedItem) unsnoozeItem(selectedItem);
+  }, [selectedItem, unsnoozeItem]);
 
   const deleteAll = useCallback(async (onlyRead: boolean) => {
     try {
@@ -518,6 +530,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
             onDelete={deleteItem}
             onSnooze={snoozeItem}
             onCustomSnooze={setCustomSnoozeItem}
+            onUnsnooze={unsnoozeItem}
           />
         ))}
         {filters.length > 0 && (
@@ -681,8 +694,10 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
                   onOpenChange={closeSnoozePalette}
                   notificationLabel={`${auditEventTitle(selectedItem)}: ${auditEventTarget(selectedItem)}`}
                   placeholder={snoozePalette === 'button' ? SNOOZE_SEARCH_HINT : 'Snooze notification until…'}
+                  snoozedUntil={selectedItem.snoozed_until}
                   onSnooze={snoozeSelected}
                   onCustom={customSnoozeSelected}
+                  onUnsnooze={unsnoozeSelected}
                 />
                 <Tooltip content="Delete notification" shortcut="⌫">
                   <button
