@@ -172,12 +172,23 @@ Alembic/schema contract. Все операции — GET/SELECT; Meta Marketing 
 - По умолчанию локально сохраняются последние 30 архивов в `/opt/buyerly/backups`.
 - При настроенных переменных `S3_ENDPOINT_URL`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION` и `OFFSITE_RETENTION_DAYS` зашифрованный архив автоматически выгружается в удаленное хранилище (Cloudflare R2 / AWS S3 / Backblaze B2) через `scripts/offsite_sync.py` с автоматической ротацией копий старше `OFFSITE_RETENTION_DAYS` дней и защитным порогом (не менее 7 копий).
 
+Откуда берутся настройки. `backup_db.sh` и `restore_db.sh` запускаются на хосте (cron, шаг 1 `deploy.sh`, runbook), куда Compose `.env` не передаёт. Поэтому оба скрипта сами читают из `/opt/buyerly/.env` (другой файл — `BUYERLY_ENV_FILE`) только `BACKUP_ENCRYPTION_KEY`, `S3_ENDPOINT_URL`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION` и `OFFSITE_RETENTION_DAYS`. Файл разбирается как текст, а не выполняется; кавычки и `# комментарий` после значения понимаются как в приложении. Непустое значение, уже экспортированное в окружение, главнее `.env`.
+
+Offsite считается включённым, как только заполнены `S3_ACCESS_KEY_ID` или `S3_SECRET_ACCESS_KEY`. Тогда пустые `S3_ENDPOINT_URL`, `S3_BUCKET`, второй ключ или `BACKUP_ENCRYPTION_KEY` — ошибка: бэкап не создаётся, код выхода 1. Незашифрованные дампы с сервера не выгружаются. Без ключей S3 и без `BACKUP_ENCRYPTION_KEY` делается локальный `.sql.gz`, и лог прямо пишет `encryption off`. Сбой самой выгрузки не отменяет локальный бэкап, итоговая строка заканчивается `(off-site: FAILED)`.
+
+Проверить настройки, ничего не создавая и не печатая значений:
+```bash
+sudo bash scripts/backup_db.sh --check-config
+# [INFO] Backup settings from /opt/buyerly/.env: encryption on; off-site on, retention 60 days.
+```
+
 ### Настройка расписания бэкапов на сервере
 
-Для ежедневного создания резервной копии (в 03:00 UTC) выполните:
 ```bash
 sudo bash scripts/setup_backup_cron.sh
 ```
+
+Скрипт сначала выполняет `--check-config` в пустом окружении, как у cron, и при ошибке не ставит задачу. Затем записывает `/etc/cron.d/buyerly-backup` с явным `BUYERLY_ENV_FILE=/opt/buyerly/.env`. Бэкап запускается в 03:00 по часовому поясу сервера (cron не знает про UTC; пояс показывает `timedatectl`, на текущем VPS это EEST). Лог — `/var/log/buyerly-backup.log` с правами `0600`; без root задача ставится в crontab пользователя, лог — `~/.local/state/buyerly/backup.log`. После первой ночи проверить результат: `tail /var/log/buyerly-backup.log` — строка `[SUCCESS] Database backup created and verified: ….sql.gz.enc (off-site: uploaded)`.
 
 ### Восстановление базы данных
 

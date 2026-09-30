@@ -87,7 +87,7 @@ a fully successful result.
 **Signal:** Complete loss of VPS, fatal disk corruption, or unrecoverable database state.
 
 1. Provision a clean VPS with Docker and clone the canonical repository `hiurano/buyerly` to `/opt/buyerly`.
-2. Configure `/opt/buyerly/.env` with the production secrets (`POSTGRES_PASSWORD`, `BACKUP_ENCRYPTION_KEY`, `S3_*` credentials).
+2. Configure `/opt/buyerly/.env` with the production secrets (`POSTGRES_PASSWORD`, `BACKUP_ENCRYPTION_KEY`, `S3_*` credentials). `restore_db.sh` reads the backup key and `S3_*` from this file itself; nothing needs to be exported.
 3. Start the database service:
    ```bash
    docker compose up -d db
