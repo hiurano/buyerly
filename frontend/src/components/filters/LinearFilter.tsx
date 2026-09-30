@@ -4,7 +4,6 @@ import {
   CalendarDays,
   Check,
   Circle,
-  ChevronRight,
   CircleDashed,
   Gauge,
   Hash,
@@ -32,6 +31,8 @@ import {
   removeFilterClause,
   upsertFilterClause,
 } from './filterModel';
+import { useMenuExit } from '@/ui/useMenuExit';
+import { SubmenuArrow } from '@/ui/SubmenuArrow';
 
 const MENU_SURFACE = 'var(--card-bg)';
 const MENU_BORDER = 'var(--filter-menu-border)';
@@ -48,7 +49,6 @@ const CHILD_OVERLAP = 3;
 const CHILD_SEARCH_MIN_OPTIONS = 5;
 const SEARCH_ROW_HEIGHT = 37;
 const LIST_PADDING = 6;
-const MENU_EXIT_MS = 140;
 
 // Opened from the keyboard (F), Linear highlights the first row; opened with the
 // mouse, nothing is highlighted until the pointer or an arrow key picks a row.
@@ -416,11 +416,10 @@ export const LinearFilterMenu = <T,>({
   const [childHighlightedIndex, setChildHighlightedIndex] = useState(0);
   const [editorValue, setEditorValue] = useState('');
   // Stays mounted after the parent closes the menu, for Linear's closing fade.
-  const [isVisible, setIsVisible] = useState(isOpen);
+  const { isMounted, isClosing } = useMenuExit(isOpen);
   const shownModeRef = useRef(mode);
   if (isOpen) shownModeRef.current = mode;
   const shownMode = shownModeRef.current;
-  const isClosing = !isOpen && isVisible;
 
   const activeField = fields.find((field) => field.id === activeFieldId) ?? null;
   const activeClause = activeField
@@ -429,15 +428,6 @@ export const LinearFilterMenu = <T,>({
   const childHasSearch =
     shownMode !== 'root' ||
     (activeField?.type === 'enum' && (activeField.options?.length ?? 0) >= CHILD_SEARCH_MIN_OPTIONS);
-
-  useEffect(() => {
-    if (isOpen) {
-      setIsVisible(true);
-      return;
-    }
-    const timer = window.setTimeout(() => setIsVisible(false), MENU_EXIT_MS);
-    return () => window.clearTimeout(timer);
-  }, [isOpen]);
 
   useLayoutEffect(() => {
     if (!isOpen || !anchorElement) return;
@@ -542,7 +532,7 @@ export const LinearFilterMenu = <T,>({
     });
   }, [activeField, activeClause, childSearch]);
 
-  if (!isOpen && !isVisible) return null;
+  if (!isMounted) return null;
   if (isOpen && !anchorElement) return null;
 
   const applyOption = (field: FilterFieldDefinition<T>, option: FilterOption) => {
@@ -952,7 +942,7 @@ export const LinearFilterMenu = <T,>({
                           {entry.option.count !== undefined && <span>{entry.option.count}</span>}
                         </span>
                       ) : (
-                        <ChevronRight size={12} strokeWidth={2} aria-hidden="true" />
+                        <SubmenuArrow />
                       )
                     }
                   />

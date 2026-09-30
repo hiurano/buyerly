@@ -38,7 +38,7 @@ export const DropdownMenuContent: React.FC<DropdownMenuPrimitive.DropdownMenuCon
         padding: '6px 0px',
         ...style,
       }}
-      className={`border rounded-[12px] shadow-[var(--dropdown-shadow)] z-[600] overflow-hidden select-none animate-scale-in outline-none ${className}`}
+      className={`border rounded-[12px] shadow-[var(--dropdown-shadow)] z-[600] overflow-hidden select-none linear-menu origin-[var(--radix-dropdown-menu-content-transform-origin)] outline-none ${className}`}
       {...props}
     />
   </DropdownMenuPrimitive.Portal>
@@ -52,7 +52,7 @@ export const DropdownMenuItem: React.FC<
     {...props}
   >
     {/* Inner Hover/Focus/Highlighted Pill */}
-    <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] h-[32px] rounded-[8px] bg-transparent transition-colors duration-100 group-hover:bg-[var(--item-hover-bg)] group-focus:bg-[var(--item-hover-bg)] group-data-[highlighted]:bg-[var(--item-hover-bg)] group-hover:duration-0" />
+    <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] h-[32px] rounded-[8px] bg-transparent group-hover:bg-[var(--item-hover-bg)] group-focus:bg-[var(--item-hover-bg)] group-data-[highlighted]:bg-[var(--item-hover-bg)] group-hover:duration-0" />
 
     {/* Item Content Layer */}
     <div className="relative z-10 flex w-full items-center justify-between gap-3 group-hover:text-[var(--text-primary)] group-data-[highlighted]:text-[var(--text-primary)] whitespace-nowrap">
@@ -92,7 +92,7 @@ export const DropdownMenuSubContent: React.FC<DropdownMenuPrimitive.DropdownMenu
         padding: '6px 0px',
         ...style,
       }}
-      className={`z-[610] overflow-hidden rounded-[12px] border shadow-[var(--dropdown-shadow)] outline-none animate-scale-in ${className}`}
+      className={`z-[610] overflow-hidden rounded-[12px] border shadow-[var(--dropdown-shadow)] outline-none ${className}`}
       {...props}
     />
   </DropdownMenuPrimitive.Portal>

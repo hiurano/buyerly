@@ -259,10 +259,24 @@ try {
 
       // Right-click menu, as in Linear.
       await row('Older stop').click({ button: 'right' });
-      const rowMenu = page.getByRole('menu');
+      const rowMenu = page.getByRole('menu').filter({ hasText: 'Delete notification' });
       await rowMenu.getByRole('menuitem', { name: /Mark as unread/ }).waitFor();
       await rowMenu.getByRole('menuitem', { name: /Delete notification/ }).waitFor();
       await rowMenu.getByRole('menuitem', { name: /Snooze/ }).waitFor();
+      if (!phone) {
+        // Snooze opens on hover to the right, its first choice level with the Snooze row, as in Linear.
+        const snoozeItem = rowMenu.getByRole('menuitem', { name: /Snooze/ });
+        await snoozeItem.hover();
+        const snoozeSub = page.getByRole('menu').filter({ hasText: 'Tomorrow' });
+        await snoozeSub.waitFor();
+        const [itemBox, subBox, firstBox] = await Promise.all([
+          snoozeItem.boundingBox(), snoozeSub.boundingBox(), snoozeSub.getByRole('menuitem').first().boundingBox(),
+        ]);
+        assert.ok(Math.abs(firstBox.y - itemBox.y) <= 1, 'first snooze choice level with Snooze');
+        assert.ok(subBox.x > itemBox.x, 'snooze choices to the right');
+        await rowMenu.getByRole('menuitem', { name: /Mark as unread/ }).hover();
+        await snoozeSub.waitFor({ state: 'detached' });
+      }
       await page.screenshot({ path: `${output}/row-menu-${width}.png` });
       await rowMenu.getByRole('menuitem', { name: /Mark as unread/ }).click();
       await page.waitForFunction(() => document.title === 'Inbox (1)');

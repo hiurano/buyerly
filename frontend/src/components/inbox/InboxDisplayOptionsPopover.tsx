@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import type { InboxOrdering } from '@/lib/inbox';
 import { useAppStore } from '@/store/useAppStore';
 import { LinearSelect } from '@/ui/LinearDisplayOptions';
+import { useMenuExit } from '@/ui/useMenuExit';
 
 interface InboxDisplayOptionsPopoverProps {
   isOpen: boolean;
@@ -42,6 +43,7 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
   const { inboxDisplay, setInboxDisplay } = useAppStore();
   const popoverRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const { isMounted, isClosing } = useMenuExit(isOpen);
 
   useLayoutEffect(() => {
     if (!isOpen || !anchorRef.current) return;
@@ -70,14 +72,14 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
     };
   }, [isOpen, onClose, anchorRef]);
 
-  if (!isOpen) return null;
+  if (!isMounted) return null;
 
   return createPortal(
     <div
       ref={popoverRef}
       role="dialog"
       aria-label="Display options"
-      className="linear-display-options-popover"
+      className={isClosing ? 'linear-display-options-popover linear-menu-exit' : 'linear-display-options-popover'}
       style={{ top: coords.top, left: coords.left }}
     >
       <section className="linear-display-main-section">
