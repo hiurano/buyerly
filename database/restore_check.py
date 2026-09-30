@@ -130,22 +130,24 @@ async def _check_schema_version(engine, database_url: str) -> None:
 
 # Coarse type families: a legacy VARCHAR/TEXT or FLOAT/DOUBLE difference is
 # harmless, a date stored as text or a number stored as a string is not.
+# Float and Double are listed apart from Numeric: SQLAlchemy 2.1 no longer
+# derives them from it.
 TYPE_FAMILIES = (
-    types.Boolean,
-    types.Integer,
-    types.Numeric,
-    types.DateTime,
-    types.Date,
-    types.JSON,
-    types.LargeBinary,
-    types.String,
+    ("boolean", (types.Boolean,)),
+    ("integer", (types.Integer,)),
+    ("number", (types.Numeric, types.Float, getattr(types, "Double", types.Float))),
+    ("date and time", (types.DateTime,)),
+    ("date", (types.Date,)),
+    ("JSON", (types.JSON,)),
+    ("binary", (types.LargeBinary,)),
+    ("text", (types.String,)),
 )
 
 
 def _type_family(column_type) -> str:
-    for family in TYPE_FAMILIES:
-        if isinstance(column_type, family):
-            return family.__name__
+    for name, classes in TYPE_FAMILIES:
+        if isinstance(column_type, classes):
+            return name
     return type(column_type).__name__
 
 

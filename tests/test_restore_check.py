@@ -301,7 +301,7 @@ class RestoreCheckTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertFalse(ok, output)
         self.assertIn(
-            "[FAIL] schema contract: wrong type workspaces.created_at: TEXT, expected DateTime",
+            "[FAIL] schema contract: wrong type workspaces.created_at: TEXT, expected date and time",
             output,
         )
 
