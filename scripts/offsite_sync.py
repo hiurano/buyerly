@@ -26,6 +26,10 @@ import xml.etree.ElementTree as ET
 BACKUP_KEY_PATTERN = re.compile(r"^buyerly_postgres_\d{8}_\d{6}\.sql\.gz(\.enc)?$")
 
 
+class S3Error(RuntimeError):
+    """The storage answered with an error, as opposed to an empty result."""
+
+
 def _sign(key: bytes, msg: str) -> bytes:
     return hmac.new(key, msg.encode("utf-8"), hashlib.sha256).digest()
 
@@ -191,8 +195,9 @@ class S3Client:
 
         status, resp_body, _ = self._request("GET", query=query)
         if status != 200:
-            print(f"[ERROR] S3 list failed with HTTP {status}: {resp_body.decode('utf-8', errors='replace')}", file=sys.stderr)
-            return []
+            # An empty list here would read as "no backups" when the real
+            # cause is a wrong key, a missing bucket or an outage.
+            raise S3Error(f"S3 list failed with HTTP {status}: {resp_body.decode('utf-8', errors='replace')}")
 
         objects: list[dict[str, str]] = []
         try:
@@ -210,8 +215,8 @@ class S3Client:
                         "last_modified": last_mod_el.text if last_mod_el is not None and last_mod_el.text else "",
                         "size": size_el.text if size_el is not None and size_el.text else "0",
                     })
-        except Exception as exc:
-            print(f"[ERROR] Failed to parse S3 XML response: {exc}", file=sys.stderr)
+        except ET.ParseError as exc:
+            raise S3Error(f"Failed to parse S3 XML response: {exc}") from exc
 
         # Sort newest first
         objects.sort(key=lambda x: x["last_modified"] or x["key"], reverse=True)
@@ -229,7 +234,11 @@ class S3Client:
 
     def prune_old_backups(self, retention_days: int = 60, min_keep_count: int = 7) -> int:
         """Prune backups older than retention_days, preserving at least min_keep_count backups."""
-        objects = self.list_objects(prefix="buyerly_postgres_")
+        try:
+            objects = self.list_objects(prefix="buyerly_postgres_")
+        except S3Error as exc:
+            print(f"[WARNING] Skipping prune: {exc}", file=sys.stderr)
+            return 0
         if not objects:
             print("[INFO] No remote backups found to prune.")
             return 0
@@ -295,6 +304,14 @@ def main() -> int:
         return 0
 
     client = S3Client(endpoint_url=endpoint, bucket=bucket, access_key=access_key, secret_key=secret_key, region=region)
+    try:
+        return _run(client, args, parser, bucket)
+    except (S3Error, urllib.error.URLError, TimeoutError) as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        return 1
+
+
+def _run(client: "S3Client", args: argparse.Namespace, parser: argparse.ArgumentParser, bucket: str) -> int:
 
     if args.upload:
         success = client.upload_file(args.upload)
