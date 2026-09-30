@@ -54,8 +54,8 @@ C20 желательно завершить до C17/C18, чтобы visual gate
 | C03 Async workspace/account state | — | Средний | [PR #179](https://github.com/hiurano/buyerly/pull/179): слит, `d9fd84d`, post-merge CI/CD зелёный |
 | C04 Parent hierarchy contract | C01 | Малый | [PR #184](https://github.com/hiurano/buyerly/pull/184): слит, `e986ed8`, post-merge CI/CD зелёный со второй попытки |
 | C05 Timezone drill-down | C04 | Средний | [PR #206](https://github.com/hiurano/buyerly/pull/206): слит, `44e03d2`, post-merge CI/CD зелёный |
-| C06 Backup cron environment | — | Средний | PR открыт, ветка `fix/backup-cron-environment` (#197) |
-| C07 Atomic backup/restore formats | C06 | Средний | Ожидает |
+| C06 Backup cron environment | — | Средний | [PR #249](https://github.com/hiurano/buyerly/pull/249): слит, `63bdcd5`, post-merge CI/CD зелёный |
+| C07 Atomic backup/restore formats | C06 | Средний | [PR #250](https://github.com/hiurano/buyerly/pull/250) (#198) |
 | C08 Полнота DR | C07 | Несколько PR | Ожидает |
 | C09 Python dependency lock | — | Средний | Ожидает |
 | C10 API/test dependencies | C01, C02 | Средний | Ожидает |
@@ -269,6 +269,25 @@ tests, описание verified signals.
 success timestamp; latest не выбирает partial.
 **Проверки:** fixtures двух форматов, неверный ключ, corruption, interruption,
 empty file, cleanup. Restore только в disposable CI DB; старые backup совместимы.
+
+Реализация C07 (#198), ветка `fix/backup-artifact-integrity`. `backup_db.sh` пишет дамп
+в `.incomplete_<имя>` в том же каталоге (под `buyerly_postgres_*` не попадает),
+читает его обратно тем же путём, что restore (openssl → gzip), требует метку
+`-- PostgreSQL database dump complete` и только потом делает `mv` в итоговое имя.
+Ошибка pg_dump/gzip/openssl или дамп без метки — код 1, файл удаляется trap-ом,
+`last_backup_at` и offsite не трогаются. Остатки после SIGKILL удаляются в начале
+следующего запуска под flock. `offsite_sync.py --download-latest --dest-dir`
+берёт только ключи `buyerly_postgres_YYYYMMDD_HHMMSS.sql.gz[.enc]` и сохраняет
+объект под его именем через временный файл и `os.replace`; `--dest` с другим
+суффиксом отклоняется. `restore_db.sh --download-latest-offsite` качает в
+приватный временный каталог и удаляет его после восстановления; перед
+расшифровкой сверяет содержимое с суффиксом (`Salted__` для `.enc`, `1f 8b` для `.gz`).
+Шифроформат не менялся, старые архивы восстанавливаются как раньше.
+Проверки: `tests/test_backup_env.py` (+9): обрыв pg_dump, дамп без метки (оба
+формата), остаток после SIGKILL при `--latest-local`, offsite `.sql.gz` и
+`.sql.gz.enc`, `.gz` под именем `.enc`, обрезанный `.enc`, неверный ключ, пустой
+файл, `--dest-dir`/`--dest` в `offsite_sync.py`. На скриптах из `main` новые
+тесты падают. Реальный S3 не проверялся.
 
 ### C08 — Проверить заявленный recovery path целиком (A08)
 

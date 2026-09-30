@@ -56,6 +56,9 @@ done
 source "${SCRIPT_DIR}/backup_env.sh"
 load_backup_env
 
+cleanup_paths=()
+trap 'rm -rf -- "${cleanup_paths[@]}"' EXIT
+
 if [[ "${DOWNLOAD_LATEST_OFFSITE}" == "true" ]]; then
     missing_s3=$(missing_offsite_keys)
     if [[ -n "${missing_s3}" ]]; then
@@ -64,9 +67,23 @@ if [[ "${DOWNLOAD_LATEST_OFFSITE}" == "true" ]]; then
     fi
     mkdir -p "${BACKUP_DIR}"
     echo "[INFO] Downloading the latest backup from off-site S3 storage..."
-    latest_download="${BACKUP_DIR}/latest_offsite_restore.sql.gz.enc"
-    python3 "${SCRIPT_DIR}/offsite_sync.py" --download-latest --dest "${latest_download}"
-    FILE_PATH="${latest_download}"
+    # The file keeps the remote object's own name, so its .sql.gz or
+    # .sql.gz.enc suffix picks the right decode path below. It lands in a
+    # private directory that is removed on exit; the object stays in S3.
+    download_dir=$(umask 077; mktemp -d "${BACKUP_DIR}/.offsite_download.XXXXXX")
+    cleanup_paths+=("${download_dir}")
+    if ! python3 "${SCRIPT_DIR}/offsite_sync.py" --download-latest --dest-dir "${download_dir}"; then
+        echo "[ERROR] Off-site download failed."
+        exit 1
+    fi
+    shopt -s nullglob
+    downloaded=("${download_dir}"/buyerly_postgres_*)
+    shopt -u nullglob
+    if (( ${#downloaded[@]} != 1 )); then
+        echo "[ERROR] Off-site download did not produce exactly one backup file."
+        exit 1
+    fi
+    FILE_PATH="${downloaded[0]}"
 elif [[ "${USE_LATEST_LOCAL}" == "true" || -z "${FILE_PATH}" ]]; then
     if [[ -z "${FILE_PATH}" && "${USE_LATEST_LOCAL}" != "true" ]]; then
         echo "[INFO] No backup file specified, searching for newest local backup..."
@@ -102,7 +119,20 @@ echo "=================================================="
 RESTORE_WORK_DIR="${RESTORE_WORK_DIR:-$(dirname "${FILE_PATH}")}"
 umask 077
 work_dir=$(mktemp -d "${RESTORE_WORK_DIR}/.buyerly_restore.XXXXXX")
-trap 'rm -rf -- "${work_dir}"' EXIT
+cleanup_paths+=("${work_dir}")
+
+# The suffix decides the decode path, so check that the content agrees with
+# it: openssl writes "Salted__" first, gzip starts with 1f 8b. Otherwise a
+# plain .sql.gz named .enc fails as a misleading "wrong key".
+file_magic=$(od -An -tx1 -N8 "${FILE_PATH}" | tr -d ' \n')
+if [[ "${FILE_PATH}" =~ \.enc$ && "${file_magic}" != "53616c7465645f5f" ]]; then
+    echo "[ERROR] ${FILE_PATH} is named .enc but is not an openssl-encrypted archive. Target database was not changed."
+    exit 1
+fi
+if [[ "${FILE_PATH}" =~ \.gz$ && "${file_magic}" != 1f8b* ]]; then
+    echo "[ERROR] ${FILE_PATH} is named .gz but is not a gzip archive. Target database was not changed."
+    exit 1
+fi
 
 if [[ "${FILE_PATH}" =~ \.enc$ ]]; then
     if [[ -z "${BACKUP_ENCRYPTION_KEY:-}" ]]; then

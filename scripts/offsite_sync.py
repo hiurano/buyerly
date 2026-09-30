@@ -13,11 +13,17 @@ import hashlib
 import hmac
 import os
 from pathlib import Path
+import re
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+
+
+# Names backup_db.sh publishes. The suffix is the archive format restore_db.sh
+# decodes by, so a download keeps it instead of renaming the file.
+BACKUP_KEY_PATTERN = re.compile(r"^buyerly_postgres_\d{8}_\d{6}\.sql\.gz(\.enc)?$")
 
 
 def _sign(key: bytes, msg: str) -> bytes:
@@ -167,7 +173,11 @@ class S3Client:
         status, resp_body, _ = self._request("GET", key=remote_key)
         if status == 200:
             destination_path.parent.mkdir(parents=True, exist_ok=True)
-            destination_path.write_bytes(resp_body)
+            # Written under a temporary name first, so an interrupted write
+            # never leaves a partial file under the real backup name.
+            partial_path = destination_path.with_name(f".partial_{destination_path.name}")
+            partial_path.write_bytes(resp_body)
+            os.replace(partial_path, destination_path)
             print(f"[SUCCESS] Downloaded s3://{self.bucket}/{remote_key} ({len(resp_body)/(1024*1024):.2f} MB)")
             return True
         else:
@@ -260,6 +270,11 @@ def main() -> int:
     parser.add_argument("--download", type=str, help="Remote S3 key to download")
     parser.add_argument("--download-latest", action="store_true", help="Download the newest remote backup")
     parser.add_argument("--dest", type=Path, help="Destination local path for download")
+    parser.add_argument(
+        "--dest-dir",
+        type=Path,
+        help="With --download-latest: directory to save the backup in under its remote name",
+    )
     parser.add_argument("--list", action="store_true", help="List remote backups")
     parser.add_argument("--prune", action="store_true", help="Prune old remote backups")
     parser.add_argument("--retention-days", type=int, default=60, help="Retention period in days (default: 60)")
@@ -296,12 +311,28 @@ def main() -> int:
         return 0
 
     if args.download_latest:
-        items = client.list_objects()
+        items = [
+            item for item in client.list_objects(prefix="buyerly_postgres_")
+            if BACKUP_KEY_PATTERN.match(item["key"])
+        ]
         if not items:
             print("[ERROR] No remote backups found to download.", file=sys.stderr)
             return 1
         latest_key = items[0]["key"]
-        dest = args.dest or Path(latest_key)
+        if args.dest_dir:
+            dest = args.dest_dir / latest_key
+        else:
+            dest = args.dest or Path(latest_key)
+            # The suffix is the format: saving an .enc object as .sql.gz (or
+            # the reverse) sends restore down the wrong decode path.
+            remote_format = ".sql.gz.enc" if latest_key.endswith(".enc") else ".sql.gz"
+            if not dest.name.endswith(remote_format):
+                print(
+                    f"[ERROR] Latest backup {latest_key} is {remote_format}; --dest {dest} has a different suffix. "
+                    "Use --dest-dir to keep the remote name.",
+                    file=sys.stderr,
+                )
+                return 1
         success = client.download_file(latest_key, dest)
         return 0 if success else 1
 
