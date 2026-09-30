@@ -242,6 +242,22 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
         )).json()
         self.assertEqual(sum(entry["count"] for entry in unread["type"]), 2)
 
+    async def test_from_leaves_out_authors_nobody_can_be_named_for(self):
+        # Manual actions saved before the author was always recorded.
+        async with self.session_maker() as session:
+            session.add(AuditEvent(
+                workspace_id=self.rule_stop.workspace_id, event_type="MANUAL_PAUSE",
+                account_id="act_1", account_name="Account", message="no author",
+                actor_type="user", actor_id="None",
+            ))
+            await session.commit()
+        facets = (await self.client.get("/api/inbox/facets", headers=self.owner_headers)).json()
+        self.assertEqual(
+            {entry["label"] for entry in facets["from"]}, {"Owner", "Buyerly"}
+        )
+        # The notification itself stays in the list.
+        self.assertIn("no author", self.read_map(await self.inbox(self.owner_headers)))
+
     async def test_cannot_touch_another_workspace_event(self):
         for path, body in (
             ("read", {"read": True}),
