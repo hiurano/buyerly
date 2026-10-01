@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { SidebarHeader } from './SidebarHeader';
-import { useAppStore } from '@/store/useAppStore';
+import { selectInboxBadgeCount, useAppStore } from '@/store/useAppStore';
 import {
   LinearInboxIcon,
   LinearMetaIcon,
@@ -19,8 +19,8 @@ export const Sidebar: React.FC = () => {
     resetSidebarWidth,
     activeTab,
     setActiveTab,
-    inboxUnreadCount,
   } = useAppStore();
+  const inboxUnreadCount = useAppStore(selectInboxBadgeCount);
   const [isDragging, setIsDragging] = useState(false);
 
   const trackRef = useRef<HTMLDivElement>(null);

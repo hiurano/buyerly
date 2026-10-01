@@ -105,6 +105,104 @@ export const LinearSelect: React.FC<LinearSelectProps> = ({ value, options, onCh
   );
 };
 
+
+interface LinearMultiSelectProps {
+  values: string[];
+  options: DisplayOption[];
+  onChange: (values: string[]) => void;
+  ariaLabel: string;
+}
+
+/**
+ * Linear's checkbox dropdown in Display options ("Include in priority inbox"):
+ * "All" when everything is ticked, "N selected" otherwise, and the menu stays
+ * open while boxes are ticked.
+ */
+export const LinearMultiSelect: React.FC<LinearMultiSelectProps> = ({ values, options, onChange, ariaLabel }) => {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, right: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!open || !buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    setCoords({ top: rect.bottom + 5, right: window.innerWidth - rect.right });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!buttonRef.current?.contains(target) && !menuRef.current?.contains(target)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  const label = values.length === options.length ? 'All' : `${values.length} selected`;
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        role="combobox"
+        aria-label={ariaLabel}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        className="linear-display-select"
+        data-open={open || undefined}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span>{label}</span>
+        <Chevron />
+      </button>
+      {open && createPortal(
+        <div
+          ref={menuRef}
+          role="listbox"
+          aria-multiselectable="true"
+          aria-label={ariaLabel}
+          className="linear-display-select-menu linear-display-check-menu"
+          style={{ top: coords.top, right: coords.right }}
+        >
+          {options.map((option) => {
+            const isSelected = values.includes(option.value);
+            return (
+              <button
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                key={option.value}
+                className="linear-display-check-option"
+                onClick={() => onChange(
+                  isSelected
+                    ? values.filter((value) => value !== option.value)
+                    : options.map((entry) => entry.value).filter((value) => value === option.value || values.includes(value)),
+                )}
+              >
+                <span className="linear-display-checkbox" data-checked={isSelected || undefined} aria-hidden="true">
+                  {isSelected && <Check />}
+                </span>
+                <span>{option.label}</span>
+              </button>
+            );
+          })}
+        </div>,
+        document.body
+      )}
+    </>
+  );
+};
+
 interface LinearDisplayOptionsProps {
   viewMode: 'list' | 'board';
   onViewModeChange: (mode: 'list' | 'board') => void;

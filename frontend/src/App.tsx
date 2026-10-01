@@ -11,7 +11,7 @@ import { AppUtilityBar } from '@/components/layout/AppUtilityBar';
 import { TooltipProvider } from '@/ui/Tooltip';
 import { ToastRegion } from '@/ui/ToastRegion';
 import { useUndoShortcuts } from '@/lib/undoHistory';
-import { useAppStore } from '@/store/useAppStore';
+import { selectInboxBadgeCount, useAppStore } from '@/store/useAppStore';
 import { apiRequest } from '@/lib/api';
 import type { LoginResult, SessionUser, Workspace } from '@/lib/types';
 import { isWorkspaceReturnRoute, parseRoute, pathForTab, type Route } from '@/lib/routing';
@@ -59,9 +59,9 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     toggleRightSidebar,
     toggleSidebarCollapsed,
     interfaceTheme,
-    inboxUnreadCount,
     refreshInboxUnreadCount,
   } = useAppStore();
+  const inboxBadge = useAppStore(selectInboxBadgeCount);
   useUndoShortcuts();
   useWebMcpTools(workspace);
   const session = useMemo<WorkspaceSession>(() => ({
@@ -121,9 +121,9 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
 
   useEffect(() => {
     document.title = activeTab === 'inbox'
-      ? (inboxUnreadCount > 0 ? `Inbox (${inboxUnreadCount})` : 'Inbox')
+      ? (inboxBadge > 0 ? `Inbox (${inboxBadge})` : 'Inbox')
       : `${workspace.name} — Buyerly`;
-  }, [activeTab, inboxUnreadCount, workspace.name]);
+  }, [activeTab, inboxBadge, workspace.name]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -205,9 +205,10 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
                 {activeTab === 'inbox' && (
                   <InboxView
                     openEventId={route.tab === 'inbox' ? route.recordId : undefined}
+                    inboxTab={route.tab === 'inbox' ? route.inboxTab ?? null : null}
                     // The query keeps Inbox filters while notifications open and close.
-                    onOpenEvent={(eventId) => navigate(
-                      (eventId === null ? `/${workspace.slug}/inbox` : `/${workspace.slug}/inbox/${eventId}`)
+                    onNavigate={(tab, eventId) => navigate(
+                      `/${workspace.slug}/inbox${tab ? `/${tab}` : ''}${eventId === null ? '' : `/${eventId}`}`
                         + window.location.search,
                     )}
                   />

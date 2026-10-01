@@ -38,8 +38,12 @@ import {
   DEFAULT_INBOX_DISPLAY,
   fetchInboxDisplay,
   fetchInboxUnreadCount,
+  inboxBadgeCount,
   saveInboxDisplay,
+  unreadByKind,
   type InboxDisplay,
+  type InboxUnread,
+  type InboxUnreadByKind,
 } from '@/lib/inbox';
 
 export type RuleFilterTab = 'active' | 'paused' | 'all' | 'deleted';
@@ -234,7 +238,9 @@ interface AppState {
   setSearchOpen: (open: boolean) => void;
   workspaceName: string;
   inboxUnreadCount: number;
-  setInboxUnreadCount: (count: number) => void;
+  inboxUnreadByKind: InboxUnreadByKind;
+  /** Takes the unread counts every Inbox answer carries. */
+  setInboxUnread: (unread: InboxUnread) => void;
   refreshInboxUnreadCount: () => Promise<void>;
   inboxDisplay: InboxDisplay;
   /** False until this workspace's saved Display options arrive (or the member changes one). */
@@ -417,6 +423,7 @@ function emptyAccountState() {
 function emptyWorkspaceState() {
   return {
     ...emptyAccountState(), workspaceName: 'buyerly', inboxUnreadCount: 0, campaignGroups: [],
+    inboxUnreadByKind: unreadByKind({ unread_count: 0 }),
     inboxDisplay: DEFAULT_INBOX_DISPLAY, inboxDisplayLoaded: false,
     rules: [], ruleGroups: [], ruleAccounts: [], rulesLoadState: 'idle' as RulesLoadState,
     rulesError: '', rulesMutationError: '', selectedRuleId: null, selectedRuleIds: [],
@@ -460,12 +467,16 @@ export const useAppStore = create<AppState>((set, get) => {
   workspaceName: 'buyerly',
   setWorkspaceName: (name) => set({ workspaceName: name }),
   inboxUnreadCount: 0,
-  setInboxUnreadCount: (count) => set({ inboxUnreadCount: count }),
+  inboxUnreadByKind: unreadByKind({ unread_count: 0 }),
+  setInboxUnread: (unread) => set({
+    inboxUnreadCount: unread.unread_count,
+    inboxUnreadByKind: unreadByKind(unread),
+  }),
   refreshInboxUnreadCount: async () => {
     const inScope = get().captureScope();
     try {
-      const { unread_count: count } = await fetchInboxUnreadCount();
-      if (inScope() && typeof count === 'number') set({ inboxUnreadCount: count });
+      const unread = await fetchInboxUnreadCount();
+      if (inScope() && typeof unread.unread_count === 'number') get().setInboxUnread(unread);
     } catch {
       // The badge keeps its last value; Inbox itself reports load errors.
     }
@@ -1090,3 +1101,7 @@ export async function applyRulesEnabled(ids: string[], enabled: boolean): Promis
     throw new Error('Some of these rules no longer exist.');
   }
 }
+
+/** The number next to Inbox in the sidebar and in the tab title. */
+export const selectInboxBadgeCount = (state: AppState): number =>
+  inboxBadgeCount(state.inboxDisplay, state.inboxUnreadCount, state.inboxUnreadByKind);

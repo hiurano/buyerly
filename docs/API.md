@@ -306,11 +306,11 @@ Inbox, как в Linear, показывает события workspace как у
 
 | Метод и путь | Параметры | Назначение |
 |---|---|---|
-| `GET /api/inbox` | `offset`, `limit`, `ordering=newest\|oldest`, `unread_only?`, `show_snoozed?`, `unread_first?`, `filter?` | уведомления активного workspace с полями события плюс `is_read`, `snoozed_until` и `unsnoozed_at` (когда кончилась отложка, пока уведомление не прочитано); вернувшееся из отложки стоит по времени возврата; `has_more` для подгрузки, `unread_count`, `hidden_by_filters` |
-| `GET /api/inbox/facets` | `unread_only?`, `show_snoozed?` | значения и счётчики для фильтра: `type`, `from`, `account`, `status` |
-| `GET /api/inbox/unread-count` | — | число непрочитанных для бокового меню и заголовка вкладки |
-| `GET /api/inbox/display` | — | Display options участника в этом workspace: `unread_only`, `ordering` (`newest`/`oldest`), `show_snoozed`, `unread_first`; если ничего не сохранено, отдаются значения Linear по умолчанию |
-| `PUT /api/inbox/display` | те же четыре поля | сохранить Display options участника; поддержке без членства в workspace отвечает `403` |
+| `GET /api/inbox` | `offset`, `limit`, `ordering=newest\|oldest`, `unread_only?`, `show_snoozed?`, `unread_first?`, `kinds?`, `exclude_kinds?`, `filter?` | уведомления активного workspace с полями события плюс `is_read`, `snoozed_until` и `unsnoozed_at` (когда кончилась отложка, пока уведомление не прочитано); `kind` — вид уведомления (`urgent`, `rule_alerts`, `rule_actions`, `assistant`, `manual`, `team`, `system`), `kinds` оставляет только перечисленные виды (вкладка Priority), `exclude_kinds` — все кроме них (Other); вернувшееся из отложки стоит по времени возврата; `has_more` для подгрузки, `unread_count`, `hidden_by_filters` |
+| `GET /api/inbox/facets` | `unread_only?`, `show_snoozed?`, `kinds?`, `exclude_kinds?` | значения и счётчики для фильтра: `type`, `from`, `account`, `status` |
+| `GET /api/inbox/unread-count` | — | число непрочитанных (`unread_count`) и по видам (`unread_by_kind`) для бокового меню и заголовка вкладки |
+| `GET /api/inbox/display` | — | Display options участника в этом workspace: `unread_only`, `ordering` (`newest`/`oldest`), `show_snoozed`, `unread_first`, `grouping` (`none`/`focus`), `priority_inbox`, `priority_kinds` (виды в Priority), `badge_count` (`all`/`priority`/`none`); если ничего не сохранено, отдаются значения Linear по умолчанию |
+| `PUT /api/inbox/display` | те же поля | сохранить Display options участника; поддержке без членства в workspace отвечает `403` |
 | `POST /api/inbox/{event_id}/read` | `{"read": bool}` | отметить прочитанным или непрочитанным |
 | `POST /api/inbox/{event_id}/delete` | — | убрать уведомление из своего Inbox |
 | `POST /api/inbox/{event_id}/snooze` | `{"until": datetime\|null}` | отложить до времени в будущем, прочитанность не меняется; когда время придёт, уведомление станет непрочитанным и поднимется наверх. `null` (Unsnooze) снимает отложенность и оставляет уведомление на месте |

@@ -108,6 +108,10 @@
   --item-active-bg: lch(13.845% 1.3 272 / 1);
   --row-selected-bg: lch(13.2% 6 282 / 1);
   --inbox-unread-dot: lch(47.918% 59.303 288.421 / 1); /* Linear unread notification dot */
+  /* Linear Inbox Focus group headers and Priority / Other tabs, measured in dark Linear. */
+  --inbox-group-header-bg: lch(9.232% 0.85 272 / 1);
+  --inbox-tab-bg: lch(10.149% 0.593 272 / 1);
+  --inbox-tab-active-bg: lch(16.706% 0.979 272 / 1);
   --inbox-error-bg: lch(66% 80 48 / 1);
   --inbox-filter-bg: lch(9.345% 0.85 272 / 1); /* Linear Inbox filter box */
   --inbox-filter-chip-bg: lch(10.149% 0.689 272 / 1);
@@ -263,6 +267,10 @@ html[data-theme='light'] {
   --item-active-bg: lch(89.54% 0.5 282 / 1);      /* #e1e1e2 */
   --row-selected-bg: lch(92.254% 5.903 282.518 / 1);       /* Linear selected row */
   --inbox-unread-dot: lch(47.918% 59.303 288.421 / 1);
+  /* Not measured in light Linear yet: between canvas and hover. */
+  --inbox-group-header-bg: lch(94.44% 0.5 282 / 1);
+  --inbox-tab-bg: lch(94.44% 0.5 282 / 1);
+  --inbox-tab-active-bg: lch(89.54% 0.5 282 / 1);
   --inbox-error-bg: lch(58% 79 48 / 1);
   --inbox-filter-bg: lch(97.5% 0.5 282 / 1);
   --inbox-filter-chip-bg: lch(99.5% 0 282 / 1);

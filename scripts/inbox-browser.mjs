@@ -31,7 +31,7 @@ function event(id, minutes, fields) {
     entity_level: 'adset', entity_id: String(900 + id), entity_name: `Ad set ${id}`, rule_id: 3,
     rule_name: 'Stop without leads', action: 'STOP', message: 'Spent $4.50 with 0 leads', correlation_id: null,
     reverts_event_id: null, reverted_by_event_id: null, is_reverted: false, display_status: 'SUCCESS',
-    can_undo: false, undo_reason: '', duration_ms: 12, created_at: minutesAgo(minutes),
+    can_undo: false, undo_reason: '', duration_ms: 12, created_at: minutesAgo(minutes), kind: 'rule_actions',
     ...fields,
   };
 }
@@ -39,13 +39,19 @@ function event(id, minutes, fields) {
 /** Server semantics the UI relies on, kept in memory. */
 function inboxState() {
   const rows = [
-    { ...event(4, 5, { event_type: 'NOTIFY_ONLY', action: 'NOTIFY_ONLY', message: 'CPL is $14, above the $12 goal' }), read: false, deleted: false, snoozed: null },
+    { ...event(4, 5, { event_type: 'NOTIFY_ONLY', action: 'NOTIFY_ONLY', message: 'CPL is $14, above the $12 goal', kind: 'rule_alerts' }), read: false, deleted: false, snoozed: null },
     { ...event(3, 60 * 3, {}), read: false, deleted: false, snoozed: null },
-    { ...event(2, 60 * 30, { status: 'ERROR', display_status: 'ERROR', event_type: 'TOKEN_EXPIRED', message: 'Meta access expired' }), read: true, deleted: false, snoozed: null },
+    { ...event(2, 60 * 30, { status: 'ERROR', display_status: 'ERROR', event_type: 'TOKEN_EXPIRED', message: 'Meta access expired', kind: 'urgent' }), read: true, deleted: false, snoozed: null },
     { ...event(1, 60 * 24 * 9, { message: 'Older stop' }), read: true, deleted: false, snoozed: null },
   ];
   const visible = (row, showSnoozed) => !row.deleted && (showSnoozed || !row.snoozed);
   const unread = () => rows.filter(row => visible(row, false) && !row.read).length;
+  const kinds = ['urgent', 'rule_alerts', 'rule_actions', 'assistant', 'manual', 'team', 'system'];
+  const unreadByKind = () => Object.fromEntries(kinds.map(kind => [
+    kind, rows.filter(row => visible(row, false) && !row.read && row.kind === kind).length,
+  ]));
+  // What every Inbox answer carries, as the server sends it.
+  const counts = () => ({ unread_count: unread(), unread_by_kind: unreadByKind() });
   const item = ({ read, deleted, snoozed, unsnoozed, ...fields }) => ({
     ...fields, is_read: read, snoozed_until: snoozed, unsnoozed_at: unsnoozed ?? null,
   });
@@ -60,17 +66,20 @@ function inboxState() {
   return {
     rows,
     unread,
+    counts,
     list(params) {
       const showSnoozed = params.get('show_snoozed') === 'true';
       let items = rows.filter(row => visible(row, showSnoozed));
       if (params.get('unread_only') === 'true') items = items.filter(row => !row.read);
+      if (params.has('kinds')) items = items.filter(row => params.get('kinds').split(',').includes(row.kind));
+      if (params.has('exclude_kinds')) items = items.filter(row => !params.get('exclude_kinds').split(',').includes(row.kind));
       const unfiltered = items.length;
       const clauses = JSON.parse(params.get('filter') || '[]');
       items = items.filter(row => matches(row, clauses));
       const hidden = unfiltered - items.length;
       if (params.get('ordering') === 'oldest') items = [...items].reverse();
       if (params.get('unread_first') === 'true') items = [...items].sort((a, b) => Number(a.read) - Number(b.read));
-      return { items: items.map(item), has_more: false, unread_count: unread(), hidden_by_filters: hidden };
+      return { items: items.map(item), has_more: false, ...counts(), hidden_by_filters: hidden };
     },
     facets() {
       const shown = rows.filter(row => visible(row, false));
@@ -120,7 +129,7 @@ try {
       if (verb === 'GET' && path === '/api/me') return route.fulfill({ json: owner });
       if (verb === 'GET' && path === '/api/inbox') return route.fulfill({ json: state.list(url.searchParams) });
       if (verb === 'GET' && path === '/api/inbox/facets') return route.fulfill({ json: state.facets() });
-      if (verb === 'GET' && path === '/api/inbox/unread-count') return route.fulfill({ json: { unread_count: state.unread() } });
+      if (verb === 'GET' && path === '/api/inbox/unread-count') return route.fulfill({ json: state.counts() });
       const action = path.match(/^\/api\/inbox\/(\d+)\/(read|delete|snooze)$/);
       if (verb === 'POST' && action) {
         const row = state.find(Number(action[1]));
@@ -128,11 +137,11 @@ try {
         if (action[2] === 'delete') row.deleted = true;
         // Snoozing keeps the read state, as in Linear; until null is Unsnooze.
         if (action[2] === 'snooze') row.snoozed = body.until;
-        return route.fulfill({ json: { success: true, unread_count: state.unread() } });
+        return route.fulfill({ json: { success: true, ...state.counts() } });
       }
       if (verb === 'POST' && path === '/api/inbox/delete-all-read') {
         state.rows.forEach(row => { if (row.read) row.deleted = true; });
-        return route.fulfill({ json: { success: true, unread_count: state.unread() } });
+        return route.fulfill({ json: { success: true, ...state.counts() } });
       }
       if (verb === 'GET' && ['/api/accounts', '/api/meta/connections', '/api/account-groups'].includes(path)) {
         return route.fulfill({ json: [] });
@@ -419,6 +428,89 @@ try {
       await page.getByRole('button', { name: 'Display options' }).click();
       const reloaded = page.getByRole('dialog', { name: 'Display options' });
       assert.equal(await reloaded.getByRole('switch', { name: 'Show snoozed' }).getAttribute('aria-checked'), 'true');
+      await page.keyboard.press('Escape');
+
+      // Group unreads by Focus and priority inbox (#240), on a fresh set of notifications.
+      state.rows.forEach((entry) => { entry.deleted = true; });
+      state.rows.push(
+        { ...event(10, 10, { event_type: 'TOKEN_EXPIRED', message: 'Focus urgent', kind: 'urgent' }), read: false, deleted: false, snoozed: null },
+        { ...event(11, 20, { event_type: 'NOTIFY_ONLY', message: 'Focus alert one', kind: 'rule_alerts' }), read: false, deleted: false, snoozed: null },
+        { ...event(12, 30, { event_type: 'NOTIFY_ONLY', message: 'Focus alert two', kind: 'rule_alerts' }), read: false, deleted: false, snoozed: null },
+        { ...event(13, 40, { event_type: 'ACCOUNT_DAY_STARTED', message: 'Focus new day', kind: 'system', rule_id: null }), read: false, deleted: false, snoozed: null },
+        { ...event(14, 5, { message: 'Focus read stop' }), read: true, deleted: false, snoozed: null },
+      );
+      await page.reload();
+      await waitForRows(5);
+      await page.getByRole('button', { name: 'Display options' }).click();
+      const options = page.getByRole('dialog', { name: 'Display options' });
+      await options.getByRole('combobox').filter({ hasText: 'No grouping' }).click();
+      await page.getByRole('option', { name: 'Focus' }).click();
+      await page.keyboard.press('Escape');
+      const headers = page.locator('.linear-inbox-group-header');
+      // A lone System notification is too small for Other, so the group takes its name, as in Linear.
+      await page.waitForFunction(() => document.querySelectorAll('.linear-inbox-group-header').length === 4);
+      assert.deepEqual(await headers.allInnerTexts(), ['Urgent', 'Rule alerts', 'System', 'Read']);
+      assert.equal(savedDisplay.grouping, 'focus');
+      const order = () => page.locator('[data-inbox-event-id]').evaluateAll(
+        (nodes) => nodes.map((node) => Number(node.getAttribute('data-inbox-event-id'))),
+      );
+      // The newest read one still sits under Read, below every unread group.
+      assert.deepEqual(await order(), [10, 11, 12, 13, 14]);
+      await page.screenshot({ path: `${output}/focus-groups-${width}.png` });
+      // Folding a group hides its rows; J skips them.
+      await headers.filter({ hasText: 'Rule alerts' }).click();
+      assert.equal(await headers.filter({ hasText: 'Rule alerts' }).getAttribute('aria-expanded'), 'false');
+      assert.deepEqual(await order(), [10, 13, 14]);
+      await page.locator('body').click({ position: { x: 5, y: 300 } });
+      await page.keyboard.press('j');
+      await page.waitForFunction(() => /\/inbox\/10$/.test(location.pathname));
+      await page.keyboard.press('j');
+      await page.waitForFunction(() => /\/inbox\/13$/.test(location.pathname));
+      // Reading them does not move them out of their groups while the list is open.
+      assert.deepEqual(await headers.allInnerTexts(), ['Urgent', 'Rule alerts', 'System', 'Read']);
+      await page.keyboard.press('Escape');
+      await headers.filter({ hasText: 'Rule alerts' }).click();
+
+      // Priority inbox: /inbox/priority with Priority N and Other tabs.
+      await page.getByRole('button', { name: 'Display options' }).click();
+      await options.getByRole('switch', { name: 'Enable priority inbox' }).click();
+      await page.waitForFunction(() => location.pathname.endsWith('/inbox/priority'));
+      const tabs = page.getByRole('navigation', { name: 'Priority inbox' });
+      // Two were read above, so two unread are left, both priority by default.
+      assert.equal(await tabs.getByRole('link', { name: /^Priority/ }).textContent(), 'Priority2');
+      assert.equal(await tabs.getByRole('link', { name: /^Other/ }).textContent(), 'Other');
+      const include = options.getByRole('combobox', { name: 'Priority notification options' });
+      assert.equal(await include.innerText(), 'All');
+      await include.click();
+      const kindsMenu = page.getByRole('listbox', { name: 'Priority notification options' });
+      await kindsMenu.getByRole('option', { name: 'Rule alerts' }).click();
+      assert.equal(await include.innerText(), '6 selected');
+      await page.screenshot({ path: `${output}/priority-options-${width}.png` });
+      await page.keyboard.press('Escape');
+      assert.deepEqual(savedDisplay.priority_kinds, ['urgent', 'rule_actions', 'assistant', 'manual', 'team', 'system']);
+      await page.waitForFunction(() => document.querySelector('[aria-label="Priority inbox"]')?.textContent === 'PriorityOther2');
+      // Badge count: Priority only leaves the two Other ones out of the tab title.
+      assert.equal(await page.title(), 'Inbox (2)');
+      await options.getByRole('combobox').filter({ hasText: 'Priority & Other' }).click();
+      await page.getByRole('option', { name: 'Priority only' }).click();
+      await page.waitForFunction(() => document.title === 'Inbox');
+      await page.keyboard.press('Escape');
+      await page.keyboard.press('Escape');
+      await tabs.getByRole('link', { name: /^Other/ }).click();
+      await page.waitForFunction(() => location.pathname.endsWith('/inbox/other'));
+      await page.waitForFunction(() => document.querySelectorAll('[data-inbox-event-id]').length === 2);
+      assert.deepEqual((await order()).sort(), [11, 12]);
+      await page.screenshot({ path: `${output}/priority-other-${width}.png` });
+      await assertNoOverflow('priority inbox');
+      // It all comes back after a reload, tab included.
+      await page.reload();
+      await page.waitForFunction(() => document.querySelectorAll('[data-inbox-event-id]').length === 2);
+      assert.equal(await tabs.getByRole('link', { name: /^Other/ }).getAttribute('aria-current'), 'page');
+      // Turning priority inbox off goes back to /inbox.
+      await page.getByRole('button', { name: 'Display options' }).click();
+      await options.getByRole('switch', { name: 'Enable priority inbox' }).click();
+      await page.waitForFunction(() => /\/inbox$/.test(location.pathname));
+      await page.waitForFunction(() => document.title === 'Inbox (2)');
       await page.keyboard.press('Escape');
 
       assert.deepEqual(errors, []);
