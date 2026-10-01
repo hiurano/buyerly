@@ -147,6 +147,11 @@ class WorkspaceMember(Base):
         nullable=True,
         doc="This member's Inbox Display options; NULL keeps Linear's defaults",
     )
+    notification_channels = Column(
+        JSONB,
+        nullable=True,
+        doc="This member's Email notification settings; NULL keeps Linear's defaults",
+    )
 
     def __repr__(self):
         return f"<WorkspaceMember(workspace_id={self.workspace_id}, user_id={self.user_id}, role='{self.role}')>"

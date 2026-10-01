@@ -43,6 +43,13 @@ import {
   type InboxDisplay,
   type InboxUnread,
 } from '@/lib/inbox';
+import {
+  DEFAULT_NOTIFICATION_CHANNELS,
+  fetchNotificationChannels,
+  saveNotificationChannels,
+  type EmailNotifications,
+  type NotificationChannels,
+} from '@/lib/notificationChannels';
 
 export type RuleFilterTab = 'active' | 'paused' | 'all' | 'deleted';
 
@@ -156,6 +163,7 @@ export type SettingsSection =
   | 'profile'
   | 'notifications'
   | 'priority-notifications'
+  | 'email-notifications'
   | 'ad-accounts'
   | 'members';
 export type InterfaceTheme = 'system' | 'light' | 'dark';
@@ -251,6 +259,11 @@ interface AppState {
   inboxDisplayLoaded: boolean;
   loadInboxDisplay: () => Promise<void>;
   setInboxDisplay: (patch: Partial<InboxDisplay>) => void;
+  /** Settings → Notifications → Email (later Telegram), saved per member like Display options. */
+  notificationChannels: NotificationChannels;
+  notificationChannelsLoaded: boolean;
+  loadNotificationChannels: () => Promise<void>;
+  setEmailNotifications: (patch: Partial<EmailNotifications>) => void;
   setWorkspaceName: (name: string) => void;
   sidebarWidth: number;
   setSidebarWidth: (width: number) => void;
@@ -429,6 +442,7 @@ function emptyWorkspaceState() {
     ...emptyAccountState(), workspaceName: 'buyerly', inboxUnreadCount: 0, campaignGroups: [],
     inboxPriorityUnreadCount: 0,
     inboxDisplay: DEFAULT_INBOX_DISPLAY, inboxDisplayLoaded: false,
+    notificationChannels: DEFAULT_NOTIFICATION_CHANNELS, notificationChannelsLoaded: false,
     rules: [], ruleGroups: [], ruleAccounts: [], rulesLoadState: 'idle' as RulesLoadState,
     rulesError: '', rulesMutationError: '', selectedRuleId: null, selectedRuleIds: [],
     focusedRuleId: null, editingRuleId: null, isCreateRuleModalOpen: false,
@@ -446,6 +460,7 @@ export const useAppStore = create<AppState>((set, get) => {
   let rulesRequest = 0;
   let attachmentsRequest = 0;
   let inboxDisplaySave: Promise<unknown> = Promise.resolve();
+  let notificationChannelsSave: Promise<unknown> = Promise.resolve();
   return ({
   workspaceScope: null,
   workspaceSlug: null,
@@ -506,6 +521,33 @@ export const useAppStore = create<AppState>((set, get) => {
     // a save still queued when the workspace changes must not land in the new one.
     inboxDisplaySave = inboxDisplaySave
       .then(() => (inScope() ? saveInboxDisplay(inboxDisplay) : undefined))
+      .catch(() => {
+        // The choice still applies until the page is reloaded.
+      });
+  },
+  notificationChannels: DEFAULT_NOTIFICATION_CHANNELS,
+  notificationChannelsLoaded: false,
+  loadNotificationChannels: async () => {
+    const inScope = get().captureScope();
+    let channels = DEFAULT_NOTIFICATION_CHANNELS;
+    try {
+      channels = await fetchNotificationChannels();
+    } catch {
+      // Settings still open, with Linear's defaults.
+    }
+    // A choice made while this was loading wins over the saved one.
+    if (inScope() && !get().notificationChannelsLoaded) {
+      set({ notificationChannels: channels, notificationChannelsLoaded: true });
+    }
+  },
+  setEmailNotifications: (patch) => {
+    const current = get().notificationChannels;
+    const notificationChannels = { ...current, email: { ...current.email, ...patch } };
+    set({ notificationChannels, notificationChannelsLoaded: true });
+    const inScope = get().captureScope();
+    // Saved in order, like Display options, and never into a workspace opened since.
+    notificationChannelsSave = notificationChannelsSave
+      .then(() => (inScope() ? saveNotificationChannels(notificationChannels) : undefined))
       .catch(() => {
         // The choice still applies until the page is reloaded.
       });

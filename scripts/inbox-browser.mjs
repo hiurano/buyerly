@@ -23,6 +23,15 @@ const owner = {
   onboarding_completed: true, onboarding_step: 'completed', active_workspace: workspace, workspaces: [workspace],
 };
 
+/** Waits for a save the page sends in the background. */
+async function expectSaved(check, timeout = 5_000) {
+  const until = Date.now() + timeout;
+  while (!check()) {
+    if (Date.now() > until) throw new Error('The page did not save the change');
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+}
+
 const minutesAgo = (minutes) => new Date(Date.now() - minutes * 60_000).toISOString();
 function event(id, minutes, fields) {
   return {
@@ -115,6 +124,9 @@ try {
     const writes = [];
     // Display options are saved for the member on the server, as in Linear.
     let savedDisplay = { unread_only: false, ordering: 'newest', show_snoozed: false, unread_first: false };
+    // Settings → Notifications → Email (#274, #275); the server says whether emails go out yet.
+    let savedChannels = { email: { enabled: true, priority_only: false, kinds: ['urgent', 'rule_alerts', 'rule_actions', 'assistant', 'manual', 'team', 'system'] } };
+    let emailDelivering = false;
     const state = inboxState(() => ({
       kinds: savedDisplay.priority_kinds ?? ['urgent', 'rule_alerts', 'rule_actions', 'assistant', 'manual', 'team', 'system'],
       rules: savedDisplay.priority_rules ?? [],
@@ -129,6 +141,10 @@ try {
       if (path === '/api/inbox/display') {
         if (verb === 'PUT') savedDisplay = body;
         return route.fulfill({ json: savedDisplay });
+      }
+      if (path === '/api/notifications/channels') {
+        if (verb === 'PUT') savedChannels = body;
+        return route.fulfill({ json: { ...savedChannels, delivering: { email: emailDelivering } } });
       }
       if (verb !== 'GET') writes.push({ verb, path, body });
       if (verb === 'GET' && path === '/api/me') return route.fulfill({ json: owner });
@@ -585,6 +601,47 @@ try {
       await page.getByRole('switch', { name: 'Urgent' }).click({ force: true });
       assert.deepEqual(savedDisplay.priority_kinds, ['urgent', 'rule_actions', 'assistant', 'manual', 'team', 'system']);
       assert.equal(await page.getByRole('region', { name: 'Custom filters' }).count(), 0);
+
+      // Push notifications: Email and Telegram rows; Email says Disabled while no emails go out (#274).
+      await page.goto(`${origin}/${workspace.slug}/settings/account/notifications`);
+      await page.getByRole('heading', { name: 'Push notifications' }).waitFor();
+      const emailRow = page.getByRole('button', { name: /^Email/ });
+      assert.match(await emailRow.innerText(), /Email\s+Disabled/);
+      const telegramRow = page.locator('.preferences-row-item', { hasText: 'Telegram' });
+      assert.match(await telegramRow.innerText(), /Telegram\s+Disabled/);
+      assert.equal(await page.getByRole('button', { name: /^Telegram/ }).count(), 0);
+      // Once emails are sent, the row follows Linear's wording.
+      emailDelivering = true;
+      await page.reload();
+      await page.getByRole('button', { name: /^Email\s+Enabled for all notifications/ }).waitFor();
+      await page.screenshot({ path: `${output}/notifications-push-${width}.png` });
+
+      // The Email page (#275): types switch one by one and are saved for the member.
+      await page.getByRole('button', { name: /^Email/ }).click();
+      await page.waitForFunction(() => location.pathname.endsWith('/settings/account/notifications/email'));
+      await page.getByRole('heading', { name: 'Email' }).waitFor();
+      await page.getByText('Email notifications to owner@example.test').waitFor();
+      // Priority inbox is off, so "Only deliver priority notifications" is dimmed and says why.
+      const priorityOnly = page.getByRole('switch', { name: 'Only deliver priority notifications' });
+      assert.equal(await priorityOnly.getAttribute('aria-disabled'), 'true');
+      await page.locator('.preferences-row-item--disabled', { hasText: 'Only deliver priority notifications' }).hover();
+      await page.getByRole('tooltip').filter({ hasText: "Priority inbox isn't enabled" }).waitFor();
+      await page.getByRole('switch', { name: 'Team' }).click();
+      await page.waitForFunction(() => document.querySelector('[role="switch"][aria-label="Team"]')?.getAttribute('aria-checked') === 'false');
+      await expectSaved(() => savedChannels.email.kinds.join() === 'urgent,rule_alerts,rule_actions,assistant,manual,system');
+      await page.screenshot({ path: `${output}/notifications-email-${width}.png` });
+      await page.locator('.preferences-breadcrumb').click();
+      await page.getByRole('button', { name: /^Email\s+Enabled for urgent, rule alerts, 4 others/ }).waitFor();
+
+      // Switching email off dims every type and the row says Disabled.
+      await page.getByRole('button', { name: /^Email/ }).click();
+      await page.getByRole('switch', { name: 'Enable email notifications' }).click();
+      assert.equal(await page.getByRole('switch', { name: 'Urgent' }).getAttribute('aria-disabled'), 'true');
+      await expectSaved(() => savedChannels.email.enabled === false);
+      await page.reload();
+      await page.waitForFunction(() => document.querySelector('[role="switch"][aria-label="Enable email notifications"]')?.getAttribute('aria-checked') === 'false');
+      await page.goto(`${origin}/${workspace.slug}/settings/account/notifications`);
+      await page.getByRole('button', { name: /^Email\s+Disabled/ }).waitFor();
 
       assert.deepEqual(errors, []);
       console.log(`Inbox: unread, open, J/U/Backspace/H, row menu, unreads only and display options passed at ${width}px`);

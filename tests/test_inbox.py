@@ -526,6 +526,42 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
         response = await self.client.get("/api/inbox/display", headers=self.owner_headers)
         self.assertEqual(response.json()["ordering"], "newest")
 
+    async def test_email_notification_settings_are_saved_per_member(self):
+        all_kinds = ["urgent", "rule_alerts", "rule_actions", "assistant", "manual", "team", "system"]
+        defaults = {
+            "email": {"enabled": True, "priority_only": False, "kinds": all_kinds},
+            # Emails are not sent yet, so the Email row says Disabled.
+            "delivering": {"email": False},
+        }
+        response = await self.client.get("/api/notifications/channels", headers=self.owner_headers)
+        self.assertEqual(response.json(), defaults)
+
+        chosen = {"email": {"enabled": False, "priority_only": True, "kinds": ["team", "urgent", "team"]}}
+        response = await self.client.put("/api/notifications/channels", headers=self.owner_headers, json=chosen)
+        self.assertEqual(response.status_code, 200, response.text)
+        saved = (await self.client.get("/api/notifications/channels", headers=self.owner_headers)).json()
+        # Kinds come back once each, in Focus order.
+        self.assertEqual(saved["email"], {"enabled": False, "priority_only": True, "kinds": ["urgent", "team"]})
+
+        # Another member of the same workspace keeps Linear's defaults.
+        response = await self.client.get("/api/notifications/channels", headers=self.buyer_headers)
+        self.assertEqual(response.json(), defaults)
+
+        response = await self.client.put(
+            "/api/notifications/channels",
+            headers=self.owner_headers,
+            json={"email": {"enabled": True, "kinds": ["mentions"]}},
+        )
+        self.assertEqual(response.status_code, 422)
+
+        async with self.session_maker() as session:
+            await session.execute(
+                update(WorkspaceMember).values(notification_channels={"email": {"enabled": "sometimes"}})
+            )
+            await session.commit()
+        response = await self.client.get("/api/notifications/channels", headers=self.owner_headers)
+        self.assertEqual(response.json(), defaults)
+
 
 if __name__ == "__main__":
     unittest.main()
