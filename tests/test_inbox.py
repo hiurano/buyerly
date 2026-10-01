@@ -336,6 +336,37 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 404, path)
         self.assertNotIn("other workspace", self.read_map(await self.inbox(self.owner_headers)))
 
+    async def test_display_options_are_saved_per_member(self):
+        defaults = {
+            "unread_only": False, "ordering": "newest", "show_snoozed": False, "unread_first": False,
+        }
+        response = await self.client.get("/api/inbox/display", headers=self.owner_headers)
+        self.assertEqual(response.json(), defaults)
+
+        chosen = {"unread_only": True, "ordering": "oldest", "show_snoozed": True, "unread_first": True}
+        response = await self.client.put("/api/inbox/display", headers=self.owner_headers, json=chosen)
+        self.assertEqual(response.status_code, 200, response.text)
+        response = await self.client.get("/api/inbox/display", headers=self.owner_headers)
+        self.assertEqual(response.json(), chosen)
+
+        # Another member of the same workspace keeps Linear's defaults.
+        response = await self.client.get("/api/inbox/display", headers=self.buyer_headers)
+        self.assertEqual(response.json(), defaults)
+
+        response = await self.client.put(
+            "/api/inbox/display", headers=self.owner_headers, json={**chosen, "ordering": "priority"}
+        )
+        self.assertEqual(response.status_code, 422)
+
+    async def test_unreadable_saved_display_falls_back_to_defaults(self):
+        async with self.session_maker() as session:
+            await session.execute(
+                update(WorkspaceMember).values(inbox_display={"ordering": "sideways"})
+            )
+            await session.commit()
+        response = await self.client.get("/api/inbox/display", headers=self.owner_headers)
+        self.assertEqual(response.json()["ordering"], "newest")
+
 
 if __name__ == "__main__":
     unittest.main()

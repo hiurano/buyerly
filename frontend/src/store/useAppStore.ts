@@ -34,7 +34,13 @@ import type {
 } from '@/lib/rules';
 import type { DeletedKind } from '@/lib/trash';
 import { pushHistory } from '@/lib/undoHistory';
-import { fetchInboxUnreadCount, type InboxOrdering } from '@/lib/inbox';
+import {
+  DEFAULT_INBOX_DISPLAY,
+  fetchInboxDisplay,
+  fetchInboxUnreadCount,
+  saveInboxDisplay,
+  type InboxDisplay,
+} from '@/lib/inbox';
 
 export type RuleFilterTab = 'active' | 'paused' | 'all' | 'deleted';
 
@@ -145,13 +151,7 @@ export type ActiveTab = AppTab | 'preferences';
 /** Settings pages; `members` also has its own address under /<workspace>/settings. */
 export type SettingsSection = 'preferences' | 'profile' | 'ad-accounts' | 'members';
 export type InterfaceTheme = 'system' | 'light' | 'dark';
-/** Inbox header toggles and Display options, as in Linear. */
-export interface InboxDisplay {
-  unreadOnly: boolean;
-  ordering: InboxOrdering;
-  showSnoozed: boolean;
-  unreadFirst: boolean;
-}
+export type { InboxDisplay };
 
 /**
  * A preset belongs to at most one group in the UI. The API models membership
@@ -237,6 +237,9 @@ interface AppState {
   setInboxUnreadCount: (count: number) => void;
   refreshInboxUnreadCount: () => Promise<void>;
   inboxDisplay: InboxDisplay;
+  /** False until this workspace's saved Display options arrive (or the member changes one). */
+  inboxDisplayLoaded: boolean;
+  loadInboxDisplay: () => Promise<void>;
   setInboxDisplay: (patch: Partial<InboxDisplay>) => void;
   setWorkspaceName: (name: string) => void;
   sidebarWidth: number;
@@ -414,6 +417,7 @@ function emptyAccountState() {
 function emptyWorkspaceState() {
   return {
     ...emptyAccountState(), workspaceName: 'buyerly', inboxUnreadCount: 0, campaignGroups: [],
+    inboxDisplay: DEFAULT_INBOX_DISPLAY, inboxDisplayLoaded: false,
     rules: [], ruleGroups: [], ruleAccounts: [], rulesLoadState: 'idle' as RulesLoadState,
     rulesError: '', rulesMutationError: '', selectedRuleId: null, selectedRuleIds: [],
     focusedRuleId: null, editingRuleId: null, isCreateRuleModalOpen: false,
@@ -430,6 +434,7 @@ export const OUT_OF_SCOPE = 'This workspace is no longer open.';
 export const useAppStore = create<AppState>((set, get) => {
   let rulesRequest = 0;
   let attachmentsRequest = 0;
+  let inboxDisplaySave: Promise<unknown> = Promise.resolve();
   return ({
   workspaceScope: null,
   workspaceSlug: null,
@@ -465,8 +470,31 @@ export const useAppStore = create<AppState>((set, get) => {
       // The badge keeps its last value; Inbox itself reports load errors.
     }
   },
-  inboxDisplay: { unreadOnly: false, ordering: 'newest', showSnoozed: false, unreadFirst: false },
-  setInboxDisplay: (patch) => set((state) => ({ inboxDisplay: { ...state.inboxDisplay, ...patch } })),
+  inboxDisplay: DEFAULT_INBOX_DISPLAY,
+  inboxDisplayLoaded: false,
+  loadInboxDisplay: async () => {
+    const inScope = get().captureScope();
+    let display = DEFAULT_INBOX_DISPLAY;
+    try {
+      display = await fetchInboxDisplay();
+    } catch {
+      // Inbox still opens, with Linear's defaults.
+    }
+    // A choice made while this was loading wins over the saved one.
+    if (inScope() && !get().inboxDisplayLoaded) set({ inboxDisplay: display, inboxDisplayLoaded: true });
+  },
+  setInboxDisplay: (patch) => {
+    const inboxDisplay = { ...get().inboxDisplay, ...patch };
+    set({ inboxDisplay, inboxDisplayLoaded: true });
+    const inScope = get().captureScope();
+    // Saved one after another, so the last choice is the one that stays;
+    // a save still queued when the workspace changes must not land in the new one.
+    inboxDisplaySave = inboxDisplaySave
+      .then(() => (inScope() ? saveInboxDisplay(inboxDisplay) : undefined))
+      .catch(() => {
+        // The choice still applies until the page is reloaded.
+      });
+  },
   sidebarWidth: 244,
   setSidebarWidth: (width) =>
     set({ sidebarWidth: Math.min(Math.max(width, 200), 400) }),

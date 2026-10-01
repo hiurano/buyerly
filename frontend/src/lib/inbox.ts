@@ -38,6 +38,55 @@ export interface InboxActionResponse {
 
 export type InboxOrdering = 'newest' | 'oldest';
 
+/** Inbox header toggles and Display options, as in Linear. */
+export interface InboxDisplay {
+  unreadOnly: boolean;
+  ordering: InboxOrdering;
+  showSnoozed: boolean;
+  unreadFirst: boolean;
+}
+
+export const DEFAULT_INBOX_DISPLAY: InboxDisplay = {
+  unreadOnly: false,
+  ordering: 'newest',
+  showSnoozed: false,
+  unreadFirst: false,
+};
+
+interface InboxDisplayPayload {
+  unread_only: boolean;
+  ordering: InboxOrdering;
+  show_snoozed: boolean;
+  unread_first: boolean;
+}
+
+function inboxDisplayFromPayload(payload: Partial<InboxDisplayPayload> | null): InboxDisplay {
+  return {
+    unreadOnly: payload?.unread_only === true,
+    ordering: payload?.ordering === 'oldest' ? 'oldest' : 'newest',
+    showSnoozed: payload?.show_snoozed === true,
+    unreadFirst: payload?.unread_first === true,
+  };
+}
+
+/** Linear remembers Display options for each member of a workspace, on every device. */
+export async function fetchInboxDisplay(): Promise<InboxDisplay> {
+  return inboxDisplayFromPayload(await apiRequest<InboxDisplayPayload>('/api/inbox/display'));
+}
+
+export async function saveInboxDisplay(display: InboxDisplay): Promise<InboxDisplay> {
+  const payload: InboxDisplayPayload = {
+    unread_only: display.unreadOnly,
+    ordering: display.ordering,
+    show_snoozed: display.showSnoozed,
+    unread_first: display.unreadFirst,
+  };
+  return inboxDisplayFromPayload(await apiRequest<InboxDisplayPayload>('/api/inbox/display', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  }));
+}
+
 export interface InboxQuery {
   offset: number;
   limit?: number;
