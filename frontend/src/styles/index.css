@@ -337,6 +337,7 @@ body {
   border-radius: 72px;
   background: var(--toggle-unchecked-bg);
   cursor: pointer;
+  transition: background-color 150ms ease-out;
 }
 
 .linear-display-switch > span {
@@ -346,13 +347,17 @@ body {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: white;
+  background: var(--toggle-knob);
   box-shadow: 0 1px 2px rgb(0 0 0 / 20%);
   transition: transform 100ms ease;
 }
 
 .linear-display-switch[aria-checked='true'] {
-  background: var(--text-primary);
+  background: var(--toggle-checked-bg);
+}
+
+.linear-display-switch[aria-checked='true']:hover {
+  background: var(--toggle-checked-hover-bg);
 }
 
 .linear-display-switch[aria-checked='true'] > span {
