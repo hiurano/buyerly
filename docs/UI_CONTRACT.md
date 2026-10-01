@@ -39,7 +39,7 @@ Use the existing primitives from `frontend/src/ui/`:
 | Confirmation | `ConfirmDialog` | A destructive action is confirmed with a question naming what is affected, its consequence and the way back; the confirming button (`Button variant="danger"`) takes focus, Esc cancels and keeps the selection. |
 | Data states | `DataState` | Loading, empty, unavailable and error blocks are rendered through it rather than re-invented per screen. |
 | Checkbox | `LinearCheckbox`, `FormCheckbox` | Labelled state is operable by keyboard and not communicated by color alone. `FormCheckbox` is for form rows where `LinearCheckbox` does not apply. |
-| Toggle | `LinearToggle` | Has an accessible name, clear checked state and disabled/busy handling when applicable. |
+| Toggle | `LinearToggle` | The only switch; no other `role="switch"` in the code. `size="small"` inside view menus, `default` elsewhere. Has an accessible name, clear checked state and disabled/busy handling when applicable. |
 | Menu | `DropdownMenu`, `ContextMenu` | Viewport-safe, dismissible, keyboard-operable and layered through semantic tokens. |
 | Tooltip | `Tooltip` | Provides optional explanation; never hides a required action or status. |
 | Label/status | `LinearLabelPill` | Semantic text or icon accompanies color. |

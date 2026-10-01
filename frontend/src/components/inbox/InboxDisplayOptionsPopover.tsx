@@ -10,6 +10,7 @@ import {
 } from '@/lib/inbox';
 import { useAppStore } from '@/store/useAppStore';
 import { LinearMultiSelect, LinearSelect } from '@/ui/LinearDisplayOptions';
+import { LinearToggle } from '@/ui/LinearToggle';
 import { useMenuExit } from '@/ui/useMenuExit';
 
 interface InboxDisplayOptionsPopoverProps {
@@ -18,23 +19,14 @@ interface InboxDisplayOptionsPopoverProps {
   anchorRef: React.RefObject<HTMLElement | null>;
 }
 
-const Switch: React.FC<{ label: string; checked: boolean; onChange: (value: boolean) => void }> = ({
+const SwitchRow: React.FC<{ label: string; checked: boolean; onChange: (value: boolean) => void }> = ({
   label,
   checked,
   onChange,
 }) => (
   <div className="linear-display-row">
     <span>{label}</span>
-    <button
-      type="button"
-      role="switch"
-      aria-label={label}
-      aria-checked={checked}
-      className="linear-display-switch"
-      onClick={() => onChange(!checked)}
-    >
-      <span />
-    </button>
+    <LinearToggle size="small" label={label} checked={checked} onChange={onChange} />
   </div>
 );
 
@@ -91,7 +83,7 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
       data-wide={inboxDisplay.priorityInbox || undefined}
     >
       <section className="linear-display-main-section">
-        <Switch
+        <SwitchRow
           label="Enable priority inbox"
           checked={inboxDisplay.priorityInbox}
           onChange={(value) => setInboxDisplay({ priorityInbox: value })}
@@ -147,12 +139,12 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
         </div>
       </section>
       <section className="linear-display-options-section">
-        <Switch
+        <SwitchRow
           label="Show snoozed"
           checked={inboxDisplay.showSnoozed}
           onChange={(value) => setInboxDisplay({ showSnoozed: value })}
         />
-        <Switch
+        <SwitchRow
           label="Show unread first"
           checked={inboxDisplay.unreadFirst}
           onChange={(value) => setInboxDisplay({ unreadFirst: value })}

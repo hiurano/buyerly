@@ -328,40 +328,82 @@ body {
   background: var(--display-control-hover, var(--bg-canvas));
 }
 
-.linear-display-switch {
+/* LinearToggle, the only switch. Sizes measured in Linear: default = Settings
+   → Preferences, small = Display options. Colours come from tokens.css. */
+.linear-toggle {
+  --toggle-width: 30px;
+  --toggle-height: 20px;
+  --toggle-knob-size: 14px;
+  --toggle-inset: 3px;
   position: relative;
-  width: 22px;
-  height: 14px;
+  display: inline-block;
+  flex-shrink: 0;
+  width: var(--toggle-width);
+  height: var(--toggle-height);
   padding: 0;
   border: 0;
   border-radius: 72px;
   background: var(--toggle-unchecked-bg);
   cursor: pointer;
-  transition: background-color 150ms ease-out;
+  user-select: none;
+  transition: background-color 150ms ease-out, opacity 150ms ease-out;
 }
 
-.linear-display-switch > span {
+.linear-toggle[data-size='small'] {
+  --toggle-width: 22px;
+  --toggle-height: 14px;
+  --toggle-knob-size: 10px;
+  --toggle-inset: 2px;
+}
+
+.linear-toggle::after {
+  content: '';
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 10px;
-  height: 10px;
+  top: var(--toggle-inset);
+  left: var(--toggle-inset);
+  width: var(--toggle-knob-size);
+  height: var(--toggle-knob-size);
   border-radius: 50%;
   background: var(--toggle-knob);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 20%);
-  transition: transform 100ms ease;
+  transition: transform 100ms ease-out;
 }
 
-.linear-display-switch[aria-checked='true'] {
+.linear-toggle:not([aria-disabled='true'], [aria-busy='true']):hover {
+  background: var(--toggle-unchecked-hover-bg);
+}
+
+.linear-toggle[aria-checked='true'] {
   background: var(--toggle-checked-bg);
 }
 
-.linear-display-switch[aria-checked='true']:hover {
+.linear-toggle[aria-checked='true']:not([aria-disabled='true'], [aria-busy='true']):hover {
   background: var(--toggle-checked-hover-bg);
 }
 
-.linear-display-switch[aria-checked='true'] > span {
-  transform: translateX(8px);
+.linear-toggle[aria-checked='true']::after {
+  transform: translateX(calc(var(--toggle-width) - var(--toggle-knob-size) - 2 * var(--toggle-inset)));
+}
+
+.linear-toggle[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.linear-toggle[aria-busy='true'] {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+.linear-toggle:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .linear-toggle,
+  .linear-toggle::after {
+    transition: none;
+  }
 }
 
 html[data-theme='light'] {

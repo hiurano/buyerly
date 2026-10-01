@@ -434,6 +434,26 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertNotIn(retired_state, self.app_store)
         self.assertIn("rulesFilterClauses", self.app_store)
 
+    def test_every_switch_is_the_one_linear_toggle(self):
+        # One switch for the whole app (#263): LinearToggle in two sizes, coloured
+        # by tokens. A hand-rolled role="switch" elsewhere would drift again.
+        src = ROOT / "frontend" / "src"
+        toggle = src / "ui" / "LinearToggle.tsx"
+        for path in sorted(src.rglob("*.tsx")):
+            if path == toggle:
+                continue
+            self.assertNotIn('role="switch"', path.read_text(), path.relative_to(ROOT))
+        self.assertNotIn("linear-display-switch", self.styles)
+        for token in (
+            "--toggle-checked-bg:",
+            "--toggle-checked-hover-bg:",
+            "--toggle-unchecked-bg:",
+            "--toggle-unchecked-hover-bg:",
+            "--toggle-knob:",
+        ):
+            self.assertIn(token, self.tokens)
+        self.assertIn("--toggle-checked-bg: #f5b800;", self.tokens)
+
     def test_rule_form_exposes_the_execution_level(self):
         # A rule that pauses a whole campaign must be distinguishable from one
         # that pauses a single ad set, both when creating it and in the list.
