@@ -9,6 +9,7 @@ import {
   type InboxKind,
   type InboxPriorityRule,
 } from '@/lib/inbox';
+import { channelStatus } from '@/lib/notificationChannels';
 import { useAppStore } from '@/store/useAppStore';
 import { LinearFilterMenu, type FilterMenuMode } from '@/components/filters/LinearFilter';
 import type { FilterClause } from '@/components/filters/filterModel';
@@ -16,10 +17,12 @@ import { InboxFilterChip } from '@/components/inbox/InboxFilterBar';
 import { fromMenuClauses, inboxFilterFields, toMenuClause } from '@/components/inbox/inboxFilterFields';
 import {
   LinearDotsIcon,
+  LinearEmailIcon,
   LinearFilterIcon,
   LinearPencilIcon,
   LinearPlusIcon,
   LinearTrashIcon,
+  TelegramIcon,
 } from '@/icons/LinearIcons';
 import { Button } from '@/ui/Button';
 import {
@@ -57,9 +60,56 @@ function useInboxDisplay() {
   return { inboxDisplay, setInboxDisplay };
 }
 
-/** Settings → Notifications, as in Linear: here only its Inbox part, which Buyerly has. */
-export const NotificationsSection: React.FC<{ onOpenPriority: () => void }> = ({ onOpenPriority }) => {
+function useNotificationChannels() {
+  const {
+    notificationChannels, notificationChannelsLoaded, loadNotificationChannels, setEmailNotifications,
+  } = useAppStore();
+  useEffect(() => {
+    if (!notificationChannelsLoaded) void loadNotificationChannels();
+  }, [notificationChannelsLoaded, loadNotificationChannels]);
+  return { notificationChannels, setEmailNotifications };
+}
+
+/** Linear's channel row: icon tile, name, a green or grey dot with the status, chevron. */
+const ChannelRow: React.FC<{
+  name: string;
+  icon: React.ReactNode;
+  status: { text: string; enabled: boolean };
+  onOpen?: () => void;
+}> = ({ name, icon, status, onOpen }) => {
+  const content = (
+    <>
+      <span className="preferences-channel-icon">{icon}</span>
+      <span className="preferences-row-copy">
+        <span className="preferences-row-title">{name}</span>
+        <span className="preferences-row-desc preferences-channel-status">
+          <span
+            className={`preferences-channel-dot${status.enabled ? ' preferences-channel-dot--on' : ''}`}
+            aria-hidden="true"
+          />
+          {status.text}
+        </span>
+      </span>
+      {onOpen && <ChevronRight size={16} aria-hidden="true" className="preferences-row-chevron" />}
+    </>
+  );
+  return onOpen ? (
+    <button type="button" className="preferences-row-item preferences-row-link" onClick={onOpen}>
+      {content}
+    </button>
+  ) : (
+    <div className="preferences-row-item">{content}</div>
+  );
+};
+
+/** Settings → Notifications, as in Linear: Inbox, then Push notifications with Email and Telegram. */
+export const NotificationsSection: React.FC<{ onOpenPriority: () => void; onOpenEmail: () => void }> = ({
+  onOpenPriority,
+  onOpenEmail,
+}) => {
   const { inboxDisplay, setInboxDisplay } = useInboxDisplay();
+  const { notificationChannels } = useNotificationChannels();
+  const { email, delivering } = notificationChannels;
   const priorityRowContent = (
     <>
       <span className="preferences-row-copy">
@@ -77,11 +127,11 @@ export const NotificationsSection: React.FC<{ onOpenPriority: () => void }> = ({
       <div className="preferences-title-container">
         <h1 className="preferences-page-title">Notifications</h1>
       </div>
-      <div className="preferences-section">
+      <div className="preferences-section preferences-section--notifications">
         <div className="preferences-section-header">
           <h3 className="preferences-section-title">Inbox</h3>
         </div>
-        <p className="preferences-section-note">Manage how notifications are organized in your inbox</p>
+        <p className="preferences-section-note preferences-section-note--notifications">Manage how notifications are organized in your inbox</p>
         <section className="preferences-card-container preferences-card-container--divided">
           <div className="preferences-row-item">
             <div className="preferences-row-copy">
@@ -104,6 +154,123 @@ export const NotificationsSection: React.FC<{ onOpenPriority: () => void }> = ({
               <div className="preferences-row-item preferences-row-item--disabled">{priorityRowContent}</div>
             </Tooltip>
           )}
+        </section>
+      </div>
+      <div className="preferences-section preferences-section--notifications">
+        <div className="preferences-section-header">
+          <h3 className="preferences-section-title">Push notifications</h3>
+        </div>
+        <p className="preferences-section-note preferences-section-note--notifications">
+          Choose which notifications are pushed to your devices. All notifications will still appear in your inbox.
+        </p>
+        <section className="preferences-card-container preferences-card-container--divided">
+          <ChannelRow
+            name="Email"
+            icon={<LinearEmailIcon size={16} />}
+            // Until Buyerly sends emails, saying "Enabled" would promise mail that never comes.
+            status={channelStatus(email.enabled && delivering.email, email.kinds)}
+            onOpen={onOpenEmail}
+          />
+          {/* Telegram stands where Linear has Slack; it opens once the new bot is connected. */}
+          <ChannelRow name="Telegram" icon={<TelegramIcon size={16} />} status={channelStatus(false, [])} />
+        </section>
+      </div>
+    </>
+  );
+};
+
+/** Settings → Notifications → Email, as in Linear without its digest settings. */
+export const EmailNotificationsSection: React.FC<{
+  email: string | null;
+  onBack: () => void;
+  onOpenPriority: () => void;
+}> = ({ email: address, onBack, onOpenPriority }) => {
+  const { inboxDisplay } = useInboxDisplay();
+  const { notificationChannels, setEmailNotifications } = useNotificationChannels();
+  const { email } = notificationChannels;
+  const priorityOnly = inboxDisplay.priorityInbox && email.priorityOnly;
+  // Linear: switching the channel on with every type off switches every type on.
+  const toggleChannel = (enabled: boolean) => setEmailNotifications(
+    enabled && email.kinds.length === 0 ? { enabled, kinds: [...INBOX_KINDS] } : { enabled },
+  );
+  const toggleKind = (kind: InboxKind, on: boolean) => setEmailNotifications({
+    kinds: INBOX_KINDS.filter((entry) => (entry === kind ? on : email.kinds.includes(entry))),
+  });
+  const kindsDisabled = !email.enabled || priorityOnly;
+
+  const priorityRow = (
+    <div
+      className={`preferences-row-item${email.enabled && inboxDisplay.priorityInbox ? '' : ' preferences-row-item--disabled'}`}
+    >
+      <div className="preferences-row-copy">
+        <span className="preferences-row-title">Only deliver priority notifications</span>
+        <span className="preferences-row-desc">
+          Uses your{' '}
+          <button type="button" className="preferences-inline-link" onClick={onOpenPriority}>
+            priority notification settings
+          </button>
+        </span>
+      </div>
+      <LinearToggle
+        label="Only deliver priority notifications"
+        checked={priorityOnly}
+        disabled={!email.enabled || !inboxDisplay.priorityInbox}
+        onChange={(value) => setEmailNotifications({ priorityOnly: value })}
+      />
+    </div>
+  );
+
+  return (
+    <>
+      <button type="button" className="preferences-breadcrumb" onClick={onBack}>
+        <ChevronLeft size={14} aria-hidden="true" />
+        Notifications
+      </button>
+      <div className="preferences-title-container">
+        <h1 className="preferences-page-title">Email</h1>
+      </div>
+      <div className="preferences-section preferences-section--sub">
+        <section className="preferences-card-container preferences-card-container--divided">
+          <div className="preferences-row-item">
+            <div className="preferences-row-copy">
+              <span className="preferences-row-title">Enable email notifications</span>
+              <span className="preferences-row-desc">Email notifications to {address}</span>
+            </div>
+            <LinearToggle label="Enable email notifications" checked={email.enabled} onChange={toggleChannel} />
+          </div>
+          {inboxDisplay.priorityInbox ? priorityRow : (
+            <Tooltip content="Priority inbox isn't enabled" side="bottom" sideOffset={8}>
+              {priorityRow}
+            </Tooltip>
+          )}
+        </section>
+      </div>
+      <div className="preferences-section preferences-section--sub">
+        <div className="preferences-section-header preferences-section-header--sub">
+          <h3 className="preferences-section-title preferences-section-title--sub">General notifications</h3>
+        </div>
+        <section className="preferences-card-container preferences-card-container--divided">
+          {INBOX_KINDS.map((kind) => {
+            const row = (
+              <div key={kind} className={`preferences-row-item${kindsDisabled ? ' preferences-row-item--disabled' : ''}`}>
+                <div className="preferences-row-copy">
+                  <span className="preferences-row-title">{INBOX_KIND_LABELS[kind]}</span>
+                  <span className="preferences-row-desc">{KIND_DESCRIPTIONS[kind]}</span>
+                </div>
+                <LinearToggle
+                  label={INBOX_KIND_LABELS[kind]}
+                  checked={email.kinds.includes(kind)}
+                  disabled={kindsDisabled}
+                  onChange={(value) => toggleKind(kind, value)}
+                />
+              </div>
+            );
+            return priorityOnly ? (
+              <Tooltip key={kind} content="Only priority notifications are delivered for this channel." side="bottom" sideOffset={8}>
+                {row}
+              </Tooltip>
+            ) : row;
+          })}
         </section>
       </div>
     </>

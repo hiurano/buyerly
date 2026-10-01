@@ -1458,6 +1458,81 @@ html[data-theme='dark'] .linear-sidebar-badge,
   color: var(--text-muted);
 }
 
+/* Settings → Notifications, measured in Linear: 13px note 2px under the heading,
+   16px above the card, 48px between blocks. */
+.preferences-section--notifications {
+  margin-bottom: 48px;
+}
+
+.preferences-section-note--notifications {
+  margin: -10px 0 16px;
+  max-width: none;
+  font-size: 13px;
+  line-height: 22px;
+}
+
+/* Push notifications: Linear's 32px icon tile, then the name over a 6px status dot. */
+.preferences-channel-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: var(--preferences-channel-icon-bg);
+  color: var(--text-tertiary);
+}
+
+.preferences-channel-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.preferences-channel-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--preferences-channel-off);
+}
+
+.preferences-channel-dot--on {
+  background: var(--preferences-channel-on);
+}
+
+/* "Uses your priority notification settings": Linear's link inside a row description. */
+.preferences-inline-link {
+  display: inline;
+  padding: 1px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  cursor: default;
+}
+
+.preferences-inline-link:hover {
+  background: var(--item-hover-bg);
+}
+
+/* Linear's subsections on a channel page: 13px heading, 24px between groups. */
+.preferences-section--sub {
+  margin-bottom: 24px;
+}
+
+.preferences-section-header--sub {
+  height: 16px;
+}
+
+.preferences-section-title--sub {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 16px;
+}
+
 /* "‹ Notifications" above a settings page that sits under another one. */
 .preferences-breadcrumb {
   display: inline-flex;

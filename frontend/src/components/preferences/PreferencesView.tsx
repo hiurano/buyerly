@@ -5,7 +5,7 @@ import type { SessionUser, Workspace } from '@/lib/types';
 import { ProfileSection } from './ProfileSection';
 import { AdAccountsSection } from './AdAccountsSection';
 import { MembersSection } from './MembersSection';
-import { NotificationsSection, PriorityNotificationsSection } from './NotificationsSection';
+import { EmailNotificationsSection, NotificationsSection, PriorityNotificationsSection } from './NotificationsSection';
 import { LinearToggle } from '@/ui/LinearToggle';
 import { findModelContext, setWebMcpEnabled, useWebMcpEnabled } from '@/webmcp/register';
 
@@ -19,10 +19,10 @@ const themeOptions: Array<{
 ];
 
 /** Keywords the settings search matches against, per section in the sidebar. */
-const sectionKeywords: Record<Exclude<SettingsSection, 'priority-notifications'>, string> = {
+const sectionKeywords: Record<Exclude<SettingsSection, 'priority-notifications' | 'email-notifications'>, string> = {
   preferences: 'preferences interface theme appearance ai assistant agent webmcp chrome',
   profile: 'profile account email name avatar',
-  notifications: 'notifications inbox priority inbox custom filters',
+  notifications: 'notifications inbox priority inbox custom filters push email telegram',
   'ad-accounts': 'ad accounts cost target primary result statistics cpa cpl currency',
   members: 'members invite invitations people team users roles',
 };
@@ -50,7 +50,8 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
   const assistantSupported = findModelContext() !== null;
   const assistantForced = import.meta.env.VITE_WEBMCP === '1';
 
-  const notificationsOpen = section === 'notifications' || section === 'priority-notifications';
+  const notificationsOpen = section === 'notifications' || section === 'priority-notifications'
+    || section === 'email-notifications';
   const selectedTheme = themeOptions.find((option) => option.value === interfaceTheme) || themeOptions[0];
   const visibleSections = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -296,11 +297,22 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
             )}
 
             {section === 'notifications' && (
-              <NotificationsSection onOpenPriority={() => setSection('priority-notifications')} />
+              <NotificationsSection
+                onOpenPriority={() => setSection('priority-notifications')}
+                onOpenEmail={() => setSection('email-notifications')}
+              />
             )}
 
             {section === 'priority-notifications' && (
               <PriorityNotificationsSection onBack={() => setSection('notifications')} />
+            )}
+
+            {section === 'email-notifications' && (
+              <EmailNotificationsSection
+                email={user.email}
+                onBack={() => setSection('notifications')}
+                onOpenPriority={() => setSection('priority-notifications')}
+              />
             )}
 
             {section === 'ad-accounts' && <AdAccountsSection />}

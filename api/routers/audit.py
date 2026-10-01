@@ -843,6 +843,69 @@ async def save_inbox_display(payload: InboxDisplay, user: User = Depends(get_cur
     return payload.model_dump()
 
 
+# Emails are not sent yet (#276): until then Settings → Notifications reports Email as Disabled.
+EMAIL_DELIVERY_LIVE = False
+
+
+class EmailNotifications(BaseModel):
+    """Settings → Notifications → Email; the defaults are Linear's."""
+
+    enabled: bool = True
+    # "Only deliver priority notifications": applies only while Priority inbox is on, as in Linear.
+    priority_only: bool = False
+    # Linear starts with every kind switched on.
+    kinds: list[InboxKind] = Field(
+        default_factory=lambda: list(INBOX_KINDS), max_length=len(INBOX_KINDS)
+    )
+
+    @field_validator("kinds")
+    @classmethod
+    def _known_order(cls, value: list[str]) -> list[str]:
+        return [kind for kind in INBOX_KINDS if kind in value]
+
+
+class NotificationChannels(BaseModel):
+    email: EmailNotifications = Field(default_factory=EmailNotifications)
+
+
+def _stored_notification_channels(member) -> NotificationChannels:
+    stored = getattr(member, "notification_channels", None)
+    if not isinstance(stored, dict):
+        return NotificationChannels()
+    try:
+        return NotificationChannels.model_validate(stored)
+    except ValidationError:
+        return NotificationChannels()
+
+
+def _channels_answer(channels: NotificationChannels) -> dict:
+    return {**channels.model_dump(), "delivering": {"email": EMAIL_DELIVERY_LIVE}}
+
+
+@router.get("/notifications/channels")
+async def get_notification_channels(user: User = Depends(get_current_user)):
+    """Linear keeps these per member and workspace, on every device."""
+    async with async_session_maker() as session:
+        _, member = await _inbox_member(session, user)
+        return _channels_answer(_stored_notification_channels(member))
+
+
+@router.put("/notifications/channels")
+async def save_notification_channels(
+    payload: NotificationChannels, user: User = Depends(get_current_user)
+):
+    async with async_session_maker() as session:
+        _, member = await _inbox_member(session, user)
+        if member.id is None:
+            raise HTTPException(
+                status_code=403, detail="Support access cannot change these settings."
+            )
+        stored = await session.get(WorkspaceMember, member.id)
+        stored.notification_channels = payload.model_dump()
+        await session.commit()
+    return _channels_answer(payload)
+
+
 @router.get("/inbox/unread-count")
 async def inbox_unread_count(user: User = Depends(get_current_user)):
     async with async_session_maker() as session:

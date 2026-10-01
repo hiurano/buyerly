@@ -56,12 +56,13 @@ POST_BASELINE_COLUMNS = {
         "entity_level",
         "entity_id",
     },
-    # Added by the Inbox read-state migration (0028) and the Inbox Display
-    # options migration (0029).
+    # Added by the Inbox read-state migration (0028), the Inbox Display
+    # options migration (0029) and the notification channels migration (0030).
     "workspace_members": {
         "inbox_read_before",
         "inbox_deleted_before",
         "inbox_display",
+        "notification_channels",
     },
 }
 
