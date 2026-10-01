@@ -20,6 +20,9 @@ import {
   fetchInbox,
   fetchInboxFacets,
   formatSnoozeTime,
+  countUnread,
+  groupInboxItems,
+  inboxTabKinds,
   markInboxRead,
   snoozeInboxNotification,
   type InboxActionResponse,
@@ -27,11 +30,13 @@ import {
   type InboxFacetValue,
   type InboxFilterClause,
   type InboxItem,
+  type InboxQuery,
+  type InboxTab,
 } from '@/lib/inbox';
 import { LinearFilterButton, LinearFilterMenu, type FilterMenuMode } from '@/components/filters/LinearFilter';
 import type { FilterClause, FilterFieldDefinition } from '@/components/filters/filterModel';
 import { InboxFilterBar, InboxFilterFooter } from './InboxFilterBar';
-import { InboxItemRow } from './InboxItemRow';
+import { InboxGroupHeader, InboxItemRow } from './InboxItemRow';
 import { InboxDisplayOptionsPopover } from './InboxDisplayOptionsPopover';
 import { SnoozeCalendarDialog } from './SnoozeCalendarDialog';
 import { SNOOZE_SEARCH_HINT, SnoozePalette } from './SnoozePalette';
@@ -61,9 +66,11 @@ type LoadState = 'loading' | 'ready' | 'error';
 type ActionState = 'idle' | 'loading';
 
 interface InboxViewProps {
-  /** The notification open on the right, from the /<workspace>/inbox/<id> address. */
+  /** The notification open on the right, from the /<workspace>/inbox[/<tab>]/<id> address. */
   openEventId?: string;
-  onOpenEvent: (eventId: number | null) => void;
+  /** Priority inbox tab from the address: /<workspace>/inbox/priority or /other, as in Linear. */
+  inboxTab: InboxTab | null;
+  onNavigate: (tab: InboxTab | null, eventId: number | null) => void;
 }
 
 function requestErrorMessage(error: unknown): string {
@@ -180,13 +187,14 @@ const headerButtonClass = (active = false) =>
       : 'text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'
   }`;
 
-export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }) => {
+export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onNavigate }) => {
   const {
     isSidebarCollapsed,
     toggleSidebarCollapsed,
     setActiveTab,
     inboxUnreadCount,
-    setInboxUnreadCount,
+    inboxUnreadByKind,
+    setInboxUnread,
     inboxDisplay,
     inboxDisplayLoaded,
     loadInboxDisplay,
@@ -218,6 +226,25 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
   const [hiddenByFilters, setHiddenByFilters] = useState(0);
   const [facets, setFacets] = useState<InboxFacets | null>(null);
   const [filterMenu, setFilterMenu] = useState<{ mode: FilterMenuMode; anchor: HTMLElement; fieldId?: string } | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(() => new Set());
+  // Read state as each notification was first seen, so Focus groups hold still
+  // while notifications are read, as in Linear.
+  const readOnFirstSeenRef = useRef(new Map<number, boolean>());
+
+  // With priority inbox on, Linear always shows one of its two tabs.
+  const activeTab: InboxTab | null = inboxDisplay.priorityInbox ? inboxTab ?? 'priority' : null;
+  const tabRef = useRef(activeTab);
+  tabRef.current = activeTab;
+  const queryKey = JSON.stringify({
+    ordering: inboxDisplay.ordering,
+    unreadOnly: inboxDisplay.unreadOnly,
+    showSnoozed: inboxDisplay.showSnoozed,
+    // Focus puts unread groups above Read, so the server pages unread first.
+    unreadFirst: inboxDisplay.unreadFirst || inboxDisplay.grouping === 'focus',
+    ...inboxTabKinds(inboxDisplay, activeTab),
+  });
+  // Only what changes the list reloads it; Badge count, for one, does not.
+  const listQuery = useMemo(() => JSON.parse(queryKey) as Omit<InboxQuery, 'offset'>, [queryKey]);
 
   const selectedId = openEventId && /^\d+$/.test(openEventId) ? Number(openEventId) : null;
   const selectedItem = useMemo(
@@ -229,6 +256,13 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
     if (!inboxDisplayLoaded) void loadInboxDisplay();
   }, [inboxDisplayLoaded, loadInboxDisplay]);
 
+  // Turning priority inbox on opens /inbox/priority, turning it off /inbox, as in Linear.
+  useEffect(() => {
+    if (!inboxDisplayLoaded) return;
+    if (inboxDisplay.priorityInbox && !inboxTab) onNavigate('priority', selectedId);
+    else if (!inboxDisplay.priorityInbox && inboxTab) onNavigate(null, selectedId);
+  }, [inboxDisplay.priorityInbox, inboxDisplayLoaded, inboxTab, onNavigate, selectedId]);
+
   const load = useCallback(async (quiet: boolean) => {
     // The list waits for the member's saved Display options, so it is not drawn twice.
     if (!inboxDisplayLoaded) return;
@@ -239,14 +273,15 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
         offset: 0,
         // A background refresh keeps everything already scrolled into view.
         limit: Math.min(100, Math.max(INBOX_PAGE_SIZE, itemsRef.current.length)),
-        ...inboxDisplay,
+        ...listQuery,
         filters,
       });
       if (generation !== requestGenerationRef.current) return;
+      if (!quiet) readOnFirstSeenRef.current.clear();
       setItems(response.items);
       setHasMore(response.has_more);
       setHiddenByFilters(response.hidden_by_filters ?? 0);
-      setInboxUnreadCount(response.unread_count);
+      setInboxUnread(response);
       setLoadError('');
       setLoadState('ready');
     } catch (error) {
@@ -254,7 +289,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
       setLoadError(requestErrorMessage(error));
       setLoadState('error');
     }
-  }, [filters, inboxDisplay, inboxDisplayLoaded, setInboxUnreadCount]);
+  }, [filters, inboxDisplayLoaded, listQuery, setInboxUnread]);
 
   useEffect(() => {
     itemsRef.current = [];
@@ -274,20 +309,20 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
     const generation = requestGenerationRef.current;
     setIsLoadingMore(true);
     try {
-      const response = await fetchInbox({ offset: itemsRef.current.length, ...inboxDisplay, filters });
+      const response = await fetchInbox({ offset: itemsRef.current.length, ...listQuery, filters });
       if (generation !== requestGenerationRef.current) return;
       setItems((current) => {
         const known = new Set(current.map((item) => item.id));
         return [...current, ...response.items.filter((item) => !known.has(item.id))];
       });
       setHasMore(response.has_more);
-      setInboxUnreadCount(response.unread_count);
+      setInboxUnread(response);
     } catch {
       // Scrolling again retries.
     } finally {
       setIsLoadingMore(false);
     }
-  }, [filters, hasMore, inboxDisplay, isLoadingMore, loadState, setInboxUnreadCount]);
+  }, [filters, hasMore, isLoadingMore, listQuery, loadState, setInboxUnread]);
 
   const applyFilters = useCallback((next: InboxFilterClause[]) => {
     setFilters(next);
@@ -302,8 +337,8 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
     setIsDisplayOpen(false);
     setFilterMenu({ mode, anchor, fieldId });
     // Counts are read fresh each time, like Linear's "2 notifications" next to each value.
-    fetchInboxFacets(inboxDisplay.unreadOnly, inboxDisplay.showSnoozed).then(setFacets).catch(() => {});
-  }, [inboxDisplay.showSnoozed, inboxDisplay.unreadOnly]);
+    fetchInboxFacets(listQuery.unreadOnly, listQuery.showSnoozed, listQuery).then(setFacets).catch(() => {});
+  }, [listQuery]);
 
   const filterFields = useMemo(
     () => inboxFilterFields(facets, filters),
@@ -312,23 +347,44 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
   const filterClauses = useMemo(() => filters.map(toMenuClause), [filters]);
 
   const applyResponse = useCallback(
-    (response: InboxActionResponse) => setInboxUnreadCount(response.unread_count),
-    [setInboxUnreadCount],
+    (response: InboxActionResponse) => setInboxUnread(response),
+    [setInboxUnread],
   );
+
+  const groups = useMemo(() => {
+    const firstSeen = readOnFirstSeenRef.current;
+    for (const item of items) if (!firstSeen.has(item.id)) firstSeen.set(item.id, item.is_read);
+    return groupInboxItems(items, inboxDisplay.grouping, (item) => firstSeen.get(item.id) ?? item.is_read);
+  }, [inboxDisplay.grouping, items]);
+  // The order J/K and "open the next one" follow: groups top to bottom, collapsed ones skipped.
+  const visibleItems = useMemo(
+    () => (groups ? groups.flatMap((group) => (collapsedGroups.has(group.id) ? [] : group.items)) : items),
+    [collapsedGroups, groups, items],
+  );
+  const visibleRef = useRef(visibleItems);
+  visibleRef.current = visibleItems;
+  const toggleGroup = useCallback((id: string) => {
+    setCollapsedGroups((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
   const reportError = useCallback((error: unknown) => setActionError(requestErrorMessage(error)), []);
 
   const openItem = useCallback((item: InboxItem | null) => {
     setActionMessage('');
     setActionError('');
-    onOpenEvent(item ? item.id : null);
-  }, [onOpenEvent]);
+    onNavigate(tabRef.current, item ? item.id : null);
+  }, [onNavigate]);
 
   /** After a notification leaves the list, Linear opens the next one. */
   const removeItem = useCallback((item: InboxItem) => {
-    const current = itemsRef.current;
-    const index = current.findIndex((entry) => entry.id === item.id);
-    const remaining = current.filter((entry) => entry.id !== item.id);
-    setItems(remaining);
+    const visible = visibleRef.current;
+    const index = visible.findIndex((entry) => entry.id === item.id);
+    const remaining = visible.filter((entry) => entry.id !== item.id);
+    setItems((current) => current.filter((entry) => entry.id !== item.id));
     if (item.id === selectedId) {
       openItem(remaining[Math.min(index, remaining.length - 1)] ?? null);
     }
@@ -416,7 +472,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
       if (isTypingTarget(event.target)) return;
       // A menu still fading out after closing no longer holds the keyboard.
       if (document.querySelector(OPEN_LAYER_SELECTOR)) return;
-      const current = itemsRef.current;
+      const current = visibleRef.current;
       const index = current.findIndex((item) => item.id === selectedId);
       const selected = index >= 0 ? current[index] : null;
       const key = event.key;
@@ -528,19 +584,33 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
           if (element.scrollHeight - element.scrollTop - element.clientHeight < 200) void loadMore();
         }}
       >
-        {items.map((item) => (
-          <InboxItemRow
-            key={item.id}
-            item={item}
-            isSelected={item.id === selectedId}
-            onSelect={() => openItem(item)}
-            onToggleRead={toggleRead}
-            onDelete={deleteItem}
-            onSnooze={snoozeItem}
-            onCustomSnooze={setCustomSnoozeItem}
-            onUnsnooze={unsnoozeItem}
-          />
-        ))}
+        {(groups ?? [{ id: '', label: '', items }]).map((group) => {
+          const collapsed = collapsedGroups.has(group.id);
+          return (
+            <React.Fragment key={group.id}>
+              {groups && (
+                <InboxGroupHeader
+                  label={group.label}
+                  expanded={!collapsed}
+                  onToggle={() => toggleGroup(group.id)}
+                />
+              )}
+              {!collapsed && group.items.map((item) => (
+                <InboxItemRow
+                  key={item.id}
+                  item={item}
+                  isSelected={item.id === selectedId}
+                  onSelect={() => openItem(item)}
+                  onToggleRead={toggleRead}
+                  onDelete={deleteItem}
+                  onSnooze={snoozeItem}
+                  onCustomSnooze={setCustomSnoozeItem}
+                  onUnsnooze={unsnoozeItem}
+                />
+              ))}
+            </React.Fragment>
+          );
+        })}
         {filters.length > 0 && (
           <InboxFilterFooter hiddenCount={hiddenByFilters} onClear={() => applyFilters([])} />
         )}
@@ -642,6 +712,30 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
             anchorRef={displayButtonRef}
           />
         </header>
+
+        {activeTab && (
+          <nav aria-label="Priority inbox" className="linear-inbox-tabs">
+            {(['priority', 'other'] as const).map((tab) => {
+              const priorityUnread = countUnread(inboxUnreadByKind, inboxDisplay.priorityKinds);
+              const count = tab === 'priority' ? priorityUnread : inboxUnreadCount - priorityUnread;
+              return (
+                <a
+                  key={tab}
+                  href={`${window.location.pathname.split('/inbox')[0]}/inbox/${tab}`}
+                  aria-current={activeTab === tab ? 'page' : undefined}
+                  className="linear-inbox-tab"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    onNavigate(tab, null);
+                  }}
+                >
+                  {tab === 'priority' ? 'Priority' : 'Other'}
+                  {count > 0 && <span className="linear-inbox-tab-count">{count}</span>}
+                </a>
+              );
+            })}
+          </nav>
+        )}
 
         <InboxFilterBar
           fields={filterFields}

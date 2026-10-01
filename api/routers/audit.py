@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError, field_validator
 from sqlalchemy import String, and_, case, cast, false, func, literal, or_, select, update
 
 from api.auth import get_current_user
@@ -320,6 +320,73 @@ class InboxSnoozeRequest(BaseModel):
     until: Optional[datetime] = None
 
 
+# Kinds of Inbox notification, in the order Focus grouping shows them. They
+# stand in for Linear's notification kinds (Urgent, Mentions & replies, …),
+# which have no counterpart in ad events; agreed with the product owner for #240.
+INBOX_KINDS = (
+    "urgent",
+    "rule_alerts",
+    "rule_actions",
+    "assistant",
+    "manual",
+    "team",
+    "system",
+)
+InboxKind = Literal[
+    "urgent", "rule_alerts", "rule_actions", "assistant", "manual", "team", "system"
+]
+INBOX_URGENT_EVENT_TYPES = (
+    "ACCOUNT_HEALTH_ALERT",
+    "ACCOUNT_ISSUE",
+    "TOKEN_EXPIRED",
+    "UNDO_ACTION_FAILED",
+)
+INBOX_RULE_ACTION_EVENT_TYPES = (
+    "STOP",
+    "AUTO_REACTIVATE",
+    "INCREASE_BUDGET",
+    "DECREASE_BUDGET",
+    "PROPOSE_REACTIVATE",
+    "STOP_CONFIRMATION_STARTED",
+    "RULE_ACTION_COOLDOWN",
+    "RULE_ACTION_PENDING",
+    "RULE_ACTION_RECONCILED",
+)
+
+
+def _inbox_kind():
+    """Which kind of notification an audit event is; the first match wins."""
+    event_type = AuditEvent.event_type
+    return case(
+        (
+            or_(event_type.in_(INBOX_URGENT_EVENT_TYPES), AuditEvent.status == "ERROR"),
+            literal("urgent"),
+        ),
+        (event_type == "NOTIFY_ONLY", literal("rule_alerts")),
+        (event_type.startswith("ASSISTANT_", autoescape=True), literal("assistant")),
+        (
+            or_(
+                AuditEvent.category == "WORKSPACE_INVITE",
+                event_type.startswith("SUPPORT_SESSION_", autoescape=True),
+                event_type.startswith("META_INVITE_", autoescape=True),
+            ),
+            literal("team"),
+        ),
+        (
+            or_(AuditEvent.category == "MANUAL_ACTION", AuditEvent.actor_type == "user"),
+            literal("manual"),
+        ),
+        (
+            or_(
+                event_type.in_(INBOX_RULE_ACTION_EVENT_TYPES),
+                AuditEvent.rule_id.is_not(None),
+            ),
+            literal("rule_actions"),
+        ),
+        else_=literal("system"),
+    )
+
+
 class InboxDisplay(BaseModel):
     """The Inbox header toggle and Display options; the defaults are Linear's."""
 
@@ -327,6 +394,18 @@ class InboxDisplay(BaseModel):
     ordering: Literal["newest", "oldest"] = "newest"
     show_snoozed: bool = False
     unread_first: bool = False
+    grouping: Literal["none", "focus"] = "none"
+    priority_inbox: bool = False
+    # Linear starts with every kind in the priority inbox.
+    priority_kinds: list[InboxKind] = Field(
+        default_factory=lambda: list(INBOX_KINDS), max_length=len(INBOX_KINDS)
+    )
+    badge_count: Literal["all", "priority", "none"] = "all"
+
+    @field_validator("priority_kinds")
+    @classmethod
+    def _known_order(cls, value: list[str]) -> list[str]:
+        return [kind for kind in INBOX_KINDS if kind in value]
 
 
 def _stored_inbox_display(member) -> InboxDisplay:
@@ -394,11 +473,13 @@ def _inbox_columns(user: User, member):
     return join_on, is_read, deleted, snoozed
 
 
-async def _inbox_unread_count(session, user, member, workspace_id) -> int:
+async def _inbox_unread(session, user, member, workspace_id) -> dict:
+    """Unread notifications in all, and by kind for the priority inbox and its badge."""
     join_on, is_read, deleted, snoozed = _inbox_columns(user, member)
-    return (
+    kind = _inbox_kind()
+    rows = (
         await session.execute(
-            select(func.count(AuditEvent.id))
+            select(kind, func.count(AuditEvent.id))
             .select_from(AuditEvent)
             .outerjoin(InboxNotificationState, join_on)
             .where(
@@ -407,8 +488,12 @@ async def _inbox_unread_count(session, user, member, workspace_id) -> int:
                 ~snoozed,
                 ~is_read,
             )
+            .group_by(kind)
         )
-    ).scalar_one()
+    ).all()
+    by_kind = {name: 0 for name in INBOX_KINDS}
+    by_kind.update({name: count for name, count in rows})
+    return {"unread_count": sum(by_kind.values()), "unread_by_kind": by_kind}
 
 
 async def _inbox_member(session, user):
@@ -471,12 +556,28 @@ def _inbox_filter_conditions(clauses: list[dict]):
     return conditions
 
 
-def _inbox_view_filters(ws, is_read, deleted, snoozed, *, unread_only, show_snoozed):
+def _parse_inbox_kinds(raw: Optional[str]) -> Optional[list[str]]:
+    if raw is None:
+        return None
+    kinds = [value for value in raw.split(",") if value]
+    if any(value not in INBOX_KINDS for value in kinds):
+        raise HTTPException(status_code=400, detail="Unknown notification kind.")
+    return kinds
+
+
+def _inbox_view_filters(
+    ws, is_read, deleted, snoozed, *, unread_only, show_snoozed, kinds=None, exclude_kinds=None
+):
+    """What the list shows before filters; the two kind lists make Priority and Other."""
     filters = [AuditEvent.workspace_id == ws.id, ~deleted]
     if not show_snoozed:
         filters.append(~snoozed)
     if unread_only:
         filters.append(~is_read)
+    if kinds is not None:
+        filters.append(_inbox_kind().in_(kinds) if kinds else false())
+    if exclude_kinds:
+        filters.append(_inbox_kind().not_in(exclude_kinds))
     return filters
 
 
@@ -488,16 +589,27 @@ async def list_inbox(
     unread_only: bool = Query(False),
     show_snoozed: bool = Query(False),
     unread_first: bool = Query(False),
+    kinds_param: Optional[str] = Query(None, alias="kinds", max_length=200),
+    exclude_kinds: Optional[str] = Query(None, max_length=200),
     filter_: Optional[str] = Query(None, alias="filter", max_length=4000),
     user: User = Depends(get_current_user),
 ):
     """One member's Inbox, newest first unless asked otherwise."""
     clauses = _parse_inbox_filter(filter_)
+    kinds = _parse_inbox_kinds(kinds_param)
+    excluded_kinds = _parse_inbox_kinds(exclude_kinds)
     async with async_session_maker() as session:
         ws, member = await _inbox_member(session, user)
         join_on, is_read, deleted, snoozed = _inbox_columns(user, member)
         view_filters = _inbox_view_filters(
-            ws, is_read, deleted, snoozed, unread_only=unread_only, show_snoozed=show_snoozed
+            ws,
+            is_read,
+            deleted,
+            snoozed,
+            unread_only=unread_only,
+            show_snoozed=show_snoozed,
+            kinds=kinds,
+            exclude_kinds=excluded_kinds,
         )
         filters = view_filters + _inbox_filter_conditions(clauses)
         hidden_by_filters = 0
@@ -529,6 +641,7 @@ async def list_inbox(
                     is_read,
                     InboxNotificationState.snoozed_until,
                     _inbox_returned(now),
+                    _inbox_kind(),
                 )
                 .select_from(AuditEvent)
                 .outerjoin(InboxNotificationState, join_on)
@@ -541,22 +654,23 @@ async def list_inbox(
         page = result[:limit]
         items = await serialize_audit_events(
             session,
-            [row for row, _, _, _ in page],
+            [row for row, *_ in page],
             workspace_id=ws.id,
             can_write_workspace=member.role != "viewer",
             user=user,
         )
-        for item, (_, read, snoozed_until, returned) in zip(items, page):
+        for item, (_, read, snoozed_until, returned, kind) in zip(items, page):
+            item["kind"] = kind
             item["is_read"] = bool(read)
             item["snoozed_until"] = (
                 _utc_iso(snoozed_until) if snoozed_until and snoozed_until > now else None
             )
             item["unsnoozed_at"] = _utc_iso(snoozed_until) if returned else None
-        unread_count = await _inbox_unread_count(session, user, member, ws.id)
+        unread = await _inbox_unread(session, user, member, ws.id)
     return {
         "items": items,
         "has_more": len(result) > limit,
-        "unread_count": unread_count,
+        **unread,
         "hidden_by_filters": hidden_by_filters,
     }
 
@@ -587,14 +701,25 @@ async def _actor_names(session, actor_ids: set[str]) -> dict[str, str]:
 async def inbox_facets(
     unread_only: bool = Query(False),
     show_snoozed: bool = Query(False),
+    kinds_param: Optional[str] = Query(None, alias="kinds", max_length=200),
+    exclude_kinds: Optional[str] = Query(None, max_length=200),
     user: User = Depends(get_current_user),
 ):
     """Values and counts for each Inbox filter, over what the list shows unfiltered."""
+    kinds = _parse_inbox_kinds(kinds_param)
+    excluded_kinds = _parse_inbox_kinds(exclude_kinds)
     async with async_session_maker() as session:
         ws, member = await _inbox_member(session, user)
         join_on, is_read, deleted, snoozed = _inbox_columns(user, member)
         view_filters = _inbox_view_filters(
-            ws, is_read, deleted, snoozed, unread_only=unread_only, show_snoozed=show_snoozed
+            ws,
+            is_read,
+            deleted,
+            snoozed,
+            unread_only=unread_only,
+            show_snoozed=show_snoozed,
+            kinds=kinds,
+            exclude_kinds=excluded_kinds,
         )
 
         async def grouped(column, label=None):
@@ -673,8 +798,8 @@ async def inbox_unread_count(user: User = Depends(get_current_user)):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
         if not ws or not member:
-            return {"unread_count": 0}
-        return {"unread_count": await _inbox_unread_count(session, user, member, ws.id)}
+            return {"unread_count": 0, "unread_by_kind": dict.fromkeys(INBOX_KINDS, 0)}
+        return await _inbox_unread(session, user, member, ws.id)
 
 
 async def _update_inbox_state(user: User, event_id: int, **values):
@@ -721,8 +846,8 @@ async def _update_inbox_state(user: User, event_id: int, **values):
         # back from snooze must end its "Unsnoozed" state.
         state.updated_at = datetime.now(timezone.utc)
         await session.commit()
-        unread_count = await _inbox_unread_count(session, user, member, ws.id)
-    return {"success": True, "unread_count": unread_count}
+        unread = await _inbox_unread(session, user, member, ws.id)
+    return {"success": True, **unread}
 
 
 @router.post("/inbox/{event_id}/read")
@@ -784,8 +909,8 @@ async def _delete_inbox_bulk(user: User, *, only_read: bool):
             stored.inbox_read_before = now
         stored.inbox_deleted_before = now
         await session.commit()
-        unread_count = await _inbox_unread_count(session, user, stored, ws.id)
-    return {"success": True, "unread_count": unread_count}
+        unread = await _inbox_unread(session, user, stored, ws.id)
+    return {"success": True, **unread}
 
 
 @router.post("/inbox/delete-all")

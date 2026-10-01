@@ -1,18 +1,52 @@
 import { apiRequest } from './api';
 import type { AuditEventItem } from './audit';
 
+/**
+ * Kinds of notification, in the order Focus grouping shows them. They stand in
+ * for Linear's kinds (Urgent, Mentions & replies, …), which ad events do not
+ * have; the server decides which kind each event is.
+ */
+export const INBOX_KINDS = [
+  'urgent',
+  'rule_alerts',
+  'rule_actions',
+  'assistant',
+  'manual',
+  'team',
+  'system',
+] as const;
+export type InboxKind = typeof INBOX_KINDS[number];
+
+export const INBOX_KIND_LABELS: Record<InboxKind, string> = {
+  urgent: 'Urgent',
+  rule_alerts: 'Rule alerts',
+  rule_actions: 'Rule actions',
+  assistant: 'AI assistant',
+  manual: 'Manual changes',
+  team: 'Team',
+  system: 'System',
+};
+
+export type InboxUnreadByKind = Record<InboxKind, number>;
+
 /** A workspace event as one person's Inbox notification, like Linear's. */
 export interface InboxItem extends AuditEventItem {
   is_read: boolean;
   snoozed_until: string | null;
   /** When the snooze ran out, while the notification waits unread on top. */
   unsnoozed_at: string | null;
+  kind: InboxKind;
 }
 
-export interface InboxListResponse {
+/** Unread notifications in all and by kind, sent back with every Inbox answer. */
+export interface InboxUnread {
+  unread_count: number;
+  unread_by_kind?: Partial<InboxUnreadByKind>;
+}
+
+export interface InboxListResponse extends InboxUnread {
   items: InboxItem[];
   has_more: boolean;
-  unread_count: number;
   hidden_by_filters: number;
 }
 
@@ -31,12 +65,15 @@ export interface InboxFacetValue {
 
 export type InboxFacets = Record<InboxFilterClause['field'], InboxFacetValue[]>;
 
-export interface InboxActionResponse {
+export interface InboxActionResponse extends InboxUnread {
   success: boolean;
-  unread_count: number;
 }
 
 export type InboxOrdering = 'newest' | 'oldest';
+export type InboxGrouping = 'none' | 'focus';
+/** Linear's Badge count: Priority & Other, Priority only, None. */
+export type InboxBadgeCount = 'all' | 'priority' | 'none';
+export type InboxTab = 'priority' | 'other';
 
 /** Inbox header toggles and Display options, as in Linear. */
 export interface InboxDisplay {
@@ -44,6 +81,10 @@ export interface InboxDisplay {
   ordering: InboxOrdering;
   showSnoozed: boolean;
   unreadFirst: boolean;
+  grouping: InboxGrouping;
+  priorityInbox: boolean;
+  priorityKinds: InboxKind[];
+  badgeCount: InboxBadgeCount;
 }
 
 export const DEFAULT_INBOX_DISPLAY: InboxDisplay = {
@@ -51,6 +92,11 @@ export const DEFAULT_INBOX_DISPLAY: InboxDisplay = {
   ordering: 'newest',
   showSnoozed: false,
   unreadFirst: false,
+  grouping: 'none',
+  priorityInbox: false,
+  // Linear starts with every kind in the priority inbox.
+  priorityKinds: [...INBOX_KINDS],
+  badgeCount: 'all',
 };
 
 interface InboxDisplayPayload {
@@ -58,14 +104,27 @@ interface InboxDisplayPayload {
   ordering: InboxOrdering;
   show_snoozed: boolean;
   unread_first: boolean;
+  grouping: InboxGrouping;
+  priority_inbox: boolean;
+  priority_kinds: InboxKind[];
+  badge_count: InboxBadgeCount;
 }
 
 function inboxDisplayFromPayload(payload: Partial<InboxDisplayPayload> | null): InboxDisplay {
+  const kinds = payload?.priority_kinds;
   return {
     unreadOnly: payload?.unread_only === true,
     ordering: payload?.ordering === 'oldest' ? 'oldest' : 'newest',
     showSnoozed: payload?.show_snoozed === true,
     unreadFirst: payload?.unread_first === true,
+    grouping: payload?.grouping === 'focus' ? 'focus' : 'none',
+    priorityInbox: payload?.priority_inbox === true,
+    priorityKinds: Array.isArray(kinds)
+      ? INBOX_KINDS.filter((kind) => kinds.includes(kind))
+      : [...INBOX_KINDS],
+    badgeCount: payload?.badge_count === 'priority' || payload?.badge_count === 'none'
+      ? payload.badge_count
+      : 'all',
   };
 }
 
@@ -80,11 +139,47 @@ export async function saveInboxDisplay(display: InboxDisplay): Promise<InboxDisp
     ordering: display.ordering,
     show_snoozed: display.showSnoozed,
     unread_first: display.unreadFirst,
+    grouping: display.grouping,
+    priority_inbox: display.priorityInbox,
+    priority_kinds: display.priorityKinds,
+    badge_count: display.badgeCount,
   };
   return inboxDisplayFromPayload(await apiRequest<InboxDisplayPayload>('/api/inbox/display', {
     method: 'PUT',
     body: JSON.stringify(payload),
   }));
+}
+
+export function unreadByKind(response: InboxUnread): InboxUnreadByKind {
+  return Object.fromEntries(
+    INBOX_KINDS.map((kind) => [kind, response.unread_by_kind?.[kind] ?? 0]),
+  ) as InboxUnreadByKind;
+}
+
+export function countUnread(byKind: InboxUnreadByKind, kinds: readonly InboxKind[]): number {
+  return kinds.reduce((total, kind) => total + byKind[kind], 0);
+}
+
+/** The number next to Inbox in the sidebar and in the tab title, by Linear's Badge count. */
+export function inboxBadgeCount(
+  display: InboxDisplay,
+  unreadCount: number,
+  byKind: InboxUnreadByKind,
+): number {
+  if (!display.priorityInbox || display.badgeCount === 'all') return unreadCount;
+  if (display.badgeCount === 'none') return 0;
+  return countUnread(byKind, display.priorityKinds);
+}
+
+/** Which kinds a priority inbox tab shows: the chosen ones, or all the others. */
+export function inboxTabKinds(
+  display: InboxDisplay,
+  tab: InboxTab | null,
+): Pick<InboxQuery, 'kinds' | 'excludeKinds'> {
+  if (!display.priorityInbox || !tab) return {};
+  return tab === 'priority'
+    ? { kinds: display.priorityKinds }
+    : { excludeKinds: display.priorityKinds };
 }
 
 export interface InboxQuery {
@@ -95,9 +190,19 @@ export interface InboxQuery {
   showSnoozed: boolean;
   unreadFirst: boolean;
   filters?: InboxFilterClause[];
+  kinds?: InboxKind[];
+  excludeKinds?: InboxKind[];
 }
 
 export const INBOX_PAGE_SIZE = 50;
+
+function setKindParams(
+  params: URLSearchParams,
+  { kinds, excludeKinds }: Pick<InboxQuery, 'kinds' | 'excludeKinds'>,
+) {
+  if (kinds) params.set('kinds', kinds.join(','));
+  if (excludeKinds?.length) params.set('exclude_kinds', excludeKinds.join(','));
+}
 
 export function fetchInbox({
   offset,
@@ -107,6 +212,8 @@ export function fetchInbox({
   showSnoozed,
   unreadFirst,
   filters = [],
+  kinds,
+  excludeKinds,
 }: InboxQuery): Promise<InboxListResponse> {
   const params = new URLSearchParams({
     offset: String(offset),
@@ -116,15 +223,161 @@ export function fetchInbox({
   if (unreadOnly) params.set('unread_only', 'true');
   if (showSnoozed) params.set('show_snoozed', 'true');
   if (unreadFirst) params.set('unread_first', 'true');
+  setKindParams(params, { kinds, excludeKinds });
   if (filters.length) params.set('filter', JSON.stringify(filters));
   return apiRequest<InboxListResponse>(`/api/inbox?${params.toString()}`);
 }
 
-export function fetchInboxFacets(unreadOnly: boolean, showSnoozed: boolean): Promise<InboxFacets> {
+export function fetchInboxFacets(
+  unreadOnly: boolean,
+  showSnoozed: boolean,
+  kinds: Pick<InboxQuery, 'kinds' | 'excludeKinds'> = {},
+): Promise<InboxFacets> {
   const params = new URLSearchParams();
   if (unreadOnly) params.set('unread_only', 'true');
   if (showSnoozed) params.set('show_snoozed', 'true');
+  setKindParams(params, kinds);
   return apiRequest<InboxFacets>(`/api/inbox/facets?${params.toString()}`);
+}
+
+interface FocusNode {
+  id: string;
+  label: string;
+  /** Kinds that land here; a node without them takes anything its children do not. */
+  kinds?: InboxKind[];
+  minCountToShow?: number;
+  mergeTrailingSingletons?: boolean;
+  children?: FocusNode[];
+}
+
+/** Linear's Focus tree (Urgent, …, Other with small groups inside), over Buyerly's kinds. */
+const FOCUS_TREE: FocusNode[] = [
+  { id: 'urgent', label: 'Urgent', kinds: ['urgent'] },
+  { id: 'rule_alerts', label: 'Rule alerts', kinds: ['rule_alerts'] },
+  { id: 'rule_actions', label: 'Rule actions', kinds: ['rule_actions'] },
+  {
+    id: 'other',
+    label: 'Other',
+    mergeTrailingSingletons: true,
+    children: (['assistant', 'manual', 'team', 'system'] as const).map((kind) => ({
+      id: kind,
+      label: INBOX_KIND_LABELS[kind],
+      kinds: [kind],
+      minCountToShow: 2,
+    })),
+  },
+];
+
+export interface InboxGroup {
+  id: string;
+  label: string;
+  items: InboxItem[];
+}
+
+type FocusBuckets = Map<string, InboxItem[]>;
+
+function placeInFocusTree(item: InboxItem, nodes: FocusNode[]): FocusNode | undefined {
+  for (const node of nodes) {
+    if (node.kinds && !node.kinds.includes(item.kind)) continue;
+    return (node.children && placeInFocusTree(item, node.children)) || node;
+  }
+  return undefined;
+}
+
+function countIn(node: FocusNode, buckets: FocusBuckets): number {
+  return (buckets.get(node.id)?.length ?? 0)
+    + (node.children ?? []).reduce((total, child) => total + countIn(child, buckets), 0);
+}
+
+function itemsIn(node: FocusNode, buckets: FocusBuckets): InboxItem[] {
+  return [...(buckets.get(node.id) ?? []), ...(node.children ?? []).flatMap((child) => itemsIn(child, buckets))];
+}
+
+function childrenTooSmall(node: FocusNode, buckets: FocusBuckets): boolean {
+  return (node.children ?? []).every((child) => countIn(child, buckets) < (child.minCountToShow ?? 1));
+}
+
+function shownOnItsOwn(node: FocusNode, buckets: FocusBuckets): boolean {
+  return !childrenTooSmall(node, buckets) || countIn(node, buckets) >= (node.minCountToShow ?? 1);
+}
+
+/** A group with one non-empty child takes that child's name, as Linear does. */
+function onlyChild(node: FocusNode, buckets: FocusBuckets): FocusNode | undefined {
+  if (!node.children?.length || (buckets.get(node.id)?.length ?? 0) > 0) return undefined;
+  const filled = node.children.filter((child) => countIn(child, buckets) > 0);
+  if (filled.length !== 1) return undefined;
+  return onlyChild(filled[0], buckets) ?? filled[0];
+}
+
+function trailingSingletons(children: FocusNode[], buckets: FocusBuckets): Set<FocusNode> {
+  const merged = new Set<FocusNode>();
+  for (let index = children.length - 1; index >= 0; index -= 1) {
+    const count = countIn(children[index], buckets);
+    if (count === 0) continue;
+    if (count > 1 || shownOnItsOwn(children[index], buckets)) break;
+    merged.add(children[index]);
+  }
+  return merged.size > 1 ? merged : new Set();
+}
+
+function* wholeGroup(node: FocusNode, buckets: FocusBuckets): Generator<InboxGroup> {
+  const items = itemsIn(node, buckets);
+  if (items.length === 0) return;
+  const named = onlyChild(node, buckets) ?? node;
+  yield { id: named.id, label: named.label, items };
+}
+
+function* focusGroups(node: FocusNode, buckets: FocusBuckets): Generator<InboxGroup> {
+  if (childrenTooSmall(node, buckets)) {
+    yield* wholeGroup(node, buckets);
+    return;
+  }
+  const children = node.children ?? [];
+  const merged = node.mergeTrailingSingletons ? trailingSingletons(children, buckets) : undefined;
+  const folded: FocusNode[] = [];
+  for (const child of children) {
+    if (shownOnItsOwn(child, buckets)) yield* focusGroups(child, buckets);
+    else if (merged && !merged.has(child)) yield* wholeGroup(child, buckets);
+    else folded.push(child);
+  }
+  const own = buckets.get(node.id) ?? [];
+  const items = [...own, ...folded.flatMap((child) => itemsIn(child, buckets))];
+  if (items.length === 0) return;
+  let { id, label } = node;
+  const filled = folded.filter((child) => countIn(child, buckets) > 0);
+  if (own.length === 0 && filled.length === 1) {
+    ({ id, label } = onlyChild(filled[0], buckets) ?? filled[0]);
+  }
+  yield { id, label, items };
+}
+
+function groupUnread(items: InboxItem[]): InboxGroup[] {
+  const buckets: FocusBuckets = new Map();
+  for (const item of items) {
+    const node = placeInFocusTree(item, FOCUS_TREE);
+    if (node) buckets.set(node.id, [...(buckets.get(node.id) ?? []), item]);
+  }
+  const groups = FOCUS_TREE.flatMap((node) => [...focusGroups(node, buckets)]);
+  return groups.length === 1 ? [{ ...groups[0], label: 'Unread' }] : groups;
+}
+
+/**
+ * Linear's "Group unreads by: Focus": unread notifications by kind, read ones
+ * last under Read. Read state is taken as first seen, so reading a notification
+ * does not move it between groups while the list is open.
+ */
+export function groupInboxItems(
+  items: InboxItem[],
+  grouping: InboxGrouping,
+  readOnFirstSeen: (item: InboxItem) => boolean,
+): InboxGroup[] | null {
+  if (grouping !== 'focus') return null;
+  const unread = items.filter((item) => !readOnFirstSeen(item));
+  const read = items.filter((item) => readOnFirstSeen(item));
+  if (unread.length === 0) return null;
+  const groups = groupUnread(unread);
+  if (read.length > 0) groups.push({ id: 'read', label: 'Read', items: read });
+  return groups;
 }
 
 /** Linear keeps the filter in the address as base64 JSON, so a filtered Inbox can be shared. */
@@ -150,8 +403,8 @@ export function decodeInboxFilter(value: string | null): InboxFilterClause[] {
   }
 }
 
-export function fetchInboxUnreadCount(): Promise<{ unread_count: number }> {
-  return apiRequest<{ unread_count: number }>('/api/inbox/unread-count');
+export function fetchInboxUnreadCount(): Promise<InboxUnread> {
+  return apiRequest<InboxUnread>('/api/inbox/unread-count');
 }
 
 export function markInboxRead(eventId: number, read: boolean): Promise<InboxActionResponse> {

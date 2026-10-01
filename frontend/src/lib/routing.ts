@@ -15,6 +15,8 @@ export type Route =
       tab: AppTab | 'preferences';
       entity?: AdsManagerEntity;
       recordId?: string;
+      /** Priority inbox tab, as Linear keeps it in the address. */
+      inboxTab?: 'priority' | 'other';
       settingsSection?: SettingsSection;
     }
   | { kind: 'unknown' };
@@ -64,6 +66,9 @@ export function parseRoute(location: Location = window.location): Route {
   }
   if (parts[1] === 'welcome' && parts.length === 2) {
     return { kind: 'welcome', workspace };
+  }
+  if (parts[1] === 'inbox' && (parts[2] === 'priority' || parts[2] === 'other') && parts.length <= 4) {
+    return { kind: 'workspace', workspace, tab: 'inbox', inboxTab: parts[2], recordId: parts[3] };
   }
   if (parts[1] === 'inbox' && parts.length <= 3) {
     return { kind: 'workspace', workspace, tab: 'inbox', recordId: parts[2] };

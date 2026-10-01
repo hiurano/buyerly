@@ -2146,3 +2146,126 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 .linear-data-row:hover .linear-data-sticky { background-color: var(--data-row-hover-bg); }
 .linear-data-row[data-selected='true'] .linear-data-sticky { background-color: var(--row-selected-bg); }
 .linear-data-row[data-selected='true']:hover .linear-data-sticky { background-color: var(--row-selected-hover-bg); }
+
+/* Linear's checkbox dropdown in Display options (Include in priority inbox). */
+.linear-display-check-menu {
+  padding: 4px 0;
+}
+
+.linear-display-check-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 173px;
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  color: var(--text-primary);
+  background: transparent;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.linear-display-check-option:hover,
+.linear-display-check-option:focus-visible {
+  background: var(--display-option-hover, var(--bg-canvas));
+}
+
+.linear-display-checkbox {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--filter-checkbox-border);
+  border-radius: 3px;
+  color: #fff;
+}
+
+.linear-display-checkbox[data-checked] {
+  border-color: var(--filter-checkbox-selected);
+  background: var(--filter-checkbox-selected);
+}
+
+.linear-display-checkbox > svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* With priority inbox on, Linear widens the selects to fit "Priority & Other". */
+.linear-display-options-popover[data-wide] .linear-display-select {
+  width: 117px;
+}
+
+/* Linear's priority inbox tabs under the Inbox header: Priority N / Other. */
+.linear-inbox-tabs {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px 7px;
+}
+
+.linear-inbox-tab {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  color: var(--text-tertiary);
+  background: var(--inbox-tab-bg);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.linear-inbox-tab[aria-current='page'] {
+  color: var(--text-primary);
+  background: var(--inbox-tab-active-bg);
+}
+
+.linear-inbox-tab-count {
+  margin-left: 6px;
+  color: var(--text-tertiary);
+  font-weight: 450;
+}
+
+/* Linear's Focus group header: a 28px band level with the rows, caret after the name. */
+.linear-inbox-group {
+  padding: 0 10px;
+}
+
+.linear-inbox-group + .linear-inbox-group,
+[data-inbox-event-id] + .linear-inbox-group {
+  margin-top: 2px;
+}
+
+.linear-inbox-group-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  height: 28px;
+  padding: 0 0 0 10px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text-tertiary);
+  background: var(--inbox-group-header-bg);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: default;
+}
+
+.linear-inbox-group-header svg {
+  margin-left: -5px;
+  color: var(--text-muted);
+  transition: transform 150ms ease;
+}
+
+.linear-inbox-group-header[aria-expanded='true'] svg {
+  transform: rotate(90deg);
+}

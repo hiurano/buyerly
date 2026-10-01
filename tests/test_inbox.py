@@ -339,11 +339,17 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
     async def test_display_options_are_saved_per_member(self):
         defaults = {
             "unread_only": False, "ordering": "newest", "show_snoozed": False, "unread_first": False,
+            "grouping": "none", "priority_inbox": False, "badge_count": "all",
+            "priority_kinds": [
+                "urgent", "rule_alerts", "rule_actions", "assistant", "manual", "team", "system",
+            ],
         }
         response = await self.client.get("/api/inbox/display", headers=self.owner_headers)
         self.assertEqual(response.json(), defaults)
 
-        chosen = {"unread_only": True, "ordering": "oldest", "show_snoozed": True, "unread_first": True}
+        chosen = {
+            **defaults, "unread_only": True, "ordering": "oldest", "show_snoozed": True, "unread_first": True,
+        }
         response = await self.client.put("/api/inbox/display", headers=self.owner_headers, json=chosen)
         self.assertEqual(response.status_code, 200, response.text)
         response = await self.client.get("/api/inbox/display", headers=self.owner_headers)
@@ -357,6 +363,98 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
             "/api/inbox/display", headers=self.owner_headers, json={**chosen, "ordering": "priority"}
         )
         self.assertEqual(response.status_code, 422)
+
+    async def test_notifications_carry_their_kind_and_unread_counts_by_kind(self):
+        async with self.session_maker() as session:
+            workspace_id = (
+                await session.execute(select(Workspace.id).where(Workspace.slug == "inbox-ws"))
+            ).scalar_one()
+            now = datetime.now(timezone.utc)
+            for event_type, values in (
+                ("TOKEN_EXPIRED", {}),
+                ("STOP", {"status": "ERROR", "message": "failed stop"}),
+                ("ASSISTANT_CREATE_RULE", {"actor_type": "user", "actor_id": str(BUYER["id"])}),
+                ("INVITE_SEND", {"category": "WORKSPACE_INVITE", "actor_type": "user", "actor_id": str(BUYER["id"])}),
+                ("ACCOUNT_DAY_STARTED", {}),
+            ):
+                session.add(AuditEvent(
+                    workspace_id=workspace_id,
+                    event_type=event_type,
+                    account_id="act_1",
+                    message=values.pop("message", event_type),
+                    created_at=now - timedelta(minutes=1),
+                    **values,
+                ))
+            await session.commit()
+
+        body = await self.inbox(self.owner_headers)
+        kinds = {item["message"]: item["kind"] for item in body["items"]}
+        self.assertEqual(kinds["TOKEN_EXPIRED"], "urgent")
+        self.assertEqual(kinds["failed stop"], "urgent")
+        self.assertEqual(kinds["rule alert"], "rule_alerts")
+        self.assertEqual(kinds["rule stop"], "rule_actions")
+        self.assertEqual(kinds["ASSISTANT_CREATE_RULE"], "assistant")
+        self.assertEqual(kinds["owner change"], "manual")
+        self.assertEqual(kinds["INVITE_SEND"], "team")
+        self.assertEqual(kinds["ACCOUNT_DAY_STARTED"], "system")
+        # The owner's own change is read; everything newer than the mark is not.
+        self.assertEqual(
+            body["unread_by_kind"],
+            {"urgent": 2, "rule_alerts": 1, "rule_actions": 1, "assistant": 1,
+             "manual": 0, "team": 1, "system": 1},
+        )
+        self.assertEqual(body["unread_count"], 7)
+        response = await self.client.get("/api/inbox/unread-count", headers=self.owner_headers)
+        self.assertEqual(response.json()["unread_by_kind"], body["unread_by_kind"])
+
+        # Priority shows the chosen kinds, Other everything else.
+        priority = await self.inbox(self.owner_headers, kinds="urgent,rule_alerts")
+        self.assertEqual(
+            {item["kind"] for item in priority["items"]}, {"urgent", "rule_alerts"}
+        )
+        other = await self.inbox(self.owner_headers, exclude_kinds="urgent,rule_alerts")
+        self.assertEqual(
+            len(priority["items"]) + len(other["items"]), len(body["items"])
+        )
+        self.assertNotIn("urgent", {item["kind"] for item in other["items"]})
+        # Nothing chosen for Priority means an empty Priority tab.
+        self.assertEqual((await self.inbox(self.owner_headers, kinds=""))["items"], [])
+        facets = await self.client.get(
+            "/api/inbox/facets", headers=self.owner_headers, params={"kinds": "team"}
+        )
+        self.assertEqual([entry["value"] for entry in facets.json()["type"]], ["INVITE_SEND"])
+        response = await self.client.get(
+            "/api/inbox", headers=self.owner_headers, params={"kinds": "mentions"}
+        )
+        self.assertEqual(response.status_code, 400)
+
+    async def test_priority_and_grouping_options_are_saved(self):
+        chosen = {
+            "unread_only": False, "ordering": "newest", "show_snoozed": False, "unread_first": False,
+            "grouping": "focus", "priority_inbox": True,
+            "priority_kinds": ["team", "urgent", "team"], "badge_count": "priority",
+        }
+        response = await self.client.put("/api/inbox/display", headers=self.owner_headers, json=chosen)
+        self.assertEqual(response.status_code, 200, response.text)
+        saved = (await self.client.get("/api/inbox/display", headers=self.owner_headers)).json()
+        # Kinds come back once each, in Focus order.
+        self.assertEqual(saved["priority_kinds"], ["urgent", "team"])
+        self.assertEqual((saved["grouping"], saved["priority_inbox"], saved["badge_count"]), ("focus", True, "priority"))
+
+        # Options saved before #240 keep working, with Linear's defaults for the new ones.
+        async with self.session_maker() as session:
+            await session.execute(
+                update(WorkspaceMember).values(
+                    inbox_display={"unread_only": True, "ordering": "oldest", "show_snoozed": False, "unread_first": False}
+                )
+            )
+            await session.commit()
+        saved = (await self.client.get("/api/inbox/display", headers=self.owner_headers)).json()
+        self.assertEqual(saved["ordering"], "oldest")
+        self.assertEqual(saved["grouping"], "none")
+        self.assertFalse(saved["priority_inbox"])
+        self.assertEqual(len(saved["priority_kinds"]), 7)
+        self.assertEqual(saved["badge_count"], "all")
 
     async def test_unreadable_saved_display_falls_back_to_defaults(self):
         async with self.session_maker() as session:
