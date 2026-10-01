@@ -40,10 +40,8 @@ import {
   fetchInboxUnreadCount,
   inboxBadgeCount,
   saveInboxDisplay,
-  unreadByKind,
   type InboxDisplay,
   type InboxUnread,
-  type InboxUnreadByKind,
 } from '@/lib/inbox';
 
 export type RuleFilterTab = 'active' | 'paused' | 'all' | 'deleted';
@@ -153,7 +151,13 @@ export interface AdsManagerQuickFilter {
 export type AppTab = 'inbox' | 'campaigns' | 'rules' | 'statistics';
 export type ActiveTab = AppTab | 'preferences';
 /** Settings pages; `members` also has its own address under /<workspace>/settings. */
-export type SettingsSection = 'preferences' | 'profile' | 'ad-accounts' | 'members';
+export type SettingsSection =
+  | 'preferences'
+  | 'profile'
+  | 'notifications'
+  | 'priority-notifications'
+  | 'ad-accounts'
+  | 'members';
 export type InterfaceTheme = 'system' | 'light' | 'dark';
 export type { InboxDisplay };
 
@@ -238,7 +242,7 @@ interface AppState {
   setSearchOpen: (open: boolean) => void;
   workspaceName: string;
   inboxUnreadCount: number;
-  inboxUnreadByKind: InboxUnreadByKind;
+  inboxPriorityUnreadCount: number;
   /** Takes the unread counts every Inbox answer carries. */
   setInboxUnread: (unread: InboxUnread) => void;
   refreshInboxUnreadCount: () => Promise<void>;
@@ -423,7 +427,7 @@ function emptyAccountState() {
 function emptyWorkspaceState() {
   return {
     ...emptyAccountState(), workspaceName: 'buyerly', inboxUnreadCount: 0, campaignGroups: [],
-    inboxUnreadByKind: unreadByKind({ unread_count: 0 }),
+    inboxPriorityUnreadCount: 0,
     inboxDisplay: DEFAULT_INBOX_DISPLAY, inboxDisplayLoaded: false,
     rules: [], ruleGroups: [], ruleAccounts: [], rulesLoadState: 'idle' as RulesLoadState,
     rulesError: '', rulesMutationError: '', selectedRuleId: null, selectedRuleIds: [],
@@ -467,10 +471,10 @@ export const useAppStore = create<AppState>((set, get) => {
   workspaceName: 'buyerly',
   setWorkspaceName: (name) => set({ workspaceName: name }),
   inboxUnreadCount: 0,
-  inboxUnreadByKind: unreadByKind({ unread_count: 0 }),
+  inboxPriorityUnreadCount: 0,
   setInboxUnread: (unread) => set({
     inboxUnreadCount: unread.unread_count,
-    inboxUnreadByKind: unreadByKind(unread),
+    inboxPriorityUnreadCount: unread.priority_unread_count ?? unread.unread_count,
   }),
   refreshInboxUnreadCount: async () => {
     const inScope = get().captureScope();
@@ -1104,4 +1108,4 @@ export async function applyRulesEnabled(ids: string[], enabled: boolean): Promis
 
 /** The number next to Inbox in the sidebar and in the tab title. */
 export const selectInboxBadgeCount = (state: AppState): number =>
-  inboxBadgeCount(state.inboxDisplay, state.inboxUnreadCount, state.inboxUnreadByKind);
+  inboxBadgeCount(state.inboxDisplay, state.inboxUnreadCount, state.inboxPriorityUnreadCount);

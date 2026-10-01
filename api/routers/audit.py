@@ -387,6 +387,35 @@ def _inbox_kind():
     )
 
 
+class InboxPriorityClause(BaseModel):
+    """One condition of a priority inbox custom filter, a chip as in Linear."""
+
+    field: Literal["type", "from"]
+    operator: Literal["is", "is_not"] = "is"
+    values: list[str] = Field(min_length=1, max_length=100)
+
+
+InboxPriorityRule = list[InboxPriorityClause]
+
+
+def _valid_priority_rules(rules: list[InboxPriorityRule]) -> list[InboxPriorityRule]:
+    """A custom filter has at least one condition, and one per property."""
+    for rule in rules:
+        fields = [clause.field for clause in rule]
+        if not fields or len(set(fields)) != len(fields):
+            raise ValueError("A custom filter needs one condition per property.")
+    return rules
+
+
+class InboxPriority(BaseModel):
+    """What goes in the priority inbox: the chosen kinds, and whatever a custom filter matches."""
+
+    kinds: list[InboxKind] = Field(max_length=len(INBOX_KINDS))
+    rules: list[InboxPriorityRule] = Field(default_factory=list, max_length=50)
+
+    _rules = field_validator("rules")(_valid_priority_rules)
+
+
 class InboxDisplay(BaseModel):
     """The Inbox header toggle and Display options; the defaults are Linear's."""
 
@@ -400,12 +429,19 @@ class InboxDisplay(BaseModel):
     priority_kinds: list[InboxKind] = Field(
         default_factory=lambda: list(INBOX_KINDS), max_length=len(INBOX_KINDS)
     )
+    # Linear's "Add custom filters" in Settings → Notifications → Priority notifications.
+    priority_rules: list[InboxPriorityRule] = Field(default_factory=list, max_length=50)
     badge_count: Literal["all", "priority", "none"] = "all"
 
     @field_validator("priority_kinds")
     @classmethod
     def _known_order(cls, value: list[str]) -> list[str]:
         return [kind for kind in INBOX_KINDS if kind in value]
+
+    _rules = field_validator("priority_rules")(_valid_priority_rules)
+
+    def priority(self) -> InboxPriority:
+        return InboxPriority(kinds=self.priority_kinds, rules=self.priority_rules)
 
 
 def _stored_inbox_display(member) -> InboxDisplay:
@@ -473,13 +509,21 @@ def _inbox_columns(user: User, member):
     return join_on, is_read, deleted, snoozed
 
 
-async def _inbox_unread(session, user, member, workspace_id) -> dict:
-    """Unread notifications in all, and by kind for the priority inbox and its badge."""
+async def _inbox_unread(
+    session, user, member, workspace_id, priority: Optional[InboxPriority] = None
+) -> dict:
+    """Unread notifications in all, and in the priority inbox for its tab and badge.
+
+    The priority inbox is the member's saved one, unless the request names it.
+    """
     join_on, is_read, deleted, snoozed = _inbox_columns(user, member)
-    kind = _inbox_kind()
-    rows = (
+    in_priority = _inbox_priority(priority or _stored_inbox_display(member).priority())
+    total, priority_total = (
         await session.execute(
-            select(kind, func.count(AuditEvent.id))
+            select(
+                func.count(AuditEvent.id),
+                func.coalesce(func.sum(case((in_priority, 1), else_=0)), 0),
+            )
             .select_from(AuditEvent)
             .outerjoin(InboxNotificationState, join_on)
             .where(
@@ -488,12 +532,9 @@ async def _inbox_unread(session, user, member, workspace_id) -> dict:
                 ~snoozed,
                 ~is_read,
             )
-            .group_by(kind)
         )
-    ).all()
-    by_kind = {name: 0 for name in INBOX_KINDS}
-    by_kind.update({name: count for name, count in rows})
-    return {"unread_count": sum(by_kind.values()), "unread_by_kind": by_kind}
+    ).one()
+    return {"unread_count": total, "priority_unread_count": int(priority_total)}
 
 
 async def _inbox_member(session, user):
@@ -556,28 +597,37 @@ def _inbox_filter_conditions(clauses: list[dict]):
     return conditions
 
 
-def _parse_inbox_kinds(raw: Optional[str]) -> Optional[list[str]]:
+def _inbox_priority(priority: InboxPriority):
+    """In the priority inbox: one of the chosen kinds, or a match for any custom filter."""
+    by_kind = _inbox_kind().in_(priority.kinds) if priority.kinds else false()
+    by_rule = [
+        and_(*_inbox_filter_conditions([clause.model_dump() for clause in rule]))
+        for rule in priority.rules
+    ]
+    return or_(by_kind, *by_rule)
+
+
+def _parse_inbox_priority(raw: Optional[str]) -> Optional[InboxPriority]:
     if raw is None:
         return None
-    kinds = [value for value in raw.split(",") if value]
-    if any(value not in INBOX_KINDS for value in kinds):
-        raise HTTPException(status_code=400, detail="Unknown notification kind.")
-    return kinds
+    try:
+        return InboxPriority.model_validate_json(raw)
+    except ValidationError as error:
+        raise HTTPException(status_code=400, detail="Unsupported priority inbox.") from error
 
 
 def _inbox_view_filters(
-    ws, is_read, deleted, snoozed, *, unread_only, show_snoozed, kinds=None, exclude_kinds=None
+    ws, is_read, deleted, snoozed, *, unread_only, show_snoozed, tab=None, priority=None
 ):
-    """What the list shows before filters; the two kind lists make Priority and Other."""
+    """What the list shows before filters; a tab keeps Priority or Other."""
     filters = [AuditEvent.workspace_id == ws.id, ~deleted]
     if not show_snoozed:
         filters.append(~snoozed)
     if unread_only:
         filters.append(~is_read)
-    if kinds is not None:
-        filters.append(_inbox_kind().in_(kinds) if kinds else false())
-    if exclude_kinds:
-        filters.append(_inbox_kind().not_in(exclude_kinds))
+    if tab is not None:
+        in_priority = _inbox_priority(priority)
+        filters.append(in_priority if tab == "priority" else ~in_priority)
     return filters
 
 
@@ -589,17 +639,17 @@ async def list_inbox(
     unread_only: bool = Query(False),
     show_snoozed: bool = Query(False),
     unread_first: bool = Query(False),
-    kinds_param: Optional[str] = Query(None, alias="kinds", max_length=200),
-    exclude_kinds: Optional[str] = Query(None, max_length=200),
+    tab: Optional[str] = Query(None, pattern="^(priority|other)$"),
+    priority_param: Optional[str] = Query(None, alias="priority", max_length=8000),
     filter_: Optional[str] = Query(None, alias="filter", max_length=4000),
     user: User = Depends(get_current_user),
 ):
     """One member's Inbox, newest first unless asked otherwise."""
     clauses = _parse_inbox_filter(filter_)
-    kinds = _parse_inbox_kinds(kinds_param)
-    excluded_kinds = _parse_inbox_kinds(exclude_kinds)
+    requested_priority = _parse_inbox_priority(priority_param)
     async with async_session_maker() as session:
         ws, member = await _inbox_member(session, user)
+        priority = requested_priority or _stored_inbox_display(member).priority()
         join_on, is_read, deleted, snoozed = _inbox_columns(user, member)
         view_filters = _inbox_view_filters(
             ws,
@@ -608,8 +658,8 @@ async def list_inbox(
             snoozed,
             unread_only=unread_only,
             show_snoozed=show_snoozed,
-            kinds=kinds,
-            exclude_kinds=excluded_kinds,
+            tab=tab,
+            priority=priority,
         )
         filters = view_filters + _inbox_filter_conditions(clauses)
         hidden_by_filters = 0
@@ -666,7 +716,7 @@ async def list_inbox(
                 _utc_iso(snoozed_until) if snoozed_until and snoozed_until > now else None
             )
             item["unsnoozed_at"] = _utc_iso(snoozed_until) if returned else None
-        unread = await _inbox_unread(session, user, member, ws.id)
+        unread = await _inbox_unread(session, user, member, ws.id, priority)
     return {
         "items": items,
         "has_more": len(result) > limit,
@@ -701,15 +751,15 @@ async def _actor_names(session, actor_ids: set[str]) -> dict[str, str]:
 async def inbox_facets(
     unread_only: bool = Query(False),
     show_snoozed: bool = Query(False),
-    kinds_param: Optional[str] = Query(None, alias="kinds", max_length=200),
-    exclude_kinds: Optional[str] = Query(None, max_length=200),
+    tab: Optional[str] = Query(None, pattern="^(priority|other)$"),
+    priority_param: Optional[str] = Query(None, alias="priority", max_length=8000),
     user: User = Depends(get_current_user),
 ):
     """Values and counts for each Inbox filter, over what the list shows unfiltered."""
-    kinds = _parse_inbox_kinds(kinds_param)
-    excluded_kinds = _parse_inbox_kinds(exclude_kinds)
+    requested_priority = _parse_inbox_priority(priority_param)
     async with async_session_maker() as session:
         ws, member = await _inbox_member(session, user)
+        priority = requested_priority or _stored_inbox_display(member).priority()
         join_on, is_read, deleted, snoozed = _inbox_columns(user, member)
         view_filters = _inbox_view_filters(
             ws,
@@ -718,8 +768,8 @@ async def inbox_facets(
             snoozed,
             unread_only=unread_only,
             show_snoozed=show_snoozed,
-            kinds=kinds,
-            exclude_kinds=excluded_kinds,
+            tab=tab,
+            priority=priority,
         )
 
         async def grouped(column, label=None):
@@ -798,7 +848,7 @@ async def inbox_unread_count(user: User = Depends(get_current_user)):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
         if not ws or not member:
-            return {"unread_count": 0, "unread_by_kind": dict.fromkeys(INBOX_KINDS, 0)}
+            return {"unread_count": 0, "priority_unread_count": 0}
         return await _inbox_unread(session, user, member, ws.id)
 
 

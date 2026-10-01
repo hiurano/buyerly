@@ -9,6 +9,7 @@ import {
   type InboxOrdering,
 } from '@/lib/inbox';
 import { useAppStore } from '@/store/useAppStore';
+import { LinearPlusIcon } from '@/icons/LinearIcons';
 import { LinearMultiSelect, LinearSelect } from '@/ui/LinearDisplayOptions';
 import { LinearToggle } from '@/ui/LinearToggle';
 import { useMenuExit } from '@/ui/useMenuExit';
@@ -39,7 +40,8 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
   onClose,
   anchorRef,
 }) => {
-  const { inboxDisplay, setInboxDisplay } = useAppStore();
+  const { inboxDisplay, setInboxDisplay, setActiveTab, setSettingsSection } = useAppStore();
+  const customFilters = inboxDisplay.priorityRules.length;
   const popoverRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const { isMounted, isClosing } = useMenuExit(isOpen);
@@ -97,6 +99,18 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
                 values={inboxDisplay.priorityKinds}
                 options={INBOX_KINDS.map((kind) => ({ value: kind, label: INBOX_KIND_LABELS[kind] }))}
                 onChange={(values) => setInboxDisplay({ priorityKinds: values as InboxKind[] })}
+                footer={{
+                  label: customFilters > 0
+                    ? `${customFilters} custom filter${customFilters === 1 ? '' : 's'}`
+                    : 'Add custom filters',
+                  icon: <LinearPlusIcon size={14} />,
+                  // Linear opens Settings → Notifications → Priority notifications.
+                  onSelect: () => {
+                    onClose();
+                    setSettingsSection('priority-notifications');
+                    setActiveTab('preferences');
+                  },
+                }}
               />
             </div>
             <div className="linear-display-row">

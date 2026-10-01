@@ -14,7 +14,7 @@ import { useUndoShortcuts } from '@/lib/undoHistory';
 import { selectInboxBadgeCount, useAppStore } from '@/store/useAppStore';
 import { apiRequest } from '@/lib/api';
 import type { LoginResult, SessionUser, Workspace } from '@/lib/types';
-import { isWorkspaceReturnRoute, parseRoute, pathForTab, type Route } from '@/lib/routing';
+import { isRoutedSettingsSection, isWorkspaceReturnRoute, parseRoute, pathForTab, type Route } from '@/lib/routing';
 import { AuthLoading } from '@/components/auth/AuthFrame';
 import { LoginView } from '@/components/auth/LoginView';
 import { VerifyEmailLinkView } from '@/components/auth/VerifyEmailLinkView';
@@ -88,9 +88,9 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     if (route.entity) setCampaignFilterTab(route.entity);
     if (route.tab === 'preferences') {
       const { settingsSection: current } = useAppStore.getState();
-      // Only Members has its own address; plain /settings keeps any other open section.
-      if (route.settingsSection === 'members') setSettingsSection('members');
-      else if (current === 'members') setSettingsSection('preferences');
+      // Plain /settings keeps any open section that has no address of its own.
+      if (route.settingsSection) setSettingsSection(route.settingsSection);
+      else if (isRoutedSettingsSection(current)) setSettingsSection('preferences');
     }
     queueMicrotask(() => {
       syncingRoute.current = false;

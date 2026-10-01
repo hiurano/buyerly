@@ -96,10 +96,24 @@ export function parseRoute(location: Location = window.location): Route {
   if (parts[1] === 'settings' && parts.length === 2) {
     return { kind: 'workspace', workspace, tab: 'preferences' };
   }
-  if (parts[1] === 'settings' && parts.length === 3 && parts[2] === 'members') {
-    return { kind: 'workspace', workspace, tab: 'preferences', settingsSection: 'members' };
+  if (parts[1] === 'settings') {
+    const subpath = parts.slice(2).join('/');
+    const section = (Object.keys(SETTINGS_PATHS) as Array<keyof typeof SETTINGS_PATHS>)
+      .find((key) => SETTINGS_PATHS[key] === subpath);
+    if (section) return { kind: 'workspace', workspace, tab: 'preferences', settingsSection: section };
   }
   return { kind: 'unknown' };
+}
+
+/** Settings pages with their own address, at Linear's paths. */
+export const SETTINGS_PATHS = {
+  members: 'members',
+  notifications: 'account/notifications',
+  'priority-notifications': 'account/notifications/priority-filter',
+} as const satisfies Partial<Record<SettingsSection, string>>;
+
+export function isRoutedSettingsSection(section: SettingsSection): section is keyof typeof SETTINGS_PATHS {
+  return section in SETTINGS_PATHS;
 }
 
 export function pathForTab(
@@ -110,7 +124,9 @@ export function pathForTab(
 ): string {
   if (tab === 'campaigns') return `/${workspace}/ads-manager/${entity}`;
   if (tab === 'preferences') {
-    return settingsSection === 'members' ? `/${workspace}/settings/members` : `/${workspace}/settings`;
+    return isRoutedSettingsSection(settingsSection)
+      ? `/${workspace}/settings/${SETTINGS_PATHS[settingsSection]}`
+      : `/${workspace}/settings`;
   }
   return `/${workspace}/${tab}`;
 }

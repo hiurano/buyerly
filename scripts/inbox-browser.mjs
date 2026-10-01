@@ -36,8 +36,8 @@ function event(id, minutes, fields) {
   };
 }
 
-/** Server semantics the UI relies on, kept in memory. */
-function inboxState() {
+/** Server semantics the UI relies on, kept in memory; the saved display gives the priority inbox. */
+function inboxState(savedPriority) {
   const rows = [
     { ...event(4, 5, { event_type: 'NOTIFY_ONLY', action: 'NOTIFY_ONLY', message: 'CPL is $14, above the $12 goal', kind: 'rule_alerts' }), read: false, deleted: false, snoozed: null },
     { ...event(3, 60 * 3, {}), read: false, deleted: false, snoozed: null },
@@ -46,12 +46,14 @@ function inboxState() {
   ];
   const visible = (row, showSnoozed) => !row.deleted && (showSnoozed || !row.snoozed);
   const unread = () => rows.filter(row => visible(row, false) && !row.read).length;
-  const kinds = ['urgent', 'rule_alerts', 'rule_actions', 'assistant', 'manual', 'team', 'system'];
-  const unreadByKind = () => Object.fromEntries(kinds.map(kind => [
-    kind, rows.filter(row => visible(row, false) && !row.read && row.kind === kind).length,
-  ]));
+  // Kinds and custom filters (#260): either puts a notification in Priority.
+  const inPriority = (row, { kinds, rules = [] }) =>
+    kinds.includes(row.kind) || rules.some(rule => matches(row, rule));
   // What every Inbox answer carries, as the server sends it.
-  const counts = () => ({ unread_count: unread(), unread_by_kind: unreadByKind() });
+  const counts = (priority = savedPriority()) => ({
+    unread_count: unread(),
+    priority_unread_count: rows.filter(row => visible(row, false) && !row.read && inPriority(row, priority)).length,
+  });
   const item = ({ read, deleted, snoozed, unsnoozed, ...fields }) => ({
     ...fields, is_read: read, snoozed_until: snoozed, unsnoozed_at: unsnoozed ?? null,
   });
@@ -71,15 +73,15 @@ function inboxState() {
       const showSnoozed = params.get('show_snoozed') === 'true';
       let items = rows.filter(row => visible(row, showSnoozed));
       if (params.get('unread_only') === 'true') items = items.filter(row => !row.read);
-      if (params.has('kinds')) items = items.filter(row => params.get('kinds').split(',').includes(row.kind));
-      if (params.has('exclude_kinds')) items = items.filter(row => !params.get('exclude_kinds').split(',').includes(row.kind));
+      const priority = params.has('priority') ? JSON.parse(params.get('priority')) : savedPriority();
+      if (params.has('tab')) items = items.filter(row => inPriority(row, priority) === (params.get('tab') === 'priority'));
       const unfiltered = items.length;
       const clauses = JSON.parse(params.get('filter') || '[]');
       items = items.filter(row => matches(row, clauses));
       const hidden = unfiltered - items.length;
       if (params.get('ordering') === 'oldest') items = [...items].reverse();
       if (params.get('unread_first') === 'true') items = [...items].sort((a, b) => Number(a.read) - Number(b.read));
-      return { items: items.map(item), has_more: false, ...counts(), hidden_by_filters: hidden };
+      return { items: items.map(item), has_more: false, ...counts(priority), hidden_by_filters: hidden };
     },
     facets() {
       const shown = rows.filter(row => visible(row, false));
@@ -113,7 +115,10 @@ try {
     const writes = [];
     // Display options are saved for the member on the server, as in Linear.
     let savedDisplay = { unread_only: false, ordering: 'newest', show_snoozed: false, unread_first: false };
-    const state = inboxState();
+    const state = inboxState(() => ({
+      kinds: savedDisplay.priority_kinds ?? ['urgent', 'rule_alerts', 'rule_actions', 'assistant', 'manual', 'team', 'system'],
+      rules: savedDisplay.priority_rules ?? [],
+    }));
     page.on('pageerror', error => errors.push(error.message));
     await context.route('**/api/**', async route => {
       const request = route.request();
@@ -506,6 +511,57 @@ try {
       await page.reload();
       await page.waitForFunction(() => document.querySelectorAll('[data-inbox-event-id]').length === 2);
       assert.equal(await tabs.getByRole('link', { name: /^Other/ }).getAttribute('aria-current'), 'page');
+      // Add custom filters (#260): Linear opens Settings → Notifications →
+      // Priority notifications, where a filter brings Rule alerts back to Priority.
+      await page.getByRole('button', { name: 'Display options' }).click();
+      await include.click();
+      await kindsMenu.getByRole('option', { name: 'Add custom filters' }).click();
+      await page.waitForFunction(() => location.pathname.endsWith('/settings/account/notifications/priority-filter'));
+      await page.getByRole('heading', { name: 'Priority notifications' }).waitFor();
+      assert.equal(await page.getByRole('switch', { name: 'Rule alerts' }).getAttribute('aria-checked'), 'false');
+      assert.equal(await page.getByRole('switch', { name: 'Urgent' }).getAttribute('aria-checked'), 'true');
+      const customFilters = page.getByRole('region', { name: 'Custom filters' });
+      await customFilters.getByText('No custom filters').waitFor();
+      await customFilters.getByRole('button', { name: 'Add filter' }).click();
+      assert.equal(await customFilters.getByRole('button', { name: 'Save' }).isDisabled(), true);
+      await customFilters.getByRole('button', { name: 'Filter' }).click();
+      await page.getByRole('dialog', { name: 'Add filter' }).getByRole('option', { name: /Notification type/ }).hover();
+      await page.getByRole('dialog', { name: 'Notification type values' }).getByRole('option', { name: /Rule alert/ }).click();
+      await page.keyboard.press('Escape');
+      await customFilters.getByRole('button', { name: 'Save' }).click();
+      await customFilters.getByText('1 custom filter').waitFor();
+      assert.deepEqual(savedDisplay.priority_rules, [[{ field: 'type', operator: 'is', values: ['NOTIFY_ONLY'] }]]);
+      assert.match(await customFilters.innerText(), /Include\s*Notification type\s*is\s*Rule alert/);
+      await page.screenshot({ path: `${output}/priority-custom-filter-${width}.png` });
+      await assertNoOverflow('priority notifications');
+      // Back in Inbox both rule alerts are priority again, and the menu counts the filter.
+      await page.goto(`${origin}/${workspace.slug}/inbox/priority`);
+      await page.waitForFunction(() => document.querySelector('[aria-label="Priority inbox"]')?.textContent === 'Priority2Other');
+      await page.waitForFunction(() => document.querySelectorAll('[data-inbox-event-id]').length === 5);
+      await page.getByRole('button', { name: 'Display options' }).click();
+      await include.click();
+      await kindsMenu.getByRole('option', { name: '1 custom filter' }).waitFor();
+      await page.keyboard.press('Escape');
+      await page.keyboard.press('Escape');
+      // Edit and Delete sit behind "…" on the filter, as in Linear.
+      await page.goto(`${origin}/${workspace.slug}/settings/account/notifications/priority-filter`);
+      await customFilters.getByText('1 custom filter').waitFor();
+      await customFilters.getByRole('button', { name: 'Custom filter actions' }).click();
+      await page.getByRole('menuitem', { name: 'Edit' }).click();
+      await customFilters.getByRole('button', { name: 'Cancel' }).click();
+      await customFilters.getByRole('button', { name: 'Custom filter actions' }).click();
+      await page.getByRole('menuitem', { name: 'Delete' }).click();
+      await customFilters.getByText('No custom filters').waitFor();
+      assert.deepEqual(savedDisplay.priority_rules, []);
+      // Settings → Notifications lists priority inbox and how many types go in it.
+      await page.getByRole('button', { name: 'Notifications', exact: true }).click();
+      await page.waitForFunction(() => location.pathname.endsWith('/settings/account/notifications'));
+      await page.getByRole('button', { name: /Priority notifications.*6 types/ }).waitFor();
+      assert.equal(await page.getByRole('switch', { name: 'Priority inbox' }).getAttribute('aria-checked'), 'true');
+      await page.screenshot({ path: `${output}/notifications-settings-${width}.png` });
+      await page.goto(`${origin}/${workspace.slug}/inbox/other`);
+      await page.waitForFunction(() => document.querySelectorAll('[data-inbox-event-id]').length === 2);
+
       // Turning priority inbox off goes back to /inbox.
       await page.getByRole('button', { name: 'Display options' }).click();
       await options.getByRole('switch', { name: 'Enable priority inbox' }).click();

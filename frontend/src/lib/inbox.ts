@@ -27,8 +27,6 @@ export const INBOX_KIND_LABELS: Record<InboxKind, string> = {
   system: 'System',
 };
 
-export type InboxUnreadByKind = Record<InboxKind, number>;
-
 /** A workspace event as one person's Inbox notification, like Linear's. */
 export interface InboxItem extends AuditEventItem {
   is_read: boolean;
@@ -38,10 +36,10 @@ export interface InboxItem extends AuditEventItem {
   kind: InboxKind;
 }
 
-/** Unread notifications in all and by kind, sent back with every Inbox answer. */
+/** Unread notifications in all and in the priority inbox, sent back with every Inbox answer. */
 export interface InboxUnread {
   unread_count: number;
-  unread_by_kind?: Partial<InboxUnreadByKind>;
+  priority_unread_count?: number;
 }
 
 export interface InboxListResponse extends InboxUnread {
@@ -65,6 +63,12 @@ export interface InboxFacetValue {
 
 export type InboxFacets = Record<InboxFilterClause['field'], InboxFacetValue[]>;
 
+/**
+ * A priority inbox custom filter: Linear's chips over Notification type and
+ * From, all of which must match.
+ */
+export type InboxPriorityRule = Array<InboxFilterClause & { field: 'type' | 'from' }>;
+
 export interface InboxActionResponse extends InboxUnread {
   success: boolean;
 }
@@ -84,6 +88,7 @@ export interface InboxDisplay {
   grouping: InboxGrouping;
   priorityInbox: boolean;
   priorityKinds: InboxKind[];
+  priorityRules: InboxPriorityRule[];
   badgeCount: InboxBadgeCount;
 }
 
@@ -96,6 +101,7 @@ export const DEFAULT_INBOX_DISPLAY: InboxDisplay = {
   priorityInbox: false,
   // Linear starts with every kind in the priority inbox.
   priorityKinds: [...INBOX_KINDS],
+  priorityRules: [],
   badgeCount: 'all',
 };
 
@@ -107,6 +113,7 @@ interface InboxDisplayPayload {
   grouping: InboxGrouping;
   priority_inbox: boolean;
   priority_kinds: InboxKind[];
+  priority_rules: InboxPriorityRule[];
   badge_count: InboxBadgeCount;
 }
 
@@ -122,6 +129,7 @@ function inboxDisplayFromPayload(payload: Partial<InboxDisplayPayload> | null): 
     priorityKinds: Array.isArray(kinds)
       ? INBOX_KINDS.filter((kind) => kinds.includes(kind))
       : [...INBOX_KINDS],
+    priorityRules: Array.isArray(payload?.priority_rules) ? payload.priority_rules : [],
     badgeCount: payload?.badge_count === 'priority' || payload?.badge_count === 'none'
       ? payload.badge_count
       : 'all',
@@ -142,6 +150,7 @@ export async function saveInboxDisplay(display: InboxDisplay): Promise<InboxDisp
     grouping: display.grouping,
     priority_inbox: display.priorityInbox,
     priority_kinds: display.priorityKinds,
+    priority_rules: display.priorityRules,
     badge_count: display.badgeCount,
   };
   return inboxDisplayFromPayload(await apiRequest<InboxDisplayPayload>('/api/inbox/display', {
@@ -150,36 +159,26 @@ export async function saveInboxDisplay(display: InboxDisplay): Promise<InboxDisp
   }));
 }
 
-export function unreadByKind(response: InboxUnread): InboxUnreadByKind {
-  return Object.fromEntries(
-    INBOX_KINDS.map((kind) => [kind, response.unread_by_kind?.[kind] ?? 0]),
-  ) as InboxUnreadByKind;
-}
-
-export function countUnread(byKind: InboxUnreadByKind, kinds: readonly InboxKind[]): number {
-  return kinds.reduce((total, kind) => total + byKind[kind], 0);
-}
-
 /** The number next to Inbox in the sidebar and in the tab title, by Linear's Badge count. */
-export function inboxBadgeCount(
-  display: InboxDisplay,
-  unreadCount: number,
-  byKind: InboxUnreadByKind,
-): number {
+export function inboxBadgeCount(display: InboxDisplay, unreadCount: number, priorityUnreadCount: number): number {
   if (!display.priorityInbox || display.badgeCount === 'all') return unreadCount;
   if (display.badgeCount === 'none') return 0;
-  return countUnread(byKind, display.priorityKinds);
+  return priorityUnreadCount;
 }
 
-/** Which kinds a priority inbox tab shows: the chosen ones, or all the others. */
-export function inboxTabKinds(
+/** What goes in the priority inbox: the chosen kinds, and whatever a custom filter matches. */
+export interface InboxPriority {
+  kinds: InboxKind[];
+  rules: InboxPriorityRule[];
+}
+
+/** Which priority inbox tab the list shows, with what goes in it. */
+export function inboxTabQuery(
   display: InboxDisplay,
   tab: InboxTab | null,
-): Pick<InboxQuery, 'kinds' | 'excludeKinds'> {
+): Pick<InboxQuery, 'tab' | 'priority'> {
   if (!display.priorityInbox || !tab) return {};
-  return tab === 'priority'
-    ? { kinds: display.priorityKinds }
-    : { excludeKinds: display.priorityKinds };
+  return { tab, priority: { kinds: display.priorityKinds, rules: display.priorityRules } };
 }
 
 export interface InboxQuery {
@@ -190,18 +189,15 @@ export interface InboxQuery {
   showSnoozed: boolean;
   unreadFirst: boolean;
   filters?: InboxFilterClause[];
-  kinds?: InboxKind[];
-  excludeKinds?: InboxKind[];
+  tab?: InboxTab;
+  priority?: InboxPriority;
 }
 
 export const INBOX_PAGE_SIZE = 50;
 
-function setKindParams(
-  params: URLSearchParams,
-  { kinds, excludeKinds }: Pick<InboxQuery, 'kinds' | 'excludeKinds'>,
-) {
-  if (kinds) params.set('kinds', kinds.join(','));
-  if (excludeKinds?.length) params.set('exclude_kinds', excludeKinds.join(','));
+function setTabParams(params: URLSearchParams, { tab, priority }: Pick<InboxQuery, 'tab' | 'priority'>) {
+  if (tab) params.set('tab', tab);
+  if (priority) params.set('priority', JSON.stringify(priority));
 }
 
 export function fetchInbox({
@@ -212,8 +208,8 @@ export function fetchInbox({
   showSnoozed,
   unreadFirst,
   filters = [],
-  kinds,
-  excludeKinds,
+  tab,
+  priority,
 }: InboxQuery): Promise<InboxListResponse> {
   const params = new URLSearchParams({
     offset: String(offset),
@@ -223,7 +219,7 @@ export function fetchInbox({
   if (unreadOnly) params.set('unread_only', 'true');
   if (showSnoozed) params.set('show_snoozed', 'true');
   if (unreadFirst) params.set('unread_first', 'true');
-  setKindParams(params, { kinds, excludeKinds });
+  setTabParams(params, { tab, priority });
   if (filters.length) params.set('filter', JSON.stringify(filters));
   return apiRequest<InboxListResponse>(`/api/inbox?${params.toString()}`);
 }
@@ -231,12 +227,12 @@ export function fetchInbox({
 export function fetchInboxFacets(
   unreadOnly: boolean,
   showSnoozed: boolean,
-  kinds: Pick<InboxQuery, 'kinds' | 'excludeKinds'> = {},
+  tab: Pick<InboxQuery, 'tab' | 'priority'> = {},
 ): Promise<InboxFacets> {
   const params = new URLSearchParams();
   if (unreadOnly) params.set('unread_only', 'true');
   if (showSnoozed) params.set('show_snoozed', 'true');
-  setKindParams(params, kinds);
+  setTabParams(params, tab);
   return apiRequest<InboxFacets>(`/api/inbox/facets?${params.toString()}`);
 }
 
