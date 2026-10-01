@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
 import { LinearToggle } from '@/ui/LinearToggle';
+import { Tooltip } from '@/ui/Tooltip';
 
 /** What each kind holds, in place of Linear's descriptions of its notification types. */
 const KIND_DESCRIPTIONS: Record<InboxKind, string> = {
@@ -59,6 +60,18 @@ function useInboxDisplay() {
 /** Settings → Notifications, as in Linear: here only its Inbox part, which Buyerly has. */
 export const NotificationsSection: React.FC<{ onOpenPriority: () => void }> = ({ onOpenPriority }) => {
   const { inboxDisplay, setInboxDisplay } = useInboxDisplay();
+  const priorityRowContent = (
+    <>
+      <span className="preferences-row-copy">
+        <span className="preferences-row-title">Priority notifications</span>
+        <span className="preferences-row-desc">Choose which notifications are treated as priority</span>
+      </span>
+      <span className="preferences-row-control">
+        <span className="preferences-row-value">{plural(inboxDisplay.priorityKinds.length, 'type')}</span>
+        <ChevronRight size={14} aria-hidden="true" className="preferences-row-chevron" />
+      </span>
+    </>
+  );
   return (
     <>
       <div className="preferences-title-container">
@@ -81,16 +94,16 @@ export const NotificationsSection: React.FC<{ onOpenPriority: () => void }> = ({
               onChange={(value) => setInboxDisplay({ priorityInbox: value })}
             />
           </div>
-          <button type="button" className="preferences-row-item preferences-row-link" onClick={onOpenPriority}>
-            <span className="preferences-row-copy">
-              <span className="preferences-row-title">Priority notifications</span>
-              <span className="preferences-row-desc">Choose which notifications are treated as priority</span>
-            </span>
-            <span className="preferences-row-control">
-              <span className="preferences-row-value">{plural(inboxDisplay.priorityKinds.length, 'type')}</span>
-              <ChevronRight size={14} aria-hidden="true" className="text-[var(--text-tertiary)]" />
-            </span>
-          </button>
+          {inboxDisplay.priorityInbox ? (
+            <button type="button" className="preferences-row-item preferences-row-link" onClick={onOpenPriority}>
+              {priorityRowContent}
+            </button>
+          ) : (
+            // Linear dims the row and opens nothing until Priority inbox is on.
+            <Tooltip content="Enable priority inbox to customize priority types" side="bottom" sideOffset={8}>
+              <div className="preferences-row-item preferences-row-item--disabled">{priorityRowContent}</div>
+            </Tooltip>
+          )}
         </section>
       </div>
     </>
@@ -100,6 +113,8 @@ export const NotificationsSection: React.FC<{ onOpenPriority: () => void }> = ({
 /** Settings → Notifications → Priority notifications: kinds, then custom filters. */
 export const PriorityNotificationsSection: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const { inboxDisplay, setInboxDisplay } = useInboxDisplay();
+  // Opened by its link with Priority inbox off, Linear shows the types dimmed and no custom filters.
+  const enabled = inboxDisplay.priorityInbox;
   const toggleKind = (kind: InboxKind, on: boolean) => setInboxDisplay({
     priorityKinds: INBOX_KINDS.filter((entry) => (entry === kind ? on : inboxDisplay.priorityKinds.includes(entry))),
   });
@@ -116,7 +131,7 @@ export const PriorityNotificationsSection: React.FC<{ onBack: () => void }> = ({
       <div className="preferences-section">
         <section className="preferences-card-container preferences-card-container--divided">
           {INBOX_KINDS.map((kind) => (
-            <div key={kind} className="preferences-row-item">
+            <div key={kind} className={`preferences-row-item${enabled ? '' : ' preferences-row-item--disabled'}`}>
               <div className="preferences-row-copy">
                 <span className="preferences-row-title">{INBOX_KIND_LABELS[kind]}</span>
                 <span className="preferences-row-desc">{KIND_DESCRIPTIONS[kind]}</span>
@@ -124,16 +139,19 @@ export const PriorityNotificationsSection: React.FC<{ onBack: () => void }> = ({
               <LinearToggle
                 label={INBOX_KIND_LABELS[kind]}
                 checked={inboxDisplay.priorityKinds.includes(kind)}
+                disabled={!enabled}
                 onChange={(value) => toggleKind(kind, value)}
               />
             </div>
           ))}
         </section>
       </div>
-      <CustomFilters
-        rules={inboxDisplay.priorityRules}
-        onChange={(priorityRules) => setInboxDisplay({ priorityRules })}
-      />
+      {enabled && (
+        <CustomFilters
+          rules={inboxDisplay.priorityRules}
+          onChange={(priorityRules) => setInboxDisplay({ priorityRules })}
+        />
+      )}
     </>
   );
 };
