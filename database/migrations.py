@@ -72,6 +72,7 @@ POST_BASELINE_TABLES: set[str] = {
     "allowed_emails",
     "analytics_entity_daily_facts",
     "deleted_items",
+    "inbox_email_deliveries",
     "inbox_notification_states",
     "meta_connection_invites",
 }

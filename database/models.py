@@ -1103,6 +1103,28 @@ class InboxNotificationState(Base):
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
 
+class InboxEmailDelivery(Base):
+    """One email about one Inbox notification to one member, so it is never sent twice.
+
+    The row is written before the email goes out; sent_at stays empty if the
+    worker stopped in between, and that email is not retried.
+    """
+
+    __tablename__ = "inbox_email_deliveries"
+    __table_args__ = (
+        UniqueConstraint("user_id", "audit_event_id", name="uq_inbox_email_user_event"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    audit_event_id = Column(
+        Integer, ForeignKey("audit_events.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    email = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+
+
 class AutomationScheduleState(Base):
     """Durable worker schedule state that survives restart and deploy."""
 

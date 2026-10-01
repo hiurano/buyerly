@@ -109,7 +109,7 @@ export const NotificationsSection: React.FC<{ onOpenPriority: () => void; onOpen
 }) => {
   const { inboxDisplay, setInboxDisplay } = useInboxDisplay();
   const { notificationChannels } = useNotificationChannels();
-  const { email, delivering } = notificationChannels;
+  const { email } = notificationChannels;
   const priorityRowContent = (
     <>
       <span className="preferences-row-copy">
@@ -168,7 +168,7 @@ export const NotificationsSection: React.FC<{ onOpenPriority: () => void; onOpen
             name="Email"
             icon={<LinearEmailIcon size={16} />}
             // Until Buyerly sends emails, saying "Enabled" would promise mail that never comes.
-            status={channelStatus(email.enabled && delivering.email, email.kinds)}
+            status={channelStatus(email.enabled, email.kinds)}
             onOpen={onOpenEmail}
           />
           {/* Telegram stands where Linear has Slack; it opens once the new bot is connected. */}

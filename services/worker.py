@@ -7,6 +7,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from core.runtime import configure_logging
 from scheduler.worker import MonitoringWorker
+from services.inbox_email import run_inbox_email_tick
 
 
 async def _touch_heartbeat() -> None:
@@ -61,6 +62,15 @@ async def main() -> None:
         max_instances=1,
         coalesce=True,
         args=[day_boundary_worker],
+    )
+    scheduler.add_job(
+        run_inbox_email_tick,
+        "interval",
+        minutes=1,
+        id="inbox_email_job",
+        next_run_time=datetime.now(timezone.utc),
+        max_instances=1,
+        coalesce=True,
     )
     scheduler.start()
     logger.info(

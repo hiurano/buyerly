@@ -207,3 +207,92 @@ async def send_workspace_invitation_email(
 
     text_content = f"You've been invited to join {workspace_name} on Buyerly by {inviter_name}.\n\nClick the link below to accept your invitation:\n{join_url}"
     return await send_email(to_email, subject, html_content, text_content)
+
+
+# Linear's notification email, measured in a live Linear email (2026-10-02).
+LINEAR_EMAIL_FONT = (
+    '"Inter Display","Inter","SF Pro",-apple-system,BlinkMacSystemFont,ui-sans-serif,'
+    '"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Open Sans","Helvetica Neue",sans-serif'
+)
+
+
+async def send_inbox_notification_email(
+    *,
+    to_email: str,
+    workspace_name: str,
+    title: str,
+    target: str,
+    account_name: str,
+    message: str,
+    url: str,
+    settings_url: str,
+) -> bool:
+    """Email one unread Inbox notification, laid out like Linear's, with a link straight to it."""
+    heading = f"{title}: {target}" if target else title
+    context = " · ".join(part for part in (account_name, workspace_name) if part and part != target)
+    font = escape(LINEAR_EMAIL_FONT, quote=True)
+    safe_heading = escape(heading)
+    safe_url = escape(url, quote=True)
+    context_html = (
+        f'<p style="margin:0 0 16px;font-size:13px;line-height:20px;color:#8B94A0;">{escape(context)}</p>'
+        if context
+        else ""
+    )
+    message_html = (
+        '<div style="margin:0 0 16px;padding:7px 12px;font-size:14px;line-height:21px;'
+        f'border-radius:4px;background-color:#F8F9FB;color:#3C4149;">{escape(message)}</div>'
+        if message
+        else ""
+    )
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{safe_heading}</title>
+</head>
+<body style="background-color:#F9F8F9;margin:0;padding:0;font-family:{font};">
+  <span style="display:none!important;color:#F9F8F9;margin:0;padding:0;font-size:1px;line-height:1px;">{safe_heading}</span>
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background:#F9F8F9;margin:0;padding:0;min-width:100%;">
+    <tr>
+      <td align="center">
+        <table border="0" cellspacing="0" cellpadding="0" style="width:602px;margin:24px;max-width:90vw;">
+          <tr>
+            <td>
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border:1px solid #EFF1F4;border-radius:5px;padding:32px 28px 24px 28px;background:#FFF;color:#3C4149;">
+                <tr>
+                  <td style="font-family:{font};">
+                    <table border="0" cellspacing="0" cellpadding="0" style="margin-bottom:48px;">
+                      <tr>
+                        <td style="vertical-align:middle;padding-right:8px;"><img src="https://buyerly.app/buyerly-logo.png" width="20" height="20" alt="" style="display:block;border-radius:4px;"></td>
+                        <td style="vertical-align:middle;font-size:15px;font-weight:600;color:#282a30;">Buyerly</td>
+                      </tr>
+                    </table>
+                    <h1 style="font-size:24px;line-height:1.2;font-weight:700;font-family:{font};margin-top:0;margin-bottom:24px;color:#282a30;">{safe_heading}</h1>
+                    {context_html}
+                    {message_html}
+                    <a href="{safe_url}" target="_blank" rel="noopener" style="margin-top:8px;margin-bottom:24px;display:inline-block;padding:12px 16px;color:#171717;background:#F5B800;border-radius:5px;font-size:13px;line-height:1.2;font-weight:500;text-decoration:none;">Open your Inbox</a>
+                  </td>
+                </tr>
+              </table>
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-top:32px;padding-left:28px;padding-right:28px;font-size:14px;line-height:1.5;font-family:{font};">
+                <tr>
+                  <td width="50%"><span style="color:#3C4149;white-space:nowrap;">Buyerly</span></td>
+                  <td width="50%" style="text-align:right;"><a href="{escape(settings_url, quote=True)}" target="_blank" rel="noopener">Unsubscribe</a></td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
+    text_lines = [heading]
+    if context:
+        text_lines.append(context)
+    if message:
+        text_lines += ["", message]
+    text_lines += ["", f"Open your Inbox: {url}", "", f"Unsubscribe: {settings_url}"]
+    return await send_email(to_email, heading, html_content, "\n".join(text_lines))

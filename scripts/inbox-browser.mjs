@@ -124,9 +124,8 @@ try {
     const writes = [];
     // Display options are saved for the member on the server, as in Linear.
     let savedDisplay = { unread_only: false, ordering: 'newest', show_snoozed: false, unread_first: false };
-    // Settings → Notifications → Email (#274, #275); the server says whether emails go out yet.
+    // Settings → Notifications → Email (#274, #275).
     let savedChannels = { email: { enabled: true, priority_only: false, kinds: ['urgent', 'rule_alerts', 'rule_actions', 'assistant', 'manual', 'team', 'system'] } };
-    let emailDelivering = false;
     const state = inboxState(() => ({
       kinds: savedDisplay.priority_kinds ?? ['urgent', 'rule_alerts', 'rule_actions', 'assistant', 'manual', 'team', 'system'],
       rules: savedDisplay.priority_rules ?? [],
@@ -144,7 +143,7 @@ try {
       }
       if (path === '/api/notifications/channels') {
         if (verb === 'PUT') savedChannels = body;
-        return route.fulfill({ json: { ...savedChannels, delivering: { email: emailDelivering } } });
+        return route.fulfill({ json: savedChannels });
       }
       if (verb !== 'GET') writes.push({ verb, path, body });
       if (verb === 'GET' && path === '/api/me') return route.fulfill({ json: owner });
@@ -602,17 +601,12 @@ try {
       assert.deepEqual(savedDisplay.priority_kinds, ['urgent', 'rule_actions', 'assistant', 'manual', 'team', 'system']);
       assert.equal(await page.getByRole('region', { name: 'Custom filters' }).count(), 0);
 
-      // Push notifications: Email and Telegram rows; Email says Disabled while no emails go out (#274).
+      // Push notifications: Email and Telegram rows; the Email row follows Linear's wording (#274, #276).
       await page.goto(`${origin}/${workspace.slug}/settings/account/notifications`);
       await page.getByRole('heading', { name: 'Push notifications' }).waitFor();
-      const emailRow = page.getByRole('button', { name: /^Email/ });
-      assert.match(await emailRow.innerText(), /Email\s+Disabled/);
       const telegramRow = page.locator('.preferences-row-item', { hasText: 'Telegram' });
       assert.match(await telegramRow.innerText(), /Telegram\s+Disabled/);
       assert.equal(await page.getByRole('button', { name: /^Telegram/ }).count(), 0);
-      // Once emails are sent, the row follows Linear's wording.
-      emailDelivering = true;
-      await page.reload();
       await page.getByRole('button', { name: /^Email\s+Enabled for all notifications/ }).waitFor();
       await page.screenshot({ path: `${output}/notifications-push-${width}.png` });
 
