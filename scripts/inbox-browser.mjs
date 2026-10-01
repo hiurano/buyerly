@@ -568,6 +568,23 @@ try {
       await page.waitForFunction(() => /\/inbox$/.test(location.pathname));
       await page.waitForFunction(() => document.title === 'Inbox (2)');
       await page.keyboard.press('Escape');
+      // With it off, Linear dims Priority notifications, opens nothing and says why on hover (#273).
+      await page.goto(`${origin}/${workspace.slug}/settings/account/notifications`);
+      const dimmedRow = page.locator('.preferences-row-item--disabled', { hasText: 'Priority notifications' });
+      await dimmedRow.waitFor();
+      assert.equal(await page.getByRole('button', { name: /Priority notifications/ }).count(), 0);
+      await dimmedRow.hover();
+      await page.getByRole('tooltip').filter({ hasText: 'Enable priority inbox to customize priority types' }).waitFor();
+      await dimmedRow.click();
+      assert.ok(page.url().endsWith('/settings/account/notifications'));
+      await page.screenshot({ path: `${output}/notifications-priority-off-${width}.png` });
+      // By its link the page still opens, with the types dimmed and no custom filters.
+      await page.goto(`${origin}/${workspace.slug}/settings/account/notifications/priority-filter`);
+      await page.getByRole('heading', { name: 'Priority notifications' }).waitFor();
+      assert.equal(await page.getByRole('switch', { name: 'Urgent' }).getAttribute('aria-disabled'), 'true');
+      await page.getByRole('switch', { name: 'Urgent' }).click({ force: true });
+      assert.deepEqual(savedDisplay.priority_kinds, ['urgent', 'rule_actions', 'assistant', 'manual', 'team', 'system']);
+      assert.equal(await page.getByRole('region', { name: 'Custom filters' }).count(), 0);
 
       assert.deepEqual(errors, []);
       console.log(`Inbox: unread, open, J/U/Backspace/H, row menu, unreads only and display options passed at ${width}px`);

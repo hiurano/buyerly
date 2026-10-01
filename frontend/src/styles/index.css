@@ -1432,6 +1432,20 @@ html[data-theme='dark'] .linear-sidebar-badge,
   background: var(--item-hover-bg);
 }
 
+.preferences-row-chevron {
+  color: var(--text-tertiary);
+}
+
+/* Linear's row while its setting is off: copy at half opacity, value and chevron dimmer. */
+.preferences-row-item--disabled .preferences-row-copy {
+  opacity: 0.5;
+}
+
+.preferences-row-item--disabled .preferences-row-value,
+.preferences-row-item--disabled .preferences-row-chevron {
+  color: var(--text-muted);
+}
+
 /* "‹ Notifications" above a settings page that sits under another one. */
 .preferences-breadcrumb {
   display: inline-flex;
