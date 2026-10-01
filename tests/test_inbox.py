@@ -1,3 +1,4 @@
+import json
 import unittest
 from datetime import datetime, timedelta, timezone
 
@@ -339,7 +340,7 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
     async def test_display_options_are_saved_per_member(self):
         defaults = {
             "unread_only": False, "ordering": "newest", "show_snoozed": False, "unread_first": False,
-            "grouping": "none", "priority_inbox": False, "badge_count": "all",
+            "grouping": "none", "priority_inbox": False, "badge_count": "all", "priority_rules": [],
             "priority_kinds": [
                 "urgent", "rule_alerts", "rule_actions", "assistant", "manual", "team", "system",
             ],
@@ -398,35 +399,95 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(kinds["INVITE_SEND"], "team")
         self.assertEqual(kinds["ACCOUNT_DAY_STARTED"], "system")
         # The owner's own change is read; everything newer than the mark is not.
-        self.assertEqual(
-            body["unread_by_kind"],
-            {"urgent": 2, "rule_alerts": 1, "rule_actions": 1, "assistant": 1,
-             "manual": 0, "team": 1, "system": 1},
-        )
         self.assertEqual(body["unread_count"], 7)
+        # Linear starts with every kind in the priority inbox.
+        self.assertEqual(body["priority_unread_count"], 7)
         response = await self.client.get("/api/inbox/unread-count", headers=self.owner_headers)
-        self.assertEqual(response.json()["unread_by_kind"], body["unread_by_kind"])
+        self.assertEqual(response.json(), {"unread_count": 7, "priority_unread_count": 7})
 
         # Priority shows the chosen kinds, Other everything else.
-        priority = await self.inbox(self.owner_headers, kinds="urgent,rule_alerts")
+        chosen = json.dumps({"kinds": ["urgent", "rule_alerts"]})
+        priority = await self.inbox(self.owner_headers, tab="priority", priority=chosen)
         self.assertEqual(
             {item["kind"] for item in priority["items"]}, {"urgent", "rule_alerts"}
         )
-        other = await self.inbox(self.owner_headers, exclude_kinds="urgent,rule_alerts")
+        self.assertEqual(priority["priority_unread_count"], 3)
+        other = await self.inbox(self.owner_headers, tab="other", priority=chosen)
         self.assertEqual(
             len(priority["items"]) + len(other["items"]), len(body["items"])
         )
         self.assertNotIn("urgent", {item["kind"] for item in other["items"]})
         # Nothing chosen for Priority means an empty Priority tab.
-        self.assertEqual((await self.inbox(self.owner_headers, kinds=""))["items"], [])
+        nothing = json.dumps({"kinds": []})
+        self.assertEqual((await self.inbox(self.owner_headers, tab="priority", priority=nothing))["items"], [])
         facets = await self.client.get(
-            "/api/inbox/facets", headers=self.owner_headers, params={"kinds": "team"}
+            "/api/inbox/facets",
+            headers=self.owner_headers,
+            params={"tab": "priority", "priority": json.dumps({"kinds": ["team"]})},
         )
         self.assertEqual([entry["value"] for entry in facets.json()["type"]], ["INVITE_SEND"])
         response = await self.client.get(
-            "/api/inbox", headers=self.owner_headers, params={"kinds": "mentions"}
+            "/api/inbox",
+            headers=self.owner_headers,
+            params={"tab": "priority", "priority": json.dumps({"kinds": ["mentions"]})},
         )
         self.assertEqual(response.status_code, 400)
+
+    async def test_custom_filters_add_to_the_priority_inbox(self):
+        rule = [
+            {"field": "type", "operator": "is", "values": ["STOP"]},
+            {"field": "from", "operator": "is", "values": ["buyerly"]},
+        ]
+        display = {
+            **(await self.client.get("/api/inbox/display", headers=self.owner_headers)).json(),
+            "priority_inbox": True,
+            "priority_kinds": ["rule_alerts"],
+            "priority_rules": [rule],
+        }
+        response = await self.client.put("/api/inbox/display", headers=self.owner_headers, json=display)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["priority_rules"], [rule])
+
+        # Without "priority" the member's saved priority inbox applies: Rule
+        # alerts, plus any STOP that Buyerly itself did.
+        priority = await self.inbox(self.owner_headers, tab="priority")
+        self.assertEqual(self.read_map(priority), {"rule alert": False, "rule stop": False, "before mark": True})
+        self.assertEqual(priority["priority_unread_count"], 2)
+        other = await self.inbox(self.owner_headers, tab="other")
+        self.assertEqual(self.read_map(other), {"owner change": True})
+        # Every condition of a custom filter has to match.
+        only_users = [{**rule[0]}, {"field": "from", "operator": "is", "values": [f"user:{OWNER['id']}"]}]
+        priority = await self.inbox(
+            self.owner_headers,
+            tab="priority",
+            priority=json.dumps({"kinds": [], "rules": [only_users]}),
+        )
+        self.assertEqual(self.read_map(priority), {"owner change": True})
+        # Mark read and the badge use the saved priority inbox too.
+        response = await self.client.post(
+            f"/api/inbox/{self.rule_stop.id}/read", headers=self.owner_headers, json={"read": True}
+        )
+        self.assertEqual(response.json()["priority_unread_count"], 1)
+        # Another member's priority inbox is their own.
+        buyer = await self.inbox(self.buyer_headers, tab="priority")
+        self.assertEqual(buyer["priority_unread_count"], 3)
+
+        for bad in (
+            [[]],
+            [[rule[0], rule[0]]],
+            [[{"field": "account", "operator": "is", "values": ["act_1"]}]],
+            [[{"field": "type", "operator": "is", "values": []}]],
+        ):
+            response = await self.client.put(
+                "/api/inbox/display", headers=self.owner_headers, json={**display, "priority_rules": bad}
+            )
+            self.assertEqual(response.status_code, 422, bad)
+            response = await self.client.get(
+                "/api/inbox",
+                headers=self.owner_headers,
+                params={"tab": "priority", "priority": json.dumps({"kinds": [], "rules": bad})},
+            )
+            self.assertEqual(response.status_code, 400, bad)
 
     async def test_priority_and_grouping_options_are_saved(self):
         chosen = {

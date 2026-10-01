@@ -112,6 +112,8 @@ interface LinearMultiSelectProps {
   options: DisplayOption[];
   onChange: (values: string[]) => void;
   ariaLabel: string;
+  /** A last row under a divider, such as Linear's "Add custom filters". */
+  footer?: { label: string; icon: React.ReactNode; onSelect: () => void };
 }
 
 /**
@@ -119,7 +121,7 @@ interface LinearMultiSelectProps {
  * "All" when everything is ticked, "N selected" otherwise, and the menu stays
  * open while boxes are ticked.
  */
-export const LinearMultiSelect: React.FC<LinearMultiSelectProps> = ({ values, options, onChange, ariaLabel }) => {
+export const LinearMultiSelect: React.FC<LinearMultiSelectProps> = ({ values, options, onChange, ariaLabel, footer }) => {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -197,6 +199,24 @@ export const LinearMultiSelect: React.FC<LinearMultiSelectProps> = ({ values, op
               </button>
             );
           })}
+          {footer && (
+            <>
+              <div role="separator" className="linear-display-check-divider" />
+              <button
+                type="button"
+                role="option"
+                aria-selected={false}
+                className="linear-display-check-option"
+                onClick={() => {
+                  setOpen(false);
+                  footer.onSelect();
+                }}
+              >
+                <span className="linear-display-check-icon" aria-hidden="true">{footer.icon}</span>
+                <span>{footer.label}</span>
+              </button>
+            </>
+          )}
         </div>,
         document.body
       )}

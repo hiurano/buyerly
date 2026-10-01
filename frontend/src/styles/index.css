@@ -1339,7 +1339,8 @@ html[data-theme='dark'] .linear-sidebar-badge,
 }
 
 /* Profile: hairline between rows of one card */
-.preferences-card-container--divided .preferences-row-item + .preferences-row-item {
+.preferences-card-container--divided .preferences-row-item + .preferences-row-item,
+.preferences-card-container--divided .preferences-filter-row + .preferences-filter-row {
   border-top: 1px solid var(--color-border-primary);
 }
 
@@ -1416,6 +1417,160 @@ html[data-theme='dark'] .linear-sidebar-badge,
   font-family: var(--font-regular);
   font-size: 13px;
   line-height: 18px;
+}
+
+/* A whole row that opens a page, as Linear's "Priority notifications". */
+.preferences-row-link {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.preferences-row-link:hover {
+  background: var(--item-hover-bg);
+}
+
+/* "‹ Notifications" above a settings page that sits under another one. */
+.preferences-breadcrumb {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  margin: -40px 0 16px 8px;
+  padding: 0 8px 0 4px;
+  border: 0;
+  border-radius: 9999px;
+  color: var(--text-tertiary);
+  background: transparent;
+  font-family: var(--font-regular);
+  font-size: 13px;
+  font-weight: 450;
+  cursor: pointer;
+}
+
+.preferences-breadcrumb:hover {
+  color: var(--text-primary);
+  background: var(--item-hover-bg);
+}
+
+/* Page title with Linear's 13px line under it (Priority notifications). */
+.preferences-title-container--with-note {
+  flex-direction: column;
+  align-items: flex-start;
+  height: auto;
+  gap: 4px;
+}
+
+.preferences-page-note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-regular);
+  font-size: 13px;
+  font-weight: 450;
+  line-height: 22px;
+}
+
+/* Priority inbox custom filters: a 60px row per filter, Linear's chips in it. */
+.preferences-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 60px;
+  padding: 12px 16px;
+}
+
+.preferences-filter-count {
+  flex: 1 1 auto;
+  color: var(--text-primary);
+  font-family: var(--font-regular);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.preferences-filter-count--empty {
+  color: var(--text-tertiary);
+}
+
+.preferences-filter-include {
+  flex: none;
+  color: var(--text-tertiary);
+  font-family: var(--font-regular);
+  font-size: 13px;
+  font-weight: 450;
+}
+
+.preferences-filter-chips {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.preferences-filter-actions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+}
+
+.preferences-filter-add,
+.preferences-filter-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 9999px;
+  color: var(--text-primary);
+  background: transparent;
+  font-family: var(--font-regular);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.preferences-filter-button {
+  padding-left: 6px;
+  color: var(--text-secondary);
+}
+
+.preferences-filter-icon-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 9999px;
+  color: var(--text-tertiary);
+  background: transparent;
+  cursor: pointer;
+}
+
+.preferences-filter-add:hover,
+.preferences-filter-button:hover,
+.preferences-filter-icon-button:hover,
+.preferences-filter-icon-button[data-state='open'] {
+  color: var(--text-primary);
+  background: var(--item-hover-bg);
+}
+
+/* Linear shows a saved filter's "…" only on hover. */
+.preferences-filter-actions-trigger {
+  opacity: 0;
+}
+
+.preferences-filter-row--saved:hover .preferences-filter-actions-trigger,
+.preferences-filter-actions-trigger:focus-visible,
+.preferences-filter-actions-trigger[data-state='open'] {
+  opacity: 1;
 }
 
 .preferences-avatar {
@@ -2232,6 +2387,21 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 .linear-display-checkbox > svg {
   width: 12px;
   height: 12px;
+}
+
+.linear-display-check-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--display-menu-border, var(--color-border-secondary));
+}
+
+.linear-display-check-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  color: var(--text-tertiary);
 }
 
 /* With priority inbox on, Linear widens the selects to fit "Priority & Other". */

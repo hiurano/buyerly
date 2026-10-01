@@ -6,9 +6,7 @@ import {
   auditEventTitle,
   auditUndoHint,
   formatAuditTimestamp,
-  auditEventTypeTitle,
   humanizeAuditValue,
-  KNOWN_AUDIT_EVENT_TYPES,
   undoAuditEvent,
 } from '@/lib/audit';
 import {
@@ -20,22 +18,20 @@ import {
   fetchInbox,
   fetchInboxFacets,
   formatSnoozeTime,
-  countUnread,
   groupInboxItems,
-  inboxTabKinds,
+  inboxTabQuery,
   markInboxRead,
   snoozeInboxNotification,
   type InboxActionResponse,
   type InboxFacets,
-  type InboxFacetValue,
   type InboxFilterClause,
   type InboxItem,
   type InboxQuery,
   type InboxTab,
 } from '@/lib/inbox';
 import { LinearFilterButton, LinearFilterMenu, type FilterMenuMode } from '@/components/filters/LinearFilter';
-import type { FilterClause, FilterFieldDefinition } from '@/components/filters/filterModel';
 import { InboxFilterBar, InboxFilterFooter } from './InboxFilterBar';
+import { fromMenuClauses, inboxFilterFields, toMenuClause } from './inboxFilterFields';
 import { InboxGroupHeader, InboxItemRow } from './InboxItemRow';
 import { InboxDisplayOptionsPopover } from './InboxDisplayOptionsPopover';
 import { SnoozeCalendarDialog } from './SnoozeCalendarDialog';
@@ -96,84 +92,6 @@ const MenuKey: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <kbd className="font-sans text-[12px] font-[500] text-[var(--text-muted)]">{children}</kbd>
 );
 
-/**
- * Linear's Inbox filter properties and their Buyerly counterparts: Project is
- * the ad account, Issue status type the event status. Issue priority has no
- * counterpart in ad events.
- */
-const FILTER_FIELDS: Array<{
-  id: string;
-  field: InboxFilterClause['field'];
-  label: string;
-  pluralLabel: string;
-  optionLabel: (value: InboxFacetValue) => string;
-}> = [
-  {
-    id: 'notificationType',
-    field: 'type',
-    label: 'Notification type',
-    pluralLabel: 'types',
-    optionLabel: (value) => auditEventTypeTitle(value.value),
-  },
-  { id: 'from', field: 'from', label: 'From', pluralLabel: 'senders', optionLabel: (value) => value.label || value.value },
-  {
-    id: 'adAccount',
-    field: 'account',
-    label: 'Ad account',
-    pluralLabel: 'ad accounts',
-    optionLabel: (value) => (value.value ? value.label || value.value : 'No ad account'),
-  },
-  {
-    id: 'eventStatus',
-    field: 'status',
-    label: 'Status',
-    pluralLabel: 'statuses',
-    optionLabel: (value) => humanizeAuditValue(value.value),
-  },
-];
-
-const toMenuClause = (clause: InboxFilterClause): FilterClause => ({
-  fieldId: FILTER_FIELDS.find((entry) => entry.field === clause.field)?.id ?? clause.field,
-  operator: clause.operator,
-  values: clause.values,
-});
-
-const fromMenuClauses = (clauses: FilterClause[]): InboxFilterClause[] =>
-  clauses.flatMap((clause) => {
-    const entry = FILTER_FIELDS.find((candidate) => candidate.id === clause.fieldId);
-    if (!entry || (clause.operator !== 'is' && clause.operator !== 'is_not')) return [];
-    return [{ field: entry.field, operator: clause.operator, values: clause.values.map(String) }];
-  });
-
-function inboxFilterFields(
-  facets: InboxFacets | null,
-  filters: InboxFilterClause[],
-): FilterFieldDefinition<unknown>[] {
-  return FILTER_FIELDS.map((entry) => {
-    const present = facets?.[entry.field] ?? [];
-    // A chosen value stays in the menu even when nothing matches it any more.
-    const chosen = filters.find((clause) => clause.field === entry.field)?.values ?? [];
-    const values = [
-      ...present,
-      ...chosen.filter((value) => !present.some((facet) => facet.value === value)).map((value) => ({ value, count: 0 })),
-    ];
-    return {
-      id: entry.id,
-      label: entry.label,
-      section: 'inbox',
-      type: 'enum',
-      operators: ['is', 'is_not'],
-      defaultOperator: 'is',
-      getValue: () => null,
-      pluralLabel: entry.pluralLabel,
-      options: values.map((value) => ({ value: value.value, label: entry.optionLabel(value), count: value.count })),
-      unmatchedCount: entry.field === 'type' && facets
-        ? KNOWN_AUDIT_EVENT_TYPES.filter((type) => !values.some((value) => value.value === type)).length
-        : undefined,
-    };
-  });
-}
-
 const OPEN_LAYER_SELECTOR = [
   '[role="menu"]:not([data-state="closed"])',
   '[role="dialog"]:not(.linear-menu-exit)',
@@ -193,7 +111,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
     toggleSidebarCollapsed,
     setActiveTab,
     inboxUnreadCount,
-    inboxUnreadByKind,
+    inboxPriorityUnreadCount,
     setInboxUnread,
     inboxDisplay,
     inboxDisplayLoaded,
@@ -241,7 +159,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
     showSnoozed: inboxDisplay.showSnoozed,
     // Focus puts unread groups above Read, so the server pages unread first.
     unreadFirst: inboxDisplay.unreadFirst || inboxDisplay.grouping === 'focus',
-    ...inboxTabKinds(inboxDisplay, activeTab),
+    ...inboxTabQuery(inboxDisplay, activeTab),
   });
   // Only what changes the list reloads it; Badge count, for one, does not.
   const listQuery = useMemo(() => JSON.parse(queryKey) as Omit<InboxQuery, 'offset'>, [queryKey]);
@@ -716,8 +634,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
         {activeTab && (
           <nav aria-label="Priority inbox" className="linear-inbox-tabs">
             {(['priority', 'other'] as const).map((tab) => {
-              const priorityUnread = countUnread(inboxUnreadByKind, inboxDisplay.priorityKinds);
-              const count = tab === 'priority' ? priorityUnread : inboxUnreadCount - priorityUnread;
+              const count = tab === 'priority' ? inboxPriorityUnreadCount : inboxUnreadCount - inboxPriorityUnreadCount;
               return (
                 <a
                   key={tab}

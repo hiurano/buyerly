@@ -5,6 +5,7 @@ import type { SessionUser, Workspace } from '@/lib/types';
 import { ProfileSection } from './ProfileSection';
 import { AdAccountsSection } from './AdAccountsSection';
 import { MembersSection } from './MembersSection';
+import { NotificationsSection, PriorityNotificationsSection } from './NotificationsSection';
 import { LinearToggle } from '@/ui/LinearToggle';
 import { findModelContext, setWebMcpEnabled, useWebMcpEnabled } from '@/webmcp/register';
 
@@ -17,10 +18,11 @@ const themeOptions: Array<{
   { value: 'dark', label: 'Dark' },
 ];
 
-/** Keywords the settings search matches against, per section. */
-const sectionKeywords: Record<SettingsSection, string> = {
+/** Keywords the settings search matches against, per section in the sidebar. */
+const sectionKeywords: Record<Exclude<SettingsSection, 'priority-notifications'>, string> = {
   preferences: 'preferences interface theme appearance ai assistant agent webmcp chrome',
   profile: 'profile account email name avatar',
+  notifications: 'notifications inbox priority inbox custom filters',
   'ad-accounts': 'ad accounts cost target primary result statistics cpa cpl currency',
   members: 'members invite invitations people team users roles',
 };
@@ -48,10 +50,11 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
   const assistantSupported = findModelContext() !== null;
   const assistantForced = import.meta.env.VITE_WEBMCP === '1';
 
+  const notificationsOpen = section === 'notifications' || section === 'priority-notifications';
   const selectedTheme = themeOptions.find((option) => option.value === interfaceTheme) || themeOptions[0];
   const visibleSections = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    return (Object.keys(sectionKeywords) as SettingsSection[]).filter((key) =>
+    return (Object.keys(sectionKeywords) as Array<keyof typeof sectionKeywords>).filter((key) =>
       sectionKeywords[key].includes(query)
     );
   }, [searchQuery]);
@@ -192,6 +195,31 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                 <span className="preferences-nav-label">Profile</span>
               </a>
             )}
+            {visibleSections.includes('notifications') && (
+              <a
+                href="#notifications"
+                className={`preferences-nav-item ${notificationsOpen ? 'active' : ''}`}
+                data-active={notificationsOpen}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSection('notifications');
+                }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  role="img"
+                  focusable="false"
+                  aria-hidden="true"
+                  className="preferences-nav-icon"
+                >
+                  <path d="M8.5 2.75H5A2.25 2.25 0 0 0 2.75 5v6A2.25 2.25 0 0 0 5 13.25h6A2.25 2.25 0 0 0 13.25 11V7.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  <circle cx="12.25" cy="3.75" r="2" />
+                </svg>
+                <span className="preferences-nav-label">Notifications</span>
+              </a>
+            )}
           </div>
 
           <div className="preferences-nav-group">
@@ -265,6 +293,14 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
           <div className="preferences-content-column">
             {section === 'profile' && (
               <ProfileSection user={user} onUserChanged={onUserChanged} />
+            )}
+
+            {section === 'notifications' && (
+              <NotificationsSection onOpenPriority={() => setSection('priority-notifications')} />
+            )}
+
+            {section === 'priority-notifications' && (
+              <PriorityNotificationsSection onBack={() => setSection('notifications')} />
             )}
 
             {section === 'ad-accounts' && <AdAccountsSection />}

@@ -19,6 +19,59 @@ interface InboxFilterBarProps {
 
 const segment = 'flex h-[22px] items-center px-1.5 bg-[var(--inbox-filter-chip-bg)] outline-none';
 
+interface InboxFilterChipProps {
+  field: FilterFieldDefinition<unknown>;
+  clause: FilterClause;
+  /** Without it the chip only shows the condition, as in a saved custom filter. */
+  onOpenMenu?: (mode: FilterMenuMode, anchor: HTMLElement, fieldId?: string) => void;
+  onRemove?: () => void;
+}
+
+/** One Linear filter chip: property, operator, values and remove. */
+export const InboxFilterChip: React.FC<InboxFilterChipProps> = ({ field, clause, onOpenMenu, onRemove }) => (
+  <div className="flex h-6 max-w-full items-center gap-px overflow-hidden rounded-[8px] border border-[var(--color-border-tertiary)] bg-[var(--color-border-tertiary)] text-[12px] leading-[18px]">
+    <span className={`${segment} min-w-0 shrink truncate text-[var(--text-secondary)]`}>{field.label}</span>
+    {onOpenMenu ? (
+      <>
+        <button
+          type="button"
+          onClick={(event) => onOpenMenu('operator', event.currentTarget, field.id)}
+          className={`${segment} shrink-0 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]`}
+        >
+          {filterOperatorLabel(clause.operator, clause.values.length)}
+        </button>
+        <button
+          type="button"
+          aria-label={getFilterValueAccessibleName(field, clause)}
+          onClick={(event) => onOpenMenu('value', event.currentTarget, field.id)}
+          className={`${segment} min-w-0 shrink truncate text-[var(--text-secondary)] hover:text-[var(--text-primary)]`}
+        >
+          <span className="truncate">{getFilterValueSummary(field, clause)}</span>
+        </button>
+      </>
+    ) : (
+      <>
+        <span className={`${segment} shrink-0 text-[var(--text-tertiary)]`}>
+          {filterOperatorLabel(clause.operator, clause.values.length)}
+        </span>
+        <span className={`${segment} min-w-0 shrink truncate text-[var(--text-secondary)]`}>
+          {getFilterValueSummary(field, clause)}
+        </span>
+      </>
+    )}
+    {onRemove && (
+      <button
+        type="button"
+        aria-label="Remove filter"
+        onClick={onRemove}
+        className={`${segment} w-6 shrink-0 justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)]`}
+      >
+        <X size={12} strokeWidth={1.8} aria-hidden="true" />
+      </button>
+    )}
+  </div>
+);
+
 /**
  * Linear's Inbox filter box under the header: one chip per property
  * (name, operator, values, remove), wrapping, with "+" on its own line.
@@ -36,35 +89,13 @@ export const InboxFilterBar: React.FC<InboxFilterBarProps> = ({ fields, clauses,
           const field = fieldsById.get(clause.fieldId);
           if (!field) return null;
           return (
-            <div
+            <InboxFilterChip
               key={clause.fieldId}
-              className="flex h-6 max-w-full items-center gap-px overflow-hidden rounded-[8px] border border-[var(--color-border-tertiary)] bg-[var(--color-border-tertiary)] text-[12px] leading-[18px]"
-            >
-              <span className={`${segment} min-w-0 shrink truncate text-[var(--text-secondary)]`}>{field.label}</span>
-              <button
-                type="button"
-                onClick={(event) => onOpenMenu('operator', event.currentTarget, field.id)}
-                className={`${segment} shrink-0 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]`}
-              >
-                {filterOperatorLabel(clause.operator, clause.values.length)}
-              </button>
-              <button
-                type="button"
-                aria-label={getFilterValueAccessibleName(field, clause)}
-                onClick={(event) => onOpenMenu('value', event.currentTarget, field.id)}
-                className={`${segment} min-w-0 shrink truncate text-[var(--text-secondary)] hover:text-[var(--text-primary)]`}
-              >
-                <span className="truncate">{getFilterValueSummary(field, clause)}</span>
-              </button>
-              <button
-                type="button"
-                aria-label="Remove filter"
-                onClick={() => onChange(removeFilterClause(clauses, field.id))}
-                className={`${segment} w-6 shrink-0 justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)]`}
-              >
-                <X size={12} strokeWidth={1.8} aria-hidden="true" />
-              </button>
-            </div>
+              field={field}
+              clause={clause}
+              onOpenMenu={onOpenMenu}
+              onRemove={() => onChange(removeFilterClause(clauses, field.id))}
+            />
           );
         })}
       </div>
