@@ -530,8 +530,6 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
         all_kinds = ["urgent", "rule_alerts", "rule_actions", "assistant", "manual", "team", "system"]
         defaults = {
             "email": {"enabled": True, "priority_only": False, "kinds": all_kinds},
-            # Emails are not sent yet, so the Email row says Disabled.
-            "delivering": {"email": False},
         }
         response = await self.client.get("/api/notifications/channels", headers=self.owner_headers)
         self.assertEqual(response.json(), defaults)

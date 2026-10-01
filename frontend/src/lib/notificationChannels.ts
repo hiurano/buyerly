@@ -11,19 +11,15 @@ export interface EmailNotifications {
 
 export interface NotificationChannels {
   email: EmailNotifications;
-  /** Whether Buyerly sends anything on this channel yet. */
-  delivering: { email: boolean };
 }
 
 /** Linear's defaults: email on for every type. */
 export const DEFAULT_NOTIFICATION_CHANNELS: NotificationChannels = {
   email: { enabled: true, priorityOnly: false, kinds: [...INBOX_KINDS] },
-  delivering: { email: false },
 };
 
 interface NotificationChannelsPayload {
   email: { enabled: boolean; priority_only: boolean; kinds: InboxKind[] };
-  delivering?: { email?: boolean };
 }
 
 function channelsFromPayload(payload: Partial<NotificationChannelsPayload> | null): NotificationChannels {
@@ -35,7 +31,6 @@ function channelsFromPayload(payload: Partial<NotificationChannelsPayload> | nul
       priorityOnly: email?.priority_only === true,
       kinds: Array.isArray(kinds) ? INBOX_KINDS.filter((kind) => kinds.includes(kind)) : [...INBOX_KINDS],
     },
-    delivering: { email: payload?.delivering?.email === true },
   };
 }
 

@@ -843,10 +843,6 @@ async def save_inbox_display(payload: InboxDisplay, user: User = Depends(get_cur
     return payload.model_dump()
 
 
-# Emails are not sent yet (#276): until then Settings → Notifications reports Email as Disabled.
-EMAIL_DELIVERY_LIVE = False
-
-
 class EmailNotifications(BaseModel):
     """Settings → Notifications → Email; the defaults are Linear's."""
 
@@ -878,16 +874,12 @@ def _stored_notification_channels(member) -> NotificationChannels:
         return NotificationChannels()
 
 
-def _channels_answer(channels: NotificationChannels) -> dict:
-    return {**channels.model_dump(), "delivering": {"email": EMAIL_DELIVERY_LIVE}}
-
-
 @router.get("/notifications/channels")
 async def get_notification_channels(user: User = Depends(get_current_user)):
     """Linear keeps these per member and workspace, on every device."""
     async with async_session_maker() as session:
         _, member = await _inbox_member(session, user)
-        return _channels_answer(_stored_notification_channels(member))
+        return _stored_notification_channels(member).model_dump()
 
 
 @router.put("/notifications/channels")
@@ -903,7 +895,7 @@ async def save_notification_channels(
         stored = await session.get(WorkspaceMember, member.id)
         stored.notification_channels = payload.model_dump()
         await session.commit()
-    return _channels_answer(payload)
+    return payload.model_dump()
 
 
 @router.get("/inbox/unread-count")
