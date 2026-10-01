@@ -4,6 +4,10 @@ import { Tooltip } from './Tooltip';
 interface LinearToggleProps {
   checked: boolean;
   onChange?: (checked: boolean) => void;
+  /** `default` for rows and settings, `small` inside view menus (Display options). */
+  size?: 'default' | 'small';
+  /** Accessible name; falls back to the tooltip text. */
+  label?: string;
   tooltipContent?: string;
   disabled?: boolean;
   /** A write is in flight: the control is inert but not reported as disabled. */
@@ -11,9 +15,12 @@ interface LinearToggleProps {
   className?: string;
 }
 
+/** The only switch in Buyerly; sizes measured in Linear, colours in tokens.css. */
 export const LinearToggle: React.FC<LinearToggleProps> = ({
   checked,
   onChange,
+  size = 'default',
+  label,
   tooltipContent,
   disabled = false,
   busy = false,
@@ -23,83 +30,35 @@ export const LinearToggle: React.FC<LinearToggleProps> = ({
   const toggle = () => {
     if (interactive && onChange) onChange(!checked);
   };
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    toggle();
-  };
-
-  const defaultTooltip = checked ? 'Pause campaign' : 'Resume campaign';
-  const accessibleLabel = tooltipContent || defaultTooltip;
 
   const toggleElement = (
-    <div
+    <button
+      type="button"
       role="switch"
       aria-checked={checked}
-      aria-disabled={disabled}
+      aria-disabled={disabled || undefined}
       aria-busy={busy || undefined}
-      aria-label={accessibleLabel}
+      aria-label={label ?? tooltipContent}
       tabIndex={interactive ? 0 : -1}
-      onClick={handleClick}
+      data-size={size}
+      className={`linear-toggle ${className}`.trim()}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        toggle();
+      }}
       onKeyDown={(event) => {
         if (event.key !== 'Enter' && event.key !== ' ') return;
         event.preventDefault();
         event.stopPropagation();
         toggle();
       }}
-      style={{
-        width: '28px',
-        height: '16px',
-        borderRadius: '72px',
-        boxSizing: 'border-box',
-        display: 'inline-flex',
-        alignItems: 'center',
-        flexShrink: 0,
-        position: 'relative',
-        cursor: disabled ? 'not-allowed' : busy ? 'progress' : 'pointer',
-        backgroundColor: checked
-          ? '#eab308'
-          : 'var(--toggle-unchecked-bg)',
-        opacity: disabled ? 0.5 : busy ? 0.7 : 1,
-        transition: 'background-color 0.15s ease-out',
-        userSelect: 'none',
-      }}
-      className={`group/toggle hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring-color)] ${className}`}
-    >
-      {/* Invisible Native Input */}
-      <input
-        type="checkbox"
-        tabIndex={-1}
-        checked={checked}
-        aria-checked={checked}
-        aria-label={accessibleLabel}
-        disabled={disabled}
-        onChange={() => {}}
-        className="sr-only"
-      />
-
-      {/* Thumb with Dual-Edge Stretch Transition */}
-      <div
-        style={{
-          width: '12px',
-          height: '12px',
-          borderRadius: '50%',
-          backgroundColor: '#ffffff',
-          position: 'absolute',
-          top: '2px',
-          left: checked ? '14px' : '2px',
-          transition: checked
-            ? 'left 0.1s ease-out 0.03s, width 0.08s ease-out 0s'
-            : 'left 0.1s ease-out 0s, width 0.08s ease-out 0.03s',
-        }}
-        className="shadow-sm"
-      />
-    </div>
+    />
   );
 
-  if (tooltipContent !== undefined || defaultTooltip) {
+  if (tooltipContent) {
     return (
-      <Tooltip content={tooltipContent || defaultTooltip} side="top" sideOffset={6}>
+      <Tooltip content={tooltipContent} side="top" sideOffset={6}>
         <div className="inline-flex items-center justify-center">
           {toggleElement}
         </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LinearBoardIcon, LinearListIcon } from '@/icons/LinearIcons';
+import { LinearToggle } from './LinearToggle';
 
 export type DisplayOption = { value: string; label: string };
 
@@ -308,15 +309,12 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
         {showEmptyGroups !== undefined && onShowEmptyGroupsChange && (
           <div className="linear-display-row">
             <span>{showEmptyLabel}</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={showEmptyGroups}
-              className="linear-display-switch"
-              onClick={() => onShowEmptyGroupsChange(!showEmptyGroups)}
-            >
-              <span />
-            </button>
+            <LinearToggle
+              size="small"
+              label={showEmptyLabel}
+              checked={showEmptyGroups}
+              onChange={onShowEmptyGroupsChange}
+            />
           </div>
         )}
         <div className="linear-display-properties-label">Display properties</div>
