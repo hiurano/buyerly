@@ -59,7 +59,7 @@ Implemented shared primitives:
 | Toast | `ToastRegion`, `toast` | success (deletion), undo, redo, error; auto-dismiss after 8s unless hovered or focused; errors stay until dismissed |
 | ConfirmDialog | `ConfirmDialog` | question, consequence, Cancel and a focused confirming button; Enter confirms, Esc cancels |
 | Checkbox | `LinearCheckbox` | unchecked, checked, focus, disabled |
-| Toggle | `LinearToggle` | the only switch: `size="default"` (30×20, rows and settings) or `size="small"` (22×14, Display options); yellow `--toggle-checked-bg` when on; on, off, hover, focus, disabled/busy where applicable |
+| Toggle | `LinearToggle` | the only switch, one size everywhere (22×14, as in Linear Display options); yellow `--toggle-checked-bg` when on; on, off, hover, focus, disabled/busy where applicable |
 | DropdownMenu | `DropdownMenu` | open, selected, keyboard navigation, dismiss |
 | ContextMenu | `ContextMenu` | anchored, viewport-safe, keyboard navigation |
 | Tooltip | `Tooltip` | accessible optional explanation |

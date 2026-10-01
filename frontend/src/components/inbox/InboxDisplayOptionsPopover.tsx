@@ -26,7 +26,7 @@ const SwitchRow: React.FC<{ label: string; checked: boolean; onChange: (value: b
 }) => (
   <div className="linear-display-row">
     <span>{label}</span>
-    <LinearToggle size="small" label={label} checked={checked} onChange={onChange} />
+    <LinearToggle label={label} checked={checked} onChange={onChange} />
   </div>
 );
 

@@ -4,8 +4,6 @@ import { Tooltip } from './Tooltip';
 interface LinearToggleProps {
   checked: boolean;
   onChange?: (checked: boolean) => void;
-  /** `default` for rows and settings, `small` inside view menus (Display options). */
-  size?: 'default' | 'small';
   /** Accessible name; falls back to the tooltip text. */
   label?: string;
   tooltipContent?: string;
@@ -15,11 +13,10 @@ interface LinearToggleProps {
   className?: string;
 }
 
-/** The only switch in Buyerly; sizes measured in Linear, colours in tokens.css. */
+/** The only switch in Buyerly: one size (Linear's Display options), colours in tokens.css. */
 export const LinearToggle: React.FC<LinearToggleProps> = ({
   checked,
   onChange,
-  size = 'default',
   label,
   tooltipContent,
   disabled = false,
@@ -40,7 +37,6 @@ export const LinearToggle: React.FC<LinearToggleProps> = ({
       aria-busy={busy || undefined}
       aria-label={label ?? tooltipContent}
       tabIndex={interactive ? 0 : -1}
-      data-size={size}
       className={`linear-toggle ${className}`.trim()}
       onClick={(event) => {
         event.preventDefault();
