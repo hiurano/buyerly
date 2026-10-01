@@ -162,6 +162,10 @@
   --dock-btn-bg: lch(13.861% 1.139 272 / 1);
   --checkbox-border-rest: lch(48.72% 1.48 272 / 1);
   --toggle-unchecked-bg: lch(47.551% 0.913 272 / 1);
+  /* Display options switch when on: Linear's accent, measured 2026-10-01. */
+  --toggle-checked-bg: lch(47.918% 59.303 288.421 / 1);
+  --toggle-checked-hover-bg: lch(52.418% 61.103 288.421 / 1);
+  --toggle-knob: lch(100% 5 288.421 / 1);
   --focus-ring-color: #6d78d5;
   --action-primary: #5e6ad2;
   --action-primary-hover: #6875e5;
@@ -302,6 +306,9 @@ html[data-theme='light'] {
   --dock-btn-bg: lch(93.483% 0.5 282 / 1);        /* #eeeef0 */
   --checkbox-border-rest: lch(52.04% 0 282 / 1);  /* Linear unchecked control */
   --toggle-unchecked-bg: lch(85.4% 0 282 / 1);    /* #d6d6d6 */
+  --toggle-checked-bg: lch(53% 52.26 286.91 / 1);
+  --toggle-checked-hover-bg: lch(47% 50.26 286.91 / 1);
+  --toggle-knob: lch(100% 5 286.91 / 1);
   --focus-ring-color: #6d78d5;
   --action-primary: #5e6ad2;
   --action-primary-hover: #6875e5;
