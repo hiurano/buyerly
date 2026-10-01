@@ -1425,11 +1425,23 @@ html[data-theme='dark'] .linear-sidebar-badge,
   border: 0;
   background: transparent;
   text-align: left;
-  cursor: pointer;
+  cursor: default;
 }
 
 .preferences-row-link:hover {
-  background: var(--item-hover-bg);
+  background: var(--preferences-row-hover-bg);
+}
+
+/* Linear's "11 types ›": 12px count, 16px chevron, both tertiary, 12px apart. */
+.preferences-row-link .preferences-row-control,
+.preferences-row-item--disabled .preferences-row-control {
+  gap: 12px;
+}
+
+.preferences-row-link .preferences-row-value,
+.preferences-row-item--disabled .preferences-row-value {
+  color: var(--text-tertiary);
+  font-size: 12px;
 }
 
 .preferences-row-chevron {

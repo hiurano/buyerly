@@ -68,7 +68,7 @@ export const NotificationsSection: React.FC<{ onOpenPriority: () => void }> = ({
       </span>
       <span className="preferences-row-control">
         <span className="preferences-row-value">{plural(inboxDisplay.priorityKinds.length, 'type')}</span>
-        <ChevronRight size={14} aria-hidden="true" className="preferences-row-chevron" />
+        <ChevronRight size={16} aria-hidden="true" className="preferences-row-chevron" />
       </span>
     </>
   );

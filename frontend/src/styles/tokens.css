@@ -229,6 +229,7 @@
   --preferences-control-bg: lch(13.861% 1.139 272 / 1);
   --preferences-control-hover: #2b2c2e;
   --preferences-active-bg: lch(13.845% 1.3 272 / 1);
+  --preferences-row-hover-bg: lch(13.058% 1.3 272 / 1); /* Linear's settings row under the pointer */
   --preferences-search-bg: lch(7.32% 0.85 272 / 1);
   --preferences-search-border: lch(14.16% 1.48 272 / 1);
   --preferences-menu-bg: lch(11.5% 1.1 272 / 1);
@@ -370,6 +371,7 @@ html[data-theme='light'] {
   --preferences-control-bg: lch(100% 0 282 / 1);  /* #fefeff */
   --preferences-control-hover: #f2f2f3;
   --preferences-active-bg: lch(89.54% 0.5 282 / 1); /* #e1e1e2 */
+  --preferences-row-hover-bg: var(--item-hover-bg); /* light Linear not measured yet */
   --preferences-search-bg: lch(100% 0 282 / 1);   /* #fefeff */
   --preferences-search-border: lch(95.24% 0 282 / 1); /* #f1f0f0 */
   --preferences-menu-bg: lch(100% 0 282 / 1);     /* #fefeff */
