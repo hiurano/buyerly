@@ -188,6 +188,8 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
     inboxUnreadCount,
     setInboxUnreadCount,
     inboxDisplay,
+    inboxDisplayLoaded,
+    loadInboxDisplay,
     setInboxDisplay,
   } = useAppStore();
   const [loadState, setLoadState] = useState<LoadState>('loading');
@@ -223,7 +225,13 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
     [items, selectedId],
   );
 
+  useEffect(() => {
+    if (!inboxDisplayLoaded) void loadInboxDisplay();
+  }, [inboxDisplayLoaded, loadInboxDisplay]);
+
   const load = useCallback(async (quiet: boolean) => {
+    // The list waits for the member's saved Display options, so it is not drawn twice.
+    if (!inboxDisplayLoaded) return;
     const generation = ++requestGenerationRef.current;
     if (!quiet) setLoadState('loading');
     try {
@@ -246,7 +254,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, onOpenEvent }
       setLoadError(requestErrorMessage(error));
       setLoadState('error');
     }
-  }, [filters, inboxDisplay, setInboxUnreadCount]);
+  }, [filters, inboxDisplay, inboxDisplayLoaded, setInboxUnreadCount]);
 
   useEffect(() => {
     itemsRef.current = [];

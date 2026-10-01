@@ -1,10 +1,10 @@
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from sqlalchemy import String, and_, case, cast, false, func, literal, or_, select, update
 
 from api.auth import get_current_user
@@ -320,6 +320,25 @@ class InboxSnoozeRequest(BaseModel):
     until: Optional[datetime] = None
 
 
+class InboxDisplay(BaseModel):
+    """The Inbox header toggle and Display options; the defaults are Linear's."""
+
+    unread_only: bool = False
+    ordering: Literal["newest", "oldest"] = "newest"
+    show_snoozed: bool = False
+    unread_first: bool = False
+
+
+def _stored_inbox_display(member) -> InboxDisplay:
+    stored = getattr(member, "inbox_display", None)
+    if not isinstance(stored, dict):
+        return InboxDisplay()
+    try:
+        return InboxDisplay.model_validate(stored)
+    except ValidationError:
+        return InboxDisplay()
+
+
 def _inbox_returned(now: datetime):
     """The snooze ran out and the member has not touched the notification since.
 
@@ -625,6 +644,28 @@ async def inbox_facets(
         ],
         "status": [{"value": value, "count": count} for value, count in statuses],
     }
+
+
+@router.get("/inbox/display")
+async def get_inbox_display(user: User = Depends(get_current_user)):
+    """Linear keeps Display options per member and workspace, on every device."""
+    async with async_session_maker() as session:
+        _, member = await _inbox_member(session, user)
+        return _stored_inbox_display(member).model_dump()
+
+
+@router.put("/inbox/display")
+async def save_inbox_display(payload: InboxDisplay, user: User = Depends(get_current_user)):
+    async with async_session_maker() as session:
+        _, member = await _inbox_member(session, user)
+        if member.id is None:
+            raise HTTPException(
+                status_code=403, detail="Support access cannot change this Inbox."
+            )
+        stored = await session.get(WorkspaceMember, member.id)
+        stored.inbox_display = payload.model_dump()
+        await session.commit()
+    return payload.model_dump()
 
 
 @router.get("/inbox/unread-count")

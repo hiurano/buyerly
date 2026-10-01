@@ -1,6 +1,6 @@
 // Exercise the real App with a synthetic API: Inbox behaves like Linear's —
 // unread dots and counts, opening reads, J/K, U, H, Backspace, the row menu,
-// Show unreads only and Display options.
+// Show unreads only and Display options, which survive a reload.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -102,6 +102,8 @@ try {
     page.setDefaultTimeout(10_000);
     const errors = [];
     const writes = [];
+    // Display options are saved for the member on the server, as in Linear.
+    let savedDisplay = { unread_only: false, ordering: 'newest', show_snoozed: false, unread_first: false };
     const state = inboxState();
     page.on('pageerror', error => errors.push(error.message));
     await context.route('**/api/**', async route => {
@@ -110,6 +112,10 @@ try {
       const path = url.pathname;
       const verb = request.method();
       const body = request.postDataJSON();
+      if (path === '/api/inbox/display') {
+        if (verb === 'PUT') savedDisplay = body;
+        return route.fulfill({ json: savedDisplay });
+      }
       if (verb !== 'GET') writes.push({ verb, path, body });
       if (verb === 'GET' && path === '/api/me') return route.fulfill({ json: owner });
       if (verb === 'GET' && path === '/api/inbox') return route.fulfill({ json: state.list(url.searchParams) });
@@ -405,6 +411,15 @@ try {
       await row('Meta access expired').waitFor({ state: 'detached' });
       await row('Older stop').waitFor();
       await assertNoOverflow('after delete all read');
+
+      // Display options survive a reload: Show snoozed is still on.
+      assert.equal(savedDisplay.show_snoozed, true, 'Show snoozed saved');
+      await page.reload();
+      await row('Older stop').waitFor();
+      await page.getByRole('button', { name: 'Display options' }).click();
+      const reloaded = page.getByRole('dialog', { name: 'Display options' });
+      assert.equal(await reloaded.getByRole('switch', { name: 'Show snoozed' }).getAttribute('aria-checked'), 'true');
+      await page.keyboard.press('Escape');
 
       assert.deepEqual(errors, []);
       console.log(`Inbox: unread, open, J/U/Backspace/H, row menu, unreads only and display options passed at ${width}px`);
