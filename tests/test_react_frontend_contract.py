@@ -444,6 +444,9 @@ class TestReactFrontendContract(unittest.TestCase):
                 continue
             self.assertNotIn('role="switch"', path.read_text(), path.relative_to(ROOT))
         self.assertNotIn("linear-display-switch", self.styles)
+        # One size everywhere, as in Linear's Display options.
+        self.assertNotIn("data-size", toggle.read_text())
+        self.assertIn("--toggle-width: 22px;", self.styles)
         for token in (
             "--toggle-checked-bg:",
             "--toggle-checked-hover-bg:",

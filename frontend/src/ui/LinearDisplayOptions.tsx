@@ -310,7 +310,6 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
           <div className="linear-display-row">
             <span>{showEmptyLabel}</span>
             <LinearToggle
-              size="small"
               label={showEmptyLabel}
               checked={showEmptyGroups}
               onChange={onShowEmptyGroupsChange}

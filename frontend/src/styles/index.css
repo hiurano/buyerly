@@ -328,13 +328,13 @@ body {
   background: var(--display-control-hover, var(--bg-canvas));
 }
 
-/* LinearToggle, the only switch. Sizes measured in Linear: default = Settings
-   → Preferences, small = Display options. Colours come from tokens.css. */
+/* LinearToggle, the only switch: one size everywhere, as in Linear's Display
+   options (22×14, knob 10, inset 2). Colours come from tokens.css. */
 .linear-toggle {
-  --toggle-width: 30px;
-  --toggle-height: 20px;
-  --toggle-knob-size: 14px;
-  --toggle-inset: 3px;
+  --toggle-width: 22px;
+  --toggle-height: 14px;
+  --toggle-knob-size: 10px;
+  --toggle-inset: 2px;
   position: relative;
   display: inline-block;
   flex-shrink: 0;
@@ -347,13 +347,6 @@ body {
   cursor: pointer;
   user-select: none;
   transition: background-color 150ms ease-out, opacity 150ms ease-out;
-}
-
-.linear-toggle[data-size='small'] {
-  --toggle-width: 22px;
-  --toggle-height: 14px;
-  --toggle-knob-size: 10px;
-  --toggle-inset: 2px;
 }
 
 .linear-toggle::after {
