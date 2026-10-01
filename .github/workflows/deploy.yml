@@ -40,6 +40,7 @@ jobs:
           node scripts/check-campaign-filters.cjs
           node scripts/check-scoped-state.cjs
           node scripts/check-hierarchy-parents.cjs
+          node scripts/check-snooze-query.cjs
           npm run build
 
       - name: Upload built frontend

@@ -96,8 +96,9 @@ export function formatSnoozeDistance(date: Date, now: Date): string {
     const minutes = Math.max(1, Math.floor((date.getTime() - now.getTime()) / MINUTE));
     return minutes < 60 ? `in ${plural(minutes, 'minute')}` : `in ${plural(Math.floor(minutes / 60), 'hour')}`;
   }
-  if (days <= 45) return `in ${plural(days, 'day')}`;
-  const months = Math.round(days / 30.44);
+  // Linear counts days up to 59 ("Nov 30" on Oct 2), then 30-day months: Dec 15 is 2, Dec 20 is 3.
+  if (days < 60) return `in ${plural(days, 'day')}`;
+  const months = Math.round(days / 30);
   if (months < 12) return `in ${plural(months, 'month')}`;
   return `in ${plural(Math.round(days / 365.25), 'year')}`;
 }
@@ -204,6 +205,11 @@ function takeDay(text: string, now: Date): { day: DayPart | null; rest: string; 
       date.setDate(date.getDate() + ((7 - date.getDay()) % 7));
       return { date, rolls: 'week' };
     }],
+    [/(^|\s)end\s+of\s+next\s+month(\s|$)/, () => ({ date: new Date(today.getFullYear(), today.getMonth() + 2, 0), rolls: null })],
+    [/(^|\s)end\s+of\s+month(\s|$)/, () => ({ date: new Date(today.getFullYear(), today.getMonth() + 1, 0), rolls: null })],
+    // "next month" is the 1st of it, as Linear's.
+    [/(^|\s)next\s+month(\s|$)/, () => ({ date: new Date(today.getFullYear(), today.getMonth() + 1, 1), rolls: null })],
+    [/(^|\s)this\s+month(\s|$)/, () => ({ date: new Date(today.getFullYear(), today.getMonth(), 1), rolls: 'year' })],
     [/(^|\s)next\s+year(\s|$)/, () => ({ date: new Date(today.getFullYear() + 1, 0, 1), rolls: null })],
   ];
   for (const [pattern, build] of relative) {
@@ -244,7 +250,8 @@ function takeDay(text: string, now: Date): { day: DayPart | null; rest: string; 
     const index = weekdayIndex(match[3]);
     if (index < 0) continue;
     const date = new Date(today);
-    const ahead = (index - date.getDay() + 7) % 7;
+    // "next friday" on a Friday is the one a week on, as Linear's.
+    const ahead = (index - date.getDay() + 7) % 7 || (match[2] === 'next' ? 7 : 0);
     date.setDate(date.getDate() + ahead);
     return { day: { date, rolls: ahead === 0 ? 'week' : null }, rest: text.replace(match[0], ' ') };
   }
@@ -305,41 +312,64 @@ function parseDuration(query: string): { amount: number; unit: Unit } | null {
   return amount > 0 ? { amount, unit } : null;
 }
 
+/**
+ * The time a bare number reads as, as Linear's: "9" and "13" are hours, "24" is 2:04,
+ * "959" is 9:59, "1230" is 12:30. A lone minute digit is the tens one, so "59" is no time.
+ */
+function bareClock(digits: string): ClockTime | null {
+  const whole = Number(digits);
+  if (digits.length <= 2 && whole >= 1 && whole <= 23) return { hours: whole, minutes: 0, ambiguous: whole <= 12 };
+  for (const hourLength of [2, 1]) {
+    const hours = Number(digits.slice(0, hourLength));
+    const minuteDigits = digits.slice(hourLength);
+    if (hourLength >= digits.length || minuteDigits.length > 2 || hours < 1 || hours > 23) continue;
+    if (Number(minuteDigits) > (minuteDigits.length === 1 ? 5 : 59)) continue;
+    return { hours, minutes: Number(minuteDigits), ambiguous: hours <= 12 };
+  }
+  return null;
+}
+
+/** "Today at 2:00 AM", the Nth day counted from the 1st, then In N minutes/hours/days/weeks, up to a year ahead. */
+function bareNumberRows(digits: string, now: Date): SnoozeSuggestion[] {
+  const amount = Number(digits);
+  const rows: SnoozeSuggestion[] = [];
+  const clock = bareClock(digits);
+  if (clock) {
+    // Only later today: once 1:00 AM and 1:00 PM have both passed, Linear has no "1 o'clock" row.
+    const hours = [clock.hours, ...(clock.ambiguous && clock.hours < 12 ? [clock.hours + 12] : [])]
+      .find((hour) => atTime(now, hour, clock.minutes) > now);
+    if (hours !== undefined) {
+      const until = atTime(now, hours, clock.minutes);
+      // Linear gives this row the exact time rather than the distance.
+      rows.push({ ...pointSuggestion(now, until), hint: formatSnoozeTime(until) });
+    }
+  }
+  if (digits.length <= 3 && amount > 0) {
+    // From the 1st of this month, or of the next once that day has passed: "1" on Sep 30 is Oct 1.
+    let date = new Date(now.getFullYear(), now.getMonth(), amount, 9, 0);
+    if (date <= now) date = new Date(now.getFullYear(), now.getMonth() + 1, amount, 9, 0);
+    rows.push(pointSuggestion(now, date));
+    for (const unit of ['minute', 'hour', 'day', 'week'] as const) {
+      rows.push(durationSuggestion(now, amount, unit, true));
+    }
+  }
+  const yearAhead = new Date(now);
+  yearAhead.setFullYear(yearAhead.getFullYear() + 1);
+  const seen = new Set<number>();
+  return rows.filter((row) => {
+    if (row.until > yearAhead || seen.has(row.until.getTime())) return false;
+    seen.add(row.until.getTime());
+    return true;
+  });
+}
+
 /** Linear's rows for what was typed in the snooze search; empty when it means nothing. */
 export function parseSnoozeQuery(raw: string, now: Date = new Date()): SnoozeSuggestion[] {
   const query = raw.trim().toLowerCase().replace(/\s+/g, ' ');
   if (!query) return [];
 
   // A bare number could be several things; Linear offers each of them.
-  if (/^\d{1,3}$/.test(query)) {
-    const amount = Number(query);
-    if (amount === 0) return [];
-    const rows: SnoozeSuggestion[] = [];
-    if (amount <= 12) {
-      const until = resolvePoint(now, null, { hours: amount % 12 === 0 ? 0 : amount, minutes: 0, ambiguous: true });
-      // Linear gives this row the exact time rather than the distance.
-      if (until) rows.push({ ...pointSuggestion(now, until), hint: formatSnoozeTime(until) });
-    }
-    if (amount <= 31) {
-      let date = validDate(now.getFullYear(), now.getMonth(), amount);
-      let month = now.getMonth();
-      while (!date || atTime(date, 9, 0) <= now) {
-        month += 1;
-        date = validDate(now.getFullYear(), month, amount);
-        if (month > now.getMonth() + 12) break;
-      }
-      if (date) rows.push(pointSuggestion(now, atTime(date, 9, 0)));
-    }
-    for (const unit of ['minute', 'hour', 'day', 'week'] as const) {
-      rows.push(durationSuggestion(now, amount, unit, true));
-    }
-    const seen = new Set<number>();
-    return rows.filter((row) => {
-      if (seen.has(row.until.getTime())) return false;
-      seen.add(row.until.getTime());
-      return true;
-    });
-  }
+  if (/^\d{1,4}$/.test(query)) return bareNumberRows(query, now);
 
   const duration = parseDuration(query);
   if (duration) return [durationSuggestion(now, duration.amount, duration.unit, false)];
