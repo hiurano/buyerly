@@ -5,7 +5,8 @@ _SECRET_PATTERNS = (
     re.compile(r"(?i)(access_token(?:=|%3D))([^&\s\"']+)"),
     re.compile(r"(?i)(appsecret_proof(?:=|%3D))([^&\s\"']+)"),
     re.compile(r"(?i)(\bBearer\s+)([A-Za-z0-9._~+/=-]+)"),
-    re.compile(r"\b([0-9]{8,12}):AA[A-Za-z0-9_-]{20,}\b"),
+    # Also inside Bot API URLs, where the token follows "/bot" with no word break.
+    re.compile(r"(?<![0-9])([0-9]{8,12}):[A-Za-z0-9_-]{30,}"),
     re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b"),
     re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}\b"),
     re.compile(r"\bre_[A-Za-z0-9_]{20,}\b"),
