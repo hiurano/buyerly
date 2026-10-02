@@ -354,6 +354,16 @@ INBOX_RULE_ACTION_EVENT_TYPES = (
 )
 
 
+# Linear tells the inviter that an invitee joined by email only (Other updates →
+# Invite accepted), never in Inbox.
+INBOX_HIDDEN_EVENT_TYPES = ("INVITE_ACCEPT",)
+
+
+def _in_inbox():
+    """Audit events that are Inbox notifications."""
+    return AuditEvent.event_type.not_in(INBOX_HIDDEN_EVENT_TYPES)
+
+
 def _inbox_kind():
     """Which kind of notification an audit event is; the first match wins."""
     event_type = AuditEvent.event_type
@@ -528,6 +538,7 @@ async def _inbox_unread(
             .outerjoin(InboxNotificationState, join_on)
             .where(
                 AuditEvent.workspace_id == workspace_id,
+                _in_inbox(),
                 ~deleted,
                 ~snoozed,
                 ~is_read,
@@ -620,7 +631,7 @@ def _inbox_view_filters(
     ws, is_read, deleted, snoozed, *, unread_only, show_snoozed, tab=None, priority=None
 ):
     """What the list shows before filters; a tab keeps Priority or Other."""
-    filters = [AuditEvent.workspace_id == ws.id, ~deleted]
+    filters = [AuditEvent.workspace_id == ws.id, _in_inbox(), ~deleted]
     if not show_snoozed:
         filters.append(~snoozed)
     if unread_only:
@@ -862,6 +873,8 @@ class EmailNotifications(BaseModel):
 
 class NotificationChannels(BaseModel):
     email: EmailNotifications = Field(default_factory=EmailNotifications)
+    # Linear's Other updates → Invite accepted: "Email when invitees accept an invite".
+    invite_accepted: bool = True
 
 
 def _stored_notification_channels(member) -> NotificationChannels:

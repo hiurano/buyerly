@@ -1527,6 +1527,11 @@ html[data-theme='dark'] .linear-sidebar-badge,
   height: 16px;
 }
 
+/* A section title over sub-groups (Linear's Updates from Linear): 16px down to the first one. */
+.preferences-section-header--group {
+  margin-bottom: 16px;
+}
+
 .preferences-section-title--sub {
   color: var(--text-secondary);
   font-size: 13px;

@@ -216,35 +216,13 @@ LINEAR_EMAIL_FONT = (
 )
 
 
-async def send_inbox_notification_email(
-    *,
-    to_email: str,
-    workspace_name: str,
-    title: str,
-    target: str,
-    account_name: str,
-    message: str,
-    url: str,
-    settings_url: str,
-) -> bool:
-    """Email one unread Inbox notification, laid out like Linear's, with a link straight to it."""
-    heading = f"{title}: {target}" if target else title
-    context = " · ".join(part for part in (account_name, workspace_name) if part and part != target)
+def _linear_email_html(
+    *, heading: str, body_html: str, button: str, url: str, settings_url: str
+) -> str:
+    """Linear's email card: logo, heading, body, one button, then Buyerly | Unsubscribe."""
     font = escape(LINEAR_EMAIL_FONT, quote=True)
     safe_heading = escape(heading)
-    safe_url = escape(url, quote=True)
-    context_html = (
-        f'<p style="margin:0 0 16px;font-size:13px;line-height:20px;color:#8B94A0;">{escape(context)}</p>'
-        if context
-        else ""
-    )
-    message_html = (
-        '<div style="margin:0 0 16px;padding:7px 12px;font-size:14px;line-height:21px;'
-        f'border-radius:4px;background-color:#F8F9FB;color:#3C4149;">{escape(message)}</div>'
-        if message
-        else ""
-    )
-    html_content = f"""<!DOCTYPE html>
+    return f"""<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -269,9 +247,8 @@ async def send_inbox_notification_email(
                       </tr>
                     </table>
                     <h1 style="font-size:24px;line-height:1.2;font-weight:700;font-family:{font};margin-top:0;margin-bottom:24px;color:#282a30;">{safe_heading}</h1>
-                    {context_html}
-                    {message_html}
-                    <a href="{safe_url}" target="_blank" rel="noopener" style="margin-top:8px;margin-bottom:24px;display:inline-block;padding:12px 16px;color:#171717;background:#F5B800;border-radius:5px;font-size:13px;line-height:1.2;font-weight:500;text-decoration:none;">Open your Inbox</a>
+                    {body_html}
+                    <a href="{escape(url, quote=True)}" target="_blank" rel="noopener" style="margin-top:8px;margin-bottom:24px;display:inline-block;padding:12px 16px;color:#171717;background:#F5B800;border-radius:5px;font-size:13px;line-height:1.2;font-weight:500;text-decoration:none;">{escape(button)}</a>
                   </td>
                 </tr>
               </table>
@@ -289,6 +266,40 @@ async def send_inbox_notification_email(
   </table>
 </body>
 </html>"""
+
+
+async def send_inbox_notification_email(
+    *,
+    to_email: str,
+    workspace_name: str,
+    title: str,
+    target: str,
+    account_name: str,
+    message: str,
+    url: str,
+    settings_url: str,
+) -> bool:
+    """Email one unread Inbox notification, laid out like Linear's, with a link straight to it."""
+    heading = f"{title}: {target}" if target else title
+    context = " · ".join(part for part in (account_name, workspace_name) if part and part != target)
+    context_html = (
+        f'<p style="margin:0 0 16px;font-size:13px;line-height:20px;color:#8B94A0;">{escape(context)}</p>'
+        if context
+        else ""
+    )
+    message_html = (
+        '<div style="margin:0 0 16px;padding:7px 12px;font-size:14px;line-height:21px;'
+        f'border-radius:4px;background-color:#F8F9FB;color:#3C4149;">{escape(message)}</div>'
+        if message
+        else ""
+    )
+    html_content = _linear_email_html(
+        heading=heading,
+        body_html=context_html + message_html,
+        button="Open your Inbox",
+        url=url,
+        settings_url=settings_url,
+    )
     text_lines = [heading]
     if context:
         text_lines.append(context)
@@ -296,3 +307,30 @@ async def send_inbox_notification_email(
         text_lines += ["", message]
     text_lines += ["", f"Open your Inbox: {url}", "", f"Unsubscribe: {settings_url}"]
     return await send_email(to_email, heading, html_content, "\n".join(text_lines))
+
+
+async def send_invite_accepted_email(
+    *,
+    to_email: str,
+    member_name: str,
+    members_url: str,
+    settings_url: str,
+) -> bool:
+    """Linear's "<name> joined your Linear workspace" email to whoever sent the invite.
+
+    Linear goes on about assigning and @-mentioning the new member, which Buyerly
+    has no counterpart for, so only its invite-more line stays.
+    """
+    heading = f"{member_name} joined your Buyerly workspace"
+    paragraph = "Invite more teammates to your workspace:"
+    html_content = _linear_email_html(
+        heading=heading,
+        body_html=f'<p style="margin:0 0 16px;font-size:15px;line-height:21px;color:#3C4149;">{escape(paragraph)}</p>',
+        button="Invite teammates",
+        url=members_url,
+        settings_url=settings_url,
+    )
+    text_content = "\n".join(
+        [heading, "", paragraph, members_url, "", f"Unsubscribe: {settings_url}"]
+    )
+    return await send_email(to_email, heading, html_content, text_content)

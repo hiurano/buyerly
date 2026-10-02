@@ -530,6 +530,7 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
         all_kinds = ["urgent", "rule_alerts", "rule_actions", "assistant", "manual", "team", "system"]
         defaults = {
             "email": {"enabled": True, "priority_only": False, "kinds": all_kinds},
+            "invite_accepted": True,
         }
         response = await self.client.get("/api/notifications/channels", headers=self.owner_headers)
         self.assertEqual(response.json(), defaults)
@@ -559,6 +560,80 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
             await session.commit()
         response = await self.client.get("/api/notifications/channels", headers=self.owner_headers)
         self.assertEqual(response.json(), defaults)
+
+    async def test_invite_accepted_is_emailed_to_the_inviter_not_put_in_inbox(self):
+        import api.routers.members as members_module
+
+        sent = []
+
+        async def fake_send(**kwargs):
+            sent.append(kwargs)
+            return True
+
+        original = members_module.send_invite_accepted_email
+        members_module.send_invite_accepted_email = fake_send
+        self.addCleanup(setattr, members_module, "send_invite_accepted_email", original)
+        async with self.session_maker() as session:
+            await session.execute(
+                update(User).where(User.username == "inbox_owner").values(email="owner@example.test")
+            )
+            await session.execute(
+                update(User).where(User.username == "inbox_outsider").values(email="new@example.test")
+            )
+            workspace_id = (
+                await session.execute(select(Workspace.id).where(Workspace.slug == "inbox-ws"))
+            ).scalar_one()
+            await session.commit()
+
+        async def invite_and_accept():
+            response = await self.client.post(
+                f"/api/workspaces/{workspace_id}/invites",
+                headers=self.owner_headers,
+                json={"role": "buyer", "max_uses": 0},
+            )
+            self.assertEqual(response.status_code, 200, response.text)
+            token = response.json()["token"]
+            response = await self.client.post(f"/api/invites/{token}/accept", headers=self.outsider_headers)
+            self.assertEqual(response.status_code, 200, response.text)
+            return token
+
+        unread_before = (await self.inbox(self.owner_headers))["unread_count"]
+        token = await invite_and_accept()
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(sent[0]["to_email"], "owner@example.test")
+        self.assertEqual(sent[0]["member_name"], "Outsider")
+        self.assertTrue(sent[0]["members_url"].endswith("/inbox-ws/settings/members"))
+        self.assertTrue(sent[0]["settings_url"].endswith("/inbox-ws/settings/account/notifications"))
+
+        # As in Linear, nobody gets an Inbox notification about it.
+        owner_inbox = await self.inbox(self.owner_headers)
+        self.assertEqual(owner_inbox["unread_count"], unread_before)
+        self.assertNotIn("INVITE_ACCEPT", {item["event_type"] for item in owner_inbox["items"]})
+
+        # Accepting again changes nothing and sends nothing.
+        response = await self.client.post(f"/api/invites/{token}/accept", headers=self.outsider_headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(len(sent), 1)
+
+        # Switched off, no email.
+        response = await self.client.put(
+            "/api/notifications/channels", headers=self.owner_headers, json={"invite_accepted": False}
+        )
+        self.assertEqual(response.json()["invite_accepted"], False)
+        async with self.session_maker() as session:
+            await session.execute(
+                WorkspaceMember.__table__.delete().where(
+                    WorkspaceMember.workspace_id == workspace_id,
+                    WorkspaceMember.user_id
+                    == select(User.id).where(User.username == "inbox_outsider").scalar_subquery(),
+                )
+            )
+            await session.execute(
+                update(User).where(User.username == "inbox_outsider").values(active_workspace_id=None)
+            )
+            await session.commit()
+        await invite_and_accept()
+        self.assertEqual(len(sent), 1)
 
 
 if __name__ == "__main__":
