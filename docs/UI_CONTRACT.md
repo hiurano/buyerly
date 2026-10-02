@@ -66,7 +66,7 @@ A shared primitive owns its own geometry. If a page needs a different height for
 5. No fake metrics, fake progress, decorative controls or controls without handlers. A control whose backend cannot support it is not shipped disabled-and-silent; it is left out and recorded in the backlog.
 6. Loading, empty, partial, error, permission, success and disabled states must be understandable without color.
 7. Unknown duration uses indeterminate progress. Motion uses the tokens in `tokens.css`.
-8. Buyerly is desktop-first. The production layout targets 1024px and wider; `index.css` contains no media queries today. A change must not create document-level horizontal overflow and must not hard-code a width that blocks a later mobile pass.
+8. Buyerly is desktop-first. The production layout targets 1024px and wider. At Linear's small width (880px and below) the app sidebar and the Settings navigation become a drawer over full-width content, opened by the header's Menu button or `[`; Settings rows with a field or select stack at 640px and below. A change must not create document-level horizontal overflow and must not hard-code a width that blocks a later mobile pass.
 9. Server data and local UI state are visibly distinct: cached, stale, unavailable and demo data may never be presented as current Meta data.
 10. Entity inventory and period metrics retain separate provenance: an entity with no activity stays visible, while unavailable fields render as unavailable rather than an invented value.
 
@@ -98,7 +98,7 @@ Recorded so that nobody has to rediscover them, and so this contract does not cl
 
 - **No shared form dialog primitive.** Confirmations use `ConfirmDialog`, but `MetaConnectionDialog`, `CreateRuleModal` and `ChangeEmailDialog` each still compose Radix directly. A fourth form dialog should extract a shared primitive into `frontend/src/ui/` first.
 - **`prefers-reduced-motion` is not honored anywhere.** Motion tokens exist; the media query does not. Open work.
-- **Mobile is unbuilt.** Full responsive support is backlog queue 8 (BL-052). Do not describe a screen as mobile-ready until it lands.
+- **Mobile is partial.** Navigation follows Linear's small layout (sidebar drawer, `scripts/mobile-sidebar-browser.mjs`); the screens themselves have not had a full responsive pass (BL-052). Do not describe a screen as mobile-ready until it does.
 
 ## Change protocol
 

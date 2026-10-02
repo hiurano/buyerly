@@ -481,7 +481,8 @@ try {
       await headers.filter({ hasText: 'Rule alerts' }).click();
       assert.equal(await headers.filter({ hasText: 'Rule alerts' }).getAttribute('aria-expanded'), 'false');
       assert.deepEqual(await order(), [10, 13, 14]);
-      await page.locator('body').click({ position: { x: 5, y: 300 } });
+      // Leave the folded header so J reaches the list; at 390px nothing beside the list is free to click.
+      await page.evaluate(() => (document.activeElement)?.blur());
       await page.keyboard.press('j');
       await page.waitForFunction(() => /\/inbox\/10$/.test(location.pathname));
       await page.keyboard.press('j');

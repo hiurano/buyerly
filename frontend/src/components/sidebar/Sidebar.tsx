@@ -9,6 +9,7 @@ import {
 } from '@/icons/LinearIcons';
 import { Tooltip } from '@/ui/Tooltip';
 import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
+import { SidebarBackdrop, useSidebarDrawer } from './SidebarDrawer';
 
 export const Sidebar: React.FC = () => {
   const {
@@ -25,6 +26,8 @@ export const Sidebar: React.FC = () => {
 
   const trackRef = useRef<HTMLDivElement>(null);
   const indicatorRef = useRef<HTMLDivElement>(null);
+  const surfaceRef = useRef<HTMLElement>(null);
+  const drawer = useSidebarDrawer(surfaceRef);
 
   // Dynamic Spotlight Y tracking math from Linear
   const updateSpotlight = useCallback((clientY: number) => {
@@ -85,26 +88,35 @@ export const Sidebar: React.FC = () => {
     };
   }, [isDragging, isSidebarCollapsed, setSidebarCollapsed, setSidebarWidth, updateSpotlight]);
 
+  // Below 880px the sidebar takes no layout space and slides over the content.
+  const surfaceTransform = drawer.isSmall
+    ? (drawer.isOpen ? 'translateX(0px)' : 'translateX(calc(-100% - 16px))')
+    : isSidebarCollapsed
+      ? `translateX(-${sidebarWidth + 16}px)`
+      : 'translateX(0px)';
+
   return (
     <div
       className="sidebar-slot-wrapper"
       data-resizing={isDragging ? 'true' : 'false'}
       style={{
-        width: isSidebarCollapsed ? '8px' : `${sidebarWidth}px`,
+        width: drawer.isSmall ? '0px' : isSidebarCollapsed ? '8px' : `${sidebarWidth}px`,
         transition: isDragging ? 'none' : undefined,
       }}
     >
+      {drawer.isSmall && <SidebarBackdrop open={drawer.isOpen} onClose={drawer.close} />}
       <aside
+        ref={surfaceRef}
         data-sidebar-surface="true"
+        data-small={drawer.isSmall ? 'true' : undefined}
         data-resizing={isDragging ? 'true' : 'false'}
         style={{
-          width: `${sidebarWidth}px`,
-          transform: isSidebarCollapsed
-            ? `translateX(-${sidebarWidth + 16}px)`
-            : 'translateX(0px)',
+          width: drawer.isSmall ? undefined : `${sidebarWidth}px`,
+          transform: surfaceTransform,
           transition: isDragging ? 'none' : undefined,
         }}
         className="sidebar-surface app-sidebar"
+        {...drawer.swipeHandlers}
       >
         {/* 1. Header (Workspace + Search + Create) */}
         <SidebarHeader />
@@ -252,7 +264,7 @@ export const Sidebar: React.FC = () => {
         <SidebarUtilityFooter />
 
         {/* 3. Linear Exact 3-Layer Spotlight Resizer with Double-Click Reset */}
-        <div
+        {!drawer.isSmall && <div
           className="linear-resizer-hit-target"
           data-dragging={isDragging ? 'true' : 'false'}
           onMouseMove={handleMouseMove}
@@ -263,7 +275,7 @@ export const Sidebar: React.FC = () => {
           <div ref={trackRef} className="linear-resizer-track" aria-hidden="true">
             <div ref={indicatorRef} className="linear-resizer-indicator" />
           </div>
-        </div>
+        </div>}
       </aside>
     </div>
   );

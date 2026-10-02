@@ -170,13 +170,13 @@ first screen only by causing a frequent decision.
 
 ## Responsive contract
 
-Buyerly is desktop-first today. The production layout targets `1024px` and wider, and `frontend/src/styles/index.css` contains no media queries. What is required now:
+Buyerly is desktop-first today. The production layout targets `1024px` and wider. Navigation follows Linear's small layout: at `880px` and below (`SIDEBAR_ALWAYS_COLLAPSED_QUERY`) the sidebar and the Settings navigation take no layout space and open as a drawer over the content — at most 330px, 40px clear of the right edge, above a backdrop — from the header's `SidebarCollapsedNavigation` ("Menu") or `[`. The backdrop, a swipe to the left and any navigation close it; touch screens get 36px navigation rows. What is required now:
 
 - no document-level horizontal overflow at the widths the product actually serves;
 - dialogs fit the viewport, keep close/primary actions reachable and expose internal scrolling for long content;
 - no hard-coded width that would block a later mobile pass.
 
-Full mobile support — touch-safe targets, wrapping toolbars, compact navigation — is open work in backlog queue 8 (BL-052). Until it ships, no screen is described as mobile-ready.
+Full mobile support beyond navigation — touch-safe targets and wrapping toolbars inside each screen — is open work in backlog queue 8 (BL-052). Until it ships, no screen is described as mobile-ready.
 
 ## Migration map
 

@@ -103,12 +103,18 @@ try {
     );
     const table = page.getByRole('table', { name: 'Workspace members' });
     const row = (text) => table.getByRole('row').filter({ hasText: text });
+    const openWorkspaceMenu = async () => {
+      // Below 880px the workspace menu sits in the sidebar drawer, opened by Menu.
+      const menu = page.getByRole('button', { name: 'Menu', exact: true });
+      if (await menu.isVisible()) await menu.click();
+      await page.getByRole('button', { name: `${workspace.name} Workspace Menu` }).click();
+    };
     try {
       await page.goto(`${origin}/${workspace.slug}/inbox`);
       await page.getByText('No notifications', { exact: true }).waitFor();
 
       // Workspace menu → Invite and manage members opens Settings → Members at its own address.
-      await page.getByRole('button', { name: `${workspace.name} Workspace Menu` }).click();
+      await openWorkspaceMenu();
       await page.getByRole('menuitem', { name: 'Invite and manage members' }).click();
       await page.getByRole('heading', { name: 'Members', exact: true }).waitFor();
       assert.equal(new URL(page.url()).pathname, `/${workspace.slug}/settings/members`);
@@ -162,7 +168,7 @@ try {
       await page.goto(`${origin}/${workspace.slug}/inbox`);
       await page.getByText('No notifications', { exact: true }).waitFor();
       if (logout === 'menu') {
-        await page.getByRole('button', { name: `${workspace.name} Workspace Menu` }).click();
+        await openWorkspaceMenu();
         await page.getByRole('menuitem', { name: 'Log out' }).click();
       } else {
         await page.keyboard.press('Alt+Shift+KeyQ');
