@@ -91,8 +91,9 @@ try {
     );
     const openSwitchSubmenu = async (name) => {
       // Below 880px the workspace menu sits in the sidebar drawer, opened by Menu.
+      // getAttribute waits for the header to render; isVisible would not.
       const menu = page.getByRole('button', { name: 'Menu', exact: true });
-      if (await menu.isVisible()) await menu.click();
+      if (width <= 880 && await menu.getAttribute('aria-expanded') !== 'true') await menu.click();
       await page.getByRole('button', { name: `${name} Workspace Menu` }).click();
       await page.getByRole('menuitem', { name: /Switch workspace/ }).click();
       return page.getByRole('menu').filter({ hasText: 'sam@example.test' });

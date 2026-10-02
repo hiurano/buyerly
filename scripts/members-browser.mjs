@@ -105,8 +105,9 @@ try {
     const row = (text) => table.getByRole('row').filter({ hasText: text });
     const openWorkspaceMenu = async () => {
       // Below 880px the workspace menu sits in the sidebar drawer, opened by Menu.
+      // getAttribute waits for the header to render; isVisible would not.
       const menu = page.getByRole('button', { name: 'Menu', exact: true });
-      if (await menu.isVisible()) await menu.click();
+      if (width <= 880 && await menu.getAttribute('aria-expanded') !== 'true') await menu.click();
       await page.getByRole('button', { name: `${workspace.name} Workspace Menu` }).click();
     };
     try {
