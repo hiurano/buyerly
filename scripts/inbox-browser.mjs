@@ -125,7 +125,16 @@ try {
     // Display options are saved for the member on the server, as in Linear.
     let savedDisplay = { unread_only: false, ordering: 'newest', show_snoozed: false, unread_first: false };
     // Settings → Notifications → Email (#274, #275).
-    let savedChannels = { email: { enabled: true, priority_only: false, kinds: ['urgent', 'rule_alerts', 'rule_actions', 'assistant', 'manual', 'team', 'system'] } };
+    const allKinds = ['urgent', 'rule_alerts', 'rule_actions', 'assistant', 'manual', 'team', 'system'];
+    let savedChannels = {
+      email: { enabled: true, priority_only: false, kinds: [...allKinds] },
+      telegram: { enabled: false, priority_only: false, kinds: [...allKinds] },
+    };
+    // Settings → Connected accounts → Telegram (#277, #278).
+    const noTelegram = { available: true, connected: false, username: null, first_name: null, connected_at: null, error: null };
+    let telegram = { ...noTelegram };
+    let telegramLinks = 0;
+    await context.route('https://t.me/**', route => route.fulfill({ contentType: 'text/html', body: '<title>Telegram</title>' }));
     const state = inboxState(() => ({
       kinds: savedDisplay.priority_kinds ?? ['urgent', 'rule_alerts', 'rule_actions', 'assistant', 'manual', 'team', 'system'],
       rules: savedDisplay.priority_rules ?? [],
@@ -144,6 +153,14 @@ try {
       if (path === '/api/notifications/channels') {
         if (verb === 'PUT') savedChannels = body;
         return route.fulfill({ json: savedChannels });
+      }
+      if (path === '/api/telegram/connection') {
+        if (verb === 'DELETE') telegram = { ...noTelegram };
+        return route.fulfill({ json: telegram });
+      }
+      if (verb === 'POST' && path === '/api/telegram/link') {
+        telegramLinks += 1;
+        return route.fulfill({ json: { url: `https://t.me/buyerly_test_bot?start=token${telegramLinks}`, expires_at: '' } });
       }
       if (verb !== 'GET') writes.push({ verb, path, body });
       if (verb === 'GET' && path === '/api/me') return route.fulfill({ json: owner });
@@ -614,9 +631,8 @@ try {
       // Push notifications: Email and Telegram rows; the Email row follows Linear's wording (#274, #276).
       await page.goto(`${origin}/${workspace.slug}/settings/account/notifications`);
       await page.getByRole('heading', { name: 'Push notifications' }).waitFor();
-      const telegramRow = page.locator('.preferences-row-item', { hasText: 'Telegram' });
-      assert.match(await telegramRow.innerText(), /Telegram\s+Disabled/);
-      assert.equal(await page.getByRole('button', { name: /^Telegram/ }).count(), 0);
+      // Telegram stands where Linear has Slack: Disabled until an account is connected, yet it opens.
+      await page.getByRole('button', { name: /^Telegram\s+Disabled/ }).waitFor();
       await page.getByRole('button', { name: /^Email\s+Enabled for all notifications/ }).waitFor();
       await page.screenshot({ path: `${output}/notifications-push-${width}.png` });
 
@@ -646,6 +662,53 @@ try {
       await page.waitForFunction(() => document.querySelector('[role="switch"][aria-label="Enable email notifications"]')?.getAttribute('aria-checked') === 'false');
       await page.goto(`${origin}/${workspace.slug}/settings/account/notifications`);
       await page.getByRole('button', { name: /^Email\s+Disabled/ }).waitFor();
+
+      // Telegram page before connecting: Linear's "not connected" card and dimmed types (#277).
+      await page.getByRole('button', { name: /^Telegram/ }).click();
+      await page.waitForFunction(() => location.pathname.endsWith('/settings/account/notifications/telegram'));
+      await page.getByRole('heading', { name: 'Telegram' }).waitFor();
+      assert.equal(await page.getByRole('switch', { name: 'Enable Telegram notifications' }).count(), 0);
+      assert.equal(await page.getByRole('switch', { name: 'Urgent' }).getAttribute('aria-disabled'), 'true');
+      await page.screenshot({ path: `${output}/notifications-telegram-off-${width}.png` });
+      await page.getByRole('button', { name: /Personal Telegram account not connected\s+Connected accounts/ }).click();
+      await page.waitForFunction(() => location.pathname.endsWith('/settings/account/connections'));
+      await page.getByRole('heading', { name: 'Connected accounts' }).waitFor();
+      await page.screenshot({ path: `${output}/connections-${width}.png` });
+
+      // Connect opens the bot by a one-time link; pressing Start there shows up here.
+      const popup = page.waitForEvent('popup');
+      await page.getByRole('button', { name: 'Connect', exact: true }).click();
+      const bot = await popup;
+      await bot.waitForURL(/^https:\/\/t\.me\/buyerly_test_bot\?start=token1$/);
+      await bot.close();
+      telegram = { ...noTelegram, connected: true, username: 'uncle_tg', first_name: 'Uncle', connected_at: '2026-10-03T10:00:00Z' };
+      savedChannels = { ...savedChannels, telegram: { enabled: true, priority_only: false, kinds: [...allKinds] } };
+      await page.getByText('Telegram · @uncle_tg').waitFor();
+      await page.getByRole('button', { name: 'Connected', exact: true }).waitFor();
+      await page.screenshot({ path: `${output}/connections-connected-${width}.png` });
+
+      // Connected: the Telegram page has the channel switch, like Email, and the row its status (#278).
+      await page.goto(`${origin}/${workspace.slug}/settings/account/notifications`);
+      await page.getByRole('button', { name: /^Telegram\s+Enabled for all notifications/ }).click();
+      await page.getByText('Telegram notifications to @uncle_tg').waitFor();
+      await page.getByRole('switch', { name: 'Rule alerts' }).click();
+      await expectSaved(() => savedChannels.telegram.kinds.join() === 'urgent,rule_actions,assistant,manual,team,system');
+      await page.screenshot({ path: `${output}/notifications-telegram-${width}.png` });
+
+      // A blocked bot is shown above the switches.
+      telegram = { ...telegram, error: 'blocked' };
+      await page.reload();
+      await page.getByText("Notifications can't be delivered: the bot is blocked").waitFor();
+
+      // Disconnect: menu under Connected, Linear's confirmation, then Connect again.
+      await page.goto(`${origin}/${workspace.slug}/settings/account/connections`);
+      await page.getByRole('button', { name: 'Connected', exact: true }).click();
+      await page.getByRole('menuitem', { name: 'Disconnect personal Telegram account' }).click();
+      await page.getByRole('dialog', { name: 'Disconnect personal Telegram account?' }).waitFor();
+      await page.getByRole('button', { name: 'Disconnect', exact: true }).click();
+      await page.getByText('Disabled Telegram integration').waitFor();
+      await page.getByRole('button', { name: 'Connect', exact: true }).waitFor();
+      assert.equal(telegram.connected, false);
 
       assert.deepEqual(errors, []);
       console.log(`Inbox: unread, open, J/U/Backspace/H, row menu, unreads only and display options passed at ${width}px`);

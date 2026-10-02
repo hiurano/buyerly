@@ -71,6 +71,7 @@ from api.routers import (
     rules_router,
     settings_router,
     summary_router,
+    telegram_router,
     trash_router,
     workspaces_router,
     health_router,
@@ -142,6 +143,7 @@ router.include_router(trash_router)
 router.include_router(summary_router)
 router.include_router(settings_router)
 router.include_router(audit_router)
+router.include_router(telegram_router)
 router.include_router(adsets_router)
 router.include_router(delivery_router)
 router.include_router(health_router)

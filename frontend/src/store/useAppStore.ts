@@ -47,9 +47,11 @@ import {
   DEFAULT_NOTIFICATION_CHANNELS,
   fetchNotificationChannels,
   saveNotificationChannels,
-  type EmailNotifications,
+  type ChannelNotifications,
+  type NotificationChannel,
   type NotificationChannels,
 } from '@/lib/notificationChannels';
+import { NO_TELEGRAM_CONNECTION, fetchTelegramConnection, type TelegramConnection } from '@/lib/telegram';
 
 export type RuleFilterTab = 'active' | 'paused' | 'all' | 'deleted';
 
@@ -164,6 +166,8 @@ export type SettingsSection =
   | 'notifications'
   | 'priority-notifications'
   | 'email-notifications'
+  | 'telegram-notifications'
+  | 'connected-accounts'
   | 'ad-accounts'
   | 'members';
 export type InterfaceTheme = 'system' | 'light' | 'dark';
@@ -262,9 +266,14 @@ interface AppState {
   /** Settings → Notifications → Email (later Telegram), saved per member like Display options. */
   notificationChannels: NotificationChannels;
   notificationChannelsLoaded: boolean;
-  loadNotificationChannels: () => Promise<void>;
-  setEmailNotifications: (patch: Partial<EmailNotifications>) => void;
+  /** `reload` fetches again, e.g. after connecting Telegram switched its channel on. */
+  loadNotificationChannels: (reload?: boolean) => Promise<void>;
+  setChannelNotifications: (channel: NotificationChannel, patch: Partial<ChannelNotifications>) => void;
   setNotificationChannels: (patch: Partial<NotificationChannels>) => void;
+  telegramConnection: TelegramConnection;
+  telegramConnectionLoaded: boolean;
+  loadTelegramConnection: () => Promise<TelegramConnection>;
+  setTelegramConnection: (connection: TelegramConnection) => void;
   setWorkspaceName: (name: string) => void;
   sidebarWidth: number;
   setSidebarWidth: (width: number) => void;
@@ -448,6 +457,7 @@ function emptyWorkspaceState() {
     inboxPriorityUnreadCount: 0,
     inboxDisplay: DEFAULT_INBOX_DISPLAY, inboxDisplayLoaded: false,
     notificationChannels: DEFAULT_NOTIFICATION_CHANNELS, notificationChannelsLoaded: false,
+    telegramConnection: NO_TELEGRAM_CONNECTION, telegramConnectionLoaded: false,
     rules: [], ruleGroups: [], ruleAccounts: [], rulesLoadState: 'idle' as RulesLoadState,
     rulesError: '', rulesMutationError: '', selectedRuleId: null, selectedRuleIds: [],
     focusedRuleId: null, editingRuleId: null, isCreateRuleModalOpen: false,
@@ -532,8 +542,13 @@ export const useAppStore = create<AppState>((set, get) => {
   },
   notificationChannels: DEFAULT_NOTIFICATION_CHANNELS,
   notificationChannelsLoaded: false,
-  loadNotificationChannels: async () => {
+  loadNotificationChannels: async (reload = false) => {
     const inScope = get().captureScope();
+    if (reload) {
+      // Let pending saves land first, so the fresh copy includes them.
+      await notificationChannelsSave;
+      set({ notificationChannelsLoaded: false });
+    }
     let channels = DEFAULT_NOTIFICATION_CHANNELS;
     try {
       channels = await fetchNotificationChannels();
@@ -545,9 +560,9 @@ export const useAppStore = create<AppState>((set, get) => {
       set({ notificationChannels: channels, notificationChannelsLoaded: true });
     }
   },
-  setEmailNotifications: (patch) => {
+  setChannelNotifications: (channel, patch) => {
     const current = get().notificationChannels;
-    get().setNotificationChannels({ email: { ...current.email, ...patch } });
+    get().setNotificationChannels({ [channel]: { ...current[channel], ...patch } });
   },
   setNotificationChannels: (patch) => {
     const notificationChannels = { ...get().notificationChannels, ...patch };
@@ -560,6 +575,15 @@ export const useAppStore = create<AppState>((set, get) => {
         // The choice still applies until the page is reloaded.
       });
   },
+  telegramConnection: NO_TELEGRAM_CONNECTION,
+  telegramConnectionLoaded: false,
+  loadTelegramConnection: async () => {
+    const inScope = get().captureScope();
+    const connection = await fetchTelegramConnection();
+    if (inScope()) set({ telegramConnection: connection, telegramConnectionLoaded: true });
+    return connection;
+  },
+  setTelegramConnection: (connection) => set({ telegramConnection: connection, telegramConnectionLoaded: true }),
   sidebarWidth: 244,
   setSidebarWidth: (width) =>
     set({ sidebarWidth: Math.min(Math.max(width, 200), 400) }),

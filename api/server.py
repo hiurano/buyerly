@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -10,6 +11,7 @@ from sqlalchemy import text
 
 from api.routes import router as api_router
 from api.meta_oauth import router as meta_oauth_router
+from core import telegram
 from core.config import settings
 from core.rate_limit import limiter
 from core.workspace_slugs import RESERVED_WORKSPACE_SLUGS
@@ -35,7 +37,10 @@ async def lifespan(app: FastAPI):
                 logger.info("Removed %s stale workspace logo uploads", removed)
         except Exception:
             logger.exception("Failed to clean stale workspace logo uploads")
+        # Telegram calls the bot back here; a failure only delays linking.
+        webhook = asyncio.create_task(telegram.register_webhook())
         yield
+        webhook.cancel()
     finally:
         app.state.meta_client = None
         await client.aclose()

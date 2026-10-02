@@ -268,7 +268,7 @@ jobs:
               deploy_log="/tmp/buyerly-deploy-${{ github.sha }}.log"
               umask 077
               : >"${deploy_log}"
-              if EXPECTED_SHA="${{ github.sha }}" RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}" bash scripts/deploy.sh >"${deploy_log}" 2>&1; then
+              if EXPECTED_SHA="${{ github.sha }}" RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}" TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}" bash scripts/deploy.sh >"${deploy_log}" 2>&1; then
                 echo "BUYERLY_DEPLOY_RESULT=success"
                 rm -f "${deploy_log}"
               else

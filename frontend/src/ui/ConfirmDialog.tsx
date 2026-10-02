@@ -6,8 +6,8 @@ interface ConfirmDialogProps {
   open: boolean;
   /** A question naming what is affected, e.g. `Delete 3 rules?`. */
   title: string;
-  /** The consequence, and the way back if there is one. */
-  description: string;
+  /** The consequence, and the way back if there is one; some Linear dialogs ask only the question. */
+  description?: string;
   confirmLabel: string;
   tone?: 'danger' | 'primary';
   busy?: boolean;
@@ -47,9 +47,13 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             <Dialog.Title className="m-0 text-[15px] font-semibold text-[var(--text-primary)]">
               {title}
             </Dialog.Title>
-            <Dialog.Description className="m-0 mt-2 text-[13px] leading-[20px] text-[var(--text-secondary)]">
-              {description}
-            </Dialog.Description>
+            {description ? (
+              <Dialog.Description className="m-0 mt-2 text-[13px] leading-[20px] text-[var(--text-secondary)]">
+                {description}
+              </Dialog.Description>
+            ) : (
+              <Dialog.Description className="sr-only">{title}</Dialog.Description>
+            )}
             <div className="mt-5 flex justify-end gap-2">
               <Button onClick={onCancel} disabled={busy}>Cancel</Button>
               <Button ref={confirmRef} variant={tone} onClick={onConfirm} disabled={busy}>

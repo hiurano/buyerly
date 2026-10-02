@@ -111,6 +111,8 @@ export const SETTINGS_PATHS = {
   notifications: 'account/notifications',
   'priority-notifications': 'account/notifications/priority-filter',
   'email-notifications': 'account/notifications/email',
+  'telegram-notifications': 'account/notifications/telegram',
+  'connected-accounts': 'account/connections',
 } as const satisfies Partial<Record<SettingsSection, string>>;
 
 export function isRoutedSettingsSection(section: SettingsSection): section is keyof typeof SETTINGS_PATHS {
