@@ -871,8 +871,19 @@ class EmailNotifications(BaseModel):
         return [kind for kind in INBOX_KINDS if kind in value]
 
 
+class TelegramNotifications(EmailNotifications):
+    """Settings → Notifications → Telegram, in place of Linear's Slack page.
+
+    Off until a personal Telegram account is connected, as Linear's Slack channel;
+    connecting switches it on.
+    """
+
+    enabled: bool = False
+
+
 class NotificationChannels(BaseModel):
     email: EmailNotifications = Field(default_factory=EmailNotifications)
+    telegram: TelegramNotifications = Field(default_factory=TelegramNotifications)
     # Linear's Other updates → Invite accepted: "Email when invitees accept an invite".
     invite_accepted: bool = True
 

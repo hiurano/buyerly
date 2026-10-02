@@ -9,6 +9,7 @@ from api.routers.onboarding import router as onboarding_router
 from api.routers.rules import router as rules_router
 from api.routers.settings import router as settings_router
 from api.routers.summary import router as summary_router
+from api.routers.telegram import router as telegram_router
 from api.routers.trash import router as trash_router
 from api.routers.workspaces import router as workspaces_router
 from api.routers.health import router as health_router
@@ -27,6 +28,7 @@ __all__ = [
     "rules_router",
     "settings_router",
     "summary_router",
+    "telegram_router",
     "trash_router",
     "workspaces_router",
     "health_router",

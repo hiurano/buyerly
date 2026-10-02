@@ -8,6 +8,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from core.runtime import configure_logging
 from scheduler.worker import MonitoringWorker
 from services.inbox_email import run_inbox_email_tick
+from services.inbox_telegram import run_inbox_telegram_tick
 
 
 async def _touch_heartbeat() -> None:
@@ -68,6 +69,16 @@ async def main() -> None:
         "interval",
         minutes=1,
         id="inbox_email_job",
+        next_run_time=datetime.now(timezone.utc),
+        max_instances=1,
+        coalesce=True,
+    )
+    # A push channel: new notifications go out within seconds, not after a pause.
+    scheduler.add_job(
+        run_inbox_telegram_tick,
+        "interval",
+        seconds=20,
+        id="inbox_telegram_job",
         next_run_time=datetime.now(timezone.utc),
         max_instances=1,
         coalesce=True,

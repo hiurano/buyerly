@@ -69,6 +69,10 @@ class Settings(BaseSettings):
         default="",
         description="Optional first admin password for an empty installation",
     )
+    TELEGRAM_BOT_TOKEN: str = Field(
+        default="",
+        description="Token of the Buyerly Telegram bot from @BotFather; only in the server's .env",
+    )
     RESEND_API_KEY: str = Field(
         default="",
         description="Resend.com API Key for sending transactional emails",

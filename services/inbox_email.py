@@ -111,29 +111,26 @@ def email_settings_url(workspace: Workspace) -> str:
     return f"{_webapp_url()}/{workspace.slug}/settings/account/notifications/email"
 
 
-def _email_condition(user: User, member: WorkspaceMember):
-    """Which notifications this member wants by email, or None for none at all."""
-    email = _stored_notification_channels(member).email
-    if not email.enabled:
+def channel_condition(channel, member: WorkspaceMember):
+    """Which notifications a channel's settings let through, or None for none at all."""
+    if not channel.enabled:
         return None
     display = _stored_inbox_display(member)
     # As in Linear, "Only deliver priority notifications" counts only while the
     # priority inbox is on; then the kinds below it do not apply.
-    if email.priority_only and display.priority_inbox:
+    if channel.priority_only and display.priority_inbox:
         return _inbox_priority(display.priority())
-    if not email.kinds:
+    if not channel.kinds:
         return None
-    return _inbox_kind().in_(email.kinds)
+    return _inbox_kind().in_(channel.kinds)
 
 
-async def _due_events(session, user, member, workspace_id, now, limit):
-    wanted = _email_condition(user, member)
-    if wanted is None:
-        return []
+async def due_inbox_events(session, user, member, workspace_id, *, wanted, delivery, since, until, limit):
+    """Inbox notifications this member has not read, deleted or snoozed and was not sent yet."""
     join_on, is_read, deleted, snoozed = _inbox_columns(user, member)
-    already_emailed = exists().where(
-        InboxEmailDelivery.user_id == user.id,
-        InboxEmailDelivery.audit_event_id == AuditEvent.id,
+    already_sent = exists().where(
+        delivery.user_id == user.id,
+        delivery.audit_event_id == AuditEvent.id,
     )
     return (
         await session.execute(
@@ -142,18 +139,35 @@ async def _due_events(session, user, member, workspace_id, now, limit):
             .where(
                 AuditEvent.workspace_id == workspace_id,
                 _in_inbox(),
-                AuditEvent.created_at > now - EMAIL_DELAY - EMAIL_LOOKBACK,
-                AuditEvent.created_at <= now - EMAIL_DELAY,
+                AuditEvent.created_at > since,
+                AuditEvent.created_at <= until,
                 ~deleted,
                 ~snoozed,
                 ~is_read,
                 wanted,
-                ~already_emailed,
+                ~already_sent,
             )
             .order_by(AuditEvent.created_at, AuditEvent.id)
             .limit(limit)
         )
     ).scalars().all()
+
+
+async def _due_events(session, user, member, workspace_id, now, limit):
+    wanted = channel_condition(_stored_notification_channels(member).email, member)
+    if wanted is None:
+        return []
+    return await due_inbox_events(
+        session,
+        user,
+        member,
+        workspace_id,
+        wanted=wanted,
+        delivery=InboxEmailDelivery,
+        since=now - EMAIL_DELAY - EMAIL_LOOKBACK,
+        until=now - EMAIL_DELAY,
+        limit=limit,
+    )
 
 
 async def _claim(session, user: User, event: AuditEvent) -> bool:

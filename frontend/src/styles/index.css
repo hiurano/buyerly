@@ -2749,3 +2749,57 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
     width: auto;
   }
 }
+
+/* Settings → Connected accounts, measured in Linear: icon tile, 12px gap, title and
+   note, and a borderless 32px pill "Connect ↗" on the right. */
+.preferences-connection-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.preferences-connection-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.preferences-connection-account {
+  color: var(--text-tertiary);
+}
+
+.preferences-connection-alert {
+  display: inline-flex;
+  color: #f5b800;
+}
+
+.preferences-connect-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 12px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-regular);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.preferences-connect-button:hover:not(:disabled),
+.preferences-connect-button[data-state='open'] {
+  background: var(--item-hover-bg);
+}
+
+.preferences-connect-button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}

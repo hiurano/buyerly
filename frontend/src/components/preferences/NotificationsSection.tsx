@@ -9,7 +9,8 @@ import {
   type InboxKind,
   type InboxPriorityRule,
 } from '@/lib/inbox';
-import { channelStatus } from '@/lib/notificationChannels';
+import { channelStatus, type NotificationChannel } from '@/lib/notificationChannels';
+import { telegramAccountName } from '@/lib/telegram';
 import { useAppStore } from '@/store/useAppStore';
 import { LinearFilterMenu, type FilterMenuMode } from '@/components/filters/LinearFilter';
 import type { FilterClause } from '@/components/filters/filterModel';
@@ -62,13 +63,22 @@ function useInboxDisplay() {
 
 function useNotificationChannels() {
   const {
-    notificationChannels, notificationChannelsLoaded, loadNotificationChannels, setEmailNotifications,
+    notificationChannels, notificationChannelsLoaded, loadNotificationChannels, setChannelNotifications,
     setNotificationChannels,
   } = useAppStore();
   useEffect(() => {
     if (!notificationChannelsLoaded) void loadNotificationChannels();
   }, [notificationChannelsLoaded, loadNotificationChannels]);
-  return { notificationChannels, setEmailNotifications, setNotificationChannels };
+  return { notificationChannels, setChannelNotifications, setNotificationChannels };
+}
+
+/** The member's personal Telegram account, loaded once per workspace. */
+export function useTelegramConnection() {
+  const { telegramConnection, telegramConnectionLoaded, loadTelegramConnection } = useAppStore();
+  useEffect(() => {
+    if (!telegramConnectionLoaded) void loadTelegramConnection().catch(() => {});
+  }, [telegramConnectionLoaded, loadTelegramConnection]);
+  return telegramConnection;
 }
 
 /** Linear's channel row: icon tile, name, a green or grey dot with the status, chevron. */
@@ -104,13 +114,19 @@ const ChannelRow: React.FC<{
 };
 
 /** Settings → Notifications, as in Linear: Inbox, Push notifications with Email and Telegram, then Other updates. */
-export const NotificationsSection: React.FC<{ onOpenPriority: () => void; onOpenEmail: () => void }> = ({
+export const NotificationsSection: React.FC<{
+  onOpenPriority: () => void;
+  onOpenEmail: () => void;
+  onOpenTelegram: () => void;
+}> = ({
   onOpenPriority,
   onOpenEmail,
+  onOpenTelegram,
 }) => {
   const { inboxDisplay, setInboxDisplay } = useInboxDisplay();
   const { notificationChannels, setNotificationChannels } = useNotificationChannels();
-  const { email } = notificationChannels;
+  const telegramConnection = useTelegramConnection();
+  const { email, telegram } = notificationChannels;
   const priorityRowContent = (
     <>
       <span className="preferences-row-copy">
@@ -168,12 +184,16 @@ export const NotificationsSection: React.FC<{ onOpenPriority: () => void; onOpen
           <ChannelRow
             name="Email"
             icon={<LinearEmailIcon size={16} />}
-            // Until Buyerly sends emails, saying "Enabled" would promise mail that never comes.
             status={channelStatus(email.enabled, email.kinds)}
             onOpen={onOpenEmail}
           />
-          {/* Telegram stands where Linear has Slack; it opens once the new bot is connected. */}
-          <ChannelRow name="Telegram" icon={<TelegramIcon size={16} />} status={channelStatus(false, [])} />
+          {/* Telegram stands where Linear has Slack: Disabled until a personal account is connected. */}
+          <ChannelRow
+            name="Telegram"
+            icon={<TelegramIcon size={16} />}
+            status={channelStatus(telegramConnection.connected && telegram.enabled, telegram.kinds)}
+            onOpen={onOpenTelegram}
+          />
         </section>
       </div>
       {/* Linear's Updates from Linear holds Changelog, Marketing and Other updates;
@@ -203,28 +223,38 @@ export const NotificationsSection: React.FC<{ onOpenPriority: () => void; onOpen
   );
 };
 
-/** Settings → Notifications → Email, as in Linear without its digest settings. */
-export const EmailNotificationsSection: React.FC<{
-  email: string | null;
+/** A push channel's page in Settings → Notifications, as Linear's Email and Slack pages. */
+const ChannelNotificationsSection: React.FC<{
+  channel: NotificationChannel;
+  title: string;
+  enableTitle: string;
+  enableDescription: string;
+  /** Linear's Slack page: until the account is connected, a card in place of the switches. */
+  accountCard?: React.ReactNode;
+  /** Shown above the switches while the channel cannot deliver. */
+  notice?: React.ReactNode;
   onBack: () => void;
   onOpenPriority: () => void;
-}> = ({ email: address, onBack, onOpenPriority }) => {
+}> = ({ channel, title, enableTitle, enableDescription, accountCard, notice, onBack, onOpenPriority }) => {
   const { inboxDisplay } = useInboxDisplay();
-  const { notificationChannels, setEmailNotifications } = useNotificationChannels();
-  const { email } = notificationChannels;
-  const priorityOnly = inboxDisplay.priorityInbox && email.priorityOnly;
+  const { notificationChannels, setChannelNotifications } = useNotificationChannels();
+  const settings = notificationChannels[channel];
+  const update = (patch: Parameters<typeof setChannelNotifications>[1]) => setChannelNotifications(channel, patch);
+  const connected = !accountCard;
+  const enabled = connected && settings.enabled;
+  const priorityOnly = inboxDisplay.priorityInbox && settings.priorityOnly;
   // Linear: switching the channel on with every type off switches every type on.
-  const toggleChannel = (enabled: boolean) => setEmailNotifications(
-    enabled && email.kinds.length === 0 ? { enabled, kinds: [...INBOX_KINDS] } : { enabled },
+  const toggleChannel = (value: boolean) => update(
+    value && settings.kinds.length === 0 ? { enabled: value, kinds: [...INBOX_KINDS] } : { enabled: value },
   );
-  const toggleKind = (kind: InboxKind, on: boolean) => setEmailNotifications({
-    kinds: INBOX_KINDS.filter((entry) => (entry === kind ? on : email.kinds.includes(entry))),
+  const toggleKind = (kind: InboxKind, on: boolean) => update({
+    kinds: INBOX_KINDS.filter((entry) => (entry === kind ? on : settings.kinds.includes(entry))),
   });
-  const kindsDisabled = !email.enabled || priorityOnly;
+  const kindsDisabled = !enabled || priorityOnly;
 
   const priorityRow = (
     <div
-      className={`preferences-row-item${email.enabled && inboxDisplay.priorityInbox ? '' : ' preferences-row-item--disabled'}`}
+      className={`preferences-row-item${enabled && inboxDisplay.priorityInbox ? '' : ' preferences-row-item--disabled'}`}
     >
       <div className="preferences-row-copy">
         <span className="preferences-row-title">Only deliver priority notifications</span>
@@ -238,8 +268,8 @@ export const EmailNotificationsSection: React.FC<{
       <LinearToggle
         label="Only deliver priority notifications"
         checked={priorityOnly}
-        disabled={!email.enabled || !inboxDisplay.priorityInbox}
-        onChange={(value) => setEmailNotifications({ priorityOnly: value })}
+        disabled={!enabled || !inboxDisplay.priorityInbox}
+        onChange={(value) => update({ priorityOnly: value })}
       />
     </div>
   );
@@ -251,23 +281,26 @@ export const EmailNotificationsSection: React.FC<{
         Notifications
       </button>
       <div className="preferences-title-container">
-        <h1 className="preferences-page-title">Email</h1>
+        <h1 className="preferences-page-title">{title}</h1>
       </div>
+      {notice && <div className="preferences-section preferences-section--sub">{notice}</div>}
       <div className="preferences-section preferences-section--sub">
-        <section className="preferences-card-container preferences-card-container--divided">
-          <div className="preferences-row-item">
-            <div className="preferences-row-copy">
-              <span className="preferences-row-title">Enable email notifications</span>
-              <span className="preferences-row-desc">Email notifications to {address}</span>
+        {accountCard ?? (
+          <section className="preferences-card-container preferences-card-container--divided">
+            <div className="preferences-row-item">
+              <div className="preferences-row-copy">
+                <span className="preferences-row-title">{enableTitle}</span>
+                <span className="preferences-row-desc">{enableDescription}</span>
+              </div>
+              <LinearToggle label={enableTitle} checked={settings.enabled} onChange={toggleChannel} />
             </div>
-            <LinearToggle label="Enable email notifications" checked={email.enabled} onChange={toggleChannel} />
-          </div>
-          {inboxDisplay.priorityInbox ? priorityRow : (
-            <Tooltip content="Priority inbox isn't enabled" side="bottom" sideOffset={8}>
-              {priorityRow}
-            </Tooltip>
-          )}
-        </section>
+            {inboxDisplay.priorityInbox ? priorityRow : (
+              <Tooltip content="Priority inbox isn't enabled" side="bottom" sideOffset={8}>
+                {priorityRow}
+              </Tooltip>
+            )}
+          </section>
+        )}
       </div>
       <div className="preferences-section preferences-section--sub">
         <div className="preferences-section-header preferences-section-header--sub">
@@ -283,13 +316,13 @@ export const EmailNotificationsSection: React.FC<{
                 </div>
                 <LinearToggle
                   label={INBOX_KIND_LABELS[kind]}
-                  checked={email.kinds.includes(kind)}
+                  checked={settings.kinds.includes(kind)}
                   disabled={kindsDisabled}
                   onChange={(value) => toggleKind(kind, value)}
                 />
               </div>
             );
-            return priorityOnly ? (
+            return enabled && priorityOnly ? (
               <Tooltip key={kind} content="Only priority notifications are delivered for this channel." side="bottom" sideOffset={8}>
                 {row}
               </Tooltip>
@@ -298,6 +331,63 @@ export const EmailNotificationsSection: React.FC<{
         </section>
       </div>
     </>
+  );
+};
+
+/** Settings → Notifications → Email, as in Linear without its digest settings. */
+export const EmailNotificationsSection: React.FC<{
+  email: string | null;
+  onBack: () => void;
+  onOpenPriority: () => void;
+}> = ({ email, onBack, onOpenPriority }) => (
+  <ChannelNotificationsSection
+    channel="email"
+    title="Email"
+    enableTitle="Enable email notifications"
+    enableDescription={`Email notifications to ${email}`}
+    onBack={onBack}
+    onOpenPriority={onOpenPriority}
+  />
+);
+
+/** Linear's "Personal Slack account not connected" card, leading to Connected accounts. */
+const AccountCard: React.FC<{ title: string; onOpenConnections: () => void }> = ({ title, onOpenConnections }) => (
+  <section className="preferences-card-container">
+    <button type="button" className="preferences-row-item preferences-row-link" onClick={onOpenConnections}>
+      <span className="preferences-row-copy">
+        <span className="preferences-row-title">{title}</span>
+      </span>
+      <span className="preferences-row-control">
+        <span className="preferences-row-value">Connected accounts</span>
+        <ChevronRight size={16} aria-hidden="true" className="preferences-row-chevron" />
+      </span>
+    </button>
+  </section>
+);
+
+/** Settings → Notifications → Telegram, in place of Linear's Slack page. */
+export const TelegramNotificationsSection: React.FC<{
+  onBack: () => void;
+  onOpenPriority: () => void;
+  onOpenConnections: () => void;
+}> = ({ onBack, onOpenPriority, onOpenConnections }) => {
+  const connection = useTelegramConnection();
+  const account = telegramAccountName(connection);
+  return (
+    <ChannelNotificationsSection
+      channel="telegram"
+      title="Telegram"
+      enableTitle="Enable Telegram notifications"
+      enableDescription={account ? `Telegram notifications to ${account}` : 'Telegram bot notifications'}
+      accountCard={connection.connected ? undefined : (
+        <AccountCard title="Personal Telegram account not connected" onOpenConnections={onOpenConnections} />
+      )}
+      notice={connection.connected && connection.error ? (
+        <AccountCard title="Notifications can't be delivered: the bot is blocked" onOpenConnections={onOpenConnections} />
+      ) : undefined}
+      onBack={onBack}
+      onOpenPriority={onOpenPriority}
+    />
   );
 };
 

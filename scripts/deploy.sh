@@ -94,6 +94,24 @@ ensure_email_settings() {
     fi
 }
 
+# The Telegram bot token comes from the TELEGRAM_BOT_TOKEN repository secret and
+# lives only in the server's .env; an empty secret leaves .env as it is.
+ensure_telegram_settings() {
+    if [[ -f .env && -n "${TELEGRAM_BOT_TOKEN:-}" ]]; then
+        local clean_token
+        clean_token=$(printf '%s' "${TELEGRAM_BOT_TOKEN}" | tr -d " \t\r\n\"'")
+        if [[ ! "${clean_token}" =~ ^[0-9]+:[A-Za-z0-9_-]+$ ]]; then
+            echo "TELEGRAM_BOT_TOKEN does not look like a bot token; .env left unchanged" >&2
+            return 0
+        fi
+        if grep -q '^TELEGRAM_BOT_TOKEN=' .env 2>/dev/null; then
+            sed -i "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=${clean_token}|" .env
+        else
+            printf '\nTELEGRAM_BOT_TOKEN=%s\n' "${clean_token}" >> .env
+        fi
+    fi
+}
+
 ensure_meta_token_encryption_key() {
     local configured_key=""
     local primary_key=""
@@ -255,6 +273,7 @@ fi
 
 ensure_postgres_password
 ensure_email_settings
+ensure_telegram_settings
 ensure_meta_token_encryption_key
 
 FINAL_ENV_HASH=""
@@ -327,6 +346,7 @@ fi
 export APP_VERSION="${TARGET_SHA}"
 ensure_postgres_password
 ensure_email_settings
+ensure_telegram_settings
 ensure_meta_token_encryption_key
 
 echo "[3/8] Applying safe Docker retention and checking disk capacity..."

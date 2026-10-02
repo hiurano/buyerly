@@ -5,7 +5,14 @@ import type { SessionUser, Workspace } from '@/lib/types';
 import { ProfileSection } from './ProfileSection';
 import { AdAccountsSection } from './AdAccountsSection';
 import { MembersSection } from './MembersSection';
-import { EmailNotificationsSection, NotificationsSection, PriorityNotificationsSection } from './NotificationsSection';
+import {
+  EmailNotificationsSection,
+  NotificationsSection,
+  PriorityNotificationsSection,
+  TelegramNotificationsSection,
+} from './NotificationsSection';
+import { ConnectedAccountsSection } from './ConnectedAccountsSection';
+import { LinearConnectedIcon } from '@/icons/LinearIcons';
 import { LinearToggle } from '@/ui/LinearToggle';
 import { findModelContext, setWebMcpEnabled, useWebMcpEnabled } from '@/webmcp/register';
 import { SidebarBackdrop, useSidebarDrawer } from '@/components/sidebar/SidebarDrawer';
@@ -21,10 +28,14 @@ const themeOptions: Array<{
 ];
 
 /** Keywords the settings search matches against, per section in the sidebar. */
-const sectionKeywords: Record<Exclude<SettingsSection, 'priority-notifications' | 'email-notifications'>, string> = {
+const sectionKeywords: Record<
+  Exclude<SettingsSection, 'priority-notifications' | 'email-notifications' | 'telegram-notifications'>,
+  string
+> = {
   preferences: 'preferences interface theme appearance ai assistant agent webmcp chrome',
   profile: 'profile account email name avatar',
   notifications: 'notifications inbox priority inbox custom filters push email telegram',
+  'connected-accounts': 'connected accounts telegram connect disconnect',
   'ad-accounts': 'ad accounts cost target primary result statistics cpa cpl currency',
   members: 'members invite invitations people team users roles',
 };
@@ -56,7 +67,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
   const assistantForced = import.meta.env.VITE_WEBMCP === '1';
 
   const notificationsOpen = section === 'notifications' || section === 'priority-notifications'
-    || section === 'email-notifications';
+    || section === 'email-notifications' || section === 'telegram-notifications';
   const selectedTheme = themeOptions.find((option) => option.value === interfaceTheme) || themeOptions[0];
   const visibleSections = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -234,6 +245,20 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                 <span className="preferences-nav-label">Notifications</span>
               </a>
             )}
+            {visibleSections.includes('connected-accounts') && (
+              <a
+                href="#connected-accounts"
+                className={`preferences-nav-item ${section === 'connected-accounts' ? 'active' : ''}`}
+                data-active={section === 'connected-accounts'}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSection('connected-accounts');
+                }}
+              >
+                <LinearConnectedIcon size={16} className="preferences-nav-icon" />
+                <span className="preferences-nav-label">Connected accounts</span>
+              </a>
+            )}
           </div>
 
           <div className="preferences-nav-group">
@@ -329,6 +354,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
               <NotificationsSection
                 onOpenPriority={() => setSection('priority-notifications')}
                 onOpenEmail={() => setSection('email-notifications')}
+                onOpenTelegram={() => setSection('telegram-notifications')}
               />
             )}
 
@@ -343,6 +369,16 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                 onOpenPriority={() => setSection('priority-notifications')}
               />
             )}
+
+            {section === 'telegram-notifications' && (
+              <TelegramNotificationsSection
+                onBack={() => setSection('notifications')}
+                onOpenPriority={() => setSection('priority-notifications')}
+                onOpenConnections={() => setSection('connected-accounts')}
+              />
+            )}
+
+            {section === 'connected-accounts' && <ConnectedAccountsSection />}
 
             {section === 'ad-accounts' && <AdAccountsSection />}
 

@@ -74,7 +74,10 @@ POST_BASELINE_TABLES: set[str] = {
     "deleted_items",
     "inbox_email_deliveries",
     "inbox_notification_states",
+    "inbox_telegram_deliveries",
     "meta_connection_invites",
+    "telegram_connections",
+    "telegram_link_tokens",
 }
 REQUIRED_COLUMN_TYPES = {
     ("automation_runtime_states", "payload"): "JSONB",

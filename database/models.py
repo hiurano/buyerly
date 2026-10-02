@@ -1125,6 +1125,60 @@ class InboxEmailDelivery(Base):
     sent_at = Column(DateTime(timezone=True), nullable=True)
 
 
+class TelegramConnection(Base):
+    """A member's personal Telegram account, linked from Settings → Connected accounts.
+
+    As Linear's personal Slack account, it belongs to one member of one workspace.
+    """
+
+    __tablename__ = "telegram_connections"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    member_id = Column(
+        Integer, ForeignKey("workspace_members.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    chat_id = Column(BigInteger, nullable=False, index=True, doc="Private chat with the bot")
+    username = Column(String, nullable=True)
+    first_name = Column(String, nullable=True)
+    connected_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    delivery_error = Column(
+        String, nullable=True, doc="Why the bot cannot message this account, e.g. it was blocked"
+    )
+    delivery_error_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class TelegramLinkToken(Base):
+    """A one-time link that opens the bot and connects the member who asked for it."""
+
+    __tablename__ = "telegram_link_tokens"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    member_id = Column(
+        Integer, ForeignKey("workspace_members.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    token_hash = Column(String(64), nullable=False, unique=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+
+
+class InboxTelegramDelivery(Base):
+    """One Telegram message about one Inbox notification to one member, so it is never sent twice."""
+
+    __tablename__ = "inbox_telegram_deliveries"
+    __table_args__ = (
+        UniqueConstraint("user_id", "audit_event_id", name="uq_inbox_telegram_user_event"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    audit_event_id = Column(
+        Integer, ForeignKey("audit_events.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    chat_id = Column(BigInteger, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+
+
 class AutomationScheduleState(Base):
     """Durable worker schedule state that survives restart and deploy."""
 
