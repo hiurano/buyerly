@@ -47,6 +47,17 @@ class TestSecretRedaction(unittest.TestCase):
         self.assertIn("1234567890:[REDACTED]", result)
         self.assertIn("[REDACTED_GITHUB_TOKEN]", result)
 
+    def test_redacts_telegram_token_inside_bot_api_urls(self):
+        # httpx logs every request URL, and the Bot API puts the token in the path.
+        token = "8123456789:ABcdEFghIJklMNopQRstUVwxYZ0123456_-"
+        message = f'HTTP Request: POST https://api.telegram.org/bot{token}/setWebhook "HTTP/1.1 200 OK"'
+
+        result = redact_secrets(message)
+
+        self.assertNotIn(token, result)
+        self.assertNotIn("ABcdEFghIJ", result)
+        self.assertIn("/bot8123456789:[REDACTED]/setWebhook", result)
+
     def test_redacts_resend_api_keys_and_passwords(self):
         resend_key = "re_test12345678901234567890"
         message = f"resend_key={resend_key} connect url=postgresql://buyerly:password=secret_pw123@host:5432"
