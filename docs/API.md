@@ -302,7 +302,7 @@ View payload принимает `view_mode` (`all`, `overview`, `delivery`, `tra
 
 Статусы истории: `SUCCESS` (Выполнено), `ERROR` (Ошибка), `SKIPPED` (Пропущено); исходное событие с успешной отменой отображается как `REVERTED`. Ответ каждого элемента содержит `before_state`, `after_state`, `correlation_id`, `can_undo` и `undo_reason`.
 
-Inbox, как в Linear, показывает события workspace как уведомления человека. Сами события общие и append-only; поверх них у каждого участника своё состояние: прочитано, удалено, отложено. Удаление из Inbox не трогает историю и отмену. Интерфейс не выводит сырые `before_state`, `after_state` и `details`.
+Inbox, как в Linear, показывает события workspace как уведомления человека. Кроме `INVITE_ACCEPT`: о вступлении по приглашению Linear сообщает только письмом пригласившему (#279). Сами события общие и append-only; поверх них у каждого участника своё состояние: прочитано, удалено, отложено. Удаление из Inbox не трогает историю и отмену. Интерфейс не выводит сырые `before_state`, `after_state` и `details`.
 
 | Метод и путь | Параметры | Назначение |
 |---|---|---|
@@ -311,8 +311,8 @@ Inbox, как в Linear, показывает события workspace как у
 | `GET /api/inbox/unread-count` | — | число непрочитанных (`unread_count`) и непрочитанных в сохранённом priority inbox (`priority_unread_count`) для бокового меню и заголовка вкладки |
 | `GET /api/inbox/display` | — | Display options участника в этом workspace: `unread_only`, `ordering` (`newest`/`oldest`), `show_snoozed`, `unread_first`, `grouping` (`none`/`focus`), `priority_inbox`, `priority_kinds` (виды в Priority), `priority_rules` (custom filters: список фильтров, каждый — условия по `type` и `from`, по одному на свойство), `badge_count` (`all`/`priority`/`none`); если ничего не сохранено, отдаются значения Linear по умолчанию |
 | `PUT /api/inbox/display` | те же поля | сохранить Display options участника; поддержке без членства в workspace отвечает `403` |
-| `GET /api/notifications/channels` | — | настройки Settings → Notifications → Email участника в этом workspace: `email.enabled`, `email.priority_only` (действует, только пока включён priority inbox), `email.kinds` (виды инбокса, о которых слать письма); по умолчанию, как в Linear, почта включена для всех видов. По этим настройкам фоновый процесс шлёт письмо о каждом уведомлении, которое осталось непрочитанным (#276). |
-| `PUT /api/notifications/channels` | `{"email": {...}}` | сохранить настройки участника; поддержке без членства в workspace отвечает `403` |
+| `GET /api/notifications/channels` | — | настройки Settings → Notifications → Email участника в этом workspace: `email.enabled`, `email.priority_only` (действует, только пока включён priority inbox), `email.kinds` (виды инбокса, о которых слать письма); по умолчанию, как в Linear, почта включена для всех видов. По этим настройкам фоновый процесс шлёт письмо о каждом уведомлении, которое осталось непрочитанным (#276). `invite_accepted` — Other updates → Invite accepted: письмо пригласившему, как только приглашённый вступил в workspace (по умолчанию включено, #279). |
+| `PUT /api/notifications/channels` | `{"email": {...}, "invite_accepted": bool}` | сохранить настройки участника; поддержке без членства в workspace отвечает `403` |
 | `POST /api/inbox/{event_id}/read` | `{"read": bool}` | отметить прочитанным или непрочитанным |
 | `POST /api/inbox/{event_id}/delete` | — | убрать уведомление из своего Inbox |
 | `POST /api/inbox/{event_id}/snooze` | `{"until": datetime\|null}` | отложить до времени в будущем, прочитанность не меняется; когда время придёт, уведомление станет непрочитанным и поднимется наверх. `null` (Unsnooze) снимает отложенность и оставляет уведомление на месте |

@@ -63,11 +63,12 @@ function useInboxDisplay() {
 function useNotificationChannels() {
   const {
     notificationChannels, notificationChannelsLoaded, loadNotificationChannels, setEmailNotifications,
+    setNotificationChannels,
   } = useAppStore();
   useEffect(() => {
     if (!notificationChannelsLoaded) void loadNotificationChannels();
   }, [notificationChannelsLoaded, loadNotificationChannels]);
-  return { notificationChannels, setEmailNotifications };
+  return { notificationChannels, setEmailNotifications, setNotificationChannels };
 }
 
 /** Linear's channel row: icon tile, name, a green or grey dot with the status, chevron. */
@@ -102,13 +103,13 @@ const ChannelRow: React.FC<{
   );
 };
 
-/** Settings → Notifications, as in Linear: Inbox, then Push notifications with Email and Telegram. */
+/** Settings → Notifications, as in Linear: Inbox, Push notifications with Email and Telegram, then Other updates. */
 export const NotificationsSection: React.FC<{ onOpenPriority: () => void; onOpenEmail: () => void }> = ({
   onOpenPriority,
   onOpenEmail,
 }) => {
   const { inboxDisplay, setInboxDisplay } = useInboxDisplay();
-  const { notificationChannels } = useNotificationChannels();
+  const { notificationChannels, setNotificationChannels } = useNotificationChannels();
   const { email } = notificationChannels;
   const priorityRowContent = (
     <>
@@ -173,6 +174,29 @@ export const NotificationsSection: React.FC<{ onOpenPriority: () => void; onOpen
           />
           {/* Telegram stands where Linear has Slack; it opens once the new bot is connected. */}
           <ChannelRow name="Telegram" icon={<TelegramIcon size={16} />} status={channelStatus(false, [])} />
+        </section>
+      </div>
+      {/* Linear's Updates from Linear holds Changelog, Marketing and Other updates;
+          Buyerly has only Other updates → Invite accepted, so the note goes too. */}
+      <div className="preferences-section preferences-section--notifications">
+        <div className="preferences-section-header preferences-section-header--group">
+          <h3 className="preferences-section-title">Updates from Buyerly</h3>
+        </div>
+        <div className="preferences-section-header preferences-section-header--sub">
+          <h4 className="preferences-section-title preferences-section-title--sub">Other updates</h4>
+        </div>
+        <section className="preferences-card-container preferences-card-container--divided">
+          <div className="preferences-row-item">
+            <div className="preferences-row-copy">
+              <span className="preferences-row-title">Invite accepted</span>
+              <span className="preferences-row-desc">Email when invitees accept an invite</span>
+            </div>
+            <LinearToggle
+              label="Invite accepted"
+              checked={notificationChannels.inviteAccepted}
+              onChange={(value) => setNotificationChannels({ inviteAccepted: value })}
+            />
+          </div>
         </section>
       </div>
     </>

@@ -1,9 +1,9 @@
 import logging
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import case, delete, select
 
 from api.auth import get_current_user
@@ -13,6 +13,7 @@ from api.deps import (
     invalidate_summary_cache,
     record_security_event_and_raise,
 )
+from api.routers.audit import _stored_notification_channels
 from api.schemas import (
     CreateWorkspaceInviteRequest,
     PublicInviteInfoResponse,
@@ -22,7 +23,7 @@ from api.schemas import (
     WorkspaceMemberItem,
 )
 from core.config import settings
-from core.email import send_workspace_invitation_email
+from core.email import send_invite_accepted_email, send_workspace_invitation_email
 from core.rate_limit import rate_limit_dep
 from database.db import async_session_maker
 from database.models import AuditEvent, User, Workspace, WorkspaceInvite, WorkspaceMember
@@ -851,12 +852,49 @@ async def get_public_invite_info(token: str):
         )
 
 
+async def _email_inviter_about_join(
+    inviter_id: Optional[int], member_id: int, workspace_id: int
+) -> None:
+    """Linear emails whoever sent the invite as soon as the invitee joins,
+    unless they turned off Other updates → Invite accepted."""
+    if not inviter_id or inviter_id == member_id:
+        return
+    try:
+        async with async_session_maker() as session:
+            inviter = await session.get(User, inviter_id)
+            inviter_membership = (
+                await session.execute(
+                    select(WorkspaceMember).where(
+                        WorkspaceMember.workspace_id == workspace_id,
+                        WorkspaceMember.user_id == inviter_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            member = await session.get(User, member_id)
+            ws = await session.get(Workspace, workspace_id)
+        # Someone who has left the workspace is not told about it any more.
+        if not (inviter and inviter.email and inviter_membership and member and ws):
+            return
+        if not _stored_notification_channels(inviter_membership).invite_accepted:
+            return
+        webapp = (settings.WEBAPP_URL or "https://buyerly.app").rstrip("/")
+        await send_invite_accepted_email(
+            to_email=inviter.email,
+            member_name=member.full_name or member.email or member.username,
+            members_url=f"{webapp}/{ws.slug}/settings/members",
+            settings_url=f"{webapp}/{ws.slug}/settings/account/notifications",
+        )
+    except Exception:
+        logger.exception("Could not email the inviter about workspace %s", workspace_id)
+
+
 @router.post(
     "/invites/{token}/accept",
     dependencies=[Depends(rate_limit_dep(limit=10, window_seconds=60, scope="invite_accept"))],
 )
 async def accept_workspace_invite(
     token: str,
+    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
 ):
     """Accept a workspace invite and join the workspace."""
@@ -1031,6 +1069,10 @@ async def accept_workspace_invite(
 
         await session.commit()
         invalidate_summary_cache(workspace_id=ws.id)
+        if not existing_m:
+            background_tasks.add_task(
+                _email_inviter_about_join, invite.inviter_user_id, user.id, ws.id
+            )
         return {
             "status": "ok",
             "message": f"You have joined the workspace {ws.name}",

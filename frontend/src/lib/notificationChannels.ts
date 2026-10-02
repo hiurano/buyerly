@@ -11,15 +11,19 @@ export interface EmailNotifications {
 
 export interface NotificationChannels {
   email: EmailNotifications;
+  /** Other updates → Invite accepted: "Email when invitees accept an invite". */
+  inviteAccepted: boolean;
 }
 
 /** Linear's defaults: email on for every type. */
 export const DEFAULT_NOTIFICATION_CHANNELS: NotificationChannels = {
   email: { enabled: true, priorityOnly: false, kinds: [...INBOX_KINDS] },
+  inviteAccepted: true,
 };
 
 interface NotificationChannelsPayload {
   email: { enabled: boolean; priority_only: boolean; kinds: InboxKind[] };
+  invite_accepted: boolean;
 }
 
 function channelsFromPayload(payload: Partial<NotificationChannelsPayload> | null): NotificationChannels {
@@ -31,6 +35,7 @@ function channelsFromPayload(payload: Partial<NotificationChannelsPayload> | nul
       priorityOnly: email?.priority_only === true,
       kinds: Array.isArray(kinds) ? INBOX_KINDS.filter((kind) => kinds.includes(kind)) : [...INBOX_KINDS],
     },
+    inviteAccepted: payload?.invite_accepted !== false,
   };
 }
 
@@ -45,6 +50,7 @@ export async function saveNotificationChannels(channels: NotificationChannels): 
       priority_only: channels.email.priorityOnly,
       kinds: channels.email.kinds,
     },
+    invite_accepted: channels.inviteAccepted,
   };
   return channelsFromPayload(await apiRequest<NotificationChannelsPayload>('/api/notifications/channels', {
     method: 'PUT',

@@ -15,6 +15,7 @@ from sqlalchemy import and_, delete, exists, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from api.routers.audit import (
+    _in_inbox,
     _inbox_columns,
     _inbox_kind,
     _inbox_priority,
@@ -140,6 +141,7 @@ async def _due_events(session, user, member, workspace_id, now, limit):
             .outerjoin(InboxNotificationState, join_on)
             .where(
                 AuditEvent.workspace_id == workspace_id,
+                _in_inbox(),
                 AuditEvent.created_at > now - EMAIL_DELAY - EMAIL_LOOKBACK,
                 AuditEvent.created_at <= now - EMAIL_DELAY,
                 ~deleted,

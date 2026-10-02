@@ -264,6 +264,7 @@ interface AppState {
   notificationChannelsLoaded: boolean;
   loadNotificationChannels: () => Promise<void>;
   setEmailNotifications: (patch: Partial<EmailNotifications>) => void;
+  setNotificationChannels: (patch: Partial<NotificationChannels>) => void;
   setWorkspaceName: (name: string) => void;
   sidebarWidth: number;
   setSidebarWidth: (width: number) => void;
@@ -542,7 +543,10 @@ export const useAppStore = create<AppState>((set, get) => {
   },
   setEmailNotifications: (patch) => {
     const current = get().notificationChannels;
-    const notificationChannels = { ...current, email: { ...current.email, ...patch } };
+    get().setNotificationChannels({ email: { ...current.email, ...patch } });
+  },
+  setNotificationChannels: (patch) => {
+    const notificationChannels = { ...get().notificationChannels, ...patch };
     set({ notificationChannels, notificationChannelsLoaded: true });
     const inScope = get().captureScope();
     // Saved in order, like Display options, and never into a workspace opened since.
