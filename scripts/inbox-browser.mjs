@@ -217,6 +217,10 @@ try {
       if (!phone) {
         assert.equal(await typeValues.getByRole('checkbox', { checked: false }).first().isVisible(), false);
         // To the right of the menu, with the first value level with the hovered row.
+        // Measure once the 250ms scale-in has ended; mid-animation boxes are scaled.
+        await Promise.all([addFilter, typeValues].map((menu) => menu.evaluate(
+          (node) => Promise.all(node.getAnimations({ subtree: true }).map((animation) => animation.finished)),
+        )));
         const [rowBox, menuBox, valuesBox, firstValueBox] = await Promise.all([
           typeRow.boundingBox(), addFilter.boundingBox(), typeValues.boundingBox(),
           typeValues.getByRole('option').first().boundingBox(),
@@ -351,6 +355,9 @@ try {
         await snoozeItem.hover();
         const snoozeSub = page.getByRole('menu').filter({ hasText: 'Tomorrow' });
         await snoozeSub.waitFor();
+        await Promise.all([rowMenu, snoozeSub].map((menu) => menu.evaluate(
+          (node) => Promise.all(node.getAnimations({ subtree: true }).map((animation) => animation.finished)),
+        )));
         const [itemBox, subBox, firstBox] = await Promise.all([
           snoozeItem.boundingBox(), snoozeSub.boundingBox(), snoozeSub.getByRole('menuitem').first().boundingBox(),
         ]);
@@ -435,7 +442,9 @@ try {
       await row('Meta access expired').waitFor();
 
       // Shift+Backspace deletes every read notification; the one back from snooze is unread.
+      const deletedAllRead = page.waitForResponse((response) => response.url().endsWith('/api/inbox/delete-all-read'));
       await page.keyboard.press('Shift+Backspace');
+      await deletedAllRead;
       assert.equal(writes.at(-1).path, '/api/inbox/delete-all-read');
       await row('Meta access expired').waitFor({ state: 'detached' });
       await row('Older stop').waitFor();
