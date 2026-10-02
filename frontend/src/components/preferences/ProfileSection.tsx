@@ -100,7 +100,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, onUserChan
             </div>
           </div>
 
-          <div className="preferences-row-item">
+          <div className="preferences-row-item preferences-row-item--column-on-mobile">
             <div className="preferences-row-copy">
               <span className="preferences-row-title">Full name</span>
             </div>

@@ -19,6 +19,7 @@ import type {
   MetaConnection,
 } from '@/lib/types';
 import { useAppStore } from '@/store/useAppStore';
+import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import type { AdsManagerEntity } from '@/store/useAppStore';
 import { CampaignRow } from './CampaignRow';
 import { AdSetRow } from './AdSetRow';
@@ -60,7 +61,6 @@ import type { FilterClause, FilterFieldDefinition } from '@/components/filters/f
 import {
   LinearSidebarToggleIcon,
   LinearPlusIcon,
-  LinearSidebarLeftToggleIcon,
   LinearSlidersIcon,
 } from '@/icons/LinearIcons';
 import { getAdsManagerColumns } from './tableColumns';
@@ -113,8 +113,6 @@ export const CampaignsView: React.FC = () => {
     clearCampaignSelection,
     selectedCampaignIds,
     setCampaignSelection,
-    isSidebarCollapsed,
-    toggleSidebarCollapsed,
     loadAccountRuleAttachments,
   } = useAppStore();
 
@@ -662,24 +660,7 @@ export const CampaignsView: React.FC = () => {
           className="flex h-[44px] items-center justify-between pr-2.5"
         >
           <div className="flex items-center">
-            <div
-              style={{
-                width: isSidebarCollapsed ? '28px' : '0px',
-                opacity: isSidebarCollapsed ? 1 : 0,
-                transform: isSidebarCollapsed ? 'scale(1)' : 'scale(0.85)',
-                marginRight: isSidebarCollapsed ? '6px' : '0px',
-                pointerEvents: isSidebarCollapsed ? 'auto' : 'none',
-                overflow: 'hidden',
-                transition: 'width 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), margin-right 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
-              }}
-              className="flex shrink-0 items-center justify-center"
-            >
-              <Tooltip content="Open sidebar" shortcut="[" side="bottom" sideOffset={6}>
-                <button type="button" onClick={toggleSidebarCollapsed} className="linear-icon-btn" aria-label="Open sidebar">
-                  <LinearSidebarLeftToggleIcon size={14} isOpen={false} aria-hidden="true" />
-                </button>
-              </Tooltip>
-            </div>
+            <SidebarCollapsedNavigation />
             <h2 className="text-[13px] font-medium tracking-[-0.01em] text-[var(--text-secondary)]">Ads Manager</h2>
           </div>
           {selectedAccount ? (

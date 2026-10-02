@@ -49,7 +49,6 @@ import {
   LinearCheckIcon,
   LinearFilterIcon,
   LinearSlidersIcon,
-  LinearSidebarLeftToggleIcon,
 } from '@/icons/LinearIcons';
 import {
   DropdownMenu,
@@ -80,6 +79,7 @@ import { SelectionCommandMenu } from '@/ui/SelectionCommandMenu';
 import { useRowSelection, type SelectionAction } from '@/ui/useRowSelection';
 import { Tooltip } from '@/ui/Tooltip';
 import { useAppStore } from '@/store/useAppStore';
+import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
 type StatisticsSort = 'name' | 'spend' | 'results' | 'cost' | 'change';
@@ -447,8 +447,6 @@ const StatisticsRow: React.FC<StatisticsRowProps> = ({
 
 export const StatisticsView: React.FC = () => {
   const {
-    isSidebarCollapsed,
-    toggleSidebarCollapsed,
     setActiveTab,
   } = useAppStore();
   const requestGenerationRef = useRef(0);
@@ -1050,13 +1048,7 @@ export const StatisticsView: React.FC = () => {
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-transparent">
       <header className="flex h-11 shrink-0 items-center justify-between border-b border-[var(--color-border-primary)] px-[14px]">
         <div className="flex min-w-0 items-center gap-2">
-          {isSidebarCollapsed && (
-            <Tooltip content="Open sidebar" shortcut="[" side="bottom" sideOffset={6}>
-              <button type="button" onClick={toggleSidebarCollapsed} className="linear-icon-btn" aria-label="Open sidebar">
-                <LinearSidebarLeftToggleIcon size={14} isOpen={false} aria-hidden="true" />
-              </button>
-            </Tooltip>
-          )}
+          <SidebarCollapsedNavigation />
           <h1 className="truncate text-[14px] font-medium tracking-[-0.01em] text-[var(--text-primary)]">Statistics</h1>
         </div>
         <div className="flex shrink-0 items-center gap-1">

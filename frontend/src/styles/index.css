@@ -473,6 +473,37 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
   flex: 1 1 0%;
 }
 
+/*
+ * Linear's alwaysCollapsed width (880px and below): the sidebar is a drawer
+ * over the content, at most 330px and never closer than 40px to the right
+ * edge, above a backdrop; the content fills the window without its inset.
+ */
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  background-color: var(--modal-overlay-bg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease-out;
+}
+
+.sidebar-backdrop[data-open='true'] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sidebar-surface[data-small='true'] {
+  position: fixed;
+  height: 100%;
+  width: min(calc(100vw - 40px), 330px);
+  z-index: 99;
+  background-color: var(--bg-window);
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+  box-shadow: 0 0 0 1px var(--color-border-primary), var(--canvas-shadow);
+}
+
 /* 1. Interactive Sidebar Resizer Hit Target (7px) */
 .linear-resizer-hit-target {
   position: absolute;
@@ -2584,4 +2615,137 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 
 .linear-inbox-group-header[aria-expanded='true'] svg {
   transform: rotate(90deg);
+}
+
+/* Small-screen and touch overrides come last so they win over the base rules above. */
+@media (max-width: 880px) {
+  .linear-floating-canvas,
+  .preferences-main-canvas {
+    min-width: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+/* Linear's pure-touch item height: 36px instead of 28px. */
+@media (hover: none) and (pointer: coarse) {
+  .linear-sidebar-nav-item,
+  .preferences-nav-item {
+    height: 36px;
+  }
+}
+
+/* Settings at Linear's small width: the navigation is the same drawer as the app sidebar. */
+.preferences-sidebar[data-small='true'] {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  height: 100%;
+  width: min(calc(100vw - 40px), 330px);
+  min-width: 0;
+  max-width: none;
+  flex: none;
+  z-index: 99;
+  background-color: var(--bg-window);
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+  box-shadow: 0 0 0 1px var(--color-border-primary), var(--canvas-shadow);
+  transform: translateX(calc(-100% - 16px));
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.preferences-sidebar[data-small='true'][data-open='true'] {
+  transform: translateX(0);
+}
+
+/* Linear's small-screen settings header: sticky, menu button, then "‹ Settings". */
+.preferences-small-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--header-height);
+  padding: 0 15px;
+  background-color: var(--bg-canvas);
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.preferences-small-header-link {
+  display: flex;
+  align-items: center;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.preferences-small-header-link svg {
+  height: 12px;
+  margin-right: 9px;
+  color: var(--text-tertiary);
+}
+
+@media (max-width: 880px) {
+  .preferences-shell {
+    min-width: 0;
+  }
+
+  .preferences-main-canvas {
+    height: 100vh;
+  }
+
+  .preferences-scroll-container {
+    padding-right: 0;
+  }
+
+  .preferences-content-column,
+  .preferences-section,
+  .preferences-card-container {
+    width: 100%;
+  }
+}
+
+/* Linear's settings list at 640px and below: rows with a field or select become a column. */
+@media (max-width: 640px) {
+  .preferences-content-column {
+    padding: 16px 16px 64px;
+  }
+
+  /* The breadcrumb borrows the 64px top padding on wider screens. */
+  .preferences-breadcrumb {
+    margin-top: 0;
+  }
+
+  .preferences-row-item--column-on-mobile {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    height: auto;
+  }
+
+  .preferences-row-item--column-on-mobile > .preferences-row-copy {
+    flex: none;
+  }
+
+  .preferences-row-item--column-on-mobile > .preferences-row-input,
+  .preferences-row-item--column-on-mobile > .preferences-row-control,
+  .preferences-row-item--column-on-mobile > .preferences-theme-control,
+  .preferences-row-item--column-on-mobile .preferences-combobox-trigger {
+    width: 100%;
+  }
+
+  .preferences-row-item--column-on-mobile > .preferences-row-control {
+    justify-content: flex-start;
+  }
+
+  .preferences-row-item--column-on-mobile .preferences-row-input--narrow {
+    flex: 1 1 auto;
+    width: auto;
+  }
 }

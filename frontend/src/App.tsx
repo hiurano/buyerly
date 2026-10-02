@@ -26,6 +26,7 @@ import { MetaConnectInviteView, MetaConnectSuccessView } from '@/components/auth
 import { ApprovalDialog } from '@/webmcp/ApprovalDialog';
 import { useWebMcpTools } from '@/webmcp/register';
 import { WorkspaceSessionProvider, type WorkspaceSession } from '@/lib/workspaceSession';
+import { isSmallScreen } from '@/lib/useMediaQuery';
 
 const RETURN_ROUTE_KEY = 'buyerly-return-route';
 
@@ -58,6 +59,8 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     setWorkspaceName,
     toggleRightSidebar,
     toggleSidebarCollapsed,
+    toggleSidebarOpen,
+    setSidebarOpen,
     interfaceTheme,
     refreshInboxUnreadCount,
   } = useAppStore();
@@ -98,6 +101,12 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   }, [route.entity, route.settingsSection, route.tab, setActiveTab, setCampaignFilterTab, setSettingsSection, setWorkspaceName, workspace.name]);
 
   useEffect(() => {
+    // Linear closes the small-screen sidebar drawer on every navigation. Some
+    // settings sections have no address of their own, so a section change counts too.
+    setSidebarOpen(false);
+  }, [route, activeTab, settingsSection, setSidebarOpen]);
+
+  useEffect(() => {
     if (syncingRoute.current) return;
     const desiredPath = pathForTab(workspace.slug, activeTab, campaignFilterTab, settingsSection);
     if (window.location.pathname !== desiredPath && !(activeTab === 'inbox' && window.location.pathname.startsWith(`${desiredPath}/`))) {
@@ -136,7 +145,8 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
 
       if (!event.ctrlKey && !event.altKey && !event.metaKey && event.key === '[') {
         event.preventDefault();
-        toggleSidebarCollapsed();
+        if (isSmallScreen()) toggleSidebarOpen();
+        else toggleSidebarCollapsed();
         return;
       }
       if ((event.ctrlKey || event.altKey || event.metaKey) && ['i', 'I'].includes(event.key)) {
@@ -176,7 +186,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
       clearTimeout(timer);
     };
-  }, [gPressed, setActiveTab, toggleRightSidebar, toggleSidebarCollapsed]);
+  }, [gPressed, setActiveTab, toggleRightSidebar, toggleSidebarCollapsed, toggleSidebarOpen]);
 
   useEffect(() => {
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');

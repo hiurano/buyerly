@@ -109,6 +109,17 @@ jobs:
           name: inbox-browser
           path: /tmp/buyerly-inbox
 
+      - name: Check the small-screen sidebar in Chromium
+        working-directory: frontend
+        run: node ../scripts/mobile-sidebar-browser.mjs
+
+      - name: Upload small-screen sidebar browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-sidebar-browser
+          path: /tmp/buyerly-mobile-sidebar
+
       # The runner's Google Chrome has WebMCP behind a flag; Playwright's
       # Chromium does not, and the check then uses a stand-in instead.
       - name: Check WebMCP tools in Chromium

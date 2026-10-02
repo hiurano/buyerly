@@ -90,6 +90,9 @@ try {
       `${where} at ${width}px: document overflow`,
     );
     const openSwitchSubmenu = async (name) => {
+      // Below 880px the workspace menu sits in the sidebar drawer, opened by Menu.
+      const menu = page.getByRole('button', { name: 'Menu', exact: true });
+      if (await menu.isVisible()) await menu.click();
       await page.getByRole('button', { name: `${name} Workspace Menu` }).click();
       await page.getByRole('menuitem', { name: /Switch workspace/ }).click();
       return page.getByRole('menu').filter({ hasText: 'sam@example.test' });

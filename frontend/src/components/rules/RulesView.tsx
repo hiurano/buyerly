@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pause, Play, Trash2 } from 'lucide-react';
 import { useAppStore, type RuleFilterTab } from '@/store/useAppStore';
+import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { RuleColumn } from './RuleColumn';
 import { RulesListView } from './RulesListView';
 import { RecentlyDeletedView } from './RecentlyDeletedView';
@@ -21,7 +22,6 @@ import {
   LinearPlusIcon,
   LinearSlidersIcon,
   LinearSidebarToggleIcon,
-  LinearSidebarLeftToggleIcon,
 } from '@/icons/LinearIcons';
 import { LinearTabs } from '@/ui/LinearTabs';
 import { DataState } from '@/ui/DataState';
@@ -55,8 +55,6 @@ export const RulesView: React.FC = () => {
     toggleRulesRightSidebar,
     rulesFilterClauses,
     setRulesFilterClauses,
-    isSidebarCollapsed,
-    toggleSidebarCollapsed,
     rulesLoadState,
     rulesError,
     rulesMutationError,
@@ -213,30 +211,7 @@ export const RulesView: React.FC = () => {
         >
           {/* Left: Clean Title */}
           <div className="flex items-center">
-            <div
-              style={{
-                width: isSidebarCollapsed ? '28px' : '0px',
-                opacity: isSidebarCollapsed ? 1 : 0,
-                transform: isSidebarCollapsed ? 'scale(1)' : 'scale(0.85)',
-                marginRight: isSidebarCollapsed ? '6px' : '0px',
-                pointerEvents: isSidebarCollapsed ? 'auto' : 'none',
-                overflow: 'hidden',
-                transition:
-                  'width 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), margin-right 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
-              }}
-              className="flex shrink-0 items-center justify-center"
-            >
-              <Tooltip content="Open sidebar" shortcut="[" side="bottom" sideOffset={6}>
-                <button
-                  type="button"
-                  onClick={toggleSidebarCollapsed}
-                  className="linear-icon-btn"
-                  aria-label="Open sidebar"
-                >
-                  <LinearSidebarLeftToggleIcon size={14} isOpen={false} aria-hidden="true" />
-                </button>
-              </Tooltip>
-            </div>
+            <SidebarCollapsedNavigation />
             <h2
               style={{
                 fontSize: '13px',

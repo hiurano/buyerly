@@ -8,6 +8,8 @@ import { MembersSection } from './MembersSection';
 import { EmailNotificationsSection, NotificationsSection, PriorityNotificationsSection } from './NotificationsSection';
 import { LinearToggle } from '@/ui/LinearToggle';
 import { findModelContext, setWebMcpEnabled, useWebMcpEnabled } from '@/webmcp/register';
+import { SidebarBackdrop, useSidebarDrawer } from '@/components/sidebar/SidebarDrawer';
+import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 
 const themeOptions: Array<{
   value: InterfaceTheme;
@@ -45,6 +47,9 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
   const [searchQuery, setSearchQuery] = useState('');
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
+  // Settings navigation never collapses on desktop; below 880px it is the same drawer as the app sidebar.
+  const drawer = useSidebarDrawer(sidebarRef);
 
   const assistantOn = useWebMcpEnabled();
   const assistantSupported = findModelContext() !== null;
@@ -86,7 +91,15 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
   return (
     <div className="preferences-shell">
       {/* 1. Left Navigation Sidebar */}
-      <aside className="preferences-sidebar" aria-label="Settings navigation">
+      {drawer.isSmall && <SidebarBackdrop open={drawer.isOpen} onClose={drawer.close} />}
+      <aside
+        ref={sidebarRef}
+        className="preferences-sidebar"
+        aria-label="Settings navigation"
+        data-small={drawer.isSmall ? 'true' : undefined}
+        data-open={drawer.isOpen ? 'true' : 'false'}
+        {...drawer.swipeHandlers}
+      >
         {/* Back to app */}
         <div className="preferences-back-container">
           <button
@@ -291,6 +304,22 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
       {/* 2. Main Scrollable Canvas */}
       <main className="preferences-main-canvas">
         <div className="preferences-scroll-container">
+          {drawer.isSmall && (
+            // Linear's small-screen settings header: the menu button and a way back to the app.
+            <header className="preferences-small-header">
+              <SidebarCollapsedNavigation />
+              <button
+                type="button"
+                className="preferences-small-header-link"
+                onClick={() => setActiveTab(lastAppTab)}
+              >
+                <svg width="7" height="12" viewBox="0 0 11 18" fill="currentColor" aria-hidden="true">
+                  <path d="M3.68293 8.63202L3.30966 8.99195L3.68293 9.35188L10.1643 15.6015C10.6051 16.0265 10.6028 16.7325 10.162 17.1712C9.70399 17.6104 8.96011 17.6096 8.5031 17.1689L0.83567 9.77564C0.388109 9.34408 0.388109 8.65592 0.83567 8.22436L8.5031 0.83107C8.96089 0.389643 9.70653 0.389643 10.1643 0.83107C10.6119 1.26263 10.6119 1.95079 10.1643 2.38235L3.68293 8.63202Z" />
+                </svg>
+                <span>Settings</span>
+              </button>
+            </header>
+          )}
           <div className="preferences-content-column">
             {section === 'profile' && (
               <ProfileSection user={user} onUserChanged={onUserChanged} />
@@ -333,7 +362,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
               </div>
 
               <section className="preferences-card-container">
-                <div className="preferences-row-item">
+                <div className="preferences-row-item preferences-row-item--column-on-mobile">
                   <div className="preferences-row-copy">
                     <span className="preferences-row-title">Interface theme</span>
                     <span className="preferences-row-desc">

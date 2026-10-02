@@ -240,6 +240,8 @@
   --preferences-menu-border: lch(20.032% 1.93 272 / 1);
   --preferences-menu-hover: lch(18% 1.2 272 / 1);
   --preferences-accent: #5e69d1;
+  /* Linear bgModalOverlay: black at 40% in dark themes, 25% in light. */
+  --modal-overlay-bg: rgb(0 0 0 / 0.4);
 }
 
 html[data-theme='light'] {
@@ -386,6 +388,7 @@ html[data-theme='light'] {
   --preferences-menu-border: lch(86.5% 0 282 / 1);/* #d8d8d8 */
   --preferences-menu-hover: lch(95% 0 282 / 1);   /* #f1f0f0 */
   --preferences-accent: #6d78d5;
+  --modal-overlay-bg: rgb(0 0 0 / 0.25);
 }
 
 html[data-theme='dark'] {

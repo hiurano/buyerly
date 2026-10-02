@@ -43,7 +43,6 @@ import {
   LinearEmptyInboxIllustration,
   LinearInboxDeleteIcon,
   LinearInboxUnreadIcon,
-  LinearSidebarLeftToggleIcon,
   LinearSlidersIcon,
 } from '@/icons/LinearIcons';
 import { Button } from '@/ui/Button';
@@ -57,6 +56,7 @@ import {
 } from '@/ui/DropdownMenu';
 import { Tooltip } from '@/ui/Tooltip';
 import { useAppStore } from '@/store/useAppStore';
+import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type ActionState = 'idle' | 'loading';
@@ -107,8 +107,6 @@ const headerButtonClass = (active = false) =>
 
 export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onNavigate }) => {
   const {
-    isSidebarCollapsed,
-    toggleSidebarCollapsed,
     setActiveTab,
     inboxUnreadCount,
     inboxPriorityUnreadCount,
@@ -545,18 +543,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
         className={`${selectedItem ? 'hidden md:flex' : 'flex'} h-full min-w-0 w-full flex-col border-[var(--color-border-primary)] md:w-[34%] md:min-w-[240px] md:max-w-[400px] md:shrink-0 md:border-r`}
       >
         <header className="flex h-[44px] shrink-0 items-center gap-1 border-b border-[var(--color-border-primary)] px-2.5">
-          {isSidebarCollapsed && (
-            <Tooltip content="Open sidebar" shortcut="[" side="bottom" sideOffset={6}>
-              <button
-                type="button"
-                onClick={toggleSidebarCollapsed}
-                className="linear-icon-btn"
-                aria-label="Open sidebar"
-              >
-                <LinearSidebarLeftToggleIcon size={14} isOpen={false} aria-hidden="true" />
-              </button>
-            </Tooltip>
-          )}
+          <SidebarCollapsedNavigation />
           <h1 className="pl-2 pr-1 text-[13px] font-medium leading-4 text-[var(--text-secondary)]">Inbox</h1>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

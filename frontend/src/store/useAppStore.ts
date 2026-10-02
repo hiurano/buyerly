@@ -272,6 +272,10 @@ interface AppState {
   toggleSidebarCollapsed: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   resetSidebarWidth: () => void;
+  /** The sidebar drawer on a small screen; the collapsed setting above stays for desktop. */
+  isSidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
+  toggleSidebarOpen: () => void;
   activeTab: ActiveTab;
   lastAppTab: AppTab;
   setActiveTab: (tab: ActiveTab) => void;
@@ -564,6 +568,9 @@ export const useAppStore = create<AppState>((set, get) => {
     set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
   setSidebarCollapsed: (collapsed) => set({ isSidebarCollapsed: collapsed }),
   resetSidebarWidth: () => set({ sidebarWidth: 244, isSidebarCollapsed: false }),
+  isSidebarOpen: false,
+  setSidebarOpen: (open) => set({ isSidebarOpen: open }),
+  toggleSidebarOpen: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
   activeTab: 'campaigns',
   lastAppTab: 'campaigns',
   setActiveTab: (tab) =>
