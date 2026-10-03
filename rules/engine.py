@@ -104,6 +104,22 @@ class RuleEngine:
         The dict describes an ad set or a campaign; the level comes from
         ``entity_level``, defaulting to the ad set.
         """
+        return RuleEngine._evaluate(
+            entity, account, insights_by_window, active_rules_override
+        )
+
+    @staticmethod
+    def _evaluate(
+        entity: Dict[str, Any],
+        account: Account,
+        insights_by_window: Optional[Dict[str, Dict[str, Any]]],
+        active_rules_override: Optional[List[Dict[str, Any]]],
+        *,
+        all_actions: bool = False,
+    ) -> Any:
+        """Return the highest-priority action, or with ``all_actions`` every
+        matched rule's result, highest priority first (a NOOP result still
+        when nothing matched)."""
         entity_level = str(entity.get("entity_level") or "adset")
         entity_id = str(entity.get("entity_id") or entity.get("adset_id") or "")
         entity_name = str(entity.get("entity_name") or entity.get("adset_name") or "")
@@ -299,31 +315,69 @@ class RuleEngine:
                 else "Metrics are within range."
             )
 
-        # Sort by priority descending
+        # Sort by priority descending; the sort is stable, so rules with the
+        # same action keep their order.
         triggered_actions.sort(key=lambda x: x["priority"], reverse=True)
-        
-        highest_priority_action = triggered_actions[0]
-        combined_reason = " | ".join(t["reason"] for t in triggered_actions)
 
-        return RuleEvaluationResult(
-            action=highest_priority_action["action"],
-            entity_id=entity_id,
-            entity_name=entity_name,
-            spend=spend,
-            leads=leads,
-            registrations=registrations,
-            purchases=purchases,
-            cpl=cpl,
-            cpreg=cpreg,
-            cpp=cpp,
-            reason=combined_reason,
-            budget_change_percent=highest_priority_action["budget_change"],
-            budget_max_daily=highest_priority_action["budget_max"],
-            cooldown_minutes=highest_priority_action["cooldown_minutes"],
-            rule_id=highest_priority_action["rule_id"],
-            rule_name=highest_priority_action["rule_name"],
-            conditions_snapshot=highest_priority_action["conditions"],
-            currency=currency,
-            entity_level=entity_level,
-            campaign_id=campaign_id,
+        def result(triggered: Dict[str, Any], reason: str) -> RuleEvaluationResult:
+            return RuleEvaluationResult(
+                action=triggered["action"],
+                entity_id=entity_id,
+                entity_name=entity_name,
+                spend=spend,
+                leads=leads,
+                registrations=registrations,
+                purchases=purchases,
+                cpl=cpl,
+                cpreg=cpreg,
+                cpp=cpp,
+                reason=reason,
+                budget_change_percent=triggered["budget_change"],
+                budget_max_daily=triggered["budget_max"],
+                cooldown_minutes=triggered["cooldown_minutes"],
+                rule_id=triggered["rule_id"],
+                rule_name=triggered["rule_name"],
+                conditions_snapshot=triggered["conditions"],
+                currency=currency,
+                entity_level=entity_level,
+                campaign_id=campaign_id,
+            )
+
+        if all_actions:
+            return [result(t, t["reason"]) for t in triggered_actions]
+        combined_reason = " | ".join(t["reason"] for t in triggered_actions)
+        return result(triggered_actions[0], combined_reason)
+
+    @staticmethod
+    def evaluate_all(
+        entity: Dict[str, Any],
+        account: Account,
+        insights_by_window: Optional[Dict[str, Dict[str, Any]]] = None,
+        active_rules_override: Optional[List[Dict[str, Any]]] = None,
+    ) -> List[RuleEvaluationResult]:
+        """Every rule action due on the entity, in the order to try them.
+
+        A notify-only rule changes nothing in Meta, so it never competes with
+        another rule: each one gets its own result and keeps its own cooldown.
+        Actions that change the entity compete: only the strongest kind of
+        action that matched is returned (STOP over a budget cut, a budget cut
+        over a raise), one result per rule of that kind. The caller runs the
+        first of them not on cooldown, so a rule waiting out its cooldown hands
+        over to another rule doing the same thing, never to a weaker action.
+
+        Changes come first, then alerts. An empty list means nothing matched.
+        """
+        results = RuleEngine._evaluate(
+            entity,
+            account,
+            insights_by_window,
+            active_rules_override,
+            all_actions=True,
         )
+        if isinstance(results, RuleEvaluationResult):
+            return []
+        changes = [r for r in results if r.action != RuleAction.NOTIFY_ONLY]
+        alerts = [r for r in results if r.action == RuleAction.NOTIFY_ONLY]
+        if changes:
+            changes = [r for r in changes if r.action == changes[0].action]
+        return changes + alerts

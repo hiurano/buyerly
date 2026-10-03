@@ -154,6 +154,75 @@ class TestRuleEngine(unittest.TestCase):
         self.assertEqual(res.action, RuleAction.NOTIFY_ONLY)
         self.assertIn("Cost per lead (CPL) (10.00 USD) ≥ 7.00 USD", res.reason)
 
+    def _set_rules(self, *rules):
+        self.account.active_rules = json.dumps([
+            {
+                "logic": "and",
+                "cooldown_minutes": 0,
+                "budget_change_percent": 10.0 if "budget" in rule["action"] else 0.0,
+                "budget_max_daily": 0.0,
+                "conditions": [{"metric": "spend", "operator": "gte", "value": 1.0}],
+                **rule,
+            }
+            for rule in rules
+        ])
+
+    ACTIVE_ADSET = {
+        "adset_id": "1",
+        "adset_name": "Test",
+        "status": "ACTIVE",
+        "effective_status": "ACTIVE",
+        "spend": 20.0,
+        "leads": 0,
+        "registrations": 0,
+    }
+
+    def test_evaluate_all_returns_every_alert_on_its_own(self):
+        self._set_rules(
+            {"preset_id": 1, "name": "First", "action": "notify_only"},
+            {"preset_id": 2, "name": "Second", "action": "notify_only"},
+        )
+        results = RuleEngine.evaluate_all(self.ACTIVE_ADSET, self.account)
+        self.assertEqual(
+            [(r.action, r.rule_id) for r in results],
+            [(RuleAction.NOTIFY_ONLY, 1), (RuleAction.NOTIFY_ONLY, 2)],
+        )
+        # Each alert carries only its own reason.
+        self.assertTrue(results[0].reason.startswith("[First]"))
+        self.assertNotIn("[Second]", results[0].reason)
+
+    def test_evaluate_all_keeps_only_the_strongest_kind_of_change(self):
+        self._set_rules(
+            {
+                "preset_id": 1,
+                "name": "Scale",
+                "action": "increase_budget",
+                "conditions": [{"metric": "leads", "operator": "eq", "value": 0.0}],
+            },
+            {"preset_id": 2, "name": "Alert", "action": "notify_only"},
+            {"preset_id": 3, "name": "Cut", "action": "decrease_budget"},
+            {"preset_id": 4, "name": "Cut more", "action": "decrease_budget"},
+        )
+        results = RuleEngine.evaluate_all(self.ACTIVE_ADSET, self.account)
+        self.assertEqual(
+            [(r.action, r.rule_id) for r in results],
+            [
+                (RuleAction.DECREASE_BUDGET, 3),
+                (RuleAction.DECREASE_BUDGET, 4),
+                (RuleAction.NOTIFY_ONLY, 2),
+            ],
+        )
+        # The single-result API still picks the strongest action.
+        self.assertEqual(
+            RuleEngine.evaluate(self.ACTIVE_ADSET, self.account).action,
+            RuleAction.DECREASE_BUDGET,
+        )
+
+    def test_evaluate_all_is_empty_when_nothing_matches(self):
+        self._set_rules({"preset_id": 1, "name": "Alert", "action": "notify_only"})
+        quiet = {**self.ACTIVE_ADSET, "spend": 0.0}
+        self.assertEqual(RuleEngine.evaluate_all(quiet, self.account), [])
+
     # --------------------------------------------------------
     # Metric: leads (lead count)
     # --------------------------------------------------------
