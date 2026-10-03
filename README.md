@@ -66,7 +66,7 @@ gh run view <run-id> --log-failed
 | `scripts/` | Деплой, backup/restore и обслуживание |
 | `tests/` | Облачные проверки |
 | `uploads/` | Runtime-файлы; не хранятся в Git |
-| `docs/` | Действующая документация; история в `docs/archive/` |
+| `docs/` | Действующая документация |
 
 ## Документация
 
@@ -77,5 +77,8 @@ gh run view <run-id> --log-failed
 - [Маршруты и терминология](docs/INFORMATION_ARCHITECTURE.md)
 - [HTTP API](docs/API.md) и [workspace, вход, приглашения](docs/WORKSPACES_AUTH_AND_INVITES.md)
 - [Деплой](docs/DEPLOYMENT.md)
-- [Бэклог](docs/PRODUCT_BACKLOG.md) и [навигация по оставшимся работам](docs/REMAINING_PRODUCT_WORK.md)
-- [План Meta-авторизации](docs/FACEBOOK_AUTHORIZATION_PLAN.md): исторические этапы не подтверждают текущий статус Meta Dashboard.
+- [Бэклог](docs/PRODUCT_BACKLOG.md)
+
+## License
+
+Copyright (c) 2026 Artem Petruchenko. All rights reserved. Код открыт только для просмотра: копировать, изменять, распространять, запускать и предоставлять как сервис без письменного разрешения нельзя. Подробности в [LICENSE](LICENSE).

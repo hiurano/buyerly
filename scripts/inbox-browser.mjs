@@ -681,16 +681,16 @@ try {
       const bot = await popup;
       await bot.waitForURL(/^https:\/\/t\.me\/buyerly_test_bot\?start=token1$/);
       await bot.close();
-      telegram = { ...noTelegram, connected: true, username: 'uncle_tg', first_name: 'Uncle', connected_at: '2026-10-03T10:00:00Z' };
+      telegram = { ...noTelegram, connected: true, username: 'acme_tg', first_name: 'Acme', connected_at: '2026-10-03T10:00:00Z' };
       savedChannels = { ...savedChannels, telegram: { enabled: true, priority_only: false, kinds: [...allKinds] } };
-      await page.getByText('Telegram · @uncle_tg').waitFor();
+      await page.getByText('Telegram · @acme_tg').waitFor();
       await page.getByRole('button', { name: 'Connected', exact: true }).waitFor();
       await page.screenshot({ path: `${output}/connections-connected-${width}.png` });
 
       // Connected: the Telegram page has the channel switch, like Email, and the row its status (#278).
       await page.goto(`${origin}/${workspace.slug}/settings/account/notifications`);
       await page.getByRole('button', { name: /^Telegram\s+Enabled for all notifications/ }).click();
-      await page.getByText('Telegram notifications to @uncle_tg').waitFor();
+      await page.getByText('Telegram notifications to @acme_tg').waitFor();
       await page.getByRole('switch', { name: 'Rule alerts' }).click();
       await expectSaved(() => savedChannels.telegram.kinds.join() === 'urgent,rule_actions,assistant,manual,team,system');
       await page.screenshot({ path: `${output}/notifications-telegram-${width}.png` });

@@ -81,7 +81,7 @@
 
 ## Запись №17: Деплой на Production VPS в Docker
 * **Дата:** 16.08.2026
-* **Сервер:** `147.45.78.208` (root, Ubuntu 26.04 LTS).
+* **Сервер:** `<VPS_HOST>` (Ubuntu 26.04 LTS).
 * **Архитектура:** Docker Compose (`buyerly-bot`), персистентная база SQLite в томе `/opt/buyerly/data/mediabuyer.db`, персистентные логи в `/opt/buyerly/logs/`.
 
 ---
@@ -373,7 +373,7 @@
   * антидетект используется только как браузер с нужной Facebook-сессией; Buyerly не читает cookies, пароли и не парсит интерфейс Business Manager;
   * System User Token остаётся временным расширенным/резервным способом до полной production-проверки OAuth;
   * страницы и комментарии не расширяют первый набор permissions и выпускаются отдельно в BL-071;
-  * реализация разбита на независимые AUTH-00—AUTH-07 по плану `docs/FACEBOOK_AUTHORIZATION_PLAN.md`.
+  * реализация разбита на независимые AUTH-00—AUTH-07.
 
 ---
 

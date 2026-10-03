@@ -78,7 +78,7 @@ class TestTelegram(unittest.IsolatedAsyncioTestCase):
         async with self.session_maker() as session:
             users = {user.username: user for user in (await session.execute(select(User))).scalars().all()}
             self.owner, self.buyer = users["tg_owner"], users["tg_buyer"]
-            self.workspace = Workspace(name="Uncle", slug="uncle", owner_user_id=self.owner.id)
+            self.workspace = Workspace(name="Acme", slug="acme", owner_user_id=self.owner.id)
             session.add(self.workspace)
             await session.flush()
             old_mark = self.now - timedelta(days=1)
@@ -109,13 +109,13 @@ class TestTelegram(unittest.IsolatedAsyncioTestCase):
             headers={"X-Telegram-Bot-Api-Secret-Token": secret or telegram.webhook_secret()},
         )
 
-    def start(self, text, chat_id=555, username="uncle_tg", chat_type="private"):
+    def start(self, text, chat_id=555, username="acme_tg", chat_type="private"):
         return {
             "update_id": 1,
             "message": {
                 "message_id": 1,
                 "chat": {"id": chat_id, "type": chat_type},
-                "from": {"id": chat_id, "username": username, "first_name": "Uncle"},
+                "from": {"id": chat_id, "username": username, "first_name": "Acme"},
                 "text": text,
             },
         }
@@ -149,8 +149,8 @@ class TestTelegram(unittest.IsolatedAsyncioTestCase):
         token = await self.connect()
         body = await self.connection()
         self.assertTrue(body["connected"])
-        self.assertEqual((body["username"], body["first_name"], body["error"]), ("uncle_tg", "Uncle", None))
-        self.assertIn("connected to <b>Uncle</b>", self.replies.sent[-1]["text"])
+        self.assertEqual((body["username"], body["first_name"], body["error"]), ("acme_tg", "Acme", None))
+        self.assertIn("connected to <b>Acme</b>", self.replies.sent[-1]["text"])
         channels = (await self.client.get("/api/notifications/channels", headers=self.owner_headers)).json()
         self.assertEqual(channels["telegram"], {"enabled": True, "priority_only": False, "kinds": ALL_KINDS})
         # Only this member is connected.
@@ -158,7 +158,7 @@ class TestTelegram(unittest.IsolatedAsyncioTestCase):
 
         # The same link a second time: nothing changes, the bot says it expired.
         await self.webhook(self.start(f"/start {token}", chat_id=999, username="someone_else"))
-        self.assertEqual((await self.connection())["username"], "uncle_tg")
+        self.assertEqual((await self.connection())["username"], "acme_tg")
         self.assertIn("expired or was already used", self.replies.sent[-1]["text"])
 
     async def test_expired_and_replaced_links_do_not_connect(self):
@@ -229,10 +229,10 @@ class TestTelegram(unittest.IsolatedAsyncioTestCase):
         message = fake.sent[0]
         self.assertEqual(message["chat_id"], 555)
         self.assertEqual(
-            message["text"], "<b>Rule alert</b> · Ad set 7\nCPL above 3\nMain &lt;account&gt; · Uncle"
+            message["text"], "<b>Rule alert</b> · Ad set 7\nCPL above 3\nMain &lt;account&gt; · Acme"
         )
         self.assertEqual(
-            message["button"], ("Open in Buyerly", f"https://app.example.test/uncle/inbox/{event.id}")
+            message["button"], ("Open in Buyerly", f"https://app.example.test/acme/inbox/{event.id}")
         )
         self.assertEqual((await self.deliver()).sent, [])
         async with self.session_maker() as session:

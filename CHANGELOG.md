@@ -267,7 +267,7 @@
   - Выбраны три пилотных экрана для foundation-миграции: Today, Automations и Connections.
 - **Подготовка пакета модерации Meta App Review и фиксация настроек пилота Meta OAuth (`[86eyr6078]`)**:
   - Создан полный пакет подачи заявки на модерацию в `docs/META_APP_REVIEW_SUBMISSION.md`: обоснования на английском языке для прав `ads_read`, `ads_management`, `business_management`, пошаговый сценарий скринкаста и инструкции для проверяющих инженеров Meta.
-  - Актуализирован план и чек-лист интеграции в `docs/FACEBOOK_AUTHORIZATION_PLAN.md`: зафиксированы `App ID` (`1363654095968021`), `Login Configuration ID` (`1796379231385440`), настройки редиректов `https://buyerly.app/api/meta/oauth/callback`, привязка домена и публичных политик.
+  - Актуализирован план и чек-лист интеграции в `docs/FACEBOOK_AUTHORIZATION_PLAN.md`: зафиксированы App ID, Login Configuration ID, настройки редиректов `https://buyerly.app/api/meta/oauth/callback`, привязка домена и публичных политик.
 
 ### Removed
 - Удалён ночной workflow `Automated PostgreSQL Restore Drill` (`.github/workflows/restore-drill.yml`, [PR #202](https://github.com/hiurano/buyerly/pull/202)). Он поднимал пустой PostgreSQL на раннере GitHub, накатывал миграции, вставлял две синтетические строки, шифровал дамп, восстанавливал его в соседнюю базу и проверял список таблиц. Production-бэкапы и скрипты `backup_db.sh`, `restore_db.sh`, `drill_restore.sh` он не вызывал, VPS и S3 не трогал, поэтому зелёные прогоны ничего не говорили о настоящих бэкапах: на VPS нет backup cron и offsite, а архив деплоя до #185 удалялся через секунды. Накат миграций на пустую базу проверяет `test_alembic_upgrade_head_applies_successfully` в основном CI на каждом push и PR. Ручной `scripts/drill_restore.sh` по реальному бэкапу остался, проверку production scripts в CI добавит C08-a.
@@ -520,7 +520,7 @@
 - **Payload Size Middleware**: Ограничение максимального размера тела запроса (10 МБ для загрузки медиафайлов, 1 МБ для всех остальных API-запросов) с возвратом HTTP 413 `Payload Too Large`.
 - **ReDoS Protection**: Ограничение входного текста в `parse_fb_raw_accounts` до 64 КБ / 2000 строк, обрезка названий до 120 символов и лимит вывода до 500 записей.
 - **Security Headers**: Автоматическое добавление заголовков `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-XSS-Protection: 1; mode=block`.
-- **Docs**: Добавлен подробный итоговый отчет по безопасности [`docs/security_audit_report.md`](docs/archive/snapshots/security_audit_report.md).
+- **Docs**: Добавлен подробный итоговый отчет по безопасности `docs/security_audit_report.md` (позже удалён).
 - **Automated Tests**: Набор тестов расширен до 197 сценариев, включая проверки скользящего окна, блокировки OTP, валидации инвайтов и изоляции воркспейсов.
 
 #### Fixed
