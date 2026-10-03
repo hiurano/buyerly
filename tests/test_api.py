@@ -262,6 +262,54 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertNotEqual(stored.token_hash, raw_token)
             self.assertIsNotNone(stored.revoked_at)
 
+    async def test_logout_all_keep_current_ends_only_other_sessions(self):
+        password = "browser-session-password"
+        async with self.test_session_maker() as session:
+            buyer = (
+                await session.execute(select(User).where(User.username == "buyer_nick"))
+            ).scalar_one()
+            buyer.password_hash = hash_password(password)
+            await session.commit()
+
+        transport = httpx.ASGITransport(app=self.app)
+        async with (
+            httpx.AsyncClient(transport=transport, base_url="https://test") as laptop,
+            httpx.AsyncClient(transport=transport, base_url="https://test") as phone,
+        ):
+            for client, agent in ((laptop, "Laptop browser"), (phone, "Phone browser")):
+                login = await client.post(
+                    "/api/auth/login",
+                    headers={"User-Agent": agent},
+                    json={"username": "buyer_nick", "password": password},
+                )
+                self.assertEqual(login.status_code, 200)
+
+            sessions = (await laptop.get("/api/auth/sessions")).json()
+            self.assertEqual(len(sessions), 2)
+            self.assertEqual(
+                [item["user_agent"] for item in sessions if item["current"]],
+                ["Laptop browser"],
+            )
+
+            revoke_others = await laptop.post(
+                "/api/auth/logout-all?keep_current=true",
+                headers={"X-CSRF-Token": laptop.cookies.get("buyerly_csrf")},
+            )
+            self.assertEqual(revoke_others.status_code, 200)
+            self.assertNotIn("buyerly_session=", revoke_others.headers.get("set-cookie", ""))
+            self.assertEqual((await laptop.get("/api/me")).status_code, 200)
+            self.assertEqual((await phone.get("/api/me")).status_code, 401)
+
+            remaining = (await laptop.get("/api/auth/sessions")).json()
+            self.assertEqual([item["user_agent"] for item in remaining], ["Laptop browser"])
+
+            revoke_all = await laptop.post(
+                "/api/auth/logout-all",
+                headers={"X-CSRF-Token": laptop.cookies.get("buyerly_csrf")},
+            )
+            self.assertEqual(revoke_all.status_code, 200)
+            self.assertEqual((await laptop.get("/api/me")).status_code, 401)
+
     async def test_change_password_requires_current_password(self):
         old_password = "old-password"
         new_password = "new-password"

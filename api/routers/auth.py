@@ -812,20 +812,27 @@ async def revoke_web_session(
 
 @router.post("/auth/logout-all")
 async def logout_all_web_sessions(
+    request: Request,
     response: Response,
+    keep_current: bool = False,
     user: User = Depends(get_current_user),
 ):
+    """End every session of the user; with keep_current, all but this one."""
     now = datetime.now(timezone.utc)
+    current_id = getattr(request.state, "web_session_id", None)
+    conditions = [
+        WebSession.user_id == user.id,
+        WebSession.revoked_at.is_(None),
+    ]
+    if keep_current and current_id:
+        conditions.append(WebSession.id != current_id)
     async with async_session_maker() as session:
         await session.execute(
-            update(WebSession)
-            .where(
-                WebSession.user_id == user.id,
-                WebSession.revoked_at.is_(None),
-            )
-            .values(revoked_at=now)
+            update(WebSession).where(*conditions).values(revoked_at=now)
         )
         await session.commit()
+    if keep_current and current_id:
+        return {"message": "Other sessions ended"}
     clear_session_cookies(response)
     return {"message": "All sessions ended"}
 

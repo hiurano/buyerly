@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
-import { apiRequest } from '@/lib/api';
+import { logOut } from '@/lib/sessions';
 import { useAppStore } from '@/store/useAppStore';
-import { toast } from '@/ui/toast';
 import { Tooltip } from '@/ui/Tooltip';
 import { BuyerlyLogoAvatar, LinearCheckIcon } from '@/icons/LinearIcons';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
@@ -17,17 +16,6 @@ import {
   DropdownMenuSubContent,
   DropdownMenuLabel,
 } from '@/ui/DropdownMenu';
-
-/** Ends this browser's session and reloads into the login screen, dropping all in-memory workspace state. */
-async function logOut() {
-  try {
-    await apiRequest('/api/auth/logout', { method: 'POST', body: JSON.stringify({}) });
-  } catch (error) {
-    toast.error("Couldn't log out", error instanceof Error ? error.message : undefined);
-    return;
-  }
-  window.location.assign('/login');
-}
 
 export const SidebarHeader: React.FC = () => {
   const { workspaceName, setSearchOpen, setActiveTab, setSettingsSection } = useAppStore();

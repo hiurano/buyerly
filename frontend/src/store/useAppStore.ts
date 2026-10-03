@@ -168,6 +168,7 @@ export type SettingsSection =
   | 'email-notifications'
   | 'telegram-notifications'
   | 'connected-accounts'
+  | 'security'
   | 'ad-accounts'
   | 'members';
 export type InterfaceTheme = 'system' | 'light' | 'dark';

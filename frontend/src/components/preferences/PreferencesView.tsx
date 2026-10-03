@@ -12,7 +12,8 @@ import {
   TelegramNotificationsSection,
 } from './NotificationsSection';
 import { ConnectedAccountsSection } from './ConnectedAccountsSection';
-import { LinearConnectedIcon } from '@/icons/LinearIcons';
+import { SecuritySection } from './SecuritySection';
+import { LinearConnectedIcon, LinearShieldIcon } from '@/icons/LinearIcons';
 import { LinearToggle } from '@/ui/LinearToggle';
 import { findModelContext, setWebMcpEnabled, useWebMcpEnabled } from '@/webmcp/register';
 import { SidebarBackdrop, useSidebarDrawer } from '@/components/sidebar/SidebarDrawer';
@@ -36,6 +37,7 @@ const sectionKeywords: Record<
   profile: 'profile account email name avatar',
   notifications: 'notifications inbox priority inbox custom filters push email telegram',
   'connected-accounts': 'connected accounts telegram connect disconnect',
+  security: 'security access sessions devices log out logout revoke sign in',
   'ad-accounts': 'ad accounts cost target primary result statistics cpa cpl currency',
   members: 'members invite invitations people team users roles',
 };
@@ -259,6 +261,20 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                 <span className="preferences-nav-label">Connected accounts</span>
               </a>
             )}
+            {visibleSections.includes('security') && (
+              <a
+                href="#security"
+                className={`preferences-nav-item ${section === 'security' ? 'active' : ''}`}
+                data-active={section === 'security'}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSection('security');
+                }}
+              >
+                <LinearShieldIcon size={16} className="preferences-nav-icon" />
+                <span className="preferences-nav-label">Security &amp; access</span>
+              </a>
+            )}
           </div>
 
           <div className="preferences-nav-group">
@@ -379,6 +395,8 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
             )}
 
             {section === 'connected-accounts' && <ConnectedAccountsSection />}
+
+            {section === 'security' && <SecuritySection />}
 
             {section === 'ad-accounts' && <AdAccountsSection />}
 
