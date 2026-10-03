@@ -70,6 +70,7 @@ class WebSessionItem(BaseModel):
     id: str
     user_agent: str = ""
     ip_address: str = ""
+    location: str = ""
     created_at: datetime
     expires_at: datetime
     last_seen_at: datetime

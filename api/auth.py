@@ -9,6 +9,7 @@ from fastapi import Depends, Header, HTTPException, Query, Request, Response, st
 from sqlalchemy import select, update
 
 from core.config import settings
+from core.rate_limit import get_client_ip
 from database.db import async_session_maker
 from database.models import User, WebSession
 
@@ -26,6 +27,12 @@ def _secret_hash(value: str) -> str:
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _client_ip(request: Request) -> str:
+    """The browser's address behind trusted proxies, not the proxy's own."""
+    ip_value = get_client_ip(request)
+    return "" if ip_value == "unknown" else ip_value[:64]
 
 
 def _as_utc(value: datetime) -> datetime:
@@ -102,7 +109,7 @@ async def create_web_session(
         token_hash=_secret_hash(token),
         csrf_hash=_secret_hash(csrf_token),
         user_agent=(request.headers.get("user-agent") or "")[:500],
-        ip_address=(request.client.host if request.client and request.client.host else "")[:64],
+        ip_address=_client_ip(request),
         created_at=now,
         expires_at=now + timedelta(hours=settings.WEB_SESSION_TTL_HOURS),
         last_seen_at=now,
@@ -170,7 +177,7 @@ async def get_authenticated_user(
                         token_hash=_secret_hash(bearer_token),
                         csrf_hash=_secret_hash(csrf_token_to_set),
                         user_agent=(request.headers.get("user-agent") or "Legacy browser")[:500],
-                        ip_address=(request.client.host if request.client and request.client.host else "")[:64],
+                        ip_address=_client_ip(request),
                         created_at=now,
                         expires_at=now + timedelta(hours=settings.WEB_SESSION_TTL_HOURS),
                         last_seen_at=now,
@@ -237,8 +244,10 @@ async def get_authenticated_user(
                     if rotated_id is not None:
                         rotated_token = candidate_token
 
+                # Linear shows where a session was last seen, so the address follows it.
                 if _as_utc(web_session.last_seen_at) <= now - timedelta(minutes=5):
                     web_session.last_seen_at = now
+                    web_session.ip_address = _client_ip(request) or web_session.ip_address
 
                 if token_source == "bearer":
                     csrf_token_to_set = secrets.token_urlsafe(32)

@@ -26,6 +26,7 @@ from api.schemas import (
 )
 from core.config import settings
 from core.email import send_otp_verification_email
+from core.geoip import locate
 from core.rate_limit import rate_limit_dep
 from database.db import (
     async_session_maker,
@@ -774,6 +775,7 @@ async def list_web_sessions(
             id=item.id,
             user_agent=item.user_agent,
             ip_address=item.ip_address,
+            location=locate(item.ip_address),
             created_at=item.created_at,
             expires_at=item.expires_at,
             last_seen_at=item.last_seen_at,

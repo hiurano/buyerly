@@ -24,25 +24,26 @@ const owner = {
 };
 const HOUR = 60 * 60 * 1000;
 const ago = (ms) => new Date(Date.now() - ms).toISOString();
+// The sessions on Linear's own screen (2026-10-03), so the two can be compared side by side.
 const initialSessions = () => [
   {
-    id: 'current-session', current: true, ip_address: '203.0.113.10',
-    user_agent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+    id: 'current-session', current: true, ip_address: '203.0.113.10', location: 'Helsinki, 18, FI',
+    user_agent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.70 Mobile Safari/537.36',
     created_at: '2026-09-29T20:48:00Z', expires_at: ago(-24 * HOUR), last_seen_at: ago(0),
   },
   {
-    id: 'firefox-session', current: false, ip_address: '198.51.100.7',
-    user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0',
-    created_at: '2026-09-28T09:15:00Z', expires_at: ago(-20 * HOUR), last_seen_at: ago(3 * HOUR),
+    id: 'linux-session', current: false, ip_address: '203.0.113.11', location: 'Helsinki, 18, FI',
+    user_agent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.70 Safari/537.36',
+    created_at: '2026-09-28T09:15:00Z', expires_at: ago(-20 * HOUR), last_seen_at: ago(14 * HOUR),
   },
   {
-    id: 'iphone-session', current: false, ip_address: '192.0.2.44',
-    user_agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1',
+    id: 'firefox-session', current: false, ip_address: '203.0.113.12', location: 'Helsinki, 18, FI',
+    user_agent: 'Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0',
     created_at: '2026-09-27T08:00:00Z', expires_at: ago(-10 * HOUR), last_seen_at: ago(2 * 24 * HOUR),
   },
   {
-    id: 'edge-session', current: false, ip_address: '192.0.2.90',
-    user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36 Edg/129.0.0.0',
+    id: 'unplaced-session', current: false, ip_address: '', location: '',
+    user_agent: 'curl/8.5.0',
     created_at: '2026-09-26T08:00:00Z', expires_at: ago(-5 * HOUR), last_seen_at: ago(4 * 24 * HOUR),
   },
 ];
@@ -58,7 +59,10 @@ try {
   const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
   browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH });
   for (const { width, touch, entry } of scenarios) {
-    const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: touch, isMobile: touch });
+    // The phone is dark, like the Linear screenshot it is compared with.
+    const context = await browser.newContext({
+      viewport: { width, height: 900 }, hasTouch: touch, isMobile: touch, colorScheme: touch ? 'dark' : 'light',
+    });
     const page = await context.newPage();
     page.setDefaultTimeout(10_000);
     const errors = [];
@@ -129,55 +133,64 @@ try {
       await page.getByRole('heading', { name: 'Sessions', exact: true }).waitFor();
       await page.getByText('Devices logged into your account', { exact: true }).waitFor();
 
-      // This browser first: "Chrome on Linux", green "Current session", Log out.
+      // This browser first: "Chrome on Android", green "Current session · Helsinki, 18, FI", Log out.
       const current = sessionRow('current-session');
-      await current.getByText('Chrome on Linux', { exact: true }).waitFor();
-      await current.getByText('Current session', { exact: true }).waitFor();
+      await current.getByText('Chrome on Android', { exact: true }).waitFor();
+      assert.equal((await current.locator('.preferences-session-desc').textContent()).trim(), 'Current session · Helsinki, 18, FI');
       await current.getByRole('button', { name: 'Log out', exact: true }).waitFor();
       const firstRow = await page.locator('[data-session-id]').first().getAttribute('data-session-id');
       assert.equal(firstRow, 'current-session');
 
-      // Then "3 other sessions", Revoke all, and each one with what it is and when it was last seen.
-      assert.equal((await othersHeading.textContent()).trim().startsWith('3 other sessions'), true);
+      // Then a card headed "3 other sessions" with Revoke all, each session with where and when it was last seen.
+      const othersCard = page.getByRole('region', { name: 'Other sessions' });
+      assert.equal((await othersHeading.locator('span').textContent()).trim(), '3 other sessions');
       await othersHeading.getByRole('button', { name: 'Revoke all', exact: true }).waitFor();
-      await sessionRow('firefox-session').getByText('Firefox on Windows', { exact: true }).waitFor();
-      await sessionRow('firefox-session').getByText('Last seen 3 hours ago', { exact: true }).waitFor();
-      await sessionRow('iphone-session').getByText('Safari on iPhone', { exact: true }).waitFor();
-      await sessionRow('iphone-session').getByText('Last seen 2 days ago', { exact: true }).waitFor();
-      await sessionRow('edge-session').getByText('Edge on Windows', { exact: true }).waitFor();
+      assert.equal(await othersCard.locator('.preferences-sessions-others').count(), 1);
+      const desc = async (id) => (await sessionRow(id).locator('.preferences-session-desc').textContent()).trim();
+      await sessionRow('linux-session').getByText('Chrome on Linux', { exact: true }).waitFor();
+      assert.equal(await desc('linux-session'), 'Helsinki, 18, FI · Last seen about 14 hours ago');
+      await sessionRow('firefox-session').getByText('Firefox on Linux', { exact: true }).waitFor();
+      assert.equal(await desc('firefox-session'), 'Helsinki, 18, FI · Last seen 2 days ago');
+      // A session whose address can't be placed says only when it was seen.
+      await sessionRow('unplaced-session').getByText('Unknown device', { exact: true }).waitFor();
+      assert.equal(await desc('unplaced-session'), 'Last seen 4 days ago');
+      // Each tile carries the browser's mark; an unknown browser gets a globe.
+      assert.equal(await sessionRow('firefox-session').locator('.preferences-session-icon svg').count(), 1);
 
       // Revoke shows on hover on a desktop; on a phone it is always there.
-      const opacity = () => revokeButton('firefox-session').evaluate(node => getComputedStyle(node).opacity);
+      const opacity = () => revokeButton('linux-session').evaluate(node => getComputedStyle(node).opacity);
       if (touch) {
         assert.equal(await opacity(), '1');
       } else {
         await page.mouse.move(0, 0);
         assert.equal(await opacity(), '0');
-        await sessionRow('firefox-session').hover();
+        await sessionRow('linux-session').hover();
         await page.waitForFunction(() => getComputedStyle(
-          document.querySelector('[data-session-id="firefox-session"] .preferences-session-button'),
+          document.querySelector('[data-session-id="linux-session"] .preferences-session-button'),
         ).opacity === '1');
       }
-
-      // A click on a session shows its IP address and when it signed in, as in Linear.
-      await sessionRow('iphone-session').getByRole('button', { name: /^Safari on iPhone/ }).click();
-      await sessionRow('iphone-session').getByText('192.0.2.44', { exact: true }).waitFor();
-      await sessionRow('iphone-session').getByText('Signed in', { exact: true }).waitFor();
       await assertNoOverflow();
       await page.screenshot({ path: `${output}/sessions-${width}.png`, fullPage: true });
 
+      // A click on a session shows its IP address and when it signed in, as in Linear.
+      await sessionRow('firefox-session').getByRole('button', { name: /^Firefox on Linux/ }).click();
+      await sessionRow('firefox-session').getByText('203.0.113.12', { exact: true }).waitFor();
+      await sessionRow('firefox-session').getByText('Signed in', { exact: true }).waitFor();
+      await assertNoOverflow();
+      await page.screenshot({ path: `${output}/session-details-${width}.png`, fullPage: true });
+
       // A failed Revoke says so and brings the session back.
-      await sessionRow('firefox-session').hover();
-      await revokeButton('firefox-session').click();
+      await sessionRow('linux-session').hover();
+      await revokeButton('linux-session').click();
       await page.getByText("Couldn't revoke the session", { exact: true }).waitFor();
-      await sessionRow('firefox-session').getByText('Firefox on Windows', { exact: true }).waitFor();
+      await sessionRow('linux-session').getByText('Chrome on Linux', { exact: true }).waitFor();
 
       // Revoke ends that one session only.
-      await sessionRow('firefox-session').hover();
-      await revokeButton('firefox-session').click();
-      await sessionRow('firefox-session').waitFor({ state: 'detached' });
+      await sessionRow('linux-session').hover();
+      await revokeButton('linux-session').click();
+      await sessionRow('linux-session').waitFor({ state: 'detached' });
       await page.waitForFunction(() => document.querySelector('.preferences-sessions-others')?.textContent?.startsWith('2 other sessions'));
-      await sessionRow('iphone-session').waitFor();
+      await sessionRow('firefox-session').waitFor();
 
       // Revoke all ends every other session and keeps this one.
       await othersHeading.getByRole('button', { name: 'Revoke all', exact: true }).click();
@@ -193,8 +206,8 @@ try {
       await page.getByRole('heading', { name: 'Log in to Buyerly', exact: true }).waitFor();
 
       assert.deepEqual(writes, [
-        'DELETE /api/auth/sessions/firefox-session',
-        'DELETE /api/auth/sessions/firefox-session',
+        'DELETE /api/auth/sessions/linux-session',
+        'DELETE /api/auth/sessions/linux-session',
         'POST /api/auth/logout-all?keep_current=true',
         'POST /api/auth/logout',
       ]);

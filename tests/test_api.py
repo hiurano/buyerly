@@ -310,6 +310,74 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(revoke_all.status_code, 200)
             self.assertEqual((await laptop.get("/api/me")).status_code, 401)
 
+    async def test_sessions_record_the_browser_address_behind_the_proxy_and_its_location(self):
+        password = "browser-session-password"
+        async with self.test_session_maker() as session:
+            buyer = (
+                await session.execute(select(User).where(User.username == "buyer_nick"))
+            ).scalar_one()
+            buyer.password_hash = hash_password(password)
+            await session.commit()
+
+        original_proxies = api_auth_module.settings.TRUSTED_PROXY_CIDRS
+        api_auth_module.settings.TRUSTED_PROXY_CIDRS = "127.0.0.1/32"
+        transport = httpx.ASGITransport(app=self.app)
+        try:
+            with patch(
+                "api.routers.auth.locate",
+                side_effect=lambda ip: "Helsinki, 18, FI" if ip == "203.0.113.10" else "",
+            ):
+                async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
+                    login = await client.post(
+                        "/api/auth/login",
+                        headers={"X-Forwarded-For": "203.0.113.10"},
+                        json={"username": "buyer_nick", "password": password},
+                    )
+                    self.assertEqual(login.status_code, 200)
+                    sessions = (
+                        await client.get("/api/auth/sessions", headers={"X-Forwarded-For": "203.0.113.10"})
+                    ).json()
+        finally:
+            api_auth_module.settings.TRUSTED_PROXY_CIDRS = original_proxies
+
+        self.assertEqual(len(sessions), 1)
+        self.assertEqual(sessions[0]["ip_address"], "203.0.113.10")
+        self.assertEqual(sessions[0]["location"], "Helsinki, 18, FI")
+
+    async def test_session_address_follows_the_browser_when_it_is_seen_again(self):
+        password = "browser-session-password"
+        async with self.test_session_maker() as session:
+            buyer = (
+                await session.execute(select(User).where(User.username == "buyer_nick"))
+            ).scalar_one()
+            buyer.password_hash = hash_password(password)
+            await session.commit()
+
+        original_proxies = api_auth_module.settings.TRUSTED_PROXY_CIDRS
+        api_auth_module.settings.TRUSTED_PROXY_CIDRS = "127.0.0.1/32"
+        transport = httpx.ASGITransport(app=self.app)
+        try:
+            async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
+                login = await client.post(
+                    "/api/auth/login",
+                    headers={"X-Forwarded-For": "203.0.113.10"},
+                    json={"username": "buyer_nick", "password": password},
+                )
+                self.assertEqual(login.status_code, 200)
+                # The last-seen time is refreshed every five minutes; pretend that has passed.
+                async with self.test_session_maker() as session:
+                    stored = (await session.execute(select(WebSession))).scalar_one()
+                    stored.last_seen_at = datetime.now(timezone.utc) - timedelta(minutes=10)
+                    await session.commit()
+                me = await client.get("/api/me", headers={"X-Forwarded-For": "198.51.100.7"})
+                self.assertEqual(me.status_code, 200)
+        finally:
+            api_auth_module.settings.TRUSTED_PROXY_CIDRS = original_proxies
+
+        async with self.test_session_maker() as session:
+            stored = (await session.execute(select(WebSession))).scalar_one()
+        self.assertEqual(stored.ip_address, "198.51.100.7")
+
     async def test_change_password_requires_current_password(self):
         old_password = "old-password"
         new_password = "new-password"

@@ -6,6 +6,8 @@ export interface WebSession {
   id: string;
   user_agent: string;
   ip_address: string;
+  /** "Helsinki, 18, FI"; empty when the address can't be placed. */
+  location: string;
   created_at: string;
   expires_at: string;
   last_seen_at: string;
@@ -58,29 +60,43 @@ const SYSTEMS: Array<[RegExp, string]> = [
   [/\bLinux\b/, 'Linux'],
 ];
 
+export function browserOf(userAgent: string): string {
+  return BROWSERS.find(([pattern]) => pattern.test(userAgent))?.[1] || '';
+}
+
 /** "Chrome on Linux", as Linear names a session; whatever part is unknown is left out. */
 export function describeUserAgent(userAgent: string): string {
-  const browser = BROWSERS.find(([pattern]) => pattern.test(userAgent))?.[1];
+  const browser = browserOf(userAgent);
   const system = SYSTEMS.find(([pattern]) => pattern.test(userAgent))?.[1];
   if (browser && system) return `${browser} on ${system}`;
   return browser || system || 'Unknown device';
 }
 
-const MINUTE = 60_000;
-const HOUR = 60 * MINUTE;
-const DAY = 24 * HOUR;
+const MINUTES_IN_HOUR = 60;
+const MINUTES_IN_DAY = 1440;
+const MINUTES_IN_MONTH = 43_200;
 
-function plural(count: number, unit: string): string {
-  return `${count} ${unit}${count === 1 ? '' : 's'} ago`;
+function count(value: number, unit: string): string {
+  return `${value} ${unit}${value === 1 ? '' : 's'}`;
 }
 
-/** "Last seen 2 days ago". */
+/**
+ * "Last seen about 14 hours ago": Linear's wording, which is date-fns
+ * formatDistance (minutes rounded, "about" for hours and months).
+ */
 export function formatLastSeen(isoTimestamp: string, now: number = Date.now()): string {
   const elapsed = now - Date.parse(isoTimestamp);
-  if (Number.isNaN(elapsed) || elapsed < MINUTE) return 'Last seen just now';
-  if (elapsed < HOUR) return `Last seen ${plural(Math.floor(elapsed / MINUTE), 'minute')}`;
-  if (elapsed < DAY) return `Last seen ${plural(Math.floor(elapsed / HOUR), 'hour')}`;
-  return `Last seen ${plural(Math.floor(elapsed / DAY), 'day')}`;
+  const minutes = Number.isNaN(elapsed) ? 0 : Math.max(0, Math.round(elapsed / 60_000));
+  let distance: string;
+  if (minutes < 1) distance = 'less than a minute';
+  else if (minutes < 45) distance = count(minutes, 'minute');
+  else if (minutes < 90) distance = 'about 1 hour';
+  else if (minutes < MINUTES_IN_DAY) distance = `about ${count(Math.round(minutes / MINUTES_IN_HOUR), 'hour')}`;
+  else if (minutes < 2520) distance = '1 day';
+  else if (minutes < MINUTES_IN_MONTH) distance = count(Math.round(minutes / MINUTES_IN_DAY), 'day');
+  else if (minutes < 2 * MINUTES_IN_MONTH) distance = `about ${count(Math.round(minutes / MINUTES_IN_MONTH), 'month')}`;
+  else distance = count(Math.round(minutes / MINUTES_IN_MONTH), 'month');
+  return `Last seen ${distance} ago`;
 }
 
 /** "Sep 29, 2026, 8:48 PM" for the details under a session. */

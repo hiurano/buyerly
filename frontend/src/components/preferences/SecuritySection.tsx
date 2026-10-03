@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Monitor, Smartphone } from 'lucide-react';
+import { BrowserIcon } from '@/icons/BrowserIcons';
 import {
+  browserOf,
   describeUserAgent,
   fetchSessions,
   formatLastSeen,
@@ -15,8 +16,6 @@ import { toast } from '@/ui/toast';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
-const MOBILE_AGENT = /\b(?:iPhone|iPad|Android|Mobile)\b/;
-
 function errorMessage(error: unknown): string | undefined {
   return error instanceof Error ? error.message : undefined;
 }
@@ -26,30 +25,47 @@ interface SessionRowProps {
   action: React.ReactNode;
 }
 
-/** One browser: what it is and when it was last seen; a click shows its IP and sign-in date, as in Linear. */
+/**
+ * One browser as Linear lists it: its mark, "Chrome on Linux", then
+ * "Helsinki, 18, FI · Last seen about 14 hours ago" (this browser: a green
+ * "Current session" instead). A click shows the IP address and sign-in date.
+ */
 const SessionRow: React.FC<SessionRowProps> = ({ session, action }) => {
   const [open, setOpen] = useState(false);
-  const Icon = MOBILE_AGENT.test(session.user_agent) ? Smartphone : Monitor;
   const name = describeUserAgent(session.user_agent);
   const signedIn = formatSignedIn(session.created_at);
+  // Linear wraps only between facts, the dot staying at the end of the line.
+  const facts = [
+    session.current ? 'Current session' : '',
+    session.location,
+    session.current ? '' : formatLastSeen(session.last_seen_at),
+  ].filter(Boolean);
   return (
     <div className="preferences-session" data-session-id={session.id} data-current={session.current}>
-      <div className="preferences-row-item preferences-session-row">
+      <div className="preferences-session-row">
         <button
           type="button"
           className="preferences-session-main"
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
         >
-          <span className="preferences-channel-icon">
-            <Icon size={16} aria-hidden="true" />
+          <span className="preferences-session-icon">
+            <BrowserIcon browser={browserOf(session.user_agent)} />
           </span>
-          <span className="preferences-row-copy">
+          <span className="preferences-session-copy">
             <span className="preferences-row-title">{name}</span>
-            <span className="preferences-row-desc">
-              {session.current
-                ? <span className="preferences-session-current">Current session</span>
-                : formatLastSeen(session.last_seen_at)}
+            <span className="preferences-session-desc">
+              {facts.map((fact, index) => (
+                <React.Fragment key={fact}>
+                  {index > 0 && ' '}
+                  <span className="preferences-session-fact">
+                    {session.current && index === 0
+                      ? <span className="preferences-session-current">{fact}</span>
+                      : fact}
+                    {index < facts.length - 1 && ' ·'}
+                  </span>
+                </React.Fragment>
+              ))}
             </span>
           </span>
         </button>
@@ -74,8 +90,9 @@ const SessionRow: React.FC<SessionRowProps> = ({ session, action }) => {
 };
 
 /**
- * Settings → Security & access → Sessions, after Linear: this browser first with
- * Log out, then "N other sessions" with Revoke all and a Revoke on each.
+ * Settings → Security & access → Sessions, after Linear: this browser in its own
+ * card with Log out, then a card headed "N other sessions" with Revoke all and a
+ * Revoke on each.
  */
 export const SecuritySection: React.FC = () => {
   const [sessions, setSessions] = useState<WebSession[]>([]);
@@ -141,10 +158,10 @@ export const SecuritySection: React.FC = () => {
           <div className="preferences-section-header">
             <h3 className="preferences-section-title">Sessions</h3>
           </div>
-          <p className="preferences-section-note">Devices logged into your account</p>
+          <p className="preferences-section-note preferences-section-note--sessions">Devices logged into your account</p>
 
           {current.length > 0 && (
-            <section className="preferences-card-container preferences-card-container--divided">
+            <section className="preferences-card-container preferences-sessions-card">
               {current.map((session) => (
                 <SessionRow
                   key={session.id}
@@ -160,32 +177,30 @@ export const SecuritySection: React.FC = () => {
           )}
 
           {others.length > 0 && (
-            <>
+            <section className="preferences-card-container preferences-sessions-card" aria-label="Other sessions">
               <div className="preferences-sessions-others">
                 <span>{others.length === 1 ? '1 other session' : `${others.length} other sessions`}</span>
                 <button type="button" className="preferences-session-button" onClick={() => void revokeAll()}>
                   Revoke all
                 </button>
               </div>
-              <section className="preferences-card-container preferences-card-container--divided">
-                {others.map((session) => (
-                  <SessionRow
-                    key={session.id}
-                    session={session}
-                    action={(
-                      <button
-                        type="button"
-                        className="preferences-session-button preferences-session-button--on-hover"
-                        aria-label={`Revoke ${describeUserAgent(session.user_agent)}, ${formatLastSeen(session.last_seen_at).toLowerCase()}`}
-                        onClick={() => void revoke(session)}
-                      >
-                        Revoke
-                      </button>
-                    )}
-                  />
-                ))}
-              </section>
-            </>
+              {others.map((session) => (
+                <SessionRow
+                  key={session.id}
+                  session={session}
+                  action={(
+                    <button
+                      type="button"
+                      className="preferences-session-button preferences-session-button--on-hover"
+                      aria-label={`Revoke ${describeUserAgent(session.user_agent)}, ${formatLastSeen(session.last_seen_at).toLowerCase()}`}
+                      onClick={() => void revoke(session)}
+                    >
+                      Revoke
+                    </button>
+                  )}
+                />
+              ))}
+            </section>
           )}
         </div>
       )}
