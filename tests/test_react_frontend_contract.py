@@ -888,6 +888,60 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertIn(contract, self.audit_lib)
         self.assertIn("auditEventSummary(item)", self.inbox_item_row)
 
+    def test_search_workspace_promises_only_what_it_finds_and_opens(self):
+        """#190: the menu searched nothing, ignored Esc and swallowed `/` typed into fields."""
+        src = ROOT / "frontend" / "src"
+        menu = (src / "components" / "command" / "CommandMenu.tsx").read_text()
+        search = (src / "lib" / "search.ts").read_text()
+        reveal = (src / "ui" / "useRevealRow.ts").read_text()
+        header = (src / "components" / "sidebar" / "SidebarHeader.tsx").read_text()
+        workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
+
+        # A real source scoped by the address, with its states in words.
+        self.assertIn("/api/search?q=", search)
+        self.assertIn("searchWorkspace(text, controller.signal)", menu)
+        for state in (
+            "Search campaigns, ad sets, ads, rules and ad accounts in",
+            "Searching ${scope}…",
+            "Couldn't search ${scope}.",
+            "No campaigns, ad sets, ads, rules or ad accounts in",
+            "Retry search",
+        ):
+            self.assertIn(state, menu)
+        self.assertNotIn("No results found.", menu)
+        # Every result opens somewhere: its record's address.
+        self.assertIn("searchResultPath(slug, result)", menu)
+        for path in ("/ads-manager/", "/rules/", "?account="):
+            self.assertIn(path, search)
+
+        # Esc is the dialog's own dismissal; focus goes back to what opened it.
+        self.assertIn("<Dialog.Root open={open} onOpenChange={(next) => setSearchOpen(next)}>", menu)
+        self.assertIn("onCloseAutoFocus", menu)
+        self.assertIn("returnFocusTo", menu)
+        self.assertIn("onClick={() => openCommandMenu('search')}", header)
+        # As in Linear: `/` searches, Ctrl/Cmd+K opens commands that search nothing.
+        self.assertIn("openCommandMenu('commands')", menu)
+        self.assertIn("openCommandMenu('search')", menu)
+        self.assertIn("mode !== 'search'", menu)
+        self.assertNotIn("first ${response.limit}", menu)
+        self.assertNotIn("setSearchOpen(true)", header)
+
+        # `/` is text in a field; Ctrl/Cmd+K works anywhere but leaves a selection its menu.
+        self.assertIn("isTypingTarget(event.target)", menu)
+        self.assertIn("target.isContentEditable", menu)
+        self.assertIn("HTMLTextAreaElement", menu)
+        self.assertIn("event.defaultPrevented", menu)
+
+        # One command menu control; record addresses open their rows.
+        self.assertIn("COMMAND_MENU_CLASSES", menu)
+        self.assertIn("export const COMMAND_MENU_CLASSES", (src / "ui" / "SelectionCommandMenu.tsx").read_text())
+        self.assertIn("[data-row-id=", reveal)
+        for view in (self.campaigns_view, self.rules_view):
+            self.assertIn("useRevealRow({", view)
+        self.assertIn("navigationKey={locationVersion}", self.app)
+        self.assertIn("data-row-id={rule.id}", self.rule_card)
+        self.assertIn("node ../scripts/command-menu-browser.mjs", workflow)
+
 
 if __name__ == "__main__":
     unittest.main()

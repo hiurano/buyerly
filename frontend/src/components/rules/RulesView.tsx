@@ -32,6 +32,7 @@ import { toast } from '@/ui/toast';
 import { SelectionDock } from '@/ui/SelectionDock';
 import { SelectionCommandMenu } from '@/ui/SelectionCommandMenu';
 import { useRowSelection, type SelectionAction } from '@/ui/useRowSelection';
+import { useRevealRow } from '@/ui/useRevealRow';
 
 interface OpenFilterMenu {
   mode: FilterMenuMode;
@@ -39,7 +40,14 @@ interface OpenFilterMenu {
   fieldId?: string;
 }
 
-export const RulesView: React.FC = () => {
+interface RulesViewProps {
+  /** The rule the address names (`/rules/{id}`): a search result, a shared link. */
+  revealId?: string;
+  /** Changes on every navigation, Back and Forward included. */
+  navigationKey: number;
+}
+
+export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey }) => {
   const {
     rules,
     ruleGroups,
@@ -65,12 +73,25 @@ export const RulesView: React.FC = () => {
     pendingDeletion,
     requestDeletion,
     cancelDeletion,
+    rulesDisplayGrouping,
+    rulesCollapsedGroups,
+    toggleRulesGroupCollapse,
   } = useAppStore();
   const showingDeleted = ruleFilterTab === 'deleted';
 
+  // Rules are read again on arrival and whenever an address names one, so a
+  // rule created since the list was loaded is found as well.
+  const revealKey = revealId ? navigationKey : null;
+  const [loadedFor, setLoadedFor] = useState<number | null | undefined>(undefined);
   useEffect(() => {
-    void loadRules();
-  }, [loadRules]);
+    let active = true;
+    void loadRules().finally(() => {
+      if (active) setLoadedFor(revealKey);
+    });
+    return () => {
+      active = false;
+    };
+  }, [loadRules, revealKey]);
 
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
@@ -130,6 +151,49 @@ export const RulesView: React.FC = () => {
   useEffect(() => {
     if (rulesViewMode !== 'list' || showingDeleted) setRuleSelection([]);
   }, [rulesViewMode, setRuleSelection, showingDeleted]);
+
+  // The rule an address names opens on its row, or its card on the board.
+  // One already in the loaded list opens at once; any other waits for the
+  // fresh list before it is reported missing.
+  const revealedRule = revealId ? rules.find((rule) => rule.id === revealId) : undefined;
+  useRevealRow({
+    id: revealId,
+    navigationKey,
+    ready: rulesLoadState === 'ready' && (Boolean(revealedRule) || loadedFor === revealKey),
+    exists: Boolean(revealedRule),
+    show: () => {
+      if (!revealedRule) return false;
+      let changed = false;
+      if (showingDeleted || (ruleFilterTab !== 'all' && revealedRule.status !== ruleFilterTab)) {
+        setRuleFilterTab('all');
+        changed = true;
+      }
+      if (applyFilterClauses([revealedRule], filterFields, rulesFilterClauses).length === 0) {
+        setRulesFilterClauses([]);
+        changed = true;
+      }
+      if (rulesViewMode === 'list') {
+        const memberOf = ruleGroups
+          .filter((group) => revealedRule.groupId === group.id || group.ruleIds.includes(revealedRule.id))
+          .map((group) => group.id);
+        const groupKeys = rulesDisplayGrouping === 'status'
+          ? [`status-${revealedRule.status}`]
+          : rulesDisplayGrouping === 'groups'
+            ? (memberOf.length > 0 ? memberOf : ['ungrouped'])
+            : [];
+        for (const key of groupKeys.filter((candidate) => rulesCollapsedGroups.includes(candidate))) {
+          toggleRulesGroupCollapse(key);
+          changed = true;
+        }
+      }
+      return changed;
+    },
+    missing: () => ({
+      title: "Couldn't open",
+      message: `rule ${revealId ?? ''}.`,
+      description: 'This workspace has no such rule. A deleted rule stays in Recently deleted for 30 days.',
+    }),
+  });
 
   const deletion = pendingDeletion ? deletionPrompt(pendingDeletion.kind, pendingDeletion.ids) : null;
 

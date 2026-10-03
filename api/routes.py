@@ -69,6 +69,7 @@ from api.routers import (
     members_router,
     onboarding_router,
     rules_router,
+    search_router,
     settings_router,
     summary_router,
     telegram_router,
@@ -139,6 +140,7 @@ router.include_router(members_router)
 router.include_router(onboarding_router)
 router.include_router(accounts_router)
 router.include_router(rules_router)
+router.include_router(search_router)
 router.include_router(trash_router)
 router.include_router(summary_router)
 router.include_router(settings_router)
@@ -167,6 +169,7 @@ class _RoutesModule(sys.modules[__name__].__class__):
             import api.routers.members
             import api.routers.onboarding
             import api.routers.rules
+            import api.routers.search
             import api.routers.settings
             import api.routers.summary
             import api.routers.trash
@@ -187,6 +190,7 @@ class _RoutesModule(sys.modules[__name__].__class__):
             api.routers.members.async_session_maker = value
             api.routers.onboarding.async_session_maker = value
             api.routers.rules.async_session_maker = value
+            api.routers.search.async_session_maker = value
             api.routers.settings.async_session_maker = value
             api.routers.summary.async_session_maker = value
             api.routers.trash.async_session_maker = value

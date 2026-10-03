@@ -3,6 +3,22 @@ import { createPortal } from 'react-dom';
 import { Command } from 'cmdk';
 import type { SelectionAction } from '@/ui/useRowSelection';
 
+/**
+ * Linear's command menu, shared by the selection menu and Search workspace so
+ * the two read as one control: panel, field, groups, rows and the note that
+ * stands in for an empty list.
+ */
+export const COMMAND_MENU_CLASSES = {
+  /** The floating panel; each menu says where it sits and how wide it is. */
+  surface: 'animate-scale-in overflow-hidden rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] shadow-[var(--command-menu-shadow)]',
+  input: 'h-10 w-full bg-transparent px-3 text-[13px] text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none',
+  list: 'max-h-[min(400px,60vh)] overflow-y-auto pb-1.5',
+  group: '[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[12px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-[var(--text-tertiary)]',
+  item: 'mx-0 flex h-[46px] cursor-default items-center gap-3 rounded-[var(--control-border-radius)] px-3 text-[13px] text-[var(--text-primary)] data-[selected=true]:bg-[var(--data-row-hover-bg)]',
+  icon: 'flex h-4 w-4 shrink-0 items-center justify-center text-[var(--text-tertiary)]',
+  note: 'px-3 py-6 text-center text-[12px] text-[var(--text-muted)]',
+} as const;
+
 interface SelectionCommandMenuProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -31,7 +47,7 @@ export const SelectionCommandMenu: React.FC<SelectionCommandMenuProps> = ({
       onMouseDown={() => onOpenChange(false)}
     >
       <div
-        className="animate-scale-in w-full max-w-[720px] overflow-hidden rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] shadow-[var(--command-menu-shadow)]"
+        className={`w-full max-w-[720px] ${COMMAND_MENU_CLASSES.surface}`}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <Command
@@ -48,16 +64,13 @@ export const SelectionCommandMenu: React.FC<SelectionCommandMenuProps> = ({
           <Command.Input
             autoFocus
             placeholder="Type a command or search…"
-            className="h-10 w-full bg-transparent px-3 text-[13px] text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none"
+            className={COMMAND_MENU_CLASSES.input}
           />
-          <Command.List className="max-h-[min(400px,60vh)] overflow-y-auto pb-1.5">
-            <Command.Empty className="px-3 py-6 text-center text-[12px] text-[var(--text-muted)]">
+          <Command.List className={COMMAND_MENU_CLASSES.list}>
+            <Command.Empty className={COMMAND_MENU_CLASSES.note}>
               No matching actions.
             </Command.Empty>
-            <Command.Group
-              heading={scopeLabel}
-              className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[12px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-[var(--text-tertiary)]"
-            >
+            <Command.Group heading={scopeLabel} className={COMMAND_MENU_CLASSES.group}>
               {actions.map((action) => (
                 <Command.Item
                   key={action.id}
@@ -66,9 +79,9 @@ export const SelectionCommandMenu: React.FC<SelectionCommandMenuProps> = ({
                     onOpenChange(false);
                     action.run();
                   }}
-                  className="mx-0 flex h-[46px] cursor-default items-center gap-3 rounded-[var(--control-border-radius)] px-3 text-[13px] text-[var(--text-primary)] data-[selected=true]:bg-[var(--data-row-hover-bg)]"
+                  className={COMMAND_MENU_CLASSES.item}
                 >
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[var(--text-tertiary)]" aria-hidden="true">
+                  <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true">
                     {action.icon}
                   </span>
                   <span className="min-w-0 flex-1 truncate">{action.label}</span>

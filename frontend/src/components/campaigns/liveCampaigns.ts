@@ -34,7 +34,7 @@ export function formatDailyBudget(value: number, currency: string): string {
   return money === '—' ? money : `${money}/day`;
 }
 
-function humanizeMetaStatus(value: string): string {
+export function humanizeMetaStatus(value: string): string {
   const normalized = value.trim().toUpperCase();
   if (!normalized || normalized === 'UNKNOWN') return 'Unknown';
   if (normalized === 'ACTIVE') return 'Active';

@@ -57,6 +57,7 @@ import { LinearFacetSidebar } from '@/ui/LinearFacetSidebar';
 import { SelectionDock } from '@/ui/SelectionDock';
 import { SelectionCommandMenu } from '@/ui/SelectionCommandMenu';
 import { useRowSelection, type SelectionAction } from '@/ui/useRowSelection';
+import { useRevealRow } from '@/ui/useRevealRow';
 import type { FilterClause, FilterFieldDefinition } from '@/components/filters/filterModel';
 import {
   LinearSidebarToggleIcon,
@@ -97,7 +98,17 @@ const entityLabels: Record<AdsManagerEntity, { plural: string; singular: string 
   ads: { plural: 'ads', singular: 'ad' },
 };
 
-export const CampaignsView: React.FC = () => {
+interface CampaignsViewProps {
+  /** The entity the address names (`/ads-manager/{level}/{id}`): a search result, a shared link. */
+  reveal?: { entity: AdsManagerEntity; id: string };
+  /** Changes on every navigation, Back and Forward included. */
+  navigationKey: number;
+}
+
+/** The level's own address; the entity a link named stays with the account being left. */
+const levelPath = (pathname: string) => pathname.split('/').slice(0, 4).join('/');
+
+export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigationKey }) => {
   const {
     campaignFilterTab,
     setCampaignFilterTab,
@@ -132,6 +143,7 @@ export const CampaignsView: React.FC = () => {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const { filters: adsManagerFilters, updateFilters: setAdsManagerFilters, quick, setQuick } = useCampaignViewFilters(
     `${window.location.pathname}:${selectedAccountId ?? ''}:${campaignFilterTab}`,
+    navigationKey,
   );
   const [campaigns, setCampaigns] = useState<ReturnType<typeof hierarchyCampaignToRow>[]>([]);
   const [adSets, setAdSets] = useState<ReturnType<typeof hierarchyAdSetToRow>[]>([]);
@@ -181,14 +193,16 @@ export const CampaignsView: React.FC = () => {
     void refreshMetaAccounts();
   }, [refreshMetaAccounts]);
 
+  // The address names the ad account on every navigation — a search result, a
+  // shared link, Back — and it wins over the one on screen.
   useEffect(() => {
-    const restoreAccount = () => {
-      const accountId = new URLSearchParams(window.location.search).get('account');
-      if (accountId && metaAccounts.some(account => account.account_id === accountId)) setSelectedAccountId(accountId);
-    };
-    window.addEventListener('popstate', restoreAccount);
-    return () => window.removeEventListener('popstate', restoreAccount);
-  }, [metaAccounts]);
+    const accountId = new URLSearchParams(window.location.search).get('account');
+    if (!accountId || accountId === selectedAccountId) return;
+    if (!metaAccounts.some((account) => account.account_id === accountId)) return;
+    requestGenerationRef.current += 1;
+    setHierarchyState('loading');
+    setSelectedAccountId(accountId);
+  }, [metaAccounts, navigationKey, selectedAccountId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -306,6 +320,7 @@ export const CampaignsView: React.FC = () => {
     setSelectedAccountId(accountId);
     const url = new URL(window.location.href);
     url.searchParams.set('account', accountId);
+    if (reveal) url.pathname = levelPath(url.pathname);
     window.history.replaceState(window.history.state, '', url);
   };
 
@@ -518,6 +533,45 @@ export const CampaignsView: React.FC = () => {
     setSelection: setCampaignSelection,
     actions: selectionActions,
     enabled: accountsState === 'ready' && hierarchyState === 'ready' && Boolean(selectedAccountId),
+  });
+
+  // The entity an address names opens on its row once its ad account and
+  // level are on screen; an account the address names but Ads Manager cannot
+  // open leaves the one on screen in place.
+  const requestedAccountId = new URLSearchParams(window.location.search).get('account');
+  const accountSettled = !requestedAccountId
+    || requestedAccountId === selectedAccountId
+    || !metaAccounts.some((account) => account.account_id === requestedAccountId);
+  const revealedNoun = reveal ? entityLabels[reveal.entity].singular : '';
+  useRevealRow({
+    id: reveal?.id,
+    navigationKey,
+    ready: reveal?.entity === campaignFilterTab && accountsState === 'ready' && hierarchyState === 'ready'
+      && accountSettled && (accountGroups !== null || groupsError),
+    exists: currentRows.some((row) => row.id === reveal?.id),
+    show: () => {
+      if (!reveal) return false;
+      const filteredOut = !visibleRowIds.includes(reveal.id);
+      if (filteredOut) clearFilters();
+      const groups: { id: string; label: string; rows: { id: string }[] }[] = campaignFilterTab === 'campaigns'
+        ? groupView(campaigns, campaignFilterFields, groupingField)
+        : campaignFilterTab === 'adsets'
+          ? groupView(adSets, adSetFilterFields, groupingField)
+          : groupView(ads, adFilterFields, groupingField);
+      const collapsed = groups
+        .filter((group) => group.label && group.rows.some((row) => row.id === reveal.id))
+        .map((group) => `${groupingField}:${group.id}`)
+        .filter((key) => collapsedGroups[key]);
+      if (collapsed.length > 0) {
+        setCollapsedGroups((state) => ({ ...state, ...Object.fromEntries(collapsed.map((key) => [key, false])) }));
+      }
+      return filteredOut || collapsed.length > 0;
+    },
+    missing: () => ({
+      title: "Couldn't open",
+      message: `${revealedNoun} ${reveal?.id ?? ''}.`,
+      description: `Ads Manager has no such ${revealedNoun} in ${selectedAccount ? metaAccountLabel(selectedAccount) : 'this ad account'} today.`,
+    }),
   });
 
   /** A live control, or nothing when the row cannot honestly be acted on. */

@@ -4,6 +4,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { Tooltip } from '@/ui/Tooltip';
 import { BuyerlyLogoAvatar, LinearCheckIcon } from '@/icons/LinearIcons';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
+import { openCommandMenu } from '@/components/command/CommandMenu';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import {
   DropdownMenu,
@@ -18,7 +19,7 @@ import {
 } from '@/ui/DropdownMenu';
 
 export const SidebarHeader: React.FC = () => {
-  const { workspaceName, setSearchOpen, setActiveTab, setSettingsSection } = useAppStore();
+  const { workspaceName, setActiveTab, setSettingsSection } = useAppStore();
   const { user, workspace, switchWorkspace, openCreateWorkspace } = useWorkspaceSession();
 
   // Linear: Alt+Shift+Q logs out from anywhere in the app.
@@ -231,7 +232,7 @@ export const SidebarHeader: React.FC = () => {
           <Tooltip content="Search workspace" shortcut="/">
             <button
               type="button"
-              onClick={() => setSearchOpen(true)}
+              onClick={() => openCommandMenu('search')}
               aria-label="Search workspace"
               className="linear-icon-btn"
             >

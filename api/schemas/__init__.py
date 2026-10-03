@@ -73,6 +73,7 @@ from api.schemas.settings import (
     AutomationSettingsUpdateRequest,
 )
 from api.schemas.health import AccountHealthItem
+from api.schemas.search import SearchResponse, SearchResultItem
 
 __all__ = [
     "WorkspaceItem",
@@ -132,4 +133,6 @@ __all__ = [
     "SetIntervalRequest",
     "AutomationSettingsUpdateRequest",
     "AccountHealthItem",
+    "SearchResponse",
+    "SearchResultItem",
 ]
