@@ -41,7 +41,7 @@ Vite собирает `frontend/dist`; Nginx отдаёт файлы и прок
 
 [services/analytics_store.py](../services/analytics_store.py) сохраняет и читает `AnalyticsEntityFact`. React Statistics использует `/api/analytics/hierarchy`. Старый account-level API `/api/summary` и `SummarySnapshot` продолжают существовать на backend; это не отдельный текущий React-экран. Справочник маршрутов — [API.md](API.md).
 
-Search workspace — командное меню интерфейса (`/`, Ctrl/Cmd+K) — ищет через `GET /api/search` ([api/routers/search.py](../api/routers/search.py)): кампании, ad sets и объявления из сегодняшнего инвентаря `AnalyticsEntityFact` по часам каждого кабинета (того же, что показывает Ads Manager), правила и рекламные кабинеты workspace из адреса. Результат открывается по каноническому адресу записи, и список показывает её строку.
+Поиск интерфейса (`/` и кнопка Search workspace) ищет через `GET /api/search` ([api/routers/search.py](../api/routers/search.py)): кампании, ad sets и объявления из сегодняшнего инвентаря `AnalyticsEntityFact` по часам каждого кабинета (того же, что показывает Ads Manager), правила и рекламные кабинеты workspace из адреса. Результат открывается по каноническому адресу записи, и список показывает её строку.
 
 ## Правила и worker
 

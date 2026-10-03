@@ -197,16 +197,21 @@ try {
       await field.waitFor();
       assert.equal(await field.inputValue(), '', 'the slash that opened the menu is not typed into it');
     };
-    const closed = () => dialog.waitFor({ state: 'detached' });
+    const closed = () => page.getByRole('dialog', { name: /^(Search workspace|Command menu)$/ }).waitFor({ state: 'detached' });
+    // As in Linear: Ctrl/Cmd+K is a separate menu of commands that searches nothing.
+    const commands = page.getByRole('dialog', { name: 'Command menu' });
+    const commandField = commands.getByRole('combobox');
+    const commandTexts = async () => (await commands.getByRole('option').allInnerTexts()).map((text) => text.replace(/\s+/g, ' ').trim());
     const accountPicker = (name) => page.getByRole('button', { name: 'Select ad account' }).filter({ hasText: name });
 
     try {
       await page.goto(`${origin}/alpha/inbox`);
       await page.getByText('No notifications', { exact: true }).waitFor();
 
-      // 1. The sidebar button opens the menu with what it can do and what it searches.
+      // 1. The sidebar button opens search: no commands, just what it searches.
       await openFromSidebar();
-      assert.deepEqual(await optionTexts(), ['Go to Inbox', 'Go to Ads Manager', 'Go to Rules', 'Go to Settings', 'Create rule…']);
+      assert.equal(await field.getAttribute('placeholder'), 'Search…');
+      assert.equal(await options().count(), 0);
       assert.equal(await note.innerText(), 'Search campaigns, ad sets, ads, rules and ad accounts in Alpha.');
       await assertNoOverflow('empty menu');
       await page.screenshot({ path: `${output}/empty-${width}.png` });
@@ -223,7 +228,7 @@ try {
       assert.deepEqual(await optionTexts(), ['Test Campaign Leads account Active', 'Test campaign EU Euro account Active']);
       assert.deepEqual(await headings(), ['Campaigns']);
       assert.equal(await note.innerText(), '2 results in Alpha.');
-      assert.deepEqual(searches.at(-1), { query: 'Test Campaign', scope: 'alpha', limit: '5' });
+      assert.deepEqual(searches.at(-1), { query: 'Test Campaign', scope: 'alpha', limit: '20' });
       await assertNoOverflow('results');
       await page.screenshot({ path: `${output}/results-${width}.png` });
 
@@ -267,14 +272,16 @@ try {
       // 4. Ctrl/Cmd+K opens it from a text field too; pressed again it closes and focus returns.
       await page.locator('#probe-textarea').focus();
       await page.keyboard.press('Control+K');
-      await field.waitFor();
+      await commandField.waitFor();
+      assert.equal(await commandField.getAttribute('placeholder'), 'Type a command…');
+      assert.deepEqual(await commandTexts(), ['Go to Inbox', 'Go to Ads Manager', 'Go to Rules', 'Go to Settings', 'Create rule…']);
       await page.waitForFunction(() => document.activeElement?.hasAttribute('cmdk-input'));
       await page.keyboard.press('Control+K');
       await closed();
       await waitForFocus('probe-textarea');
       assert.equal(await page.locator('#probe-textarea').inputValue(), 'a/b', 'Ctrl+K typed nothing');
       await page.keyboard.press('Meta+K');
-      await field.waitFor();
+      await commandField.waitFor();
       await page.keyboard.press('Escape');
       await closed();
       await waitForFocus('probe-textarea');
@@ -294,11 +301,11 @@ try {
       assert.deepEqual(await optionTexts(), ['Spring sale Euro account Paused']);
       assert.equal(await dialog.getByText('Retry search').count(), 0);
 
-      // A kind with more matches than shown says the list is cut.
+      // Search shows only results, more of them than before, and no commands.
       await field.fill('campaign');
-      await dialog.getByText('Campaigns · first 5', { exact: true }).waitFor();
-      assert.deepEqual(await headings(), ['Commands', 'Campaigns · first 5']);
-      assert.equal(await dialog.getByRole('option', { name: /^Campaign \d+/ }).count(), 5);
+      await option(/^Campaign 20/).waitFor();
+      assert.deepEqual(await headings(), ['Campaigns']);
+      assert.equal(await dialog.getByRole('option', { name: /^Campaign \d+/ }).count(), 20);
 
       // 6. Arrows walk the results; Enter opens a campaign on its row in Ads Manager.
       await field.fill('test');
@@ -359,7 +366,7 @@ try {
       await page.getByRole('toolbar', { name: '1 selected' }).waitFor();
       await page.keyboard.press('Control+K');
       await page.getByText('Pause delivery', { exact: true }).waitFor();
-      assert.equal(await dialog.count(), 0, 'the selection keeps Ctrl+K');
+      assert.equal(await commands.count(), 0, 'the selection keeps Ctrl+K');
       await page.keyboard.press('Escape');
       await page.getByText('Pause delivery', { exact: true }).waitFor({ state: 'detached' });
       await page.keyboard.press('Escape');
@@ -378,16 +385,22 @@ try {
       await waitForFocus('7');
       assert.equal(await page.getByRole('tab', { name: 'All rules', exact: true }).getAttribute('aria-selected'), 'true');
 
-      // 9. Commands are filtered by what is typed and lead where they say.
-      await openWithSlash();
-      await field.fill('inbox');
-      await option('Go to Inbox').waitFor();
-      assert.deepEqual(await optionTexts(), ['Go to Inbox']);
+      // 9. Commands are filtered by what is typed, search nothing and lead where they say.
+      const searchesBefore = searches.length;
+      await page.keyboard.press('Control+K');
+      await commandField.fill('inbox');
+      await commands.getByRole('option', { name: 'Go to Inbox' }).waitFor();
+      assert.deepEqual(await commandTexts(), ['Go to Inbox']);
+      await commandField.fill('zzz');
+      await commands.getByText('No commands match “zzz”.', { exact: true }).waitFor();
+      await commandField.fill('inbox');
+      await commands.getByRole('option', { name: 'Go to Inbox' }).waitFor();
       await page.keyboard.press('Enter');
       await page.waitForURL(`${origin}/alpha/inbox`);
-      await openWithSlash();
-      await field.fill('create rule');
-      await option('Create rule…').waitFor();
+      assert.equal(searches.length, searchesBefore, 'the command menu does not search');
+      await page.keyboard.press('Control+K');
+      await commandField.fill('create rule');
+      await commands.getByRole('option', { name: 'Create rule…' }).waitFor();
       await page.keyboard.press('Enter');
       await page.waitForURL(`${origin}/alpha/rules`);
       await page.getByRole('dialog', { name: 'New rule' }).waitFor();

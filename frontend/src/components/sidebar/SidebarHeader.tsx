@@ -232,7 +232,7 @@ export const SidebarHeader: React.FC = () => {
           <Tooltip content="Search workspace" shortcut="/">
             <button
               type="button"
-              onClick={openCommandMenu}
+              onClick={() => openCommandMenu('search')}
               aria-label="Search workspace"
               className="linear-icon-btn"
             >

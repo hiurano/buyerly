@@ -252,7 +252,9 @@ interface AppState {
   captureScope: () => () => boolean;
   attachmentsLoadState: RulesLoadState;
   isSearchOpen: boolean;
-  setSearchOpen: (open: boolean) => void;
+  /** As in Linear: `/` and the sidebar's Search button search, Ctrl/Cmd+K runs commands. */
+  searchMode: 'search' | 'commands';
+  setSearchOpen: (open: boolean, mode?: 'search' | 'commands') => void;
   workspaceName: string;
   inboxUnreadCount: number;
   inboxPriorityUnreadCount: number;
@@ -498,7 +500,8 @@ export const useAppStore = create<AppState>((set, get) => {
   },
   attachmentsLoadState: 'idle',
   isSearchOpen: false,
-  setSearchOpen: (open) => set({ isSearchOpen: open }),
+  searchMode: 'search',
+  setSearchOpen: (open, mode) => set(mode ? { isSearchOpen: open, searchMode: mode } : { isSearchOpen: open }),
   workspaceName: 'buyerly',
   setWorkspaceName: (name) => set({ workspaceName: name }),
   inboxUnreadCount: 0,

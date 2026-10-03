@@ -915,10 +915,15 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertIn(path, search)
 
         # Esc is the dialog's own dismissal; focus goes back to what opened it.
-        self.assertIn("<Dialog.Root open={open} onOpenChange={setSearchOpen}>", menu)
+        self.assertIn("<Dialog.Root open={open} onOpenChange={(next) => setSearchOpen(next)}>", menu)
         self.assertIn("onCloseAutoFocus", menu)
         self.assertIn("returnFocusTo", menu)
-        self.assertIn("onClick={openCommandMenu}", header)
+        self.assertIn("onClick={() => openCommandMenu('search')}", header)
+        # As in Linear: `/` searches, Ctrl/Cmd+K opens commands that search nothing.
+        self.assertIn("openCommandMenu('commands')", menu)
+        self.assertIn("openCommandMenu('search')", menu)
+        self.assertIn("mode !== 'search'", menu)
+        self.assertNotIn("first ${response.limit}", menu)
         self.assertNotIn("setSearchOpen(true)", header)
 
         # `/` is text in a field; Ctrl/Cmd+K works anywhere but leaves a selection its menu.

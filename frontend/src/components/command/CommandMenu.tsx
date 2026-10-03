@@ -49,13 +49,16 @@ function isTypingTarget(target: EventTarget | null): boolean {
 /** What had focus when the menu opened; it gets focus back unless a choice moves it on. */
 let returnFocusTo: HTMLElement | null = null;
 
-/** Opens Search workspace, remembering where focus goes back to. */
-export function openCommandMenu(): void {
+/**
+ * Opens search (`/`, the sidebar's Search button) or the command menu
+ * (Ctrl/Cmd+K), remembering where focus goes back to.
+ */
+export function openCommandMenu(mode: 'search' | 'commands' = 'search'): void {
   const store = useAppStore.getState();
   if (store.isSearchOpen) return;
   const active = document.activeElement;
   returnFocusTo = active instanceof HTMLElement && active !== document.body ? active : null;
-  store.setSearchOpen(true);
+  store.setSearchOpen(true, mode);
 }
 
 interface CommandMenuProps {
@@ -65,14 +68,15 @@ interface CommandMenuProps {
 }
 
 /**
- * Search workspace, Linear's command menu, opened by the sidebar button, `/`
- * outside a text field, or Ctrl/Cmd+K from anywhere. It offers the screens to
- * go to and searches this workspace for campaigns, ad sets, ads, rules and ad
- * accounts — what GET /api/search covers, and nothing it cannot open. Esc
- * closes it and gives focus back to what had it.
+ * Linear's two menus in one dialog. Search — the sidebar's Search button or
+ * `/` outside a text field — finds this workspace's campaigns, ad sets, ads,
+ * rules and ad accounts through GET /api/search. The command menu —
+ * Ctrl/Cmd+K from anywhere — runs commands and searches nothing. Esc closes
+ * either and gives focus back to what had it.
  */
 export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate }) => {
   const open = useAppStore((state) => state.isSearchOpen);
+  const mode = useAppStore((state) => state.searchMode);
   const setSearchOpen = useAppStore((state) => state.setSearchOpen);
   // A choice moves focus to its destination; only a dismissal gives it back.
   const choiceMade = useRef(false);
@@ -90,14 +94,14 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
           setSearchOpen(false);
         } else if (!document.querySelector(OPEN_LAYER_SELECTOR)) {
           event.preventDefault();
-          openCommandMenu();
+          openCommandMenu('commands');
         }
         return;
       }
       if (event.key !== '/' || modified || event.altKey || isOpen) return;
       if (isTypingTarget(event.target) || document.querySelector(OPEN_LAYER_SELECTOR)) return;
       event.preventDefault();
-      openCommandMenu();
+      openCommandMenu('search');
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -113,7 +117,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={setSearchOpen}>
+    <Dialog.Root open={open} onOpenChange={(next) => setSearchOpen(next)}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[var(--layer-command-menu)] bg-[var(--modal-overlay-bg)]" />
         <Dialog.Content
@@ -131,8 +135,8 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
           }}
           className={`fixed inset-x-4 top-[13vh] z-[var(--layer-command-menu)] mx-auto max-w-[720px] outline-none ${COMMAND_MENU_CLASSES.surface}`}
         >
-          <Dialog.Title className="sr-only">Search workspace</Dialog.Title>
-          <CommandPalette workspace={workspace} navigate={navigate} choose={choose} />
+          <Dialog.Title className="sr-only">{mode === 'search' ? 'Search workspace' : 'Command menu'}</Dialog.Title>
+          <CommandPalette mode={mode} workspace={workspace} navigate={navigate} choose={choose} />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -183,13 +187,14 @@ function resultStatus(result: SearchResult): string {
 }
 
 interface CommandPaletteProps {
+  mode: 'search' | 'commands';
   workspace: Workspace;
   navigate: (path: string, replace?: boolean) => void;
   choose: (action: () => void) => void;
 }
 
 /** The menu's content, mounted on every open so it starts empty. */
-const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, choose }) => {
+const CommandPalette: React.FC<CommandPaletteProps> = ({ mode, workspace, navigate, choose }) => {
   const campaignFilterTab = useAppStore((state) => state.campaignFilterTab);
   const openCreateRuleModal = useAppStore((state) => state.openCreateRuleModal);
   const [query, setQuery] = useState('');
@@ -198,7 +203,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
   const text = query.trim();
 
   useEffect(() => {
-    if (!text) return undefined;
+    if (!text || mode !== 'search') return undefined;
     setSearch({ status: 'loading', query: text });
     const controller = new AbortController();
     const inScope = useAppStore.getState().captureScope();
@@ -217,9 +222,9 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [text, attempt]);
+  }, [mode, text, attempt]);
 
-  const current: SearchState | null = !text
+  const current: SearchState | null = mode !== 'search' || !text
     ? null
     : search?.query === text
       ? search
@@ -249,7 +254,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
     },
   ];
   const words = text.toLowerCase().split(/\s+/).filter(Boolean);
-  const shownCommands = commands.filter((command) => {
+  const shownCommands = mode !== 'commands' ? [] : commands.filter((command) => {
     const haystack = [command.label, ...command.keywords].join(' ').toLowerCase();
     return words.every((word) => haystack.includes(word));
   });
@@ -258,7 +263,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
   const groups = response
     ? SEARCH_KINDS.map(({ kind, heading }) => ({
       kind,
-      heading: response.truncated.includes(kind) ? `${heading} · first ${response.limit}` : heading,
+      heading,
       results: response.results.filter((result) => result.kind === kind),
     })).filter((group) => group.results.length > 0)
     : [];
@@ -266,7 +271,9 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
   const scope = workspace.name;
   const resultCount = response?.results.length ?? 0;
   const hasRows = shownCommands.length > 0 || groups.length > 0 || current?.status === 'error';
-  const note = !current
+  const note = mode === 'commands'
+    ? (shownCommands.length === 0 ? `No commands match “${text}”.` : '')
+    : !current
     ? `Search campaigns, ad sets, ads, rules and ad accounts in ${scope}.`
     : current.status === 'loading'
       ? `Searching ${scope}…`
@@ -277,24 +284,23 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
           : `${resultCount} ${resultCount === 1 ? 'result' : 'results'} in ${scope}.`;
 
   return (
-    <Command label="Search workspace" shouldFilter={false} loop vimBindings={false}>
+    <Command label={mode === 'search' ? 'Search workspace' : 'Command menu'} shouldFilter={false} loop vimBindings={false}>
       <div className="flex items-center gap-2 border-b border-[var(--color-border-primary)] pl-3 pr-2.5">
-        <span className="shrink-0 text-[var(--text-tertiary)]" aria-hidden="true">
-          <LinearSearchIcon size={16} />
-        </span>
+        {mode === 'search' && (
+          <span className="shrink-0 text-[var(--text-tertiary)]" aria-hidden="true">
+            <LinearSearchIcon size={16} />
+          </span>
+        )}
         <Command.Input
           autoFocus
           value={query}
           onValueChange={setQuery}
-          placeholder="Type a command or search…"
+          placeholder={mode === 'search' ? 'Search…' : 'Type a command…'}
           className="h-11 min-w-0 flex-1 bg-transparent text-[13px] text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none"
         />
-        <Dialog.Close
-          aria-label="Close search"
-          className="shrink-0 rounded-[4px] border border-[var(--color-border-secondary)] px-1.5 py-0.5 font-sans text-[11px] text-[var(--text-tertiary)] outline-none hover:text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)]"
-        >
+        <kbd className="shrink-0 rounded-[4px] border border-[var(--color-border-secondary)] px-1.5 py-0.5 font-sans text-[11px] text-[var(--text-tertiary)]">
           Esc
-        </Dialog.Close>
+        </kbd>
       </div>
       <Command.List
         className={hasRows ? `${COMMAND_MENU_CLASSES.list} pt-1.5` : undefined}
@@ -353,6 +359,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
           </Command.Group>
         )}
       </Command.List>
+      {note && (
       <p
         role="status"
         className={
@@ -363,6 +370,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
       >
         {note}
       </p>
+      )}
     </Command>
   );
 };

@@ -56,7 +56,7 @@ Implemented shared primitives:
 | DataList | `LinearDataList` | loading, empty, populated, partial/error |
 | DataTable | `LinearDataTable`, `LinearDataPrimaryCell`, `LinearDataMetricCell` | sortable header, horizontal scroll, grouped and flat rows |
 | Selection | `useRowSelection`, `SelectionDock`, `SelectionCommandMenu` | hover-revealed checkbox, X / Ctrl+A / Esc, dock over the list, Ctrl+K actions menu, Ctrl+Delete where deleting is offered |
-| Command menu | `COMMAND_MENU_CLASSES` (with `SelectionCommandMenu`) | one panel, field, group, row and note for Search workspace and the selection's actions; selected row, searching, nothing found and failure |
+| Command menu | `COMMAND_MENU_CLASSES` (with `SelectionCommandMenu`) | one panel, field, group, row and note for search, the command menu and the selection's actions; selected row, searching, nothing found and failure |
 | Record reveal | `useRevealRow` | the row an address names is scrolled into view and focused; a filter, tab or collapsed group hiding it is cleared; a missing record is an error toast |
 | Toast | `ToastRegion`, `toast` | success (deletion), undo, redo, error; auto-dismiss after 8s unless hovered or focused; errors stay until dismissed |
 | ConfirmDialog | `ConfirmDialog` | question, consequence, Cancel and a focused confirming button; Enter confirms, Esc cancels |
@@ -149,16 +149,14 @@ first screen only by causing a frequent decision.
 - the target is stored and shown in the ad account's own currency, and is never converted between currencies;
 - secrets and full access tokens are never display data.
 
-### Search workspace
+### Search and command menu
 
-Linear's command menu, opened by the sidebar's Search button, `/` outside a text field, or Ctrl/Cmd+K from anywhere.
+Two menus, as in Linear.
 
-- it promises only what it can do: Go to Inbox, Ads Manager, Rules and Settings and Create rule…, filtered by what is typed, and a search of the workspace in the address;
-- the search covers campaigns, ad sets and ads of today's inventory — the one Ads Manager shows — rules, and the ad accounts Ads Manager opens; the empty field says exactly that, and nothing else (Inbox, members, rule groups) is implied;
-- searching, nothing found and a failure are separate states in words; a failure offers Retry search, and a kind with more matches than shown is headed "first 5";
-- a result opens on its own row through the record's address (`/ads-manager/{level}/{id}?account=…`, `/rules/{id}`); a filter, tab or collapsed group hiding it is cleared, and a record the list cannot show is reported;
-- Esc closes it and returns focus to what had it; Ctrl/Cmd+K again closes it too. With rows selected, Ctrl/Cmd+K stays the selection's actions menu;
-- `/` typed into an input, textarea, select or rich text stays text, and neither shortcut fires while another dialog or menu is open.
+- **Search** opens from the sidebar's Search button or `/` outside a text field. It finds campaigns, ad sets and ads of today's inventory — the one Ads Manager shows — rules, and the ad accounts Ads Manager opens, only in the workspace in the address; the empty field says exactly that, and nothing else (Inbox, members, rule groups) is implied. Searching, nothing found and a failure with Retry search are separate states in words; results come grouped by kind, best match first, up to 20 per kind.
+- **Command menu** opens with Ctrl/Cmd+K from anywhere, a text field included. It offers Go to Inbox, Ads Manager, Rules and Settings and Create rule…, filtered by what is typed, and searches nothing. Pressed again it closes; with rows selected, Ctrl/Cmd+K stays the selection's actions menu.
+- A search result opens on its own row through the record's address (`/ads-manager/{level}/{id}?account=…`, `/rules/{id}`): Buyerly has no record pages, unlike Linear. A filter, tab or collapsed group hiding the row is cleared, and a record the list cannot show is reported.
+- Esc closes either menu and returns focus to what had it. `/` typed into an input, textarea, select or rich text stays text, and neither shortcut fires while another dialog or menu is open.
 
 ### Auth and onboarding
 

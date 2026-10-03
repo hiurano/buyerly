@@ -25,8 +25,8 @@ export interface SearchResponse {
   truncated: SearchKind[];
 }
 
-/** Results per kind: enough to recognise the one meant, few enough to read. */
-export const SEARCH_LIMIT = 5;
+/** Results per kind; the list scrolls, as Linear's search does. */
+export const SEARCH_LIMIT = 20;
 
 /** The order the server returns kinds in, with the names their screens use. */
 export const SEARCH_KINDS: { kind: SearchKind; heading: string }[] = [
