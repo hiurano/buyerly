@@ -14,7 +14,7 @@ import { useUndoShortcuts } from '@/lib/undoHistory';
 import { selectInboxBadgeCount, useAppStore } from '@/store/useAppStore';
 import { apiRequest } from '@/lib/api';
 import type { LoginResult, SessionUser, Workspace } from '@/lib/types';
-import { isRoutedSettingsSection, isWorkspaceReturnRoute, parseRoute, pathForTab, type Route } from '@/lib/routing';
+import { isRoutedSettingsSection, isWorkspaceReturnRoute, parseRoute, pathForTab, STATISTICS_ENABLED, type Route } from '@/lib/routing';
 import { AuthLoading } from '@/components/auth/AuthFrame';
 import { LoginView } from '@/components/auth/LoginView';
 import { VerifyEmailLinkView } from '@/components/auth/VerifyEmailLinkView';
@@ -170,7 +170,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
               ? 'campaigns'
               : key === 'r'
                 ? 'rules'
-                : key === 's'
+                : key === 's' && STATISTICS_ENABLED
                   ? 'statistics'
                   : null;
           if (shortcutTab) {
@@ -225,7 +225,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
                 )}
                 {activeTab === 'campaigns' && <CampaignsView />}
                 {activeTab === 'rules' && <RulesView />}
-                {activeTab === 'statistics' && <StatisticsView />}
+                {STATISTICS_ENABLED && activeTab === 'statistics' && <StatisticsView />}
               </main>
               <CommandMenu />
             </>

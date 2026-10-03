@@ -71,7 +71,7 @@ try {
     };
 
     try {
-      await page.goto(`${origin}/acme/statistics`);
+      await page.goto(`${origin}/acme/inbox`);
       await sidebar.waitFor();
       await settled();
       if (!small) {
@@ -99,7 +99,7 @@ try {
       const content = await page.locator('main.linear-floating-canvas').boundingBox();
       assert.equal(content.x, 0);
       assert.equal(Math.round(content.width), width);
-      await page.screenshot({ path: `${output}/statistics-${width}.png` });
+      await page.screenshot({ path: `${output}/start-${width}.png` });
 
       await menu.click();
       await settled();
@@ -112,7 +112,7 @@ try {
       await page.touchscreen.tap(width - 10, 400);
       await settled();
       assert.ok(await isClosed(sidebar));
-      assert.equal(new URL(page.url()).pathname, '/acme/statistics');
+      assert.equal(new URL(page.url()).pathname, '/acme/inbox');
 
       // Navigation closes it.
       await menu.click();

@@ -157,7 +157,7 @@ const AdAccountRow: React.FC<AccountRowProps> = ({ account, onSaved, onError }) 
 
 /**
  * Where an ad account declares what it is buying and the cost it is worth
- * buying at. Statistics judges a row only against a target stored here.
+ * buying at. A row is judged only against a target stored here.
  */
 export const AdAccountsSection: React.FC = () => {
   const setActiveTab = useAppStore((state) => state.setActiveTab);
@@ -204,8 +204,8 @@ export const AdAccountsSection: React.FC = () => {
         </div>
         <p className="preferences-section-note">
           Declare the conversion event each ad account is buying and the cost it is worth buying
-          at. Statistics compares a campaign against this target; without one it reports cost per
-          result without a verdict. The target is read in the ad account's own currency.
+          at. A campaign is judged against this target; without one its cost per result is shown
+          without a verdict. The target is read in the ad account's own currency.
         </p>
 
         {state === 'loading' && (
