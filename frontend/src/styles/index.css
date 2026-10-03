@@ -2750,6 +2750,165 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   }
 }
 
+/* Settings → Security & access → Sessions, read off Linear on a phone (2026-10-03):
+   this browser in its own card; a second card headed "N other sessions" with
+   Revoke all over a full-width hairline, its rows split by hairlines inset 16px.
+   Rows: 12px padding, a 32px tile with the browser's mark, 16px gap, then the
+   name over "Helsinki, 18, FI · Last seen …" that wraps; text buttons on the right. */
+.preferences-section-note--sessions {
+  margin: -8px 0 16px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.preferences-sessions-card + .preferences-sessions-card {
+  margin-top: 12px;
+}
+
+.preferences-session-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 12px;
+}
+
+.preferences-session + .preferences-session {
+  position: relative;
+}
+
+.preferences-session + .preferences-session::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  border-top: 1px solid var(--color-border-primary);
+}
+
+.preferences-session-main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.preferences-session-main:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+
+.preferences-session-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: var(--preferences-channel-icon-bg);
+  color: var(--text-tertiary);
+}
+
+.preferences-session-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.preferences-session-desc {
+  color: var(--text-tertiary);
+  font-family: var(--font-regular);
+  font-size: 12px;
+  font-weight: 450;
+  line-height: 16px;
+}
+
+.preferences-session-fact {
+  white-space: nowrap;
+}
+
+.preferences-session-current {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--session-current-text);
+}
+
+.preferences-session-current::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.preferences-session-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  margin: -6px 0 0;
+  padding: 0 12px 16px 60px;
+  font-family: var(--font-regular);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.preferences-session-details > div {
+  display: flex;
+  gap: 6px;
+}
+
+.preferences-session-details dt {
+  color: var(--text-tertiary);
+}
+
+.preferences-session-details dd {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.preferences-sessions-others {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 58px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--color-border-primary);
+  color: var(--text-primary);
+  font-family: var(--font-regular);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Linear shows Revoke on hover; a touch screen has no hover, so there it stays visible.
+   The buttons themselves are Connected accounts' borderless pills. */
+@media (hover: hover) {
+  .preferences-session-button--on-hover {
+    opacity: 0;
+  }
+
+  .preferences-session:hover .preferences-session-button--on-hover,
+  .preferences-session-button--on-hover:focus-visible {
+    opacity: 1;
+  }
+}
+
+/* Two classes, so this wins over the pill's own transition defined below. */
+.preferences-connect-button.preferences-session-button--on-hover {
+  transition: background-color 150ms ease, opacity 150ms ease;
+}
+
 /* Settings → Connected accounts, measured in Linear: icon tile, 12px gap, title and
    note, and a borderless 32px pill "Connect ↗" on the right. */
 .preferences-connection-main {

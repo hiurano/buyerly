@@ -41,6 +41,7 @@ jobs:
           node scripts/check-scoped-state.cjs
           node scripts/check-hierarchy-parents.cjs
           node scripts/check-snooze-query.cjs
+          node scripts/check-sessions.cjs
           npm run build
 
       - name: Upload built frontend
@@ -86,6 +87,17 @@ jobs:
         with:
           name: members-browser
           path: /tmp/buyerly-members
+
+      - name: Check Security & access sessions in Chromium
+        working-directory: frontend
+        run: node ../scripts/security-browser.mjs
+
+      - name: Upload Security & access browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-browser
+          path: /tmp/buyerly-security
 
       - name: Check workspace switching in Chromium
         working-directory: frontend
