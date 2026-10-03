@@ -1150,6 +1150,170 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             execution = (await session.execute(select(RuleExecutionState))).scalars().all()
             self.assertTrue(any(row.status == "SUCCESS" for row in execution))
 
+    async def _set_rules(self, *rules, stop_confirmation_minutes=0):
+        """Replace the account rules; each rule is checked every five minutes."""
+        async with self.test_session_maker() as session:
+            settings = (await session.execute(select(AppSettings))).scalars().first()
+            if settings is None:
+                session.add(AppSettings(stop_confirmation_minutes=stop_confirmation_minutes))
+            account = (
+                await session.execute(select(Account).where(Account.account_id == self.account_id))
+            ).scalar_one()
+            account.active_rules = json.dumps([
+                {
+                    "workspace_id": account.workspace_id,
+                    "logic": "and",
+                    "check_interval": 5,
+                    "cooldown_minutes": 0,
+                    "budget_change_percent": 0.0,
+                    "budget_max_daily": 0.0,
+                    **rule,
+                }
+                for rule in rules
+            ])
+            await session.commit()
+
+    async def _rule_events(self, event_type):
+        async with self.test_session_maker() as session:
+            return (
+                await session.execute(
+                    select(AuditEvent.rule_id, AuditEvent.entity_id)
+                    .where(AuditEvent.event_type == event_type)
+                    .order_by(AuditEvent.id)
+                )
+            ).all()
+
+    async def test_an_alert_on_cooldown_does_not_silence_another_alert(self):
+        """#296: a second alert on the same campaign sends its own message."""
+        alert = {
+            "action": "notify_only",
+            "level": "campaign",
+            "conditions": [{"metric": "spend", "operator": "gte", "value": 0.0}],
+            "cooldown_minutes": 1440,
+        }
+        first = {**alert, "preset_id": 25, "name": "Spend alert"}
+        second = {**alert, "preset_id": 26, "name": "Spend alert again"}
+        await self._set_rules(first)
+
+        now = [5_000.0]
+        mock_meta = MockMetaClient()
+        worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: now[0])
+        await worker.run_cycle()
+        self.assertEqual(await self._rule_events("NOTIFY_ONLY"), [(25, "campaign_1")])
+
+        # The buyer adds a second alert while the first one waits out its day.
+        await self._set_rules(first, second)
+        now[0] += 10 * 60
+        await worker.run_cycle()
+        self.assertEqual(
+            await self._rule_events("NOTIFY_ONLY"),
+            [(25, "campaign_1"), (26, "campaign_1")],
+        )
+
+        # Both are now on cooldown: no more messages.
+        now[0] += 10 * 60
+        await worker.run_cycle()
+        self.assertEqual(len(await self._rule_events("NOTIFY_ONLY")), 2)
+
+    async def test_two_alerts_due_together_each_send_a_message(self):
+        alert = {
+            "action": "notify_only",
+            "conditions": [{"metric": "spend", "operator": "gte", "value": 10.0}],
+            "cooldown_minutes": 60,
+        }
+        await self._set_rules(
+            {**alert, "preset_id": 31, "name": "First alert"},
+            {**alert, "preset_id": 32, "name": "Second alert"},
+        )
+
+        worker = MonitoringWorker(meta_client=MockMetaClient(), clock=lambda: 5_000.0)
+        await worker.run_cycle()
+
+        self.assertEqual(
+            await self._rule_events("NOTIFY_ONLY"),
+            [(31, "adset_1"), (32, "adset_1")],
+        )
+
+    async def test_an_alert_still_fires_next_to_a_stop(self):
+        condition = [{"metric": "spend", "operator": "gte", "value": 10.0}]
+        await self._set_rules(
+            {"preset_id": 41, "name": "Stop", "action": "turn_off", "conditions": condition},
+            {"preset_id": 42, "name": "Alert", "action": "notify_only", "conditions": condition},
+        )
+
+        mock_meta = MockMetaClient()
+        worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: 5_000.0)
+        await worker.run_cycle()
+
+        self.assertEqual(mock_meta.status_changes, [("adset_1", "PAUSED")])
+        self.assertEqual(await self._rule_events("NOTIFY_ONLY"), [(42, "adset_1")])
+
+    async def test_a_stop_on_cooldown_does_not_let_a_budget_raise_through(self):
+        condition = [{"metric": "spend", "operator": "gte", "value": 10.0}]
+        await self._set_rules(
+            {
+                "preset_id": 51,
+                "name": "Stop",
+                "action": "turn_off",
+                "conditions": condition,
+                "cooldown_minutes": 60,
+            },
+            {
+                "preset_id": 52,
+                "name": "Scale",
+                "action": "increase_budget",
+                "conditions": [{"metric": "leads", "operator": "eq", "value": 0.0}],
+                "budget_change_percent": 20.0,
+            },
+        )
+
+        now = [5_000.0]
+        mock_meta = MockMetaClient()
+        worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: now[0])
+        await worker.run_cycle()
+        self.assertEqual(mock_meta.status_changes, [("adset_1", "PAUSED")])
+
+        # Turned back on by hand while the stop rule cools down: the weaker
+        # budget raise must not take over the stopped ad set.
+        mock_meta.adsets_state["adset_1"]["status"] = "ACTIVE"
+        mock_meta.adsets_state["adset_1"]["effective_status"] = "ACTIVE"
+        now[0] += 10 * 60
+        await worker.run_cycle()
+
+        self.assertEqual(mock_meta.status_changes, [("adset_1", "PAUSED")])
+        self.assertNotIn("adset_1", [adset_id for adset_id, _ in mock_meta.budget_changes])
+
+    async def test_a_budget_rule_on_cooldown_hands_over_to_one_of_the_same_kind(self):
+        cut = {
+            "action": "decrease_budget",
+            "conditions": [{"metric": "spend", "operator": "gte", "value": 10.0}],
+            "cooldown_minutes": 1440,
+            "budget_change_percent": 10.0,
+        }
+        await self._set_rules(
+            {**cut, "preset_id": 61, "name": "First cut"},
+            {**cut, "preset_id": 62, "name": "Second cut"},
+        )
+
+        now = [5_000.0]
+        mock_meta = MockMetaClient()
+        worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: now[0])
+
+        # One change per ad set per check, never two at once.
+        await worker.run_cycle()
+        self.assertEqual(await self._rule_events("DECREASE_BUDGET"), [(61, "adset_1")])
+
+        now[0] += 10 * 60
+        await worker.run_cycle()
+        self.assertEqual(
+            await self._rule_events("DECREASE_BUDGET"),
+            [(61, "adset_1"), (62, "adset_1")],
+        )
+
+        now[0] += 10 * 60
+        await worker.run_cycle()
+        self.assertEqual(len(await self._rule_events("DECREASE_BUDGET")), 2)
+
     async def test_a_budget_rule_saved_from_the_editor_scales_once_a_day(self):
         # The editor now saves "Repeat: Once a day" (cooldown 1440) next to a
         # five-minute check; before #194 the same rule compounded every check.
