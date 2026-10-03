@@ -37,18 +37,13 @@ class TestDocumentationContract(unittest.TestCase):
             "docs/DEPLOYMENT.md",
             "docs/DECISIONS.md",
             "docs/PRODUCT_BACKLOG.md",
-            "docs/FACEBOOK_AUTHORIZATION_PLAN.md",
-            "docs/REMAINING_PRODUCT_WORK.md",
         ):
             self.assertIn(path, readme)
 
     def test_current_documentation_links_resolve(self):
-        # Historical snapshots can refer to retired source files. Check current
-        # navigation and the archive index, without revalidating old proposals.
         documents = [PROJECT_ROOT / "README.md", PROJECT_ROOT / "CHANGELOG.md"]
         documents += list((PROJECT_ROOT / "docs").glob("*.md"))
         documents += list((PROJECT_ROOT / "docs" / "branding").rglob("*.md"))
-        documents.append(PROJECT_ROOT / "docs" / "archive" / "README.md")
         missing = []
         for document in documents:
             content = re.sub(r"```.*?```", "", document.read_text(), flags=re.S)

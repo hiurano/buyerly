@@ -41,5 +41,3 @@ SMTP transport не поддерживается. Для отправки зад
 | Workspace и роли | [workspaces.py](../api/routers/workspaces.py), [members.py](../api/routers/members.py) |
 | Онбординг | [onboarding.py](../api/routers/onboarding.py) |
 | Маршрутизация UI | [routing.ts](../frontend/src/lib/routing.ts) |
-
-Предыдущее описание со старой структурой frontend сохранено в [архиве](archive/snapshots/before_cleanup_WORKSPACES_AUTH_AND_INVITES.md).

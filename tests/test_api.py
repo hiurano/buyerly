@@ -1859,9 +1859,9 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
         auth = await session_headers(self.test_session_maker, user_info)
         raw_fb_text = """
-        Ad account ID: 1083480094013618
+        Ad account ID: 1000000000000001
         Швеция 1083
-        act_1070862758952340
+        act_1000000000000002
         """
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -1870,8 +1870,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(resp.status_code, 200)
             items = resp.json()
             self.assertEqual(len(items), 2)
-            self.assertEqual(items[0]["account_id"], "act_1083480094013618")
-            self.assertEqual(items[1]["account_id"], "act_1070862758952340")
+            self.assertEqual(items[0]["account_id"], "act_1000000000000001")
+            self.assertEqual(items[1]["account_id"], "act_1000000000000002")
 
     async def test_batch_import_never_enables_rules_for_a_new_account(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}

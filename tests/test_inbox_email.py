@@ -49,7 +49,7 @@ class TestInboxEmail(unittest.IsolatedAsyncioTestCase):
             self.no_email = User(username="mail_none", email=None, is_approved=True)
             session.add_all([self.owner, self.buyer, self.no_email])
             await session.flush()
-            self.workspace = Workspace(name="Uncle", slug="uncle", owner_user_id=self.owner.id)
+            self.workspace = Workspace(name="Acme", slug="acme", owner_user_id=self.owner.id)
             session.add(self.workspace)
             await session.flush()
             old_mark = self.now - timedelta(days=1)
@@ -120,9 +120,9 @@ class TestInboxEmail(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(email["target"], "Ad set 7")
         self.assertEqual(email["account_name"], "Main account")
         self.assertEqual(email["message"], "CPL above 3")
-        self.assertEqual(email["workspace_name"], "Uncle")
-        self.assertEqual(email["url"], f"https://app.example.test/uncle/inbox/{event.id}")
-        self.assertEqual(email["settings_url"], "https://app.example.test/uncle/settings/account/notifications/email")
+        self.assertEqual(email["workspace_name"], "Acme")
+        self.assertEqual(email["url"], f"https://app.example.test/acme/inbox/{event.id}")
+        self.assertEqual(email["settings_url"], "https://app.example.test/acme/settings/account/notifications/email")
 
         again = await self.run_delivery()
         self.assertEqual(again.sent, [])
@@ -255,26 +255,26 @@ class TestInboxEmailLayout(unittest.IsolatedAsyncioTestCase):
         email_module.send_email = fake_send
         try:
             await email_module.send_inbox_notification_email(
-                to_email="uncle@example.test",
-                workspace_name="Uncle",
+                to_email="acme@example.test",
+                workspace_name="Acme",
                 title="Rule alert",
                 target="Ad set <7>",
                 account_name="Main account",
                 message="CPL above 3 & rising",
-                url="https://app.example.test/uncle/inbox/5",
-                settings_url="https://app.example.test/uncle/settings/account/notifications/email",
+                url="https://app.example.test/acme/inbox/5",
+                settings_url="https://app.example.test/acme/settings/account/notifications/email",
             )
         finally:
             email_module.send_email = original
         # As in Linear, the subject is the heading.
         self.assertEqual(captured["subject"], "Rule alert: Ad set <7>")
         self.assertIn("Rule alert: Ad set &lt;7&gt;</h1>", captured["html"])
-        self.assertIn("Main account · Uncle", captured["html"])
+        self.assertIn("Main account · Acme", captured["html"])
         self.assertIn("CPL above 3 &amp; rising", captured["html"])
-        self.assertIn('href="https://app.example.test/uncle/inbox/5"', captured["html"])
+        self.assertIn('href="https://app.example.test/acme/inbox/5"', captured["html"])
         self.assertIn(">Open your Inbox</a>", captured["html"])
         self.assertIn(">Unsubscribe</a>", captured["html"])
-        self.assertIn("Open your Inbox: https://app.example.test/uncle/inbox/5", captured["text"])
+        self.assertIn("Open your Inbox: https://app.example.test/acme/inbox/5", captured["text"])
 
 
 if __name__ == "__main__":

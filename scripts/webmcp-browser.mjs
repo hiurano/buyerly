@@ -527,7 +527,7 @@ try {
   assert.match((await callTool(page, 'create_rule', { name: 'x', conditions: [{ metric: 'leads', operator: 'lt', value: 1.5 }] })).error, /whole number/);
   assert.match((await callTool(page, 'create_rule', { name: 'x', conditions: spendAndNoLeads, action: 'increase_budget' })).error, /action must be one of: notify_only, turn_off/);
 
-  // The uncle's cheat sheet: five alerts, each attached to the ad account.
+  // A buyer's cheat sheet: five alerts, each attached to the ad account.
   const cheatSheet = [
     ['$3 and 0 clicks', [{ metric: 'spend', operator: 'gte', value: 3 }, { metric: 'clicks', operator: 'eq', value: 0 }]],
     ['$3.50 and 1 click', [{ metric: 'spend', operator: 'gte', value: '3.50' }, { metric: 'clicks', operator: 'lte', value: 1 }]],

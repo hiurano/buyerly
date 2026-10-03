@@ -225,7 +225,7 @@ class TestApiRateLimitingAndDosProtection(unittest.IsolatedAsyncioTestCase):
             # Valid string within 64KB
             valid_res = await client.post(
                 "/api/accounts/parse-raw",
-                json={"raw_text": "act_1083480094013618"},
+                json={"raw_text": "act_1000000000000001"},
                 headers=headers,
             )
             self.assertEqual(valid_res.status_code, 200)
