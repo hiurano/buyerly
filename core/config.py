@@ -16,10 +16,6 @@ class Settings(BaseSettings):
         default="",
         description="Comma-separated proxy networks allowed to supply forwarding headers",
     )
-    GEOIP_DATABASE_PATH: str = Field(
-        default="geoip/city.mmdb",
-        description="MaxMind-format city database for session locations; missing means no location",
-    )
     DEFAULT_POLL_INTERVAL_MINUTES: int = Field(default=5, description="Monitoring interval in minutes")
     ADMIN_CHAT_ID: str = Field(default="", description="Legacy Telegram ID of the bootstrap and dev-auth super-admin")
     WEBAPP_URL: str = Field(default="", description="Public HTTPS URL of the web app")

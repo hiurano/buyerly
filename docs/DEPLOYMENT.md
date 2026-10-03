@@ -85,17 +85,6 @@ docker compose exec api python -m scripts.set_user_password <username> --email <
 Поддерживаемый почтовый transport — Resend REST API; SMTP-параметры runtime не
 использует.
 
-Город у входов в Settings → Security & access («Helsinki, 18, FI», как в Linear)
-берётся из локальной базы IP → город; адреса никуда не отправляются. Базу
-скачивает `scripts/update_geoip.sh` на шаге сборки deploy в `/opt/buyerly/geoip`
-(каталог в `.gitignore`, в API он смонтирован read-only), не чаще раза в 25 дней.
-Если в server `.env` заданы `MAXMIND_ACCOUNT_ID` и `MAXMIND_LICENSE_KEY`
-(бесплатный аккаунт MaxMind), берётся GeoLite2 City и регион пишется кодом, как
-в Linear. Без них — DB-IP Lite City без регистрации, регион пишется названием
-(«Helsinki, Uusimaa, FI»). Путь к файлу внутри контейнера — `GEOIP_DATABASE_PATH`.
-Неудачная загрузка не останавливает deploy: остаётся прежний файл, а без файла
-у сессий просто нет города.
-
 ## Автодеплой
 
 После push в `main` GitHub Actions запускает тесты и вызывает `scripts/deploy.sh` на VPS. Сценарий:

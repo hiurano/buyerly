@@ -6,8 +6,6 @@ export interface WebSession {
   id: string;
   user_agent: string;
   ip_address: string;
-  /** "Helsinki, 18, FI"; empty when the address can't be placed. */
-  location: string;
   created_at: string;
   expires_at: string;
   last_seen_at: string;

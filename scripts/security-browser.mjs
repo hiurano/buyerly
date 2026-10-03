@@ -27,22 +27,22 @@ const ago = (ms) => new Date(Date.now() - ms).toISOString();
 // The sessions on Linear's own screen (2026-10-03), so the two can be compared side by side.
 const initialSessions = () => [
   {
-    id: 'current-session', current: true, ip_address: '203.0.113.10', location: 'Helsinki, 18, FI',
+    id: 'current-session', current: true, ip_address: '203.0.113.10',
     user_agent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.70 Mobile Safari/537.36',
     created_at: '2026-09-29T20:48:00Z', expires_at: ago(-24 * HOUR), last_seen_at: ago(0),
   },
   {
-    id: 'linux-session', current: false, ip_address: '203.0.113.11', location: 'Helsinki, 18, FI',
+    id: 'linux-session', current: false, ip_address: '203.0.113.11',
     user_agent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.70 Safari/537.36',
     created_at: '2026-09-28T09:15:00Z', expires_at: ago(-20 * HOUR), last_seen_at: ago(14 * HOUR),
   },
   {
-    id: 'firefox-session', current: false, ip_address: '203.0.113.12', location: 'Helsinki, 18, FI',
+    id: 'firefox-session', current: false, ip_address: '203.0.113.12',
     user_agent: 'Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0',
     created_at: '2026-09-27T08:00:00Z', expires_at: ago(-10 * HOUR), last_seen_at: ago(2 * 24 * HOUR),
   },
   {
-    id: 'unplaced-session', current: false, ip_address: '', location: '',
+    id: 'unplaced-session', current: false, ip_address: '',
     user_agent: 'curl/8.5.0',
     created_at: '2026-09-26T08:00:00Z', expires_at: ago(-5 * HOUR), last_seen_at: ago(4 * 24 * HOUR),
   },
@@ -133,25 +133,24 @@ try {
       await page.getByRole('heading', { name: 'Sessions', exact: true }).waitFor();
       await page.getByText('Devices logged into your account', { exact: true }).waitFor();
 
-      // This browser first: "Chrome on Android", green "Current session · Helsinki, 18, FI", Log out.
+      // This browser first: "Chrome on Android", green "Current session", Log out.
       const current = sessionRow('current-session');
       await current.getByText('Chrome on Android', { exact: true }).waitFor();
-      assert.equal((await current.locator('.preferences-session-desc').textContent()).trim(), 'Current session · Helsinki, 18, FI');
+      assert.equal((await current.locator('.preferences-session-desc').textContent()).trim(), 'Current session');
       await current.getByRole('button', { name: 'Log out', exact: true }).waitFor();
       const firstRow = await page.locator('[data-session-id]').first().getAttribute('data-session-id');
       assert.equal(firstRow, 'current-session');
 
-      // Then a card headed "3 other sessions" with Revoke all, each session with where and when it was last seen.
+      // Then a card headed "3 other sessions" with Revoke all, each session with when it was last seen.
       const othersCard = page.getByRole('region', { name: 'Other sessions' });
       assert.equal((await othersHeading.locator('span').textContent()).trim(), '3 other sessions');
       await othersHeading.getByRole('button', { name: 'Revoke all', exact: true }).waitFor();
       assert.equal(await othersCard.locator('.preferences-sessions-others').count(), 1);
       const desc = async (id) => (await sessionRow(id).locator('.preferences-session-desc').textContent()).trim();
       await sessionRow('linux-session').getByText('Chrome on Linux', { exact: true }).waitFor();
-      assert.equal(await desc('linux-session'), 'Helsinki, 18, FI · Last seen about 14 hours ago');
+      assert.equal(await desc('linux-session'), 'Last seen about 14 hours ago');
       await sessionRow('firefox-session').getByText('Firefox on Linux', { exact: true }).waitFor();
-      assert.equal(await desc('firefox-session'), 'Helsinki, 18, FI · Last seen 2 days ago');
-      // A session whose address can't be placed says only when it was seen.
+      assert.equal(await desc('firefox-session'), 'Last seen 2 days ago');
       await sessionRow('unplaced-session').getByText('Unknown device', { exact: true }).waitFor();
       assert.equal(await desc('unplaced-session'), 'Last seen 4 days ago');
       // Each tile carries the browser's mark; an unknown browser gets a globe.

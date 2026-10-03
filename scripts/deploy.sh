@@ -357,7 +357,6 @@ if ! CHECK_PATH="${APP_DIR}" bash "${SCRIPT_DIR}/check_disk_usage.sh"; then
 fi
 
 echo "[4/8] Building versioned API and web images..."
-bash "${SCRIPT_DIR}/update_geoip.sh" || true
 docker compose build --pull api web
 preserve_legacy_uploads
 

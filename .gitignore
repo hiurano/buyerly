@@ -1,6 +1,3 @@
-# Session location database, downloaded on deploy by scripts/update_geoip.sh
-/geoip/
-
 # Environment & Secrets
 .env
 .env.*

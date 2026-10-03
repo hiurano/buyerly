@@ -26,9 +26,10 @@ interface SessionRowProps {
 }
 
 /**
- * One browser as Linear lists it: its mark, "Chrome on Linux", then
- * "Helsinki, 18, FI · Last seen about 14 hours ago" (this browser: a green
- * "Current session" instead). A click shows the IP address and sign-in date.
+ * One browser as Linear lists it: its mark, "Chrome on Linux", then "Last seen
+ * about 14 hours ago" (this browser: a green "Current session"). Linear also
+ * shows the city; Buyerly will once it sits behind Cloudflare. A click shows
+ * the IP address and sign-in date.
  */
 const SessionRow: React.FC<SessionRowProps> = ({ session, action }) => {
   const [open, setOpen] = useState(false);
@@ -36,9 +37,7 @@ const SessionRow: React.FC<SessionRowProps> = ({ session, action }) => {
   const signedIn = formatSignedIn(session.created_at);
   // Linear wraps only between facts, the dot staying at the end of the line.
   const facts = [
-    session.current ? 'Current session' : '',
-    session.location,
-    session.current ? '' : formatLastSeen(session.last_seen_at),
+    session.current ? 'Current session' : formatLastSeen(session.last_seen_at),
   ].filter(Boolean);
   return (
     <div className="preferences-session" data-session-id={session.id} data-current={session.current}>

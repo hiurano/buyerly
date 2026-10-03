@@ -44,7 +44,7 @@ Production: `https://buyerly.app`.
 | `POST /api/auth/change-password` | `old_password`, `new_password` | меняет пароль; минимум 8 символов |
 | `POST /api/auth/update-profile` | `first_name?`, `last_name?`, `email?`, `avatar_url?`, `full_name?` | обновляет персональные данные профиля |
 | `POST /api/auth/logout` | — | немедленно отзывает текущую web-сессию |
-| `GET /api/auth/sessions` | — | список активных устройств с датами создания, истечения и последней активности, IP-адресом последней активности и местом (`location`, «Helsinki, 18, FI»; пусто, если не определилось) |
+| `GET /api/auth/sessions` | — | список активных устройств с датами создания, истечения и последней активности и IP-адресом последней активности |
 | `DELETE /api/auth/sessions/{session_id}` | — | отзывает выбранную собственную web-сессию |
 | `POST /api/auth/logout-all` | `keep_current?` | отзывает все web-сессии пользователя; с `keep_current=true` текущая остаётся (Revoke all в Settings → Security & access) |
 | `GET /api/me` | — | `username`, `full_name`, `first_name`, `last_name`, `email`, `email_verified`, `unconfirmed_email`, `avatar_url`, `role`, `is_approved`, `active_workspace`, `workspaces` |

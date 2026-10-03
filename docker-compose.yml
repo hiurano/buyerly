@@ -78,7 +78,6 @@ services:
     volumes:
       - ./logs:/app/logs:z
       - buyerly-uploads:/app/uploads
-      - ./geoip:/app/geoip:ro,z
     depends_on:
       migrate:
         condition: service_completed_successfully

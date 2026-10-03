@@ -310,7 +310,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(revoke_all.status_code, 200)
             self.assertEqual((await laptop.get("/api/me")).status_code, 401)
 
-    async def test_sessions_record_the_browser_address_behind_the_proxy_and_its_location(self):
+    async def test_sessions_record_the_browser_address_behind_the_proxy(self):
         password = "browser-session-password"
         async with self.test_session_maker() as session:
             buyer = (
@@ -323,26 +323,21 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         api_auth_module.settings.TRUSTED_PROXY_CIDRS = "127.0.0.1/32"
         transport = httpx.ASGITransport(app=self.app)
         try:
-            with patch(
-                "api.routers.auth.locate",
-                side_effect=lambda ip: "Helsinki, 18, FI" if ip == "203.0.113.10" else "",
-            ):
-                async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
-                    login = await client.post(
-                        "/api/auth/login",
-                        headers={"X-Forwarded-For": "203.0.113.10"},
-                        json={"username": "buyer_nick", "password": password},
-                    )
-                    self.assertEqual(login.status_code, 200)
-                    sessions = (
-                        await client.get("/api/auth/sessions", headers={"X-Forwarded-For": "203.0.113.10"})
-                    ).json()
+            async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
+                login = await client.post(
+                    "/api/auth/login",
+                    headers={"X-Forwarded-For": "203.0.113.10"},
+                    json={"username": "buyer_nick", "password": password},
+                )
+                self.assertEqual(login.status_code, 200)
+                sessions = (
+                    await client.get("/api/auth/sessions", headers={"X-Forwarded-For": "203.0.113.10"})
+                ).json()
         finally:
             api_auth_module.settings.TRUSTED_PROXY_CIDRS = original_proxies
 
         self.assertEqual(len(sessions), 1)
         self.assertEqual(sessions[0]["ip_address"], "203.0.113.10")
-        self.assertEqual(sessions[0]["location"], "Helsinki, 18, FI")
 
     async def test_session_address_follows_the_browser_when_it_is_seen_again(self):
         password = "browser-session-password"
