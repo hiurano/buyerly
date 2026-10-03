@@ -7,6 +7,7 @@ import {
   LinearBoltIcon,
   LinearChartIcon,
 } from '@/icons/LinearIcons';
+import { STATISTICS_ENABLED } from '@/lib/routing';
 import { Tooltip } from '@/ui/Tooltip';
 import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
 import { SidebarBackdrop, useSidebarDrawer } from './SidebarDrawer';
@@ -227,38 +228,40 @@ export const Sidebar: React.FC = () => {
             </button>
           </Tooltip>
 
-          {/* Item 4: Statistics */}
-          <Tooltip content="Go to statistics" shortcut="G S" side="right" sideOffset={8}>
-            <button
-              type="button"
-              onClick={() => setActiveTab('statistics')}
-              data-active={activeTab === 'statistics' ? 'true' : 'false'}
-              className="linear-sidebar-nav-item"
-            >
-              <div className="flex items-center min-w-0">
-                <span
-                  style={{
-                    width: '16px',
-                    height: '16px',
-                    marginRight: '8px',
-                  }}
-                  className="flex shrink-0 items-center justify-center"
-                >
-                  <LinearChartIcon size={14} />
-                </span>
-                <span
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    letterSpacing: '-0.1px',
-                  }}
-                  className="truncate"
-                >
-                  Statistics
-                </span>
-              </div>
-            </button>
-          </Tooltip>
+          {/* Item 4: Statistics, switched off for now */}
+          {STATISTICS_ENABLED && (
+            <Tooltip content="Go to statistics" shortcut="G S" side="right" sideOffset={8}>
+              <button
+                type="button"
+                onClick={() => setActiveTab('statistics')}
+                data-active={activeTab === 'statistics' ? 'true' : 'false'}
+                className="linear-sidebar-nav-item"
+              >
+                <div className="flex items-center min-w-0">
+                  <span
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      marginRight: '8px',
+                    }}
+                    className="flex shrink-0 items-center justify-center"
+                  >
+                    <LinearChartIcon size={14} />
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      letterSpacing: '-0.1px',
+                    }}
+                    className="truncate"
+                  >
+                    Statistics
+                  </span>
+                </div>
+              </button>
+            </Tooltip>
+          )}
         </div>
 
         <SidebarUtilityFooter />

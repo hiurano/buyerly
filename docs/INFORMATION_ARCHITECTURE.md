@@ -11,7 +11,7 @@ Buyerly использует workspace-first URL без технического
 | Увидеть, что требует внимания | Inbox | Уведомления, состояние и быстрые действия |
 | Управлять рекламной структурой | Ads Manager | Campaigns, Ad sets и Ads |
 | Настроить повторяемое действие | Rules | Правила, группы и назначения |
-| Понять результат | Statistics | Метрики и динамика |
+| Понять результат | Statistics (временно выключен) | Метрики и динамика |
 | Изменить параметры продукта | Settings | Профиль, workspace и интерфейс |
 
 ## Навигация
@@ -21,7 +21,7 @@ Buyerly использует workspace-first URL без технического
 1. Inbox
 2. Ads Manager
 3. Rules
-4. Statistics
+4. Statistics — временно выключен (`STATISTICS_ENABLED` в `frontend/src/lib/routing.ts`): пункта в сайдбаре нет, адрес открывает Not found
 5. Settings
 
 Внутри Ads Manager тип сущности является частью URL, поэтому ссылку на список
@@ -44,7 +44,7 @@ Buyerly использует workspace-first URL без технического
 | Конкретная рекламная сущность | `/{workspace}/ads-manager/{entityType}/{entityId}` |
 | Rules | `/{workspace}/rules` |
 | Правило | `/{workspace}/rules/{ruleId}` |
-| Statistics | `/{workspace}/statistics` |
+| Statistics (временно выключен) | `/{workspace}/statistics` |
 | Settings | `/{workspace}/settings` |
 
 Открытие `/{workspace}` канонизируется клиентом в `/{workspace}/inbox`.
