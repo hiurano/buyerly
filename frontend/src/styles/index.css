@@ -2891,31 +2891,8 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   font-weight: 500;
 }
 
-.preferences-session-button {
-  height: 28px;
-  padding: 0 12px;
-  flex-shrink: 0;
-  border: 0;
-  border-radius: 9999px;
-  background: transparent;
-  color: var(--text-primary);
-  font-family: var(--font-regular);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 150ms ease, opacity 150ms ease;
-}
-
-.preferences-session-button:hover {
-  background: var(--item-hover-bg);
-}
-
-.preferences-session-button:focus-visible {
-  outline: 2px solid var(--focus-ring-color);
-  outline-offset: 1px;
-}
-
-/* Linear shows Revoke on hover; a touch screen has no hover, so there it stays visible. */
+/* Linear shows Revoke on hover; a touch screen has no hover, so there it stays visible.
+   The buttons themselves are Connected accounts' borderless pills. */
 @media (hover: hover) {
   .preferences-session-button--on-hover {
     opacity: 0;
@@ -2925,6 +2902,11 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   .preferences-session-button--on-hover:focus-visible {
     opacity: 1;
   }
+}
+
+/* Two classes, so this wins over the pill's own transition defined below. */
+.preferences-connect-button.preferences-session-button--on-hover {
+  transition: background-color 150ms ease, opacity 150ms ease;
 }
 
 /* Settings → Connected accounts, measured in Linear: icon tile, 12px gap, title and

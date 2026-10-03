@@ -166,7 +166,7 @@ export const SecuritySection: React.FC = () => {
                   key={session.id}
                   session={session}
                   action={(
-                    <button type="button" className="preferences-session-button" onClick={() => void logOut()}>
+                    <button type="button" className="preferences-connect-button" onClick={() => void logOut()}>
                       Log out
                     </button>
                   )}
@@ -179,7 +179,7 @@ export const SecuritySection: React.FC = () => {
             <section className="preferences-card-container preferences-sessions-card" aria-label="Other sessions">
               <div className="preferences-sessions-others">
                 <span>{others.length === 1 ? '1 other session' : `${others.length} other sessions`}</span>
-                <button type="button" className="preferences-session-button" onClick={() => void revokeAll()}>
+                <button type="button" className="preferences-connect-button" onClick={() => void revokeAll()}>
                   Revoke all
                 </button>
               </div>
@@ -190,7 +190,7 @@ export const SecuritySection: React.FC = () => {
                   action={(
                     <button
                       type="button"
-                      className="preferences-session-button preferences-session-button--on-hover"
+                      className="preferences-connect-button preferences-session-button--on-hover"
                       aria-label={`Revoke ${describeUserAgent(session.user_agent)}, ${formatLastSeen(session.last_seen_at).toLowerCase()}`}
                       onClick={() => void revoke(session)}
                     >

@@ -50,6 +50,8 @@ const initialSessions = () => [
 // The phone has no hover, so Revoke must be visible without it.
 const scenarios = [
   { width: 1440, touch: false, entry: 'nav' },
+  { width: 1024, touch: false, entry: 'nav' },
+  { width: 768, touch: false, entry: 'address' },
   { width: 390, touch: true, entry: 'address' },
 ];
 
@@ -165,7 +167,7 @@ try {
         assert.equal(await opacity(), '0');
         await sessionRow('linux-session').hover();
         await page.waitForFunction(() => getComputedStyle(
-          document.querySelector('[data-session-id="linux-session"] .preferences-session-button'),
+          document.querySelector('[data-session-id="linux-session"] .preferences-session-button--on-hover'),
         ).opacity === '1');
       }
       await assertNoOverflow();
