@@ -56,6 +56,8 @@ Implemented shared primitives:
 | DataList | `LinearDataList` | loading, empty, populated, partial/error |
 | DataTable | `LinearDataTable`, `LinearDataPrimaryCell`, `LinearDataMetricCell` | sortable header, horizontal scroll, grouped and flat rows |
 | Selection | `useRowSelection`, `SelectionDock`, `SelectionCommandMenu` | hover-revealed checkbox, X / Ctrl+A / Esc, dock over the list, Ctrl+K actions menu, Ctrl+Delete where deleting is offered |
+| Command menu | `COMMAND_MENU_CLASSES` (with `SelectionCommandMenu`) | one panel, field, group, row and note for Search workspace and the selection's actions; selected row, searching, nothing found and failure |
+| Record reveal | `useRevealRow` | the row an address names is scrolled into view and focused; a filter, tab or collapsed group hiding it is cleared; a missing record is an error toast |
 | Toast | `ToastRegion`, `toast` | success (deletion), undo, redo, error; auto-dismiss after 8s unless hovered or focused; errors stay until dismissed |
 | ConfirmDialog | `ConfirmDialog` | question, consequence, Cancel and a focused confirming button; Enter confirms, Esc cancels |
 | Checkbox | `LinearCheckbox` | unchecked, checked, focus, disabled |
@@ -146,6 +148,17 @@ first screen only by causing a frequent decision.
 - **Ad accounts** is where an ad account declares the conversion event it is buying and the cost target for it. Clearing the declared result clears the target with it, because a cost target without the event it applies to cannot be interpreted;
 - the target is stored and shown in the ad account's own currency, and is never converted between currencies;
 - secrets and full access tokens are never display data.
+
+### Search workspace
+
+Linear's command menu, opened by the sidebar's Search button, `/` outside a text field, or Ctrl/Cmd+K from anywhere.
+
+- it promises only what it can do: Go to Inbox, Ads Manager, Rules and Settings and Create rule…, filtered by what is typed, and a search of the workspace in the address;
+- the search covers campaigns, ad sets and ads of today's inventory — the one Ads Manager shows — rules, and the ad accounts Ads Manager opens; the empty field says exactly that, and nothing else (Inbox, members, rule groups) is implied;
+- searching, nothing found and a failure are separate states in words; a failure offers Retry search, and a kind with more matches than shown is headed "first 5";
+- a result opens on its own row through the record's address (`/ads-manager/{level}/{id}?account=…`, `/rules/{id}`); a filter, tab or collapsed group hiding it is cleared, and a record the list cannot show is reported;
+- Esc closes it and returns focus to what had it; Ctrl/Cmd+K again closes it too. With rows selected, Ctrl/Cmd+K stays the selection's actions menu;
+- `/` typed into an input, textarea, select or rich text stays text, and neither shortcut fires while another dialog or menu is open.
 
 ### Auth and onboarding
 
