@@ -43,6 +43,8 @@ export const RuleCard: React.FC<RuleCardProps> = ({
         <div
           role="button"
           tabIndex={0}
+          // The board's card is the rule's row: a search result or link opens it here.
+          data-row-id={rule.id}
           onClick={onSelect}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {

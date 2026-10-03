@@ -36,6 +36,8 @@ function activeWorkspace(user: SessionUser): Workspace | null {
 
 interface WorkspaceApplicationProps {
   route: Extract<Route, { kind: 'workspace' }>;
+  /** Changes on every navigation, Back and Forward included. */
+  navigationKey: number;
   workspace: Workspace;
   user: SessionUser;
   navigate: (path: string, replace?: boolean) => void;
@@ -44,6 +46,7 @@ interface WorkspaceApplicationProps {
 
 const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   route,
+  navigationKey,
   workspace,
   user,
   navigate,
@@ -223,11 +226,23 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
                     )}
                   />
                 )}
-                {activeTab === 'campaigns' && <CampaignsView />}
-                {activeTab === 'rules' && <RulesView />}
+                {activeTab === 'campaigns' && (
+                  <CampaignsView
+                    reveal={route.tab === 'campaigns' && route.entity && route.recordId
+                      ? { entity: route.entity, id: route.recordId }
+                      : undefined}
+                    navigationKey={navigationKey}
+                  />
+                )}
+                {activeTab === 'rules' && (
+                  <RulesView
+                    revealId={route.tab === 'rules' ? route.recordId : undefined}
+                    navigationKey={navigationKey}
+                  />
+                )}
                 {STATISTICS_ENABLED && activeTab === 'statistics' && <StatisticsView />}
               </main>
-              <CommandMenu />
+              <CommandMenu workspace={workspace} navigate={navigate} />
             </>
           )}
           <AppUtilityBar />
@@ -436,6 +451,7 @@ export const App: React.FC = () => {
     <WorkspaceApplication
       key={desiredScope}
       route={route}
+      navigationKey={locationVersion}
       workspace={routeWorkspace}
       user={user}
       navigate={navigate}

@@ -23,7 +23,8 @@ function readFilters(): Filters {
   return result;
 }
 
-export function useCampaignViewFilters(scope: string) {
+/** `navigationKey` changes on every navigation, Back and Forward included. */
+export function useCampaignViewFilters(scope: string, navigationKey: number) {
   const [filters, setFilters] = useState(readFilters);
   const [quickState, setQuickState] = useState<{ scope: string; selection: QuickSelection | null } | null>(null);
   const key = `buyerly:quick-filter:${scope}`;
@@ -39,11 +40,11 @@ export function useCampaignViewFilters(scope: string) {
     setQuickState({ scope, selection });
     try { sessionStorage.setItem(key, JSON.stringify(selection)); } catch { /* Storage is optional. */ }
   };
+  // An address carries its filters: a link without any, such as a search
+  // result, opens the list unfiltered.
   useEffect(() => {
-    const onPopState = () => setFilters(readFilters());
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, []);
+    setFilters(readFilters());
+  }, [navigationKey]);
   const updateFilters = (entity: AdsManagerEntity, clauses: FilterClause[]) => {
     const next = { ...filters, [entity]: clauses };
     setFilters(next);
