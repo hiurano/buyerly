@@ -1,6 +1,9 @@
 // Exercise the real App with a synthetic API: Linear's command menu (#190,
-// #310). Ctrl/Cmd+K opens commands from anywhere, searches nothing, closes on
-// Esc with focus given back, and leaves a row selection its own actions menu.
+// #310, #311). Ctrl/Cmd+K opens from anywhere with no dimmed backdrop: the
+// page's own group, then everyone's in a fixed order, each with its keys;
+// letters match in order, and from two letters "Quick results" come from
+// GET /api/search. Esc closes it with focus given back, and a row selection
+// keeps its own actions menu. G then a letter does what the hints say (#306).
 // `/` stays text in a field and outside one opens the search page, which
 // scripts/search-page-browser.mjs checks.
 import assert from 'node:assert/strict';
@@ -90,8 +93,16 @@ try {
         return route.fulfill({ status: 404, json: { detail: 'Unexpected test request' } });
       }
       if (path === '/api/search') {
-        searches.push(url.searchParams.get('q'));
-        return route.fulfill({ json: { query: url.searchParams.get('q'), limit: 20, results: [], truncated: [] } });
+        const q = url.searchParams.get('q');
+        searches.push(q);
+        // Only "test" finds anything: one campaign, so a quick result can be opened.
+        const results = q === 'test'
+          ? [{
+            kind: 'campaign', id: '120045', name: 'Test Campaign', account_id: 'act_1001', account_name: 'Leads account',
+            parent_name: '', status: 'ACTIVE', updated_at: '2026-10-01T08:00:00Z',
+          }]
+          : [];
+        return route.fulfill({ json: { query: q, limit: 20, results, truncated: [] } });
       }
       if (path === '/api/me') return route.fulfill({ json: me });
       if (path === '/api/accounts') return route.fulfill({ json: accounts });
@@ -115,7 +126,14 @@ try {
 
     const commands = page.getByRole('dialog', { name: 'Command menu' });
     const commandField = commands.getByRole('combobox');
-    const commandTexts = async () => (await commands.getByRole('option').allInnerTexts()).map((text) => text.replace(/\s+/g, ' ').trim());
+    // Each row's label, and its keys as read aloud: "Go to rules · G then R".
+    const commandTexts = async () => commands.getByRole('option').evaluateAll((options) => options.map((option) => {
+      const label = option.getAttribute('aria-label') ?? '';
+      const keys = option.querySelector('[aria-label]')?.getAttribute('aria-label');
+      return keys ? `${label} · ${keys}` : label;
+    }));
+    const headings = () => commands.locator('[cmdk-group-heading]').allInnerTexts();
+    const wide = width > 880;
     const closed = () => commands.waitFor({ state: 'detached' });
     const waitForFocus = (expected) => page.waitForFunction((value) => {
       const element = document.activeElement;
@@ -156,14 +174,25 @@ try {
       await page.keyboard.press('Escape');
       await filterField.waitFor({ state: 'detached' });
 
-      // 2. Ctrl/Cmd+K opens commands from a text field too; pressed again it closes and focus returns.
+      // 2. Ctrl/Cmd+K opens commands from a text field too, with nothing dimmed behind:
+      //    the page's group first, then everyone's, each with its keys. Pressed again it closes.
       await page.locator('#probe-textarea').focus();
       await page.keyboard.press('Control+K');
       await commandField.waitFor();
-      assert.equal(await commandField.getAttribute('placeholder'), 'Type a command…');
+      assert.equal(await commandField.getAttribute('placeholder'), 'Type a command or search…');
+      assert.deepEqual(await headings(), ['Notifications', 'Rules', 'Filter', 'Navigation']);
       assert.deepEqual(await commandTexts(), [
-        'Search workspace…', 'Go to Inbox', 'Go to Ads Manager', 'Go to Rules', 'Go to Settings', 'Create rule…',
+        'Delete all notifications', 'Delete all read notifications · ⇧ ⌫', 'Create rule…', 'Search workspace…',
+        // Linear leaves out Go to inbox on Inbox itself.
+        'Go to advanced search · /', 'Go to Ads Manager · G then A', 'Go to rules · G then R', 'Go to settings · G then S',
+        ...(wide ? ['Collapse navigation sidebar · ['] : []),
       ]);
+      assert.equal(await page.evaluate(() => [...document.querySelectorAll('body *')].some((element) => {
+        const style = getComputedStyle(element);
+        const box = element.getBoundingClientRect();
+        return style.position === 'fixed' && box.width >= innerWidth && box.height >= innerHeight
+          && style.backgroundColor !== 'rgba(0, 0, 0, 0)';
+      })), false, 'nothing dims the page behind the menu');
       await assertNoOverflow('command menu');
       await page.screenshot({ path: `${output}/commands-${width}.png` });
       await page.waitForFunction(() => document.activeElement?.hasAttribute('cmdk-input'));
@@ -207,15 +236,25 @@ try {
       await page.keyboard.press('Escape');
       await page.getByRole('toolbar', { name: '1 selected' }).waitFor({ state: 'detached' });
 
-      // 5. Commands are filtered by what is typed, search nothing and lead where they say.
+      // 5. Letters match in order; from two letters "Quick results" follow, here empty.
+      const noResults = 'No results found, go to advanced search';
       await page.keyboard.press('Control+K');
+      await commandField.fill('i');
+      await commands.getByRole('option', { name: 'Go to inbox' }).waitFor();
+      assert.equal(await commands.getByText(/^Quick results/).count(), 0, 'one letter only filters commands');
       await commandField.fill('inbox');
-      await commands.getByRole('option', { name: 'Go to Inbox' }).waitFor();
-      assert.deepEqual(await commandTexts(), ['Go to Inbox']);
+      await commands.getByRole('option', { name: noResults }).waitFor();
+      assert.deepEqual(await commandTexts(), ['Go to inbox · G then I', noResults]);
+      await commandField.fill('gtset');
+      await commands.getByRole('option', { name: 'Go to settings' }).waitFor();
+      await commands.getByRole('option', { name: noResults }).waitFor();
+      assert.deepEqual(await commandTexts(), ['Go to settings · G then S', noResults]);
       await commandField.fill('zzz');
-      await commands.getByText('No commands match “zzz”.', { exact: true }).waitFor();
+      await commands.getByText('Quick results for "zzz"', { exact: true }).waitFor();
+      await commands.getByRole('option', { name: noResults }).waitFor();
+      assert.deepEqual(await commandTexts(), [noResults]);
       await commandField.fill('inbox');
-      await commands.getByRole('option', { name: 'Go to Inbox' }).waitFor();
+      await commands.getByRole('option', { name: 'Go to inbox' }).waitFor();
       await page.keyboard.press('Enter');
       await page.waitForURL(`${origin}/alpha/inbox`);
       await page.keyboard.press('Control+K');
@@ -227,9 +266,55 @@ try {
       await page.keyboard.press('Escape');
       await page.getByRole('dialog', { name: 'New rule' }).waitFor({ state: 'detached' });
 
-      assert.deepEqual(searches, [], 'the command menu searches nothing');
+      // 6. A quick result opens its record; Ctrl+/ and the footer open the search page with the words.
+      await page.keyboard.press('Control+K');
+      await commandField.waitFor();
+      assert.deepEqual((await commandTexts()).slice(0, 1), ['Create rule… · C'], 'C creates a rule on the Rules page');
+      await commandField.fill('test');
+      const testCampaign = commands.getByRole('option', { name: 'Campaign Test Campaign, Leads account' });
+      await testCampaign.waitFor();
+      assert.deepEqual(await commandTexts(), ['Campaign Test Campaign, Leads account', 'Search entire workspace test']);
+      await commands.getByText('Quick results for "test"', { exact: true }).waitFor();
+      await commands.getByRole('button', { name: /Advanced search/ }).waitFor();
+      await commands.getByText('Open', { exact: true }).waitFor();
+      await page.screenshot({ path: `${output}/quick-results-${width}.png` });
+      await page.keyboard.press('Enter');
+      await closed();
+      await page.waitForURL(`${origin}/alpha/ads-manager/campaigns/120045?account=act_1001`);
+      await page.keyboard.press('Control+K');
+      await commandField.fill('test');
+      await testCampaign.waitFor();
+      await page.keyboard.press('Control+/');
+      await closed();
+      await page.waitForURL(`${origin}/alpha/search?q=test`);
+      await page.goto(`${origin}/alpha/inbox`);
+      await page.getByText('No notifications', { exact: true }).waitFor();
+      await page.keyboard.press('Control+K');
+      await commandField.fill('zzz');
+      await commands.getByRole('option', { name: noResults }).waitFor();
+      await commands.getByRole('button', { name: /Advanced search/ }).click();
+      await closed();
+      await page.waitForURL(`${origin}/alpha/search?q=zzz`);
+
+      // 7. G then a letter does what the hints say (#306): G A, G R, G S, G I; Statistics is off, so G T does nothing.
+      await page.goto(`${origin}/alpha/inbox`);
+      await page.getByText('No notifications', { exact: true }).waitFor();
+      const goTo = [['a', /\/alpha\/ads-manager\/campaigns/], ['r', /\/alpha\/rules$/], ['s', /\/alpha\/settings/], ['i', /\/alpha\/inbox$/]];
+      for (const [letter, address] of goTo) {
+        await page.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined));
+        await page.keyboard.press('g');
+        await page.keyboard.press(letter);
+        await page.waitForURL(address);
+      }
+      await page.keyboard.press('g');
+      await page.keyboard.press('t');
+      await page.waitForTimeout(300);
+      assert.equal(new URL(page.url()).pathname, '/alpha/inbox', 'G T opens nothing while Statistics is off');
+
+      assert.ok(searches.includes('test') && searches.includes('zzz'), 'quick results asked GET /api/search');
+      assert.ok(searches.every((query) => query.length >= 2), `quick results wait for two letters: ${searches}`);
       assert.deepEqual(errors, []);
-      console.log(`Command menu: / in fields, Ctrl/Cmd+K, Search workspace… and commands passed at ${width}px`);
+      console.log(`Command menu: / in fields, Ctrl/Cmd+K groups and keys, letter matching, quick results and G shortcuts passed at ${width}px`);
     } catch (error) {
       await page.screenshot({ path: `${output}/failure-${width}.png`, fullPage: true });
       console.error(errors);
