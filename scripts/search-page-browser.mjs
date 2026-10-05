@@ -341,6 +341,8 @@ try {
       await page.getByRole('button', { name: 'Add another filter' }).first().click();
       const filterField = page.getByRole('searchbox', { name: 'Add Filter…' });
       await filterField.waitFor();
+      // The menu focuses its field a moment after it opens; its Esc is the field's.
+      await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Add Filter…');
       await page.keyboard.press('Escape');
       await filterField.waitFor({ state: 'detached' });
       assert.equal(new URL(page.url()).pathname, '/alpha/search', 'Esc in the filter menu stays on search');
