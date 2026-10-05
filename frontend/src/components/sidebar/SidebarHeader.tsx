@@ -4,7 +4,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { Tooltip } from '@/ui/Tooltip';
 import { BuyerlyLogoAvatar, LinearCheckIcon } from '@/icons/LinearIcons';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
-import { openCommandMenu } from '@/components/command/CommandMenu';
+import { openSearchPage } from '@/components/search/openSearchPage';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import {
   DropdownMenu,
@@ -232,7 +232,7 @@ export const SidebarHeader: React.FC = () => {
           <Tooltip content="Search workspace" shortcut="/">
             <button
               type="button"
-              onClick={() => openCommandMenu('search')}
+              onClick={openSearchPage}
               aria-label="Search workspace"
               className="linear-icon-btn"
             >

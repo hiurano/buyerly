@@ -888,43 +888,67 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertIn(contract, self.audit_lib)
         self.assertIn("auditEventSummary(item)", self.inbox_item_row)
 
-    def test_search_workspace_promises_only_what_it_finds_and_opens(self):
-        """#190: the menu searched nothing, ignored Esc and swallowed `/` typed into fields."""
+    def test_search_page_promises_only_what_it_finds_and_opens(self):
+        """#310: search is Linear's page, not a menu; Ctrl/Cmd+K runs commands and searches nothing."""
         src = ROOT / "frontend" / "src"
         menu = (src / "components" / "command" / "CommandMenu.tsx").read_text()
+        page = (src / "components" / "search" / "SearchView.tsx").read_text()
+        opener = (src / "components" / "search" / "openSearchPage.ts").read_text()
         search = (src / "lib" / "search.ts").read_text()
+        routing = (src / "lib" / "routing.ts").read_text()
         reveal = (src / "ui" / "useRevealRow.ts").read_text()
         header = (src / "components" / "sidebar" / "SidebarHeader.tsx").read_text()
         workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
 
-        # A real source scoped by the address, with its states in words.
-        self.assertIn("/api/search?q=", search)
-        self.assertIn("searchWorkspace(text, controller.signal)", menu)
+        # A page with its own address, its query and tab in it, and the tab title Linear gives it.
+        self.assertIn("parts[1] === 'search'", routing)
+        self.assertIn("return `/${workspace}/search", search)
+        for key in ("'q'", "'type'", "'status'", "'account'", "'order'", "'includeDeleted'"):
+            self.assertIn(key, search)
+        self.assertIn("Search: ${query}", search)
+        self.assertIn("searchPageTitle(window.location.search)", self.app)
+        self.assertIn("<SearchView workspace={workspace}", self.app)
+
+        # A real source scoped by the address, asked on Enter, with its states in words.
+        self.assertIn("/api/search?", search)
+        self.assertIn("searchWorkspace(applied, controller.signal)", page)
+        self.assertIn("onSubmit={(event) => {", page)
         for state in (
-            "Search campaigns, ad sets, ads, rules and ad accounts in",
-            "Searching ${scope}…",
-            "Couldn't search ${scope}.",
-            "No campaigns, ad sets, ads, rules or ad accounts in",
+            "Recent searches",
+            "Clear History",
+            "Find campaigns, ad sets, ads, rules and ad accounts.",
+            "Searching ${workspace.name}…",
+            "Couldn't search ${workspace.name}.",
+            'No results found for "${current.response.query}"',
             "Retry search",
+            "Most relevant",
+            "Last updated",
+            "Include deleted",
+            "Add Filter…",
         ):
-            self.assertIn(state, menu)
-        self.assertNotIn("No results found.", menu)
+            self.assertIn(state, page)
+        for tab in ("'All'", "'Campaigns'", "'Ad sets'", "'Ads'", "'Rules'", "'Ad accounts'"):
+            self.assertIn(tab, search)
         # Every result opens somewhere: its record's address.
-        self.assertIn("searchResultPath(slug, result)", menu)
+        self.assertIn("searchResultPath(slug, result)", page)
         for path in ("/ads-manager/", "/rules/", "?account="):
             self.assertIn(path, search)
+        # The first Esc closes the preview, the second goes back where search was opened from.
+        self.assertIn("if (previewOpen) setPreviewOpen(false);", page)
+        self.assertIn("takeSearchReturnPath()", page)
+        self.assertIn("rememberSearchReturnPath(", opener)
 
-        # Esc is the dialog's own dismissal; focus goes back to what opened it.
-        self.assertIn("<Dialog.Root open={open} onOpenChange={(next) => setSearchOpen(next)}>", menu)
+        # `/` and the sidebar open the page; the old search window is gone.
+        self.assertIn("onClick={openSearchPage}", header)
+        self.assertIn("openSearchPage();", menu)
+        self.assertNotIn("searchWorkspace", menu)
+        self.assertNotIn("mode === 'search'", menu)
+        self.assertIn("'Search workspace…'", menu)
+
+        # Esc is the command menu's own dismissal; focus goes back to what opened it.
+        self.assertIn("<Dialog.Root open={open} onOpenChange={(next) => setCommandMenuOpen(next)}>", menu)
         self.assertIn("onCloseAutoFocus", menu)
         self.assertIn("returnFocusTo", menu)
-        self.assertIn("onClick={() => openCommandMenu('search')}", header)
-        # As in Linear: `/` searches, Ctrl/Cmd+K opens commands that search nothing.
-        self.assertIn("openCommandMenu('commands')", menu)
-        self.assertIn("openCommandMenu('search')", menu)
-        self.assertIn("mode !== 'search'", menu)
-        self.assertNotIn("first ${response.limit}", menu)
-        self.assertNotIn("setSearchOpen(true)", header)
 
         # `/` is text in a field; Ctrl/Cmd+K works anywhere but leaves a selection its menu.
         self.assertIn("isTypingTarget(event.target)", menu)
@@ -941,6 +965,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("navigationKey={locationVersion}", self.app)
         self.assertIn("data-row-id={rule.id}", self.rule_card)
         self.assertIn("node ../scripts/command-menu-browser.mjs", workflow)
+        self.assertIn("node ../scripts/search-page-browser.mjs", workflow)
 
 
 if __name__ == "__main__":

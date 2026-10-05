@@ -1,19 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Command } from 'cmdk';
-import { Image as ImageIcon, Layers, Megaphone, RotateCcw, Settings, Wallet } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { pathForTab, STATISTICS_ENABLED } from '@/lib/routing';
-import {
-  SEARCH_KINDS,
-  searchResultPath,
-  searchWorkspace,
-  type SearchKind,
-  type SearchResponse,
-  type SearchResult,
-} from '@/lib/search';
 import type { Workspace } from '@/lib/types';
-import { humanizeMetaStatus } from '@/components/campaigns/liveCampaigns';
+import { openSearchPage } from '@/components/search/openSearchPage';
 import { COMMAND_MENU_CLASSES } from '@/ui/SelectionCommandMenu';
 import {
   LinearBoltIcon,
@@ -24,9 +16,6 @@ import {
   LinearSearchIcon,
 } from '@/icons/LinearIcons';
 
-/** Pause after the last keystroke before the workspace is asked. */
-const SEARCH_DELAY_MS = 200;
-
 /** Something else holds the keyboard while it is open: a dialog, a menu, another palette. */
 const OPEN_LAYER_SELECTOR = [
   '[role="dialog"]:not(.linear-menu-exit)',
@@ -35,7 +24,7 @@ const OPEN_LAYER_SELECTOR = [
   '[cmdk-root]',
 ].join(', ');
 
-/** Inputs that take no typed text, so `/` on them still opens the menu. */
+/** Inputs that take no typed text, so `/` on them still opens search. */
 const NON_TEXT_INPUTS = new Set(['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'color', 'file', 'image']);
 
 /** `/` typed into a field is text, never a shortcut. */
@@ -49,16 +38,13 @@ function isTypingTarget(target: EventTarget | null): boolean {
 /** What had focus when the menu opened; it gets focus back unless a choice moves it on. */
 let returnFocusTo: HTMLElement | null = null;
 
-/**
- * Opens search (`/`, the sidebar's Search button) or the command menu
- * (Ctrl/Cmd+K), remembering where focus goes back to.
- */
-export function openCommandMenu(mode: 'search' | 'commands' = 'search'): void {
+/** Opens the command menu (Ctrl/Cmd+K), remembering where focus goes back to. */
+export function openCommandMenu(): void {
   const store = useAppStore.getState();
-  if (store.isSearchOpen) return;
+  if (store.isCommandMenuOpen) return;
   const active = document.activeElement;
   returnFocusTo = active instanceof HTMLElement && active !== document.body ? active : null;
-  store.setSearchOpen(true, mode);
+  store.setCommandMenuOpen(true);
 }
 
 interface CommandMenuProps {
@@ -68,16 +54,13 @@ interface CommandMenuProps {
 }
 
 /**
- * Linear's two menus in one dialog. Search — the sidebar's Search button or
- * `/` outside a text field — finds this workspace's campaigns, ad sets, ads,
- * rules and ad accounts through GET /api/search. The command menu —
- * Ctrl/Cmd+K from anywhere — runs commands and searches nothing. Esc closes
- * either and gives focus back to what had it.
+ * Linear's command menu — Ctrl/Cmd+K from anywhere — runs commands and
+ * searches nothing; Esc closes it and gives focus back to what had it. It also
+ * owns `/` outside a text field, which opens the search page.
  */
 export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate }) => {
-  const open = useAppStore((state) => state.isSearchOpen);
-  const mode = useAppStore((state) => state.searchMode);
-  const setSearchOpen = useAppStore((state) => state.setSearchOpen);
+  const open = useAppStore((state) => state.isCommandMenuOpen);
+  const setCommandMenuOpen = useAppStore((state) => state.setCommandMenuOpen);
   // A choice moves focus to its destination; only a dismissal gives it back.
   const choiceMade = useRef(false);
 
@@ -85,39 +68,39 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
     const onKeyDown = (event: KeyboardEvent) => {
       // A row selection runs Ctrl/Cmd+K for its own actions first and stops it.
       if (event.defaultPrevented || event.isComposing) return;
-      const isOpen = useAppStore.getState().isSearchOpen;
+      const isOpen = useAppStore.getState().isCommandMenuOpen;
       const modified = event.ctrlKey || event.metaKey;
       if (modified && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'k') {
         // From a text field too, as in Linear; pressed again, it closes the menu.
         if (isOpen) {
           event.preventDefault();
-          setSearchOpen(false);
+          setCommandMenuOpen(false);
         } else if (!document.querySelector(OPEN_LAYER_SELECTOR)) {
           event.preventDefault();
-          openCommandMenu('commands');
+          openCommandMenu();
         }
         return;
       }
       if (event.key !== '/' || modified || event.altKey || isOpen) return;
       if (isTypingTarget(event.target) || document.querySelector(OPEN_LAYER_SELECTOR)) return;
       event.preventDefault();
-      openCommandMenu('search');
+      openSearchPage();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [setSearchOpen]);
+  }, [setCommandMenuOpen]);
 
   // Settings renders no menu: one still open when this unmounts must not reopen on the way back.
-  useEffect(() => () => setSearchOpen(false), [setSearchOpen]);
+  useEffect(() => () => setCommandMenuOpen(false), [setCommandMenuOpen]);
 
   const choose = (action: () => void) => {
     choiceMade.current = true;
-    setSearchOpen(false);
+    setCommandMenuOpen(false);
     action();
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={(next) => setSearchOpen(next)}>
+    <Dialog.Root open={open} onOpenChange={(next) => setCommandMenuOpen(next)}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[var(--layer-command-menu)] bg-[var(--modal-overlay-bg)]" />
         <Dialog.Content
@@ -135,8 +118,8 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
           }}
           className={`fixed inset-x-4 top-[13vh] z-[var(--layer-command-menu)] mx-auto max-w-[720px] outline-none ${COMMAND_MENU_CLASSES.surface}`}
         >
-          <Dialog.Title className="sr-only">{mode === 'search' ? 'Search workspace' : 'Command menu'}</Dialog.Title>
-          <CommandPalette mode={mode} workspace={workspace} navigate={navigate} choose={choose} />
+          <Dialog.Title className="sr-only">Command menu</Dialog.Title>
+          <CommandPalette workspace={workspace} navigate={navigate} choose={choose} />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -152,89 +135,25 @@ interface PaletteCommand {
   run: () => void;
 }
 
-/** The answer on screen always belongs to the text in the field, never to an earlier one. */
-type SearchState =
-  | { status: 'loading'; query: string }
-  | { status: 'ready'; query: string; response: SearchResponse }
-  | { status: 'error'; query: string; message: string };
-
-const KIND_ICONS: Record<SearchKind, React.ReactNode> = {
-  campaign: <Megaphone size={14} strokeWidth={1.75} />,
-  adset: <Layers size={14} strokeWidth={1.75} />,
-  ad: <ImageIcon size={14} strokeWidth={1.75} />,
-  rule: <LinearBoltIcon size={14} />,
-  account: <Wallet size={14} strokeWidth={1.75} />,
-};
-
-const RULE_STATUS_LABELS: Record<string, string> = {
-  active: 'Active',
-  paused: 'Paused',
-  needs_review: 'Needs review',
-};
-
-/** The line under a result's name: where it lives. */
-function resultContext(result: SearchResult): string {
-  if (result.kind === 'account') return result.id;
-  if (result.kind === 'rule') return '';
-  return [result.parent_name, result.account_name].filter(Boolean).join(' · ');
-}
-
-/** Delivery or run state in words, never by colour alone. */
-function resultStatus(result: SearchResult): string {
-  if (result.kind === 'account' || !result.status) return '';
-  if (result.kind === 'rule') return RULE_STATUS_LABELS[result.status] ?? '';
-  return humanizeMetaStatus(result.status);
-}
-
 interface CommandPaletteProps {
-  mode: 'search' | 'commands';
   workspace: Workspace;
   navigate: (path: string, replace?: boolean) => void;
   choose: (action: () => void) => void;
 }
 
 /** The menu's content, mounted on every open so it starts empty. */
-const CommandPalette: React.FC<CommandPaletteProps> = ({ mode, workspace, navigate, choose }) => {
+const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, choose }) => {
   const campaignFilterTab = useAppStore((state) => state.campaignFilterTab);
   const openCreateRuleModal = useAppStore((state) => state.openCreateRuleModal);
   const [query, setQuery] = useState('');
-  const [search, setSearch] = useState<SearchState | null>(null);
-  const [attempt, setAttempt] = useState(0);
   const text = query.trim();
-
-  useEffect(() => {
-    if (!text || mode !== 'search') return undefined;
-    setSearch({ status: 'loading', query: text });
-    const controller = new AbortController();
-    const inScope = useAppStore.getState().captureScope();
-    const timer = window.setTimeout(() => {
-      searchWorkspace(text, controller.signal)
-        .then((response) => {
-          if (!controller.signal.aborted && inScope()) setSearch({ status: 'ready', query: text, response });
-        })
-        .catch((error: unknown) => {
-          if (controller.signal.aborted || !inScope()) return;
-          const message = error instanceof Error && error.message ? error.message : 'Something went wrong.';
-          setSearch({ status: 'error', query: text, message });
-        });
-    }, SEARCH_DELAY_MS);
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [mode, text, attempt]);
-
-  const current: SearchState | null = mode !== 'search' || !text
-    ? null
-    : search?.query === text
-      ? search
-      : { status: 'loading', query: text };
 
   // The same address again re-opens it in place instead of repeating history.
   const go = (path: string) => navigate(path, `${window.location.pathname}${window.location.search}` === path);
   const slug = workspace.slug;
   const rulesPath = pathForTab(slug, 'rules');
   const commands: PaletteCommand[] = [
+    { id: 'search', label: 'Search workspace…', keywords: ['find', 'campaigns', 'rules'], icon: <LinearSearchIcon size={14} />, run: openSearchPage },
     { id: 'inbox', label: 'Go to Inbox', keywords: ['notifications', 'events'], icon: <LinearInboxIcon size={14} />, run: () => go(pathForTab(slug, 'inbox')) },
     { id: 'ads-manager', label: 'Go to Ads Manager', keywords: ['campaigns', 'ad sets', 'ads', 'meta'], icon: <LinearMetaIcon size={14} />, run: () => go(pathForTab(slug, 'campaigns', campaignFilterTab)) },
     { id: 'rules', label: 'Go to Rules', keywords: ['automation'], icon: <LinearBoltIcon size={14} />, run: () => go(rulesPath) },
@@ -254,58 +173,26 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ mode, workspace, naviga
     },
   ];
   const words = text.toLowerCase().split(/\s+/).filter(Boolean);
-  const shownCommands = mode !== 'commands' ? [] : commands.filter((command) => {
+  const shownCommands = commands.filter((command) => {
     const haystack = [command.label, ...command.keywords].join(' ').toLowerCase();
     return words.every((word) => haystack.includes(word));
   });
 
-  const response = current?.status === 'ready' ? current.response : null;
-  const groups = response
-    ? SEARCH_KINDS.map(({ kind, heading }) => ({
-      kind,
-      heading,
-      results: response.results.filter((result) => result.kind === kind),
-    })).filter((group) => group.results.length > 0)
-    : [];
-
-  const scope = workspace.name;
-  const resultCount = response?.results.length ?? 0;
-  const hasRows = shownCommands.length > 0 || groups.length > 0 || current?.status === 'error';
-  const note = mode === 'commands'
-    ? (shownCommands.length === 0 ? `No commands match “${text}”.` : '')
-    : !current
-    ? `Search campaigns, ad sets, ads, rules and ad accounts in ${scope}.`
-    : current.status === 'loading'
-      ? `Searching ${scope}…`
-      : current.status === 'error'
-        ? `Couldn't search ${scope}. ${current.message}`
-        : resultCount === 0
-          ? `No campaigns, ad sets, ads, rules or ad accounts in ${scope} match “${current.query}”.`
-          : `${resultCount} ${resultCount === 1 ? 'result' : 'results'} in ${scope}.`;
-
   return (
-    <Command label={mode === 'search' ? 'Search workspace' : 'Command menu'} shouldFilter={false} loop vimBindings={false}>
+    <Command label="Command menu" shouldFilter={false} loop vimBindings={false}>
       <div className="flex items-center gap-2 border-b border-[var(--color-border-primary)] pl-3 pr-2.5">
-        {mode === 'search' && (
-          <span className="shrink-0 text-[var(--text-tertiary)]" aria-hidden="true">
-            <LinearSearchIcon size={16} />
-          </span>
-        )}
         <Command.Input
           autoFocus
           value={query}
           onValueChange={setQuery}
-          placeholder={mode === 'search' ? 'Search…' : 'Type a command…'}
+          placeholder="Type a command…"
           className="h-11 min-w-0 flex-1 bg-transparent text-[13px] text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none"
         />
         <kbd className="shrink-0 rounded-[4px] border border-[var(--color-border-secondary)] px-1.5 py-0.5 font-sans text-[11px] text-[var(--text-tertiary)]">
           Esc
         </kbd>
       </div>
-      <Command.List
-        className={hasRows ? `${COMMAND_MENU_CLASSES.list} pt-1.5` : undefined}
-        aria-busy={current?.status === 'loading'}
-      >
+      <Command.List className={shownCommands.length > 0 ? `${COMMAND_MENU_CLASSES.list} pt-1.5` : undefined}>
         {shownCommands.length > 0 && (
           <Command.Group heading="Commands" className={COMMAND_MENU_CLASSES.group}>
             {shownCommands.map((command) => (
@@ -321,55 +208,9 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ mode, workspace, naviga
             ))}
           </Command.Group>
         )}
-        {groups.map((group) => (
-          <Command.Group key={group.kind} heading={group.heading} className={COMMAND_MENU_CLASSES.group}>
-            {group.results.map((result) => {
-              const context = resultContext(result);
-              const status = resultStatus(result);
-              return (
-                <Command.Item
-                  key={`${result.kind}:${result.id}`}
-                  value={`${result.kind}:${result.id}`}
-                  onSelect={() => choose(() => go(searchResultPath(slug, result)))}
-                  className={COMMAND_MENU_CLASSES.item}
-                >
-                  <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true">{KIND_ICONS[result.kind]}</span>
-                  <span className="flex min-w-0 flex-1 items-baseline gap-2">
-                    <span className="min-w-0 shrink truncate">{result.name}</span>
-                    {context && (
-                      <span className="min-w-0 flex-1 truncate text-[12px] text-[var(--text-tertiary)]">{context}</span>
-                    )}
-                  </span>
-                  {status && <span className="shrink-0 text-[12px] text-[var(--text-tertiary)]">{status}</span>}
-                </Command.Item>
-              );
-            })}
-          </Command.Group>
-        ))}
-        {current?.status === 'error' && (
-          <Command.Group heading="Search" className={COMMAND_MENU_CLASSES.group}>
-            <Command.Item
-              value="search:retry"
-              onSelect={() => setAttempt((value) => value + 1)}
-              className={COMMAND_MENU_CLASSES.item}
-            >
-              <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true"><RotateCcw size={14} strokeWidth={1.75} /></span>
-              <span className="min-w-0 flex-1 truncate">Retry search</span>
-            </Command.Item>
-          </Command.Group>
-        )}
       </Command.List>
-      {note && (
-      <p
-        role="status"
-        className={
-          resultCount > 0
-            ? 'sr-only'
-            : `${COMMAND_MENU_CLASSES.note} ${hasRows ? 'border-t border-[var(--color-border-primary)]' : ''}`
-        }
-      >
-        {note}
-      </p>
+      {shownCommands.length === 0 && (
+        <p role="status" className={COMMAND_MENU_CLASSES.note}>{`No commands match “${text}”.`}</p>
       )}
     </Command>
   );

@@ -18,7 +18,7 @@ VALID_CONDITIONS = [{"metric": "spend", "operator": "gte", "value": 10, "time_wi
 
 
 class TestWorkspaceSearch(unittest.IsolatedAsyncioTestCase):
-    """GET /api/search: what the command menu promises to find, and only in this workspace."""
+    """GET /api/search: what the search page promises to find, and only in this workspace."""
 
     async def asyncSetUp(self):
         api_routes_module._summary_cache.clear()
@@ -91,7 +91,13 @@ class TestWorkspaceSearch(unittest.IsolatedAsyncioTestCase):
             ("campaign", "120104", "Promo 500 leads", "act_1002", "ACTIVE"),
             ("campaign", "120105", "US_Leads", "act_1002", "ACTIVE"),
             ("campaign", "120106", "US-Leads", "act_1002", "ACTIVE"),
+            ("campaign", "120107", "Test campaign deleted", "act_1002", "DELETED"),
+            ("campaign", "120108", "Test campaign archived", "act_1002", "ARCHIVED"),
         ])
+        # Synced three days ago too, so Buyerly first saw it then.
+        await self._store_inventory(self.alpha, self.euro, [
+            ("campaign", "120102", "Test campaign EU", "act_1002", "ACTIVE"),
+        ], days_ago=3)
         # Gone from Meta since yesterday: no longer inventory Ads Manager shows.
         await self._store_inventory(self.alpha, self.euro, [
             ("campaign", "120199", "Test campaign removed yesterday", "act_1002", "ACTIVE"),
@@ -167,9 +173,12 @@ class TestWorkspaceSearch(unittest.IsolatedAsyncioTestCase):
             [item["name"] for item in campaigns],
             ["Test Campaign", "Test campaign EU", "Latest Test campaign"],
         )
+        today = resolve_account_period_dates(self.leads.timezone_name, "today")[0]
         self.assertEqual(campaigns[0], {
             "kind": "campaign", "id": "120001", "name": "Test Campaign", "account_id": "act_1001",
             "account_name": "Leads account", "parent_name": "", "status": "ACTIVE",
+            # Meta's own dates are not stored: the age is the first day Buyerly synced it.
+            "updated_at": f"{today}T00:00:00Z",
         })
         self.assertEqual(payload["truncated"], [])
 
@@ -196,12 +205,77 @@ class TestWorkspaceSearch(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(by_kind["ad"]["status"], "ADSET_PAUSED")
         self.assertEqual(by_kind["ad"]["account_id"], "act_1001")
 
-    async def test_kinds_come_in_a_fixed_order(self):
-        kinds = [item["kind"] for item in (await self._search("test", slug="alpha")).json()["results"]]
+    async def test_one_list_best_match_first_then_kind(self):
+        found = self._found(await self._search("test", slug="alpha"))
 
-        order = ["campaign", "adset", "ad", "rule", "account"]
-        self.assertEqual(kinds, sorted(kinds, key=order.index))
-        self.assertEqual(set(kinds), set(order))
+        # Names starting with the query, then names containing it; kinds in a fixed order among equals.
+        self.assertEqual(found, [
+            ("campaign", "Test Campaign"),
+            ("campaign", "Test campaign EU"),
+            ("adset", "Test audience"),
+            ("ad", "Test creative"),
+            ("rule", "Test stop without leads"),
+            ("campaign", "Latest Test campaign"),
+            ("rule", "Paused test rule"),
+            ("account", "Euro Test account"),
+        ])
+
+    async def test_a_tab_searches_one_kind(self):
+        for kind in ("campaign", "adset", "ad", "rule", "account"):
+            with self.subTest(kind=kind):
+                found = self._found(await self._search("test", slug="alpha", kind=kind))
+                self.assertTrue(found)
+                self.assertEqual({found_kind for found_kind, _ in found}, {kind})
+        self.assertEqual((await self._search("test", slug="alpha", kind="issue")).status_code, 422)
+
+    async def test_deleted_and_archived_entities_only_on_request(self):
+        found = self._found(await self._search("test campaign", slug="alpha"), "campaign")
+        self.assertNotIn(("campaign", "Test campaign deleted"), found)
+        self.assertNotIn(("campaign", "Test campaign archived"), found)
+
+        found = self._found(await self._search("test campaign", slug="alpha", include_deleted="true"), "campaign")
+        self.assertIn(("campaign", "Test campaign deleted"), found)
+        self.assertIn(("campaign", "Test campaign archived"), found)
+
+    async def test_status_filter_speaks_active_paused_other(self):
+        active = self._found(await self._search("test", slug="alpha", status="active"))
+        # Ad accounts have no status, so a status filter leaves them out.
+        self.assertEqual(active, [
+            ("campaign", "Test Campaign"),
+            ("campaign", "Test campaign EU"),
+            ("adset", "Test audience"),
+            ("rule", "Test stop without leads"),
+            ("campaign", "Latest Test campaign"),
+        ])
+        # ADSET_PAUSED is paused, as Ads Manager says.
+        paused = self._found(await self._search("test", slug="alpha", status="paused"))
+        self.assertEqual(paused, [("ad", "Test creative"), ("rule", "Paused test rule")])
+
+        other = self._found(await self._search("test", slug="alpha", status="other", include_deleted="true"))
+        self.assertEqual(sorted(other), [("campaign", "Test campaign archived"), ("campaign", "Test campaign deleted")])
+
+        both = self._found(await self._search("test", slug="alpha", status=["active", "paused"], kind="rule"))
+        self.assertEqual(both, [("rule", "Test stop without leads"), ("rule", "Paused test rule")])
+
+    async def test_ad_account_filter_keeps_its_records_only(self):
+        found = self._found(await self._search("test", slug="alpha", account="act_1002"))
+
+        # Rules belong to no ad account, so they drop out too.
+        self.assertEqual(found, [
+            ("campaign", "Test campaign EU"),
+            ("campaign", "Latest Test campaign"),
+            ("account", "Euro Test account"),
+        ])
+
+    async def test_last_updated_puts_the_newest_first(self):
+        payload = (await self._search("test campaign", slug="alpha", kind="campaign", order="updated")).json()
+        names = [item["name"] for item in payload["results"]]
+        dates = [item["updated_at"] for item in payload["results"]]
+
+        self.assertEqual(dates, sorted(dates, reverse=True))
+        # First synced three days ago, so it is the oldest.
+        self.assertEqual(names[-1], "Test campaign EU")
+        self.assertEqual((await self._search("test", slug="alpha", order="newest")).status_code, 422)
 
     async def test_a_meta_id_finds_its_entity(self):
         found = self._found(await self._search("230001", slug="alpha"))
@@ -228,6 +302,8 @@ class TestWorkspaceSearch(unittest.IsolatedAsyncioTestCase):
                     item for item in (await self._search(query, slug="alpha")).json()["results"]
                     if item["kind"] == "account"
                 ]
+                # An ad account's age is when it was added to Buyerly.
+                self.assertTrue(accounts and accounts[0].pop("updated_at"))
                 self.assertEqual(accounts, [{
                     "kind": "account", "id": "act_1001", "name": "Leads account", "account_id": "act_1001",
                     "account_name": "", "parent_name": "", "status": "",

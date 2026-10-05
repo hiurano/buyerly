@@ -1,9 +1,8 @@
-// Exercise the real App with a synthetic API: Search workspace (#190) is Linear's
-// command menu. It finds the workspace's campaigns, ad sets, ads, rules and ad
-// accounts through GET /api/search (scoped by the address), says when it is
-// searching, found nothing or failed, and opens each result on its own row. Esc
-// closes it and gives focus back; `/` stays text in a field, and Ctrl/Cmd+K
-// opens it from anywhere but leaves a row selection its own actions menu.
+// Exercise the real App with a synthetic API: Linear's command menu (#190,
+// #310). Ctrl/Cmd+K opens commands from anywhere, searches nothing, closes on
+// Esc with focus given back, and leaves a row selection its own actions menu.
+// `/` stays text in a field and outside one opens the search page, which
+// scripts/search-page-browser.mjs checks.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -68,39 +67,6 @@ const preset = (id, name, enabled) => ({
 });
 const presets = [preset(7, 'Test stop without leads', false), preset(8, 'Budget up on cheap leads', true)];
 
-/** GET /api/search as the server answers it: kinds in order, the name itself first. */
-function searchResponse(query, limit) {
-  const needle = query.toLowerCase();
-  const rank = (name) => (name.toLowerCase() === needle ? 0 : name.toLowerCase().startsWith(needle) ? 1 : 2);
-  const byRank = (a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name);
-  const names = Object.fromEntries(accounts.map((item) => [item.account_id, item.name]));
-  const parents = new Map(Object.values(inventory).flatMap((levels) => [...levels.campaign, ...levels.adset])
-    .map((item) => [item.entity_id, item.entity_name]));
-  const results = [];
-  const truncated = [];
-  const take = (kind, found) => {
-    if (found.length > limit) truncated.push(kind);
-    results.push(...found.sort(byRank).slice(0, limit));
-  };
-  for (const kind of ['campaign', 'adset', 'ad']) {
-    take(kind, Object.values(inventory).flatMap((levels) => levels[kind])
-      .filter((item) => item.entity_name.toLowerCase().includes(needle) || item.entity_id === query)
-      .map((item) => ({
-        kind, id: item.entity_id, name: item.entity_name, account_id: item.account_id,
-        account_name: names[item.account_id], parent_name: kind === 'campaign' ? '' : parents.get(item.parent_entity_id) ?? '',
-        status: item.effective_status,
-      })));
-  }
-  take('rule', presets.filter((item) => item.name.toLowerCase().includes(needle)).map((item) => ({
-    kind: 'rule', id: String(item.id), name: item.name, account_id: '', account_name: '', parent_name: '',
-    status: item.enabled ? 'active' : 'paused',
-  })));
-  take('account', accounts.filter((item) => item.name.toLowerCase().includes(needle) || item.account_id === query)
-    .map((item) => ({
-      kind: 'account', id: item.account_id, name: item.name, account_id: item.account_id, account_name: '', parent_name: '', status: '',
-    })));
-  return { query, limit, results, truncated };
-}
 
 let browser;
 try {
@@ -108,43 +74,30 @@ try {
   const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
   browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH });
   for (const width of [1440, 1024, 768, 390]) {
-    const small = width <= 880;
     const context = await browser.newContext({ viewport: { width, height: 900 } });
     const page = await context.newPage();
     page.setDefaultTimeout(10_000);
     const errors = [];
     const searches = [];
-    const hierarchyReads = [];
-    let holdSearch = null;
-    let failNextSearch = false;
     page.on('pageerror', (error) => errors.push(error.message));
     await context.route('**/api/**', async (route) => {
       const request = route.request();
       const url = new URL(request.url());
       const path = url.pathname;
       const verb = request.method();
-      const scope = request.headers()['x-workspace-slug'];
       if (verb !== 'GET') {
         errors.push(`Unexpected write: ${verb} ${path}`);
         return route.fulfill({ status: 404, json: { detail: 'Unexpected test request' } });
       }
       if (path === '/api/search') {
-        const query = url.searchParams.get('q');
-        searches.push({ query, scope, limit: url.searchParams.get('limit') });
-        if (holdSearch) await holdSearch;
-        // The page may have moved on and cancelled the request meanwhile.
-        if (failNextSearch) {
-          failNextSearch = false;
-          return route.fulfill({ status: 503, json: { detail: 'Search is unavailable right now.' } }).catch(() => {});
-        }
-        return route.fulfill({ json: searchResponse(query, Number(url.searchParams.get('limit'))) }).catch(() => {});
+        searches.push(url.searchParams.get('q'));
+        return route.fulfill({ json: { query: url.searchParams.get('q'), limit: 20, results: [], truncated: [] } });
       }
       if (path === '/api/me') return route.fulfill({ json: me });
       if (path === '/api/accounts') return route.fulfill({ json: accounts });
       if (path === '/api/analytics/hierarchy') {
         const parent = url.searchParams.get('parent_id');
         const level = url.searchParams.get('level');
-        hierarchyReads.push({ parent, level, scope });
         const items = inventory[parent]?.[level] ?? [];
         return route.fulfill({ json: { parent_id: parent, level, period: 'today', source: 'analytics_fact_store', data_as_of: null, total: items.length, items } });
       }
@@ -160,18 +113,10 @@ try {
       return route.fulfill({ json: [] });
     });
 
-    const dialog = page.getByRole('dialog', { name: 'Search workspace' });
-    const field = dialog.getByRole('combobox');
-    const note = dialog.getByRole('status');
-    const options = () => dialog.getByRole('option');
-    const option = (name) => dialog.getByRole('option', { name });
-    const optionTexts = async () => (await options().allInnerTexts()).map((text) => text.replace(/\s+/g, ' ').trim());
-    const headings = async () => (await dialog.locator('[cmdk-group-heading]').allInnerTexts()).map((text) => text.trim());
-    const selected = async () => (await dialog.locator('[cmdk-item][aria-selected="true"]').innerText()).replace(/\s+/g, ' ').trim();
-    const focused = () => page.evaluate(() => {
-      const element = document.activeElement;
-      return element?.getAttribute('aria-label') || element?.getAttribute('data-row-id') || element?.id || element?.tagName;
-    });
+    const commands = page.getByRole('dialog', { name: 'Command menu' });
+    const commandField = commands.getByRole('combobox');
+    const commandTexts = async () => (await commands.getByRole('option').allInnerTexts()).map((text) => text.replace(/\s+/g, ' ').trim());
+    const closed = () => commands.waitFor({ state: 'detached' });
     const waitForFocus = (expected) => page.waitForFunction((value) => {
       const element = document.activeElement;
       return [element?.getAttribute('aria-label'), element?.getAttribute('data-row-id'), element?.id].includes(value);
@@ -180,66 +125,13 @@ try {
       await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true,
       `${where} at ${width}px: document overflow`,
     );
-    const pathAndQuery = () => {
-      const url = new URL(page.url());
-      return `${url.pathname}${url.search}`;
-    };
-    const openFromSidebar = async () => {
-      // Below 880px the sidebar, and its Search button, sit in the drawer opened by Menu.
-      const menu = page.getByRole('button', { name: 'Menu', exact: true });
-      if (small && await menu.getAttribute('aria-expanded') !== 'true') await menu.click();
-      await page.getByRole('button', { name: 'Search workspace' }).click();
-      await field.waitFor();
-    };
-    const openWithSlash = async () => {
-      await page.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined));
-      await page.keyboard.press('/');
-      await field.waitFor();
-      assert.equal(await field.inputValue(), '', 'the slash that opened the menu is not typed into it');
-    };
-    const closed = () => page.getByRole('dialog', { name: /^(Search workspace|Command menu)$/ }).waitFor({ state: 'detached' });
-    // As in Linear: Ctrl/Cmd+K is a separate menu of commands that searches nothing.
-    const commands = page.getByRole('dialog', { name: 'Command menu' });
-    const commandField = commands.getByRole('combobox');
-    const commandTexts = async () => (await commands.getByRole('option').allInnerTexts()).map((text) => text.replace(/\s+/g, ' ').trim());
-    const accountPicker = (name) => page.getByRole('button', { name: 'Select ad account' }).filter({ hasText: name });
+    const onSearchPage = () => page.waitForURL(`${origin}/alpha/search`);
 
     try {
       await page.goto(`${origin}/alpha/inbox`);
       await page.getByText('No notifications', { exact: true }).waitFor();
 
-      // 1. The sidebar button opens search: no commands, just what it searches.
-      await openFromSidebar();
-      assert.equal(await field.getAttribute('placeholder'), 'Search…');
-      assert.equal(await options().count(), 0);
-      assert.equal(await note.innerText(), 'Search campaigns, ad sets, ads, rules and ad accounts in Alpha.');
-      await assertNoOverflow('empty menu');
-      await page.screenshot({ path: `${output}/empty-${width}.png` });
-
-      // An existing campaign is found by name, after a stated wait, in this workspace only.
-      let release;
-      holdSearch = new Promise((resolve) => { release = resolve; });
-      await field.fill('Test Campaign');
-      await dialog.getByText('Searching Alpha…', { exact: true }).waitFor();
-      assert.equal(await dialog.getByRole('listbox').getAttribute('aria-busy'), 'true');
-      release();
-      holdSearch = null;
-      await option(/Test Campaign/).first().waitFor();
-      assert.deepEqual(await optionTexts(), ['Test Campaign Leads account Active', 'Test campaign EU Euro account Active']);
-      assert.deepEqual(await headings(), ['Campaigns']);
-      assert.equal(await note.innerText(), '2 results in Alpha.');
-      assert.deepEqual(searches.at(-1), { query: 'Test Campaign', scope: 'alpha', limit: '20' });
-      await assertNoOverflow('results');
-      await page.screenshot({ path: `${output}/results-${width}.png` });
-
-      // 2. Esc closes it and gives focus back to the button that opened it.
-      await page.keyboard.press('Escape');
-      await closed();
-      await waitForFocus('Search workspace');
-
-      // 3. `/` typed in a field is text: an input, a textarea, rich text and the Inbox filter.
-      await page.goto(`${origin}/alpha/inbox`);
-      await page.getByText('No notifications', { exact: true }).waitFor();
+      // 1. `/` typed in a field is text: an input, a textarea, rich text and the Inbox filter.
       await page.evaluate(() => {
         const host = document.createElement('div');
         host.innerHTML = '<input id="probe-input"><textarea id="probe-textarea"></textarea><div id="probe-rich" contenteditable="true"></div>';
@@ -250,7 +142,7 @@ try {
         await page.keyboard.type('a/b');
         const value = await page.locator(`#${id}`).evaluate((element) => ('value' in element ? element.value : element.textContent));
         assert.equal(value, 'a/b', `${id} keeps the slash`);
-        assert.equal(await dialog.count(), 0, `${id}: / did not open the menu`);
+        assert.equal(new URL(page.url()).pathname, '/alpha/inbox', `${id}: / did not open search`);
       }
       await page.locator('#probe-rich').evaluate((element) => element.blur());
       await page.keyboard.press('f');
@@ -260,21 +152,20 @@ try {
       await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Add Filter…');
       await page.keyboard.type('a/b');
       assert.equal(await filterField.inputValue(), 'a/b');
-      assert.equal(await dialog.count(), 0, 'the Inbox filter keeps the slash');
+      assert.equal(new URL(page.url()).pathname, '/alpha/inbox', 'the Inbox filter keeps the slash');
       await page.keyboard.press('Escape');
       await filterField.waitFor({ state: 'detached' });
 
-      // Outside a field `/` opens the menu.
-      await openWithSlash();
-      await page.keyboard.press('Escape');
-      await closed();
-
-      // 4. Ctrl/Cmd+K opens it from a text field too; pressed again it closes and focus returns.
+      // 2. Ctrl/Cmd+K opens commands from a text field too; pressed again it closes and focus returns.
       await page.locator('#probe-textarea').focus();
       await page.keyboard.press('Control+K');
       await commandField.waitFor();
       assert.equal(await commandField.getAttribute('placeholder'), 'Type a command…');
-      assert.deepEqual(await commandTexts(), ['Go to Inbox', 'Go to Ads Manager', 'Go to Rules', 'Go to Settings', 'Create rule…']);
+      assert.deepEqual(await commandTexts(), [
+        'Search workspace…', 'Go to Inbox', 'Go to Ads Manager', 'Go to Rules', 'Go to Settings', 'Create rule…',
+      ]);
+      await assertNoOverflow('command menu');
+      await page.screenshot({ path: `${output}/commands-${width}.png` });
       await page.waitForFunction(() => document.activeElement?.hasAttribute('cmdk-input'));
       await page.keyboard.press('Control+K');
       await closed();
@@ -287,80 +178,24 @@ try {
       await waitForFocus('probe-textarea');
       await page.evaluate(() => document.getElementById('probe-input')?.parentElement?.remove());
 
-      // 5. Nothing found, a failure and its retry are told apart.
-      await openWithSlash();
-      await field.fill('zzz');
-      await dialog.getByText('No campaigns, ad sets, ads, rules or ad accounts in Alpha match “zzz”.', { exact: true }).waitFor();
-      assert.equal(await options().count(), 0);
-      failNextSearch = true;
-      await field.fill('Spring');
-      await dialog.getByText("Couldn't search Alpha. Search is unavailable right now.", { exact: true }).waitFor();
-      assert.deepEqual(await optionTexts(), ['Retry search']);
-      await page.keyboard.press('Enter');
-      await option(/Spring sale/).waitFor();
-      assert.deepEqual(await optionTexts(), ['Spring sale Euro account Paused']);
-      assert.equal(await dialog.getByText('Retry search').count(), 0);
-
-      // Search shows only results, more of them than before, and no commands.
-      await field.fill('campaign');
-      await option(/^Campaign 20/).waitFor();
-      assert.deepEqual(await headings(), ['Campaigns']);
-      assert.equal(await dialog.getByRole('option', { name: /^Campaign \d+/ }).count(), 20);
-
-      // 6. Arrows walk the results; Enter opens a campaign on its row in Ads Manager.
-      await field.fill('test');
-      await option(/Test creative/).waitFor();
-      assert.deepEqual(await headings(), ['Campaigns', 'Ad sets', 'Ads', 'Rules']);
-      assert.deepEqual(await optionTexts(), [
-        'Test Campaign Leads account Active',
-        'Test campaign EU Euro account Active',
-        'Test audience Test Campaign · Leads account Active',
-        'Test creative Test audience · Leads account Paused',
-        'Test stop without leads Paused',
-      ]);
-      assert.equal(await selected(), 'Test Campaign Leads account Active');
-      await page.keyboard.press('ArrowDown');
-      assert.equal(await selected(), 'Test campaign EU Euro account Active');
-      await page.keyboard.press('End');
-      assert.equal(await selected(), 'Test stop without leads Paused');
-      await page.keyboard.press('ArrowDown');
-      assert.equal(await selected(), 'Test Campaign Leads account Active', 'the list wraps around');
-      await page.keyboard.press('ArrowUp');
-      await page.keyboard.press('Home');
+      // 3. Outside a field `/` opens the search page; so does the command "Search workspace…".
+      await page.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined));
+      await page.keyboard.press('/');
+      await onSearchPage();
+      await page.getByRole('textbox', { name: 'Search workspace' }).waitFor();
+      assert.equal(await page.getByRole('textbox', { name: 'Search workspace' }).inputValue(), '', 'the slash is not typed');
+      await page.goto(`${origin}/alpha/inbox`);
+      await page.getByText('No notifications', { exact: true }).waitFor();
+      await page.keyboard.press('Control+K');
+      await commandField.fill('search');
+      await commands.getByRole('option', { name: 'Search workspace…' }).waitFor();
       await page.keyboard.press('Enter');
       await closed();
-      await page.waitForURL(`${origin}/alpha/ads-manager/campaigns/120045?account=act_1001`);
-      await waitForFocus('120045');
-      const row = page.locator('[data-row-id="120045"]');
-      assert.equal(await row.evaluate((element) => {
-        const box = element.getBoundingClientRect();
-        return box.top >= 0 && box.bottom <= innerHeight;
-      }), true, 'the campaign is scrolled into view');
-      assert.equal(await page.evaluate(() => scrollY), 0, 'only the list scrolls, not the page');
-      await accountPicker('Leads account').waitFor();
-      await assertNoOverflow('revealed campaign');
-      await page.screenshot({ path: `${output}/campaign-${width}.png` });
+      await onSearchPage();
 
-      // An ad account result switches Ads Manager to it; a campaign of another account switches back.
-      await openWithSlash();
-      await field.fill('euro');
-      await option(/Euro account/).waitFor();
-      await option(/Euro account/).click();
-      await closed();
-      await page.waitForURL(`${origin}/alpha/ads-manager/campaigns?account=act_1002`);
-      await accountPicker('Euro account').waitFor();
-      await page.locator('[data-row-id="120101"]').waitFor();
-      assert.equal(hierarchyReads.filter((read) => read.parent === 'act_1002' && read.level === 'campaign').length > 0, true);
-      await openWithSlash();
-      await field.fill('Test audience');
-      await option(/Test audience/).waitFor();
-      await page.keyboard.press('Enter');
-      await page.waitForURL(`${origin}/alpha/ads-manager/adsets/230001?account=act_1001`);
-      await waitForFocus('230001');
-      await accountPicker('Leads account').waitFor();
-      assert.equal(await page.getByRole('tab', { name: /Ad sets/ }).getAttribute('aria-selected'), 'true');
-
-      // 7. With rows selected, Ctrl/Cmd+K is the selection's own actions menu.
+      // 4. With rows selected, Ctrl/Cmd+K is the selection's own actions menu.
+      await page.goto(`${origin}/alpha/ads-manager/adsets?account=act_1001`);
+      await page.locator('[data-row-id="230001"]').waitFor();
       await page.locator('[data-row-id="230001"]').hover();
       await page.keyboard.press('x');
       await page.getByRole('toolbar', { name: '1 selected' }).waitFor();
@@ -372,21 +207,7 @@ try {
       await page.keyboard.press('Escape');
       await page.getByRole('toolbar', { name: '1 selected' }).waitFor({ state: 'detached' });
 
-      // 8. A rule opens on its row in Rules, leaving a tab that hid it.
-      await page.goto(`${origin}/alpha/rules`);
-      await page.getByText('Budget up on cheap leads', { exact: true }).first().waitFor();
-      await page.getByRole('tab', { name: 'Active', exact: true }).click();
-      assert.equal(await page.locator('[data-row-id="7"]').count(), 0, 'the paused rule is hidden on Active');
-      await openWithSlash();
-      await field.fill('stop');
-      await option(/Test stop without leads/).waitFor();
-      await page.keyboard.press('Enter');
-      await page.waitForURL(`${origin}/alpha/rules/7`);
-      await waitForFocus('7');
-      assert.equal(await page.getByRole('tab', { name: 'All rules', exact: true }).getAttribute('aria-selected'), 'true');
-
-      // 9. Commands are filtered by what is typed, search nothing and lead where they say.
-      const searchesBefore = searches.length;
+      // 5. Commands are filtered by what is typed, search nothing and lead where they say.
       await page.keyboard.press('Control+K');
       await commandField.fill('inbox');
       await commands.getByRole('option', { name: 'Go to Inbox' }).waitFor();
@@ -397,7 +218,6 @@ try {
       await commands.getByRole('option', { name: 'Go to Inbox' }).waitFor();
       await page.keyboard.press('Enter');
       await page.waitForURL(`${origin}/alpha/inbox`);
-      assert.equal(searches.length, searchesBefore, 'the command menu does not search');
       await page.keyboard.press('Control+K');
       await commandField.fill('create rule');
       await commands.getByRole('option', { name: 'Create rule…' }).waitFor();
@@ -407,10 +227,9 @@ try {
       await page.keyboard.press('Escape');
       await page.getByRole('dialog', { name: 'New rule' }).waitFor({ state: 'detached' });
 
-      // Every search asked for this workspace only.
-      assert.deepEqual([...new Set(searches.map((search) => search.scope))], ['alpha']);
+      assert.deepEqual(searches, [], 'the command menu searches nothing');
       assert.deepEqual(errors, []);
-      console.log(`Command menu: search states, Esc focus, / in fields, Ctrl/Cmd+K, keyboard and result rows passed at ${width}px`);
+      console.log(`Command menu: / in fields, Ctrl/Cmd+K, Search workspace… and commands passed at ${width}px`);
     } catch (error) {
       await page.screenshot({ path: `${output}/failure-${width}.png`, fullPage: true });
       console.error(errors);

@@ -1,4 +1,4 @@
-import type { AppTab, AdsManagerEntity, SettingsSection } from '@/store/useAppStore';
+import type { ActiveTab, AdsManagerEntity, SettingsSection } from '@/store/useAppStore';
 
 export type Route =
   | { kind: 'root' }
@@ -12,7 +12,7 @@ export type Route =
   | {
       kind: 'workspace';
       workspace: string;
-      tab: AppTab | 'preferences';
+      tab: ActiveTab;
       entity?: AdsManagerEntity;
       recordId?: string;
       /** Priority inbox tab, as Linear keeps it in the address. */
@@ -97,6 +97,10 @@ export function parseRoute(location: Location = window.location): Route {
   if (parts[1] === 'rules' && parts.length <= 3) {
     return { kind: 'workspace', workspace, tab: 'rules', recordId: parts[2] };
   }
+  if (parts[1] === 'search' && parts.length === 2) {
+    // Linear's search page; the query, tab and filters live in `?q=…&type=…`.
+    return { kind: 'workspace', workspace, tab: 'search' };
+  }
   if (STATISTICS_ENABLED && parts[1] === 'statistics' && parts.length === 2) {
     return { kind: 'workspace', workspace, tab: 'statistics' };
   }
@@ -129,7 +133,7 @@ export function isRoutedSettingsSection(section: SettingsSection): section is ke
 
 export function pathForTab(
   workspace: string,
-  tab: AppTab | 'preferences',
+  tab: ActiveTab,
   entity: AdsManagerEntity = 'campaigns',
   settingsSection: SettingsSection = 'preferences',
 ): string {

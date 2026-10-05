@@ -158,7 +158,8 @@ export interface AdsManagerQuickFilter {
   value: string;
 }
 export type AppTab = 'inbox' | 'campaigns' | 'rules' | 'statistics';
-export type ActiveTab = AppTab | 'preferences';
+/** The search page has an address but is no app tab: Settings' back button never returns to it. */
+export type ActiveTab = AppTab | 'preferences' | 'search';
 /** Settings pages; `members` also has its own address under /<workspace>/settings. */
 export type SettingsSection =
   | 'preferences'
@@ -251,10 +252,8 @@ interface AppState {
   setWorkspaceScope: (scope: string | null, slug?: string) => void;
   captureScope: () => () => boolean;
   attachmentsLoadState: RulesLoadState;
-  isSearchOpen: boolean;
-  /** As in Linear: `/` and the sidebar's Search button search, Ctrl/Cmd+K runs commands. */
-  searchMode: 'search' | 'commands';
-  setSearchOpen: (open: boolean, mode?: 'search' | 'commands') => void;
+  isCommandMenuOpen: boolean;
+  setCommandMenuOpen: (open: boolean) => void;
   workspaceName: string;
   inboxUnreadCount: number;
   inboxPriorityUnreadCount: number;
@@ -467,7 +466,7 @@ function emptyWorkspaceState() {
     createRuleTargetGroupId: undefined, selectedFilterRuleGroupId: null,
     rulesFilterClauses: [], rulesCollapsedGroups: [], pendingDeletion: null,
     adsManagerFilters: { campaigns: [], adsets: [], ads: [] },
-    isSearchOpen: false, isDisplayOptionsOpen: false, isRulesDisplayOptionsOpen: false,
+    isCommandMenuOpen: false, isDisplayOptionsOpen: false, isRulesDisplayOptionsOpen: false,
   };
 }
 
@@ -499,9 +498,8 @@ export const useAppStore = create<AppState>((set, get) => {
     };
   },
   attachmentsLoadState: 'idle',
-  isSearchOpen: false,
-  searchMode: 'search',
-  setSearchOpen: (open, mode) => set(mode ? { isSearchOpen: open, searchMode: mode } : { isSearchOpen: open }),
+  isCommandMenuOpen: false,
+  setCommandMenuOpen: (open) => set({ isCommandMenuOpen: open }),
   workspaceName: 'buyerly',
   setWorkspaceName: (name) => set({ workspaceName: name }),
   inboxUnreadCount: 0,
@@ -604,7 +602,7 @@ export const useAppStore = create<AppState>((set, get) => {
   setActiveTab: (tab) =>
     set((state) => ({
       activeTab: tab,
-      lastAppTab: tab === 'preferences' ? state.lastAppTab : tab,
+      lastAppTab: tab === 'preferences' || tab === 'search' ? state.lastAppTab : tab,
     })),
   settingsSection: 'preferences',
   setSettingsSection: (section) => set({ settingsSection: section }),
