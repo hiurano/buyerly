@@ -2753,8 +2753,8 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 /* Settings → Security & access → Sessions, read off Linear on a phone (2026-10-03):
    this browser in its own card; a second card headed "N other sessions" with
    Revoke all over a full-width hairline, its rows split by hairlines inset 16px.
-   Rows: 12px padding, a 32px tile with the browser's mark, 16px gap, then the
-   name over "Helsinki, 18, FI · Last seen …" that wraps; text buttons on the right. */
+   Rows: a 32px tile with the browser's mark, 16px gap, then the name over
+   "Helsinki, 18, FI · Last seen …" that wraps; text buttons on the right. */
 .preferences-section-note--sessions {
   margin: -8px 0 16px;
   font-size: 13px;
@@ -2765,15 +2765,26 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   margin-top: 12px;
 }
 
-.preferences-session-row {
+/* Measured on Linear's desktop screen (2026-10-06): a 66px row that is one button,
+   text 16px from the card's edge and the name 64px in; the row lights up on hover,
+   and a session gone over a month (or being revoked) is dimmed. */
+.preferences-session {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 12px;
+  min-height: 66px;
+  padding-right: 16px;
+  border-radius: 10px;
+  transition: background-color 150ms ease, opacity 150ms ease;
 }
 
-.preferences-session + .preferences-session {
-  position: relative;
+.preferences-session:hover {
+  background: var(--item-hover-bg);
+}
+
+.preferences-session[data-old='true'] {
+  opacity: 0.5;
 }
 
 .preferences-session + .preferences-session::before {
@@ -2790,8 +2801,9 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   align-items: center;
   gap: 16px;
   flex: 1 1 0;
+  align-self: stretch;
   min-width: 0;
-  padding: 0;
+  padding: 12px 0 12px 16px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -2802,8 +2814,8 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 
 .preferences-session-main:focus-visible {
   outline: 2px solid var(--focus-ring-color);
-  outline-offset: 4px;
-  border-radius: 6px;
+  outline-offset: -2px;
+  border-radius: 10px;
 }
 
 .preferences-session-icon {
@@ -2833,10 +2845,6 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   line-height: 16px;
 }
 
-.preferences-session-fact {
-  white-space: nowrap;
-}
-
 .preferences-session-current {
   display: inline-flex;
   align-items: center;
@@ -2852,29 +2860,144 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   background: currentColor;
 }
 
-.preferences-session-details {
+.preferences-session-spinner {
+  width: 12px;
+  height: 12px;
+  margin-right: 2px;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: preferences-session-spin 700ms linear infinite;
+}
+
+@keyframes preferences-session-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.preferences-sessions-show-all {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 24px;
-  margin: -6px 0 0;
-  padding: 0 12px 16px 60px;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-top: 1px solid var(--color-border-primary);
+  border-radius: 0 0 10px 10px;
+  background: transparent;
+  color: var(--text-secondary);
   font-family: var(--font-regular);
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.preferences-sessions-show-all:hover {
+  background: var(--item-hover-bg);
+  color: var(--text-primary);
+}
+
+/* The details dialog, measured in Linear: 572px, 24px 40px padding, four rows
+   57px tall split by hairlines, the label a third of the width (13px/500), the
+   value selectable (13px/450), and a red pill under them. */
+.preferences-session-dialog {
+  padding: 24px 40px;
+}
+
+.preferences-session-icon--outlined {
+  border: 1px solid var(--color-border-secondary);
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.preferences-session-facts {
+  margin: 12px 0 0;
+  padding: 0;
+  font-family: var(--font-regular);
+  font-size: 13px;
   line-height: 16px;
 }
 
-.preferences-session-details > div {
-  display: flex;
-  gap: 6px;
+.preferences-session-facts > div {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 4px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--color-border-secondary);
 }
 
-.preferences-session-details dt {
-  color: var(--text-tertiary);
+.preferences-session-facts > div:last-child {
+  border-bottom: 0;
 }
 
-.preferences-session-details dd {
+.preferences-session-facts dt {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.preferences-session-facts dd {
   margin: 0;
-  color: var(--text-secondary);
+  color: var(--text-primary);
+  font-weight: 450;
+  user-select: text;
+  overflow-wrap: anywhere;
+}
+
+.preferences-session-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 20px;
+}
+
+.preferences-session-danger-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9999px;
+  background: var(--action-danger);
+  color: var(--action-danger-text);
+  font-family: var(--font-regular);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.preferences-session-danger-button:hover:not(:disabled) {
+  background: var(--action-danger-hover);
+}
+
+.preferences-session-danger-button:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
+.preferences-session-danger-button:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.preferences-session-label--narrow {
+  display: none;
+}
+
+/* On a phone Linear's button says only "Revoke". */
+@media (max-width: 640px) {
+  .preferences-session-dialog {
+    padding: 24px;
+  }
+
+  .preferences-session-label--wide {
+    display: none;
+  }
+
+  .preferences-session-label--narrow {
+    display: inline;
+  }
 }
 
 .preferences-sessions-others {
@@ -2883,7 +3006,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   justify-content: space-between;
   gap: 12px;
   min-height: 58px;
-  padding: 0 12px;
+  padding: 0 16px;
   border-bottom: 1px solid var(--color-border-primary);
   color: var(--text-primary);
   font-family: var(--font-regular);
@@ -2899,7 +3022,8 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   }
 
   .preferences-session:hover .preferences-session-button--on-hover,
-  .preferences-session-button--on-hover:focus-visible {
+  .preferences-session:focus-within .preferences-session-button--on-hover,
+  .preferences-session-button--on-hover[data-busy='true'] {
     opacity: 1;
   }
 }

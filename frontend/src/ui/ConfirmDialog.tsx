@@ -11,6 +11,8 @@ interface ConfirmDialogProps {
   confirmLabel: string;
   tone?: 'danger' | 'primary';
   busy?: boolean;
+  /** Linear opens a session's confirmations near the top of the screen. */
+  placement?: 'center' | 'top';
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -27,6 +29,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   confirmLabel,
   tone = 'danger',
   busy = false,
+  placement = 'center',
   onConfirm,
   onCancel,
 }) => {
@@ -36,7 +39,11 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     <Dialog.Root open={open} onOpenChange={(next) => { if (!next && !busy) onCancel(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[500] bg-black/50 animate-fade-in" />
-        <div className="pointer-events-none fixed inset-0 z-[501] flex items-center justify-center p-4">
+        <div
+          className={`pointer-events-none fixed inset-0 z-[501] flex justify-center p-4 ${
+            placement === 'top' ? 'items-start pt-[27vh]' : 'items-center'
+          }`}
+        >
           <Dialog.Content
             onOpenAutoFocus={(event) => {
               event.preventDefault();

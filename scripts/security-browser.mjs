@@ -46,7 +46,25 @@ const initialSessions = () => [
     user_agent: 'curl/8.5.0',
     created_at: '2026-09-26T08:00:00Z', expires_at: ago(-5 * HOUR), last_seen_at: ago(4 * 24 * HOUR),
   },
+  // Beyond Linear's screen: enough sessions for "Show all", one of them gone over a month.
+  {
+    id: 'mac-session', current: false, ip_address: '203.0.113.13',
+    user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15',
+    created_at: '2026-09-20T08:00:00Z', expires_at: ago(-30 * HOUR), last_seen_at: ago(3 * HOUR),
+  },
+  {
+    id: 'edge-session', current: false, ip_address: '203.0.113.14',
+    user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.70 Safari/537.36 Edg/129.0.2792.65',
+    created_at: '2026-09-18T08:00:00Z', expires_at: ago(-30 * HOUR), last_seen_at: ago(5 * 24 * HOUR),
+  },
+  {
+    id: 'stale-session', current: false, ip_address: '203.0.113.15',
+    user_agent: 'Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0',
+    created_at: '2026-08-01T08:00:00Z', expires_at: ago(-30 * HOUR), last_seen_at: ago(40 * 24 * HOUR),
+  },
 ];
+// Most recently seen first, as Linear orders the other sessions.
+const othersInOrder = ['mac-session', 'linux-session', 'firefox-session', 'unplaced-session', 'edge-session', 'stale-session'];
 // The phone has no hover, so Revoke must be visible without it.
 const scenarios = [
   { width: 1440, touch: false, entry: 'nav' },
@@ -143,11 +161,16 @@ try {
       const firstRow = await page.locator('[data-session-id]').first().getAttribute('data-session-id');
       assert.equal(firstRow, 'current-session');
 
-      // Then a card headed "3 other sessions" with Revoke all, each session with when it was last seen.
+      // Then a card headed "6 other sessions" with Revoke all, the most recently seen
+      // first, five of them until "Show all".
       const othersCard = page.getByRole('region', { name: 'Other sessions' });
-      assert.equal((await othersHeading.locator('span').textContent()).trim(), '3 other sessions');
+      assert.equal((await othersHeading.locator('span').first().textContent()).trim(), '6 other sessions');
       await othersHeading.getByRole('button', { name: 'Revoke all', exact: true }).waitFor();
-      assert.equal(await othersCard.locator('.preferences-sessions-others').count(), 1);
+      const otherIds = () => othersCard.locator('[data-session-id]').evaluateAll(rows => rows.map(row => row.dataset.sessionId));
+      assert.deepEqual(await otherIds(), othersInOrder.slice(0, 5));
+      await othersCard.getByRole('button', { name: 'Show all', exact: true }).click();
+      assert.deepEqual(await otherIds(), othersInOrder);
+      assert.equal(await othersCard.getByRole('button', { name: 'Show all' }).count(), 0);
       const desc = async (id) => (await sessionRow(id).locator('.preferences-session-desc').textContent()).trim();
       await sessionRow('linux-session').getByText('Chrome on Linux', { exact: true }).waitFor();
       assert.equal(await desc('linux-session'), 'Last seen about 14 hours ago');
@@ -155,16 +178,22 @@ try {
       assert.equal(await desc('firefox-session'), 'Last seen 2 days ago');
       await sessionRow('unplaced-session').getByText('Unknown device', { exact: true }).waitFor();
       assert.equal(await desc('unplaced-session'), 'Last seen 4 days ago');
+      // A session gone over a month is dimmed; the others are not.
+      assert.equal(await sessionRow('stale-session').getAttribute('data-old'), 'true');
+      assert.equal(await sessionRow('linux-session').getAttribute('data-old'), null);
       // Each tile carries the browser's mark; an unknown browser gets a globe.
       assert.equal(await sessionRow('firefox-session').locator('.preferences-session-icon svg').count(), 1);
 
-      // Revoke shows on hover on a desktop; on a phone it is always there.
-      const opacity = () => revokeButton('linux-session').evaluate(node => getComputedStyle(node).opacity);
+      // Revoke and Log out show on hover on a desktop; on a phone they are always there.
+      const opacity = (locator) => locator.evaluate(node => getComputedStyle(node).opacity);
+      const logOutButton = current.getByRole('button', { name: 'Log out', exact: true });
       if (touch) {
-        assert.equal(await opacity(), '1');
+        assert.equal(await opacity(revokeButton('linux-session')), '1');
+        assert.equal(await opacity(logOutButton), '1');
       } else {
         await page.mouse.move(0, 0);
-        assert.equal(await opacity(), '0');
+        assert.equal(await opacity(revokeButton('linux-session')), '0');
+        assert.equal(await opacity(logOutButton), '0');
         await sessionRow('linux-session').hover();
         await page.waitForFunction(() => getComputedStyle(
           document.querySelector('[data-session-id="linux-session"] .preferences-session-button--on-hover'),
@@ -173,36 +202,74 @@ try {
       await assertNoOverflow();
       await page.screenshot({ path: `${output}/sessions-${width}.png`, fullPage: true });
 
-      // A click on a session shows its IP address and when it signed in, as in Linear.
+      // A click on a session opens Linear's details: Device, IP address, Original sign in
+      // (the date alone) and a red Revoke Access ("Revoke" on a phone) that takes focus.
       await sessionRow('firefox-session').getByRole('button', { name: /^Firefox on Linux/ }).click();
-      await sessionRow('firefox-session').getByText('203.0.113.12', { exact: true }).waitFor();
-      await sessionRow('firefox-session').getByText('Signed in', { exact: true }).waitFor();
+      const details = page.getByRole('dialog', { name: 'Firefox on Linux' });
+      await details.waitFor();
+      await details.getByText('203.0.113.12', { exact: true }).waitFor();
+      await details.getByText('Original sign in', { exact: true }).waitFor();
+      await details.getByText('Sep 27, 2026', { exact: true }).waitFor();
+      const detailsAction = details.getByRole('button', { name: touch ? 'Revoke' : 'Revoke Access', exact: true });
+      await detailsAction.waitFor();
+      assert.equal(await detailsAction.evaluate(node => node === document.activeElement), true);
       await assertNoOverflow();
       await page.screenshot({ path: `${output}/session-details-${width}.png`, fullPage: true });
+      await page.keyboard.press('Escape');
+      await details.waitFor({ state: 'detached' });
 
-      // A failed Revoke says so and brings the session back.
-      await sessionRow('linux-session').hover();
+      // Every revoke is confirmed first; Cancel changes nothing.
+      const confirmation = page.getByRole('dialog', { name: 'Revoke access' });
+      if (!touch) {
+        // A right click offers View details and Revoke, as in Linear.
+        await sessionRow('linux-session').locator('.preferences-session-main').click({ button: 'right' });
+        await page.getByRole('menuitem', { name: 'View details' }).waitFor();
+        await page.getByRole('menuitem', { name: 'Revoke' }).click();
+      } else {
+        await revokeButton('linux-session').click();
+      }
+      await confirmation.getByText('Revoke access to "Chrome on Linux"?', { exact: true }).waitFor();
+      assert.equal(await confirmation.getByRole('button', { name: 'Revoke', exact: true })
+        .evaluate(node => node === document.activeElement), true);
+      await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
+      await confirmation.waitFor({ state: 'detached' });
+      assert.deepEqual(writes, []);
+
+      // A failed Revoke says so, in Linear's words, and leaves the session in place.
+      if (!touch) await sessionRow('linux-session').hover();
       await revokeButton('linux-session').click();
-      await page.getByText("Couldn't revoke the session", { exact: true }).waitFor();
+      await confirmation.getByRole('button', { name: 'Revoke', exact: true }).click();
+      await page.getByText('Session could not be revoked', { exact: true }).waitFor();
       await sessionRow('linux-session').getByText('Chrome on Linux', { exact: true }).waitFor();
 
-      // Revoke ends that one session only.
-      await sessionRow('linux-session').hover();
-      await revokeButton('linux-session').click();
+      // Revoke from the details ends that one session only and closes them.
+      await sessionRow('linux-session').locator('.preferences-session-main').click();
+      const linuxDetails = page.getByRole('dialog', { name: 'Chrome on Linux' });
+      await linuxDetails.getByRole('button', { name: touch ? 'Revoke' : 'Revoke Access', exact: true }).click();
+      await confirmation.getByRole('button', { name: 'Revoke', exact: true }).click();
       await sessionRow('linux-session').waitFor({ state: 'detached' });
-      await page.waitForFunction(() => document.querySelector('.preferences-sessions-others')?.textContent?.startsWith('2 other sessions'));
+      await linuxDetails.waitFor({ state: 'detached' });
+      await page.getByText('Revoked session successfully', { exact: true }).first().waitFor();
+      await page.waitForFunction(() => document.querySelector('.preferences-sessions-others')?.textContent?.startsWith('5 other sessions'));
       await sessionRow('firefox-session').waitFor();
 
-      // Revoke all ends every other session and keeps this one.
+      // Revoke all, once confirmed, ends every other session and keeps this one.
       await othersHeading.getByRole('button', { name: 'Revoke all', exact: true }).click();
-      await othersHeading.waitFor({ state: 'detached' });
+      await confirmation.getByText('Revoke all other sessions? This cannot be undone.', { exact: true }).waitFor();
+      await confirmation.getByRole('button', { name: 'Revoke', exact: true }).click();
+      await page.getByText('You have been logged out of all other sessions.', { exact: true }).waitFor();
+      await page.waitForFunction(() => document.querySelector('.preferences-sessions-others')?.textContent?.trim() === 'No sessions');
       assert.equal(await page.locator('[data-session-id]').count(), 1);
       await current.getByText('Current session', { exact: true }).waitFor();
       await assertNoOverflow();
       await page.screenshot({ path: `${output}/only-current-${width}.png`, fullPage: true });
 
-      // Log out on this browser is the menu's Log out: the session ends and the sign-in page opens.
-      await current.getByRole('button', { name: 'Log out', exact: true }).click();
+      // Log out on this browser asks first, then signs out like the menu.
+      if (!touch) await current.hover();
+      await logOutButton.click();
+      const logOutConfirmation = page.getByRole('dialog', { name: 'Log out?' });
+      await logOutConfirmation.getByText('You will be logged out from this session', { exact: true }).waitFor();
+      await logOutConfirmation.getByRole('button', { name: 'Log out', exact: true }).click();
       await page.waitForURL('**/login');
       await page.getByRole('heading', { name: 'Log in to Buyerly', exact: true }).waitFor();
 
@@ -213,7 +280,7 @@ try {
         'POST /api/auth/logout',
       ]);
       assert.deepEqual(errors, []);
-      console.log(`Security & access: list, details, revoke, revoke all and log out passed at ${width}px`);
+      console.log(`Security & access: list, details, confirmations, revoke, revoke all and log out passed at ${width}px`);
     } catch (error) {
       await page.screenshot({ path: `${output}/failure-${width}.png`, fullPage: true });
       console.error(errors, writes);

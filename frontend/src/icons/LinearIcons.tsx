@@ -798,6 +798,33 @@ export const LinearShieldIcon: React.FC<IconProps> = ({ size = 16, className = '
   </svg>
 );
 
+// Linear's Security & access mark in Settings: a person with a padlock (16x16)
+export const LinearUserLockIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M6.5 2C4.84315 2 3.5 3.34315 3.5 5C3.5 6.65685 4.84315 8 6.5 8C8.15685 8 9.5 6.65685 9.5 5C9.5 3.34315 8.15685 2 6.5 2ZM5 5C5 4.17157 5.67157 3.5 6.5 3.5C7.32843 3.5 8 4.17157 8 5C8 5.82843 7.32843 6.5 6.5 6.5C5.67157 6.5 5 5.82843 5 5Z"
+    />
+    <path d="M6.5 9.25C4.0109 9.25 1.93972 10.8149 1.31061 12.9497C1.19352 13.347 1.42084 13.7641 1.8182 13.8812C2.21556 13.9983 2.63261 13.771 2.7497 13.3736C3.18276 11.904 4.6688 10.75 6.5 10.75C7.0103 10.75 7.49433 10.8389 7.93463 11.0004C8.32347 11.143 8.75433 10.9434 8.89696 10.5546C9.03959 10.1657 8.84004 9.73486 8.4512 9.59223C7.84545 9.37005 7.18657 9.25 6.5 9.25Z" />
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M12.5 7.5C11.3954 7.5 10.5 8.39543 10.5 9.5V10.0854C10.0633 10.2399 9.75 10.6563 9.75 11.1458V13.4167C9.75 14.0379 10.2537 14.5417 10.875 14.5417H14.125C14.7463 14.5417 15.25 14.0379 15.25 13.4167V11.1458C15.25 10.6563 14.9367 10.2399 14.5 10.0854V9.5C14.5 8.39543 13.6046 7.5 12.5 7.5ZM13.25 10.0208V9.5C13.25 9.08579 12.9142 8.75 12.5 8.75C12.0858 8.75 11.75 9.08579 11.75 9.5V10.0208H13.25Z"
+    />
+  </svg>
+);
+
 // 25. Linear Rocket / Scaling Icon (16x16)
 export const LinearRocketIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg

@@ -59,7 +59,7 @@ Implemented shared primitives:
 | Command menu | `COMMAND_MENU_CLASSES` (with `SelectionCommandMenu`) | one panel, field, group, row and note for search, the command menu and the selection's actions; selected row, searching, nothing found and failure |
 | Record reveal | `useRevealRow` | the row an address names is scrolled into view and focused; a filter, tab or collapsed group hiding it is cleared; a missing record is an error toast |
 | Toast | `ToastRegion`, `toast` | success (deletion), undo, redo, error; auto-dismiss after 8s unless hovered or focused; errors stay until dismissed |
-| ConfirmDialog | `ConfirmDialog` | question, consequence, Cancel and a focused confirming button; Enter confirms, Esc cancels |
+| ConfirmDialog | `ConfirmDialog` | question, consequence, Cancel and a focused confirming button; Enter confirms, Esc cancels; `placement="top"` sets it above the centre, as Linear's session confirmations |
 | Checkbox | `LinearCheckbox` | unchecked, checked, focus, disabled |
 | Toggle | `LinearToggle` | the only switch, one size everywhere (22×14, as in Linear Display options); yellow `--toggle-checked-bg` when on; on, off, hover, focus, disabled/busy where applicable |
 | DropdownMenu | `DropdownMenu` | open, selected, keyboard navigation, dismiss |
