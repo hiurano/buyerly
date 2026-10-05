@@ -5,6 +5,8 @@ import { CampaignsView } from '@/components/campaigns/CampaignsView';
 import { RulesView } from '@/components/rules/RulesView';
 import { StatisticsView } from '@/components/statistics/StatisticsView';
 import { CommandMenu } from '@/components/command/CommandMenu';
+import { SearchView } from '@/components/search/SearchView';
+import { searchPageTitle } from '@/lib/search';
 import { WorkspaceSwitcher } from '@/components/command/WorkspaceSwitcher';
 import { PreferencesView } from '@/components/preferences/PreferencesView';
 import { AppUtilityBar } from '@/components/layout/AppUtilityBar';
@@ -134,8 +136,11 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   useEffect(() => {
     document.title = activeTab === 'inbox'
       ? (inboxBadge > 0 ? `Inbox (${inboxBadge})` : 'Inbox')
-      : `${workspace.name} — Buyerly`;
-  }, [activeTab, inboxBadge, workspace.name]);
+      : activeTab === 'search'
+        ? searchPageTitle(window.location.search)
+        : `${workspace.name} — Buyerly`;
+    // The search page's title follows its query, which only the address holds.
+  }, [activeTab, inboxBadge, navigationKey, workspace.name]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -239,6 +244,9 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
                     revealId={route.tab === 'rules' ? route.recordId : undefined}
                     navigationKey={navigationKey}
                   />
+                )}
+                {activeTab === 'search' && (
+                  <SearchView workspace={workspace} navigate={navigate} navigationKey={navigationKey} />
                 )}
                 {STATISTICS_ENABLED && activeTab === 'statistics' && <StatisticsView />}
               </main>

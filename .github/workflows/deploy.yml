@@ -132,16 +132,27 @@ jobs:
           name: mobile-sidebar-browser
           path: /tmp/buyerly-mobile-sidebar
 
-      - name: Check Search workspace in Chromium
+      - name: Check the command menu in Chromium
         working-directory: frontend
         run: node ../scripts/command-menu-browser.mjs
 
-      - name: Upload Search workspace browser evidence
+      - name: Upload command menu browser evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: command-menu-browser
           path: /tmp/buyerly-command-menu
+
+      - name: Check the search page in Chromium
+        working-directory: frontend
+        run: node ../scripts/search-page-browser.mjs
+
+      - name: Upload search page browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: search-page-browser
+          path: /tmp/buyerly-search-page
 
       # The runner's Google Chrome has WebMCP behind a flag; Playwright's
       # Chromium does not, and the check then uses a stand-in instead.
