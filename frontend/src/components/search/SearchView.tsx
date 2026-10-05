@@ -324,6 +324,8 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
 
   const runSearch = (text: string) => {
     const query = text.trim();
+    // A recent search fills the field at once, not a render after the address.
+    setDraft(query);
     if (query) setRecent(rememberSearch(scope, query));
     update({ query });
   };

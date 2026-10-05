@@ -273,8 +273,9 @@ try {
       // 3. A tab searches one kind, prompts for it and keeps it in the address.
       await page.getByRole('tab', { name: 'Rules', exact: true }).click();
       await page.waitForURL(`${origin}/alpha/search?q=Test+Campaign&type=rule`);
-      assert.equal(await field.getAttribute('placeholder'), 'Search rules by name…');
-      assert.equal(lastSearch().get('kind'), 'rule');
+      // The address changes before React renders the tab, so wait for what it shows and asks.
+      await page.waitForFunction(() => document.querySelector('[data-search-page-input]')?.placeholder === 'Search rules by name…');
+      await until(() => lastSearch().get('kind') === 'rule', 'the Rules tab searches rules');
       await page.getByText('No results found for "Test Campaign"', { exact: true }).waitFor();
       await submit('stop');
       await results.waitFor();
@@ -325,7 +326,7 @@ try {
       await page.screenshot({ path: `${output}/recent-${width}.png` });
       await recent.getByRole('button', { name: 'stop' }).click();
       await page.waitForURL(`${origin}/alpha/search?q=stop`);
-      assert.equal(await field.inputValue(), 'stop');
+      await page.waitForFunction(() => document.querySelector('[data-search-page-input]')?.value === 'stop');
       await page.getByRole('button', { name: 'Clear search' }).click();
       await page.waitForURL(`${origin}/alpha/search`);
       await page.getByRole('button', { name: 'Clear History' }).click();
