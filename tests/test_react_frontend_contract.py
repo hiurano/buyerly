@@ -102,22 +102,6 @@ class TestReactFrontendContract(unittest.TestCase):
         cls.rules_view = (
             ROOT / "frontend" / "src" / "components" / "rules" / "RulesView.tsx"
         ).read_text()
-        cls.statistics_view = (
-            ROOT
-            / "frontend"
-            / "src"
-            / "components"
-            / "statistics"
-            / "StatisticsView.tsx"
-        ).read_text()
-        cls.statistics_model = (
-            ROOT
-            / "frontend"
-            / "src"
-            / "components"
-            / "statistics"
-            / "statisticsModel.ts"
-        ).read_text()
         cls.delivery_lib = (
             ROOT / "frontend" / "src" / "lib" / "delivery.ts"
         ).read_text()
@@ -145,22 +129,6 @@ class TestReactFrontendContract(unittest.TestCase):
             (ROOT / "frontend" / "src" / "components" / "campaigns" / name).read_text()
             for name in ("CampaignRow.tsx", "AdSetRow.tsx", "AdRow.tsx", "EntityRowCells.tsx")
         )
-        cls.trend_chart = (
-            ROOT
-            / "frontend"
-            / "src"
-            / "components"
-            / "statistics"
-            / "TrendChart.tsx"
-        ).read_text()
-        cls.ad_accounts_section = (
-            ROOT
-            / "frontend"
-            / "src"
-            / "components"
-            / "preferences"
-            / "AdAccountsSection.tsx"
-        ).read_text()
         cls.inbox_view = (
             ROOT / "frontend" / "src" / "components" / "inbox" / "InboxView.tsx"
         ).read_text()
@@ -241,11 +209,13 @@ class TestReactFrontendContract(unittest.TestCase):
             "parts[1] === 'inbox'",
             "parts[1] === 'ads-manager'",
             "parts[1] === 'rules'",
-            "parts[1] === 'statistics'",
             "parts[1] === 'settings'",
             "SYSTEM_ROOTS.has(parts[0])",
         ):
             self.assertIn(contract, self.routing)
+        # Statistics was removed: no route, no screen.
+        self.assertNotIn("statistics", self.routing)
+        self.assertFalse((ROOT / "frontend" / "src" / "components" / "statistics").exists())
         self.assertNotIn("'/w/'", self.routing)
         self.assertNotIn('"/w/"', self.routing)
         self.assertIn("<NotFoundView", self.app)
@@ -511,7 +481,7 @@ class TestReactFrontendContract(unittest.TestCase):
         rules_view = self.rules_view
 
         # One dock, one menu and one keyboard model for every list.
-        for view in (self.campaigns_view, self.statistics_view, rules_view):
+        for view in (self.campaigns_view, rules_view):
             for contract in ("useRowSelection(", "<SelectionDock", "<SelectionCommandMenu"):
                 self.assertIn(contract, view)
         for key in ("'[data-row-id]:hover'", "key === 'a'", "key === 'x'", "'Escape'", "key === 'k'"):
@@ -529,10 +499,9 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertIn(contract, self.delivery_lib)
         # The way back reverses the recorded audit rows.
         self.assertIn("await undoActions(reversible, inScope)", self.delivery_lib)
-        for view in (self.campaigns_view, self.statistics_view):
-            self.assertIn("setDeliveryForMany(", view)
-            self.assertIn("pushHistory(deliveryHistoryEntry(", view)
-            self.assertIn("reportBulkDelivery(", view)
+        self.assertIn("setDeliveryForMany(", self.campaigns_view)
+        self.assertIn("pushHistory(deliveryHistoryEntry(", self.campaigns_view)
+        self.assertIn("reportBulkDelivery(", self.campaigns_view)
         # Rules held for review are never switched on in bulk either.
         self.assertIn("setRulesEnabled: async (ids, enabled)", self.app_store)
         self.assertIn("if (enabled && rule.needsReview)", self.app_store)
@@ -548,7 +517,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertNotIn("#eab308", (ui / "LinearCheckbox.tsx").read_text())
 
     def test_entity_tables_share_one_table_and_cell_primitive(self):
-        """Ads Manager, Rules and Statistics render one table, not three."""
+        """Ads Manager and Rules render one table, not two."""
         for primitive in (
             "export const LinearDataTable",
             "export const LinearDataListGroup",
@@ -558,25 +527,22 @@ class TestReactFrontendContract(unittest.TestCase):
         ):
             self.assertIn(primitive, self.linear_data_list)
 
-        for view in (self.campaigns_view, self.rules_list_view, self.statistics_view):
+        for view in (self.campaigns_view, self.rules_list_view):
             self.assertIn("<LinearDataTable", view)
             self.assertNotIn("<LinearDataListColumnHeader", view)
-        for row in (self.campaign_row, self.adset_row, self.ad_row, self.rule_row, self.statistics_view):
+        for row in (self.campaign_row, self.adset_row, self.ad_row, self.rule_row):
             self.assertIn("<LinearDataPrimaryCell", row)
-        for source in (self.campaigns_row_sources, self.statistics_view):
-            self.assertIn("<LinearDataMetricCell", source)
+        self.assertIn("<LinearDataMetricCell", self.campaigns_row_sources)
 
         # The Name column and its leading controls line up the same everywhere.
         rules_columns = (
             ROOT / "frontend" / "src" / "components" / "rules" / "tableColumns.ts"
         ).read_text()
-        for source in (self.ads_manager_columns, rules_columns, self.statistics_view):
+        for source in (self.ads_manager_columns, rules_columns):
             self.assertIn("linearDataNameColumn(", source)
-        self.assertIn("<EntityRowControls", self.statistics_view)
 
         # Minimum table width has one formula instead of a copy per screen.
         self.assertNotIn("getAdsManagerTableMinWidth", self.ads_manager_columns)
-        self.assertNotIn("TABLE_MIN_WIDTH", self.statistics_view)
 
     def test_campaign_rule_attachment_is_served_by_the_api(self):
         # Attaching a rule to a campaign writes a scope through the API rather
@@ -604,123 +570,20 @@ class TestReactFrontendContract(unittest.TestCase):
             "if (tab === 'campaigns' || tab === 'adsets') {", self.ads_manager_columns
         )
 
-    def test_statistics_uses_workspace_api_without_production_fixtures(self):
-        for contract in (
-            "apiRequest<MetaAccount[]>('/api/accounts')",
-            "/api/analytics/hierarchy?parent_id=",
-            "encodeURIComponent(parentId)",
-            "const parentId = parent ? parent.id : selectedAccountId;",
-            "&level=${queryLevel}&period=${period}",
-            "requestGenerationRef",
-            "Loading ad accounts…",
-            "Loading ${levelLabel.plural}…",
-            "Couldn't load ad accounts",
-            "Couldn't load Statistics",
-            "No ${levelLabel.plural} in this ad account",
-            "data_as_of",
-            "analytics_fact_store",
-            "<Button",
-            "Monetary totals are unavailable",
-            "Zero-activity entities remain visible",
-        ):
-            self.assertIn(contract, self.statistics_view)
-
-        for fixture_or_unsupported_control in (
-            "Creative Test — Batch 08",
-            "Lookalike — Qualified leads",
-            "Prospecting — Broad",
-            "Retargeting — 30 days",
-            "New Offer — Validation",
-            "ROAS",
-            "28-day baseline",
-            "Updated 2 min ago",
-            "cplTarget",
-            "roasTarget",
-        ):
-            self.assertNotIn(fixture_or_unsupported_control, self.statistics_view)
-
-    def test_statistics_primary_result_and_decision_layer_stay_derived(self):
-        """The decision layer reads live facts; it never invents a target."""
-        # The primary result is a semantic role resolved from real conversion
-        # volume, not a hard-coded metric for every advertiser.
-        for contract in (
-            "export function detectPrimaryResult",
-            "cost_per_lead",
-            "cost_per_registration",
-            "cost_per_purchase",
-        ):
-            self.assertIn(contract, self.statistics_model)
-
-        # A row below the volume floor is undecidable, which is a different
-        # statement from performing badly.
-        self.assertIn("MIN_RESULTS_FOR_DECISION = 10", self.statistics_model)
-        self.assertIn("state: 'insufficient'", self.statistics_model)
-
-        # No stored target means no verdict: the value is reported as is.
-        self.assertIn("if (target === null || target <= 0)", self.statistics_model)
-        self.assertIn("label: 'No target set'", self.statistics_model)
-
-        # Diagnostics are derived from returned facts and stay off the table.
-        self.assertIn("export function buildDiagnostics", self.statistics_model)
-        for diagnostic in ("Frequency", "CTR", "CPC", "CPM", "Landing page views"):
-            self.assertIn(diagnostic, self.statistics_model)
-        for diagnostic_column in (
-            "{ id: 'impressions'",
-            "{ id: 'clicks'",
-            "{ id: 'ctr'",
-        ):
-            self.assertNotIn(diagnostic_column, self.statistics_view)
-
-        # Drill-down stays in place: the same columns, a deeper parent.
-        self.assertIn("aria-label=\"Statistics drill-down\"", self.statistics_view)
-        self.assertIn("CHILD_LEVEL", self.statistics_view)
-
-    def test_statistics_compares_only_against_a_baseline_the_server_built(self):
-        """Change is a movement, never a verdict, and today refuses to be compared."""
-        # The baseline is asked for explicitly and read back from the response.
-        self.assertIn("&compare=${comparison}", self.statistics_view)
-        self.assertIn("hierarchy?.comparison", self.statistics_view)
-        self.assertIn("comparisonMeta?.available ?? false", self.statistics_view)
-
-        # The column exists only while a baseline stands behind it.
-        self.assertIn("...(comparisonAvailable", self.statistics_view)
-        self.assertIn("label: 'Change'", self.statistics_view)
-
-        # A window containing a day in progress says so, and an impossible
-        # comparison reports the server's reason rather than a number.
-        self.assertIn("Comparison unavailable.", self.statistics_view)
-        self.assertIn("still contains today", self.statistics_view)
-
-        # Movement is written out and carries no decision color of its own.
-        self.assertIn("export function changeBetween", self.statistics_model)
-        self.assertIn("label: 'No baseline'", self.statistics_model)
-        self.assertIn("label: 'From zero'", self.statistics_model)
-        # The change note takes a neutral color, so "better than last week" can
-        # never be mistaken for "inside target".
-        self.assertIn(
-            "inline-flex min-w-0 items-center gap-1 text-[var(--text-secondary)]",
-            self.statistics_view,
-        )
-
     def test_manual_delivery_actions_are_real_writes_with_a_way_back(self):
         """A control that looks like it stops spending must really stop it."""
-        # One client for both screens, aimed at the real endpoints.
+        # One client, aimed at the real endpoint.
         for contract in (
             "/api/entities/${level}/${encodeURIComponent(entityId)}/delivery",
-            "/api/entities/${level}/${encodeURIComponent(entityId)}/budget",
             "method: 'POST'",
-            "method: 'PATCH'",
             # Undo reuses the audit history rather than a parallel mechanism.
             "/api/audit-events/${auditEventId}/undo",
         ):
             self.assertIn(contract, self.delivery_lib)
 
-        # A large budget step is confirmed before it is sent, not explained after.
-        self.assertIn("SIGNIFICANT_BUDGET_CHANGE = 0.25", self.delivery_lib)
-
-        # Statistics acts on the row, and Ctrl+Z is the way back.
-        for contract in ("<EntityRowControls", "setEntityDelivery", "setEntityBudget", "undoAction", "pushHistory("):
-            self.assertIn(contract, self.statistics_view)
+        # Ads Manager acts on the row, and Ctrl+Z is the way back.
+        for contract in ("setEntityDelivery", "pushHistory("):
+            self.assertIn(contract, self.campaigns_view)
 
         # Ads Manager no longer ships a toggle that claims to be unfinished.
         self.assertNotIn("controls are not connected yet", self.campaigns_row_sources)
@@ -732,7 +595,7 @@ class TestReactFrontendContract(unittest.TestCase):
     def test_actions_report_the_way_linear_does(self):
         """A change shows on the row; toasts are for deletion, undo/redo and failure."""
         # No screen keeps its own success banner above or under the table.
-        for view in (self.campaigns_view, self.statistics_view, self.rules_view):
+        for view in (self.campaigns_view, self.rules_view):
             for dead in (
                 "bulkNotice",
                 "deliveryNotice",
@@ -775,62 +638,6 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("{ id: 'deleted', label: 'Recently deleted' }", self.rules_view)
         self.assertIn("<RecentlyDeletedView />", self.rules_view)
         self.assertIn("event.key !== '#'", self.recently_deleted_view)
-
-    def test_statistics_trend_is_one_series_on_one_axis(self):
-        """The trend answers whether a movement lasted, and nothing else."""
-        # A fixed window, asked for separately from the reporting period.
-        self.assertIn("/api/analytics/timeseries?parent_id=", self.statistics_view)
-        self.assertIn("&level=${queryLevel}&days=14", self.statistics_view)
-
-        # No chart occupies the first screen until it is asked for.
-        self.assertIn("{trendOpen ? 'Hide trend' : 'Show trend'}", self.statistics_view)
-        self.assertIn('aria-controls="statistics-trend-chart"', self.statistics_view)
-
-        # A reported gap breaks the line instead of dropping it to zero.
-        self.assertIn("function segmentsOf", self.trend_chart)
-        self.assertIn("No data for this day", self.trend_chart)
-
-        # The series colour is its own token, never a decision colour, and the
-        # target is the one dashed rule because it is a threshold.
-        self.assertIn("var(--statistics-trend-line)", self.trend_chart)
-        self.assertNotIn("statistics-state-", self.trend_chart)
-        self.assertIn('strokeDasharray="4 4"', self.trend_chart)
-
-        # Every value stays reachable without a pointer.
-        self.assertIn("Show values", self.trend_chart)
-        self.assertIn("<table", self.trend_chart)
-        self.assertIn("ArrowLeft", self.trend_chart)
-
-        # One metric on one axis: no second series and no second scale.
-        for forbidden in ("yAxisRight", "secondAxis", "series2"):
-            self.assertNotIn(forbidden, self.trend_chart)
-
-    def test_statistics_judges_only_against_the_stored_account_target(self):
-        """The verdict comes from the ad account's own declaration, or not at all."""
-        # The target is read from the workspace API, never from a local constant.
-        self.assertIn("selectedAccount?.target_cost_per_result", self.statistics_view)
-        self.assertIn("selectedAccount?.primary_result === 'leads'", self.statistics_view)
-
-        # A stored target names the event it applies to, so it is used only
-        # while that event is the one on screen.
-        self.assertIn(
-            "declaredResultKind && resultKind === declaredResultKind",
-            self.statistics_view,
-        )
-
-        # Settings is where a target is declared, against the real endpoint.
-        for contract in (
-            "apiRequest<MetaAccount[]>('/api/accounts')",
-            "/cost-target`",
-            "method: 'PATCH'",
-            "primary_result: nextResult",
-            "Couldn't load ad accounts",
-            "Connect an ad account",
-        ):
-            self.assertIn(contract, self.ad_accounts_section)
-
-        # Clearing the declared result clears the target with it.
-        self.assertIn("const target = nextResult ? parsed : null;", self.ad_accounts_section)
 
     def test_inbox_is_linear_notifications_over_workspace_events(self):
         # Linear's Inbox: per-person read, delete and snooze over the shared

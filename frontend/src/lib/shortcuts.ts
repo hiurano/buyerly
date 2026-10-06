@@ -1,18 +1,17 @@
 import type { SettingsSection } from '@/store/useAppStore';
 
 /** The pages G then a letter opens; Settings opens on its first section. */
-export type GoToTarget = 'inbox' | 'campaigns' | 'rules' | 'statistics' | 'preferences';
+export type GoToTarget = 'inbox' | 'campaigns' | 'rules' | 'preferences';
 
 /**
  * Linear's "G then …": one letter per page, shown in the sidebar, the
  * workspace menu and the command menu, and handled in App.tsx. G S is
- * Settings, as in Linear; Statistics, which Linear does not have, takes G T.
+ * Settings, as in Linear.
  */
 export const GO_TO_KEYS: Record<GoToTarget, string> = {
   inbox: 'I',
   campaigns: 'A',
   rules: 'R',
-  statistics: 'T',
   preferences: 'S',
 };
 

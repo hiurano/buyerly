@@ -41,7 +41,7 @@ The live token vocabulary is defined in `frontend/src/styles/tokens.css`. Its cu
 | Action | `--action-primary`, `--action-primary-hover` | Accessible primary actions distinct from warnings |
 | Interaction | hover, focus, selected and disabled tokens | Explicit control states |
 | Elevation and motion | shadow, speed and easing tokens | Menus, dialogs and state transitions |
-| Domain | Ads Manager, Rules, Statistics, Preferences and filter tokens | Stable product-specific semantics |
+| Domain | Ads Manager, Rules, Preferences and filter tokens | Stable product-specific semantics |
 
 New reusable values belong in this file with a semantic name. Page-local Tailwind literals are acceptable only when truly one-off; a repeated literal is a missing token.
 
@@ -101,7 +101,7 @@ Buyerly reports actions the way Linear does, measured in the product on 2026-09-
 - Meta connection is a real OAuth flow: explanation, Facebook authorization, account discovery, explicit import and result;
 - imported ad accounts are not the same entity as campaigns and must not be rendered as campaign rows;
 - fixtures such as LuckySpin, RoyalBet, NeonSlots and AcePlay are development examples only and must not ship as current workspace data;
-- delivery toggles are real writes into Meta, sharing the endpoints and the undo path with Statistics; a row is busy while the write runs and then shows the delivery Meta confirmed, and a failure is reported as a toast;
+- delivery toggles are real writes into Meta, going through the audited single-entity endpoint and the audit undo path; a row is busy while the write runs and then shows the delivery Meta confirmed, and a failure is reported as a toast;
 - rows can be selected for bulk Pause and Resume, which write delivery through the same audited single-entity endpoint; entities that changed are taken back together with Ctrl+Z, and only what failed or was skipped is reported;
 - no rule is enabled as a side effect of importing an account.
 
@@ -112,41 +112,9 @@ Buyerly reports actions the way Linear does, measured in the product on 2026-09-
 - account coverage and active/inactive state use real workspace-scoped data.
 - deleting a rule or a group is confirmed first, then reported with a link to **Recently deleted**; a deleted rule stops running at once. Recently deleted is a tab of Rules that keeps rules and groups for 30 days: a restore brings a rule back under its id, into the groups that still exist and onto the ad accounts it ran on with the scope it had, and says which ad accounts could not take it back. There is no manual permanent delete;
 
-### Statistics
-
-Statistics is an operational console, not an analytics dashboard. Its order is
-spend → economics → volume → where → why, and a metric earns a place on the
-first screen only by causing a frequent decision.
-
-- keeps the restored individual overview cards, header filter/display menus and search beside the entity tabs (below them on mobile); this user-requested composition is a scoped exception to the divided-summary-surface principle;
-
-- selects one imported workspace account and reads campaign, ad-set or ad facts through the workspace-isolated hierarchy API;
-- supported periods are Today, Yesterday, Last 3 days and Last 7 days, matching the API vocabulary; Today is labelled as an open period whose conversions are still provisional;
-- the context line names the account, period and the account's reporting timezone, and identifies the Analytics Fact Store freshness timestamp;
-- the overview is four cards — spend, cost per result, result volume, delivery — derived from the currently loaded rows;
-- **Primary result** is a semantic role, not a fixed metric: the conversion event with the highest real volume is used, and it can be overridden in display options. The cost card follows the same choice;
-- the table carries only entity identity and delivery, spend, results and cost per result. CTR, CPC, CPM, frequency, reach, impressions, link and funnel metrics live in a per-row diagnostics panel that opens in place;
-- clicking an entity drills into its children with the same columns and a breadcrumb back; a level tab returns to the account-wide view;
-- **a row below the result floor is reported as undecidable, which is a different statement from performing badly.** No row is colored as a problem on a sample too small to judge;
-- **the verdict comes from the ad account's own declaration, or not at all.** An ad account declares its primary result and the cost target for it in Settings → Ad accounts; Statistics then reports each row as on target, watch or needs attention. A target names the event it applies to, so it is used only while that event is the one on screen;
-- an ad account that has declared nothing reports cost per result without a verdict, and the overview states the absent target once rather than on every line;
-- **comparison is a movement, never a verdict.** A period can be measured against the equal-length window before it; the change is written out with a direction and carries no decision color, so "better than last week" can never be mistaken for "inside target";
-- **Today refuses to be compared.** The fact store keeps whole-day totals, so a day in progress cannot be matched against an equal part of an earlier day; the screen reports that instead of a change that only reflects the hour. A multi-day window containing today says that its change keeps moving;
-- an entity with no baseline reports "No baseline" rather than a change from zero, and an entity that ran only in the baseline window is history, not a row;
-- **one trend, one metric, one axis, and only on request.** The primary decision card carries a sparkline; the full chart is opened by a button and plots the cost per result per day over a fixed 14-day window, independent of the reporting period, because its job is to say whether a movement lasted. It draws the stored target as a reference line, breaks the line where a day was never reported, leaves the open day's marker hollow, and ships a values table so no number depends on hovering. The series colour is its own token, validated against each theme's surface, and never a decision colour;
-- **a decision becomes an action on the row that justified it.** Pause and resume sit on the row; the daily budget is edited inside the opened diagnostics panel, where it is already explained. A budget is only ever changed where one exists — never created, because that would change how Meta optimizes rather than how much it spends — and never on an ad;
-- **what this session wrote is shown on the row, not announced.** The fact store is a snapshot that catches up on its next sync, so the row shows the value Meta confirmed from this session over the stored one; the way back is Ctrl+Z, through the audit history that already owns reversal;
-- a budget step of 25% or more is confirmed before it is sent, naming the consequence: Meta can return the entity to its learning phase;
-- revenue/ROAS stays absent until a server contract exists;
-- every number carries a real period, freshness and data-status meaning;
-- unavailable or unsupported metrics render as unavailable, never as zero unless the API returned a true zero;
-- mixed currency is not silently aggregated.
-
 ### Settings
 
 - profile, workspace and connection settings preserve role and workspace boundaries;
-- **Ad accounts** is where an ad account declares the conversion event it is buying and the cost target for it. Clearing the declared result clears the target with it, because a cost target without the event it applies to cannot be interpreted;
-- the target is stored and shown in the ad account's own currency, and is never converted between currencies;
 - secrets and full access tokens are never display data.
 
 ### Search and command menu
@@ -155,7 +123,7 @@ Two menus, as in Linear.
 
 - **Search** opens from the sidebar's Search button or `/` outside a text field. It finds campaigns, ad sets and ads of today's inventory — the one Ads Manager shows — rules, and the ad accounts Ads Manager opens, only in the workspace in the address; the empty field says exactly that, and nothing else (Inbox, members, rule groups) is implied. Searching, nothing found and a failure with Retry search are separate states in words; results come grouped by kind, best match first, up to 20 per kind.
 - **Command menu** opens with Ctrl/Cmd+K from anywhere, a text field included, as Linear's: 720px wide, nothing dimmed behind, "Type a command or search…". The open page's own group comes first (Inbox: Notifications), then Rules, Filter and Navigation in that order, each command with its keys on the right ("G then S"); Go to inbox is left out on Inbox, as in Linear. Typed letters match in order, not side by side ("gtset" finds Go to settings), best match first within each group. From two letters, "Quick results" from GET /api/search follow the commands, ending in Search entire workspace (or No results found · Go to advanced search), with a footer of ↵ Select/Open and Advanced search Ctrl /. Its colors are the `--command-menu-*` tokens, measured on Linear in both themes. Pressed again it closes; with rows selected, Ctrl/Cmd+K stays the selection's actions menu. Pages add their group with `usePageCommands`.
-- **G then a letter** opens a page: I Inbox, A Ads Manager, R Rules, S Settings (as in Linear), T Statistics. One table, `frontend/src/lib/shortcuts.ts`, feeds the handler, the sidebar hints, the workspace menu and the command menu.
+- **G then a letter** opens a page: I Inbox, A Ads Manager, R Rules, S Settings (as in Linear). One table, `frontend/src/lib/shortcuts.ts`, feeds the handler, the sidebar hints, the workspace menu and the command menu.
 - A search result opens on its own row through the record's address (`/ads-manager/{level}/{id}?account=…`, `/rules/{id}`): Buyerly has no record pages, unlike Linear. A filter, tab or collapsed group hiding the row is cleared, and a record the list cannot show is reported.
 - Esc closes either menu and returns focus to what had it. `/` typed into an input, textarea, select or rich text stays text, and neither shortcut fires while another dialog or menu is open.
 

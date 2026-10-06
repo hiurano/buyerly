@@ -828,10 +828,9 @@ class Account(Base):
     rules_enabled = Column(Boolean, default=False, nullable=False, doc="Whether automated stop rules are enabled")
     is_active = Column(Boolean, default=True, nullable=False, doc="Whether the ad account is enabled in the system")
 
-    # Statistics decision contract: the conversion event this ad account is
-    # actually buying, and the cost it is worth buying at. Empty and NULL mean
-    # the buyer has not declared them, which Statistics reports rather than
-    # guessing a target.
+    # Left from the removed Statistics cost target (migration 0025). Nothing
+    # reads or writes them any more; dropping them would delete the stored
+    # values, so that waits for a migration of its own.
     primary_result = Column(
         String,
         default="",

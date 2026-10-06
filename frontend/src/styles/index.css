@@ -2436,18 +2436,14 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 /*
  * Adjacent selected rows read as one block, as in Linear: the inner corners are
  * squared and the row gap between them is filled with the selection colour.
- * A row wrapped in [data-row-slot] (Statistics keeps its action panels beside
- * the row) joins only while nothing is rendered under it.
  */
-.linear-data-row[data-selected='true']:has(+ .linear-data-row[data-selected='true']),
-[data-row-slot]:has(> .linear-data-row[data-selected='true']:last-child):has(+ [data-row-slot] > .linear-data-row[data-selected='true']) > .linear-data-row {
+.linear-data-row[data-selected='true']:has(+ .linear-data-row[data-selected='true']) {
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
   box-shadow: 0 2px 0 0 var(--row-selected-bg);
 }
 
-.linear-data-row[data-selected='true'] + .linear-data-row[data-selected='true'],
-[data-row-slot]:has(> .linear-data-row[data-selected='true']:last-child) + [data-row-slot] > .linear-data-row[data-selected='true'] {
+.linear-data-row[data-selected='true'] + .linear-data-row[data-selected='true'] {
   border-top-left-radius: 0 !important;
   border-top-right-radius: 0 !important;
 }

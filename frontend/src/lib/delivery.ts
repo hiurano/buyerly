@@ -27,27 +27,6 @@ export interface DeliveryResult {
   message: string;
 }
 
-export interface BudgetResult {
-  entity_id: string;
-  level: EntityLevel;
-  daily_budget: number;
-  previous_daily_budget?: number;
-  changed: boolean;
-  audit_event_id: number | null;
-  message: string;
-}
-
-/**
- * Product confirmation threshold for substantial budget edits. This is not a
- * guarantee about Meta's learning-phase behavior.
- */
-export const SIGNIFICANT_BUDGET_CHANGE = 0.25;
-
-export function isSignificantBudgetChange(current: number, next: number): boolean {
-  if (!Number.isFinite(current) || current <= 0) return true;
-  return Math.abs(next - current) / current >= SIGNIFICANT_BUDGET_CHANGE;
-}
-
 export function setEntityDelivery(
   level: EntityLevel,
   entityId: string,
@@ -57,18 +36,6 @@ export function setEntityDelivery(
   return apiRequest<DeliveryResult>(
     `/api/entities/${level}/${encodeURIComponent(entityId)}/delivery`,
     { method: 'POST', body: JSON.stringify({ account_id: accountId, status }) },
-  );
-}
-
-export function setEntityBudget(
-  level: EntityLevel,
-  entityId: string,
-  accountId: string,
-  dailyBudget: number,
-): Promise<BudgetResult> {
-  return apiRequest<BudgetResult>(
-    `/api/entities/${level}/${encodeURIComponent(entityId)}/budget`,
-    { method: 'PATCH', body: JSON.stringify({ account_id: accountId, daily_budget: dailyBudget }) },
   );
 }
 

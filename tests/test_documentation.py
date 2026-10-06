@@ -77,7 +77,6 @@ class TestDocumentationContract(unittest.TestCase):
             "Skeleton",
             "### Ads Manager",
             "### Rules",
-            "### Statistics",
             "frontend/src/styles/tokens.css",
             "frontend/src/ui/",
         ):
@@ -100,7 +99,6 @@ class TestDocumentationContract(unittest.TestCase):
             "/{workspace}/inbox",
             "/{workspace}/ads-manager/campaigns",
             "/{workspace}/rules",
-            "/{workspace}/statistics",
             "Admin",
             "Buyer",
             "Viewer",

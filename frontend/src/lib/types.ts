@@ -69,10 +69,6 @@ export interface MetaAccount {
   status_label?: string;
   rules_enabled?: boolean;
   is_active?: boolean;
-  /** Conversion event this ad account declares as its primary result; '' when undeclared. */
-  primary_result?: '' | 'leads' | 'registrations' | 'purchases';
-  /** Target cost per primary result in the ad account currency; null when undeclared. */
-  target_cost_per_result?: number | null;
   /** Runtime rule snapshots attached to this ad account, each with its scope. */
   active_rules?: AttachedRule[];
 }
@@ -159,25 +155,6 @@ export interface AnalyticsComparison {
   dates: string[];
   reason: string;
   current_includes_open_day: boolean;
-}
-
-/** One local day of a trend. `has_data` false means the day was never reported. */
-export interface AnalyticsTrendPoint extends AnalyticsPeriodMetrics {
-  date: string;
-  has_data: boolean;
-}
-
-export interface AnalyticsTimeseriesResponse {
-  parent_id: string;
-  level: 'campaign' | 'adset' | 'ad';
-  source: 'analytics_fact_store';
-  timezone: string;
-  days: number;
-  /** The local day still in progress; its point is not final. */
-  open_day: string;
-  /** Empty when the window mixes currencies, so money stays off one axis. */
-  currency: string;
-  points: AnalyticsTrendPoint[];
 }
 
 export interface AnalyticsHierarchyResponse {

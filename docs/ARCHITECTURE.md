@@ -19,7 +19,7 @@ flowchart LR
 
 ## Frontend и HTTP
 
-[App.tsx](../frontend/src/App.tsx) собирает React-приложение; [routing.ts](../frontend/src/lib/routing.ts) определяет публичные и workspace-маршруты. Основные разделы — Inbox, Ads Manager, Rules, Statistics и Settings. Состояние UI хранится в Zustand, HTTP-запросы проходят через [api.ts](../frontend/src/lib/api.ts).
+[App.tsx](../frontend/src/App.tsx) собирает React-приложение; [routing.ts](../frontend/src/lib/routing.ts) определяет публичные и workspace-маршруты. Основные разделы — Inbox, Ads Manager, Rules и Settings. Состояние UI хранится в Zustand, HTTP-запросы проходят через [api.ts](../frontend/src/lib/api.ts).
 
 Vite собирает `frontend/dist`; Nginx отдаёт файлы и проксирует API. Юридические страницы и их ресурсы находятся в `frontend/public`. При `SERVE_STATIC=true` FastAPI может отдавать локальный React build и юридические документы. Runtime-каталог `uploads/` монтируется в production как именованный том `buyerly-uploads`; публичные URL начинаются с `/uploads/`.
 
@@ -39,7 +39,7 @@ Vite собирает `frontend/dist`; Nginx отдаёт файлы и прок
 
 [meta_api/client.py](../meta_api/client.py) получает inventory и Insights, нормализует метрики, обрабатывает квоты и ошибки. Inventory и метрики периода имеют разное происхождение: отсутствие активности не означает отсутствие рекламной сущности.
 
-[services/analytics_store.py](../services/analytics_store.py) сохраняет и читает `AnalyticsEntityFact`. React Statistics использует `/api/analytics/hierarchy`. Старый account-level API `/api/summary` и `SummarySnapshot` продолжают существовать на backend; это не отдельный текущий React-экран. Справочник маршрутов — [API.md](API.md).
+[services/analytics_store.py](../services/analytics_store.py) сохраняет и читает `AnalyticsEntityFact`. Ads Manager и WebMCP читают его через `/api/analytics/hierarchy`. Старый account-level API `/api/summary` и `SummarySnapshot` продолжают существовать на backend; это не отдельный текущий React-экран. Справочник маршрутов — [API.md](API.md).
 
 Страница поиска `/<workspace>/search` (`/` и кнопка Search workspace) ищет по Enter через `GET /api/search` ([api/routers/search.py](../api/routers/search.py)): кампании, ad sets и объявления из сегодняшнего инвентаря `AnalyticsEntityFact` по часам каждого кабинета (того же, что показывает Ads Manager), правила и рекламные кабинеты workspace из адреса. Результат открывается по каноническому адресу записи, и список показывает её строку.
 

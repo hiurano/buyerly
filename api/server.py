@@ -189,7 +189,6 @@ def create_app() -> FastAPI:
     @app.get("/{workspace_slug}/ads-manager/{entity_type}/{entity_id}")
     @app.get("/{workspace_slug}/rules")
     @app.get("/{workspace_slug}/rules/{rule_id}")
-    @app.get("/{workspace_slug}/statistics")
     @app.get("/{workspace_slug}/settings")
     @app.get("/{workspace_slug}")
     async def serve_index(request: Request):

@@ -25,7 +25,7 @@ const me = {
 };
 const accounts = [{
   account_id: 'act_1', name: 'A deliberately long advertising account name', connection_type: 'facebook_login',
-  currency: 'USD', primary_result: 'leads', target_cost_per_result: 4,
+  currency: 'USD',
 }];
 
 let browser;
@@ -166,14 +166,13 @@ try {
       await menu.click();
       await settled();
       assert.ok(await isOpen(settingsNav));
-      await settingsNav.getByText('Ad accounts').click();
-      await page.getByRole('heading', { name: 'Ad accounts', exact: true }).waitFor();
+      await settingsNav.getByText('Profile', { exact: true }).click();
+      await page.getByRole('heading', { name: 'Profile', exact: true }).waitFor();
       await settled();
       assert.ok(await isClosed(settingsNav));
-      await assertInside(page.locator('[aria-label^="Primary result for"]'), 'Primary result');
-      await assertInside(page.locator('[aria-label^="Target cost per result for"]'), 'Target cost');
+      await assertInside(page.getByRole('textbox', { name: 'Full name' }), 'Full name');
       await assertNoOverflow('settings');
-      await page.screenshot({ path: `${output}/settings-ad-accounts-${width}.png`, fullPage: true });
+      await page.screenshot({ path: `${output}/settings-profile-${width}.png`, fullPage: true });
       await page.getByRole('button', { name: 'Settings', exact: true }).click();
       await page.waitForURL((url) => !url.pathname.includes('/settings'));
 

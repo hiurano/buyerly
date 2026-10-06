@@ -15,7 +15,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from core.accounts import get_short_account_label
 from core.currency import UNKNOWN_CURRENCY, normalize_currency
 from core.metrics import SUMMARY_METRIC_DEFINITIONS, cost_per_event
-from core.timezones import canonical_timezone_name, resolve_account_clock
+from core.timezones import resolve_account_clock
 from database.models import Account, AnalyticsEntityFact
 
 logger = logging.getLogger(__name__)
@@ -92,25 +92,6 @@ def _comparison_meta(
         # and with them the change, keep moving until that day closes.
         "current_includes_open_day": period in _PERIODS_INCLUDING_TODAY,
     }
-
-
-# The longest trend the screen may ask for. Ad-level facts are pruned at 60
-# days, so nothing beyond this is guaranteed to exist.
-MAX_TREND_DAYS = 30
-DEFAULT_TREND_DAYS = 14
-
-
-def resolve_recent_dates(
-    timezone_name: str,
-    days: int,
-    now_utc: Optional[datetime] = None,
-) -> List[str]:
-    """The local dates of the last `days` days, oldest first, ending today."""
-    now = now_utc or datetime.now(timezone.utc)
-    clock = resolve_account_clock(timezone_name)
-    local_today = (now.astimezone(clock.zone) if clock else now).date()
-    span = max(1, min(int(days), MAX_TREND_DAYS))
-    return [(local_today - timedelta(days=offset)).isoformat() for offset in reversed(range(span))]
 
 
 def _period_metrics(entity_facts: List[Any]) -> Dict[str, Any]:
@@ -898,66 +879,6 @@ class AnalyticsFactService:
         # Sort by spend descending
         results.sort(key=lambda x: x["spend"], reverse=True)
         return results, comparison
-
-    @staticmethod
-    async def get_entity_timeseries(
-        session,
-        workspace_id: int,
-        parent_entity_id: str,
-        entity_level: str,
-        days: int = DEFAULT_TREND_DAYS,
-        user_accounts: Optional[List[Account]] = None,
-        now_utc: Optional[datetime] = None,
-    ) -> Dict[str, Any]:
-        """Daily totals for everything under one parent, oldest day first.
-
-        One point per local date in the window, so a day Meta never reported is
-        a stated gap rather than a dip to zero. Strict multi-tenancy: the same
-        workspace and parent checks as the hierarchy breakdown.
-        """
-        valid_levels = {"campaign", "adset", "ad"}
-        if entity_level not in valid_levels:
-            return {"timezone": "UTC", "days": 0, "open_day": "", "points": []}
-
-        account, hierarchy_scope = await _resolve_hierarchy_parent(
-            session, workspace_id, parent_entity_id, entity_level, user_accounts
-        )
-        timezone_name = account.timezone_name
-        dates = resolve_recent_dates(timezone_name, days, now_utc)
-        stmt = (
-            select(AnalyticsEntityFact)
-            .where(
-                AnalyticsEntityFact.workspace_id == workspace_id,
-                hierarchy_scope,
-                AnalyticsEntityFact.entity_level == entity_level,
-                AnalyticsEntityFact.date.in_(dates),
-            )
-            .order_by(AnalyticsEntityFact.date.asc())
-        )
-        rows = (await session.execute(stmt)).scalars().all()
-
-        by_date: Dict[str, List[AnalyticsEntityFact]] = {}
-        currencies: Set[str] = set()
-        for r in rows:
-            by_date.setdefault(r.date, []).append(r)
-            currencies.add(r.currency)
-
-        points = []
-        for day in dates:
-            day_facts = by_date.get(day)
-            point: Dict[str, Any] = {"date": day, "has_data": bool(day_facts)}
-            point.update(_period_metrics(day_facts or []))
-            points.append(point)
-
-        return {
-            "timezone": canonical_timezone_name(timezone_name),
-            "days": len(dates),
-            # The last local date is still in progress, so its totals keep growing.
-            "open_day": dates[-1] if dates else "",
-            # A single currency is a precondition for reading money on one axis.
-            "currency": currencies.pop() if len(currencies) == 1 else "",
-            "points": points,
-        }
 
     @staticmethod
     async def cleanup_expired_facts(

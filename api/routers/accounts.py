@@ -23,7 +23,6 @@ from api.deps import (
     record_security_event_and_raise,
 )
 from api.schemas import (
-    AccountCostTargetRequest,
     AccountGroupItem,
     AccountGroupRequest,
     AccountItem,
@@ -106,14 +105,6 @@ async def list_accounts(user: User = Depends(get_current_user)):
                     is_active=a.is_active,
                     active_rules=active_rules_list,
                     group_ids=group_ids_by_account.get(a.account_id, []),
-                    # A stored value outside the declared vocabulary must not
-                    # break the response for every other account in the list.
-                    primary_result=(
-                        a.primary_result
-                        if a.primary_result in ("leads", "registrations", "purchases")
-                        else ""
-                    ),
-                    target_cost_per_result=a.target_cost_per_result,
                     latest_metrics=latest_metrics.get(a.account_id),
                     health=health_payload(health_by_account.get(a.id)),
                     created_at=a.created_at.strftime("%Y-%m-%d %H:%M") if a.created_at else "",
@@ -277,40 +268,6 @@ async def update_account_profile(
             "custom_name": account.custom_name,
             "note": account.note,
             "message": "Name and note saved",
-        }
-
-
-@router.patch("/accounts/{account_id}/cost-target")
-async def update_account_cost_target(
-    account_id: str,
-    payload: AccountCostTargetRequest,
-    user: User = Depends(get_current_user),
-):
-    """Declare the ad account's primary result and the cost target for it.
-
-    Statistics judges a row only against a target stored here. Clearing the
-    primary result clears the target with it, because a cost target without the
-    event it applies to cannot be interpreted.
-    """
-    async with async_session_maker() as session:
-        ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "editing an ad account")
-
-        account = await load_writable_account(
-            session, user, ws, account_id, "UPDATE_ACCOUNT_COST_TARGET"
-        )
-
-        account.primary_result = payload.primary_result
-        account.target_cost_per_result = (
-            payload.target_cost_per_result if payload.primary_result else None
-        )
-        await session.commit()
-        invalidate_summary_cache(workspace_id=ws.id if ws else None, owner_user_id=user.id)
-        return {
-            "account_id": account.account_id,
-            "primary_result": account.primary_result,
-            "target_cost_per_result": account.target_cost_per_result,
-            "message": "Cost target saved",
         }
 
 

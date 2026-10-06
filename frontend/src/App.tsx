@@ -3,7 +3,6 @@ import { Sidebar } from '@/components/sidebar/Sidebar';
 import { InboxView } from '@/components/inbox/InboxView';
 import { CampaignsView } from '@/components/campaigns/CampaignsView';
 import { RulesView } from '@/components/rules/RulesView';
-import { StatisticsView } from '@/components/statistics/StatisticsView';
 import { CommandMenu } from '@/components/command/CommandMenu';
 import { SearchView } from '@/components/search/SearchView';
 import { searchPageTitle } from '@/lib/search';
@@ -16,7 +15,7 @@ import { useUndoShortcuts } from '@/lib/undoHistory';
 import { selectInboxBadgeCount, useAppStore } from '@/store/useAppStore';
 import { apiRequest } from '@/lib/api';
 import type { LoginResult, SessionUser, Workspace } from '@/lib/types';
-import { isRoutedSettingsSection, isWorkspaceReturnRoute, parseRoute, pathForTab, STATISTICS_ENABLED, type Route } from '@/lib/routing';
+import { isRoutedSettingsSection, isWorkspaceReturnRoute, parseRoute, pathForTab, type Route } from '@/lib/routing';
 import { AuthLoading } from '@/components/auth/AuthFrame';
 import { LoginView } from '@/components/auth/LoginView';
 import { VerifyEmailLinkView } from '@/components/auth/VerifyEmailLinkView';
@@ -174,7 +173,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
         }
         if (gPressed) {
           const target = goToTargetFor(key);
-          if (target && (target !== 'statistics' || STATISTICS_ENABLED)) {
+          if (target) {
             event.preventDefault();
             if (target === 'preferences') setSettingsSection(GO_TO_SETTINGS_SECTION);
             setActiveTab(target);
@@ -242,7 +241,6 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
                 {activeTab === 'search' && (
                   <SearchView workspace={workspace} navigate={navigate} navigationKey={navigationKey} />
                 )}
-                {STATISTICS_ENABLED && activeTab === 'statistics' && <StatisticsView />}
               </main>
               <CommandMenu workspace={workspace} navigate={navigate} />
             </>
