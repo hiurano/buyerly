@@ -197,6 +197,8 @@ class TestRuleEngine(unittest.TestCase):
                 "preset_id": 1,
                 "name": "Scale",
                 "action": "increase_budget",
+                # A raise needs a daily ceiling, or the rule is invalid and never matches.
+                "budget_max_daily": 100.0,
                 "conditions": [{"metric": "leads", "operator": "eq", "value": 0.0}],
             },
             {"preset_id": 2, "name": "Alert", "action": "notify_only"},
