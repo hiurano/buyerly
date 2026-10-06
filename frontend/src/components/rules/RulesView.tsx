@@ -7,6 +7,7 @@ import { RulesListView } from './RulesListView';
 import { RecentlyDeletedView } from './RecentlyDeletedView';
 import { deletionPrompt, runBulkRulesEnabled, runPendingDeletion } from './ruleActions';
 import { CreateRuleModal } from './CreateRuleModal';
+import { RuleStatesHost } from './RuleStatesDialog';
 import { RuleDisplayOptionsPopover } from './RuleDisplayOptionsPopover';
 import { RuleRightSidebar } from './RuleRightSidebar';
 import {
@@ -35,6 +36,7 @@ import { openCommandMenu } from '@/components/command/CommandMenu';
 import { takeRecordActions } from '@/components/command/OpenPalette';
 import { useRowSelection, type SelectionAction } from '@/ui/useRowSelection';
 import { useRevealRow } from '@/ui/useRevealRow';
+import { ATTACH_STEPS } from '@/lib/rules';
 
 interface OpenFilterMenu {
   mode: FilterMenuMode;
@@ -118,6 +120,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
       ? rules.length
       : rules.filter((rule) => rule.status === ruleFilterTab).length;
   const hiddenCount = totalForTab - filteredRules.length;
+  const unattachedRules = rules.filter((rule) => rule.preset.attached_account_ids.length === 0);
 
   // A change shows on the rows themselves; a failed write is the only thing
   // reported on its own, as a toast, and the list stays as it is.
@@ -405,6 +408,21 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
         />
       </header>
 
+      {/* A new rule runs nowhere until it is attached; the list says how. */}
+      {rulesLoadState === 'ready' && !showingDeleted && unattachedRules.length > 0 && (
+        <p
+          role="note"
+          className="shrink-0 border-b border-[var(--color-border-primary)] px-5 py-2 text-[12px] text-[var(--text-secondary)]"
+        >
+          <span className="font-medium text-[var(--text-primary)]">
+            {unattachedRules.length === 1
+              ? `“${unattachedRules[0].name}” runs nowhere yet.`
+              : `${unattachedRules.length} rules run nowhere yet.`}
+          </span>{' '}
+          {ATTACH_STEPS}
+        </p>
+      )}
+
       <LinearFilterMenu
         isOpen={Boolean(openFilterMenu)}
         mode={openFilterMenu?.mode ?? 'root'}
@@ -438,7 +456,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
         ) : rules.length === 0 ? (
           <DataState
             title="No rules yet"
-            detail="A rule watches one metric and acts on its own — pausing an ad set or changing a budget. Create the first one to get started."
+            detail="A rule watches your metrics and acts on its own — pausing an ad set or changing a budget — or only notifies you in Inbox, the safest way to start. Create the first one to get started."
             actionLabel="New rule"
             onAction={() => openCreateRuleModal()}
           />
@@ -554,6 +572,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
 
       {/* Linear Fast Create Rule Modal */}
       <CreateRuleModal />
+      <RuleStatesHost />
     </div>
   );
 };

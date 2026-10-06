@@ -5,7 +5,7 @@ import { LinearToggle } from '@/ui/LinearToggle';
 
 import { LinearDataListRow, LinearDataMetricCell, LinearDataPrimaryCell } from '@/ui/LinearDataList';
 import { LinearLabelPill } from '@/ui/LinearLabelPill';
-import { ruleActionTone } from '@/lib/rules';
+import { ATTACH_STEPS, ruleActionTone } from '@/lib/rules';
 import type { RuleActionTone } from '@/lib/rules';
 import { getRulesColumns } from './tableColumns';
 import { RuleRowMenu } from './RuleRowMenu';
@@ -121,6 +121,7 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
                 letterSpacing: '-0.01em',
               }}
               className="truncate whitespace-nowrap select-text"
+              title={rule.condition}
             >
               {rule.condition}
             </span>
@@ -161,11 +162,16 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
                 padding: '2px 6px',
               }}
               className="truncate whitespace-nowrap"
+              title={rule.preset.attached_account_ids.length === 0 ? ATTACH_STEPS : undefined}
             >
               {rule.scope}
             </span>
             )}
           </div>
+      )}
+
+      {rulesDisplayProperties.lastCheck !== false && (
+        <LinearDataMetricCell value={rule.lastCheck} valueClassName="font-[450] text-[var(--text-tertiary)]" />
       )}
 
       {rulesDisplayProperties.lastRun !== false && (

@@ -8,8 +8,11 @@ export const getRulesColumns = (properties: Record<string, boolean>): LinearData
   if (properties.condition !== false) columns.push({ id: 'condition', label: 'Condition', width: '220px' });
   if (properties.action !== false) columns.push({ id: 'action', label: 'Action', width: '140px' });
   if (properties.scope !== false) columns.push({ id: 'scope', label: 'Scope', width: '170px' });
+  if (properties.lastCheck !== false) {
+    columns.push({ id: 'lastCheck', label: 'Last check', width: '90px', align: 'right' });
+  }
   if (properties.lastRun !== false) {
-    columns.push({ id: 'lastRun', label: 'Last run', width: '80px', align: 'right', sortable: true });
+    columns.push({ id: 'lastRun', label: 'Last action', width: '90px', align: 'right', sortable: true });
   }
   columns.push({ id: 'actions', label: '', width: '32px' });
 

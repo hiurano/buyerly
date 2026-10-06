@@ -1,4 +1,5 @@
 import { apiRequest } from '@/lib/api';
+import { formatMetricMoney } from '@/components/campaigns/liveCampaigns';
 
 /**
  * Wire format of `api/routers/rules.py`. Field names mirror the Pydantic
@@ -81,10 +82,50 @@ export interface RulePresetPayload {
   created_at: string;
   needs_review: boolean;
   review_reason: string;
+  /** Last action, from the history; empty when the rule never acted. */
   last_run_at: string;
+  /** Last check on any entity, matched or not; empty when never checked. */
+  last_checked_at: string;
   attached_account_ids: string[];
   /** Scope per attached account, keyed by ad account id. */
   attached_scopes: Record<string, RuleScope>;
+}
+
+/** Where one rule stands on one entity as of its latest check (#322). */
+export type RuleEntityStateName =
+  | 'fired'
+  | 'cooldown'
+  | 'confirming'
+  | 'undone'
+  | 'yielded'
+  | 'not_met'
+  | 'inactive'
+  | 'pending'
+  | 'skipped'
+  | 'error'
+  | 'matched'
+  | 'rules_off'
+  | 'rule_paused';
+
+export interface RuleEntityStatePayload {
+  rule_id: number;
+  rule_name: string;
+  account_id: string;
+  account_name: string;
+  entity_level: RuleExecutionLevel;
+  entity_id: string;
+  entity_name: string;
+  campaign_id: string;
+  state: RuleEntityStateName;
+  /** Readings that matched or fell short, or Meta's error. */
+  detail: string;
+  /** When a cooldown, an undo or a stop confirmation runs out. */
+  wait_until: string;
+  yielded_to_rule_id: number | null;
+  yielded_to_rule_name: string;
+  checked_at: string;
+  /** The rule's last action on this entity, kept across quiet checks. */
+  acted_at: string;
 }
 
 export interface RuleGroupPayload {
@@ -165,25 +206,69 @@ export const RULE_ACTION_LABELS: Record<RuleAction, string> = {
 
 const PERCENT_METRICS: ReadonlySet<RuleMetric> = new Set(['ctr']);
 
+const MONEY_METRICS: ReadonlySet<RuleMetric> = new Set(['spend', 'cpl', 'cpreg', 'cpp', 'cpc']);
+
 /**
- * Values are stored in each ad account's own currency, so a rule that spans
- * accounts has no single symbol to render. The metric name carries the unit.
+ * Values are stored in each ad account's own currency. `currency` is given
+ * only when every account the rule concerns uses the same one; otherwise the
+ * metric name carries the unit.
  */
-function formatConditionValue(metric: RuleMetric, value: number): string {
+function formatConditionValue(metric: RuleMetric, value: number, currency?: string): string {
   const rounded = Number.isInteger(value) ? String(value) : value.toFixed(2);
   if (PERCENT_METRICS.has(metric)) return `${rounded}%`;
+  if (currency && MONEY_METRICS.has(metric)) {
+    const money = formatMetricMoney(value, currency);
+    if (money !== '—') return money;
+  }
   return rounded;
 }
 
-export function formatCondition(preset: RulePresetPayload): string {
+/** "IF Spend ≥ USD 50.00 & Leads = 0 today": the window is part of the condition. */
+export function formatCondition(preset: RulePresetPayload, currency?: string): string {
   if (preset.conditions.length === 0) return 'No conditions';
   const joiner = preset.condition_logic === 'or' ? ' OR ' : ' & ';
+  const windows = new Set(preset.conditions.map((condition) => condition.time_window));
+  const shared = windows.size === 1 ? preset.conditions[0].time_window : null;
   const parts = preset.conditions.map((condition) => {
     const metric = RULE_METRIC_LABELS[condition.metric] ?? condition.metric;
     const operator = RULE_OPERATOR_LABELS[condition.operator] ?? condition.operator;
-    return `${metric} ${operator} ${formatConditionValue(condition.metric, condition.value)}`;
+    const text = `${metric} ${operator} ${formatConditionValue(condition.metric, condition.value, currency)}`;
+    return shared ? text : `${text} ${RULE_TIME_WINDOW_LABELS[condition.time_window] ?? condition.time_window}`;
   });
-  return `IF ${parts.join(joiner)}`;
+  const joined = parts.join(joiner);
+  return shared ? `IF ${joined} ${RULE_TIME_WINDOW_LABELS[shared] ?? shared}` : `IF ${joined}`;
+}
+
+/**
+ * The one currency a rule's values are in: that of the ad accounts it is
+ * attached to, or — before it is attached anywhere — of every ad account in
+ * the workspace. Undefined when those accounts disagree or report none.
+ */
+export function ruleCurrency(
+  preset: RulePresetPayload,
+  accounts: { account_id: string; currency?: string }[],
+): string | undefined {
+  const attached = new Set(preset.attached_account_ids);
+  const relevant = attached.size > 0
+    ? accounts.filter((account) => attached.has(account.account_id))
+    : accounts;
+  const currencies = new Set(relevant.map((account) => (account.currency ?? '').trim().toUpperCase()));
+  if (currencies.size !== 1) return undefined;
+  const [only] = currencies;
+  return only || undefined;
+}
+
+/**
+ * What a rule checks and where, in one sentence for the rule form. "Applies
+ * to" picks the thing the rule judges and acts on; attaching the rule picks
+ * the part of the account it looks in.
+ */
+export function describeRuleReach(level: RuleExecutionLevel): string {
+  if (level === 'campaign') {
+    return 'Checks each campaign as a whole. Attached to an ad account, it covers every campaign there; attached to a campaign, only that campaign.';
+  }
+  const noun = level === 'ad' ? 'ad' : 'ad set';
+  return `Checks each ${noun} on its own. Attached to an ad account, it covers every ${noun} there; attached to a campaign, every ${noun} in that campaign.`;
 }
 
 /**
@@ -230,10 +315,114 @@ export function formatRelativeTime(isoTimestamp: string, now: number = Date.now(
   return `${Math.floor(elapsed / DAY)}d ago`;
 }
 
+/** Clock time for "until …": today's time alone, otherwise with the date. */
+export function formatUntil(isoTimestamp: string, now: Date = new Date()): string {
+  const parsed = new Date(isoTimestamp);
+  if (!isoTimestamp || Number.isNaN(parsed.getTime())) return '';
+  const time = parsed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (parsed.toDateString() === now.toDateString()) return time;
+  const date = parsed.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  return `${date}, ${time}`;
+}
+
+export type RuleStateTone = 'acted' | 'waiting' | 'blocked' | 'quiet' | 'error';
+
+export interface RuleStateView {
+  /** Short status, e.g. "Waiting until 00:00". */
+  label: string;
+  /** Why, e.g. the readings or the rule it gave way to; may be empty. */
+  note: string;
+  tone: RuleStateTone;
+}
+
+const ENTITY_NOUNS: Record<RuleExecutionLevel, string> = {
+  campaign: 'Campaign',
+  adset: 'Ad set',
+  ad: 'Ad',
+};
+
+/**
+ * One rule's state on one entity in words (#322): fired, waiting until …,
+ * undone for the rest of the day, gave way to another rule, or the condition
+ * not met with the readings that fell short.
+ */
+export function describeRuleState(
+  row: RuleEntityStatePayload,
+  now: number = Date.now(),
+): RuleStateView {
+  const until = formatUntil(row.wait_until, new Date(now));
+  const fired = row.acted_at ? `Fired ${formatRelativeTime(row.acted_at, now).toLowerCase()}` : '';
+  switch (row.state) {
+    case 'fired':
+      return {
+        label: 'Fired',
+        note: [until && `repeats after ${until}`, row.detail].filter(Boolean).join(' · '),
+        tone: 'acted',
+      };
+    case 'cooldown':
+      return {
+        label: until ? `Waiting until ${until}` : 'Waiting to repeat',
+        note: [fired, row.detail].filter(Boolean).join(' · '),
+        tone: 'waiting',
+      };
+    case 'confirming':
+      return {
+        label: until ? `Confirming stop until ${until}` : 'Confirming stop',
+        note: row.detail,
+        tone: 'waiting',
+      };
+    case 'undone':
+      return {
+        label: 'Undone for today',
+        note: until
+          ? `You undid this action in Inbox; the rule won't repeat it before ${until}`
+          : "You undid this action in Inbox; the rule won't repeat it today",
+        tone: 'blocked',
+      };
+    case 'yielded':
+      return {
+        label: row.yielded_to_rule_name
+          ? `Gave way to ${row.yielded_to_rule_name}`
+          : 'Gave way to another rule',
+        note: row.detail,
+        tone: 'blocked',
+      };
+    case 'not_met':
+      return {
+        label: 'Condition not met',
+        note: [row.detail, fired].filter(Boolean).join(' · '),
+        tone: 'quiet',
+      };
+    case 'inactive':
+      return {
+        label: `${ENTITY_NOUNS[row.entity_level]} ${row.detail === 'Not paused' ? 'is running' : 'is not running'}`,
+        note: fired,
+        tone: 'quiet',
+      };
+    case 'pending':
+      return { label: 'Waiting for Meta', note: 'The last action is not confirmed yet', tone: 'waiting' };
+    case 'skipped':
+      return { label: 'Skipped', note: row.detail, tone: 'blocked' };
+    case 'error':
+      return { label: 'Failed', note: row.detail, tone: 'error' };
+    case 'rules_off':
+      return { label: 'Rules off for this ad account', note: fired, tone: 'quiet' };
+    case 'rule_paused':
+      return { label: 'Rule paused', note: fired, tone: 'quiet' };
+    case 'matched':
+    default:
+      return { label: 'Condition met', note: row.detail, tone: 'acted' };
+  }
+}
+
 /**
  * Ad accounts arrive as Meta ids (`act_123…`). The list only needs to say
  * whether the rule can run at all and in how many places.
  */
+/** The next step for a rule that runs nowhere yet: a new rule is never attached. */
+export const ATTACH_STEPS =
+  'Attach a rule to an ad account from its row menu (Run on ad accounts), or to a campaign from the Rules column in Ads Manager.';
+
 export function formatScope(preset: RulePresetPayload): string {
   const count = preset.attached_account_ids.length;
   if (count === 0) return 'Not attached';
@@ -248,6 +437,20 @@ export function fetchRulePresets(): Promise<RulePresetPayload[]> {
 
 export function fetchRuleGroups(): Promise<RuleGroupPayload[]> {
   return apiRequest<RuleGroupPayload[]>('/api/rule-groups');
+}
+
+/** One rule's state on every entity it checks. */
+export function fetchRuleStates(presetId: number): Promise<RuleEntityStatePayload[]> {
+  return apiRequest<RuleEntityStatePayload[]>(`/api/presets/${presetId}/states`);
+}
+
+/** Every rule's state on one campaign, ad set or ad. */
+export function fetchEntityRuleStates(
+  level: RuleExecutionLevel,
+  entityId: string,
+): Promise<RuleEntityStatePayload[]> {
+  const query = new URLSearchParams({ entity_level: level, entity_id: entityId });
+  return apiRequest<RuleEntityStatePayload[]>(`/api/rule-states?${query}`);
 }
 
 export function createRulePreset(

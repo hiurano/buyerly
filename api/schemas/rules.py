@@ -60,6 +60,9 @@ class RulePresetItem(BaseModel):
     # Last RULE_ACTION audit event for this preset as ISO 8601 with offset;
     # empty when the rule has never fired.
     last_run_at: str = ""
+    # Latest check of this preset on any entity, matched or not; empty when
+    # the worker has not checked it yet.
+    last_checked_at: str = ""
     # Ad accounts this preset is currently attached to, so the UI can tell a
     # configured rule apart from one that cannot run anywhere yet.
     attached_account_ids: List[str] = Field(default_factory=list)
@@ -116,6 +119,48 @@ class RuleGroupResponse(BaseModel):
     preset_ids: List[int]
     rules: List[RulePresetItem]
     created_at: str
+
+
+RuleEntityStateName = Literal[
+    "fired",
+    "cooldown",
+    "confirming",
+    "undone",
+    "yielded",
+    "not_met",
+    "inactive",
+    "pending",
+    "skipped",
+    "error",
+    "matched",
+    "rules_off",
+    "rule_paused",
+]
+
+
+class RuleEntityStateItem(BaseModel):
+    """Where one rule stands on one entity as of its latest check (#322).
+
+    Times are ISO 8601 with an offset, empty when unknown. ``wait_until`` is
+    when a cooldown, an undo or a STOP confirmation runs out; ``acted_at`` the
+    rule's last action on this entity, kept across checks where it did not act.
+    """
+
+    rule_id: int
+    rule_name: str
+    account_id: str
+    account_name: str = ""
+    entity_level: Literal["campaign", "adset", "ad"]
+    entity_id: str
+    entity_name: str = ""
+    campaign_id: str = ""
+    state: RuleEntityStateName
+    detail: str = ""
+    wait_until: str = ""
+    yielded_to_rule_id: Optional[int] = None
+    yielded_to_rule_name: str = ""
+    checked_at: str
+    acted_at: str = ""
 
 
 class RuleGroupsReorderRequest(BaseModel):

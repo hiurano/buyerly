@@ -76,6 +76,7 @@ POST_BASELINE_TABLES: set[str] = {
     "inbox_notification_states",
     "inbox_telegram_deliveries",
     "meta_connection_invites",
+    "rule_entity_states",
     "telegram_connections",
     "telegram_link_tokens",
 }
