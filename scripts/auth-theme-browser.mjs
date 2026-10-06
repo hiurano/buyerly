@@ -77,8 +77,15 @@ try {
           await page.goto(`${origin}${target.path}`);
           await page.getByText(target.ready).first().waitFor();
           const state = await page.evaluate(surfaceSelector => {
+            // App tokens are lch(); let a canvas convert any CSS color to sRGB.
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = 1;
+            const context = canvas.getContext('2d', { willReadFrequently: true });
             const luminance = color => {
-              const [r, g, b, a = 1] = color.match(/[\d.]+/g).map(Number);
+              context.clearRect(0, 0, 1, 1);
+              context.fillStyle = color;
+              context.fillRect(0, 0, 1, 1);
+              const [r, g, b, a] = context.getImageData(0, 0, 1, 1).data;
               return a === 0 ? null : (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
             };
             const surface = document.querySelector(surfaceSelector);
