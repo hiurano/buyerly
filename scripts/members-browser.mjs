@@ -87,6 +87,10 @@ try {
       if (verb === 'GET' && path === `/api/workspaces/${workspace.id}/members`) {
         return route.fulfill({ json: members });
       }
+      // The next workspace opens with the page that was open for one frame before its inbox.
+      if (verb === 'GET' && left && [`/api/workspaces/${nextWorkspace.id}/members`, `/api/workspaces/${nextWorkspace.id}/invites`].includes(path)) {
+        return route.fulfill({ json: [] });
+      }
       const memberPath = path.match(new RegExp(`^/api/workspaces/${workspace.id}/members/(\\d+)$`));
       if (memberPath) {
         const index = members.findIndex(item => item.user_id === Number(memberPath[1]));
