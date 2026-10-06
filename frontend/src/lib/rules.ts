@@ -1,4 +1,5 @@
 import { apiRequest } from '@/lib/api';
+import { formatMetricMoney } from '@/components/campaigns/liveCampaigns';
 
 /**
  * Wire format of `api/routers/rules.py`. Field names mirror the Pydantic
@@ -165,25 +166,69 @@ export const RULE_ACTION_LABELS: Record<RuleAction, string> = {
 
 const PERCENT_METRICS: ReadonlySet<RuleMetric> = new Set(['ctr']);
 
+const MONEY_METRICS: ReadonlySet<RuleMetric> = new Set(['spend', 'cpl', 'cpreg', 'cpp', 'cpc']);
+
 /**
- * Values are stored in each ad account's own currency, so a rule that spans
- * accounts has no single symbol to render. The metric name carries the unit.
+ * Values are stored in each ad account's own currency. `currency` is given
+ * only when every account the rule concerns uses the same one; otherwise the
+ * metric name carries the unit.
  */
-function formatConditionValue(metric: RuleMetric, value: number): string {
+function formatConditionValue(metric: RuleMetric, value: number, currency?: string): string {
   const rounded = Number.isInteger(value) ? String(value) : value.toFixed(2);
   if (PERCENT_METRICS.has(metric)) return `${rounded}%`;
+  if (currency && MONEY_METRICS.has(metric)) {
+    const money = formatMetricMoney(value, currency);
+    if (money !== '—') return money;
+  }
   return rounded;
 }
 
-export function formatCondition(preset: RulePresetPayload): string {
+/** "IF Spend ≥ USD 50.00 & Leads = 0 today": the window is part of the condition. */
+export function formatCondition(preset: RulePresetPayload, currency?: string): string {
   if (preset.conditions.length === 0) return 'No conditions';
   const joiner = preset.condition_logic === 'or' ? ' OR ' : ' & ';
+  const windows = new Set(preset.conditions.map((condition) => condition.time_window));
+  const shared = windows.size === 1 ? preset.conditions[0].time_window : null;
   const parts = preset.conditions.map((condition) => {
     const metric = RULE_METRIC_LABELS[condition.metric] ?? condition.metric;
     const operator = RULE_OPERATOR_LABELS[condition.operator] ?? condition.operator;
-    return `${metric} ${operator} ${formatConditionValue(condition.metric, condition.value)}`;
+    const text = `${metric} ${operator} ${formatConditionValue(condition.metric, condition.value, currency)}`;
+    return shared ? text : `${text} ${RULE_TIME_WINDOW_LABELS[condition.time_window] ?? condition.time_window}`;
   });
-  return `IF ${parts.join(joiner)}`;
+  const joined = parts.join(joiner);
+  return shared ? `IF ${joined} ${RULE_TIME_WINDOW_LABELS[shared] ?? shared}` : `IF ${joined}`;
+}
+
+/**
+ * The one currency a rule's values are in: that of the ad accounts it is
+ * attached to, or — before it is attached anywhere — of every ad account in
+ * the workspace. Undefined when those accounts disagree or report none.
+ */
+export function ruleCurrency(
+  preset: RulePresetPayload,
+  accounts: { account_id: string; currency?: string }[],
+): string | undefined {
+  const attached = new Set(preset.attached_account_ids);
+  const relevant = attached.size > 0
+    ? accounts.filter((account) => attached.has(account.account_id))
+    : accounts;
+  const currencies = new Set(relevant.map((account) => (account.currency ?? '').trim().toUpperCase()));
+  if (currencies.size !== 1) return undefined;
+  const [only] = currencies;
+  return only || undefined;
+}
+
+/**
+ * What a rule checks and where, in one sentence for the rule form. "Applies
+ * to" picks the thing the rule judges and acts on; attaching the rule picks
+ * the part of the account it looks in.
+ */
+export function describeRuleReach(level: RuleExecutionLevel): string {
+  if (level === 'campaign') {
+    return 'Checks each campaign as a whole. Attached to an ad account, it covers every campaign there; attached to a campaign, only that campaign.';
+  }
+  const noun = level === 'ad' ? 'ad' : 'ad set';
+  return `Checks each ${noun} on its own. Attached to an ad account, it covers every ${noun} there; attached to a campaign, every ${noun} in that campaign.`;
 }
 
 /**
@@ -234,6 +279,10 @@ export function formatRelativeTime(isoTimestamp: string, now: number = Date.now(
  * Ad accounts arrive as Meta ids (`act_123…`). The list only needs to say
  * whether the rule can run at all and in how many places.
  */
+/** The next step for a rule that runs nowhere yet: a new rule is never attached. */
+export const ATTACH_STEPS =
+  'Attach a rule to an ad account from its row menu (Run on ad accounts), or to a campaign from the Rules column in Ads Manager.';
+
 export function formatScope(preset: RulePresetPayload): string {
   const count = preset.attached_account_ids.length;
   if (count === 0) return 'Not attached';

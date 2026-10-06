@@ -134,6 +134,13 @@ try {
         assert.equal(await page.evaluate(() => matchMedia('(hover: none) and (pointer: coarse)').matches), true, 'the phone is a touch screen');
       }
 
+      // 0. The condition carries its window and the account currency, and a
+      // rule attached nowhere says how to attach it (#324).
+      assert.match(await page.locator('[data-row-id="7"]').innerText(), /IF Spend ≥ USD\s10\.00 today/);
+      const attachNote = page.getByRole('note').filter({ hasText: 'runs nowhere yet' });
+      assert.match(await attachNote.innerText(), /^“First rule” runs nowhere yet\. Attach a rule to an ad account/);
+      await onScreen(attachNote, 'the attach note');
+
       // 1. A second rule from the header button, shown with no pointer anywhere.
       const newRule = page.getByRole('button', { name: 'New rule' });
       await onScreen(newRule, 'New rule');
@@ -142,6 +149,8 @@ try {
       const form = page.getByRole('dialog', { name: 'New rule' });
       await form.waitFor();
       await onScreen(form, 'the rule form');
+      // What "Applies to" picks, and where the rule looks once attached.
+      assert.match(await form.innerText(), /Checks each ad set on its own\. Attached to an ad account, it covers every ad set there; attached to a campaign, every ad set in that campaign\./);
       await form.getByRole('textbox', { name: 'Rule name' }).fill('Second rule');
       await form.getByRole('spinbutton').first().fill('5');
       // The form's own menus: a pill and its items are finger-sized.
@@ -164,6 +173,7 @@ try {
       await form.waitFor({ state: 'detached' });
       await page.locator('[data-row-id="9"]').waitFor();
       await page.mouse.move(0, 0);
+      await attachNote.filter({ hasText: '2 rules run nowhere yet.' }).waitFor();
 
       // 2. Edit it from its row's menu.
       let menu = await openRowMenu('Second rule');
@@ -206,6 +216,8 @@ try {
       }
       await page.keyboard.press('Escape');
       await page.getByRole('menu').first().waitFor({ state: 'detached' });
+      // Attached, it leaves the note to the first rule.
+      await attachNote.filter({ hasText: '“First rule” runs nowhere yet.' }).waitFor();
 
       // 4. Delete it.
       menu = await openRowMenu('Second rule v2');
