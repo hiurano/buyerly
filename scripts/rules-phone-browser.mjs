@@ -137,7 +137,7 @@ try {
       // 0. The condition carries its window and the account currency, and a
       // rule attached nowhere says how to attach it (#324).
       assert.match(await page.locator('[data-row-id="7"]').innerText(), /IF Spend ≥ USD\s10\.00 today/);
-      const attachNote = page.getByRole('note').filter({ hasText: 'runs nowhere yet' });
+      const attachNote = page.getByRole('note').filter({ hasText: 'nowhere yet' });
       assert.match(await attachNote.innerText(), /^“First rule” runs nowhere yet\. Attach a rule to an ad account/);
       await onScreen(attachNote, 'the attach note');
 
