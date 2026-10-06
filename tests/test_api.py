@@ -36,6 +36,7 @@ from database.models import (
     AuditEvent,
     DeletedItem,
     EmailVerificationCode,
+    RuleEntityState,
     RuleGroup,
     RuleGroupItem,
     RulePreset,
@@ -1397,6 +1398,106 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(reenabled.status_code, 200)
             self.assertTrue(reenabled.json()["enabled"])
+
+    async def test_rule_states_read_from_the_rule_and_from_the_campaign(self):
+        """#322: last check apart from last action, and each rule's state."""
+        user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
+        headers = await session_headers(self.test_session_maker, user_info)
+        account_id = "act_1018756607700064"
+        payload = {
+            "name": "Daily spend alert",
+            "action": "notify_only",
+            "level": "campaign",
+            "cooldown_minutes": 1440,
+            "conditions": [
+                {"metric": "spend", "operator": "gte", "value": 10.0, "time_window": "today"}
+            ],
+        }
+        checked = datetime(2026, 10, 6, 9, 0, tzinfo=timezone.utc)
+
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            preset_id = (await client.post("/api/presets", headers=headers, json=payload)).json()["id"]
+            self.assertEqual((await client.post(
+                f"/api/accounts/{account_id}/assign-rule",
+                headers=headers,
+                json={"preset_id": preset_id},
+            )).status_code, 200)
+
+            async with self.test_session_maker() as session:
+                session.add_all([
+                    RuleEntityState(
+                        workspace_id=self.ws_buyer_id,
+                        account_id=account_id,
+                        rule_id=preset_id,
+                        entity_level="campaign",
+                        entity_id="cmp_1",
+                        entity_name="Sweden scale",
+                        state="cooldown",
+                        detail="Spend (12.00 USD) ≥ 10.00 USD",
+                        wait_until=checked + timedelta(hours=20),
+                        checked_at=checked,
+                        acted_at=checked - timedelta(hours=4),
+                    ),
+                    RuleEntityState(
+                        workspace_id=self.ws_buyer_id,
+                        account_id=account_id,
+                        rule_id=preset_id,
+                        entity_level="campaign",
+                        entity_id="cmp_2",
+                        entity_name="Sweden test",
+                        state="not_met",
+                        detail="Spend 3.00 USD, needs ≥ 10.00 USD",
+                        checked_at=checked,
+                    ),
+                ])
+                await session.commit()
+
+            listed = (await client.get("/api/presets", headers=headers)).json()
+            preset = next(item for item in listed if item["id"] == preset_id)
+            # Checked, though it never acted: no longer "Never".
+            self.assertEqual(preset["last_run_at"], "")
+            self.assertEqual(preset["last_checked_at"], checked.isoformat())
+
+            by_rule = await client.get(f"/api/presets/{preset_id}/states", headers=headers)
+            self.assertEqual(by_rule.status_code, 200)
+            self.assertEqual(
+                [(row["entity_id"], row["state"]) for row in by_rule.json()],
+                [("cmp_1", "cooldown"), ("cmp_2", "not_met")],
+            )
+            waiting = by_rule.json()[0]
+            self.assertEqual(waiting["rule_name"], "Daily spend alert")
+            self.assertEqual(waiting["account_name"], "Швеция 1")
+            self.assertEqual(waiting["wait_until"], (checked + timedelta(hours=20)).isoformat())
+            self.assertEqual(waiting["acted_at"], (checked - timedelta(hours=4)).isoformat())
+
+            by_campaign = await client.get(
+                "/api/rule-states",
+                headers=headers,
+                params={"entity_level": "campaign", "entity_id": "cmp_2"},
+            )
+            self.assertEqual(
+                [(row["rule_id"], row["state"], row["detail"]) for row in by_campaign.json()],
+                [(preset_id, "not_met", "Spend 3.00 USD, needs ≥ 10.00 USD")],
+            )
+
+            # A paused rule says so instead of its last check.
+            await client.put(
+                f"/api/presets/{preset_id}", headers=headers, json={**payload, "enabled": False}
+            )
+            paused = (await client.get(f"/api/presets/{preset_id}/states", headers=headers)).json()
+            self.assertEqual({row["state"] for row in paused}, {"rule_paused"})
+
+            # A detached rule leaves the campaign's list at once.
+            await client.post(f"/api/accounts/{account_id}/detach-rule/{preset_id}", headers=headers)
+            self.assertEqual((await client.get(
+                "/api/rule-states",
+                headers=headers,
+                params={"entity_level": "campaign", "entity_id": "cmp_2"},
+            )).json(), [])
+
+            missing = await client.get("/api/presets/999999/states", headers=headers)
+            self.assertEqual(missing.status_code, 404)
 
     async def test_rule_group_icon_round_trips(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}

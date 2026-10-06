@@ -6,6 +6,9 @@ import type { RuleItem } from '@/store/useAppStore';
 import type { RuleExecutionLevel, RuleScope } from '@/lib/rules';
 import { explainRulePrecedence } from '@/lib/rulePrecedence';
 import type { PrecedenceLine } from '@/lib/rulePrecedence';
+import { fetchEntityRuleStates } from '@/lib/rules';
+import type { RuleEntityStatePayload } from '@/lib/rules';
+import { RuleStateLine } from '@/components/rules/RuleStateLine';
 
 /** The level this picker attaches rules to. */
 export type RuleTargetLevel = 'campaign' | 'adset';
@@ -149,6 +152,26 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
     return () => window.clearTimeout(focusTimer);
   }, [isOpen, clearAttachmentError]);
 
+  // Where each rule stands on this one row (#322): read when the picker opens,
+  // so the answer is as fresh as the rules' last check.
+  const singleEntityId = entityIds.length === 1 ? entityIds[0] : null;
+  const [entityStates, setEntityStates] = useState<RuleEntityStatePayload[] | 'error' | null>(null);
+  useEffect(() => {
+    if (!isOpen || !singleEntityId) return;
+    let cancelled = false;
+    setEntityStates(null);
+    fetchEntityRuleStates(level, singleEntityId)
+      .then((rows) => {
+        if (!cancelled) setEntityStates(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setEntityStates('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, level, singleEntityId]);
+
   // Ads Manager can be opened before the Rules screen ever was; the list is
   // read when a picker first needs it, not on every visit.
   useEffect(() => {
@@ -191,7 +214,9 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
   const popoverWidth = 279;
   const rowHeight = coarse ? 44 : 32;
   const precedenceHeight = precedence.length > 0 ? Math.min(52 + precedenceLineCount * 34, 196) : 0;
-  const estimatedHeight = Math.min(44 + orderedRules.length * rowHeight + 16, 395) + precedenceHeight;
+  const statesHeight = singleEntityId && attachedRules.length > 0 ? 184 : 0;
+  const estimatedHeight =
+    Math.min(44 + orderedRules.length * rowHeight + 16, 395) + precedenceHeight + statesHeight;
   const margin = 8;
   let left: number;
   let top: number;
@@ -425,6 +450,8 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
         width: popoverWidth,
         minWidth: 277,
         maxWidth: 500,
+        // Status and "If they all match" under the list can outgrow a phone; the list gives way.
+        maxHeight: `calc(100dvh - ${top + margin}px)`,
         display: 'flex',
         flexDirection: 'column',
         overflow: 'visible',
@@ -521,7 +548,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
         id={listId}
         role="listbox"
         aria-multiselectable="true"
-        style={{ maxHeight: 340, overflowY: 'auto', padding: '2px 0' }}
+        style={{ maxHeight: 340, minHeight: 0, overflowY: 'auto', padding: '2px 0' }}
       >
         <ul role="presentation" style={{ margin: 0, padding: 0, listStyle: 'none' }}>
           {attachedRules.map((rule, index) => renderOption(rule, index))}
@@ -596,6 +623,67 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
             order shown. Alerts always fire.
             {anyGivesWay && ' While a stronger rule waits to repeat, weaker ones wait too.'}
           </p>
+        </section>
+      )}
+
+      {singleEntityId && (attachedRules.length > 0 || (Array.isArray(entityStates) && entityStates.length > 0)) && (
+        <section
+          aria-label={`Rule status on this ${thisNoun}`}
+          data-rule-states="true"
+          style={{
+            flexShrink: 0,
+            maxHeight: 184,
+            overflowY: 'auto',
+            padding: '8px 14px 10px',
+            borderTop: '1px solid var(--color-border-primary)',
+          }}
+        >
+          <div
+            style={{
+              marginBottom: 6,
+              color: 'var(--text-tertiary)',
+              fontSize: 11,
+              fontWeight: 500,
+              lineHeight: '16px',
+            }}
+          >
+            Status on this {thisNoun}
+          </div>
+          {entityStates === null && (
+            <div style={{ color: 'var(--text-muted)', fontSize: 12, lineHeight: '16px' }}>Loading…</div>
+          )}
+          {entityStates === 'error' && (
+            <div style={{ color: 'var(--text-muted)', fontSize: 12, lineHeight: '16px' }}>
+              Couldn't load the rules' status
+            </div>
+          )}
+          {Array.isArray(entityStates) && entityStates.length === 0 && (
+            <div style={{ color: 'var(--text-muted)', fontSize: 12, lineHeight: '16px' }}>
+              Not checked yet
+            </div>
+          )}
+          {Array.isArray(entityStates) && entityStates.length > 0 && (
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {entityStates.map((row) => (
+                <li key={`${row.account_id}:${row.rule_id}`} style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                  <span
+                    title={row.rule_name}
+                    style={{
+                      overflow: 'hidden',
+                      color: 'var(--text-primary)',
+                      fontSize: 12,
+                      lineHeight: '16px',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {row.rule_name}
+                  </span>
+                  <RuleStateLine row={row} />
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
 

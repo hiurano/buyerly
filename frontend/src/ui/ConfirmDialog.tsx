@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from '@/ui/Button';
+import { TOUCH_HEIGHT_CLASS } from '@/lib/useMediaQuery';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -62,8 +63,8 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               <Dialog.Description className="sr-only">{title}</Dialog.Description>
             )}
             <div className="mt-5 flex justify-end gap-2">
-              <Button onClick={onCancel} disabled={busy}>Cancel</Button>
-              <Button ref={confirmRef} variant={tone} onClick={onConfirm} disabled={busy}>
+              <Button className={TOUCH_HEIGHT_CLASS} onClick={onCancel} disabled={busy}>Cancel</Button>
+              <Button ref={confirmRef} className={TOUCH_HEIGHT_CLASS} variant={tone} onClick={onConfirm} disabled={busy}>
                 {confirmLabel}
               </Button>
             </div>

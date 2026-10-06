@@ -69,6 +69,21 @@ class RuleEvaluationResult:
         return self.entity_level == "adset"
 
 
+@dataclass
+class RuleCheck:
+    """What one rule saw on one entity, matched or not (#322).
+
+    ``outcome`` is ``matched``, ``not_met`` (with the readings that fell
+    short in ``detail``) or ``inactive`` (the entity's delivery state rules
+    the action out, e.g. a stop rule on a paused campaign). Rules aimed at
+    another level or outside their scope leave no check at all.
+    """
+
+    rule: Dict[str, Any]
+    outcome: str
+    detail: str
+
+
 class RuleEngine:
     """
     Rule engine supporting dynamic conditions (Spend, CPL, CPReg, CPP,
@@ -120,10 +135,12 @@ class RuleEngine:
         active_rules_override: Optional[List[Dict[str, Any]]],
         *,
         all_actions: bool = False,
+        checks: Optional[List[RuleCheck]] = None,
     ) -> Any:
         """Return the highest-priority action, or with ``all_actions`` every
         matched rule's result, highest priority first (a NOOP result still
-        when nothing matched)."""
+        when nothing matched). ``checks`` collects every applicable rule's
+        outcome."""
         entity_level = str(entity.get("entity_level") or "adset")
         entity_id = str(entity.get("entity_id") or entity.get("adset_id") or "")
         entity_name = str(entity.get("entity_name") or entity.get("adset_name") or "")
@@ -227,17 +244,22 @@ class RuleEngine:
             action_type = rule.get("action")
             if action_type == "turn_on":
                 if status != "PAUSED":
+                    if checks is not None:
+                        checks.append(RuleCheck(rule, "inactive", "Not paused"))
                     continue
             elif not is_active:
+                if checks is not None:
+                    checks.append(RuleCheck(rule, "inactive", "Not active"))
                 continue
 
             conditions = rule.get("conditions", [])
             if not conditions:
                 continue
-                
+
             condition_logic = rule.get("logic", "and")
-            
+
             matched_reasons = []
+            unmet_reasons = []
             any_match = False
             all_match = True
 
@@ -263,8 +285,14 @@ class RuleEngine:
                     "eq": "=",
                 }.get(operator, operator)
                 
+                window_label = ""
+                if time_window != "today":
+                    window_labels = {"yesterday": "Yesterday", "last_3d": "3 days", "last_7d": "7 days"}
+                    window_label = f" [{window_labels.get(time_window, time_window)}]"
+
                 if metric_val is None:
                     all_match = False
+                    unmet_reasons.append(f"{metric_name}{window_label}: no data")
                     continue
                 if unit == "currency":
                     val_fmt = format_money(metric_val, currency)
@@ -276,11 +304,6 @@ class RuleEngine:
                     val_fmt = f"{int(metric_val)}"
                     tgt_fmt = f"{int(target_val)}"
 
-                window_label = ""
-                if time_window != "today":
-                    window_labels = {"yesterday": "Yesterday", "last_3d": "3 days", "last_7d": "7 days"}
-                    window_label = f" [{window_labels.get(time_window, time_window)}]"
-
                 matches = compare_metric(reading, operator, target_val)
 
                 if matches:
@@ -288,8 +311,20 @@ class RuleEngine:
                     matched_reasons.append(f"{metric_name}{window_label} ({val_fmt}) {op_symbol} {tgt_fmt}")
                 else:
                     all_match = False
+                    unmet_reasons.append(
+                        f"{metric_name}{window_label} {val_fmt}, needs {op_symbol} {tgt_fmt}"
+                    )
 
             triggered = any_match if condition_logic == "or" else all_match
+
+            if checks is not None:
+                checks.append(
+                    RuleCheck(
+                        rule,
+                        "matched" if triggered else "not_met",
+                        ", ".join(matched_reasons if triggered else unmet_reasons),
+                    )
+                )
 
             if triggered:
                 rule_action = RULE_ACTION_BY_TYPE.get(action_type)
@@ -388,6 +423,30 @@ class RuleEngine:
             for change in changes:
                 change.yielded_rules = list(weaker)
         return changes + alerts
+
+    @staticmethod
+    def check(
+        entity: Dict[str, Any],
+        account: Account,
+        insights_by_window: Optional[Dict[str, Dict[str, Any]]] = None,
+        active_rules_override: Optional[List[Dict[str, Any]]] = None,
+    ) -> List[RuleCheck]:
+        """How each rule aimed at the entity fared on this read (#322).
+
+        Unlike ``evaluate_all`` this keeps the rules that did not match, with
+        the readings that fell short, so a buyer can see why a rule is quiet.
+        Nothing here decides an action.
+        """
+        checks: List[RuleCheck] = []
+        RuleEngine._evaluate(
+            entity,
+            account,
+            insights_by_window,
+            active_rules_override,
+            all_actions=True,
+            checks=checks,
+        )
+        return checks
 
 
 def yielded_rule(result: RuleEvaluationResult) -> Dict[str, Any]:

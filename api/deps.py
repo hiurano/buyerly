@@ -10,6 +10,7 @@ from sqlalchemy import and_, delete, func, or_, select
 from api.schemas import (
     AccountGroupItem,
     ConditionItem,
+    RuleEntityStateItem,
     RuleGroupResponse,
     RulePresetItem,
     WorkspaceItem,
@@ -34,6 +35,7 @@ from database.models import (
     AnalyticsViewPreference,
     AuditEvent,
     RuleGroup,
+    RuleEntityState,
     RuleGroupItem,
     RulePreset,
     SummarySnapshot,
@@ -623,7 +625,7 @@ def _preset_snapshot(preset: RulePreset) -> Dict[str, Any]:
 
 def _preset_response(
     preset: RulePreset,
-    last_run_at: str = "",
+    activity: Optional[Dict[str, str]] = None,
     attachments: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> RulePresetItem:
     try:
@@ -661,7 +663,8 @@ def _preset_response(
         created_at=preset.created_at.strftime("%Y-%m-%d %H:%M") if preset.created_at else "",
         needs_review=bool(snapshot.get("needs_review", False)),
         review_reason=str(snapshot.get("review_reason", "")),
-        last_run_at=last_run_at,
+        last_run_at=(activity or {}).get("last_run_at", ""),
+        last_checked_at=(activity or {}).get("last_checked_at", ""),
         attached_account_ids=list((attachments or {}).keys()),
         attached_scopes=dict(attachments or {}),
     )
@@ -734,7 +737,7 @@ async def _get_workspace_presets(
 def _rule_group_response(
     group: RuleGroup,
     presets: List[RulePreset],
-    last_runs: Optional[Dict[int, str]] = None,
+    last_runs: Optional[Dict[int, Dict[str, str]]] = None,
     attachments: Optional[Dict[int, Dict[str, Dict[str, Any]]]] = None,
 ) -> RuleGroupResponse:
     last_runs = last_runs or {}
@@ -749,7 +752,7 @@ def _rule_group_response(
         rules=[
             _preset_response(
                 preset,
-                last_runs.get(preset.id, ""),
+                last_runs.get(preset.id),
                 attachments.get(preset.id, {}),
             )
             for preset in presets
@@ -792,11 +795,16 @@ async def _preset_last_runs(
     session,
     workspace_id: int,
     preset_ids: List[int],
-) -> Dict[int, str]:
-    """Latest executed rule action per preset, read from the workspace audit trail."""
+) -> Dict[int, Dict[str, str]]:
+    """When each preset last acted and when it was last checked (#322).
+
+    The last action comes from the workspace audit trail; the last check from
+    the rule-on-entity snapshot, so a rule that keeps checking without its
+    conditions ever matching no longer reads as "Never".
+    """
     if not preset_ids:
         return {}
-    rows = await session.execute(
+    actions = await session.execute(
         select(AuditEvent.rule_id, func.max(AuditEvent.created_at))
         .where(
             AuditEvent.workspace_id == workspace_id,
@@ -805,13 +813,124 @@ async def _preset_last_runs(
         )
         .group_by(AuditEvent.rule_id)
     )
+    checks = await session.execute(
+        select(RuleEntityState.rule_id, func.max(RuleEntityState.checked_at))
+        .where(
+            RuleEntityState.workspace_id == workspace_id,
+            RuleEntityState.rule_id.in_(preset_ids),
+        )
+        .group_by(RuleEntityState.rule_id)
+    )
     # ISO 8601 with an explicit offset, so the browser renders "3h ago" against
     # the viewer's clock instead of reparsing a naive string as local time.
-    return {
-        rule_id: last_run.isoformat()
-        for rule_id, last_run in rows.all()
-        if rule_id is not None and last_run is not None
+    activity: Dict[int, Dict[str, str]] = {}
+    for key, rows in (("last_run_at", actions), ("last_checked_at", checks)):
+        for rule_id, moment in rows.all():
+            if rule_id is not None and moment is not None:
+                activity.setdefault(rule_id, {})[key] = moment.isoformat()
+    return activity
+
+
+RULE_ENTITY_STATES_LIMIT = 1000
+
+
+async def _rule_entity_states(
+    session,
+    workspace_id: int,
+    *,
+    preset_id: Optional[int] = None,
+    entity_level: Optional[str] = None,
+    entity_id: Optional[str] = None,
+) -> List[RuleEntityStateItem]:
+    """Where rules stand on entities, from one rule's or one entity's side (#322).
+
+    The snapshot is as of each rule's latest check. What changed since then
+    in Buyerly itself wins: a row for a rule no longer attached to the ad
+    account is left out, a paused rule or an account with rules switched off
+    says so instead of its last check.
+    """
+    query = select(RuleEntityState).where(RuleEntityState.workspace_id == workspace_id)
+    if preset_id is not None:
+        query = query.where(RuleEntityState.rule_id == preset_id)
+    if entity_level is not None:
+        query = query.where(RuleEntityState.entity_level == entity_level)
+    if entity_id is not None:
+        query = query.where(RuleEntityState.entity_id == entity_id)
+    rows = (
+        await session.execute(
+            query.order_by(RuleEntityState.entity_name, RuleEntityState.id).limit(
+                RULE_ENTITY_STATES_LIMIT
+            )
+        )
+    ).scalars().all()
+    if not rows:
+        return []
+
+    accounts = {
+        account.account_id: account
+        for account in (
+            await session.execute(
+                select(Account).where(
+                    Account.workspace_id == workspace_id,
+                    Account.account_id.in_(sorted({row.account_id for row in rows})),
+                )
+            )
+        ).scalars().all()
     }
+    preset_names = dict(
+        (
+            await session.execute(
+                select(RulePreset.id, RulePreset.name).where(
+                    RulePreset.workspace_id == workspace_id,
+                    RulePreset.id.in_(sorted({row.rule_id for row in rows})),
+                )
+            )
+        ).all()
+    )
+
+    def iso(value: Optional[datetime]) -> str:
+        return value.isoformat() if value is not None else ""
+
+    attached_rules = {
+        account_id: {
+            rule.get("preset_id"): rule for rule in _load_active_rules(account.active_rules)
+        }
+        for account_id, account in accounts.items()
+    }
+
+    items: List[RuleEntityStateItem] = []
+    for row in rows:
+        account = accounts.get(row.account_id)
+        if account is None or row.rule_id not in preset_names:
+            continue
+        attached = attached_rules[row.account_id].get(row.rule_id)
+        if attached is None:
+            continue
+        state = row.state
+        if not account.rules_enabled:
+            state = "rules_off"
+        elif attached.get("enabled", True) is False:
+            state = "rule_paused"
+        items.append(
+            RuleEntityStateItem(
+                rule_id=row.rule_id,
+                rule_name=preset_names[row.rule_id],
+                account_id=row.account_id,
+                account_name=account.name or "",
+                entity_level=row.entity_level,
+                entity_id=row.entity_id,
+                entity_name=row.entity_name,
+                campaign_id=row.campaign_id,
+                state=state,
+                detail=row.detail,
+                wait_until=iso(row.wait_until),
+                yielded_to_rule_id=row.yielded_to_rule_id,
+                yielded_to_rule_name=row.yielded_to_rule_name,
+                checked_at=iso(row.checked_at),
+                acted_at=iso(row.acted_at),
+            )
+        )
+    return items
 
 
 async def _load_group_presets(

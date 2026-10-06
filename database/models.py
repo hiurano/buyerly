@@ -1217,6 +1217,46 @@ class RuleExecutionState(Base):
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
 
+class RuleEntityState(Base):
+    """Where one rule stands on one entity as of its latest check (#322).
+
+    A snapshot, overwritten on every check, never a history: the Inbox keeps
+    the actions, this row answers "why is the rule quiet here right now".
+    The worker drops rows whose entity or rule left the account's check.
+    """
+
+    __tablename__ = "rule_entity_states"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id",
+            "account_id",
+            "rule_id",
+            "entity_level",
+            "entity_id",
+            name="uq_rule_entity_state",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    workspace_id = Column(
+        Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    account_id = Column(String, nullable=False, index=True)
+    rule_id = Column(Integer, nullable=False, index=True, doc="RulePreset id")
+    entity_level = Column(String, nullable=False)
+    entity_id = Column(String, nullable=False, index=True)
+    entity_name = Column(String, default="", nullable=False)
+    campaign_id = Column(String, default="", nullable=False)
+    # fired, cooldown, confirming, undone, yielded, not_met, inactive, pending, error
+    state = Column(String, nullable=False)
+    detail = Column(Text, default="", nullable=False)
+    wait_until = Column(DateTime(timezone=True), nullable=True)
+    yielded_to_rule_id = Column(Integer, nullable=True)
+    yielded_to_rule_name = Column(String, default="", nullable=False)
+    checked_at = Column(DateTime(timezone=True), nullable=False)
+    acted_at = Column(DateTime(timezone=True), nullable=True)
+
+
 class ActionUndoState(Base):
     """Durable one-at-a-time claim for an idempotent audit action reversal."""
 

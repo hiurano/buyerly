@@ -5,9 +5,10 @@ import json
 import hashlib
 import time
 import uuid
-from datetime import datetime, time as day_time, timezone
+from datetime import datetime, time as day_time, timedelta, timezone
 from typing import Optional, Callable, Any, List, Dict
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 
@@ -19,6 +20,7 @@ from database.models import (
     AutomationRuntimeState,
     AutomationScheduleState,
     MetaConnection,
+    RuleEntityState,
     RuleExecutionState,
     StoppedAdSet,
     Workspace,
@@ -37,8 +39,9 @@ from meta_api.client import MetaClient
 from core.metrics import normalize_rule_level
 from rules.engine import (
     RULE_ACTION_BY_TYPE,
-    RuleEngine,
     RuleAction,
+    RuleCheck,
+    RuleEngine,
     RuleEvaluationResult,
     yielded_rule,
 )
@@ -860,15 +863,15 @@ class MonitoringWorker:
                 kept.append(rule)
         return kept
 
-    async def _is_cooling_down(
+    async def _cooldown_until(
         self,
         session,
         account: Account,
         evaluation: RuleEvaluationResult,
         *,
         now: float,
-    ) -> bool:
-        """Whether this rule already acted on this entity within its cooldown.
+    ) -> Optional[float]:
+        """When this rule may act on this entity again, if it is cooling down.
 
         Checked before a STOP confirmation starts, so a rule waiting out its
         cooldown stays quiet instead of recording a candidate and a skip in the
@@ -877,7 +880,7 @@ class MonitoringWorker:
         """
         cooldown_seconds = max(0, int(evaluation.cooldown_minutes or 0)) * 60
         if cooldown_seconds <= 0:
-            return False
+            return None
         execution_key, _ = self._execution_key(account, evaluation)
         state = (
             await session.execute(
@@ -886,12 +889,207 @@ class MonitoringWorker:
                 )
             )
         ).scalar_one_or_none()
-        return (
+        if (
             state is not None
             and state.status != "PENDING"
             and state.last_success_at is not None
             and now - float(state.last_success_at) < cooldown_seconds
+        ):
+            return float(state.last_success_at) + cooldown_seconds
+        return None
+
+    async def _is_cooling_down(
+        self,
+        session,
+        account: Account,
+        evaluation: RuleEvaluationResult,
+        *,
+        now: float,
+    ) -> bool:
+        """Whether this rule already acted on this entity within its cooldown."""
+        return (
+            await self._cooldown_until(session, account, evaluation, now=now)
+        ) is not None
+
+    @staticmethod
+    def _account_day_end(account: Account, now: float) -> float:
+        """Midnight that ends the ad account's current day, as a timestamp."""
+        clock = resolve_account_clock(account.timezone_name)
+        local_now = datetime.fromtimestamp(now, clock.zone if clock else timezone.utc)
+        next_day = datetime.combine(
+            local_now.date() + timedelta(days=1), day_time.min, tzinfo=local_now.tzinfo
         )
+        return next_day.timestamp()
+
+    async def _rule_outcomes(
+        self,
+        session,
+        account: Account,
+        entity: dict[str, Any],
+        checks: list[RuleCheck],
+        candidates: list[RuleEvaluationResult],
+        chosen: list[RuleEvaluationResult],
+        undone: Optional[set[str]],
+        *,
+        now: float,
+    ) -> dict[int, dict[str, Any]]:
+        """Where each rule stands on one entity before anything runs (#322).
+
+        A matched rule that will not act this check says why: the buyer undid
+        its action today, it is cooling down, or it gave way to a stronger
+        action or to another rule doing the same. The rules that do act are
+        settled by the action loop through ``_note_outcome``.
+        """
+        chosen_change = next(
+            (c for c in chosen if c.action != RuleAction.NOTIFY_ONLY), None
+        )
+        chosen_ids = {c.rule_id for c in chosen}
+        candidates_by_id = {c.rule_id: c for c in candidates}
+        outcomes: dict[int, dict[str, Any]] = {}
+        for check in checks:
+            rule_id = check.rule.get("preset_id")
+            if not isinstance(rule_id, int) or rule_id in outcomes:
+                continue
+            outcome: dict[str, Any] = {
+                "rule_id": rule_id,
+                "entity_level": str(entity.get("entity_level") or "adset"),
+                "entity_id": str(entity.get("entity_id") or ""),
+                "entity_name": str(entity.get("entity_name") or ""),
+                "campaign_id": str(entity.get("campaign_id") or ""),
+                "state": check.outcome,
+                "detail": check.detail,
+                "wait_until": None,
+                "yielded_to_rule_id": None,
+                "yielded_to_rule_name": "",
+                "acted_at": None,
+            }
+            outcomes[rule_id] = outcome
+            if check.outcome != "matched" or rule_id in chosen_ids:
+                continue
+            action = RULE_ACTION_BY_TYPE.get(str(check.rule.get("action") or ""))
+            if undone and action is not None and action.value in undone:
+                outcome["state"] = "undone"
+                outcome["wait_until"] = self._account_day_end(account, now)
+                continue
+            candidate = candidates_by_id.get(rule_id)
+            if candidate is not None:
+                until = await self._cooldown_until(session, account, candidate, now=now)
+                if until is not None:
+                    outcome["state"] = "cooldown"
+                    outcome["wait_until"] = until
+                    continue
+            outcome["state"] = "yielded"
+            if chosen_change is not None:
+                outcome["yielded_to_rule_id"] = chosen_change.rule_id
+                outcome["yielded_to_rule_name"] = chosen_change.rule_name
+        return outcomes
+
+    @staticmethod
+    def _note_outcome(
+        outcomes: dict[int, dict[str, Any]],
+        evaluation: RuleEvaluationResult,
+        state: str,
+        *,
+        detail: Optional[str] = None,
+        wait_until: Optional[float] = None,
+        acted_at: Optional[float] = None,
+    ) -> None:
+        outcome = outcomes.get(evaluation.rule_id) if evaluation.rule_id is not None else None
+        if outcome is None:
+            return
+        outcome["state"] = state
+        outcome["wait_until"] = wait_until
+        if detail is not None:
+            outcome["detail"] = detail
+        if acted_at is not None:
+            outcome["acted_at"] = acted_at
+
+    async def _save_rule_states(
+        self,
+        session,
+        account: Account,
+        outcomes: list[dict[str, Any]],
+        *,
+        checked_rule_ids: set[int],
+        attached_rule_ids: set[int],
+        now: float,
+    ) -> None:
+        """Overwrite the account's rule-on-entity snapshot (#322).
+
+        Rows for entities this check no longer saw, and for rules no longer
+        attached, are dropped. The last action time survives a check in which
+        the rule did not act. A failure here never stops automation.
+        """
+        if account.workspace_id is None:
+            return
+        account_ref = str(account.account_id)
+        checked_at = datetime.fromtimestamp(now, timezone.utc)
+
+        def stamp(value: Optional[float]) -> Optional[datetime]:
+            return datetime.fromtimestamp(value, timezone.utc) if value else None
+
+        rows: dict[tuple[int, str, str], dict[str, Any]] = {}
+        for outcome in outcomes:
+            key = (outcome["rule_id"], outcome["entity_level"], outcome["entity_id"])
+            rows[key] = {
+                "workspace_id": account.workspace_id,
+                "account_id": str(account.account_id),
+                "rule_id": outcome["rule_id"],
+                "entity_level": outcome["entity_level"],
+                "entity_id": outcome["entity_id"],
+                "entity_name": outcome["entity_name"],
+                "campaign_id": outcome["campaign_id"],
+                "state": outcome["state"],
+                "detail": outcome["detail"] or "",
+                "wait_until": stamp(outcome["wait_until"]),
+                "yielded_to_rule_id": outcome["yielded_to_rule_id"],
+                "yielded_to_rule_name": outcome["yielded_to_rule_name"] or "",
+                "checked_at": checked_at,
+                "acted_at": stamp(outcome["acted_at"]),
+            }
+        values = list(rows.values())
+        try:
+            for start in range(0, len(values), 500):
+                stmt = pg_insert(RuleEntityState).values(values[start:start + 500])
+                stmt = stmt.on_conflict_do_update(
+                    constraint="uq_rule_entity_state",
+                    set_={
+                        "entity_name": stmt.excluded.entity_name,
+                        "campaign_id": stmt.excluded.campaign_id,
+                        "state": stmt.excluded.state,
+                        "detail": stmt.excluded.detail,
+                        "wait_until": stmt.excluded.wait_until,
+                        "yielded_to_rule_id": stmt.excluded.yielded_to_rule_id,
+                        "yielded_to_rule_name": stmt.excluded.yielded_to_rule_name,
+                        "checked_at": stmt.excluded.checked_at,
+                        "acted_at": func.coalesce(
+                            stmt.excluded.acted_at, RuleEntityState.acted_at
+                        ),
+                    },
+                )
+                await session.execute(stmt)
+            same_account = (
+                RuleEntityState.workspace_id == account.workspace_id,
+                RuleEntityState.account_id == str(account.account_id),
+            )
+            if checked_rule_ids:
+                await session.execute(
+                    delete(RuleEntityState).where(
+                        *same_account,
+                        RuleEntityState.rule_id.in_(sorted(checked_rule_ids)),
+                        RuleEntityState.checked_at < checked_at,
+                    )
+                )
+            await session.execute(
+                delete(RuleEntityState).where(
+                    *same_account,
+                    RuleEntityState.rule_id.not_in(sorted(attached_rule_ids)),
+                )
+            )
+            await session.commit()
+        except Exception as error:
+            await session.rollback()
+            logger.error("Failed to save rule states for %s: %s", account_ref, error)
 
     async def _entity_actions_to_run(
         self,
@@ -1753,24 +1951,42 @@ class MonitoringWorker:
                             f"({snapshot['ads_error']}); ad rules skipped this cycle"
                         )
 
+                    rule_outcomes: list[dict[str, Any]] = []
                     for adset in entities:
                         a_id = str(adset["entity_id"])
                         current_adset_windows = entity_windows.get(a_id, {})
 
+                        candidates = RuleEngine.evaluate_all(
+                            entity=adset,
+                            account=acc,
+                            insights_by_window=current_adset_windows,
+                            active_rules_override=self._rules_not_undone(
+                                due_rules,
+                                undone_actions.get(a_id),
+                            ),
+                        )
                         entity_actions = await self._entity_actions_to_run(
                             session,
                             acc,
-                            RuleEngine.evaluate_all(
+                            candidates,
+                            now=now,
+                        )
+                        outcomes = await self._rule_outcomes(
+                            session,
+                            acc,
+                            adset,
+                            RuleEngine.check(
                                 entity=adset,
                                 account=acc,
                                 insights_by_window=current_adset_windows,
-                                active_rules_override=self._rules_not_undone(
-                                    due_rules,
-                                    undone_actions.get(a_id),
-                                ),
+                                active_rules_override=due_rules,
                             ),
+                            candidates,
+                            entity_actions,
+                            undone_actions.get(a_id),
                             now=now,
                         )
+                        rule_outcomes.extend(outcomes.values())
                         if not entity_actions:
                             if stop_rules_due:
                                 await self._reset_stop_confirmations(
@@ -1806,6 +2022,10 @@ class MonitoringWorker:
                             elif eval_res.action == RuleAction.INCREASE_BUDGET:
                                 if current_budget <= 0 or eval_res.budget_change_percent <= 0:
                                     stats["actions_skipped"] += 1
+                                    self._note_outcome(
+                                        outcomes, eval_res, "skipped",
+                                        detail="No daily budget to change at this level",
+                                    )
                                     continue
                                 new_budget = current_budget * (1 + eval_res.budget_change_percent / 100.0)
                                 if eval_res.budget_max_daily > 0:
@@ -1815,6 +2035,10 @@ class MonitoringWorker:
                             elif eval_res.action == RuleAction.DECREASE_BUDGET:
                                 if current_budget <= 0 or eval_res.budget_change_percent <= 0:
                                     stats["actions_skipped"] += 1
+                                    self._note_outcome(
+                                        outcomes, eval_res, "skipped",
+                                        detail="No daily budget to change at this level",
+                                    )
                                     continue
                                 new_budget = max(
                                     current_budget * (1 - eval_res.budget_change_percent / 100.0),
@@ -1826,8 +2050,14 @@ class MonitoringWorker:
                                 observed_state = {"status": adset.get("status", "UNKNOWN")}
                                 desired_state = dict(observed_state)
 
-                            if await self._is_cooling_down(session, acc, eval_res, now=now):
+                            cooldown_until = await self._cooldown_until(
+                                session, acc, eval_res, now=now
+                            )
+                            if cooldown_until is not None:
                                 stats["actions_skipped"] += 1
+                                self._note_outcome(
+                                    outcomes, eval_res, "cooldown", wait_until=cooldown_until
+                                )
                                 continue
 
                             if eval_res.action == RuleAction.STOP:
@@ -1844,6 +2074,21 @@ class MonitoringWorker:
                                 if not confirmed:
                                     stats["actions_skipped"] += 1
                                     stats["stop_confirmations_waiting"] += 1
+                                    confirming_since = (
+                                        self._json_dict(confirmation_state.details).get("first_seen_at")
+                                        if confirmation_state
+                                        else None
+                                    )
+                                    self._note_outcome(
+                                        outcomes,
+                                        eval_res,
+                                        "confirming",
+                                        wait_until=(
+                                            float(confirming_since) + stop_confirmation_minutes * 60
+                                            if isinstance(confirming_since, (int, float))
+                                            else None
+                                        ),
+                                    )
                                     if confirmation_reason == "started" and confirmation_state:
                                         await self._persist_audit_event(
                                             session,
@@ -1878,6 +2123,24 @@ class MonitoringWorker:
                                 stats["actions_skipped"] += 1
                                 if claim_reason == "reconciled":
                                     stats["actions_reconciled"] += 1
+                                    self._note_outcome(
+                                        outcomes,
+                                        eval_res,
+                                        "fired",
+                                        acted_at=execution_state.last_success_at,
+                                    )
+                                elif claim_reason == "cooldown":
+                                    self._note_outcome(
+                                        outcomes,
+                                        eval_res,
+                                        "cooldown",
+                                        wait_until=(
+                                            float(execution_state.last_success_at or now)
+                                            + max(0, int(eval_res.cooldown_minutes or 0)) * 60
+                                        ),
+                                    )
+                                else:
+                                    self._note_outcome(outcomes, eval_res, "pending")
                                 if claim_reason in {"cooldown", "pending", "reconciled"}:
                                     await self._persist_audit_event(
                                         session,
@@ -2151,6 +2414,45 @@ class MonitoringWorker:
                                         after_state={"daily_budget": current_budget},
                                         duration_ms=(time.perf_counter() - action_started) * 1000,
                                     )
+
+                            if execution_state.status == "SUCCESS":
+                                cooldown_seconds = max(0, int(eval_res.cooldown_minutes or 0)) * 60
+                                self._note_outcome(
+                                    outcomes,
+                                    eval_res,
+                                    "fired",
+                                    acted_at=now,
+                                    wait_until=now + cooldown_seconds if cooldown_seconds else None,
+                                )
+                            elif execution_state.status == "ERROR":
+                                self._note_outcome(
+                                    outcomes,
+                                    eval_res,
+                                    "error",
+                                    detail=str(
+                                        self._json_dict(execution_state.details).get("error")
+                                        or "Meta rejected the action"
+                                    ),
+                                )
+
+                    await self._save_rule_states(
+                        session,
+                        acc,
+                        rule_outcomes,
+                        checked_rule_ids={
+                            rule["preset_id"]
+                            for rule in due_rules
+                            if isinstance(rule.get("preset_id"), int)
+                        },
+                        attached_rule_ids={
+                            rule["preset_id"]
+                            for rule in self._load_rules(
+                                acc.active_rules, workspace_id=acc.workspace_id
+                            )
+                            if isinstance(rule.get("preset_id"), int)
+                        },
+                        now=now,
+                    )
 
                 except Exception as e:
                     logger.error(f"Error processing account {account_ref}: {e}")

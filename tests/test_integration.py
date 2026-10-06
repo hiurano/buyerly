@@ -15,6 +15,7 @@ from database.models import (
     AuditEvent,
     AutomationRuntimeState,
     AutomationScheduleState,
+    RuleEntityState,
     RuleExecutionState,
     StoppedAdSet,
     User,
@@ -846,6 +847,14 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             now[0] = noon + minutes * 60
             await worker.run_cycle()
         self.assertEqual(mock_meta.status_changes, [("adset_1", "PAUSED")])
+        # #322: the rule says why it is quiet and until when.
+        state = await self._rule_state(1, "adset_1")
+        self.assertEqual(state.state, "undone")
+        self.assertEqual(
+            state.wait_until,
+            datetime(2026, 9, 27, 0, 0, tzinfo=hawaii).astimezone(timezone.utc),
+        )
+        self.assertEqual(state.acted_at, datetime.fromtimestamp(noon, timezone.utc))
 
         # Midnight in Hawaii ends the undo's hold.
         now[0] = datetime(2026, 9, 27, 0, 5, tzinfo=hawaii).timestamp()
@@ -1354,6 +1363,101 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
         # An alert never competes, so nothing gives way to it.
         self.assertNotIn("Gave way", events["NOTIFY_ONLY"].message)
         self.assertNotIn("yielded_rules", events["NOTIFY_ONLY"].details)
+
+    async def _rule_state(self, rule_id, entity_id):
+        async with self.test_session_maker() as session:
+            return (
+                await session.execute(
+                    select(RuleEntityState).where(
+                        RuleEntityState.rule_id == rule_id,
+                        RuleEntityState.entity_id == entity_id,
+                    )
+                )
+            ).scalar_one_or_none()
+
+    async def test_rule_states_tell_fired_waiting_and_not_met_apart(self):
+        """#322: a rule on "Repeat: Once a day" says when it fired and until
+        when it waits; on another ad set it shows the reading that fell short."""
+        await self._set_rules({
+            "preset_id": 71,
+            "name": "Spend alert",
+            "action": "notify_only",
+            "conditions": [{"metric": "spend", "operator": "gte", "value": 10.0}],
+            "cooldown_minutes": 1440,
+        })
+        start = 5_000.0
+        now = [start]
+        worker = MonitoringWorker(meta_client=MockMetaClient(), clock=lambda: now[0])
+        await worker.run_cycle()
+
+        fired = await self._rule_state(71, "adset_1")
+        self.assertEqual(fired.state, "fired")
+        self.assertEqual(fired.acted_at, datetime.fromtimestamp(start, timezone.utc))
+        self.assertEqual(
+            fired.wait_until, datetime.fromtimestamp(start + 1440 * 60, timezone.utc)
+        )
+        self.assertIn("Spend", fired.detail)
+
+        quiet = await self._rule_state(71, "adset_2")
+        self.assertEqual(quiet.state, "not_met")
+        self.assertIn("needs ≥", quiet.detail)
+        self.assertIsNone(quiet.acted_at)
+
+        now[0] += 10 * 60
+        await worker.run_cycle()
+        waiting = await self._rule_state(71, "adset_1")
+        self.assertEqual(waiting.state, "cooldown")
+        self.assertEqual(waiting.wait_until, fired.wait_until)
+        self.assertEqual(waiting.acted_at, fired.acted_at)
+        self.assertEqual(
+            waiting.checked_at, datetime.fromtimestamp(now[0], timezone.utc)
+        )
+
+    async def test_rule_states_name_the_rule_a_weaker_action_gave_way_to(self):
+        await self._set_rules(
+            {
+                "preset_id": 81,
+                "name": "Stop",
+                "action": "turn_off",
+                "conditions": [{"metric": "spend", "operator": "gte", "value": 10.0}],
+            },
+            {
+                "preset_id": 82,
+                "name": "Scale",
+                "action": "increase_budget",
+                "conditions": [{"metric": "leads", "operator": "eq", "value": 0.0}],
+                "budget_change_percent": 20.0,
+                "budget_max_daily": 500.0,
+            },
+        )
+        mock_meta = MockMetaClient()
+        worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: 5_000.0)
+        await worker.run_cycle()
+
+        self.assertEqual(mock_meta.status_changes, [("adset_1", "PAUSED")])
+        self.assertEqual((await self._rule_state(81, "adset_1")).state, "fired")
+        yielded = await self._rule_state(82, "adset_1")
+        self.assertEqual(yielded.state, "yielded")
+        self.assertEqual(yielded.yielded_to_rule_id, 81)
+        self.assertEqual(yielded.yielded_to_rule_name, "Stop")
+
+    async def test_rule_states_follow_the_rules_attached_to_the_account(self):
+        alert = {
+            "action": "notify_only",
+            "conditions": [{"metric": "spend", "operator": "gte", "value": 10.0}],
+        }
+        await self._set_rules({**alert, "preset_id": 91, "name": "First"})
+        now = [5_000.0]
+        worker = MonitoringWorker(meta_client=MockMetaClient(), clock=lambda: now[0])
+        await worker.run_cycle()
+        self.assertIsNotNone(await self._rule_state(91, "adset_1"))
+
+        # The buyer swaps the rule: the old one's rows go with it.
+        await self._set_rules({**alert, "preset_id": 92, "name": "Second"})
+        now[0] += 10 * 60
+        await worker.run_cycle()
+        self.assertIsNone(await self._rule_state(91, "adset_1"))
+        self.assertEqual((await self._rule_state(92, "adset_1")).state, "fired")
 
     async def test_a_budget_rule_saved_from_the_editor_scales_once_a_day(self):
         # The editor now saves "Repeat: Once a day" (cooldown 1440) next to a

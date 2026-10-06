@@ -231,6 +231,48 @@ class TestRuleEngine(unittest.TestCase):
         quiet = {**self.ACTIVE_ADSET, "spend": 0.0}
         self.assertEqual(RuleEngine.evaluate_all(quiet, self.account), [])
 
+    def test_check_keeps_the_rules_that_did_not_match_and_says_why(self):
+        """#322: a quiet rule shows the reading that fell short."""
+        self._set_rules(
+            {
+                "preset_id": 1,
+                "name": "Spend",
+                "action": "notify_only",
+                "conditions": [{"metric": "spend", "operator": "gte", "value": 50.0}],
+            },
+            {"preset_id": 2, "name": "Alert", "action": "notify_only"},
+            {"preset_id": 3, "name": "Turn on", "action": "turn_on"},
+            {
+                "preset_id": 4,
+                "name": "Elsewhere",
+                "action": "notify_only",
+                "level": "campaign",
+            },
+        )
+        checks = {
+            check.rule["preset_id"]: (check.outcome, check.detail)
+            for check in RuleEngine.check(self.ACTIVE_ADSET, self.account)
+        }
+        self.assertEqual(checks[1], ("not_met", "Spend 20.00 USD, needs ≥ 50.00 USD"))
+        self.assertEqual(checks[2][0], "matched")
+        self.assertIn("Spend (20.00 USD) ≥ 1.00 USD", checks[2][1])
+        # A turn-on rule cannot act on a running ad set.
+        self.assertEqual(checks[3], ("inactive", "Not paused"))
+        # A rule aimed at another level never looked at this ad set.
+        self.assertNotIn(4, checks)
+
+    def test_check_names_metrics_without_data(self):
+        self._set_rules(
+            {
+                "preset_id": 1,
+                "name": "CPL",
+                "action": "notify_only",
+                "conditions": [{"metric": "cpl", "operator": "gte", "value": 5.0}],
+            },
+        )
+        [check] = RuleEngine.check(self.ACTIVE_ADSET, self.account)
+        self.assertEqual((check.outcome, check.detail), ("not_met", "Cost per lead (CPL): no data"))
+
     # --------------------------------------------------------
     # Metric: leads (lead count)
     # --------------------------------------------------------

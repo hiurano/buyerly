@@ -5,10 +5,11 @@ import { LinearToggle } from '@/ui/LinearToggle';
 
 import { LinearDataListRow, LinearDataMetricCell, LinearDataPrimaryCell } from '@/ui/LinearDataList';
 import { LinearLabelPill } from '@/ui/LinearLabelPill';
-import { ruleActionTone } from '@/lib/rules';
+import { ATTACH_STEPS, ruleActionTone } from '@/lib/rules';
 import type { RuleActionTone } from '@/lib/rules';
 import { getRulesColumns } from './tableColumns';
 import { RuleRowMenu } from './RuleRowMenu';
+import { useIsSmallScreen } from '@/lib/useMediaQuery';
 
 const ACTION_BADGE_STYLES: Record<
   RuleActionTone,
@@ -47,6 +48,7 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
   const isSelected = selectedRuleIds.includes(rule.id);
   const isDeliveryOn = rule.status !== 'paused';
   const columns = getRulesColumns(rulesDisplayProperties);
+  const isSmall = useIsSmallScreen();
 
   const handleRowClick = () => {
     setFocusedRuleId(rule.id);
@@ -119,6 +121,7 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
                 letterSpacing: '-0.01em',
               }}
               className="truncate whitespace-nowrap select-text"
+              title={rule.condition}
             >
               {rule.condition}
             </span>
@@ -159,6 +162,7 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
                 padding: '2px 6px',
               }}
               className="truncate whitespace-nowrap"
+              title={rule.preset.attached_account_ids.length === 0 ? ATTACH_STEPS : undefined}
             >
               {rule.scope}
             </span>
@@ -166,12 +170,20 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
           </div>
       )}
 
+      {rulesDisplayProperties.lastCheck !== false && (
+        <LinearDataMetricCell value={rule.lastCheck} valueClassName="font-[450] text-[var(--text-tertiary)]" />
+      )}
+
       {rulesDisplayProperties.lastRun !== false && (
         <LinearDataMetricCell value={rule.lastRun} valueClassName="font-[450] text-[var(--text-tertiary)]" />
       )}
 
-        <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
-          <RuleRowMenu rule={rule} />
+      {/* Pinned to the right edge on a narrow screen, where this column is past the scroll. */}
+      <div
+        className={`flex items-center justify-end ${isSmall ? 'linear-data-sticky sticky right-0 z-[1]' : ''}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <RuleRowMenu rule={rule} />
       </div>
     </LinearDataListRow>
   );

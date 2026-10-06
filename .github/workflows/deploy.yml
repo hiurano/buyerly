@@ -155,6 +155,17 @@ jobs:
           name: search-page-browser
           path: /tmp/buyerly-search-page
 
+      - name: Check rule states in Chromium
+        working-directory: frontend
+        run: node ../scripts/rule-states-browser.mjs
+
+      - name: Upload rule states browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rule-states-browser
+          path: /tmp/buyerly-rule-states
+
       - name: Check rules in Ads Manager in Chromium
         working-directory: frontend
         run: node ../scripts/rules-attach-browser.mjs
@@ -165,6 +176,17 @@ jobs:
         with:
           name: rules-attach-browser
           path: /tmp/buyerly-rules-attach
+
+      - name: Check rules on a phone in Chromium
+        working-directory: frontend
+        run: node ../scripts/rules-phone-browser.mjs
+
+      - name: Upload rules on a phone browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rules-phone-browser
+          path: /tmp/buyerly-rules-phone
 
       # The runner's Google Chrome has WebMCP behind a flag; Playwright's
       # Chromium does not, and the check then uses a stand-in instead.

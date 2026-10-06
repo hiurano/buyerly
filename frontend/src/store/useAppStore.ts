@@ -21,6 +21,7 @@ import {
   formatRelativeTime,
   formatScope,
   presetToWriteRequest,
+  ruleCurrency,
   updateRuleGroup,
   updateRulePreset,
 } from '@/lib/rules';
@@ -123,7 +124,10 @@ export interface RuleItem {
   actionKind: RuleAction;
   scope?: string;
   status: 'active' | 'paused';
+  /** Last action, relative ("3h ago"); "Never" when the rule never acted. */
   lastRun: string;
+  /** Last check, matched or not; "Never" before the worker checked it. */
+  lastCheck: string;
   groupId?: string;
   /** Set when the runtime holds the rule back until it is re-saved. */
   needsReview: boolean;
@@ -193,18 +197,20 @@ function buildGroupIndex(groups: RuleGroupPayload[]): Map<number, string> {
 function presetToRuleItem(
   preset: RulePresetPayload,
   groupIndex: Map<number, string>,
+  accounts: MetaAccount[],
 ): RuleItem {
   return {
     id: String(preset.id),
     presetId: preset.id,
     identifier: `RUL-${String(preset.id).padStart(2, '0')}`,
     name: preset.name,
-    condition: formatCondition(preset),
+    condition: formatCondition(preset, ruleCurrency(preset, accounts)),
     action: formatAction(preset),
     actionKind: preset.action,
     scope: formatScope(preset),
     status: preset.enabled ? 'active' : 'paused',
     lastRun: formatRelativeTime(preset.last_run_at),
+    lastCheck: formatRelativeTime(preset.last_checked_at ?? ''),
     groupId: groupIndex.get(preset.id),
     needsReview: preset.needs_review,
     reviewReason: preset.review_reason,
@@ -422,6 +428,9 @@ interface AppState {
   openCreateRuleModal: (groupId?: string) => void;
   openEditRuleModal: (ruleId: string) => void;
   closeCreateRuleModal: () => void;
+  /** Rule whose status on campaigns, ad sets or ads is open (#322). */
+  ruleStatesRuleId: string | null;
+  openRuleStates: (ruleId: string | null) => void;
   updateRule: (ruleId: string, payload: RulePresetWriteRequest) => Promise<void>;
   /** Attach the rule to a whole ad account, or detach it from one. */
   toggleRuleOnAccount: (ruleId: string, accountId: string) => Promise<void>;
@@ -478,7 +487,7 @@ function emptyWorkspaceState() {
     telegramConnection: NO_TELEGRAM_CONNECTION, telegramConnectionLoaded: false,
     rules: [], ruleGroups: [], ruleAccounts: [], rulesLoadState: 'idle' as RulesLoadState,
     rulesError: '', rulesMutationError: '', selectedRuleId: null, selectedRuleIds: [],
-    focusedRuleId: null, editingRuleId: null, isCreateRuleModalOpen: false,
+    focusedRuleId: null, editingRuleId: null, ruleStatesRuleId: null, isCreateRuleModalOpen: false,
     createRuleTargetGroupId: undefined, selectedFilterRuleGroupId: null,
     rulesFilterClauses: [], rulesCollapsedGroups: [], pendingDeletion: null,
     adsManagerFilters: { campaigns: [], adsets: [], ads: [] },
@@ -890,10 +899,11 @@ export const useAppStore = create<AppState>((set, get) => {
       ]);
       if (!current()) return;
       const groupIndex = buildGroupIndex(groups);
+      const ruleAccounts = eligibleMetaAccounts(accounts);
       set({
-        rules: presets.map((preset) => presetToRuleItem(preset, groupIndex)),
+        rules: presets.map((preset) => presetToRuleItem(preset, groupIndex, ruleAccounts)),
         ruleGroups: groups.map(groupToRuleGroup),
-        ruleAccounts: eligibleMetaAccounts(accounts),
+        ruleAccounts,
         rulesLoadState: 'ready',
       });
     } catch (error) {
@@ -1110,6 +1120,9 @@ export const useAppStore = create<AppState>((set, get) => {
       editingRuleId: null,
     }),
 
+  ruleStatesRuleId: null,
+  openRuleStates: (ruleId) => set({ ruleStatesRuleId: ruleId }),
+
   updateRule: async (ruleId, payload) => {
     const current = get().captureScope();
     if (!current() || !(get().rules.some(item => item.id === ruleId))) return;
@@ -1163,6 +1176,7 @@ export const useAppStore = create<AppState>((set, get) => {
     condition: true,
     action: true,
     scope: true,
+    lastCheck: true,
     lastRun: true,
   },
   toggleRulesDisplayProperty: (property) =>
