@@ -28,6 +28,8 @@ export interface AuditEventItem {
   undo_reason: string;
   duration_ms: number | null;
   created_at: string;
+  /** What was recorded with the event; a rule's result carries `campaign_id`. */
+  details?: Record<string, unknown>;
 }
 
 export interface AuditEventListResponse {
@@ -156,6 +158,34 @@ export function auditEventTarget(event: AuditEventItem): string {
     event.account_id ||
     'Workspace event'
   );
+}
+
+const ADS_MANAGER_ENTITIES: Record<string, string> = { campaign: 'campaigns', adset: 'adsets', ad: 'ads' };
+
+/**
+ * Where a notification's rule, campaign and ad set or ad open: their rows in
+ * Rules and Ads Manager, at the record addresses search uses. A link is left
+ * out when the event does not name the record, e.g. the campaign of an ad set
+ * alert recorded before campaign ids were kept.
+ */
+export function auditEventPaths(
+  workspace: string,
+  event: AuditEventItem,
+): { rule?: string; campaign?: string; entity?: string } {
+  const paths: { rule?: string; campaign?: string; entity?: string } = {};
+  if (event.rule_id !== null) paths.rule = `/${workspace}/rules/${event.rule_id}`;
+  if (!event.account_id) return paths;
+  const account = `?account=${encodeURIComponent(event.account_id)}`;
+  const recorded = event.details?.campaign_id;
+  const campaignId = event.entity_level === 'campaign'
+    ? event.entity_id
+    : typeof recorded === 'string' ? recorded : '';
+  if (campaignId) paths.campaign = `/${workspace}/ads-manager/campaigns/${encodeURIComponent(campaignId)}${account}`;
+  const level = event.entity_level ?? '';
+  if (event.entity_id && level !== 'campaign' && ADS_MANAGER_ENTITIES[level]) {
+    paths.entity = `/${workspace}/ads-manager/${ADS_MANAGER_ENTITIES[level]}/${encodeURIComponent(event.entity_id)}${account}`;
+  }
+  return paths;
 }
 
 /** The row's second line: which campaign, ad set or ad, then what was recorded. */

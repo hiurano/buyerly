@@ -355,8 +355,9 @@ INBOX_RULE_ACTION_EVENT_TYPES = (
 
 
 # Linear tells the inviter that an invitee joined by email only (Other updates →
-# Invite accepted), never in Inbox.
-INBOX_HIDDEN_EVENT_TYPES = ("INVITE_ACCEPT",)
+# Invite accepted), never in Inbox. A new day in an ad account is bookkeeping
+# for the `today` window: once a day per account it buried rule alerts (#325).
+INBOX_HIDDEN_EVENT_TYPES = ("INVITE_ACCEPT", "ACCOUNT_DAY_STARTED")
 
 
 def _in_inbox():
