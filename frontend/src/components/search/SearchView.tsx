@@ -129,7 +129,8 @@ function highlight(name: string, query: string): React.ReactNode {
   return parts;
 }
 
-const StatusMark: React.FC<{ result: SearchResult }> = ({ result }) => {
+/** A result's mark: its delivery or run state, or a wallet for an ad account. */
+export const StatusMark: React.FC<{ result: SearchResult }> = ({ result }) => {
   if (result.kind === 'account') return <Wallet size={14} strokeWidth={1.75} className="text-[var(--text-tertiary)]" />;
   const status = searchStatusOf(result);
   if (status === 'active' || status === 'paused') return <LinearStatusCircleIcon status={status} size={14} />;

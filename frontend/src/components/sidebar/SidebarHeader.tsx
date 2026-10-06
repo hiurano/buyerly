@@ -6,6 +6,7 @@ import { BuyerlyLogoAvatar, LinearCheckIcon } from '@/icons/LinearIcons';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
 import { openSearchPage } from '@/components/search/openSearchPage';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
+import { GO_TO_KEYS } from '@/lib/shortcuts';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -116,7 +117,7 @@ export const SidebarHeader: React.FC = () => {
                   then
                 </span>
                 <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
-                  S
+                  {GO_TO_KEYS.preferences}
                 </kbd>
               </div>
             </DropdownMenuItem>

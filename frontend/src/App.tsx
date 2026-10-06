@@ -29,6 +29,7 @@ import { ApprovalDialog } from '@/webmcp/ApprovalDialog';
 import { useWebMcpTools } from '@/webmcp/register';
 import { WorkspaceSessionProvider, type WorkspaceSession } from '@/lib/workspaceSession';
 import { isSmallScreen } from '@/lib/useMediaQuery';
+import { GO_TO_SETTINGS_SECTION, goToTargetFor } from '@/lib/shortcuts';
 
 const RETURN_ROUTE_KEY = 'buyerly-return-route';
 
@@ -172,18 +173,11 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
           return;
         }
         if (gPressed) {
-          const shortcutTab = key === 'i'
-            ? 'inbox'
-            : key === 'c'
-              ? 'campaigns'
-              : key === 'r'
-                ? 'rules'
-                : key === 's' && STATISTICS_ENABLED
-                  ? 'statistics'
-                  : null;
-          if (shortcutTab) {
+          const target = goToTargetFor(key);
+          if (target && (target !== 'statistics' || STATISTICS_ENABLED)) {
             event.preventDefault();
-            setActiveTab(shortcutTab);
+            if (target === 'preferences') setSettingsSection(GO_TO_SETTINGS_SECTION);
+            setActiveTab(target);
             setGPressed(false);
           }
         }
@@ -194,7 +188,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
       clearTimeout(timer);
     };
-  }, [gPressed, setActiveTab, toggleRightSidebar, toggleSidebarCollapsed, toggleSidebarOpen]);
+  }, [gPressed, setActiveTab, setSettingsSection, toggleRightSidebar, toggleSidebarCollapsed, toggleSidebarOpen]);
 
   useEffect(() => {
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');

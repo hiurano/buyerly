@@ -36,6 +36,7 @@ import { InboxGroupHeader, InboxItemRow } from './InboxItemRow';
 import { InboxDisplayOptionsPopover } from './InboxDisplayOptionsPopover';
 import { SnoozeCalendarDialog } from './SnoozeCalendarDialog';
 import { SNOOZE_SEARCH_HINT, SnoozePalette } from './SnoozePalette';
+import { usePageCommands } from '@/components/command/pageCommands';
 import {
   BuyerlyLogoAvatar,
   LinearClockOutlineIcon,
@@ -361,6 +362,15 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
       reportError(error);
     }
   }, [applyResponse, openItem, reportError]);
+
+  // Linear's command menu opens with "Notifications" in Inbox.
+  usePageCommands({
+    heading: 'Notifications',
+    commands: [
+      { id: 'delete-all-notifications', label: 'Delete all notifications', icon: <LinearInboxDeleteIcon size={16} />, run: () => void deleteAll(false) },
+      { id: 'delete-read-notifications', label: 'Delete all read notifications', icon: <LinearInboxDeleteIcon size={16} />, shortcut: 'Shift ⌫', run: () => void deleteAll(true) },
+    ],
+  });
 
   // Opening a notification reads it, as in Linear. Only on opening: U on the
   // open one must leave it unread.
