@@ -83,6 +83,7 @@ export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, sel
           level="adset"
           entityId={adSet.id}
           attachedRuleIds={adSetAttachedRules[adSet.id] || []}
+          campaignId={adSet.campaignId}
         />
       )}
     </LinearDataListRow>

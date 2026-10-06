@@ -329,6 +329,8 @@ interface AppState {
   attachedRulesAccountId: string | null;
   /** Rule id → the scope it is attached with on that account. */
   attachedRuleScopes: Record<string, RuleScope>;
+  /** Attached rule ids in the account's stored order, which breaks ties between rules. */
+  attachedRuleOrder: string[];
   /** Campaign id → rules aimed at that campaign, derived from the scopes. */
   campaignAttachedRules: Record<string, string[]>;
   /** Ad set id → rules aimed at that ad set. */
@@ -461,7 +463,7 @@ interface AppState {
 function emptyAccountState() {
   return {
     campaigns: [], adSets: [], ads: [], selectedCampaignIds: [], focusedCampaignId: '',
-    attachedRulesAccountId: null, attachedRuleScopes: {}, campaignAttachedRules: {},
+    attachedRulesAccountId: null, attachedRuleScopes: {}, attachedRuleOrder: [], campaignAttachedRules: {},
     adSetAttachedRules: {}, attachmentError: '', attachmentsLoadState: 'idle' as RulesLoadState,
     adsManagerQuickFilter: null, selectedFilterGroupId: null, selectedFilterRuleId: null,
     selectedFilterPlatform: null, collapsedGroups: [],
@@ -687,6 +689,7 @@ export const useAppStore = create<AppState>((set, get) => {
   setFocusedCampaignId: (id) => set({ focusedCampaignId: id }),
   attachedRulesAccountId: null,
   attachedRuleScopes: {},
+  attachedRuleOrder: [],
   campaignAttachedRules: {},
   adSetAttachedRules: {},
   attachmentError: '',
@@ -699,7 +702,7 @@ export const useAppStore = create<AppState>((set, get) => {
     const current = () => inScope() && request === attachmentsRequest;
     // Invalidate the old account before awaiting anything, including failed B.
     set({ ...(get().attachedRulesAccountId !== accountId ? emptyAccountState() : {}),
-      attachedRulesAccountId: accountId, attachedRuleScopes: {}, campaignAttachedRules: {},
+      attachedRulesAccountId: accountId, attachedRuleScopes: {}, attachedRuleOrder: [], campaignAttachedRules: {},
       adSetAttachedRules: {}, attachmentError: '',
       attachmentsLoadState: accountId ? 'loading' : 'idle' });
     if (!accountId) return;
@@ -714,6 +717,7 @@ export const useAppStore = create<AppState>((set, get) => {
       }
       set({
         attachedRuleScopes: scopes,
+        attachedRuleOrder: (account.active_rules ?? []).map((rule) => String(rule.preset_id)),
         campaignAttachedRules: entityRuleIndex(scopes, 'campaign'),
         adSetAttachedRules: entityRuleIndex(scopes, 'adset'),
         attachmentsLoadState: 'ready',

@@ -22,6 +22,25 @@ def _optional_int(value: Any) -> Optional[int]:
         return None
 
 
+# What a rule that gave way would have done, in the buyer's words.
+_YIELDED_ACTION_LABELS = {
+    "STOP": "turn off",
+    "DECREASE_BUDGET": "lower budget",
+    "INCREASE_BUDGET": "raise budget",
+    "AUTO_REACTIVATE": "turn on",
+}
+
+
+def yielded_rules_note(yielded_rules: list[dict[str, Any]]) -> str:
+    """One line naming the rules that gave way to the rule that acted (#323)."""
+    names = ", ".join(
+        f'"{rule.get("rule_name") or "Unnamed rule"}" '
+        f'({_YIELDED_ACTION_LABELS.get(str(rule.get("action")), "change")})'
+        for rule in yielded_rules
+    )
+    return f"Gave way to this rule: {names}."
+
+
 def build_audit_event(
     *,
     account: Account,
@@ -61,9 +80,14 @@ def build_audit_event(
             "cooldown_minutes": evaluation.cooldown_minutes,
             "currency": evaluation.currency,
         }
+        if evaluation.yielded_rules:
+            evaluation_details["yielded_rules"] = evaluation.yielded_rules
 
     merged_details = {**evaluation_details, **(details or {})}
-    safe_message = redact_secrets(message or (evaluation.reason if evaluation else ""))
+    message = message or (evaluation.reason if evaluation else "")
+    if evaluation is not None and evaluation.yielded_rules:
+        message = f"{message} · {yielded_rules_note(evaluation.yielded_rules)}"
+    safe_message = redact_secrets(message)
 
     return AuditEvent(
         workspace_id=account.workspace_id,

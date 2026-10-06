@@ -212,6 +212,12 @@ class TestRuleEngine(unittest.TestCase):
                 (RuleAction.NOTIFY_ONLY, 2),
             ],
         )
+        # Both cuts name the weaker raise as having given way (#323); the
+        # alert competes with nothing.
+        self.assertEqual(
+            [[rule["rule_id"] for rule in r.yielded_rules] for r in results],
+            [[1], [1], []],
+        )
         # The single-result API still picks the strongest action.
         self.assertEqual(
             RuleEngine.evaluate(self.ACTIVE_ADSET, self.account).action,
