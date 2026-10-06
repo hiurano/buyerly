@@ -130,8 +130,6 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     setCampaignSelection,
     loadAccountRuleAttachments,
     attachmentsLoadState,
-    rulesLoadState,
-    loadRules,
   } = useAppStore();
 
   const requestGenerationRef = useRef(0);
@@ -225,12 +223,6 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   useEffect(() => {
     void loadAccountRuleAttachments(selectedAccountId);
   }, [loadAccountRuleAttachments, selectedAccountId]);
-
-  // The Rules cell picks from the workspace's rules, which the Rules screen
-  // may not have loaded yet.
-  useEffect(() => {
-    if (rulesLoadState === 'idle') void loadRules();
-  }, [loadRules, rulesLoadState]);
 
   useEffect(() => {
     const generation = ++requestGenerationRef.current;

@@ -45,6 +45,8 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
     attachedRuleScopes,
     attachmentError,
     clearAttachmentError,
+    rulesLoadState,
+    loadRules,
   } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -88,6 +90,14 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
     const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 50);
     return () => window.clearTimeout(focusTimer);
   }, [isOpen, clearAttachmentError]);
+
+  // Ads Manager can be opened before the Rules screen ever was; the list is
+  // read when a picker first needs it, not on every visit.
+  useEffect(() => {
+    if (!isOpen) return;
+    const { rulesLoadState: state } = useAppStore.getState();
+    if (state === 'idle' || state === 'error') void loadRules();
+  }, [isOpen, loadRules]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -469,7 +479,13 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
 
           {orderedRules.length === 0 && (
             <li style={{ padding: '16px 14px', color: 'var(--text-muted)', fontSize: 12, textAlign: 'center' }}>
-              {rules.length === 0 ? 'No rules yet. Create one on the Rules screen.' : 'No rules found'}
+              {rules.length > 0
+                ? 'No rules found'
+                : rulesLoadState === 'ready'
+                  ? 'No rules yet. Create one on the Rules screen.'
+                  : rulesLoadState === 'error'
+                    ? "Couldn't load rules"
+                    : 'Loading rules…'}
             </li>
           )}
         </ul>
