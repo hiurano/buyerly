@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { apiRequest } from '@/lib/api';
-import type { SessionUser } from '@/lib/types';
+import type { SessionUser, Workspace } from '@/lib/types';
+import { Button } from '@/ui/Button';
 import { Input } from '@/ui/Input';
 import { LinearPencilIcon } from '@/icons/LinearIcons';
 import { ChangeEmailDialog } from './ChangeEmailDialog';
 import { ChangePasswordDialog } from './ChangePasswordDialog';
+import { LeaveWorkspaceDialog } from './MemberDialogs';
 
 interface ProfileSectionProps {
   user: SessionUser;
+  workspace: Workspace;
   onUserChanged: () => void | Promise<unknown>;
 }
 
@@ -22,7 +25,8 @@ function initials(user: SessionUser): string {
   return parts.map((part) => part[0]?.toUpperCase() || '').join('') || '?';
 }
 
-export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, onUserChanged }) => {
+export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, workspace, onUserChanged }) => {
+  const [leaveOpen, setLeaveOpen] = useState(false);
   const [fullName, setFullName] = useState(user.full_name || '');
   const [savingName, setSavingName] = useState(false);
   const [error, setError] = useState('');
@@ -149,6 +153,26 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, onUserChan
         )}
       </div>
 
+      {/* Linear ends Profile with Workspace access and its Leave workspace button. */}
+      <div className="preferences-section">
+        <div className="preferences-section-header">
+          <h3 className="preferences-section-title">Workspace access</h3>
+        </div>
+        <section className="preferences-card-container">
+          <div className="preferences-row-item">
+            <div className="preferences-row-copy">
+              <span className="preferences-row-title">Leave workspace</span>
+              <span className="preferences-row-desc">
+                {workspace.role === 'owner'
+                  ? `You own ${workspace.name}. Make another member the owner to leave it.`
+                  : `Remove yourself from ${workspace.name}.`}
+              </span>
+            </div>
+            <Button onClick={() => setLeaveOpen(true)}>Leave workspace</Button>
+          </div>
+        </section>
+      </div>
+
       <ChangeEmailDialog
         open={emailDialogOpen}
         currentEmail={user.email}
@@ -161,6 +185,13 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, onUserChan
         hasPassword={hasPassword}
         onOpenChange={setPasswordDialogOpen}
         onChanged={onUserChanged}
+      />
+
+      <LeaveWorkspaceDialog
+        open={leaveOpen}
+        workspace={workspace}
+        onClose={() => setLeaveOpen(false)}
+        onLeft={onUserChanged}
       />
     </>
   );
