@@ -151,13 +151,19 @@ Two menus, as in Linear.
 
 ## Responsive contract
 
-Buyerly is desktop-first today. The production layout targets `1024px` and wider. Navigation follows Linear's small layout: at `880px` and below (`SIDEBAR_ALWAYS_COLLAPSED_QUERY`) the sidebar and the Settings navigation take no layout space and open as a drawer over the content — at most 330px, 40px clear of the right edge, above a backdrop — from the header's `SidebarCollapsedNavigation` ("Menu") or `[`. The backdrop, a swipe to the left and any navigation close it; touch screens get 36px navigation rows. What is required now:
+Buyerly is laid out for `1024px` and wider and reflows down to a `390px` phone. Navigation follows Linear's small layout: at `880px` and below (`SIDEBAR_ALWAYS_COLLAPSED_QUERY`) the sidebar and the Settings navigation take no layout space and open as a drawer over the content — at most 330px, 40px clear of the right edge, above a backdrop — from the header's `SidebarCollapsedNavigation` ("Menu") or `[`. The backdrop, a swipe to the left and any navigation close it; touch screens get 36px navigation rows. What is required now:
 
 - no document-level horizontal overflow at the widths the product actually serves;
 - dialogs fit the viewport, keep close/primary actions reachable and expose internal scrolling for long content;
 - no hard-coded width that would block a later mobile pass.
 
-Full mobile support beyond navigation — touch-safe targets and wrapping toolbars inside each screen — is open work in backlog queue 8 (BL-052). Until it ships, no screen is described as mobile-ready.
+Inside the screens (Rules, Ads Manager, Inbox; `scripts/mobile-screens-browser.mjs` at 390/768/1024/1440px):
+
+- view tabs are as wide as their labels and scroll sideways in their strip; the header actions stay on the right and are never cut;
+- entity tables scroll sideways inside their own viewport (`LinearDataTable`), never the document; figures do not wrap;
+- a view's details panel (Rules groups, Ads Manager facets) is a column on a wide window and, at `880px` and below, a sheet over the list from the right (`DetailsSheet`): at most 360px, 40px clear of the left edge, above a backdrop that closes it with Escape; it starts closed there;
+- on a pure-touch screen (`TOUCH_SCREEN_QUERY`) header icon buttons are 40px square (`.linear-header-target`) and view tabs 36px tall;
+- popovers anchored to a header button stay inside the window.
 
 ## Migration map
 
@@ -195,8 +201,8 @@ Facet data comes from live inventory, `/api/account-groups`, and the selected
 account's rule snapshots. Account groups describe account membership, not custom
 campaign labels. Rule counts describe assignment scope, not automation enablement.
 Status, account groups and rules can also group rows. Board mode remains unavailable.
-The facet layout stacks below the list on narrow screens; viewport validation is
-still required before declaring the whole application mobile-ready.
+At `880px` and below the facets open as a sheet over the list (`DetailsSheet`),
+closed at first; see the responsive contract.
 
 ## Public website
 

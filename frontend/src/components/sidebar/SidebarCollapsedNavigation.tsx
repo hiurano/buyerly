@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
-import { useIsSmallScreen } from '@/lib/useMediaQuery';
+import { useIsSmallScreen, useIsTouchScreen } from '@/lib/useMediaQuery';
 import { LinearSidebarLeftToggleIcon } from '@/icons/LinearIcons';
 import { Tooltip } from '@/ui/Tooltip';
 
@@ -15,6 +15,8 @@ export const SidebarCollapsedNavigation: React.FC = () => {
   const isSidebarOpen = useAppStore((state) => state.isSidebarOpen);
   const toggleSidebarOpen = useAppStore((state) => state.toggleSidebarOpen);
   const isSmall = useIsSmallScreen();
+  // Linear's pure-touch header: a 40px button a finger can hit.
+  const isTouch = useIsTouchScreen();
   const visible = isSmall || isSidebarCollapsed;
 
   // A hidden button also cancels the header's own gap, as Linear's does.
@@ -29,7 +31,7 @@ export const SidebarCollapsedNavigation: React.FC = () => {
     <button
       type="button"
       onClick={toggleSidebarOpen}
-      className="linear-icon-btn"
+      className="linear-icon-btn linear-header-target"
       aria-label="Menu"
       aria-expanded={isSidebarOpen}
     >
@@ -40,7 +42,7 @@ export const SidebarCollapsedNavigation: React.FC = () => {
       <button
         type="button"
         onClick={toggleSidebarCollapsed}
-        className="linear-icon-btn"
+        className="linear-icon-btn linear-header-target"
         aria-label="Open sidebar"
         tabIndex={visible ? undefined : -1}
       >
@@ -54,7 +56,7 @@ export const SidebarCollapsedNavigation: React.FC = () => {
       ref={ref}
       aria-hidden={visible ? undefined : true}
       style={{
-        width: visible ? '28px' : '0px',
+        width: visible ? (isTouch ? '40px' : '28px') : '0px',
         opacity: visible ? 1 : 0,
         transform: visible ? 'scale(1)' : 'scale(0.85)',
         marginRight: visible ? (parentGap > 0 ? '0px' : '6px') : `${-parentGap}px`,

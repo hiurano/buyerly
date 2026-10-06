@@ -54,6 +54,7 @@ import { createLiveFields, filterView, groupView } from './campaignViewModel';
 import type { AccountGroupOption } from './campaignViewModel';
 import { useCampaignViewFilters } from './useCampaignViewFilters';
 import { LinearFacetSidebar } from '@/ui/LinearFacetSidebar';
+import { DetailsSheet, useDetailsSheet } from '@/ui/DetailsSheet';
 import { SelectionDock } from '@/ui/SelectionDock';
 import { SelectionCommandMenu } from '@/ui/SelectionCommandMenu';
 import { LinearBoltIcon } from '@/icons/LinearIcons';
@@ -131,6 +132,11 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     loadAccountRuleAttachments,
     attachmentsLoadState,
   } = useAppStore();
+  // Only ever closes: a second call (Strict Mode runs effects twice) must not toggle it open again.
+  const closeDetails = useCallback(() => {
+    if (useAppStore.getState().isRightSidebarOpen) toggleRightSidebar();
+  }, [toggleRightSidebar]);
+  const detailsIsSheet = useDetailsSheet(isRightSidebarOpen, closeDetails);
 
   const requestGenerationRef = useRef(0);
   const filterButtonRef = useRef<HTMLButtonElement>(null);
@@ -728,6 +734,15 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     );
   };
 
+  // A column beside the list on a wide window, a sheet over it at the small width.
+  const details = (
+    <div className="campaign-view-details">
+      {groupsError && <p role="status" className="linear-facet-empty">Account groups unavailable. Reload to retry.</p>}
+      <LinearFacetSidebar facets={currentView.facets} activeTab={quick?.fieldId ?? facetTab} selection={quick}
+        onTabChange={id => { setFacetTab(id); setQuick(null); }} onSelect={setQuick} />
+    </div>
+  );
+
   return (
     <div className="flex h-full w-full select-none flex-col overflow-hidden bg-transparent">
       <header className="flex shrink-0 flex-col">
@@ -756,18 +771,22 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
         </div>
 
         <LinearDataListToolbar className="campaign-view-toolbar">
-          <LinearTabs
-            tabs={[
-              { id: 'campaigns', label: 'Campaigns', count: hierarchyState === 'ready' ? campaigns.length : undefined },
-              { id: 'adsets', label: 'Ad sets', count: hierarchyState === 'ready' ? adSets.length : undefined },
-              { id: 'ads', label: 'Ads', count: hierarchyState === 'ready' ? ads.length : undefined },
-            ]}
-            activeTabId={campaignFilterTab}
-            onChange={(id) => setCampaignFilterTab(id as AdsManagerEntity)}
-            aria-label="Ads Manager level"
-          />
+          {/* As wide as its tabs: on a phone they scroll sideways and the actions stay on the right. */}
+          <div className="flex min-w-0 flex-1 items-center overflow-x-auto [scrollbar-width:none]">
+            <LinearTabs
+              className="w-max"
+              tabs={[
+                { id: 'campaigns', label: 'Campaigns', count: hierarchyState === 'ready' ? campaigns.length : undefined },
+                { id: 'adsets', label: 'Ad sets', count: hierarchyState === 'ready' ? adSets.length : undefined },
+                { id: 'ads', label: 'Ads', count: hierarchyState === 'ready' ? ads.length : undefined },
+              ]}
+              activeTabId={campaignFilterTab}
+              onChange={(id) => setCampaignFilterTab(id as AdsManagerEntity)}
+              aria-label="Ads Manager level"
+            />
+          </div>
 
-          <div className="flex min-w-0 items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-1.5">
             <Tooltip content="Add filter" shortcut="F">
               <LinearFilterButton
                 ref={filterButtonRef}
@@ -794,7 +813,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
                   setOpenFilterMenu(null);
                   toggleDisplayOptions();
                 }}
-                className={`group relative flex h-[28px] w-[28px] items-center justify-center rounded-full border border-transparent outline-none transition-all ${isDisplayOptionsOpen ? 'bg-[var(--item-active-bg)] text-[var(--text-primary)]' : 'bg-transparent text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'}`}
+                className={`linear-header-target group relative flex h-[28px] w-[28px] items-center justify-center rounded-full border border-transparent outline-none transition-all ${isDisplayOptionsOpen ? 'bg-[var(--item-active-bg)] text-[var(--text-primary)]' : 'bg-transparent text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'}`}
               >
                 <LinearSlidersIcon size={14} />
               </button>
@@ -808,7 +827,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
             />
 
             <Tooltip content={isRightSidebarOpen ? 'Close details' : 'Open details'}>
-              <button type="button" className="linear-icon-btn" aria-label={isRightSidebarOpen ? 'Close details' : 'Open details'}
+              <button type="button" className="linear-icon-btn linear-header-target" aria-label={isRightSidebarOpen ? 'Close details' : 'Open details'}
                 aria-expanded={isRightSidebarOpen} onClick={toggleRightSidebar}>
                 <LinearSidebarToggleIcon size={16} isOpen={isRightSidebarOpen} />
               </button>
@@ -840,14 +859,11 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
           {renderData()}
           <SelectionDock count={selection.count} onOpenActions={() => selection.setMenuOpen(true)} onClear={selection.clear} />
         </div>
-        {isRightSidebarOpen && hierarchyState === 'ready' && accountsState === 'ready' && (
-          <div className="campaign-view-details">
-            {groupsError && <p role="status" className="linear-facet-empty">Account groups unavailable. Reload to retry.</p>}
-            <LinearFacetSidebar facets={currentView.facets} activeTab={quick?.fieldId ?? facetTab} selection={quick}
-              onTabChange={id => { setFacetTab(id); setQuick(null); }} onSelect={setQuick} />
-          </div>
-        )}
+        {isRightSidebarOpen && hierarchyState === 'ready' && accountsState === 'ready' && !detailsIsSheet && details}
       </div>
+      {isRightSidebarOpen && hierarchyState === 'ready' && accountsState === 'ready' && detailsIsSheet && (
+        <DetailsSheet label="Ads Manager details" onClose={closeDetails}>{details}</DetailsSheet>
+      )}
 
       <SelectionCommandMenu
         open={selection.menuOpen}
@@ -908,7 +924,7 @@ const DropdownMenuAccount: React.FC<DropdownMenuAccountProps> = ({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="max-w-[120px] truncate rounded-full border border-[var(--color-border-secondary)] px-2.5 py-1 text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)] sm:max-w-[220px] lg:max-w-[280px]"
+          className="max-w-[120px] truncate rounded-full border border-[var(--color-border-secondary)] px-2.5 py-1 text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)] sm:max-w-[220px] lg:max-w-[280px] [@media(hover:none)_and_(pointer:coarse)]:min-h-10"
           aria-label="Select ad account"
           title={metaAccountLabel(account)}
         >

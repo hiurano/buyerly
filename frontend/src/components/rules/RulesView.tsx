@@ -318,10 +318,11 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
         </div>
 
         {/* Tier 2: View Filter Tabs & Action Buttons (Height: 43px, NO border bottom) */}
-        <LinearDataListToolbar>
-          {/* Left: Capsule Tabs */}
-          <div className="flex items-center gap-2">
+        <LinearDataListToolbar className="gap-2">
+          {/* Left: Capsule Tabs, as wide as they are: on a phone they scroll sideways. */}
+          <div className="flex min-w-0 flex-1 items-center overflow-x-auto [scrollbar-width:none]">
             <LinearTabs
+              className="w-max"
               tabs={ruleTabs}
               activeTabId={ruleFilterTab}
               onChange={(id) => setRuleFilterTab(id as RuleFilterTab)}
@@ -329,7 +330,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
           </div>
 
           {/* Right: Add filter + Display options + Toggle Sidebar */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-1.5">
             {/* Add Filter Button with Popover */}
             <div className="relative">
               <Tooltip content="Filter" shortcut="F">
@@ -362,7 +363,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
                     setOpenFilterMenu(null);
                     toggleRulesDisplayOptions();
                   }}
-                  className={`group relative flex h-[28px] w-[28px] items-center justify-center rounded-full border border-transparent outline-none transition-all ${
+                  className={`linear-header-target group relative flex h-[28px] w-[28px] items-center justify-center rounded-full border border-transparent outline-none transition-all ${
                     isRulesDisplayOptionsOpen
                       ? 'bg-[var(--item-active-bg)] text-[var(--text-primary)]'
                       : 'bg-transparent text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'
@@ -388,7 +389,8 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
                 type="button"
                 aria-label={isRulesRightSidebarOpen ? 'Close details' : 'Open details'}
                 onClick={toggleRulesRightSidebar}
-                className={`group relative flex h-[28px] w-[28px] items-center justify-center rounded-full transition-all border ${
+                aria-expanded={isRulesRightSidebarOpen}
+                className={`linear-header-target group relative flex h-[28px] w-[28px] items-center justify-center rounded-full transition-all border ${
                   isRulesRightSidebarOpen
                     ? 'bg-[var(--item-hover-bg)] border-[var(--color-border-secondary)] text-[var(--text-primary)]'
                     : 'bg-transparent border-transparent text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'

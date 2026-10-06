@@ -2423,11 +2423,6 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 .linear-facet-count { color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
 .linear-facet-empty { padding: var(--facet-empty-padding); color: var(--text-tertiary); font-size: var(--facet-font-size); }
 .campaign-filter-summary { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: var(--facet-sidebar-gap); padding: var(--facet-empty-padding); color: var(--text-secondary); font-size: var(--facet-font-size); }
-@media (max-width: 767px) {
-  .campaign-view-body { flex-direction: column; overflow-y: auto; }
-  .campaign-view-list { flex: 1 0 auto; min-height: var(--facet-row-height); }
-  .campaign-view-details { flex: 0 0 auto; width: 100%; }
-}
 /* Override the shared fixed toolbar height when controls wrap on narrow views. */
 .campaign-view-toolbar { height: auto !important; min-height: var(--facet-row-height); flex-wrap: wrap; gap: var(--facet-sidebar-gap); padding-block: var(--facet-sidebar-gap); }
 .campaign-view-toolbar > * { max-width: 100%; }
@@ -3081,4 +3076,54 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 .preferences-connect-button:disabled {
   cursor: default;
   opacity: 0.5;
+}
+
+/* A view's details panel at the small width: a sheet over the list from the
+   right, the mirror of the navigation drawer (DetailsSheet). */
+.details-sheet {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 99;
+  display: flex;
+  flex-direction: column;
+  width: min(calc(100vw - 40px), 360px);
+  overflow: hidden;
+  background-color: var(--bg-window);
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+  box-shadow: 0 0 0 1px var(--color-border-primary), var(--canvas-shadow);
+  animation: detailsSheetEnter 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes detailsSheetEnter {
+  from { transform: translateX(calc(100% + 16px)); }
+  to { transform: translateX(0); }
+}
+
+.details-sheet > .campaign-view-details {
+  flex: 1 1 auto;
+  width: 100%;
+  padding: 8px;
+}
+
+/* Popovers anchored to a header button never leave a narrow window. */
+.linear-display-options-popover {
+  max-width: calc(100vw - 16px);
+}
+
+/* Linear's pure-touch headers: icon buttons a finger taps are 40px square,
+   view tabs 36px tall, as the navigation rows. */
+@media (hover: none) and (pointer: coarse) {
+  .linear-header-target {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+  }
+
+  .linear-tab-capsule,
+  .linear-inbox-tab {
+    height: 36px;
+  }
 }

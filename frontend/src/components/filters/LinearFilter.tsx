@@ -1004,7 +1004,7 @@ export const LinearFilterButton = React.forwardRef<HTMLButtonElement, FilterButt
       onPointerDown={onPointerDown}
       onMouseDown={onMouseDown}
       onClick={onClick}
-      className={`group relative flex h-[28px] w-[28px] items-center justify-center rounded-full border transition-[border-color,background-color,color,opacity,fill,stroke] duration-150 ease-[ease] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#8b8df8] ${
+      className={`linear-header-target group relative flex h-[28px] w-[28px] items-center justify-center rounded-full border transition-[border-color,background-color,color,opacity,fill,stroke] duration-150 ease-[ease] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#8b8df8] ${
         open || active
           ? 'border-transparent bg-[var(--filter-trigger-active-bg)] text-[var(--text-primary)]'
           : 'border-transparent bg-[var(--filter-trigger-bg)] text-[var(--text-tertiary)] hover:bg-[var(--filter-trigger-active-bg)] hover:text-[var(--text-primary)]'

@@ -8,6 +8,7 @@ import {
   LinearStatusCircleIcon,
 } from '@/icons/LinearIcons';
 import { removeFilterClause, upsertFilterClause } from '@/components/filters/filterModel';
+import { DetailsSheet, useDetailsSheet } from '@/ui/DetailsSheet';
 
 const SIDEBAR_FONT =
   '"Inter Variable", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -168,6 +169,7 @@ export const RuleRightSidebar: React.FC = () => {
     setRulesFilterClauses,
     selectedRuleId,
     setSelectedRuleId,
+    setIsRulesRightSidebarOpen,
   } = useAppStore();
 
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
@@ -264,92 +266,12 @@ export const RuleRightSidebar: React.FC = () => {
     );
   };
 
+  const isSheet = useDetailsSheet(isRulesRightSidebarOpen, () => setIsRulesRightSidebarOpen(false));
+
   if (!isRulesRightSidebarOpen) return null;
 
-  return (
-    <div
-      style={{
-        flex: '0 0 auto',
-        width: sidebarWidth,
-        height: '100%',
-        position: 'relative',
-        zIndex: 90,
-        display: 'block',
-      }}
-    >
-      <div
-        aria-hidden="true"
-        data-sidebar-resize-handle="true"
-        onPointerDown={handleResizePointerDown}
-        onMouseEnter={() => setIsResizeHandleHovered(true)}
-        onMouseLeave={() => setIsResizeHandleHovered(false)}
-        style={{
-          position: 'absolute',
-          top: 0,
-          bottom: 0,
-          left: -3,
-          width: 7,
-          zIndex: 91,
-          cursor: 'col-resize',
-          touchAction: 'none',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            bottom: 0,
-            left: 3,
-            width: 1,
-            backgroundColor: 'lch(100% 0 272 / 0.72)',
-            opacity: isResizing || isResizeHandleHovered ? 1 : 0,
-            transition: 'opacity 250ms',
-          }}
-        />
-      </div>
-
-      <aside
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'absolute',
-          top: 0,
-          right: 0,
-          bottom: 0,
-          left: 0,
-          width: sidebarWidth,
-          height: '100%',
-          overflow: 'hidden auto',
-          padding: '0px 0px 8px 4px',
-        }}
-      >
-        <div
-          data-scroll-container="true"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            width: sidebarWidth - 4,
-            height: '100%',
-            overflow: 'auto',
-            scrollbarGutter: 'stable',
-          }}
-        >
-          <div
-            style={{
-              width: sidebarWidth - 14,
-              minHeight: 'calc(100% - 8px)',
-              padding: '12px',
-              margin: '0px 0px 8px',
-              borderRadius: '10px',
-              backgroundColor: 'lch(9.232 0.85 272)', // #141416
-              border: '1px solid lch(13.553 1.93 272)', // #1e1e21
-              boxShadow: '0px 0.5px 1px 1px rgba(0, 0, 0, 0.3)',
-              display: 'flex',
-              flexDirection: 'column',
-              boxSizing: 'border-box',
-              userSelect: 'none',
-            }}
-          >
+  const panelContent = (
+    <>
             {/* Pill Tab Header (Exact Linear 32px height & 28px pill) */}
             <div
               role="tablist"
@@ -533,9 +455,109 @@ export const RuleRightSidebar: React.FC = () => {
                 </>
               )}
             </div>
+    </>
+  );
+
+  const panel = (
+      <aside
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 0,
+          width: isSheet ? '100%' : sidebarWidth,
+          height: '100%',
+          overflow: 'hidden auto',
+          padding: isSheet ? '8px 0px 0px 4px' : '0px 0px 8px 4px',
+        }}
+      >
+        <div
+          data-scroll-container="true"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            width: isSheet ? '100%' : sidebarWidth - 4,
+            height: '100%',
+            overflow: 'auto',
+            scrollbarGutter: 'stable',
+          }}
+        >
+          <div
+            style={{
+              width: isSheet ? 'calc(100% - 10px)' : sidebarWidth - 14,
+              minHeight: 'calc(100% - 8px)',
+              padding: '12px',
+              margin: '0px 0px 8px',
+              borderRadius: '10px',
+              backgroundColor: 'lch(9.232 0.85 272)', // #141416
+              border: '1px solid lch(13.553 1.93 272)', // #1e1e21
+              boxShadow: '0px 0.5px 1px 1px rgba(0, 0, 0, 0.3)',
+              display: 'flex',
+              flexDirection: 'column',
+              boxSizing: 'border-box',
+              userSelect: 'none',
+            }}
+          >
+            {panelContent}
           </div>
         </div>
       </aside>
+  );
+
+  if (isSheet) {
+    return (
+      <DetailsSheet label="Rule groups" onClose={() => setIsRulesRightSidebarOpen(false)}>
+        {panel}
+      </DetailsSheet>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        flex: '0 0 auto',
+        width: sidebarWidth,
+        height: '100%',
+        position: 'relative',
+        zIndex: 90,
+        display: 'block',
+      }}
+    >
+      <div
+        aria-hidden="true"
+        data-sidebar-resize-handle="true"
+        onPointerDown={handleResizePointerDown}
+        onMouseEnter={() => setIsResizeHandleHovered(true)}
+        onMouseLeave={() => setIsResizeHandleHovered(false)}
+        style={{
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          left: -3,
+          width: 7,
+          zIndex: 91,
+          cursor: 'col-resize',
+          touchAction: 'none',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: 3,
+            width: 1,
+            backgroundColor: 'lch(100% 0 272 / 0.72)',
+            opacity: isResizing || isResizeHandleHovered ? 1 : 0,
+            transition: 'opacity 250ms',
+          }}
+        />
+      </div>
+
+      {panel}
     </div>
   );
 };
