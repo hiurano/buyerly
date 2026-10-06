@@ -284,6 +284,9 @@ try {
       await page.keyboard.press('Control+K');
       await commandField.fill('test');
       await testCampaign.waitFor();
+      // The opened row loads behind the menu; it must not take the field's focus.
+      await page.waitForTimeout(300);
+      assert.equal(await page.evaluate(() => document.activeElement?.hasAttribute('cmdk-input')), true, 'the field keeps focus');
       await page.keyboard.press('Control+/');
       await closed();
       await page.waitForURL(`${origin}/alpha/search?q=test`);

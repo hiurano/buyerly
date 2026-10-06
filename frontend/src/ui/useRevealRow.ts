@@ -52,6 +52,8 @@ export function useRevealRow({ id, navigationKey, ready, exists, show, missing }
     // A read-only row takes focus only from script, never from Tab.
     if (!row.hasAttribute('tabindex')) row.tabIndex = -1;
     row.scrollIntoView({ block: 'center', inline: 'nearest' });
-    row.focus({ preventScroll: true });
+    // The list can load after Ctrl/Cmd+K or another dialog opened: the row must not take its field's focus.
+    const holder = document.activeElement?.closest('[role="dialog"], [role="alertdialog"], [cmdk-root]');
+    if (!holder) row.focus({ preventScroll: true });
   });
 }
