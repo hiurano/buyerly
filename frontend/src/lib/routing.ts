@@ -4,6 +4,8 @@ export type Route =
   | { kind: 'root' }
   | { kind: 'login' }
   | { kind: 'verify-email-link'; token: string }
+  /** Linear's "Add an account…": log in to another account without leaving this one. */
+  | { kind: 'add-account' }
   | { kind: 'create-workspace' }
   | { kind: 'invite'; token: string }
   | { kind: 'meta-connect-invite'; token: string }
@@ -49,6 +51,7 @@ export function parseRoute(location: Location = window.location): Route {
   if (parts.length === 3 && parts[0] === 'auth' && parts[1] === 'email' && parts[2] === 'verify') {
     return { kind: 'verify-email-link', token: new URLSearchParams(location.search).get('token') || '' };
   }
+  if (parts.length === 2 && parts[0] === 'auth' && parts[1] === 'add-account') return { kind: 'add-account' };
   if (parts[0] === 'invite' && parts.length === 2) {
     return { kind: 'invite', token: parts[1] };
   }

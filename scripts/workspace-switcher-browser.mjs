@@ -112,7 +112,7 @@ try {
       await submenu.waitFor();
       const items = await submenu.getByRole('menuitem').allInnerTexts();
       assert.deepEqual(items.map(text => text.replace(/\s+/g, ' ').trim()), [
-        'A Alpha 1', 'B Beta 2', 'Create or join a workspace…',
+        'A Alpha 1', 'B Beta 2', 'Create or join a workspace…', 'Add an account…',
       ]);
       assert.equal(await submenu.getByRole('menuitem', { name: /Alpha/ }).getByLabel('Current workspace').count(), 1);
       assert.equal(await submenu.getByRole('menuitem', { name: /Beta/ }).getByLabel('Current workspace').count(), 0);
@@ -185,7 +185,7 @@ try {
       await page.getByRole('button', { name: 'Gamma Workspace Menu' }).waitFor();
       assert.deepEqual(writes.filter(write => write.path === '/api/workspaces').map(write => write.body), [{ name: 'Gamma' }]);
       const three = await openSwitchSubmenu('Gamma');
-      assert.equal(await three.getByRole('menuitem').count(), 4);
+      assert.equal(await three.getByRole('menuitem').count(), 5);
       assert.equal(await three.getByRole('menuitem', { name: /Gamma/ }).getByLabel('Current workspace').count(), 1);
       await page.keyboard.press('Escape');
       await page.keyboard.press('Escape');
@@ -196,7 +196,7 @@ try {
       await page.goto(`${origin}/alpha/inbox`);
       const single = await openSwitchSubmenu('Alpha');
       assert.deepEqual((await single.getByRole('menuitem').allInnerTexts()).map(text => text.replace(/\s+/g, ' ').trim()), [
-        'A Alpha 1', 'Create or join a workspace…',
+        'A Alpha 1', 'Create or join a workspace…', 'Add an account…',
       ]);
       assert.equal(await single.getByLabel('Current workspace').count(), 1);
       await page.screenshot({ path: `${output}/single-${width}.png` });

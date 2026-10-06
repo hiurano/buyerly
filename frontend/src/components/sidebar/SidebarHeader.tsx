@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { logOut } from '@/lib/sessions';
+import { accountBlocks } from '@/lib/accounts';
 import { useAppStore } from '@/store/useAppStore';
 import { Tooltip } from '@/ui/Tooltip';
 import { BuyerlyLogoAvatar, LinearCheckIcon } from '@/icons/LinearIcons';
@@ -21,7 +22,9 @@ import {
 
 export const SidebarHeader: React.FC = () => {
   const { workspaceName, setActiveTab, setSettingsSection } = useAppStore();
-  const { user, workspace, switchWorkspace, openCreateWorkspace } = useWorkspaceSession();
+  const { user, workspace, accounts, switchWorkspace, openCreateWorkspace, openAddAccount } = useWorkspaceSession();
+  const blocks = accountBlocks(accounts, user);
+  const isOpenAccount = (accountId?: number) => accountId === undefined || user.id == null || accountId === user.id;
 
   // Linear: Alt+Shift+Q logs out from anywhere in the app.
   useEffect(() => {
@@ -160,39 +163,50 @@ export const SidebarHeader: React.FC = () => {
                 alignOffset={-36}
                 style={{ width: 'auto', minWidth: 209, maxWidth: 320 }}
                 onKeyDown={(event) => {
-                  // Linear: a workspace's number opens it straight from the menu.
+                  // Linear: a workspace's number opens it straight from the menu, across all accounts.
                   if (event.ctrlKey || event.altKey || event.metaKey || !/^[1-9]$/.test(event.key)) return;
-                  const target = user.workspaces[Number(event.key) - 1];
-                  if (!target) return;
-                  event.preventDefault();
-                  switchWorkspace(target.slug);
+                  for (const block of blocks) {
+                    const target = block.workspaces.find((item) => item.number === Number(event.key));
+                    if (!target) continue;
+                    event.preventDefault();
+                    switchWorkspace(target.workspace.slug, block.accountId);
+                    return;
+                  }
                 }}
               >
-                <DropdownMenuLabel
-                  className="truncate"
-                  style={{ height: 30, padding: '4px 12px 0 14px', fontSize: 13, fontWeight: 450, lineHeight: '26px' }}
-                >
-                  {user.email || user.username}
-                </DropdownMenuLabel>
-                {user.workspaces.map((item, index) => (
-                  <DropdownMenuItem key={item.id} onSelect={() => switchWorkspace(item.slug)}>
-                    <span className="flex min-w-0 items-center gap-[8px]">
-                      <WorkspaceAvatar workspace={item} />
-                      <span className="truncate">{item.name}</span>
-                    </span>
-                    <span className="flex shrink-0 items-center gap-[6px]">
-                      {item.id === workspace.id && (
-                        <span className="text-[var(--text-primary)]" aria-label="Current workspace">
-                          <LinearCheckIcon size={16} />
+                {/* Linear: one block per logged-in account, headed by its email. */}
+                {blocks.map((block) => (
+                  <React.Fragment key={block.accountId ?? 'account'}>
+                    <DropdownMenuLabel
+                      className="truncate"
+                      style={{ height: 30, padding: '4px 12px 0 14px', fontSize: 13, fontWeight: 450, lineHeight: '26px' }}
+                    >
+                      {block.label}
+                    </DropdownMenuLabel>
+                    {block.workspaces.map(({ workspace: item, number }) => (
+                      <DropdownMenuItem
+                        key={`${block.accountId ?? 'account'}:${item.id}`}
+                        onSelect={() => switchWorkspace(item.slug, block.accountId)}
+                      >
+                        <span className="flex min-w-0 items-center gap-[8px]">
+                          <WorkspaceAvatar workspace={item} />
+                          <span className="truncate">{item.name}</span>
                         </span>
-                      )}
-                      {index < 9 && (
-                        <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
-                          {index + 1}
-                        </kbd>
-                      )}
-                    </span>
-                  </DropdownMenuItem>
+                        <span className="flex shrink-0 items-center gap-[6px]">
+                          {item.id === workspace.id && isOpenAccount(block.accountId) && (
+                            <span className="text-[var(--text-primary)]" aria-label="Current workspace">
+                              <LinearCheckIcon size={16} />
+                            </span>
+                          )}
+                          {number <= 9 && (
+                            <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
+                              {number}
+                            </kbd>
+                          )}
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  </React.Fragment>
                 ))}
                 <DropdownMenuLabel
                   style={{ height: 30, padding: '8px 14px', fontSize: 12, fontWeight: 500, lineHeight: '14px' }}
@@ -201,6 +215,9 @@ export const SidebarHeader: React.FC = () => {
                 </DropdownMenuLabel>
                 <DropdownMenuItem onSelect={openCreateWorkspace}>
                   <span className="truncate">Create or join a workspace…</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={openAddAccount}>
+                  <span className="truncate">Add an account…</span>
                 </DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>

@@ -12,6 +12,7 @@ export interface Workspace {
 }
 
 export interface SessionUser {
+  id?: number | null;
   username: string;
   full_name: string;
   first_name: string;
@@ -29,6 +30,8 @@ export interface SessionUser {
 }
 
 export interface LoginResult {
+  /** The account that just logged in; it becomes this tab's account. */
+  account_id?: number | null;
   username: string;
   full_name: string;
   role: string;

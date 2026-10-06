@@ -5,7 +5,22 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from api.schemas.workspaces import WorkspaceItem
 
 
+class BrowserAccountItem(BaseModel):
+    """One account logged in to this browser, for Switch workspace (Linear)."""
+
+    id: int
+    username: str
+    full_name: str = ""
+    email: Optional[str] = None
+    avatar_url: str = ""
+    # Which cookie pair holds the account: buyerly_csrf for 0, buyerly_csrf_<slot> otherwise.
+    slot: int
+    onboarding_completed: bool = False
+    workspaces: List[WorkspaceItem] = Field(default_factory=list)
+
+
 class UserProfileResponse(BaseModel):
+    id: Optional[int] = None
     username: str
     full_name: str
     first_name: str = ""
@@ -59,6 +74,8 @@ class LoginRequest(BaseModel):
 
 
 class LoginResponse(BaseModel):
+    # The signed-in account; the browser sends it back as X-Buyerly-Account.
+    account_id: Optional[int] = None
     username: str
     full_name: str
     role: str

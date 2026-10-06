@@ -311,6 +311,124 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(revoke_all.status_code, 200)
             self.assertEqual((await laptop.get("/api/me")).status_code, 401)
 
+    async def test_one_browser_keeps_isolated_sessions_for_several_accounts(self):
+        """Linear's "Add an account…": each account has its own session, CSRF and scope."""
+        async with self.test_session_maker() as session:
+            buyer = (
+                await session.execute(select(User).where(User.username == "buyer_nick"))
+            ).scalar_one()
+            buyer.password_hash = hash_password("buyer-password")
+            await session.commit()
+
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="https://test") as browser:
+            first = await browser.post(
+                "/api/auth/login", json={"username": "buyer_nick", "password": "buyer-password"}
+            )
+            self.assertEqual(first.status_code, 200, first.text)
+            buyer_id = first.json()["account_id"]
+            second = await browser.post(
+                "/api/auth/login", json={"username": "admin_user", "password": "admin-password"}
+            )
+            self.assertEqual(second.status_code, 200, second.text)
+            admin_id = second.json()["account_id"]
+            self.assertNotEqual(buyer_id, admin_id)
+            # The first account stays logged in next to the second.
+            self.assertTrue(browser.cookies.get("buyerly_session"))
+            self.assertTrue(browser.cookies.get("buyerly_session_1"))
+            buyer_csrf = browser.cookies.get("buyerly_csrf")
+            admin_csrf = browser.cookies.get("buyerly_csrf_1")
+            self.assertNotEqual(buyer_csrf, admin_csrf)
+
+            accounts = (await browser.get("/api/auth/accounts")).json()
+            self.assertEqual(
+                [(item["id"], item["slot"], [ws["slug"] for ws in item["workspaces"]]) for item in accounts],
+                [(buyer_id, 0, ["buyer-workspace"]), (admin_id, 1, ["admin-workspace"])],
+            )
+
+            as_buyer = {"X-Buyerly-Account": str(buyer_id)}
+            as_admin = {"X-Buyerly-Account": str(admin_id)}
+            self.assertEqual((await browser.get("/api/me", headers=as_buyer)).json()["username"], "buyer_nick")
+            self.assertEqual((await browser.get("/api/me", headers=as_admin)).json()["username"], "admin_user")
+            # Without the header the newest sign-in acts, as a single cookie used to.
+            self.assertEqual((await browser.get("/api/me")).json()["username"], "admin_user")
+
+            # Access stays per account: the buyer cannot read the admin's workspace.
+            denied = await browser.get(
+                "/api/auth/sessions", headers={**as_buyer, "X-Workspace-Slug": "admin-workspace"}
+            )
+            self.assertEqual(denied.status_code, 403)
+            allowed = await browser.get(
+                "/api/auth/sessions", headers={**as_admin, "X-Workspace-Slug": "admin-workspace"}
+            )
+            self.assertEqual(allowed.status_code, 200)
+            self.assertEqual(len(allowed.json()), 1)
+
+            # An account that is not logged in here never falls back to another one.
+            for header in ("999999", "abc", "-1"):
+                response = await browser.get("/api/me", headers={"X-Buyerly-Account": header})
+                self.assertEqual(response.status_code, 401, header)
+
+            # CSRF belongs to the account: the admin's token cannot log out the buyer.
+            wrong_csrf = await browser.post(
+                "/api/auth/logout", headers={**as_buyer, "X-CSRF-Token": admin_csrf}
+            )
+            self.assertEqual(wrong_csrf.status_code, 403)
+
+            logout = await browser.post(
+                "/api/auth/logout", headers={**as_buyer, "X-CSRF-Token": buyer_csrf}
+            )
+            self.assertEqual(logout.status_code, 200)
+            cleared = logout.headers.get("set-cookie", "")
+            self.assertIn("buyerly_session=", cleared)
+            self.assertNotIn("buyerly_session_1=", cleared)
+            self.assertEqual((await browser.get("/api/me", headers=as_buyer)).status_code, 401)
+            self.assertEqual((await browser.get("/api/me", headers=as_admin)).status_code, 200)
+            remaining = (await browser.get("/api/auth/accounts")).json()
+            self.assertEqual([item["id"] for item in remaining], [admin_id])
+
+            # Logging in again as an account already here replaces its own session.
+            again = await browser.post(
+                "/api/auth/login", json={"username": "admin_user", "password": "admin-password"}
+            )
+            self.assertEqual(again.status_code, 200)
+            self.assertEqual([item["id"] for item in (await browser.get("/api/auth/accounts")).json()], [admin_id])
+
+        async with self.test_session_maker() as session:
+            admin_sessions = (
+                await session.execute(select(WebSession).where(WebSession.user_id == admin_id))
+            ).scalars().all()
+            self.assertEqual(sum(1 for item in admin_sessions if item.revoked_at is None), 1)
+
+    async def test_browser_accounts_are_capped(self):
+        async with self.test_session_maker() as session:
+            for index in range(6):
+                session.add(User(
+                    username=f"extra_{index}",
+                    password_hash=hash_password("extra-password"),
+                    role="buyer",
+                    is_approved=True,
+                ))
+            await session.commit()
+
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="https://test") as browser:
+            statuses = []
+            for index in range(6):
+                response = await browser.post(
+                    "/api/auth/login", json={"username": f"extra_{index}", "password": "extra-password"}
+                )
+                statuses.append(response.status_code)
+            self.assertEqual(statuses, [200, 200, 200, 200, 200, 409])
+            self.assertEqual(len((await browser.get("/api/auth/accounts")).json()), 5)
+
+    async def test_browser_accounts_without_sign_in_is_empty(self):
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="https://test") as browser:
+            response = await browser.get("/api/auth/accounts")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [])
+
     async def test_sessions_record_the_browser_address_behind_the_proxy(self):
         password = "browser-session-password"
         async with self.test_session_maker() as session:

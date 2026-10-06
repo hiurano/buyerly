@@ -30,6 +30,15 @@ import { useWebMcpTools } from '@/webmcp/register';
 import { WorkspaceSessionProvider, type WorkspaceSession } from '@/lib/workspaceSession';
 import { isSmallScreen } from '@/lib/useMediaQuery';
 import { GO_TO_SETTINGS_SECTION, goToTargetFor } from '@/lib/shortcuts';
+import { logOut } from '@/lib/sessions';
+import {
+  chooseAccount,
+  getCurrentAccountId,
+  getKnownAccounts,
+  setCurrentAccountId,
+  setKnownAccounts,
+  type BrowserAccount,
+} from '@/lib/accounts';
 
 const RETURN_ROUTE_KEY = 'buyerly-return-route';
 
@@ -43,8 +52,11 @@ interface WorkspaceApplicationProps {
   navigationKey: number;
   workspace: Workspace;
   user: SessionUser;
+  accounts: BrowserAccount[];
   navigate: (path: string, replace?: boolean) => void;
   refreshUser: () => Promise<SessionUser>;
+  /** Opens a workspace of another account logged in to this browser. */
+  switchAccount: (accountId: number, slug: string) => void;
 }
 
 const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
@@ -52,8 +64,10 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   navigationKey,
   workspace,
   user,
+  accounts,
   navigate,
   refreshUser,
+  switchAccount,
 }) => {
   const {
     activeTab,
@@ -76,7 +90,12 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   const session = useMemo<WorkspaceSession>(() => ({
     user,
     workspace,
-    switchWorkspace: (slug) => {
+    accounts,
+    switchWorkspace: (slug, accountId) => {
+      if (accountId !== undefined && user.id != null && accountId !== user.id) {
+        switchAccount(accountId, slug);
+        return;
+      }
       if (slug === workspace.slug) return;
       // The address alone scopes the app and every API request to the chosen workspace.
       navigate(`/${slug}/inbox`);
@@ -86,7 +105,8 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
         .catch(() => {});
     },
     openCreateWorkspace: () => navigate('/create-workspace'),
-  }), [navigate, refreshUser, user, workspace]);
+    openAddAccount: () => navigate('/auth/add-account'),
+  }), [accounts, navigate, refreshUser, switchAccount, user, workspace]);
   /** When G was pressed; read straight from the listener, so G and a fast next key never race a render. */
   const goToPressedAt = useRef(0);
   const syncingRoute = useRef(true);
@@ -257,11 +277,16 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
 export const App: React.FC = () => {
   const [locationVersion, setLocationVersion] = useState(0);
   const [user, setUser] = useState<SessionUser | null | undefined>(undefined);
+  const [accounts, setAccounts] = useState<BrowserAccount[]>([]);
   const route = useMemo(() => parseRoute(), [locationVersion]);
 
+  // While the tab moves to another account, the old account's profile must not
+  // scope a screen: requests already name the new account.
+  const currentAccountId = getCurrentAccountId();
+  const userIsCurrentAccount = !user || currentAccountId === null || user.id == null || user.id === currentAccountId;
   const resolvedWorkspace = user && route.kind === 'workspace'
     ? user.workspaces.find(item => item.slug === route.workspace) : null;
-  const desiredScope = resolvedWorkspace && user?.onboarding_completed
+  const desiredScope = resolvedWorkspace && user?.onboarding_completed && userIsCurrentAccount
     ? `${user.username}:${resolvedWorkspace.id}` : null;
   const workspaceScope = useAppStore(state => state.workspaceScope);
   useLayoutEffect(() => {
@@ -274,11 +299,64 @@ export const App: React.FC = () => {
     setLocationVersion((version) => version + 1);
   }, []);
 
-  const refreshUser = useCallback(async () => {
-    const nextUser = await apiRequest<SessionUser>('/api/me');
-    setUser(nextUser);
-    return nextUser;
+  const loadAccounts = useCallback(async () => {
+    setKnownAccounts(await apiRequest<BrowserAccount[]>('/api/auth/accounts'));
+    const list = getKnownAccounts();
+    setAccounts(list);
+    return list;
   }, []);
+
+  const refreshUser = useCallback(async () => {
+    const accountId = getCurrentAccountId();
+    const nextUser = await apiRequest<SessionUser>('/api/me');
+    // A late answer for an account this tab has since left never reaches the screen.
+    if (getCurrentAccountId() === accountId && (accountId === null || nextUser.id == null || nextUser.id === accountId)) {
+      setUser(nextUser);
+    }
+    // Switch workspace lists every account's workspaces; keep them fresh too.
+    loadAccounts().catch(() => {});
+    return nextUser;
+  }, [loadAccounts]);
+
+  /** The tab's account changed (switch, logout elsewhere): load its profile once. */
+  const syncingAccount = useRef<number | null | undefined>(undefined);
+  const syncAccount = useCallback(() => {
+    const target = getCurrentAccountId();
+    if (syncingAccount.current === target) return;
+    syncingAccount.current = target;
+    refreshUser()
+      .catch(async () => {
+        // That account is no longer logged in here: fall back to another one, or log in.
+        const list = await loadAccounts().catch(() => [] as BrowserAccount[]);
+        const next = chooseAccount(list);
+        setCurrentAccountId(next ? next.id : null);
+        useAppStore.getState().setWorkspaceScope(null);
+        if (!next) {
+          setUser(null);
+          return;
+        }
+        await refreshUser().catch(() => setUser(null));
+      })
+      .finally(() => {
+        if (syncingAccount.current === target) syncingAccount.current = undefined;
+      });
+  }, [loadAccounts, refreshUser]);
+
+  const switchAccount = useCallback((accountId: number, slug: string) => {
+    setCurrentAccountId(accountId);
+    // Drop the old account's data at once; its late answers are discarded by scope.
+    useAppStore.getState().setWorkspaceScope(null);
+    navigate(`/${slug}/inbox`);
+    // Remembered for that account, as a switch within one account is.
+    apiRequest('/api/workspaces/switch', { method: 'POST', body: JSON.stringify({ slug }) }).catch(() => {});
+  }, [navigate]);
+
+  /** A login makes its account this tab's account (Add an account, invite, email link). */
+  const adoptLogin = useCallback(async (result: LoginResult) => {
+    await loadAccounts().catch(() => {});
+    if (result.account_id) setCurrentAccountId(result.account_id);
+    useAppStore.getState().setWorkspaceScope(null);
+  }, [loadAccounts]);
 
   const enterUserDestination = useCallback((nextUser: SessionUser, explicitPath?: string | null) => {
     if (explicitPath) {
@@ -300,10 +378,10 @@ export const App: React.FC = () => {
   }, [navigate]);
 
   const handleAuthenticated = useCallback(async (result: LoginResult) => {
-    useAppStore.getState().setWorkspaceScope(null);
+    await adoptLogin(result);
     const nextUser = await refreshUser();
     enterUserDestination(nextUser, result.redirect_url);
-  }, [enterUserDestination, refreshUser]);
+  }, [adoptLogin, enterUserDestination, refreshUser]);
 
   useEffect(() => {
     const onPopState = () => setLocationVersion((version) => version + 1);
@@ -313,7 +391,15 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     if (route.kind === 'verify-email-link') return;
-    refreshUser().catch(() => setUser(null));
+    (async () => {
+      // Pick this tab's account among those logged in here; the address wins
+      // when it names a workspace of another account.
+      const list = await loadAccounts().catch(() => [] as BrowserAccount[]);
+      const slug = route.kind === 'workspace' || route.kind === 'welcome' ? route.workspace : null;
+      const account = chooseAccount(list, slug);
+      setCurrentAccountId(account ? account.id : null);
+      await refreshUser();
+    })().catch(() => setUser(null));
     // Session bootstrap runs once; explicit auth mutations refresh it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -329,6 +415,23 @@ export const App: React.FC = () => {
         navigate('/login', true);
       }
       return;
+    }
+
+    // The tab moved to another account; wait for its profile before routing.
+    const currentId = getCurrentAccountId();
+    if (currentId !== null && user.id != null && user.id !== currentId) {
+      syncAccount();
+      return;
+    }
+    // An address of another logged-in account's workspace opens that account (Linear).
+    if (route.kind === 'workspace' && !user.workspaces.some((item) => item.slug === route.workspace)) {
+      const owner = accounts.find((account) => account.workspaces.some((item) => item.slug === route.workspace));
+      if (owner && owner.id !== user.id) {
+        setCurrentAccountId(owner.id);
+        useAppStore.getState().setWorkspaceScope(null);
+        syncAccount();
+        return;
+      }
     }
 
     const workspace = activeWorkspace(user);
@@ -348,7 +451,7 @@ export const App: React.FC = () => {
     if (route.kind === 'workspace' && !user.workspaces.some((item) => item.slug === route.workspace)) {
       navigate(`/${workspace.slug}/inbox`, true);
     }
-  }, [navigate, route, user]);
+  }, [accounts, navigate, route, syncAccount, user]);
 
   if (route.kind === 'verify-email-link') {
     return (
@@ -376,6 +479,7 @@ export const App: React.FC = () => {
         token={route.token}
         user={user}
         onAuthenticated={async (result) => {
+          await adoptLogin(result);
           await refreshUser();
           navigate(result.redirect_url || `/invite/${route.token}`, true);
         }}
@@ -399,6 +503,17 @@ export const App: React.FC = () => {
   if (user === null) return <LoginView onAuthenticated={handleAuthenticated} />;
 
   const workspace = activeWorkspace(user);
+  if (route.kind === 'add-account') {
+    // Linear's "Add an account": the same email login, while this account stays logged in.
+    return (
+      <LoginView
+        title="Add an account"
+        loggedInAs={user.email || user.username}
+        onBack={() => navigate(workspace ? `/${workspace.slug}/inbox` : '/')}
+        onAuthenticated={handleAuthenticated}
+      />
+    );
+  }
   if (workspace && user.onboarding_completed && route.kind === 'create-workspace') {
     // Linear's "Create or join a workspace…" from the workspace menu.
     return (
@@ -421,9 +536,8 @@ export const App: React.FC = () => {
           navigate(`/${createdWorkspace.slug}/welcome`, true);
         }}
         onSignedOut={async () => {
-          await apiRequest('/api/auth/logout', { method: 'POST', body: JSON.stringify({}) });
-          setUser(null);
-          navigate('/login', true);
+          // Only this account logs out; another one logged in here opens instead.
+          await logOut();
         }}
       />
     );
@@ -444,7 +558,7 @@ export const App: React.FC = () => {
   }
 
   if (route.kind !== 'workspace') return <AuthLoading dark label="Opening your workspace…" />;
-  if (!resolvedWorkspace || workspaceScope !== desiredScope) return <AuthLoading />;
+  if (!resolvedWorkspace || !desiredScope || workspaceScope !== desiredScope) return <AuthLoading />;
   const routeWorkspace = resolvedWorkspace;
   return (
     <WorkspaceApplication
@@ -453,8 +567,10 @@ export const App: React.FC = () => {
       navigationKey={locationVersion}
       workspace={routeWorkspace}
       user={user}
+      accounts={accounts}
       navigate={navigate}
       refreshUser={refreshUser}
+      switchAccount={switchAccount}
     />
   );
 };

@@ -13,6 +13,7 @@ from api.schemas.members import (
     PublicInviteInfoResponse,
 )
 from api.schemas.auth import (
+    BrowserAccountItem,
     UserProfileResponse,
     RequestTemporaryPasswordRequest,
     VerifyTemporaryPasswordRequest,
@@ -94,6 +95,7 @@ __all__ = [
     "VerifyEmailChangeRequest",
     "LoginRequest",
     "LoginResponse",
+    "BrowserAccountItem",
     "WebSessionItem",
     "ChangePasswordRequest",
     "UpdateProfileRequest",

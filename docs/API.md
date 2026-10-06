@@ -13,6 +13,9 @@ Production: `https://buyerly.app`.
 | Web session | Secure + HttpOnly cookie `buyerly_session` | прямой вход по логину, паролю или OTP |
 | CSRF | cookie `buyerly_csrf` + `X-CSRF-Token` | обязательная защита изменяющих запросов web-сессии |
 | Legacy web token | `Authorization: Bearer <token>` | одноразовый переход старой сессии на cookie до истечения |
+| Несколько аккаунтов | `X-Buyerly-Account: <user id>` | от чьего имени идёт запрос, когда в браузере вошли несколько аккаунтов |
+
+Браузер держит до 5 аккаунтов сразу («Add an account…», как в Linear): у каждого своя пара cookie — `buyerly_session` / `buyerly_csrf` у первого, `buyerly_session_<N>` / `buyerly_csrf_<N>` у остальных. Заголовок `X-Buyerly-Account` выбирает сессию этого аккаунта; если он в браузере больше не вошёл, ответ 401 — сервер никогда не подставляет сессию другого аккаунта. CSRF проверяется по cookie выбранного аккаунта. Без заголовка действует последний вошедший аккаунт. Вход аккаунтом, который уже есть в браузере, заменяет его сессию; шестой аккаунт получает 409.
 
 `dev_user_id` работает только в локальной среде при явно включённом `ENABLE_DEV_AUTH`; в production fallback выключен. Обычный пользователь получает только свои данные. Администратор имеет расширенный операционный обзор там, где это предусмотрено endpoint.
 
@@ -43,7 +46,8 @@ Production: `https://buyerly.app`.
 | `POST /api/auth/login` | `username`, `password` | основной вход: `username` — логин или email аккаунта; проверяет постоянный пароль, создаёт ограниченную по времени HttpOnly web-сессию и возвращает профиль/роль |
 | `POST /api/auth/change-password` | `old_password`, `new_password` | меняет пароль; минимум 8 символов |
 | `POST /api/auth/update-profile` | `first_name?`, `last_name?`, `email?`, `avatar_url?`, `full_name?` | обновляет персональные данные профиля |
-| `POST /api/auth/logout` | — | немедленно отзывает текущую web-сессию |
+| `POST /api/auth/logout` | — | немедленно отзывает текущую web-сессию; другие аккаунты этого браузера остаются |
+| `GET /api/auth/accounts` | — | аккаунты, вошедшие в этом браузере, в порядке добавления: `id`, `username`, `full_name`, `email`, `avatar_url`, `slot`, `onboarding_completed`, `workspaces`; cookie закончившихся сессий удаляет; без входа — пустой список |
 | `GET /api/auth/sessions` | — | список активных устройств с датами создания, истечения и последней активности и IP-адресом последней активности |
 | `DELETE /api/auth/sessions/{session_id}` | — | отзывает выбранную собственную web-сессию |
 | `POST /api/auth/logout-all` | `keep_current?` | отзывает все web-сессии пользователя; с `keep_current=true` текущая остаётся (Revoke all в Settings → Security & access) |
