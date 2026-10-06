@@ -1,5 +1,6 @@
 import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { LinearBoltIcon } from '@/icons/LinearIcons';
+import { useIsSmallScreen } from '@/lib/useMediaQuery';
 import { RuleSelectorPopover } from './RuleSelectorPopover';
 import type { RuleTargetLevel } from './RuleSelectorPopover';
 
@@ -29,6 +30,7 @@ export const RuleAttachmentCell = forwardRef<
   const [isOpen, setIsOpen] = useState(false);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const cellRef = useRef<HTMLDivElement>(null);
+  const isSmall = useIsSmallScreen();
 
   const attachedCount = attachedRuleIds.length;
 
@@ -46,7 +48,11 @@ export const RuleAttachmentCell = forwardRef<
   useImperativeHandle(ref, () => ({ open: () => open() }), []);
 
   return (
-    <div ref={cellRef} className="flex min-w-0 items-center">
+    // Pinned to the right edge on a narrow screen, where this column is past the scroll.
+    <div
+      ref={cellRef}
+      className={`flex min-w-0 items-center ${isSmall ? 'linear-data-sticky sticky right-0 z-[1] self-stretch' : ''}`}
+    >
       {attachedCount > 0 ? (
         <button
           type="button"

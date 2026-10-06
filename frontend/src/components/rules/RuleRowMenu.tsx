@@ -15,6 +15,7 @@ import {
 import { LinearCheckIcon, LinearDotsIcon } from '@/icons/LinearIcons';
 import { metaAccountLabel } from '@/components/campaigns/liveCampaigns';
 import { useIsTouchScreen } from '@/lib/useMediaQuery';
+import { formatAccountScope } from '@/lib/rules';
 
 interface RuleRowMenuProps {
   rule: RuleItem;
@@ -37,14 +38,7 @@ export const RuleRowMenu: React.FC<RuleRowMenuProps> = ({ rule }) => {
    */
   const accountNote = (accountId: string): string => {
     const scope = rule.preset.attached_scopes[accountId];
-    if (!scope) return '';
-    if (scope.level === 'campaign') {
-      return scope.ids.length === 1 ? '1 campaign' : `${scope.ids.length} campaigns`;
-    }
-    if (scope.level === 'adset') {
-      return scope.ids.length === 1 ? '1 ad set' : `${scope.ids.length} ad sets`;
-    }
-    return 'Whole account';
+    return scope ? formatAccountScope(scope) : '';
   };
 
   const accountItems =
