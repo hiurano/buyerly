@@ -154,6 +154,17 @@ jobs:
           name: search-page-browser
           path: /tmp/buyerly-search-page
 
+      - name: Check rule states in Chromium
+        working-directory: frontend
+        run: node ../scripts/rule-states-browser.mjs
+
+      - name: Upload rule states browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rule-states-browser
+          path: /tmp/buyerly-rule-states
+
       - name: Check rules in Ads Manager in Chromium
         working-directory: frontend
         run: node ../scripts/rules-attach-browser.mjs

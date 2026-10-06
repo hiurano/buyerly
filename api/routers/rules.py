@@ -1,9 +1,9 @@
 import json
 import logging
 import secrets
-from typing import List
+from typing import List, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import delete, func, select
 
 from api.auth import get_current_user
@@ -19,6 +19,7 @@ from api.deps import (
     _preset_last_runs,
     _preset_response,
     _preset_snapshot,
+    _rule_entity_states,
     _rule_group_response,
     _validated_condition_payloads,
     ensure_workspace_write_access,
@@ -31,6 +32,7 @@ from api.schemas import (
     RuleGroupResponse,
     RuleGroupsReorderRequest,
     RuleGroupWriteRequest,
+    RuleEntityStateItem,
     RuleScopeItem,
     RulePresetItem,
 )
@@ -130,7 +132,7 @@ async def list_presets(user: User = Depends(get_current_user)):
         return [
             _preset_response(
                 preset,
-                last_runs.get(preset.id, ""),
+                last_runs.get(preset.id),
                 attachments.get(preset.id, {}),
             )
             for preset in presets
@@ -239,7 +241,7 @@ async def update_preset(preset_id: int, payload: CreatePresetRequest, user: User
         attachments = await _preset_attachments(session, ws.id)
         return _preset_response(
             preset,
-            last_runs.get(preset.id, ""),
+            last_runs.get(preset.id),
             attachments.get(preset.id, {}),
         )
 
@@ -859,3 +861,35 @@ async def toggle_rules(account_id: str, user: User = Depends(get_current_user)):
             "rules_enabled": acc.rules_enabled,
             "message": f"Automation rules {'enabled' if acc.rules_enabled else 'disabled'}",
         }
+
+
+@router.get("/presets/{preset_id}/states", response_model=List[RuleEntityStateItem])
+async def list_preset_states(preset_id: int, user: User = Depends(get_current_user)):
+    """Where one rule stands on each entity it checks (#322)."""
+    async with async_session_maker() as session:
+        ws = await get_user_workspace(session, user)
+        preset = (
+            await session.execute(
+                select(RulePreset.id).where(
+                    RulePreset.id == preset_id,
+                    RulePreset.workspace_id == ws.id,
+                )
+            )
+        ).scalar_one_or_none()
+        if preset is None:
+            raise HTTPException(status_code=404, detail="Preset not found")
+        return await _rule_entity_states(session, ws.id, preset_id=preset_id)
+
+
+@router.get("/rule-states", response_model=List[RuleEntityStateItem])
+async def list_entity_rule_states(
+    entity_level: Literal["campaign", "adset", "ad"],
+    entity_id: str = Query(min_length=1, max_length=64),
+    user: User = Depends(get_current_user),
+):
+    """Where each rule aimed at one campaign, ad set or ad stands on it (#322)."""
+    async with async_session_maker() as session:
+        ws = await get_user_workspace(session, user)
+        return await _rule_entity_states(
+            session, ws.id, entity_level=entity_level, entity_id=entity_id
+        )
