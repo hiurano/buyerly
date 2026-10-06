@@ -176,8 +176,17 @@ function statusLabel(item: AnalyticsHierarchyItem): string {
   return humanizeMetaStatus(item.effective_status || item.status || 'UNKNOWN');
 }
 
-function isDelivering(item: AnalyticsHierarchyItem): boolean {
+/**
+ * Meta's own status, not proof of delivery: a campaign stays ACTIVE while
+ * every ad set and ad under it is paused.
+ */
+function isActive(item: AnalyticsHierarchyItem): boolean {
   return (item.effective_status || item.status || '').trim().toUpperCase() === 'ACTIVE';
+}
+
+/** Delivery that was observed: impressions in the stored metrics for the period. */
+function hadImpressions(item: AnalyticsHierarchyItem): boolean {
+  return item.impressions > 0;
 }
 
 function statusDot(item: AnalyticsHierarchyItem): string {
@@ -588,9 +597,10 @@ export const StatisticsView: React.FC = () => {
   const summary = useMemo(() => {
     const spend = items.reduce((total, item) => total + item.spend, 0);
     const results = items.reduce((total, item) => total + resultDefinition.count(item), 0);
-    const delivering = items.filter(isDelivering).length;
+    const delivered = items.filter(hadImpressions).length;
+    const active = items.filter(isActive).length;
     const dailyBudget = items
-      .filter(isDelivering)
+      .filter(isActive)
       .reduce((total, item) => total + (item.daily_budget > 0 ? item.daily_budget : 0), 0);
     const currencies = new Set(
       items
@@ -618,8 +628,8 @@ export const StatisticsView: React.FC = () => {
       costChange: changeBetween(costPerResult, previousCostPerResult),
       spend: currency ? formatMetricMoney(spend, currency) : '—',
       results,
-      delivering,
-      paused: items.length - delivering,
+      delivered,
+      active,
       dailyBudget: currency && dailyBudget > 0 ? formatMetricMoney(dailyBudget, currency) : null,
       costPerResult: costPerResult === null ? '—' : formatMetricMoney(costPerResult, currency as string),
       verdict: decide(results, costPerResult, costTarget),
@@ -1191,7 +1201,7 @@ export const StatisticsView: React.FC = () => {
                   value={summary.spend}
                   supporting={`${periodLabel} total`}
                   change={comparisonAvailable ? summary.spendChange : undefined}
-                  footnote={summary.dailyBudget ? `${summary.dailyBudget} daily budget delivering` : 'Daily budget unavailable'}
+                  footnote={summary.dailyBudget ? `${summary.dailyBudget} daily budget on active ${levelLabel.plural}` : 'Daily budget unavailable'}
                 />
                 <MetricCard
                   label={resultDefinition.costLabel}
@@ -1217,9 +1227,9 @@ export const StatisticsView: React.FC = () => {
                 />
                 <MetricCard
                   label="Delivery"
-                  value={`${formatCount(summary.delivering)} of ${formatCount(items.length)}`}
-                  supporting={`${levelLabel.plural} delivering now`}
-                  footnote={`${formatCount(summary.paused)} not delivering in this period`}
+                  value={`${formatCount(summary.delivered)} of ${formatCount(items.length)}`}
+                  supporting={`${levelLabel.plural} with impressions in this period`}
+                  footnote={`${formatCount(summary.active)} active in Meta`}
                 />
               </div>
 
