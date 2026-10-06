@@ -25,15 +25,19 @@ export async function revokeOtherSessions(): Promise<void> {
   await apiRequest('/api/auth/logout-all?keep_current=true', { method: 'POST', body: JSON.stringify({}) });
 }
 
-/** Ends this browser's session and reloads into the login screen, dropping all in-memory workspace state. */
-export async function logOut(): Promise<void> {
+/**
+ * Ends this browser's session and reloads into the login screen, dropping all
+ * in-memory workspace state. Resolves false when the server refused.
+ */
+export async function logOut(): Promise<boolean> {
   try {
     await apiRequest('/api/auth/logout', { method: 'POST', body: JSON.stringify({}) });
   } catch (error) {
     toast.error("Couldn't log out", error instanceof Error ? error.message : undefined);
-    return;
+    return false;
   }
   window.location.assign('/login');
+  return true;
 }
 
 // Order matters: Edge and Opera also say Chrome, Chrome also says Safari.
@@ -97,11 +101,20 @@ export function formatLastSeen(isoTimestamp: string, now: number = Date.now()): 
   return `Last seen ${distance} ago`;
 }
 
-/** "Sep 29, 2026, 8:48 PM" for the details under a session. */
+/** "Sep 25, 2026": Original sign in in Linear's session details, the date alone. */
 export function formatSignedIn(isoTimestamp: string): string {
   const date = new Date(isoTimestamp);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
-  });
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/** Linear dims a session not seen for more than a month. */
+export function isStale(session: WebSession, now: number = Date.now()): boolean {
+  const seen = Date.parse(session.last_seen_at);
+  return !Number.isNaN(seen) && now - seen > MINUTES_IN_MONTH * 60_000;
+}
+
+/** Other sessions as Linear orders them: the most recently seen first. */
+export function byLastSeen(a: WebSession, b: WebSession): number {
+  return (Date.parse(b.last_seen_at) || 0) - (Date.parse(a.last_seen_at) || 0);
 }

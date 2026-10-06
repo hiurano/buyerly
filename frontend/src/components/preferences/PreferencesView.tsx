@@ -13,7 +13,7 @@ import {
 } from './NotificationsSection';
 import { ConnectedAccountsSection } from './ConnectedAccountsSection';
 import { SecuritySection } from './SecuritySection';
-import { LinearConnectedIcon, LinearShieldIcon } from '@/icons/LinearIcons';
+import { LinearConnectedIcon, LinearUserLockIcon } from '@/icons/LinearIcons';
 import { LinearToggle } from '@/ui/LinearToggle';
 import { findModelContext, setWebMcpEnabled, useWebMcpEnabled } from '@/webmcp/register';
 import { SidebarBackdrop, useSidebarDrawer } from '@/components/sidebar/SidebarDrawer';
@@ -36,8 +36,8 @@ const sectionKeywords: Record<
   preferences: 'preferences interface theme appearance ai assistant agent webmcp chrome',
   profile: 'profile account email name avatar',
   notifications: 'notifications inbox priority inbox custom filters push email telegram',
+  security: 'security access sessions devices auth log out logout revoke sign in',
   'connected-accounts': 'connected accounts telegram connect disconnect',
-  security: 'security access sessions devices log out logout revoke sign in',
   'ad-accounts': 'ad accounts cost target primary result statistics cpa cpl currency',
   members: 'members invite invitations people team users roles',
 };
@@ -247,6 +247,20 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                 <span className="preferences-nav-label">Notifications</span>
               </a>
             )}
+            {visibleSections.includes('security') && (
+              <a
+                href="#security"
+                className={`preferences-nav-item ${section === 'security' ? 'active' : ''}`}
+                data-active={section === 'security'}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSection('security');
+                }}
+              >
+                <LinearUserLockIcon size={16} className="preferences-nav-icon" />
+                <span className="preferences-nav-label">Security &amp; access</span>
+              </a>
+            )}
             {visibleSections.includes('connected-accounts') && (
               <a
                 href="#connected-accounts"
@@ -259,20 +273,6 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
               >
                 <LinearConnectedIcon size={16} className="preferences-nav-icon" />
                 <span className="preferences-nav-label">Connected accounts</span>
-              </a>
-            )}
-            {visibleSections.includes('security') && (
-              <a
-                href="#security"
-                className={`preferences-nav-item ${section === 'security' ? 'active' : ''}`}
-                data-active={section === 'security'}
-                onClick={(e) => {
-                  e.preventDefault();
-                  setSection('security');
-                }}
-              >
-                <LinearShieldIcon size={16} className="preferences-nav-icon" />
-                <span className="preferences-nav-label">Security &amp; access</span>
               </a>
             )}
           </div>

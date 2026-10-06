@@ -57,4 +57,16 @@ for (const [timestamp, expected] of Object.entries(lastSeen)) {
   assert.equal(formatLastSeen(timestamp, now), expected, timestamp);
 }
 
+// Original sign in in the details is the date alone.
+assert.equal(loaded.exports.formatSignedIn('2026-09-25T12:00:00Z'), 'Sep 25, 2026');
+assert.equal(loaded.exports.formatSignedIn('not a date'), '');
+
+// A session not seen for more than a month is dimmed; the most recently seen comes first.
+const { isStale, byLastSeen } = loaded.exports;
+const seen = (ms) => ({ last_seen_at: ago(ms) });
+assert.equal(isStale(seen(29 * 24 * 60 * 60_000), now), false);
+assert.equal(isStale(seen(31 * 24 * 60 * 60_000), now), true);
+const ordered = [seen(2 * 24 * 60 * 60_000), seen(60_000), seen(40 * 24 * 60 * 60_000)].sort(byLastSeen);
+assert.deepEqual(ordered.map((session) => session.last_seen_at), [ago(60_000), ago(2 * 24 * 60 * 60_000), ago(40 * 24 * 60 * 60_000)]);
+
 console.log(`sessions: ${Object.keys(agents).length} user agents and ${Object.keys(lastSeen).length} last-seen labels match`);
