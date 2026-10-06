@@ -56,6 +56,8 @@ import { useCampaignViewFilters } from './useCampaignViewFilters';
 import { LinearFacetSidebar } from '@/ui/LinearFacetSidebar';
 import { SelectionDock } from '@/ui/SelectionDock';
 import { SelectionCommandMenu } from '@/ui/SelectionCommandMenu';
+import { LinearBoltIcon } from '@/icons/LinearIcons';
+import { RuleSelectorPopover } from './RuleSelectorPopover';
 import { openCommandMenu } from '@/components/command/CommandMenu';
 import { takeRecordActions } from '@/components/command/OpenPalette';
 import { useRowSelection, type SelectionAction } from '@/ui/useRowSelection';
@@ -127,6 +129,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     selectedCampaignIds,
     setCampaignSelection,
     loadAccountRuleAttachments,
+    attachmentsLoadState,
   } = useAppStore();
 
   const requestGenerationRef = useRef(0);
@@ -156,6 +159,8 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   // snapshot, which only catches up on its next sync.
   const [deliveryActions, setDeliveryActions] = useState<Record<string, { busy: boolean; status?: 'active' | 'paused' }>>({});
   const [hierarchyReloadKey, setHierarchyReloadKey] = useState(0);
+  // The selection's "Apply rule…": one picker over every selected row.
+  const [isBulkRulePickerOpen, setIsBulkRulePickerOpen] = useState(false);
   const [isMetaDialogOpen, setIsMetaDialogOpen] = useState(false);
   const [returnedConnectionId, setReturnedConnectionId] = useState<number | null>(
     Number(new URLSearchParams(window.location.search).get('meta_connection')) || null,
@@ -408,7 +413,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     ctr: campaignFilterTab === 'ads' && displayProperties.ctr !== false,
     cpc: campaignFilterTab === 'ads' && displayProperties.cpc !== false,
     roi: false,
-    rules: false,
+    rules: campaignFilterTab !== 'ads' && displayProperties.rules !== false,
     group: false,
     created: false,
   }), [campaignFilterTab, displayProperties, supportsBudget]);
@@ -525,7 +530,12 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   const selectionActions: SelectionAction[] = [
     { id: 'pause', label: 'Pause delivery', shortcut: 'p', icon: <Pause size={14} />, run: () => void runBulkDelivery('paused') },
     { id: 'resume', label: 'Resume delivery', shortcut: 'r', icon: <Play size={14} />, run: () => void runBulkDelivery('active') },
+    // Meta's "Apply rule to" the selected campaigns or ad sets; ads take no rules.
+    ...(campaignFilterTab !== 'ads' && attachmentsLoadState === 'ready'
+      ? [{ id: 'rule', label: 'Apply rule…', shortcut: 'a', icon: <LinearBoltIcon size={14} />, run: () => setIsBulkRulePickerOpen(true) }]
+      : []),
   ];
+  const selectedRowIds = currentRows.filter((row) => selectedCampaignIds.includes(row.id)).map((row) => row.id);
   const visibleRowIds = useMemo(() => (
     campaignFilterTab === 'campaigns' ? filteredCampaigns : campaignFilterTab === 'adsets' ? filteredAdSets : filteredAds
   ).map((row) => row.id), [campaignFilterTab, filteredAds, filteredAdSets, filteredCampaigns]);
@@ -536,6 +546,10 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     actions: selectionActions,
     enabled: accountsState === 'ready' && hierarchyState === 'ready' && Boolean(selectedAccountId),
   });
+  // A picker left over a selection that is gone must not reopen on the next one.
+  useEffect(() => {
+    if (selectedRowIds.length === 0) setIsBulkRulePickerOpen(false);
+  }, [selectedRowIds.length]);
 
   // The entity an address names opens on its row once its ad account and
   // level are on screen; an account the address names but Ads Manager cannot
@@ -844,6 +858,17 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
         actions={selectionActions}
         onClearScope={openCommandMenu}
       />
+
+      {campaignFilterTab !== 'ads' && (
+        <RuleSelectorPopover
+          isOpen={isBulkRulePickerOpen && selectedRowIds.length > 0}
+          onClose={() => setIsBulkRulePickerOpen(false)}
+          anchorRect={null}
+          level={campaignFilterTab === 'campaigns' ? 'campaign' : 'adset'}
+          entityIds={selectedRowIds}
+          shortcut="A"
+        />
+      )}
 
       <MetaConnectionDialog
         open={isMetaDialogOpen || returnedConnectionId !== null}

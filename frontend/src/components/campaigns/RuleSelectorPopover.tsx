@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LinearBoltIcon } from '@/icons/LinearIcons';
 import { useAppStore } from '@/store/useAppStore';
@@ -10,40 +10,63 @@ export type RuleTargetLevel = 'campaign' | 'adset';
 interface RuleSelectorPopoverProps {
   isOpen: boolean;
   onClose: () => void;
+  /** The control it opened from; without one it sits centred, as a menu does. */
   anchorRect: DOMRect | null;
   level: RuleTargetLevel;
-  entityId: string;
+  /** One row's id, or every selected row of the level. */
+  entityIds: string[];
+  /** The key that opened it, shown in the field. */
+  shortcut?: string;
 }
+
+/** Fingers get taller rows and no keyboard popping up over the list. */
+const isCoarsePointer = () =>
+  typeof window.matchMedia === 'function' && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 
 /**
  * Rule picker follows the same interaction contract as Linear's label picker:
  * selected items first, multi-select without closing, search and keyboard navigation.
+ * Over several rows, a rule on only some of them shows as mixed, and picking it
+ * aims it at all of them.
  */
 export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
   isOpen,
   onClose,
   anchorRect,
   level,
-  entityId,
+  entityIds,
+  shortcut,
 }) => {
   const {
     rules,
     campaignAttachedRules,
     adSetAttachedRules,
-    toggleRuleForEntity,
+    toggleRuleForEntities,
     attachedRuleScopes,
     attachmentError,
     clearAttachmentError,
+    rulesLoadState,
+    loadRules,
   } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const listId = useId();
+  const coarse = isCoarsePointer();
 
   const attachedByEntity =
     level === 'campaign' ? campaignAttachedRules : adSetAttachedRules;
-  const attachedRuleIds = attachedByEntity[entityId] || [];
-  const attachedIds = useMemo(() => new Set(attachedRuleIds), [attachedRuleIds]);
+  /** Rule id → how many of these rows it is aimed at. */
+  const coverage = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const entityId of entityIds) {
+      for (const ruleId of attachedByEntity[entityId] || []) {
+        counts.set(ruleId, (counts.get(ruleId) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [attachedByEntity, entityIds]);
   const filteredRules = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return rules.filter(
@@ -54,8 +77,8 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
     );
   }, [rules, searchQuery]);
 
-  const attachedRules = filteredRules.filter((rule) => attachedIds.has(rule.id));
-  const unattachedRules = filteredRules.filter((rule) => !attachedIds.has(rule.id));
+  const attachedRules = filteredRules.filter((rule) => coverage.has(rule.id));
+  const unattachedRules = filteredRules.filter((rule) => !coverage.has(rule.id));
   const orderedRules = [...attachedRules, ...unattachedRules];
 
   useEffect(() => {
@@ -63,9 +86,18 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
     setSearchQuery('');
     setActiveIndex(-1);
     clearAttachmentError();
+    if (isCoarsePointer()) return;
     const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 50);
     return () => window.clearTimeout(focusTimer);
   }, [isOpen, clearAttachmentError]);
+
+  // Ads Manager can be opened before the Rules screen ever was; the list is
+  // read when a picker first needs it, not on every visit.
+  useEffect(() => {
+    if (!isOpen) return;
+    const { rulesLoadState: state } = useAppStore.getState();
+    if (state === 'idle' || state === 'error') void loadRules();
+  }, [isOpen, loadRules]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -96,23 +128,33 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
     if (activeIndex >= orderedRules.length) setActiveIndex(-1);
   }, [activeIndex, orderedRules.length]);
 
-  if (!isOpen || !anchorRect) return null;
+  if (!isOpen || entityIds.length === 0) return null;
 
   const popoverWidth = 279;
-  const estimatedHeight = Math.min(44 + orderedRules.length * 32 + 16, 395);
+  const rowHeight = coarse ? 44 : 32;
+  const estimatedHeight = Math.min(44 + orderedRules.length * rowHeight + 16, 395);
   const margin = 8;
-  let left = anchorRect.left;
-  let top = anchorRect.bottom + 6;
+  let left: number;
+  let top: number;
 
-  if (left + popoverWidth > window.innerWidth - margin) {
-    left = window.innerWidth - popoverWidth - margin;
+  if (anchorRect) {
+    left = anchorRect.left;
+    top = anchorRect.bottom + 6;
+    if (left + popoverWidth > window.innerWidth - margin) {
+      left = window.innerWidth - popoverWidth - margin;
+    }
+    if (top + estimatedHeight > window.innerHeight - margin) {
+      top = Math.max(margin, anchorRect.top - estimatedHeight - 6);
+    }
+  } else {
+    left = (window.innerWidth - popoverWidth) / 2;
+    top = Math.round(window.innerHeight * 0.13);
   }
-  if (top + estimatedHeight > window.innerHeight - margin) {
-    top = Math.max(margin, anchorRect.top - estimatedHeight - 6);
-  }
+  left = Math.max(margin, left);
 
   const thisNoun = level === 'campaign' ? 'campaign' : 'ad set';
   const otherNoun = level === 'campaign' ? 'ad sets' : 'campaigns';
+  const nouns = (count: number) => `${count} ${thisNoun}${count === 1 ? '' : 's'}`;
 
   /**
    * What this rule is currently aimed at. A rule aimed at another level cannot
@@ -123,12 +165,15 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
     if (!scope) return '';
     if (scope.level === 'account') return 'Whole account';
     if (scope.level !== level) return `Specific ${otherNoun}`;
-    if (scope.ids.includes(entityId)) {
-      return scope.ids.length === 1
-        ? `This ${thisNoun}`
-        : `${scope.ids.length} ${thisNoun}s`;
+    const covered = coverage.get(rule.id) ?? 0;
+    if (covered === 0) {
+      return `${scope.ids.length} other ${thisNoun}${scope.ids.length === 1 ? '' : 's'}`;
     }
-    return `${scope.ids.length} other ${thisNoun}s`;
+    if (covered < entityIds.length) return `${covered} of ${entityIds.length} selected`;
+    if (scope.ids.length === covered) {
+      return entityIds.length === 1 ? `This ${thisNoun}` : `These ${nouns(covered)}`;
+    }
+    return nouns(scope.ids.length);
   };
 
   const isLocked = (rule: RuleItem): boolean => {
@@ -137,8 +182,8 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
   };
 
   const toggleRule = (rule: RuleItem) => {
-    void toggleRuleForEntity(level, entityId, rule.id);
-    window.requestAnimationFrame(() => inputRef.current?.focus());
+    void toggleRuleForEntities(level, entityIds, rule.id);
+    if (!coarse) window.requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -168,27 +213,30 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
     }
   };
 
+  const optionId = (rule: RuleItem) => `${listId}-rule-${rule.id}`;
+
   const renderOption = (rule: RuleItem, index: number) => {
-    const isSelected = attachedIds.has(rule.id);
+    const covered = coverage.get(rule.id) ?? 0;
+    const isSelected = covered === entityIds.length;
+    const isMixed = covered > 0 && !isSelected;
     const isActive = activeIndex === index;
     const locked = isLocked(rule);
     const note = scopeNote(rule);
-    const optionId = `rule-option-${entityId}-${rule.id}`;
 
     return (
       <li
-        id={optionId}
+        id={optionId(rule)}
         key={rule.id}
         role="option"
         aria-selected={isSelected}
-        aria-checked={isSelected}
+        aria-checked={isMixed ? 'mixed' : isSelected}
         aria-disabled={locked}
         onMouseEnter={() => setActiveIndex(index)}
         onClick={() => toggleRule(rule)}
         style={{
           position: 'relative',
           display: 'flex',
-          height: 32,
+          height: rowHeight,
           alignItems: 'center',
           padding: '0 18px 0 14px',
           cursor: locked ? 'not-allowed' : 'pointer',
@@ -226,8 +274,8 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
               justifyContent: 'center',
               boxSizing: 'border-box',
               borderRadius: 3,
-              backgroundColor: isSelected ? '#eab308' : 'transparent',
-              border: isSelected
+              backgroundColor: isSelected || isMixed ? '#eab308' : 'transparent',
+              border: isSelected || isMixed
                 ? '1px solid #eab308'
                 : '1px solid var(--checkbox-border-rest)',
               color: '#09090a',
@@ -236,6 +284,11 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
             {isSelected && (
               <svg width="10" height="9" viewBox="0 0 10 8" fill="currentColor" aria-hidden="true">
                 <path d="M3.46975 5.70757L1.88358 4.1225C1.65832 3.8974 1.29423 3.8974 1.06897 4.1225C0.843675 4.34765 0.843675 4.7116 1.06897 4.93674L3.0648 6.93117C3.29006 7.15628 3.65414 7.15628 3.8794 6.93117L8.93103 1.88306C9.15633 1.65792 9.15633 1.29397 8.93103 1.06883C8.70578 0.843736 8.34172 0.843724 8.11646 1.06879L3.46975 5.70757Z" />
+              </svg>
+            )}
+            {isMixed && (
+              <svg width="8" height="2" viewBox="0 0 8 2" fill="currentColor" aria-hidden="true">
+                <rect width="8" height="1.5" rx="0.75" />
               </svg>
             )}
           </div>
@@ -302,6 +355,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
     <div
       ref={popoverRef}
       role="dialog"
+      aria-label={entityIds.length === 1 ? `Rules for this ${thisNoun}` : `Rules for ${nouns(entityIds.length)}`}
       tabIndex={-1}
       data-animated-popover-container="true"
       data-menu-active="true"
@@ -324,10 +378,12 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
         fontFamily:
           '"Inter Variable", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         animation: 'linearPopoverScale 120ms cubic-bezier(0.16, 1, 0.3, 1)',
-        transformOrigin: `${Math.min(
-          popoverWidth - 2,
-          Math.max(2, anchorRect.left - left + anchorRect.width / 2)
-        )}px 18px`,
+        transformOrigin: anchorRect
+          ? `${Math.min(
+            popoverWidth - 2,
+            Math.max(2, anchorRect.left - left + anchorRect.width / 2)
+          )}px 18px`
+          : 'center top',
       }}
       onClick={(event) => event.stopPropagation()}
     >
@@ -353,9 +409,9 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
           value={searchQuery}
           placeholder="Change or add rules…"
           aria-label="Change or add rules…"
-          aria-controls={`rule-option-list-${entityId}`}
+          aria-controls={listId}
           aria-activedescendant={
-            activeIndex >= 0 ? `rule-option-${entityId}-${orderedRules[activeIndex].id}` : undefined
+            activeIndex >= 0 ? optionId(orderedRules[activeIndex]) : undefined
           }
           autoComplete="off"
           spellCheck={false}
@@ -379,29 +435,31 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
             font: '400 13px/17px inherit',
           }}
         />
-        <kbd
-          style={{
-            display: 'inline-flex',
-            minWidth: 18,
-            height: 19,
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '0 4px',
-            border: '1px solid var(--color-border-secondary)',
-            borderRadius: 4,
-            backgroundColor: 'var(--item-hover-bg)',
-            color: 'var(--text-tertiary)',
-            fontSize: 11,
-            fontWeight: 500,
-            lineHeight: '13px',
-          }}
-        >
-          R
-        </kbd>
+        {shortcut && (
+          <kbd
+            style={{
+              display: 'inline-flex',
+              minWidth: 18,
+              height: 19,
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 4px',
+              border: '1px solid var(--color-border-secondary)',
+              borderRadius: 4,
+              backgroundColor: 'var(--item-hover-bg)',
+              color: 'var(--text-tertiary)',
+              fontSize: 11,
+              fontWeight: 500,
+              lineHeight: '13px',
+            }}
+          >
+            {shortcut}
+          </kbd>
+        )}
       </form>
 
       <div
-        id={`rule-option-list-${entityId}`}
+        id={listId}
         role="listbox"
         aria-multiselectable="true"
         style={{ maxHeight: 340, overflowY: 'auto', padding: '2px 0' }}
@@ -421,7 +479,13 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
 
           {orderedRules.length === 0 && (
             <li style={{ padding: '16px 14px', color: 'var(--text-muted)', fontSize: 12, textAlign: 'center' }}>
-              No rules found
+              {rules.length > 0
+                ? 'No rules found'
+                : rulesLoadState === 'ready'
+                  ? 'No rules yet. Create one on the Rules screen.'
+                  : rulesLoadState === 'error'
+                    ? "Couldn't load rules"
+                    : 'Loading rules…'}
             </li>
           )}
         </ul>

@@ -86,7 +86,7 @@ async function main() {
   assert.equal(state().attachedRulesAccountId, 'B'); assert.deepEqual(Object.keys(state().attachedRuleScopes), ['2']);
   const bad = state().loadAccountRuleAttachments('C'); take('/api/accounts').reply({ detail: 'C unavailable' }, 500); await bad;
   assert.deepEqual(state().attachedRuleScopes, {});
-  await state().toggleRuleForEntity('campaign', 'old', '1'); assert.equal(pending.length, 0);
+  await state().toggleRuleForEntities('campaign', ['old'], '1'); assert.equal(pending.length, 0);
 
   // Logout/login to the SAME user/workspace invalidates old requests (ABA).
   enter('a'); const logout = state().loadRules(); const logoutReplies = rulesReplies();
@@ -109,7 +109,7 @@ async function main() {
 
   enter('a'); const attach = state().loadAccountRuleAttachments('A');
   take('/api/accounts').reply([{ account_id: 'A', active_rules: [] }]); await attach;
-  const toggle = state().toggleRuleForEntity('campaign', 'a', '1');
+  const toggle = state().toggleRuleForEntities('campaign', ['a'], '1');
   const attachmentWrite = pending.shift(); assert.equal(attachmentWrite.workspace, 'a');
   const switched = state().loadAccountRuleAttachments('B');
   take('/api/accounts').reply([{ account_id: 'B', active_rules: [] }]); await switched;

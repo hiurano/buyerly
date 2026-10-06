@@ -51,6 +51,8 @@ export const RuleAttachmentCell = forwardRef<
         <button
           type="button"
           onClick={open}
+          data-rule-cell="true"
+          className="relative after:absolute after:-inset-[6px] after:content-[''] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
           style={{
             height: '22px',
             padding: '0 8px',
@@ -85,6 +87,7 @@ export const RuleAttachmentCell = forwardRef<
         <button
           type="button"
           onClick={open}
+          data-rule-cell="true"
           style={{
             height: '22px',
             padding: '0 8px',
@@ -98,8 +101,8 @@ export const RuleAttachmentCell = forwardRef<
             outline: 'none',
             transition: 'opacity 0.15s, border-color 0.15s, background-color 0.15s, color 0.15s',
           }}
-          className="opacity-0 group-hover/row:opacity-100 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--color-border-secondary)] hover:bg-[var(--item-hover-bg)]"
-          title="Add rule (R)"
+          className="relative after:absolute after:-inset-[6px] after:content-[''] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--color-border-secondary)] hover:bg-[var(--item-hover-bg)]"
+          title="Add rule"
         >
           <svg
             width="10"
@@ -132,7 +135,7 @@ export const RuleAttachmentCell = forwardRef<
         onClose={() => setIsOpen(false)}
         anchorRect={anchorRect}
         level={level}
-        entityId={entityId}
+        entityIds={[entityId]}
       />
     </div>
   );

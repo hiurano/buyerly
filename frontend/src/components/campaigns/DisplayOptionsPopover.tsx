@@ -51,6 +51,7 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
     results: 'Results',
     cpa: 'CPA',
     spend: 'Spend',
+    ...(supportsBudget ? { rules: 'Rules' } : {}),
   };
   const orderingOptions = [
     { value: 'manual', label: 'Default' },
