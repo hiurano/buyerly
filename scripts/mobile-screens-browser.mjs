@@ -92,6 +92,10 @@ try {
       const url = new URL(request.url());
       const path = url.pathname;
       if (request.method() !== 'GET') {
+        // Opening a notification marks it read.
+        if (request.method() === 'POST' && /^\/api\/inbox\/\d+\/read$/.test(path)) {
+          return route.fulfill({ json: { success: true, unread_count: 0, priority_unread_count: 0 } });
+        }
         errors.push(`Unexpected write: ${request.method()} ${path}`);
         return route.fulfill({ status: 404, json: { detail: 'Unexpected test request' } });
       }
