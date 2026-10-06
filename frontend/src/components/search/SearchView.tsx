@@ -77,7 +77,7 @@ const RULE_STATUS_LABELS: Record<string, string> = {
 };
 
 /** Delivery or run state in words, never by colour alone. */
-function statusLabel(result: SearchResult): string {
+export function statusLabel(result: SearchResult): string {
   if (result.kind === 'account' || !result.status) return '';
   if (result.kind === 'rule') return RULE_STATUS_LABELS[result.status] ?? '';
   return humanizeMetaStatus(result.status);
@@ -87,7 +87,7 @@ function statusLabel(result: SearchResult): string {
 const isDayOnly = (result: SearchResult) => result.kind !== 'rule' && result.kind !== 'account';
 
 /** The short age on the right, as Linear's "5d": whole days for a day, Linear's units for a moment. */
-function formatAge(result: SearchResult, now: Date = new Date()): string {
+export function formatAge(result: SearchResult, now: Date = new Date()): string {
   if (!result.updated_at) return '';
   const date = new Date(result.updated_at);
   if (Number.isNaN(date.getTime())) return '';
@@ -103,7 +103,7 @@ function formatAge(result: SearchResult, now: Date = new Date()): string {
 }
 
 /** The hover title on the age, as Linear's "Updated on Sat Aug 29, 7:57 AM". */
-function formatAgeTitle(result: SearchResult): string {
+export function formatAgeTitle(result: SearchResult): string {
   if (!result.updated_at) return '';
   const date = new Date(result.updated_at);
   const day = new Intl.DateTimeFormat('en-US', {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Command } from 'cmdk';
 import type { SelectionAction } from '@/ui/useRowSelection';
@@ -31,7 +31,7 @@ export const CommandMenuFooterKeys: React.FC<{ keys: string[] }> = ({ keys }) =>
     {keys.map((key) => (
       <kbd
         key={key}
-        className="inline-flex h-[19px] min-w-[18px] items-center justify-center rounded-[3px] border border-[var(--command-menu-kbd-border)] p-0.5 font-sans text-[12px] font-medium leading-none text-[var(--text-tertiary)]"
+        className="inline-flex h-[19px] min-w-[18px] items-center justify-center rounded-[4px] border border-[var(--command-menu-kbd-border)] p-0.5 font-sans text-[12px] font-medium leading-none text-[var(--text-tertiary)]"
       >
         {key}
       </kbd>
@@ -39,26 +39,68 @@ export const CommandMenuFooterKeys: React.FC<{ keys: string[] }> = ({ keys }) =>
   </span>
 );
 
-interface SelectionCommandMenuProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  /** What the actions apply to, e.g. "3 campaigns". */
-  scopeLabel: string;
-  actions: SelectionAction[];
+/** What a scoped menu acts on: one record as "RUL-07 ⋅ Name", or a count. */
+export interface CommandMenuScope {
+  /** Linear's identifier before the dot, when the record has one. */
+  prefix?: string;
+  label: string;
 }
 
 /**
- * Linear's command menu scoped to the current selection: a search field, the
- * selection named as the group heading, and each action with the letter that
- * also runs it from the list. Typing filters; Esc closes and keeps the selection.
+ * Linear's scope chip over a scoped command menu: the record, or how many,
+ * in a 22px pill with ⌫ that drops the scope.
+ */
+export const CommandMenuScopeChip: React.FC<{ scope: CommandMenuScope; onClear: () => void }> = ({ scope, onClear }) => (
+  <div className="flex shrink-0 px-[14px] pt-3">
+    <span className="flex h-[22px] min-w-0 max-w-full items-center gap-1 rounded-[10px] bg-[var(--command-menu-chip-bg)] px-1.5 text-[12px] text-[var(--command-menu-text)]">
+      {scope.prefix && <span className="shrink-0 font-medium">{`${scope.prefix} ⋅`}</span>}
+      <span className="min-w-0 truncate">{scope.label}</span>
+      <button
+        type="button"
+        aria-label="Remove scope"
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={onClear}
+        className="ml-0.5 flex shrink-0 items-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+      >
+        <kbd className="font-sans text-[12px] font-medium leading-none" aria-hidden="true">⌫</kbd>
+      </button>
+    </span>
+  </div>
+);
+
+interface SelectionCommandMenuProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** What the actions apply to: one record by name, or "3 campaigns". */
+  scope: CommandMenuScope;
+  actions: SelectionAction[];
+  /** ⌫ on the chip, or Backspace in an empty field: the same menu without the scope. */
+  onClearScope?: () => void;
+}
+
+/**
+ * Linear's command menu scoped to the current selection: the scope chip over
+ * the field, then each action with the letter that also runs it from the
+ * list, with no group heading. Typing filters; Esc closes and keeps the selection.
  */
 export const SelectionCommandMenu: React.FC<SelectionCommandMenuProps> = ({
   open,
   onOpenChange,
-  scopeLabel,
+  scope,
   actions,
+  onClearScope,
 }) => {
+  const [query, setQuery] = useState('');
+  useEffect(() => {
+    if (open) setQuery('');
+  }, [open]);
   if (!open) return null;
+
+  const clearScope = () => {
+    onOpenChange(false);
+    onClearScope?.();
+  };
+  const scopeName = scope.prefix ? `${scope.prefix} ${scope.label}` : scope.label;
 
   // Portalled: the list's own stacking context must not let the app sidebar paint over it.
   return createPortal(
@@ -71,19 +113,25 @@ export const SelectionCommandMenu: React.FC<SelectionCommandMenuProps> = ({
         onMouseDown={(event) => event.stopPropagation()}
       >
         <Command
-          label={`Actions for ${scopeLabel}`}
+          label={`Actions for ${scopeName}`}
           loop
           onKeyDown={(event) => {
             if (event.key === 'Escape') {
               event.preventDefault();
               event.stopPropagation();
               onOpenChange(false);
+            } else if (event.key === 'Backspace' && !query && onClearScope) {
+              event.preventDefault();
+              clearScope();
             }
           }}
         >
+          <CommandMenuScopeChip scope={scope} onClear={clearScope} />
           <div className={COMMAND_MENU_CLASSES.field}>
             <Command.Input
               autoFocus
+              value={query}
+              onValueChange={setQuery}
               placeholder="Type a command or search…"
               className={COMMAND_MENU_CLASSES.input}
             />
@@ -92,30 +140,28 @@ export const SelectionCommandMenu: React.FC<SelectionCommandMenuProps> = ({
             <Command.Empty className={COMMAND_MENU_CLASSES.note}>
               No matching actions.
             </Command.Empty>
-            <Command.Group heading={scopeLabel} className={COMMAND_MENU_CLASSES.group}>
-              {actions.map((action) => (
-                <Command.Item
-                  key={action.id}
-                  value={action.label}
-                  onSelect={() => {
-                    onOpenChange(false);
-                    action.run();
-                  }}
-                  className={COMMAND_MENU_CLASSES.item}
-                >
-                  <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true">
-                    {action.icon}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{action.label}</span>
-                  <span className="flex shrink-0 items-center gap-[3px]">
-                    {action.withModifier && <kbd className={COMMAND_MENU_CLASSES.kbd}>Ctrl</kbd>}
-                    <kbd className={COMMAND_MENU_CLASSES.kbd}>
-                      {action.shortcut.length === 1 ? action.shortcut.toUpperCase() : action.shortcut}
-                    </kbd>
-                  </span>
-                </Command.Item>
-              ))}
-            </Command.Group>
+            {actions.map((action) => (
+              <Command.Item
+                key={action.id}
+                value={action.label}
+                onSelect={() => {
+                  onOpenChange(false);
+                  action.run();
+                }}
+                className={COMMAND_MENU_CLASSES.item}
+              >
+                <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true">
+                  {action.icon}
+                </span>
+                <span className="min-w-0 flex-1 truncate">{action.label}</span>
+                <span className="flex shrink-0 items-center gap-[3px]">
+                  {action.withModifier && <kbd className={COMMAND_MENU_CLASSES.kbd}>Ctrl</kbd>}
+                  <kbd className={COMMAND_MENU_CLASSES.kbd}>
+                    {action.shortcut.length === 1 ? action.shortcut.toUpperCase() : action.shortcut}
+                  </kbd>
+                </span>
+              </Command.Item>
+            ))}
           </Command.List>
         </Command>
       </div>

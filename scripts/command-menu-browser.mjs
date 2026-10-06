@@ -6,8 +6,10 @@
 // keeps its own actions menu. G then a letter does what the hints say (#306).
 // `/` stays text in a field and outside one opens the search page, which
 // scripts/search-page-browser.mjs checks. O then a letter opens an "Open …"
-// palette (#312): recently opened records, quick results as you type, Quick
-// look on →; and over Settings, Ctrl/Cmd+K offers "Revoke all other sessions".
+// palette (#312), as measured on Linear: recently opened records with no
+// heading, quick results as you type, nothing at all when nothing matches,
+// Quick look on →, Alt+↵ for the record's actions under a scope chip; over
+// Settings, Ctrl/Cmd+K opens with the settings pages and Back to app (Ctrl+Esc).
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -338,68 +340,99 @@ try {
       await page.waitForTimeout(300);
       assert.equal(new URL(page.url()).pathname, '/alpha/inbox', 'G T opens nothing');
 
-      // 8. O then C: "Open campaign…" where the command menu sits, listing the
-      //    campaign opened from Ctrl/Cmd+K in step 6; typing searches campaigns at once.
+      // 8. O then C: "Open campaign…" where the command menu sits, as measured on
+      //    Linear: the campaign opened from Ctrl/Cmd+K in step 6 listed with no
+      //    heading; typing searches campaigns at once; nothing found leaves the field alone.
       const palette = (name) => page.getByRole('dialog', { name });
       const campaigns = palette('Open campaign');
       const campaignField = campaigns.getByRole('combobox');
       const testRow = campaigns.getByRole('option', { name: 'Test Campaign, Leads account' });
-      await blur();
-      await page.keyboard.press('o');
-      await page.keyboard.press('c');
-      await campaignField.waitFor();
+      const openCampaigns = async () => {
+        await blur();
+        await page.keyboard.press('o');
+        await page.keyboard.press('c');
+        await campaignField.waitFor();
+        await page.waitForFunction(() => document.activeElement?.hasAttribute('cmdk-input'));
+      };
+      await openCampaigns();
       assert.equal(await campaignField.getAttribute('placeholder'), 'Open campaign…');
-      await page.waitForFunction(() => document.activeElement?.hasAttribute('cmdk-input'));
-      await campaigns.getByText('Recently opened', { exact: true }).waitFor();
       await testRow.waitFor();
+      assert.equal(await campaigns.locator('[cmdk-group-heading]').count(), 0, 'recently opened records have no heading');
+      await campaigns.getByRole('button', { name: /Open$/ }).waitFor();
+      await campaigns.getByRole('button', { name: /More actions$/ }).waitFor();
+      await campaigns.getByRole('button', { name: /^Quick look/ }).waitFor();
       await assertNoOverflow('open campaign palette');
-      // One letter already searches, unlike Ctrl/Cmd+K.
+      // One letter already searches, unlike Ctrl/Cmd+K; nothing found shows nothing under the field.
       await page.keyboard.type('t');
-      await campaigns.getByRole('option', { name: 'No results found, go to advanced search' }).waitFor();
+      await campaigns.getByText('No results found', { exact: true }).waitFor({ state: 'attached' });
+      assert.equal(await campaigns.getByRole('option').count(), 0, 'no rows for nothing found');
+      assert.equal(await campaigns.getByRole('button', { name: /Open$/ }).count(), 0, 'no footer for nothing found');
       await campaignField.fill('test');
       await campaigns.getByText('Quick results for "test"', { exact: true }).waitFor();
       await testRow.waitFor();
-      // → past the typed text shows Quick look inside the palette; Esc hides it before closing.
+      // → past the typed text shows Quick look inside the palette; ← hides it; Esc closes everything.
       await page.keyboard.press('ArrowRight');
       const quickLook = campaigns.getByRole('region', { name: 'Quick look' });
       await quickLook.waitFor();
       await quickLook.getByText('120045', { exact: true }).waitFor();
       await quickLook.getByText('Leads account', { exact: true }).waitFor();
-      await campaigns.getByRole('button', { name: /Close/ }).waitFor();
+      await campaigns.getByRole('button', { name: /Close$/ }).waitFor();
       await assertNoOverflow('quick look');
       await page.screenshot({ path: `${output}/open-campaign-${width}.png` });
-      await page.keyboard.press('Escape');
-      await quickLook.waitFor({ state: 'detached' });
-      await campaignField.waitFor();
-      await page.keyboard.press('ArrowRight');
-      await quickLook.waitFor();
       await page.keyboard.press('ArrowLeft');
       await quickLook.waitFor({ state: 'detached' });
+      await page.keyboard.press('ArrowRight');
+      await quickLook.waitFor();
       await page.keyboard.press('Escape');
       await campaigns.waitFor({ state: 'detached' });
 
-      // 9. O then R on Rules: the letter after O opens the palette, never the page's own C or R.
+      // 9. O then C on Rules: the letter after O opens the palette, never the page's own C.
       await page.goto(`${origin}/alpha/rules`);
       await page.getByText('Test stop without leads', { exact: true }).first().waitFor();
-      await blur();
-      await page.keyboard.press('o');
-      await page.keyboard.press('c');
-      await campaignField.waitFor();
+      await openCampaigns();
       assert.equal(await page.getByRole('dialog', { name: 'New rule' }).count(), 0, 'O then C did not create a rule');
       await page.keyboard.press('Escape');
       await campaigns.waitFor({ state: 'detached' });
-      await blur();
-      await page.keyboard.press('o');
-      await page.keyboard.press('r');
       const rules = palette('Open rule');
-      await rules.getByText('No recently opened rules. Type to search.', { exact: true }).waitFor();
+      const openRules = async () => {
+        await blur();
+        await page.keyboard.press('o');
+        await page.keyboard.press('r');
+        await rules.getByRole('combobox').waitFor();
+        await page.waitForFunction(() => document.activeElement?.hasAttribute('cmdk-input'));
+      };
+      await openRules();
+      // No rule opened yet: Linear shows the field alone.
+      await rules.getByText('No results found', { exact: true }).waitFor({ state: 'attached' });
+      assert.equal(await rules.getByRole('option').count(), 0);
       await rules.getByRole('combobox').fill('stop');
       await rules.getByRole('option', { name: 'Test stop without leads' }).waitFor();
+      await rules.getByText('RUL-07', { exact: true }).waitFor();
       await page.keyboard.press('Enter');
       await rules.waitFor({ state: 'detached' });
       await page.waitForURL(`${origin}/alpha/rules/7`);
 
-      // 10. Ctrl/Cmd+K lists the palettes; "Open settings…" finds Security & access by "auth".
+      // Alt+↵ "More actions": the rule opens with its actions menu, the rule on the scope chip;
+      // Backspace in the empty field drops the scope into the whole command menu.
+      await openRules();
+      await rules.getByRole('option', { name: 'Test stop without leads' }).waitFor();
+      await page.keyboard.press('Alt+Enter');
+      await rules.waitFor({ state: 'detached' });
+      const actions = page.locator('[cmdk-root]').filter({ has: page.getByRole('combobox', { name: 'Actions for RUL-07 Test stop without leads' }) });
+      await actions.waitFor();
+      await actions.getByText('RUL-07 ⋅', { exact: true }).waitFor();
+      await actions.getByRole('option', { name: /Pause rules/ }).waitFor();
+      assert.equal(await actions.locator('[cmdk-group-heading]').count(), 0, 'the chip names the scope, no heading');
+      await page.screenshot({ path: `${output}/more-actions-${width}.png` });
+      await page.keyboard.press('Backspace');
+      await actions.waitFor({ state: 'detached' });
+      await commandField.waitFor();
+      await page.keyboard.press('Escape');
+      await closed();
+      await page.keyboard.press('Escape');
+
+      // 10. Ctrl/Cmd+K lists the palettes; "Open settings…" groups the pages as Linear does
+      //     (Members under Administration) and finds Security & access by "auth".
       await page.keyboard.press('Control+K');
       await commandField.fill('open settings');
       await commands.getByRole('option', { name: 'Open settings…' }).waitFor();
@@ -411,33 +444,39 @@ try {
         await settings.getByRole('option').evaluateAll((options) => options.map((option) => option.getAttribute('aria-label'))),
         ['Preferences', 'Profile', 'Notifications', 'Security & access', 'Connected accounts', 'Members'],
       );
+      assert.deepEqual(await settings.locator('[cmdk-group-heading]').allInnerTexts(), ['Administration']);
+      assert.equal(await settings.getByRole('button', { name: /Open$/ }).count(), 0, 'settings pages have no footer');
       await settings.getByRole('combobox').fill('auth');
       await settings.getByRole('option', { name: 'Security & access' }).waitFor();
       await page.keyboard.press('Enter');
       await settings.waitFor({ state: 'detached' });
       await page.waitForURL(`${origin}/alpha/settings/account/security`);
 
-      // 11. Over Settings, Ctrl/Cmd+K opens too: Sessions → Revoke all other sessions, confirmed first.
+      // 11. Over Settings, Ctrl/Cmd+K opens with the settings pages, as in Linear, and offers
+      //     Back to app (Ctrl+Esc); Linear has no "Revoke all other sessions" command.
       await page.getByText('1 other session', { exact: true }).waitFor();
       await blur();
       await page.keyboard.press('Control+K');
       await commandField.waitFor();
-      assert.equal((await headings())[0], 'Sessions');
+      assert.deepEqual((await headings()).slice(0, 2), ['Administration', 'Rules']);
+      assert.deepEqual((await commandTexts()).slice(0, 6), ['Preferences', 'Profile', 'Notifications', 'Security & access', 'Connected accounts', 'Members']);
+      await commands.getByRole('option', { name: 'Back to app' }).waitFor();
+      assert.ok((await commandTexts()).includes('Back to app · Ctrl Esc'), 'Back to app shows its keys');
       assert.equal(await commands.getByRole('option', { name: /Collapse navigation sidebar/ }).count(), 0, 'Settings has its own sidebar');
       await commandField.fill('revoke');
-      await commands.getByRole('option', { name: 'Revoke all other sessions' }).waitFor();
-      await page.keyboard.press('Enter');
+      await page.waitForTimeout(300);
+      assert.equal(await commands.getByRole('option', { name: 'Revoke all other sessions' }).count(), 0, 'no revoke command, as in Linear');
+      await page.keyboard.press('Escape');
       await closed();
-      const confirmRevoke = page.getByRole('dialog', { name: 'Revoke access' });
-      await confirmRevoke.getByText('Revoke all other sessions? This cannot be undone.', { exact: true }).waitFor();
-      await confirmRevoke.getByRole('button', { name: 'Cancel' }).click();
-      await confirmRevoke.waitFor({ state: 'detached' });
       // `/` in Settings searches the settings, as Linear's "Search settings /"; on a phone the field is in the shut drawer.
       await blur();
       await page.keyboard.press('/');
       if (wide) await page.waitForFunction(() => document.activeElement?.classList.contains('preferences-search-input'));
       await page.waitForTimeout(200);
       assert.equal(new URL(page.url()).pathname, '/alpha/settings/account/security', '/ stays in Settings');
+      await blur();
+      await page.keyboard.press('Control+Escape');
+      await page.waitForURL(`${origin}/alpha/rules`);
 
       assert.ok(kindSearches.includes('campaign:t') && kindSearches.includes('campaign:test') && kindSearches.includes('rule:stop'), `palettes searched: ${kindSearches}`);
       assert.ok(kindSearches.every((entry) => /^(campaign|rule):/.test(entry)), `palettes search their own kind: ${kindSearches}`);

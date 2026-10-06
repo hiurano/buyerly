@@ -20,6 +20,8 @@ import { bestCommandScore } from '@/lib/commandFilter';
 import { goToShortcut, openShortcut, OPEN_KEYS } from '@/lib/shortcuts';
 import type { OpenPaletteKind } from '@/store/useAppStore';
 import { OpenPaletteIcon, OPEN_PALETTE_LABELS, openOpenPalette } from './OpenPalette';
+import { SETTINGS_PAGE_GROUPS, SETTINGS_PAGE_KEYWORDS } from '@/lib/settingsPages';
+import { SettingsPageIcon } from '@/components/preferences/SettingsPageIcon';
 import { isSmallScreen } from '@/lib/useMediaQuery';
 import { LinearPlusIcon, LinearSearchIcon, LinearSidebarLeftToggleIcon } from '@/icons/LinearIcons';
 import { COMMAND_MENU_CLASSES, CommandMenuFooterKeys } from '@/ui/SelectionCommandMenu';
@@ -169,6 +171,9 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
   const isSidebarCollapsed = useAppStore((state) => state.isSidebarCollapsed);
   const toggleSidebarCollapsed = useAppStore((state) => state.toggleSidebarCollapsed);
   const scope = useAppStore((state) => state.workspaceScope);
+  const setSettingsSection = useAppStore((state) => state.setSettingsSection);
+  const setActiveTab = useAppStore((state) => state.setActiveTab);
+  const lastAppTab = useAppStore((state) => state.lastAppTab);
   const pageGroup = usePageGroup();
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState('');
@@ -190,7 +195,26 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
     go(searchPagePath(slug, { query: text, tab: 'all', statuses: [], accounts: [], order: 'relevance', includeDeleted: false }));
   };
 
+  const inSettings = activeTab === 'preferences';
+  // In Settings Linear's menu opens with the settings pages, grouped as in "Open settings…".
+  const settingsGroups: PaletteGroup[] = inSettings
+    ? SETTINGS_PAGE_GROUPS.map((group) => ({
+      heading: group.heading,
+      commands: group.pages.map((page) => ({
+        id: `settings-${page.section}`,
+        label: page.label,
+        keywords: SETTINGS_PAGE_KEYWORDS[page.section].split(' '),
+        icon: <SettingsPageIcon section={page.section} size={14} />,
+        run: () => {
+          setSettingsSection(page.section);
+          setActiveTab('preferences');
+        },
+      })),
+    }))
+    : [];
+
   const groups: PaletteGroup[] = [
+    ...settingsGroups,
     ...(pageGroup ? [pageGroup] : []),
     {
       heading: 'Rules',
@@ -229,7 +253,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
           id: `open-${kind}`,
           label: OPEN_PALETTE_LABELS[kind],
           keywords: ['open', 'jump', 'find'],
-          icon: <OpenPaletteIcon kind={kind} />,
+          icon: <OpenPaletteIcon kind={kind} size={14} />,
           shortcut: openShortcut(kind),
           run: () => openOpenPalette(kind),
         })),
@@ -243,6 +267,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
             shortcut: '[',
             run: toggleSidebarCollapsed,
           }]),
+        // Linear's way out of Settings, also on Ctrl+Esc there.
+        ...(inSettings
+          ? [{ id: 'back-to-app', label: 'Back to app', icon: arrowIcon, shortcut: 'Ctrl Esc', run: () => setActiveTab(lastAppTab) }]
+          : []),
       ],
     },
   ];
@@ -284,7 +312,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
       <p role="status" className="sr-only">{text ? `Showing ${shownCount} items` : 'Showing all items'}</p>
       <Command.List className={`min-h-0 flex-1 ${COMMAND_MENU_CLASSES.list}`}>
         {shownGroups.map((group) => (
-          <Command.Group key={group.heading} heading={group.heading} className={COMMAND_MENU_CLASSES.group}>
+          <Command.Group key={group.heading || 'pages'} heading={group.heading || undefined} className={COMMAND_MENU_CLASSES.group}>
             {group.commands.map((command) => (
               <Command.Item
                 key={command.id}
