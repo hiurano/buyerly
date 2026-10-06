@@ -122,7 +122,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
             }
             if (target?.isConnected) target.focus({ preventScroll: true });
           }}
-          className="animate-scale-in fixed inset-x-4 top-[13vh] z-[var(--layer-command-menu)] mx-auto flex max-h-[min(450px,84vh)] max-w-[720px] flex-col overflow-hidden rounded-[12px] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] shadow-[var(--command-menu-shadow)] outline-none"
+          className="animate-scale-in fixed inset-x-4 top-[13vh] z-[var(--layer-command-menu)] mx-auto flex max-h-[min(450px,84vh)] max-w-[720px] flex-col overflow-hidden rounded-[12px] border border-[var(--command-menu-border)] bg-[var(--command-menu-bg)] shadow-[var(--command-menu-shadow)] outline-none"
         >
           <Dialog.Title className="sr-only">Command menu</Dialog.Title>
           <CommandPalette workspace={workspace} navigate={navigate} choose={choose} />
@@ -138,10 +138,12 @@ const QUICK_RESULTS_LIMIT = 8;
 const QUICK_RESULTS_DELAY_MS = 120;
 
 const ROW_CLASS =
-  'relative mx-0 flex h-[46px] cursor-default select-none items-center gap-3 px-3 text-[13px] font-[450] text-[var(--text-primary)] outline-none before:pointer-events-none before:absolute before:inset-x-0 before:inset-y-[2px] before:rounded-[8px] data-[selected=true]:before:bg-[var(--data-row-hover-bg)] [&>*]:relative';
+  'relative mx-0 flex h-[46px] cursor-default select-none items-center gap-3 px-3 text-[13px] font-[450] text-[var(--command-menu-text)] outline-none before:pointer-events-none before:absolute before:inset-x-0 before:inset-y-[2px] before:rounded-[8px] data-[selected=true]:before:bg-[var(--command-menu-row-selected-bg)] [&>*]:relative';
 const GROUP_CLASS =
   '[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[12px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:leading-[14px] [&_[cmdk-group-heading]]:text-[var(--text-tertiary)]';
-const ICON_CLASS = 'flex h-4 w-4 shrink-0 items-center justify-center text-[var(--text-tertiary)]';
+// Linear draws a row's icon in the row's own text color.
+const ICON_CLASS = 'flex h-4 w-4 shrink-0 items-center justify-center';
+const FOOTER_HINT_CLASS = 'flex h-6 items-center gap-1.5 px-2 text-[12px] font-medium text-[var(--text-secondary)]';
 
 const arrowIcon = <ArrowRight size={14} strokeWidth={1.75} />;
 
@@ -261,7 +263,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
           value={query}
           onValueChange={setQuery}
           placeholder="Type a command or search…"
-          className="h-10 w-full bg-transparent px-3 text-[13px] text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none"
+          className="h-10 w-full bg-transparent px-3 text-[13px] text-[var(--text-secondary)] placeholder-[var(--text-muted)] outline-none"
         />
       </div>
       <p role="status" className="sr-only">{text ? `Showing ${shownCount} items` : 'Showing all items'}</p>
@@ -313,22 +315,20 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
         )}
       </Command.List>
       {showQuick && (
-        <div className="flex h-[29px] shrink-0 items-center gap-4 border-t border-[var(--color-border-secondary)] px-3.5 text-[12px] font-medium text-[var(--text-secondary)]">
-          <span className="flex items-center gap-1.5">
-            <span aria-hidden="true" className="text-[var(--text-tertiary)]">↵</span>
+        // Linear's footer: 35px under a rule, each hint a small button with its keys boxed.
+        <div className="flex h-[35px] shrink-0 items-center gap-1.5 border-t border-[var(--command-menu-border)] px-1">
+          <span className={FOOTER_HINT_CLASS}>
+            <FooterKeys keys={['↵']} />
             <span>{onRecord ? 'Open' : 'Select'}</span>
           </span>
           <button
             type="button"
-            className="flex items-center gap-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            className={`${FOOTER_HINT_CLASS} rounded-[6px] hover:bg-[var(--command-menu-row-selected-bg)]`}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => choose(advancedSearch)}
           >
-            Advanced search
-            <span className="flex items-center gap-1.5 font-normal text-[var(--text-tertiary)]" aria-hidden="true">
-              <span>Ctrl</span>
-              <span>/</span>
-            </span>
+            <span>Advanced search</span>
+            <FooterKeys keys={['Ctrl', '/']} />
           </button>
         </div>
       )}
@@ -364,7 +364,7 @@ const QuickResultLabel: React.FC<{ result: SearchResult }> = ({ result }) => {
     <span className="flex min-w-0 flex-1 items-center gap-1.5">
       <span className="shrink-0 text-[var(--text-tertiary)]">{SEARCH_KIND_LABELS[result.kind]}</span>
       <span className="shrink-0 text-[var(--text-muted)]" aria-hidden="true">›</span>
-      <span className="min-w-0 truncate font-medium">{result.name}</span>
+      <span className="min-w-0 truncate text-[var(--text-secondary)]">{result.name}</span>
       {where && <span className="min-w-0 shrink-[200000] truncate text-[var(--text-muted)]">{where}</span>}
     </span>
   );
@@ -403,6 +403,20 @@ function useQuickResults(text: string): SearchResult[] | null {
   return answer?.results ?? null;
 }
 
+/** The footer's smaller boxed keys: 19px high, 2px inside. */
+const FooterKeys: React.FC<{ keys: string[] }> = ({ keys }) => (
+  <span className="flex items-center gap-[3px]" aria-hidden="true">
+    {keys.map((key) => (
+      <kbd
+        key={key}
+        className="inline-flex h-[19px] min-w-[18px] items-center justify-center rounded-[3px] border border-[var(--command-menu-kbd-border)] p-0.5 font-sans text-[12px] font-medium leading-none text-[var(--text-tertiary)]"
+      >
+        {key}
+      </kbd>
+    ))}
+  </span>
+);
+
 const KEY_NAMES: Record<string, string> = { Shift: '⇧', Alt: 'Alt', Ctrl: 'Ctrl' };
 const SEQUENCE_PREFIXES = new Set(['G', 'O', 'N']);
 
@@ -417,7 +431,7 @@ const ShortcutKeys: React.FC<{ shortcut: string }> = ({ shortcut }) => {
           {sequence && index === 1 && <span className="px-px text-[12px] font-[450] text-[var(--text-tertiary)]" aria-hidden="true">then</span>}
           <kbd
             aria-hidden="true"
-            className="inline-flex h-[23px] min-w-[20px] items-center justify-center rounded-[3px] border border-[var(--color-border-secondary)] px-1 font-sans text-[12px] font-[450] leading-[13px] text-[var(--text-tertiary)]"
+            className="inline-flex h-[23px] min-w-[20px] items-center justify-center rounded-[3px] border border-[var(--command-menu-kbd-border)] px-1 font-sans text-[12px] font-[450] leading-[13px] text-[var(--text-tertiary)]"
           >
             {part}
           </kbd>
