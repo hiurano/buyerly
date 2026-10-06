@@ -159,6 +159,7 @@ try {
     const openRowMenu = async (name) => {
       await row(name).hover();
       await rowAction(name).click();
+      await page.getByRole('menuitem').first().waitFor();
     };
     try {
       await page.goto(`${origin}/${workspace.slug}/inbox`);
@@ -215,6 +216,9 @@ try {
       );
 
       // Nobody manages the owner, and only the owner manages an admin.
+      // An open menu hides the rest of the page from the accessibility tree, so wait for it to go.
+      await page.locator('[role="menu"]').waitFor({ state: 'detached' });
+      await rowAction('Bob Buyer').waitFor({ state: 'attached' });
       assert.equal(await rowAction('Oscar Owner').count(), 0);
       assert.equal(await rowAction('Adam Admin').count(), role === 'owner' ? 1 : 0);
 
