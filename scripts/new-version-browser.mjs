@@ -116,9 +116,12 @@ try {
       await notice.waitFor();
       await page.getByText('A new version of Buyerly is available.', { exact: true }).waitFor();
 
-      // It stays put (it is not a passing toast) and never repeats.
+      // It stays put (it is not a passing toast) and never repeats: once found, the tab stops asking.
       await page.waitForTimeout(9000);
-      await returnToTab();
+      const asked = healthRequests;
+      await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+      await page.waitForTimeout(500);
+      assert.equal(healthRequests, asked, 'no more checks after the notice');
       assert.equal(await notice.count(), 1, 'exactly one notice');
       await page.screenshot({ path: `${output}/notice-${width}.png`, fullPage: true });
 
