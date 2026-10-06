@@ -79,6 +79,13 @@ def build_audit_event(
             "cpp": evaluation.cpp,
             "cooldown_minutes": evaluation.cooldown_minutes,
             "currency": evaluation.currency,
+            # The campaign an Inbox notification links to; for a campaign
+            # result that is the entity itself.
+            "campaign_id": (
+                evaluation.entity_id
+                if evaluation.entity_level == "campaign"
+                else evaluation.campaign_id
+            ),
         }
         if evaluation.yielded_rules:
             evaluation_details["yielded_rules"] = evaluation.yielded_rules
