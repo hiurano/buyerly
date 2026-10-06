@@ -226,8 +226,11 @@ try {
       assert.deepEqual(lastWrite(), {
         verb: 'PUT', path: '/api/accounts/act_100/rules/8/scope', body: { level: 'adset', ids: ['903'] },
       });
-      await page.waitForFunction(() => document.querySelector('[data-row-id="902"] [data-rule-cell]')?.textContent?.trim() === 'Rule');
-      assert.equal(await cell('903').innerText(), '1 rule');
+      // Both cells are waited for: the list is redrawn from the refreshed account, not at once.
+      await page.waitForFunction(() => (
+        document.querySelector('[data-row-id="902"] [data-rule-cell]')?.textContent?.trim() === 'Rule'
+        && document.querySelector('[data-row-id="903"] [data-rule-cell]')?.textContent?.trim() === '1 rule'
+      ));
       await page.keyboard.press('Escape');
       await bulk.waitFor({ state: 'detached' });
 
