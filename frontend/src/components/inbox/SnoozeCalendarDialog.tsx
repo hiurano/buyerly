@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { LinearClockOutlineIcon } from '@/icons/LinearIcons';
 import { Button } from '@/ui/Button';
@@ -105,10 +105,11 @@ const MonthGrid: React.FC<MonthGridProps> = ({ first, today, selected, onSelect 
 /** Linear's Snooze → Custom…: two months side by side, tomorrow picked, Cancel / Apply. */
 export const SnoozeCalendarDialog: React.FC<SnoozeCalendarDialogProps> = ({ open, onOpenChange, onApply }) => {
   const [today, setToday] = useState(() => startOfDay(new Date()));
-  const [selected, setSelected] = useState(today);
+  const [selected, setSelected] = useState(() => new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1));
   const [first, setFirst] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
 
-  useEffect(() => {
+  // Before paint: the dialog stays mounted, so an open must never show the last pick or today for a frame.
+  useLayoutEffect(() => {
     if (!open) return;
     const now = startOfDay(new Date());
     const tomorrow = new Date(now);
