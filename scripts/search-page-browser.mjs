@@ -243,6 +243,13 @@ try {
       }
       await page.getByRole('button', { name: 'Add filter' }).waitFor();
       await page.getByRole('button', { name: 'Display options' }).waitFor();
+      // On a phone the tabs scroll sideways; none shrinks to "Ca…".
+      assert.deepEqual(
+        await page.getByRole('tab').evaluateAll((tabs) => tabs.filter((tab) => tab.scrollWidth > tab.clientWidth
+          || tab.querySelector('span').scrollWidth > tab.querySelector('span').clientWidth).map((tab) => tab.textContent)),
+        [],
+        `tabs cut at ${width}px`,
+      );
       await assertNoOverflow('empty search page');
       await page.screenshot({ path: `${output}/empty-${width}.png` });
 

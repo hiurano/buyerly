@@ -528,7 +528,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
                   onFocus={() => setActiveKey(key)}
                   className="mx-2 flex h-10 min-w-0 items-center gap-2.5 rounded-[6px] px-3 text-[13px] text-[var(--text-secondary)] outline-none hover:bg-[var(--item-hover-bg)] focus-visible:bg-[var(--item-hover-bg)] data-[active=true]:bg-[var(--item-active-bg)]"
                 >
-                  <span data-search-kind="" className="w-[64px] shrink-0 truncate text-[12px] text-[var(--text-tertiary)]">{SEARCH_KIND_LABELS[result.kind]}</span>
+                  <span data-search-kind="" className="w-[72px] shrink-0 truncate text-[12px] text-[var(--text-tertiary)]">{SEARCH_KIND_LABELS[result.kind]}</span>
                   <span className="flex shrink-0 items-center" aria-hidden="true"><StatusMark result={result} /></span>
                   <span className="min-w-0 flex-1 truncate">
                     <span data-search-name="" className="text-[var(--text-primary)]">{highlight(result.name, params.query)}</span>
@@ -614,6 +614,8 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
           <div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none]">
             <LinearTabs
               aria-label="Search in"
+              // As wide as its tabs: on a phone they scroll sideways instead of shrinking to "Ca…".
+              className="w-max"
               tabs={SEARCH_TABS.map(({ id, label }) => ({ id, label }))}
               activeTabId={params.tab}
               onChange={(id) => {
