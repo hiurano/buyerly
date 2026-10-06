@@ -59,6 +59,10 @@ class RuleEvaluationResult:
     entity_level: str = "adset"
     # Parent campaign of an ad set or ad; empty for a campaign-level result.
     campaign_id: str = ""
+    # Rules that also matched but gave way to this one (#323): a weaker action,
+    # or the same action from a rule listed later. The history names them, so a
+    # buyer can see which rule won and over whom.
+    yielded_rules: List[Dict[str, Any]] = field(default_factory=list)
 
     @property
     def is_adset(self) -> bool:
@@ -414,7 +418,10 @@ class RuleEngine:
         changes = [r for r in results if r.action != RuleAction.NOTIFY_ONLY]
         alerts = [r for r in results if r.action == RuleAction.NOTIFY_ONLY]
         if changes:
+            weaker = [yielded_rule(r) for r in changes if r.action != changes[0].action]
             changes = [r for r in changes if r.action == changes[0].action]
+            for change in changes:
+                change.yielded_rules = list(weaker)
         return changes + alerts
 
     @staticmethod
@@ -440,3 +447,12 @@ class RuleEngine:
             checks=checks,
         )
         return checks
+
+
+def yielded_rule(result: RuleEvaluationResult) -> Dict[str, Any]:
+    """How a rule that gave way is named in the winning rule's history entry."""
+    return {
+        "rule_id": result.rule_id,
+        "rule_name": result.rule_name,
+        "action": result.action.value,
+    }

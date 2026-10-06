@@ -3,12 +3,32 @@ import { createPortal } from 'react-dom';
 import { LinearBoltIcon } from '@/icons/LinearIcons';
 import { useAppStore } from '@/store/useAppStore';
 import type { RuleItem } from '@/store/useAppStore';
+import type { RuleExecutionLevel, RuleScope } from '@/lib/rules';
+import { explainRulePrecedence } from '@/lib/rulePrecedence';
+import type { PrecedenceLine } from '@/lib/rulePrecedence';
 import { fetchEntityRuleStates } from '@/lib/rules';
 import type { RuleEntityStatePayload } from '@/lib/rules';
 import { RuleStateLine } from '@/components/rules/RuleStateLine';
 
 /** The level this picker attaches rules to. */
 export type RuleTargetLevel = 'campaign' | 'adset';
+
+/** Levels a rule can act on from a row of this level: the row itself and what sits under it. */
+const LEVELS_UNDER: Record<RuleTargetLevel, RuleExecutionLevel[]> = {
+  campaign: ['campaign', 'adset', 'ad'],
+  adset: ['adset', 'ad'],
+};
+
+const LEVEL_HEADINGS: Record<RuleExecutionLevel, string> = {
+  campaign: 'On this campaign',
+  adset: 'On each ad set',
+  ad: 'On each ad',
+};
+
+interface PrecedenceGroup {
+  level: RuleExecutionLevel;
+  lines: PrecedenceLine[];
+}
 
 interface RuleSelectorPopoverProps {
   isOpen: boolean;
@@ -20,6 +40,8 @@ interface RuleSelectorPopoverProps {
   entityIds: string[];
   /** The key that opened it, shown in the field. */
   shortcut?: string;
+  /** Parent campaign of a single ad set, whose campaign-wide rules reach it too. */
+  campaignId?: string;
 }
 
 /** Fingers get taller rows and no keyboard popping up over the list. */
@@ -39,6 +61,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
   level,
   entityIds,
   shortcut,
+  campaignId,
 }) => {
   const {
     rules,
@@ -46,6 +69,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
     adSetAttachedRules,
     toggleRuleForEntities,
     attachedRuleScopes,
+    attachedRuleOrder,
     attachmentError,
     clearAttachmentError,
     rulesLoadState,
@@ -83,6 +107,40 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
   const attachedRules = filteredRules.filter((rule) => coverage.has(rule.id));
   const unattachedRules = filteredRules.filter((rule) => !coverage.has(rule.id));
   const orderedRules = [...attachedRules, ...unattachedRules];
+
+  /**
+   * For one row: which of the running rules that reach it would act if they
+   * all matched in the same check (#323). Rules only compete on the same
+   * entity, so they are grouped by the level they act on.
+   */
+  const precedence = useMemo((): PrecedenceGroup[] => {
+    if (entityIds.length !== 1) return [];
+    const [entityId] = entityIds;
+    const reaches = (scope: RuleScope | undefined) =>
+      Boolean(scope) &&
+      (scope!.level === 'account' ||
+        (scope!.level === level && scope!.ids.includes(entityId)) ||
+        (level === 'adset' && scope!.level === 'campaign' && Boolean(campaignId) &&
+          scope!.ids.includes(campaignId!)));
+    const byId = new Map(rules.map((rule) => [rule.id, rule]));
+    const running = attachedRuleOrder
+      .map((id) => byId.get(id))
+      .filter((rule): rule is RuleItem =>
+        Boolean(rule) && rule!.status === 'active' && !rule!.needsReview &&
+        reaches(attachedRuleScopes[rule!.id]));
+    return LEVELS_UNDER[level]
+      .map((ruleLevel) => ({
+        level: ruleLevel,
+        lines: explainRulePrecedence(
+          running
+            .filter((rule) => (rule.preset.level ?? 'adset') === ruleLevel)
+            .map((rule) => ({ id: rule.id, name: rule.name, action: rule.actionKind })),
+        ),
+      }))
+      .filter((group) => group.lines.length > 0);
+  }, [entityIds, level, campaignId, rules, attachedRuleOrder, attachedRuleScopes]);
+  const precedenceLineCount = precedence.reduce((count, group) => count + group.lines.length, 0);
+  const anyGivesWay = precedence.some((group) => group.lines.some((line) => line.role === 'gives_way'));
 
   useEffect(() => {
     if (!isOpen) return;
@@ -155,7 +213,10 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
 
   const popoverWidth = 279;
   const rowHeight = coarse ? 44 : 32;
-  const estimatedHeight = Math.min(44 + orderedRules.length * rowHeight + 16, 395);
+  const precedenceHeight = precedence.length > 0 ? Math.min(52 + precedenceLineCount * 34, 196) : 0;
+  const statesHeight = singleEntityId && attachedRules.length > 0 ? 184 : 0;
+  const estimatedHeight =
+    Math.min(44 + orderedRules.length * rowHeight + 16, 395) + precedenceHeight + statesHeight;
   const margin = 8;
   let left: number;
   let top: number;
@@ -389,6 +450,8 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
         width: popoverWidth,
         minWidth: 277,
         maxWidth: 500,
+        // Status and "If they all match" under the list can outgrow a phone; the list gives way.
+        maxHeight: `calc(100dvh - ${top + margin}px)`,
         display: 'flex',
         flexDirection: 'column',
         overflow: 'visible',
@@ -485,7 +548,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
         id={listId}
         role="listbox"
         aria-multiselectable="true"
-        style={{ maxHeight: 340, overflowY: 'auto', padding: '2px 0' }}
+        style={{ maxHeight: 340, minHeight: 0, overflowY: 'auto', padding: '2px 0' }}
       >
         <ul role="presentation" style={{ margin: 0, padding: 0, listStyle: 'none' }}>
           {attachedRules.map((rule, index) => renderOption(rule, index))}
@@ -513,6 +576,55 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
           )}
         </ul>
       </div>
+
+      {precedence.length > 0 && (
+        <section
+          aria-label="If these rules all match"
+          style={{
+            flexShrink: 0,
+            maxHeight: 196,
+            overflowY: 'auto',
+            padding: '8px 14px 10px',
+            borderTop: '1px solid var(--color-border-primary)',
+            fontSize: 11,
+            lineHeight: '15px',
+            color: 'var(--text-tertiary)',
+          }}
+        >
+          <div style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>If they all match</div>
+          {precedence.map((group) => (
+            <div key={group.level} style={{ marginTop: 4 }}>
+              {(precedence.length > 1 || group.level !== level) && (
+                <div style={{ marginTop: 4 }}>{LEVEL_HEADINGS[group.level]}</div>
+              )}
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                {group.lines.map((line) => (
+                  <li key={line.rule.id} data-precedence-role={line.role} style={{ marginTop: 4 }}>
+                    <div
+                      style={{
+                        overflow: 'hidden',
+                        color: line.role === 'wins' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                        fontSize: 12,
+                        fontWeight: line.role === 'wins' ? 500 : 400,
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {line.rule.name}
+                    </div>
+                    <div>{line.note}</div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+          <p style={{ margin: '6px 0 0' }}>
+            One change per check: turn off, then budget −, budget +, turn on; equal ones in the
+            order shown. Alerts always fire.
+            {anyGivesWay && ' While a stronger rule waits to repeat, weaker ones wait too.'}
+          </p>
+        </section>
+      )}
 
       {singleEntityId && (attachedRules.length > 0 || (Array.isArray(entityStates) && entityStates.length > 0)) && (
         <section

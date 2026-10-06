@@ -197,6 +197,8 @@ class TestRuleEngine(unittest.TestCase):
                 "preset_id": 1,
                 "name": "Scale",
                 "action": "increase_budget",
+                # A raise needs a daily ceiling, or the rule is invalid and never matches.
+                "budget_max_daily": 100.0,
                 "conditions": [{"metric": "leads", "operator": "eq", "value": 0.0}],
             },
             {"preset_id": 2, "name": "Alert", "action": "notify_only"},
@@ -211,6 +213,12 @@ class TestRuleEngine(unittest.TestCase):
                 (RuleAction.DECREASE_BUDGET, 4),
                 (RuleAction.NOTIFY_ONLY, 2),
             ],
+        )
+        # Both cuts name the weaker raise as having given way (#323); the
+        # alert competes with nothing.
+        self.assertEqual(
+            [[rule["rule_id"] for rule in r.yielded_rules] for r in results],
+            [[1], [1], []],
         )
         # The single-result API still picks the strongest action.
         self.assertEqual(

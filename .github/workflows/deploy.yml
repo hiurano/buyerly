@@ -42,6 +42,7 @@ jobs:
           node scripts/check-hierarchy-parents.cjs
           node scripts/check-snooze-query.cjs
           node scripts/check-sessions.cjs
+          node scripts/check-rule-precedence.cjs
           npm run build
 
       - name: Upload built frontend

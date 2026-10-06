@@ -43,6 +43,7 @@ from rules.engine import (
     RuleCheck,
     RuleEngine,
     RuleEvaluationResult,
+    yielded_rule,
 )
 from services.inventory_cache import AdsetInventoryService, PostgreSQLInventoryCache
 from services.account_health import record_account_health
@@ -1107,15 +1108,26 @@ class MonitoringWorker:
         silences another rule doing the same. When all of them are on
         cooldown the first one still goes through, to be skipped and counted
         as before.
+
+        The rule that runs also names the same-kind rules listed after it as
+        having given way to it (#323); weaker kinds are already named by the
+        engine.
         """
         changes = [c for c in candidates if c.action != RuleAction.NOTIFY_ONLY]
         alerts = [c for c in candidates if c.action == RuleAction.NOTIFY_ONLY]
         if not changes:
             return alerts
-        for change in changes:
+        chosen = 0
+        for index, change in enumerate(changes):
             if not await self._is_cooling_down(session, account, change, now=now):
-                return [change, *alerts]
-        return [changes[0], *alerts]
+                chosen = index
+                break
+        change = changes[chosen]
+        change.yielded_rules = [
+            *(yielded_rule(later) for later in changes[chosen + 1:]),
+            *change.yielded_rules,
+        ]
+        return [change, *alerts]
 
     @staticmethod
     def _finish_execution(
