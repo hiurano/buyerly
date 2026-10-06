@@ -180,7 +180,7 @@ class TestInboxEmail(unittest.IsolatedAsyncioTestCase):
     async def test_only_priority_notifications_follows_the_priority_inbox(self):
         await self.add_event(event_type="NOTIFY_ONLY", message="alert")
         await self.add_event(event_type="MANUAL_PAUSE", actor_type="user", actor_id="someone", message="manual")
-        await self.add_event(event_type="ACCOUNT_DAY_STARTED", message="system")
+        await self.add_event(event_type="ACCOUNT_HEALTH_RECOVERED", message="system")
         only_priority = {"email": {"enabled": True, "priority_only": True, "kinds": ["system"]}}
         # Priority inbox on: rule alerts by type, manual pauses by a custom filter; the email kinds do not apply.
         await self.set_member(

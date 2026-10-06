@@ -710,6 +710,31 @@ try {
       await page.getByRole('button', { name: 'Connect', exact: true }).waitFor();
       assert.equal(telegram.connected, false);
 
+      // A rule alert opens its rule, its campaign and its ad set (#325).
+      savedDisplay = { unread_only: false, ordering: 'newest', show_snoozed: false, unread_first: false };
+      state.rows.push({
+        ...event(50, 1, {
+          event_type: 'NOTIFY_ONLY', action: 'NOTIFY_ONLY', message: 'Spend is $12 with no leads', kind: 'rule_alerts',
+          rule_name: 'Spend alert', details: { campaign_id: '777' },
+        }),
+        read: false, deleted: false, snoozed: null,
+      });
+      await page.goto(`${origin}/${workspace.slug}/inbox/50`);
+      const notification = page.getByRole('region', { name: 'Notification' });
+      const ruleLink = notification.getByRole('link', { name: 'Spend alert' });
+      await ruleLink.waitFor();
+      assert.equal(await ruleLink.getAttribute('href'), `/${workspace.slug}/rules/3`);
+      assert.equal(
+        await notification.getByRole('link', { name: 'Open in Ads Manager' }).getAttribute('href'),
+        `/${workspace.slug}/ads-manager/campaigns/777?account=act_1`,
+      );
+      assert.equal(
+        await notification.getByRole('link', { name: 'Ad set 50' }).getAttribute('href'),
+        `/${workspace.slug}/ads-manager/adsets/950?account=act_1`,
+      );
+      await ruleLink.click();
+      await page.waitForFunction((path) => location.pathname === path, `/${workspace.slug}/rules/3`);
+
       assert.deepEqual(errors, []);
       console.log(`Inbox: unread, open, J/U/Backspace/H, row menu, unreads only and display options passed at ${width}px`);
     } catch (error) {
