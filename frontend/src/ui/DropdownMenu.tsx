@@ -48,11 +48,11 @@ export const DropdownMenuItem: React.FC<
   DropdownMenuPrimitive.DropdownMenuItemProps
 > = ({ className = '', children, ...props }) => (
   <DropdownMenuPrimitive.Item
-    className={`group relative flex h-[32px] cursor-pointer select-none items-center pl-[14px] pr-[18px] text-[13px] font-[450] text-[var(--text-secondary)] whitespace-nowrap outline-none data-[highlighted]:text-[var(--text-primary)] ${className}`}
+    className={`group relative flex h-[32px] cursor-pointer select-none items-center [@media(hover:none)_and_(pointer:coarse)]:h-10 pl-[14px] pr-[18px] text-[13px] font-[450] text-[var(--text-secondary)] whitespace-nowrap outline-none data-[highlighted]:text-[var(--text-primary)] ${className}`}
     {...props}
   >
     {/* Inner Hover/Focus/Highlighted Pill */}
-    <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] h-[32px] rounded-[8px] bg-transparent group-hover:bg-[var(--menu-item-highlight)] group-focus:bg-[var(--menu-item-highlight)] group-data-[highlighted]:bg-[var(--menu-item-highlight)] group-hover:duration-0" />
+    <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] rounded-[8px] bg-transparent group-hover:bg-[var(--menu-item-highlight)] group-focus:bg-[var(--menu-item-highlight)] group-data-[highlighted]:bg-[var(--menu-item-highlight)] group-hover:duration-0" />
 
     {/* Item Content Layer */}
     <div className="relative z-10 flex w-full items-center justify-between gap-3 group-hover:text-[var(--text-primary)] group-data-[highlighted]:text-[var(--text-primary)] whitespace-nowrap">
@@ -67,7 +67,7 @@ export const DropdownMenuSubTrigger: React.FC<DropdownMenuPrimitive.DropdownMenu
   ...props
 }) => (
   <DropdownMenuPrimitive.SubTrigger
-    className={`group relative flex h-[32px] cursor-pointer select-none items-center px-[14px] text-[13px] font-[450] text-[var(--text-secondary)] outline-none data-[highlighted]:text-[var(--text-primary)] data-[state=open]:text-[var(--text-primary)] ${className}`}
+    className={`group relative flex h-[32px] cursor-pointer select-none items-center [@media(hover:none)_and_(pointer:coarse)]:h-10 px-[14px] text-[13px] font-[450] text-[var(--text-secondary)] outline-none data-[highlighted]:text-[var(--text-primary)] data-[state=open]:text-[var(--text-primary)] ${className}`}
     {...props}
   >
     <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] rounded-[8px] bg-transparent group-data-[highlighted]:bg-[var(--menu-item-highlight)] group-data-[state=open]:bg-[var(--menu-item-highlight)]" />
@@ -104,7 +104,7 @@ export const DropdownMenuRadioItem: React.FC<DropdownMenuPrimitive.DropdownMenuR
   ...props
 }) => (
   <DropdownMenuPrimitive.RadioItem
-    className={`group relative flex h-[32px] cursor-pointer select-none items-center px-[14px] text-[13px] font-[450] text-[var(--text-secondary)] outline-none data-[highlighted]:text-[var(--text-primary)] ${className}`}
+    className={`group relative flex h-[32px] cursor-pointer select-none items-center [@media(hover:none)_and_(pointer:coarse)]:h-10 px-[14px] text-[13px] font-[450] text-[var(--text-secondary)] outline-none data-[highlighted]:text-[var(--text-primary)] ${className}`}
     {...props}
   >
     <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] rounded-[8px] bg-transparent group-data-[highlighted]:bg-[var(--menu-item-highlight)]" />

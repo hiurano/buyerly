@@ -16,6 +16,7 @@ import {
   RULE_METRIC_LABELS,
   RULE_TIME_WINDOW_LABELS,
 } from '@/lib/rules';
+import { TOUCH_HEIGHT_CLASS as TOUCH_HEIGHT } from '@/lib/useMediaQuery';
 import type {
   RuleAction,
   RuleConditionPayload,
@@ -127,11 +128,12 @@ interface ConditionDraft {
 
 const EMPTY_CONDITION: ConditionDraft = { metric: 'cpl', operator: 'gt', value: '' };
 
+
 const PILL_CLASS =
-  'inline-flex h-[24px] items-center gap-1.5 rounded-full bg-[var(--item-hover-bg)] hover:bg-[var(--item-active-bg)] px-2.5 text-[12px] font-medium text-[var(--text-tertiary)] transition-colors outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]';
+  `inline-flex h-[24px] ${TOUCH_HEIGHT} items-center gap-1.5 rounded-full bg-[var(--item-hover-bg)] hover:bg-[var(--item-active-bg)] px-2.5 text-[12px] font-medium text-[var(--text-tertiary)] transition-colors outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]`;
 
 const FIELD_CLASS =
-  'h-[28px] rounded-[6px] bg-[var(--item-hover-bg)] px-2.5 text-[12px] font-medium text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none border border-transparent focus:border-[var(--action-primary)]';
+  `h-[28px] ${TOUCH_HEIGHT} rounded-[6px] bg-[var(--item-hover-bg)] px-2.5 text-[12px] font-medium text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none border border-transparent focus:border-[var(--action-primary)]`;
 
 export const CreateRuleModal: React.FC = () => {
   const {
@@ -352,7 +354,8 @@ export const CreateRuleModal: React.FC = () => {
         <div className="fixed inset-0 z-[501] flex items-start justify-center pt-[13vh] p-3 pointer-events-none overflow-y-auto">
           <Dialog.Content
             style={{
-              width: '750px',
+              // A phone gets the full width less the container's padding.
+              width: '100%',
               maxWidth: '750px',
               backgroundColor: 'var(--card-bg)',
               borderColor: 'var(--color-border-secondary)',
@@ -378,7 +381,7 @@ export const CreateRuleModal: React.FC = () => {
                   <button
                     type="button"
                     aria-label="Close"
-                    className="inline-flex h-[28px] w-[28px] items-center justify-center rounded-full text-[var(--text-tertiary)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] outline-none cursor-pointer"
+                    className="inline-flex h-[28px] w-[28px] [@media(hover:none)_and_(pointer:coarse)]:h-10 [@media(hover:none)_and_(pointer:coarse)]:w-10 items-center justify-center rounded-full text-[var(--text-tertiary)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] outline-none cursor-pointer"
                   >
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                       <path d="M2.97 2.97a.75.75 0 0 1 1.06 0L8 6.94l3.97-3.97a.75.75 0 1 1 1.06 1.06L9.06 8l3.97 3.97a.75.75 0 1 1-1.06 1.06L8 9.06l-3.97 3.97a.75.75 0 0 1-1.06-1.06L6.94 8 2.97 4.03a.75.75 0 0 1 0-1.06Z" />
@@ -648,7 +651,7 @@ export const CreateRuleModal: React.FC = () => {
                           type="button"
                           onClick={() => removeCondition(index)}
                           aria-label={`Remove condition ${index + 1}`}
-                          className="ml-auto inline-flex h-[28px] items-center rounded-[6px] px-2 text-[12px] text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
+                          className={`ml-auto inline-flex h-[28px] ${TOUCH_HEIGHT} items-center rounded-[6px] px-2 text-[12px] text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]`}
                         >
                           Remove
                         </button>
@@ -661,7 +664,7 @@ export const CreateRuleModal: React.FC = () => {
                   type="button"
                   onClick={addCondition}
                   disabled={conditions.length >= 20}
-                  className="self-start text-[12px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`self-start ${TOUCH_HEIGHT} text-[12px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50`}
                 >
                   + Add condition
                 </button>
@@ -692,6 +695,7 @@ export const CreateRuleModal: React.FC = () => {
                     type="submit"
                     variant="primary"
                     size="compact"
+                    className={TOUCH_HEIGHT}
                     disabled={!canSubmit}
                   >
                     {submitLabel}

@@ -301,6 +301,18 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
               Rules
             </h2>
           </div>
+
+          {/* Always shown, at every width: the "+" on group headers needs a pointer over them. */}
+          <Tooltip content="Create new rule" shortcut="C">
+            <button
+              type="button"
+              aria-label="New rule"
+              onClick={() => openCreateRuleModal()}
+              className="flex h-[28px] w-[28px] items-center justify-center rounded-full border border-transparent text-[var(--text-tertiary)] outline-none transition-all hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] [@media(hover:none)_and_(pointer:coarse)]:h-10 [@media(hover:none)_and_(pointer:coarse)]:w-10"
+            >
+              <LinearPlusIcon size={14} />
+            </button>
+          </Tooltip>
         </div>
 
         {/* Tier 2: View Filter Tabs & Action Buttons (Height: 43px, NO border bottom) */}
