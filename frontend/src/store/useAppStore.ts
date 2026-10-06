@@ -171,6 +171,8 @@ export type SettingsSection =
   | 'connected-accounts'
   | 'security'
   | 'members';
+/** Linear's "Open issue…" family: what each O-then-letter palette opens. */
+export type OpenPaletteKind = 'campaign' | 'adset' | 'ad' | 'rule' | 'account' | 'settings';
 export type InterfaceTheme = 'system' | 'light' | 'dark';
 export type { InboxDisplay };
 
@@ -253,6 +255,15 @@ interface AppState {
   attachmentsLoadState: RulesLoadState;
   isCommandMenuOpen: boolean;
   setCommandMenuOpen: (open: boolean) => void;
+  /** The "Open …" palette on screen (O then a letter), if any. */
+  openPalette: OpenPaletteKind | null;
+  setOpenPalette: (kind: OpenPaletteKind | null) => void;
+  /**
+   * "kind:id" of the record whose actions menu opens once its row is on
+   * screen: Alt+Enter ("More actions") in an "Open …" palette.
+   */
+  recordActionsFor: string | null;
+  setRecordActionsFor: (key: string | null) => void;
   workspaceName: string;
   inboxUnreadCount: number;
   inboxPriorityUnreadCount: number;
@@ -465,7 +476,7 @@ function emptyWorkspaceState() {
     createRuleTargetGroupId: undefined, selectedFilterRuleGroupId: null,
     rulesFilterClauses: [], rulesCollapsedGroups: [], pendingDeletion: null,
     adsManagerFilters: { campaigns: [], adsets: [], ads: [] },
-    isCommandMenuOpen: false, isDisplayOptionsOpen: false, isRulesDisplayOptionsOpen: false,
+    isCommandMenuOpen: false, openPalette: null, recordActionsFor: null, isDisplayOptionsOpen: false, isRulesDisplayOptionsOpen: false,
   };
 }
 
@@ -499,6 +510,10 @@ export const useAppStore = create<AppState>((set, get) => {
   attachmentsLoadState: 'idle',
   isCommandMenuOpen: false,
   setCommandMenuOpen: (open) => set({ isCommandMenuOpen: open }),
+  openPalette: null,
+  setOpenPalette: (kind) => set({ openPalette: kind }),
+  recordActionsFor: null,
+  setRecordActionsFor: (key) => set({ recordActionsFor: key }),
   workspaceName: 'buyerly',
   setWorkspaceName: (name) => set({ workspaceName: name }),
   inboxUnreadCount: 0,

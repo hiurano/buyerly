@@ -56,6 +56,8 @@ import { useCampaignViewFilters } from './useCampaignViewFilters';
 import { LinearFacetSidebar } from '@/ui/LinearFacetSidebar';
 import { SelectionDock } from '@/ui/SelectionDock';
 import { SelectionCommandMenu } from '@/ui/SelectionCommandMenu';
+import { openCommandMenu } from '@/components/command/CommandMenu';
+import { takeRecordActions } from '@/components/command/OpenPalette';
 import { useRowSelection, type SelectionAction } from '@/ui/useRowSelection';
 import { useRevealRow } from '@/ui/useRevealRow';
 import type { FilterClause, FilterFieldDefinition } from '@/components/filters/filterModel';
@@ -567,6 +569,12 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
       }
       return filteredOut || collapsed.length > 0;
     },
+    onDone: (shown) => {
+      // Alt+Enter in an "Open …" palette: the row's own actions, as Linear's "More actions".
+      if (!reveal || !takeRecordActions(`${entityLevels[reveal.entity]}:${reveal.id}`) || !shown) return;
+      setCampaignSelection([reveal.id]);
+      selection.setMenuOpen(true);
+    },
     missing: () => ({
       title: "Couldn't open",
       message: `${revealedNoun} ${reveal?.id ?? ''}.`,
@@ -830,8 +838,11 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
       <SelectionCommandMenu
         open={selection.menuOpen}
         onOpenChange={selection.setMenuOpen}
-        scopeLabel={`${selection.count} ${selection.count === 1 ? selectionNoun.singular : selectionNoun.plural}`}
+        scope={selection.count === 1
+          ? { label: rowName(selectedCampaignIds[0]) }
+          : { label: `${selection.count} ${selectionNoun.plural}` }}
         actions={selectionActions}
+        onClearScope={openCommandMenu}
       />
 
       <MetaConnectionDialog

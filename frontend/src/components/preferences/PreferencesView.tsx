@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { useAppStore, type InterfaceTheme, type SettingsSection } from '@/store/useAppStore';
+import { useAppStore, type InterfaceTheme } from '@/store/useAppStore';
+import { SETTINGS_PAGE_KEYWORDS } from '@/lib/settingsPages';
 import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
 import type { SessionUser, Workspace } from '@/lib/types';
 import { ProfileSection } from './ProfileSection';
@@ -12,7 +13,7 @@ import {
 } from './NotificationsSection';
 import { ConnectedAccountsSection } from './ConnectedAccountsSection';
 import { SecuritySection } from './SecuritySection';
-import { LinearConnectedIcon, LinearUserLockIcon } from '@/icons/LinearIcons';
+import { SettingsPageIcon } from './SettingsPageIcon';
 import { LinearToggle } from '@/ui/LinearToggle';
 import { findModelContext, setWebMcpEnabled, useWebMcpEnabled } from '@/webmcp/register';
 import { SidebarBackdrop, useSidebarDrawer } from '@/components/sidebar/SidebarDrawer';
@@ -27,18 +28,7 @@ const themeOptions: Array<{
   { value: 'dark', label: 'Dark' },
 ];
 
-/** Keywords the settings search matches against, per section in the sidebar. */
-const sectionKeywords: Record<
-  Exclude<SettingsSection, 'priority-notifications' | 'email-notifications' | 'telegram-notifications'>,
-  string
-> = {
-  preferences: 'preferences interface theme appearance ai assistant agent webmcp chrome',
-  profile: 'profile account email name avatar',
-  notifications: 'notifications inbox priority inbox custom filters push email telegram',
-  security: 'security access sessions devices auth log out logout revoke sign in',
-  'connected-accounts': 'connected accounts telegram connect disconnect',
-  members: 'members invite invitations people team users roles',
-};
+const sectionKeywords = SETTINGS_PAGE_KEYWORDS;
 
 interface PreferencesViewProps {
   user: SessionUser;
@@ -75,6 +65,18 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
       sectionKeywords[key].includes(query)
     );
   }, [searchQuery]);
+
+  useEffect(() => {
+    // Linear's "Back to app": Ctrl+Esc leaves Settings for the page it came from.
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || !event.ctrlKey || event.altKey || event.shiftKey || event.metaKey) return;
+      if (document.querySelector('[role="dialog"], [role="alertdialog"], [cmdk-root]')) return;
+      event.preventDefault();
+      setActiveTab(lastAppTab);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [lastAppTab, setActiveTab]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -168,26 +170,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                   setSection('preferences');
                 }}
               >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  role="img"
-                  focusable="false"
-                  aria-hidden="true"
-                  className="preferences-nav-icon"
-                >
-                  <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M7 2.5C8.11933 2.5 9.06613 3.23584 9.38477 4.25H14.75C15.1642 4.25 15.5 4.58579 15.5 5C15.5 5.41421 15.1642 5.75 14.75 5.75H9.38477C9.06613 6.76416 8.11933 7.5 7 7.5C5.88067 7.5 4.93387 6.76416 4.61523 5.75H2.25C1.83579 5.75 1.5 5.41421 1.5 5C1.5 4.58579 1.83579 4.25 2.25 4.25H4.61523C4.93387 3.23584 5.88067 2.5 7 2.5ZM7 4C6.44772 4 6 4.44772 6 5C6 5.55228 6.44772 6 7 6C7.55228 6 8 5.55228 8 5C8 4.44772 7.55228 4 7 4Z"
-                  />
-                  <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M10 13.5C8.88067 13.5 7.93387 12.7642 7.61523 11.75H2.25C1.83579 11.75 1.5 11.4142 1.5 11C1.5 10.5858 1.83579 10.25 2.25 10.25H7.61523C7.93387 9.23584 8.88067 8.5 10 8.5C11.1193 8.5 12.0661 9.23584 12.3848 10.25H14.75C15.1642 10.25 15.5 10.5858 15.5 11C15.5 11.4142 15.1642 11.75 14.75 11.75H12.3848C12.0661 12.7642 11.1193 13.5 10 13.5ZM10 12C10.5523 12 11 11.5523 11 11C11 10.4477 10.5523 10 10 10C9.44772 10 9 10.4477 9 11C9 11.5523 9.44772 12 10 12Z"
-                  />
-                </svg>
+                <SettingsPageIcon section="preferences" className="preferences-nav-icon" />
                 <span className="preferences-nav-label">Preferences</span>
               </a>
             )}
@@ -201,22 +184,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                   setSection('profile');
                 }}
               >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  role="img"
-                  focusable="false"
-                  aria-hidden="true"
-                  className="preferences-nav-icon"
-                >
-                  <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M8 2C6.20507 2 4.75 3.45507 4.75 5.25C4.75 7.04493 6.20507 8.5 8 8.5C9.79493 8.5 11.25 7.04493 11.25 5.25C11.25 3.45507 9.79493 2 8 2ZM6.25 5.25C6.25 4.2835 7.0335 3.5 8 3.5C8.9665 3.5 9.75 4.2835 9.75 5.25C9.75 6.2165 8.9665 7 8 7C7.0335 7 6.25 6.2165 6.25 5.25Z"
-                  />
-                  <path d="M8 9.75C5.21979 9.75 2.9082 11.4568 2.28577 13.7568C2.17759 14.1566 2.41345 14.5683 2.81323 14.6764C3.21301 14.7846 3.62468 14.5487 3.73286 14.149C4.16576 12.4632 5.90104 11.25 8 11.25C10.099 11.25 11.8342 12.4632 12.2671 14.149C12.3753 14.5487 12.787 14.7846 13.1868 14.6764C13.5865 14.5683 13.8224 14.1566 13.7142 13.7568C13.0918 11.4568 10.7802 9.75 8 9.75Z" />
-                </svg>
+                <SettingsPageIcon section="profile" className="preferences-nav-icon" />
                 <span className="preferences-nav-label">Profile</span>
               </a>
             )}
@@ -230,18 +198,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                   setSection('notifications');
                 }}
               >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  role="img"
-                  focusable="false"
-                  aria-hidden="true"
-                  className="preferences-nav-icon"
-                >
-                  <path d="M8.5 2.75H5A2.25 2.25 0 0 0 2.75 5v6A2.25 2.25 0 0 0 5 13.25h6A2.25 2.25 0 0 0 13.25 11V7.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                  <circle cx="12.25" cy="3.75" r="2" />
-                </svg>
+                <SettingsPageIcon section="notifications" className="preferences-nav-icon" />
                 <span className="preferences-nav-label">Notifications</span>
               </a>
             )}
@@ -255,7 +212,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                   setSection('security');
                 }}
               >
-                <LinearUserLockIcon size={16} className="preferences-nav-icon" />
+                <SettingsPageIcon section="security" className="preferences-nav-icon" />
                 <span className="preferences-nav-label">Security &amp; access</span>
               </a>
             )}
@@ -269,7 +226,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                   setSection('connected-accounts');
                 }}
               >
-                <LinearConnectedIcon size={16} className="preferences-nav-icon" />
+                <SettingsPageIcon section="connected-accounts" className="preferences-nav-icon" />
                 <span className="preferences-nav-label">Connected accounts</span>
               </a>
             )}
@@ -287,20 +244,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                   setSection('members');
                 }}
               >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  role="img"
-                  focusable="false"
-                  aria-hidden="true"
-                  className="preferences-nav-icon"
-                >
-                  <path d="M6 7.5C7.51878 7.5 8.75 6.26878 8.75 4.75C8.75 3.23122 7.51878 2 6 2C4.48122 2 3.25 3.23122 3.25 4.75C3.25 6.26878 4.48122 7.5 6 7.5ZM6 6C5.30964 6 4.75 5.44036 4.75 4.75C4.75 4.05964 5.30964 3.5 6 3.5C6.69036 3.5 7.25 4.05964 7.25 4.75C7.25 5.44036 6.69036 6 6 6Z" />
-                  <path d="M1.5 13.25C1.5 11.1789 3.17893 9.5 5.25 9.5H6.75C8.82107 9.5 10.5 11.1789 10.5 13.25C10.5 13.6642 10.1642 14 9.75 14C9.33579 14 9 13.6642 9 13.25C9 12.0074 7.99264 11 6.75 11H5.25C4.00736 11 3 12.0074 3 13.25C3 13.6642 2.66421 14 2.25 14C1.83579 14 1.5 13.6642 1.5 13.25Z" />
-                  <path d="M10.75 7.5C11.9926 7.5 13 6.49264 13 5.25C13 4.00736 11.9926 3 10.75 3C10.3358 3 10 3.33579 10 3.75C10 4.16421 10.3358 4.5 10.75 4.5C11.1642 4.5 11.5 4.83579 11.5 5.25C11.5 5.66421 11.1642 6 10.75 6C10.3358 6 10 6.33579 10 6.75C10 7.16421 10.3358 7.5 10.75 7.5Z" />
-                  <path d="M11.5 9.75C11.5 9.33579 11.8358 9 12.25 9C13.7688 9 15 10.2312 15 11.75V13.25C15 13.6642 14.6642 14 14.25 14C13.8358 14 13.5 13.6642 13.5 13.25V11.75C13.5 11.0596 12.9404 10.5 12.25 10.5C11.8358 10.5 11.5 10.1642 11.5 9.75Z" />
-                </svg>
+                <SettingsPageIcon section="members" className="preferences-nav-icon" />
                 <span className="preferences-nav-label">Members</span>
               </a>
             )}

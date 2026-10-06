@@ -186,6 +186,51 @@ export function clearRecentSearches(scope: string | null): void {
   }
 }
 
+/**
+ * Records opened from search, the command menu or an "Open …" palette, newest
+ * first, kept per member and workspace: the palette lists them before anything
+ * is typed, as Linear's "Open issue…" lists recently opened issues.
+ */
+const OPENED_RECORDS_SHOWN = 8;
+const openedRecordsKey = (scope: string) => `buyerly-opened-records:${scope}`;
+const KINDS = new Set<string>(Object.keys(SEARCH_KIND_LABELS));
+
+function readAllOpenedRecords(scope: string): SearchResult[] {
+  try {
+    const stored: unknown = JSON.parse(window.localStorage.getItem(openedRecordsKey(scope)) ?? '[]');
+    if (!Array.isArray(stored)) return [];
+    return stored.filter((value): value is SearchResult =>
+      typeof value === 'object' && value !== null
+      && KINDS.has((value as SearchResult).kind)
+      && typeof (value as SearchResult).id === 'string'
+      && typeof (value as SearchResult).name === 'string');
+  } catch {
+    return [];
+  }
+}
+
+export function readOpenedRecords(scope: string | null, kind: SearchKind): SearchResult[] {
+  if (!scope) return [];
+  return readAllOpenedRecords(scope).filter((record) => record.kind === kind).slice(0, OPENED_RECORDS_SHOWN);
+}
+
+export function rememberOpenedRecord(scope: string | null, result: SearchResult): void {
+  if (!scope) return;
+  const same = (record: SearchResult) => record.kind === result.kind && record.id === result.id;
+  const perKind = new Map<SearchKind, number>();
+  const records = [result, ...readAllOpenedRecords(scope).filter((record) => !same(record))].filter((record) => {
+    // Each kind keeps its own few, so many campaigns never push the rules out.
+    const count = (perKind.get(record.kind) ?? 0) + 1;
+    perKind.set(record.kind, count);
+    return count <= OPENED_RECORDS_SHOWN;
+  });
+  try {
+    window.localStorage.setItem(openedRecordsKey(scope), JSON.stringify(records));
+  } catch {
+    // A browser without storage still opens records; it just forgets them.
+  }
+}
+
 /** Where the second Esc on the search page goes back to; set when search opens. */
 let searchReturnPath: string | null = null;
 

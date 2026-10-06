@@ -8,6 +8,7 @@ import type { Workspace } from '@/lib/types';
 import { openSearchPage } from '@/components/search/openSearchPage';
 import { StatusMark } from '@/components/search/SearchView';
 import {
+  rememberOpenedRecord,
   rememberSearchReturnPath,
   searchPagePath,
   searchResultPath,
@@ -16,10 +17,14 @@ import {
   type SearchResult,
 } from '@/lib/search';
 import { bestCommandScore } from '@/lib/commandFilter';
-import { goToShortcut } from '@/lib/shortcuts';
+import { goToShortcut, openShortcut, OPEN_KEYS } from '@/lib/shortcuts';
+import type { OpenPaletteKind } from '@/store/useAppStore';
+import { OpenPaletteIcon, OPEN_PALETTE_LABELS, openOpenPalette } from './OpenPalette';
+import { SETTINGS_PAGE_GROUPS, SETTINGS_PAGE_KEYWORDS } from '@/lib/settingsPages';
+import { SettingsPageIcon } from '@/components/preferences/SettingsPageIcon';
 import { isSmallScreen } from '@/lib/useMediaQuery';
 import { LinearPlusIcon, LinearSearchIcon, LinearSidebarLeftToggleIcon } from '@/icons/LinearIcons';
-import { COMMAND_MENU_CLASSES } from '@/ui/SelectionCommandMenu';
+import { COMMAND_MENU_CLASSES, CommandMenuFooterKeys } from '@/ui/SelectionCommandMenu';
 import { usePageGroup, type PaletteCommand, type PaletteGroup } from './pageCommands';
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, another palette. */
@@ -29,6 +34,9 @@ const OPEN_LAYER_SELECTOR = [
   '[role="menu"]:not([data-state="closed"])',
   '[cmdk-root]',
 ].join(', ');
+
+/** Settings' own search field in its sidebar. */
+const SETTINGS_SEARCH_SELECTOR = '.preferences-search-input';
 
 /** Inputs that take no typed text, so `/` on them still opens search. */
 const NON_TEXT_INPUTS = new Set(['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'color', 'file', 'image']);
@@ -91,13 +99,18 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
       if (event.key !== '/' || modified || event.altKey || isOpen) return;
       if (isTypingTarget(event.target) || document.querySelector(OPEN_LAYER_SELECTOR)) return;
       event.preventDefault();
+      // In Settings `/` searches the settings, as Linear's "Search settings /".
+      if (useAppStore.getState().activeTab === 'preferences') {
+        document.querySelector<HTMLInputElement>(SETTINGS_SEARCH_SELECTOR)?.focus();
+        return;
+      }
       openSearchPage();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [setCommandMenuOpen]);
 
-  // Settings renders no menu: one still open when this unmounts must not reopen on the way back.
+  // A menu still open when the workspace closes must not reopen in the next one.
   useEffect(() => () => setCommandMenuOpen(false), [setCommandMenuOpen]);
 
   const choose = (action: () => void) => {
@@ -142,6 +155,8 @@ const FOOTER_HINT_CLASS = 'flex h-6 items-center gap-1.5 px-2 text-[12px] font-m
 
 const arrowIcon = <ArrowRight size={14} strokeWidth={1.75} />;
 
+const OPEN_PALETTE_KINDS = Object.keys(OPEN_KEYS) as OpenPaletteKind[];
+
 interface CommandPaletteProps {
   workspace: Workspace;
   navigate: (path: string, replace?: boolean) => void;
@@ -155,6 +170,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
   const openCreateRuleModal = useAppStore((state) => state.openCreateRuleModal);
   const isSidebarCollapsed = useAppStore((state) => state.isSidebarCollapsed);
   const toggleSidebarCollapsed = useAppStore((state) => state.toggleSidebarCollapsed);
+  const scope = useAppStore((state) => state.workspaceScope);
+  const setSettingsSection = useAppStore((state) => state.setSettingsSection);
+  const setActiveTab = useAppStore((state) => state.setActiveTab);
+  const lastAppTab = useAppStore((state) => state.lastAppTab);
   const pageGroup = usePageGroup();
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState('');
@@ -176,7 +195,26 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
     go(searchPagePath(slug, { query: text, tab: 'all', statuses: [], accounts: [], order: 'relevance', includeDeleted: false }));
   };
 
+  const inSettings = activeTab === 'preferences';
+  // In Settings Linear's menu opens with the settings pages, grouped as in "Open settings…".
+  const settingsGroups: PaletteGroup[] = inSettings
+    ? SETTINGS_PAGE_GROUPS.map((group) => ({
+      heading: group.heading,
+      commands: group.pages.map((page) => ({
+        id: `settings-${page.section}`,
+        label: page.label,
+        keywords: SETTINGS_PAGE_KEYWORDS[page.section].split(' '),
+        icon: <SettingsPageIcon section={page.section} size={14} />,
+        run: () => {
+          setSettingsSection(page.section);
+          setActiveTab('preferences');
+        },
+      })),
+    }))
+    : [];
+
   const groups: PaletteGroup[] = [
+    ...settingsGroups,
     ...(pageGroup ? [pageGroup] : []),
     {
       heading: 'Rules',
@@ -210,8 +248,17 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
         { id: 'ads-manager', label: 'Go to Ads Manager', keywords: ['campaigns', 'ad sets', 'ads', 'meta'], icon: arrowIcon, shortcut: goToShortcut('campaigns'), run: () => go(pathForTab(slug, 'campaigns', campaignFilterTab)) },
         { id: 'rules', label: 'Go to rules', keywords: ['automation'], icon: arrowIcon, shortcut: goToShortcut('rules'), run: () => go(rulesPath) },
         { id: 'settings', label: 'Go to settings', keywords: ['preferences', 'profile', 'members', 'notifications'], icon: arrowIcon, shortcut: goToShortcut('preferences'), run: () => go(pathForTab(slug, 'preferences')) },
-        // The sidebar is a drawer on a phone; [ collapses it on a wider screen.
-        ...(isSmallScreen()
+        // Linear's "Open issue…" and its siblings, each its own palette.
+        ...OPEN_PALETTE_KINDS.map((kind) => ({
+          id: `open-${kind}`,
+          label: OPEN_PALETTE_LABELS[kind],
+          keywords: ['open', 'jump', 'find'],
+          icon: <OpenPaletteIcon kind={kind} size={14} />,
+          shortcut: openShortcut(kind),
+          run: () => openOpenPalette(kind),
+        })),
+        // The sidebar is a drawer on a phone; [ collapses it on a wider screen. Settings has its own.
+        ...(isSmallScreen() || activeTab === 'preferences'
           ? []
           : [{
             id: 'toggle-sidebar',
@@ -220,6 +267,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
             shortcut: '[',
             run: toggleSidebarCollapsed,
           }]),
+        // Linear's way out of Settings, also on Ctrl+Esc there.
+        ...(inSettings
+          ? [{ id: 'back-to-app', label: 'Back to app', icon: arrowIcon, shortcut: 'Ctrl Esc', run: () => setActiveTab(lastAppTab) }]
+          : []),
       ],
     },
   ];
@@ -261,7 +312,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
       <p role="status" className="sr-only">{text ? `Showing ${shownCount} items` : 'Showing all items'}</p>
       <Command.List className={`min-h-0 flex-1 ${COMMAND_MENU_CLASSES.list}`}>
         {shownGroups.map((group) => (
-          <Command.Group key={group.heading} heading={group.heading} className={COMMAND_MENU_CLASSES.group}>
+          <Command.Group key={group.heading || 'pages'} heading={group.heading || undefined} className={COMMAND_MENU_CLASSES.group}>
             {group.commands.map((command) => (
               <Command.Item
                 key={command.id}
@@ -284,7 +335,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
                 key={`${result.kind}:${result.id}`}
                 value={`result:${result.kind}:${result.id}`}
                 aria-label={quickResultName(result)}
-                onSelect={() => choose(() => go(searchResultPath(slug, result)))}
+                onSelect={() => choose(() => {
+                  rememberOpenedRecord(scope, result);
+                  go(searchResultPath(slug, result));
+                })}
                 className={COMMAND_MENU_CLASSES.item}
               >
                 <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true"><StatusMark result={result} /></span>
@@ -310,7 +364,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
         // Linear's footer: 35px under a rule, each hint a small button with its keys boxed.
         <div className="flex h-[35px] shrink-0 items-center gap-1.5 border-t border-[var(--command-menu-border)] px-1">
           <span className={FOOTER_HINT_CLASS}>
-            <FooterKeys keys={['↵']} />
+            <CommandMenuFooterKeys keys={['↵']} />
             <span>{onRecord ? 'Open' : 'Select'}</span>
           </span>
           <button
@@ -320,7 +374,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
             onClick={() => choose(advancedSearch)}
           >
             <span>Advanced search</span>
-            <FooterKeys keys={['Ctrl', '/']} />
+            <CommandMenuFooterKeys keys={['Ctrl', '/']} />
           </button>
         </div>
       )}
@@ -394,20 +448,6 @@ function useQuickResults(text: string): SearchResult[] | null {
 
   return answer?.results ?? null;
 }
-
-/** The footer's smaller boxed keys: 19px high, 2px inside. */
-const FooterKeys: React.FC<{ keys: string[] }> = ({ keys }) => (
-  <span className="flex items-center gap-[3px]" aria-hidden="true">
-    {keys.map((key) => (
-      <kbd
-        key={key}
-        className="inline-flex h-[19px] min-w-[18px] items-center justify-center rounded-[3px] border border-[var(--command-menu-kbd-border)] p-0.5 font-sans text-[12px] font-medium leading-none text-[var(--text-tertiary)]"
-      >
-        {key}
-      </kbd>
-    ))}
-  </span>
-);
 
 const KEY_NAMES: Record<string, string> = { Shift: '⇧', Alt: 'Alt', Ctrl: 'Ctrl' };
 const SEQUENCE_PREFIXES = new Set(['G', 'O', 'N']);

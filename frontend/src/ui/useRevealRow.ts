@@ -14,6 +14,8 @@ interface RevealRowOptions {
   show: () => boolean;
   /** The failure toast for a row the list cannot show. */
   missing: () => Omit<ToastOptions, 'tone'>;
+  /** Once per navigation: the row is on screen and focused (true) or was reported missing. */
+  onDone?: (shown: boolean) => void;
 }
 
 /**
@@ -23,7 +25,7 @@ interface RevealRowOptions {
  * it is cleared first; a row the list does not hold is reported, never
  * skipped in silence. Each navigation is handled once.
  */
-export function useRevealRow({ id, navigationKey, ready, exists, show, missing }: RevealRowOptions): void {
+export function useRevealRow({ id, navigationKey, ready, exists, show, missing, onDone }: RevealRowOptions): void {
   const handled = useRef<number | null>(null);
   const cleared = useRef<number | null>(null);
 
@@ -34,6 +36,7 @@ export function useRevealRow({ id, navigationKey, ready, exists, show, missing }
     const report = () => {
       handled.current = navigationKey;
       toast.show({ tone: 'error', ...missing() });
+      onDone?.(false);
     };
     if (!exists) {
       report();
@@ -55,5 +58,6 @@ export function useRevealRow({ id, navigationKey, ready, exists, show, missing }
     // The list can load after Ctrl/Cmd+K or another dialog opened: the row must not take its field's focus.
     const holder = document.activeElement?.closest('[role="dialog"], [role="alertdialog"], [cmdk-root]');
     if (!holder) row.focus({ preventScroll: true });
+    onDone?.(true);
   });
 }

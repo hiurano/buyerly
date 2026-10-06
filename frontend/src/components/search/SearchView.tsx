@@ -8,6 +8,7 @@ import {
   clearRecentSearches,
   parseSearchParams,
   readRecentSearches,
+  rememberOpenedRecord,
   rememberSearch,
   searchFiltersFor,
   searchPagePath,
@@ -76,7 +77,7 @@ const RULE_STATUS_LABELS: Record<string, string> = {
 };
 
 /** Delivery or run state in words, never by colour alone. */
-function statusLabel(result: SearchResult): string {
+export function statusLabel(result: SearchResult): string {
   if (result.kind === 'account' || !result.status) return '';
   if (result.kind === 'rule') return RULE_STATUS_LABELS[result.status] ?? '';
   return humanizeMetaStatus(result.status);
@@ -86,7 +87,7 @@ function statusLabel(result: SearchResult): string {
 const isDayOnly = (result: SearchResult) => result.kind !== 'rule' && result.kind !== 'account';
 
 /** The short age on the right, as Linear's "5d": whole days for a day, Linear's units for a moment. */
-function formatAge(result: SearchResult, now: Date = new Date()): string {
+export function formatAge(result: SearchResult, now: Date = new Date()): string {
   if (!result.updated_at) return '';
   const date = new Date(result.updated_at);
   if (Number.isNaN(date.getTime())) return '';
@@ -102,7 +103,7 @@ function formatAge(result: SearchResult, now: Date = new Date()): string {
 }
 
 /** The hover title on the age, as Linear's "Updated on Sat Aug 29, 7:57 AM". */
-function formatAgeTitle(result: SearchResult): string {
+export function formatAgeTitle(result: SearchResult): string {
   if (!result.updated_at) return '';
   const date = new Date(result.updated_at);
   const day = new Intl.DateTimeFormat('en-US', {
@@ -141,6 +142,28 @@ export const StatusMark: React.FC<{ result: SearchResult }> = ({ result }) => {
     </svg>
   );
 };
+
+/** A record's facts under its name: the search page's preview and the "Open …" palettes' Quick look. */
+export const SearchResultFacts: React.FC<{ result: SearchResult; className?: string; labelWidth?: number }> = ({
+  result,
+  className = '',
+  labelWidth = 120,
+}) => (
+  <dl className={`border-t border-[var(--color-border-primary)] text-[13px] ${className}`}>
+    {[
+      ['Status', statusLabel(result)],
+      [result.kind === 'ad' ? 'Ad set' : 'Campaign', result.parent_name],
+      ['Ad account', result.kind === 'account' ? '' : result.account_name],
+      [result.kind === 'rule' ? 'Rule ID' : 'Meta ID', result.id],
+      [isDayOnly(result) ? 'First synced' : result.kind === 'rule' ? 'Updated' : 'Added', formatAgeTitle(result).replace(/^.* on /, '')],
+    ].filter(([, value]) => value).map(([label, value]) => (
+      <div key={label} className="flex gap-4 border-b border-[var(--color-border-primary)] py-2.5">
+        <dt className="shrink-0 text-[var(--text-tertiary)]" style={{ width: labelWidth }}>{label}</dt>
+        <dd className="min-w-0 select-text break-words text-[var(--text-secondary)]">{value}</dd>
+      </div>
+    ))}
+  </dl>
+);
 
 /** Linear's empty search: small record marks around a magnifier. */
 const SearchIllustration: React.FC = () => (
@@ -335,7 +358,10 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
     navigate(takeSearchReturnPath() ?? pathForTab(slug, lastAppTab, campaignFilterTab));
   }, [campaignFilterTab, lastAppTab, navigate, slug]);
 
-  const goTo = useCallback((result: SearchResult) => navigate(searchResultPath(slug, result)), [navigate, slug]);
+  const goTo = useCallback((result: SearchResult) => {
+    rememberOpenedRecord(scope, result);
+    navigate(searchResultPath(slug, result));
+  }, [navigate, scope, slug]);
 
   /** ↑/↓ walk the results and open the preview, as in Linear. */
   const move = useCallback((step: 1 | -1) => {
@@ -721,20 +747,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
               <h2 className="mt-1 break-words text-[22px] font-medium leading-7 tracking-[-0.015em] text-[var(--text-primary)]">
                 {preview.name}
               </h2>
-              <dl className="mt-7 border-t border-[var(--color-border-primary)] text-[13px]">
-                {[
-                  ['Status', statusLabel(preview)],
-                  [preview.kind === 'ad' ? 'Ad set' : 'Campaign', preview.parent_name],
-                  ['Ad account', preview.kind === 'account' ? '' : preview.account_name],
-                  [preview.kind === 'rule' ? 'Rule ID' : 'Meta ID', preview.id],
-                  [isDayOnly(preview) ? 'First synced' : preview.kind === 'rule' ? 'Updated' : 'Added', formatAgeTitle(preview).replace(/^.* on /, '')],
-                ].filter(([, value]) => value).map(([label, value]) => (
-                  <div key={label} className="flex gap-4 border-b border-[var(--color-border-primary)] py-2.5">
-                    <dt className="w-[120px] shrink-0 text-[var(--text-tertiary)]">{label}</dt>
-                    <dd className="min-w-0 break-words text-[var(--text-secondary)]">{value}</dd>
-                  </div>
-                ))}
-              </dl>
+              <SearchResultFacts result={preview} className="mt-7" />
             </article>
           </div>
         </section>

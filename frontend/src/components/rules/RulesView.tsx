@@ -31,6 +31,8 @@ import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { toast } from '@/ui/toast';
 import { SelectionDock } from '@/ui/SelectionDock';
 import { SelectionCommandMenu } from '@/ui/SelectionCommandMenu';
+import { openCommandMenu } from '@/components/command/CommandMenu';
+import { takeRecordActions } from '@/components/command/OpenPalette';
 import { useRowSelection, type SelectionAction } from '@/ui/useRowSelection';
 import { useRevealRow } from '@/ui/useRevealRow';
 
@@ -193,9 +195,17 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
       message: `rule ${revealId ?? ''}.`,
       description: 'This workspace has no such rule. A deleted rule stays in Recently deleted for 30 days.',
     }),
+    onDone: (shown) => {
+      // Alt+Enter in an "Open rule…" palette: the row's own actions, as Linear's "More actions".
+      if (!revealId || !takeRecordActions(`rule:${revealId}`) || !shown || rulesViewMode !== 'list') return;
+      setRuleSelection([revealId]);
+      selection.setMenuOpen(true);
+    },
   });
 
   const deletion = pendingDeletion ? deletionPrompt(pendingDeletion.kind, pendingDeletion.ids) : null;
+  // One selected rule is named on the actions menu's chip, as Linear's "BUY-4 ⋅ Title".
+  const singleSelected = selection.count === 1 ? rules.find((rule) => rule.id === selectedRuleIds[0]) : undefined;
 
   const hasFilters = rulesFilterClauses.length > 0;
 
@@ -514,8 +524,11 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
       <SelectionCommandMenu
         open={selection.menuOpen}
         onOpenChange={selection.setMenuOpen}
-        scopeLabel={`${selection.count} ${selection.count === 1 ? 'rule' : 'rules'}`}
+        scope={singleSelected
+          ? { prefix: singleSelected.identifier, label: singleSelected.name }
+          : { label: `${selection.count} ${selection.count === 1 ? 'rule' : 'rules'}` }}
         actions={selectionActions}
+        onClearScope={openCommandMenu}
       />
 
       <ConfirmDialog
