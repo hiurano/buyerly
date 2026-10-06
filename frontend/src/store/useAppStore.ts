@@ -21,6 +21,7 @@ import {
   formatRelativeTime,
   formatScope,
   presetToWriteRequest,
+  ruleCurrency,
   updateRuleGroup,
   updateRulePreset,
 } from '@/lib/rules';
@@ -196,13 +197,14 @@ function buildGroupIndex(groups: RuleGroupPayload[]): Map<number, string> {
 function presetToRuleItem(
   preset: RulePresetPayload,
   groupIndex: Map<number, string>,
+  accounts: MetaAccount[],
 ): RuleItem {
   return {
     id: String(preset.id),
     presetId: preset.id,
     identifier: `RUL-${String(preset.id).padStart(2, '0')}`,
     name: preset.name,
-    condition: formatCondition(preset),
+    condition: formatCondition(preset, ruleCurrency(preset, accounts)),
     action: formatAction(preset),
     actionKind: preset.action,
     scope: formatScope(preset),
@@ -881,10 +883,11 @@ export const useAppStore = create<AppState>((set, get) => {
       ]);
       if (!current()) return;
       const groupIndex = buildGroupIndex(groups);
+      const ruleAccounts = eligibleMetaAccounts(accounts);
       set({
-        rules: presets.map((preset) => presetToRuleItem(preset, groupIndex)),
+        rules: presets.map((preset) => presetToRuleItem(preset, groupIndex, ruleAccounts)),
         ruleGroups: groups.map(groupToRuleGroup),
-        ruleAccounts: eligibleMetaAccounts(accounts),
+        ruleAccounts,
         rulesLoadState: 'ready',
       });
     } catch (error) {
