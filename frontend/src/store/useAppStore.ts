@@ -492,6 +492,8 @@ export const OUT_OF_SCOPE = 'This workspace is no longer open.';
 export const useAppStore = create<AppState>((set, get) => {
   let rulesRequest = 0;
   let attachmentsRequest = 0;
+  /** A rule change is being written and read back; the next one waits for it. */
+  let attachmentWriting = false;
   let inboxDisplaySave: Promise<unknown> = Promise.resolve();
   let notificationChannelsSave: Promise<unknown> = Promise.resolve();
   return ({
@@ -701,10 +703,16 @@ export const useAppStore = create<AppState>((set, get) => {
     const request = ++attachmentsRequest;
     const current = () => inScope() && request === attachmentsRequest;
     // Invalidate the old account before awaiting anything, including failed B.
-    set({ ...(get().attachedRulesAccountId !== accountId ? emptyAccountState() : {}),
-      attachedRulesAccountId: accountId, attachedRuleScopes: {}, attachedRuleOrder: [], campaignAttachedRules: {},
-      adSetAttachedRules: {}, attachmentError: '',
-      attachmentsLoadState: accountId ? 'loading' : 'idle' });
+    // Reading the same account back after a change keeps the cells as they are
+    // until the answer comes, so they never flash back to no rules.
+    const refresh = Boolean(accountId) && get().attachedRulesAccountId === accountId &&
+      get().attachmentsLoadState === 'ready';
+    if (!refresh) {
+      set({ ...(get().attachedRulesAccountId !== accountId ? emptyAccountState() : {}),
+        attachedRulesAccountId: accountId, attachedRuleScopes: {}, attachedRuleOrder: [], campaignAttachedRules: {},
+        adSetAttachedRules: {}, attachmentError: '',
+        attachmentsLoadState: accountId ? 'loading' : 'idle' });
+    }
     if (!accountId) return;
     try {
       const accounts = await apiRequest<MetaAccount[]>('/api/accounts');
@@ -724,7 +732,8 @@ export const useAppStore = create<AppState>((set, get) => {
       });
     } catch (error) {
       if (!current()) return;
-      set({ attachmentError: requestErrorMessage(error), attachmentsLoadState: 'error' });
+      set({ attachedRuleScopes: {}, attachedRuleOrder: [], campaignAttachedRules: {}, adSetAttachedRules: {},
+        attachmentError: requestErrorMessage(error), attachmentsLoadState: 'error' });
     }
   },
 
@@ -732,7 +741,7 @@ export const useAppStore = create<AppState>((set, get) => {
     const inScope = get().captureScope();
     const request = attachmentsRequest;
     const current = () => inScope() && request === attachmentsRequest;
-    if (!current() || get().attachmentsLoadState !== 'ready' || entityIds.length === 0) return;
+    if (!current() || attachmentWriting || get().attachmentsLoadState !== 'ready' || entityIds.length === 0) return;
     const { attachedRulesAccountId, attachedRuleScopes } = get();
     if (!attachedRulesAccountId) return;
 
@@ -754,6 +763,7 @@ export const useAppStore = create<AppState>((set, get) => {
     }
 
     set({ attachmentError: '' });
+    attachmentWriting = true;
     try {
       if (!scope) {
         await assignRuleToAccount(attachedRulesAccountId, presetId, {
@@ -781,6 +791,8 @@ export const useAppStore = create<AppState>((set, get) => {
     } catch (error) {
       if (!current()) return;
       set({ attachmentError: requestErrorMessage(error) });
+    } finally {
+      attachmentWriting = false;
     }
   },
   isRightSidebarOpen: true,
