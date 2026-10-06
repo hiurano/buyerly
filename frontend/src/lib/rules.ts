@@ -82,10 +82,50 @@ export interface RulePresetPayload {
   created_at: string;
   needs_review: boolean;
   review_reason: string;
+  /** Last action, from the history; empty when the rule never acted. */
   last_run_at: string;
+  /** Last check on any entity, matched or not; empty when never checked. */
+  last_checked_at: string;
   attached_account_ids: string[];
   /** Scope per attached account, keyed by ad account id. */
   attached_scopes: Record<string, RuleScope>;
+}
+
+/** Where one rule stands on one entity as of its latest check (#322). */
+export type RuleEntityStateName =
+  | 'fired'
+  | 'cooldown'
+  | 'confirming'
+  | 'undone'
+  | 'yielded'
+  | 'not_met'
+  | 'inactive'
+  | 'pending'
+  | 'skipped'
+  | 'error'
+  | 'matched'
+  | 'rules_off'
+  | 'rule_paused';
+
+export interface RuleEntityStatePayload {
+  rule_id: number;
+  rule_name: string;
+  account_id: string;
+  account_name: string;
+  entity_level: RuleExecutionLevel;
+  entity_id: string;
+  entity_name: string;
+  campaign_id: string;
+  state: RuleEntityStateName;
+  /** Readings that matched or fell short, or Meta's error. */
+  detail: string;
+  /** When a cooldown, an undo or a stop confirmation runs out. */
+  wait_until: string;
+  yielded_to_rule_id: number | null;
+  yielded_to_rule_name: string;
+  checked_at: string;
+  /** The rule's last action on this entity, kept across quiet checks. */
+  acted_at: string;
 }
 
 export interface RuleGroupPayload {
@@ -275,6 +315,106 @@ export function formatRelativeTime(isoTimestamp: string, now: number = Date.now(
   return `${Math.floor(elapsed / DAY)}d ago`;
 }
 
+/** Clock time for "until …": today's time alone, otherwise with the date. */
+export function formatUntil(isoTimestamp: string, now: Date = new Date()): string {
+  const parsed = new Date(isoTimestamp);
+  if (!isoTimestamp || Number.isNaN(parsed.getTime())) return '';
+  const time = parsed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (parsed.toDateString() === now.toDateString()) return time;
+  const date = parsed.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  return `${date}, ${time}`;
+}
+
+export type RuleStateTone = 'acted' | 'waiting' | 'blocked' | 'quiet' | 'error';
+
+export interface RuleStateView {
+  /** Short status, e.g. "Waiting until 00:00". */
+  label: string;
+  /** Why, e.g. the readings or the rule it gave way to; may be empty. */
+  note: string;
+  tone: RuleStateTone;
+}
+
+const ENTITY_NOUNS: Record<RuleExecutionLevel, string> = {
+  campaign: 'Campaign',
+  adset: 'Ad set',
+  ad: 'Ad',
+};
+
+/**
+ * One rule's state on one entity in words (#322): fired, waiting until …,
+ * undone for the rest of the day, gave way to another rule, or the condition
+ * not met with the readings that fell short.
+ */
+export function describeRuleState(
+  row: RuleEntityStatePayload,
+  now: number = Date.now(),
+): RuleStateView {
+  const until = formatUntil(row.wait_until, new Date(now));
+  const fired = row.acted_at ? `Fired ${formatRelativeTime(row.acted_at, now).toLowerCase()}` : '';
+  switch (row.state) {
+    case 'fired':
+      return {
+        label: 'Fired',
+        note: [until && `repeats after ${until}`, row.detail].filter(Boolean).join(' · '),
+        tone: 'acted',
+      };
+    case 'cooldown':
+      return {
+        label: until ? `Waiting until ${until}` : 'Waiting to repeat',
+        note: [fired, row.detail].filter(Boolean).join(' · '),
+        tone: 'waiting',
+      };
+    case 'confirming':
+      return {
+        label: until ? `Confirming stop until ${until}` : 'Confirming stop',
+        note: row.detail,
+        tone: 'waiting',
+      };
+    case 'undone':
+      return {
+        label: 'Undone for today',
+        note: until
+          ? `You undid this action in Inbox; the rule won't repeat it before ${until}`
+          : "You undid this action in Inbox; the rule won't repeat it today",
+        tone: 'blocked',
+      };
+    case 'yielded':
+      return {
+        label: row.yielded_to_rule_name
+          ? `Gave way to ${row.yielded_to_rule_name}`
+          : 'Gave way to another rule',
+        note: row.detail,
+        tone: 'blocked',
+      };
+    case 'not_met':
+      return {
+        label: 'Condition not met',
+        note: [row.detail, fired].filter(Boolean).join(' · '),
+        tone: 'quiet',
+      };
+    case 'inactive':
+      return {
+        label: `${ENTITY_NOUNS[row.entity_level]} ${row.detail === 'Not paused' ? 'is running' : 'is not running'}`,
+        note: fired,
+        tone: 'quiet',
+      };
+    case 'pending':
+      return { label: 'Waiting for Meta', note: 'The last action is not confirmed yet', tone: 'waiting' };
+    case 'skipped':
+      return { label: 'Skipped', note: row.detail, tone: 'blocked' };
+    case 'error':
+      return { label: 'Failed', note: row.detail, tone: 'error' };
+    case 'rules_off':
+      return { label: 'Rules off for this ad account', note: fired, tone: 'quiet' };
+    case 'rule_paused':
+      return { label: 'Rule paused', note: fired, tone: 'quiet' };
+    case 'matched':
+    default:
+      return { label: 'Condition met', note: row.detail, tone: 'acted' };
+  }
+}
+
 /**
  * Ad accounts arrive as Meta ids (`act_123…`). The list only needs to say
  * whether the rule can run at all and in how many places.
@@ -297,6 +437,20 @@ export function fetchRulePresets(): Promise<RulePresetPayload[]> {
 
 export function fetchRuleGroups(): Promise<RuleGroupPayload[]> {
   return apiRequest<RuleGroupPayload[]>('/api/rule-groups');
+}
+
+/** One rule's state on every entity it checks. */
+export function fetchRuleStates(presetId: number): Promise<RuleEntityStatePayload[]> {
+  return apiRequest<RuleEntityStatePayload[]>(`/api/presets/${presetId}/states`);
+}
+
+/** Every rule's state on one campaign, ad set or ad. */
+export function fetchEntityRuleStates(
+  level: RuleExecutionLevel,
+  entityId: string,
+): Promise<RuleEntityStatePayload[]> {
+  const query = new URLSearchParams({ entity_level: level, entity_id: entityId });
+  return apiRequest<RuleEntityStatePayload[]>(`/api/rule-states?${query}`);
 }
 
 export function createRulePreset(

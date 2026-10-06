@@ -56,11 +56,11 @@ export const RuleDisplayOptionsPopover: React.FC<RuleDisplayOptionsPopoverProps>
         orderingOptions={[
           { value: 'manual', label: 'Manual' },
           { value: 'name', label: 'Name' },
-          { value: 'lastRun', label: 'Last run' },
+          { value: 'lastRun', label: 'Last action' },
           { value: 'status', label: 'Status' },
         ]}
         onOrderingChange={(value) => store.setRulesDisplayOrdering(value as typeof store.rulesDisplayOrdering)}
-        properties={{ status: 'Status', condition: 'Condition', action: 'Action', scope: 'Scope', lastRun: 'Last run' }}
+        properties={{ status: 'Status', condition: 'Condition', action: 'Action', scope: 'Scope', lastCheck: 'Last check', lastRun: 'Last action' }}
         enabledProperties={store.rulesDisplayProperties}
         onToggleProperty={store.toggleRulesDisplayProperty}
       />

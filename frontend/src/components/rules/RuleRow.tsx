@@ -170,6 +170,10 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
           </div>
       )}
 
+      {rulesDisplayProperties.lastCheck !== false && (
+        <LinearDataMetricCell value={rule.lastCheck} valueClassName="font-[450] text-[var(--text-tertiary)]" />
+      )}
+
       {rulesDisplayProperties.lastRun !== false && (
         <LinearDataMetricCell value={rule.lastRun} valueClassName="font-[450] text-[var(--text-tertiary)]" />
       )}

@@ -7,6 +7,7 @@ import { RulesListView } from './RulesListView';
 import { RecentlyDeletedView } from './RecentlyDeletedView';
 import { deletionPrompt, runBulkRulesEnabled, runPendingDeletion } from './ruleActions';
 import { CreateRuleModal } from './CreateRuleModal';
+import { RuleStatesHost } from './RuleStatesDialog';
 import { RuleDisplayOptionsPopover } from './RuleDisplayOptionsPopover';
 import { RuleRightSidebar } from './RuleRightSidebar';
 import {
@@ -571,6 +572,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
 
       {/* Linear Fast Create Rule Modal */}
       <CreateRuleModal />
+      <RuleStatesHost />
     </div>
   );
 };

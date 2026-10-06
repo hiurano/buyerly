@@ -17,6 +17,7 @@ import {
 } from '@/icons/LinearIcons';
 import { ruleActionTone } from '@/lib/rules';
 import type { RuleActionTone } from '@/lib/rules';
+import { ruleStatesTitle } from './RuleStatesDialog';
 
 const ACTION_DOT_COLORS: Record<RuleActionTone, string> = {
   stop: 'var(--rules-action-stop-text)',
@@ -146,7 +147,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({
             </div>
           </div>
 
-          {/* 4. Bottom Metadata Row (Created / Last Run) */}
+          {/* 4. Bottom Metadata Row (Last check / Last action) */}
           <div
             style={{
               marginTop: '6px',
@@ -155,7 +156,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({
               color: 'var(--text-tertiary)',
             }}
           >
-            Last run {rule.lastRun}
+            Last check {rule.lastCheck} · Last action {rule.lastRun}
           </div>
         </div>
       </ContextMenuTrigger>
@@ -216,6 +217,15 @@ export const RuleCard: React.FC<RuleCardProps> = ({
             </div>
           </ContextMenuSubContent>
         </ContextMenuSub>
+
+        <ContextMenuSeparator />
+
+        {/* Where the rule stands on each campaign it checks (#322). */}
+        <ContextMenuItem onClick={() => useAppStore.getState().openRuleStates(rule.id)}>
+          <div className="flex items-center gap-2">
+            <span>{ruleStatesTitle(rule)}</span>
+          </div>
+        </ContextMenuItem>
 
         <ContextMenuSeparator />
 
