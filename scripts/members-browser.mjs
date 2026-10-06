@@ -91,7 +91,7 @@ try {
       if (verb === 'GET' && path === '/api/audit-events') {
         return route.fulfill({ json: { items: [], page: 1, page_size: 25, total: 0, total_pages: 0, status_counts: {} } });
       }
-      if (verb === 'GET' && ['/api/accounts', '/api/meta/connections', '/api/account-groups'].includes(path)) {
+      if (verb === 'GET' && ['/api/accounts', '/api/meta/connections', '/api/account-groups', '/api/auth/accounts'].includes(path)) {
         return route.fulfill({ json: [] });
       }
       errors.push(`Unexpected API request: ${verb} ${path}`);

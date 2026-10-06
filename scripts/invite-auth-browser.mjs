@@ -66,6 +66,8 @@ try {
           ? { json: sessionUser }
           : { status: 401, json: { detail: 'Not authenticated' } });
       }
+      // One account in this browser at a time here; several are checked by multi-account-browser.mjs.
+      if (verb === 'GET' && path === '/api/auth/accounts') return route.fulfill({ json: [] });
       if (verb === 'GET' && path === `/api/invites/${inviteToken}`) {
         return route.fulfill({ json: {
           valid: true, status: 'pending', workspace_name: workspace.name,
