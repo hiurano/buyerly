@@ -303,6 +303,9 @@ interface AppState {
   isSidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebarOpen: () => void;
+  /** The collapsed desktop sidebar shown over the content (hover, ⌘\), as in Linear. */
+  isSidebarPeekOpen: boolean;
+  setSidebarPeekOpen: (open: boolean) => void;
   activeTab: ActiveTab;
   lastAppTab: AppTab;
   setActiveTab: (tab: ActiveTab) => void;
@@ -628,6 +631,8 @@ export const useAppStore = create<AppState>((set, get) => {
   isSidebarOpen: false,
   setSidebarOpen: (open) => set({ isSidebarOpen: open }),
   toggleSidebarOpen: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+  isSidebarPeekOpen: false,
+  setSidebarPeekOpen: (open) => set({ isSidebarPeekOpen: open }),
   activeTab: 'campaigns',
   lastAppTab: 'campaigns',
   setActiveTab: (tab) =>
