@@ -130,6 +130,14 @@ try {
       assert.equal(await cell('801').evaluate((el) => getComputedStyle(el).opacity), '1', '+ Rule shows without hover');
       if (phone) {
         assert.equal(await page.evaluate(() => matchMedia('(hover: none) and (pointer: coarse)').matches), true, 'the phone is a touch screen');
+        // The column sits past the scroll on a phone; the cell stays pinned to the right edge.
+        const reach = await cell('801').evaluate((el) => {
+          const rect = el.getBoundingClientRect();
+          const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+          return { right: rect.right, width: innerWidth, onTop: Boolean(hit && el.contains(hit)) };
+        });
+        assert.ok(reach.right <= reach.width, `"+ Rule" ends at ${reach.right}px, past the ${reach.width}px screen`);
+        assert.ok(reach.onTop, '"+ Rule" is not covered by another cell');
       }
 
       await press(cell('801'));

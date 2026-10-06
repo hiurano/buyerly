@@ -415,9 +415,21 @@ export function describeRuleState(
   }
 }
 
+/** What a rule covers within one ad account: some campaigns, some ad sets, or all of it. */
+export function formatAccountScope(scope: RuleScope): string {
+  if (scope.level === 'campaign') {
+    return scope.ids.length === 1 ? '1 campaign' : `${scope.ids.length} campaigns`;
+  }
+  if (scope.level === 'adset') {
+    return scope.ids.length === 1 ? '1 ad set' : `${scope.ids.length} ad sets`;
+  }
+  return 'Whole account';
+}
+
 /**
  * Ad accounts arrive as Meta ids (`act_123…`). The list only needs to say
- * whether the rule can run at all and in how many places.
+ * whether the rule can run at all and in how many places; on one account
+ * narrowed to campaigns or ad sets, it counts those, as the "⋯" menu does.
  */
 /** The next step for a rule that runs nowhere yet: a new rule is never attached. */
 export const ATTACH_STEPS =
@@ -426,7 +438,9 @@ export const ATTACH_STEPS =
 export function formatScope(preset: RulePresetPayload): string {
   const count = preset.attached_account_ids.length;
   if (count === 0) return 'Not attached';
-  return count === 1 ? '1 ad account' : `${count} ad accounts`;
+  if (count > 1) return `${count} ad accounts`;
+  const scope = preset.attached_scopes[preset.attached_account_ids[0]];
+  return scope && scope.level !== 'account' ? formatAccountScope(scope) : '1 ad account';
 }
 
 /* ------------------------------------------------------------- requests -- */
