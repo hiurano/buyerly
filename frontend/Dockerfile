@@ -8,6 +8,9 @@ COPY frontend/index.html frontend/postcss.config.js frontend/tailwind.config.js 
 COPY frontend/tsconfig.json frontend/tsconfig.node.json frontend/vite.config.ts ./
 COPY frontend/public ./public
 COPY frontend/src ./src
+# The release sha, so an open tab can tell when the server runs a newer one.
+ARG APP_VERSION=local
+ENV APP_VERSION=${APP_VERSION}
 RUN npm run build
 
 FROM nginx:1.27-alpine

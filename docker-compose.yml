@@ -94,6 +94,8 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-local}
     image: buyerly-web:${APP_VERSION:-local}
     container_name: buyerly-web
     restart: unless-stopped

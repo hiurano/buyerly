@@ -23,14 +23,14 @@ const ToastCard: React.FC<{ item: ToastItem }> = ({ item }) => {
   const remaining = useRef(TOAST_DURATION_MS);
 
   useEffect(() => {
-    if (item.tone === 'error' || held) return;
+    if (item.tone === 'error' || item.persistent || held) return;
     const startedAt = Date.now();
     const timer = window.setTimeout(() => dismiss(item.id), remaining.current);
     return () => {
       window.clearTimeout(timer);
       remaining.current -= Date.now() - startedAt;
     };
-  }, [dismiss, held, item.id, item.tone]);
+  }, [dismiss, held, item.id, item.persistent, item.tone]);
 
   return (
     <div

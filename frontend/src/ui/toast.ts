@@ -17,6 +17,8 @@ export interface ToastOptions {
   /** A second line under the title. */
   description?: string;
   action?: { label: string; onClick: () => void };
+  /** Stays until dismissed, like an error: news the person must not miss, e.g. "Update available". */
+  persistent?: boolean;
 }
 
 export interface ToastItem extends ToastOptions {
