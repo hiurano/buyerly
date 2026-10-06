@@ -190,8 +190,9 @@ try {
       assert.equal(await page.evaluate(() => [...document.querySelectorAll('body *')].some((element) => {
         const style = getComputedStyle(element);
         const box = element.getBoundingClientRect();
+        // The phone sidebar's backdrop stays in place, invisible, while the drawer is shut.
         return style.position === 'fixed' && box.width >= innerWidth && box.height >= innerHeight
-          && style.backgroundColor !== 'rgba(0, 0, 0, 0)';
+          && style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.visibility !== 'hidden' && Number(style.opacity) > 0;
       })), false, 'nothing dims the page behind the menu');
       await assertNoOverflow('command menu');
       await page.screenshot({ path: `${output}/commands-${width}.png` });
