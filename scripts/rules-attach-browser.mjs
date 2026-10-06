@@ -137,8 +137,9 @@ try {
       await single.waitFor();
       const option = single.getByRole('option', { name: /Example stop/ });
       if (phone) {
-        const box = await option.boundingBox();
-        assert.ok(box.height >= 44, `a finger-sized option, not ${box.height}px`);
+        // Laid-out height: the boundingBox would catch the opening scale animation.
+        const height = await option.evaluate((el) => el.offsetHeight);
+        assert.ok(height >= 44, `a finger-sized option, not ${height}px`);
         await page.waitForTimeout(150);
         assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('type')), null, 'no keyboard pops up');
       }
