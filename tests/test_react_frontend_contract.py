@@ -889,7 +889,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("auditEventSummary(item)", self.inbox_item_row)
 
     def test_search_page_promises_only_what_it_finds_and_opens(self):
-        """#310: search is Linear's page, not a menu; Ctrl/Cmd+K runs commands and searches nothing."""
+        """#310: search is Linear's page, not a menu; #311: Ctrl/Cmd+K runs commands and, from two letters, shows Quick results."""
         src = ROOT / "frontend" / "src"
         menu = (src / "components" / "command" / "CommandMenu.tsx").read_text()
         page = (src / "components" / "search" / "SearchView.tsx").read_text()
@@ -941,9 +941,17 @@ class TestReactFrontendContract(unittest.TestCase):
         # `/` and the sidebar open the page; the old search window is gone.
         self.assertIn("onClick={openSearchPage}", header)
         self.assertIn("openSearchPage();", menu)
-        self.assertNotIn("searchWorkspace", menu)
         self.assertNotIn("mode === 'search'", menu)
         self.assertIn("'Search workspace…'", menu)
+        # #311: as in Linear, the command menu also finds records — from two letters, under its
+        # commands, through the same search — and hands the words on to the search page.
+        self.assertIn("const QUICK_RESULTS_MIN_LENGTH = 2;", menu)
+        self.assertIn("searchWorkspace(", menu)
+        self.assertIn('Quick results for "${text}"', menu)
+        for words in ("'Search entire workspace'", "'No results found'", "'Go to advanced search'"):
+            self.assertIn(words, menu)
+        self.assertIn("searchPagePath(slug, { query: text", menu)
+        self.assertIn("searchResultPath(slug, result)", menu)
 
         # Esc is the command menu's own dismissal; focus goes back to what opened it.
         self.assertIn("<Dialog.Root open={open} onOpenChange={(next) => setCommandMenuOpen(next)}>", menu)

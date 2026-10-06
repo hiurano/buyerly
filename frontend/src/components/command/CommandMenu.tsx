@@ -19,6 +19,7 @@ import { bestCommandScore } from '@/lib/commandFilter';
 import { goToShortcut } from '@/lib/shortcuts';
 import { isSmallScreen } from '@/lib/useMediaQuery';
 import { LinearPlusIcon, LinearSearchIcon, LinearSidebarLeftToggleIcon } from '@/icons/LinearIcons';
+import { COMMAND_MENU_CLASSES } from '@/ui/SelectionCommandMenu';
 import { usePageGroup, type PaletteCommand, type PaletteGroup } from './pageCommands';
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, another palette. */
@@ -122,7 +123,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
             }
             if (target?.isConnected) target.focus({ preventScroll: true });
           }}
-          className="animate-scale-in fixed inset-x-4 top-[13vh] z-[var(--layer-command-menu)] mx-auto flex max-h-[min(450px,84vh)] max-w-[720px] flex-col overflow-hidden rounded-[12px] border border-[var(--command-menu-border)] bg-[var(--command-menu-bg)] shadow-[var(--command-menu-shadow)] outline-none"
+          className={`fixed inset-x-4 top-[13vh] z-[var(--layer-command-menu)] mx-auto flex max-h-[min(450px,84vh)] max-w-[720px] flex-col outline-none ${COMMAND_MENU_CLASSES.surface}`}
         >
           <Dialog.Title className="sr-only">Command menu</Dialog.Title>
           <CommandPalette workspace={workspace} navigate={navigate} choose={choose} />
@@ -137,12 +138,6 @@ const QUICK_RESULTS_MIN_LENGTH = 2;
 const QUICK_RESULTS_LIMIT = 8;
 const QUICK_RESULTS_DELAY_MS = 120;
 
-const ROW_CLASS =
-  'relative mx-0 flex h-[46px] cursor-default select-none items-center gap-3 px-3 text-[13px] font-[450] text-[var(--command-menu-text)] outline-none before:pointer-events-none before:absolute before:inset-x-0 before:inset-y-[2px] before:rounded-[8px] data-[selected=true]:before:bg-[var(--command-menu-row-selected-bg)] [&>*]:relative';
-const GROUP_CLASS =
-  '[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[12px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:leading-[14px] [&_[cmdk-group-heading]]:text-[var(--text-tertiary)]';
-// Linear draws a row's icon in the row's own text color.
-const ICON_CLASS = 'flex h-4 w-4 shrink-0 items-center justify-center';
 const FOOTER_HINT_CLASS = 'flex h-6 items-center gap-1.5 px-2 text-[12px] font-medium text-[var(--text-secondary)]';
 
 const arrowIcon = <ArrowRight size={14} strokeWidth={1.75} />;
@@ -257,28 +252,28 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
         }
       }}
     >
-      <div className="shrink-0 px-1.5 pt-1.5">
+      <div className={COMMAND_MENU_CLASSES.field}>
         <Command.Input
           autoFocus
           value={query}
           onValueChange={setQuery}
           placeholder="Type a command or search…"
-          className="h-10 w-full bg-transparent px-3 text-[13px] text-[var(--text-secondary)] placeholder-[var(--text-muted)] outline-none"
+          className={COMMAND_MENU_CLASSES.input}
         />
       </div>
       <p role="status" className="sr-only">{text ? `Showing ${shownCount} items` : 'Showing all items'}</p>
-      <Command.List className="min-h-0 flex-1 overflow-y-auto pb-1.5 pl-1.5 pr-1.5 [&_[cmdk-list-sizer]]:flex [&_[cmdk-list-sizer]]:flex-col">
+      <Command.List className={`min-h-0 flex-1 ${COMMAND_MENU_CLASSES.list}`}>
         {shownGroups.map((group) => (
-          <Command.Group key={group.heading} heading={group.heading} className={GROUP_CLASS}>
+          <Command.Group key={group.heading} heading={group.heading} className={COMMAND_MENU_CLASSES.group}>
             {group.commands.map((command) => (
               <Command.Item
                 key={command.id}
                 value={`command:${command.id}`}
                 aria-label={command.label}
                 onSelect={() => choose(command.run)}
-                className={ROW_CLASS}
+                className={COMMAND_MENU_CLASSES.item}
               >
-                <span className={ICON_CLASS} aria-hidden="true">{command.icon}</span>
+                <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true">{command.icon}</span>
                 <span className="min-w-0 flex-1 truncate">{command.label}</span>
                 {command.shortcut && <ShortcutKeys shortcut={command.shortcut} />}
               </Command.Item>
@@ -286,16 +281,16 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
           </Command.Group>
         ))}
         {showQuick && (
-          <Command.Group heading={`Quick results for "${text}"`} className={GROUP_CLASS}>
+          <Command.Group heading={`Quick results for "${text}"`} className={COMMAND_MENU_CLASSES.group}>
             {results.map((result) => (
               <Command.Item
                 key={`${result.kind}:${result.id}`}
                 value={`result:${result.kind}:${result.id}`}
                 aria-label={quickResultName(result)}
                 onSelect={() => choose(() => go(searchResultPath(slug, result)))}
-                className={ROW_CLASS}
+                className={COMMAND_MENU_CLASSES.item}
               >
-                <span className={ICON_CLASS} aria-hidden="true"><StatusMark result={result} /></span>
+                <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true"><StatusMark result={result} /></span>
                 <QuickResultLabel result={result} />
               </Command.Item>
             ))}
@@ -303,9 +298,9 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
               value="search-entire-workspace"
               aria-label={results.length > 0 ? `Search entire workspace ${text}` : 'No results found, go to advanced search'}
               onSelect={() => choose(advancedSearch)}
-              className={ROW_CLASS}
+              className={COMMAND_MENU_CLASSES.item}
             >
-              <span className={ICON_CLASS} aria-hidden="true"><LinearSearchIcon size={14} /></span>
+              <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true"><LinearSearchIcon size={14} /></span>
               <span className="flex min-w-0 flex-1 items-baseline gap-2">
                 <span className="shrink-0">{results.length > 0 ? 'Search entire workspace' : 'No results found'}</span>
                 <span className="min-w-0 truncate text-[var(--text-muted)]">{results.length > 0 ? text : 'Go to advanced search'}</span>
@@ -431,7 +426,7 @@ const ShortcutKeys: React.FC<{ shortcut: string }> = ({ shortcut }) => {
           {sequence && index === 1 && <span className="px-px text-[12px] font-[450] text-[var(--text-tertiary)]" aria-hidden="true">then</span>}
           <kbd
             aria-hidden="true"
-            className="inline-flex h-[23px] min-w-[20px] items-center justify-center rounded-[3px] border border-[var(--command-menu-kbd-border)] px-1 font-sans text-[12px] font-[450] leading-[13px] text-[var(--text-tertiary)]"
+            className={COMMAND_MENU_CLASSES.kbd}
           >
             {part}
           </kbd>
