@@ -141,7 +141,7 @@ try {
         const height = await option.evaluate((el) => el.offsetHeight);
         assert.ok(height >= 44, `a finger-sized option, not ${height}px`);
         await page.waitForTimeout(150);
-        assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('type')), null, 'no keyboard pops up');
+        assert.equal(await page.evaluate(() => Boolean(document.activeElement?.matches('input, textarea'))), false, 'no keyboard pops up');
       }
       await page.screenshot({ path: `${output}/picker-${width}.png` });
       await press(option);
