@@ -214,8 +214,16 @@ const PaletteBody: React.FC<PaletteBodyProps> = ({ kind, workspace, navigate, ch
 
   const records: SearchResult[] = recordKind ? (text ? (quick ?? []).slice(0, QUICK_RESULTS_LIMIT) : recent) : [];
   const settingsPages = kind === 'settings' ? filterSettings(text) : [];
-  const looked = quickLook ? records.find((record) => recordValue(record) === selected) ?? null : null;
-  const onRecord = records.some((record) => recordValue(record) === selected);
+  const noResults = recordKind !== null && text !== '' && quick !== null && records.length === 0;
+  // cmdk keeps a choice whose row is gone when results arrive; the first row takes over, as in Linear.
+  const shownValues = [
+    ...records.map(recordValue),
+    ...(noResults ? [NO_RESULTS_VALUE] : []),
+    ...settingsPages.map((page) => `settings:${page.section}`),
+  ];
+  const current = shownValues.includes(selected) ? selected : shownValues[0] ?? '';
+  const looked = quickLook ? records.find((record) => recordValue(record) === current) ?? null : null;
+  const onRecord = records.some((record) => recordValue(record) === current);
   const searching = recordKind !== null && text !== '' && quick === null;
   // Esc hides the quick look first; the next one closes the palette.
   escapeRef.current = () => {
@@ -230,7 +238,7 @@ const PaletteBody: React.FC<PaletteBodyProps> = ({ kind, workspace, navigate, ch
       shouldFilter={false}
       loop
       vimBindings={false}
-      value={selected}
+      value={current}
       onValueChange={(next) => setSelected(next ?? '')}
       className="flex min-h-0 flex-1 flex-col"
       onKeyDown={(event) => {
@@ -282,9 +290,9 @@ const PaletteBody: React.FC<PaletteBodyProps> = ({ kind, workspace, navigate, ch
               ))}
             </Command.Group>
           )}
-          {recordKind && text && quick !== null && records.length === 0 && (
+          {noResults && (
             <Command.Item
-              value="advanced-search"
+              value={NO_RESULTS_VALUE}
               aria-label="No results found, go to advanced search"
               onSelect={advancedSearch}
               className={COMMAND_MENU_CLASSES.item}
@@ -350,6 +358,8 @@ const PaletteBody: React.FC<PaletteBodyProps> = ({ kind, workspace, navigate, ch
     </Command>
   );
 };
+
+const NO_RESULTS_VALUE = 'advanced-search';
 
 const recordValue = (record: SearchResult) => `record:${record.kind}:${record.id}`;
 
