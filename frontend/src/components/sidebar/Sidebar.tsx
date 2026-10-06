@@ -8,6 +8,7 @@ import {
   LinearChartIcon,
 } from '@/icons/LinearIcons';
 import { STATISTICS_ENABLED } from '@/lib/routing';
+import { goToShortcut } from '@/lib/shortcuts';
 import { Tooltip } from '@/ui/Tooltip';
 import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
 import { SidebarBackdrop, useSidebarDrawer } from './SidebarDrawer';
@@ -125,7 +126,7 @@ export const Sidebar: React.FC = () => {
         {/* 2. Navigation Section */}
         <div className="flex-1 overflow-y-auto px-3 pb-4 space-y-[1px]">
           {/* Item 1: Inbox */}
-          <Tooltip content="Inbox" shortcut="G I" side="right" sideOffset={8}>
+          <Tooltip content="Inbox" shortcut={goToShortcut('inbox')} side="right" sideOffset={8}>
             <button
               type="button"
               onClick={() => setActiveTab('inbox')}
@@ -163,7 +164,7 @@ export const Sidebar: React.FC = () => {
           </Tooltip>
 
           {/* Item 2: Ads Manager */}
-          <Tooltip content="Go to Ads Manager" shortcut="G A" side="right" sideOffset={8}>
+          <Tooltip content="Go to Ads Manager" shortcut={goToShortcut('campaigns')} side="right" sideOffset={8}>
             <button
               type="button"
               onClick={() => setActiveTab('campaigns')}
@@ -196,7 +197,7 @@ export const Sidebar: React.FC = () => {
           </Tooltip>
 
           {/* Item 3: Rules */}
-          <Tooltip content="Go to rules" shortcut="G R" side="right" sideOffset={8}>
+          <Tooltip content="Go to rules" shortcut={goToShortcut('rules')} side="right" sideOffset={8}>
             <button
               type="button"
               onClick={() => setActiveTab('rules')}
@@ -230,7 +231,7 @@ export const Sidebar: React.FC = () => {
 
           {/* Item 4: Statistics, switched off for now */}
           {STATISTICS_ENABLED && (
-            <Tooltip content="Go to statistics" shortcut="G S" side="right" sideOffset={8}>
+            <Tooltip content="Go to statistics" shortcut={goToShortcut('statistics')} side="right" sideOffset={8}>
               <button
                 type="button"
                 onClick={() => setActiveTab('statistics')}

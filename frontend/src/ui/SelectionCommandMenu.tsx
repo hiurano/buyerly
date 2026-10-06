@@ -4,18 +4,24 @@ import { Command } from 'cmdk';
 import type { SelectionAction } from '@/ui/useRowSelection';
 
 /**
- * Linear's command menu, shared by the selection menu and Search workspace so
- * the two read as one control: panel, field, groups, rows and the note that
- * stands in for an empty list.
+ * Linear's command menu, shared by Ctrl/Cmd+K and the selection's actions so
+ * the two read as one control: panel, field, groups, rows, keys and the note
+ * that stands in for an empty list. Measured on Linear in both themes (#311).
  */
 export const COMMAND_MENU_CLASSES = {
   /** The floating panel; each menu says where it sits and how wide it is. */
-  surface: 'animate-scale-in overflow-hidden rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] shadow-[var(--command-menu-shadow)]',
-  input: 'h-10 w-full bg-transparent px-3 text-[13px] text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none',
-  list: 'max-h-[min(400px,60vh)] overflow-y-auto pb-1.5',
-  group: '[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[12px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-[var(--text-tertiary)]',
-  item: 'mx-0 flex h-[46px] cursor-default items-center gap-3 rounded-[var(--control-border-radius)] px-3 text-[13px] text-[var(--text-primary)] data-[selected=true]:bg-[var(--data-row-hover-bg)]',
-  icon: 'flex h-4 w-4 shrink-0 items-center justify-center text-[var(--text-tertiary)]',
+  surface: 'animate-scale-in overflow-hidden rounded-[12px] border border-[var(--command-menu-border)] bg-[var(--command-menu-bg)] shadow-[var(--command-menu-shadow)]',
+  /** Around the field: Linear's 6px inset, with no rule under it. */
+  field: 'shrink-0 px-1.5 pt-1.5',
+  input: 'h-10 w-full bg-transparent px-3 text-[13px] text-[var(--text-secondary)] placeholder-[var(--text-muted)] outline-none',
+  list: 'max-h-[min(404px,60vh)] overflow-y-auto px-1.5 pb-1.5',
+  group: '[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[12px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:leading-[14px] [&_[cmdk-group-heading]]:text-[var(--text-tertiary)]',
+  /** 46px rows; the selected one gets a rounded fill inset 2px top and bottom. */
+  item: 'relative mx-0 flex h-[46px] cursor-default select-none items-center gap-3 px-3 text-[13px] font-[450] text-[var(--command-menu-text)] outline-none before:pointer-events-none before:absolute before:inset-x-0 before:inset-y-[2px] before:rounded-[8px] data-[selected=true]:before:bg-[var(--command-menu-row-selected-bg)] [&>*]:relative',
+  /** Linear draws a row's icon in the row's own text color. */
+  icon: 'flex h-4 w-4 shrink-0 items-center justify-center',
+  /** A row's keys on the right. */
+  kbd: 'inline-flex h-[23px] min-w-[20px] items-center justify-center rounded-[3px] border border-[var(--command-menu-kbd-border)] px-1 font-sans text-[12px] font-[450] leading-[13px] text-[var(--text-tertiary)]',
   note: 'px-3 py-6 text-center text-[12px] text-[var(--text-muted)]',
 } as const;
 
@@ -61,11 +67,13 @@ export const SelectionCommandMenu: React.FC<SelectionCommandMenuProps> = ({
             }
           }}
         >
-          <Command.Input
-            autoFocus
-            placeholder="Type a command or search…"
-            className={COMMAND_MENU_CLASSES.input}
-          />
+          <div className={COMMAND_MENU_CLASSES.field}>
+            <Command.Input
+              autoFocus
+              placeholder="Type a command or search…"
+              className={COMMAND_MENU_CLASSES.input}
+            />
+          </div>
           <Command.List className={COMMAND_MENU_CLASSES.list}>
             <Command.Empty className={COMMAND_MENU_CLASSES.note}>
               No matching actions.
@@ -85,14 +93,12 @@ export const SelectionCommandMenu: React.FC<SelectionCommandMenuProps> = ({
                     {action.icon}
                   </span>
                   <span className="min-w-0 flex-1 truncate">{action.label}</span>
-                  {action.withModifier && (
-                    <kbd className="flex h-5 min-w-5 items-center justify-center rounded-[4px] border border-[var(--color-border-secondary)] px-1 font-sans text-[11px] text-[var(--text-tertiary)]">
-                      Ctrl
+                  <span className="flex shrink-0 items-center gap-[3px]">
+                    {action.withModifier && <kbd className={COMMAND_MENU_CLASSES.kbd}>Ctrl</kbd>}
+                    <kbd className={COMMAND_MENU_CLASSES.kbd}>
+                      {action.shortcut.length === 1 ? action.shortcut.toUpperCase() : action.shortcut}
                     </kbd>
-                  )}
-                  <kbd className="flex h-5 min-w-5 items-center justify-center rounded-[4px] border border-[var(--color-border-secondary)] px-1 font-sans text-[11px] text-[var(--text-tertiary)]">
-                    {action.shortcut.length === 1 ? action.shortcut.toUpperCase() : action.shortcut}
-                  </kbd>
+                  </span>
                 </Command.Item>
               ))}
             </Command.Group>

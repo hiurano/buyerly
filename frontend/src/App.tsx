@@ -5,6 +5,8 @@ import { CampaignsView } from '@/components/campaigns/CampaignsView';
 import { RulesView } from '@/components/rules/RulesView';
 import { StatisticsView } from '@/components/statistics/StatisticsView';
 import { CommandMenu } from '@/components/command/CommandMenu';
+import { SearchView } from '@/components/search/SearchView';
+import { searchPageTitle } from '@/lib/search';
 import { WorkspaceSwitcher } from '@/components/command/WorkspaceSwitcher';
 import { PreferencesView } from '@/components/preferences/PreferencesView';
 import { AppUtilityBar } from '@/components/layout/AppUtilityBar';
@@ -27,6 +29,7 @@ import { ApprovalDialog } from '@/webmcp/ApprovalDialog';
 import { useWebMcpTools } from '@/webmcp/register';
 import { WorkspaceSessionProvider, type WorkspaceSession } from '@/lib/workspaceSession';
 import { isSmallScreen } from '@/lib/useMediaQuery';
+import { GO_TO_SETTINGS_SECTION, goToTargetFor } from '@/lib/shortcuts';
 
 const RETURN_ROUTE_KEY = 'buyerly-return-route';
 
@@ -134,8 +137,11 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   useEffect(() => {
     document.title = activeTab === 'inbox'
       ? (inboxBadge > 0 ? `Inbox (${inboxBadge})` : 'Inbox')
-      : `${workspace.name} — Buyerly`;
-  }, [activeTab, inboxBadge, workspace.name]);
+      : activeTab === 'search'
+        ? searchPageTitle(window.location.search)
+        : `${workspace.name} — Buyerly`;
+    // The search page's title follows its query, which only the address holds.
+  }, [activeTab, inboxBadge, navigationKey, workspace.name]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -167,18 +173,11 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
           return;
         }
         if (gPressed) {
-          const shortcutTab = key === 'i'
-            ? 'inbox'
-            : key === 'c'
-              ? 'campaigns'
-              : key === 'r'
-                ? 'rules'
-                : key === 's' && STATISTICS_ENABLED
-                  ? 'statistics'
-                  : null;
-          if (shortcutTab) {
+          const target = goToTargetFor(key);
+          if (target && (target !== 'statistics' || STATISTICS_ENABLED)) {
             event.preventDefault();
-            setActiveTab(shortcutTab);
+            if (target === 'preferences') setSettingsSection(GO_TO_SETTINGS_SECTION);
+            setActiveTab(target);
             setGPressed(false);
           }
         }
@@ -189,7 +188,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
       clearTimeout(timer);
     };
-  }, [gPressed, setActiveTab, toggleRightSidebar, toggleSidebarCollapsed, toggleSidebarOpen]);
+  }, [gPressed, setActiveTab, setSettingsSection, toggleRightSidebar, toggleSidebarCollapsed, toggleSidebarOpen]);
 
   useEffect(() => {
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
@@ -239,6 +238,9 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
                     revealId={route.tab === 'rules' ? route.recordId : undefined}
                     navigationKey={navigationKey}
                   />
+                )}
+                {activeTab === 'search' && (
+                  <SearchView workspace={workspace} navigate={navigate} navigationKey={navigationKey} />
                 )}
                 {STATISTICS_ENABLED && activeTab === 'statistics' && <StatisticsView />}
               </main>

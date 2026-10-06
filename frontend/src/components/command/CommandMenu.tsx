@@ -1,31 +1,26 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Command } from 'cmdk';
-import { Image as ImageIcon, Layers, Megaphone, RotateCcw, Settings, Wallet } from 'lucide-react';
+import { ArrowRight, Maximize2 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { pathForTab, STATISTICS_ENABLED } from '@/lib/routing';
+import type { Workspace } from '@/lib/types';
+import { openSearchPage } from '@/components/search/openSearchPage';
+import { StatusMark } from '@/components/search/SearchView';
 import {
-  SEARCH_KINDS,
+  rememberSearchReturnPath,
+  searchPagePath,
   searchResultPath,
   searchWorkspace,
-  type SearchKind,
-  type SearchResponse,
+  SEARCH_KIND_LABELS,
   type SearchResult,
 } from '@/lib/search';
-import type { Workspace } from '@/lib/types';
-import { humanizeMetaStatus } from '@/components/campaigns/liveCampaigns';
+import { bestCommandScore } from '@/lib/commandFilter';
+import { goToShortcut } from '@/lib/shortcuts';
+import { isSmallScreen } from '@/lib/useMediaQuery';
+import { LinearPlusIcon, LinearSearchIcon, LinearSidebarLeftToggleIcon } from '@/icons/LinearIcons';
 import { COMMAND_MENU_CLASSES } from '@/ui/SelectionCommandMenu';
-import {
-  LinearBoltIcon,
-  LinearChartIcon,
-  LinearInboxIcon,
-  LinearMetaIcon,
-  LinearPlusIcon,
-  LinearSearchIcon,
-} from '@/icons/LinearIcons';
-
-/** Pause after the last keystroke before the workspace is asked. */
-const SEARCH_DELAY_MS = 200;
+import { usePageGroup, type PaletteCommand, type PaletteGroup } from './pageCommands';
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, another palette. */
 const OPEN_LAYER_SELECTOR = [
@@ -35,7 +30,7 @@ const OPEN_LAYER_SELECTOR = [
   '[cmdk-root]',
 ].join(', ');
 
-/** Inputs that take no typed text, so `/` on them still opens the menu. */
+/** Inputs that take no typed text, so `/` on them still opens search. */
 const NON_TEXT_INPUTS = new Set(['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'color', 'file', 'image']);
 
 /** `/` typed into a field is text, never a shortcut. */
@@ -49,16 +44,13 @@ function isTypingTarget(target: EventTarget | null): boolean {
 /** What had focus when the menu opened; it gets focus back unless a choice moves it on. */
 let returnFocusTo: HTMLElement | null = null;
 
-/**
- * Opens search (`/`, the sidebar's Search button) or the command menu
- * (Ctrl/Cmd+K), remembering where focus goes back to.
- */
-export function openCommandMenu(mode: 'search' | 'commands' = 'search'): void {
+/** Opens the command menu (Ctrl/Cmd+K), remembering where focus goes back to. */
+export function openCommandMenu(): void {
   const store = useAppStore.getState();
-  if (store.isSearchOpen) return;
+  if (store.isCommandMenuOpen) return;
   const active = document.activeElement;
   returnFocusTo = active instanceof HTMLElement && active !== document.body ? active : null;
-  store.setSearchOpen(true, mode);
+  store.setCommandMenuOpen(true);
 }
 
 interface CommandMenuProps {
@@ -68,16 +60,14 @@ interface CommandMenuProps {
 }
 
 /**
- * Linear's two menus in one dialog. Search — the sidebar's Search button or
- * `/` outside a text field — finds this workspace's campaigns, ad sets, ads,
- * rules and ad accounts through GET /api/search. The command menu —
- * Ctrl/Cmd+K from anywhere — runs commands and searches nothing. Esc closes
- * either and gives focus back to what had it.
+ * Linear's command menu — Ctrl/Cmd+K from anywhere: the page's own commands,
+ * then everyone's, matched letter by letter, and from two letters on the
+ * workspace's records under "Quick results". Esc closes it and gives focus back
+ * to what had it. It also owns `/` outside a text field, which opens the search page.
  */
 export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate }) => {
-  const open = useAppStore((state) => state.isSearchOpen);
-  const mode = useAppStore((state) => state.searchMode);
-  const setSearchOpen = useAppStore((state) => state.setSearchOpen);
+  const open = useAppStore((state) => state.isCommandMenuOpen);
+  const setCommandMenuOpen = useAppStore((state) => state.setCommandMenuOpen);
   // A choice moves focus to its destination; only a dismissal gives it back.
   const choiceMade = useRef(false);
 
@@ -85,41 +75,41 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
     const onKeyDown = (event: KeyboardEvent) => {
       // A row selection runs Ctrl/Cmd+K for its own actions first and stops it.
       if (event.defaultPrevented || event.isComposing) return;
-      const isOpen = useAppStore.getState().isSearchOpen;
+      const isOpen = useAppStore.getState().isCommandMenuOpen;
       const modified = event.ctrlKey || event.metaKey;
       if (modified && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'k') {
         // From a text field too, as in Linear; pressed again, it closes the menu.
         if (isOpen) {
           event.preventDefault();
-          setSearchOpen(false);
+          setCommandMenuOpen(false);
         } else if (!document.querySelector(OPEN_LAYER_SELECTOR)) {
           event.preventDefault();
-          openCommandMenu('commands');
+          openCommandMenu();
         }
         return;
       }
       if (event.key !== '/' || modified || event.altKey || isOpen) return;
       if (isTypingTarget(event.target) || document.querySelector(OPEN_LAYER_SELECTOR)) return;
       event.preventDefault();
-      openCommandMenu('search');
+      openSearchPage();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [setSearchOpen]);
+  }, [setCommandMenuOpen]);
 
   // Settings renders no menu: one still open when this unmounts must not reopen on the way back.
-  useEffect(() => () => setSearchOpen(false), [setSearchOpen]);
+  useEffect(() => () => setCommandMenuOpen(false), [setCommandMenuOpen]);
 
   const choose = (action: () => void) => {
     choiceMade.current = true;
-    setSearchOpen(false);
+    setCommandMenuOpen(false);
     action();
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={(next) => setSearchOpen(next)}>
+    <Dialog.Root open={open} onOpenChange={(next) => setCommandMenuOpen(next)}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[var(--layer-command-menu)] bg-[var(--modal-overlay-bg)]" />
+        {/* Linear dims nothing behind its command menu. */}
         <Dialog.Content
           aria-describedby={undefined}
           onCloseAutoFocus={(event) => {
@@ -133,244 +123,315 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
             }
             if (target?.isConnected) target.focus({ preventScroll: true });
           }}
-          className={`fixed inset-x-4 top-[13vh] z-[var(--layer-command-menu)] mx-auto max-w-[720px] outline-none ${COMMAND_MENU_CLASSES.surface}`}
+          className={`fixed inset-x-4 top-[13vh] z-[var(--layer-command-menu)] mx-auto flex max-h-[min(450px,84vh)] max-w-[720px] flex-col outline-none ${COMMAND_MENU_CLASSES.surface}`}
         >
-          <Dialog.Title className="sr-only">{mode === 'search' ? 'Search workspace' : 'Command menu'}</Dialog.Title>
-          <CommandPalette mode={mode} workspace={workspace} navigate={navigate} choose={choose} />
+          <Dialog.Title className="sr-only">Command menu</Dialog.Title>
+          <CommandPalette workspace={workspace} navigate={navigate} choose={choose} />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
   );
 };
 
-interface PaletteCommand {
-  id: string;
-  label: string;
-  /** Other words that find it: "campaigns" finds Ads Manager. */
-  keywords: string[];
-  icon: React.ReactNode;
-  run: () => void;
-}
+/** Quick results start at two letters, as in Linear; one letter only filters commands. */
+const QUICK_RESULTS_MIN_LENGTH = 2;
+const QUICK_RESULTS_LIMIT = 8;
+const QUICK_RESULTS_DELAY_MS = 120;
 
-/** The answer on screen always belongs to the text in the field, never to an earlier one. */
-type SearchState =
-  | { status: 'loading'; query: string }
-  | { status: 'ready'; query: string; response: SearchResponse }
-  | { status: 'error'; query: string; message: string };
+const FOOTER_HINT_CLASS = 'flex h-6 items-center gap-1.5 px-2 text-[12px] font-medium text-[var(--text-secondary)]';
 
-const KIND_ICONS: Record<SearchKind, React.ReactNode> = {
-  campaign: <Megaphone size={14} strokeWidth={1.75} />,
-  adset: <Layers size={14} strokeWidth={1.75} />,
-  ad: <ImageIcon size={14} strokeWidth={1.75} />,
-  rule: <LinearBoltIcon size={14} />,
-  account: <Wallet size={14} strokeWidth={1.75} />,
-};
-
-const RULE_STATUS_LABELS: Record<string, string> = {
-  active: 'Active',
-  paused: 'Paused',
-  needs_review: 'Needs review',
-};
-
-/** The line under a result's name: where it lives. */
-function resultContext(result: SearchResult): string {
-  if (result.kind === 'account') return result.id;
-  if (result.kind === 'rule') return '';
-  return [result.parent_name, result.account_name].filter(Boolean).join(' · ');
-}
-
-/** Delivery or run state in words, never by colour alone. */
-function resultStatus(result: SearchResult): string {
-  if (result.kind === 'account' || !result.status) return '';
-  if (result.kind === 'rule') return RULE_STATUS_LABELS[result.status] ?? '';
-  return humanizeMetaStatus(result.status);
-}
+const arrowIcon = <ArrowRight size={14} strokeWidth={1.75} />;
 
 interface CommandPaletteProps {
-  mode: 'search' | 'commands';
   workspace: Workspace;
   navigate: (path: string, replace?: boolean) => void;
   choose: (action: () => void) => void;
 }
 
 /** The menu's content, mounted on every open so it starts empty. */
-const CommandPalette: React.FC<CommandPaletteProps> = ({ mode, workspace, navigate, choose }) => {
+const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, choose }) => {
+  const activeTab = useAppStore((state) => state.activeTab);
   const campaignFilterTab = useAppStore((state) => state.campaignFilterTab);
   const openCreateRuleModal = useAppStore((state) => state.openCreateRuleModal);
+  const isSidebarCollapsed = useAppStore((state) => state.isSidebarCollapsed);
+  const toggleSidebarCollapsed = useAppStore((state) => state.toggleSidebarCollapsed);
+  const pageGroup = usePageGroup();
   const [query, setQuery] = useState('');
-  const [search, setSearch] = useState<SearchState | null>(null);
-  const [attempt, setAttempt] = useState(0);
+  const [selected, setSelected] = useState('');
   const text = query.trim();
-
-  useEffect(() => {
-    if (!text || mode !== 'search') return undefined;
-    setSearch({ status: 'loading', query: text });
-    const controller = new AbortController();
-    const inScope = useAppStore.getState().captureScope();
-    const timer = window.setTimeout(() => {
-      searchWorkspace(text, controller.signal)
-        .then((response) => {
-          if (!controller.signal.aborted && inScope()) setSearch({ status: 'ready', query: text, response });
-        })
-        .catch((error: unknown) => {
-          if (controller.signal.aborted || !inScope()) return;
-          const message = error instanceof Error && error.message ? error.message : 'Something went wrong.';
-          setSearch({ status: 'error', query: text, message });
-        });
-    }, SEARCH_DELAY_MS);
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [mode, text, attempt]);
-
-  const current: SearchState | null = mode !== 'search' || !text
-    ? null
-    : search?.query === text
-      ? search
-      : { status: 'loading', query: text };
+  const quick = useQuickResults(text);
 
   // The same address again re-opens it in place instead of repeating history.
   const go = (path: string) => navigate(path, `${window.location.pathname}${window.location.search}` === path);
   const slug = workspace.slug;
   const rulesPath = pathForTab(slug, 'rules');
-  const commands: PaletteCommand[] = [
-    { id: 'inbox', label: 'Go to Inbox', keywords: ['notifications', 'events'], icon: <LinearInboxIcon size={14} />, run: () => go(pathForTab(slug, 'inbox')) },
-    { id: 'ads-manager', label: 'Go to Ads Manager', keywords: ['campaigns', 'ad sets', 'ads', 'meta'], icon: <LinearMetaIcon size={14} />, run: () => go(pathForTab(slug, 'campaigns', campaignFilterTab)) },
-    { id: 'rules', label: 'Go to Rules', keywords: ['automation'], icon: <LinearBoltIcon size={14} />, run: () => go(rulesPath) },
-    ...(STATISTICS_ENABLED
-      ? [{ id: 'statistics', label: 'Go to Statistics', keywords: ['metrics', 'analytics'], icon: <LinearChartIcon size={14} />, run: () => go(pathForTab(slug, 'statistics')) }]
-      : []),
-    { id: 'settings', label: 'Go to Settings', keywords: ['preferences', 'profile', 'members', 'notifications'], icon: <Settings size={14} strokeWidth={1.75} />, run: () => go(pathForTab(slug, 'preferences')) },
+  const advancedSearch = () => {
+    if (!text) {
+      openSearchPage();
+      return;
+    }
+    if (useAppStore.getState().activeTab !== 'search') {
+      rememberSearchReturnPath(`${window.location.pathname}${window.location.search}`);
+    }
+    go(searchPagePath(slug, { query: text, tab: 'all', statuses: [], accounts: [], order: 'relevance', includeDeleted: false }));
+  };
+
+  const groups: PaletteGroup[] = [
+    ...(pageGroup ? [pageGroup] : []),
     {
-      id: 'create-rule',
-      label: 'Create rule…',
-      keywords: ['new rule', 'automation'],
-      icon: <LinearPlusIcon size={14} />,
-      run: () => {
-        go(rulesPath);
-        openCreateRuleModal();
-      },
+      heading: 'Rules',
+      commands: [{
+        id: 'create-rule',
+        label: 'Create rule…',
+        keywords: ['new rule', 'automation'],
+        icon: <LinearPlusIcon size={14} />,
+        // C creates a rule on the Rules page only, so the key shows there.
+        shortcut: activeTab === 'rules' ? 'C' : undefined,
+        run: () => {
+          go(rulesPath);
+          openCreateRuleModal();
+        },
+      }],
+    },
+    {
+      heading: 'Filter',
+      commands: [
+        { id: 'search', label: 'Search workspace…', keywords: ['find', 'campaigns', 'rules'], icon: <LinearSearchIcon size={14} />, run: openSearchPage },
+      ],
+    },
+    {
+      heading: 'Navigation',
+      commands: [
+        { id: 'advanced-search', label: 'Go to advanced search', icon: <Maximize2 size={13} strokeWidth={1.75} />, shortcut: '/', run: advancedSearch },
+        // Linear leaves out Go to inbox on Inbox itself.
+        ...(activeTab === 'inbox'
+          ? []
+          : [{ id: 'inbox', label: 'Go to inbox', keywords: ['notifications', 'events'], icon: arrowIcon, shortcut: goToShortcut('inbox'), run: () => go(pathForTab(slug, 'inbox')) }]),
+        { id: 'ads-manager', label: 'Go to Ads Manager', keywords: ['campaigns', 'ad sets', 'ads', 'meta'], icon: arrowIcon, shortcut: goToShortcut('campaigns'), run: () => go(pathForTab(slug, 'campaigns', campaignFilterTab)) },
+        { id: 'rules', label: 'Go to rules', keywords: ['automation'], icon: arrowIcon, shortcut: goToShortcut('rules'), run: () => go(rulesPath) },
+        ...(STATISTICS_ENABLED
+          ? [{ id: 'statistics', label: 'Go to statistics', keywords: ['metrics', 'analytics'], icon: arrowIcon, shortcut: goToShortcut('statistics'), run: () => go(pathForTab(slug, 'statistics')) }]
+          : []),
+        { id: 'settings', label: 'Go to settings', keywords: ['preferences', 'profile', 'members', 'notifications'], icon: arrowIcon, shortcut: goToShortcut('preferences'), run: () => go(pathForTab(slug, 'preferences')) },
+        // The sidebar is a drawer on a phone; [ collapses it on a wider screen.
+        ...(isSmallScreen()
+          ? []
+          : [{
+            id: 'toggle-sidebar',
+            label: isSidebarCollapsed ? 'Expand navigation sidebar' : 'Collapse navigation sidebar',
+            icon: <LinearSidebarLeftToggleIcon size={14} isOpen={!isSidebarCollapsed} />,
+            shortcut: '[',
+            run: toggleSidebarCollapsed,
+          }]),
+      ],
     },
   ];
-  const words = text.toLowerCase().split(/\s+/).filter(Boolean);
-  const shownCommands = mode !== 'commands' ? [] : commands.filter((command) => {
-    const haystack = [command.label, ...command.keywords].join(' ').toLowerCase();
-    return words.every((word) => haystack.includes(word));
-  });
 
-  const response = current?.status === 'ready' ? current.response : null;
-  const groups = response
-    ? SEARCH_KINDS.map(({ kind, heading }) => ({
-      kind,
-      heading,
-      results: response.results.filter((result) => result.kind === kind),
-    })).filter((group) => group.results.length > 0)
-    : [];
-
-  const scope = workspace.name;
-  const resultCount = response?.results.length ?? 0;
-  const hasRows = shownCommands.length > 0 || groups.length > 0 || current?.status === 'error';
-  const note = mode === 'commands'
-    ? (shownCommands.length === 0 ? `No commands match “${text}”.` : '')
-    : !current
-    ? `Search campaigns, ad sets, ads, rules and ad accounts in ${scope}.`
-    : current.status === 'loading'
-      ? `Searching ${scope}…`
-      : current.status === 'error'
-        ? `Couldn't search ${scope}. ${current.message}`
-        : resultCount === 0
-          ? `No campaigns, ad sets, ads, rules or ad accounts in ${scope} match “${current.query}”.`
-          : `${resultCount} ${resultCount === 1 ? 'result' : 'results'} in ${scope}.`;
+  const shownGroups = groups
+    .map((group) => ({ ...group, commands: filterCommands(group.commands, text) }))
+    .filter((group) => group.commands.length > 0);
+  const showQuick = text.length >= QUICK_RESULTS_MIN_LENGTH && quick !== null;
+  const results = showQuick ? quick.slice(0, QUICK_RESULTS_LIMIT) : [];
+  const onRecord = selected.startsWith('result:');
+  const shownCount = shownGroups.reduce((sum, group) => sum + group.commands.length, 0) + (showQuick ? results.length + 1 : 0);
 
   return (
-    <Command label={mode === 'search' ? 'Search workspace' : 'Command menu'} shouldFilter={false} loop vimBindings={false}>
-      <div className="flex items-center gap-2 border-b border-[var(--color-border-primary)] pl-3 pr-2.5">
-        {mode === 'search' && (
-          <span className="shrink-0 text-[var(--text-tertiary)]" aria-hidden="true">
-            <LinearSearchIcon size={16} />
-          </span>
-        )}
+    <Command
+      label="Command menu"
+      shouldFilter={false}
+      loop
+      vimBindings={false}
+      value={selected}
+      // cmdk clears the choice when the list empties; undefined would break the footer.
+      onValueChange={(next) => setSelected(next ?? '')}
+      className="flex min-h-0 flex-1 flex-col"
+      onKeyDown={(event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key === '/') {
+          event.preventDefault();
+          choose(advancedSearch);
+        }
+      }}
+    >
+      <div className={COMMAND_MENU_CLASSES.field}>
         <Command.Input
           autoFocus
           value={query}
           onValueChange={setQuery}
-          placeholder={mode === 'search' ? 'Search…' : 'Type a command…'}
-          className="h-11 min-w-0 flex-1 bg-transparent text-[13px] text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none"
+          placeholder="Type a command or search…"
+          className={COMMAND_MENU_CLASSES.input}
         />
-        <kbd className="shrink-0 rounded-[4px] border border-[var(--color-border-secondary)] px-1.5 py-0.5 font-sans text-[11px] text-[var(--text-tertiary)]">
-          Esc
-        </kbd>
       </div>
-      <Command.List
-        className={hasRows ? `${COMMAND_MENU_CLASSES.list} pt-1.5` : undefined}
-        aria-busy={current?.status === 'loading'}
-      >
-        {shownCommands.length > 0 && (
-          <Command.Group heading="Commands" className={COMMAND_MENU_CLASSES.group}>
-            {shownCommands.map((command) => (
+      <p role="status" className="sr-only">{text ? `Showing ${shownCount} items` : 'Showing all items'}</p>
+      <Command.List className={`min-h-0 flex-1 ${COMMAND_MENU_CLASSES.list}`}>
+        {shownGroups.map((group) => (
+          <Command.Group key={group.heading} heading={group.heading} className={COMMAND_MENU_CLASSES.group}>
+            {group.commands.map((command) => (
               <Command.Item
                 key={command.id}
                 value={`command:${command.id}`}
+                aria-label={command.label}
                 onSelect={() => choose(command.run)}
                 className={COMMAND_MENU_CLASSES.item}
               >
                 <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true">{command.icon}</span>
                 <span className="min-w-0 flex-1 truncate">{command.label}</span>
+                {command.shortcut && <ShortcutKeys shortcut={command.shortcut} />}
               </Command.Item>
             ))}
           </Command.Group>
-        )}
-        {groups.map((group) => (
-          <Command.Group key={group.kind} heading={group.heading} className={COMMAND_MENU_CLASSES.group}>
-            {group.results.map((result) => {
-              const context = resultContext(result);
-              const status = resultStatus(result);
-              return (
-                <Command.Item
-                  key={`${result.kind}:${result.id}`}
-                  value={`${result.kind}:${result.id}`}
-                  onSelect={() => choose(() => go(searchResultPath(slug, result)))}
-                  className={COMMAND_MENU_CLASSES.item}
-                >
-                  <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true">{KIND_ICONS[result.kind]}</span>
-                  <span className="flex min-w-0 flex-1 items-baseline gap-2">
-                    <span className="min-w-0 shrink truncate">{result.name}</span>
-                    {context && (
-                      <span className="min-w-0 flex-1 truncate text-[12px] text-[var(--text-tertiary)]">{context}</span>
-                    )}
-                  </span>
-                  {status && <span className="shrink-0 text-[12px] text-[var(--text-tertiary)]">{status}</span>}
-                </Command.Item>
-              );
-            })}
-          </Command.Group>
         ))}
-        {current?.status === 'error' && (
-          <Command.Group heading="Search" className={COMMAND_MENU_CLASSES.group}>
+        {showQuick && (
+          <Command.Group heading={`Quick results for "${text}"`} className={COMMAND_MENU_CLASSES.group}>
+            {results.map((result) => (
+              <Command.Item
+                key={`${result.kind}:${result.id}`}
+                value={`result:${result.kind}:${result.id}`}
+                aria-label={quickResultName(result)}
+                onSelect={() => choose(() => go(searchResultPath(slug, result)))}
+                className={COMMAND_MENU_CLASSES.item}
+              >
+                <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true"><StatusMark result={result} /></span>
+                <QuickResultLabel result={result} />
+              </Command.Item>
+            ))}
             <Command.Item
-              value="search:retry"
-              onSelect={() => setAttempt((value) => value + 1)}
+              value="search-entire-workspace"
+              aria-label={results.length > 0 ? `Search entire workspace ${text}` : 'No results found, go to advanced search'}
+              onSelect={() => choose(advancedSearch)}
               className={COMMAND_MENU_CLASSES.item}
             >
-              <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true"><RotateCcw size={14} strokeWidth={1.75} /></span>
-              <span className="min-w-0 flex-1 truncate">Retry search</span>
+              <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true"><LinearSearchIcon size={14} /></span>
+              <span className="flex min-w-0 flex-1 items-baseline gap-2">
+                <span className="shrink-0">{results.length > 0 ? 'Search entire workspace' : 'No results found'}</span>
+                <span className="min-w-0 truncate text-[var(--text-muted)]">{results.length > 0 ? text : 'Go to advanced search'}</span>
+              </span>
             </Command.Item>
           </Command.Group>
         )}
       </Command.List>
-      {note && (
-      <p
-        role="status"
-        className={
-          resultCount > 0
-            ? 'sr-only'
-            : `${COMMAND_MENU_CLASSES.note} ${hasRows ? 'border-t border-[var(--color-border-primary)]' : ''}`
-        }
-      >
-        {note}
-      </p>
+      {showQuick && (
+        // Linear's footer: 35px under a rule, each hint a small button with its keys boxed.
+        <div className="flex h-[35px] shrink-0 items-center gap-1.5 border-t border-[var(--command-menu-border)] px-1">
+          <span className={FOOTER_HINT_CLASS}>
+            <FooterKeys keys={['↵']} />
+            <span>{onRecord ? 'Open' : 'Select'}</span>
+          </span>
+          <button
+            type="button"
+            className={`${FOOTER_HINT_CLASS} rounded-[6px] hover:bg-[var(--command-menu-row-selected-bg)]`}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => choose(advancedSearch)}
+          >
+            <span>Advanced search</span>
+            <FooterKeys keys={['Ctrl', '/']} />
+          </button>
+        </div>
       )}
     </Command>
+  );
+};
+
+/** Commands matching what is typed, best first; nothing typed keeps their order. */
+function filterCommands(commands: PaletteCommand[], text: string): PaletteCommand[] {
+  if (!text) return commands;
+  return commands
+    .map((command, index) => ({ command, index, score: bestCommandScore(text, command.label, command.keywords) }))
+    .filter((entry): entry is { command: PaletteCommand; index: number; score: number } => entry.score !== null)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map((entry) => entry.command);
+}
+
+/** Where a result lives: its ad account, or an ad account's own ID; a rule lives in Rules. */
+function quickResultWhere(result: SearchResult): string {
+  if (result.kind === 'account') return result.id;
+  return result.kind === 'rule' ? '' : result.account_name || result.account_id;
+}
+
+function quickResultName(result: SearchResult): string {
+  const where = quickResultWhere(result);
+  return `${SEARCH_KIND_LABELS[result.kind]} ${result.name}${where ? `, ${where}` : ''}`;
+}
+
+/** Linear's "Project › Test": the kind muted, then the name, then where it lives. */
+const QuickResultLabel: React.FC<{ result: SearchResult }> = ({ result }) => {
+  const where = quickResultWhere(result);
+  return (
+    <span className="flex min-w-0 flex-1 items-center gap-1.5">
+      <span className="shrink-0 text-[var(--text-tertiary)]">{SEARCH_KIND_LABELS[result.kind]}</span>
+      <span className="shrink-0 text-[var(--text-muted)]" aria-hidden="true">›</span>
+      <span className="min-w-0 truncate text-[var(--text-secondary)]">{result.name}</span>
+      {where && <span className="min-w-0 shrink-[200000] truncate text-[var(--text-muted)]">{where}</span>}
+    </span>
+  );
+};
+
+/**
+ * The workspace's records for what is typed, from GET /api/search; null until
+ * the first answer for a query long enough. The last answer stays while the
+ * next one loads, as in Linear.
+ */
+function useQuickResults(text: string): SearchResult[] | null {
+  const [answer, setAnswer] = useState<{ query: string; results: SearchResult[] } | null>(null);
+
+  useEffect(() => {
+    if (text.length < QUICK_RESULTS_MIN_LENGTH) {
+      setAnswer(null);
+      return undefined;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      searchWorkspace(
+        { query: text, tab: 'all', statuses: [], accounts: [], order: 'relevance', includeDeleted: false },
+        controller.signal,
+      )
+        .then((response) => setAnswer({ query: text, results: response.results }))
+        .catch(() => {
+          if (!controller.signal.aborted) setAnswer({ query: text, results: [] });
+        });
+    }, QUICK_RESULTS_DELAY_MS);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [text]);
+
+  return answer?.results ?? null;
+}
+
+/** The footer's smaller boxed keys: 19px high, 2px inside. */
+const FooterKeys: React.FC<{ keys: string[] }> = ({ keys }) => (
+  <span className="flex items-center gap-[3px]" aria-hidden="true">
+    {keys.map((key) => (
+      <kbd
+        key={key}
+        className="inline-flex h-[19px] min-w-[18px] items-center justify-center rounded-[3px] border border-[var(--command-menu-kbd-border)] p-0.5 font-sans text-[12px] font-medium leading-none text-[var(--text-tertiary)]"
+      >
+        {key}
+      </kbd>
+    ))}
+  </span>
+);
+
+const KEY_NAMES: Record<string, string> = { Shift: '⇧', Alt: 'Alt', Ctrl: 'Ctrl' };
+const SEQUENCE_PREFIXES = new Set(['G', 'O', 'N']);
+
+/** Linear's keys on the right: boxed, and "G then S" for a sequence. */
+const ShortcutKeys: React.FC<{ shortcut: string }> = ({ shortcut }) => {
+  const parts = shortcut.split(' ').map((part) => KEY_NAMES[part] ?? part);
+  const sequence = parts.length === 2 && SEQUENCE_PREFIXES.has(parts[0]) && /^[A-Z]$/.test(parts[1]);
+  return (
+    <span className="flex shrink-0 items-center gap-[3px]" aria-label={sequence ? `${parts[0]} then ${parts[1]}` : parts.join(' ')}>
+      {parts.map((part, index) => (
+        <React.Fragment key={index}>
+          {sequence && index === 1 && <span className="px-px text-[12px] font-[450] text-[var(--text-tertiary)]" aria-hidden="true">then</span>}
+          <kbd
+            aria-hidden="true"
+            className={COMMAND_MENU_CLASSES.kbd}
+          >
+            {part}
+          </kbd>
+        </React.Fragment>
+      ))}
+    </span>
   );
 };

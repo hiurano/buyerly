@@ -4,8 +4,9 @@ import { useAppStore } from '@/store/useAppStore';
 import { Tooltip } from '@/ui/Tooltip';
 import { BuyerlyLogoAvatar, LinearCheckIcon } from '@/icons/LinearIcons';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
-import { openCommandMenu } from '@/components/command/CommandMenu';
+import { openSearchPage } from '@/components/search/openSearchPage';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
+import { GO_TO_KEYS } from '@/lib/shortcuts';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -116,7 +117,7 @@ export const SidebarHeader: React.FC = () => {
                   then
                 </span>
                 <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
-                  S
+                  {GO_TO_KEYS.preferences}
                 </kbd>
               </div>
             </DropdownMenuItem>
@@ -232,7 +233,7 @@ export const SidebarHeader: React.FC = () => {
           <Tooltip content="Search workspace" shortcut="/">
             <button
               type="button"
-              onClick={() => openCommandMenu('search')}
+              onClick={openSearchPage}
               aria-label="Search workspace"
               className="linear-icon-btn"
             >
