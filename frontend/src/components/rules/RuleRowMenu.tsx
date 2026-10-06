@@ -1,5 +1,6 @@
 import React from 'react';
 import { RuleItem, useAppStore } from '@/store/useAppStore';
+import { ruleStatesTitle } from './RuleStatesDialog';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -115,6 +116,13 @@ export const RuleRowMenu: React.FC<RuleRowMenuProps> = ({ rule }) => {
             <DropdownMenuSubContent>{accountItems}</DropdownMenuSubContent>
           </DropdownMenuSub>
         )}
+
+        <DropdownMenuSeparator />
+
+        {/* Where the rule stands on each campaign it checks (#322). */}
+        <DropdownMenuItem onClick={() => useAppStore.getState().openRuleStates(rule.id)}>
+          <span>{ruleStatesTitle(rule)}</span>
+        </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 
