@@ -300,7 +300,7 @@ try {
       await closed();
       await page.waitForURL(`${origin}/alpha/search?q=zzz`);
 
-      // 7. G then a letter does what the hints say (#306): G A, G R, G S, G I; Statistics is off, so G T does nothing.
+      // 7. G then a letter does what the hints say (#306): G A, G R, G S, G I; Statistics is gone, so G T does nothing.
       await page.goto(`${origin}/alpha/inbox`);
       await page.getByText('No notifications', { exact: true }).waitFor();
       const goTo = [['a', /\/alpha\/ads-manager\/campaigns/], ['r', /\/alpha\/rules$/], ['s', /\/alpha\/settings/], ['i', /\/alpha\/inbox$/]];
@@ -313,7 +313,7 @@ try {
       await page.keyboard.press('g');
       await page.keyboard.press('t');
       await page.waitForTimeout(300);
-      assert.equal(new URL(page.url()).pathname, '/alpha/inbox', 'G T opens nothing while Statistics is off');
+      assert.equal(new URL(page.url()).pathname, '/alpha/inbox', 'G T opens nothing');
 
       assert.ok(searches.includes('test') && searches.includes('zzz'), 'quick results asked GET /api/search');
       assert.ok(searches.every((query) => query.length >= 2), `quick results wait for two letters: ${searches}`);

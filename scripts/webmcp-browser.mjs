@@ -96,7 +96,7 @@ const presetPayload = (id, name, action, extra = {}) => ({
 const account = (accountId, name, currency, extra = {}) => ({
   id: Number(accountId.slice(4)), account_id: accountId, name, custom_name: '', note: '', connection_type: 'system_user',
   timezone_name: 'Asia/Tbilisi', currency, account_status: 1, status_label: 'Active (ACTIVE)', rules_enabled: false,
-  is_active: true, primary_result: 'leads', target_cost_per_result: 12, active_rules: [], ...extra,
+  is_active: true, active_rules: [], ...extra,
 });
 const metrics = (spend, impressions, clicks, leads, registrations = 0) => ({
   spend, impressions, reach: impressions, cpm: 0, clicks, link_clicks: clicks, outbound_clicks: 0,
@@ -400,7 +400,7 @@ try {
   assert.equal(accounts.workspace, 'alpha');
   assert.deepEqual(accounts.accounts, [{
     account_id: 'act_100', name: 'Alpha Leads', currency: 'USD', timezone: 'Asia/Tbilisi', status: 'Active (ACTIVE)',
-    connected: true, goal: { result: 'leads', target_cost: 12 }, automation_on: false, rules: [],
+    connected: true, automation_on: false, rules: [],
   }]);
 
   const performance = await callTool(page, 'get_performance', { account_id: 'act_100' });

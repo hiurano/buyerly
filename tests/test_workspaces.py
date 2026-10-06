@@ -308,7 +308,6 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 '/buyerly/ads-manager/adsets/1',
                 '/buyerly/rules',
                 '/buyerly/rules/1',
-                '/buyerly/statistics',
                 '/buyerly/settings',
             ]
             for r in routes:

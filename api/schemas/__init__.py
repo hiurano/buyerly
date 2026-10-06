@@ -56,7 +56,6 @@ from api.schemas.delivery import (
 from api.schemas.accounts import (
     AccountLatestMetrics,
     AccountItem,
-    AccountCostTargetRequest,
     AccountProfileUpdateRequest,
     AccountGroupRequest,
     AccountGroupItem,
@@ -121,7 +120,6 @@ __all__ = [
     "EntityLevel",
     "AccountLatestMetrics",
     "AccountItem",
-    "AccountCostTargetRequest",
     "AccountProfileUpdateRequest",
     "AccountGroupRequest",
     "AccountGroupItem",

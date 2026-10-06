@@ -3,7 +3,6 @@ import { useAppStore, type InterfaceTheme, type SettingsSection } from '@/store/
 import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
 import type { SessionUser, Workspace } from '@/lib/types';
 import { ProfileSection } from './ProfileSection';
-import { AdAccountsSection } from './AdAccountsSection';
 import { MembersSection } from './MembersSection';
 import {
   EmailNotificationsSection,
@@ -38,7 +37,6 @@ const sectionKeywords: Record<
   notifications: 'notifications inbox priority inbox custom filters push email telegram',
   security: 'security access sessions devices auth log out logout revoke sign in',
   'connected-accounts': 'connected accounts telegram connect disconnect',
-  'ad-accounts': 'ad accounts cost target primary result statistics cpa cpl currency',
   members: 'members invite invitations people team users roles',
 };
 
@@ -279,33 +277,6 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
 
           <div className="preferences-nav-group">
             <h2 className="preferences-nav-heading">Workspace</h2>
-            {visibleSections.includes('ad-accounts') && (
-              <a
-                href="#ad-accounts"
-                className={`preferences-nav-item ${section === 'ad-accounts' ? 'active' : ''}`}
-                data-active={section === 'ad-accounts'}
-                onClick={(e) => {
-                  e.preventDefault();
-                  setSection('ad-accounts');
-                }}
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  role="img"
-                  focusable="false"
-                  aria-hidden="true"
-                  className="preferences-nav-icon"
-                >
-                  <path d="M2.75 12.5C2.33579 12.5 2 12.1642 2 11.75V3.25C2 2.83579 2.33579 2.5 2.75 2.5C3.16421 2.5 3.5 2.83579 3.5 3.25V11H13.25C13.6642 11 14 11.3358 14 11.75C14 12.1642 13.6642 12.5 13.25 12.5H2.75Z" />
-                  <path d="M6 9.25C6 9.66421 5.66421 10 5.25 10C4.83579 10 4.5 9.66421 4.5 9.25V7.75C4.5 7.33579 4.83579 7 5.25 7C5.66421 7 6 7.33579 6 7.75V9.25Z" />
-                  <path d="M9 9.25C9 9.66421 8.66421 10 8.25 10C7.83579 10 7.5 9.66421 7.5 9.25V5.75C7.5 5.33579 7.83579 5 8.25 5C8.66421 5 9 5.33579 9 5.75V9.25Z" />
-                  <path d="M12 9.25C12 9.66421 11.6642 10 11.25 10C10.8358 10 10.5 9.66421 10.5 9.25V4.25C10.5 3.83579 10.8358 3.5 11.25 3.5C11.6642 3.5 12 3.83579 12 4.25V9.25Z" />
-                </svg>
-                <span className="preferences-nav-label">Ad accounts</span>
-              </a>
-            )}
             {visibleSections.includes('members') && (
               <a
                 href="#members"
@@ -397,8 +368,6 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
             {section === 'connected-accounts' && <ConnectedAccountsSection />}
 
             {section === 'security' && <SecuritySection />}
-
-            {section === 'ad-accounts' && <AdAccountsSection />}
 
             {section === 'members' && <MembersSection workspace={workspace} />}
 

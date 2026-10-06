@@ -41,13 +41,6 @@ const SYSTEM_ROOTS = new Set([
   'uploads',
 ]);
 
-/**
- * Statistics is switched off for now: no sidebar item, no G S shortcut, and
- * its address opens Not found. The screen stays in the code; flip this to
- * bring it back.
- */
-export const STATISTICS_ENABLED = false;
-
 export function parseRoute(location: Location = window.location): Route {
   const parts = location.pathname.split('/').filter(Boolean);
   if (parts.length === 0) return { kind: 'root' };
@@ -100,9 +93,6 @@ export function parseRoute(location: Location = window.location): Route {
   if (parts[1] === 'search' && parts.length === 2) {
     // Linear's search page; the query, tab and filters live in `?q=…&type=…`.
     return { kind: 'workspace', workspace, tab: 'search' };
-  }
-  if (STATISTICS_ENABLED && parts[1] === 'statistics' && parts.length === 2) {
-    return { kind: 'workspace', workspace, tab: 'statistics' };
   }
   if (parts[1] === 'settings' && parts.length === 2) {
     return { kind: 'workspace', workspace, tab: 'preferences' };
