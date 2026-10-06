@@ -16,6 +16,7 @@ import {
   revokeSession,
   type WebSession,
 } from '@/lib/sessions';
+import { usePageCommands } from '@/components/command/pageCommands';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/ui/ContextMenu';
 import { DataState } from '@/ui/DataState';
@@ -289,6 +290,20 @@ export const SecuritySection: React.FC = () => {
   };
 
   const isBusy = (session: WebSession) => busy === session.id || (busy === 'all' && !session.current);
+
+  // Linear offers it in Ctrl/Cmd+K while other sessions exist; it asks first, as the button does.
+  usePageCommands(others.length > 0 && busy !== 'all'
+    ? {
+      heading: 'Sessions',
+      commands: [{
+        id: 'revoke-all-sessions',
+        label: 'Revoke all other sessions',
+        keywords: ['log out', 'logout', 'devices', 'security'],
+        icon: <LogOut size={14} strokeWidth={1.75} />,
+        run: () => setConfirmation({ kind: 'revoke-all' }),
+      }],
+    }
+    : null);
 
   return (
     <>

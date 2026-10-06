@@ -5,7 +5,9 @@
 // GET /api/search. Esc closes it with focus given back, and a row selection
 // keeps its own actions menu. G then a letter does what the hints say (#306).
 // `/` stays text in a field and outside one opens the search page, which
-// scripts/search-page-browser.mjs checks.
+// scripts/search-page-browser.mjs checks. O then a letter opens an "Open …"
+// palette (#312): recently opened records, quick results as you type, Quick
+// look on →; and over Settings, Ctrl/Cmd+K offers "Revoke all other sessions".
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -69,6 +71,19 @@ const preset = (id, name, enabled) => ({
   review_reason: '', last_run_at: '', attached_account_ids: [], attached_scopes: {},
 });
 const presets = [preset(7, 'Test stop without leads', false), preset(8, 'Budget up on cheap leads', true)];
+const webSession = (id, current) => ({
+  id, user_agent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
+  ip_address: '203.0.113.7', created_at: '2026-09-25T08:00:00Z', expires_at: '2026-11-25T08:00:00Z',
+  last_seen_at: '2026-10-06T08:00:00Z', current,
+});
+const testCampaignResult = {
+  kind: 'campaign', id: '120045', name: 'Test Campaign', account_id: 'act_1001', account_name: 'Leads account',
+  parent_name: '', status: 'ACTIVE', updated_at: '2026-10-01T08:00:00Z',
+};
+const stopRuleResult = {
+  kind: 'rule', id: '7', name: 'Test stop without leads', account_id: '', account_name: '',
+  parent_name: '', status: 'paused', updated_at: '2026-10-02T08:00:00Z',
+};
 
 
 let browser;
@@ -82,6 +97,7 @@ try {
     page.setDefaultTimeout(10_000);
     const errors = [];
     const searches = [];
+    const kindSearches = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await context.route('**/api/**', async (route) => {
       const request = route.request();
@@ -94,16 +110,17 @@ try {
       }
       if (path === '/api/search') {
         const q = url.searchParams.get('q');
-        searches.push(q);
-        // Only "test" finds anything: one campaign, so a quick result can be opened.
-        const results = q === 'test'
-          ? [{
-            kind: 'campaign', id: '120045', name: 'Test Campaign', account_id: 'act_1001', account_name: 'Leads account',
-            parent_name: '', status: 'ACTIVE', updated_at: '2026-10-01T08:00:00Z',
-          }]
-          : [];
+        const kind = url.searchParams.get('kind');
+        // The "Open …" palettes ask for one kind; Ctrl/Cmd+K asks for all.
+        (kind ? kindSearches : searches).push(kind ? `${kind}:${q}` : q);
+        // "test" finds one campaign and "stop" one rule, so a result can be opened.
+        const results = [
+          ...(q === 'test' && (!kind || kind === 'campaign') ? [testCampaignResult] : []),
+          ...(q === 'stop' && (!kind || kind === 'rule') ? [stopRuleResult] : []),
+        ];
         return route.fulfill({ json: { query: q, limit: 20, results, truncated: [] } });
       }
+      if (path === '/api/auth/sessions') return route.fulfill({ json: [webSession('s1', true), webSession('s2', false)] });
       if (path === '/api/me') return route.fulfill({ json: me });
       if (path === '/api/accounts') return route.fulfill({ json: accounts });
       if (path === '/api/analytics/hierarchy') {
@@ -144,6 +161,11 @@ try {
       `${where} at ${width}px: document overflow`,
     );
     const onSearchPage = () => page.waitForURL(`${origin}/alpha/search`);
+    const openCommands = [
+      'Open campaign… · O then C', 'Open ad set… · O then A', 'Open ad… · O then D',
+      'Open rule… · O then R', 'Open ad account… · O then K', 'Open settings… · O then S',
+    ];
+    const blur = () => page.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined));
 
     try {
       await page.goto(`${origin}/alpha/inbox`);
@@ -185,6 +207,7 @@ try {
         'Delete all notifications', 'Delete all read notifications · ⇧ ⌫', 'Create rule…', 'Search workspace…',
         // Linear leaves out Go to inbox on Inbox itself.
         'Go to advanced search · /', 'Go to Ads Manager · G then A', 'Go to rules · G then R', 'Go to settings · G then S',
+        ...openCommands,
         ...(wide ? ['Collapse navigation sidebar · ['] : []),
       ]);
       assert.equal(await page.evaluate(() => [...document.querySelectorAll('body *')].some((element) => {
@@ -315,6 +338,109 @@ try {
       await page.waitForTimeout(300);
       assert.equal(new URL(page.url()).pathname, '/alpha/inbox', 'G T opens nothing');
 
+      // 8. O then C: "Open campaign…" where the command menu sits, listing the
+      //    campaign opened from Ctrl/Cmd+K in step 6; typing searches campaigns at once.
+      const palette = (name) => page.getByRole('dialog', { name });
+      const campaigns = palette('Open campaign');
+      const campaignField = campaigns.getByRole('combobox');
+      const testRow = campaigns.getByRole('option', { name: 'Test Campaign, Leads account' });
+      await blur();
+      await page.keyboard.press('o');
+      await page.keyboard.press('c');
+      await campaignField.waitFor();
+      assert.equal(await campaignField.getAttribute('placeholder'), 'Open campaign…');
+      await page.waitForFunction(() => document.activeElement?.hasAttribute('cmdk-input'));
+      await campaigns.getByText('Recently opened', { exact: true }).waitFor();
+      await testRow.waitFor();
+      await assertNoOverflow('open campaign palette');
+      // One letter already searches, unlike Ctrl/Cmd+K.
+      await page.keyboard.type('t');
+      await campaigns.getByRole('option', { name: 'No results found, go to advanced search' }).waitFor();
+      await campaignField.fill('test');
+      await campaigns.getByText('Quick results for "test"', { exact: true }).waitFor();
+      await testRow.waitFor();
+      // → past the typed text shows Quick look inside the palette; Esc hides it before closing.
+      await page.keyboard.press('ArrowRight');
+      const quickLook = campaigns.getByRole('region', { name: 'Quick look' });
+      await quickLook.waitFor();
+      await quickLook.getByText('120045', { exact: true }).waitFor();
+      await quickLook.getByText('Leads account', { exact: true }).waitFor();
+      await campaigns.getByRole('button', { name: /Close/ }).waitFor();
+      await assertNoOverflow('quick look');
+      await page.screenshot({ path: `${output}/open-campaign-${width}.png` });
+      await page.keyboard.press('Escape');
+      await quickLook.waitFor({ state: 'detached' });
+      await campaignField.waitFor();
+      await page.keyboard.press('ArrowRight');
+      await quickLook.waitFor();
+      await page.keyboard.press('ArrowLeft');
+      await quickLook.waitFor({ state: 'detached' });
+      await page.keyboard.press('Escape');
+      await campaigns.waitFor({ state: 'detached' });
+
+      // 9. O then R on Rules: the letter after O opens the palette, never the page's own C or R.
+      await page.goto(`${origin}/alpha/rules`);
+      await page.getByText('Test stop without leads', { exact: true }).first().waitFor();
+      await blur();
+      await page.keyboard.press('o');
+      await page.keyboard.press('c');
+      await campaignField.waitFor();
+      assert.equal(await page.getByRole('dialog', { name: 'New rule' }).count(), 0, 'O then C did not create a rule');
+      await page.keyboard.press('Escape');
+      await campaigns.waitFor({ state: 'detached' });
+      await blur();
+      await page.keyboard.press('o');
+      await page.keyboard.press('r');
+      const rules = palette('Open rule');
+      await rules.getByText('No recently opened rules. Type to search.', { exact: true }).waitFor();
+      await rules.getByRole('combobox').fill('stop');
+      await rules.getByRole('option', { name: 'Test stop without leads' }).waitFor();
+      await page.keyboard.press('Enter');
+      await rules.waitFor({ state: 'detached' });
+      await page.waitForURL(`${origin}/alpha/rules/7`);
+
+      // 10. Ctrl/Cmd+K lists the palettes; "Open settings…" finds Security & access by "auth".
+      await page.keyboard.press('Control+K');
+      await commandField.fill('open settings');
+      await commands.getByRole('option', { name: 'Open settings…' }).waitFor();
+      await page.keyboard.press('Enter');
+      await closed();
+      const settings = palette('Open settings');
+      await settings.getByRole('option', { name: 'Members' }).waitFor();
+      assert.deepEqual(
+        await settings.getByRole('option').evaluateAll((options) => options.map((option) => option.getAttribute('aria-label'))),
+        ['Preferences', 'Profile', 'Notifications', 'Security & access', 'Connected accounts', 'Members'],
+      );
+      await settings.getByRole('combobox').fill('auth');
+      await settings.getByRole('option', { name: 'Security & access' }).waitFor();
+      await page.keyboard.press('Enter');
+      await settings.waitFor({ state: 'detached' });
+      await page.waitForURL(`${origin}/alpha/settings/account/security`);
+
+      // 11. Over Settings, Ctrl/Cmd+K opens too: Sessions → Revoke all other sessions, confirmed first.
+      await page.getByText('1 other session', { exact: true }).waitFor();
+      await blur();
+      await page.keyboard.press('Control+K');
+      await commandField.waitFor();
+      assert.equal((await headings())[0], 'Sessions');
+      assert.equal(await commands.getByRole('option', { name: /Collapse navigation sidebar/ }).count(), 0, 'Settings has its own sidebar');
+      await commandField.fill('revoke');
+      await commands.getByRole('option', { name: 'Revoke all other sessions' }).waitFor();
+      await page.keyboard.press('Enter');
+      await closed();
+      const confirmRevoke = page.getByRole('dialog', { name: 'Revoke access' });
+      await confirmRevoke.getByText('Revoke all other sessions? This cannot be undone.', { exact: true }).waitFor();
+      await confirmRevoke.getByRole('button', { name: 'Cancel' }).click();
+      await confirmRevoke.waitFor({ state: 'detached' });
+      // `/` in Settings searches the settings, as Linear's "Search settings /"; on a phone the field is in the shut drawer.
+      await blur();
+      await page.keyboard.press('/');
+      if (wide) await page.waitForFunction(() => document.activeElement?.classList.contains('preferences-search-input'));
+      await page.waitForTimeout(200);
+      assert.equal(new URL(page.url()).pathname, '/alpha/settings/account/security', '/ stays in Settings');
+
+      assert.ok(kindSearches.includes('campaign:t') && kindSearches.includes('campaign:test') && kindSearches.includes('rule:stop'), `palettes searched: ${kindSearches}`);
+      assert.ok(kindSearches.every((entry) => /^(campaign|rule):/.test(entry)), `palettes search their own kind: ${kindSearches}`);
       assert.ok(searches.includes('test') && searches.includes('zzz'), 'quick results asked GET /api/search');
       assert.ok(searches.every((query) => query.length >= 2), `quick results wait for two letters: ${searches}`);
       assert.deepEqual(errors, []);

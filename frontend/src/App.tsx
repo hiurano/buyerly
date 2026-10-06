@@ -4,6 +4,7 @@ import { InboxView } from '@/components/inbox/InboxView';
 import { CampaignsView } from '@/components/campaigns/CampaignsView';
 import { RulesView } from '@/components/rules/RulesView';
 import { CommandMenu } from '@/components/command/CommandMenu';
+import { OpenPalette } from '@/components/command/OpenPalette';
 import { SearchView } from '@/components/search/SearchView';
 import { searchPageTitle } from '@/lib/search';
 import { WorkspaceSwitcher } from '@/components/command/WorkspaceSwitcher';
@@ -242,11 +243,13 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
                   <SearchView workspace={workspace} navigate={navigate} navigationKey={navigationKey} />
                 )}
               </main>
-              <CommandMenu workspace={workspace} navigate={navigate} />
             </>
           )}
           <AppUtilityBar />
         </div>
+        {/* Over Settings too, as in Linear: Security & access adds "Revoke all other sessions". */}
+        <CommandMenu workspace={workspace} navigate={navigate} />
+        <OpenPalette workspace={workspace} navigate={navigate} />
         <WorkspaceSwitcher />
         <ToastRegion />
         <ApprovalDialog />

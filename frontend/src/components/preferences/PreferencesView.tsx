@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { useAppStore, type InterfaceTheme, type SettingsSection } from '@/store/useAppStore';
+import { useAppStore, type InterfaceTheme } from '@/store/useAppStore';
+import { SETTINGS_PAGE_KEYWORDS } from '@/lib/settingsPages';
 import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
 import type { SessionUser, Workspace } from '@/lib/types';
 import { ProfileSection } from './ProfileSection';
@@ -27,18 +28,7 @@ const themeOptions: Array<{
   { value: 'dark', label: 'Dark' },
 ];
 
-/** Keywords the settings search matches against, per section in the sidebar. */
-const sectionKeywords: Record<
-  Exclude<SettingsSection, 'priority-notifications' | 'email-notifications' | 'telegram-notifications'>,
-  string
-> = {
-  preferences: 'preferences interface theme appearance ai assistant agent webmcp chrome',
-  profile: 'profile account email name avatar',
-  notifications: 'notifications inbox priority inbox custom filters push email telegram',
-  security: 'security access sessions devices auth log out logout revoke sign in',
-  'connected-accounts': 'connected accounts telegram connect disconnect',
-  members: 'members invite invitations people team users roles',
-};
+const sectionKeywords = SETTINGS_PAGE_KEYWORDS;
 
 interface PreferencesViewProps {
   user: SessionUser;

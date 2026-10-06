@@ -25,6 +25,20 @@ export const COMMAND_MENU_CLASSES = {
   note: 'px-3 py-6 text-center text-[12px] text-[var(--text-muted)]',
 } as const;
 
+/** The footer's smaller boxed keys: 19px high, 2px inside. */
+export const CommandMenuFooterKeys: React.FC<{ keys: string[] }> = ({ keys }) => (
+  <span className="flex items-center gap-[3px]" aria-hidden="true">
+    {keys.map((key) => (
+      <kbd
+        key={key}
+        className="inline-flex h-[19px] min-w-[18px] items-center justify-center rounded-[3px] border border-[var(--command-menu-kbd-border)] p-0.5 font-sans text-[12px] font-medium leading-none text-[var(--text-tertiary)]"
+      >
+        {key}
+      </kbd>
+    ))}
+  </span>
+);
+
 interface SelectionCommandMenuProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
