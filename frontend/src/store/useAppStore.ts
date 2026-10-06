@@ -336,9 +336,13 @@ interface AppState {
   attachmentError: string;
   clearAttachmentError: () => void;
   loadAccountRuleAttachments: (accountId: string | null) => Promise<void>;
-  toggleRuleForEntity: (
+  /**
+   * Aims a rule at these campaigns or ad sets, or takes it off them when it
+   * already targets every one of them, as a multi-select picker does.
+   */
+  toggleRuleForEntities: (
     level: 'campaign' | 'adset',
-    entityId: string,
+    entityIds: string[],
     ruleId: string,
   ) => Promise<void>;
   isRightSidebarOpen: boolean;
@@ -720,11 +724,11 @@ export const useAppStore = create<AppState>((set, get) => {
     }
   },
 
-  toggleRuleForEntity: async (level, entityId, ruleId) => {
+  toggleRuleForEntities: async (level, entityIds, ruleId) => {
     const inScope = get().captureScope();
     const request = attachmentsRequest;
     const current = () => inScope() && request === attachmentsRequest;
-    if (!current() || get().attachmentsLoadState !== 'ready') return;
+    if (!current() || get().attachmentsLoadState !== 'ready' || entityIds.length === 0) return;
     const { attachedRulesAccountId, attachedRuleScopes } = get();
     if (!attachedRulesAccountId) return;
 
@@ -750,12 +754,12 @@ export const useAppStore = create<AppState>((set, get) => {
       if (!scope) {
         await assignRuleToAccount(attachedRulesAccountId, presetId, {
           level,
-          ids: [entityId],
+          ids: entityIds,
         });
       } else {
-        const nextIds = scope.ids.includes(entityId)
-          ? scope.ids.filter((id) => id !== entityId)
-          : [...scope.ids, entityId];
+        const nextIds = entityIds.every((id) => scope.ids.includes(id))
+          ? scope.ids.filter((id) => !entityIds.includes(id))
+          : [...scope.ids, ...entityIds.filter((id) => !scope.ids.includes(id))];
         if (nextIds.length === 0) {
           // A targeted rule with nothing left to target has no work to do.
           await detachRuleFromAccount(attachedRulesAccountId, presetId);
@@ -767,6 +771,8 @@ export const useAppStore = create<AppState>((set, get) => {
         }
       }
       if (!current()) return;
+      // The Rules screen's per-account notes read the same attachments.
+      if (get().rulesLoadState === 'ready') void get().loadRules();
       await get().loadAccountRuleAttachments(attachedRulesAccountId);
     } catch (error) {
       if (!current()) return;

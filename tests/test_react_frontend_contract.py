@@ -564,7 +564,14 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn('level="campaign"', self.campaign_row)
         self.assertIn('level="adset"', self.adset_row)
         self.assertIn("adSetAttachedRules", self.app_store)
-        self.assertIn("toggleRuleForEntity", self.app_store)
+        self.assertIn("toggleRuleForEntities", self.app_store)
+        # Ads Manager shows the column, and a selection can apply a rule to
+        # every selected row, as Meta's "Apply rule to" (#320).
+        self.assertNotIn("rules: false", self.campaigns_view)
+        self.assertIn("label: 'Apply rule…'", self.campaigns_view)
+        self.assertIn("entityIds={selectedRowIds}", self.campaigns_view)
+        workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
+        self.assertIn("node ../scripts/rules-attach-browser.mjs", workflow)
         # The Rules column is offered on both levels, never on ads.
         self.assertIn(
             "if (tab === 'campaigns' || tab === 'adsets') {", self.ads_manager_columns

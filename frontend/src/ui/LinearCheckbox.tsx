@@ -33,7 +33,7 @@ export const LinearCheckbox: React.FC<LinearCheckboxProps> = ({
         cursor: 'default',
         visibility: hidden ? 'hidden' : undefined,
       }}
-      className={`flex h-[22px] w-[18px] shrink-0 items-center justify-center opacity-0 transition-opacity duration-75 group-hover/row:opacity-100 group-focus-visible/row:opacity-100 ${
+      className={`flex h-[22px] w-[18px] shrink-0 items-center justify-center opacity-0 transition-opacity duration-75 group-hover/row:opacity-100 group-focus-visible/row:opacity-100 [@media(hover:none)_and_(pointer:coarse)]:opacity-100 ${
         checked || indeterminate ? '!opacity-100' : ''
       }`}
     >

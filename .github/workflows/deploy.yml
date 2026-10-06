@@ -154,6 +154,17 @@ jobs:
           name: search-page-browser
           path: /tmp/buyerly-search-page
 
+      - name: Check rules in Ads Manager in Chromium
+        working-directory: frontend
+        run: node ../scripts/rules-attach-browser.mjs
+
+      - name: Upload rules in Ads Manager browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rules-attach-browser
+          path: /tmp/buyerly-rules-attach
+
       # The runner's Google Chrome has WebMCP behind a flag; Playwright's
       # Chromium does not, and the check then uses a stand-in instead.
       - name: Check WebMCP tools in Chromium
