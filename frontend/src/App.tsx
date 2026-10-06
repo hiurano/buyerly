@@ -87,7 +87,8 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     },
     openCreateWorkspace: () => navigate('/create-workspace'),
   }), [navigate, refreshUser, user, workspace]);
-  const [gPressed, setGPressed] = useState(false);
+  /** When G was pressed; read straight from the listener, so G and a fast next key never race a render. */
+  const goToPressedAt = useRef(0);
   const syncingRoute = useRef(true);
 
   useEffect(() => {
@@ -144,7 +145,6 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   }, [activeTab, inboxBadge, navigationKey, workspace.name]);
 
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (
         document.activeElement?.tagName === 'INPUT' ||
@@ -167,28 +167,23 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
       const key = event.key.toLowerCase();
       if (!event.ctrlKey && !event.altKey && !event.metaKey) {
         if (key === 'g') {
-          setGPressed(true);
-          clearTimeout(timer);
-          timer = setTimeout(() => setGPressed(false), 1500);
+          goToPressedAt.current = Date.now();
           return;
         }
-        if (gPressed) {
+        if (Date.now() - goToPressedAt.current < 1500) {
           const target = goToTargetFor(key);
           if (target) {
             event.preventDefault();
             if (target === 'preferences') setSettingsSection(GO_TO_SETTINGS_SECTION);
             setActiveTab(target);
-            setGPressed(false);
+            goToPressedAt.current = 0;
           }
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      clearTimeout(timer);
-    };
-  }, [gPressed, setActiveTab, setSettingsSection, toggleRightSidebar, toggleSidebarCollapsed, toggleSidebarOpen]);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [setActiveTab, setSettingsSection, toggleRightSidebar, toggleSidebarCollapsed, toggleSidebarOpen]);
 
   useEffect(() => {
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
