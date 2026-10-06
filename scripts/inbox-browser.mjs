@@ -166,6 +166,15 @@ try {
       if (verb === 'GET' && path === '/api/me') return route.fulfill({ json: owner });
       if (verb === 'GET' && path === '/api/inbox') return route.fulfill({ json: state.list(url.searchParams) });
       if (verb === 'GET' && path === '/api/inbox/facets') return route.fulfill({ json: state.facets() });
+      // Everyone in the workspace, whether anything came from them yet or not (#271).
+      if (verb === 'GET' && path === '/api/inbox/senders') {
+        return route.fulfill({ json: [
+          { value: 'user:1', label: 'Olga Owner', kind: 'user' },
+          { value: 'user:2', label: 'Pavel Quiet', kind: 'user' },
+          { value: 'rule:3', label: 'Stop without leads', kind: 'rule' },
+          { value: 'buyerly', label: 'Buyerly', kind: 'buyerly' },
+        ] });
+      }
       if (verb === 'GET' && path === '/api/inbox/unread-count') return route.fulfill({ json: state.counts() });
       const action = path.match(/^\/api\/inbox\/(\d+)\/(read|delete|snooze)$/);
       if (verb === 'POST' && action) {
@@ -590,6 +599,14 @@ try {
       await customFilters.getByText('1 custom filter').waitFor();
       await customFilters.getByRole('button', { name: 'Custom filter actions' }).click();
       await page.getByRole('menuitem', { name: 'Edit' }).click();
+      // From lists every member, even one nothing came from, without counts (#271).
+      await customFilters.getByRole('button', { name: 'Add another filter' }).click();
+      await page.getByRole('dialog', { name: 'Add filter' }).getByRole('option', { name: /From/ }).hover();
+      const ruleFrom = page.getByRole('dialog', { name: 'From values' });
+      await ruleFrom.getByRole('option', { name: /Pavel Quiet/ }).waitFor();
+      assert.equal(await ruleFrom.getByRole('option').count(), 4);
+      assert.doesNotMatch(await ruleFrom.innerText(), /notification/);
+      await page.keyboard.press('Escape');
       await customFilters.getByRole('button', { name: 'Cancel' }).click();
       await customFilters.getByRole('button', { name: 'Custom filter actions' }).click();
       await page.getByRole('menuitem', { name: 'Delete' }).click();

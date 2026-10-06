@@ -5,7 +5,7 @@ from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, ValidationError, field_validator
-from sqlalchemy import String, and_, case, cast, false, func, literal, or_, select, update
+from sqlalchemy import String, and_, case, cast, false, func, literal, or_, select, true, update
 
 from api.auth import get_current_user
 from api.deps import (
@@ -26,7 +26,7 @@ from core.action_undo import (
     undo_audit_action,
 )
 from database.db import async_session_maker
-from database.models import AuditEvent, InboxNotificationState, User, WorkspaceMember
+from database.models import AuditEvent, InboxNotificationState, RulePreset, User, WorkspaceMember
 from meta_api.client import MetaClient
 from api.meta_dependencies import get_meta_client
 
@@ -565,6 +565,30 @@ def _inbox_from_key():
     )
 
 
+def _user_from_key(account: User) -> str:
+    """A person's From value: their id as most actions record it."""
+    return f"user:{account.telegram_id or account.id}"
+
+
+def _inbox_same_person(values: list[str]):
+    """
+    A person chosen under From matches whichever id an action recorded them
+    by: some record the Telegram id, others the user id.
+    """
+    if not any(value.startswith("user:") for value in values):
+        return false()
+    by_user_id = select(cast(User.id, String)).where((literal("user:") + User.telegram_id).in_(values))
+    by_telegram_id = select(User.telegram_id).where(
+        User.telegram_id.is_not(None), (literal("user:") + cast(User.id, String)).in_(values)
+    )
+    same = and_(
+        AuditEvent.actor_type == "user",
+        or_(AuditEvent.actor_id.in_(by_user_id), AuditEvent.actor_id.in_(by_telegram_id)),
+    )
+    # Never NULL, so "is not" keeps notifications from nobody.
+    return case((same, true()), else_=false())
+
+
 # Linear's Inbox filter properties, mapped onto audit events. Issue priority
 # has no counterpart in ad events and is left out.
 INBOX_FILTER_COLUMNS = {
@@ -605,6 +629,8 @@ def _inbox_filter_conditions(clauses: list[dict]):
     for clause in clauses:
         column = INBOX_FILTER_COLUMNS[clause["field"]]()
         matches = column.in_(clause["values"])
+        if clause["field"] == "from":
+            matches = or_(matches, _inbox_same_person(clause["values"]))
         conditions.append(matches if clause["operator"] == "is" else ~matches)
     return conditions
 
@@ -737,8 +763,8 @@ async def list_inbox(
     }
 
 
-async def _actor_names(session, actor_ids: set[str]) -> dict[str, str]:
-    """Names for user actors, recorded by user id or by Telegram id."""
+async def _actor_users(session, actor_ids: set[str]) -> dict[str, User]:
+    """The people behind user actors, recorded by user id or by Telegram id."""
     if not actor_ids:
         return {}
     numeric_ids = [int(value) for value in actor_ids if value.isdigit() and len(value) < 10]
@@ -749,14 +775,17 @@ async def _actor_names(session, actor_ids: set[str]) -> dict[str, str]:
             )
         )
     ).scalars().all()
-    names = {}
+    found = {}
     for account in users:
-        name = account.full_name or account.username
         if account.telegram_id and account.telegram_id in actor_ids:
-            names[account.telegram_id] = name
+            found[account.telegram_id] = account
         if str(account.id) in actor_ids:
-            names.setdefault(str(account.id), name)
-    return names
+            found.setdefault(str(account.id), account)
+    return found
+
+
+def _person_name(account: User) -> str:
+    return account.full_name or account.username
 
 
 @router.get("/inbox/facets")
@@ -804,33 +833,71 @@ async def inbox_facets(
         accounts = await grouped(AuditEvent.account_id, AuditEvent.account_name)
         from_key = _inbox_from_key()
         senders = await grouped(from_key, AuditEvent.rule_name)
-        names = await _actor_names(
+        people = await _actor_users(
             session,
             {key.split(":", 1)[1] for key, _, _ in senders if key.startswith("user:")},
         )
 
-    def sender_label(key, rule_name):
+    # A user nobody can be named for is left out, as Linear lists only
+    # people it knows under From. Older manual actions recorded no author.
+    # One person recorded by both ids is one sender.
+    from_values: dict[str, dict] = {}
+    for key, count, rule_name in senders:
         if key.startswith("user:"):
-            return names.get(key.split(":", 1)[1])
-        if key.startswith("rule:"):
-            return rule_name or "Rule"
-        return "Buyerly"
+            account = people.get(key.split(":", 1)[1])
+            if account is None:
+                continue
+            value, label = _user_from_key(account), _person_name(account)
+        elif key.startswith("rule:"):
+            value, label = key, rule_name or "Rule"
+        else:
+            value, label = key, "Buyerly"
+        entry = from_values.setdefault(value, {"value": value, "label": label, "count": 0})
+        entry["count"] += count
 
     return {
         "type": [{"value": value, "count": count} for value, count in types],
-        # A user nobody can be named for is left out, as Linear lists only
-        # people it knows under From. Older manual actions recorded no author.
-        "from": [
-            {"value": key, "label": label, "count": count}
-            for key, count, rule_name in senders
-            if (label := sender_label(key, rule_name))
-        ],
+        "from": sorted(from_values.values(), key=lambda entry: (-entry["count"], entry["value"])),
         "account": [
             {"value": value, "label": name or value, "count": count}
             for value, count, name in accounts
         ],
         "status": [{"value": value, "count": count} for value, count in statuses],
     }
+
+
+@router.get("/inbox/senders")
+async def inbox_senders(user: User = Depends(get_current_user)):
+    """
+    Everyone a notification can be from, as Linear's custom filter From lists
+    every workspace member, with or without notifications: the members, the
+    workspace's rules (Buyerly's counterpart of Linear's agents) and Buyerly.
+    """
+    async with async_session_maker() as session:
+        ws, _ = await _inbox_member(session, user)
+        members = (
+            await session.execute(
+                select(User)
+                .join(WorkspaceMember, WorkspaceMember.user_id == User.id)
+                .where(WorkspaceMember.workspace_id == ws.id)
+            )
+        ).scalars().all()
+        rules = (
+            await session.execute(
+                select(RulePreset.id, RulePreset.name)
+                .where(RulePreset.workspace_id == ws.id)
+                .order_by(func.lower(RulePreset.name), RulePreset.id)
+            )
+        ).all()
+    people = sorted(
+        ({"value": _user_from_key(account), "label": _person_name(account), "kind": "user"} for account in members),
+        key=lambda entry: entry["label"].lower(),
+    )
+    return [
+        *people,
+        *({"value": f"rule:{rule_id}", "label": name or "Rule", "kind": "rule"} for rule_id, name in rules),
+        {"value": "buyerly", "label": "Buyerly", "kind": "buyerly"},
+    ]
 
 
 @router.get("/inbox/display")
