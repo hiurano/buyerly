@@ -21,6 +21,7 @@ import {
   formatRelativeTime,
   formatScope,
   presetToWriteRequest,
+  ruleCurrency,
   updateRuleGroup,
   updateRulePreset,
 } from '@/lib/rules';
@@ -196,13 +197,14 @@ function buildGroupIndex(groups: RuleGroupPayload[]): Map<number, string> {
 function presetToRuleItem(
   preset: RulePresetPayload,
   groupIndex: Map<number, string>,
+  accounts: MetaAccount[],
 ): RuleItem {
   return {
     id: String(preset.id),
     presetId: preset.id,
     identifier: `RUL-${String(preset.id).padStart(2, '0')}`,
     name: preset.name,
-    condition: formatCondition(preset),
+    condition: formatCondition(preset, ruleCurrency(preset, accounts)),
     action: formatAction(preset),
     actionKind: preset.action,
     scope: formatScope(preset),
@@ -333,6 +335,8 @@ interface AppState {
   attachedRulesAccountId: string | null;
   /** Rule id → the scope it is attached with on that account. */
   attachedRuleScopes: Record<string, RuleScope>;
+  /** Attached rule ids in the account's stored order, which breaks ties between rules. */
+  attachedRuleOrder: string[];
   /** Campaign id → rules aimed at that campaign, derived from the scopes. */
   campaignAttachedRules: Record<string, string[]>;
   /** Ad set id → rules aimed at that ad set. */
@@ -468,7 +472,7 @@ interface AppState {
 function emptyAccountState() {
   return {
     campaigns: [], adSets: [], ads: [], selectedCampaignIds: [], focusedCampaignId: '',
-    attachedRulesAccountId: null, attachedRuleScopes: {}, campaignAttachedRules: {},
+    attachedRulesAccountId: null, attachedRuleScopes: {}, attachedRuleOrder: [], campaignAttachedRules: {},
     adSetAttachedRules: {}, attachmentError: '', attachmentsLoadState: 'idle' as RulesLoadState,
     adsManagerQuickFilter: null, selectedFilterGroupId: null, selectedFilterRuleId: null,
     selectedFilterPlatform: null, collapsedGroups: [],
@@ -497,6 +501,8 @@ export const OUT_OF_SCOPE = 'This workspace is no longer open.';
 export const useAppStore = create<AppState>((set, get) => {
   let rulesRequest = 0;
   let attachmentsRequest = 0;
+  /** A rule change is being written and read back; the next one waits for it. */
+  let attachmentWriting = false;
   let inboxDisplaySave: Promise<unknown> = Promise.resolve();
   let notificationChannelsSave: Promise<unknown> = Promise.resolve();
   return ({
@@ -694,6 +700,7 @@ export const useAppStore = create<AppState>((set, get) => {
   setFocusedCampaignId: (id) => set({ focusedCampaignId: id }),
   attachedRulesAccountId: null,
   attachedRuleScopes: {},
+  attachedRuleOrder: [],
   campaignAttachedRules: {},
   adSetAttachedRules: {},
   attachmentError: '',
@@ -705,10 +712,16 @@ export const useAppStore = create<AppState>((set, get) => {
     const request = ++attachmentsRequest;
     const current = () => inScope() && request === attachmentsRequest;
     // Invalidate the old account before awaiting anything, including failed B.
-    set({ ...(get().attachedRulesAccountId !== accountId ? emptyAccountState() : {}),
-      attachedRulesAccountId: accountId, attachedRuleScopes: {}, campaignAttachedRules: {},
-      adSetAttachedRules: {}, attachmentError: '',
-      attachmentsLoadState: accountId ? 'loading' : 'idle' });
+    // Reading the same account back after a change keeps the cells as they are
+    // until the answer comes, so they never flash back to no rules.
+    const refresh = Boolean(accountId) && get().attachedRulesAccountId === accountId &&
+      get().attachmentsLoadState === 'ready';
+    if (!refresh) {
+      set({ ...(get().attachedRulesAccountId !== accountId ? emptyAccountState() : {}),
+        attachedRulesAccountId: accountId, attachedRuleScopes: {}, attachedRuleOrder: [], campaignAttachedRules: {},
+        adSetAttachedRules: {}, attachmentError: '',
+        attachmentsLoadState: accountId ? 'loading' : 'idle' });
+    }
     if (!accountId) return;
     try {
       const accounts = await apiRequest<MetaAccount[]>('/api/accounts');
@@ -721,13 +734,15 @@ export const useAppStore = create<AppState>((set, get) => {
       }
       set({
         attachedRuleScopes: scopes,
+        attachedRuleOrder: (account.active_rules ?? []).map((rule) => String(rule.preset_id)),
         campaignAttachedRules: entityRuleIndex(scopes, 'campaign'),
         adSetAttachedRules: entityRuleIndex(scopes, 'adset'),
         attachmentsLoadState: 'ready',
       });
     } catch (error) {
       if (!current()) return;
-      set({ attachmentError: requestErrorMessage(error), attachmentsLoadState: 'error' });
+      set({ attachedRuleScopes: {}, attachedRuleOrder: [], campaignAttachedRules: {}, adSetAttachedRules: {},
+        attachmentError: requestErrorMessage(error), attachmentsLoadState: 'error' });
     }
   },
 
@@ -735,7 +750,7 @@ export const useAppStore = create<AppState>((set, get) => {
     const inScope = get().captureScope();
     const request = attachmentsRequest;
     const current = () => inScope() && request === attachmentsRequest;
-    if (!current() || get().attachmentsLoadState !== 'ready' || entityIds.length === 0) return;
+    if (!current() || attachmentWriting || get().attachmentsLoadState !== 'ready' || entityIds.length === 0) return;
     const { attachedRulesAccountId, attachedRuleScopes } = get();
     if (!attachedRulesAccountId) return;
 
@@ -757,6 +772,7 @@ export const useAppStore = create<AppState>((set, get) => {
     }
 
     set({ attachmentError: '' });
+    attachmentWriting = true;
     try {
       if (!scope) {
         await assignRuleToAccount(attachedRulesAccountId, presetId, {
@@ -784,6 +800,8 @@ export const useAppStore = create<AppState>((set, get) => {
     } catch (error) {
       if (!current()) return;
       set({ attachmentError: requestErrorMessage(error) });
+    } finally {
+      attachmentWriting = false;
     }
   },
   isRightSidebarOpen: true,
@@ -881,10 +899,11 @@ export const useAppStore = create<AppState>((set, get) => {
       ]);
       if (!current()) return;
       const groupIndex = buildGroupIndex(groups);
+      const ruleAccounts = eligibleMetaAccounts(accounts);
       set({
-        rules: presets.map((preset) => presetToRuleItem(preset, groupIndex)),
+        rules: presets.map((preset) => presetToRuleItem(preset, groupIndex, ruleAccounts)),
         ruleGroups: groups.map(groupToRuleGroup),
-        ruleAccounts: eligibleMetaAccounts(accounts),
+        ruleAccounts,
         rulesLoadState: 'ready',
       });
     } catch (error) {

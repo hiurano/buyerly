@@ -8,6 +8,8 @@ interface RuleAttachmentCellProps {
   level: RuleTargetLevel;
   entityId: string;
   attachedRuleIds: string[];
+  /** Parent campaign of an ad set row, whose campaign rules reach it too. */
+  campaignId?: string;
   /** Called before the picker opens, so the row can take focus. */
   onOpen?: () => void;
 }
@@ -26,7 +28,7 @@ const LABEL_FONT = '"Inter Variable", "SF Pro Display", -apple-system, sans-seri
 export const RuleAttachmentCell = forwardRef<
   RuleAttachmentCellHandle,
   RuleAttachmentCellProps
->(({ level, entityId, attachedRuleIds, onOpen }, ref) => {
+>(({ level, entityId, attachedRuleIds, campaignId, onOpen }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const cellRef = useRef<HTMLDivElement>(null);
@@ -142,6 +144,7 @@ export const RuleAttachmentCell = forwardRef<
         anchorRect={anchorRect}
         level={level}
         entityIds={[entityId]}
+        campaignId={campaignId}
       />
     </div>
   );

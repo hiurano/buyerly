@@ -376,6 +376,8 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
                 ("STOP", {"status": "ERROR", "message": "failed stop"}),
                 ("ASSISTANT_CREATE_RULE", {"actor_type": "user", "actor_id": str(BUYER["id"])}),
                 ("INVITE_SEND", {"category": "WORKSPACE_INVITE", "actor_type": "user", "actor_id": str(BUYER["id"])}),
+                ("ACCOUNT_HEALTH_RECOVERED", {}),
+                # Bookkeeping, not a notification (#325): it never shows or counts.
                 ("ACCOUNT_DAY_STARTED", {}),
             ):
                 session.add(AuditEvent(
@@ -397,7 +399,8 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(kinds["ASSISTANT_CREATE_RULE"], "assistant")
         self.assertEqual(kinds["owner change"], "manual")
         self.assertEqual(kinds["INVITE_SEND"], "team")
-        self.assertEqual(kinds["ACCOUNT_DAY_STARTED"], "system")
+        self.assertEqual(kinds["ACCOUNT_HEALTH_RECOVERED"], "system")
+        self.assertNotIn("ACCOUNT_DAY_STARTED", {item["event_type"] for item in body["items"]})
         # The owner's own change is read; everything newer than the mark is not.
         self.assertEqual(body["unread_count"], 7)
         # Linear starts with every kind in the priority inbox.

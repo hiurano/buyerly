@@ -1257,6 +1257,35 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(mock_meta.status_changes, [("adset_1", "PAUSED")])
         self.assertEqual(await self._rule_events("NOTIFY_ONLY"), [(42, "adset_1")])
 
+    async def test_an_alert_names_its_campaign(self):
+        """#325: an Inbox rule alert links to its campaign, an ad set's or its own."""
+        condition = [{"metric": "spend", "operator": "gte", "value": 0.0}]
+        await self._set_rules(
+            {"preset_id": 61, "name": "Ad set alert", "action": "notify_only", "conditions": condition},
+            {
+                "preset_id": 62,
+                "name": "Campaign alert",
+                "action": "notify_only",
+                "level": "campaign",
+                "conditions": condition,
+            },
+        )
+
+        worker = MonitoringWorker(meta_client=MockMetaClient(), clock=lambda: 5_000.0)
+        await worker.run_cycle()
+
+        async with self.test_session_maker() as session:
+            rows = (
+                await session.execute(
+                    select(AuditEvent.rule_id, AuditEvent.entity_id, AuditEvent.details)
+                    .where(AuditEvent.event_type == "NOTIFY_ONLY")
+                    .order_by(AuditEvent.id)
+                )
+            ).all()
+        campaigns = {(rule_id, entity_id): details["campaign_id"] for rule_id, entity_id, details in rows}
+        self.assertEqual(campaigns[(61, "adset_1")], "campaign_1")
+        self.assertEqual(campaigns[(62, "campaign_1")], "campaign_1")
+
     async def test_a_stop_on_cooldown_does_not_let_a_budget_raise_through(self):
         condition = [{"metric": "spend", "operator": "gte", "value": 10.0}]
         await self._set_rules(
@@ -1322,6 +1351,47 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
         now[0] += 10 * 60
         await worker.run_cycle()
         self.assertEqual(len(await self._rule_events("DECREASE_BUDGET")), 2)
+
+    async def test_the_rule_that_acts_names_the_rules_that_gave_way(self):
+        """#323: the history says which rules lost to the one that acted."""
+        condition = [{"metric": "spend", "operator": "gte", "value": 10.0}]
+        await self._set_rules(
+            {"preset_id": 71, "name": "Stop", "action": "turn_off", "conditions": condition},
+            {
+                "preset_id": 72,
+                "name": "Cut",
+                "action": "decrease_budget",
+                "conditions": condition,
+                "budget_change_percent": 10.0,
+            },
+            {"preset_id": 73, "name": "Stop too", "action": "turn_off", "conditions": condition},
+            {"preset_id": 74, "name": "Alert", "action": "notify_only", "conditions": condition},
+        )
+
+        worker = MonitoringWorker(meta_client=MockMetaClient(), clock=lambda: 5_000.0)
+        await worker.run_cycle()
+
+        async with self.test_session_maker() as session:
+            events = {
+                row.event_type: row
+                for row in (await session.execute(select(AuditEvent))).scalars().all()
+                if row.event_type in {"STOP", "NOTIFY_ONLY"}
+            }
+        stop = events["STOP"]
+        self.assertEqual(stop.rule_id, 71)
+        self.assertTrue(
+            stop.message.endswith(
+                'Gave way to this rule: "Stop too" (turn off), "Cut" (lower budget).'
+            ),
+            stop.message,
+        )
+        self.assertEqual(
+            [rule["rule_id"] for rule in stop.details["yielded_rules"]],
+            [73, 72],
+        )
+        # An alert never competes, so nothing gives way to it.
+        self.assertNotIn("Gave way", events["NOTIFY_ONLY"].message)
+        self.assertNotIn("yielded_rules", events["NOTIFY_ONLY"].details)
 
     async def _rule_state(self, rule_id, entity_id):
         async with self.test_session_maker() as session:

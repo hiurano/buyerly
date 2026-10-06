@@ -223,6 +223,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
                       `/${workspace.slug}/inbox${tab ? `/${tab}` : ''}${eventId === null ? '' : `/${eventId}`}`
                         + window.location.search,
                     )}
+                    onOpenRecord={(path) => navigate(path)}
                   />
                 )}
                 {activeTab === 'campaigns' && (

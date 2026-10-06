@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import {
+  auditEventPaths,
   auditEventTarget,
   auditEventTitle,
   auditUndoHint,
@@ -68,6 +69,8 @@ interface InboxViewProps {
   /** Priority inbox tab from the address: /<workspace>/inbox/priority or /other, as in Linear. */
   inboxTab: InboxTab | null;
   onNavigate: (tab: InboxTab | null, eventId: number | null) => void;
+  /** Opens a record address elsewhere in the app: a rule, a campaign, an ad set. */
+  onOpenRecord: (path: string) => void;
 }
 
 function requestErrorMessage(error: unknown): string {
@@ -89,6 +92,23 @@ function MetadataRow({ label, value }: { label: string; value: React.ReactNode }
   );
 }
 
+/** A metadata value that opens its record, in place like any app link; Ctrl/Cmd+click opens a new tab. */
+function RecordLink({ path, label, onOpen }: { path: string; label: string; onOpen: (path: string) => void }) {
+  return (
+    <a
+      href={path}
+      onClick={(event) => {
+        if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
+        event.preventDefault();
+        onOpen(path);
+      }}
+      className="text-[var(--text-primary)] underline decoration-[var(--color-border-secondary)] underline-offset-2 outline-none hover:decoration-[var(--text-tertiary)] focus-visible:rounded-[2px] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
+    >
+      {label}
+    </a>
+  );
+}
+
 const MenuKey: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <kbd className="font-sans text-[12px] font-[500] text-[var(--text-muted)]">{children}</kbd>
 );
@@ -106,8 +126,9 @@ const headerButtonClass = (active = false) =>
       : 'text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'
   }`;
 
-export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onNavigate }) => {
+export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onNavigate, onOpenRecord }) => {
   const {
+    workspaceSlug,
     setActiveTab,
     inboxUnreadCount,
     inboxPriorityUnreadCount,
@@ -168,6 +189,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
     () => items.find((item) => item.id === selectedId) ?? null,
     [items, selectedId],
   );
+  const selectedPaths = selectedItem && workspaceSlug ? auditEventPaths(workspaceSlug, selectedItem) : {};
 
   useEffect(() => {
     if (!inboxDisplayLoaded) void loadInboxDisplay();
@@ -748,10 +770,34 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                 </p>
 
                 <dl className="mt-7 border-t border-[var(--color-border-primary)]">
-                  <MetadataRow label="Target" value={auditEventTarget(selectedItem)} />
+                  <MetadataRow
+                    label="Target"
+                    value={selectedPaths.entity
+                      ? <RecordLink path={selectedPaths.entity} label={auditEventTarget(selectedItem)} onOpen={onOpenRecord} />
+                      : auditEventTarget(selectedItem)}
+                  />
                   {selectedItem.entity_level && <MetadataRow label="Entity level" value={humanizeAuditValue(selectedItem.entity_level)} />}
+                  {selectedPaths.campaign && (
+                    <MetadataRow
+                      label="Campaign"
+                      value={(
+                        <RecordLink
+                          path={selectedPaths.campaign}
+                          label={selectedItem.entity_level === 'campaign' ? auditEventTarget(selectedItem) : 'Open in Ads Manager'}
+                          onOpen={onOpenRecord}
+                        />
+                      )}
+                    />
+                  )}
                   {selectedItem.account_name && <MetadataRow label="Ad account" value={selectedItem.account_name} />}
-                  {selectedItem.rule_name && <MetadataRow label="Rule" value={selectedItem.rule_name} />}
+                  {(selectedItem.rule_name || selectedPaths.rule) && (
+                    <MetadataRow
+                      label="Rule"
+                      value={selectedPaths.rule
+                        ? <RecordLink path={selectedPaths.rule} label={selectedItem.rule_name || `Rule ${selectedItem.rule_id}`} onOpen={onOpenRecord} />
+                        : selectedItem.rule_name}
+                    />
+                  )}
                   <MetadataRow label="Status" value={humanizeAuditValue(selectedItem.display_status)} />
                   <MetadataRow label="Category" value={humanizeAuditValue(selectedItem.category)} />
                   <MetadataRow label="Event type" value={humanizeAuditValue(selectedItem.event_type)} />

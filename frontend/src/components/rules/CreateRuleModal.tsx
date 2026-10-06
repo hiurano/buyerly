@@ -15,6 +15,7 @@ import {
   RULE_LEVEL_LABELS,
   RULE_METRIC_LABELS,
   RULE_TIME_WINDOW_LABELS,
+  describeRuleReach,
 } from '@/lib/rules';
 import { TOUCH_HEIGHT_CLASS as TOUCH_HEIGHT } from '@/lib/useMediaQuery';
 import type {
@@ -517,6 +518,11 @@ export const CreateRuleModal: React.FC = () => {
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                {/* "Applies to" is what the rule judges; where it looks is set by attaching it. */}
+                <p className="basis-full pt-1 text-[12px] text-[var(--text-tertiary)]">
+                  {describeRuleReach(level)}
+                </p>
               </div>
 
               {/* 4. Budget parameters — only meaningful for a budget action */}
