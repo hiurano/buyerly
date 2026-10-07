@@ -13,6 +13,7 @@ import { AppUtilityBar } from '@/components/layout/AppUtilityBar';
 import { TooltipProvider } from '@/ui/Tooltip';
 import { ToastRegion } from '@/ui/ToastRegion';
 import { useUndoShortcuts } from '@/lib/undoHistory';
+import { useNewVersionNotice } from '@/lib/appVersion';
 import { selectInboxBadgeCount, useAppStore } from '@/store/useAppStore';
 import { apiRequest } from '@/lib/api';
 import type { LoginResult, SessionUser, Workspace } from '@/lib/types';
@@ -73,6 +74,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   } = useAppStore();
   const inboxBadge = useAppStore(selectInboxBadgeCount);
   useUndoShortcuts();
+  useNewVersionNotice();
   useWebMcpTools(workspace);
   const session = useMemo<WorkspaceSession>(() => ({
     user,
@@ -454,7 +456,7 @@ export const App: React.FC = () => {
     );
   }
 
-  if (route.kind !== 'workspace') return <AuthLoading dark label="Opening your workspace…" />;
+  if (route.kind !== 'workspace') return <AuthLoading label="Opening your workspace…" />;
   if (!resolvedWorkspace || workspaceScope !== desiredScope) return <AuthLoading />;
   const routeWorkspace = resolvedWorkspace;
   return (

@@ -789,6 +789,24 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("node ../scripts/command-menu-browser.mjs", workflow)
         self.assertIn("node ../scripts/search-page-browser.mjs", workflow)
 
+    def test_screens_reflow_on_small_screens(self):
+        """Rules, Ads Manager and Inbox at 390px: details as a sheet, touch-sized headers (#286)."""
+        workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
+        self.assertIn("node ../scripts/mobile-screens-browser.mjs", workflow)
+        sheet = (ROOT / "frontend" / "src" / "ui" / "DetailsSheet.tsx").read_text()
+        self.assertIn("export function useDetailsSheet", sheet)
+        rule_sidebar = (ROOT / "frontend" / "src" / "components" / "rules" / "RuleRightSidebar.tsx").read_text()
+        for view in (self.campaigns_view, rule_sidebar):
+            self.assertIn("useDetailsSheet(", view)
+            self.assertIn("<DetailsSheet", view)
+        for view in (self.campaigns_view, self.rules_view):
+            self.assertIn("collapseOverflow", view)
+        tabs = (ROOT / "frontend" / "src" / "ui" / "LinearTabs.tsx").read_text()
+        self.assertIn("more`}", tabs)
+        self.assertIn(".linear-header-target", self.styles)
+        self.assertNotIn("Mobile is partial", self.ui_contract)
+        self.assertNotIn("no screen is described as mobile-ready", self.design_system)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -72,6 +72,10 @@ function publicWebsite(): Plugin {
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [publicWebsite(), react()],
+  // The release this bundle belongs to; an open tab compares it with /health/live (#303).
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.APP_VERSION || 'local'),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

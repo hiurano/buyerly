@@ -236,6 +236,18 @@ export function fetchInboxFacets(
   return apiRequest<InboxFacets>(`/api/inbox/facets?${params.toString()}`);
 }
 
+/** Someone a notification can be from: a member, a rule or Buyerly itself. */
+export interface InboxSender {
+  value: string;
+  label: string;
+  kind: 'user' | 'rule' | 'buyerly';
+}
+
+/** Everyone in the workspace a notification can be from, whether or not anything came from them yet. */
+export function fetchInboxSenders(): Promise<InboxSender[]> {
+  return apiRequest<InboxSender[]>('/api/inbox/senders');
+}
+
 interface FocusNode {
   id: string;
   label: string;
