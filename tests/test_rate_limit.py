@@ -14,7 +14,13 @@ import api.routes as api_routes_module
 import api.server as api_server_module
 from api.server import create_app
 from core.config import settings
-from core.rate_limit import RateLimitBackendUnavailable, RateLimiter, get_client_ip, limiter
+from core.rate_limit import (
+    RateLimitBackendUnavailable,
+    RateLimiter,
+    get_client_ip,
+    get_client_location,
+    limiter,
+)
 from database.db import Base, hash_password
 from database.models import User, Workspace
 
@@ -81,6 +87,88 @@ class TestRateLimiterCore(unittest.IsolatedAsyncioTestCase):
                 "client": ("10.9.8.7", 1234),
             })
             self.assertEqual(get_client_ip(malformed), "10.9.8.7")
+        finally:
+            settings.TRUSTED_PROXY_CIDRS = original
+
+    @staticmethod
+    def _request(peer: str, headers: dict[str, bytes]) -> Request:
+        return Request({
+            "type": "http",
+            "method": "GET",
+            "path": "/",
+            "headers": [(name.lower().encode("latin-1"), value) for name, value in headers.items()],
+            "client": (peer, 1234),
+        })
+
+    def test_cloudflare_headers_count_only_from_cloudflare(self):
+        original = settings.TRUSTED_PROXY_CIDRS
+        original_cloudflare = settings.CLOUDFLARE_IP_CIDRS
+        cloudflare_headers = {
+            "CF-Connecting-IP": b"203.0.113.8",
+            "cf-ipcity": b"Helsinki",
+            "cf-region-code": b"18",
+            "cf-ipcountry": b"FI",
+        }
+        try:
+            settings.TRUSTED_PROXY_CIDRS = "10.0.0.0/8"
+
+            # Cloudflare (162.158.0.0/15) -> our nginx (10.9.8.7) -> API.
+            through_cloudflare = self._request("10.9.8.7", {
+                **cloudflare_headers,
+                "X-Forwarded-For": b"203.0.113.8, 162.158.1.2",
+            })
+            self.assertEqual(get_client_ip(through_cloudflare), "203.0.113.8")
+            self.assertEqual(get_client_location(through_cloudflare), "Helsinki, 18, FI")
+
+            # A direct hit on the server may send any CF-* header: it is ignored.
+            direct = self._request("198.51.100.10", cloudflare_headers)
+            self.assertEqual(get_client_ip(direct), "198.51.100.10")
+            self.assertEqual(get_client_location(direct), "")
+
+            # So is a direct hit through nginx that pretends Cloudflare forwarded it.
+            spoofed = self._request("10.9.8.7", {
+                **cloudflare_headers,
+                "X-Forwarded-For": b"162.158.1.2, 198.51.100.10",
+            })
+            self.assertEqual(get_client_ip(spoofed), "198.51.100.10")
+            self.assertEqual(get_client_location(spoofed), "")
+
+            # Cloudflare's own address is used when it sends no visitor address.
+            no_visitor = self._request("10.9.8.7", {"X-Forwarded-For": b"162.158.1.2"})
+            self.assertEqual(get_client_ip(no_visitor), "162.158.1.2")
+            self.assertEqual(get_client_location(no_visitor), "")
+
+            # Turning the Cloudflare networks off turns the headers off.
+            settings.CLOUDFLARE_IP_CIDRS = "off"
+            self.assertEqual(get_client_ip(through_cloudflare), "162.158.1.2")
+            self.assertEqual(get_client_location(through_cloudflare), "")
+        finally:
+            settings.TRUSTED_PROXY_CIDRS = original
+            settings.CLOUDFLARE_IP_CIDRS = original_cloudflare
+
+    def test_cloudflare_location_is_cleaned(self):
+        original = settings.TRUSTED_PROXY_CIDRS
+        try:
+            settings.TRUSTED_PROXY_CIDRS = ""
+            # A UTF-8 city, a missing region and Cloudflare's "unknown country".
+            unknown_country = self._request("2606:4700::1", {
+                "cf-ipcity": "Malmö".encode("utf-8"),
+                "cf-ipcountry": b"XX",
+            })
+            self.assertEqual(get_client_location(unknown_country), "Malmö")
+
+            country_only = self._request("104.16.0.1", {"cf-ipcountry": b"se"})
+            self.assertEqual(get_client_location(country_only), "SE")
+
+            commas = self._request("104.16.0.1", {
+                "cf-ipcity": b"Washington, D.C.\x01",
+                "cf-region-code": b"DC",
+                "cf-ipcountry": b"US",
+            })
+            self.assertEqual(get_client_location(commas), "Washington D.C., DC, US")
+
+            nothing = self._request("104.16.0.1", {})
+            self.assertEqual(get_client_location(nothing), "")
         finally:
             settings.TRUSTED_PROXY_CIDRS = original
 

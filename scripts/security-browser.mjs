@@ -27,22 +27,22 @@ const ago = (ms) => new Date(Date.now() - ms).toISOString();
 // The sessions on Linear's own screen (2026-10-03), so the two can be compared side by side.
 const initialSessions = () => [
   {
-    id: 'current-session', current: true, ip_address: '203.0.113.10',
+    id: 'current-session', current: true, ip_address: '203.0.113.10', location: 'Helsinki, 18, FI',
     user_agent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.70 Mobile Safari/537.36',
     created_at: '2026-09-29T20:48:00Z', expires_at: ago(-24 * HOUR), last_seen_at: ago(0),
   },
   {
-    id: 'linux-session', current: false, ip_address: '203.0.113.11',
+    id: 'linux-session', current: false, ip_address: '203.0.113.11', location: 'Helsinki, 18, FI',
     user_agent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.6668.70 Safari/537.36',
     created_at: '2026-09-28T09:15:00Z', expires_at: ago(-20 * HOUR), last_seen_at: ago(14 * HOUR),
   },
   {
-    id: 'firefox-session', current: false, ip_address: '203.0.113.12',
+    id: 'firefox-session', current: false, ip_address: '203.0.113.12', location: 'Riga, RIX, LV',
     user_agent: 'Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0',
     created_at: '2026-09-27T08:00:00Z', expires_at: ago(-10 * HOUR), last_seen_at: ago(2 * 24 * HOUR),
   },
   {
-    id: 'unplaced-session', current: false, ip_address: '',
+    id: 'unplaced-session', current: false, ip_address: '', location: '',
     user_agent: 'curl/8.5.0',
     created_at: '2026-09-26T08:00:00Z', expires_at: ago(-5 * HOUR), last_seen_at: ago(4 * 24 * HOUR),
   },
@@ -153,10 +153,10 @@ try {
       await page.getByRole('heading', { name: 'Sessions', exact: true }).waitFor();
       await page.getByText('Devices logged into your account', { exact: true }).waitFor();
 
-      // This browser first: "Chrome on Android", green "Current session", Log out.
+      // This browser first: "Chrome on Android", green "Current session · Helsinki, 18, FI", Log out.
       const current = sessionRow('current-session');
       await current.getByText('Chrome on Android', { exact: true }).waitFor();
-      assert.equal((await current.locator('.preferences-session-desc').textContent()).trim(), 'Current session');
+      assert.equal((await current.locator('.preferences-session-desc').textContent()).trim(), 'Current session · Helsinki, 18, FI');
       await current.getByRole('button', { name: 'Log out', exact: true }).waitFor();
       const firstRow = await page.locator('[data-session-id]').first().getAttribute('data-session-id');
       assert.equal(firstRow, 'current-session');
@@ -173,10 +173,11 @@ try {
       assert.equal(await othersCard.getByRole('button', { name: 'Show all' }).count(), 0);
       const desc = async (id) => (await sessionRow(id).locator('.preferences-session-desc').textContent()).trim();
       await sessionRow('linux-session').getByText('Chrome on Linux', { exact: true }).waitFor();
-      assert.equal(await desc('linux-session'), 'Last seen about 14 hours ago');
+      assert.equal(await desc('linux-session'), 'Helsinki, 18, FI · Last seen about 14 hours ago');
       await sessionRow('firefox-session').getByText('Firefox on Linux', { exact: true }).waitFor();
-      assert.equal(await desc('firefox-session'), 'Last seen 2 days ago');
+      assert.equal(await desc('firefox-session'), 'Riga, RIX, LV · Last seen 2 days ago');
       await sessionRow('unplaced-session').getByText('Unknown device', { exact: true }).waitFor();
+      // Without a place (no Cloudflare) only the time shows.
       assert.equal(await desc('unplaced-session'), 'Last seen 4 days ago');
       // A session gone over a month is dimmed; the others are not.
       assert.equal(await sessionRow('stale-session').getAttribute('data-old'), 'true');
@@ -208,6 +209,8 @@ try {
       const details = page.getByRole('dialog', { name: 'Firefox on Linux' });
       await details.waitFor();
       await details.getByText('203.0.113.12', { exact: true }).waitFor();
+      await details.getByText('Last location', { exact: true }).waitFor();
+      await details.getByText('Riga, RIX, LV', { exact: true }).waitFor();
       await details.getByText('Original sign in', { exact: true }).waitFor();
       await details.getByText('Sep 27, 2026', { exact: true }).waitFor();
       const detailsAction = details.getByRole('button', { name: touch ? 'Revoke' : 'Revoke Access', exact: true });

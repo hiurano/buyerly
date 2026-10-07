@@ -4,6 +4,8 @@ import subprocess
 import unittest
 from pathlib import Path
 
+from core.config import CLOUDFLARE_PUBLISHED_CIDRS
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -15,6 +17,16 @@ PERSONAL_EMAIL = re.compile(
     r"\.(?:com|me|ru|ch)\b",
     re.I,
 )
+# Cloudflare's published edge networks (https://www.cloudflare.com/ips/) are public
+# knowledge, not our server: the API needs them to trust Cloudflare's headers.
+CLOUDFLARE_NETWORKS = [
+    network
+    for network in (
+        ipaddress.ip_network(item.strip())
+        for item in CLOUDFLARE_PUBLISHED_CIDRS.split(",")
+    )
+    if network.version == 4
+]
 
 
 def tracked_text_files():
@@ -41,7 +53,7 @@ class TestPublicRepoHygiene(unittest.TestCase):
                         address = ipaddress.ip_address(candidate)
                     except ValueError:
                         continue
-                    if address.is_global:
+                    if address.is_global and not any(address in network for network in CLOUDFLARE_NETWORKS):
                         found.append(f"{name}:{number}: {candidate}")
                 for email in PERSONAL_EMAIL.findall(line):
                     found.append(f"{name}:{number}: {email}")

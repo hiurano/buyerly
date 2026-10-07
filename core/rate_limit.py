@@ -8,12 +8,13 @@ import time
 from collections import defaultdict
 from functools import lru_cache
 from typing import Callable, Optional, Tuple
+from urllib.parse import unquote
 
 from fastapi import HTTPException, Request
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
 
-from core.config import settings
+from core.config import CLOUDFLARE_PUBLISHED_CIDRS, settings
 
 
 logger = logging.getLogger(__name__)
@@ -232,8 +233,19 @@ def _is_trusted_proxy(ip_value: str) -> bool:
     )
 
 
-def get_client_ip(request: Request) -> str:
-    """Use forwarded headers only when every traversed proxy is trusted."""
+def _from_cloudflare(ip_value: str) -> bool:
+    configured = settings.CLOUDFLARE_IP_CIDRS.strip()
+    if configured.lower() == "off":
+        return False
+    parsed = ipaddress.ip_address(ip_value)
+    return any(
+        parsed.version == network.version and parsed in network
+        for network in _trusted_proxy_networks(configured or CLOUDFLARE_PUBLISHED_CIDRS)
+    )
+
+
+def _edge_ip(request: Request) -> str:
+    """The address that connected to our own proxies: a browser, or Cloudflare."""
     peer_ip = _normalize_ip(request.client.host if request.client else "")
     if peer_ip is None:
         return "unknown"
@@ -254,6 +266,59 @@ def get_client_ip(request: Request) -> str:
 
     real_ip = _normalize_ip(request.headers.get("X-Real-IP", ""))
     return real_ip or peer_ip
+
+
+def _via_cloudflare(request: Request) -> bool:
+    """Cloudflare headers count only when Cloudflare itself made the connection.
+
+    A direct hit on the server can send any CF-* header, but its own address is
+    then the edge address, which is not in Cloudflare's published networks.
+    """
+    edge_ip = _edge_ip(request)
+    return edge_ip != "unknown" and _from_cloudflare(edge_ip)
+
+
+def get_client_ip(request: Request) -> str:
+    """The browser's address: forwarded headers only from trusted proxies or Cloudflare."""
+    edge_ip = _edge_ip(request)
+    if edge_ip != "unknown" and _from_cloudflare(edge_ip):
+        visitor_ip = _normalize_ip(request.headers.get("CF-Connecting-IP", ""))
+        if visitor_ip:
+            return visitor_ip
+    return edge_ip
+
+
+_UNKNOWN_COUNTRIES = {"XX", "T1"}
+
+
+def _location_part(raw_value: str, max_length: int) -> str:
+    value = raw_value.strip()
+    if not value:
+        return ""
+    # HTTP headers are read as latin-1; Cloudflare sends city names as UTF-8 bytes.
+    try:
+        value = value.encode("latin-1").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        pass
+    if "%" in value:
+        value = unquote(value)
+    value = "".join(char for char in value if char.isprintable() and char != ",").strip()
+    return value[:max_length]
+
+
+def get_client_location(request: Request) -> str:
+    """'Helsinki, 18, FI' from Cloudflare's visitor location headers, as Linear shows it.
+
+    Empty when the request did not come through Cloudflare or the headers are off.
+    """
+    if not _via_cloudflare(request):
+        return ""
+    city = _location_part(request.headers.get("cf-ipcity", ""), 80)
+    region = _location_part(request.headers.get("cf-region-code", ""), 10)
+    country = _location_part(request.headers.get("cf-ipcountry", ""), 2).upper()
+    if country in _UNKNOWN_COUNTRIES or not country.isalpha():
+        country = ""
+    return ", ".join(part for part in (city, region, country) if part)
 
 
 async def _request_identity(request: Request, fields: tuple[str, ...]) -> str:

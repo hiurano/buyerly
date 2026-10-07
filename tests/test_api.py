@@ -504,6 +504,76 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(len(sessions), 1)
         self.assertEqual(sessions[0]["ip_address"], "203.0.113.10")
+        self.assertEqual(sessions[0]["location"], "")
+
+    async def test_sessions_record_the_place_cloudflare_reports(self):
+        password = "browser-session-password"
+        async with self.test_session_maker() as session:
+            buyer = (
+                await session.execute(select(User).where(User.username == "buyer_nick"))
+            ).scalar_one()
+            buyer.password_hash = hash_password(password)
+            await session.commit()
+
+        # Browser -> Cloudflare edge (162.158.1.2) -> our proxy (127.0.0.1) -> API.
+        helsinki = {
+            "X-Forwarded-For": "203.0.113.10, 162.158.1.2",
+            "CF-Connecting-IP": "203.0.113.10",
+            "cf-ipcity": "Helsinki",
+            "cf-region-code": "18",
+            "cf-ipcountry": "FI",
+        }
+        original_proxies = api_auth_module.settings.TRUSTED_PROXY_CIDRS
+        api_auth_module.settings.TRUSTED_PROXY_CIDRS = "127.0.0.1/32"
+        transport = httpx.ASGITransport(app=self.app)
+        try:
+            async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
+                login = await client.post(
+                    "/api/auth/login",
+                    headers=helsinki,
+                    json={"username": "buyer_nick", "password": password},
+                )
+                self.assertEqual(login.status_code, 200)
+                sessions = (await client.get("/api/auth/sessions", headers=helsinki)).json()
+                self.assertEqual(sessions[0]["ip_address"], "203.0.113.10")
+                self.assertEqual(sessions[0]["location"], "Helsinki, 18, FI")
+
+                # Seen again later from Riga: the place follows the browser.
+                async with self.test_session_maker() as session:
+                    stored = (await session.execute(select(WebSession))).scalar_one()
+                    stored.last_seen_at = datetime.now(timezone.utc) - timedelta(minutes=10)
+                    await session.commit()
+                riga = {
+                    "X-Forwarded-For": "198.51.100.7, 172.64.0.9",
+                    "CF-Connecting-IP": "198.51.100.7",
+                    "cf-ipcity": "Riga",
+                    "cf-region-code": "RIX",
+                    "cf-ipcountry": "LV",
+                }
+                self.assertEqual((await client.get("/api/me", headers=riga)).status_code, 200)
+
+                # Then directly, with made-up Cloudflare headers: neither is believed,
+                # and the old place does not stick to the new address.
+                async with self.test_session_maker() as session:
+                    stored = (await session.execute(select(WebSession))).scalar_one()
+                    self.assertEqual(stored.ip_address, "198.51.100.7")
+                    self.assertEqual(stored.location, "Riga, RIX, LV")
+                    stored.last_seen_at = datetime.now(timezone.utc) - timedelta(minutes=10)
+                    await session.commit()
+                forged = {
+                    "X-Forwarded-For": "192.0.2.44",
+                    "CF-Connecting-IP": "203.0.113.99",
+                    "cf-ipcity": "Nowhere",
+                    "cf-ipcountry": "AQ",
+                }
+                self.assertEqual((await client.get("/api/me", headers=forged)).status_code, 200)
+        finally:
+            api_auth_module.settings.TRUSTED_PROXY_CIDRS = original_proxies
+
+        async with self.test_session_maker() as session:
+            stored = (await session.execute(select(WebSession))).scalar_one()
+        self.assertEqual(stored.ip_address, "192.0.2.44")
+        self.assertEqual(stored.location, "")
 
     async def test_session_address_follows_the_browser_when_it_is_seen_again(self):
         password = "browser-session-password"

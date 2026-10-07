@@ -48,15 +48,20 @@ interface SessionRowProps {
 }
 
 /**
- * One browser as Linear lists it: its mark, "Chrome on Linux", then "Last seen
- * about 14 hours ago" (this browser: a green "Current session"). The whole row
- * opens the details; Log out or Revoke shows on hover and focus, and a right
- * click offers both. Linear also shows the city; Buyerly will once it sits
- * behind Cloudflare.
+ * One browser as Linear lists it: its mark, "Chrome on Linux", then "Helsinki,
+ * 18, FI · Last seen about 14 hours ago" (this browser: a green "Current
+ * session · Helsinki, 18, FI"). Without a known place only the time shows. The
+ * line wraps between its parts, never inside one. The whole row opens the
+ * details; Log out or Revoke shows on hover and focus, and a right click
+ * offers both.
  */
 const SessionRow: React.FC<SessionRowProps> = ({ session, busy, onOpen, onAction }) => {
   const name = describeUserAgent(session.user_agent);
   const actionLabel = session.current ? 'Log out' : 'Revoke';
+  const place = session.location?.trim() || '';
+  const parts: React.ReactNode[] = session.current
+    ? [<span key="current" className="preferences-session-current">Current session</span>, place]
+    : [place, formatLastSeen(session.last_seen_at)];
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -73,9 +78,12 @@ const SessionRow: React.FC<SessionRowProps> = ({ session, busy, onOpen, onAction
             <span className="preferences-session-copy">
               <span className="preferences-row-title">{name}</span>
               <span className="preferences-session-desc">
-                {session.current
-                  ? <span className="preferences-session-current">Current session</span>
-                  : formatLastSeen(session.last_seen_at)}
+                {parts.filter(Boolean).map((part, index) => (
+                  <React.Fragment key={index}>
+                    {index > 0 && ' · '}
+                    <span className="preferences-session-part">{part}</span>
+                  </React.Fragment>
+                ))}
               </span>
             </span>
           </button>
@@ -120,7 +128,7 @@ interface SessionDetailsDialogProps {
 /**
  * Linear's session details: the browser over Device, IP address, Last location
  * and Original sign in, and a red Revoke Access (Log out for this browser),
- * which takes focus. Last location waits for Cloudflare.
+ * which takes focus. Last location shows when Cloudflare told us the place.
  */
 const SessionDetailsDialog: React.FC<SessionDetailsDialogProps> = ({ session, busy, onClose, onAction }) => {
   const actionRef = useRef<HTMLButtonElement>(null);
@@ -135,6 +143,7 @@ const SessionDetailsDialog: React.FC<SessionDetailsDialogProps> = ({ session, bu
   const facts: Array<[string, string]> = [
     ['Device', name],
     ['IP address', shown.ip_address || 'Unknown'],
+    ...(shown.location ? [['Last location', shown.location] as [string, string]] : []),
     ['Original sign in', formatSignedIn(shown.created_at) || 'Unknown'],
   ];
   return (

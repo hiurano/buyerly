@@ -89,6 +89,8 @@ class WebSession(Base):
     csrf_hash = Column(String(64), nullable=False)
     user_agent = Column(String(500), default="", nullable=False)
     ip_address = Column(String(64), default="", nullable=False)
+    # "Helsinki, 18, FI" from Cloudflare, refreshed with last_seen_at; empty without it.
+    location = Column(String(128), default="", server_default="", nullable=False)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
     last_seen_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)

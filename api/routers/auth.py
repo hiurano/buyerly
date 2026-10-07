@@ -826,6 +826,7 @@ async def list_web_sessions(
             id=item.id,
             user_agent=item.user_agent,
             ip_address=item.ip_address,
+            location=item.location or "",
             created_at=item.created_at,
             expires_at=item.expires_at,
             last_seen_at=item.last_seen_at,
