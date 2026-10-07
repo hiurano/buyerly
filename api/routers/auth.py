@@ -7,11 +7,19 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 
-from api.auth import clear_session_cookies, create_web_session, get_authenticated_user, get_current_user
+from api.auth import (
+    clear_session_cookies,
+    create_web_session,
+    get_authenticated_user,
+    get_current_user,
+    live_browser_sessions,
+    session_cookie_tokens,
+)
 from api.deps import _utc_iso, get_user_workspaces_list
 from api.schemas import (
     AddAllowedEmailRequest,
     AllowedEmailItem,
+    BrowserAccountItem,
     ChangePasswordRequest,
     LoginRequest,
     LoginResponse,
@@ -252,6 +260,7 @@ async def _complete_passwordless_login(
     )
     await session.commit()
     return LoginResponse(
+        account_id=user.id,
         username=user.username,
         full_name=user.full_name or user.username,
         role=user.role,
@@ -380,6 +389,7 @@ async def login_user(req: LoginRequest, request: Request, response: Response):
         await session.commit()
 
         return LoginResponse(
+            account_id=user.id,
             username=user.username,
             full_name=user.full_name or user.username,
             role=user.role,
@@ -746,8 +756,50 @@ async def logout_user(
             if web_session and web_session.revoked_at is None:
                 web_session.revoked_at = datetime.now(timezone.utc)
             await session.commit()
-    clear_session_cookies(response)
+    # Linear: Log out leaves the browser's other accounts logged in.
+    clear_session_cookies(response, _current_slot(request))
     return {"message": "Signed out"}
+
+
+def _current_slot(request: Request) -> int:
+    return int(getattr(request.state, "web_session_slot", 0) or 0)
+
+
+@router.get("/auth/accounts", response_model=list[BrowserAccountItem])
+async def list_browser_accounts(request: Request, response: Response):
+    """Every account logged in to this browser, in the order they were added.
+
+    Reads only the session cookies this browser sent; cookies of ended
+    sessions are dropped so their slots can take another account.
+    """
+    async with async_session_maker() as session:
+        live = await live_browser_sessions(session, request)
+        live_slots = {slot for slot, _, _ in live}
+        for slot, _ in session_cookie_tokens(request):
+            if slot not in live_slots:
+                clear_session_cookies(response, slot)
+        accounts: list[BrowserAccountItem] = []
+        seen: set[int] = set()
+        for slot, _, web_session in live:
+            if web_session.user_id in seen:
+                continue
+            db_user = (
+                await session.execute(select(User).where(User.id == web_session.user_id))
+            ).scalar_one_or_none()
+            if db_user is None or not db_user.is_approved:
+                continue
+            seen.add(db_user.id)
+            accounts.append(BrowserAccountItem(
+                id=db_user.id,
+                username=db_user.username or "",
+                full_name=db_user.full_name or "",
+                email=db_user.email,
+                avatar_url=getattr(db_user, "avatar_url", "") or "",
+                slot=slot,
+                onboarding_completed=bool(getattr(db_user, "onboarding_completed", False)),
+                workspaces=await get_user_workspaces_list(session, db_user),
+            ))
+    return accounts
 
 
 @router.get("/auth/sessions", response_model=list[WebSessionItem])
@@ -806,7 +858,7 @@ async def revoke_web_session(
         await session.commit()
 
     if session_id == getattr(request.state, "web_session_id", None):
-        clear_session_cookies(response)
+        clear_session_cookies(response, _current_slot(request))
     return {"message": "Session ended"}
 
 
@@ -833,7 +885,7 @@ async def logout_all_web_sessions(
         await session.commit()
     if keep_current and current_id:
         return {"message": "Other sessions ended"}
-    clear_session_cookies(response)
+    clear_session_cookies(response, _current_slot(request))
     return {"message": "All sessions ended"}
 
 
@@ -849,6 +901,7 @@ async def get_me(user: User = Depends(get_authenticated_user)):
         onboarding_done = bool(getattr(db_user, "onboarding_completed", False))
 
         return UserProfileResponse(
+            id=db_user.id,
             username=db_user.username or "",
             full_name=db_user.full_name or "",
             first_name=getattr(db_user, "first_name", "") or "",

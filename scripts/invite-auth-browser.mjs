@@ -68,6 +68,8 @@ try {
           ? { json: sessionUser }
           : { status: 401, json: { detail: 'Not authenticated' } });
       }
+      // One account in this browser at a time here; several are checked by multi-account-browser.mjs.
+      if (verb === 'GET' && path === '/api/auth/accounts') return route.fulfill({ json: [] });
       if (verb === 'GET' && path === `/api/invites/${inviteToken}`) {
         return route.fulfill({ json: {
           valid: true, status: 'pending', workspace_name: workspace.name,
@@ -173,8 +175,17 @@ try {
           await page.getByRole('button', { name: /Logged in as/ }).click();
           await page.getByRole('menuitem', { name: 'Log out', exact: true }).waitFor();
           assert.equal(await page.getByRole('menu').getByText('Accounts', { exact: true }).count(), 1);
-          await page.keyboard.press('Escape');
-          await page.getByRole('menu').waitFor({ state: 'detached' });
+          // "Add an account" logs in to one more account without logging this one out (#231),
+          // and the login carries the invitation back to this page.
+          // Chosen from the keyboard: at 390px headless Chromium reports the page over the item.
+          await page.getByRole('menuitem', { name: 'Add an account', exact: true }).focus();
+          await page.keyboard.press('Enter');
+          await page.waitForURL(`${origin}/auth/add-account?invite=${inviteToken}`);
+          await page.getByRole('heading', { name: 'Add an account', exact: true }).waitFor();
+          assert.deepEqual(writes, [], 'Add an account keeps the open account logged in');
+          await page.getByRole('button', { name: /Back to Buyerly/ }).click();
+          await page.waitForURL(`${origin}${invitePath}`);
+          await page.getByRole('button', { name: /Logged in as/ }).waitFor();
         }
         await assertNoOverflow();
         await page.screenshot({ path: `${output}/${method}-invite-${width}.png`, fullPage: true });

@@ -31,6 +31,7 @@ Buyerly использует workspace-first URL без технического
 | --- | --- |
 | Вход | `/login` |
 | Одноразовая ссылка из письма | `/auth/email/verify?token=…` |
+| Вход ещё в один аккаунт (Add an account…) | `/auth/add-account` |
 | Создание первого workspace | `/create-workspace` |
 | Принятие приглашения | `/invite/{token}` |
 | Настройка профиля и приглашение команды | `/{workspace}/welcome` |

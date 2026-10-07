@@ -178,6 +178,7 @@ def create_app() -> FastAPI:
 
     @app.get("/login")
     @app.get("/auth/email/verify")
+    @app.get("/auth/add-account")
     @app.get("/create-workspace")
     @app.get("/invite/{token}")
     @app.get("/connect/meta/{token}")
@@ -197,6 +198,7 @@ def create_app() -> FastAPI:
             "/",
             "/login",
             "/auth/email/verify",
+            "/auth/add-account",
             "/create-workspace",
         }
         is_invite = len(path_parts) == 2 and path_parts[0] == "invite"

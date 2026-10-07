@@ -1,4 +1,5 @@
 import { parseRoute } from './routing';
+import { requestAccount } from './accounts';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -30,8 +31,11 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   if (init.body && !(init.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
+  // Several accounts may be logged in here: name this tab's, and send its own CSRF token.
+  const account = requestAccount();
+  if (account) headers.set('X-Buyerly-Account', String(account.id));
   if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
-    const csrf = readCookie('buyerly_csrf');
+    const csrf = readCookie(account ? account.csrfCookie : 'buyerly_csrf');
     if (csrf) headers.set('X-CSRF-Token', csrf);
   }
 

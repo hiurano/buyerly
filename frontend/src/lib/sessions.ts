@@ -1,5 +1,6 @@
 import { toast } from '@/ui/toast';
 import { apiRequest } from './api';
+import { chooseAccount, getKnownAccounts, homeWorkspace, setCurrentAccountId, setKnownAccounts, type BrowserAccount } from './accounts';
 
 /** One signed-in browser, as `GET /api/auth/sessions` returns it. */
 export interface WebSession {
@@ -26,8 +27,10 @@ export async function revokeOtherSessions(): Promise<void> {
 }
 
 /**
- * Ends this browser's session and reloads into the login screen, dropping all
- * in-memory workspace state. Resolves false when the server refused.
+ * Logs this browser out of the open account only, as Linear does: when another
+ * account is still logged in here, its workspace opens; otherwise the login
+ * screen. Reloads either way, dropping all in-memory workspace state.
+ * Resolves false when the server refused.
  */
 export async function logOut(): Promise<boolean> {
   try {
@@ -36,7 +39,19 @@ export async function logOut(): Promise<boolean> {
     toast.error("Couldn't log out", error instanceof Error ? error.message : undefined);
     return false;
   }
-  window.location.assign('/login');
+  let destination = '/login';
+  try {
+    setKnownAccounts(await apiRequest<BrowserAccount[]>('/api/auth/accounts'));
+    const next = chooseAccount(getKnownAccounts());
+    if (next) {
+      setCurrentAccountId(next.id);
+      const workspace = homeWorkspace(next);
+      destination = workspace ? `/${workspace.slug}/inbox` : '/';
+    }
+  } catch {
+    // The logout itself succeeded; the login screen is a safe place to land.
+  }
+  window.location.assign(destination);
   return true;
 }
 

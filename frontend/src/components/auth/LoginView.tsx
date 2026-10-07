@@ -10,6 +10,10 @@ interface LoginViewProps {
   initialEmail?: string;
   startWithEmail?: boolean;
   onAuthenticated: (result: LoginResult) => void | Promise<void>;
+  /** Linear's "Add an account" screen: its own title, "Back to Buyerly" and "Logged in as". */
+  title?: string;
+  loggedInAs?: string;
+  onBack?: () => void;
 }
 
 /**
@@ -22,6 +26,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
   initialEmail = '',
   startWithEmail = false,
   onAuthenticated,
+  title = 'Log in to Buyerly',
+  loggedInAs,
+  onBack,
 }) => {
   const [stage, setStage] = useState<LoginStage>(startWithEmail ? 'email' : 'start');
   const [identifier, setIdentifier] = useState('');
@@ -109,12 +116,23 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
   return (
     <AuthFrame>
+      {onBack && (
+        <button className="buyerly-auth-back" type="button" onClick={onBack}>
+          ‹ Back to Buyerly
+        </button>
+      )}
+      {loggedInAs && (
+        <p className="buyerly-auth-corner">
+          Logged in as
+          <strong>{loggedInAs}</strong>
+        </p>
+      )}
       <section className="buyerly-auth-card">
         <BuyerlyBrand />
 
         {stage === 'start' && (
           <>
-            <h1>Log in to Buyerly</h1>
+            <h1>{title}</h1>
             <button className="buyerly-auth-button buyerly-auth-button--primary" type="button" onClick={() => goTo('email')}>
               Continue with email
             </button>
@@ -130,7 +148,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
         {stage === 'password' && (
           <form onSubmit={logInWithPassword} noValidate>
-            <h1>Log in to Buyerly</h1>
+            <h1>{title}</h1>
             <label className="buyerly-auth-field">
               <span className="sr-only">Username or email</span>
               <input
