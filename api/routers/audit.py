@@ -890,7 +890,16 @@ async def inbox_senders(user: User = Depends(get_current_user)):
             )
         ).all()
     people = sorted(
-        ({"value": _user_from_key(account), "label": _person_name(account), "kind": "user"} for account in members),
+        (
+            {
+                "value": _user_from_key(account),
+                "label": _person_name(account),
+                "kind": "user",
+                # Linear shows each member's avatar under From.
+                "avatar_url": account.avatar_url or "",
+            }
+            for account in members
+        ),
         key=lambda entry: entry["label"].lower(),
     )
     return [

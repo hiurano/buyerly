@@ -1,6 +1,6 @@
 import { auditEventTypeTitle, humanizeAuditValue, KNOWN_AUDIT_EVENT_TYPES } from '@/lib/audit';
 import type { InboxFacets, InboxFacetValue, InboxFilterClause, InboxSender } from '@/lib/inbox';
-import type { FilterClause, FilterFieldDefinition } from '@/components/filters/filterModel';
+import type { FilterClause, FilterFieldDefinition, FilterOptionAvatar } from '@/components/filters/filterModel';
 
 /**
  * Linear's Inbox filter properties and their Buyerly counterparts: Project is
@@ -51,6 +51,14 @@ export const fromMenuClauses = (clauses: FilterClause[]): InboxFilterClause[] =>
     return [{ field: entry.field, operator: clause.operator, values: clause.values.map(String) }];
   });
 
+/** Linear's From shows everyone's avatar; a sender who has left gets initials. */
+function senderAvatar(value: string, senders?: InboxSender[] | null): FilterOptionAvatar {
+  if (value === 'buyerly') return { kind: 'buyerly' };
+  if (value.startsWith('rule:')) return { kind: 'rule' };
+  const url = senders?.find((sender) => sender.value === value)?.avatar_url;
+  return url ? { kind: 'user', url } : { kind: 'user' };
+}
+
 export function inboxFilterFields(
   facets: InboxFacets | null,
   filters: InboxFilterClause[],
@@ -88,6 +96,7 @@ export function inboxFilterFields(
         count: everyone ? undefined : value.count,
         // Linear lists people first, then its agents tagged "Agent"; rules are ours.
         badge: everyone && value.value.startsWith('rule:') ? 'Rule' : undefined,
+        avatar: everyone ? senderAvatar(value.value, senders) : undefined,
       })),
       unmatchedCount: entry.field === 'type' && facets
         ? KNOWN_AUDIT_EVENT_TYPES.filter((type) => !values.some((value) => value.value === type)).length

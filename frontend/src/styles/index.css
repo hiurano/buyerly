@@ -2801,6 +2801,11 @@ html[data-theme='dark'] .buyerly-auth-page,
   background: var(--display-option-hover, var(--bg-canvas));
 }
 
+/* A person without a photo under From: their initial, kept out of the option's text. */
+.filter-avatar-initial::before {
+  content: attr(data-initial);
+}
+
 .linear-display-checkbox {
   display: inline-flex;
   flex: none;
