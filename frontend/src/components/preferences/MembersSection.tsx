@@ -11,6 +11,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
 import {
@@ -371,10 +372,14 @@ export const MembersSection: React.FC<{
                     </DropdownMenuItem>
                   </RowMenu>
                 )) : canManageMember(member) ? (
+                  // Linear: Change role…, then a divider, then Suspend user… (Remove here).
+                  // Its Update name/username/email… and Manage sessions/teams… have no
+                  // Buyerly counterpart, so they are left out.
                   <RowMenu label={`Member actions for ${memberName(member)}`}>
                     <DropdownMenuItem onSelect={() => setRoleTarget(member)}>
                       <span className="truncate">Change role…</span>
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => setRemoveTarget(member)}>
                       <span className="truncate">Remove from workspace…</span>
                     </DropdownMenuItem>

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { ApiError, apiRequest } from '@/lib/api';
 import type { Workspace } from '@/lib/types';
+import { LinearCloseIcon } from '@/icons/LinearIcons';
 import { Button } from '@/ui/Button';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { toast } from '@/ui/toast';
@@ -35,17 +36,26 @@ export function errorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-/** Roles a member can be given here; ownership moves only by transfer. */
-const ASSIGNABLE_ROLES: Array<{ value: string; description: string }> = [
-  { value: 'admin', description: 'Manages members, invites and workspace settings' },
-  { value: 'buyer', description: 'Works with accounts, campaigns and rules' },
-  { value: 'viewer', description: 'Sees the workspace without changing it' },
+/**
+ * Roles a member can be given here; ownership moves only by transfer. Like
+ * Linear's Change role… dialog, the admin option reads "Workspace admin".
+ */
+const ASSIGNABLE_ROLES: Array<{ value: string; label: string; description: string }> = [
+  { value: 'admin', label: 'Workspace admin', description: 'Manages members, invites and workspace settings' },
+  { value: 'buyer', label: 'Buyer', description: 'Works with accounts, campaigns and rules' },
+  { value: 'viewer', label: 'Viewer', description: 'Sees the workspace without changing it' },
 ];
+
+/** "an admin", "a buyer": the wording of Linear's "Role has been changed to a member". */
+const withArticle = (role: string) => `${/^[aeiou]/i.test(role) ? 'an' : 'a'} ${role}`;
 
 interface ChoiceDialogProps {
   open: boolean;
   title: string;
-  description: string;
+  /** Linear's Change role… dialog has none: the options explain themselves. */
+  description?: string;
+  /** Linear's Change role… dialog is 540px wide and closes from a cross in its header. */
+  wide?: boolean;
   busy: boolean;
   onClose: () => void;
   children: React.ReactNode;
@@ -53,16 +63,33 @@ interface ChoiceDialogProps {
 }
 
 /** The ConfirmDialog frame with room for a choice between the question and its buttons. */
-const ChoiceDialog: React.FC<ChoiceDialogProps> = ({ open, title, description, busy, onClose, children, footer }) => (
+const ChoiceDialog: React.FC<ChoiceDialogProps> = ({ open, title, description, wide = false, busy, onClose, children, footer }) => (
   <Dialog.Root open={open} onOpenChange={(next) => { if (!next && !busy) onClose(); }}>
     <Dialog.Portal>
       <Dialog.Overlay className="fixed inset-0 z-[500] bg-black/50 animate-fade-in" />
       <div className="pointer-events-none fixed inset-0 z-[501] flex items-center justify-center p-4">
-        <Dialog.Content className="ui-dialog pointer-events-auto w-full max-w-[480px] rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] p-6 text-left outline-none animate-scale-in shadow-[var(--dialog-elevation-shadow)]">
-          <Dialog.Title className="m-0 text-[15px] font-semibold text-[var(--text-primary)]">{title}</Dialog.Title>
-          <Dialog.Description className="m-0 mt-2 text-[13px] leading-[20px] text-[var(--text-secondary)]">
-            {description}
-          </Dialog.Description>
+        <Dialog.Content
+          className={`ui-dialog pointer-events-auto w-full ${wide ? 'max-w-[540px]' : 'max-w-[480px]'} rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] p-6 text-left outline-none animate-scale-in shadow-[var(--dialog-elevation-shadow)]`}
+        >
+          <div className="flex items-start gap-2">
+            <Dialog.Title className="m-0 min-w-0 flex-1 text-[15px] font-semibold text-[var(--text-primary)]">{title}</Dialog.Title>
+            {wide && (
+              <Dialog.Close
+                aria-label="Close"
+                disabled={busy}
+                className="-mr-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] text-[var(--text-tertiary)] outline-none hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
+              >
+                <LinearCloseIcon size={12} />
+              </Dialog.Close>
+            )}
+          </div>
+          {description ? (
+            <Dialog.Description className="m-0 mt-2 text-[13px] leading-[20px] text-[var(--text-secondary)]">
+              {description}
+            </Dialog.Description>
+          ) : (
+            <Dialog.Description className="sr-only">{title}</Dialog.Description>
+          )}
           {children}
           <div className="mt-5 flex justify-end gap-2">{footer}</div>
         </Dialog.Content>
@@ -175,8 +202,11 @@ export const LeaveWorkspaceDialog: React.FC<LeaveWorkspaceDialogProps> = ({ open
     }
   };
 
-  const title = `Leave ${workspace.name}?`;
-  const consequence = 'You will lose access to its accounts, rules and inbox. To come back, someone will need to invite you again.';
+  // Linear: `Leave "<workspace>"?`, "You can always rejoin the workspace from the
+  // workspace picker.", primary Leave workspace. Buyerly has no picker to rejoin
+  // from, so the line says how to come back here instead.
+  const title = `Leave "${workspace.name}"?`;
+  const consequence = 'You can come back only if someone invites you again.';
 
   if (!isOwner) {
     return (
@@ -185,6 +215,7 @@ export const LeaveWorkspaceDialog: React.FC<LeaveWorkspaceDialogProps> = ({ open
         title={title}
         description={error ? `${consequence} ${error}` : consequence}
         confirmLabel="Leave workspace"
+        tone="primary"
         busy={busy}
         onConfirm={() => void leave()}
         onCancel={onClose}
@@ -215,7 +246,7 @@ export const LeaveWorkspaceDialog: React.FC<LeaveWorkspaceDialogProps> = ({ open
           <Button className={TOUCH_HEIGHT_CLASS} onClick={onClose} disabled={busy}>Cancel</Button>
           <Button
             className={TOUCH_HEIGHT_CLASS}
-            variant="danger"
+            variant="primary"
             onClick={() => void leave()}
             disabled={busy || !newOwner}
           >
@@ -242,20 +273,20 @@ interface ChangeRoleDialogProps {
   onChanged: (member: MemberItem) => void;
 }
 
-/** Linear's "Change role…" on a member's row. */
+/**
+ * Linear's "Change role…" on a member's row: "Change <name>'s role", the roles
+ * as radio options with a line each, Cancel and Save. Saving the same role just
+ * closes; a change reports "Role changed", a failure "Unable to change role".
+ */
 export const ChangeRoleDialog: React.FC<ChangeRoleDialogProps> = ({ member, workspace, onClose, onChanged }) => {
   const [role, setRole] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
   const lastMember = useRef<MemberItem | null>(null);
   if (member) lastMember.current = member;
   const shown = member || lastMember.current;
 
   useEffect(() => {
-    if (member) {
-      setRole(member.role);
-      setError('');
-    }
+    if (member) setRole(member.role);
   }, [member]);
 
   const save = async () => {
@@ -265,18 +296,22 @@ export const ChangeRoleDialog: React.FC<ChangeRoleDialogProps> = ({ member, work
       return;
     }
     setBusy(true);
-    setError('');
     try {
       const updated = await apiRequest<MemberItem>(`/api/workspaces/${workspace.id}/members/${member.user_id}`, {
         method: 'PATCH',
         body: JSON.stringify({ role }),
       });
       onChanged(updated);
-      onClose();
+      toast.show({
+        tone: 'success',
+        title: 'Role changed',
+        description: `Role has been changed to ${withArticle(roleLabel(updated.role).toLowerCase())}`,
+      });
     } catch (saveError) {
-      setError(errorMessage(saveError, 'Please try again.'));
+      toast.error('Unable to change role', errorMessage(saveError, 'Something unexpected went wrong when changing the role.'));
     } finally {
       setBusy(false);
+      onClose();
     }
   };
 
@@ -284,14 +319,14 @@ export const ChangeRoleDialog: React.FC<ChangeRoleDialogProps> = ({ member, work
     <ChoiceDialog
       open={Boolean(member)}
       title={shown ? `Change ${memberName(shown)}'s role` : 'Change role'}
-      description={`Choose what they can do in ${workspace.name}.`}
+      wide
       busy={busy}
       onClose={onClose}
       footer={(
         <>
           <Button className={TOUCH_HEIGHT_CLASS} onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button className={TOUCH_HEIGHT_CLASS} variant="primary" onClick={() => void save()} disabled={busy}>
-            Change role
+          <Button className={TOUCH_HEIGHT_CLASS} variant="primary" onClick={() => void save()} disabled={busy || !role}>
+            Save
           </Button>
         </>
       )}
@@ -300,14 +335,13 @@ export const ChangeRoleDialog: React.FC<ChangeRoleDialogProps> = ({ member, work
         label="Role"
         options={ASSIGNABLE_ROLES.map((option) => ({
           value: option.value,
-          label: roleLabel(option.value),
+          label: option.label,
           detail: option.description,
         }))}
         value={role}
         disabled={busy}
         onChange={setRole}
       />
-      {error && <p role="alert" className="m-0 mt-3 text-[12px] text-[var(--toast-error-icon)]">{error}</p>}
     </ChoiceDialog>
   );
 };
@@ -319,7 +353,13 @@ interface RemoveMemberDialogProps {
   onRemoved: (member: MemberItem) => void;
 }
 
-/** Removes another member after a confirmation that names them. */
+/**
+ * Buyerly's stand-in for Linear's "Suspend user…": Buyerly has no suspended
+ * state, so the closest server action is removing the member. The dialog keeps
+ * Linear's wording ("Suspend <name>?", "They won't be able to access this
+ * workspace.", Confirm) but says how to undo it, and its button is red because,
+ * unlike a suspension, removal can't be reversed from the row.
+ */
 export const RemoveMemberDialog: React.FC<RemoveMemberDialogProps> = ({ member, workspace, onClose, onRemoved }) => {
   const [busy, setBusy] = useState(false);
   const lastMember = useRef<MemberItem | null>(null);
@@ -343,9 +383,9 @@ export const RemoveMemberDialog: React.FC<RemoveMemberDialogProps> = ({ member, 
   return (
     <ConfirmDialog
       open={Boolean(member)}
-      title={shown ? `Remove ${memberName(shown)} from ${workspace.name}?` : 'Remove member?'}
-      description="They lose access to this workspace right away. To bring them back, invite them again."
-      confirmLabel="Remove member"
+      title={shown ? `Remove ${memberName(shown)}?` : 'Remove member?'}
+      description="They won’t be able to access this workspace. To bring them back, invite them again."
+      confirmLabel="Confirm"
       busy={busy}
       onConfirm={() => void remove()}
       onCancel={onClose}

@@ -226,28 +226,38 @@ try {
       assert.equal(await rowAction('Oscar Owner').count(), 0);
       assert.equal(await rowAction('Adam Admin').count(), role === 'owner' ? 1 : 0);
 
-      // Change role… picks one of the roles below Owner and shows it on the row.
+      // Linear's menu on another member: Change role…, a divider, Suspend user…
+      // (Remove from workspace… here, Buyerly has no suspension).
       await openRowMenu('Bob Buyer');
       assert.deepEqual(await page.getByRole('menuitem').allTextContents(), ['Change role…', 'Remove from workspace…']);
+      assert.equal(await page.locator('[role="menu"] [role="separator"]').count(), 1);
       await page.getByRole('menuitem', { name: 'Change role…' }).click();
+      // Linear's Change role…: 540px, a close cross, radio options, Cancel and Save.
       const roleDialog = page.getByRole('dialog', { name: "Change Bob Buyer's role" });
       await roleDialog.waitFor();
+      await roleDialog.getByRole('button', { name: 'Close', exact: true }).waitFor();
       assert.equal(await roleDialog.getByRole('radio', { name: /^Buyer/ }).isChecked(), true);
-      assert.equal(await roleDialog.getByRole('radio').count(), 3);
+      assert.deepEqual(
+        (await roleDialog.getByRole('radio').evaluateAll(radios => radios.map(radio => radio.value))),
+        ['admin', 'buyer', 'viewer'],
+      );
+      await roleDialog.getByRole('button', { name: 'Cancel', exact: true }).waitFor();
       await assertNoOverflow();
       await page.screenshot({ path: `${output}/change-role-${width}.png` });
-      await roleDialog.getByRole('radio', { name: /^Admin/ }).check();
-      await roleDialog.getByRole('button', { name: 'Change role', exact: true }).click();
+      await roleDialog.getByRole('radio', { name: /^Workspace admin/ }).check();
+      await roleDialog.getByRole('button', { name: 'Save', exact: true }).click();
       await roleDialog.waitFor({ state: 'detached' });
       await row('Bob Buyer').getByText('Admin', { exact: true }).waitFor();
+      await page.getByText('Role has been changed to an admin').waitFor();
 
-      // Remove from workspace… asks first, then the row goes.
+      // Remove from workspace… asks with Linear's suspend wording, then the row goes.
       await openRowMenu('Vera Viewer');
       await page.getByRole('menuitem', { name: 'Remove from workspace…' }).click();
-      const removeDialog = page.getByRole('dialog', { name: `Remove Vera Viewer from ${workspace.name}?` });
+      const removeDialog = page.getByRole('dialog', { name: 'Remove Vera Viewer?' });
       await removeDialog.waitFor();
+      await removeDialog.getByText('They won’t be able to access this workspace.', { exact: false }).waitFor();
       await page.screenshot({ path: `${output}/remove-member-${width}.png` });
-      await removeDialog.getByRole('button', { name: 'Remove member', exact: true }).click();
+      await removeDialog.getByRole('button', { name: 'Confirm', exact: true }).click();
       await row('Vera Viewer').waitFor({ state: 'detached' });
       assert.deepEqual(
         writes.filter(write => /\/members\/\d+$/.test(write.path)).map(write => [write.verb, write.path, write.body]),
@@ -271,7 +281,7 @@ try {
         await page.screenshot({ path: `${output}/profile-workspace-access-${width}.png`, fullPage: true });
         await page.getByRole('button', { name: 'Leave workspace', exact: true }).click();
       }
-      const leaveDialog = page.getByRole('dialog', { name: `Leave ${workspace.name}?` });
+      const leaveDialog = page.getByRole('dialog', { name: `Leave "${workspace.name}"?` });
       await leaveDialog.waitFor();
       if (role === 'owner') {
         // The owner names the new owner first; the confirm stays off until then.
