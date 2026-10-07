@@ -60,13 +60,27 @@ class TestLegalPageFiles(unittest.TestCase):
             for url in parser.urls:
                 self.assertTrue((BUILD_ROOT / urlsplit(url).path.lstrip("/")).is_file(), url)
 
+    def test_theme_is_set_before_first_paint_like_the_app(self):
+        # The only script is the app's theme bootstrap: the saved Settings choice,
+        # otherwise the system theme. Without JavaScript the page stays light.
+        app_html = (PROJECT_ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+        theme_script = re.search(r"<script>.*?</script>", app_html, re.S)[0]
+        self.assertIn("buyerly-interface-theme", theme_script)
+        self.assertIn("prefers-color-scheme: dark", theme_script)
+        self.assertLess(app_html.index(theme_script), app_html.index('src="/src/main.tsx"'))
+        for filename in DOCUMENTS:
+            content = (PUBLIC_ROOT / filename).read_text(encoding="utf-8")
+            self.assertIn('<html lang="en" data-theme="light">', content)
+            self.assertEqual(re.findall(r"<script\b.*?</script>", content, re.S), [theme_script], filename)
+            self.assertLess(content.index(theme_script), content.index('rel="stylesheet"'), filename)
+
     def test_identity_navigation_and_anchors_are_consistent(self):
         shared_header = shared_footer = None
         for filename, required_text in DOCUMENTS.items():
             content = (PUBLIC_ROOT / filename).read_text()
             for text in (*required_text, BUSINESS_NAME, BUSINESS_ADDRESS, "Identification Number: 305879234", "contact@buyerly.app"):
                 self.assertIn(text, content)
-            self.assertNotIn("<script", content)
+            self.assertEqual(content.count("<script"), 1)
             self.assertNotIn("Sign up", content)
             self.assertNotIn("fonts.googleapis.com", content)
             header = re.search(r'<header\b.*?</header>', content, re.S)[0]

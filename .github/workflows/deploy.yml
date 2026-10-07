@@ -136,6 +136,17 @@ jobs:
           name: mobile-sidebar-browser
           path: /tmp/buyerly-mobile-sidebar
 
+      - name: Check light and dark themes outside the app in Chromium
+        working-directory: frontend
+        run: node ../scripts/auth-theme-browser.mjs
+
+      - name: Upload light and dark theme browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auth-theme-browser
+          path: /tmp/buyerly-auth-theme
+
       - name: Check the command menu in Chromium
         working-directory: frontend
         run: node ../scripts/command-menu-browser.mjs
