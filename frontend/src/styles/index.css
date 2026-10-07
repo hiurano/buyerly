@@ -3358,23 +3358,37 @@ html[data-theme='dark'] .buyerly-auth-page,
   opacity: 0.5;
 }
 
-/* A view's details panel at the small width: a sheet over the list from the
-   right, the mirror of the navigation drawer (DetailsSheet). */
+/* A view's details panel at the small width, measured in Linear at 375/390px:
+   it lies over the list from the right, below the view header (which stays
+   usable), 350px wide (the whole window when narrower). The panel's own card
+   sits 4px from its left edge and 8px from the right and bottom. The sheet
+   itself is transparent (DetailsSheet). */
 .details-sheet {
   position: fixed;
-  top: 0;
+  top: var(--details-sheet-top, 0px);
   right: 0;
   bottom: 0;
-  z-index: 99;
+  z-index: 90;
   display: flex;
   flex-direction: column;
-  width: min(calc(100vw - 40px), 360px);
-  overflow: hidden;
-  background-color: var(--bg-window);
-  border-top-left-radius: 12px;
-  border-bottom-left-radius: 12px;
-  box-shadow: 0 0 0 1px var(--color-border-primary), var(--canvas-shadow);
+  width: min(350px, 100vw);
   animation: detailsSheetEnter 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Linear dims the list under it only on a phone (640px and below). */
+.details-sheet-backdrop {
+  position: fixed;
+  top: var(--details-sheet-top, 0px);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 80;
+  display: none;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+@media (max-width: 640px) {
+  .details-sheet-backdrop { display: block; }
 }
 
 @keyframes detailsSheetEnter {
@@ -3385,7 +3399,7 @@ html[data-theme='dark'] .buyerly-auth-page,
 .details-sheet > .campaign-view-details {
   flex: 1 1 auto;
   width: 100%;
-  padding: 8px;
+  padding: 0 8px 8px 4px;
 }
 
 /* Popovers anchored to a header button never leave a narrow window. */
@@ -3393,17 +3407,17 @@ html[data-theme='dark'] .buyerly-auth-page,
   max-width: calc(100vw - 16px);
 }
 
-/* Linear's pure-touch headers: icon buttons a finger taps are 40px square,
-   view tabs 36px tall, as the navigation rows. */
+/* Linear's pure-touch headers (measured at 375px): icon buttons grow from 28px
+   to 32px square, view tabs to 32px tall. */
 @media (hover: none) and (pointer: coarse) {
   .linear-header-target {
-    width: 40px;
-    min-width: 40px;
-    height: 40px;
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
   }
 
   .linear-tab-capsule,
   .linear-inbox-tab {
-    height: 36px;
+    height: 32px;
   }
 }

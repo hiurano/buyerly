@@ -15,7 +15,7 @@ export const SidebarCollapsedNavigation: React.FC = () => {
   const isSidebarOpen = useAppStore((state) => state.isSidebarOpen);
   const toggleSidebarOpen = useAppStore((state) => state.toggleSidebarOpen);
   const isSmall = useIsSmallScreen();
-  // Linear's pure-touch header: a 40px button a finger can hit.
+  // Linear's pure-touch header: a 32px button (28px with a mouse).
   const isTouch = useIsTouchScreen();
   const visible = isSmall || isSidebarCollapsed;
 
@@ -56,7 +56,7 @@ export const SidebarCollapsedNavigation: React.FC = () => {
       ref={ref}
       aria-hidden={visible ? undefined : true}
       style={{
-        width: visible ? (isTouch ? '40px' : '28px') : '0px',
+        width: visible ? (isTouch ? '32px' : '28px') : '0px',
         opacity: visible ? 1 : 0,
         transform: visible ? 'scale(1)' : 'scale(0.85)',
         marginRight: visible ? (parentGap > 0 ? '0px' : '6px') : `${-parentGap}px`,

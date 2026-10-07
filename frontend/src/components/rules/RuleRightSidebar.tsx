@@ -471,7 +471,7 @@ export const RuleRightSidebar: React.FC = () => {
           width: isSheet ? '100%' : sidebarWidth,
           height: '100%',
           overflow: 'hidden auto',
-          padding: isSheet ? '8px 0px 0px 4px' : '0px 0px 8px 4px',
+          padding: '0px 0px 8px 4px',
         }}
       >
         <div

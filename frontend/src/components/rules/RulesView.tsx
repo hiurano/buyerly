@@ -319,15 +319,13 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
 
         {/* Tier 2: View Filter Tabs & Action Buttons (Height: 43px, NO border bottom) */}
         <LinearDataListToolbar className="gap-2">
-          {/* Left: Capsule Tabs, as wide as they are: on a phone they scroll sideways. */}
-          <div className="flex min-w-0 flex-1 items-center overflow-x-auto [scrollbar-width:none]">
-            <LinearTabs
-              className="w-max"
-              tabs={ruleTabs}
-              activeTabId={ruleFilterTab}
-              onChange={(id) => setRuleFilterTab(id as RuleFilterTab)}
-            />
-          </div>
+          {/* Left: Capsule Tabs; when they no longer fit they fold into one menu, as in Linear. */}
+          <LinearTabs
+            collapseOverflow
+            tabs={ruleTabs}
+            activeTabId={ruleFilterTab}
+            onChange={(id) => setRuleFilterTab(id as RuleFilterTab)}
+          />
 
           {/* Right: Add filter + Display options + Toggle Sidebar */}
           <div className="flex shrink-0 items-center gap-1.5">

@@ -771,20 +771,18 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
         </div>
 
         <LinearDataListToolbar className="campaign-view-toolbar">
-          {/* As wide as its tabs: on a phone they scroll sideways and the actions stay on the right. */}
-          <div className="flex min-w-0 flex-1 items-center overflow-x-auto [scrollbar-width:none]">
-            <LinearTabs
-              className="w-max"
-              tabs={[
-                { id: 'campaigns', label: 'Campaigns', count: hierarchyState === 'ready' ? campaigns.length : undefined },
-                { id: 'adsets', label: 'Ad sets', count: hierarchyState === 'ready' ? adSets.length : undefined },
-                { id: 'ads', label: 'Ads', count: hierarchyState === 'ready' ? ads.length : undefined },
-              ]}
-              activeTabId={campaignFilterTab}
-              onChange={(id) => setCampaignFilterTab(id as AdsManagerEntity)}
-              aria-label="Ads Manager level"
-            />
-          </div>
+          {/* When the tabs no longer fit they fold into one menu, as in Linear; the actions stay on the right. */}
+          <LinearTabs
+            collapseOverflow
+            tabs={[
+              { id: 'campaigns', label: 'Campaigns', count: hierarchyState === 'ready' ? campaigns.length : undefined },
+              { id: 'adsets', label: 'Ad sets', count: hierarchyState === 'ready' ? adSets.length : undefined },
+              { id: 'ads', label: 'Ads', count: hierarchyState === 'ready' ? ads.length : undefined },
+            ]}
+            activeTabId={campaignFilterTab}
+            onChange={(id) => setCampaignFilterTab(id as AdsManagerEntity)}
+            aria-label="Ads Manager level"
+          />
 
           <div className="flex shrink-0 items-center gap-1.5">
             <Tooltip content="Add filter" shortcut="F">
@@ -924,7 +922,7 @@ const DropdownMenuAccount: React.FC<DropdownMenuAccountProps> = ({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="max-w-[120px] truncate rounded-full border border-[var(--color-border-secondary)] px-2.5 py-1 text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)] sm:max-w-[220px] lg:max-w-[280px] [@media(hover:none)_and_(pointer:coarse)]:min-h-10"
+          className="max-w-[120px] truncate rounded-full border border-[var(--color-border-secondary)] px-2.5 py-1 text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)] sm:max-w-[220px] lg:max-w-[280px] [@media(hover:none)_and_(pointer:coarse)]:min-h-8"
           aria-label="Select ad account"
           title={metaAccountLabel(account)}
         >

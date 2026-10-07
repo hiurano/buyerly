@@ -800,7 +800,9 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertIn("useDetailsSheet(", view)
             self.assertIn("<DetailsSheet", view)
         for view in (self.campaigns_view, self.rules_view):
-            self.assertIn('className="w-max"', view)
+            self.assertIn("collapseOverflow", view)
+        tabs = (ROOT / "frontend" / "src" / "ui" / "LinearTabs.tsx").read_text()
+        self.assertIn("more`}", tabs)
         self.assertIn(".linear-header-target", self.styles)
         self.assertNotIn("Mobile is partial", self.ui_contract)
         self.assertNotIn("no screen is described as mobile-ready", self.design_system)

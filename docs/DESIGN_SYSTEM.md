@@ -159,10 +159,10 @@ Buyerly is laid out for `1024px` and wider and reflows down to a `390px` phone. 
 
 Inside the screens (Rules, Ads Manager, Inbox; `scripts/mobile-screens-browser.mjs` at 390/768/1024/1440px):
 
-- view tabs are as wide as their labels and scroll sideways in their strip; the header actions stay on the right and are never cut;
+- view tabs that no longer fit their strip all fold into one capsule with the active tab's label and a chevron, named "N more", that opens a menu of the views (`LinearTabs collapseOverflow`, as Linear's view header); the header actions stay on the right and are never cut;
 - entity tables scroll sideways inside their own viewport (`LinearDataTable`), never the document; figures do not wrap;
-- a view's details panel (Rules groups, Ads Manager facets) is a column on a wide window and, at `880px` and below, a sheet over the list from the right (`DetailsSheet`): at most 360px, 40px clear of the left edge, above a backdrop that closes it with Escape; it starts closed there;
-- on a pure-touch screen (`TOUCH_SCREEN_QUERY`) header icon buttons are 40px square (`.linear-header-target`) and view tabs 36px tall;
+- a view's details panel (Rules groups, Ads Manager facets) is a column on a wide window and, at `880px` and below, lies over the list from the right below the view header (`DetailsSheet`), as measured in Linear: 350px wide (the whole window when narrower), its card 4px from the left edge and 8px from the right and bottom; at `640px` and below a 40% black backdrop under the header dims the list and closes it; Escape and the header's details button close it; it starts closed there;
+- on a pure-touch screen (`TOUCH_SCREEN_QUERY`) header icon buttons grow from 28px to 32px square (`.linear-header-target`) and view tabs to 32px tall, as Linear's on a touch phone;
 - popovers anchored to a header button stay inside the window.
 
 ## Migration map
@@ -201,7 +201,7 @@ Facet data comes from live inventory, `/api/account-groups`, and the selected
 account's rule snapshots. Account groups describe account membership, not custom
 campaign labels. Rule counts describe assignment scope, not automation enablement.
 Status, account groups and rules can also group rows. Board mode remains unavailable.
-At `880px` and below the facets open as a sheet over the list (`DetailsSheet`),
+At `880px` and below the facets lie over the list below the header (`DetailsSheet`),
 closed at first; see the responsive contract.
 
 ## Public website
