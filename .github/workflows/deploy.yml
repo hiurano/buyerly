@@ -53,11 +53,14 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+      # Playwright is a pinned devDependency in frontend/package-lock.json, so
+      # `npm ci` above already installed it. Installing it ad hoc without the
+      # lock file re-resolved the whole tree and once hit a package version
+      # npm listed but did not serve yet (#245).
       - name: Check workspace state in Chromium
         working-directory: frontend
         run: |
-          npm install --no-save --package-lock=false playwright@1.58.2
-          npx playwright install --with-deps chromium
+          npx --no-install playwright install --with-deps chromium
           node ../scripts/scoped-state-browser.mjs
 
       - name: Upload scoped state browser evidence
