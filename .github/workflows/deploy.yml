@@ -377,6 +377,11 @@ jobs:
             echo "🚀 [Deploy] Connected to VPS. Starting deployment for Buyerly..."
             if [ -d "/opt/buyerly" ]; then
               cd /opt/buyerly
+              # Where the Cloudflare Tunnel runs and what is open to the internet
+              # (#301): no addresses, only any/loopback/specific per port.
+              echo "BUYERLY_EDGE cloudflared_service=$(systemctl is-active cloudflared 2>/dev/null || true)"
+              echo "BUYERLY_EDGE cloudflared_containers=$(docker ps --format '{{.Image}} {{.Networks}}' 2>/dev/null | grep -i cloudflared | tr '\n' ';' || true)"
+              echo "BUYERLY_EDGE listeners=$(ss -Hltn 2>/dev/null | awk '{a=$4; p=a; sub(/.*:/,"",p); h=substr(a,1,length(a)-length(p)-1); if (p!="80" && p!="443" && p!="8080") next; c="specific"; if (h=="0.0.0.0" || h=="*" || h=="[::]") c="any"; else if (h ~ /^127\./ || h=="[::1]") c="loopback"; print c ":" p}' | sort -u | tr '\n' ' ' || true)"
               echo "📥 Pulling latest git changes..."
               git fetch origin main
               git reset --hard origin/main

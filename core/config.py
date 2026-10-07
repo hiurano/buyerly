@@ -35,6 +35,14 @@ class Settings(BaseSettings):
             "Cloudflare's published list, 'off' ignores Cloudflare headers"
         ),
     )
+    CLOUDFLARE_TUNNEL_CIDRS: str = Field(
+        default="",
+        description=(
+            "Addresses a Cloudflare Tunnel (cloudflared) connects from, as our own "
+            "proxy sees them; such a connection counts as Cloudflare. Empty means "
+            "no tunnel"
+        ),
+    )
     DEFAULT_POLL_INTERVAL_MINUTES: int = Field(default=5, description="Monitoring interval in minutes")
     ADMIN_CHAT_ID: str = Field(default="", description="Legacy Telegram ID of the bootstrap and dev-auth super-admin")
     WEBAPP_URL: str = Field(default="", description="Public HTTPS URL of the web app")

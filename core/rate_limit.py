@@ -244,44 +244,66 @@ def _from_cloudflare(ip_value: str) -> bool:
     )
 
 
-def _edge_ip(request: Request) -> str:
-    """The address that connected to our own proxies: a browser, or Cloudflare."""
+def _from_tunnel(ip_value: str) -> bool:
+    configured = settings.CLOUDFLARE_TUNNEL_CIDRS.strip()
+    if not configured or settings.CLOUDFLARE_IP_CIDRS.strip().lower() == "off":
+        return False
+    parsed = ipaddress.ip_address(ip_value)
+    return any(
+        parsed.version == network.version and parsed in network
+        for network in _trusted_proxy_networks(configured)
+    )
+
+
+def _edge(request: Request) -> tuple[str, bool]:
+    """The address that connected to our own proxies, and whether it is our Cloudflare Tunnel.
+
+    The tunnel address is checked only where our side wrote it down: as the
+    direct peer, or as a hop a trusted proxy appended. A trusted proxy's own
+    address is never taken for the tunnel, so the tunnel networks may overlap
+    TRUSTED_PROXY_CIDRS (both are the Docker networks in production).
+    """
     peer_ip = _normalize_ip(request.client.host if request.client else "")
     if peer_ip is None:
-        return "unknown"
+        return "unknown", False
     if not _is_trusted_proxy(peer_ip):
-        return peer_ip
+        return peer_ip, _from_tunnel(peer_ip)
 
     forwarded = request.headers.get("X-Forwarded-For", "")
     if forwarded:
         chain = [_normalize_ip(item) for item in forwarded.split(",")]
         if not chain or any(item is None for item in chain):
-            return peer_ip
+            return peer_ip, False
         current = peer_ip
         for hop in reversed(chain):
             if not _is_trusted_proxy(current):
                 break
             current = hop
-        return current
+            if _from_tunnel(current):
+                return current, True
+        return current, False
 
     real_ip = _normalize_ip(request.headers.get("X-Real-IP", ""))
-    return real_ip or peer_ip
+    if real_ip:
+        return real_ip, _from_tunnel(real_ip)
+    return peer_ip, False
 
 
 def _via_cloudflare(request: Request) -> bool:
     """Cloudflare headers count only when Cloudflare itself made the connection.
 
     A direct hit on the server can send any CF-* header, but its own address is
-    then the edge address, which is not in Cloudflare's published networks.
+    then the edge address, which is neither in Cloudflare's published networks
+    nor the local address our Cloudflare Tunnel connects from.
     """
-    edge_ip = _edge_ip(request)
-    return edge_ip != "unknown" and _from_cloudflare(edge_ip)
+    edge_ip, via_tunnel = _edge(request)
+    return via_tunnel or (edge_ip != "unknown" and _from_cloudflare(edge_ip))
 
 
 def get_client_ip(request: Request) -> str:
     """The browser's address: forwarded headers only from trusted proxies or Cloudflare."""
-    edge_ip = _edge_ip(request)
-    if edge_ip != "unknown" and _from_cloudflare(edge_ip):
+    edge_ip, via_tunnel = _edge(request)
+    if via_tunnel or (edge_ip != "unknown" and _from_cloudflare(edge_ip)):
         visitor_ip = _normalize_ip(request.headers.get("CF-Connecting-IP", ""))
         if visitor_ip:
             return visitor_ip
