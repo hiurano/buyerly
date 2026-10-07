@@ -68,6 +68,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     toggleSidebarCollapsed,
     toggleSidebarOpen,
     setSidebarOpen,
+    setSidebarPeekOpen,
     interfaceTheme,
     refreshInboxUnreadCount,
   } = useAppStore();
@@ -112,8 +113,10 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   useEffect(() => {
     // Linear closes the small-screen sidebar drawer on every navigation. Some
     // settings sections have no address of their own, so a section change counts too.
+    // The desktop peek over the content closes the same way.
     setSidebarOpen(false);
-  }, [route, activeTab, settingsSection, setSidebarOpen]);
+    setSidebarPeekOpen(false);
+  }, [route, activeTab, settingsSection, setSidebarOpen, setSidebarPeekOpen]);
 
   useEffect(() => {
     if (syncingRoute.current) return;
@@ -160,6 +163,14 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
         else toggleSidebarCollapsed();
         return;
       }
+      // Linear's "Open/Close navigation sidebar": shows the collapsed sidebar over the content.
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && (event.key === '\\' || event.code === 'Backslash')) {
+        const { isSidebarCollapsed, isSidebarPeekOpen, activeTab: tab } = useAppStore.getState();
+        if (isSmallScreen() || !isSidebarCollapsed || tab === 'preferences') return;
+        event.preventDefault();
+        setSidebarPeekOpen(!isSidebarPeekOpen, 'keyboard');
+        return;
+      }
       if ((event.ctrlKey || event.altKey || event.metaKey) && ['i', 'I'].includes(event.key)) {
         event.preventDefault();
         toggleRightSidebar();
@@ -185,7 +196,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setActiveTab, setSettingsSection, toggleRightSidebar, toggleSidebarCollapsed, toggleSidebarOpen]);
+  }, [setActiveTab, setSettingsSection, toggleRightSidebar, setSidebarPeekOpen, toggleSidebarCollapsed, toggleSidebarOpen]);
 
   useEffect(() => {
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');

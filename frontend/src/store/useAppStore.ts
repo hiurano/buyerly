@@ -303,6 +303,14 @@ interface AppState {
   isSidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebarOpen: () => void;
+  /** The collapsed desktop sidebar shown over the content (hover, ⌘\), as in Linear. */
+  isSidebarPeekOpen: boolean;
+  /**
+   * Opened by ⌘\, Linear's peek ignores the cursor over the backdrop until the
+   * cursor visits the sidebar; opened by hover, leaving the sidebar closes it.
+   */
+  sidebarPeekSource: 'hover' | 'keyboard';
+  setSidebarPeekOpen: (open: boolean, source?: 'hover' | 'keyboard') => void;
   activeTab: ActiveTab;
   lastAppTab: AppTab;
   setActiveTab: (tab: ActiveTab) => void;
@@ -628,6 +636,9 @@ export const useAppStore = create<AppState>((set, get) => {
   isSidebarOpen: false,
   setSidebarOpen: (open) => set({ isSidebarOpen: open }),
   toggleSidebarOpen: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+  isSidebarPeekOpen: false,
+  sidebarPeekSource: 'hover',
+  setSidebarPeekOpen: (open, source = 'hover') => set({ isSidebarPeekOpen: open, sidebarPeekSource: source }),
   activeTab: 'campaigns',
   lastAppTab: 'campaigns',
   setActiveTab: (tab) =>

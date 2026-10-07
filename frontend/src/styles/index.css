@@ -504,6 +504,32 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
   box-shadow: 0 0 0 1px var(--color-border-primary), var(--canvas-shadow);
 }
 
+/*
+ * Linear's peek, measured live: a collapsed desktop sidebar shown over the
+ * content keeps its width and z-index 96 above the backdrop (95), takes the
+ * canvas background (lch 5.52 dark / 97.94 light, the main panel's), 12px
+ * right corners and a 1px ring (lch 14.16 / 88.49) plus the command menu's
+ * shadow. The collapsed column's 8px at the window's left edge opens it on hover.
+ */
+.sidebar-surface[data-peek] {
+  background-color: var(--bg-canvas);
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+  box-shadow: 0 0 0 1px var(--color-border-secondary), var(--command-menu-shadow);
+}
+
+.sidebar-surface[data-peek='closed'] {
+  box-shadow: none;
+}
+
+.sidebar-peek-edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 8px;
+}
+
 /* 1. Interactive Sidebar Resizer Hit Target (7px) */
 .linear-resizer-hit-target {
   position: absolute;

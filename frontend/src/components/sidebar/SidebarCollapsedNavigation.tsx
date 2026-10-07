@@ -14,6 +14,7 @@ export const SidebarCollapsedNavigation: React.FC = () => {
   const toggleSidebarCollapsed = useAppStore((state) => state.toggleSidebarCollapsed);
   const isSidebarOpen = useAppStore((state) => state.isSidebarOpen);
   const toggleSidebarOpen = useAppStore((state) => state.toggleSidebarOpen);
+  const setSidebarPeekOpen = useAppStore((state) => state.setSidebarPeekOpen);
   const isSmall = useIsSmallScreen();
   // Linear's pure-touch header: a 32px button (28px with a mouse).
   const isTouch = useIsTouchScreen();
@@ -42,6 +43,13 @@ export const SidebarCollapsedNavigation: React.FC = () => {
       <button
         type="button"
         onClick={toggleSidebarCollapsed}
+        // Entering it shows the collapsed sidebar over the content at once, as
+        // Linear's onMouseEnter does (no delay, unlike the window's left edge).
+        onMouseEnter={() => {
+          // Settings has its own sidebar, which never collapses.
+          if (!isSidebarCollapsed || useAppStore.getState().activeTab === 'preferences') return;
+          setSidebarPeekOpen(true);
+        }}
         className="linear-icon-btn linear-header-target"
         aria-label="Open sidebar"
         tabIndex={visible ? undefined : -1}
