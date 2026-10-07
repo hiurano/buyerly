@@ -261,7 +261,11 @@ try {
       await confirmation.getByText('Revoke all other sessions? This cannot be undone.', { exact: true }).waitFor();
       await confirmation.getByRole('button', { name: 'Revoke', exact: true }).click();
       await page.getByText('You have been logged out of all other sessions.', { exact: true }).waitFor();
-      await page.waitForFunction(() => document.querySelector('.preferences-sessions-others')?.textContent?.trim() === 'No sessions');
+      // Without other sessions there is no card at all, as in Linear (#359): no "No sessions", no Revoke all.
+      await page.getByRole('region', { name: 'Other sessions' }).waitFor({ state: 'detached' });
+      assert.equal(await page.getByText('No sessions', { exact: true }).count(), 0);
+      assert.equal(await page.getByRole('button', { name: 'Revoke all', exact: true }).count(), 0);
+      assert.equal(await page.locator('.preferences-sessions-card').count(), 1);
       assert.equal(await page.locator('[data-session-id]').count(), 1);
       await current.getByText('Current session', { exact: true }).waitFor();
       await assertNoOverflow();

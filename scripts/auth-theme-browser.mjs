@@ -45,8 +45,39 @@ const field = {
   focus: 'rgb(94, 105, 209)',
 };
 
+// Sign-in heading as on linear.app/add-account → Continue with email (2026-10-08):
+// 18px / 500, line-height normal, text colour, 32px below the logo, 24px above the first control.
+const headingColor = { light: 'rgb(47, 47, 49)', dark: 'rgb(226, 227, 229)' };
+const checkHeading = async (page, text, theme, label) => {
+  const heading = page.getByRole('heading', { name: text, exact: true });
+  await heading.waitFor();
+  const style = await heading.evaluate(element => {
+    const css = getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    const brand = element.closest('.buyerly-auth-card').querySelector('.buyerly-auth-brand').getBoundingClientRect();
+    const next = element.nextElementSibling;
+    const control = (next?.matches('label') ? next.querySelector('input') : next).getBoundingClientRect();
+    return {
+      font: `${css.fontSize} ${css.fontWeight}`,
+      lineHeight: css.lineHeight,
+      letterSpacing: css.letterSpacing,
+      color: css.color,
+      above: Math.round(rect.top - brand.bottom),
+      below: Math.round(control.top - rect.bottom),
+    };
+  });
+  assert.equal(style.font, '18px 500', `${label}: "${text}" size and weight`);
+  assert.equal(style.lineHeight, 'normal', `${label}: "${text}" line-height`);
+  assert.equal(style.letterSpacing, 'normal', `${label}: "${text}" letter-spacing`);
+  assert.equal(style.color, headingColor[theme], `${label}: "${text}" colour`);
+  assert.equal(style.above, 32, `${label}: "${text}" gap from the logo`);
+  assert.equal(style.below, 24, `${label}: "${text}" gap to the first control`);
+};
+
 const checkField = async (page, target, theme, label) => {
+  if (target.name === 'login') await checkHeading(page, 'Log in to Buyerly', theme, label);
   if (target.field !== true) await page.getByRole('button', { name: target.field }).click();
+  if (target.name === 'login') await checkHeading(page, 'What’s your email address?', theme, label);
   const input = page.locator('.buyerly-auth-field input').first();
   await input.waitFor();
   await page.mouse.move(0, 0);
