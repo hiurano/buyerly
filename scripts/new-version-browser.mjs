@@ -1,6 +1,6 @@
 // Exercise the real App with a synthetic API: a tab built from one release asks
 // /health/live which release the server runs. While they match, or while the
-// server is down mid-deploy, nothing shows; once they differ, one "Update
+// server is down mid-deploy, nothing shows; once they differ, one "New version
 // available" notice with Reload appears, never over an open dialog, and Reload
 // loads the page again (#303).
 import assert from 'node:assert/strict';
@@ -75,7 +75,7 @@ try {
       errors.push(`Unexpected API request: ${verb} ${path}`);
       return route.fulfill({ status: 404, json: { detail: 'Unexpected test request' } });
     });
-    const notice = page.getByText('Update available', { exact: true });
+    const notice = page.getByText('New version available', { exact: true });
     // The tab coming back into view is one of the moments it asks the server.
     const returnToTab = async () => {
       const before = healthRequests;
@@ -114,7 +114,7 @@ try {
       await page.keyboard.press('Escape');
       await page.getByRole('dialog').first().waitFor({ state: 'detached' });
       await notice.waitFor();
-      await page.getByText('A new version of Buyerly is available.', { exact: true }).waitFor();
+      await page.getByText('An improved version of Buyerly is available. Please reload this window now to update.', { exact: true }).waitFor();
 
       // It stays put (it is not a passing toast) and never repeats: once found, the tab stops asking.
       await page.waitForTimeout(9000);

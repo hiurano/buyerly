@@ -79,12 +79,13 @@ export function useNewVersionNotice(buildVersion: string = BUILD_VERSION): void 
         return;
       }
       noticeShown = true;
+      // Linear's words, tone and button (its web bundle, ContextualMenuActions: "onDatabaseVersionChangeUpdateToast").
       toast.show({
-        tone: 'info',
-        title: 'Update available',
-        description: 'A new version of Buyerly is available.',
+        tone: 'warning',
+        title: 'New version available',
+        description: 'An improved version of Buyerly is available. Please reload this window now to update.',
         persistent: true,
-        action: { label: 'Reload', onClick: () => window.location.reload() },
+        action: { label: 'Reload', onClick: () => window.location.reload(), button: true },
       });
     };
 

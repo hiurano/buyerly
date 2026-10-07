@@ -1,4 +1,4 @@
-// When an open tab may say "Update available" (#303).
+// When an open tab may say "New version available" (#303).
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
