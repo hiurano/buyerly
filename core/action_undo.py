@@ -19,6 +19,7 @@ from services.analytics_store import AnalyticsFactService
 
 UNDO_WINDOW_SECONDS = 24 * 60 * 60
 UNDO_PENDING_LEASE_SECONDS = 120
+STATE_CHANGED_ERROR = "Meta state no longer matches the original action"
 REVERSIBLE_EVENT_TYPES = {
     "STOP",
     "AUTO_REACTIVATE",
@@ -295,6 +296,14 @@ async def reverse_audit_event(
         )
     ).scalar_one_or_none()
     retry_after_crash = False
+    # A previous attempt whose write to Meta failed may still have landed (a
+    # timeout after Meta applied it). Then Meta already shows the undone
+    # state, and the retry confirms it instead of refusing (#200).
+    retry_after_failed_write = bool(
+        undo_state is not None
+        and undo_state.status == "ERROR"
+        and undo_state.last_error != STATE_CHANGED_ERROR
+    )
     if undo_state is None:
         undo_state = ActionUndoState(
             original_event_id=source.id,
@@ -354,10 +363,12 @@ async def reverse_audit_event(
         )
         raise UndoError("Meta did not return the current state. Nothing was undone.", 502)
 
-    reconciled = retry_after_crash and state_matches(spec, current_state, spec.desired_state)
+    reconciled = (retry_after_crash or retry_after_failed_write) and state_matches(
+        spec, current_state, spec.desired_state
+    )
     if not reconciled and not state_matches(spec, current_state, spec.expected_state):
         undo_state.status = "ERROR"
-        undo_state.last_error = "Meta state no longer matches the original action"
+        undo_state.last_error = STATE_CHANGED_ERROR
         await session.commit()
         raise UndoError("Meta's current state already differs from the result of the original action.")
 
