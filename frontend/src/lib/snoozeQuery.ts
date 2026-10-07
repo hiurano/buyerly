@@ -187,7 +187,7 @@ function validDate(year: number, month: number, day: number): Date | null {
 /** Pulls a day out of the text: "tomorrow", "friday", "next week", "oct 5", "10/15", "2026-12-01". */
 function takeDay(text: string, now: Date): { day: DayPart | null; rest: string; failed?: boolean } {
   const today = startOfDay(now);
-  const relative: Array<[RegExp, () => DayPart]> = [
+  const relative: Array<[RegExp, (match: RegExpExecArray) => DayPart]> = [
     [/(^|\s)tonight(\s|$)/, () => ({ date: today, rolls: null })],
     [/(^|\s)today(\s|$)/, () => ({ date: today, rolls: 'day' })],
     [/(^|\s)(tomorrow|tmrw|tmr)(\s|$)/, () => {
@@ -200,7 +200,31 @@ function takeDay(text: string, now: Date): { day: DayPart | null; rest: string; 
       date.setDate(date.getDate() + (((8 - date.getDay()) % 7) || 7));
       return { date, rolls: null };
     }],
-    [/(^|\s)end\s+of\s+(the\s+)?week(\s|$)/, () => {
+    // "next weekend" is the Saturday of next week (Mon–Sun), "this weekend" the coming one, as Linear's.
+    [/(^|\s)next\s+weekend(\s|$)/, () => {
+      const date = new Date(today);
+      date.setDate(date.getDate() + (((8 - date.getDay()) % 7) || 7) + 5);
+      return { date, rolls: null };
+    }],
+    [/(^|\s)this\s+weekend(\s|$)/, () => {
+      const date = new Date(today);
+      const ahead = (6 - date.getDay() + 7) % 7;
+      date.setDate(date.getDate() + ahead);
+      return { date, rolls: ahead === 0 ? 'week' : null };
+    }],
+    // "this week" is its Monday, a year on once passed, like "this month" (Linear, Wed 7 Oct 2026 4:30 PM).
+    [/(^|\s)this\s+week(\s|$)/, () => {
+      const date = new Date(today);
+      date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+      return { date, rolls: 'year' };
+    }],
+    // "2 days at 5pm" is that day; "in 2 days at 5pm" reads otherwise (see parseSnoozeQuery).
+    [/(^|\s)(\d{1,3})\s+days?(\s|$)/, (match) => {
+      const date = new Date(today);
+      date.setDate(date.getDate() + Number(match[2]));
+      return { date, rolls: null };
+    }],
+    [/(^|\s)end\s+of\s+week(\s|$)/, () => {
       const date = new Date(today);
       date.setDate(date.getDate() + ((7 - date.getDay()) % 7));
       return { date, rolls: 'week' };
@@ -214,7 +238,7 @@ function takeDay(text: string, now: Date): { day: DayPart | null; rest: string; 
   ];
   for (const [pattern, build] of relative) {
     const match = pattern.exec(text);
-    if (match) return { day: build(), rest: text.replace(match[0], ' ') };
+    if (match) return { day: build(match), rest: text.replace(match[0], ' ') };
   }
 
   const iso = /(^|\s)(\d{4})-(\d{1,2})-(\d{1,2})(?=\s|$)/.exec(text);
@@ -318,6 +342,8 @@ function parseDuration(query: string): { amount: number; unit: Unit } | null {
  */
 function bareClock(digits: string): ClockTime | null {
   const whole = Number(digits);
+  // "0", "00" and "000" read as nine o'clock, whichever is next (Linear, 2 Oct 12:38 AM and 7 Oct 4:30 PM).
+  if (/^0{1,3}$/.test(digits)) return { hours: 9, minutes: 0, ambiguous: true };
   if (digits.length <= 2 && whole >= 1 && whole <= 23) return { hours: whole, minutes: 0, ambiguous: whole <= 12 };
   for (const hourLength of [2, 1]) {
     const hours = Number(digits.slice(0, hourLength));
@@ -363,6 +389,24 @@ function bareNumberRows(digits: string, now: Date): SnoozeSuggestion[] {
   });
 }
 
+/**
+ * "in 2 days at 3pm": Linear ignores the duration and offers the next 9:00 AM and the next
+ * 3:00 PM (2 Oct 12:38 AM: both today; 7 Oct 4:30 PM: both tomorrow, "at 5pm" today).
+ * "at 9pm" gave only the 9:00 AM row.
+ */
+function inDurationAtRows(query: string, now: Date): SnoozeSuggestion[] | null {
+  const match = /^in (?:a|an|one|\d+) ?([a-z]+) at (.+)$/.exec(query);
+  if (!match || !UNIT_WORDS[match[1]]) return null;
+  const { clock, rest } = takeClock(` ${match[2]} `);
+  if (!clock || rest.trim()) return null;
+  const nine = atTime(now, 9, 0);
+  if (nine <= now) nine.setDate(nine.getDate() + 1);
+  const rows = [pointSuggestion(now, nine)];
+  const until = resolvePoint(now, null, clock);
+  if (until && !(clock.hours % 12 === 9 && clock.minutes === 0)) rows.push(pointSuggestion(now, until));
+  return rows;
+}
+
 /** Linear's rows for what was typed in the snooze search; empty when it means nothing. */
 export function parseSnoozeQuery(raw: string, now: Date = new Date()): SnoozeSuggestion[] {
   const query = raw.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -370,6 +414,13 @@ export function parseSnoozeQuery(raw: string, now: Date = new Date()): SnoozeSug
 
   // A bare number could be several things; Linear offers each of them.
   if (/^\d{1,4}$/.test(query)) return bareNumberRows(query, now);
+
+  // "end of the week" is "In 1 week", not "end of week" (Linear, Wed 7 Oct 2026 4:30 PM).
+  const endOfThe = /^end of the (week|month)$/.exec(query);
+  if (endOfThe) return [durationSuggestion(now, 1, endOfThe[1] as Unit, false)];
+
+  const inAt = inDurationAtRows(query, now);
+  if (inAt) return inAt;
 
   const duration = parseDuration(query);
   if (duration) return [durationSuggestion(now, duration.amount, duration.unit, false)];

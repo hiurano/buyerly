@@ -12,7 +12,7 @@ import api.server as api_server_module
 from api.server import create_app
 from core.config import settings
 from core.rate_limit import limiter
-from database.models import AuditEvent, InboxNotificationState, User, Workspace, WorkspaceMember
+from database.models import AuditEvent, InboxNotificationState, RulePreset, User, Workspace, WorkspaceMember
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
 
 OWNER = {"id": 7100000001, "first_name": "Owner", "username": "inbox_owner"}
@@ -322,6 +322,51 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
         )
         # The notification itself stays in the list.
         self.assertIn("no author", self.read_map(await self.inbox(self.owner_headers)))
+
+    async def test_senders_list_everyone_in_the_workspace(self):
+        async with self.session_maker() as session:
+            session.add_all([
+                RulePreset(workspace_id=self.rule_stop.workspace_id, name="Stop without leads"),
+                RulePreset(workspace_id=self.other_workspace.workspace_id, name="Not ours"),
+            ])
+            await session.commit()
+        response = await self.client.get("/api/inbox/senders", headers=self.owner_headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        senders = response.json()
+        # The buyer has sent nothing yet, but Linear lists every member under From.
+        self.assertEqual(
+            [(entry["label"], entry["kind"]) for entry in senders],
+            [("Buyer", "user"), ("Owner", "user"), ("Stop without leads", "rule"), ("Buyerly", "buyerly")],
+        )
+        self.assertEqual(senders[1]["value"], f"user:{OWNER['id']}")
+        self.assertNotIn("Outsider", str(senders))
+        self.assertNotIn("Not ours", str(senders))
+
+    async def test_from_matches_a_person_whichever_id_was_recorded(self):
+        async with self.session_maker() as session:
+            owner = (
+                await session.execute(select(User).where(User.username == "inbox_owner"))
+            ).scalar_one()
+            # Member changes record the user id, most actions the Telegram id.
+            session.add(AuditEvent(
+                workspace_id=self.rule_stop.workspace_id, event_type="INVITE_SEND",
+                message="invite by user id", actor_type="user", actor_id=str(owner.id),
+            ))
+            await session.commit()
+        from_owner = json.dumps([{"field": "from", "operator": "is", "values": [f"user:{OWNER['id']}"]}])
+        body = await self.inbox(self.owner_headers, filter=from_owner)
+        self.assertEqual(
+            sorted(item["message"] for item in body["items"]), ["invite by user id", "owner change"]
+        )
+        not_owner = json.dumps([{"field": "from", "operator": "is_not", "values": [f"user:{OWNER['id']}"]}])
+        body = await self.inbox(self.owner_headers, filter=not_owner)
+        self.assertEqual(
+            sorted(item["message"] for item in body["items"]), ["before mark", "rule alert", "rule stop"]
+        )
+        facets = (await self.client.get("/api/inbox/facets", headers=self.owner_headers)).json()
+        senders = {entry["value"]: (entry["label"], entry["count"]) for entry in facets["from"]}
+        self.assertEqual(senders[f"user:{OWNER['id']}"], ("Owner", 2))
+        self.assertEqual(len(senders), 2)
 
     async def test_cannot_touch_another_workspace_event(self):
         for path, body in (

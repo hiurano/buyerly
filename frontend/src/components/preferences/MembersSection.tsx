@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { ApiError, apiRequest } from '@/lib/api';
+import { apiRequest } from '@/lib/api';
 import type { Workspace } from '@/lib/types';
 import { Button } from '@/ui/Button';
 import { DataState } from '@/ui/DataState';
@@ -13,18 +13,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
-
-interface MemberItem {
-  id: number;
-  user_id: number;
-  username: string;
-  full_name: string;
-  email: string | null;
-  avatar_url: string;
-  role: string;
-  joined_at: string;
-  is_current_user: boolean;
-}
+import {
+  ChangeRoleDialog,
+  LeaveWorkspaceDialog,
+  RemoveMemberDialog,
+  errorMessage,
+  memberName,
+  roleLabel,
+  type MemberItem,
+} from './MemberDialogs';
 
 interface InviteItem {
   id: number;
@@ -36,25 +33,11 @@ interface InviteItem {
 
 type LoadState = 'loading' | 'ready' | 'error';
 
-const ROLE_LABELS: Record<string, string> = {
-  owner: 'Owner',
-  admin: 'Admin',
-  buyer: 'Buyer',
-  viewer: 'Viewer',
-};
-
-const roleLabel = (role: string) => ROLE_LABELS[role] || role;
-
 /** Linear's short date in the Joined column: "Sep 25". */
 function shortDate(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-function errorMessage(error: unknown, fallback: string): string {
-  if (error instanceof ApiError || error instanceof Error) return error.message;
-  return fallback;
 }
 
 /** Splits the invite field on commas, spaces and new lines, like Linear's email box. */
@@ -237,16 +220,27 @@ const RowMenu: React.FC<{ label: string; children: React.ReactNode }> = ({ label
 /**
  * Settings → Members, after Linear: search, an Invite button, and one table
  * grouped into Active members and pending Invited emails. An invited row's
- * menu resends or revokes the invitation.
+ * menu resends or revokes the invitation; your own row's menu leaves the
+ * workspace, and an owner or admin changes another member's role or removes them.
  */
-export const MembersSection: React.FC<{ workspace: Workspace }> = ({ workspace }) => {
+export const MembersSection: React.FC<{
+  workspace: Workspace;
+  /** Reloads the account after leaving, so the app opens the next workspace. */
+  onUserChanged: () => void | Promise<unknown>;
+}> = ({ workspace, onUserChanged }) => {
   const [members, setMembers] = useState<MemberItem[]>([]);
   const [invites, setInvites] = useState<InviteItem[]>([]);
   const [state, setState] = useState<LoadState>('loading');
   const [loadError, setLoadError] = useState('');
   const [query, setQuery] = useState('');
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [roleTarget, setRoleTarget] = useState<MemberItem | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<MemberItem | null>(null);
   const canManage = workspace.role === 'owner' || workspace.role === 'admin';
+  /** The server's rule: nobody manages the owner, and only the owner manages an admin. */
+  const canManageMember = (member: MemberItem) => canManage && !member.is_current_user
+    && member.role !== 'owner' && (member.role !== 'admin' || workspace.role === 'owner');
 
   const refresh = useCallback(async () => {
     try {
@@ -368,7 +362,25 @@ export const MembersSection: React.FC<{ workspace: Workspace }> = ({ workspace }
               <span role="cell" className="truncate text-[var(--text-secondary)]">{member.email || ''}</span>
               <span role="cell" className="text-[var(--text-secondary)]">{roleLabel(member.role)}</span>
               <span role="cell" className="text-[var(--text-secondary)]">{shortDate(member.joined_at)}</span>
-              <span role="cell" />
+              <span role="cell" className="flex justify-end">
+                {/* Linear gives your row no menu while nobody else could run the workspace. */}
+                {member.is_current_user ? (workspace.role === 'owner' && members.length < 2 ? null : (
+                  <RowMenu label={`Member actions for ${memberName(member)}`}>
+                    <DropdownMenuItem onSelect={() => setLeaveOpen(true)}>
+                      <span className="truncate">Leave workspace…</span>
+                    </DropdownMenuItem>
+                  </RowMenu>
+                )) : canManageMember(member) ? (
+                  <RowMenu label={`Member actions for ${memberName(member)}`}>
+                    <DropdownMenuItem onSelect={() => setRoleTarget(member)}>
+                      <span className="truncate">Change role…</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setRemoveTarget(member)}>
+                      <span className="truncate">Remove from workspace…</span>
+                    </DropdownMenuItem>
+                  </RowMenu>
+                ) : null}
+              </span>
             </div>
           ))}
 
@@ -408,6 +420,26 @@ export const MembersSection: React.FC<{ workspace: Workspace }> = ({ workspace }
         workspace={workspace}
         onClose={() => setInviteOpen(false)}
         onSent={() => void refresh()}
+      />
+      <LeaveWorkspaceDialog
+        open={leaveOpen}
+        workspace={workspace}
+        onClose={() => setLeaveOpen(false)}
+        onLeft={onUserChanged}
+      />
+      <ChangeRoleDialog
+        member={roleTarget}
+        workspace={workspace}
+        onClose={() => setRoleTarget(null)}
+        onChanged={(updated) => setMembers((current) => current.map((item) => (
+          item.user_id === updated.user_id ? { ...item, role: updated.role } : item
+        )))}
+      />
+      <RemoveMemberDialog
+        member={removeTarget}
+        workspace={workspace}
+        onClose={() => setRemoveTarget(null)}
+        onRemoved={(removed) => setMembers((current) => current.filter((item) => item.user_id !== removed.user_id))}
       />
     </>
   );

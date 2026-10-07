@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { apiRequest } from '@/lib/api';
-import type { SessionUser } from '@/lib/types';
+import type { SessionUser, Workspace } from '@/lib/types';
 import { Input } from '@/ui/Input';
 import { LinearPencilIcon } from '@/icons/LinearIcons';
 import { ChangeEmailDialog } from './ChangeEmailDialog';
 import { ChangePasswordDialog } from './ChangePasswordDialog';
+import { LeaveWorkspaceDialog } from './MemberDialogs';
 
 interface ProfileSectionProps {
   user: SessionUser;
+  workspace: Workspace;
   onUserChanged: () => void | Promise<unknown>;
 }
 
@@ -22,7 +24,24 @@ function initials(user: SessionUser): string {
   return parts.map((part) => part[0]?.toUpperCase() || '').join('') || '?';
 }
 
-export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, onUserChanged }) => {
+export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, workspace, onUserChanged }) => {
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [cannotLeave, setCannotLeave] = useState(false);
+
+  // An owner can leave only by handing the workspace to another member.
+  useEffect(() => {
+    setCannotLeave(false);
+    if (workspace.role !== 'owner') return undefined;
+    let cancelled = false;
+    apiRequest<{ is_current_user: boolean }[]>(`/api/workspaces/${workspace.id}/members`)
+      .then((members) => {
+        if (!cancelled) setCannotLeave(!members.some((member) => !member.is_current_user));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [workspace.id, workspace.role]);
   const [fullName, setFullName] = useState(user.full_name || '');
   const [savingName, setSavingName] = useState(false);
   const [error, setError] = useState('');
@@ -149,6 +168,34 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, onUserChan
         )}
       </div>
 
+      {/*
+        Linear ends Profile with Workspace access: one 64px row, "Remove yourself
+        from workspace" and a borderless 13px Leave workspace button. While you are
+        the only one who could run the workspace, Linear dims the copy to 0.5 and
+        the button to 0.6 and turns it off; here that is an owner with nobody to
+        hand the workspace to.
+      */}
+      <div className="preferences-section">
+        <div className="preferences-section-header">
+          <h3 className="preferences-section-title">Workspace access</h3>
+        </div>
+        <section className="preferences-card-container">
+          <div className={`preferences-row-item preferences-row-item--single${cannotLeave ? ' preferences-row-item--disabled' : ''}`}>
+            <div className="preferences-row-copy">
+              <span className="preferences-row-title">Remove yourself from workspace</span>
+            </div>
+            <button
+              type="button"
+              className="preferences-row-ghost-button"
+              disabled={cannotLeave}
+              onClick={() => setLeaveOpen(true)}
+            >
+              Leave workspace
+            </button>
+          </div>
+        </section>
+      </div>
+
       <ChangeEmailDialog
         open={emailDialogOpen}
         currentEmail={user.email}
@@ -161,6 +208,13 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, onUserChan
         hasPassword={hasPassword}
         onOpenChange={setPasswordDialogOpen}
         onChanged={onUserChanged}
+      />
+
+      <LeaveWorkspaceDialog
+        open={leaveOpen}
+        workspace={workspace}
+        onClose={() => setLeaveOpen(false)}
+        onLeft={onUserChanged}
       />
     </>
   );

@@ -290,13 +290,14 @@ const MenuOption: React.FC<{
   label: string;
   icon?: React.ReactNode;
   meta?: React.ReactNode;
+  badge?: string;
   highlighted: boolean;
   selected?: boolean;
   multiSelect?: boolean;
   expanded?: boolean;
   onMouseEnter?: () => void;
   onClick: (event: React.MouseEvent<HTMLDivElement>) => void;
-}> = ({ label, icon, meta, highlighted, selected, multiSelect, expanded, onMouseEnter, onClick }) => (
+}> = ({ label, icon, meta, badge, highlighted, selected, multiSelect, expanded, onMouseEnter, onClick }) => (
   <div
     role="option"
     aria-selected={selected}
@@ -369,9 +370,33 @@ const MenuOption: React.FC<{
         {selected ? <Check size={14} strokeWidth={2.2} aria-hidden="true" /> : icon}
       </span>
     )}
-    <span style={{ minWidth: 0, flex: 1, paddingLeft: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', zIndex: 1 }}>
+    <span style={{ minWidth: 0, flex: badge ? '0 1 auto' : 1, paddingLeft: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', zIndex: 1 }}>
       {label}
     </span>
+    {badge && (
+      // Linear's "Agent" tag under From: 8px after the name, 16px tall, 12px/500, outlined, radius 6.
+      <span
+        style={{
+          display: 'inline-flex',
+          flexShrink: 0,
+          alignItems: 'center',
+          height: 16,
+          boxSizing: 'border-box',
+          marginLeft: 8,
+          marginRight: 'auto',
+          padding: '0 6px',
+          border: `1px solid ${MENU_BORDER}`,
+          borderRadius: 6,
+          color: MENU_MUTED,
+          fontSize: 12,
+          fontWeight: 500,
+          lineHeight: '16px',
+          zIndex: 1,
+        }}
+      >
+        {badge}
+      </span>
+    )}
     {meta && (
       <span style={{ flexShrink: 0, marginLeft: 12, color: MENU_MUTED, fontSize: 12, zIndex: 1 }}>
         {meta}
@@ -739,6 +764,7 @@ export const LinearFilterMenu = <T,>({
                     {showSeparator && <SectionSeparator />}
                     <MenuOption
                       label={option.label}
+                      badge={option.badge}
                       selected={selected}
                       multiSelect
                       highlighted={childHighlightedIndex === index}
