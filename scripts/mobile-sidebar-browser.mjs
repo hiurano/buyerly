@@ -145,7 +145,9 @@ try {
         assert.ok(await isClosed(sidebar));
 
         // Entering the header's sidebar button opens it at once; ⌘\ / Ctrl+\ closes it.
-        await page.getByRole('button', { name: 'Open sidebar' }).hover();
+        // A bare mouse move: Playwright's hover() rejects the peek covering the button.
+        const toggleBox = await page.getByRole('button', { name: 'Open sidebar' }).boundingBox();
+        await page.mouse.move(toggleBox.x + toggleBox.width / 2, toggleBox.y + toggleBox.height / 2);
         await page.waitForTimeout(50);
         assert.equal(await backdrop.getAttribute('data-open'), 'true');
         await settled();
