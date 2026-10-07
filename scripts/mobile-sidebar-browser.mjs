@@ -2,7 +2,7 @@
 // below) the sidebar is a drawer over full-width content, opened by the header's
 // Menu button or [, and closed by the backdrop, a swipe left or navigation.
 // Settings navigation is the same drawer, and its fields stay inside 390px.
-// Wider windows keep the desktop sidebar column (#191, #192).
+// Wider windows keep the desktop sidebar column (#191, #192); collapsed, it peeks over the content (#288).
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -61,6 +61,10 @@ try {
       return box.x + box.width <= 0;
     };
     const isOpen = async (locator) => (await locator.boundingBox()).x === 0;
+    const wrapper = page.locator('.sidebar-slot-wrapper');
+    const backdrop = page.locator('.sidebar-backdrop').first();
+    const isPeeking = async () => (await isOpen(sidebar)) && (await backdrop.getAttribute('data-open')) === 'true';
+    const contentX = async () => Math.round((await page.locator('main.linear-floating-canvas').boundingBox()).x);
     const assertNoOverflow = async (label) => {
       const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
       assert.ok(scrollWidth <= width, `${label} overflows at ${width}px: ${scrollWidth}`);
@@ -81,16 +85,113 @@ try {
         await page.keyboard.press('[');
         await settled();
         assert.ok(await isClosed(sidebar));
-        await page.getByRole('button', { name: 'Open sidebar' }).click();
+        // A pointer click would first hover the button, which (as in Linear) opens
+        // the peek over it at once; a bare click event tests the button itself.
+        await page.getByRole('button', { name: 'Open sidebar' }).dispatchEvent('click');
         await settled();
         assert.ok(await isOpen(sidebar));
+        assert.equal(Math.round((await wrapper.boundingBox()).width), 244);
+
+        // Linear's peek (#288): the collapsed sidebar shows over the content, its column stays 8px.
+        await page.mouse.move(width / 2, 400);
+        await page.keyboard.press('[');
+        await settled();
+        await page.mouse.move(width / 2, 400);
+        const collapsedContentX = await contentX();
+        await page.keyboard.press('Control+Backslash');
+        await settled();
+        assert.ok(await isPeeking());
+        assert.equal(await contentX(), collapsedContentX);
+        assert.equal(Math.round((await wrapper.boundingBox()).width), 8);
+        assert.equal(Math.round((await sidebar.boundingBox()).width), 244);
+        const look = await sidebar.evaluate((element) => {
+          const style = getComputedStyle(element);
+          return { radius: style.borderTopRightRadius, background: style.backgroundColor, shadow: style.boxShadow };
+        });
+        assert.equal(look.radius, '12px');
+        assert.notEqual(look.background, 'rgba(0, 0, 0, 0)');
+        assert.notEqual(look.shadow, 'none');
+        await page.screenshot({ path: `${output}/peek-${width}.png` });
+
+        // Opened by ⌘\, the cursor moving over the backdrop leaves it open, as in Linear.
+        await page.mouse.move(width / 2 + 40, 420);
+        await page.waitForTimeout(100);
+        assert.ok(await isPeeking());
+
+        // The cursor on the sidebar keeps it (and makes it a hover peek); moving out to the backdrop closes it.
+        await page.mouse.move(120, 400);
+        await page.waitForTimeout(100);
+        assert.ok(await isPeeking());
+        await page.mouse.move(width / 2, 400);
+        await settled();
+        assert.ok(await isClosed(sidebar));
+        assert.equal(await backdrop.getAttribute('data-open'), 'false');
+
+        // The window's left edge opens it after 250ms.
+        await page.mouse.move(3, 400);
+        await page.waitForTimeout(150);
+        assert.ok(await isClosed(sidebar));
+        await page.waitForTimeout(700);
+        assert.ok(await isPeeking());
+
+        // Leaving the window closes it after 500ms.
+        await page.mouse.move(120, 400);
+        await page.evaluate(() => document.documentElement.dispatchEvent(
+          new MouseEvent('mouseout', { bubbles: true, relatedTarget: null }),
+        ));
+        await page.waitForTimeout(300);
+        assert.ok(await isPeeking());
+        await page.waitForTimeout(700);
+        assert.ok(await isClosed(sidebar));
+
+        // Entering the header's sidebar button opens it at once; ⌘\ / Ctrl+\ closes it.
+        // A bare mouse move: Playwright's hover() rejects the peek covering the button.
+        const toggleBox = await page.getByRole('button', { name: 'Open sidebar' }).boundingBox();
+        await page.mouse.move(toggleBox.x + toggleBox.width / 2, toggleBox.y + toggleBox.height / 2);
+        await page.waitForTimeout(50);
+        assert.equal(await backdrop.getAttribute('data-open'), 'true');
+        await settled();
+        assert.ok(await isPeeking());
+        await page.mouse.move(120, 600);
+        await page.keyboard.press('Control+Backslash');
+        await settled();
+        assert.ok(await isClosed(sidebar));
+
+        // Navigation closes it.
+        await page.keyboard.press('Control+Backslash');
+        await settled();
+        await sidebar.getByRole('button', { name: 'Rules', exact: true }).click();
+        await page.waitForURL(`${origin}/acme/rules`);
+        await settled();
+        assert.ok(await isClosed(sidebar));
+
+        // Dragging the resizer expands the column again.
+        await page.keyboard.press('Control+Backslash');
+        await settled();
+        assert.ok(await isPeeking());
+        await page.mouse.move(244, 400);
+        await page.mouse.down();
+        await page.mouse.move(280, 400);
+        await page.mouse.move(300, 400);
+        await page.mouse.up();
+        await settled();
+        assert.ok(await isOpen(sidebar));
+        assert.equal(Math.round((await wrapper.boundingBox()).width), 300);
+        assert.equal(await backdrop.getAttribute('data-open'), 'false');
+
+        // ⌘\ does nothing while the column is expanded.
+        await page.keyboard.press('Control+Backslash');
+        await settled();
+        assert.equal(await backdrop.getAttribute('data-open'), 'false');
+        assert.equal(Math.round((await wrapper.boundingBox()).width), 300);
+
         await page.goto(`${origin}/acme/settings`);
         await page.getByRole('heading', { name: 'Preferences', exact: true }).waitFor();
         assert.ok(await isOpen(page.locator('.preferences-sidebar')));
         await assertNoOverflow('settings');
         await page.screenshot({ path: `${output}/settings-${width}.png` });
         assert.deepEqual(errors, []);
-        console.log(`Mobile sidebar: desktop column, [ and Open sidebar passed at ${width}px`);
+        console.log(`Mobile sidebar: desktop column, [, Open sidebar and the peek passed at ${width}px`);
         continue;
       }
 
@@ -142,6 +243,10 @@ try {
       await settled();
       assert.ok(await isOpen(sidebar));
       await page.keyboard.press('[');
+      await settled();
+      assert.ok(await isClosed(sidebar));
+      // The desktop peek's ⌘\ leaves the drawer alone.
+      await page.keyboard.press('Control+Backslash');
       await settled();
       assert.ok(await isClosed(sidebar));
 

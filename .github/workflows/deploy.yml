@@ -43,6 +43,7 @@ jobs:
           node scripts/check-snooze-query.cjs
           node scripts/check-sessions.cjs
           node scripts/check-rule-precedence.cjs
+          node scripts/check-app-version.cjs
           npm run build
 
       - name: Upload built frontend
@@ -53,11 +54,14 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+      # Playwright is a pinned devDependency in frontend/package-lock.json, so
+      # `npm ci` above already installed it. Installing it ad hoc without the
+      # lock file re-resolved the whole tree and once hit a package version
+      # npm listed but did not serve yet (#245).
       - name: Check workspace state in Chromium
         working-directory: frontend
         run: |
-          npm install --no-save --package-lock=false playwright@1.58.2
-          npx playwright install --with-deps chromium
+          npx --no-install playwright install --with-deps chromium
           node ../scripts/scoped-state-browser.mjs
 
       - name: Upload scoped state browser evidence
@@ -144,6 +148,17 @@ jobs:
           name: mobile-sidebar-browser
           path: /tmp/buyerly-mobile-sidebar
 
+      - name: Check light and dark themes outside the app in Chromium
+        working-directory: frontend
+        run: node ../scripts/auth-theme-browser.mjs
+
+      - name: Upload light and dark theme browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auth-theme-browser
+          path: /tmp/buyerly-auth-theme
+
       - name: Check the command menu in Chromium
         working-directory: frontend
         run: node ../scripts/command-menu-browser.mjs
@@ -198,6 +213,28 @@ jobs:
         with:
           name: rules-phone-browser
           path: /tmp/buyerly-rules-phone
+
+      - name: Check the new version notice in Chromium
+        working-directory: frontend
+        run: node ../scripts/new-version-browser.mjs
+
+      - name: Upload new version notice browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: new-version-browser
+          path: /tmp/buyerly-new-version
+
+      - name: Check Rules, Ads Manager and Inbox on small screens in Chromium
+        working-directory: frontend
+        run: node ../scripts/mobile-screens-browser.mjs
+
+      - name: Upload small-screen screens browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-screens-browser
+          path: /tmp/buyerly-mobile-screens
 
       # The runner's Google Chrome has WebMCP behind a flag; Playwright's
       # Chromium does not, and the check then uses a stand-in instead.

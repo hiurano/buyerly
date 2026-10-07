@@ -4,10 +4,12 @@ import {
   INBOX_KINDS,
   INBOX_KIND_LABELS,
   fetchInboxFacets,
+  fetchInboxSenders,
   type InboxFacets,
   type InboxFilterClause,
   type InboxKind,
   type InboxPriorityRule,
+  type InboxSender,
 } from '@/lib/inbox';
 import { channelStatus, type NotificationChannel } from '@/lib/notificationChannels';
 import { telegramAccountName } from '@/lib/telegram';
@@ -447,11 +449,15 @@ const CustomFilters: React.FC<{
   const [editing, setEditing] = useState<Editing>(null);
   const [draft, setDraft] = useState<FilterClause[]>([]);
   const [facets, setFacets] = useState<InboxFacets | null>(null);
+  const [senders, setSenders] = useState<InboxSender[] | null>(null);
   const [menu, setMenu] = useState<{ mode: FilterMenuMode; anchor: HTMLElement; fieldId?: string } | null>(null);
 
   useEffect(() => {
-    // Every notification, snoozed or read, offers its type and sender.
+    // Every notification, snoozed or read, offers its type and counts it.
     fetchInboxFacets(false, true).then(setFacets).catch(() => {});
+    // Linear's From lists everyone in the workspace, without counts, so a
+    // filter can name someone nothing has come from yet.
+    fetchInboxSenders().then(setSenders).catch(() => {});
   }, []);
 
   // One clause per property with every value in use, so saved filters keep their labels.
@@ -463,8 +469,8 @@ const CustomFilters: React.FC<{
         .filter((clause) => clause.field === field)
         .flatMap((clause) => clause.values))],
     }));
-    return inboxFilterFields(facets, inUse, RULE_FIELDS);
-  }, [draft, facets, rules]);
+    return inboxFilterFields(facets, inUse, RULE_FIELDS, senders);
+  }, [draft, facets, rules, senders]);
 
   const startEditing = (target: Exclude<Editing, null>) => {
     setDraft(target === 'new' ? [] : rules[target].map(toMenuClause));

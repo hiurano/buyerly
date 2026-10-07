@@ -13,6 +13,7 @@ import { AppUtilityBar } from '@/components/layout/AppUtilityBar';
 import { TooltipProvider } from '@/ui/Tooltip';
 import { ToastRegion } from '@/ui/ToastRegion';
 import { useUndoShortcuts } from '@/lib/undoHistory';
+import { useNewVersionNotice } from '@/lib/appVersion';
 import { selectInboxBadgeCount, useAppStore } from '@/store/useAppStore';
 import { apiRequest } from '@/lib/api';
 import type { LoginResult, SessionUser, Workspace } from '@/lib/types';
@@ -81,11 +82,13 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     toggleSidebarCollapsed,
     toggleSidebarOpen,
     setSidebarOpen,
+    setSidebarPeekOpen,
     interfaceTheme,
     refreshInboxUnreadCount,
   } = useAppStore();
   const inboxBadge = useAppStore(selectInboxBadgeCount);
   useUndoShortcuts();
+  useNewVersionNotice();
   useWebMcpTools(workspace);
   const session = useMemo<WorkspaceSession>(() => ({
     user,
@@ -130,8 +133,10 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   useEffect(() => {
     // Linear closes the small-screen sidebar drawer on every navigation. Some
     // settings sections have no address of their own, so a section change counts too.
+    // The desktop peek over the content closes the same way.
     setSidebarOpen(false);
-  }, [route, activeTab, settingsSection, setSidebarOpen]);
+    setSidebarPeekOpen(false);
+  }, [route, activeTab, settingsSection, setSidebarOpen, setSidebarPeekOpen]);
 
   useEffect(() => {
     if (syncingRoute.current) return;
@@ -178,6 +183,14 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
         else toggleSidebarCollapsed();
         return;
       }
+      // Linear's "Open/Close navigation sidebar": shows the collapsed sidebar over the content.
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && (event.key === '\\' || event.code === 'Backslash')) {
+        const { isSidebarCollapsed, isSidebarPeekOpen, activeTab: tab } = useAppStore.getState();
+        if (isSmallScreen() || !isSidebarCollapsed || tab === 'preferences') return;
+        event.preventDefault();
+        setSidebarPeekOpen(!isSidebarPeekOpen, 'keyboard');
+        return;
+      }
       if ((event.ctrlKey || event.altKey || event.metaKey) && ['i', 'I'].includes(event.key)) {
         event.preventDefault();
         toggleRightSidebar();
@@ -203,7 +216,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setActiveTab, setSettingsSection, toggleRightSidebar, toggleSidebarCollapsed, toggleSidebarOpen]);
+  }, [setActiveTab, setSettingsSection, toggleRightSidebar, setSidebarPeekOpen, toggleSidebarCollapsed, toggleSidebarOpen]);
 
   useEffect(() => {
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
@@ -558,7 +571,7 @@ export const App: React.FC = () => {
     );
   }
 
-  if (route.kind !== 'workspace') return <AuthLoading dark label="Opening your workspace…" />;
+  if (route.kind !== 'workspace') return <AuthLoading label="Opening your workspace…" />;
   if (!resolvedWorkspace || !desiredScope || workspaceScope !== desiredScope) return <AuthLoading />;
   const routeWorkspace = resolvedWorkspace;
   return (

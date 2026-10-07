@@ -211,6 +211,26 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("FROM nginx:1.27-alpine", frontend_dockerfile)
         self.assertIn("frontend/package-lock.json", frontend_dockerfile)
 
+    def test_web_bundle_knows_its_release(self):
+        # An open tab compares the release it was built from with /health/live
+        # and offers a reload once they differ (#303).
+        root = Path(__file__).parents[1]
+        frontend_dockerfile = (root / "frontend" / "Dockerfile").read_text()
+        vite_config = (root / "frontend" / "vite.config.ts").read_text()
+        web_service = self.compose.split("\n  web:\n", 1)[1].split("\n  worker:\n", 1)[0]
+        self.assertIn("APP_VERSION: ${APP_VERSION:-local}", web_service)
+        self.assertIn("ARG APP_VERSION=local", frontend_dockerfile)
+        self.assertLess(
+            frontend_dockerfile.index("ENV APP_VERSION=${APP_VERSION}"),
+            frontend_dockerfile.index("RUN npm run build"),
+        )
+        self.assertIn("__APP_VERSION__: JSON.stringify(process.env.APP_VERSION || 'local')", vite_config)
+        self.assertIn('export APP_VERSION="${TARGET_SHA}"', self.script)
+        self.assertLess(
+            self.script.index('export APP_VERSION="${TARGET_SHA}"'),
+            self.script.index("docker compose build --pull api web"),
+        )
+
     def test_account_day_boundary_has_an_independent_minute_job(self):
         self.assertIn('id="account_day_boundary_job"', self.worker_service)
         self.assertIn("run_day_boundary_cycle", self.worker_service)

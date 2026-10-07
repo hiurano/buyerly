@@ -1,5 +1,5 @@
 import { auditEventTypeTitle, humanizeAuditValue, KNOWN_AUDIT_EVENT_TYPES } from '@/lib/audit';
-import type { InboxFacets, InboxFacetValue, InboxFilterClause } from '@/lib/inbox';
+import type { InboxFacets, InboxFacetValue, InboxFilterClause, InboxSender } from '@/lib/inbox';
 import type { FilterClause, FilterFieldDefinition } from '@/components/filters/filterModel';
 
 /**
@@ -55,15 +55,23 @@ export function inboxFilterFields(
   facets: InboxFacets | null,
   filters: InboxFilterClause[],
   only?: ReadonlyArray<InboxFilterClause['field']>,
+  /** Everyone in the workspace for From, listed without counts as in Linear's custom filters. */
+  senders?: InboxSender[] | null,
 ): FilterFieldDefinition<unknown>[] {
   const entries = only ? FILTER_FIELDS.filter((entry) => only.includes(entry.field)) : FILTER_FIELDS;
   return entries.map((entry) => {
-    const present = facets?.[entry.field] ?? [];
-    // A chosen value stays in the menu even when nothing matches it any more.
+    const everyone = entry.field === 'from' && senders
+      ? senders.map(({ value, label }) => ({ value, label, count: 0 }))
+      : null;
+    const present = everyone ?? facets?.[entry.field] ?? [];
+    // A chosen value stays in the menu even when nothing matches it any more;
+    // a sender who has left keeps the name their notifications carry.
     const chosen = filters.find((clause) => clause.field === entry.field)?.values ?? [];
     const values = [
       ...present,
-      ...chosen.filter((value) => !present.some((facet) => facet.value === value)).map((value) => ({ value, count: 0 })),
+      ...chosen
+        .filter((value) => !present.some((facet) => facet.value === value))
+        .map((value) => facets?.[entry.field]?.find((facet) => facet.value === value) ?? { value, count: 0 }),
     ];
     return {
       id: entry.id,
@@ -74,7 +82,13 @@ export function inboxFilterFields(
       defaultOperator: 'is',
       getValue: () => null,
       pluralLabel: entry.pluralLabel,
-      options: values.map((value) => ({ value: value.value, label: entry.optionLabel(value), count: value.count })),
+      options: values.map((value) => ({
+        value: value.value,
+        label: entry.optionLabel(value),
+        count: everyone ? undefined : value.count,
+        // Linear lists people first, then its agents tagged "Agent"; rules are ours.
+        badge: everyone && value.value.startsWith('rule:') ? 'Rule' : undefined,
+      })),
       unmatchedCount: entry.field === 'type' && facets
         ? KNOWN_AUDIT_EVENT_TYPES.filter((type) => !values.some((value) => value.value === type)).length
         : undefined,

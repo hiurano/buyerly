@@ -9,7 +9,7 @@ import {
 import { goToShortcut } from '@/lib/shortcuts';
 import { Tooltip } from '@/ui/Tooltip';
 import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
-import { SidebarBackdrop, useSidebarDrawer } from './SidebarDrawer';
+import { SidebarBackdrop, useSidebarDrawer, useSidebarPeek } from './SidebarDrawer';
 
 export const Sidebar: React.FC = () => {
   const {
@@ -28,6 +28,7 @@ export const Sidebar: React.FC = () => {
   const indicatorRef = useRef<HTMLDivElement>(null);
   const surfaceRef = useRef<HTMLElement>(null);
   const drawer = useSidebarDrawer(surfaceRef);
+  const peek = useSidebarPeek(surfaceRef, !drawer.isSmall && isSidebarCollapsed, isDragging);
 
   // Dynamic Spotlight Y tracking math from Linear
   const updateSpotlight = useCallback((clientY: number) => {
@@ -91,9 +92,11 @@ export const Sidebar: React.FC = () => {
   // Below 880px the sidebar takes no layout space and slides over the content.
   const surfaceTransform = drawer.isSmall
     ? (drawer.isOpen ? 'translateX(0px)' : 'translateX(calc(-100% - 16px))')
-    : isSidebarCollapsed
+    : isSidebarCollapsed && !peek.isOpen
       ? `translateX(-${sidebarWidth + 16}px)`
       : 'translateX(0px)';
+  // A collapsed desktop sidebar keeps the peek look while it slides in and out.
+  const isPeekSurface = !drawer.isSmall && isSidebarCollapsed;
 
   return (
     <div
@@ -104,11 +107,16 @@ export const Sidebar: React.FC = () => {
         transition: isDragging ? 'none' : undefined,
       }}
     >
-      {drawer.isSmall && <SidebarBackdrop open={drawer.isOpen} onClose={drawer.close} />}
+      <SidebarBackdrop
+        open={drawer.isSmall ? drawer.isOpen : peek.isOpen}
+        onClose={drawer.isSmall ? drawer.close : peek.close}
+      />
+      {isPeekSurface && <div className="sidebar-peek-edge" aria-hidden="true" {...peek.edgeHandlers} />}
       <aside
         ref={surfaceRef}
         data-sidebar-surface="true"
         data-small={drawer.isSmall ? 'true' : undefined}
+        data-peek={isPeekSurface ? (peek.isOpen ? 'open' : 'closed') : undefined}
         data-resizing={isDragging ? 'true' : 'false'}
         style={{
           width: drawer.isSmall ? undefined : `${sidebarWidth}px`,
