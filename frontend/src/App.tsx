@@ -302,7 +302,8 @@ export const App: React.FC = () => {
   const loadAccounts = useCallback(async () => {
     setKnownAccounts(await apiRequest<BrowserAccount[]>('/api/auth/accounts'));
     const list = getKnownAccounts();
-    setAccounts(list);
+    // Unchanged accounts keep their identity, so a refresh re-renders nothing.
+    setAccounts((previous) => (JSON.stringify(previous) === JSON.stringify(list) ? previous : list));
     return list;
   }, []);
 
