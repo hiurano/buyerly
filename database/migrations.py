@@ -64,6 +64,10 @@ POST_BASELINE_COLUMNS = {
         "inbox_display",
         "notification_channels",
     },
+    # Added by the session location migration (0034).
+    "web_sessions": {
+        "location",
+    },
 }
 
 # Tables that were added after the legacy baseline and may be absent on pre-migration databases.
