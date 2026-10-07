@@ -91,6 +91,23 @@ try {
       if (path === '/api/accounts') return route.fulfill({ json: [account] });
       if (path === '/api/presets') return route.fulfill({ json: presets });
       if (path === '/api/inbox/unread-count') return route.fulfill({ json: { unread_count: 0, priority_unread_count: 0 } });
+      if (/^\/api\/accounts\/act_100\/rules\/\d+\/preview$/.test(path)) {
+        const entity = (entity_id, entity_name, status, outcome) => ({
+          entity_id, entity_name, status, spend: 0, outcome, detail: '',
+        });
+        return route.fulfill({
+          json: {
+            account_id: 'act_100', account_name: 'Leads account', level: 'adset',
+            rule_name: 'Second rule v2', action: 'turn_off', rules_enabled: false,
+            already_attached: false, total: 3, running: 2, matching: 1, data_as_of: null,
+            entities: [
+              entity('a1', 'Hot ad set', 'ACTIVE', 'matched'),
+              entity('a2', 'Calm ad set', 'ACTIVE', 'not_met'),
+              entity('a3', 'Paused ad set', 'PAUSED', 'inactive'),
+            ],
+          },
+        });
+      }
       return route.fulfill({ json: [] });
     });
 
@@ -204,17 +221,26 @@ try {
         await menu.getByRole('menuitem', { name: /Run on ad accounts/ }).hover();
       }
       await press(accountItem);
+      // #200: the whole account is previewed before anything is written.
+      const preview = page.getByTestId('attach-rule-preview');
+      await preview.waitFor();
+      await page.getByTestId('attach-rule-preview-summary').filter({ hasText: 'It will check all 3 ad sets' }).waitFor();
+      const previewText = await preview.innerText();
+      assert.match(previewText, /It will check all 3 ad sets in this ad account \(2 running\)\. 1 matches its conditions right now and would be turned off\./);
+      assert.match(previewText, /Hot ad set\s*Matches now/);
+      assert.match(previewText, /Rules are off for this ad account; attaching turns them on\./);
+      assert.equal(writes.length, 2, 'opening the preview writes nothing');
+      await onScreen(preview, 'the attach preview');
+      await page.screenshot({ path: `${output}/attach-preview-${width}.png` });
+      const attach = preview.getByRole('button', { name: 'Attach to whole account' });
+      await fingerSized(attach, 'Attach to whole account');
+      await press(attach);
       await waitForWrites(3);
       assert.deepEqual(lastWrite(), {
         verb: 'POST', path: '/api/accounts/act_100/assign-rule',
         body: { preset_id: 9, scope: { level: 'account', ids: [] } },
       });
-      if (phone) {
-        // The menu stays open for another account; the check shows once saved.
-        await page.waitForFunction(() => document.querySelector('[role="menuitemcheckbox"]')?.getAttribute('aria-checked') === 'true');
-        await page.screenshot({ path: `${output}/accounts-${width}.png` });
-      }
-      await page.keyboard.press('Escape');
+      await preview.waitFor({ state: 'detached' });
       await page.getByRole('menu').first().waitFor({ state: 'detached' });
       // Attached, it leaves the note to the first rule.
       await attachNote.filter({ hasText: '“First rule” runs nowhere yet.' }).waitFor();

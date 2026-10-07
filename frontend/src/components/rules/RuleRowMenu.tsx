@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { RuleItem, useAppStore } from '@/store/useAppStore';
 import { ruleStatesTitle } from './RuleStatesDialog';
+import { AttachRulePreviewDialog } from './AttachRulePreviewDialog';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -31,6 +32,7 @@ export const RuleRowMenu: React.FC<RuleRowMenuProps> = ({ rule }) => {
 
   const touch = useIsTouchScreen();
   const attachedIds = new Set(rule.preset.attached_account_ids);
+  const [previewAccount, setPreviewAccount] = useState<{ id: string; label: string } | null>(null);
 
   /**
    * What unchecking this account would remove. A rule narrowed to campaigns in
@@ -56,6 +58,12 @@ export const RuleRowMenu: React.FC<RuleRowMenuProps> = ({ rule }) => {
             role="menuitemcheckbox"
             aria-checked={isAttached}
             onSelect={(event) => {
+              if (!isAttached) {
+                // Attaching covers the whole ad account: show what it will
+                // check before anything is written (#200).
+                setPreviewAccount({ id: account.account_id, label: metaAccountLabel(account) });
+                return;
+              }
               // Inline on a touch screen the menu stays open, so several accounts take one visit.
               if (touch) event.preventDefault();
               void toggleRuleOnAccount(rule.id, account.account_id);
@@ -78,6 +86,7 @@ export const RuleRowMenu: React.FC<RuleRowMenuProps> = ({ rule }) => {
     );
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
@@ -125,5 +134,21 @@ export const RuleRowMenu: React.FC<RuleRowMenuProps> = ({ rule }) => {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    {previewAccount && (
+      <AttachRulePreviewDialog
+        open
+        presetId={rule.presetId}
+        ruleName={rule.name}
+        accountId={previewAccount.id}
+        accountLabel={previewAccount.label}
+        onCancel={() => setPreviewAccount(null)}
+        onConfirm={() => {
+          const accountId = previewAccount.id;
+          setPreviewAccount(null);
+          void toggleRuleOnAccount(rule.id, accountId);
+        }}
+      />
+    )}
+    </>
   );
 };

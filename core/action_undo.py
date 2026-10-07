@@ -14,6 +14,7 @@ from core.currency import UNKNOWN_CURRENCY, normalize_currency
 from core.logging_config import redact_secrets
 from core.meta_tokens import resolve_account_access_token
 from database.models import Account, ActionUndoState, AuditEvent, StoppedAdSet
+from services.analytics_store import AnalyticsFactService
 
 
 UNDO_WINDOW_SECONDS = 24 * 60 * 60
@@ -472,12 +473,26 @@ async def reverse_audit_event(
             500,
         ) from error
 
+    source_id = source.id
+    reversal_id = reversal.id
     hold_notice = rule_hold_notice(source, entity_level)
+    # Ads Manager shows the restored state now, not after the next sync.
+    await AnalyticsFactService.reflect_entity_change(
+        session,
+        workspace_id=workspace_id,
+        account_id=account.account_id,
+        entity_level=entity_level,
+        entity_id=entity_id,
+        status=spec.desired_state.get("status") if spec.kind == "status" else None,
+        daily_budget=(
+            float(spec.desired_state["daily_budget"]) if spec.kind == "budget" else None
+        ),
+    )
     return {
         "success": True,
         "already_reverted": False,
-        "original_event_id": source.id,
-        "reversal_event_id": reversal.id,
+        "original_event_id": source_id,
+        "reversal_event_id": reversal_id,
         "message": " ".join(
             part for part in ("Action undone and confirmed by Meta.", hold_notice) if part
         ),

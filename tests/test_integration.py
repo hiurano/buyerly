@@ -864,6 +864,131 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
             [("adset_1", "PAUSED"), ("adset_1", "PAUSED")],
         )
 
+    async def _stamp_stop_at(self, timestamp):
+        """History rows carry the real clock; move the rule's stop to the
+        simulated moment the worker made it."""
+        async with self.test_session_maker() as session:
+            stop = (
+                await session.execute(
+                    select(AuditEvent).where(AuditEvent.event_type == "STOP")
+                )
+            ).scalar_one()
+            stop.created_at = datetime.fromtimestamp(timestamp, timezone.utc)
+            await session.commit()
+
+    async def test_a_stop_turned_back_on_in_meta_waits_for_the_next_account_day(self):
+        """#200: turning the ad set on in Meta Ads Manager, without Undo, is the
+        buyer's decision too; the rule leaves it running until midnight."""
+        hawaii = ZoneInfo("Pacific/Honolulu")
+        noon = datetime(2026, 9, 26, 12, 0, tzinfo=hawaii).timestamp()
+        now = [noon]
+        async with self.test_session_maker() as session:
+            session.add(AppSettings(stop_confirmation_minutes=0))
+            await session.commit()
+        mock_meta = MockMetaClient()
+        worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: now[0])
+
+        await worker.run_cycle()
+        self.assertEqual(mock_meta.status_changes, [("adset_1", "PAUSED")])
+
+        await self._stamp_stop_at(noon)
+        # Turned on in Meta: Buyerly's history has nothing after the stop.
+        mock_meta.adsets_state["adset_1"]["status"] = "ACTIVE"
+        mock_meta.adsets_state["adset_1"]["effective_status"] = "ACTIVE"
+        for minutes in (5, 30, 11 * 60 + 50):
+            now[0] = noon + minutes * 60
+            await worker.run_cycle()
+        self.assertEqual(mock_meta.status_changes, [("adset_1", "PAUSED")])
+        state = await self._rule_state(1, "adset_1")
+        self.assertEqual(state.state, "undone")
+        self.assertEqual(state.detail, "Turned on again in Meta Ads Manager")
+        self.assertEqual(
+            state.wait_until,
+            datetime(2026, 9, 27, 0, 0, tzinfo=hawaii).astimezone(timezone.utc),
+        )
+
+        # The next account day the rule may stop it again.
+        now[0] = datetime(2026, 9, 27, 0, 5, tzinfo=hawaii).timestamp()
+        await worker.run_cycle()
+        self.assertEqual(
+            mock_meta.status_changes,
+            [("adset_1", "PAUSED"), ("adset_1", "PAUSED")],
+        )
+
+    async def test_a_stop_turned_back_on_in_buyerly_waits_for_the_next_account_day(self):
+        """#200: the switch in Buyerly's Ads Manager holds the stop like Undo."""
+        hawaii = ZoneInfo("Pacific/Honolulu")
+        noon = datetime(2026, 9, 26, 12, 0, tzinfo=hawaii).timestamp()
+        now = [noon]
+        async with self.test_session_maker() as session:
+            session.add(AppSettings(stop_confirmation_minutes=0))
+            await session.commit()
+        mock_meta = MockMetaClient()
+        worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: now[0])
+
+        await worker.run_cycle()
+        self.assertEqual(mock_meta.status_changes, [("adset_1", "PAUSED")])
+
+        await self._stamp_stop_at(noon)
+        mock_meta.adsets_state["adset_1"]["status"] = "ACTIVE"
+        mock_meta.adsets_state["adset_1"]["effective_status"] = "ACTIVE"
+        async with self.test_session_maker() as session:
+            stop = (
+                await session.execute(
+                    select(AuditEvent).where(AuditEvent.event_type == "STOP")
+                )
+            ).scalar_one()
+            session.add(
+                AuditEvent(
+                    workspace_id=stop.workspace_id,
+                    owner_user_id=stop.owner_user_id,
+                    actor_type="user",
+                    actor_id=str(stop.owner_user_id),
+                    category="MANUAL_ACTION",
+                    event_type="MANUAL_REACTIVATE",
+                    status="SUCCESS",
+                    account_id=stop.account_id,
+                    adset_id="adset_1",
+                    entity_level="adset",
+                    entity_id="adset_1",
+                    action="SET_ENTITY_DELIVERY",
+                    created_at=datetime.fromtimestamp(noon + 60, timezone.utc),
+                )
+            )
+            await session.commit()
+
+        for minutes in (5, 3 * 60):
+            now[0] = noon + minutes * 60
+            await worker.run_cycle()
+        self.assertEqual(mock_meta.status_changes, [("adset_1", "PAUSED")])
+        state = await self._rule_state(1, "adset_1")
+        self.assertEqual(state.state, "undone")
+        self.assertEqual(state.detail, "You turned it on in Buyerly")
+
+    async def test_a_stop_still_paused_in_meta_is_not_held(self):
+        """Only an entity running again counts as turned on by hand: a rule's
+        stop that Meta still reports PAUSED holds nothing, and a later matching
+        ad set is stopped as usual."""
+        async with self.test_session_maker() as session:
+            session.add(AppSettings(stop_confirmation_minutes=0))
+            await session.commit()
+        mock_meta = MockMetaClient()
+        worker = MonitoringWorker(meta_client=mock_meta)
+        await worker.run_cycle()
+        self.assertEqual(mock_meta.status_changes, [("adset_1", "PAUSED")])
+
+        async with self.test_session_maker() as session:
+            account = (
+                await session.execute(select(Account).where(Account.account_id == self.account_id))
+            ).scalar_one()
+            holds = await worker._load_manual_enables(
+                session,
+                account,
+                [{"entity_id": "adset_1", "status": "PAUSED"}],
+                now=datetime.now(timezone.utc).timestamp(),
+            )
+        self.assertEqual(holds, {})
+
     async def test_a_rule_waiting_out_its_cooldown_stays_out_of_the_history(self):
         async with self.test_session_maker() as session:
             session.add(

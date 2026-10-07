@@ -785,6 +785,63 @@ class AnalyticsFactService:
         }
 
     @staticmethod
+    async def reflect_entity_change(
+        session,
+        *,
+        workspace_id: Optional[int],
+        account_id: str,
+        entity_level: str,
+        entity_id: str,
+        status: Optional[str] = None,
+        daily_budget: Optional[float] = None,
+    ) -> bool:
+        """Write a change Meta just confirmed into the entity's latest fact.
+
+        Ads Manager reads status and budget from the newest fact, which the
+        worker refreshes only every few minutes; without this an undo or a
+        manual switch showed the old state until the next sync (#200). The
+        next sync overwrites the row with whatever Meta reports. Commits on
+        its own and never raises: the change already happened in Meta.
+        """
+        if not workspace_id or not account_id or not entity_id:
+            return False
+        if status is None and daily_budget is None:
+            return False
+        try:
+            fact = (
+                await session.execute(
+                    select(AnalyticsEntityFact)
+                    .where(
+                        AnalyticsEntityFact.workspace_id == int(workspace_id),
+                        AnalyticsEntityFact.account_id == str(account_id),
+                        AnalyticsEntityFact.entity_level == str(entity_level),
+                        AnalyticsEntityFact.entity_id == str(entity_id),
+                    )
+                    .order_by(AnalyticsEntityFact.date.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+            if fact is None:
+                return False
+            if status is not None:
+                fact.status = str(status)[:32]
+                fact.effective_status = str(status)[:32]
+            if daily_budget is not None:
+                fact.daily_budget = round(_safe_float(daily_budget), 2)
+            fact.updated_at = datetime.now(timezone.utc)
+            await session.commit()
+            return True
+        except Exception as error:
+            await session.rollback()
+            logger.warning(
+                "Could not reflect a confirmed change of %s %s in the fact store: %s",
+                entity_level,
+                entity_id,
+                error,
+            )
+            return False
+
+    @staticmethod
     async def get_hierarchy_breakdown(
         session,
         workspace_id: int,

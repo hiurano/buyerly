@@ -44,6 +44,7 @@ from core.trash import (
     preset_snapshot,
     purge_expired,
 )
+from services.rule_preview import preview_rule_on_account
 from database.db import async_session_maker
 from database.models import (
     Account,
@@ -690,6 +691,56 @@ async def set_attached_rule_scope(
             "active_rules": active_rules,
             "rules_enabled": acc.rules_enabled,
         }
+
+
+@router.get("/accounts/{account_id}/rules/{preset_id}/preview")
+async def preview_rule_on_account_endpoint(
+    account_id: str,
+    preset_id: int,
+    user: User = Depends(get_current_user),
+):
+    """What attaching this rule to the whole ad account would check (#200).
+
+    Read-only: lists the entities of the rule's level with what the rule sees
+    on each on the latest synced numbers, so the buyer attaches knowingly.
+    """
+    async with async_session_maker() as session:
+        ws = await get_user_workspace(session, user)
+        if ws is None:
+            raise HTTPException(status_code=404, detail="Ad account not found.")
+        acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
+        acc = (
+            await session.execute(
+                select(Account).where(
+                    Account.account_id == acc_id,
+                    Account.workspace_id == ws.id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not acc:
+            raise HTTPException(status_code=404, detail="Ad account not found.")
+        preset = (
+            await session.execute(
+                select(RulePreset).where(
+                    RulePreset.id == preset_id,
+                    RulePreset.workspace_id == ws.id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not preset:
+            raise HTTPException(status_code=404, detail="Preset not found.")
+        rule = _preset_snapshot(preset)
+        if rule.get("needs_review"):
+            raise HTTPException(
+                status_code=400,
+                detail="This rule has unsafe or outdated settings. Open it and save it again.",
+            )
+        preview = await preview_rule_on_account(session, acc, rule)
+        preview["already_attached"] = any(
+            item.get("preset_id") == preset.id
+            for item in _load_active_rules(acc.active_rules)
+        )
+        return preview
 
 
 @router.post("/accounts/{account_id}/assign-rule-group/{group_id}")

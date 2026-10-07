@@ -374,6 +374,17 @@ export function describeRuleState(
         tone: 'waiting',
       };
     case 'undone':
+      // A detail means the entity was turned back on by hand after the
+      // rule's stop (#200), which holds the stop the same way an undo does.
+      if (row.detail) {
+        return {
+          label: 'Kept on for today',
+          note: until
+            ? `${row.detail}; the rule won't turn it off before ${until}`
+            : `${row.detail}; the rule won't turn it off again today`,
+          tone: 'blocked',
+        };
+      }
       return {
         label: 'Undone for today',
         note: until
@@ -583,6 +594,41 @@ export function assignRuleToAccount(
       body: JSON.stringify({ preset_id: presetId, scope }),
       headers,
     },
+  );
+}
+
+/** One entity a whole-account attachment would check, as the rule sees it now. */
+export interface RulePreviewEntity {
+  entity_id: string;
+  entity_name: string;
+  status: string;
+  spend: number;
+  outcome: 'matched' | 'not_met' | 'inactive';
+  detail: string;
+}
+
+/** What attaching a rule to a whole ad account would check (#200). */
+export interface RuleAccountPreview {
+  account_id: string;
+  account_name: string;
+  level: RuleExecutionLevel;
+  rule_name: string;
+  action: string;
+  rules_enabled: boolean;
+  already_attached: boolean;
+  total: number;
+  running: number;
+  matching: number;
+  data_as_of: string | null;
+  entities: RulePreviewEntity[];
+}
+
+export function fetchRuleAccountPreview(
+  accountId: string,
+  presetId: number,
+): Promise<RuleAccountPreview> {
+  return apiRequest<RuleAccountPreview>(
+    `/api/accounts/${encodeURIComponent(accountId)}/rules/${presetId}/preview`,
   );
 }
 
