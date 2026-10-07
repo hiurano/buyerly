@@ -14,7 +14,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from core.accounts import get_short_account_label
 from core.currency import UNKNOWN_CURRENCY, normalize_currency
-from core.metrics import SUMMARY_METRIC_DEFINITIONS, cost_per_event
+from core.metrics import SUMMARY_METRIC_DEFINITIONS, cost_per_event, round_half_up
 from core.timezones import resolve_account_clock
 from database.models import Account, AnalyticsEntityFact
 
@@ -101,7 +101,9 @@ def _period_metrics(entity_facts: List[Any]) -> Dict[str, Any]:
     reached on two days or by two entities, so the maximum is kept as the
     conservative floor rather than inventing a sum.
     """
-    spend = sum(f.spend for f in entity_facts)
+    # Spend is whole cents; summing floats drifts below them, which would
+    # tip a ratio that sits on a half cent the wrong way.
+    spend = round_half_up(sum(f.spend for f in entity_facts), 2)
     impressions = sum(f.impressions for f in entity_facts)
     # Reach does not add up across days: the same person can be reached twice.
     reach = max((f.reach for f in entity_facts), default=0)
@@ -113,26 +115,25 @@ def _period_metrics(entity_facts: List[Any]) -> Dict[str, Any]:
     regs = sum(f.registrations for f in entity_facts)
     purchases = sum(f.purchases for f in entity_facts)
 
-    cpc = (spend / clicks) if clicks > 0 else 0.0
-    ctr = ((clicks / impressions) * 100) if impressions > 0 else 0.0
-    cpm = ((spend / impressions) * 1000) if impressions > 0 else 0.0
-    ctr_link = ((link_clicks / impressions) * 100) if impressions > 0 else 0.0
-    ctr_outbound = ((outbound_clicks / impressions) * 100) if impressions > 0 else 0.0
+    def per_impression(value: float, scale: int) -> Optional[float]:
+        # No impressions means no ratio, shown as "—" like Ads Manager does,
+        # not as a 0.00 that reads as a measured result (#212).
+        return round_half_up(value * scale / impressions, 2) if impressions > 0 else None
 
     return {
-        "spend": round(spend, 2),
+        "spend": round_half_up(spend, 2),
         "impressions": impressions,
         "reach": reach,
-        "cpm": round(cpm, 2),
+        "cpm": per_impression(spend, 1000),
         "clicks": clicks,
         "link_clicks": link_clicks,
         "outbound_clicks": outbound_clicks,
         "landing_page_views": landing_page_views,
-        "cpc": round(cpc, 2),
-        "ctr": round(ctr, 2),
+        "cpc": cost_per_event(spend, clicks, digits=2),
+        "ctr": per_impression(clicks, 100),
         "cpc_link": cost_per_event(spend, link_clicks, digits=2),
-        "ctr_link": round(ctr_link, 2),
-        "ctr_outbound": round(ctr_outbound, 2),
+        "ctr_link": per_impression(link_clicks, 100),
+        "ctr_outbound": per_impression(outbound_clicks, 100),
         "leads": leads,
         "registrations": regs,
         "purchases": purchases,
@@ -557,7 +558,7 @@ class AnalyticsFactService:
                 continue
 
             accounts_synced += 1
-            acc_spend = sum(f.spend for f in acc_facts)
+            acc_spend = round_half_up(sum(f.spend for f in acc_facts), 2)
             acc_impressions = sum(f.impressions for f in acc_facts)
             acc_reach = max((f.reach for f in acc_facts), default=0)
             acc_clicks = sum(f.clicks for f in acc_facts)
@@ -624,12 +625,12 @@ class AnalyticsFactService:
                 "account_status": acc.account_status,
                 "status_label": acc.status_label,
                 "rules_enabled": acc.rules_enabled,
-                "spend": round(acc_spend, 2),
+                "spend": round_half_up(acc_spend, 2),
                 "clicks": acc_clicks,
                 "impressions": acc_impressions,
                 "reach": acc_reach,
-                "frequency": round(acc_frequency, 2),
-                "cpm": round(acc_cpm, 2),
+                "frequency": round_half_up(acc_frequency, 2),
+                "cpm": round_half_up(acc_cpm, 2),
                 "unique_clicks": acc_unique_clicks,
                 "link_clicks": acc_link_clicks,
                 "outbound_clicks": acc_outbound_clicks,
@@ -640,11 +641,11 @@ class AnalyticsFactService:
                 "cost_per_lead": cost_per_event(acc_spend, acc_leads, digits=2),
                 "cost_per_registration": cost_per_event(acc_spend, acc_regs, digits=2),
                 "cost_per_purchase": cost_per_event(acc_spend, acc_purchases, digits=2),
-                "cpc": round(acc_cpc, 2),
-                "ctr": round(acc_ctr, 2),
+                "cpc": round_half_up(acc_cpc, 2),
+                "ctr": round_half_up(acc_ctr, 2),
                 "cpc_link": cost_per_event(acc_spend, acc_link_clicks, digits=2),
-                "ctr_link": round(acc_ctr_link, 2),
-                "ctr_outbound": round(acc_ctr_outbound, 2),
+                "ctr_link": round_half_up(acc_ctr_link, 2),
+                "ctr_outbound": round_half_up(acc_ctr_outbound, 2),
                 "cost_per_landing_page_view": cost_per_event(acc_spend, acc_landing_page_views, digits=2),
                 "adsets": [],
                 "has_error": False,
@@ -654,11 +655,15 @@ class AnalyticsFactService:
             })
 
         # 4. Currency totals & mixed currency logic (BL-015)
+        # Whole cents again before any ratio is taken from the totals.
+        total_spend = round_half_up(total_spend, 2)
+        for bucket in currency_buckets.values():
+            bucket["spend"] = round_half_up(bucket["spend"], 2)
         currency_totals = [
             {
                 "currency": curr,
                 "accounts_count": int(data["accounts_count"]),
-                "spend": round(data["spend"], 2),
+                "spend": round_half_up(data["spend"], 2),
                 "impressions": data["impressions"],
                 "clicks": data["clicks"],
                 "link_clicks": data["link_clicks"],
@@ -711,7 +716,7 @@ class AnalyticsFactService:
             if total_impressions > 0
             else None
         )
-        metrics_coverage = round((accounts_synced / len(user_accounts)) * 100, 1) if user_accounts else 0.0
+        metrics_coverage = round_half_up((accounts_synced / len(user_accounts)) * 100, 1) if user_accounts else 0.0
         quality_status = (
             "complete"
             if accounts_synced == len(user_accounts)
@@ -722,7 +727,7 @@ class AnalyticsFactService:
             "period": period,
             "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "source": "PostgreSQL Fact Store",
-            "total_spend": round(total_spend, 2) if monetary_totals_available else None,
+            "total_spend": round_half_up(total_spend, 2) if monetary_totals_available else None,
             "display_currency": display_currency,
             "mixed_currencies": mixed_currencies,
             "currency_totals": currency_totals,
@@ -733,16 +738,16 @@ class AnalyticsFactService:
             "total_link_clicks": total_link_clicks,
             "total_outbound_clicks": total_outbound_clicks,
             "total_landing_page_views": total_landing_page_views,
-            "avg_frequency": round(avg_frequency, 2) if avg_frequency is not None else None,
-            "avg_cpm": round(avg_cpm, 2) if avg_cpm is not None else None,
+            "avg_frequency": round_half_up(avg_frequency, 2) if avg_frequency is not None else None,
+            "avg_cpm": round_half_up(avg_cpm, 2) if avg_cpm is not None else None,
             "total_leads": total_leads,
             "total_regs": total_regs,
             "total_purchases": total_purchases,
-            "avg_cpc": round(avg_cpc, 2) if avg_cpc is not None else None,
-            "avg_ctr": round(avg_ctr, 2),
+            "avg_cpc": round_half_up(avg_cpc, 2) if avg_cpc is not None else None,
+            "avg_ctr": round_half_up(avg_ctr, 2),
             "avg_cpc_link": avg_cpc_link,
-            "avg_ctr_link": round(avg_ctr_link, 2) if avg_ctr_link is not None else None,
-            "avg_ctr_outbound": round(avg_ctr_outbound, 2) if avg_ctr_outbound is not None else None,
+            "avg_ctr_link": round_half_up(avg_ctr_link, 2) if avg_ctr_link is not None else None,
+            "avg_ctr_outbound": round_half_up(avg_ctr_outbound, 2) if avg_ctr_outbound is not None else None,
             "cost_per_landing_page_view": (
                 cost_per_event(total_spend, total_landing_page_views, digits=2)
                 if monetary_totals_available

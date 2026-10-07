@@ -29,14 +29,14 @@ from api.deps import (
 from api.schemas import AnalyticsViewPreferenceRequest
 from core.accounts import get_short_account_label
 from core.currency import UNKNOWN_CURRENCY, normalize_currency
-from core.metrics import SUMMARY_METRIC_DEFINITIONS
+from core.metrics import SUMMARY_METRIC_DEFINITIONS, round_half_up
 from core.meta_tokens import resolve_account_access_token
 from core.ownership import owned_by
 from database.db import async_session_maker
 from database.models import AnalyticsViewPreference, User
 from meta_api.client import MetaClient
 from api.meta_dependencies import get_meta_client
-from services.analytics_store import AnalyticsFactService
+from services.analytics_store import AnalyticsFactService, resolve_account_period_dates
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Analytics & Summary"])
@@ -294,10 +294,17 @@ async def get_summary_report(
                         raise RuntimeError("Meta did not return the ad account currency")
                     acc.currency = account_currency
                     await session.commit()
+                # The same account-local days the fact store reports for this
+                # period, so a forced refresh cannot show another window (#212).
+                period_dates = sorted(
+                    resolve_account_period_dates(acc.timezone_name or "UTC", period)
+                )
                 account_insights = await meta_client.get_account_insights_summary(
                     account_id=acc.account_id,
                     access_token=access_token,
                     date_preset=period,
+                    since=period_dates[0],
+                    until=period_dates[-1],
                 )
                 acc_spend = account_insights.get("spend", 0.0)
                 acc_clicks = account_insights.get("clicks", 0)
@@ -366,9 +373,12 @@ async def get_summary_report(
                 bucket["registrations"] += acc_regs
                 bucket["purchases"] += acc_purchases
 
-                if ws_id:
+                # A fact is one account-local day: a multi-day total stored
+                # under a date would replace that day's numbers.
+                if ws_id and len(period_dates) == 1:
                     try:
                         acc_fact = {
+                            "date": period_dates[0],
                             "account_id": acc.account_id,
                             "entity_level": "account",
                             "entity_id": acc.account_id,
@@ -378,18 +388,18 @@ async def get_summary_report(
                             "spend": acc_spend,
                             "impressions": acc_impressions,
                             "reach": acc_reach,
-                            "frequency": round(acc_frequency, 2),
-                            "cpm": round(acc_cpm, 2),
+                            "frequency": round_half_up(acc_frequency, 2),
+                            "cpm": round_half_up(acc_cpm, 2),
                             "clicks": acc_clicks,
                             "unique_clicks": acc_unique_clicks,
                             "link_clicks": acc_link_clicks,
                             "outbound_clicks": acc_outbound_clicks,
                             "landing_page_views": acc_landing_page_views,
-                            "cpc": round(acc_cpc, 2),
+                            "cpc": round_half_up(acc_cpc, 2),
                             "cpc_link": _cost_or_none(acc_spend, acc_link_clicks),
-                            "ctr": round(acc_ctr, 2),
-                            "ctr_link": round(acc_ctr_link, 2),
-                            "ctr_outbound": round(acc_ctr_outbound, 2),
+                            "ctr": round_half_up(acc_ctr, 2),
+                            "ctr_link": round_half_up(acc_ctr_link, 2),
+                            "ctr_outbound": round_half_up(acc_ctr_outbound, 2),
                             "leads": acc_leads,
                             "registrations": acc_regs,
                             "purchases": acc_purchases,
@@ -427,12 +437,12 @@ async def get_summary_report(
                     "account_status": acc.account_status,
                     "status_label": acc.status_label,
                     "rules_enabled": acc.rules_enabled,
-                    "spend": round(acc_spend, 2),
+                    "spend": round_half_up(acc_spend, 2),
                     "clicks": acc_clicks,
                     "impressions": acc_impressions,
                     "reach": acc_reach,
-                    "frequency": round(acc_frequency, 2),
-                    "cpm": round(acc_cpm, 2),
+                    "frequency": round_half_up(acc_frequency, 2),
+                    "cpm": round_half_up(acc_cpm, 2),
                     "unique_clicks": acc_unique_clicks,
                     "link_clicks": acc_link_clicks,
                     "outbound_clicks": acc_outbound_clicks,
@@ -443,11 +453,11 @@ async def get_summary_report(
                     "cost_per_lead": _cost_or_none(acc_spend, acc_leads),
                     "cost_per_registration": _cost_or_none(acc_spend, acc_regs),
                     "cost_per_purchase": _cost_or_none(acc_spend, acc_purchases),
-                    "cpc": round(acc_cpc, 2),
-                    "ctr": round(acc_ctr, 2),
+                    "cpc": round_half_up(acc_cpc, 2),
+                    "ctr": round_half_up(acc_ctr, 2),
                     "cpc_link": _cost_or_none(acc_spend, acc_link_clicks),
-                    "ctr_link": round(acc_ctr_link, 2),
-                    "ctr_outbound": round(acc_ctr_outbound, 2),
+                    "ctr_link": round_half_up(acc_ctr_link, 2),
+                    "ctr_outbound": round_half_up(acc_ctr_outbound, 2),
                     "cost_per_landing_page_view": _cost_or_none(
                         acc_spend,
                         acc_landing_page_views,
@@ -543,7 +553,7 @@ async def get_summary_report(
             (total_outbound_clicks / total_impressions) * 100
             if total_impressions > 0 else None
         )
-        metrics_coverage = round((accounts_synced / len(accounts)) * 100, 1) if accounts else 0.0
+        metrics_coverage = round_half_up((accounts_synced / len(accounts)) * 100, 1) if accounts else 0.0
         quality_status = "complete" if accounts_synced == len(accounts) else ("partial" if accounts_synced else "unavailable")
 
         if accounts_synced == 0:
@@ -559,7 +569,7 @@ async def get_summary_report(
             "period": period,
             "generated_at": _utc_iso(datetime.now(timezone.utc)),
             "source": "Meta Marketing API",
-            "total_spend": round(total_spend, 2) if monetary_totals_available else None,
+            "total_spend": round_half_up(total_spend, 2) if monetary_totals_available else None,
             "display_currency": display_currency,
             "mixed_currencies": mixed_currencies,
             "currency_totals": currency_totals,
@@ -570,16 +580,16 @@ async def get_summary_report(
             "total_link_clicks": total_link_clicks,
             "total_outbound_clicks": total_outbound_clicks,
             "total_landing_page_views": total_landing_page_views,
-            "avg_frequency": round(avg_frequency, 2) if avg_frequency is not None else None,
-            "avg_cpm": round(avg_cpm, 2) if avg_cpm is not None else None,
+            "avg_frequency": round_half_up(avg_frequency, 2) if avg_frequency is not None else None,
+            "avg_cpm": round_half_up(avg_cpm, 2) if avg_cpm is not None else None,
             "total_leads": total_leads,
             "total_regs": total_regs,
             "total_purchases": total_purchases,
-            "avg_cpc": round(avg_cpc, 2) if avg_cpc is not None else None,
-            "avg_ctr": round(avg_ctr, 2),
+            "avg_cpc": round_half_up(avg_cpc, 2) if avg_cpc is not None else None,
+            "avg_ctr": round_half_up(avg_ctr, 2),
             "avg_cpc_link": avg_cpc_link,
-            "avg_ctr_link": round(avg_ctr_link, 2) if avg_ctr_link is not None else None,
-            "avg_ctr_outbound": round(avg_ctr_outbound, 2) if avg_ctr_outbound is not None else None,
+            "avg_ctr_link": round_half_up(avg_ctr_link, 2) if avg_ctr_link is not None else None,
+            "avg_ctr_outbound": round_half_up(avg_ctr_outbound, 2) if avg_ctr_outbound is not None else None,
             "cost_per_landing_page_view": (
                 _cost_or_none(total_spend, total_landing_page_views)
                 if monetary_totals_available else None

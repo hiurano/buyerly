@@ -2569,7 +2569,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             )
             await session.commit()
 
-        async def insights_side_effect(account_id, access_token, date_preset):
+        async def insights_side_effect(account_id, access_token, date_preset, **_period):
             if account_id == "act_sync_error":
                 raise RuntimeError("Meta unavailable")
             return {
@@ -2748,7 +2748,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             )
             await session.commit()
 
-        async def insights(account_id, access_token, date_preset):
+        async def insights(account_id, access_token, date_preset, **_period):
             return {
                 "spend": 100.0 if account_id == "act_eur" else 50.0,
                 "clicks": 10,
@@ -2818,7 +2818,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         headers = {**buyer_data}
         transport = httpx.ASGITransport(app=self.app)
 
-        async def insights_router(account_id, access_token, date_preset):
+        async def insights_router(account_id, access_token, date_preset, **_period):
             if account_id == "act_second_ws_999":
                 return {
                     "spend": 250.0,
@@ -2926,7 +2926,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         headers = {**buyer_data}
         transport = httpx.ASGITransport(app=self.app)
 
-        async def insights_2acc(account_id, access_token, date_preset):
+        async def insights_2acc(account_id, access_token, date_preset, **_period):
             return {
                 "spend": 50.0,
                 "clicks": 10,
