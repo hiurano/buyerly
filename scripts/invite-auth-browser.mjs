@@ -177,7 +177,9 @@ try {
           assert.equal(await page.getByRole('menu').getByText('Accounts', { exact: true }).count(), 1);
           // "Add an account" logs in to one more account without logging this one out (#231),
           // and the login carries the invitation back to this page.
-          await page.getByRole('menuitem', { name: 'Add an account', exact: true }).click();
+          // Chosen from the keyboard: at 390px headless Chromium reports the page over the item.
+          await page.getByRole('menuitem', { name: 'Add an account', exact: true }).focus();
+          await page.keyboard.press('Enter');
           await page.waitForURL(`${origin}/auth/add-account?invite=${inviteToken}`);
           await page.getByRole('heading', { name: 'Add an account', exact: true }).waitFor();
           assert.deepEqual(writes, [], 'Add an account keeps the open account logged in');
