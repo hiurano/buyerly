@@ -278,7 +278,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
           )}
           <div className="preferences-content-column">
             {section === 'profile' && (
-              <ProfileSection user={user} onUserChanged={onUserChanged} />
+              <ProfileSection user={user} workspace={workspace} onUserChanged={onUserChanged} />
             )}
 
             {section === 'notifications' && (
@@ -313,7 +313,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
 
             {section === 'security' && <SecuritySection />}
 
-            {section === 'members' && <MembersSection workspace={workspace} />}
+            {section === 'members' && <MembersSection workspace={workspace} onUserChanged={onUserChanged} />}
 
             {section === 'preferences' && (
               <>
