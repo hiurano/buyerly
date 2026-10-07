@@ -266,6 +266,7 @@ try {
         await page.locator('.preferences-sidebar').getByText('Profile', { exact: true }).click();
         await page.getByRole('heading', { name: 'Profile', exact: true }).waitFor();
         await page.getByRole('heading', { name: 'Workspace access', exact: true }).waitFor();
+        await page.getByText('Remove yourself from workspace', { exact: true }).waitFor();
         await assertNoOverflow();
         await page.screenshot({ path: `${output}/profile-workspace-access-${width}.png`, fullPage: true });
         await page.getByRole('button', { name: 'Leave workspace', exact: true }).click();

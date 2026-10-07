@@ -363,13 +363,14 @@ export const MembersSection: React.FC<{
               <span role="cell" className="text-[var(--text-secondary)]">{roleLabel(member.role)}</span>
               <span role="cell" className="text-[var(--text-secondary)]">{shortDate(member.joined_at)}</span>
               <span role="cell" className="flex justify-end">
-                {member.is_current_user ? (
+                {/* Linear gives your row no menu while nobody else could run the workspace. */}
+                {member.is_current_user ? (workspace.role === 'owner' && members.length < 2 ? null : (
                   <RowMenu label={`Member actions for ${memberName(member)}`}>
                     <DropdownMenuItem onSelect={() => setLeaveOpen(true)}>
                       <span className="truncate">Leave workspace…</span>
                     </DropdownMenuItem>
                   </RowMenu>
-                ) : canManageMember(member) ? (
+                )) : canManageMember(member) ? (
                   <RowMenu label={`Member actions for ${memberName(member)}`}>
                     <DropdownMenuItem onSelect={() => setRoleTarget(member)}>
                       <span className="truncate">Change role…</span>

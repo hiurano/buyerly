@@ -1339,6 +1339,47 @@ html[data-theme='dark'] .linear-sidebar-badge,
   position: relative;
 }
 
+/* A row with one line of copy, like Linear's Workspace access row: 64px. */
+.preferences-row-item--single {
+  height: 64px;
+}
+
+/*
+ * Linear's Leave workspace button in Profile: no fill, no visible border,
+ * 32px pill, 12px sides, 13px medium text; 0.6 opacity while it is off.
+ */
+.preferences-row-ghost-button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-regular);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.preferences-row-ghost-button:hover:not(:disabled) {
+  background: var(--item-hover-bg);
+  color: var(--text-primary);
+}
+
+.preferences-row-ghost-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
+}
+
+.preferences-row-ghost-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .preferences-row-copy {
   display: flex;
   flex-direction: column;
