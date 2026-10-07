@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>/* Theme before first paint (#232): the choice from Settings → Preferences, otherwise the system. */(function(){var d=document.documentElement,m=matchMedia('(prefers-color-scheme: dark)');function a(){var t;try{t=localStorage.getItem('buyerly-interface-theme')}catch(e){}if(t!=='light'&&t!=='dark')t=m.matches?'dark':'light';d.setAttribute('data-theme',t);d.style.colorScheme=t;d.classList.toggle('dark',t==='dark')}a();m.addEventListener('change',a)})()</script>
     <link rel="icon" type="image/png" href="/buyerly-logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- WebMCP origin trial for https://buyerly.app, Chrome 149–156, expires 2026-11-17. Other origins ignore it. -->

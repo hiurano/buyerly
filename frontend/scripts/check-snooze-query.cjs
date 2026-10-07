@@ -1,4 +1,5 @@
-// Linear's snooze search rows, as read off Linear itself on Fri, 2 Oct 2026 at 12:38 AM (#246).
+// Linear's snooze search rows, as read off Linear itself on Fri, 2 Oct 2026 at 12:38 AM (#246)
+// and on Wed, 7 Oct 2026 at 4:30 PM (#267).
 process.env.TZ = 'Asia/Yekaterinburg';
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -114,6 +115,8 @@ const expect = {
   1230: ['Today at 12:30 PM / Fri, 2 Oct, 12:30 PM'],
   2359: ['Today at 11:59 PM / Fri, 2 Oct, 11:59 PM'],
   weekend: [],
+  0: ['Today at 9:00 AM / Fri, 2 Oct, 9:00 AM'],
+  '00': ['Today at 9:00 AM / Fri, 2 Oct, 9:00 AM'],
   'nov 15': ['Sunday, November 15, 9:00 AM / in 44 days'],
   'nov 30': ['Monday, November 30, 9:00 AM / in 59 days'],
   'dec 1': ['Tuesday, December 1, 9:00 AM / in 2 months'],
@@ -131,4 +134,47 @@ for (const [query, want] of Object.entries(expect)) assert.deepEqual(rows(query)
 
 // On Sep 30 in the evening "1" had no 1 o'clock row: both have passed, and the 1st is tomorrow.
 assert.equal(rows('1', new Date(2026, 8, 30, 20, 0))[0], 'Tomorrow at 9:00 AM / in 1 day');
-console.log(`snooze query: ${Object.keys(expect).length + 1} checks match Linear`);
+// Only the labels were written down on 2 Oct at 12:38 AM (#267).
+assert.deepEqual(parseSnoozeQuery('in 2 days at 3pm', now).map(row => row.label), ['Today at 9:00 AM', 'Today at 3:00 PM']);
+
+// Read off Linear on Wed, 7 Oct 2026 at 4:30 PM (#267). Linear differed at night (2 Oct, 12:38 AM):
+// "tonight" was "Today at 9:00 AM" and "end of the month" was "Today at 9:00 AM"; "this week" was
+// noted as "In 1 week". Evening (after 9 PM) is not checked yet, so the daytime answers are used.
+const afternoon = new Date(2026, 9, 7, 16, 30, 0);
+const afternoonExpect = {
+  0: ['Today at 9:00 PM / Wed, 7 Oct, 9:00 PM'],
+  '00': ['Today at 9:00 PM / Wed, 7 Oct, 9:00 PM'],
+  '000': ['Today at 9:00 PM / Wed, 7 Oct, 9:00 PM'],
+  tonight: ['Today at 11:59 PM / in 7 hours'],
+  'tonight 8pm': ['Today at 8:00 PM / in 3 hours'],
+  today: ['Today at 11:59 PM / in 7 hours'],
+  'today 5pm': ['Today at 5:00 PM / in 30 minutes'],
+  'today 3pm': ['Tomorrow at 3:00 PM / in 1 day'],
+  'end of month': ['Saturday, October 31, 9:00 AM / in 24 days'],
+  'end of the month': ['In 1 month / Sat, 7 Nov, 9:00 AM'],
+  'end of week': ['Sunday at 9:00 AM / in 4 days'],
+  'end of the week': ['In 1 week / Wed, 14 Oct, 9:00 AM'],
+  'in 2 days': ['In 2 days / Fri, 9 Oct, 9:00 AM'],
+  '2 days at 3pm': ['Friday at 3:00 PM / in 2 days'],
+  '2 days at 5pm': ['Friday at 5:00 PM / in 2 days'],
+  'in 2 days at 3pm': ['Tomorrow at 9:00 AM / in 1 day', 'Tomorrow at 3:00 PM / in 1 day'],
+  'in 1 day at 3pm': ['Tomorrow at 9:00 AM / in 1 day', 'Tomorrow at 3:00 PM / in 1 day'],
+  'in 3 days at 3pm': ['Tomorrow at 9:00 AM / in 1 day', 'Tomorrow at 3:00 PM / in 1 day'],
+  'in 10 days at 3pm': ['Tomorrow at 9:00 AM / in 1 day', 'Tomorrow at 3:00 PM / in 1 day'],
+  'in 2 weeks at 3pm': ['Tomorrow at 9:00 AM / in 1 day', 'Tomorrow at 3:00 PM / in 1 day'],
+  'in 5 days at 10am': ['Tomorrow at 9:00 AM / in 1 day', 'Tomorrow at 10:00 AM / in 1 day'],
+  'in 2 days at 9pm': ['Tomorrow at 9:00 AM / in 1 day'],
+  'this week': ['Tuesday, October 5, 2027, 9:00 AM / in 1 year'],
+  'this week 3pm': ['Tuesday, October 5, 2027, 3:00 PM / in 1 year'],
+  'this weekend': ['Saturday at 9:00 AM / in 3 days'],
+  'next weekend': ['Saturday, October 17, 9:00 AM / in 10 days'],
+  'next weekend 3pm': ['Saturday, October 17, 3:00 PM / in 10 days'],
+  weekend: [],
+  friday: ['Friday at 9:00 AM / in 2 days'],
+};
+for (const [query, want] of Object.entries(afternoonExpect)) assert.deepEqual(rows(query, afternoon), want, `${query} (afternoon)`);
+// A few seconds later, as Linear showed it at 4:30:53 PM.
+assert.deepEqual(rows('in 2 days at 5pm', new Date(2026, 9, 7, 16, 30, 53)), ['Tomorrow at 9:00 AM / in 1 day', 'Today at 5:00 PM / in 29 minutes']);
+
+const total = Object.keys(expect).length + Object.keys(afternoonExpect).length + 3;
+console.log(`snooze query: ${total} checks match Linear`);
