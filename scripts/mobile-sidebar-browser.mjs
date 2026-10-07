@@ -85,7 +85,9 @@ try {
         await page.keyboard.press('[');
         await settled();
         assert.ok(await isClosed(sidebar));
-        await page.getByRole('button', { name: 'Open sidebar' }).click();
+        // A pointer click would first hover the button, which (as in Linear) opens
+        // the peek over it at once; a bare click event tests the button itself.
+        await page.getByRole('button', { name: 'Open sidebar' }).dispatchEvent('click');
         await settled();
         assert.ok(await isOpen(sidebar));
         assert.equal(Math.round((await wrapper.boundingBox()).width), 244);
