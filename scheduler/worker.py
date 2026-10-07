@@ -53,6 +53,17 @@ logger = logging.getLogger(__name__)
 
 PENDING_RECONCILIATION_SECONDS = 15 * 60
 DAY_BOUNDARY_NOTIFICATION_WINDOW_MINUTES = 5
+# Successful history rows that switch an entity on or off; the latest one today
+# tells whether a person turned it back on after a rule's stop.
+STATUS_EVENT_TYPES = (
+    "STOP",
+    "AUTO_REACTIVATE",
+    "MANUAL_PAUSE",
+    "MANUAL_REACTIVATE",
+    "UNDO_ACTION",
+)
+MANUAL_ENABLE_IN_BUYERLY = "You turned it on in Buyerly"
+MANUAL_ENABLE_IN_META = "Turned on again in Meta Ads Manager"
 
 class MonitoringWorker:
     """
@@ -826,9 +837,7 @@ class MonitoringWorker:
         entity minutes later would take the decision back. The ad account's
         day bounds it, like the `today` window most rules read.
         """
-        clock = resolve_account_clock(account.timezone_name)
-        local_now = datetime.fromtimestamp(now, clock.zone if clock else timezone.utc)
-        day_start = datetime.combine(local_now.date(), day_time.min, tzinfo=local_now.tzinfo)
+        day_start = self._account_day_start(account, now)
         source = aliased(AuditEvent)
         rows = await session.execute(
             select(AuditEvent.entity_id, source.event_type)
@@ -847,6 +856,66 @@ class MonitoringWorker:
         for entity_id, event_type in rows:
             undone.setdefault(str(entity_id), set()).add(str(event_type))
         return undone
+
+    async def _load_manual_enables(
+        self,
+        session,
+        account: Account,
+        entities: list[dict[str, Any]],
+        *,
+        now: float,
+    ) -> dict[str, str]:
+        """Entities a person turned back on today after a rule turned them off.
+
+        Turning an entity on by hand is the same decision as undoing the stop
+        (record 46): the rules leave it running until the ad account's day ends.
+        Two ways are recognised: the switch in Buyerly, which leaves a
+        ``MANUAL_REACTIVATE`` in the history, and Meta's own Ads Manager, which
+        leaves nothing; there the latest status change Buyerly knows of today
+        is the rule's stop, yet Meta now reports the entity ACTIVE.
+        Returns the entity ids with the reason the rule state shows.
+        """
+        day_start = self._account_day_start(account, now)
+        rows = await session.execute(
+            select(
+                AuditEvent.entity_id,
+                AuditEvent.event_type,
+                AuditEvent.category,
+                AuditEvent.actor_type,
+            )
+            .where(
+                AuditEvent.workspace_id == account.workspace_id,
+                AuditEvent.account_id == str(account.account_id),
+                AuditEvent.status == "SUCCESS",
+                AuditEvent.event_type.in_(STATUS_EVENT_TYPES),
+                AuditEvent.created_at >= day_start.astimezone(timezone.utc),
+                AuditEvent.created_at
+                < datetime.fromtimestamp(self._account_day_end(account, now), timezone.utc),
+            )
+            .order_by(AuditEvent.id.asc())
+        )
+        latest: dict[str, tuple[str, str, str]] = {}
+        for entity_id, event_type, category, actor_type in rows:
+            if entity_id:
+                latest[str(entity_id)] = (
+                    str(event_type), str(category or ""), str(actor_type or "")
+                )
+        status_by_entity = {
+            str(entity.get("entity_id") or ""): str(entity.get("status") or "").upper()
+            for entity in entities
+        }
+        holds: dict[str, str] = {}
+        for entity_id, (event_type, category, actor_type) in latest.items():
+            if event_type == "MANUAL_REACTIVATE" and actor_type == "user":
+                holds[entity_id] = MANUAL_ENABLE_IN_BUYERLY
+            elif (
+                event_type == "STOP"
+                and category == "RULE_ACTION"
+                and actor_type == "system"
+                and status_by_entity.get(entity_id) == "ACTIVE"
+            ):
+                holds[entity_id] = MANUAL_ENABLE_IN_META
+        return holds
 
     @staticmethod
     def _rules_not_undone(
@@ -912,6 +981,13 @@ class MonitoringWorker:
         ) is not None
 
     @staticmethod
+    def _account_day_start(account: Account, now: float) -> datetime:
+        """Midnight that began the ad account's current day."""
+        clock = resolve_account_clock(account.timezone_name)
+        local_now = datetime.fromtimestamp(now, clock.zone if clock else timezone.utc)
+        return datetime.combine(local_now.date(), day_time.min, tzinfo=local_now.tzinfo)
+
+    @staticmethod
     def _account_day_end(account: Account, now: float) -> float:
         """Midnight that ends the ad account's current day, as a timestamp."""
         clock = resolve_account_clock(account.timezone_name)
@@ -932,6 +1008,7 @@ class MonitoringWorker:
         undone: Optional[set[str]],
         *,
         now: float,
+        manual_enable: Optional[str] = None,
     ) -> dict[int, dict[str, Any]]:
         """Where each rule stands on one entity before anything runs (#322).
 
@@ -970,6 +1047,11 @@ class MonitoringWorker:
             if undone and action is not None and action.value in undone:
                 outcome["state"] = "undone"
                 outcome["wait_until"] = self._account_day_end(account, now)
+                # Empty for an undo in Inbox; the reason when a person turned
+                # the entity back on by hand, which the rule state shows.
+                outcome["detail"] = (
+                    manual_enable if manual_enable and action == RuleAction.STOP else ""
+                )
                 continue
             candidate = candidates_by_id.get(rule_id)
             if candidate is not None:
@@ -1180,6 +1262,23 @@ class MonitoringWorker:
             await AdsetInventoryService.update_adset_status(
                 session, account.account_id, evaluation.entity_id, status
             )
+
+    @staticmethod
+    async def _reflect_status(
+        session,
+        account: Account,
+        evaluation: RuleEvaluationResult,
+        status: str,
+    ) -> None:
+        """Show a confirmed switch in Ads Manager before the next sync (#200)."""
+        await AnalyticsFactService.reflect_entity_change(
+            session,
+            workspace_id=account.workspace_id,
+            account_id=account.account_id,
+            entity_level=evaluation.entity_level,
+            entity_id=evaluation.entity_id,
+            status=status,
+        )
 
     @staticmethod
     async def _record_stopped_adset(session, account: Account, result: RuleEvaluationResult) -> None:
@@ -1951,6 +2050,17 @@ class MonitoringWorker:
                             f"({snapshot['ads_error']}); ad rules skipped this cycle"
                         )
 
+                    # A person turning a stopped entity back on holds the
+                    # stop like an undo does, until the account's day ends.
+                    manual_enables = await self._load_manual_enables(
+                        session,
+                        acc,
+                        entities,
+                        now=now,
+                    )
+                    for held_id in manual_enables:
+                        undone_actions.setdefault(held_id, set()).add(RuleAction.STOP.value)
+
                     rule_outcomes: list[dict[str, Any]] = []
                     for adset in entities:
                         a_id = str(adset["entity_id"])
@@ -1985,6 +2095,7 @@ class MonitoringWorker:
                             entity_actions,
                             undone_actions.get(a_id),
                             now=now,
+                            manual_enable=manual_enables.get(a_id),
                         )
                         rule_outcomes.extend(outcomes.values())
                         if not entity_actions:
@@ -2205,6 +2316,7 @@ class MonitoringWorker:
                                         after_state={"status": "PAUSED"},
                                         duration_ms=(time.perf_counter() - action_started) * 1000,
                                     )
+                                    await self._reflect_status(session, acc, eval_res, "PAUSED")
 
                                 except Exception as e:
                                     logger.error(f"Error pausing adset {a_id}: {e}")
@@ -2301,7 +2413,8 @@ class MonitoringWorker:
                                         after_state={"status": "ACTIVE"},
                                         duration_ms=(time.perf_counter() - action_started) * 1000,
                                     )
-                                
+                                    await self._reflect_status(session, acc, eval_res, "ACTIVE")
+
                                     logger.info(f"AUTO REACTIVATED {eval_res.entity_level}: {a_id} ({eval_res.entity_name})")
 
                                 except Exception as e:

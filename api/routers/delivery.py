@@ -27,6 +27,7 @@ from database.db import async_session_maker
 from database.models import Account, User
 from meta_api.client import MetaClient
 from api.meta_dependencies import get_meta_client
+from services.analytics_store import AnalyticsFactService
 from services.inventory_cache import AdsetInventoryService
 
 logger = logging.getLogger(__name__)
@@ -260,6 +261,14 @@ async def set_entity_delivery(
             entity_name=entity_name,
         )
         saved = await _commit_quietly(session, "manual delivery result")
+        await AnalyticsFactService.reflect_entity_change(
+            session,
+            workspace_id=account.workspace_id,
+            account_id=account.account_id,
+            entity_level=level,
+            entity_id=entity_id,
+            status=payload.status,
+        )
         return {
             "entity_id": entity_id,
             "level": level,
@@ -399,6 +408,14 @@ async def set_entity_budget(
             entity_name=entity_name,
         )
         saved = await _commit_quietly(session, "manual budget result")
+        await AnalyticsFactService.reflect_entity_change(
+            session,
+            workspace_id=account.workspace_id,
+            account_id=account.account_id,
+            entity_level=level,
+            entity_id=entity_id,
+            daily_budget=payload.daily_budget,
+        )
         return {
             "entity_id": entity_id,
             "level": level,

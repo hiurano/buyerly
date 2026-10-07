@@ -31,6 +31,7 @@ from database.models import (
     AccountGroupMember,
     ActionUndoState,
     AllowedEmail,
+    AnalyticsEntityFact,
     AppSettings,
     AutomationRuntimeState,
     AuditEvent,
@@ -3601,6 +3602,149 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 (await session.execute(select(StoppedAdSet))).scalars().all(), []
             )
+
+    async def test_ads_manager_shows_an_undone_stop_without_waiting_for_the_sync(self):
+        """#200: Ads Manager reads status from the newest fact, which the worker
+        refreshes every few minutes; the undo writes the restored status there."""
+        source_id = await self._seed_entity_stop_event(
+            entity_level="campaign",
+            entity_id="camp_undo_fact",
+            entity_name="Sweden scale",
+        )
+        async with self.test_session_maker() as session:
+            buyer = (
+                await session.execute(select(User).where(User.telegram_id == "8948797431"))
+            ).scalar_one()
+            for day in ("2026-09-25", "2026-09-26"):
+                session.add(
+                    AnalyticsEntityFact(
+                        workspace_id=buyer.active_workspace_id,
+                        account_id="act_1018756607700064",
+                        entity_level="campaign",
+                        entity_id="camp_undo_fact",
+                        entity_name="Sweden scale",
+                        date=day,
+                        currency="USD",
+                        status="PAUSED",
+                        effective_status="PAUSED",
+                    )
+                )
+            await session.commit()
+
+        auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        transport = httpx.ASGITransport(app=self.app)
+        with (
+            patch.object(
+                self.app.state.meta_client,
+                "get_entity_state",
+                new=AsyncMock(
+                    return_value={
+                        "entity_id": "camp_undo_fact",
+                        "entity_name": "Sweden scale",
+                        "status": "PAUSED",
+                        "effective_status": "PAUSED",
+                        "daily_budget": 0.0,
+                    }
+                ),
+            ),
+            patch.object(
+                self.app.state.meta_client,
+                "set_entity_status",
+                new=AsyncMock(return_value=True),
+            ),
+        ):
+            async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.post(
+                    f"/api/audit-events/{source_id}/undo", headers={**auth}
+                )
+
+        self.assertEqual(response.status_code, 200)
+        async with self.test_session_maker() as session:
+            facts = (
+                await session.execute(
+                    select(AnalyticsEntityFact.date, AnalyticsEntityFact.status, AnalyticsEntityFact.effective_status)
+                    .where(AnalyticsEntityFact.entity_id == "camp_undo_fact")
+                    .order_by(AnalyticsEntityFact.date)
+                )
+            ).all()
+        # Only the newest day, which Ads Manager reads, changes.
+        self.assertEqual(
+            [tuple(row) for row in facts],
+            [("2026-09-25", "PAUSED", "PAUSED"), ("2026-09-26", "ACTIVE", "ACTIVE")],
+        )
+
+    async def test_rule_preview_shows_what_a_whole_account_attachment_checks(self):
+        """#200: before a rule is attached to a whole ad account the buyer sees
+        every ad set it will check and which match now; nothing is written."""
+        today = datetime.now(timezone.utc).date().isoformat()
+        async with self.test_session_maker() as session:
+            for entity_id, name, status, spend in (
+                ("adset_hit", "Hit", "ACTIVE", 15.0),
+                ("adset_miss", "Miss", "ACTIVE", 2.0),
+                ("adset_paused", "Paused", "PAUSED", 20.0),
+                ("adset_gone", "Gone", "DELETED", 30.0),
+            ):
+                session.add(
+                    AnalyticsEntityFact(
+                        workspace_id=self.ws_buyer_id,
+                        account_id="act_1018756607700064",
+                        entity_level="adset",
+                        entity_id=entity_id,
+                        entity_name=name,
+                        date=today,
+                        currency="USD",
+                        spend=spend,
+                        status=status,
+                        effective_status=status,
+                    )
+                )
+            await session.commit()
+
+        auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            preset = await client.post(
+                "/api/presets",
+                headers=auth,
+                json={
+                    "name": "Spend cap",
+                    "action": "turn_off",
+                    "level": "adset",
+                    "conditions": [
+                        {"metric": "spend", "operator": "gte", "value": 10.0, "time_window": "today"}
+                    ],
+                },
+            )
+            self.assertEqual(preset.status_code, 200, preset.text)
+            preset_id = preset.json()["id"]
+            response = await client.get(
+                f"/api/accounts/act_1018756607700064/rules/{preset_id}/preview",
+                headers=auth,
+            )
+            missing = await client.get(
+                "/api/accounts/act_1018756607700064/rules/999999/preview",
+                headers=auth,
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        preview = response.json()
+        self.assertEqual(preview["level"], "adset")
+        self.assertEqual((preview["total"], preview["running"], preview["matching"]), (3, 2, 1))
+        self.assertFalse(preview["rules_enabled"])
+        self.assertFalse(preview["already_attached"])
+        self.assertEqual(
+            [(item["entity_id"], item["outcome"]) for item in preview["entities"]],
+            [("adset_hit", "matched"), ("adset_miss", "not_met"), ("adset_paused", "inactive")],
+        )
+        self.assertEqual(missing.status_code, 404)
+        async with self.test_session_maker() as session:
+            account = (
+                await session.execute(
+                    select(Account).where(Account.account_id == "act_1018756607700064")
+                )
+            ).scalar_one()
+            self.assertFalse(account.rules_enabled)
+            self.assertNotIn(str(preset_id), account.active_rules or "")
 
     async def test_an_ad_stop_can_be_undone(self):
         source_id = await self._seed_entity_stop_event(
