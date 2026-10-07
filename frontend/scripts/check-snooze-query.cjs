@@ -1,5 +1,5 @@
 // Linear's snooze search rows, as read off Linear itself on Fri, 2 Oct 2026 at 12:38 AM (#246)
-// and on Wed, 7 Oct 2026 at 4:30 PM (#267).
+// and on Wed, 7 Oct 2026 at 4:30 PM and 10:19–10:24 PM (#267).
 process.env.TZ = 'Asia/Yekaterinburg';
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -136,11 +136,19 @@ for (const [query, want] of Object.entries(expect)) assert.deepEqual(rows(query)
 assert.equal(rows('1', new Date(2026, 8, 30, 20, 0))[0], 'Tomorrow at 9:00 AM / in 1 day');
 // Only the labels were written down on 2 Oct at 12:38 AM (#267).
 assert.deepEqual(parseSnoozeQuery('in 2 days at 3pm', now).map(row => row.label), ['Today at 9:00 AM', 'Today at 3:00 PM']);
+assert.deepEqual(parseSnoozeQuery('tonight', now).map(row => row.label), ['Today at 9:00 AM']);
+assert.deepEqual(parseSnoozeQuery('end of the month', now).map(row => row.label), ['Today at 9:00 AM']);
+assert.deepEqual(parseSnoozeQuery('this week', now).map(row => row.label), ['In 1 week']);
+// Not read off Linear after midnight, but how its code reads them (#267): a bare day is its 9:00 AM
+// until that passes, so "today" and "end of the week" are like "tonight" and "end of the month".
+assert.deepEqual(rows('today'), ['Today at 9:00 AM / in 8 hours']);
+assert.deepEqual(rows('end of the week'), ['Today at 9:00 AM / in 8 hours']);
+assert.deepEqual(rows('this week'), ['In 1 week / Fri, 9 Oct, 9:00 AM']);
+assert.deepEqual(rows('tonight 8pm'), ['Today at 8:00 PM / in 19 hours']);
 
-// Read off Linear on Wed, 7 Oct 2026 at 4:30 PM (#267). Linear differed at night (2 Oct, 12:38 AM):
-// "tonight" was "Today at 9:00 AM" and "end of the month" was "Today at 9:00 AM"; "this week" was
-// noted as "In 1 week". Evening (after 9 PM) is not checked yet, so the daytime answers are used.
-const afternoon = new Date(2026, 9, 7, 16, 30, 0);
+// Read off Linear on Wed, 7 Oct 2026 at 4:29–4:30 PM (#267). Linear rounds the distance, so the
+// seconds matter: "tonight 8pm" read "in 3 hours" (3 h 29 min) and "today 5pm" "in 30 minutes".
+const afternoon = new Date(2026, 9, 7, 16, 30, 20);
 const afternoonExpect = {
   0: ['Today at 9:00 PM / Wed, 7 Oct, 9:00 PM'],
   '00': ['Today at 9:00 PM / Wed, 7 Oct, 9:00 PM'],
@@ -176,5 +184,85 @@ for (const [query, want] of Object.entries(afternoonExpect)) assert.deepEqual(ro
 // A few seconds later, as Linear showed it at 4:30:53 PM.
 assert.deepEqual(rows('in 2 days at 5pm', new Date(2026, 9, 7, 16, 30, 53)), ['Tomorrow at 9:00 AM / in 1 day', 'Today at 5:00 PM / in 29 minutes']);
 
-const total = Object.keys(expect).length + Object.keys(afternoonExpect).length + 3;
+// Read off Linear on Wed, 7 Oct 2026 at 10:19–10:24 PM (#267).
+const evening = new Date(2026, 9, 7, 22, 19, 40);
+const nineAm = 'Tomorrow at 9:00 AM / in 1 day';
+const eveningExpect = {
+  0: [],
+  '00': [],
+  '000': [],
+  tonight: ['Today at 11:59 PM / in 2 hours'],
+  today: ['Today at 11:59 PM / in 2 hours'],
+  'tonight 8pm': ['Tomorrow at 8:00 PM / in 1 day'],
+  'tonight 9pm': ['Tomorrow at 9:00 PM / in 1 day'],
+  'tonight 11pm': ['Today at 11:00 PM / in 40 minutes'],
+  'tonight 11:30pm': ['Today at 11:30 PM / in 1 hour'],
+  'today 5pm': ['Tomorrow at 5:00 PM / in 1 day'],
+  'today 10pm': ['Tomorrow at 10:00 PM / in 1 day'],
+  'today 11pm': ['Today at 11:00 PM / in 40 minutes'],
+  'today at 11pm': ['Today at 11:00 PM / in 40 minutes'],
+  'tomorrow 11pm': ['Tomorrow at 11:00 PM / in 1 day'],
+  'end of the month': ['In 1 month / Sat, 7 Nov, 9:00 AM'],
+  'end of month': ['Saturday, October 31, 9:00 AM / in 24 days'],
+  'end of the week': ['In 1 week / Wed, 14 Oct, 9:00 AM'],
+  'end of week': ['Sunday at 9:00 AM / in 4 days'],
+  'in 2 days at 3pm': [nineAm, 'Tomorrow at 3:00 PM / in 1 day'],
+  'in 1 day at 3pm': [nineAm, 'Tomorrow at 3:00 PM / in 1 day'],
+  'in 10 days at 3pm': [nineAm, 'Tomorrow at 3:00 PM / in 1 day'],
+  'in 2 weeks at 3pm': [nineAm, 'Tomorrow at 3:00 PM / in 1 day'],
+  'in 2 days at 10am': [nineAm, 'Tomorrow at 10:00 AM / in 1 day'],
+  'in 2 days at 11am': [nineAm, 'Tomorrow at 11:00 AM / in 1 day'],
+  'in 2 days at 12pm': [nineAm, 'Tomorrow at 12:00 PM / in 1 day'],
+  'in 2 days at 12am': [nineAm, 'Tomorrow at 12:00 AM / in 1 day'],
+  'in 2 days at 1am': [nineAm, 'Tomorrow at 1:00 AM / in 1 day'],
+  'in 2 days at 8am': [nineAm, 'Tomorrow at 8:00 AM / in 1 day'],
+  'in 2 days at 9:30am': [nineAm, 'Tomorrow at 9:30 AM / in 1 day'],
+  'in 2 days at 4:59pm': [nineAm, 'Tomorrow at 4:59 PM / in 1 day'],
+  'in 2 days at 5pm': [nineAm, 'Tomorrow at 5:00 PM / in 1 day'],
+  'in 2 days at 5:01pm': [nineAm],
+  'in 2 days at 5:30pm': [nineAm],
+  'in 2 days at 6pm': [nineAm],
+  'in 2 days at 9pm': [nineAm],
+  'in 2 days at 10:30pm': [nineAm],
+  'in 2 days at 11pm': [nineAm],
+  'in 2 days at 22:30': [nineAm],
+  'in 2 days at 9am': [nineAm],
+  'in 2 days 11pm': [nineAm],
+  'in 3 hours at 11pm': [nineAm],
+  '2 days at 3pm': ['Friday at 3:00 PM / in 2 days'],
+  'this week': ['Tuesday, October 5, 2027, 9:00 AM / in 1 year'],
+  'this week 3pm': ['Tuesday, October 5, 2027, 3:00 PM / in 1 year'],
+  'this weekend': ['Saturday at 9:00 AM / in 3 days'],
+  'next weekend': ['Saturday, October 17, 9:00 AM / in 10 days'],
+  weekend: [],
+  friday: ['Friday at 9:00 AM / in 2 days'],
+  tomorrow: ['Tomorrow at 9:00 AM / in 1 day'],
+  'in 2 days': ['In 2 days / Fri, 9 Oct, 9:00 AM'],
+  9: [
+    'Friday at 9:00 AM / in 2 days',
+    'In 9 minutes / Wed, 7 Oct, 10:28 PM',
+    'In 9 hours / Thu, 8 Oct, 7:19 AM',
+    'In 9 days / Fri, 16 Oct, 10:19 PM',
+    'In 9 weeks / Wed, 9 Dec, 10:19 PM',
+  ],
+  21: [
+    'Wednesday, October 21, 9:00 AM / in 14 days',
+    'In 21 minutes / Wed, 7 Oct, 10:40 PM',
+    'In 21 hours / Thu, 8 Oct, 7:19 PM',
+    'In 21 days / Wed, 28 Oct, 10:19 PM',
+    'In 21 weeks / Wed, 3 Mar, 10:19 PM',
+  ],
+};
+for (const [query, want] of Object.entries(eveningExpect)) assert.deepEqual(rows(query, evening), want, `${query} (evening)`);
+// At 10:20:04 PM.
+assert.deepEqual(rows('11', new Date(2026, 9, 7, 22, 20, 4)), [
+  'Today at 11:00 PM / Wed, 7 Oct, 11:00 PM',
+  'Sunday at 9:00 AM / in 4 days',
+  'In 11 minutes / Wed, 7 Oct, 10:31 PM',
+  'In 11 hours / Thu, 8 Oct, 9:20 AM',
+  'In 11 days / Sun, 18 Oct, 10:20 PM',
+  'In 11 weeks / Wed, 23 Dec, 10:20 PM',
+]);
+
+const total = Object.keys(expect).length + Object.keys(afternoonExpect).length + Object.keys(eveningExpect).length + 11;
 console.log(`snooze query: ${total} checks match Linear`);
