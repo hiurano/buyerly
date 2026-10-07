@@ -101,7 +101,7 @@ Recorded so that nobody has to rediscover them, and so this contract does not cl
 
 - **No shared form dialog primitive.** Confirmations use `ConfirmDialog`, but `MetaConnectionDialog`, `CreateRuleModal` and `ChangeEmailDialog` each still compose Radix directly. A fourth form dialog should extract a shared primitive into `frontend/src/ui/` first.
 - **`prefers-reduced-motion` is not honored anywhere.** Motion tokens exist; the media query does not. Open work.
-- **Mobile is partial.** Navigation follows Linear's small layout (sidebar drawer, `scripts/mobile-sidebar-browser.mjs`); the screens themselves have not had a full responsive pass (BL-052). Do not describe a screen as mobile-ready until it does.
+- **Small screens are covered screen by screen.** Navigation, Settings, Search, Rules, Ads Manager and Inbox follow Linear's small layout and are checked in Chromium at 390/768/1024/1440px (`scripts/mobile-sidebar-browser.mjs`, `scripts/mobile-screens-browser.mjs`, `scripts/rules-phone-browser.mjs`, `scripts/search-page-browser.mjs`). A new screen, or a new control in a header, joins those checks before it is called mobile-ready.
 
 ## Change protocol
 

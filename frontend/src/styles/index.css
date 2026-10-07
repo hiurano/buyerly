@@ -2703,11 +2703,6 @@ html[data-theme='dark'] .buyerly-auth-page,
 .linear-facet-count { color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
 .linear-facet-empty { padding: var(--facet-empty-padding); color: var(--text-tertiary); font-size: var(--facet-font-size); }
 .campaign-filter-summary { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: var(--facet-sidebar-gap); padding: var(--facet-empty-padding); color: var(--text-secondary); font-size: var(--facet-font-size); }
-@media (max-width: 767px) {
-  .campaign-view-body { flex-direction: column; overflow-y: auto; }
-  .campaign-view-list { flex: 1 0 auto; min-height: var(--facet-row-height); }
-  .campaign-view-details { flex: 0 0 auto; width: 100%; }
-}
 /* Override the shared fixed toolbar height when controls wrap on narrow views. */
 .campaign-view-toolbar { height: auto !important; min-height: var(--facet-row-height); flex-wrap: wrap; gap: var(--facet-sidebar-gap); padding-block: var(--facet-sidebar-gap); }
 .campaign-view-toolbar > * { max-width: 100%; }
@@ -3361,4 +3356,68 @@ html[data-theme='dark'] .buyerly-auth-page,
 .preferences-connect-button:disabled {
   cursor: default;
   opacity: 0.5;
+}
+
+/* A view's details panel at the small width, measured in Linear at 375/390px:
+   it lies over the list from the right, below the view header (which stays
+   usable), 350px wide (the whole window when narrower). The panel's own card
+   sits 4px from its left edge and 8px from the right and bottom. The sheet
+   itself is transparent (DetailsSheet). */
+.details-sheet {
+  position: fixed;
+  top: var(--details-sheet-top, 0px);
+  right: 0;
+  bottom: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  width: min(350px, 100vw);
+  animation: detailsSheetEnter 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Linear dims the list under it only on a phone (640px and below). */
+.details-sheet-backdrop {
+  position: fixed;
+  top: var(--details-sheet-top, 0px);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 80;
+  display: none;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+@media (max-width: 640px) {
+  .details-sheet-backdrop { display: block; }
+}
+
+@keyframes detailsSheetEnter {
+  from { transform: translateX(calc(100% + 16px)); }
+  to { transform: translateX(0); }
+}
+
+.details-sheet > .campaign-view-details {
+  flex: 1 1 auto;
+  width: 100%;
+  padding: 0 8px 8px 4px;
+}
+
+/* Popovers anchored to a header button never leave a narrow window. */
+.linear-display-options-popover {
+  max-width: calc(100vw - 16px);
+}
+
+/* Linear's pure-touch headers (measured at 375px): icon buttons grow from 28px
+   to 32px square, view tabs to 32px tall. */
+@media (hover: none) and (pointer: coarse) {
+  .linear-header-target {
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+  }
+
+  .linear-tab-capsule,
+  .linear-inbox-tab {
+    height: 32px;
+  }
 }

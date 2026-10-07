@@ -120,7 +120,7 @@ const OPEN_LAYER_SELECTOR = [
 ].join(', ');
 
 const headerButtonClass = (active = false) =>
-  `flex h-7 w-7 shrink-0 items-center justify-center rounded-full outline-none transition-[border-color,background-color,color,opacity,fill,stroke] duration-150 ease-[ease] ${
+  `linear-header-target flex h-7 w-7 shrink-0 items-center justify-center rounded-full outline-none transition-[border-color,background-color,color,opacity,fill,stroke] duration-150 ease-[ease] ${
     active
       ? 'bg-[var(--item-active-bg)] text-[var(--text-primary)]'
       : 'text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'
@@ -714,7 +714,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                 <button
                   type="button"
                   onClick={() => openItem(null)}
-                  className="linear-icon-btn md:hidden"
+                  className="linear-icon-btn linear-header-target md:hidden"
                   aria-label="Back to Inbox"
                 >
                   <ArrowLeft size={16} aria-hidden="true" />
