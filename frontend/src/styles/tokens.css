@@ -104,6 +104,9 @@
   --inbox-group-header-bg: lch(9.232% 0.85 272 / 1);
   --inbox-tab-bg: lch(10.149% 0.593 272 / 1);
   --inbox-tab-active-bg: lch(16.706% 0.979 272 / 1);
+  --inbox-tab-fg: lch(61.803% 1.2 272 / 1); /* inactive tab label and tab count */
+  --inbox-group-header-fg: lch(63.304% 1.425 272 / 1);
+  --inbox-group-header-icon: lch(39.452% 1.425 272 / 1);
   --inbox-error-bg: lch(66% 80 48 / 1);
   --inbox-filter-bg: lch(9.345% 0.85 272 / 1); /* Linear Inbox filter box */
   --inbox-filter-chip-bg: lch(10.149% 0.689 272 / 1);
@@ -172,6 +175,14 @@
   --action-primary-hover: #6875e5;
   /* Snooze Custom… calendar: weekend columns, measured in Linear. */
   --calendar-weekend-bg: lch(13.553% 1.93 272 / 1);
+  --calendar-selected-bg: var(--action-primary);
+  --calendar-selected-fg: #ffffff;
+  --calendar-cancel-bg: var(--color-border-secondary);
+  --calendar-cancel-fg: var(--text-secondary);
+  --calendar-cancel-shadow: none;
+  --calendar-apply-bg: var(--action-primary);
+  --calendar-apply-fg: #ffffff;
+  --calendar-apply-shadow: none;
 
   /* Add Filter command menu */
   --filter-menu-border: var(--color-border-secondary);
@@ -264,10 +275,13 @@ html[data-theme='light'] {
   --item-active-bg: lch(89.54% 0.5 282 / 1);      /* #e1e1e2 */
   --row-selected-bg: lch(92.254% 5.903 282.518 / 1);       /* Linear selected row */
   --inbox-unread-dot: lch(47.918% 59.303 288.421 / 1);
-  /* Not measured in light Linear yet: between canvas and hover. */
+  /* Linear Inbox Focus group headers and Priority / Other tabs, measured in light Linear. */
   --inbox-group-header-bg: lch(94.44% 0.5 282 / 1);
-  --inbox-tab-bg: lch(94.44% 0.5 282 / 1);
-  --inbox-tab-active-bg: lch(89.54% 0.5 282 / 1);
+  --inbox-tab-bg: lch(99.997% 0.5 282 / 1);
+  --inbox-tab-active-bg: lch(93.483% 0.5 282 / 1);
+  --inbox-tab-fg: lch(39.176% 1.25 282 / 1); /* inactive tab label and tab count */
+  --inbox-group-header-fg: lch(37.776% 1.25 282 / 1);
+  --inbox-group-header-icon: lch(62.33% 1.25 282 / 1);
   --inbox-error-bg: lch(58% 79 48 / 1);
   --inbox-filter-bg: lch(97.5% 0.5 282 / 1);
   --inbox-filter-chip-bg: lch(99.5% 0 282 / 1);
@@ -313,8 +327,16 @@ html[data-theme='light'] {
   --focus-ring-color: #6d78d5;
   --action-primary: #5e6ad2;
   --action-primary-hover: #6875e5;
-  /* Snooze Custom… calendar: weekend columns (light not measured; the canvas border tone). */
-  --calendar-weekend-bg: var(--color-border-primary);
+  /* Snooze Custom… calendar, measured in light Linear 2026-10-07 (#244). */
+  --calendar-weekend-bg: lch(97.3% 0 282 / 1);
+  --calendar-selected-bg: lch(53% 52.26 286.91 / 1);
+  --calendar-selected-fg: lch(100% 5 286.91 / 1);
+  --calendar-cancel-bg: lch(100% 0 282 / 1);
+  --calendar-cancel-fg: lch(20% 1 282 / 1);
+  --calendar-cancel-shadow: 0 0 0 1px lch(0% 0 0 / 0.103), 0 3px 6px -2px lch(0% 0 0 / 0.02), 0 1px 1px lch(0% 0 0 / 0.04);
+  --calendar-apply-bg: lch(53% 52.26 286.91 / 1);
+  --calendar-apply-fg: lch(100% 5 286.91 / 1);
+  --calendar-apply-shadow: 0 3px 6px -2px lch(0% 0 0 / 0.02), 0 1px 1px lch(0% 0 0 / 0.04);
 
   /* Linear Add Filter light-theme measurements. */
   --filter-menu-border: lch(90.55% 0 282 / 1);
