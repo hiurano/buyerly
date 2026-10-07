@@ -86,6 +86,8 @@ export function inboxFilterFields(
         value: value.value,
         label: entry.optionLabel(value),
         count: everyone ? undefined : value.count,
+        // Linear lists people first, then its agents tagged "Agent"; rules are ours.
+        badge: everyone && value.value.startsWith('rule:') ? 'Rule' : undefined,
       })),
       unmatchedCount: entry.field === 'type' && facets
         ? KNOWN_AUDIT_EVENT_TYPES.filter((type) => !values.some((value) => value.value === type)).length

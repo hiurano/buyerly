@@ -606,6 +606,11 @@ try {
       await ruleFrom.getByRole('option', { name: /Pavel Quiet/ }).waitFor();
       assert.equal(await ruleFrom.getByRole('option').count(), 4);
       assert.doesNotMatch(await ruleFrom.innerText(), /notification/);
+      // People first, then rules tagged like Linear's agents ("Agent"), Buyerly last.
+      assert.deepEqual(
+        (await ruleFrom.getByRole('option').allInnerTexts()).map((text) => text.replace(/\s+/g, ' ').trim()),
+        ['Olga Owner', 'Pavel Quiet', 'Stop without leads Rule', 'Buyerly'],
+      );
       await page.keyboard.press('Escape');
       await customFilters.getByRole('button', { name: 'Cancel' }).click();
       await customFilters.getByRole('button', { name: 'Custom filter actions' }).click();
