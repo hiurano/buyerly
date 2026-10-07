@@ -107,5 +107,18 @@ if ! docker exec "${API_CONTAINER}" python -m database.restore_check --database 
     exit 1
 fi
 
+
+# Row counts for the record (#199): restored copy next to the live database.
+# Informational only; live may have grown since the backup was taken.
+count_rows() {
+    docker exec "${POSTGRES_CONTAINER}" psql --username="${POSTGRES_USER}" --dbname="$1" \
+        --no-psqlrc --tuples-only --no-align --command="SELECT count(*) FROM $2" 2>/dev/null || echo "?"
+}
+echo
+echo "  Rows (restored / live now):"
+for table in users workspaces workspace_members meta_connections accounts rule_presets audit_events analytics_entity_daily_facts; do
+    printf '    %-30s %8s / %s\n' "${table}" "$(count_rows "${DRILL_DB}" "${table}")" "$(count_rows buyerly "${table}")"
+done
+
 echo
 echo "[SUCCESS] The backup restores into a database this release can run on ($(( $(date +%s) - started )) s)."

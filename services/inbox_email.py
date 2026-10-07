@@ -71,6 +71,8 @@ EVENT_TITLES = {
     "ASSISTANT_CREATE_RULE": "AI assistant created a rule",
     "ASSISTANT_ATTACH_RULE": "AI assistant attached a rule",
     "ASSISTANT_DETACH_RULE": "AI assistant detached a rule",
+    "WORKER_STALLED": "Rules are not being checked",
+    "WORKER_RECOVERED": "Rules are being checked again",
 }
 
 
