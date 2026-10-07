@@ -62,7 +62,7 @@ const MonthGrid: React.FC<MonthGridProps> = ({ first, today, selected, onSelect 
       {WEEKDAY_LABELS.map((label, index) => (
         <div
           key={label}
-          className={`flex w-[26px] flex-col items-center rounded-[6px] pb-[8px] ${
+          className={`flex w-[26px] flex-col items-center rounded-[8px] pb-[8px] ${
             index === 0 || index === 6 ? 'bg-[var(--calendar-weekend-bg)]' : ''
           }`}
         >
@@ -85,7 +85,7 @@ const MonthGrid: React.FC<MonthGridProps> = ({ first, today, selected, onSelect 
                   onClick={() => onSelect(day)}
                   className={`flex h-[26px] w-[26px] items-center justify-center rounded-full text-[12px] outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] ${
                     isSelected
-                      ? 'bg-[var(--action-primary)] text-white'
+                      ? 'bg-[var(--calendar-selected-bg)] text-[var(--calendar-selected-fg)]'
                       : past
                         ? 'cursor-default text-[var(--text-muted)]'
                         : `${weekend ? 'text-[var(--text-tertiary)]' : 'text-[var(--text-secondary)]'} hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]`
@@ -178,11 +178,17 @@ export const SnoozeCalendarDialog: React.FC<SnoozeCalendarDialogProps> = ({ open
             <div className="mt-[20px] flex justify-end gap-[10px]">
               <Button
                 onClick={() => onOpenChange(false)}
-                className="!border-transparent !bg-[var(--color-border-secondary)]"
+                className="!border-transparent !bg-[var(--calendar-cancel-bg)] !text-[13px] !text-[var(--calendar-cancel-fg)] shadow-[var(--calendar-cancel-shadow)]"
               >
                 Cancel
               </Button>
-              <Button variant="primary" onClick={apply}>Apply</Button>
+              <Button
+                variant="primary"
+                onClick={apply}
+                className="!bg-[var(--calendar-apply-bg)] !text-[13px] !text-[var(--calendar-apply-fg)] shadow-[var(--calendar-apply-shadow)] hover:brightness-110"
+              >
+                Apply
+              </Button>
             </div>
           </Dialog.Content>
         </div>
