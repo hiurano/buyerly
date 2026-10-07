@@ -46,8 +46,13 @@ interface InviteViewProps {
   user: SessionUser | null;
   onAuthenticated: (result: LoginResult) => void | Promise<void>;
   onAccepted: (workspaceSlug: string, onboardingCompleted: boolean) => void;
-  /** The current session ended so a different email can log in. */
-  onSignedOut: () => void;
+  /**
+   * The open account logged out; `thenLogIn`: the invited email logs in next.
+   * Other accounts logged in to this browser stay logged in (#231).
+   */
+  onSignedOut: (thenLogIn: boolean) => void | Promise<void>;
+  /** Linear's "Add an account": logs in to one more account, keeping this one. */
+  onAddAccount: () => void;
   onBack: () => void;
 }
 
@@ -70,6 +75,7 @@ export const InviteView: React.FC<InviteViewProps> = ({
   onAuthenticated,
   onAccepted,
   onSignedOut,
+  onAddAccount,
   onBack,
 }) => {
   const [invite, setInvite] = useState<InviteInfo | null>(null);
@@ -128,7 +134,7 @@ export const InviteView: React.FC<InviteViewProps> = ({
     try {
       await apiRequest('/api/auth/logout', { method: 'POST', body: JSON.stringify({}) });
       if (thenLogIn) setShowLogin(true);
-      onSignedOut();
+      await onSignedOut(thenLogIn);
     } catch (logoutError) {
       setError(logoutError instanceof Error ? logoutError.message : 'Could not log out');
     } finally {
@@ -163,7 +169,7 @@ export const InviteView: React.FC<InviteViewProps> = ({
             <ChevronLeft size={14} strokeWidth={2} aria-hidden="true" />
             Back to Buyerly
           </button>
-          {/* Linear's account switcher. "Add an account" waits for several accounts (#231). */}
+          {/* Linear's account switcher; "Add an account" keeps this account logged in (#231). */}
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <button className="buyerly-invite-account" type="button">
@@ -179,6 +185,7 @@ export const InviteView: React.FC<InviteViewProps> = ({
                 <span className="min-w-0 truncate">{user.email || user.username}</span>
                 <Check size={14} strokeWidth={2} aria-hidden="true" />
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={onAddAccount}>Add an account</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => void logOut(false)}>Log out</DropdownMenuItem>
             </DropdownMenuContent>

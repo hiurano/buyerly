@@ -422,6 +422,53 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(statuses, [200, 200, 200, 200, 200, 409])
             self.assertEqual(len((await browser.get("/api/auth/accounts")).json()), 5)
 
+    async def test_security_revocation_ends_only_its_own_account_in_a_shared_browser(self):
+        """Security & access acts on the named account; the other one stays logged in."""
+        async with self.test_session_maker() as session:
+            buyer = (
+                await session.execute(select(User).where(User.username == "buyer_nick"))
+            ).scalar_one()
+            buyer.password_hash = hash_password("buyer-password")
+            await session.commit()
+
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="https://test") as browser:
+            buyer_id = (await browser.post(
+                "/api/auth/login", json={"username": "buyer_nick", "password": "buyer-password"}
+            )).json()["account_id"]
+            admin_id = (await browser.post(
+                "/api/auth/login", json={"username": "admin_user", "password": "admin-password"}
+            )).json()["account_id"]
+            as_buyer = {"X-Buyerly-Account": str(buyer_id)}
+            as_admin = {"X-Buyerly-Account": str(admin_id)}
+
+            # The buyer's session list holds only the buyer's own session.
+            buyer_sessions = (await browser.get("/api/auth/sessions", headers=as_buyer)).json()
+            self.assertEqual(len(buyer_sessions), 1)
+            self.assertTrue(buyer_sessions[0]["current"])
+
+            # Revoking the buyer's current session clears the buyer's cookies only.
+            revoke = await browser.delete(
+                f"/api/auth/sessions/{buyer_sessions[0]['id']}",
+                headers={**as_buyer, "X-CSRF-Token": browser.cookies.get("buyerly_csrf")},
+            )
+            self.assertEqual(revoke.status_code, 200, revoke.text)
+            cleared = revoke.headers.get("set-cookie", "")
+            self.assertIn("buyerly_session=", cleared)
+            self.assertNotIn("buyerly_session_1=", cleared)
+            self.assertEqual((await browser.get("/api/me", headers=as_buyer)).status_code, 401)
+            self.assertEqual((await browser.get("/api/me", headers=as_admin)).status_code, 200)
+
+            # "Log out of all" for the admin ends the admin's slot, not anything else.
+            log_out_all = await browser.post(
+                "/api/auth/logout-all",
+                headers={**as_admin, "X-CSRF-Token": browser.cookies.get("buyerly_csrf_1")},
+            )
+            self.assertEqual(log_out_all.status_code, 200, log_out_all.text)
+            self.assertIn("buyerly_session_1=", log_out_all.headers.get("set-cookie", ""))
+            self.assertEqual((await browser.get("/api/me", headers=as_admin)).status_code, 401)
+            self.assertEqual((await browser.get("/api/auth/accounts")).json(), [])
+
     async def test_browser_accounts_without_sign_in_is_empty(self):
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="https://test") as browser:

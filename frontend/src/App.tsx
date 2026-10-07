@@ -448,6 +448,9 @@ export const App: React.FC = () => {
       }
     }
 
+    // Add an account is open to any logged-in account, also one without a workspace yet.
+    if (route.kind === 'add-account') return;
+
     const workspace = activeWorkspace(user);
     if (!workspace) {
       if (route.kind !== 'create-workspace') navigate('/create-workspace', true);
@@ -502,10 +505,21 @@ export const App: React.FC = () => {
           setUser(nextUser);
           navigate(onboardingCompleted ? `/${workspaceSlug}/inbox` : `/${workspaceSlug}/welcome`, true);
         }}
-        onSignedOut={() => {
+        onSignedOut={async (thenLogIn) => {
+          // Only the open account logged out. Going on to log in as the invited
+          // email shows the login; otherwise another account still logged in
+          // here takes over the page, else it shows the logged-out invitation.
           useAppStore.getState().setWorkspaceScope(null);
-          setUser(null);
+          const list = await loadAccounts().catch(() => [] as BrowserAccount[]);
+          const next = thenLogIn ? null : chooseAccount(list);
+          setCurrentAccountId(next ? next.id : null);
+          if (!next) {
+            setUser(null);
+            return;
+          }
+          await refreshUser().catch(() => setUser(null));
         }}
+        onAddAccount={() => navigate(`/auth/add-account?invite=${encodeURIComponent(route.token)}`)}
         onBack={() => navigate('/', true)}
       />
     );
@@ -519,12 +533,22 @@ export const App: React.FC = () => {
   const workspace = activeWorkspace(user);
   if (route.kind === 'add-account') {
     // Linear's "Add an account": the same email login, while this account stays logged in.
+    const inviteToken = route.inviteToken;
+    const invitePath = inviteToken ? `/invite/${encodeURIComponent(inviteToken)}` : null;
     return (
       <LoginView
         title="Add an account"
         loggedInAs={user.email || user.username}
-        onBack={() => navigate(workspace ? `/${workspace.slug}/inbox` : '/')}
-        onAuthenticated={handleAuthenticated}
+        inviteToken={inviteToken || undefined}
+        onBack={() => navigate(invitePath || (workspace ? `/${workspace.slug}/inbox` : '/'))}
+        onAuthenticated={invitePath
+          ? async (result) => {
+            // From an invitation: the new account returns to it and accepts it there.
+            await adoptLogin(result);
+            await refreshUser();
+            navigate(result.redirect_url || invitePath, true);
+          }
+          : handleAuthenticated}
       />
     );
   }
