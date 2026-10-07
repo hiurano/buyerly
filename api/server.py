@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import os
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +16,7 @@ from core.config import settings
 from core.rate_limit import limiter
 from core.workspace_slugs import RESERVED_WORKSPACE_SLUGS
 from database.db import async_session_maker
+from services import worker_watchdog
 from services.image_uploads import UPLOADS_ROOT, cleanup_stale_workspace_logos
 from meta_api.client import MetaClient
 from services.inventory_cache import PostgreSQLInventoryCache
@@ -29,6 +30,8 @@ async def lifespan(app: FastAPI):
     if app.state.meta_client is None:
         app.state.meta_client = _create_meta_client()
     client = app.state.meta_client
+    # Independent of the worker, so a stalled worker still gets reported (#199).
+    watchdog = asyncio.create_task(worker_watchdog.run_forever())
     try:
         try:
             async with async_session_maker() as session:
@@ -42,6 +45,9 @@ async def lifespan(app: FastAPI):
         yield
         webhook.cancel()
     finally:
+        watchdog.cancel()
+        with suppress(asyncio.CancelledError):
+            await watchdog
         app.state.meta_client = None
         await client.aclose()
 
@@ -133,6 +139,26 @@ def create_app() -> FastAPI:
                 content={"status": "not_ready", "version": settings.APP_VERSION},
             )
         return {"status": "ready", "version": settings.APP_VERSION}
+
+    # Freshness of the worker's actual work, for an external uptime monitor:
+    # 503 once no monitoring cycle has finished for CRITICAL_LAG_SECONDS, even
+    # if the worker process and its heartbeat are alive (#199). Readiness
+    # stays about this API's own dependencies.
+    @app.get("/health/worker", include_in_schema=False)
+    async def health_worker():
+        try:
+            async with async_session_maker() as session:
+                cycle = await worker_watchdog.read_cycle_status(session)
+        except Exception:
+            logger.exception("Worker freshness check failed")
+            return JSONResponse(status_code=503, content={"status": "unavailable"})
+        body = {
+            "status": cycle["status"],
+            "lag_seconds": cycle["lag_seconds"],
+            "warning_seconds": worker_watchdog.WARNING_LAG_SECONDS,
+            "critical_seconds": worker_watchdog.CRITICAL_LAG_SECONDS,
+        }
+        return JSONResponse(status_code=503 if cycle["status"] == "critical" else 200, content=body)
 
     if not settings.SERVE_STATIC:
         return app

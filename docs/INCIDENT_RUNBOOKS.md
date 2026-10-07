@@ -17,6 +17,24 @@ day-boundary marker is absent after deploy.
 4. Require a fresh heartbeat and one complete day-boundary cycle before closing.
 5. If the release introduced the failure, redeploy the previous known-good SHA.
 
+## Monitoring cycle stalled while the heartbeat is alive
+
+**Signal:** urgent Inbox notification "Rules are not being checked"
+(`WORKER_STALLED`), `/health/worker` returns 503, or `/api/health/overview`
+shows `worker_cycle_status: critical`. The heartbeat may still be fresh: a
+cycle stuck on an await does not stop the heartbeat job (#199).
+
+1. Check `curl -s http://127.0.0.1:8080/health/worker` on the server for the
+   lag and `docker inspect -f '{{.State.Status}} {{.State.Paused}}' buyerly-worker`.
+2. Inspect `docker compose logs --tail=160 worker`: the last "Monitoring cycle"
+   line and any Meta timeout show where the cycle stopped.
+3. Restart only the worker with `docker compose up -d --no-deps --force-recreate worker`.
+4. Close when `/health/worker` is `ok` and Inbox shows "Rules are being
+   checked again" (`WORKER_RECOVERED`, written within a minute of recovery).
+
+Rehearse with the `worker-stall` drill of the "Ops drill (manual)" workflow
+(see `DEPLOYMENT.md`); it pauses the production worker for about 8-10 minutes.
+
 ## Database or migration
 
 **Signal:** `/health/ready` is 503, migration container fails, or the smoke

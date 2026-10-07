@@ -8,7 +8,7 @@ This document is the operating contract for Buyerly production. All windows use 
 |---|---:|---:|---:|---|---|
 | API availability | 99.9% over 30 days | below 99.95% | below 99.9% | Platform owner | external `/health/live` and `/health/ready` synthetic checks |
 | API latency | p95 below 500 ms over 24 hours | 400 ms | 500 ms | Backend owner | synthetic timing and API telemetry |
-| Worker cycle lag | cycle completes within 3 min of schedule | 180 s | 360 s | Automation owner | `automation_runtime_states.finished_at` |
+| Worker cycle lag | cycle completes within 3 min of schedule | 180 s | 360 s | Automation owner | `automation_runtime_states.finished_at`; `/health/worker` (503 when critical); urgent `WORKER_STALLED` Inbox notification |
 | Rule-action error rate | below 2% over 24 hours | 2% | 5% | Automation owner | workspace `RULE_ACTION` audit events |
 | Meta quota | below the configured soft limit | 60% | 80% | Meta integration owner | latest Meta usage headers stored in worker runtime |
 | Token health | all active connections usable | expiry within 7 days or reconnect required | expired/missing scopes | Workspace admin | workspace Meta connection status |
@@ -16,6 +16,8 @@ This document is the operating contract for Buyerly production. All windows use 
 | Verified backup age | newer than 26 hours | 26 h | 48 h | Platform owner | deploy/backup verifier runtime signal |
 
 The API availability and latency target fields returned by `/api/health/overview` are objectives. The measured `api_synthetic_*` values come from the read-only post-deploy `/health/live` and `/health/ready` probes for the exact release SHA; they are never fabricated from application traffic. Long-window availability remains the responsibility of the external uptime monitor. The verified backup script publishes `last_backup_at`; the API derives `backup_age_hours` from that timestamp. A missing measurement is treated as unknown rather than healthy.
+
+Three health signals answer three different questions (#199). Readiness (`/health/ready`) is about the API's own dependencies (database, rate limiter). Liveness of the worker process is its heartbeat file and Docker healthcheck. Freshness of the worker's actual work is the age of the last completed monitoring cycle: `/health/worker` returns 503 once it reaches 360 s, `/api/health/overview` reports `worker_cycle_status` and lets it override `overall_status` (warning: degraded, critical: critical), and the API's watchdog adds one urgent `WORKER_STALLED` Inbox notification to every workspace with an active ad account, then `WORKER_RECOVERED` once cycles finish again. While the worker is stalled the API also runs the Inbox email and Telegram deliveries, which normally run in the worker. A cycle that finishes with errors still counts as finished; its `errors_count` is shown as `worker_cycle_errors_count`.
 
 ## Account health states
 

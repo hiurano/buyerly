@@ -1,0 +1,113 @@
+name: Ops drill (manual)
+
+# Production recovery rehearsals (#199). Runs only when started by hand from
+# the Actions tab (or `gh workflow run ops-drill.yml -f drill=... -f confirm=...`);
+# never on push, schedule or pull request. Each drill runs a script from the
+# production checkout /opt/buyerly (the last deployed main) over SSH:
+#
+#   restore-local     scripts/drill_restore.sh: newest local backup into the
+#                     throwaway database buyerly_restore_drill (dropped after);
+#                     Alembic revision, schema, data, app read, row counts.
+#   restore-offsite   scripts/offsite_restore_drill.sh: newest S3 copy into a
+#                     throwaway container without network. Needs S3_* in .env.
+#   restore-offsite-negative  the same plus four failure cases.
+#   uploads           scripts/drill_uploads.sh: buyerly-uploads archived
+#                     read-only and restored into a throwaway volume.
+#   worker-stall      scripts/drill_worker_stall.sh: PAUSES the production
+#                     worker for about 8-10 minutes (no rule checks or actions
+#                     meanwhile) and checks /health/worker and the Inbox alert.
+#
+# None of them writes to the production database or the uploads volume.
+
+on:
+  workflow_dispatch:
+    inputs:
+      drill:
+        description: Which drill to run on the production server
+        type: choice
+        required: true
+        default: restore-local
+        options:
+          - restore-local
+          - restore-offsite
+          - restore-offsite-negative
+          - uploads
+          - worker-stall
+      confirm:
+        description: Type the drill name again to confirm
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: buyerly-ops-drill
+  cancel-in-progress: false
+
+jobs:
+  drill:
+    name: ${{ inputs.drill }} drill on production
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+
+    steps:
+      - name: Check confirmation
+        env:
+          DRILL: ${{ inputs.drill }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "${DRILL}" != "${CONFIRM}" ]; then
+            echo "::error title=Not confirmed::Type '${DRILL}' in the confirm field to run this drill."
+            exit 1
+          fi
+
+      - name: Run the drill over SSH
+        id: drill_ssh
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME || 'root' }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          passphrase: ${{ secrets.VPS_SSH_PASSPHRASE || '' }}
+          password: ${{ secrets.VPS_PASSWORD || '' }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          command_timeout: 25m
+          capture_stdout: true
+          script: |
+            set -e
+            cd /opt/buyerly
+            echo "Server checkout: $(git rev-parse --short HEAD)"
+            case "${{ inputs.drill }}" in
+              restore-local) cmd="bash scripts/drill_restore.sh" ;;
+              restore-offsite) cmd="bash scripts/offsite_restore_drill.sh" ;;
+              restore-offsite-negative) cmd="bash scripts/offsite_restore_drill.sh --negative" ;;
+              uploads) cmd="bash scripts/drill_uploads.sh" ;;
+              worker-stall) cmd="bash scripts/drill_worker_stall.sh" ;;
+              *) echo "Unknown drill"; exit 1 ;;
+            esac
+            if [ "$(id -u)" -ne 0 ]; then cmd="sudo -n ${cmd}"; fi
+            echo "Running: ${cmd}"
+            if ${cmd}; then
+              echo "BUYERLY_DRILL_RESULT=success"
+            else
+              echo "BUYERLY_DRILL_RESULT=failure"
+            fi
+            exit 0
+
+      - name: Assert drill result
+        env:
+          DRILL_OUTPUT: ${{ steps.drill_ssh.outputs.stdout }}
+        run: |
+          {
+            echo "## ${{ inputs.drill }} drill"
+            echo '```'
+            printf '%s\n' "${DRILL_OUTPUT}"
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
+          if printf '%s\n' "${DRILL_OUTPUT}" | grep -q '^BUYERLY_DRILL_RESULT=success$'; then
+            exit 0
+          fi
+          echo "::error title=Drill failed::See the job summary for the drill output."
+          exit 1

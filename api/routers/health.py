@@ -9,6 +9,7 @@ from api.auth import get_current_user
 from api.deps import get_user_workspace
 from database.db import async_session_maker
 from database.models import Account, AccountHealth, AppSettings, AuditEvent, AutomationRuntimeState, MetaConnection, User
+from services import worker_watchdog
 from services.account_health import health_payload
 
 
@@ -60,14 +61,8 @@ async def health_overview(user: User = Depends(get_current_user)):
 
         runtime_row = await session.get(AutomationRuntimeState, "monitoring")
         runtime = _runtime_payload(runtime_row)
-        finished_at = runtime.get("finished_at")
-        worker_lag_seconds = None
-        if finished_at:
-            try:
-                finished = datetime.fromisoformat(str(finished_at).replace("Z", "+00:00"))
-                worker_lag_seconds = max(0, int((datetime.now(timezone.utc) - finished).total_seconds()))
-            except (TypeError, ValueError):
-                pass
+        worker_cycle = worker_watchdog.cycle_status(runtime)
+        worker_lag_seconds = worker_cycle["lag_seconds"]
 
         since = datetime.now(timezone.utc) - timedelta(hours=24)
         action_total = (
@@ -119,6 +114,12 @@ async def health_overview(user: User = Depends(get_current_user)):
                 **payload,
             })
         overall = "unknown" if not accounts else "critical" if counts["critical"] else "degraded" if counts["degraded"] else "unknown" if counts["unknown"] else "healthy"
+        # Saved account health stays green while no cycle runs, so a stale
+        # worker overrides it (#199).
+        if accounts and worker_cycle["status"] == "critical":
+            overall = "critical"
+        elif accounts and worker_cycle["status"] == "warning" and overall != "critical":
+            overall = "degraded"
         usage_percent = int(((runtime.get("usage") or {}).get("max_percent") or 0))
         synthetic = dict(runtime.get("synthetic") or {})
         return {
@@ -132,9 +133,11 @@ async def health_overview(user: User = Depends(get_current_user)):
                 "api_synthetic_latency_p95_ms": synthetic.get("latency_p95_ms"),
                 "api_synthetic_measured_at": synthetic.get("measured_at"),
                 "api_synthetic_release_sha": synthetic.get("release_sha"),
+                "worker_cycle_status": worker_cycle["status"],
                 "worker_cycle_lag_seconds": worker_lag_seconds,
-                "worker_cycle_lag_warning_seconds": 180,
-                "worker_cycle_lag_critical_seconds": 360,
+                "worker_cycle_lag_warning_seconds": worker_watchdog.WARNING_LAG_SECONDS,
+                "worker_cycle_lag_critical_seconds": worker_watchdog.CRITICAL_LAG_SECONDS,
+                "worker_cycle_errors_count": worker_cycle["errors_count"],
                 "action_error_rate_24h_percent": action_error_rate,
                 "action_error_rate_warning_percent": 2,
                 "action_error_rate_critical_percent": 5,

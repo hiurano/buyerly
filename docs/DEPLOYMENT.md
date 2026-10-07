@@ -309,6 +309,28 @@ sudo bash scripts/offsite_restore_drill.sh --negative # плюс четыре с
 ```
 Скрипт идёт тем же путём, что при потере сервера: скачивает самую новую копию из S3 в пустой каталог штатным `restore_db.sh --download-latest-offsite` и восстанавливает её во временный контейнер PostgreSQL того же образа, что `buyerly-db`, без сети (`--network none`, 256 МБ памяти). Боевая база только читается для сравнения; worker и рекламные действия к временной базе не подключены. Проверяется: объект зашифрован (`.sql.gz.enc`); Alembic revision и набор таблиц совпадают с боевыми; восстановлены все внешние ключи; количества строк в основных таблицах (для сравнения с текущими); все Meta-токены расшифровываются ключом работающего приложения (`META_TOKEN_ENCRYPTION_KEY` хранится в `.env`, а не в копии). Печатаются давность копии, время восстановления и версия кода, секреты и содержимое строк не выводятся. С `--negative` дополнительно: неверный ключ шифрования, отвергнутые ключи S3, несуществующий бакет и обрезанный архив должны завершиться ошибкой, не изменив восстановленную базу. Контейнер и временный каталог удаляются при любом исходе.
 
+`drill_restore.sh` после всех этапов печатает и количества строк основных таблиц: восстановленная копия / боевая база сейчас (только для сравнения, на результат не влияет).
+
+#### Запуск учений из GitHub Actions (#199)
+
+Workflow **Ops drill (manual)** (`.github/workflows/ops-drill.yml`) запускается только вручную: Actions → Ops drill (manual) → Run workflow, или
+```bash
+gh workflow run ops-drill.yml -f drill=restore-local -f confirm=restore-local
+```
+Поле `confirm` должно повторять имя учения. Workflow заходит на сервер по тем же SSH-секретам, что deploy, и выполняет скрипт из `/opt/buyerly` (последний выкаченный `main`); вывод попадает в summary запуска.
+
+| `drill` | Скрипт | Что затрагивает |
+|---|---|---|
+| `restore-local` | `drill_restore.sh` | временная БД `buyerly_restore_drill` в `buyerly-db`, удаляется; боевая БД только читается |
+| `restore-offsite` | `offsite_restore_drill.sh` | временный контейнер без сети; нужны `S3_*` и `BACKUP_ENCRYPTION_KEY` в `.env` |
+| `restore-offsite-negative` | `offsite_restore_drill.sh --negative` | то же плюс четыре случая отказа |
+| `uploads` | `drill_uploads.sh` | `buyerly-uploads` монтируется read-only, архив восстанавливается во временный volume `buyerly-uploads-drill` и сверяется по SHA-256 |
+| `worker-stall` | `drill_worker_stall.sh` | **ставит боевой worker на паузу** (`docker pause`) на 8–10 минут: правила не проверяются, Inbox-доставка идёт из API; проверяет 503 на `/health/worker`, `WORKER_STALLED` и `WORKER_RECOVERED`; worker снимается с паузы при любом исходе |
+
+Ни одно учение не пишет в боевую БД или в volume uploads. Учения по расписанию не запускаются.
+
+`/health/worker` (публичный, через nginx: `https://buyerly.app/health/worker`) отдаёт 503, когда последний завершённый monitoring cycle старше 360 с. Его стоит добавить во внешний uptime-монитор рядом с `/health/ready`: тогда о зависшем worker узнают и в случае, когда не работает сама доставка Inbox.
+
 `migrate` изменяет production-схему только через `alembic upgrade head`. Одновременный запуск блокируется PostgreSQL advisory lock; после миграции контейнер сверяет текущий revision с Alembic head и проверяет наличие всех таблиц и колонок из моделей. Для исторической базы без `alembic_version` разрешён только одноразовый переход на явно зафиксированный baseline `0009_web_sessions`, причём перед stamp выполняется fail-closed проверка схемы. `create_all()` и ручные `ALTER TABLE` в production-runner не используются.
 
 Пользовательские аватары и логотипы хранятся в именованном Docker volume

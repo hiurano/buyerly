@@ -27,11 +27,14 @@ Production: `https://buyerly.app`.
 |---|---|---|
 | `GET /health/live` | нет | процесс API запущен; возвращает `status` и commit в `version` |
 | `GET /health/ready` | нет | API может обратиться к PostgreSQL; при проблеме возвращает `503` |
+| `GET /health/worker` | нет | свежесть работы worker: `status` (`ok`, `warning`, `critical`, `unknown`) и `lag_seconds` с последнего завершённого monitoring cycle; `503`, когда цикл старше 360 с (#199) |
 
 Авторизованный обзор надёжности рабочего пространства доступен через
 `GET /api/health/overview`: он возвращает SLI, состояние кабинетов, свежесть
 данных, worker lag, Meta quota, synthetic availability/latency и возраст
-последнего backup без секретов и межворкспейсных данных.
+последнего backup без секретов и межворкспейсных данных. `signals.worker_cycle_status`
+(`ok` / `warning` / `critical` / `unknown`) учитывается в `overall_status`: устаревший
+monitoring cycle делает обзор `degraded` или `critical`, даже если кабинеты зелёные.
 
 ## Пользователь и сессия
 
