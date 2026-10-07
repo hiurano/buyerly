@@ -140,6 +140,7 @@
   --toast-shadow: 0 0 0 1px lch(100% 0 272 / 0.1), 0 6px 18px lch(0% 0 0 / 0.3), 0 3px 9px lch(0% 0 0 / 0.3), 0 1px 1px lch(0% 0 0 / 0.2);
   --toast-success-icon: #4cb782;
   --toast-error-icon: #f87171;
+  --toast-warning-icon: #f0bf00;        /* Linear's yellowBase, same in both themes */
   --session-current-text: #4cb782;      /* Linear's green "Current session" */
   --motion-toast-enter-duration: 180ms;
 
@@ -301,6 +302,7 @@ html[data-theme='light'] {
   --toast-shadow: 0 0 0 1px lch(0% 0 0 / 0.103), 0 6px 18px lch(0% 0 0 / 0.02), 0 3px 9px lch(0% 0 0 / 0.04), 0 1px 1px lch(0% 0 0 / 0.04);
   --toast-success-icon: #2da562;
   --toast-error-icon: #b42318;
+  --toast-warning-icon: #f0bf00;
   --session-current-text: #2da562;
   --tab-active-bg: lch(93.483% 0.5 282 / 1);      /* #eeeef0 */
   --tab-inactive-bg: transparent;

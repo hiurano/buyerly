@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CircleAlert, CircleCheck, Info, Redo2, Undo2 } from 'lucide-react';
+import { CircleAlert, CircleCheck, Info, Redo2, TriangleAlert, Undo2 } from 'lucide-react';
 import { LinearCloseIcon } from '@/icons/LinearIcons';
+import { Button } from '@/ui/Button';
 import { TOAST_DURATION_MS, useToastStore, type ToastItem, type ToastTone } from '@/ui/toast';
 
 const TONE_ICON: Record<ToastTone, React.ReactNode> = {
@@ -10,6 +11,7 @@ const TONE_ICON: Record<ToastTone, React.ReactNode> = {
   undo: <Undo2 size={16} className="text-[var(--text-secondary)]" />,
   redo: <Redo2 size={16} className="text-[var(--text-secondary)]" />,
   info: <Info size={16} className="text-[var(--text-secondary)]" />,
+  warning: <TriangleAlert size={16} className="text-[var(--toast-warning-icon)]" />,
 };
 
 /**
@@ -23,18 +25,18 @@ const ToastCard: React.FC<{ item: ToastItem }> = ({ item }) => {
   const remaining = useRef(TOAST_DURATION_MS);
 
   useEffect(() => {
-    if (item.tone === 'error' || held) return;
+    if (item.tone === 'error' || item.persistent || held) return;
     const startedAt = Date.now();
     const timer = window.setTimeout(() => dismiss(item.id), remaining.current);
     return () => {
       window.clearTimeout(timer);
       remaining.current -= Date.now() - startedAt;
     };
-  }, [dismiss, held, item.id, item.tone]);
+  }, [dismiss, held, item.id, item.persistent, item.tone]);
 
   return (
     <div
-      role={item.tone === 'error' ? 'alert' : undefined}
+      role={item.tone === 'error' || item.tone === 'warning' ? 'alert' : undefined}
       onMouseEnter={() => setHeld(true)}
       onMouseLeave={() => setHeld(false)}
       onFocus={() => setHeld(true)}
@@ -52,7 +54,19 @@ const ToastCard: React.FC<{ item: ToastItem }> = ({ item }) => {
         {item.description && (
           <p className="m-0 mt-0.5 text-[var(--text-secondary)]">{item.description}</p>
         )}
-        {item.action && (
+        {item.action?.button && (
+          <Button
+            size="compact"
+            onClick={() => {
+              item.action?.onClick();
+              dismiss(item.id);
+            }}
+            className="mt-1.5"
+          >
+            {item.action.label}
+          </Button>
+        )}
+        {item.action && !item.action.button && (
           <button
             type="button"
             onClick={() => {

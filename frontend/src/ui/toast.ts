@@ -6,7 +6,7 @@ import { create } from 'zustand';
  * anything that failed, and news that happened outside the screen (`info`,
  * e.g. "Invite sent" — the invitee was notified by email).
  */
-export type ToastTone = 'success' | 'error' | 'undo' | 'redo' | 'info';
+export type ToastTone = 'success' | 'error' | 'undo' | 'redo' | 'info' | 'warning';
 
 export interface ToastOptions {
   tone: ToastTone;
@@ -16,7 +16,13 @@ export interface ToastOptions {
   message?: string;
   /** A second line under the title. */
   description?: string;
-  action?: { label: string; onClick: () => void };
+  /**
+   * A link under the text; `button` draws it as Linear's small secondary
+   * button instead, as on "New version available" → Reload.
+   */
+  action?: { label: string; onClick: () => void; button?: boolean };
+  /** Stays until dismissed, like an error: news the person must not miss, e.g. "New version available". */
+  persistent?: boolean;
 }
 
 export interface ToastItem extends ToastOptions {

@@ -43,6 +43,7 @@ jobs:
           node scripts/check-snooze-query.cjs
           node scripts/check-sessions.cjs
           node scripts/check-rule-precedence.cjs
+          node scripts/check-app-version.cjs
           npm run build
 
       - name: Upload built frontend
@@ -201,6 +202,17 @@ jobs:
         with:
           name: rules-phone-browser
           path: /tmp/buyerly-rules-phone
+
+      - name: Check the new version notice in Chromium
+        working-directory: frontend
+        run: node ../scripts/new-version-browser.mjs
+
+      - name: Upload new version notice browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: new-version-browser
+          path: /tmp/buyerly-new-version
 
       - name: Check Rules, Ads Manager and Inbox on small screens in Chromium
         working-directory: frontend
