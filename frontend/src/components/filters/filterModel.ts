@@ -40,6 +40,8 @@ export interface FilterOption {
     | 'group-rocket'
     | 'group-flask';
   keywords?: string[];
+  /** A small outlined tag after the label, like Linear's "Agent" next to an agent under From. */
+  badge?: string;
 }
 
 export interface FilterFieldDefinition<T> {

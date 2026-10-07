@@ -1339,6 +1339,47 @@ html[data-theme='dark'] .linear-sidebar-badge,
   position: relative;
 }
 
+/* A row with one line of copy, like Linear's Workspace access row: 64px. */
+.preferences-row-item--single {
+  height: 64px;
+}
+
+/*
+ * Linear's Leave workspace button in Profile: no fill, no visible border,
+ * 32px pill, 12px sides, 13px medium text; 0.6 opacity while it is off.
+ */
+.preferences-row-ghost-button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-regular);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.preferences-row-ghost-button:hover:not(:disabled) {
+  background: var(--item-hover-bg);
+  color: var(--text-primary);
+}
+
+.preferences-row-ghost-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
+}
+
+.preferences-row-ghost-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .preferences-row-copy {
   display: flex;
   flex-direction: column;
@@ -2057,7 +2098,24 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 /* =========================================================
    BUYERLY AUTHENTICATION & ONBOARDING
    ========================================================= */
+/* Screens outside the app follow the same theme as the app: the choice from
+   Settings → Preferences, otherwise the system (set on <html> before first paint
+   by the script in index.html). Colors measured on linear.app/login, 2026-10-07. */
 .buyerly-auth-page {
+  --auth-bg: rgb(248, 248, 249);
+  --auth-text: rgb(47, 47, 49);
+  --auth-text-muted: rgb(91, 92, 94);
+  --auth-input-bg: rgb(248, 248, 249);
+  --auth-input-border: rgb(210, 210, 210);
+  --auth-input-text: rgb(27, 27, 27);
+  --auth-input-placeholder: rgb(156, 156, 158);
+  --auth-button-bg: rgb(254, 254, 255);
+  --auth-button-hover-bg: rgb(243, 243, 244);
+  --auth-button-text: rgb(47, 47, 49);
+  --auth-button-shadow: rgba(0, 0, 0, 0.1) 0 0 0 1px, rgba(0, 0, 0, 0.02) 0 3px 6px -2px,
+    rgba(0, 0, 0, 0.04) 0 1px 1px 0;
+  --auth-button-primary-shadow: rgba(0, 0, 0, 0.02) 0 3px 6px -2px, rgba(0, 0, 0, 0.04) 0 1px 1px 0;
+  --auth-error: #b32f2f;
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -2066,16 +2124,32 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   place-items: center;
   overflow: auto;
   padding: 32px 20px;
-  background: #fafafa;
-  color: #202124;
+  background: var(--auth-bg);
+  color: var(--auth-text);
   color-scheme: light;
   font-family: var(--font-regular), Inter, sans-serif;
 }
 
-.buyerly-auth-page--dark {
-  background: #08090a;
-  color: #f5f5f5;
+html[data-theme='dark'] .buyerly-auth-page,
+.buyerly-auth-page.buyerly-auth-page--dark {
+  --auth-bg: rgb(9, 9, 10);
+  --auth-text: rgb(226, 227, 229);
+  --auth-text-muted: rgb(148, 149, 151);
+  --auth-input-bg: rgb(17, 18, 18);
+  --auth-input-border: rgb(39, 40, 42);
+  --auth-input-text: #fff;
+  --auth-input-placeholder: rgb(86, 86, 88);
+  --auth-button-bg: rgb(27, 27, 28);
+  --auth-button-hover-bg: rgb(35, 35, 36);
+  --auth-button-text: rgb(226, 227, 229);
+  --auth-button-shadow: none;
+  --auth-button-primary-shadow: rgba(0, 0, 0, 0.298) 0 0.5px 1px 1px;
+  --auth-error: rgb(235, 87, 87);
   color-scheme: dark;
+}
+
+.buyerly-auth-page .buyerly-workspace-create__account button:hover {
+  color: var(--auth-text);
 }
 
 .buyerly-auth-card,
@@ -2100,7 +2174,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 .buyerly-auth-brand--compact {
   justify-content: flex-start;
   margin: 0 0 76px;
-  color: #f4f4f5;
+  color: var(--auth-text);
 }
 
 .buyerly-auth-brand--compact img {
@@ -2111,7 +2185,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 .buyerly-auth-card h1,
 .buyerly-workspace-create h1 {
   margin: 0 0 20px;
-  color: #202124;
+  color: var(--auth-text);
   font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.22px;
@@ -2125,28 +2199,23 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 .buyerly-auth-copy {
   margin: -7px auto 24px;
   max-width: 100%;
-  color: #6f7175;
+  color: var(--auth-text-muted);
   font-size: 13px;
   line-height: 1.55;
   text-wrap: balance;
 }
 
 .buyerly-auth-copy strong {
-  color: #202124;
+  color: var(--auth-text);
   font-weight: 520;
 }
 
 .buyerly-auth-email {
   display: block;
   margin-top: 4px;
-  color: #202124;
+  color: var(--auth-text);
   font-weight: 520;
   word-break: break-all;
-}
-
-.buyerly-auth-page--dark .buyerly-auth-copy strong,
-.buyerly-auth-page--dark .buyerly-auth-email {
-  color: #f4f4f5;
 }
 
 .buyerly-auth-field {
@@ -2158,15 +2227,18 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   width: 100%;
   height: 44px;
   padding: 0 13px;
-  border: 1px solid #d8d9dc;
-  border-radius: 9px;
+  border: 1px solid var(--auth-input-border);
+  border-radius: 10px;
   outline: none;
-  background: #fff;
-  color: #202124;
+  background: var(--auth-input-bg);
+  color: var(--auth-input-text);
   font: inherit;
   font-size: 13px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
   transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.buyerly-auth-field input::placeholder {
+  color: var(--auth-input-placeholder);
 }
 
 .buyerly-auth-field input:focus {
@@ -2179,8 +2251,8 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 }
 
 .buyerly-auth-field input[readonly] {
-  background: #f4f4f5;
-  color: #686a6e;
+  background: var(--auth-button-bg);
+  color: var(--auth-text-muted);
 }
 
 .buyerly-auth-code-field input {
@@ -2199,21 +2271,20 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   justify-content: center;
   margin-top: 10px;
   padding: 9px 16px;
-  border: 1px solid #d4d5d8;
+  border: 1px solid transparent;
   border-radius: 999px;
-  background: #fff;
-  color: #27282b;
+  background: var(--auth-button-bg);
+  color: var(--auth-button-text);
   font: inherit;
   font-size: 13px;
   font-weight: 540;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.035);
+  box-shadow: var(--auth-button-shadow);
   transition: background 120ms ease, border-color 120ms ease, transform 80ms ease;
 }
 
 .buyerly-auth-button:hover:not(:disabled) {
-  border-color: #bebfc3;
-  background: #f6f6f6;
+  background: var(--auth-button-hover-bg);
 }
 
 .buyerly-auth-button:active:not(:disabled) {
@@ -2234,6 +2305,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   border-color: transparent;
   background: var(--action-primary);
   color: #fff;
+  box-shadow: var(--auth-button-primary-shadow);
 }
 
 .buyerly-auth-button--primary:hover:not(:disabled) {
@@ -2244,7 +2316,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 /* Linear's small line under the sign-in buttons ("Don't have an account? Sign up"). */
 .buyerly-auth-footnote {
   margin: 22px 0 0;
-  color: #77797e;
+  color: var(--auth-text-muted);
   font-size: 12px;
 }
 
@@ -2252,7 +2324,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   padding: 0;
   border: 0;
   background: transparent;
-  color: #202124;
+  color: var(--auth-text);
   font: inherit;
   cursor: pointer;
 }
@@ -2268,14 +2340,14 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   left: 24px;
   border: 0;
   background: transparent;
-  color: #626469;
+  color: var(--auth-text-muted);
   font: inherit;
   font-size: 12px;
   cursor: pointer;
 }
 
 .buyerly-auth-back:hover {
-  color: #202124;
+  color: var(--auth-text);
 }
 
 .buyerly-auth-corner {
@@ -2283,7 +2355,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   top: 22px;
   right: 24px;
   margin: 0;
-  color: #77797e;
+  color: var(--auth-text-muted);
   font-size: 11px;
   line-height: 1.5;
   text-align: right;
@@ -2291,7 +2363,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 
 .buyerly-auth-corner strong {
   display: block;
-  color: #202124;
+  color: var(--auth-text);
   font-size: 12px;
   font-weight: 540;
 }
@@ -2300,34 +2372,34 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   margin-top: 14px;
   border: 0;
   background: transparent;
-  color: #626469;
+  color: var(--auth-text-muted);
   font: inherit;
   font-size: 12px;
   cursor: pointer;
 }
 
 .buyerly-auth-text-button:hover {
-  color: #202124;
+  color: var(--auth-text);
 }
 
 .buyerly-auth-error,
 .buyerly-auth-hint {
   margin: 8px 3px 2px;
   text-align: left;
-  color: #b32f2f;
+  color: var(--auth-error);
   font-size: 12px;
   line-height: 1.45;
 }
 
 .buyerly-auth-hint {
-  color: #77797e;
+  color: var(--auth-text-muted);
 }
 
 .buyerly-auth-card--loading {
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: #73757a;
+  color: var(--auth-text-muted);
   font-size: 13px;
 }
 
@@ -2368,7 +2440,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 .buyerly-auth-field--labeled > span {
   display: block;
   margin: 0 0 7px 2px;
-  color: #696b70;
+  color: var(--auth-text-muted);
   font-size: 12px;
   font-weight: 520;
 }
@@ -2378,14 +2450,14 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   flex-direction: column;
   gap: 6px;
   margin-top: auto;
-  color: #77797e;
+  color: var(--auth-text-muted);
   font-size: 12px;
 }
 
 .buyerly-workspace-create__account button {
   border: 0;
   background: transparent;
-  color: #77797e;
+  color: var(--auth-text-muted);
   font: inherit;
   cursor: pointer;
 }
@@ -2394,16 +2466,224 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   color: #202124;
 }
 
-.buyerly-invite-card .buyerly-invite-workspace-mark {
+/* Linear's invitation page (linear.app/invite/<id>/accept, measured 2026-10-02).
+   The one difference is the main button: Buyerly yolk yellow, as LinearToggle (#284). */
+.buyerly-invite-page {
+  --invite-bg: rgb(248, 248, 249);
+  --invite-card-bg: #fff;
+  --invite-card-shadow: rgba(0, 0, 0, 0.02) 0 6px 18px, rgba(0, 0, 0, 0.04) 0 3px 9px,
+    rgba(0, 0, 0, 0.04) 0 1px 3px, rgba(0, 0, 0, 0.04) 0 0 0 0.5px;
+  --invite-title: rgb(27, 27, 27);
+  --invite-description: rgb(94, 94, 95);
+  --invite-text: rgb(48, 48, 49);
+  --invite-divider: rgb(227, 227, 227);
+  --invite-corner-muted: rgb(94, 94, 95);
+  --invite-corner-strong: rgb(27, 27, 27);
+  --invite-back-hover-bg: rgb(234, 234, 236);
+  --invite-account-hover-bg: rgb(234, 234, 236);
+  --invite-button-bg: var(--toggle-checked-bg, #f5b800);
+  /* Light theme hovers darker, dark theme lighter, as Linear's own button does. */
+  --invite-button-hover-bg: var(--toggle-checked-hover-bg, #e6ab00);
+  --invite-button-text: rgb(27, 27, 27);
+  --invite-button-shadow: rgba(0, 0, 0, 0.1) 0 0.5px 1px 0.5px;
+  background: var(--invite-bg);
+  color: var(--invite-text);
+}
+
+.buyerly-invite-page.buyerly-auth-page--dark {
+  --invite-bg: rgb(17, 18, 18);
+  --invite-card-bg: rgb(25, 25, 27);
+  --invite-card-shadow: rgba(0, 0, 0, 0.12) 0 3px 8px, rgba(0, 0, 0, 0.12) 0 2px 5px,
+    rgba(0, 0, 0, 0.12) 0 1px 1px;
+  --invite-title: #fff;
+  --invite-description: rgb(152, 153, 155);
+  --invite-text: rgb(227, 228, 231);
+  --invite-divider: rgb(42, 43, 46);
+  --invite-corner-muted: rgb(148, 149, 151);
+  --invite-corner-strong: rgb(226, 227, 229);
+  --invite-back-hover-bg: rgb(35, 35, 36);
+  --invite-account-hover-bg: rgb(40, 41, 42);
+  --invite-button-shadow: rgba(0, 0, 0, 0.298) 0 0.5px 1px 1px;
+}
+
+.buyerly-invite-card {
+  width: min(100%, 460px);
+  padding: 32px 0;
+  border-radius: 10px;
+  background: var(--invite-card-bg);
+  box-shadow: var(--invite-card-shadow);
+  text-align: center;
+}
+
+.buyerly-invite-card > .buyerly-auth-brand {
+  margin-bottom: 0;
+}
+
+.buyerly-invite-workspace-mark {
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 54px;
+  height: 54px;
   place-items: center;
-  margin: 0 auto 14px;
-  border-radius: 11px;
-  color: #181818;
-  font-size: 17px;
-  font-weight: 700;
+  margin: 0 auto;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.buyerly-invite-title {
+  margin: 32px 0 0;
+  padding: 0 32px;
+  color: var(--invite-title);
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.16px;
+  line-height: 32px;
+}
+
+.buyerly-invite-description,
+.buyerly-invite-text {
+  margin: 24px 0 0;
+  padding: 0 32px;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.buyerly-invite-description {
+  color: var(--invite-description);
+}
+
+.buyerly-invite-text {
+  color: var(--invite-text);
+  overflow-wrap: anywhere;
+}
+
+.buyerly-invite-divider {
+  height: 0;
+  margin: 32px 0;
+  border: 0;
+  border-top: 1px solid var(--invite-divider);
+}
+
+.buyerly-invite-divider + .buyerly-invite-text {
+  margin-top: 0;
+}
+
+.buyerly-invite-email {
+  display: block;
+}
+
+.buyerly-invite-email strong {
+  font-weight: 600;
+}
+
+.buyerly-invite-card .buyerly-auth-error {
+  margin: 16px 32px 0;
+  text-align: center;
+}
+
+.buyerly-invite-button {
+  display: flex;
+  width: calc(100% - 64px);
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  margin: 32px 32px 0;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  background-color: var(--invite-button-bg);
+  color: var(--invite-button-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: normal;
+  cursor: pointer;
+  box-shadow: var(--invite-button-shadow);
+  transition: border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
+}
+
+.buyerly-invite-button:hover:not(:disabled) {
+  background-color: var(--invite-button-hover-bg);
+}
+
+.buyerly-invite-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Corners, logged in only: "‹ Back to Buyerly" and the "Logged in as" account menu. */
+.buyerly-invite-back {
+  position: fixed;
+  top: 24px;
+  left: 24px;
+  z-index: 1;
+  display: inline-flex;
+  height: 24px;
+  align-items: center;
+  padding: 0 6px 0 2px;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--invite-corner-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.buyerly-invite-back:hover {
+  background: var(--invite-back-hover-bg);
+  color: var(--invite-corner-strong);
+}
+
+.buyerly-invite-account {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 1;
+  display: flex;
+  max-width: calc(100% - 180px);
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  text-align: right;
+  cursor: pointer;
+}
+
+.buyerly-invite-account:hover,
+.buyerly-invite-account[data-state='open'] {
+  background: var(--invite-account-hover-bg);
+}
+
+.buyerly-invite-account span {
+  color: var(--invite-corner-muted);
+  font-size: 12px;
+  font-weight: 450;
+  line-height: 16px;
+}
+
+.buyerly-invite-account strong {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--invite-corner-strong);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .buyerly-invite-page--signed-in {
+    padding-top: 88px;
+  }
 }
 
 /* Facets summarize the base result, independently of the quick selection. */
@@ -2423,11 +2703,6 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 .linear-facet-count { color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
 .linear-facet-empty { padding: var(--facet-empty-padding); color: var(--text-tertiary); font-size: var(--facet-font-size); }
 .campaign-filter-summary { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: var(--facet-sidebar-gap); padding: var(--facet-empty-padding); color: var(--text-secondary); font-size: var(--facet-font-size); }
-@media (max-width: 767px) {
-  .campaign-view-body { flex-direction: column; overflow-y: auto; }
-  .campaign-view-list { flex: 1 0 auto; min-height: var(--facet-row-height); }
-  .campaign-view-details { flex: 0 0 auto; width: 100%; }
-}
 /* Override the shared fixed toolbar height when controls wrap on narrow views. */
 .campaign-view-toolbar { height: auto !important; min-height: var(--facet-row-height); flex-wrap: wrap; gap: var(--facet-sidebar-gap); padding-block: var(--facet-sidebar-gap); }
 .campaign-view-toolbar > * { max-width: 100%; }
@@ -2558,7 +2833,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   padding: 0 10px;
   border: 1px solid transparent;
   border-radius: 9999px;
-  color: var(--text-tertiary);
+  color: var(--inbox-tab-fg);
   background: var(--inbox-tab-bg);
   font-size: 12px;
   font-weight: 500;
@@ -2573,7 +2848,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 
 .linear-inbox-tab-count {
   margin-left: 6px;
-  color: var(--text-tertiary);
+  color: var(--inbox-tab-fg);
   font-weight: 450;
 }
 
@@ -2596,7 +2871,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   padding: 0 0 0 10px;
   border: 0;
   border-radius: 8px;
-  color: var(--text-tertiary);
+  color: var(--inbox-group-header-fg);
   background: var(--inbox-group-header-bg);
   font-size: 12px;
   font-weight: 500;
@@ -2605,7 +2880,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 
 .linear-inbox-group-header svg {
   margin-left: -5px;
-  color: var(--text-muted);
+  color: var(--inbox-group-header-icon);
   transition: transform 150ms ease;
 }
 
@@ -3081,4 +3356,68 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 .preferences-connect-button:disabled {
   cursor: default;
   opacity: 0.5;
+}
+
+/* A view's details panel at the small width, measured in Linear at 375/390px:
+   it lies over the list from the right, below the view header (which stays
+   usable), 350px wide (the whole window when narrower). The panel's own card
+   sits 4px from its left edge and 8px from the right and bottom. The sheet
+   itself is transparent (DetailsSheet). */
+.details-sheet {
+  position: fixed;
+  top: var(--details-sheet-top, 0px);
+  right: 0;
+  bottom: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  width: min(350px, 100vw);
+  animation: detailsSheetEnter 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Linear dims the list under it only on a phone (640px and below). */
+.details-sheet-backdrop {
+  position: fixed;
+  top: var(--details-sheet-top, 0px);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 80;
+  display: none;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+@media (max-width: 640px) {
+  .details-sheet-backdrop { display: block; }
+}
+
+@keyframes detailsSheetEnter {
+  from { transform: translateX(calc(100% + 16px)); }
+  to { transform: translateX(0); }
+}
+
+.details-sheet > .campaign-view-details {
+  flex: 1 1 auto;
+  width: 100%;
+  padding: 0 8px 8px 4px;
+}
+
+/* Popovers anchored to a header button never leave a narrow window. */
+.linear-display-options-popover {
+  max-width: calc(100vw - 16px);
+}
+
+/* Linear's pure-touch headers (measured at 375px): icon buttons grow from 28px
+   to 32px square, view tabs to 32px tall. */
+@media (hover: none) and (pointer: coarse) {
+  .linear-header-target {
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+  }
+
+  .linear-tab-capsule,
+  .linear-inbox-tab {
+    height: 32px;
+  }
 }

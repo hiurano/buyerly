@@ -10,11 +10,12 @@ export const BuyerlyBrand: React.FC<{ compact?: boolean }> = ({ compact = false 
   </div>
 );
 
-export const AuthFrame: React.FC<React.PropsWithChildren<{ dark?: boolean }>> = ({
+export const AuthFrame: React.FC<React.PropsWithChildren<{ dark?: boolean; className?: string }>> = ({
   children,
   dark = false,
+  className = '',
 }) => (
-  <main className={`buyerly-auth-page${dark ? ' buyerly-auth-page--dark' : ''}`}>
+  <main className={`buyerly-auth-page${dark ? ' buyerly-auth-page--dark' : ''}${className ? ` ${className}` : ''}`}>
     {children}
   </main>
 );

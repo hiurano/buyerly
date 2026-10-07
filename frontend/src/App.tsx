@@ -445,7 +445,7 @@ export const App: React.FC = () => {
     );
   }
 
-  if (route.kind !== 'workspace') return <AuthLoading dark label="Opening your workspace…" />;
+  if (route.kind !== 'workspace') return <AuthLoading label="Opening your workspace…" />;
   if (!resolvedWorkspace || workspaceScope !== desiredScope) return <AuthLoading />;
   const routeWorkspace = resolvedWorkspace;
   return (
