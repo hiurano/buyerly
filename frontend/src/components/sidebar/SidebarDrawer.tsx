@@ -56,8 +56,9 @@ export function useSidebarDrawer(surfaceRef: React.RefObject<HTMLElement>) {
 }
 
 /**
- * Linear's delays: the window's left edge opens the peek after 250ms (the
- * header's sidebar button waits as long), leaving the window closes it after 500ms.
+ * Linear's delays (its sidebar container's code): the window's 8px left edge
+ * opens the peek after 250ms, leaving the window closes it after 500ms. The
+ * header's sidebar button opens it at once.
  */
 export const PEEK_HOVER_DELAY = 250;
 export const PEEK_WINDOW_LEAVE_DELAY = 500;
@@ -121,7 +122,13 @@ export function useSidebarPeek(surfaceRef: React.RefObject<HTMLElement>, enabled
       const surface = surfaceRef.current;
       if (!moved || !surface || isDragging) return;
       // The surface ends at its width once it has slid in; the resizer sticks out 3.5px.
-      if (event.clientX <= surface.offsetWidth + 4) return;
+      if (event.clientX <= surface.offsetWidth + 4) {
+        // Visiting the sidebar turns a ⌘\ peek into a hover one, as in Linear.
+        if (useAppStore.getState().sidebarPeekSource === 'keyboard') setPeekOpen(true, 'hover');
+        return;
+      }
+      // Opened by ⌘\, only a press on the backdrop closes it until then.
+      if (useAppStore.getState().sidebarPeekSource === 'keyboard') return;
       // Menus opened from the sidebar live in portals over the content.
       const target = event.target as Element | null;
       if (target?.closest?.('[data-radix-popper-content-wrapper], [role="menu"], [role="dialog"]')) return;
@@ -142,7 +149,7 @@ export function useSidebarPeek(surfaceRef: React.RefObject<HTMLElement>, enabled
       document.removeEventListener('mouseout', onMouseOut);
       document.removeEventListener('mouseover', onMouseOver);
     };
-  }, [close, isDragging, isOpen, surfaceRef]);
+  }, [close, isDragging, isOpen, setPeekOpen, surfaceRef]);
 
   const edgeHandlers = {
     onMouseEnter: () => {

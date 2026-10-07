@@ -505,17 +505,17 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
 }
 
 /*
- * Linear's peek: a collapsed desktop sidebar shown over the content keeps its
- * width and gets the drawer's window background, 12px right corners and
- * shadow above the same backdrop. The collapsed column's 8px at the window's
- * left edge opens it on hover.
+ * Linear's peek, measured live: a collapsed desktop sidebar shown over the
+ * content keeps its width and z-index 96 above the backdrop (95), takes the
+ * canvas background (lch 5.52 dark / 97.94 light, the main panel's), 12px
+ * right corners and a 1px ring (lch 14.16 / 88.49) plus the command menu's
+ * shadow. The collapsed column's 8px at the window's left edge opens it on hover.
  */
 .sidebar-surface[data-peek] {
-  z-index: 99;
-  background-color: var(--bg-window);
+  background-color: var(--bg-canvas);
   border-top-right-radius: 12px;
   border-bottom-right-radius: 12px;
-  box-shadow: 0 0 0 1px var(--color-border-primary), var(--canvas-shadow);
+  box-shadow: 0 0 0 1px var(--color-border-secondary), var(--command-menu-shadow);
 }
 
 .sidebar-surface[data-peek='closed'] {

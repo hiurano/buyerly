@@ -168,7 +168,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
         const { isSidebarCollapsed, isSidebarPeekOpen, activeTab: tab } = useAppStore.getState();
         if (isSmallScreen() || !isSidebarCollapsed || tab === 'preferences') return;
         event.preventDefault();
-        setSidebarPeekOpen(!isSidebarPeekOpen);
+        setSidebarPeekOpen(!isSidebarPeekOpen, 'keyboard');
         return;
       }
       if ((event.ctrlKey || event.altKey || event.metaKey) && ['i', 'I'].includes(event.key)) {

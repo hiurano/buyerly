@@ -1,6 +1,5 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
-import { PEEK_HOVER_DELAY } from './SidebarDrawer';
 import { useIsSmallScreen, useIsTouchScreen } from '@/lib/useMediaQuery';
 import { LinearSidebarLeftToggleIcon } from '@/icons/LinearIcons';
 import { Tooltip } from '@/ui/Tooltip';
@@ -23,8 +22,6 @@ export const SidebarCollapsedNavigation: React.FC = () => {
 
   // A hidden button also cancels the header's own gap, as Linear's does.
   const ref = useRef<HTMLDivElement>(null);
-  const peekTimer = useRef<number>();
-  useEffect(() => () => window.clearTimeout(peekTimer.current), []);
   const [parentGap, setParentGap] = useState(0);
   useLayoutEffect(() => {
     const parent = ref.current?.parentElement;
@@ -45,20 +42,14 @@ export const SidebarCollapsedNavigation: React.FC = () => {
     <Tooltip content="Open sidebar" shortcut="[" side="bottom" sideOffset={6}>
       <button
         type="button"
-        onClick={() => {
-          window.clearTimeout(peekTimer.current);
-          toggleSidebarCollapsed();
-        }}
-        // Resting on it shows the collapsed sidebar over the content (Linear's
-        // peek). The short wait leaves a direct click free to expand the column,
-        // which the sliding sidebar would otherwise cover.
+        onClick={toggleSidebarCollapsed}
+        // Entering it shows the collapsed sidebar over the content at once, as
+        // Linear's onMouseEnter does (no delay, unlike the window's left edge).
         onMouseEnter={() => {
           // Settings has its own sidebar, which never collapses.
           if (!isSidebarCollapsed || useAppStore.getState().activeTab === 'preferences') return;
-          window.clearTimeout(peekTimer.current);
-          peekTimer.current = window.setTimeout(() => setSidebarPeekOpen(true), PEEK_HOVER_DELAY);
+          setSidebarPeekOpen(true);
         }}
-        onMouseLeave={() => window.clearTimeout(peekTimer.current)}
         className="linear-icon-btn linear-header-target"
         aria-label="Open sidebar"
         tabIndex={visible ? undefined : -1}

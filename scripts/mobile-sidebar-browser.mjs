@@ -111,7 +111,12 @@ try {
         assert.notEqual(look.shadow, 'none');
         await page.screenshot({ path: `${output}/peek-${width}.png` });
 
-        // The cursor on the sidebar keeps it; moving out to the backdrop closes it.
+        // Opened by ⌘\, the cursor moving over the backdrop leaves it open, as in Linear.
+        await page.mouse.move(width / 2 + 40, 420);
+        await page.waitForTimeout(100);
+        assert.ok(await isPeeking());
+
+        // The cursor on the sidebar keeps it (and makes it a hover peek); moving out to the backdrop closes it.
         await page.mouse.move(120, 400);
         await page.waitForTimeout(100);
         assert.ok(await isPeeking());
@@ -137,9 +142,11 @@ try {
         await page.waitForTimeout(700);
         assert.ok(await isClosed(sidebar));
 
-        // Resting on the header's sidebar button opens it; ⌘\ / Ctrl+\ closes it.
+        // Entering the header's sidebar button opens it at once; ⌘\ / Ctrl+\ closes it.
         await page.getByRole('button', { name: 'Open sidebar' }).hover();
-        await page.waitForTimeout(800);
+        await page.waitForTimeout(50);
+        assert.equal(await backdrop.getAttribute('data-open'), 'true');
+        await settled();
         assert.ok(await isPeeking());
         await page.mouse.move(120, 600);
         await page.keyboard.press('Control+Backslash');
