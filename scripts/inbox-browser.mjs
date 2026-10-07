@@ -603,6 +603,13 @@ try {
       await page.screenshot({ path: `${output}/notifications-settings-${width}.png` });
       await page.goto(`${origin}/${workspace.slug}/inbox/other`);
       await page.waitForFunction(() => document.querySelectorAll('[data-inbox-event-id]').length === 2);
+      // Inbox «…» → Go to settings opens Settings → Notifications, as in Linear (#272).
+      await page.getByRole('button', { name: 'Notification actions' }).click();
+      await page.getByRole('menuitem', { name: 'Go to settings' }).click();
+      await page.waitForFunction(() => location.pathname.endsWith('/settings/account/notifications'));
+      await page.getByRole('switch', { name: 'Priority inbox' }).waitFor();
+      await page.goto(`${origin}/${workspace.slug}/inbox/other`);
+      await page.waitForFunction(() => document.querySelectorAll('[data-inbox-event-id]').length === 2);
 
       // Turning priority inbox off goes back to /inbox.
       await page.getByRole('button', { name: 'Display options' }).click();

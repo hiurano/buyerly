@@ -130,6 +130,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
   const {
     workspaceSlug,
     setActiveTab,
+    setSettingsSection,
     inboxUnreadCount,
     inboxPriorityUnreadCount,
     setInboxUnread,
@@ -598,7 +599,13 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                 <MenuKey>⇧ ⌫</MenuKey>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => setActiveTab('preferences')}>
+              {/* Linear's Inbox settings link opens the notification settings, not Preferences. */}
+              <DropdownMenuItem
+                onSelect={() => {
+                  setSettingsSection('notifications');
+                  setActiveTab('preferences');
+                }}
+              >
                 <span className="flex items-center gap-2.5">
                   <LinearSlidersIcon size={16} />
                   Go to settings
