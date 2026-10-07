@@ -6,7 +6,7 @@ import type { RuleItem } from '@/store/useAppStore';
 import type { RuleExecutionLevel, RuleScope } from '@/lib/rules';
 import { explainRulePrecedence } from '@/lib/rulePrecedence';
 import type { PrecedenceLine } from '@/lib/rulePrecedence';
-import { fetchEntityRuleStates } from '@/lib/rules';
+import { fetchEntityRuleStates, inheritedRuleIds, RULE_LEVELS_UNDER } from '@/lib/rules';
 import type { RuleEntityStatePayload } from '@/lib/rules';
 import { RuleStateLine } from '@/components/rules/RuleStateLine';
 
@@ -14,10 +14,7 @@ import { RuleStateLine } from '@/components/rules/RuleStateLine';
 export type RuleTargetLevel = 'campaign' | 'adset';
 
 /** Levels a rule can act on from a row of this level: the row itself and what sits under it. */
-const LEVELS_UNDER: Record<RuleTargetLevel, RuleExecutionLevel[]> = {
-  campaign: ['campaign', 'adset', 'ad'],
-  adset: ['adset', 'ad'],
-};
+const LEVELS_UNDER = RULE_LEVELS_UNDER;
 
 const LEVEL_HEADINGS: Record<RuleExecutionLevel, string> = {
   campaign: 'On this campaign',
@@ -104,8 +101,16 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
     );
   }, [rules, searchQuery]);
 
-  const attachedRules = filteredRules.filter((rule) => coverage.has(rule.id));
-  const unattachedRules = filteredRules.filter((rule) => !coverage.has(rule.id));
+  // One row's rules that reach it through the ad account or its campaign
+  // (#300): listed with its own, so the picker answers "what checks this row".
+  const inherited = useMemo(() => {
+    if (entityIds.length !== 1) return new Set<string>();
+    const ruleLevels = Object.fromEntries(rules.map((rule) => [rule.id, rule.preset.level]));
+    return new Set(inheritedRuleIds(attachedRuleScopes, attachedRuleOrder, ruleLevels, level, campaignId));
+  }, [entityIds.length, rules, attachedRuleScopes, attachedRuleOrder, level, campaignId]);
+  const checksThisRow = (rule: RuleItem) => coverage.has(rule.id) || inherited.has(rule.id);
+  const attachedRules = filteredRules.filter(checksThisRow);
+  const unattachedRules = filteredRules.filter((rule) => !checksThisRow(rule));
   const orderedRules = [...attachedRules, ...unattachedRules];
 
   /**
@@ -171,6 +176,35 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
       cancelled = true;
     };
   }, [isOpen, level, singleEntityId]);
+
+  // Rules that check this very row but have no snapshot on it yet: just
+  // attached, or paused before their first check. Rules acting on the ad sets
+  // or ads under the row keep their status on those rows instead.
+  const uncheckedRules = Array.isArray(entityStates) && singleEntityId
+    ? rules.filter(
+        (rule) =>
+          checksThisRow(rule) &&
+          rule.preset.level === level &&
+          !entityStates.some((row) => row.rule_id === rule.presetId),
+      )
+    : [];
+  const uncheckedStateRow = (rule: RuleItem): RuleEntityStatePayload => ({
+    rule_id: rule.presetId,
+    rule_name: rule.name,
+    account_id: '',
+    account_name: '',
+    entity_level: level,
+    entity_id: singleEntityId ?? '',
+    entity_name: '',
+    campaign_id: campaignId ?? '',
+    state: rule.status === 'paused' ? 'rule_paused' : 'unchecked',
+    detail: rule.status === 'paused' ? '' : `Buyerly checks it every ${rule.preset.check_interval_minutes} min`,
+    wait_until: '',
+    yielded_to_rule_id: null,
+    yielded_to_rule_name: '',
+    checked_at: '',
+    acted_at: '',
+  });
 
   // Ads Manager can be opened before the Rules screen ever was; the list is
   // read when a picker first needs it, not on every visit.
@@ -248,6 +282,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
     const scope = attachedRuleScopes[rule.id];
     if (!scope) return '';
     if (scope.level === 'account') return 'Whole account';
+    if (inherited.has(rule.id) && scope.level === 'campaign') return 'Its campaign';
     if (scope.level !== level) return `Specific ${otherNoun}`;
     const covered = coverage.get(rule.id) ?? 0;
     if (covered === 0) {
@@ -301,7 +336,9 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
 
   const renderOption = (rule: RuleItem, index: number) => {
     const covered = coverage.get(rule.id) ?? 0;
-    const isSelected = covered === entityIds.length;
+    // A rule on the whole ad account (or the ad set's campaign) checks this row
+    // too: ticked, but changed on the Rules screen.
+    const isSelected = covered === entityIds.length || inherited.has(rule.id);
     const isMixed = covered > 0 && !isSelected;
     const isActive = activeIndex === index;
     const locked = isLocked(rule);
@@ -657,14 +694,14 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
               Couldn't load the rules' status
             </div>
           )}
-          {Array.isArray(entityStates) && entityStates.length === 0 && (
+          {Array.isArray(entityStates) && entityStates.length === 0 && uncheckedRules.length === 0 && (
             <div style={{ color: 'var(--text-muted)', fontSize: 12, lineHeight: '16px' }}>
               Not checked yet
             </div>
           )}
-          {Array.isArray(entityStates) && entityStates.length > 0 && (
+          {Array.isArray(entityStates) && (entityStates.length > 0 || uncheckedRules.length > 0) && (
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {entityStates.map((row) => (
+              {[...entityStates, ...uncheckedRules.map(uncheckedStateRow)].map((row) => (
                 <li key={`${row.account_id}:${row.rule_id}`} style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
                   <span
                     title={row.rule_name}

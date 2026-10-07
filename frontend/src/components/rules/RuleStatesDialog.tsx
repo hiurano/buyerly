@@ -22,6 +22,7 @@ const STATE_ORDER: Record<RuleEntityStateName, number> = {
   inactive: 10,
   rule_paused: 11,
   rules_off: 12,
+  unchecked: 13,
 };
 
 const PLURAL_LEVELS: Record<RuleItem['preset']['level'], string> = {
@@ -159,6 +160,25 @@ export const RuleStatesDialog: React.FC<RuleStatesDialogProps> = ({ rule, open, 
                   ))}
                 </ul>
               )}
+              {/* Why a rule that matches can still be quiet (#300): decisions #46 and #47 in the buyer's words. */}
+              <section
+                aria-label="How rules work together"
+                data-rules-together="true"
+                className="mx-3 mb-1 mt-2 border-t border-[var(--color-border-secondary)] pt-3 text-[12px] leading-[17px] text-[var(--text-tertiary)]"
+              >
+                <h3 className="m-0 text-[12px] font-medium text-[var(--text-secondary)]">
+                  When several rules check one {levelNoun}
+                </h3>
+                <ul className="m-0 mt-1 flex list-disc flex-col gap-0.5 pl-4">
+                  <li>Alerts always fire, each rule on its own.</li>
+                  <li>
+                    Rules that change it act one per check: turn off, then budget −, budget +, turn on. Equal
+                    ones go in list order; the rest show “Gave way”.
+                  </li>
+                  <li>While a stronger rule waits to repeat, weaker ones wait too.</li>
+                  <li>An action you undo in Inbox isn't repeated until the ad account's day ends.</li>
+                </ul>
+              </section>
             </div>
 
             <div className="flex justify-end border-t border-[var(--color-border-secondary)] px-5 py-3">

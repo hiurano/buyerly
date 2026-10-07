@@ -48,6 +48,12 @@ const preset = {
   last_run_at: '', last_checked_at: minutesAgo(2),
   attached_account_ids: ['act_100'], attached_scopes: { act_100: { level: 'account', ids: [] } },
 };
+// On the whole ad account (#300): it checks every campaign without being aimed
+// at one, and has not checked any of them yet.
+const accountRule = {
+  ...preset, id: 9, name: 'Stop overspend', action: 'turn_off', last_checked_at: '',
+  conditions: [{ metric: 'spend', operator: 'gte', value: 30, time_window: 'today' }],
+};
 const state = (entityId, entityName, fields) => ({
   rule_id: 7, rule_name: preset.name, account_id: 'act_100', account_name: 'Leads account',
   entity_level: 'campaign', entity_id: entityId, entity_name: entityName, campaign_id: '',
@@ -92,7 +98,10 @@ try {
           id: 100, account_id: 'act_100', name: 'Leads account', custom_name: '', note: '', connection_type: 'system_user',
           timezone_name: 'UTC', currency: 'USD', account_status: 1, status_label: 'Active (ACTIVE)',
           rules_enabled: true, is_active: true, primary_result: '', target_cost_per_result: null,
-          active_rules: [{ preset_id: 7, name: preset.name, scope: { level: 'campaign', ids: ['801'] } }],
+          active_rules: [
+            { preset_id: 9, name: accountRule.name, scope: { level: 'account', ids: [] } },
+            { preset_id: 7, name: preset.name, scope: { level: 'campaign', ids: ['801'] } },
+          ],
         }] });
       }
       if (path === '/api/analytics/hierarchy') {
@@ -101,7 +110,7 @@ try {
         const items = parent === 'act_100' && level === 'campaign' ? campaigns : [];
         return route.fulfill({ json: { parent_id: parent, level, period: 'today', source: 'analytics_fact_store', data_as_of: null, total: items.length, items } });
       }
-      if (path === '/api/presets') return route.fulfill({ json: [preset] });
+      if (path === '/api/presets') return route.fulfill({ json: [preset, accountRule] });
       if (path === '/api/presets/7/states') {
         stateReads.push('rule');
         return route.fulfill({ json: states });
@@ -156,6 +165,16 @@ try {
       assert.match(dialogText, /Condition not met/);
       assert.match(dialogText, /Spend 3\.00 USD, needs ≥ 10\.00 USD/);
       assert.match(dialogText, /Last check 2m ago · Last action never/);
+      // Why a matching rule can still be quiet: how rules on one campaign combine (#300).
+      const together = dialog.locator('[data-rules-together]');
+      await together.scrollIntoViewIfNeeded();
+      const togetherText = await together.innerText();
+      assert.match(togetherText, /When several rules check one campaign/);
+      assert.match(togetherText, /Alerts always fire/);
+      assert.match(togetherText, /turn off, then budget −, budget \+, turn on/);
+      assert.match(togetherText, /weaker ones wait too/);
+      assert.match(togetherText, /undo in Inbox/);
+      await fitsTheScreen(together, 'how rules work together');
       await fitsTheScreen(dialog, 'the status dialog');
       await page.screenshot({ path: `${output}/rule-side-${width}.png` });
       await press(dialog.getByRole('button', { name: 'Close' }));
@@ -165,6 +184,14 @@ try {
       await page.goto(`${origin}/alpha/ads-manager/campaigns?account=act_100`);
       const cell = page.locator('[data-row-id="801"] [data-rule-cell]');
       await cell.waitFor();
+      // The account-wide rule counts on every campaign: 801 has its own and
+      // that one, 802 only the account's — never a bare "+ Rule".
+      await page.waitForFunction(() => document.querySelector('[data-row-id="801"] [data-rule-cell]')?.textContent?.trim() === '2 rules');
+      assert.equal(await cell.getAttribute('data-inherited-rules'), '1');
+      assert.equal(await cell.getAttribute('title'), '1 on this campaign · 1 through the ad account');
+      const other = page.locator('[data-row-id="802"] [data-rule-cell]');
+      assert.equal((await other.innerText()).trim(), '1 rule');
+      assert.equal(await other.getAttribute('title'), '1 through the ad account');
       await press(cell);
       const section = page.locator('[data-rule-states]');
       await section.locator('[data-rule-state="cooldown"]').waitFor();
@@ -173,6 +200,19 @@ try {
       assert.match(sectionText, /Daily spend alert/);
       assert.match(sectionText, /Waiting until /);
       assert.ok(stateReads.includes('campaign:801'), `the picker asked for campaign 801: ${stateReads}`);
+      // The account-wide rule is listed as checking this campaign, ticked but
+      // changed on the Rules screen, and says it has not checked it yet.
+      await section.locator('[data-rule-state="unchecked"]').waitFor();
+      const statusText = await section.innerText();
+      assert.match(statusText, /Stop overspend/);
+      assert.match(statusText, /Not checked yet/);
+      assert.match(statusText, /checks it every 5 min/);
+      const accountOption = page.getByRole('option', { name: /Stop overspend/ });
+      assert.equal(await accountOption.getAttribute('aria-checked'), 'true');
+      assert.equal(await accountOption.getAttribute('aria-disabled'), 'true');
+      assert.match(await accountOption.innerText(), /Whole account/);
+      const optionOrder = await page.getByRole('option').evaluateAll((items) => items.map((item) => item.textContent));
+      assert.equal(optionOrder.length, 2, `both rules listed: ${optionOrder}`);
       await fitsTheScreen(page.locator('[data-animated-popover-container]'), 'the rule picker');
       await page.screenshot({ path: `${output}/campaign-side-${width}.png` });
 
