@@ -65,6 +65,12 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("post_deploy_smoke.py", early_exit)
         self.assertIn("is already deployed and healthy", self.script)
 
+    def test_cloudflare_tunnel_is_trusted_out_of_the_box(self):
+        # cloudflared on the host reaches nginx from the Docker gateway (#301).
+        self.assertIn("CLOUDFLARE_TUNNEL_CIDRS: ${CLOUDFLARE_TUNNEL_CIDRS:-172.16.0.0/12}", self.compose)
+        self.assertIn('- "${WEB_PORT_BINDING:-8080}:80"', self.compose)
+        self.assertIn("BUYERLY_EDGE cloudflared_service=", self.workflow)
+
     def test_production_roles_are_separate_services(self):
         for service in ("db:", "api:", "web:", "worker:", "migrate:"):
             self.assertIn(f"  {service}", self.compose)

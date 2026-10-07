@@ -146,6 +146,81 @@ class TestRateLimiterCore(unittest.IsolatedAsyncioTestCase):
             settings.TRUSTED_PROXY_CIDRS = original
             settings.CLOUDFLARE_IP_CIDRS = original_cloudflare
 
+    def test_cloudflare_tunnel_counts_only_from_its_local_address(self):
+        original = settings.TRUSTED_PROXY_CIDRS
+        original_cloudflare = settings.CLOUDFLARE_IP_CIDRS
+        original_tunnel = settings.CLOUDFLARE_TUNNEL_CIDRS
+        cloudflare_headers = {
+            "CF-Connecting-IP": b"203.0.113.8",
+            "cf-ipcity": b"Helsinki",
+            "cf-region-code": b"18",
+            "cf-ipcountry": b"FI",
+        }
+        try:
+            # Production: cloudflared on the host -> Docker gateway 172.18.0.1
+            # -> nginx (172.18.0.3) -> API; both settings are the Docker networks.
+            settings.TRUSTED_PROXY_CIDRS = "172.16.0.0/12"
+            settings.CLOUDFLARE_TUNNEL_CIDRS = "172.16.0.0/12"
+            settings.CLOUDFLARE_IP_CIDRS = ""
+
+            through_tunnel = self._request("172.18.0.3", {
+                **cloudflare_headers,
+                "X-Forwarded-For": b"203.0.113.8, 172.18.0.1",
+            })
+            self.assertEqual(get_client_ip(through_tunnel), "203.0.113.8")
+            self.assertEqual(get_client_location(through_tunnel), "Helsinki, 18, FI")
+
+            # The tunnel's address is enough even without Cloudflare's own X-Forwarded-For.
+            tunnel_only = self._request("172.18.0.3", {
+                **cloudflare_headers,
+                "X-Forwarded-For": b"172.18.0.1",
+            })
+            self.assertEqual(get_client_ip(tunnel_only), "203.0.113.8")
+            self.assertEqual(get_client_location(tunnel_only), "Helsinki, 18, FI")
+
+            # Without a visitor address the tunnel's own address is used.
+            no_visitor = self._request("172.18.0.3", {"X-Forwarded-For": b"172.18.0.1"})
+            self.assertEqual(get_client_ip(no_visitor), "172.18.0.1")
+
+            # A direct hit from the internet through nginx: its own address, no city,
+            # even when it pretends the tunnel or Cloudflare forwarded it.
+            for forwarded in (b"198.51.100.10", b"172.18.0.1, 198.51.100.10", b"162.158.1.2, 198.51.100.10"):
+                direct = self._request("172.18.0.3", {**cloudflare_headers, "X-Forwarded-For": forwarded})
+                self.assertEqual(get_client_ip(direct), "198.51.100.10")
+                self.assertEqual(get_client_location(direct), "")
+
+            # Our own proxy is never taken for the tunnel, though it is in the same network.
+            proxy_itself = self._request("172.18.0.3", cloudflare_headers)
+            self.assertEqual(get_client_ip(proxy_itself), "172.18.0.3")
+            self.assertEqual(get_client_location(proxy_itself), "")
+
+            # A public peer is not the tunnel either.
+            public_peer = self._request("198.51.100.10", cloudflare_headers)
+            self.assertEqual(get_client_ip(public_peer), "198.51.100.10")
+            self.assertEqual(get_client_location(public_peer), "")
+
+            # 'off' turns the tunnel off as well.
+            settings.CLOUDFLARE_IP_CIDRS = "off"
+            self.assertEqual(get_client_location(through_tunnel), "")
+            self.assertEqual(get_client_ip(tunnel_only), "172.18.0.1")
+            settings.CLOUDFLARE_IP_CIDRS = ""
+
+            # Without the setting the tunnel is not trusted.
+            settings.CLOUDFLARE_TUNNEL_CIDRS = ""
+            self.assertEqual(get_client_location(through_tunnel), "")
+            self.assertEqual(get_client_ip(tunnel_only), "172.18.0.1")
+
+            # cloudflared connecting to the app directly on the same host.
+            settings.TRUSTED_PROXY_CIDRS = ""
+            settings.CLOUDFLARE_TUNNEL_CIDRS = "127.0.0.1/32,::1/128"
+            local_tunnel = self._request("127.0.0.1", cloudflare_headers)
+            self.assertEqual(get_client_ip(local_tunnel), "203.0.113.8")
+            self.assertEqual(get_client_location(local_tunnel), "Helsinki, 18, FI")
+        finally:
+            settings.TRUSTED_PROXY_CIDRS = original
+            settings.CLOUDFLARE_IP_CIDRS = original_cloudflare
+            settings.CLOUDFLARE_TUNNEL_CIDRS = original_tunnel
+
     def test_cloudflare_location_is_cleaned(self):
         original = settings.TRUSTED_PROXY_CIDRS
         try:
