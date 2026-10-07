@@ -337,14 +337,11 @@ export const SecuritySection: React.FC = () => {
             </section>
           )}
 
-          <section className="preferences-card-container preferences-sessions-card" aria-label="Other sessions">
-            <div className="preferences-sessions-others">
-              <span>
-                {others.length === 0
-                  ? 'No sessions'
-                  : others.length === 1 ? '1 other session' : `${others.length} other sessions`}
-              </span>
-              {others.length > 0 && (
+          {/* With no other sessions Linear shows no card at all: the next section follows the current session. */}
+          {others.length > 0 && (
+            <section className="preferences-card-container preferences-sessions-card" aria-label="Other sessions">
+              <div className="preferences-sessions-others">
+                <span>{others.length === 1 ? '1 other session' : `${others.length} other sessions`}</span>
                 <Tooltip content="Revoke all other sessions" side="top">
                   <button
                     type="button"
@@ -356,23 +353,23 @@ export const SecuritySection: React.FC = () => {
                     Revoke all
                   </button>
                 </Tooltip>
+              </div>
+              {shownOthers.map((session) => (
+                <SessionRow
+                  key={session.id}
+                  session={session}
+                  busy={isBusy(session)}
+                  onOpen={() => setDetails(session)}
+                  onAction={() => askFor(session)}
+                />
+              ))}
+              {others.length > OTHERS_SHOWN && !showAll && (
+                <button type="button" className="preferences-sessions-show-all" onClick={() => setShowAll(true)}>
+                  Show all
+                </button>
               )}
-            </div>
-            {shownOthers.map((session) => (
-              <SessionRow
-                key={session.id}
-                session={session}
-                busy={isBusy(session)}
-                onOpen={() => setDetails(session)}
-                onAction={() => askFor(session)}
-              />
-            ))}
-            {others.length > OTHERS_SHOWN && !showAll && (
-              <button type="button" className="preferences-sessions-show-all" onClick={() => setShowAll(true)}>
-                Show all
-              </button>
-            )}
-          </section>
+            </section>
+          )}
         </div>
       )}
 
