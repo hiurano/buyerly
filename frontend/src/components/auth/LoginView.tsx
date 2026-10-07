@@ -127,7 +127,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <strong>{loggedInAs}</strong>
         </p>
       )}
-      <section className="buyerly-auth-card">
+      <section className="buyerly-auth-card buyerly-auth-card--signin">
         <BuyerlyBrand />
 
         {stage === 'start' && (

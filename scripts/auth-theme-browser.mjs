@@ -22,8 +22,8 @@ const user = {
   onboarding_completed: false, onboarding_step: 'workspace', active_workspace: null, workspaces: [],
 };
 const pages = [
-  { name: 'login', path: '/login', ready: 'Log in to Buyerly', surface: '.buyerly-auth-page' },
-  { name: 'create-workspace', path: '/create-workspace', ready: 'Create a workspace', surface: '.buyerly-auth-page', signedIn: true },
+  { name: 'login', path: '/login', ready: 'Log in to Buyerly', surface: '.buyerly-auth-page', field: 'Continue with email' },
+  { name: 'create-workspace', path: '/create-workspace', ready: 'Create a workspace', surface: '.buyerly-auth-page', signedIn: true, field: true },
   { name: 'landing', path: '/', ready: 'Your Meta Ads operations', surface: 'body' },
   { name: 'about', path: '/about', ready: 'Get in touch', surface: 'body' },
   { name: 'privacy', path: '/privacy', ready: 'Data we use', surface: 'body' },
@@ -37,6 +37,53 @@ const themes = [
   { system: 'dark', saved: 'light', expected: 'light' },
   { system: 'light', saved: 'dark', expected: 'dark' },
 ];
+// Sign-in fields as on linear.app/add-account → Continue with email (#358, 2026-10-08):
+// hover darkens the border; focus is a 1px accent outline over the border, no glow, no yellow.
+const field = {
+  light: { border: 'rgb(210, 210, 210)', hover: 'rgb(189, 189, 189)' },
+  dark: { border: 'rgb(39, 40, 42)', hover: 'rgb(54, 58, 67)' },
+  focus: 'rgb(94, 105, 209)',
+};
+
+const checkField = async (page, target, theme, label) => {
+  if (target.field !== true) await page.getByRole('button', { name: target.field }).click();
+  const input = page.locator('.buyerly-auth-field input').first();
+  await input.waitFor();
+  await page.mouse.move(0, 0);
+  await input.evaluate(element => element.blur());
+  const read = () => input.evaluate(element => {
+    const style = getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    const card = element.closest('.buyerly-auth-card');
+    return {
+      border: style.borderTopColor,
+      borderWidth: style.borderTopWidth,
+      shadow: style.boxShadow,
+      outline: `${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor}`,
+      outlineOffset: style.outlineOffset,
+      radius: style.borderRadius,
+      padding: style.paddingLeft,
+      height: Math.round(rect.height),
+      cardWidth: card ? Math.round(card.getBoundingClientRect().width) : null,
+    };
+  });
+  const rest = await read();
+  assert.equal(rest.border, field[theme].border, `${label}: field border`);
+  assert.equal(rest.borderWidth, '1px', `${label}: field border width`);
+  assert.equal(rest.shadow, 'none', `${label}: field shadow`);
+  assert.equal(rest.radius, '10px', `${label}: field radius`);
+  assert.equal(rest.padding, '12px', `${label}: field padding`);
+  assert.equal(rest.height, 44, `${label}: field height`);
+  await input.hover();
+  assert.equal((await read()).border, field[theme].hover, `${label}: field hover border`);
+  await page.mouse.move(0, 0);
+  await input.focus();
+  const focused = await read();
+  assert.equal(focused.outline, `solid 1px ${field.focus}`, `${label}: focus outline`);
+  assert.equal(focused.outlineOffset, '-1px', `${label}: focus outline sits on the border`);
+  assert.equal(focused.shadow, 'none', `${label}: no glow in focus`);
+  return focused;
+};
 
 let browser;
 try {
@@ -119,6 +166,14 @@ try {
           assert.deepEqual(errors, [], `${label}: errors`);
           if (!theme.saved) {
             await page.screenshot({ path: `${output}/${target.name}-${theme.expected}-${width}.png`, fullPage: true });
+          }
+          if (target.field) {
+            const focused = await checkField(page, target, theme.expected, label);
+            // Linear's sign-in column is 288px.
+            if (target.name === 'login' && width === 1440) assert.equal(focused.cardWidth, 288, `${label}: column width`);
+            if (!theme.saved) {
+              await page.screenshot({ path: `${output}/${target.name}-field-focus-${theme.expected}-${width}.png`, fullPage: true });
+            }
           }
         } catch (error) {
           await page.screenshot({ path: `${output}/failed-${target.name}-${theme.system}-${theme.saved ?? 'none'}-${width}.png`, fullPage: true }).catch(() => {});
