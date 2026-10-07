@@ -105,7 +105,9 @@ export type RuleEntityStateName =
   | 'error'
   | 'matched'
   | 'rules_off'
-  | 'rule_paused';
+  | 'rule_paused'
+  /** Client only: the rule reaches the entity but no check has seen the pair yet. */
+  | 'unchecked';
 
 export interface RuleEntityStatePayload {
   rule_id: number;
@@ -408,7 +410,13 @@ export function describeRuleState(
     case 'rules_off':
       return { label: 'Rules off for this ad account', note: fired, tone: 'quiet' };
     case 'rule_paused':
-      return { label: 'Rule paused', note: fired, tone: 'quiet' };
+      return {
+        label: 'Rule paused',
+        note: [fired, 'Checks nothing until you turn it on again'].filter(Boolean).join(' · '),
+        tone: 'quiet',
+      };
+    case 'unchecked':
+      return { label: 'Not checked yet', note: row.detail, tone: 'quiet' };
     case 'matched':
     default:
       return { label: 'Condition met', note: row.detail, tone: 'acted' };
@@ -424,6 +432,35 @@ export function formatAccountScope(scope: RuleScope): string {
     return scope.ids.length === 1 ? '1 ad set' : `${scope.ids.length} ad sets`;
   }
   return 'Whole account';
+}
+
+/** The rule levels that act on a row of this level or inside it. */
+export const RULE_LEVELS_UNDER: Record<'campaign' | 'adset', RuleExecutionLevel[]> = {
+  campaign: ['campaign', 'adset', 'ad'],
+  adset: ['adset', 'ad'],
+};
+
+/**
+ * Rules that check one campaign or ad set row without being aimed at it
+ * (#300): attached to the whole ad account, or — for an ad set — to its
+ * campaign. A rule acting on a level above the row (a campaign rule on an ad
+ * set row) does not check it. Kept in the ad account's stored order.
+ */
+export function inheritedRuleIds(
+  scopes: Record<string, RuleScope>,
+  order: string[],
+  ruleLevels: Record<string, RuleExecutionLevel | undefined>,
+  level: 'campaign' | 'adset',
+  campaignId?: string,
+): string[] {
+  return order.filter((ruleId) => {
+    const scope = scopes[ruleId];
+    if (!scope) return false;
+    const ruleLevel = ruleLevels[ruleId];
+    if (ruleLevel && !RULE_LEVELS_UNDER[level].includes(ruleLevel)) return false;
+    if (scope.level === 'account') return true;
+    return level === 'adset' && scope.level === 'campaign' && Boolean(campaignId) && scope.ids.includes(campaignId!);
+  });
 }
 
 /**

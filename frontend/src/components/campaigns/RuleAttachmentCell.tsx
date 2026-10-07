@@ -1,6 +1,8 @@
-import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { LinearBoltIcon } from '@/icons/LinearIcons';
 import { useIsSmallScreen } from '@/lib/useMediaQuery';
+import { inheritedRuleIds } from '@/lib/rules';
+import { useAppStore } from '@/store/useAppStore';
 import { RuleSelectorPopover } from './RuleSelectorPopover';
 import type { RuleTargetLevel } from './RuleSelectorPopover';
 
@@ -34,7 +36,25 @@ export const RuleAttachmentCell = forwardRef<
   const cellRef = useRef<HTMLDivElement>(null);
   const isSmall = useIsSmallScreen();
 
-  const attachedCount = attachedRuleIds.length;
+  // Rules on the whole ad account (or an ad set's campaign) check this row as
+  // well (#300): counted, so "+ Rule" never claims a checked row has none.
+  const scopes = useAppStore((state) => state.attachedRuleScopes);
+  const order = useAppStore((state) => state.attachedRuleOrder);
+  const rules = useAppStore((state) => state.rules);
+  const inheritedCount = useMemo(() => {
+    const ruleLevels = Object.fromEntries(rules.map((rule) => [rule.id, rule.preset.level]));
+    return inheritedRuleIds(scopes, order, ruleLevels, level, campaignId)
+      .filter((ruleId) => !attachedRuleIds.includes(ruleId)).length;
+  }, [scopes, order, rules, level, campaignId, attachedRuleIds]);
+
+  const ownCount = attachedRuleIds.length;
+  const attachedCount = ownCount + inheritedCount;
+  const reachTitle = inheritedCount === 0
+    ? undefined
+    : [
+        ownCount > 0 && `${ownCount} on this ${level === 'campaign' ? 'campaign' : 'ad set'}`,
+        `${inheritedCount} through the ${level === 'adset' ? 'ad account or campaign' : 'ad account'}`,
+      ].filter(Boolean).join(' · ');
 
   const open = (event?: React.MouseEvent) => {
     if (event) {
@@ -60,6 +80,8 @@ export const RuleAttachmentCell = forwardRef<
           type="button"
           onClick={open}
           data-rule-cell="true"
+          data-inherited-rules={inheritedCount || undefined}
+          title={reachTitle}
           className="relative after:absolute after:-inset-[6px] after:content-[''] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
           style={{
             height: '22px',
@@ -83,7 +105,8 @@ export const RuleAttachmentCell = forwardRef<
               fontFamily: LABEL_FONT,
               fontSize: '12px',
               fontWeight: 500,
-              color: 'var(--text-primary)',
+              // Only inherited rules: the row has none of its own.
+              color: ownCount > 0 ? 'var(--text-primary)' : 'var(--text-secondary)',
               lineHeight: 1,
               whiteSpace: 'nowrap',
             }}
