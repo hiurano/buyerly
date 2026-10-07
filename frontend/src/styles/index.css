@@ -3142,6 +3142,11 @@ html[data-theme='dark'] .buyerly-auth-page,
   line-height: 16px;
 }
 
+/* "Helsinki, 18, FI · Last seen …" wraps between its parts only. */
+.preferences-session-part {
+  white-space: nowrap;
+}
+
 .preferences-session-current {
   display: inline-flex;
   align-items: center;

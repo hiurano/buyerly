@@ -48,7 +48,7 @@ Production: `https://buyerly.app`.
 | `POST /api/auth/update-profile` | `first_name?`, `last_name?`, `email?`, `avatar_url?`, `full_name?` | обновляет персональные данные профиля |
 | `POST /api/auth/logout` | — | немедленно отзывает текущую web-сессию; другие аккаунты этого браузера остаются |
 | `GET /api/auth/accounts` | — | аккаунты, вошедшие в этом браузере, в порядке добавления: `id`, `username`, `full_name`, `email`, `avatar_url`, `slot`, `onboarding_completed`, `workspaces`; cookie закончившихся сессий удаляет; без входа — пустой список |
-| `GET /api/auth/sessions` | — | список активных устройств с датами создания, истечения и последней активности и IP-адресом последней активности |
+| `GET /api/auth/sessions` | — | список активных устройств с датами создания, истечения и последней активности и IP-адресом последней активности; `location` — место последней активности от Cloudflare («Helsinki, 18, FI»), пустое без Cloudflare |
 | `DELETE /api/auth/sessions/{session_id}` | — | отзывает выбранную собственную web-сессию |
 | `POST /api/auth/logout-all` | `keep_current?` | отзывает все web-сессии пользователя; с `keep_current=true` текущая остаётся (Revoke all в Settings → Security & access) |
 | `GET /api/me` | — | `username`, `full_name`, `first_name`, `last_name`, `email`, `email_verified`, `unconfirmed_email`, `avatar_url`, `role`, `is_approved`, `active_workspace`, `workspaces` |

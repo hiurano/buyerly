@@ -7,6 +7,8 @@ export interface WebSession {
   id: string;
   user_agent: string;
   ip_address: string;
+  /** "Helsinki, 18, FI" where it was last seen (from Cloudflare); empty when unknown. */
+  location?: string;
   created_at: string;
   expires_at: string;
   last_seen_at: string;

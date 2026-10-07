@@ -9,7 +9,7 @@ from fastapi import Depends, Header, HTTPException, Query, Request, Response, st
 from sqlalchemy import select, update
 
 from core.config import settings
-from core.rate_limit import get_client_ip
+from core.rate_limit import get_client_ip, get_client_location
 from database.db import async_session_maker
 from database.models import User, WebSession
 
@@ -190,6 +190,7 @@ async def create_web_session(
         csrf_hash=_secret_hash(csrf_token),
         user_agent=(request.headers.get("user-agent") or "")[:500],
         ip_address=_client_ip(request),
+        location=get_client_location(request),
         created_at=now,
         expires_at=now + timedelta(hours=settings.WEB_SESSION_TTL_HOURS),
         last_seen_at=now,
@@ -283,6 +284,7 @@ async def get_authenticated_user(
                         csrf_hash=_secret_hash(csrf_token_to_set),
                         user_agent=(request.headers.get("user-agent") or "Legacy browser")[:500],
                         ip_address=_client_ip(request),
+                        location=get_client_location(request),
                         created_at=now,
                         expires_at=now + timedelta(hours=settings.WEB_SESSION_TTL_HOURS),
                         last_seen_at=now,
@@ -357,7 +359,12 @@ async def get_authenticated_user(
                 # Linear shows where a session was last seen, so the address follows it.
                 if _as_utc(web_session.last_seen_at) <= now - timedelta(minutes=5):
                     web_session.last_seen_at = now
-                    web_session.ip_address = _client_ip(request) or web_session.ip_address
+                    seen_ip = _client_ip(request)
+                    seen_location = get_client_location(request)
+                    if seen_location or (seen_ip and seen_ip != web_session.ip_address):
+                        # A place belongs to the address it was seen with.
+                        web_session.location = seen_location
+                    web_session.ip_address = seen_ip or web_session.ip_address
 
                 if token_source == "bearer":
                     csrf_token_to_set = secrets.token_urlsafe(32)

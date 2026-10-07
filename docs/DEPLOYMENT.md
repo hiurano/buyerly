@@ -109,6 +109,76 @@ cd /opt/buyerly
 bash scripts/deploy.sh
 ```
 
+## Cloudflare: настоящий IP и город у сессий
+
+`buyerly.app` уже открывается через Cloudflare (на 2026-10-07 в ответе
+`server: cloudflare` и `cf-ray`, адреса домена принадлежат Cloudflare). Поэтому
+сервер видит не браузер, а узел Cloudflare. Что делает код (#301):
+
+- Адрес браузера API берёт из `CF-Connecting-IP`, а город — из `cf-ipcity`,
+  `cf-region-code` и `cf-ipcountry`, **только** если к нашему nginx (через
+  доверенные прокси из `TRUSTED_PROXY_CIDRS`) подключился адрес из сетей
+  Cloudflare. Если кто-то обратится к серверу напрямую и сам допишет эти
+  заголовки, они не учитываются: тогда адресом считается его собственный.
+- Сети Cloudflare задаёт `CLOUDFLARE_IP_CIDRS`. Пусто (по умолчанию) — список с
+  https://www.cloudflare.com/ips/, зашитый в код (сверен 2026-10-07); `off` —
+  заголовкам Cloudflare не верить. Если Cloudflare добавит сеть, а код ещё не
+  обновлён, можно временно перечислить сети здесь через запятую.
+- Ограничения частоты запросов (rate limit) считаются по настоящему адресу
+  браузера, а не по узлу Cloudflare.
+- Место хранится у сессии (`web_sessions.location`, миграция `0034`),
+  обновляется вместе с «Last seen» и показывается в Settings → Security & access
+  как у Linear: «Helsinki, 18, FI · Last seen about 14 hours ago». Нет заголовков —
+  нет места, строка остаётся «Last seen …».
+- nginx в контейнере `web` передаёт заголовки Cloudflare в API без изменений;
+  WebSocket и SSE в Buyerly нет, отдельных настроек для них не нужно.
+
+### Что сделать владельцу в Cloudflare (по шагам)
+
+Всё делается в панели https://dash.cloudflare.com → аккаунт → сайт
+`buyerly.app`. Код к этому времени уже выложен; порядок шагов важен.
+
+1. **Включить город посетителя.** Rules → Settings (в старой панели: Rules →
+   Transform Rules → вкладка Managed Transforms) → блок «HTTP request headers» →
+   включить **Add visitor location headers**. Больше ничего в этом блоке не
+   трогать. Это бесплатно и сразу добавляет к запросам `cf-ipcity`,
+   `cf-region-code`, `cf-ipcountry`.
+2. **Проверить, что сайт идёт через Cloudflare.** DNS → Records: у записей
+   `buyerly.app` (A/AAAA) и `www`, если есть, облако **оранжевое** (Proxied).
+   Почтовые записи (MX и TXT с SPF/DKIM/DMARC для Resend, например `send` и
+   `resend._domainkey`) должны оставаться **серыми** (DNS only) — иначе письма
+   перестанут доходить. Ничего не менять, если уже так.
+3. **Режим TLS.** SSL/TLS → Overview. Нужен **Full (strict)**: тогда трафик от
+   Cloudflare до сервера тоже зашифрован и сертификат сервера проверяется.
+   - Если сейчас **Flexible** — не переключать сразу: от Cloudflare до сервера
+     идёт обычный HTTP, и сайт сломается. Сначала на сервере нужен HTTPS на
+     порту 443 с сертификатом для `buyerly.app`: проще всего SSL/TLS → Origin
+     Server → Create Certificate (15 лет), поставить его в прокси на сервере,
+     который принимает трафик снаружи. Это задача для отдельной сессии с
+     доступом к серверу — напишите, что режим был Flexible.
+   - Если уже **Full** — переключить на **Full (strict)**, затем открыть
+     https://buyerly.app. Если показывается ошибка 526, вернуть Full и написать
+     об этом: значит, на сервере самоподписанный сертификат.
+   - Если уже **Full (strict)** — ничего не делать.
+4. **Всегда HTTPS.** SSL/TLS → Edge Certificates → включить **Always Use
+   HTTPS** (сейчас `http://buyerly.app` отвечает страницей, а не переходом на
+   https).
+5. **Не мешать Telegram и Meta.** Security → Bots: **Bot Fight Mode** выключен
+   (он блокирует webhook Telegram `/api/telegram/webhook`). Режим «I'm Under
+   Attack» не включать. Если когда-нибудь появятся правила WAF или Challenge —
+   исключить из них `/api/telegram/webhook` и `/api/meta/oauth/callback`.
+6. **Проверка (2 минуты).** Выйти и снова войти в Buyerly, открыть Settings →
+   Security & access. В строке этого браузера должно быть «Current session ·
+   Город, регион, страна», в деталях сессии (клик по строке) — ваш IP. Свой IP
+   показывает https://buyerly.app/cdn-cgi/trace (строка `ip=`) — он должен
+   совпасть. Затем отправить себе код входа на почту (письма идут) и нажать
+   Connect Telegram в Settings (бот отвечает). Написать результат в issue #301.
+
+Необязательно, но полезно потом: закрыть на сервере порты 80, 443 и 8080 для
+всех, кроме сетей Cloudflare (файрвол VPS), чтобы сайт нельзя было открыть в
+обход Cloudflare (отдельной задачей: Docker обходит обычные правила ufw). Код
+и без этого не верит поддельным заголовкам.
+
 ## Проверка и журналы
 
 ```bash
