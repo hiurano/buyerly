@@ -33,7 +33,9 @@ try {
   const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
   browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH });
   for (const { width, method } of scenarios) {
-    const context = await browser.newContext({ viewport: { width, height: 1000 } });
+    // The invite page follows the system theme like Linear: one wide logged-in run is dark.
+    const dark = method === 'other' && width === 1440;
+    const context = await browser.newContext({ viewport: { width, height: 1000 }, colorScheme: dark ? 'dark' : 'light' });
     const page = await context.newPage();
     page.setDefaultTimeout(10_000);
     const errors = [];
@@ -133,10 +135,46 @@ try {
       if (method !== 'session') {
         await page.getByRole('heading', { name: 'Team Owner has invited you to Invite Team', exact: true }).waitFor();
         // Logged out, or logged in as someone else, the page names the email to log in as.
-        await page.getByText(`To accept the invitation please log in as${email}.`).waitFor();
+        await page.getByText(`To accept the invitation please login as${email}.`).waitFor();
         assert.equal(await page.getByRole('button', { name: 'Join workspace', exact: true }).count(), 0);
         if (method === 'other') {
           await page.getByText(`Logged in as${otherEmail}`).waitFor();
+        }
+        if (width === 1440) {
+          // Linear's measurements (#284); the Log in button is Buyerly yellow instead of Linear's violet.
+          const looks = await page.evaluate(() => {
+            const style = selector => getComputedStyle(document.querySelector(selector));
+            const box = selector => document.querySelector(selector).getBoundingClientRect();
+            return {
+              page: style('.buyerly-invite-page').backgroundColor,
+              card: style('.buyerly-invite-card').backgroundColor,
+              cardWidth: box('.buyerly-invite-card').width,
+              mark: [box('.buyerly-invite-workspace-mark').width, box('.buyerly-invite-workspace-mark').height],
+              title: [style('.buyerly-invite-title').fontSize, style('.buyerly-invite-title').fontWeight],
+              divider: Boolean(document.querySelector('.buyerly-invite-divider')),
+              button: style('.buyerly-invite-button').backgroundColor,
+              buttonBox: [box('.buyerly-invite-button').width, box('.buyerly-invite-button').height],
+            };
+          });
+          assert.deepEqual(looks, {
+            page: dark ? 'rgb(17, 18, 18)' : 'rgb(248, 248, 249)',
+            card: dark ? 'rgb(25, 25, 27)' : 'rgb(255, 255, 255)',
+            cardWidth: 460,
+            mark: [54, 54],
+            title: ['24px', '500'],
+            // Logged out, Linear describes the product under a divider; logged in, neither is shown.
+            divider: method !== 'other',
+            button: 'rgb(245, 184, 0)',
+            buttonBox: [396, 44],
+          }, `${method} at ${width}px: invite page measurements`);
+        }
+        if (method === 'other') {
+          // "Logged in as" opens Linear's account menu.
+          await page.getByRole('button', { name: /Logged in as/ }).click();
+          await page.getByRole('menuitem', { name: 'Log out', exact: true }).waitFor();
+          assert.equal(await page.getByRole('menu').getByText('Accounts', { exact: true }).count(), 1);
+          await page.keyboard.press('Escape');
+          await page.getByRole('menu').waitFor({ state: 'detached' });
         }
         await assertNoOverflow();
         await page.screenshot({ path: `${output}/${method}-invite-${width}.png`, fullPage: true });

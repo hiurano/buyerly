@@ -1,8 +1,45 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Check, ChevronLeft } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
 import type { InviteInfo, LoginResult, SessionUser } from '@/lib/types';
+import { useAppStore } from '@/store/useAppStore';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/ui/DropdownMenu';
 import { AuthFrame, BuyerlyBrand } from './AuthFrame';
 import { LoginView } from './LoginView';
+
+/**
+ * Linear's invitation page follows the system or the person's own theme, also
+ * before anyone is logged in. The app shell is not mounted here, so the page
+ * resolves the theme itself and marks <html> for the account menu's portal.
+ */
+const useInviteDarkTheme = () => {
+  const interfaceTheme = useAppStore((state) => state.interfaceTheme);
+  const [systemDark, setSystemDark] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches,
+  );
+  useEffect(() => {
+    const query = window.matchMedia('(prefers-color-scheme: dark)');
+    const update = () => setSystemDark(query.matches);
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+  const resolved = interfaceTheme === 'system' ? (systemDark ? 'dark' : 'light') : interfaceTheme;
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.theme = resolved;
+    root.style.colorScheme = resolved;
+    root.classList.toggle('dark', resolved === 'dark');
+  }, [resolved]);
+  return resolved === 'dark';
+};
 
 interface InviteViewProps {
   token: string;
@@ -82,22 +119,26 @@ export const InviteView: React.FC<InviteViewProps> = ({
     void accept();
   }, [accept, invite?.valid, isInvitedUser]);
 
-  const logInAsInvitedEmail = async () => {
-    if (!user) {
-      setShowLogin(true);
-      return;
-    }
+  const isDark = useInviteDarkTheme();
+
+  /** Ends the current session; `thenLogIn` goes straight on to log in as the invited email. */
+  const logOut = async (thenLogIn: boolean) => {
     setBusy(true);
     setError('');
     try {
       await apiRequest('/api/auth/logout', { method: 'POST', body: JSON.stringify({}) });
-      setShowLogin(true);
+      if (thenLogIn) setShowLogin(true);
       onSignedOut();
     } catch (logoutError) {
       setError(logoutError instanceof Error ? logoutError.message : 'Could not log out');
     } finally {
       setBusy(false);
     }
+  };
+
+  const logInAsInvitedEmail = () => {
+    if (user) void logOut(true);
+    else setShowLogin(true);
   };
 
   if (!user && showLogin && invite) {
@@ -112,26 +153,46 @@ export const InviteView: React.FC<InviteViewProps> = ({
   }
 
   return (
-    <AuthFrame>
+    <AuthFrame
+      dark={isDark}
+      className={`buyerly-invite-page${user ? ' buyerly-invite-page--signed-in' : ''}`}
+    >
       {user && (
         <>
-          <button className="buyerly-auth-back" type="button" onClick={onBack}>
-            ‹ Back to Buyerly
+          <button className="buyerly-invite-back" type="button" onClick={onBack}>
+            <ChevronLeft size={14} strokeWidth={2} aria-hidden="true" />
+            Back to Buyerly
           </button>
-          <p className="buyerly-auth-corner">
-            Logged in as
-            <strong>{user.email || user.username}</strong>
-          </p>
+          {/* Linear's account switcher. "Add an account" waits for several accounts (#231). */}
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <button className="buyerly-invite-account" type="button">
+                <span>Logged in as</span>
+                <strong>{user.email || user.username}</strong>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="left" align="start" sideOffset={4} style={{ width: '193px', minWidth: '193px' }}>
+              <DropdownMenuLabel style={{ padding: '8px 14px', fontSize: '12px', fontWeight: 500 }}>
+                Accounts
+              </DropdownMenuLabel>
+              <DropdownMenuItem>
+                <span className="min-w-0 truncate">{user.email || user.username}</span>
+                <Check size={14} strokeWidth={2} aria-hidden="true" />
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => void logOut(false)}>Log out</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </>
       )}
-      <section className="buyerly-auth-card buyerly-invite-card">
+      <section className="buyerly-invite-card">
         {/* Linear shows only the workspace's own mark on a valid invitation. */}
         {!invite?.valid && <BuyerlyBrand />}
         {!invite && !error && <span className="buyerly-auth-spinner" aria-label="Loading invitation" />}
         {(error || (invite && !invite.valid)) && !invite?.valid && (
           <>
-            <h1>Invitation unavailable</h1>
-            <p className="buyerly-auth-copy">{error || invite?.message}</p>
+            <h1 className="buyerly-invite-title">Invitation unavailable</h1>
+            <p className="buyerly-invite-text">{error || invite?.message}</p>
           </>
         )}
         {invite?.valid && (
@@ -142,19 +203,22 @@ export const InviteView: React.FC<InviteViewProps> = ({
             >
               {invite.workspace_badge_text || invite.workspace_name?.charAt(0) || 'B'}
             </div>
-            <h1>{invite.inviter_name} has invited you to {invite.workspace_name}</h1>
+            <h1 className="buyerly-invite-title">{invite.inviter_name} has invited you to {invite.workspace_name}</h1>
             {!user && (
-              <p className="buyerly-auth-copy">
-                Buyerly helps your team monitor Meta Ads performance and automate routine actions.
-              </p>
+              <>
+                <p className="buyerly-invite-description">
+                  Buyerly helps your team monitor Meta Ads performance and automate routine actions.
+                </p>
+                <hr className="buyerly-invite-divider" />
+              </>
             )}
 
             {isInvitedUser ? (
               <>
-                {busy && <p className="buyerly-auth-copy">Joining {invite.workspace_name}…</p>}
+                {busy && <p className="buyerly-invite-text">Joining {invite.workspace_name}…</p>}
                 {error && <p className="buyerly-auth-error" role="alert">{error}</p>}
                 {error && (
-                  <button className="buyerly-auth-button buyerly-auth-button--primary" type="button" onClick={() => void accept()} disabled={busy}>
+                  <button className="buyerly-invite-button" type="button" onClick={() => void accept()} disabled={busy}>
                     Join workspace
                   </button>
                 )}
@@ -163,27 +227,29 @@ export const InviteView: React.FC<InviteViewProps> = ({
               // A shared invite link has no email to match: the logged-in person joins by choice.
               <>
                 {error && <p className="buyerly-auth-error" role="alert">{error}</p>}
-                <button className="buyerly-auth-button buyerly-auth-button--primary" type="button" onClick={() => void accept()} disabled={busy}>
+                <button className="buyerly-invite-button" type="button" onClick={() => void accept()} disabled={busy}>
                   {busy ? 'Joining…' : 'Join workspace'}
                 </button>
               </>
             ) : (
               <>
-                <p className="buyerly-auth-copy">
+                <p className="buyerly-invite-text">
                   {targetEmail ? (
                     <>
-                      To accept the invitation please log in as
-                      <strong className="buyerly-auth-email">{targetEmail}.</strong>
+                      To accept the invitation please login as
+                      <span className="buyerly-invite-email">
+                        <strong>{targetEmail}</strong>.
+                      </span>
                     </>
                   ) : (
-                    'To accept the invitation please log in.'
+                    'To accept the invitation please login.'
                   )}
                 </p>
                 {error && <p className="buyerly-auth-error" role="alert">{error}</p>}
                 <button
-                  className="buyerly-auth-button buyerly-auth-button--primary"
+                  className="buyerly-invite-button"
                   type="button"
-                  onClick={() => void logInAsInvitedEmail()}
+                  onClick={logInAsInvitedEmail}
                   disabled={busy}
                 >
                   Log in
