@@ -139,11 +139,15 @@ bash scripts/deploy.sh
 (туннель `buyerly-prod`, Proxied), `www` — Proxied CNAME на `buyerly.app`.
 Значит, Cloudflare не подключается к серверу сам: на сервере работает процесс
 `cloudflared`, который держит исходящее соединение с Cloudflare и отдаёт запросы
-сайту локально (в репозитории его нет — он поставлен на сервер отдельно,
-обычно как systemd-служба `cloudflared`). Режим SSL/TLS в панели на участок
+сайту локально (в репозитории его нет — он поставлен на сервер отдельно).
+По журналу деплоя 2026-10-08 (`BUYERLY_EDGE`): systemd-службы `cloudflared` нет,
+работает контейнер `cloudflare/cloudflared:latest` в Docker-сети
+`buyerly_default` — той же, что `web`; порты 80, 443 и 8080 на сервере открыты
+для всех. Режим SSL/TLS в панели на участок
 `cloudflared` → сайт не влияет: этот участок настраивается в самом туннеле
-(Networks → Tunnels → `buyerly-prod` → Published application routes, обычно
-`http://localhost:8080`).
+(Networks → Tunnels → `buyerly-prod` → Published application routes; из
+контейнера в `buyerly_default` это обычно `http://web:80` или
+`http://buyerly-web:80`).
 
 Поэтому к nginx соединение приходит не из сетей Cloudflare, а с локального адреса:
 у `cloudflared` на хосте это шлюз Docker-сети (`172.x.0.1`), у `cloudflared`
@@ -179,18 +183,22 @@ bash scripts/deploy.sh
 Для города и IP ничего делать не нужно: значение по умолчанию уже подходит.
 Рекомендуется закрыть прямой вход в обход туннеля (5 минут, по SSH):
 
-1. Убедиться, что `cloudflared` работает на самом сервере и ходит на
-   `localhost:8080`:
+1. Посмотреть, куда туннель отдаёт запросы: панель Cloudflare → Networks →
+   Tunnels → `buyerly-prod` → Published application routes → строка
+   `buyerly.app` → Service.
+
+   - `http://web:80`, `http://buyerly-web:80` или `http://localhost:8080` при
+     `cloudflared` с сетью `host` — порт 8080 туннелю не нужен, переходить к шагу 2.
+   - Публичный IP сервера, `host.docker.internal` или `172.17.0.1` с портом
+     8080 — шаг 2 **не** делать (сайт перестанет открываться): сначала поменять
+     Service на `http://buyerly-web:80`, проверить сайт, затем шаг 2.
+
+   Где запущен `cloudflared`:
 
    ```bash
-   systemctl status cloudflared --no-pager   # active (running) — служба на хосте
    docker ps --format '{{.Names}} {{.Image}} {{.Networks}}' | grep -i cloudflared
+   systemctl is-active cloudflared
    ```
-
-   Если служба активна (или контейнер с сетью `host`), а в панели туннеля у
-   `buyerly.app` указан `http://localhost:8080` — переходить к шагу 2. Если
-   `cloudflared` в контейнере с другой сетью или на другой машине — шаг 2 **не**
-   делать (сайт перестанет открываться) и написать об этом в issue #301.
 2. Оставить порт сайта только для локальных подключений:
 
    ```bash
