@@ -339,6 +339,8 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
             [("Buyer", "user"), ("Owner", "user"), ("Stop without leads", "rule"), ("Buyerly", "buyerly")],
         )
         self.assertEqual(senders[1]["value"], f"user:{OWNER['id']}")
+        # People carry their photo for the avatar Linear shows under From.
+        self.assertEqual([("avatar_url" in entry) for entry in senders], [True, True, False, False])
         self.assertNotIn("Outsider", str(senders))
         self.assertNotIn("Not ours", str(senders))
 

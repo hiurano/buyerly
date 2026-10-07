@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import {
+  BuyerlyLogoAvatar,
   LinearBacklogDashedIcon,
   LinearBoltIcon,
   LinearFilterIcon,
@@ -26,6 +27,7 @@ import {
   filterOperatorLabel,
   FilterFieldDefinition,
   FilterOption,
+  type FilterOptionAvatar,
   getFilterValueAccessibleName,
   getFilterValueSummary,
   removeFilterClause,
@@ -286,18 +288,84 @@ const SearchRow = React.forwardRef<
 ));
 SearchRow.displayName = 'SearchRow';
 
+/**
+ * Linear's avatar under From: 16px round in the menu, 14px in a chip. A person
+ * shows their photo or initials; an agent (our rules) a disc in the text color
+ * with its mark at 10px in the menu's color; Buyerly its logo.
+ */
+export const FilterOptionAvatarImage: React.FC<{ avatar: FilterOptionAvatar; label: string; size: number }> = ({
+  avatar,
+  label,
+  size,
+}) => {
+  if (avatar.kind === 'buyerly') {
+    return (
+      <span data-filter-avatar="buyerly" aria-hidden="true" style={{ display: 'inline-flex' }}>
+        <BuyerlyLogoAvatar size={size} shape="circle" />
+      </span>
+    );
+  }
+  const box: React.CSSProperties = {
+    display: 'inline-flex',
+    width: size,
+    height: size,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: '50%',
+  };
+  if (avatar.kind === 'rule') {
+    return (
+      <span data-filter-avatar="rule" aria-hidden="true" style={{ ...box, backgroundColor: MENU_TEXT, color: MENU_SURFACE }}>
+        <LinearBoltIcon size={Math.round(size * 0.625)} />
+      </span>
+    );
+  }
+  if (avatar.url) {
+    return (
+      <img
+        data-filter-avatar="user"
+        src={avatar.url}
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        style={{ ...box, objectFit: 'cover' }}
+      />
+    );
+  }
+  // The letter comes from CSS so it stays out of the option's text.
+  return (
+    <span
+      data-filter-avatar="user"
+      data-initial={label.trim().slice(0, 1)}
+      className="filter-avatar-initial"
+      aria-hidden="true"
+      style={{
+        ...box,
+        backgroundColor: 'var(--action-primary)',
+        color: '#fff',
+        fontSize: Math.round(size * 0.5),
+        fontWeight: 600,
+        lineHeight: 1,
+        textTransform: 'uppercase',
+      }}
+    />
+  );
+};
+
 const MenuOption: React.FC<{
   label: string;
   icon?: React.ReactNode;
   meta?: React.ReactNode;
   badge?: string;
+  avatar?: FilterOptionAvatar;
   highlighted: boolean;
   selected?: boolean;
   multiSelect?: boolean;
   expanded?: boolean;
   onMouseEnter?: () => void;
   onClick: (event: React.MouseEvent<HTMLDivElement>) => void;
-}> = ({ label, icon, meta, badge, highlighted, selected, multiSelect, expanded, onMouseEnter, onClick }) => (
+}> = ({ label, icon, meta, badge, avatar, highlighted, selected, multiSelect, expanded, onMouseEnter, onClick }) => (
   <div
     role="option"
     aria-selected={selected}
@@ -370,7 +438,13 @@ const MenuOption: React.FC<{
         {selected ? <Check size={14} strokeWidth={2.2} aria-hidden="true" /> : icon}
       </span>
     )}
-    <span style={{ minWidth: 0, flex: badge ? '0 1 auto' : 1, paddingLeft: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', zIndex: 1 }}>
+    {avatar && (
+      // Linear's From row: checkbox, avatar 30px from the row's edge, name 8px after it.
+      <span style={{ display: 'inline-flex', marginLeft: 7, zIndex: 1 }}>
+        <FilterOptionAvatarImage avatar={avatar} label={label} size={16} />
+      </span>
+    )}
+    <span style={{ minWidth: 0, flex: badge ? '0 1 auto' : 1, paddingLeft: avatar ? 8 : 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', zIndex: 1 }}>
       {label}
     </span>
     {badge && (
@@ -385,7 +459,7 @@ const MenuOption: React.FC<{
           marginLeft: 8,
           marginRight: 'auto',
           padding: '0 6px',
-          border: `1px solid ${MENU_BORDER}`,
+          border: '1px solid var(--filter-badge-border)',
           borderRadius: 6,
           color: MENU_MUTED,
           fontSize: 12,
@@ -765,6 +839,7 @@ export const LinearFilterMenu = <T,>({
                     <MenuOption
                       label={option.label}
                       badge={option.badge}
+                      avatar={option.avatar}
                       selected={selected}
                       multiSelect
                       highlighted={childHighlightedIndex === index}

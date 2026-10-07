@@ -1,6 +1,6 @@
 import React from 'react';
 import { Plus, X } from 'lucide-react';
-import type { FilterMenuMode } from '@/components/filters/LinearFilter';
+import { FilterOptionAvatarImage, type FilterMenuMode } from '@/components/filters/LinearFilter';
 import {
   filterOperatorLabel,
   getFilterValueAccessibleName,
@@ -27,6 +27,17 @@ interface InboxFilterChipProps {
   onRemove?: () => void;
 }
 
+/** Linear's chip shows the one chosen person's 14px avatar 4px before the name. */
+function valueAvatar(field: FilterFieldDefinition<unknown>, clause: FilterClause) {
+  if (clause.values.length !== 1) return null;
+  const option = field.options?.find((entry) => entry.value === String(clause.values[0]));
+  return option?.avatar ? (
+    <span className="mr-1 inline-flex shrink-0">
+      <FilterOptionAvatarImage avatar={option.avatar} label={option.label} size={14} />
+    </span>
+  ) : null;
+}
+
 /** One Linear filter chip: property, operator, values and remove. */
 export const InboxFilterChip: React.FC<InboxFilterChipProps> = ({ field, clause, onOpenMenu, onRemove }) => (
   <div className="flex h-6 max-w-full items-center gap-px overflow-hidden rounded-[8px] border border-[var(--color-border-tertiary)] bg-[var(--color-border-tertiary)] text-[12px] leading-[18px]">
@@ -46,6 +57,7 @@ export const InboxFilterChip: React.FC<InboxFilterChipProps> = ({ field, clause,
           onClick={(event) => onOpenMenu('value', event.currentTarget, field.id)}
           className={`${segment} min-w-0 shrink truncate text-[var(--text-secondary)] hover:text-[var(--text-primary)]`}
         >
+          {valueAvatar(field, clause)}
           <span className="truncate">{getFilterValueSummary(field, clause)}</span>
         </button>
       </>
@@ -55,7 +67,8 @@ export const InboxFilterChip: React.FC<InboxFilterChipProps> = ({ field, clause,
           {filterOperatorLabel(clause.operator, clause.values.length)}
         </span>
         <span className={`${segment} min-w-0 shrink truncate text-[var(--text-secondary)]`}>
-          {getFilterValueSummary(field, clause)}
+          {valueAvatar(field, clause)}
+          <span className="truncate">{getFilterValueSummary(field, clause)}</span>
         </span>
       </>
     )}

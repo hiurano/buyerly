@@ -241,6 +241,8 @@ export interface InboxSender {
   value: string;
   label: string;
   kind: 'user' | 'rule' | 'buyerly';
+  /** A person's photo; without one the menu shows initials. */
+  avatar_url?: string;
 }
 
 /** Everyone in the workspace a notification can be from, whether or not anything came from them yet. */

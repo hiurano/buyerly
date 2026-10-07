@@ -42,6 +42,13 @@ export interface FilterOption {
   keywords?: string[];
   /** A small outlined tag after the label, like Linear's "Agent" next to an agent under From. */
   badge?: string;
+  /** A round picture before the label, like Linear's avatars under From: a person's photo or initials, a rule, Buyerly. */
+  avatar?: FilterOptionAvatar;
+}
+
+export interface FilterOptionAvatar {
+  kind: 'user' | 'rule' | 'buyerly';
+  url?: string;
 }
 
 export interface FilterFieldDefinition<T> {

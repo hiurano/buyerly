@@ -136,7 +136,10 @@ export const NotificationsSection: React.FC<{
         <span className="preferences-row-desc">Choose which notifications are treated as priority</span>
       </span>
       <span className="preferences-row-control">
-        <span className="preferences-row-value">{plural(inboxDisplay.priorityKinds.length, 'type')}</span>
+        {/* Linear counts each custom filter as a type too, and says "0 types" with none. */}
+        <span className="preferences-row-value">
+          {plural(inboxDisplay.priorityKinds.length + inboxDisplay.priorityRules.length, 'type')}
+        </span>
         <ChevronRight size={16} aria-hidden="true" className="preferences-row-chevron" />
       </span>
     </>
