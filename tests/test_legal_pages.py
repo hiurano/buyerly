@@ -98,6 +98,17 @@ class TestLegalPageFiles(unittest.TestCase):
         self.assertIn('email address', privacy)
         self.assertNotIn('securely hashed web password', privacy)
 
+    def test_public_pages_promise_only_delivered_notification_channels(self):
+        # Issue #196: alerts reach people through the Inbox and, if they turn it
+        # on, email (services/inbox_email.py) or Telegram (services/inbox_telegram.py).
+        # There are no scheduled reports and no other channels to promise.
+        landing = (PUBLIC_ROOT / "landing.html").read_text()
+        self.assertIn("Buyerly inbox, and by email or Telegram for those who turn it on", landing)
+        for filename in DOCUMENTS:
+            content = (PUBLIC_ROOT / filename).read_text().lower()
+            for claim in ("scheduled report", "channels they already use", "team reporting", "slack"):
+                self.assertNotIn(claim, content, filename)
+
 
 class TestLegalPageRoutes(unittest.IsolatedAsyncioTestCase):
     async def test_public_pages_and_assets_are_available_without_authentication(self):
