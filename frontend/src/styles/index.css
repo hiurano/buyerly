@@ -2558,7 +2558,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   padding: 0 10px;
   border: 1px solid transparent;
   border-radius: 9999px;
-  color: var(--text-tertiary);
+  color: var(--inbox-tab-fg);
   background: var(--inbox-tab-bg);
   font-size: 12px;
   font-weight: 500;
@@ -2573,7 +2573,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 
 .linear-inbox-tab-count {
   margin-left: 6px;
-  color: var(--text-tertiary);
+  color: var(--inbox-tab-fg);
   font-weight: 450;
 }
 
@@ -2596,7 +2596,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
   padding: 0 0 0 10px;
   border: 0;
   border-radius: 8px;
-  color: var(--text-tertiary);
+  color: var(--inbox-group-header-fg);
   background: var(--inbox-group-header-bg);
   font-size: 12px;
   font-weight: 500;
@@ -2605,7 +2605,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 
 .linear-inbox-group-header svg {
   margin-left: -5px;
-  color: var(--text-muted);
+  color: var(--inbox-group-header-icon);
   transition: transform 150ms ease;
 }
 
