@@ -103,9 +103,9 @@ services:
     restart: unless-stopped
     logging: *default-logging
     ports:
-      # 127.0.0.1:8080 in .env closes the port to the internet when the
-      # Cloudflare Tunnel is the only way in.
-      - "${WEB_PORT_BINDING:-8080}:80"
+      # Loopback only: the Cloudflare Tunnel reaches web:80 over the Docker
+      # network, and 8080 serves the deploy's own health checks (#301).
+      - "${WEB_PORT_BINDING:-127.0.0.1:8080}:80"
     volumes:
       - buyerly-uploads:/usr/share/nginx/html/uploads:ro
     depends_on:

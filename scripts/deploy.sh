@@ -9,6 +9,12 @@ HEALTH_TIMEOUT_SECONDS="${HEALTH_TIMEOUT_SECONDS:-180}"
 DEPLOY_LOCK_FILE="${DEPLOY_LOCK_FILE:-/var/lock/buyerly-deploy.lock}"
 DEPLOY_LOCK_TIMEOUT_SECONDS="${DEPLOY_LOCK_TIMEOUT_SECONDS:-180}"
 EXPECTED_GIT_REPOSITORY="${EXPECTED_GIT_REPOSITORY:-hiurano/buyerly}"
+# The site is reachable only through the Cloudflare Tunnel (#301): cloudflared
+# reaches web:80 over the Docker network, so the host port stays on loopback.
+WEB_LOOPBACK_BINDING="127.0.0.1:8080"
+PUBLIC_HEALTH_URL="${PUBLIC_HEALTH_URL:-https://buyerly.app/health/live}"
+PUBLIC_HEALTH_TIMEOUT_SECONDS="${PUBLIC_HEALTH_TIMEOUT_SECONDS:-90}"
+PREVIOUS_WEB_PORT_BINDING=""
 
 wait_for_container() {
     local container_name="$1"
@@ -55,6 +61,82 @@ wait_for_ready() {
         sleep 2
     done
     echo "[ERROR] ${endpoint} did not return 200 within ${HEALTH_TIMEOUT_SECONDS}s."
+    return 1
+}
+
+configured_web_port_binding() {
+    sed -n 's/^WEB_PORT_BINDING=//p' .env 2>/dev/null | tail -n 1 | tr -d " \t\r\"'"
+}
+
+set_web_port_binding() {
+    if grep -q '^WEB_PORT_BINDING=' .env 2>/dev/null; then
+        sed -i "s|^WEB_PORT_BINDING=.*|WEB_PORT_BINDING=$1|" .env
+    else
+        printf 'WEB_PORT_BINDING=%s\n' "$1" >> .env
+    fi
+}
+
+# Remembers the binding the running web container was started with, so a
+# failed public check can restore it. Nothing to restore when it already
+# listens on loopback only or does not exist yet.
+capture_previous_web_binding() {
+    local published configured
+    published=$(docker port buyerly-web 80/tcp 2>/dev/null || true)
+    if [[ -z "${published}" ]] \
+          || ! grep -qvE '^(127\.[0-9.]+|\[::1\]):' <<<"${published}"; then
+        PREVIOUS_WEB_PORT_BINDING=""
+        return
+    fi
+    configured=$(configured_web_port_binding)
+    PREVIOUS_WEB_PORT_BINDING="${configured:-8080}"
+}
+
+# A public binding left in the server's .env would override the loopback
+# default in docker-compose.yml.
+ensure_loopback_web_binding() {
+    if grep -q '^WEB_PORT_BINDING=' .env 2>/dev/null \
+          && [[ "$(configured_web_port_binding)" != "${WEB_LOOPBACK_BINDING}" ]]; then
+        set_web_port_binding "${WEB_LOOPBACK_BINDING}"
+        echo "[INFO] WEB_PORT_BINDING set to ${WEB_LOOPBACK_BINDING}."
+    fi
+}
+
+# 200 from the public URL with a cf-ray header: the request went through
+# Cloudflare and the tunnel, not straight to this host.
+public_edge_ok() {
+    local deadline=$((SECONDS + PUBLIC_HEALTH_TIMEOUT_SECONDS))
+    local headers=""
+    while (( SECONDS < deadline )); do
+        headers=$(curl -sS --max-time 10 -o /dev/null -D - "${PUBLIC_HEALTH_URL}" 2>/dev/null || true)
+        if grep -qE '^HTTP/[0-9.]+ 200' <<<"${headers}" \
+              && grep -qi '^cf-ray:' <<<"${headers}"; then
+            return 0
+        fi
+        sleep 3
+    done
+    echo "[ERROR] ${PUBLIC_HEALTH_URL} did not return 200 through Cloudflare within ${PUBLIC_HEALTH_TIMEOUT_SECONDS}s."
+    return 1
+}
+
+verify_public_edge() {
+    echo "[INFO] web published on: $(docker port buyerly-web 80/tcp 2>/dev/null | tr '\n' ' ')"
+    if public_edge_ok; then
+        return 0
+    fi
+    if [[ -z "${PREVIOUS_WEB_PORT_BINDING}" ]]; then
+        echo "[ERROR] The site is not reachable through Cloudflare; no earlier web binding to restore."
+        return 1
+    fi
+    echo "[ROLLBACK] Restoring WEB_PORT_BINDING=${PREVIOUS_WEB_PORT_BINDING} for the web container."
+    set_web_port_binding "${PREVIOUS_WEB_PORT_BINDING}"
+    docker compose up -d --no-deps web
+    wait_for_container buyerly-web || true
+    wait_for_ready || true
+    if public_edge_ok; then
+        echo "[WARNING] The site answers through Cloudflare only with the public binding ${PREVIOUS_WEB_PORT_BINDING}; check the tunnel route."
+    else
+        echo "[ERROR] The site is not reachable through Cloudflare with either binding."
+    fi
     return 1
 }
 
@@ -271,10 +353,12 @@ if [[ -f .env ]]; then
     INITIAL_ENV_HASH=$(sha256sum .env 2>/dev/null || md5sum .env 2>/dev/null || cksum .env 2>/dev/null || true)
 fi
 
+capture_previous_web_binding
 ensure_postgres_password
 ensure_email_settings
 ensure_telegram_settings
 ensure_meta_token_encryption_key
+ensure_loopback_web_binding
 
 FINAL_ENV_HASH=""
 if [[ -f .env ]]; then
@@ -348,6 +432,7 @@ ensure_postgres_password
 ensure_email_settings
 ensure_telegram_settings
 ensure_meta_token_encryption_key
+ensure_loopback_web_binding
 
 echo "[3/8] Applying safe Docker retention and checking disk capacity..."
 bash "${SCRIPT_DIR}/cleanup_docker_artifacts.sh"
@@ -428,6 +513,11 @@ if ! APP_DIR="${APP_DIR}" EXPECTED_SHA="${TARGET_SHA}" \
     exit 1
 fi
 record_running_version "${TARGET_SHA}"
+# The release itself is healthy here; a failed public check only restores the
+# earlier web binding and fails the deploy so it shows up in Actions.
+if ! verify_public_edge; then
+    exit 1
+fi
 
 echo "[8/8] Removing aged artifacts after successful cutover..."
 if ! bash "${SCRIPT_DIR}/cleanup_docker_artifacts.sh"; then
