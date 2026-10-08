@@ -86,6 +86,8 @@ class MonitoringWorker:
         self._clock = clock or time.time
         self._current_cycle_id = ""
         self._action_semaphore = asyncio.Semaphore(1)
+        # The pause between accounts; a simulation replaces it.
+        self._sleep = asyncio.sleep
         # (account_id, local date) -> clock time of the last closed-day refresh.
         # In memory on purpose: after a restart the days are simply re-read.
         self._closed_day_refreshed: dict[tuple[str, str], float] = {}
@@ -1301,33 +1303,110 @@ class MonitoringWorker:
     ) -> None:
         """Write delivery state to Meta at the level the rule targets."""
         async with self._action_semaphore:
-            if evaluation.is_adset:
-                await self.meta_client.set_adset_status(
-                    adset_id=evaluation.entity_id,
-                    access_token=access_token,
-                    status=status,
-                    account_id=account.account_id,
-                )
-            elif evaluation.entity_level == "ad":
-                await self.meta_client.set_ad_status(
-                    ad_id=evaluation.entity_id,
-                    access_token=access_token,
-                    status=status,
-                    account_id=account.account_id,
-                )
-            else:
-                await self.meta_client.set_campaign_status(
-                    campaign_id=evaluation.entity_id,
-                    access_token=access_token,
-                    status=status,
-                    account_id=account.account_id,
-                )
+            try:
+                if evaluation.is_adset:
+                    await self.meta_client.set_adset_status(
+                        adset_id=evaluation.entity_id,
+                        access_token=access_token,
+                        status=status,
+                        account_id=account.account_id,
+                    )
+                elif evaluation.entity_level == "ad":
+                    await self.meta_client.set_ad_status(
+                        ad_id=evaluation.entity_id,
+                        access_token=access_token,
+                        status=status,
+                        account_id=account.account_id,
+                    )
+                else:
+                    await self.meta_client.set_campaign_status(
+                        campaign_id=evaluation.entity_id,
+                        access_token=access_token,
+                        status=status,
+                        account_id=account.account_id,
+                    )
+            except Exception as error:
+                if not await self._mutation_landed(
+                    account, evaluation, error, access_token=access_token, desired={"status": status}
+                ):
+                    raise
         if evaluation.is_adset:
             # The local inventory only mirrors ad sets; pausing a campaign is
             # reflected by the cache invalidation the client performs.
             await AdsetInventoryService.update_adset_status(
                 session, account.account_id, evaluation.entity_id, status
             )
+
+    async def _mutation_landed(
+        self,
+        account: Account,
+        evaluation: RuleEvaluationResult,
+        error: Exception,
+        *,
+        access_token: str,
+        desired: dict[str, Any],
+    ) -> bool:
+        """Whether Meta holds the change although the write reported a failure.
+
+        A write can time out after Meta applied it; once the client's retries
+        are spent the worker used to record an error, Inbox said "failed" and
+        Undo was unavailable for a change that had happened (#200). One read
+        tells which it was. A token error is never second-guessed.
+        """
+        if isinstance(error, PermissionError) or not hasattr(self.meta_client, "get_entity_state"):
+            return False
+        try:
+            current = await self.meta_client.get_entity_state(
+                evaluation.entity_id,
+                access_token,
+                entity_level=evaluation.entity_level,
+                currency=account.currency,
+            )
+        except Exception as read_error:
+            logger.warning(
+                "Could not read %s %s after a failed write: %s",
+                evaluation.entity_level,
+                evaluation.entity_id,
+                read_error,
+            )
+            return False
+        if not isinstance(current, dict) or not self._state_matches(current, desired):
+            return False
+        logger.warning(
+            "Meta applied %s on %s %s although the write failed (%s)",
+            desired,
+            evaluation.entity_level,
+            evaluation.entity_id,
+            error,
+        )
+        return True
+
+    async def _update_budget(
+        self,
+        account: Account,
+        evaluation: RuleEvaluationResult,
+        *,
+        access_token: str,
+        new_budget: float,
+    ) -> None:
+        async with self._action_semaphore:
+            try:
+                await self.meta_client.update_adset_budget(
+                    adset_id=evaluation.entity_id,
+                    access_token=access_token,
+                    new_daily_budget_dollars=new_budget,
+                    currency=account.currency,
+                    account_id=account.account_id,
+                )
+            except Exception as error:
+                if not await self._mutation_landed(
+                    account,
+                    evaluation,
+                    error,
+                    access_token=access_token,
+                    desired={"daily_budget": new_budget},
+                ):
+                    raise
 
     @staticmethod
     async def _reflect_status(
@@ -2146,7 +2225,12 @@ class MonitoringWorker:
                         undone_actions.setdefault(held_id, set()).add(RuleAction.STOP.value)
 
                     rule_outcomes: list[dict[str, Any]] = []
+                    # A token Meta refused on a write stops this account's actions
+                    # for the cycle and is handled like one refused on a read.
+                    token_error: Optional[PermissionError] = None
                     for adset in entities:
+                        if token_error is not None:
+                            break
                         a_id = str(adset["entity_id"])
                         current_adset_windows = entity_windows.get(a_id, {})
 
@@ -2205,6 +2289,8 @@ class MonitoringWorker:
                             )
 
                         for eval_res in entity_actions:
+                            if token_error is not None:
+                                break
                             current_budget = float(adset.get("daily_budget", 0.0) or 0.0)
                             observed_state: dict[str, Any]
                             desired_state: dict[str, Any]
@@ -2404,6 +2490,8 @@ class MonitoringWorker:
 
                                 except Exception as e:
                                     logger.error(f"Error pausing adset {a_id}: {e}")
+                                    if isinstance(e, PermissionError):
+                                        token_error = e
                                     stats["errors"].append(f"Pause error {a_id}: {e}")
                                     self._finish_execution(
                                         execution_state,
@@ -2503,6 +2591,8 @@ class MonitoringWorker:
 
                                 except Exception as e:
                                     logger.error(f"Error auto-reactivating adset {a_id}: {e}")
+                                    if isinstance(e, PermissionError):
+                                        token_error = e
                                     stats["errors"].append(f"Auto-reactivate error {a_id}: {e}")
                                     self._finish_execution(
                                         execution_state,
@@ -2526,14 +2616,12 @@ class MonitoringWorker:
                             elif eval_res.action == RuleAction.INCREASE_BUDGET:
                                 action_started = time.perf_counter()
                                 try:
-                                    async with self._action_semaphore:
-                                        await self.meta_client.update_adset_budget(
-                                            adset_id=a_id,
-                                            access_token=access_token,
-                                            new_daily_budget_dollars=new_budget,
-                                            currency=acc.currency,
-                                            account_id=acc.account_id,
-                                        )
+                                    await self._update_budget(
+                                        acc,
+                                        eval_res,
+                                        access_token=access_token,
+                                        new_budget=new_budget,
+                                    )
                                     stats["budgets_changed"] += 1
                                     self._finish_execution(execution_state, status="SUCCESS", now=now)
                                     await self._persist_audit_event(
@@ -2548,6 +2636,8 @@ class MonitoringWorker:
                                     )
                                 except Exception as e:
                                     logger.error(f"Error increasing budget for adset {a_id}: {e}")
+                                    if isinstance(e, PermissionError):
+                                        token_error = e
                                     stats["errors"].append(f"Budget increase error {a_id}: {e}")
                                     self._finish_execution(
                                         execution_state,
@@ -2571,14 +2661,12 @@ class MonitoringWorker:
                             elif eval_res.action == RuleAction.DECREASE_BUDGET:
                                 action_started = time.perf_counter()
                                 try:
-                                    async with self._action_semaphore:
-                                        await self.meta_client.update_adset_budget(
-                                            adset_id=a_id,
-                                            access_token=access_token,
-                                            new_daily_budget_dollars=new_budget,
-                                            currency=acc.currency,
-                                            account_id=acc.account_id,
-                                        )
+                                    await self._update_budget(
+                                        acc,
+                                        eval_res,
+                                        access_token=access_token,
+                                        new_budget=new_budget,
+                                    )
                                     stats["budgets_changed"] += 1
                                     self._finish_execution(execution_state, status="SUCCESS", now=now)
                                     await self._persist_audit_event(
@@ -2593,6 +2681,8 @@ class MonitoringWorker:
                                     )
                                 except Exception as e:
                                     logger.error(f"Error decreasing budget for adset {a_id}: {e}")
+                                    if isinstance(e, PermissionError):
+                                        token_error = e
                                     stats["errors"].append(f"Budget decrease error {a_id}: {e}")
                                     self._finish_execution(
                                         execution_state,
@@ -2650,6 +2740,24 @@ class MonitoringWorker:
                         },
                         now=now,
                     )
+                    if token_error is not None:
+                        # Without this the account looked healthy until the
+                        # next read failed, and every check retried the write.
+                        await self._handle_token_error(
+                            session,
+                            acc,
+                            token_error,
+                            connection_cache,
+                        )
+                        await self._set_account_health(
+                            session,
+                            acc,
+                            success=False,
+                            emit_transition_event=False,
+                            error=token_error,
+                            cause="user",
+                            signals={"token_healthy": False},
+                        )
 
                 except Exception as e:
                     logger.error(f"Error processing account {account_ref}: {e}")
@@ -2663,7 +2771,7 @@ class MonitoringWorker:
 
                 # Random cross-account jitter (0.5-1.5s) to smooth the load on the Meta API
                 jitter = random.uniform(0.5, 1.5)
-                await asyncio.sleep(jitter)
+                await self._sleep(jitter)
 
             await session.commit()
 
