@@ -2235,11 +2235,16 @@ html[data-theme='dark'] .buyerly-auth-page,
 }
 
 /* Sign-in heading as on linear.app/add-account → Continue with email (2026-10-08):
-   18px / 500, line-height normal, no letter-spacing, 32px below the logo box and
-   24px above the first button or field. */
+   18px / 500, line-height normal, no letter-spacing, 32px below the 48px logo box
+   and 24px above the first button or field. */
 .buyerly-auth-card--signin .buyerly-auth-brand {
   display: flex;
   margin-bottom: 32px;
+}
+
+.buyerly-auth-card--signin .buyerly-auth-brand img {
+  width: 48px;
+  height: 48px;
 }
 
 .buyerly-auth-card--signin h1,
