@@ -230,8 +230,8 @@ try {
       const handleBox = await handle.boundingBox();
       await page.mouse.move(handleBox.x + 3, handleBox.y + 200);
       await page.mouse.down();
-      await page.mouse.move(handleBox.x - 50, handleBox.y + 200, { steps: 5 });
-      await page.mouse.move(handleBox.x - 100, handleBox.y + 200, { steps: 5 });
+      await page.mouse.move(handleBox.x + 3 - 50, handleBox.y + 200, { steps: 5 });
+      await page.mouse.move(handleBox.x + 3 - 100, handleBox.y + 200, { steps: 5 });
       await page.mouse.up();
       await settle(page);
       assert.equal(Math.round((await rect(page.locator('.details-pane'))).width), 450, 'the drag widened the pane');
