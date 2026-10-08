@@ -206,6 +206,9 @@ class MetaClient:
         self.graph_version = requested_version
         self.base_url = f"https://graph.facebook.com/{self.graph_version}"
         self._client: Optional[httpx.AsyncClient] = None
+        # Retry backoff waits through this, so a simulation can count the
+        # seconds a retry costs without spending them.
+        self._sleep = asyncio.sleep
         self._cache_provider = cache_provider
         self._inventory_cache_seconds = 5 * 60
         self._inventory_cache: Dict[str, tuple[float, List[Dict[str, Any]]]] = {}
@@ -712,7 +715,7 @@ class MetaClient:
                             max_retries,
                             error_msg,
                         )
-                        await asyncio.sleep(backoff)
+                        await self._sleep(backoff)
                         continue
                     logger.error(
                         "Meta API temporary error exhausted after %s attempts (%s): %s",
@@ -755,7 +758,7 @@ class MetaClient:
                         attempt + 1,
                         max_retries,
                     )
-                    await asyncio.sleep(backoff)
+                    await self._sleep(backoff)
                     continue
                 else:
                     logger.error(
@@ -798,18 +801,35 @@ class MetaClient:
         data["status_label"] = ACCOUNT_STATUS_MAP.get(status_code, f"Unknown status ({status_code})")
         return data
 
+    @staticmethod
+    def _period_params(date_preset: str, since: str = "", until: str = "") -> Dict[str, Any]:
+        """Meta's period parameters: explicit account-local days when known.
+
+        A preset such as ``today`` is resolved by Meta when each request
+        arrives, so the several requests of one sync that straddle the ad
+        account's midnight would mix two days under one date (#212). An
+        explicit ``time_range`` pins every request to the same days.
+        """
+        if since and until:
+            return {"time_range": json.dumps({"since": since, "until": until})}
+        return {"date_preset": date_preset}
+
     async def get_account_insights_summary(
         self,
         account_id: str,
         access_token: str,
         date_preset: str = "today",
+        *,
+        since: str = "",
+        until: str = "",
     ) -> Dict[str, Any]:
         """Return exact account-level totals for a Meta reporting period.
 
         These totals intentionally do not depend on the current ad set list or
         delivery status. Meta therefore includes spend from ad sets that ran in
         the period and were paused, archived or otherwise absent from the
-        current operational list later in the day.
+        current operational list later in the day. ``since``/``until`` (local
+        YYYY-MM-DD of the ad account) take precedence over ``date_preset``.
         """
 
         acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
@@ -819,7 +839,7 @@ class MetaClient:
             {
                 "level": "account",
                 "fields": ACCOUNT_SUMMARY_FIELDS,
-                "date_preset": date_preset,
+                **self._period_params(date_preset, since, until),
                 "limit": 100,
                 "access_token": access_token,
             },
@@ -986,15 +1006,22 @@ class MetaClient:
         account_name: str = "",
         priority: str = "normal",
         reporting_date: str = "",
+        include_idle_inventory: bool = True,
     ) -> List[Dict[str, Any]]:
         """Fetch normalized hierarchy facts with authoritative entity inventory.
 
         Identity and delivery state come from the campaign, ad set, and ad edges.
         Insights are joined by Meta ID and remain the source of period metrics.
+        With ``reporting_date`` every insights request asks Meta for exactly
+        that account-local day, so a sync crossing midnight cannot store the
+        new day's first minutes under the old date. ``include_idle_inventory``
+        false keeps entities without delivery out of the facts: a closed day
+        being refreshed must not gain rows for entities that did not run then.
         """
         acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
         normalized_currency = normalize_currency(currency)
         facts: List[Dict[str, Any]] = []
+        period_params = self._period_params(date_preset, reporting_date, reporting_date)
 
         def attach_reporting_date(fact: Dict[str, Any]) -> Dict[str, Any]:
             if reporting_date:
@@ -1062,6 +1089,8 @@ class MetaClient:
             account_id=acc_id,
             access_token=access_token,
             date_preset=date_preset,
+            since=reporting_date,
+            until=reporting_date,
         )
         acc_spend = acc_summary.get("spend", 0.0)
         acc_clicks = acc_summary.get("clicks", 0)
@@ -1159,7 +1188,7 @@ class MetaClient:
                 {
                     "level": level,
                     "fields": hierarchy_fields[level],
-                    "date_preset": date_preset,
+                    **period_params,
                     "limit": 100,
                     "access_token": access_token,
                 },
@@ -1181,6 +1210,8 @@ class MetaClient:
                 if not entity_id:
                     continue
                 inventory_ids.add(entity_id)
+                if not include_idle_inventory and entity_id not in insights_by_id:
+                    continue
                 status = str(entity.get("status") or "UNKNOWN")
                 effective_status = str(entity.get("effective_status") or status)
                 facts.append(metric_fact(

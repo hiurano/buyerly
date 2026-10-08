@@ -5,6 +5,7 @@ instead of inventing local meanings for the same metric.
 """
 
 from dataclasses import dataclass
+from decimal import ROUND_HALF_UP, Decimal
 import math
 from typing import Any, Iterable, Mapping, Optional, Sequence
 
@@ -132,13 +133,27 @@ def canonical_rule_metric(metric: Any) -> str:
     return LEGACY_METRIC_ALIASES.get(key, key)
 
 
+def round_half_up(value: Any, digits: int = 2) -> float:
+    """Round a displayed amount or ratio the way a person and Ads Manager do.
+
+    Python's ``round`` works on the binary value, so CPC 26.75 / 10 = 2.675
+    became 2.67 while Meta shows 2.68 (#212). The shortest decimal form of
+    the float is what the division meant, and it is rounded half up.
+    """
+    number = float(value or 0.0)
+    if not math.isfinite(number):
+        return number
+    quantum = Decimal(1).scaleb(-digits)
+    return float(Decimal(repr(number)).quantize(quantum, rounding=ROUND_HALF_UP))
+
+
 def cost_per_event(spend: Any, event_count: Any, *, digits: Optional[int] = None) -> Optional[float]:
     spend_value = float(spend or 0.0)
     count_value = int(event_count or 0)
     if count_value <= 0:
         return None
     value = spend_value / count_value
-    return round(value, digits) if digits is not None else value
+    return round_half_up(value, digits) if digits is not None else value
 
 
 def _number(data: Mapping[str, Any], key: str) -> float:

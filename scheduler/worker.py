@@ -5,7 +5,7 @@ import json
 import hashlib
 import time
 import uuid
-from datetime import datetime, time as day_time, timedelta, timezone
+from datetime import date, datetime, time as day_time, timedelta, timezone
 from typing import Optional, Callable, Any, List, Dict
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -52,6 +52,9 @@ from services.analytics_store import AnalyticsFactService, resolve_account_perio
 logger = logging.getLogger(__name__)
 
 PENDING_RECONCILIATION_SECONDS = 15 * 60
+# (days before the account's today, seconds between re-reads); the `last_7d`
+# window is today plus the six days before it.
+CLOSED_DAY_REFRESH_SCHEDULE = ((1, 60 * 60),) + tuple((back, 24 * 60 * 60) for back in range(2, 7))
 DAY_BOUNDARY_NOTIFICATION_WINDOW_MINUTES = 5
 # Successful history rows that switch an entity on or off; the latest one today
 # tells whether a person turned it back on after a rule's stop.
@@ -83,6 +86,33 @@ class MonitoringWorker:
         self._clock = clock or time.time
         self._current_cycle_id = ""
         self._action_semaphore = asyncio.Semaphore(1)
+        # (account_id, local date) -> clock time of the last closed-day refresh.
+        # In memory on purpose: after a restart the days are simply re-read.
+        self._closed_day_refreshed: dict[tuple[str, str], float] = {}
+
+    def _closed_day_due(self, account: Account, now: float) -> Optional[str]:
+        """The closed account-local day whose facts should be re-read now.
+
+        Meta keeps changing a finished day: the last minutes of spend arrive
+        after midnight and conversions are attributed back to the day of the
+        click or view for days. The worker only syncs `today`, so without a
+        refresh `yesterday` and the week would keep the totals of the last
+        sync before midnight (#212). Yesterday is re-read every hour, the five
+        days before it once a day; one day per cycle keeps the cost flat.
+        """
+        today = date.fromisoformat(
+            resolve_account_period_dates(
+                account.timezone_name,
+                "today",
+                datetime.fromtimestamp(now, timezone.utc),
+            )[0]
+        )
+        for days_back, interval in CLOSED_DAY_REFRESH_SCHEDULE:
+            day = (today - timedelta(days=days_back)).isoformat()
+            refreshed_at = self._closed_day_refreshed.get((str(account.account_id), day))
+            if refreshed_at is None or now - refreshed_at >= interval:
+                return day
+        return None
 
     @staticmethod
     def _load_rules(
@@ -233,9 +263,11 @@ class MonitoringWorker:
         due_rules: list[dict[str, Any]],
         health_due: bool,
         semaphore: asyncio.Semaphore,
+        now: Optional[float] = None,
     ) -> dict[str, Any]:
         """Collect one account's Meta reads under the global concurrency cap."""
 
+        now = self._clock() if now is None else now
         async with semaphore:
             priority = (
                 "critical"
@@ -360,16 +392,50 @@ class MonitoringWorker:
                     currency=currency,
                     account_name=account.name,
                     priority=priority,
+                    # The cycle's clock, not a fresh reading: one cycle, one day.
                     reporting_date=resolve_account_period_dates(
                         reporting_timezone,
                         "today",
+                        datetime.fromtimestamp(now, timezone.utc),
                     )[0],
                 )
             except Exception as h_err:
                 logger.warning("Failed to collect hierarchical facts for %s: %s", account.account_id, h_err)
                 hierarchy_error = h_err
 
+            closed_day_facts: list[dict[str, Any]] = []
+            closed_day = (
+                self._closed_day_due(account, now)
+                if hierarchy_error is None and isinstance(hierarchical_facts, list)
+                else None
+            )
+            if closed_day:
+                try:
+                    refreshed = await self.meta_client.get_hierarchical_insights(
+                        account_id=account.account_id,
+                        access_token=access_token,
+                        date_preset="today",
+                        currency=currency,
+                        account_name=account.name,
+                        priority="normal",
+                        reporting_date=closed_day,
+                        include_idle_inventory=False,
+                    )
+                    if isinstance(refreshed, list):
+                        closed_day_facts = refreshed
+                    self._closed_day_refreshed[(str(account.account_id), closed_day)] = now
+                except Exception as refresh_error:
+                    # Not a health problem: the day keeps its last totals and
+                    # the next cycle tries again.
+                    logger.warning(
+                        "Failed to refresh closed day %s for %s: %s",
+                        closed_day,
+                        account.account_id,
+                        refresh_error,
+                    )
+
             return {
+                "closed_day_facts": closed_day_facts,
                 "account_info": account_info,
                 "currency": currency,
                 "adsets": today,
@@ -1852,6 +1918,7 @@ class MonitoringWorker:
                         due_rules=item["due_rules"],
                         health_due=item["health_due"],
                         semaphore=read_semaphore,
+                        now=item["now"],
                     )
                     for item in prepared_accounts
                 ),
@@ -1959,6 +2026,23 @@ class MonitoringWorker:
                         except Exception as store_err:
                             logger.error("Failed to upsert facts for %s: %s", acc.account_id, store_err)
                             hierarchy_error = store_err
+                    closed_day_facts = snapshot.get("closed_day_facts")
+                    if closed_day_facts and acc.workspace_id and hierarchy_error is None:
+                        try:
+                            # A savepoint: a failure must not undo today's facts.
+                            async with session.begin_nested():
+                                await AnalyticsFactService.upsert_entity_facts(
+                                    session,
+                                    workspace_id=acc.workspace_id,
+                                    account_id=acc.account_id,
+                                    facts=closed_day_facts,
+                                )
+                        except Exception as store_err:
+                            logger.warning(
+                                "Failed to store refreshed closed-day facts for %s: %s",
+                                acc.account_id,
+                                store_err,
+                            )
 
                     if hierarchy_error is not None:
                         stats["errors"].append(

@@ -113,7 +113,8 @@ export interface AnalyticsPeriodMetrics {
   spend: number;
   impressions: number;
   reach: number;
-  cpm: number;
+  /** null when nothing was shown: no ratio, rendered as "—". */
+  cpm: number | null;
   clicks: number;
   link_clicks: number;
   outbound_clicks: number;
@@ -125,11 +126,11 @@ export interface AnalyticsPeriodMetrics {
   cost_per_registration: number | null;
   cost_per_purchase: number | null;
   cost_per_landing_page_view: number | null;
-  cpc: number;
-  ctr: number;
+  cpc: number | null;
+  ctr: number | null;
   cpc_link: number | null;
-  ctr_link: number;
-  ctr_outbound: number;
+  ctr_link: number | null;
+  ctr_outbound: number | null;
 }
 
 export interface AnalyticsHierarchyItem extends AnalyticsPeriodMetrics {

@@ -117,7 +117,7 @@ export function hierarchyAdToRow(
     leadsCount: item.leads,
     cpa: formatMetricMoney(item.cost_per_lead, item.currency),
     spend: formatMetricMoney(item.spend, item.currency),
-    ctr: Number.isFinite(item.ctr) ? `${item.ctr.toFixed(2)}%` : '—',
+    ctr: item.ctr !== null && Number.isFinite(item.ctr) ? `${item.ctr.toFixed(2)}%` : '—',
     cpc: formatMetricMoney(item.cpc, item.currency),
     date: '',
   };
