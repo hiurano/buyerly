@@ -68,8 +68,24 @@ class TestDeployContract(unittest.TestCase):
     def test_cloudflare_tunnel_is_trusted_out_of_the_box(self):
         # cloudflared on the host reaches nginx from the Docker gateway (#301).
         self.assertIn("CLOUDFLARE_TUNNEL_CIDRS: ${CLOUDFLARE_TUNNEL_CIDRS:-172.16.0.0/12}", self.compose)
-        self.assertIn('- "${WEB_PORT_BINDING:-8080}:80"', self.compose)
-        self.assertIn("BUYERLY_EDGE cloudflared_service=", self.workflow)
+        self.assertIn("BUYERLY_EDGE ${phase} cloudflared_service=", self.workflow)
+
+    def test_web_port_is_loopback_only_behind_the_tunnel(self):
+        # The site is reachable only through the Cloudflare Tunnel (#301).
+        self.assertIn('- "${WEB_PORT_BINDING:-127.0.0.1:8080}:80"', self.compose)
+        self.assertIn('WEB_LOOPBACK_BINDING="127.0.0.1:8080"', self.script)
+        self.assertIn("https://buyerly.app/health/live", self.script)
+        self.assertIn("cf-ray", self.script)
+        self.assertIn("capture_previous_web_binding", self.script)
+        self.assertGreaterEqual(self.script.count("\nensure_loopback_web_binding\n"), 2)
+        after_smoke = self.script[self.script.index('record_running_version "${TARGET_SHA}"'):]
+        self.assertIn("verify_public_edge", after_smoke)
+        rollback = self.script[self.script.index("verify_public_edge() {"):]
+        self.assertIn('set_web_port_binding "${PREVIOUS_WEB_PORT_BINDING}"', rollback)
+        for marker in ("listeners=", "published=", "host_proxies=", "web_port_binding="):
+            self.assertIn(f"BUYERLY_EDGE ${{phase}} {marker}", self.workflow)
+        self.assertIn("ss -Hltnp", self.workflow)
+        self.assertIn("edge_report after", self.workflow)
 
     def test_production_roles_are_separate_services(self):
         for service in ("db:", "api:", "web:", "worker:", "migrate:"):
