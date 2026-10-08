@@ -15,7 +15,7 @@ function load(file) {
   new Function('require', 'module', 'exports', code)(requireSource, module, module.exports);
   return module.exports;
 }
-const { createLiveFields, filterView, groupView } = load(path.join(root, 'components/campaigns/campaignViewModel.ts'));
+const { createLiveFields, filterView, groupView, deliveryStatus } = load(path.join(root, 'components/campaigns/campaignViewModel.ts'));
 const { applyFilterClauses } = load(path.join(root, 'components/filters/filterModel.ts'));
 const rows = [
   { id: 'A', name: 'A', status: 'active' },
@@ -52,4 +52,23 @@ const scoped = { account_id: 'a', active_rules: [{ preset_id: 3, name: 'Scoped',
 assert.deepEqual(createLiveFields(rows, scoped, [], 'campaigns', []).find(f => f.id === 'rule').getValue(rows[0]), ['no-rule']);
 const ad = { id: 'AD', name: 'Ad', status: 'active', adSetId: 'S' };
 assert.deepEqual(createLiveFields([ad], scoped, [], 'ads', [{ id: 'S', campaignId: 'A' }]).find(f => f.id === 'rule').getValue(ad), ['3']);
+// Status is where delivery really stands (Meta's effective_status), not the switch (#367).
+for (const [effectiveStatus, expected] of [
+  ['ACTIVE', 'active'], ['PAUSED', 'paused'], ['CAMPAIGN_PAUSED', 'paused'], ['ADSET_PAUSED', 'paused'],
+  ['PENDING_REVIEW', 'in_review'], ['IN_PROCESS', 'in_review'], ['PREAPPROVED', 'in_review'],
+  ['DISAPPROVED', 'disapproved'], ['WITH_ISSUES', 'with_issues'], ['PENDING_BILLING_INFO', 'with_issues'],
+  ['ARCHIVED', 'archived'], ['DELETED', 'archived'], ['SOMETHING_NEW', 'unknown'],
+]) assert.equal(deliveryStatus({ status: 'active', effectiveStatus }), expected, effectiveStatus);
+assert.equal(deliveryStatus({ status: 'paused' }), 'paused', 'without effective_status the switch decides');
+const delivered = [
+  { id: 'on', name: 'On', status: 'active', effectiveStatus: 'ACTIVE' },
+  { id: 'rejected', name: 'Rejected', status: 'active', effectiveStatus: 'DISAPPROVED' },
+  { id: 'parent-off', name: 'Parent off', status: 'active', effectiveStatus: 'CAMPAIGN_PAUSED' },
+];
+const deliveredFields = createLiveFields(delivered, account, [], 'adsets', []);
+const statusFacet = filterView(delivered, deliveredFields, [], null).facets.find(f => f.id === 'status');
+assert.deepEqual(statusFacet.options.map(o => [o.value, o.count]), [['active', 1], ['paused', 1], ['disapproved', 1]]);
+assert.deepEqual(ids(filterView(delivered, deliveredFields, [], { fieldId: 'status', value: 'disapproved' }).visibleRows), ['rejected']);
+// A shared link's old "Status is Paused" still finds what is not delivering because it is paused.
+assert.deepEqual(ids(applyFilterClauses(delivered, deliveredFields, [{ fieldId: 'status', operator: 'is', values: ['paused'] }])), ['parent-off']);
 console.log('Campaign filter semantics passed');

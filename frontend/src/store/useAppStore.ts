@@ -34,6 +34,13 @@ import type {
   RuleScope,
 } from '@/lib/rules';
 import type { DeletedKind } from '@/lib/trash';
+import {
+  DETAILS_PANE_STORAGE_KEY,
+  defaultDetailsPanes,
+  parseDetailsPanes,
+  type DetailsPaneId,
+  type DetailsPaneState,
+} from '@/ui/detailsPaneModel';
 import { pushHistory } from '@/lib/undoHistory';
 import {
   DEFAULT_INBOX_DISPLAY,
@@ -63,6 +70,8 @@ export interface CampaignItem {
   platform: 'Meta' | 'TikTok' | 'Google';
   status: 'active' | 'paused' | 'unknown';
   statusLabel: string;
+  /** Meta's `effective_status`: whether it is really delivering, and why not. */
+  effectiveStatus?: string;
   budget: string;
   leadsCount: number;
   cpa: string;
@@ -81,6 +90,8 @@ export interface AdSetItem {
   platform: 'Meta' | 'TikTok' | 'Google';
   status: 'active' | 'paused' | 'unknown';
   statusLabel: string;
+  /** Meta's `effective_status`: whether it is really delivering, and why not. */
+  effectiveStatus?: string;
   budget: string;
   leadsCount: number;
   cpa: string;
@@ -100,6 +111,8 @@ export interface AdItem {
   platform: 'Meta' | 'TikTok' | 'Google';
   status: 'active' | 'paused' | 'unknown';
   statusLabel: string;
+  /** Meta's `effective_status`: whether it is really delivering, and why not. */
+  effectiveStatus?: string;
   leadsCount: number;
   cpa: string;
   spend: string;
@@ -361,10 +374,11 @@ interface AppState {
     entityIds: string[],
     ruleId: string,
   ) => Promise<void>;
-  isRightSidebarOpen: boolean;
-  toggleRightSidebar: () => void;
-  activeRightSidebarTab: 'groups' | 'rules' | 'overview';
-  setActiveRightSidebarTab: (tab: 'groups' | 'rules' | 'overview') => void;
+  /** Each view's details pane: open or closed and its dragged width, kept on this device. */
+  detailsPanes: Record<DetailsPaneId, DetailsPaneState>;
+  /** Opens or closes a view's pane; without `open` it flips. */
+  toggleDetailsPane: (pane: DetailsPaneId, open?: boolean) => void;
+  setDetailsPaneWidth: (pane: DetailsPaneId, width: number) => void;
   selectedFilterGroupId: string | null;
   setSelectedFilterGroupId: (groupId: string | null) => void;
   selectedFilterRuleId: string | null;
@@ -455,11 +469,6 @@ interface AppState {
   setRulesDisplayOrdering: (ordering: 'manual' | 'name' | 'lastRun' | 'status') => void;
   rulesDisplayProperties: Record<string, boolean>;
   toggleRulesDisplayProperty: (property: string) => void;
-  isRulesRightSidebarOpen: boolean;
-  setIsRulesRightSidebarOpen: (open: boolean) => void;
-  toggleRulesRightSidebar: () => void;
-  activeRulesRightSidebarTab: 'groups' | 'rules';
-  setActiveRulesRightSidebarTab: (tab: 'groups' | 'rules') => void;
   selectedFilterRuleGroupId: string | null;
   setSelectedFilterRuleGroupId: (groupId: string | null) => void;
   rulesCollapsedGroups: string[];
@@ -501,6 +510,21 @@ function emptyWorkspaceState() {
     adsManagerFilters: { campaigns: [], adsets: [], ads: [] },
     isCommandMenuOpen: false, openPalette: null, recordActionsFor: null, isDisplayOptionsOpen: false, isRulesDisplayOptionsOpen: false,
   };
+}
+
+/** The panes as this device left them; storage is optional. */
+function readDetailsPanes(): Record<DetailsPaneId, DetailsPaneState> {
+  try {
+    return parseDetailsPanes(window.localStorage.getItem(DETAILS_PANE_STORAGE_KEY));
+  } catch {
+    return defaultDetailsPanes();
+  }
+}
+
+function saveDetailsPanes(panes: Record<DetailsPaneId, DetailsPaneState>) {
+  try {
+    window.localStorage.setItem(DETAILS_PANE_STORAGE_KEY, JSON.stringify(panes));
+  } catch { /* The choice still applies until the page is reloaded. */ }
 }
 
 /** Thrown by a write asked for after its workspace was left. */
@@ -815,19 +839,22 @@ export const useAppStore = create<AppState>((set, get) => {
       attachmentWriting = false;
     }
   },
-  isRightSidebarOpen: true,
-  toggleRightSidebar: () =>
-    set((state) => ({
-      isRightSidebarOpen: !state.isRightSidebarOpen,
-      adsManagerQuickFilter: state.isRightSidebarOpen ? null : state.adsManagerQuickFilter,
-    })),
-  activeRightSidebarTab: 'groups',
-  setActiveRightSidebarTab: (tab) =>
-    set((state) => ({
-      activeRightSidebarTab: tab,
-      adsManagerQuickFilter:
-        state.activeRightSidebarTab === tab ? state.adsManagerQuickFilter : null,
-    })),
+  detailsPanes: readDetailsPanes(),
+  toggleDetailsPane: (pane, open) =>
+    set((state) => {
+      const detailsPanes = {
+        ...state.detailsPanes,
+        [pane]: { ...state.detailsPanes[pane], open: open ?? !state.detailsPanes[pane].open },
+      };
+      saveDetailsPanes(detailsPanes);
+      return { detailsPanes };
+    }),
+  setDetailsPaneWidth: (pane, width) =>
+    set((state) => {
+      const detailsPanes = { ...state.detailsPanes, [pane]: { ...state.detailsPanes[pane], width } };
+      saveDetailsPanes(detailsPanes);
+      return { detailsPanes };
+    }),
   selectedFilterGroupId: null,
   setSelectedFilterGroupId: (groupId) =>
     set((state) => ({ selectedFilterGroupId: state.selectedFilterGroupId === groupId ? null : groupId })),
@@ -1197,12 +1224,6 @@ export const useAppStore = create<AppState>((set, get) => {
         [property]: !state.rulesDisplayProperties[property],
       },
     })),
-  isRulesRightSidebarOpen: false,
-  setIsRulesRightSidebarOpen: (open) => set({ isRulesRightSidebarOpen: open }),
-  toggleRulesRightSidebar: () =>
-    set((state) => ({ isRulesRightSidebarOpen: !state.isRulesRightSidebarOpen })),
-  activeRulesRightSidebarTab: 'groups',
-  setActiveRulesRightSidebarTab: (tab) => set({ activeRulesRightSidebarTab: tab }),
   selectedFilterRuleGroupId: null,
   setSelectedFilterRuleGroupId: (groupId) => set({ selectedFilterRuleGroupId: groupId }),
   rulesCollapsedGroups: [],

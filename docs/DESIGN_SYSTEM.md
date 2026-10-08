@@ -161,7 +161,7 @@ Inside the screens (Rules, Ads Manager, Inbox; `scripts/mobile-screens-browser.m
 
 - view tabs that no longer fit their strip all fold into one capsule with the active tab's label and a chevron, named "N more", that opens a menu of the views (`LinearTabs collapseOverflow`, as Linear's view header); the header actions stay on the right and are never cut;
 - entity tables scroll sideways inside their own viewport (`LinearDataTable`), never the document; figures do not wrap;
-- a view's details panel (Rules groups, Ads Manager facets) is a column on a wide window and, at `880px` and below, lies over the list from the right below the view header (`DetailsSheet`), as measured in Linear: 350px wide (the whole window when narrower), its card 4px from the left edge and 8px from the right and bottom; at `640px` and below a 40% black backdrop under the header dims the list and closes it; Escape and the header's details button close it; it starts closed there;
+- a view's details pane is one component for every view (`DetailsPaneLayout` with `DetailsPaneToggle`, read from Linear's `DetailsPaneContainer`, #367): wider than `1024px` it is a column the list gives its room to, 350px until dragged on its left edge (360–600px, never leaving the list under 300px; a click on the edge closes it); at `1024px` and below it lies over the list from the right below the view header, 350px wide (the window when narrower), without a resizer; on a pure-touch phone (`640px` and below) a 40% black backdrop dims the list and closes it, and a swipe right closes it too. It slides on Linear's spring (tension 1000, friction 40, mass 0.1: about 170ms, no overshoot) while the list narrows or widens with it. Its card sits 4px from its left edge and 8px from the right and bottom. It starts closed; open/closed and the dragged width are kept per view on the device (`buyerly:details-panes`); Ctrl/Cmd+I and `]` toggle the pane of the view on screen;
 - on a pure-touch screen (`TOUCH_SCREEN_QUERY`) header icon buttons grow from 28px to 32px square (`.linear-header-target`) and view tabs to 32px tall, as Linear's on a touch phone;
 - popovers anchored to a header button stay inside the window.
 
@@ -191,8 +191,13 @@ Inside the screens (Rules, Ads Manager, Inbox; `scripts/mobile-screens-browser.m
 
 Main conditions are encoded in the URL along with the ad account and entity level.
 Multi-membership fields support include-all, include-any and both exclusion modes.
-`LinearFacetSidebar` counts the main-filter result before applying one quick selection.
-Selecting another value replaces that selection; changing facet tabs clears it.
+The details pane's quick filters (`DetailsFacets`, Linear's quick-filter tabs) count the
+main-filter result before applying one quick selection. Selecting another value
+replaces that selection; changing tabs clears it. The pane opens on the tab whose
+filter is set, else the tab last open in this browser tab; tabs that do not fit the
+pane fold into one select. Ads Manager's tabs are Status — Meta's `effective_status`
+(Active, Paused, In review, Disapproved, With issues, Archived), not the switch — and
+Rules; the Rules view's are Status (Active, Paused, Needs review), Action and Groups.
 Quick selections are scoped to route/account/entity in session storage, outside the URL.
 Display grouping and ordering apply afterwards; a row can appear in multiple groups
 when it has multiple assignments, without changing the unique result count.
@@ -201,8 +206,8 @@ Facet data comes from live inventory, `/api/account-groups`, and the selected
 account's rule snapshots. Account groups describe account membership, not custom
 campaign labels. Rule counts describe assignment scope, not automation enablement.
 Status, account groups and rules can also group rows. Board mode remains unavailable.
-At `880px` and below the facets lie over the list below the header (`DetailsSheet`),
-closed at first; see the responsive contract.
+Account groups stay a filter and a grouping, but not a pane tab: every row of one ad
+account has the same groups. See the responsive contract for the pane itself.
 
 ## Public website
 

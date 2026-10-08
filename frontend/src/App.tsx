@@ -78,7 +78,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     settingsSection,
     setSettingsSection,
     setWorkspaceName,
-    toggleRightSidebar,
+    toggleDetailsPane,
     toggleSidebarCollapsed,
     toggleSidebarOpen,
     setSidebarOpen,
@@ -191,9 +191,15 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
         setSidebarPeekOpen(!isSidebarPeekOpen, 'keyboard');
         return;
       }
-      if ((event.ctrlKey || event.altKey || event.metaKey) && ['i', 'I'].includes(event.key)) {
+      // Linear's "Open/Close details": Ctrl/Cmd+I, or ] beside the sidebar's [ — the pane of the view on screen.
+      const detailsKey = ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.code === 'KeyI')
+        || (!event.ctrlKey && !event.altKey && !event.metaKey && event.key === ']');
+      if (detailsKey) {
+        const { activeTab: tab } = useAppStore.getState();
+        const pane = tab === 'campaigns' ? 'adsManager' : tab === 'rules' ? 'rules' : null;
+        if (!pane) return;
         event.preventDefault();
-        toggleRightSidebar();
+        toggleDetailsPane(pane);
         return;
       }
 
@@ -216,7 +222,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setActiveTab, setSettingsSection, toggleRightSidebar, setSidebarPeekOpen, toggleSidebarCollapsed, toggleSidebarOpen]);
+  }, [setActiveTab, setSettingsSection, toggleDetailsPane, setSidebarPeekOpen, toggleSidebarCollapsed, toggleSidebarOpen]);
 
   useEffect(() => {
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');

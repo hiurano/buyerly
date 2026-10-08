@@ -287,7 +287,7 @@ class TestReactFrontendContract(unittest.TestCase):
         ):
             self.assertIn(contract, self.campaigns_view)
 
-        self.assertIn("LinearFacetSidebar", self.campaigns_view)
+        self.assertIn("<DetailsFacets", self.campaigns_view)
         self.assertIn("currentView.facets", self.campaigns_view)
         self.assertIn("useCampaignViewFilters", self.campaigns_view)
         self.assertIn("groupView(rows, fields, groupingField)", self.campaigns_view)
@@ -790,15 +790,9 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("node ../scripts/search-page-browser.mjs", workflow)
 
     def test_screens_reflow_on_small_screens(self):
-        """Rules, Ads Manager and Inbox at 390px: details as a sheet, touch-sized headers (#286)."""
+        """Rules, Ads Manager and Inbox at 390px: details over the list, touch-sized headers (#286)."""
         workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
         self.assertIn("node ../scripts/mobile-screens-browser.mjs", workflow)
-        sheet = (ROOT / "frontend" / "src" / "ui" / "DetailsSheet.tsx").read_text()
-        self.assertIn("export function useDetailsSheet", sheet)
-        rule_sidebar = (ROOT / "frontend" / "src" / "components" / "rules" / "RuleRightSidebar.tsx").read_text()
-        for view in (self.campaigns_view, rule_sidebar):
-            self.assertIn("useDetailsSheet(", view)
-            self.assertIn("<DetailsSheet", view)
         for view in (self.campaigns_view, self.rules_view):
             self.assertIn("collapseOverflow", view)
         tabs = (ROOT / "frontend" / "src" / "ui" / "LinearTabs.tsx").read_text()
@@ -806,6 +800,31 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn(".linear-header-target", self.styles)
         self.assertNotIn("Mobile is partial", self.ui_contract)
         self.assertNotIn("no screen is described as mobile-ready", self.design_system)
+
+    def test_one_details_pane_for_every_view(self):
+        """Ads Manager and Rules share Linear's details pane and quick-filter tabs (#367)."""
+        ui = ROOT / "frontend" / "src" / "ui"
+        pane = (ui / "DetailsPane.tsx").read_text()
+        model = (ui / "detailsPaneModel.ts").read_text()
+        workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
+        for view, pane_id in ((self.campaigns_view, "adsManager"), (self.rules_view, "rules")):
+            self.assertIn(f'<DetailsPaneLayout pane="{pane_id}"', view)
+            self.assertIn(f'<DetailsPaneToggle pane="{pane_id}"', view)
+            self.assertIn("<DetailsFacets", view)
+        for gone in ("LinearFacetSidebar.tsx", "DetailsSheet.tsx"):
+            self.assertFalse((ui / gone).exists(), gone)
+        self.assertFalse((ROOT / "frontend" / "src" / "components" / "rules" / "RuleRightSidebar.tsx").exists())
+        # Linear's spring and widths; both panes start closed.
+        self.assertIn("tension: 1000, friction: 40, mass: 0.1", model)
+        self.assertIn("adsManager: { open: false, width: null }", model)
+        self.assertIn("DETAILS_PANE_OVERLAY_QUERY", pane)
+        # One shortcut for the view on screen, not a pane per view.
+        self.assertIn("event.code === 'KeyI'", self.app)
+        self.assertIn("toggleDetailsPane(pane)", self.app)
+        self.assertNotIn("toggleRightSidebar", self.app)
+        self.assertNotIn("toggleRulesRightSidebar", self.rules_view)
+        self.assertIn("node scripts/check-details-pane.cjs", workflow)
+        self.assertIn("node ../scripts/details-pane-browser.mjs", workflow)
 
 
 if __name__ == "__main__":
