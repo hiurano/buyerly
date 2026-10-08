@@ -2784,26 +2784,124 @@ html[data-theme='dark'] .buyerly-auth-page,
 }
 
 /* Facets summarize the base result, independently of the quick selection. */
-.campaign-view-body { display: flex; flex: 1; min-height: 0; min-width: 0; overflow: hidden; gap: var(--facet-sidebar-gap); }
 .campaign-view-list { display: flex; flex: 1; min-width: 0; min-height: 0; overflow: hidden; }
-.campaign-view-details { display: flex; flex-direction: column; flex: 0 0 var(--facet-sidebar-width); min-height: 0; max-width: 100%; overflow: auto; }
-.linear-facet-sidebar { flex: 1; min-width: 0; padding: var(--facet-sidebar-padding); border: 1px solid var(--sidebar-card-border); border-radius: var(--canvas-border-radius); background: var(--card-bg); overflow: auto; }
-.linear-facet-sidebar [role='tablist'] { overflow-x: auto; }
-.linear-facet-options { margin-top: var(--facet-sidebar-gap); }
-.linear-facet-row { display: flex; align-items: center; gap: var(--facet-sidebar-gap); width: 100%; min-height: var(--facet-row-height); padding: var(--facet-sidebar-gap); border-radius: var(--control-border-radius); color: var(--text-primary); font-size: var(--facet-font-size); text-align: left; }
-.linear-facet-row:hover { background: var(--item-hover-bg); }
-.linear-facet-row[aria-pressed='true'] { background: var(--item-active-bg); }
-.linear-facet-row:focus-visible { outline: 1px solid var(--focus-ring-color); outline-offset: -1px; }
-.linear-facet-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.linear-facet-action { display: none; color: var(--text-secondary); }
-.linear-facet-row:hover .linear-facet-action, .linear-facet-row:focus-visible .linear-facet-action, .linear-facet-row[aria-pressed='true'] .linear-facet-action { display: inline; }
-.linear-facet-count { color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
-.linear-facet-empty { padding: var(--facet-empty-padding); color: var(--text-tertiary); font-size: var(--facet-font-size); }
 .campaign-filter-summary { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: var(--facet-sidebar-gap); padding: var(--facet-empty-padding); color: var(--text-secondary); font-size: var(--facet-font-size); }
 /* Override the shared fixed toolbar height when controls wrap on narrow views. */
 .campaign-view-toolbar { height: auto !important; min-height: var(--facet-row-height); flex-wrap: wrap; gap: var(--facet-sidebar-gap); padding-block: var(--facet-sidebar-gap); }
 .campaign-view-toolbar > * { max-width: 100%; }
 .campaign-view-toolbar > div:last-child { flex-wrap: wrap; }
+
+/*
+ * A view's details pane (DetailsPane), as Linear's DetailsPaneContainer
+ * (#367). The layout clips it, so while it slides it never leaves the view.
+ * Beside the list it is a flex column whose width the list gives up; at
+ * 1024px and below it lies over the list. DetailsPane sets its width, margin
+ * and slide on every frame of the spring.
+ */
+.details-pane-layout { position: relative; display: flex; flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; }
+.details-pane-content { display: flex; flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; }
+.details-pane { position: relative; flex: 0 0 auto; z-index: 90; }
+.details-pane[data-overlay='true'] { position: absolute; top: 0; right: 0; bottom: 0; max-width: 100%; }
+.details-pane-backdrop { position: absolute; inset: 0; pointer-events: none; background-image: linear-gradient(to left, var(--details-pane-backdrop), transparent); }
+.details-pane-aside { position: absolute; inset: 0; display: flex; flex-direction: column; padding-left: 4px; overflow-x: hidden; overflow-y: auto; }
+/* On a touch phone the list under the pane dims, and a tap on it closes the pane. */
+.details-pane-scrim { position: absolute; inset: 0; z-index: 80; background-color: var(--details-pane-scrim); animation: detailsPaneScrimIn 0.25s ease; transition: opacity 0.25s ease; }
+.details-pane-scrim[data-open='false'] { opacity: 0; pointer-events: none; }
+@keyframes detailsPaneScrimIn { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .details-pane-scrim { animation: none; transition: none; } }
+
+/* The resizer on the pane's left edge: a hairline that fades in after 100ms, brighter at the pointer. */
+.details-pane-resizer { position: absolute; top: 0; bottom: 0; left: -3px; width: 7px; z-index: 91; cursor: col-resize; touch-action: none; }
+.details-pane-resizer-track {
+  position: absolute; top: 0; bottom: 0; left: calc(50% - 0.5px); width: 1px; overflow: hidden; pointer-events: none;
+  background-color: var(--details-pane-resizer-track); opacity: 0; transition: opacity 0.25s; transition-delay: 0s;
+  mask-image: linear-gradient(transparent, #000 10%, #000 90%, transparent);
+}
+@media (any-hover: hover) and (any-pointer: fine) {
+  .details-pane-resizer:hover .details-pane-resizer-track { opacity: 1; transition-delay: 0.1s; }
+}
+.details-pane-resizer[data-dragging='true'] .details-pane-resizer-track { opacity: 1; }
+.details-pane-resizer-indicator {
+  position: absolute; left: 0; right: 0; top: -80px; height: 160px;
+  background-image: linear-gradient(transparent, var(--details-pane-resizer-indicator), transparent);
+}
+.details-pane-resizer-tooltip {
+  position: absolute; right: 12px; transform: translateY(-50%); display: flex; flex-direction: column; gap: 4px;
+  padding: 5px 8px; border: 1px solid var(--color-border-secondary); border-radius: 8px; background-color: var(--card-bg);
+  box-shadow: var(--dropdown-shadow); color: var(--text-secondary); font-size: 12px; line-height: 16px; white-space: nowrap; pointer-events: none;
+}
+.details-pane-resizer-tooltip strong { color: var(--text-primary); font-weight: 500; }
+body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !important; user-select: none !important; }
+
+/* The header's details button: lit while the pane is open. */
+.details-pane-toggle {
+  display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid transparent;
+  border-radius: 9999px; background: transparent; color: var(--text-tertiary); outline: none; transition: background-color 0.15s, color 0.15s;
+}
+.details-pane-toggle:hover { background-color: var(--item-hover-bg); color: var(--text-primary); }
+.details-pane-toggle[data-active='true'] { background-color: var(--item-hover-bg); border-color: var(--color-border-secondary); color: var(--text-primary); }
+.details-pane-toggle:focus-visible { box-shadow: 0 0 0 2px var(--focus-ring-color); }
+
+/* Linear's quick-filter section (DetailsFacets): one card filling the pane, 8px from its right and bottom. */
+.details-facets {
+  display: flex; flex: 1 0 auto; flex-direction: column; margin: 0 8px 8px 0; padding: 12px;
+  border: 1px solid var(--details-pane-card-border); border-radius: 10px; background-color: var(--details-pane-card-bg);
+  box-shadow: var(--details-pane-card-shadow); user-select: none;
+}
+.details-facets-tabs { margin-bottom: 10px; }
+.details-facets-tabs[data-folded='true'] { height: 0; margin-bottom: 0; overflow: hidden; visibility: hidden; }
+.details-facets-tablist { display: flex; gap: 2px; width: 100%; height: 32px; border-radius: 5px; background-color: var(--details-tabs-bg); }
+.details-facets-tab {
+  display: inline-flex; flex: 1 0 auto; align-items: center; justify-content: center; height: 28px; margin: 2px; padding: 0 12px;
+  border: 1px solid transparent; border-radius: 9999px; background-color: var(--details-tab-bg); box-shadow: var(--details-tab-shadow);
+  color: var(--details-tab-fg); font-size: 12px; font-weight: 500; white-space: nowrap; outline: none; cursor: pointer;
+  transition: border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
+}
+.details-facets-tab:hover { background-color: var(--details-tab-hover-bg); color: var(--details-tab-hover-fg); }
+.details-facets-tab[aria-selected='true'] { background-color: var(--details-tab-active-bg); color: var(--details-tab-active-fg); cursor: default; }
+.details-facets-tab:focus-visible { outline: 1px solid var(--focus-ring-color); outline-offset: -1px; }
+.details-facets-select {
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; height: 30px;
+  margin: 8px 0 10px; padding: 1px 10px; border: 1px solid transparent; border-radius: 8px; background-color: var(--details-select-bg);
+  color: var(--details-select-fg); font-size: 13px; font-weight: 400; text-align: left; outline: none;
+}
+.details-facets-select:focus-visible { box-shadow: 0 0 0 1px var(--focus-ring-color); }
+.details-facets-rows { display: flex; flex-direction: column; gap: 1px; }
+.details-facets-row {
+  display: flex; align-items: center; height: 42px; padding: 0 10px; border-radius: 8px; background-color: var(--details-row-bg);
+  outline: none; cursor: default; transition: opacity 0.15s;
+}
+@media (any-hover: hover) and (any-pointer: fine) {
+  .details-facets-row:hover { background-color: var(--details-row-hover-bg); }
+}
+.details-facets-row:active { background-color: var(--details-row-hover-bg); }
+.details-facets-row[data-status='active'] { background-color: var(--details-row-active-bg); }
+.details-facets-row[data-status='muted'] { opacity: 0.5; }
+.details-facets-row:focus-visible { box-shadow: inset 0 0 0 1px var(--focus-ring-color); }
+.details-facets-row-content { position: relative; display: flex; flex: 1 1 auto; align-items: center; gap: 8px; min-width: 0; align-self: stretch; }
+.details-facets-row-icon { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; width: 18px; height: 18px; }
+.details-facets-dot { width: 8px; height: 8px; border-radius: 9999px; }
+.details-facets-row-name { min-width: 0; overflow: hidden; color: var(--details-row-fg); font-size: 13px; font-weight: 450; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+/* "See …" on hover, "Clear filter" on the chosen row, laid over the name's end. */
+.details-facets-row-link {
+  position: absolute; top: 0; right: 0; bottom: 0; display: none; align-items: center; padding: 0 8px 0 35px;
+  color: var(--details-row-link-fg); font-size: 12px; font-weight: 450; white-space: nowrap; text-align: right;
+  mask-image: linear-gradient(to right, transparent, #000 25px);
+}
+.details-facets-row { --details-facets-row-current-bg: var(--details-row-bg); }
+.details-facets-row-link { background-color: var(--details-facets-row-current-bg); }
+@media (any-hover: hover) and (any-pointer: fine) {
+  .details-facets-row:hover { --details-facets-row-current-bg: var(--details-row-hover-bg); }
+  .details-facets-row:hover .details-facets-row-link { display: flex; }
+}
+.details-facets-row:focus-visible .details-facets-row-link { display: flex; }
+.details-facets-row[data-status='active'] { --details-facets-row-current-bg: var(--details-row-active-bg); }
+.details-facets-row[data-status='active'] .details-facets-row-link { display: flex; }
+.details-facets-row-count {
+  flex-shrink: 0; min-width: var(--details-facets-count-width, 1ch); color: var(--details-row-count-fg); font-size: 13px; font-weight: 450;
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+.details-facets-empty { padding: 24px 8px; color: var(--text-tertiary); font-size: 13px; text-align: center; }
 
 /*
  * Adjacent selected rows read as one block, as in Linear: the inner corners are
@@ -3463,50 +3561,6 @@ html[data-theme='dark'] .buyerly-auth-page,
 .preferences-connect-button:disabled {
   cursor: default;
   opacity: 0.5;
-}
-
-/* A view's details panel at the small width, measured in Linear at 375/390px:
-   it lies over the list from the right, below the view header (which stays
-   usable), 350px wide (the whole window when narrower). The panel's own card
-   sits 4px from its left edge and 8px from the right and bottom. The sheet
-   itself is transparent (DetailsSheet). */
-.details-sheet {
-  position: fixed;
-  top: var(--details-sheet-top, 0px);
-  right: 0;
-  bottom: 0;
-  z-index: 90;
-  display: flex;
-  flex-direction: column;
-  width: min(350px, 100vw);
-  animation: detailsSheetEnter 0.32s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Linear dims the list under it only on a phone (640px and below). */
-.details-sheet-backdrop {
-  position: fixed;
-  top: var(--details-sheet-top, 0px);
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 80;
-  display: none;
-  background-color: rgba(0, 0, 0, 0.4);
-}
-
-@media (max-width: 640px) {
-  .details-sheet-backdrop { display: block; }
-}
-
-@keyframes detailsSheetEnter {
-  from { transform: translateX(calc(100% + 16px)); }
-  to { transform: translateX(0); }
-}
-
-.details-sheet > .campaign-view-details {
-  flex: 1 1 auto;
-  width: 100%;
-  padding: 0 8px 8px 4px;
 }
 
 /* Popovers anchored to a header button never leave a narrow window. */

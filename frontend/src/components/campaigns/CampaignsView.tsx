@@ -53,8 +53,9 @@ import type { FilterMenuMode } from '@/components/filters/LinearFilter';
 import { createLiveFields, filterView, groupView } from './campaignViewModel';
 import type { AccountGroupOption } from './campaignViewModel';
 import { useCampaignViewFilters } from './useCampaignViewFilters';
-import { LinearFacetSidebar } from '@/ui/LinearFacetSidebar';
-import { DetailsSheet, useDetailsSheet } from '@/ui/DetailsSheet';
+import { DetailsPaneLayout, DetailsPaneToggle } from '@/ui/DetailsPane';
+import { DetailsFacets, type DetailsFacetTab } from '@/ui/DetailsFacets';
+import type { FilterOption } from '@/components/filters/filterModel';
 import { SelectionDock } from '@/ui/SelectionDock';
 import { SelectionCommandMenu } from '@/ui/SelectionCommandMenu';
 import { LinearBoltIcon } from '@/icons/LinearIcons';
@@ -65,9 +66,9 @@ import { useRowSelection, type SelectionAction } from '@/ui/useRowSelection';
 import { useRevealRow } from '@/ui/useRevealRow';
 import type { FilterClause, FilterFieldDefinition } from '@/components/filters/filterModel';
 import {
-  LinearSidebarToggleIcon,
   LinearPlusIcon,
   LinearSlidersIcon,
+  LinearStatusCircleIcon,
 } from '@/icons/LinearIcons';
 import { getAdsManagerColumns } from './tableColumns';
 import {
@@ -113,12 +114,21 @@ interface CampaignsViewProps {
 /** The level's own address; the entity a link named stays with the account being left. */
 const levelPath = (pathname: string) => pathname.split('/').slice(0, 4).join('/');
 
+/** The details pane's quick filters: real delivery state, then the rules on each row (#367). */
+const DETAILS_TABS = ['status', 'rule'];
+
+function facetIcon(fieldId: string, option: FilterOption): React.ReactNode {
+  if (fieldId === 'rule') {
+    return <LinearBoltIcon size={14} style={{ color: option.value === 'no-rule' ? 'var(--text-muted)' : option.color }} />;
+  }
+  if (option.value === 'active' || option.value === 'paused') return <LinearStatusCircleIcon status={option.value} size={14} />;
+  return <span className="details-facets-dot" style={{ backgroundColor: option.color }} />;
+}
+
 export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigationKey }) => {
   const {
     campaignFilterTab,
     setCampaignFilterTab,
-    isRightSidebarOpen,
-    toggleRightSidebar,
     displayGrouping,
     displayOrdering,
     setDisplayOrdering,
@@ -132,17 +142,11 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     loadAccountRuleAttachments,
     attachmentsLoadState,
   } = useAppStore();
-  // Only ever closes: a second call (Strict Mode runs effects twice) must not toggle it open again.
-  const closeDetails = useCallback(() => {
-    if (useAppStore.getState().isRightSidebarOpen) toggleRightSidebar();
-  }, [toggleRightSidebar]);
-  const detailsIsSheet = useDetailsSheet(isRightSidebarOpen, closeDetails);
 
   const requestGenerationRef = useRef(0);
   const filterButtonRef = useRef<HTMLButtonElement>(null);
   const displayOptionsButtonRef = useRef<HTMLButtonElement>(null);
   const [openFilterMenu, setOpenFilterMenu] = useState<OpenFilterMenu | null>(null);
-  const [facetTab, setFacetTab] = useState('status');
   const [accountGroups, setAccountGroups] = useState<AccountGroupOption[] | null>(null);
   const [groupsError, setGroupsError] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
@@ -152,10 +156,12 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   const [accountsState, setAccountsState] = useState<LoadState>('loading');
   const [accountsError, setAccountsError] = useState('');
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
-  const { filters: adsManagerFilters, updateFilters: setAdsManagerFilters, quick, setQuick } = useCampaignViewFilters(
+  const { filters: adsManagerFilters, updateFilters: setAdsManagerFilters, quick: savedQuick, setQuick } = useCampaignViewFilters(
     `${window.location.pathname}:${selectedAccountId ?? ''}:${campaignFilterTab}`,
     navigationKey,
   );
+  // Only a quick filter the pane can show applies, so none is ever left on unseen.
+  const quick = savedQuick && DETAILS_TABS.includes(savedQuick.fieldId) ? savedQuick : null;
   const [campaigns, setCampaigns] = useState<ReturnType<typeof hierarchyCampaignToRow>[]>([]);
   const [adSets, setAdSets] = useState<ReturnType<typeof hierarchyAdSetToRow>[]>([]);
   const [ads, setAds] = useState<ReturnType<typeof hierarchyAdToRow>[]>([]);
@@ -734,14 +740,25 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     );
   };
 
-  // A column beside the list on a wide window, a sheet over it at the small width.
-  const details = (
-    <div className="campaign-view-details">
-      {groupsError && <p role="status" className="linear-facet-empty">Account groups unavailable. Reload to retry.</p>}
-      <LinearFacetSidebar facets={currentView.facets} activeTab={quick?.fieldId ?? facetTab} selection={quick}
-        onTabChange={id => { setFacetTab(id); setQuick(null); }} onSelect={setQuick} />
-    </div>
-  );
+  const detailsTabs: DetailsFacetTab[] = DETAILS_TABS.flatMap((fieldId) => {
+    const facet = currentView.facets.find((candidate) => candidate.id === fieldId);
+    return facet ? [{
+      id: facet.id,
+      label: facet.label,
+      options: facet.options.map((option) => ({
+        value: option.value, label: option.label, count: option.count ?? 0, icon: facetIcon(facet.id, option),
+      })),
+    }] : [];
+  });
+  const details = hierarchyState === 'ready' && accountsState === 'ready' ? (
+    <DetailsFacets
+      tabs={detailsTabs}
+      selection={quick}
+      onSelect={setQuick}
+      storageKey="buyerly:details-tab:ads-manager"
+      noun={entityLabels[campaignFilterTab].plural}
+    />
+  ) : null;
 
   return (
     <div className="flex h-full w-full select-none flex-col overflow-hidden bg-transparent">
@@ -824,12 +841,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
               hasAccountGroups={accountGroups !== null}
             />
 
-            <Tooltip content={isRightSidebarOpen ? 'Close details' : 'Open details'}>
-              <button type="button" className="linear-icon-btn linear-header-target" aria-label={isRightSidebarOpen ? 'Close details' : 'Open details'}
-                aria-expanded={isRightSidebarOpen} onClick={toggleRightSidebar}>
-                <LinearSidebarToggleIcon size={16} isOpen={isRightSidebarOpen} />
-              </button>
-            </Tooltip>
+            <DetailsPaneToggle pane="adsManager" />
           </div>
         </LinearDataListToolbar>
 
@@ -852,16 +864,12 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
         onClose={() => setOpenFilterMenu(null)}
       />
 
-      <div className="campaign-view-body">
+      <DetailsPaneLayout pane="adsManager" label="Ads Manager details" details={details}>
         <div className="campaign-view-list relative">
           {renderData()}
           <SelectionDock count={selection.count} onOpenActions={() => selection.setMenuOpen(true)} onClear={selection.clear} />
         </div>
-        {isRightSidebarOpen && hierarchyState === 'ready' && accountsState === 'ready' && !detailsIsSheet && details}
-      </div>
-      {isRightSidebarOpen && hierarchyState === 'ready' && accountsState === 'ready' && detailsIsSheet && (
-        <DetailsSheet label="Ads Manager details" onClose={closeDetails}>{details}</DetailsSheet>
-      )}
+      </DetailsPaneLayout>
 
       <SelectionCommandMenu
         open={selection.menuOpen}

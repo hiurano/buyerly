@@ -46,7 +46,7 @@ export function humanizeMetaStatus(value: string): string {
     .join(' ');
 }
 
-function campaignDelivery(item: AnalyticsHierarchyItem): Pick<CampaignItem, 'status' | 'statusLabel'> {
+function campaignDelivery(item: AnalyticsHierarchyItem): Pick<CampaignItem, 'status' | 'statusLabel' | 'effectiveStatus'> {
   const rawStatus = item.status || item.effective_status || 'UNKNOWN';
   const normalized = rawStatus.trim().toUpperCase();
   return {
@@ -56,6 +56,7 @@ function campaignDelivery(item: AnalyticsHierarchyItem): Pick<CampaignItem, 'sta
         ? 'paused'
         : 'unknown',
     statusLabel: humanizeMetaStatus(item.effective_status || rawStatus),
+    effectiveStatus: item.effective_status || rawStatus,
   };
 }
 

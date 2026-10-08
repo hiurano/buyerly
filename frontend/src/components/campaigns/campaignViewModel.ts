@@ -1,10 +1,50 @@
 import type { MetaAccount } from '@/lib/types';
-import { createStatusFilterFields } from '@/components/filters/filterCatalogs';
 import { applyFilterClauses } from '@/components/filters/filterModel';
-import type { FilterFieldDefinition, FilterClause } from '@/components/filters/filterModel';
+import type { FilterFieldDefinition, FilterClause, FilterOption } from '@/components/filters/filterModel';
 
 export interface AccountGroupOption { id: number; name: string; account_ids: string[] }
-export interface ViewRow { id: string; name: string; status: string; campaignId?: string; adSetId?: string }
+export interface ViewRow {
+  id: string; name: string; status: string; effectiveStatus?: string; campaignId?: string; adSetId?: string;
+}
+
+/**
+ * Where a row's delivery really stands, from Meta's `effective_status`
+ * rather than the switch the buyer set: a switched-on campaign Meta rejected
+ * is "Disapproved", one whose ad set is off is "Paused" (#367).
+ */
+export const DELIVERY_STATUS_OPTIONS: FilterOption[] = [
+  { value: 'active', label: 'Active', color: '#34d399', icon: 'status-active' },
+  { value: 'paused', label: 'Paused', color: '#8b8d93', icon: 'status-paused' },
+  { value: 'in_review', label: 'In review', color: '#f2c94c', icon: 'dot' },
+  { value: 'disapproved', label: 'Disapproved', color: '#eb5757', icon: 'dot' },
+  { value: 'with_issues', label: 'With issues', color: '#f2994a', icon: 'dot' },
+  { value: 'archived', label: 'Archived', color: '#73767c', icon: 'dot' },
+  { value: 'unknown', label: 'Unknown status', color: '#73767c', icon: 'dot' },
+];
+
+export function deliveryStatus(row: Pick<ViewRow, 'status' | 'effectiveStatus'>): string {
+  const effective = (row.effectiveStatus ?? '').trim().toUpperCase();
+  if (!effective) return ['active', 'paused'].includes(row.status) ? row.status : 'unknown';
+  if (effective === 'ACTIVE') return 'active';
+  if (effective === 'PAUSED' || effective.endsWith('_PAUSED')) return 'paused';
+  if (['PENDING_REVIEW', 'IN_PROCESS', 'PREAPPROVED'].includes(effective)) return 'in_review';
+  if (effective === 'DISAPPROVED') return 'disapproved';
+  if (['WITH_ISSUES', 'PENDING_BILLING_INFO'].includes(effective)) return 'with_issues';
+  if (['ARCHIVED', 'DELETED'].includes(effective)) return 'archived';
+  return 'unknown';
+}
+
+/** Active and Paused always; any other delivery state only while some row is in it. */
+function deliveryStatusField<T extends ViewRow>(rows: T[]): FilterFieldDefinition<T> {
+  const present = new Set(rows.map(deliveryStatus));
+  return {
+    id: 'status', label: 'Status', section: 'filters', type: 'enum',
+    operators: ['is', 'is_not'], defaultOperator: 'is',
+    options: DELIVERY_STATUS_OPTIONS.filter(option => ['active', 'paused'].includes(option.value) || present.has(option.value)),
+    getValue: row => deliveryStatus(row),
+    pluralLabel: 'statuses',
+  };
+}
 export interface QuickSelection { fieldId: string; value: string }
 
 export function createLiveFields<T extends ViewRow>(
@@ -24,7 +64,7 @@ export function createLiveFields<T extends ViewRow>(
     return entity !== 'campaigns' && scope.ids.includes(entity === 'adsets' ? row.id : row.adSetId ?? '');
   }).map(rule => String(rule.preset_id));
   const fields: FilterFieldDefinition<T>[] = [
-    ...createStatusFilterFields(rows),
+    deliveryStatusField(rows),
     { id: 'rule', label: 'Rules', section: 'filters', type: 'enum',
       operators: ['includes_all', 'includes_any', 'excludes_any', 'excludes_all'], defaultOperator: 'includes_all',
       options: [...rules.map(rule => ({ value: String(rule.preset_id), label: rule.name, icon: 'rule' as const })),
@@ -32,11 +72,6 @@ export function createLiveFields<T extends ViewRow>(
       getValue: row => { const values = ruleValues(row); return values.length ? values : ['no-rule']; },
       pluralLabel: 'rules' },
   ];
-  const status = fields[0];
-  const knownStatuses = new Set(status.options?.map(option => option.value));
-  for (const value of new Set(rows.map(row => row.status))) {
-    if (!knownStatuses.has(value)) status.options?.push({ value, label: value === 'unknown' ? 'Unknown status' : value });
-  }
   if (groups !== null) {
     const memberships = groups.filter(group => group.account_ids.includes(account?.account_id ?? '')).map(group => String(group.id));
     fields.splice(1, 0, {

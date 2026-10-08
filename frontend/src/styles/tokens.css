@@ -51,8 +51,6 @@
   --sidebar-width: 244px;
   --header-height: 44px;
   --canvas-border-radius: 12px;
-  --facet-sidebar-width: 320px;
-  --facet-sidebar-padding: 12px;
   --facet-sidebar-gap: 8px;
   --facet-row-height: 42px;
   --facet-font-size: 13px;
@@ -241,6 +239,31 @@
   --preferences-accent: #5e69d1;
   /* Linear bgModalOverlay: black at 40% in dark themes, 25% in light. */
   --modal-overlay-bg: rgb(0 0 0 / 0.4);
+
+  /* A view's details pane and its quick filters, measured in dark Linear on 2026-10-09 (#367). */
+  --details-pane-backdrop: var(--bg-canvas);
+  --details-pane-resizer-track: lch(100% 0 272 / 0.15);
+  --details-pane-resizer-indicator: var(--resizer-line-color);
+  --details-pane-card-bg: var(--card-bg);
+  --details-pane-card-border: var(--card-border);
+  --details-pane-card-shadow: 0px 0.5px 1px 1px lch(0% 0 0 / 0.3);
+  --details-tabs-bg: var(--card-bg);
+  --details-tab-bg: lch(13.861% 1.043 272 / 1);
+  --details-tab-hover-bg: lch(17.718% 1.043 272 / 1);
+  --details-tab-active-bg: lch(20.418% 1.429 272 / 1);
+  --details-tab-fg: lch(63.304% 1.425 272 / 1);
+  --details-tab-hover-fg: lch(90.826% 1.425 272 / 1);
+  --details-tab-active-fg: lch(100% 0 272 / 1);
+  --details-tab-shadow: none;
+  --details-select-bg: lch(13.861% 1.139 272 / 1);
+  --details-select-fg: lch(90.826% 1.425 272 / 1);
+  --details-row-bg: var(--card-bg);
+  --details-row-hover-bg: lch(13.058% 1.3 272 / 1);
+  --details-row-active-bg: lch(11.033% 1.3 272 / 1);
+  --details-row-fg: lch(90.826% 1.425 272 / 1);
+  --details-row-count-fg: lch(63.304% 1.425 272 / 1);
+  --details-row-link-fg: var(--text-primary);
+  --details-pane-scrim: rgb(0 0 0 / 0.4);
 }
 
 html[data-theme='light'] {
@@ -395,6 +418,24 @@ html[data-theme='light'] {
   --preferences-menu-hover: lch(95% 0 282 / 1);   /* #f1f0f0 */
   --preferences-accent: #6d78d5;
   --modal-overlay-bg: rgb(0 0 0 / 0.25);
+
+  --details-pane-resizer-track: lch(0% 0 0 / 0.15);
+  --details-pane-resizer-indicator: lch(0% 0 0 / 0.5);
+  --details-pane-card-shadow: 0 0 0 1px lch(0% 0 0 / 0.04), 0 1px 2px lch(0% 0 0 / 0.04);
+  --details-tab-bg: var(--sidebar-tab-inactive-bg);
+  --details-tab-hover-bg: var(--sidebar-tab-hover-bg);
+  --details-tab-active-bg: var(--sidebar-tab-active-bg);
+  --details-tab-fg: var(--sidebar-tab-inactive-text);
+  --details-tab-hover-fg: var(--sidebar-tab-hover-text);
+  --details-tab-active-fg: var(--sidebar-tab-active-text);
+  --details-tab-shadow: var(--sidebar-tab-inactive-shadow);
+  --details-select-bg: var(--sidebar-tab-active-bg);
+  --details-select-fg: var(--text-secondary);
+  --details-row-hover-bg: var(--item-hover-bg);
+  --details-row-active-bg: var(--item-active-bg);
+  --details-row-fg: var(--text-secondary);
+  --details-row-count-fg: var(--text-tertiary);
+  --details-pane-scrim: rgb(0 0 0 / 0.25);
 }
 
 html[data-theme='dark'] {

@@ -43,6 +43,7 @@ jobs:
           node scripts/check-snooze-query.cjs
           node scripts/check-sessions.cjs
           node scripts/check-rule-precedence.cjs
+          node scripts/check-details-pane.cjs
           node scripts/check-app-version.cjs
           npm run build
 
@@ -224,6 +225,17 @@ jobs:
         with:
           name: new-version-browser
           path: /tmp/buyerly-new-version
+
+      - name: Check the details pane on Ads Manager and Rules in Chromium
+        working-directory: frontend
+        run: node ../scripts/details-pane-browser.mjs
+
+      - name: Upload details pane browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: details-pane-browser
+          path: /tmp/buyerly-details-pane
 
       - name: Check Rules, Ads Manager and Inbox on small screens in Chromium
         working-directory: frontend

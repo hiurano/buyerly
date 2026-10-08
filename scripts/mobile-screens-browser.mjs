@@ -2,10 +2,10 @@
 // 390, 768, 1024 and 1440px (#286). At every width the document never scrolls
 // sideways and every header control is on screen and not covered; view tabs
 // that no longer fit fold into one "N more" menu, as in Linear. Touch screens
-// get 32px header buttons and tabs (Linear, measured at 375px). At Linear's
-// small width (880px and below) a view's details panel lies over the list
-// below the header, 350px wide, closed at first; on a phone its backdrop closes
-// it. The navigation drawer opens over each screen without overflow. Display
+// get 32px header buttons and tabs (Linear, measured at 375px). A view's details
+// pane starts closed; at 1024px and below it lies over the list below the
+// header, 350px wide, wider it is a column the list makes room for; on a phone
+// its backdrop closes it (#367). The navigation drawer opens over each screen without overflow. Display
 // options and the Inbox menus stay on screen.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -192,32 +192,35 @@ try {
       await press(button);
       await popover.waitFor({ state: 'detached' });
     };
-    // Small width: the details panel lies over the list below the header, closed at first.
-    const assertDetails = async (where, sheetName, columnSelector) => {
-      const sheet = page.getByRole('region', { name: sheetName });
-      if (!small) {
-        if (columnSelector) await page.locator(columnSelector).waitFor();
-        assert.equal(await sheet.count(), 0, `${where}: a column, not a sheet, at ${width}px`);
-        return;
-      }
-      assert.equal(await sheet.count(), 0, `${where}: the details start closed on a small screen`);
+    // The details pane starts closed; at 1024px and below it lies over the list
+    // below the header, 350px wide; wider, it is a column the list makes room for (#367).
+    const assertDetails = async (where, paneName) => {
+      const pane = page.getByRole('complementary', { name: paneName });
+      assert.equal(await pane.count(), 0, `${where}: the details start closed`);
+      const listBefore = await page.locator('.details-pane-content').evaluate((el) => el.getBoundingClientRect().width);
       await press(page.locator('main header').getByRole('button', { name: 'Open details' }));
-      await sheet.waitFor();
+      await pane.waitFor();
       await settled();
-      const box = await sheet.boundingBox();
-      const headerBottom = await page.locator('main header').first().evaluate((el) => el.getBoundingClientRect().bottom);
-      assert.equal(Math.round(box.x + box.width), width, `${where}: the sheet sits on the right edge`);
-      assert.equal(Math.round(box.width), Math.min(width, 350), `${where}: the sheet width`);
-      assert.equal(Math.round(box.y), Math.round(headerBottom), `${where}: the sheet starts below the header`);
+      const [box, layout, listAfter] = await page.evaluate(() => [
+        document.querySelector('.details-pane').getBoundingClientRect().toJSON(),
+        document.querySelector('.details-pane-layout').getBoundingClientRect().toJSON(),
+        document.querySelector('.details-pane-content').getBoundingClientRect().width,
+      ]);
+      assert.equal(Math.round(box.right), Math.round(layout.right), `${where}: the pane sits on the right edge`);
+      assert.equal(Math.round(box.width), Math.min(Math.round(layout.width), 350), `${where}: the pane width`);
+      assert.equal(Math.round(box.top), Math.round(layout.top), `${where}: the pane starts below the header`);
+      if (width <= 1024) assert.equal(Math.round(listAfter), Math.round(listBefore), `${where}: over the list at ${width}px`);
+      else assert.equal(Math.round(listBefore - listAfter), 350, `${where}: the list makes room at ${width}px`);
       await assertNoOverflow(`${where} with the details open`);
+      await assertHeaderControls(`${where} with the details open`);
       await shot(`${where}-details`);
       if (width <= 640) {
-        await page.touchscreen.tap(10, 400);
+        await page.touchscreen.tap(10, Math.round(box.top + 100));
       } else {
         // No backdrop above a phone: the header's details button, still uncovered, closes it.
         await press(page.locator('main header').getByRole('button', { name: 'Close details' }));
       }
-      await sheet.waitFor({ state: 'detached' });
+      await pane.waitFor({ state: 'detached' });
     };
 
     try {
@@ -229,7 +232,7 @@ try {
       await assertHeaderControls('rules');
       await shot('rules');
       await assertDisplayOptions('rules');
-      await assertDetails('rules', 'Rule groups');
+      await assertDetails('rules', 'Rules details');
       await assertDrawer('rules');
       // The four Rules tabs do not fit a phone: they fold into the active tab's capsule.
       const more = page.locator('main header').getByRole('button', { name: '3 more' });
@@ -261,7 +264,7 @@ try {
       assert.deepEqual(wrapped, [], `figures wrap at ${width}px`);
       await shot('ads-manager');
       await assertDisplayOptions('ads manager');
-      await assertDetails('ads manager', 'Ads Manager details', '.campaign-view-details');
+      await assertDetails('ads manager', 'Ads Manager details');
       await assertDrawer('ads manager');
 
       // Inbox: the list, its "…" menu, then a notification and Snooze.

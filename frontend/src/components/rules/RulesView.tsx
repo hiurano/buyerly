@@ -9,7 +9,12 @@ import { deletionPrompt, runBulkRulesEnabled, runPendingDeletion } from './ruleA
 import { CreateRuleModal } from './CreateRuleModal';
 import { RuleStatesHost } from './RuleStatesDialog';
 import { RuleDisplayOptionsPopover } from './RuleDisplayOptionsPopover';
-import { RuleRightSidebar } from './RuleRightSidebar';
+import {
+  applyRuleQuickFilter,
+  createRuleFacets,
+  parseRuleQuickFilter,
+  type RuleQuickFilter,
+} from './ruleFacets';
 import {
   ActiveFilterFormula,
   FilteredEmptyState,
@@ -20,11 +25,18 @@ import {
 import { createRuleFilterFields } from '@/components/filters/filterCatalogs';
 import { applyFilterClauses } from '@/components/filters/filterModel';
 import {
+  LinearBacklogDashedIcon,
+  LinearBoltIcon,
+  LinearFlaskIcon,
   LinearPlusIcon,
+  LinearRocketIcon,
+  LinearShieldIcon,
   LinearSlidersIcon,
-  LinearSidebarToggleIcon,
+  LinearStatusCircleIcon,
 } from '@/icons/LinearIcons';
 import { LinearTabs } from '@/ui/LinearTabs';
+import { DetailsPaneLayout, DetailsPaneToggle } from '@/ui/DetailsPane';
+import { DetailsFacets, type DetailsFacetTab } from '@/ui/DetailsFacets';
 import { DataState } from '@/ui/DataState';
 import { LinearDataListToolbar } from '@/ui/LinearDataList';
 import { Tooltip } from '@/ui/Tooltip';
@@ -42,6 +54,34 @@ interface OpenFilterMenu {
   mode: FilterMenuMode;
   anchor: HTMLElement;
   fieldId?: string;
+}
+
+const QUICK_FILTER_KEY = 'buyerly:quick-filter:rules';
+
+function readQuickFilter(): RuleQuickFilter | null {
+  try {
+    return parseRuleQuickFilter(window.sessionStorage.getItem(QUICK_FILTER_KEY));
+  } catch {
+    return null;
+  }
+}
+
+function ruleFacetIcon(facet: string, value: string, groups: { id: string; icon: string }[]): React.ReactNode {
+  if (facet === 'status') {
+    if (value === 'needs_review') return <span className="details-facets-dot" style={{ backgroundColor: '#f2994a' }} />;
+    return <LinearStatusCircleIcon status={value === 'paused' ? 'paused' : 'active'} size={14} />;
+  }
+  if (facet === 'action') return <LinearBoltIcon size={14} style={{ color: 'var(--text-tertiary)' }} />;
+  switch (groups.find((group) => group.id === value)?.icon) {
+    case 'shield':
+      return <LinearShieldIcon size={14} className="text-emerald-400" />;
+    case 'rocket':
+      return <LinearRocketIcon size={14} className="text-purple-400" />;
+    case 'flask':
+      return <LinearFlaskIcon size={14} className="text-amber-400" />;
+    default:
+      return <LinearBacklogDashedIcon size={14} className="text-zinc-400" />;
+  }
 }
 
 interface RulesViewProps {
@@ -63,8 +103,6 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
     isRulesDisplayOptionsOpen,
     toggleRulesDisplayOptions,
     setIsRulesDisplayOptionsOpen,
-    isRulesRightSidebarOpen,
-    toggleRulesRightSidebar,
     rulesFilterClauses,
     setRulesFilterClauses,
     rulesLoadState,
@@ -108,12 +146,23 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
     [ruleGroups, rules]
   );
 
-  const filteredRules = useMemo(() => {
+  // The details pane's one quick filter, on top of the filters; kept for this browser tab.
+  const [quick, setQuickState] = useState<RuleQuickFilter | null>(readQuickFilter);
+  const setQuick = (next: RuleQuickFilter | null) => {
+    setQuickState(next);
+    try {
+      window.sessionStorage.setItem(QUICK_FILTER_KEY, JSON.stringify(next));
+    } catch { /* Storage is optional. */ }
+  };
+
+  // The pane counts what the filters and the tab leave, before its own quick filter.
+  const baseRules = useMemo(() => {
     const matchingFilters = applyFilterClauses(rules, filterFields, rulesFilterClauses);
     return ruleFilterTab === 'all'
       ? matchingFilters
       : matchingFilters.filter((rule) => rule.status === ruleFilterTab);
   }, [filterFields, ruleFilterTab, rules, rulesFilterClauses]);
+  const filteredRules = useMemo(() => applyRuleQuickFilter(baseRules, quick), [baseRules, quick]);
 
   const totalForTab =
     ruleFilterTab === 'all'
@@ -177,6 +226,10 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
         setRulesFilterClauses([]);
         changed = true;
       }
+      if (applyRuleQuickFilter([revealedRule], quick).length === 0) {
+        setQuick(null);
+        changed = true;
+      }
       if (rulesViewMode === 'list') {
         const memberOf = ruleGroups
           .filter((group) => revealedRule.groupId === group.id || group.ruleIds.includes(revealedRule.id))
@@ -210,13 +263,17 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
   // One selected rule is named on the actions menu's chip, as Linear's "BUY-4 ⋅ Title".
   const singleSelected = selection.count === 1 ? rules.find((rule) => rule.id === selectedRuleIds[0]) : undefined;
 
-  const hasFilters = rulesFilterClauses.length > 0;
+  const hasFilters = rulesFilterClauses.length > 0 || quick !== null;
+  const clearFilters = () => {
+    setRulesFilterClauses([]);
+    setQuick(null);
+  };
 
   const showFilterMenu = (mode: FilterMenuMode, anchor: HTMLElement, fieldId?: string) => {
     setOpenFilterMenu({ mode, anchor, fieldId });
   };
 
-  // Global hotkeys: 'C' for create rule, 'V' for display options, 'F' for filter, 'Alt+I' for sidebar
+  // Global hotkeys: 'C' for create rule, 'V' for display options, 'F' for filter; the app handles Ctrl+I.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -243,15 +300,12 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
             current ? null : { mode: 'root', anchor: filterButtonRef.current as HTMLElement }
           );
         }
-      } else if ((e.key === 'i' || e.key === 'I') && e.altKey) {
-        e.preventDefault();
-        toggleRulesRightSidebar();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [openCreateRuleModal, setIsRulesDisplayOptionsOpen, toggleRulesDisplayOptions, toggleRulesRightSidebar]);
+  }, [openCreateRuleModal, setIsRulesDisplayOptionsOpen, toggleRulesDisplayOptions]);
 
   useEffect(() => {
     setOpenFilterMenu(null);
@@ -271,6 +325,20 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
     { id: 'paused', label: 'Paused' },
     { id: 'deleted', label: 'Recently deleted' },
   ];
+
+  const detailsTabs: DetailsFacetTab[] = createRuleFacets(baseRules, ruleGroups).map((facet) => ({
+    ...facet,
+    options: facet.options.map((option) => ({ ...option, icon: ruleFacetIcon(facet.id, option.value, ruleGroups) })),
+  }));
+  const details = rulesLoadState === 'ready' && !showingDeleted && rules.length > 0 ? (
+    <DetailsFacets
+      tabs={detailsTabs}
+      selection={quick}
+      onSelect={setQuick}
+      storageKey="buyerly:details-tab:rules"
+      noun="rules"
+    />
+  ) : null;
 
   return (
     <div className="flex h-full w-full select-none flex-col overflow-hidden bg-transparent">
@@ -334,7 +402,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
               <Tooltip content="Filter" shortcut="F">
                 <LinearFilterButton
                   ref={filterButtonRef}
-                  active={hasFilters}
+                  active={rulesFilterClauses.length > 0}
                   open={Boolean(openFilterMenu)}
                   onMouseDown={(event) => event.stopPropagation()}
                   onClick={(event) => {
@@ -378,25 +446,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
               />
             </div>
 
-            {/* Toggle Right Details Sidebar */}
-            <Tooltip
-              content={isRulesRightSidebarOpen ? 'Close details' : 'Open details'}
-              shortcut="Alt I"
-            >
-              <button
-                type="button"
-                aria-label={isRulesRightSidebarOpen ? 'Close details' : 'Open details'}
-                onClick={toggleRulesRightSidebar}
-                aria-expanded={isRulesRightSidebarOpen}
-                className={`linear-header-target group relative flex h-[28px] w-[28px] items-center justify-center rounded-full transition-all border ${
-                  isRulesRightSidebarOpen
-                    ? 'bg-[var(--item-hover-bg)] border-[var(--color-border-secondary)] text-[var(--text-primary)]'
-                    : 'bg-transparent border-transparent text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                <LinearSidebarToggleIcon isOpen={isRulesRightSidebarOpen} size={14} />
-              </button>
-            </Tooltip>
+            <DetailsPaneToggle pane="rules" />
           </div>
         </LinearDataListToolbar>
 
@@ -434,8 +484,8 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
         onClose={() => setOpenFilterMenu(null)}
       />
 
-      {/* 2. Main Content Area (Split: Left content, Right sidebar) */}
-      <div className="flex flex-1 overflow-hidden" style={{ flexDirection: 'row' }}>
+      {/* 2. Main Content Area: the list or board, with the details pane on the right */}
+      <DetailsPaneLayout pane="rules" label="Rules details" details={details}>
         {showingDeleted ? (
           <div className="flex min-w-0 flex-1">
             <RecentlyDeletedView />
@@ -462,7 +512,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
           />
         ) : hasFilters && filteredRules.length === 0 ? (
           <div className="min-w-0 flex-1 overflow-y-auto">
-            <FilteredEmptyState noun="rules" hiddenCount={hiddenCount} onClear={() => setRulesFilterClauses([])} />
+            <FilteredEmptyState noun="rules" hiddenCount={hiddenCount} onClear={clearFilters} />
           </div>
         ) : rulesViewMode === 'list' ? (
           <div className="relative flex min-w-0 flex-1">
@@ -546,10 +596,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
             </div>
           </div>
         )}
-
-        {/* Right Details Sidebar */}
-        <RuleRightSidebar />
-      </div>
+      </DetailsPaneLayout>
 
       <SelectionCommandMenu
         open={selection.menuOpen}
