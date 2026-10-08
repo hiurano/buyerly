@@ -46,7 +46,7 @@ const field = {
 };
 
 // Sign-in heading as on linear.app/add-account → Continue with email (2026-10-08):
-// 18px / 500, line-height normal, text colour, 32px below the logo, 24px above the first control.
+// 18px / 500, line-height normal, text colour, a 48px logo, 32px below it, 24px above the first control.
 const headingColor = { light: 'rgb(47, 47, 49)', dark: 'rgb(226, 227, 229)' };
 const checkHeading = async (page, text, theme, label) => {
   const heading = page.getByRole('heading', { name: text, exact: true });
@@ -55,6 +55,7 @@ const checkHeading = async (page, text, theme, label) => {
     const css = getComputedStyle(element);
     const rect = element.getBoundingClientRect();
     const brand = element.closest('.buyerly-auth-card').querySelector('.buyerly-auth-brand').getBoundingClientRect();
+    const logo = element.closest('.buyerly-auth-card').querySelector('.buyerly-auth-brand img').getBoundingClientRect();
     const next = element.nextElementSibling;
     const control = (next?.matches('label') ? next.querySelector('input') : next).getBoundingClientRect();
     return {
@@ -62,6 +63,7 @@ const checkHeading = async (page, text, theme, label) => {
       lineHeight: css.lineHeight,
       letterSpacing: css.letterSpacing,
       color: css.color,
+      logo: `${Math.round(logo.width)}x${Math.round(logo.height)}`,
       above: Math.round(rect.top - brand.bottom),
       below: Math.round(control.top - rect.bottom),
     };
@@ -70,6 +72,7 @@ const checkHeading = async (page, text, theme, label) => {
   assert.equal(style.lineHeight, 'normal', `${label}: "${text}" line-height`);
   assert.equal(style.letterSpacing, 'normal', `${label}: "${text}" letter-spacing`);
   assert.equal(style.color, headingColor[theme], `${label}: "${text}" colour`);
+  assert.equal(style.logo, '48x48', `${label}: "${text}" logo size`);
   assert.equal(style.above, 32, `${label}: "${text}" gap from the logo`);
   assert.equal(style.below, 24, `${label}: "${text}" gap to the first control`);
 };
