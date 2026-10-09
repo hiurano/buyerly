@@ -19,7 +19,7 @@ Buyerly follows the Linear design language. That decision is already encoded in 
 | Shared and domain style composition | [`frontend/src/styles/index.css`](../frontend/src/styles/index.css) | May consume tokens and compose layouts, but must not become a second token source. |
 | Product hierarchy, surfaces and accessibility principles | [`docs/DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) | A new screen follows the same information model and state language. |
 | Behavior, routing and API payloads | `frontend/src/components/`, `frontend/src/lib/routing.ts` and `frontend/src/lib/api.ts` | A visual refactor preserves behavior, workspace isolation and security boundaries unless the task explicitly changes them. |
-| Production web artifact | [`frontend/Dockerfile`](../frontend/Dockerfile) | Vite builds hashed assets from `frontend/`; manual CSS cache-version bumps are not used. |
+| Production web artifact | [`Dockerfile`](../Dockerfile) (stage `frontend`) | Vite builds hashed assets from `frontend/`; manual CSS cache-version bumps are not used. |
 
 The retired interface has been removed. `frontend/` is the only product UI. Public legal documents and their assets live in `frontend/public/` and are included in the Vite production build. Runtime user images live in `uploads/` and the durable `buyerly-uploads` volume.
 
