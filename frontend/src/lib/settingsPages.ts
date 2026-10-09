@@ -8,9 +8,9 @@ export type SettingsPage = Exclude<SettingsSection, 'priority-notifications' | '
 /** Keywords the settings search and "Open settings…" match against, per page. */
 export const SETTINGS_PAGE_KEYWORDS: Record<SettingsPage, string> = {
   preferences: 'preferences interface theme appearance ai assistant agent webmcp chrome',
-  profile: 'profile account email name avatar',
+  profile: 'profile account email name avatar picture photo title role username leave',
   notifications: 'notifications inbox priority inbox custom filters push email telegram',
-  security: 'security access sessions devices auth log out logout revoke sign in',
+  security: 'security access sessions devices auth log out logout revoke sign in password',
   'connected-accounts': 'connected accounts telegram connect disconnect',
   workspace: 'workspace name logo url address slug delete workspace',
   teams: 'teams team create team',

@@ -21,6 +21,8 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } 
 import { DataState } from '@/ui/DataState';
 import { Tooltip } from '@/ui/Tooltip';
 import { toast } from '@/ui/toast';
+import type { SessionUser } from '@/lib/types';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -213,7 +215,53 @@ const SessionDetailsDialog: React.FC<SessionDetailsDialogProps> = ({ session, bu
  * card, then a card headed "N other sessions" with Revoke all. Every revoke and
  * the log out are confirmed first and reported by a toast.
  */
-export const SecuritySection: React.FC = () => {
+/**
+ * Linear has no passwords, so this block borrows the shape of its Passkeys one
+ * on the same page: a 15px heading, a note under it, then a single 64px row
+ * with a borderless button (#368 moved it here from Profile).
+ */
+const PasswordBlock: React.FC<{ user: SessionUser; onUserChanged: () => void | Promise<unknown> }> = ({
+  user,
+  onUserChanged,
+}) => {
+  const [open, setOpen] = useState(false);
+  const hasPassword = Boolean(user.has_password);
+  return (
+    <div className="preferences-section" aria-label="Password">
+      <div className="preferences-section-header">
+        <h3 className="preferences-section-title">Password</h3>
+      </div>
+      <p className="preferences-section-note preferences-section-note--sessions">
+        {hasPassword
+          ? `Log in with ${user.email || user.username} and your password, or with a code from your email`
+          : 'You log in with a code from your email. Set a password to also log in with it'}
+      </p>
+      <section className="preferences-card-container">
+        <div className="preferences-row-item preferences-row-item--single">
+          <div className="preferences-row-copy">
+            <span className="preferences-row-title">{hasPassword ? 'Password set' : 'No password set'}</span>
+          </div>
+          <button type="button" className="preferences-row-ghost-button" onClick={() => setOpen(true)}>
+            {hasPassword ? 'Change password' : 'Set password'}
+          </button>
+        </div>
+      </section>
+      <ChangePasswordDialog
+        open={open}
+        hasPassword={hasPassword}
+        onOpenChange={setOpen}
+        onChanged={onUserChanged}
+      />
+    </div>
+  );
+};
+
+interface SecuritySectionProps {
+  user: SessionUser;
+  onUserChanged: () => void | Promise<unknown>;
+}
+
+export const SecuritySection: React.FC<SecuritySectionProps> = ({ user, onUserChanged }) => {
   const [sessions, setSessions] = useState<WebSession[]>([]);
   const [state, setState] = useState<LoadState>('loading');
   const [details, setDetails] = useState<WebSession | null>(null);
@@ -372,6 +420,8 @@ export const SecuritySection: React.FC = () => {
           )}
         </div>
       )}
+
+      <PasswordBlock user={user} onUserChanged={onUserChanged} />
 
       <SessionDetailsDialog
         session={details}

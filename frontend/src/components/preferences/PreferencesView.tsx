@@ -329,7 +329,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
 
             {section === 'connected-accounts' && <ConnectedAccountsSection />}
 
-            {section === 'security' && <SecuritySection />}
+            {section === 'security' && <SecuritySection user={user} onUserChanged={onUserChanged} />}
 
             {canAdminister && section === 'workspace' && (
               <WorkspaceSection workspace={workspace} onUserChanged={onUserChanged} />

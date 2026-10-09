@@ -25,6 +25,7 @@ class UserProfileResponse(BaseModel):
     full_name: str
     first_name: str = ""
     last_name: str = ""
+    title: str = ""
     email: Optional[str] = None
     email_verified: bool = False
     unconfirmed_email: Optional[str] = None
@@ -109,6 +110,9 @@ class UpdateProfileRequest(BaseModel):
     last_name: Optional[str] = Field(None, max_length=100)
     email: Optional[str] = Field(None, max_length=255)
     avatar_url: Optional[str] = Field(None, max_length=500)
+    # Linear's Profile caps the title at 128 characters and the username at 40.
+    title: Optional[str] = Field(None, max_length=128)
+    username: Optional[str] = Field(None, max_length=40)
 
     @field_validator("avatar_url")
     @classmethod

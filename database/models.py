@@ -37,6 +37,7 @@ class User(Base):
     full_name = Column(String, default="", nullable=False)
     first_name = Column(String, default="", nullable=False, doc="First name")
     last_name = Column(String, default="", nullable=False, doc="Last name")
+    title = Column(String(128), default="", server_default="", nullable=False, doc="Job title or role, as in Linear's Profile")
     email = Column(String, unique=True, nullable=True, index=True, doc="Normalized unique work email")
     email_verified_at = Column(DateTime(timezone=True), nullable=True, index=True, doc="Date and time the email was confirmed (UTC)")
     unconfirmed_email = Column(String, nullable=True, index=True, doc="Newly requested email, pending OTP confirmation")

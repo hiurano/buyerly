@@ -17,6 +17,8 @@ export interface SessionUser {
   full_name: string;
   first_name: string;
   last_name: string;
+  /** Job title or role, Linear's "Title" on Profile. */
+  title?: string;
   email: string | null;
   email_verified: boolean;
   unconfirmed_email: string | null;

@@ -1,4 +1,5 @@
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -83,6 +84,9 @@ from services.otp import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Auth & Profile"])
+
+# What Linear's Profile accepts as a username: letters, digits, - _ and .
+USERNAME_PATTERN = re.compile(r"[A-Za-z0-9_.-]+")
 
 def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
@@ -714,11 +718,41 @@ async def update_profile(req: UpdateProfileRequest, user: User = Depends(get_cur
                 )
             db_user.avatar_url = new_avatar_url
         if req.full_name is not None:
+            if not req.full_name.strip():
+                raise HTTPException(status_code=400, detail="Your full name cannot be empty.")
             db_user.full_name = req.full_name.strip()
         elif req.first_name is not None or req.last_name is not None:
             db_user.full_name = f"{db_user.first_name} {db_user.last_name}".strip()
+        if req.title is not None:
+            db_user.title = req.title.strip()
+        if req.username is not None:
+            new_username = req.username.strip()
+            # Linear's rule and wording. It also keeps a username from looking like
+            # an email: both sign in through the same field.
+            if not new_username:
+                raise HTTPException(status_code=400, detail="Your username cannot be empty.")
+            if not USERNAME_PATTERN.fullmatch(new_username):
+                raise HTTPException(
+                    status_code=400,
+                    detail="The username can only contain alpha-numeric characters in addition to - _ and .",
+                )
+            if new_username != db_user.username:
+                taken = (
+                    await session.execute(
+                        select(User.id)
+                        .where(func.lower(User.username) == new_username.lower(), User.id != db_user.id)
+                        .limit(1)
+                    )
+                ).scalar_one_or_none()
+                if taken is not None:
+                    raise HTTPException(status_code=400, detail="This username is already taken.")
+                db_user.username = new_username
 
-        await session.commit()
+        try:
+            await session.commit()
+        except IntegrityError:
+            await session.rollback()
+            raise HTTPException(status_code=400, detail="This username is already taken.")
         if old_avatar_url and old_avatar_url != db_user.avatar_url:
             delete_local_upload(
                 old_avatar_url,
@@ -731,6 +765,7 @@ async def update_profile(req: UpdateProfileRequest, user: User = Depends(get_cur
             "full_name": db_user.full_name,
             "first_name": db_user.first_name,
             "last_name": db_user.last_name,
+            "title": db_user.title,
             "email": db_user.email,
             "avatar_url": db_user.avatar_url,
         }
@@ -907,6 +942,7 @@ async def get_me(user: User = Depends(get_authenticated_user)):
             full_name=db_user.full_name or "",
             first_name=getattr(db_user, "first_name", "") or "",
             last_name=getattr(db_user, "last_name", "") or "",
+            title=db_user.title or "",
             email=db_user.email,
             email_verified=bool(getattr(db_user, "email_verified_at", None)),
             unconfirmed_email=getattr(db_user, "unconfirmed_email", None),

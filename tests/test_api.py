@@ -4434,6 +4434,49 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(unowned_local_avatar.status_code, 400)
 
+    async def test_update_profile_title_username_and_full_name_as_in_linear(self):
+        headers = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        await session_headers(self.test_session_maker, {"id": 8948797432, "first_name": "Ann", "username": "ann.k"})
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            res = await client.post(
+                "/api/auth/update-profile",
+                headers=headers,
+                json={"title": "  Media buyer  ", "username": "nick-b_2.0"},
+            )
+            self.assertEqual(res.status_code, 200)
+            self.assertEqual(res.json()["title"], "Media buyer")
+            self.assertEqual(res.json()["username"], "nick-b_2.0")
+
+            me = await client.get("/api/me", headers=headers)
+            self.assertEqual(me.json()["title"], "Media buyer")
+            self.assertEqual(me.json()["username"], "nick-b_2.0")
+
+            for bad_username, detail in (
+                ("bad name!", "The username can only contain alpha-numeric characters in addition to - _ and ."),
+                ("nick@example.com", "The username can only contain alpha-numeric characters in addition to - _ and ."),
+                ("   ", "Your username cannot be empty."),
+                ("ANN.K", "This username is already taken."),
+            ):
+                res = await client.post("/api/auth/update-profile", headers=headers, json={"username": bad_username})
+                self.assertEqual(res.status_code, 400, bad_username)
+                self.assertEqual(res.json()["detail"], detail)
+
+            res = await client.post("/api/auth/update-profile", headers=headers, json={"username": "x" * 41})
+            self.assertEqual(res.status_code, 422)
+            res = await client.post("/api/auth/update-profile", headers=headers, json={"title": "x" * 129})
+            self.assertEqual(res.status_code, 422)
+
+            res = await client.post("/api/auth/update-profile", headers=headers, json={"full_name": "  "})
+            self.assertEqual(res.status_code, 400)
+            self.assertEqual(res.json()["detail"], "Your full name cannot be empty.")
+
+            # Clearing the title is allowed, and the new username is what logs in now.
+            res = await client.post("/api/auth/update-profile", headers=headers, json={"title": ""})
+            self.assertEqual(res.json()["title"], "")
+            me = await client.get("/api/me", headers=headers)
+            self.assertEqual(me.json()["username"], "nick-b_2.0")
+
     async def test_update_profile_cannot_bypass_email_verification(self):
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         headers = {**buyer_data}

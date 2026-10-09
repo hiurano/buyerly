@@ -48,7 +48,7 @@ monitoring cycle делает обзор `degraded` или `critical`, даже 
 | `POST /api/auth/verify-email-change` | `code` | верифицирует OTP и активирует подтверждённый email |
 | `POST /api/auth/login` | `username`, `password` | основной вход: `username` — логин или email аккаунта; проверяет постоянный пароль, создаёт ограниченную по времени HttpOnly web-сессию и возвращает профиль/роль |
 | `POST /api/auth/change-password` | `old_password`, `new_password` | меняет пароль; минимум 8 символов |
-| `POST /api/auth/update-profile` | `first_name?`, `last_name?`, `email?`, `avatar_url?`, `full_name?` | обновляет персональные данные профиля |
+| `POST /api/auth/update-profile` | `first_name?`, `last_name?`, `email?`, `avatar_url?`, `full_name?`, `title?` (до 128), `username?` (до 40: буквы, цифры, `-` `_` `.`) | обновляет персональные данные профиля; пустое имя, неверный или занятый username — 400 с текстом Linear |
 | `POST /api/auth/logout` | — | немедленно отзывает текущую web-сессию; другие аккаунты этого браузера остаются |
 | `GET /api/auth/accounts` | — | аккаунты, вошедшие в этом браузере, в порядке добавления: `id`, `username`, `full_name`, `email`, `avatar_url`, `slot`, `onboarding_completed`, `workspaces`; cookie закончившихся сессий удаляет; без входа — пустой список |
 | `GET /api/auth/sessions` | — | список активных устройств с датами создания, истечения и последней активности и IP-адресом последней активности; `location` — место последней активности от Cloudflare («Helsinki, 18, FI»), пустое без Cloudflare |
