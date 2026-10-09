@@ -31,6 +31,7 @@ import { useWebMcpTools } from '@/webmcp/register';
 import { WorkspaceSessionProvider, type WorkspaceSession } from '@/lib/workspaceSession';
 import { isSmallScreen } from '@/lib/useMediaQuery';
 import { GO_TO_SETTINGS_SECTION, goToTargetFor } from '@/lib/shortcuts';
+import { ADMINISTRATION_PAGES, canAdministerWorkspace } from '@/lib/settingsPages';
 import { logOut } from '@/lib/sessions';
 import {
   chooseAccount,
@@ -107,6 +108,11 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
         .then(() => refreshUser())
         .catch(() => {});
     },
+    workspaceMoved: async (slug) => {
+      await refreshUser();
+      // In the same tick as the new profile, so the old address never reads as a lost workspace.
+      navigate(pathForTab(slug, 'preferences', 'campaigns', 'workspace'), true);
+    },
     openCreateWorkspace: () => navigate('/create-workspace'),
     openAddAccount: () => navigate('/auth/add-account'),
   }), [accounts, navigate, refreshUser, switchAccount, user, workspace]);
@@ -115,6 +121,12 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   const syncingRoute = useRef(true);
 
   useEffect(() => {
+    // A buyer or viewer has no Administration pages: their addresses open Settings itself.
+    if (route.settingsSection && !canAdministerWorkspace({ role: workspace.role })
+      && (ADMINISTRATION_PAGES as string[]).includes(route.settingsSection)) {
+      navigate(`/${workspace.slug}/settings`, true);
+      return;
+    }
     syncingRoute.current = true;
     setWorkspaceName(workspace.name);
     setActiveTab(route.tab);
@@ -128,7 +140,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     queueMicrotask(() => {
       syncingRoute.current = false;
     });
-  }, [route.entity, route.settingsSection, route.tab, setActiveTab, setCampaignFilterTab, setSettingsSection, setWorkspaceName, workspace.name]);
+  }, [navigate, route.entity, route.settingsSection, route.tab, setActiveTab, setCampaignFilterTab, setSettingsSection, setWorkspaceName, workspace.name, workspace.role, workspace.slug]);
 
   useEffect(() => {
     // Linear closes the small-screen sidebar drawer on every navigation. Some

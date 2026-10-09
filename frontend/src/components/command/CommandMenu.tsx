@@ -20,7 +20,7 @@ import { bestCommandScore } from '@/lib/commandFilter';
 import { goToShortcut, openShortcut, OPEN_KEYS } from '@/lib/shortcuts';
 import type { OpenPaletteKind } from '@/store/useAppStore';
 import { OpenPaletteIcon, OPEN_PALETTE_LABELS, openOpenPalette } from './OpenPalette';
-import { SETTINGS_PAGE_GROUPS, SETTINGS_PAGE_KEYWORDS } from '@/lib/settingsPages';
+import { SETTINGS_PAGE_KEYWORDS, settingsGroupsFor } from '@/lib/settingsPages';
 import { SettingsPageIcon } from '@/components/preferences/SettingsPageIcon';
 import { isSmallScreen } from '@/lib/useMediaQuery';
 import { LinearPlusIcon, LinearSearchIcon, LinearSidebarLeftToggleIcon } from '@/icons/LinearIcons';
@@ -198,7 +198,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
   const inSettings = activeTab === 'preferences';
   // In Settings Linear's menu opens with the settings pages, grouped as in "Open settings…".
   const settingsGroups: PaletteGroup[] = inSettings
-    ? SETTINGS_PAGE_GROUPS.map((group) => ({
+    ? settingsGroupsFor(workspace).map((group) => ({
       heading: group.heading,
       commands: group.pages.map((page) => ({
         id: `settings-${page.section}`,

@@ -71,7 +71,7 @@ monitoring cycle делает обзор `degraded` или `critical`, даже 
 | `POST /api/workspaces` | `name`, `slug?`, `badge_color?`, `badge_text?`, `logo_url?` | создаёт новый воркспейс и делает его активным |
 | `GET /api/workspaces/current` | — | данные текущего активного воркспейса |
 | `POST /api/workspaces/switch` | `workspace_id?`, `slug?` | переключает активный воркспейс пользователя |
-| `PATCH /api/workspaces/{workspace_id}` | `name?`, `badge_color?`, `badge_text?`, `logo_url?` | обновляет настройки и оформление воркспейса |
+| `PATCH /api/workspaces/{workspace_id}` | `name?`, `slug?`, `badge_color?`, `badge_text?`, `logo_url?` | обновляет настройки и оформление воркспейса (`owner` и `admin`); новый `slug` нормализуется как при создании, занятый или зарезервированный — 409, старый адрес перестаёт работать |
 | `DELETE /api/workspaces/{workspace_id}` | — | удаляет воркспейс (доступно владельцу при наличии других воркспейсов) |
 
 Slug нормализуется в ASCII и ограничивается 60 символами. Системный или уже

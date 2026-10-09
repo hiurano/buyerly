@@ -13,7 +13,7 @@ import {
   type SearchKind,
   type SearchResult,
 } from '@/lib/search';
-import { filterSettingsGroups, type SettingsPage } from '@/lib/settingsPages';
+import { filterSettingsGroups, settingsGroupsFor, type SettingsPage } from '@/lib/settingsPages';
 import { openPaletteFor } from '@/lib/shortcuts';
 import { LinearBoltIcon, LinearMetaIcon } from '@/icons/LinearIcons';
 import { COMMAND_MENU_CLASSES, CommandMenuFooterKeys } from '@/ui/SelectionCommandMenu';
@@ -205,7 +205,7 @@ const PaletteBody: React.FC<PaletteBodyProps> = ({ kind, workspace, navigate, ch
   });
 
   const records: SearchResult[] = recordKind ? (text ? (quick ?? []).slice(0, QUICK_RESULTS_LIMIT) : recent) : [];
-  const settingsGroups = kind === 'settings' ? filterSettingsGroups(text) : [];
+  const settingsGroups = kind === 'settings' ? filterSettingsGroups(text, settingsGroupsFor(workspace)) : [];
   // cmdk keeps a choice whose row is gone when results arrive; the first row takes over, as in Linear.
   const shownValues = [
     ...records.map(recordValue),

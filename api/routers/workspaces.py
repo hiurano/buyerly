@@ -20,6 +20,7 @@ from api.schemas import (
 )
 from database.db import async_session_maker
 from database.models import User, Workspace, WorkspaceMember
+from core.workspace_slugs import normalize_workspace_slug
 from services.allowlist import find_account_grant
 from services.image_uploads import (
     delete_workspace_logo_if_unreferenced,
@@ -215,6 +216,14 @@ async def update_workspace(
 
         if req.name and req.name.strip():
             ws.name = req.name.strip()
+        # Settings → Workspace → URL. The old address stops working at once:
+        # unlike Linear, Buyerly keeps no redirects from past slugs.
+        if req.slug is not None and normalize_workspace_slug(req.slug) != ws.slug:
+            try:
+                ws.slug = await allocate_workspace_slug(session, req.slug)
+            except WorkspaceSlugUnavailable as exc:
+                detail = str(exc) if "unavailable" in str(exc) else "That workspace URL is already taken"
+                raise HTTPException(status_code=409, detail=detail) from exc
         if req.badge_color and req.badge_color.strip():
             ws.badge_color = req.badge_color.strip()
         if req.badge_text and req.badge_text.strip():

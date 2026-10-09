@@ -63,7 +63,7 @@ interface ChoiceDialogProps {
 }
 
 /** The ConfirmDialog frame with room for a choice between the question and its buttons. */
-const ChoiceDialog: React.FC<ChoiceDialogProps> = ({ open, title, description, wide = false, busy, onClose, children, footer }) => (
+export const ChoiceDialog: React.FC<ChoiceDialogProps> = ({ open, title, description, wide = false, busy, onClose, children, footer }) => (
   <Dialog.Root open={open} onOpenChange={(next) => { if (!next && !busy) onClose(); }}>
     <Dialog.Portal>
       <Dialog.Overlay className="fixed inset-0 z-[500] bg-black/50 animate-fade-in" />

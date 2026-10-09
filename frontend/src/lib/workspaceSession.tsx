@@ -13,6 +13,11 @@ export interface WorkspaceSession {
    * id it opens that account's workspace without logging in again.
    */
   switchWorkspace: (slug: string, accountId?: number) => void;
+  /**
+   * The open workspace has a new URL (Settings → Workspace): reloads the
+   * profile and reopens the same settings page at the new address.
+   */
+  workspaceMoved: (slug: string) => Promise<void>;
   /** Linear's "Create or join a workspace…". */
   openCreateWorkspace: () => void;
   /** Linear's "Add an account…": logs in to one more account, keeping this one. */

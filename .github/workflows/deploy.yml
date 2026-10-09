@@ -94,6 +94,17 @@ jobs:
           name: members-browser
           path: /tmp/buyerly-members
 
+      - name: Check Settings → Administration (Workspace, Teams) in Chromium
+        working-directory: frontend
+        run: node ../scripts/workspace-settings-browser.mjs
+
+      - name: Upload workspace settings browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workspace-settings-browser
+          path: /tmp/buyerly-workspace-settings
+
       - name: Check Security & access sessions in Chromium
         working-directory: frontend
         run: node ../scripts/security-browser.mjs
