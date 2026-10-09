@@ -30,10 +30,8 @@ docker ps -aq \
 docker image ls buyerly-app --format '{{.Tag}}' \
     | grep -E '^[0-9a-f]{40}$' \
     | while IFS= read -r release_sha; do
-        if docker image inspect "buyerly-web:${release_sha}" >/dev/null 2>&1; then
-            created_at=$(docker image inspect --format '{{.Created}}' "buyerly-app:${release_sha}")
-            printf '%s %s\n' "${created_at}" "${release_sha}"
-        fi
+        created_at=$(docker image inspect --format '{{.Created}}' "buyerly-app:${release_sha}")
+        printf '%s %s\n' "${created_at}" "${release_sha}"
     done \
     | sort -r >"${records_file}" || true
 
@@ -66,7 +64,7 @@ remove_release_tag() {
     fi
 }
 
-for repository in buyerly-app buyerly-web; do
+for repository in buyerly-app; do
     while IFS= read -r release_sha; do
         [[ -n "${release_sha}" ]] || continue
         remove_release_tag "${repository}" "${release_sha}"

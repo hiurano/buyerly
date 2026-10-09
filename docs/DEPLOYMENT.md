@@ -2,79 +2,95 @@
 
 ## Состав production
 
-Docker Compose запускает `buyerly-web`, `buyerly-api`, `buyerly-worker`, `buyerly-db` и `buyerly-redis`. Публичный порт `8080` принадлежит только веб-сервису; API доступен через его reverse proxy. PostgreSQL хранится в томе `buyerly-postgres`, Redis AOF для общих rate limits — в `buyerly-redis`, журналы — в `/opt/buyerly/logs`.
+Весь Buyerly на сервере — один проект Docker Compose в `/opt/buyerly`. На самом
+хосте нужны только Docker, git и SSH; nginx, Redis, certbot и прочее не ставятся.
 
-Минимальные значения для production в `/opt/buyerly/.env`:
+| Контейнер | Что делает |
+|---|---|
+| `buyerly-api` | FastAPI: HTTP API, собранное React-приложение, публичные страницы и загруженные картинки |
+| `buyerly-worker` | синхронизация с Meta и выполнение правил (APScheduler) |
+| `buyerly-db` | PostgreSQL 16, данные в томе `buyerly-postgres` |
+| `buyerly-tunnel` | Cloudflare Tunnel (`cloudflared`): единственный вход из интернета |
 
-```dotenv
-POSTGRES_PASSWORD=...
-WEBAPP_URL=https://buyerly.app
-TRUSTED_PROXY_CIDRS=172.16.0.0/12
-SESSION_COOKIE_SECURE=true
-RESEND_API_KEY=...
-EMAIL_FROM="Buyerly <team@buyerly.app>"
-OTP_PEPPER=...
+Одноразовый `migrate` (`docker compose run --rm migrate`) применяет миграции
+перед запуском релиза и не остаётся запущенным. Образ один — `buyerly-app`: в
+нём и Python-код, и сборка фронтенда.
+
+Наружу сервер не открывает ни одного веб-порта: `cloudflared` сам подключается к
+Cloudflare и передаёт запросы в `http://api:8080` по Docker-сети `buyerly`.
+Порт `127.0.0.1:8080` доступен только с самого сервера — для проверок деплоя и
+`curl`. Ограничения частоты запросов хранятся в памяти единственного процесса
+API; после перезапуска они начинаются заново.
+
+```
+/opt/buyerly/
+  docker-compose.yml   из git
+  .env                 секреты и настройки сервера, права 600
+  backups/             бэкапы базы
+  logs/                журналы api, worker и миграций
 ```
 
-Если `POSTGRES_PASSWORD` отсутствует, deploy-скрипт один раз создаёт случайное значение локально на сервере и ограничивает права файла `.env`.
-`OTP_PEPPER` обязателен: это отдельный длинный случайный секрет, без него
-выдача OTP-кодов завершается ошибкой.
+## Настройки сервера (`/opt/buyerly/.env`)
 
-Telegram-бот (привязка личного аккаунта и уведомления инбокса) включается
-ключом `TELEGRAM_BOT_TOKEN` от @BotFather. Он хранится только в server `.env`;
-deploy записывает его туда из секрета репозитория `TELEGRAM_BOT_TOKEN`, если тот
-задан, иначе `.env` не трогает. При старте API сам регистрирует webhook
-`https://<WEBAPP_URL>/api/telegram/webhook` с секретом, выведенным из ключа.
-Без ключа строка Telegram в Settings остаётся неактивной.
-
-Для рабочего подключения Facebook дополнительно обязательны:
+Минимум для production:
 
 ```dotenv
-META_GRAPH_VERSION=v26.0
+COMPOSE_PROFILES=tunnel
+CLOUDFLARE_TUNNEL_TOKEN=...
+WEBAPP_URL=https://buyerly.app
+SESSION_COOKIE_SECURE=true
+EMAIL_FROM="Buyerly <team@buyerly.app>"
 META_APP_ID=...
 META_APP_SECRET=...
 META_LOGIN_CONFIG_ID=...
 META_OAUTH_REDIRECT_URI=https://buyerly.app/api/meta/oauth/callback
-META_TOKEN_ENCRYPTION_KEY=...
+META_GRAPH_VERSION=v26.0
 ```
 
-`META_TOKEN_ENCRYPTION_KEY` — URL-safe base64 Fernet key. При ротации новый ключ
-указывается первым, старые decrypt-only ключи — после него через запятую.
-Если ключ ещё отсутствует при первом production deploy, preflight создаёт его
-криптографически стойким генератором, сохраняет только в server `.env` с правами
-`600` и не выводит значение в CI-журнал. Неверный уже заданный ключ не
-перезаписывается: deploy завершается до миграции, чтобы не потерять доступ к
-существующим шифротекстам.
-После выпуска конфигурации все сохранённые OAuth- и ручные System User токены
-нужно перевести на первичный ключ внутри API-контейнера:
+`COMPOSE_PROFILES` и `CLOUDFLARE_TUNNEL_TOKEN` читает сам Docker Compose: первый
+включает контейнер туннеля, второй — его токен (Cloudflare Zero Trust → Networks
+→ Tunnels → `buyerly-prod`). Локально их нет, и туннель не запускается.
+
+Деплой сам, один раз, создаёт и сохраняет в `.env` (значения в журнал не
+попадают):
+
+- `POSTGRES_PASSWORD` — пароль базы;
+- `OTP_PEPPER` — секрет для хранения кодов входа (без него коды не выдаются);
+- `META_TOKEN_ENCRYPTION_KEY` — URL-safe base64 Fernet key для токенов Meta.
+
+Неверный уже заданный `META_TOKEN_ENCRYPTION_KEY` не перезаписывается: деплой
+останавливается до миграции, чтобы не потерять доступ к зашифрованным токенам.
+При ротации новый ключ указывается первым, старые — после него через запятую;
+затем токены переводятся на новый ключ:
 
 ```bash
 docker compose exec api python -m scripts.rotate_meta_tokens
 ```
 
-Старые ключи удаляются из `META_TOKEN_ENCRYPTION_KEY` только после успешного
-завершения команды. Операция транзакционна и не выводит токены в журнал.
+`RESEND_API_KEY` и `TELEGRAM_BOT_TOKEN` хранятся в секретах репозитория GitHub;
+деплой записывает их в `.env`, пустой секрет `.env` не трогает. С ключом
+Telegram API при старте сам регистрирует webhook
+`https://<WEBAPP_URL>/api/telegram/webhook`; без ключа строка Telegram в
+Settings неактивна. Почта отправляется только через Resend REST API.
 
-Параметры `APP_VERSION`, `DATABASE_URL`, `REDIS_URL`, `API_HOST`, `API_PORT` и
-`SERVE_STATIC` для Docker Compose задаются deploy/compose и не требуют ручного
-production override. `CORS_ORIGINS` нужен только для явно разрешённых
-cross-origin клиентов; `ENABLE_DEV_AUTH` в production всегда должен оставаться
-`false`.
+Compose задаёт сам и в `.env` не нужны: `APP_VERSION`, `DATABASE_URL`,
+`TRUSTED_PROXY_CIDRS` (пусто: прокси между туннелем и API нет),
+`CLOUDFLARE_TUNNEL_CIDRS` (фиксированный адрес `buyerly-tunnel`, `172.30.0.10/32`).
+Значения по умолчанию подходят для `API_HOST`, `API_PORT`, `SERVE_STATIC`,
+`CLOUDFLARE_IP_CIDRS`; `CORS_ORIGINS` нужен только для явно разрешённых
+cross-origin клиентов; `ENABLE_DEV_AUTH` в production всегда `false`.
 
 Допустимые операционные overrides: `ADMIN_CHAT_ID` (legacy Telegram ID
-супер-админа для bootstrap и dev-входа),
-`DEFAULT_POLL_INTERVAL_MINUTES`,
+супер-админа для bootstrap и dev-входа), `DEFAULT_POLL_INTERVAL_MINUTES`,
 `WEB_SESSION_TTL_HOURS` и `WEB_SESSION_ROTATE_MINUTES`. Пара
 `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD` используется только при
-первом запуске пустой установки и после создания администратора должна быть
-удалена. Полный перечень с безопасными значениями находится в `.env.example`.
+первом запуске пустой установки и после создания администратора удаляется.
+Полный перечень — в `.env.example`.
 
 Вход в приложение — по коду и ссылке из письма (участники workspace, почты из
-белого списка и приглашённые), как в Linear. Вход по логину и паролю временно
-оставлен ссылкой «Log in with password» под кнопкой; пароль человек может задать
-в Settings → Profile. Пользователя для входа
-по паролю создаёт или обновляет команда внутри API-контейнера (пароль
-запрашивается интерактивно и нигде не сохраняется открытым текстом):
+белого списка и приглашённые). Вход по паролю временно оставлен ссылкой «Log in
+with password»; пароль задаётся в Settings → Profile или командой (пароль
+запрашивается интерактивно):
 
 ```bash
 docker compose exec api python -m scripts.set_user_password <username>
@@ -82,25 +98,36 @@ docker compose exec api python -m scripts.set_user_password <username>
 docker compose exec api python -m scripts.set_user_password <username> --email <email>
 ```
 
-Поддерживаемый почтовый transport — Resend REST API; SMTP-параметры runtime не
-использует.
+## Установка на новый сервер
+
+```bash
+apt-get install -y docker.io docker-compose-v2 git
+git clone https://github.com/hiurano/buyerly.git /opt/buyerly
+cd /opt/buyerly
+cp .env.example .env && chmod 600 .env   # заполнить по разделу выше
+bash scripts/deploy.sh
+```
+
+Первый деплой создаёт пустую базу. Файрвол: открыт только SSH (`ufw allow
+22/tcp`); веб-порты не нужны.
 
 ## Автодеплой
 
-После push в `main` GitHub Actions запускает тесты и вызывает `scripts/deploy.sh` на VPS. Сценарий:
+После push в `main` GitHub Actions прогоняет тесты и по SSH вызывает
+`scripts/deploy.sh` (секреты `VPS_HOST`, `VPS_PORT`, `VPS_USERNAME`,
+`VPS_SSH_KEY`). Сценарий:
 
-1. блокирует параллельные деплои;
-2. создаёт проверенный бэкап текущей базы PostgreSQL;
-3. получает точный commit из `main` и собирает версионные образы;
-4. проверяет готовность PostgreSQL и Redis, затем запускает миграцию схемы;
-5. запускает API и worker, затем переключает публичный web;
-6. выполняет блокирующий read-only smoke для API/auth/workspace/Meta/summary/worker/DB и проверяет параметры ротации журналов; при ошибке возвращает предыдущие образы;
-7. удаляет только устаревшие Buyerly image tags, dangling images и build cache, сохраняя активные контейнеры и два последних полных релиза.
-
-Перед сборкой deploy очищает только untracked и неигнорируемые файлы исходного
-дерева. Поэтому удалённый ранее Python-модуль или Alembic revision не может
-случайно попасть в новый образ; `.env`, логи, резервные копии и остальные
-gitignored runtime-данные остаются на месте.
+1. блокирует параллельные деплои и проверяет, что `origin` — `hiurano/buyerly`;
+2. если нужный коммит уже запущен и здоров — завершает работу;
+3. делает бэкап базы;
+4. получает точный commit из `main` (неотслеживаемые файлы удаляются, `.env`,
+   логи и бэкапы остаются) и собирает `buyerly-app:<sha>`;
+5. применяет миграции (`migrate`);
+6. запускает `api` и `worker`, ждёт healthcheck и полный цикл планировщика,
+   запускает туннель;
+7. выполняет read-only smoke и проверяет https://buyerly.app/health/live через
+   Cloudflare (`cf-ray`); при ошибке возвращает предыдущий образ;
+8. удаляет старые образы, сохраняя два последних релиза.
 
 Ручной запуск:
 
@@ -109,180 +136,25 @@ cd /opt/buyerly
 bash scripts/deploy.sh
 ```
 
-## Cloudflare: настоящий IP и город у сессий
+## Cloudflare
 
-`buyerly.app` уже открывается через Cloudflare (на 2026-10-07 в ответе
-`server: cloudflare` и `cf-ray`, адреса домена принадлежат Cloudflare). Поэтому
-сервер видит не браузер, а узел Cloudflare. Что делает код (#301):
+DNS-запись `buyerly.app` — CNAME на туннель `buyerly-prod` (Proxied). Маршрут
+туннеля настраивается в Cloudflare: Zero Trust → Networks → Tunnels →
+`buyerly-prod` → Published application routes → `buyerly.app` →
+`http://api:8080`. Режим SSL/TLS на участок туннель → сервер не влияет: трафик
+идёт внутри зашифрованного туннеля.
 
-- Адрес браузера API берёт из `CF-Connecting-IP`, а город — из `cf-ipcity`,
-  `cf-region-code` и `cf-ipcountry`, **только** если к нашему nginx (через
-  доверенные прокси из `TRUSTED_PROXY_CIDRS`) подключился адрес из сетей
-  Cloudflare. Если кто-то обратится к серверу напрямую и сам допишет эти
-  заголовки, они не учитываются: тогда адресом считается его собственный.
-- Сети Cloudflare задаёт `CLOUDFLARE_IP_CIDRS`. Пусто (по умолчанию) — список с
-  https://www.cloudflare.com/ips/, зашитый в код (сверен 2026-10-07); `off` —
-  заголовкам Cloudflare не верить. Если Cloudflare добавит сеть, а код ещё не
-  обновлён, можно временно перечислить сети здесь через запятую.
-- Ограничения частоты запросов (rate limit) считаются по настоящему адресу
-  браузера, а не по узлу Cloudflare.
-- Место хранится у сессии (`web_sessions.location`, миграция `0034`),
-  обновляется вместе с «Last seen» и показывается в Settings → Security & access
-  как у Linear: «Helsinki, 18, FI · Last seen about 14 hours ago». Нет заголовков —
-  нет места, строка остаётся «Last seen …».
-- nginx в контейнере `web` передаёт заголовки Cloudflare в API без изменений;
-  WebSocket и SSE в Buyerly нет, отдельных настроек для них не нужно.
+Настоящий адрес и город посетителя API берёт из `CF-Connecting-IP`, `cf-ipcity`,
+`cf-region-code` и `cf-ipcountry` только для запросов с адреса туннеля
+(`CLOUDFLARE_TUNNEL_CIDRS`) или из сетей Cloudflare (`CLOUDFLARE_IP_CIDRS`:
+пусто — опубликованный список https://www.cloudflare.com/ips/, `off` — не
+верить заголовкам Cloudflare). Город хранится у сессии и показывается в
+Settings → Security & access. Для городов в Cloudflare включено Rules →
+Settings → **Add visitor location headers**.
 
-### Cloudflare Tunnel (`buyerly-prod`)
-
-С 2026-10-07 известно: запись DNS `buyerly.app` в Cloudflare — типа **Tunnel**
-(туннель `buyerly-prod`, Proxied), `www` — Proxied CNAME на `buyerly.app`.
-Значит, Cloudflare не подключается к серверу сам: на сервере работает процесс
-`cloudflared`, который держит исходящее соединение с Cloudflare и отдаёт запросы
-сайту локально (в репозитории его нет — он поставлен на сервер отдельно).
-По журналу деплоя 2026-10-08 (`BUYERLY_EDGE`): systemd-службы `cloudflared` нет,
-работает контейнер `cloudflare/cloudflared:latest` в Docker-сети
-`buyerly_default` — той же, что `web`; порты 80, 443 и 8080 на сервере открыты
-для всех. Режим SSL/TLS в панели на участок
-`cloudflared` → сайт не влияет: этот участок настраивается в самом туннеле
-(Networks → Tunnels → `buyerly-prod` → Published application routes; из
-контейнера в `buyerly_default` это обычно `http://web:80` или
-`http://buyerly-web:80`).
-
-Поэтому к nginx соединение приходит не из сетей Cloudflare, а с локального адреса:
-у `cloudflared` на хосте это шлюз Docker-сети (`172.x.0.1`), у `cloudflared`
-в отдельном контейнере — адрес этого контейнера. Что делает код:
-
-- `CLOUDFLARE_TUNNEL_CIDRS` — адреса, с которых подключается туннель. Соединение
-  с такого адреса считается пришедшим от Cloudflare: адрес браузера берётся из
-  `CF-Connecting-IP`, город — из `cf-ipcity`/`cf-region-code`/`cf-ipcountry`.
-  Docker Compose по умолчанию ставит `172.16.0.0/12` (все Docker-сети), то есть
-  работает без настройки и для `cloudflared` на хосте, и для `cloudflared`
-  в контейнере. Пусто — туннелю не верить; `CLOUDFLARE_IP_CIDRS=off` выключает
-  и туннель.
-- Адрес туннеля проверяется только там, где его записал наш nginx (адрес, с
-  которого к nginx подключились). Собственный адрес nginx туннелем не считается,
-  хотя он из той же сети. Обращение к серверу напрямую из интернета по IPv4
-  приходит к nginx со своим публичным адресом, поэтому его заголовки `CF-*`
-  и `X-Forwarded-For` по-прежнему не учитываются.
-- Оговорка: Docker отдаёт в контейнер со шлюза Docker-сети всё, что пришло на
-  опубликованный порт через `docker-proxy` — локальные подключения с самого
-  сервера и прямые обращения по **IPv6**, если у сервера есть публичный IPv6.
-  Такой запрос мог бы выдать себя за туннель (как и раньше мог подставить
-  `X-Forwarded-For` через `TRUSTED_PROXY_CIDRS`). Это закрывается одной строкой —
-  см. шаги ниже.
-
-При каждом деплое в журнале шага «Execute Remote SSH Commands for Deployment»
-печатаются строки `BUYERLY_EDGE before …` (до деплоя) и `BUYERLY_EDGE after …`
-(после): активна ли служба `cloudflared`, есть ли контейнер `cloudflared`, какие
-из портов 80/443/8080 открыты для всех (`any`), только локально (`loopback`) или
-на конкретном адресе (`specific`) и какой процесс их держит (`listeners=any:80(docker-proxy)`),
-какие контейнеры публикуют порты (`published=`), активны ли nginx/caddy/apache2
-на хосте (`host_proxies=`) и значение `WEB_PORT_BINDING` в `.env`. IP-адреса туда
-не попадают.
-
-#### Порт 8080 только для локальных подключений (делает деплой)
-
-С #301 порт сайта на хосте по умолчанию `127.0.0.1:8080`: туннель ходит в
-`http://web:80` по Docker-сети, а 8080 нужен только проверкам деплоя.
-`scripts/deploy.sh` сам:
-
-1. Переписывает `WEB_PORT_BINDING` в `/opt/buyerly/.env` на `127.0.0.1:8080`,
-   если там стоит другое значение (строки нет — действует значение из compose).
-2. После `docker compose up -d web` проверяет `http://127.0.0.1:8080/health/ready`
-   и https://buyerly.app/health/live через Cloudflare (ответ 200 с заголовком
-   `cf-ray`, до 90 секунд).
-3. Если публичная проверка не прошла — возвращает прежнее значение
-   `WEB_PORT_BINDING` (раньше по умолчанию `8080`), пересоздаёт `web` и падает
-   с `[ROLLBACK]`/`[WARNING]` в журнале. Сам релиз при этом не откатывается.
-   Следующий деплой снова попробует `127.0.0.1:8080`.
-
-#### Что сделать владельцу на сервере
-
-Для города и IP ничего делать не нужно: значение по умолчанию уже подходит.
-Порт 8080 деплой закрывает сам (см. выше). Ручные шаги ниже нужны, только если
-деплой откатил порт (`[ROLLBACK] Restoring WEB_PORT_BINDING`):
-
-1. Посмотреть, куда туннель отдаёт запросы: панель Cloudflare → Networks →
-   Tunnels → `buyerly-prod` → Published application routes → строка
-   `buyerly.app` → Service.
-
-   - `http://web:80`, `http://buyerly-web:80` или `http://localhost:8080` при
-     `cloudflared` с сетью `host` — порт 8080 туннелю не нужен, переходить к шагу 2.
-   - Публичный IP сервера, `host.docker.internal` или `172.17.0.1` с портом
-     8080 — шаг 2 **не** делать (сайт перестанет открываться): сначала поменять
-     Service на `http://buyerly-web:80`, проверить сайт, затем шаг 2.
-
-   Где запущен `cloudflared`:
-
-   ```bash
-   docker ps --format '{{.Names}} {{.Image}} {{.Networks}}' | grep -i cloudflared
-   systemctl is-active cloudflared
-   ```
-2. Оставить порт сайта только для локальных подключений:
-
-   ```bash
-   cd /opt/buyerly
-   grep -q '^WEB_PORT_BINDING=' .env \
-     && sed -i 's|^WEB_PORT_BINDING=.*|WEB_PORT_BINDING=127.0.0.1:8080|' .env \
-     || echo 'WEB_PORT_BINDING=127.0.0.1:8080' >> .env
-   docker compose up -d web
-   curl -fsS http://127.0.0.1:8080/health/ready && echo OK
-   ```
-
-   Затем открыть https://buyerly.app — сайт должен открываться. Если нет —
-   вернуть `WEB_PORT_BINDING=8080` в `.env` и снова `docker compose up -d web`.
-3. Если на сервере открыты порты 80/443 для всех (строка `BUYERLY_EDGE listeners`
-   с `any:80` или `any:443`) и их больше никто не использует — закрыть их в
-   файрволе VPS: при туннеле они не нужны.
-
-### Что сделать владельцу в Cloudflare (по шагам)
-
-Всё делается в панели https://dash.cloudflare.com → аккаунт → сайт
-`buyerly.app`. Код к этому времени уже выложен; порядок шагов важен.
-
-1. **Включить город посетителя.** Rules → Settings (в старой панели: Rules →
-   Transform Rules → вкладка Managed Transforms) → блок «HTTP request headers» →
-   включить **Add visitor location headers**. Больше ничего в этом блоке не
-   трогать. Это бесплатно и сразу добавляет к запросам `cf-ipcity`,
-   `cf-region-code`, `cf-ipcountry`.
-2. **Проверить, что сайт идёт через Cloudflare.** DNS → Records: у записей
-   `buyerly.app` (сейчас типа Tunnel) и `www`, если есть, облако **оранжевое** (Proxied).
-   Почтовые записи (MX и TXT с SPF/DKIM/DMARC для Resend, например `send` и
-   `resend._domainkey`) должны оставаться **серыми** (DNS only) — иначе письма
-   перестанут доходить. Ничего не менять, если уже так.
-3. **Режим TLS.** SSL/TLS → Overview. Нужен **Full (strict)**: тогда трафик от
-   Cloudflare до сервера тоже зашифрован и сертификат сервера проверяется.
-   При Cloudflare Tunnel (как сейчас) этот режим к сайту не применяется:
-   трафик до сервера идёт внутри зашифрованного туннеля, и режим можно не
-   трогать (Automatic/Full ничего не ломает).
-   - Если сейчас **Flexible** — не переключать сразу: от Cloudflare до сервера
-     идёт обычный HTTP, и сайт сломается. Сначала на сервере нужен HTTPS на
-     порту 443 с сертификатом для `buyerly.app`: проще всего SSL/TLS → Origin
-     Server → Create Certificate (15 лет), поставить его в прокси на сервере,
-     который принимает трафик снаружи. Это задача для отдельной сессии с
-     доступом к серверу — напишите, что режим был Flexible.
-   - Если уже **Full** — переключить на **Full (strict)**, затем открыть
-     https://buyerly.app. Если показывается ошибка 526, вернуть Full и написать
-     об этом: значит, на сервере самоподписанный сертификат.
-   - Если уже **Full (strict)** — ничего не делать.
-4. **Всегда HTTPS.** SSL/TLS → Edge Certificates → включить **Always Use
-   HTTPS** (сейчас `http://buyerly.app` отвечает страницей, а не переходом на
-   https).
-5. **Не мешать Telegram и Meta.** Security → Bots: **Bot Fight Mode** выключен
-   (он блокирует webhook Telegram `/api/telegram/webhook`). Режим «I'm Under
-   Attack» не включать. Если когда-нибудь появятся правила WAF или Challenge —
-   исключить из них `/api/telegram/webhook` и `/api/meta/oauth/callback`.
-6. **Проверка (2 минуты).** Выйти и снова войти в Buyerly, открыть Settings →
-   Security & access. В строке этого браузера должно быть «Current session ·
-   Город, регион, страна», в деталях сессии (клик по строке) — ваш IP. Свой IP
-   показывает https://buyerly.app/cdn-cgi/trace (строка `ip=`) — он должен
-   совпасть. Затем отправить себе код входа на почту (письма идут) и нажать
-   Connect Telegram в Settings (бот отвечает). Написать результат в issue #301.
-
-Закрыть вход в обход Cloudflare при туннеле проще, чем файрволом: см. «Что
-сделать владельцу на сервере» в разделе «Cloudflare Tunnel» выше
-(`WEB_PORT_BINDING=127.0.0.1:8080`; правила ufw Docker обходит).
+Не включать Bot Fight Mode и «I'm Under Attack»: они блокируют webhook Telegram
+`/api/telegram/webhook` и `/api/meta/oauth/callback`. Почтовые записи (MX, SPF,
+DKIM, DMARC для Resend) остаются DNS only.
 
 ## Проверка и журналы
 
@@ -291,7 +163,7 @@ docker compose ps
 curl -fsS http://127.0.0.1:8080/health/ready
 docker compose logs --tail=100 api
 docker compose logs --tail=100 worker
-docker compose logs --tail=100 redis
+docker compose logs --tail=100 tunnel
 ```
 
 Файлы журналов разделены по процессам: `api.log`, `worker.log`, `database-migration.log`.
@@ -315,8 +187,7 @@ bash scripts/cleanup_docker_artifacts.sh
 CHECK_PATH=/opt/buyerly bash scripts/check_disk_usage.sh
 ```
 
-Очистка сохраняет минимум два последних полных релиза `buyerly-app` и
-`buyerly-web`, а также любой image, используемый существующим контейнером.
+Очистка сохраняет минимум два последних релиза `buyerly-app`, а также любой image, используемый существующим контейнером.
 Удаляются только более старые version tags, dangling images старше семи дней и
 build cache старше семи дней. Скрипт никогда не вызывает `docker system prune`,
 `docker image prune -a` или `docker volume prune`, поэтому production volumes и
@@ -434,15 +305,13 @@ gh workflow run ops-drill.yml -f drill=restore-local -f confirm=restore-local
 
 Ни одно учение не пишет в боевую БД или в volume uploads. Учения по расписанию не запускаются.
 
-`/health/worker` (публичный, через nginx: `https://buyerly.app/health/worker`) отдаёт 503, когда последний завершённый monitoring cycle старше 360 с. Его стоит добавить во внешний uptime-монитор рядом с `/health/ready`: тогда о зависшем worker узнают и в случае, когда не работает сама доставка Inbox.
+`/health/worker` (публичный: `https://buyerly.app/health/worker`) отдаёт 503, когда последний завершённый monitoring cycle старше 360 с. Его стоит добавить во внешний uptime-монитор рядом с `/health/ready`: тогда о зависшем worker узнают и в случае, когда не работает сама доставка Inbox.
 
 `migrate` изменяет production-схему только через `alembic upgrade head`. Одновременный запуск блокируется PostgreSQL advisory lock; после миграции контейнер сверяет текущий revision с Alembic head и проверяет наличие всех таблиц и колонок из моделей. Для исторической базы без `alembic_version` разрешён только одноразовый переход на явно зафиксированный baseline `0009_web_sessions`, причём перед stamp выполняется fail-closed проверка схемы. `create_all()` и ручные `ALTER TABLE` в production-runner не используются.
 
 Пользовательские аватары и логотипы хранятся в именованном Docker volume
-`buyerly-uploads`: API записывает файлы в `/app/uploads`, а web-контейнер
-монтирует тот же volume read-only в `/usr/share/nginx/html/uploads`. При первом
-переходе deploy сохраняет доступные файлы из старого API-контейнера до смены
-трафика; последующие релизы повторно используют volume.
+`buyerly-uploads`: API записывает их в `/app/uploads` и сам отдаёт по `/uploads/…`.
+Каждый релиз использует тот же volume.
 
 Этот volume **не входит** в резервные копии: `backup_db.sh` сохраняет только
 PostgreSQL. После восстановления на новом сервере аватары и логотипы
@@ -453,21 +322,11 @@ Production checkout `/opt/buyerly` приводится к владельцу с
 
 ## Безопасность хоста и доступ по SSH
 
-1. **Запрет парольной аутентификации**:
-   - Вход на VPS разрешен **исключительно по асимметричным SSH-ключам** (`Ed25519`).
-   - Парольный вход и интерактивные методы отключены в конфигурации OpenSSH (`/etc/ssh/sshd_config.d/99-hardening.conf`):
-     ```sshd_config
-     PasswordAuthentication no
-     KbdInteractiveAuthentication no
-     PermitRootLogin prohibit-password
-     PubkeyAuthentication yes
-     ```
-2. **Управление ключами**:
-   - Список доверенных публичных ключей хранится в `~/.ssh/authorized_keys` на VPS.
-   - Для деплоя через GitHub Actions используется секрет репозитория `VPS_SSH_KEY`.
-3. **Сетевая изоляция**:
-   - Порт PostgreSQL (`5432`) закрыт внутри Docker-сети и не публикуется наружу хоста.
-   - Порт Redis (`6379`) также доступен только внутри Docker-сети.
-   - Порт обратного прокси веб-сервиса (`8080`) по умолчанию открыт только на
-     `127.0.0.1` (вход — через Cloudflare Tunnel); деплой следит, чтобы `.env`
-     не переопределял это публичным адресом.
+- **Файрвол** (`ufw`): открыт только SSH (`22/tcp`) и порты других служб
+  владельца на этом сервере (VPN). Веб-портов наружу нет: сайт идёт через
+  Cloudflare Tunnel, `127.0.0.1:8080` доступен только локально.
+- **SSH**: вход по ключу; владелец также входит по паролю, поэтому включён
+  `fail2ban` (jail `sshd`), который блокирует подбор паролей.
+- **Ключи**: доверенные публичные ключи — в `~/.ssh/authorized_keys`; для деплоя
+  из GitHub Actions — секрет репозитория `VPS_SSH_KEY`.
+- **Сеть Docker**: PostgreSQL (`5432`) доступен только внутри сети `buyerly`.

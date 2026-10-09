@@ -1,19 +1,20 @@
 import asyncio
 import logging
-import os
 from contextlib import asynccontextmanager, suppress
+from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from api.routes import router as api_router
 from api.meta_oauth import router as meta_oauth_router
 from core import telegram
 from core.config import settings
-from core.rate_limit import limiter
 from core.workspace_slugs import RESERVED_WORKSPACE_SLUGS
 from database.db import async_session_maker
 from services import worker_watchdog
@@ -22,6 +23,15 @@ from meta_api.client import MetaClient
 from services.inventory_cache import PostgreSQLInventoryCache
 
 logger = logging.getLogger(__name__)
+
+
+class _ImmutableStaticFiles(StaticFiles):
+    """User uploads get a new name on every change, so browsers may keep them."""
+
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
 
 
 @asynccontextmanager
@@ -130,8 +140,6 @@ def create_app() -> FastAPI:
         try:
             async with async_session_maker() as session:
                 await session.execute(text("SELECT 1"))
-            if not await limiter.ready():
-                raise RuntimeError("rate-limit backend is unavailable")
         except Exception:
             logger.exception("Readiness dependency check failed")
             return JSONResponse(
@@ -163,22 +171,13 @@ def create_app() -> FastAPI:
     if not settings.SERVE_STATIC:
         return app
 
-    # Built React application for local single-process development. Production
-    # serves the same files through the dedicated frontend container.
-    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    frontend_dir = os.path.join(project_dir, "frontend", "dist")
-    public_dir = os.path.join(project_dir, "frontend", "public")
-    uploads_dir = str(UPLOADS_ROOT)
-    os.makedirs(os.path.join(uploads_dir, "avatars"), exist_ok=True)
-    os.makedirs(os.path.join(uploads_dir, "workspaces"), exist_ok=True)
-
-    assets_dir = os.path.join(frontend_dir, "assets")
-    if os.path.exists(assets_dir):
-        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
-    app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
-    legal_assets_dir = os.path.join(public_dir, "static")
-    if os.path.isdir(legal_assets_dir):
-        app.mount("/static", StaticFiles(directory=legal_assets_dir), name="legal-assets")
+    # The built React application, the public pages and user uploads. The API
+    # process serves them itself, so production needs no separate web server.
+    frontend_dir = Path(__file__).resolve().parents[1] / "frontend" / "dist"
+    uploads_dir = Path(UPLOADS_ROOT)
+    (uploads_dir / "avatars").mkdir(parents=True, exist_ok=True)
+    (uploads_dir / "workspaces").mkdir(parents=True, exist_ok=True)
+    app.mount("/uploads", _ImmutableStaticFiles(directory=str(uploads_dir)), name="uploads")
 
     public_documents = {
         "/": "landing.html",
@@ -194,52 +193,43 @@ def create_app() -> FastAPI:
     @app.get("/terms", include_in_schema=False)
     @app.get("/data-deletion", include_in_schema=False)
     async def serve_public_document(request: Request):
-        document_path = os.path.join(frontend_dir, public_documents[request.url.path])
-        if os.path.exists(document_path):
+        document_path = frontend_dir / public_documents[request.url.path]
+        if document_path.is_file():
             return FileResponse(
                 document_path,
                 headers={"Cache-Control": "public, max-age=300"},
             )
         return JSONResponse(status_code=404, content={"detail": "Document not found"})
 
-    @app.get("/login")
-    @app.get("/auth/email/verify")
-    @app.get("/auth/add-account")
-    @app.get("/create-workspace")
-    @app.get("/invite/{token}")
-    @app.get("/connect/meta/{token}")
-    @app.get("/connect/meta/success")
-    @app.get("/{workspace_slug}/welcome")
-    @app.get("/{workspace_slug}/inbox")
-    @app.get("/{workspace_slug}/inbox/{item_id}")
-    @app.get("/{workspace_slug}/ads-manager/{entity_type}")
-    @app.get("/{workspace_slug}/ads-manager/{entity_type}/{entity_id}")
-    @app.get("/{workspace_slug}/rules")
-    @app.get("/{workspace_slug}/rules/{rule_id}")
-    @app.get("/{workspace_slug}/settings")
-    @app.get("/{workspace_slug}")
-    async def serve_index(request: Request):
-        path_parts = [part for part in request.url.path.split("/") if part]
-        public_entrypoints = {
-            "/",
-            "/login",
-            "/auth/email/verify",
-            "/auth/add-account",
-            "/create-workspace",
-        }
-        is_invite = len(path_parts) == 2 and path_parts[0] == "invite"
-        is_meta_invite = len(path_parts) == 3 and path_parts[:2] == ["connect", "meta"]
-        is_workspace_route = bool(path_parts) and path_parts[0] not in RESERVED_WORKSPACE_SLUGS
-        if request.url.path not in public_entrypoints and not is_invite and not is_meta_invite and not is_workspace_route:
-            return JSONResponse(status_code=404, content={"detail": "Page not found"})
-        index_path = os.path.join(frontend_dir, "index.html")
-        if os.path.exists(index_path):
-            return FileResponse(index_path, headers={
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                "Pragma": "no-cache",
-                "Expires": "0"
-            })
-        return {"status": "Buyerly API is running", "webapp": "index.html not found"}
+    # Root segments the React app routes itself (frontend/src/lib/routing.ts);
+    # every other reserved root belongs to the server.
+    app_roots = {"login", "auth", "create-workspace", "invite", "connect"}
+
+    @app.exception_handler(404)
+    async def serve_frontend_file_or_app(request: Request, exc: StarletteHTTPException):
+        """Built files, then the React app for its own addresses; API 404s stay as they are."""
+        if request.method not in ("GET", "HEAD"):
+            return await http_exception_handler(request, exc)
+        path = request.url.path.lstrip("/")
+        candidate = (frontend_dir / path).resolve()
+        if path and candidate.is_relative_to(frontend_dir.resolve()) and candidate.is_file():
+            cache = (
+                "public, max-age=31536000, immutable"
+                if path.startswith("assets/")
+                else "public, max-age=300"
+            )
+            return FileResponse(candidate, headers={"Cache-Control": cache})
+        root = path.split("/", 1)[0]
+        if not root or (root in RESERVED_WORKSPACE_SLUGS and root not in app_roots):
+            return await http_exception_handler(request, exc)
+        index_path = frontend_dir / "index.html"
+        if not index_path.is_file():
+            return await http_exception_handler(request, exc)
+        return FileResponse(index_path, headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        })
 
     return app
 

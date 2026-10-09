@@ -15,8 +15,8 @@ Production-интерфейс написан на React; прежний vanilla-
 
 ## Архитектура
 
-`web` (React/Vite + Nginx) → `api` (FastAPI) → PostgreSQL 16.
-Отдельно работают `worker` (APScheduler) и Redis для rate limiting.
+Cloudflare Tunnel → `api` (FastAPI, отдаёт и React-приложение) → PostgreSQL 16.
+Отдельно работает `worker` (APScheduler). Всё собрано в один образ и один проект Docker Compose.
 Одноразовый сервис `migrate` выполняет миграции Alembic перед запуском приложения.
 
 ## Запуск
@@ -26,7 +26,9 @@ Production-интерфейс написан на React; прежний vanilla-
 ```bash
 cp .env.example .env
 # Заполните конфигурацию и секреты перед запуском.
-docker compose up -d --build
+docker compose build
+docker compose run --rm migrate
+docker compose up -d
 curl -fsS http://127.0.0.1:8080/health/ready
 ```
 
@@ -37,7 +39,7 @@ uvicorn services.api:app --host 127.0.0.1 --port 8080 --reload
 ```
 
 Frontend запускается командой `npm run dev` из `frontend/` после установки зависимостей.
-Для API нужны PostgreSQL, Redis, Python-зависимости из `requirements.txt` и применённые миграции. На локальном HTTP используется `SESSION_COOKIE_SECURE=false`; production-настройки описаны в [DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Для API нужны PostgreSQL, Python-зависимости из `requirements.txt` и применённые миграции. На локальном HTTP используется `SESSION_COOKIE_SECURE=false`; production-настройки описаны в [DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Проверки и изменения
 
@@ -54,7 +56,7 @@ gh run view <run-id> --log-failed
 
 | Каталог | Назначение |
 |---|---|
-| `frontend/` | React, TypeScript, Vite, UI primitives, tokens и Nginx |
+| `frontend/` | React, TypeScript, Vite, UI primitives и tokens |
 | `frontend/public/` | Публичные юридические HTML и ресурсы |
 | `api/` | HTTP-маршруты, схемы, авторизация и зависимости |
 | `core/` | Метрики, правила валидации, аудит, почта и общие механизмы |

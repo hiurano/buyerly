@@ -8,11 +8,13 @@ EXPECTED_COMPRESS="${EXPECTED_LOG_COMPRESS:-true}"
 
 containers=(
     buyerly-db
-    buyerly-redis
     buyerly-api
-    buyerly-web
     buyerly-worker
 )
+# The tunnel runs only where COMPOSE_PROFILES enables it.
+if docker inspect buyerly-tunnel >/dev/null 2>&1; then
+    containers+=(buyerly-tunnel)
+fi
 
 for container_name in "${containers[@]}"; do
     driver=$(docker inspect --format '{{.HostConfig.LogConfig.Type}}' "${container_name}")

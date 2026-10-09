@@ -1,9 +1,5 @@
-import asyncio
-import os
 import time
 import unittest
-import uuid
-from unittest.mock import AsyncMock, patch
 
 import httpx
 from starlette.requests import Request
@@ -15,7 +11,6 @@ import api.server as api_server_module
 from api.server import create_app
 from core.config import settings
 from core.rate_limit import (
-    RateLimitBackendUnavailable,
     RateLimiter,
     get_client_ip,
     get_client_location,
@@ -23,6 +18,7 @@ from core.rate_limit import (
 )
 from database.db import Base, hash_password
 from database.models import User, Workspace
+from tests.test_db_helper import create_test_engine, init_test_db
 
 
 class TestRateLimiterCore(unittest.IsolatedAsyncioTestCase):
@@ -248,29 +244,6 @@ class TestRateLimiterCore(unittest.IsolatedAsyncioTestCase):
             settings.TRUSTED_PROXY_CIDRS = original
 
 
-@unittest.skipUnless(os.getenv("REDIS_URL"), "REDIS_URL is required")
-class TestSharedRedisRateLimiter(unittest.IsolatedAsyncioTestCase):
-
-    async def test_limit_is_shared_atomically_between_instances(self):
-        namespace = f"buyerly:test-rate-limit:{uuid.uuid4()}"
-        first = RateLimiter(redis_url=os.environ["REDIS_URL"], namespace=namespace)
-        second = RateLimiter(redis_url=os.environ["REDIS_URL"], namespace=namespace)
-        await first.reset()
-        try:
-            results = await asyncio.gather(*(
-                (first if index % 2 == 0 else second).is_allowed("shared", 5, 60)
-                for index in range(20)
-            ))
-            self.assertEqual(sum(1 for allowed, _ in results if allowed), 5)
-            self.assertTrue(all(retry >= 1 for allowed, retry in results if not allowed))
-        finally:
-            await first.reset()
-            await second.reset()
-
-
-from tests.test_db_helper import create_test_engine, init_test_db
-
-
 class TestApiRateLimitingAndDosProtection(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
@@ -352,21 +325,6 @@ class TestApiRateLimitingAndDosProtection(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(blocked.status_code, 429)
         finally:
             settings.TRUSTED_PROXY_CIDRS = original
-
-    async def test_protected_endpoint_fails_closed_when_redis_is_unavailable(self):
-        transport = httpx.ASGITransport(app=self.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            with patch.object(
-                limiter,
-                "is_allowed",
-                new=AsyncMock(side_effect=RateLimitBackendUnavailable()),
-            ):
-                response = await client.post(
-                    "/api/auth/login",
-                    json={"username": "test_buyer", "password": "correct-password"},
-                )
-        self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.headers.get("Retry-After"), "1")
 
     async def test_check_slug_rate_limiting(self):
         headers = {"Authorization": "Bearer test-valid-auth-token-12345"}

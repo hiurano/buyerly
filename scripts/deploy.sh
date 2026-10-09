@@ -1,31 +1,28 @@
 #!/usr/bin/env bash
+# Deploys origin/main to this server: backup, build, migrate, start, check.
+# A release that fails its checks is replaced by the previous one.
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/opt/buyerly}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BRANCH="${BRANCH:-main}"
 EXPECTED_SHA="${EXPECTED_SHA:-}"
+EXPECTED_GIT_REPOSITORY="${EXPECTED_GIT_REPOSITORY:-hiurano/buyerly}"
 HEALTH_TIMEOUT_SECONDS="${HEALTH_TIMEOUT_SECONDS:-180}"
 DEPLOY_LOCK_FILE="${DEPLOY_LOCK_FILE:-/var/lock/buyerly-deploy.lock}"
 DEPLOY_LOCK_TIMEOUT_SECONDS="${DEPLOY_LOCK_TIMEOUT_SECONDS:-180}"
-EXPECTED_GIT_REPOSITORY="${EXPECTED_GIT_REPOSITORY:-hiurano/buyerly}"
-# The site is reachable only through the Cloudflare Tunnel (#301): cloudflared
-# reaches web:80 over the Docker network, so the host port stays on loopback.
-WEB_LOOPBACK_BINDING="127.0.0.1:8080"
 PUBLIC_HEALTH_URL="${PUBLIC_HEALTH_URL:-https://buyerly.app/health/live}"
 PUBLIC_HEALTH_TIMEOUT_SECONDS="${PUBLIC_HEALTH_TIMEOUT_SECONDS:-90}"
-PREVIOUS_WEB_PORT_BINDING=""
 
 wait_for_container() {
     local container_name="$1"
-    local expected_status="${2:-healthy}"
     local deadline=$((SECONDS + HEALTH_TIMEOUT_SECONDS))
     local status=""
     while (( SECONDS < deadline )); do
         status=$(docker inspect \
             --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' \
             "${container_name}" 2>/dev/null || true)
-        if [[ "${status}" == "${expected_status}" ]]; then
+        if [[ "${status}" == "healthy" ]]; then
             return 0
         fi
         if [[ "${status}" == "exited" || "${status}" == "dead" ]]; then
@@ -33,7 +30,7 @@ wait_for_container() {
         fi
         sleep 3
     done
-    echo "[ERROR] ${container_name} did not reach ${expected_status}; status=${status:-missing}"
+    echo "[ERROR] ${container_name} did not become healthy; status=${status:-missing}"
     return 1
 }
 
@@ -51,171 +48,46 @@ wait_for_container_file() {
     return 1
 }
 
-wait_for_ready() {
-    local endpoint="${1:-http://127.0.0.1:8080/health/ready}"
-    local deadline=$((SECONDS + HEALTH_TIMEOUT_SECONDS))
-    while (( SECONDS < deadline )); do
-        if curl -fsS "${endpoint}" >/dev/null 2>&1; then
-            return 0
-        fi
-        sleep 2
-    done
-    echo "[ERROR] ${endpoint} did not return 200 within ${HEALTH_TIMEOUT_SECONDS}s."
-    return 1
-}
-
-configured_web_port_binding() {
-    sed -n 's/^WEB_PORT_BINDING=//p' .env 2>/dev/null | tail -n 1 | tr -d " \t\r\"'"
-}
-
-set_web_port_binding() {
-    if grep -q '^WEB_PORT_BINDING=' .env 2>/dev/null; then
-        sed -i "s|^WEB_PORT_BINDING=.*|WEB_PORT_BINDING=$1|" .env
+# Sets KEY=value in .env, replacing an earlier line.
+set_env_value() {
+    local key="$1"
+    local value="$2"
+    if grep -q "^${key}=" .env 2>/dev/null; then
+        sed -i "s|^${key}=.*|${key}=${value}|" .env
     else
-        printf 'WEB_PORT_BINDING=%s\n' "$1" >> .env
+        printf '%s=%s\n' "${key}" "${value}" >> .env
     fi
 }
 
-# Remembers the binding the running web container was started with, so a
-# failed public check can restore it. Nothing to restore when it already
-# listens on loopback only or does not exist yet.
-capture_previous_web_binding() {
-    local published configured
-    published=$(docker port buyerly-web 80/tcp 2>/dev/null || true)
-    if [[ -z "${published}" ]] \
-          || ! grep -qvE '^(127\.[0-9.]+|\[::1\]):' <<<"${published}"; then
-        PREVIOUS_WEB_PORT_BINDING=""
-        return
-    fi
-    configured=$(configured_web_port_binding)
-    PREVIOUS_WEB_PORT_BINDING="${configured:-8080}"
+env_value() {
+    sed -n "s/^$1=//p" .env 2>/dev/null | tail -n 1 | tr -d " \t\r\"'"
 }
 
-# A public binding left in the server's .env would override the loopback
-# default in docker-compose.yml.
-ensure_loopback_web_binding() {
-    if grep -q '^WEB_PORT_BINDING=' .env 2>/dev/null \
-          && [[ "$(configured_web_port_binding)" != "${WEB_LOOPBACK_BINDING}" ]]; then
-        set_web_port_binding "${WEB_LOOPBACK_BINDING}"
-        echo "[INFO] WEB_PORT_BINDING set to ${WEB_LOOPBACK_BINDING}."
-    fi
-}
-
-# 200 from the public URL with a cf-ray header: the request went through
-# Cloudflare and the tunnel, not straight to this host.
-public_edge_ok() {
-    local deadline=$((SECONDS + PUBLIC_HEALTH_TIMEOUT_SECONDS))
-    local headers=""
-    while (( SECONDS < deadline )); do
-        headers=$(curl -sS --max-time 10 -o /dev/null -D - "${PUBLIC_HEALTH_URL}" 2>/dev/null || true)
-        if grep -qE '^HTTP/[0-9.]+ 200' <<<"${headers}" \
-              && grep -qi '^cf-ray:' <<<"${headers}"; then
-            return 0
-        fi
-        sleep 3
-    done
-    echo "[ERROR] ${PUBLIC_HEALTH_URL} did not return 200 through Cloudflare within ${PUBLIC_HEALTH_TIMEOUT_SECONDS}s."
-    return 1
-}
-
-verify_public_edge() {
-    echo "[INFO] web published on: $(docker port buyerly-web 80/tcp 2>/dev/null | tr '\n' ' ')"
-    if public_edge_ok; then
-        return 0
-    fi
-    if [[ -z "${PREVIOUS_WEB_PORT_BINDING}" ]]; then
-        echo "[ERROR] The site is not reachable through Cloudflare; no earlier web binding to restore."
-        return 1
-    fi
-    echo "[ROLLBACK] Restoring WEB_PORT_BINDING=${PREVIOUS_WEB_PORT_BINDING} for the web container."
-    set_web_port_binding "${PREVIOUS_WEB_PORT_BINDING}"
-    docker compose up -d --no-deps web
-    wait_for_container buyerly-web || true
-    wait_for_ready || true
-    if public_edge_ok; then
-        echo "[WARNING] The site answers through Cloudflare only with the public binding ${PREVIOUS_WEB_PORT_BINDING}; check the tunnel route."
-    else
-        echo "[ERROR] The site is not reachable through Cloudflare with either binding."
-    fi
-    return 1
-}
-
-ensure_postgres_password() {
-    if grep -q '^POSTGRES_PASSWORD=' .env 2>/dev/null; then
-        return
-    fi
-    local generated_password
-    if command -v openssl >/dev/null 2>&1; then
-        generated_password=$(openssl rand -hex 32)
-    else
-        generated_password=$(python3 -c 'import secrets; print(secrets.token_hex(32))')
-    fi
-    printf '\nPOSTGRES_PASSWORD=%s\n' "${generated_password}" >> .env
+# Secrets the server creates for itself once. Values are never printed.
+ensure_generated_secrets() {
+    touch .env
     chmod 600 .env
-    echo "[INFO] Generated the local PostgreSQL credential."
-}
-
-ensure_email_settings() {
-    if [[ -f .env ]]; then
-        if [[ -n "${RESEND_API_KEY:-}" ]]; then
-            local clean_key="${RESEND_API_KEY}"
-            clean_key="${clean_key#\"}"
-            clean_key="${clean_key%\"}"
-            clean_key="${clean_key#\'}"
-            clean_key="${clean_key%\'}"
-            clean_key=$(printf '%s' "${clean_key}" | tr -d ' \t\r\n')
-            if grep -q '^RESEND_API_KEY=' .env 2>/dev/null; then
-                sed -i "s|^RESEND_API_KEY=.*|RESEND_API_KEY=${clean_key}|" .env
-            else
-                printf '\nRESEND_API_KEY=%s\n' "${clean_key}" >> .env
-            fi
-        fi
-        if ! grep -q '^EMAIL_FROM=' .env 2>/dev/null; then
-            printf 'EMAIL_FROM="Buyerly <team@buyerly.app>"\n' >> .env
-        fi
+    if [[ -z "$(env_value POSTGRES_PASSWORD)" ]]; then
+        set_env_value POSTGRES_PASSWORD "$(openssl rand -hex 32)"
+        echo "[INFO] Generated the PostgreSQL password."
     fi
-}
-
-# The Telegram bot token comes from the TELEGRAM_BOT_TOKEN repository secret and
-# lives only in the server's .env; an empty secret leaves .env as it is.
-ensure_telegram_settings() {
-    if [[ -f .env && -n "${TELEGRAM_BOT_TOKEN:-}" ]]; then
-        local clean_token
-        clean_token=$(printf '%s' "${TELEGRAM_BOT_TOKEN}" | tr -d " \t\r\n\"'")
-        if [[ ! "${clean_token}" =~ ^[0-9]+:[A-Za-z0-9_-]+$ ]]; then
-            echo "TELEGRAM_BOT_TOKEN does not look like a bot token; .env left unchanged" >&2
-            return 0
-        fi
-        if grep -q '^TELEGRAM_BOT_TOKEN=' .env 2>/dev/null; then
-            sed -i "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=${clean_token}|" .env
-        else
-            printf '\nTELEGRAM_BOT_TOKEN=%s\n' "${clean_token}" >> .env
-        fi
+    if [[ -z "$(env_value OTP_PEPPER)" ]]; then
+        set_env_value OTP_PEPPER "$(openssl rand -hex 32)"
+        echo "[INFO] Generated the sign-in code pepper."
     fi
+    ensure_meta_token_encryption_key
 }
 
 ensure_meta_token_encryption_key() {
-    local configured_key=""
-    local primary_key=""
-    if [[ -f .env ]]; then
-        configured_key=$(sed -n 's/^META_TOKEN_ENCRYPTION_KEY=//p' .env | tail -n 1)
-    fi
-    configured_key="${configured_key#\"}"
-    configured_key="${configured_key%\"}"
-    configured_key="${configured_key#\'}"
-    configured_key="${configured_key%\'}"
-
+    local configured_key primary_key
+    configured_key=$(env_value META_TOKEN_ENCRYPTION_KEY)
     if [[ -z "${configured_key}" ]]; then
-        configured_key=$(python3 -c 'import base64, secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode("ascii"))')
-        if grep -q '^META_TOKEN_ENCRYPTION_KEY=' .env 2>/dev/null; then
-            sed -i "s|^META_TOKEN_ENCRYPTION_KEY=.*|META_TOKEN_ENCRYPTION_KEY=${configured_key}|" .env
-        else
-            printf '\nMETA_TOKEN_ENCRYPTION_KEY=%s\n' "${configured_key}" >> .env
-        fi
-        chmod 600 .env
-        echo "[INFO] Generated the Meta token encryption credential."
+        configured_key=$(openssl rand -base64 32 | tr '+/' '-_')
+        set_env_value META_TOKEN_ENCRYPTION_KEY "${configured_key}"
+        echo "[INFO] Generated the Meta token encryption key."
     fi
-
+    # A wrong key that is already set is never replaced: tokens encrypted with
+    # it would be lost. The deploy stops before anything changes instead.
     primary_key="${configured_key%%,*}"
     if ! META_KEY_CANDIDATE="${primary_key}" python3 - <<'PY'
 import base64
@@ -238,97 +110,65 @@ PY
     fi
 }
 
-preserve_legacy_uploads() {
-    local uploads_volume="buyerly-uploads"
-    local legacy_upload_dir=""
-
-    if docker volume inspect "${uploads_volume}" >/dev/null 2>&1; then
-        return
+# Keys kept as GitHub repository secrets; an empty secret leaves .env as it is.
+ensure_repository_secrets() {
+    local clean_value
+    if [[ -n "${RESEND_API_KEY:-}" ]]; then
+        clean_value=$(printf '%s' "${RESEND_API_KEY}" | tr -d " \t\r\n\"'")
+        set_env_value RESEND_API_KEY "${clean_value}"
     fi
-    docker volume create "${uploads_volume}" >/dev/null
-
-    if ! docker inspect buyerly-api >/dev/null 2>&1; then
-        return
+    if [[ -n "${TELEGRAM_BOT_TOKEN:-}" ]]; then
+        clean_value=$(printf '%s' "${TELEGRAM_BOT_TOKEN}" | tr -d " \t\r\n\"'")
+        if [[ "${clean_value}" =~ ^[0-9]+:[A-Za-z0-9_-]+$ ]]; then
+            set_env_value TELEGRAM_BOT_TOKEN "${clean_value}"
+        else
+            echo "[WARNING] TELEGRAM_BOT_TOKEN does not look like a bot token; .env left unchanged."
+        fi
     fi
-
-    legacy_upload_dir=$(mktemp -d)
-    # Upgrade compatibility: this reads the old container before replacement.
-    # Current containers use /app/uploads with the same named volume.
-    if docker cp buyerly-api:/app/webapp/uploads/. "${legacy_upload_dir}/" 2>/dev/null; then
-        docker run --rm \
-            -v "${uploads_volume}:/uploads" \
-            -v "${legacy_upload_dir}:/legacy:ro" \
-            "buyerly-app:${TARGET_SHA}" \
-            sh -c 'cp -a /legacy/. /uploads/'
-        echo "[INFO] Preserved legacy user uploads in the durable volume."
-    fi
-    rm -rf "${legacy_upload_dir}"
-}
-
-normalize_repository_ownership() {
-    local owner_uid deploy_uid deploy_gid
-    owner_uid=$(stat -c '%u' "${APP_DIR}")
-    deploy_uid=$(id -u)
-    deploy_gid=$(id -g)
-    if [[ "${owner_uid}" == "${deploy_uid}" ]]; then
-        return
-    fi
-
-    echo "[INFO] Normalizing ${APP_DIR} ownership from uid ${owner_uid} to deploy uid ${deploy_uid}."
-    if [[ "${deploy_uid}" == "0" ]]; then
-        chown -R "${deploy_uid}:${deploy_gid}" "${APP_DIR}"
-    elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
-        sudo -n chown -R "${deploy_uid}:${deploy_gid}" "${APP_DIR}"
-    else
-        echo "[ERROR] Cannot normalize ${APP_DIR} ownership without root or passwordless sudo."
-        return 1
-    fi
-
-    owner_uid=$(stat -c '%u' "${APP_DIR}")
-    if [[ "${owner_uid}" != "${deploy_uid}" ]]; then
-        echo "[ERROR] ${APP_DIR} ownership normalization did not take effect."
-        return 1
+    if ! grep -q '^EMAIL_FROM=' .env; then
+        printf 'EMAIL_FROM="Buyerly <team@buyerly.app>"\n' >> .env
     fi
 }
 
 # Compose reads APP_VERSION from .env when it is not exported, so a manual
-# `docker compose up` must resolve to the release that is actually running.
+# `docker compose up` starts the release that is actually running.
 record_running_version() {
-    local sha="$1"
-    if grep -q '^APP_VERSION=' .env 2>/dev/null; then
-        sed -i "s|^APP_VERSION=.*|APP_VERSION=${sha}|" .env
-    else
-        printf 'APP_VERSION=%s\n' "${sha}" >> .env
-    fi
-    chmod 600 .env
+    set_env_value APP_VERSION "$1"
 }
 
 rollback() {
-    echo "[ROLLBACK] Stopping the failed service set..."
-    docker compose stop web api worker 2>/dev/null || true
-
-    if [[ -n "${PREVIOUS_APP_IMAGE}" && -n "${PREVIOUS_WEB_IMAGE}" \
-          && -n "${PREVIOUS_SHA}" ]]; then
-        docker tag "${PREVIOUS_APP_IMAGE}" "buyerly-app:${PREVIOUS_SHA}"
-        docker tag "${PREVIOUS_WEB_IMAGE}" "buyerly-web:${PREVIOUS_SHA}"
-        export APP_VERSION="${PREVIOUS_SHA}"
-        docker compose up -d --no-deps api worker
-        wait_for_container buyerly-api
-        wait_for_container buyerly-worker
-        docker compose up -d --no-deps web
-        wait_for_container buyerly-web
-        wait_for_ready || true
-        record_running_version "${PREVIOUS_SHA}"
-        echo "[ROLLBACK] Previous service images restored."
-        return
+    if [[ -z "${PREVIOUS_SHA}" ]] \
+          || ! docker image inspect "buyerly-app:${PREVIOUS_SHA}" >/dev/null 2>&1; then
+        echo "[ROLLBACK] No previous release to return to."
+        return 1
     fi
+    echo "[ROLLBACK] Returning to ${PREVIOUS_SHA}..."
+    export APP_VERSION="${PREVIOUS_SHA}"
+    docker compose up -d --no-deps api worker
+    wait_for_container buyerly-api || true
+    wait_for_container buyerly-worker || true
+    record_running_version "${PREVIOUS_SHA}"
+    echo "[ROLLBACK] Previous release restored."
+}
 
-    echo "[ROLLBACK] No previous healthy image set is available."
+# 200 from the public URL with a cf-ray header: the request went through
+# Cloudflare and the tunnel.
+public_edge_ok() {
+    local deadline=$((SECONDS + PUBLIC_HEALTH_TIMEOUT_SECONDS))
+    local headers=""
+    while (( SECONDS < deadline )); do
+        headers=$(curl -sS --max-time 10 -o /dev/null -D - "${PUBLIC_HEALTH_URL}" 2>/dev/null || true)
+        if grep -qE '^HTTP/[0-9.]+ 200' <<<"${headers}" \
+              && grep -qi '^cf-ray:' <<<"${headers}"; then
+            return 0
+        fi
+        sleep 3
+    done
+    echo "[ERROR] ${PUBLIC_HEALTH_URL} did not return 200 through Cloudflare within ${PUBLIC_HEALTH_TIMEOUT_SECONDS}s."
     return 1
 }
 
 cd "${APP_DIR}"
-normalize_repository_ownership
 
 ORIGIN_URL=$(git remote get-url origin 2>/dev/null || true)
 NORMALIZED_ORIGIN="${ORIGIN_URL%/}"
@@ -348,69 +188,34 @@ if ! flock -w "${DEPLOY_LOCK_TIMEOUT_SECONDS}" 9; then
     exit 1
 fi
 
-INITIAL_ENV_HASH=""
-if [[ -f .env ]]; then
-    INITIAL_ENV_HASH=$(sha256sum .env 2>/dev/null || md5sum .env 2>/dev/null || cksum .env 2>/dev/null || true)
+INITIAL_ENV_HASH=$(sha256sum .env 2>/dev/null || true)
+ensure_generated_secrets
+ensure_repository_secrets
+FINAL_ENV_HASH=$(sha256sum .env 2>/dev/null || true)
+
+PREVIOUS_SHA=""
+PREVIOUS_APP_TAG=$(docker inspect --format '{{.Config.Image}}' buyerly-api 2>/dev/null || true)
+if [[ "${PREVIOUS_APP_TAG}" =~ ^buyerly-app:([0-9a-f]{40})$ ]]; then
+    PREVIOUS_SHA="${BASH_REMATCH[1]}"
 fi
 
-capture_previous_web_binding
-ensure_postgres_password
-ensure_email_settings
-ensure_telegram_settings
-ensure_meta_token_encryption_key
-ensure_loopback_web_binding
-
-FINAL_ENV_HASH=""
-if [[ -f .env ]]; then
-    FINAL_ENV_HASH=$(sha256sum .env 2>/dev/null || md5sum .env 2>/dev/null || cksum .env 2>/dev/null || true)
-fi
-
-if [[ -n "${EXPECTED_SHA}" ]]; then
-    CURRENT_REPO_SHA=$(git rev-parse HEAD 2>/dev/null || true)
-    DEPLOYED_API_IMAGE=$(docker inspect --format '{{.Config.Image}}' buyerly-api 2>/dev/null || true)
-    DEPLOYED_WEB_IMAGE=$(docker inspect --format '{{.Config.Image}}' buyerly-web 2>/dev/null || true)
-    DEPLOYED_WORKER_IMAGE=$(docker inspect --format '{{.Config.Image}}' buyerly-worker 2>/dev/null || true)
-    API_HEALTH=$(docker inspect --format '{{.State.Health.Status}}' buyerly-api 2>/dev/null || true)
-    WEB_HEALTH=$(docker inspect --format '{{.State.Health.Status}}' buyerly-web 2>/dev/null || true)
-    WORKER_HEALTH=$(docker inspect --format '{{.State.Health.Status}}' buyerly-worker 2>/dev/null || true)
-    DB_HEALTH=$(docker inspect --format '{{.State.Health.Status}}' buyerly-db 2>/dev/null || true)
-    REDIS_HEALTH=$(docker inspect --format '{{.State.Health.Status}}' buyerly-redis 2>/dev/null || true)
-    if [[ "${INITIAL_ENV_HASH}" == "${FINAL_ENV_HASH}" \
-          && "${CURRENT_REPO_SHA}" == "${EXPECTED_SHA}" \
-          && "${DEPLOYED_API_IMAGE}" == "buyerly-app:${EXPECTED_SHA}" \
-          && "${DEPLOYED_WEB_IMAGE}" == "buyerly-web:${EXPECTED_SHA}" \
-          && "${DEPLOYED_WORKER_IMAGE}" == "buyerly-app:${EXPECTED_SHA}" \
-          && "${API_HEALTH}" == "healthy" \
-          && "${WEB_HEALTH}" == "healthy" \
-          && "${WORKER_HEALTH}" == "healthy" \
-          && "${DB_HEALTH}" == "healthy" \
-          && "${REDIS_HEALTH}" == "healthy" ]]; then
-        if bash "${SCRIPT_DIR}/verify_docker_log_rotation.sh" \
-            && APP_DIR="${APP_DIR}" EXPECTED_SHA="${EXPECTED_SHA}" \
-                python3 "${SCRIPT_DIR}/post_deploy_smoke.py"; then
-            echo "[SUCCESS] Buyerly ${EXPECTED_SHA} is already deployed and healthy."
-            exit 0
-        fi
-        echo "[INFO] Existing containers need the current operational configuration; continuing deploy."
+if [[ -n "${EXPECTED_SHA}" && "${PREVIOUS_SHA}" == "${EXPECTED_SHA}" \
+      && "${INITIAL_ENV_HASH}" == "${FINAL_ENV_HASH}" \
+      && "$(git rev-parse HEAD 2>/dev/null || true)" == "${EXPECTED_SHA}" \
+      && "$(docker inspect --format '{{.Config.Image}}' buyerly-worker 2>/dev/null || true)" == "buyerly-app:${EXPECTED_SHA}" ]] \
+      && wait_for_container buyerly-api && wait_for_container buyerly-worker; then
+    if APP_DIR="${APP_DIR}" EXPECTED_SHA="${EXPECTED_SHA}" \
+          python3 "${SCRIPT_DIR}/post_deploy_smoke.py"; then
+        echo "[SUCCESS] Buyerly ${EXPECTED_SHA} is already deployed and healthy."
+        exit 0
     fi
+    echo "[INFO] The running release failed its checks; deploying it again."
 fi
 
-echo "[1/8] Creating a mandatory database backup..."
+echo "[1/7] Creating a database backup..."
 bash "${SCRIPT_DIR}/backup_db.sh"
 
-PREVIOUS_APP_IMAGE=$(docker inspect --format '{{.Image}}' buyerly-api 2>/dev/null || true)
-PREVIOUS_WEB_IMAGE=$(docker inspect --format '{{.Image}}' buyerly-web 2>/dev/null || true)
-PREVIOUS_APP_TAG=$(docker inspect --format '{{.Config.Image}}' buyerly-api 2>/dev/null || true)
-PREVIOUS_WEB_TAG=$(docker inspect --format '{{.Config.Image}}' buyerly-web 2>/dev/null || true)
-PREVIOUS_SHA=""
-if [[ "${PREVIOUS_APP_TAG}" =~ ^buyerly-app:([0-9a-f]{40})$ ]]; then
-    PREVIOUS_SHA_CANDIDATE="${BASH_REMATCH[1]}"
-    if [[ "${PREVIOUS_WEB_TAG}" == "buyerly-web:${PREVIOUS_SHA_CANDIDATE}" ]]; then
-        PREVIOUS_SHA="${PREVIOUS_SHA_CANDIDATE}"
-    fi
-fi
-
-echo "[2/8] Synchronizing ${BRANCH}..."
+echo "[2/7] Synchronizing ${BRANCH}..."
 git fetch origin "${BRANCH}"
 TARGET_SHA=$(git rev-parse "origin/${BRANCH}")
 if [[ -n "${EXPECTED_SHA}" && "${TARGET_SHA}" != "${EXPECTED_SHA}" ]]; then
@@ -418,66 +223,47 @@ if [[ -n "${EXPECTED_SHA}" && "${TARGET_SHA}" != "${EXPECTED_SHA}" ]]; then
     exit 1
 fi
 git reset --hard "${TARGET_SHA}"
-# `reset --hard` leaves untracked source files behind. That is unsafe for a
-# Docker build because retired Python/Alembic files can still be copied into
-# the image and executed. Runtime state is gitignored; remove only untracked,
-# non-ignored repository files so the build context matches TARGET_SHA.
+# `reset --hard` leaves untracked source files behind, and the build would
+# copy them into the image. Runtime state (.env, logs, backups) is gitignored
+# and stays.
 git clean -ffd -q
 if [[ -n "$(git status --short --untracked-files=all)" ]]; then
     echo "[ERROR] Production source tree does not match ${TARGET_SHA}."
     exit 1
 fi
 export APP_VERSION="${TARGET_SHA}"
-ensure_postgres_password
-ensure_email_settings
-ensure_telegram_settings
-ensure_meta_token_encryption_key
-ensure_loopback_web_binding
 
-echo "[3/8] Applying safe Docker retention and checking disk capacity..."
+echo "[3/7] Removing old images and checking disk space..."
 bash "${SCRIPT_DIR}/cleanup_docker_artifacts.sh"
 if ! CHECK_PATH="${APP_DIR}" bash "${SCRIPT_DIR}/check_disk_usage.sh"; then
-    echo "[ERROR] Disk usage remains critical after safe artifact cleanup."
+    echo "[ERROR] Disk usage remains critical after cleanup."
     exit 1
 fi
 
-echo "[4/8] Building versioned API and web images..."
-docker compose build --pull api web
-preserve_legacy_uploads
+echo "[4/7] Building buyerly-app:${TARGET_SHA}..."
+docker compose build --pull api
 
-echo "[5/8] Preparing PostgreSQL database..."
-docker compose up -d db redis
+echo "[5/7] Migrating the database..."
+docker compose up -d db
 if ! wait_for_container buyerly-db; then
     docker compose logs --tail=120 db
     exit 1
 fi
-if ! wait_for_container buyerly-redis; then
-    docker compose logs --tail=120 redis
-    exit 1
-fi
 if ! docker compose run --rm migrate; then
-    # `docker compose run` already streamed the failing one-off migration
-    # container above. Only append database logs here; a named, stopped
-    # `migrate` container may contain unrelated traceback output from an old
-    # release and must not contaminate the current diagnosis.
     docker compose logs --tail=120 db
     rollback
     exit 1
 fi
 
-echo "[6/8] Switching traffic to the separated services..."
+echo "[6/7] Starting the release..."
 docker compose up -d --no-deps api worker
 if ! wait_for_container buyerly-api; then
-    docker compose logs --tail=120 api migrate db
+    docker compose logs --tail=120 api
     rollback
     exit 1
 fi
-if ! wait_for_container buyerly-worker; then
-    docker compose logs --tail=120 worker
-    rollback
-    exit 1
-fi
-if ! wait_for_container_file buyerly-worker /tmp/buyerly-worker-day-boundary-cycle-complete; then
+if ! wait_for_container buyerly-worker \
+      || ! wait_for_container_file buyerly-worker /tmp/buyerly-worker-day-boundary-cycle-complete; then
     docker compose logs --tail=160 worker
     rollback
     exit 1
@@ -489,41 +275,32 @@ if docker compose logs --since=5m worker 2>&1 \
     rollback
     exit 1
 fi
-docker compose up -d --no-deps web
+TUNNEL_ENABLED=false
+if [[ "$(env_value COMPOSE_PROFILES)" == *tunnel* ]]; then
+    TUNNEL_ENABLED=true
+    docker compose up -d --no-deps tunnel
+fi
 
-echo "[7/8] Running the blocking production smoke and operational checks..."
-if ! wait_for_container buyerly-web; then
-    docker compose logs --tail=120 web api
-    rollback
-    exit 1
-fi
-if ! wait_for_ready; then
-    docker compose logs --tail=120 web api
-    rollback
-    exit 1
-fi
+echo "[7/7] Checking the release..."
 if ! bash "${SCRIPT_DIR}/verify_docker_log_rotation.sh"; then
     rollback
     exit 1
 fi
 if ! APP_DIR="${APP_DIR}" EXPECTED_SHA="${TARGET_SHA}" \
     python3 "${SCRIPT_DIR}/post_deploy_smoke.py"; then
-    echo "[ERROR] Critical post-deploy smoke failed; restoring the previous release."
+    echo "[ERROR] Post-deploy smoke failed; restoring the previous release."
     rollback
     exit 1
 fi
 record_running_version "${TARGET_SHA}"
-# The release itself is healthy here; a failed public check only restores the
-# earlier web binding and fails the deploy so it shows up in Actions.
-if ! verify_public_edge; then
+if [[ "${TUNNEL_ENABLED}" == "true" ]] && ! public_edge_ok; then
     exit 1
 fi
 
-echo "[8/8] Removing aged artifacts after successful cutover..."
 if ! bash "${SCRIPT_DIR}/cleanup_docker_artifacts.sh"; then
-    echo "[WARNING] Post-deploy artifact cleanup failed; release remains healthy."
+    echo "[WARNING] Post-deploy cleanup failed; the release itself is healthy."
 fi
 CHECK_PATH="${APP_DIR}" bash "${SCRIPT_DIR}/check_disk_usage.sh"
 
-echo "[SUCCESS] Buyerly ${TARGET_SHA} deployed as web/api/worker/db."
+echo "[SUCCESS] Buyerly ${TARGET_SHA} deployed."
 docker compose ps

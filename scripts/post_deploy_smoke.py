@@ -105,7 +105,6 @@ def _runtime_versions() -> dict:
     containers = {
         "buyerly-api": f"buyerly-app:{EXPECTED_SHA}",
         "buyerly-worker": f"buyerly-app:{EXPECTED_SHA}",
-        "buyerly-web": f"buyerly-web:{EXPECTED_SHA}",
     }
     observed = {}
     for container_name, expected_image in containers.items():

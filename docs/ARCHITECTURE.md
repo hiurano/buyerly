@@ -6,22 +6,21 @@
 
 ```mermaid
 flowchart LR
-    U[Пользователь] --> W[React / Nginx]
-    W --> A[FastAPI]
+    U[Пользователь] --> T[Cloudflare Tunnel]
+    T --> A[FastAPI + React]
     A --> D[(PostgreSQL)]
-    A --> R[(Redis)]
     A --> E[Resend]
     K[Worker / APScheduler] --> D
     K <--> M[Meta API]
 ```
 
-Состав production задаёт [docker-compose.yml](../docker-compose.yml): `web`, `api`, `worker`, `db`, `redis` и одноразовый `migrate`. Точки запуска находятся в `services/`. Образ Python использует Python 3.12, frontend собирается на Node.js 22. PostgreSQL 16 хранит данные, Redis обслуживает общий rate limit.
+Состав production задаёт [docker-compose.yml](../docker-compose.yml): `api`, `worker`, `db`, `tunnel` (Cloudflare Tunnel) и одноразовый `migrate`. Точки запуска находятся в `services/`. Один образ `buyerly-app`: frontend собирается на Node.js 22, код работает на Python 3.12. PostgreSQL 16 хранит данные; счётчики rate limit живут в памяти единственного процесса API.
 
 ## Frontend и HTTP
 
 [App.tsx](../frontend/src/App.tsx) собирает React-приложение; [routing.ts](../frontend/src/lib/routing.ts) определяет публичные и workspace-маршруты. Основные разделы — Inbox, Ads Manager, Rules и Settings. Состояние UI хранится в Zustand, HTTP-запросы проходят через [api.ts](../frontend/src/lib/api.ts).
 
-Vite собирает `frontend/dist`; Nginx отдаёт файлы и проксирует API. Юридические страницы и их ресурсы находятся в `frontend/public`. При `SERVE_STATIC=true` FastAPI может отдавать локальный React build и юридические документы. Runtime-каталог `uploads/` монтируется в production как именованный том `buyerly-uploads`; публичные URL начинаются с `/uploads/`.
+Vite собирает `frontend/dist`, и FastAPI сам отдаёт эти файлы (`SERVE_STATIC=true`): сборку, юридические документы и React-приложение для любого адреса без своего маршрута, кроме корней сервера. Юридические страницы и их ресурсы находятся в `frontend/public`. Runtime-каталог `uploads/` монтируется в production как именованный том `buyerly-uploads`; публичные URL начинаются с `/uploads/`.
 
 ## Данные и доступ
 
