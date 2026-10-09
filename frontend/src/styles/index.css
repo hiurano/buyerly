@@ -1604,6 +1604,17 @@ html[data-theme='dark'] .linear-sidebar-badge,
   flex-shrink: 0;
 }
 
+/* Linear's Profile fields (2026-10-09): 180×32, 13px text, 12px side padding,
+   the card's own background. */
+.preferences-row-item .preferences-row-input.preferences-profile-input {
+  width: 180px;
+  height: 32px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13px;
+}
+
 /* A row that already carries a control beside the field gets the shorter one. */
 .preferences-row-item .preferences-row-input--narrow {
   width: 148px;
@@ -1889,16 +1900,53 @@ html[data-theme='dark'] .linear-sidebar-badge,
   opacity: 1;
 }
 
+/* Linear's Profile picture (2026-10-09): a 32px circle with 14px initials; under
+   the pointer a rgba(0,0,0,.45) veil fades in over 150ms with a 16px plus, or a
+   pencil once there is a photo. */
 .preferences-avatar {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
   border-radius: 9999px;
-  background: var(--preferences-control-bg);
+  background: var(--action-primary);
   overflow: hidden;
   flex-shrink: 0;
+}
+
+.preferences-avatar--button {
+  cursor: default;
+}
+
+.preferences-avatar--button:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
+.preferences-avatar--button:disabled {
+  opacity: 0.6;
+}
+
+.preferences-avatar-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.preferences-avatar--button:hover:not(:disabled) .preferences-avatar-overlay,
+.preferences-avatar--button:focus-visible .preferences-avatar-overlay,
+.preferences-avatar--button[data-state='open'] .preferences-avatar-overlay {
+  opacity: 1;
 }
 
 .preferences-avatar-image {
@@ -1908,10 +1956,10 @@ html[data-theme='dark'] .linear-sidebar-badge,
 }
 
 .preferences-avatar-initials {
-  color: var(--text-secondary);
+  color: #fff;
   font-family: var(--font-regular);
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 400;
   line-height: 1;
 }
 
@@ -3326,6 +3374,14 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
 
   .preferences-row-item--column-on-mobile > .preferences-row-control {
     justify-content: flex-start;
+  }
+
+  .preferences-row-item--column-on-mobile > .preferences-avatar {
+    align-self: flex-start;
+  }
+
+  .preferences-row-item--column-on-mobile > .preferences-row-input.preferences-profile-input {
+    width: 100%;
   }
 
   .preferences-row-item--column-on-mobile .preferences-row-input--narrow {

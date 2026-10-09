@@ -116,6 +116,17 @@ jobs:
           name: security-browser
           path: /tmp/buyerly-security
 
+      - name: Check Settings → Profile in Chromium
+        working-directory: frontend
+        run: node ../scripts/profile-browser.mjs
+
+      - name: Upload Profile browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: profile-browser
+          path: /tmp/buyerly-profile
+
       - name: Check workspace switching in Chromium
         working-directory: frontend
         run: node ../scripts/workspace-switcher-browser.mjs
