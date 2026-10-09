@@ -8,6 +8,7 @@ import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
 import { openSearchPage } from '@/components/search/openSearchPage';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { GO_TO_KEYS } from '@/lib/shortcuts';
+import { canAdministerWorkspace } from '@/lib/settingsPages';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -125,15 +126,17 @@ export const SidebarHeader: React.FC = () => {
               </div>
             </DropdownMenuItem>
 
-            {/* 2. Invite and manage members */}
-            <DropdownMenuItem
-              onSelect={() => {
-                setSettingsSection('members');
-                setActiveTab('preferences');
-              }}
-            >
-              <span className="truncate">Invite and manage members</span>
-            </DropdownMenuItem>
+            {/* 2. Invite and manage members: Members is an Administration page, for an owner or admin */}
+            {canAdministerWorkspace(workspace) && (
+              <DropdownMenuItem
+                onSelect={() => {
+                  setSettingsSection('members');
+                  setActiveTab('preferences');
+                }}
+              >
+                <span className="truncate">Invite and manage members</span>
+              </DropdownMenuItem>
+            )}
 
             <DropdownMenuSeparator />
 

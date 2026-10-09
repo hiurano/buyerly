@@ -245,6 +245,36 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(del_only.status_code, 400)
 
+    async def test_workspace_url_change_from_settings(self):
+        headers = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
+        transport = httpx.ASGITransport(app=self.app)
+
+        async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
+            other = await client.post('/api/workspaces', headers=headers, json={'name': 'Canada Traffic'})
+            self.assertEqual(other.status_code, 200)
+            buyerly_id = next(w['id'] for w in (await client.get('/api/workspaces', headers=headers)).json() if w['slug'] == 'buyerly')
+
+            # Settings → Workspace → URL normalizes what is typed, as creation does.
+            moved = await client.patch(f'/api/workspaces/{buyerly_id}', headers=headers, json={'slug': 'Buyerly Media'})
+            self.assertEqual(moved.status_code, 200)
+            self.assertEqual(moved.json()['slug'], 'buyerly-media')
+
+            # The same address again changes nothing and is no conflict.
+            same = await client.patch(f'/api/workspaces/{buyerly_id}', headers=headers, json={'slug': 'buyerly-media'})
+            self.assertEqual(same.status_code, 200)
+
+            taken = await client.patch(f'/api/workspaces/{buyerly_id}', headers=headers, json={'slug': 'canada-traffic'})
+            self.assertEqual(taken.status_code, 409)
+            self.assertEqual(taken.json()['detail'], 'That workspace URL is already taken')
+
+            reserved = await client.patch(f'/api/workspaces/{buyerly_id}', headers=headers, json={'slug': 'api'})
+            self.assertEqual(reserved.status_code, 409)
+            self.assertIn('unavailable', reserved.json()['detail'])
+
+            async with self.test_session_maker() as session:
+                slug = (await session.execute(select(Workspace.slug).where(Workspace.id == buyerly_id))).scalar_one()
+            self.assertEqual(slug, 'buyerly-media')
+
     async def test_workspace_creation_rejects_occupied_and_reserved_slugs(self):
         artem_data = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
         headers = {**artem_data}

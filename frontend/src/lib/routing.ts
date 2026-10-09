@@ -114,6 +114,8 @@ export function parseRoute(location: Location = window.location): Route {
 
 /** Settings pages with their own address, at Linear's paths. */
 export const SETTINGS_PATHS = {
+  workspace: 'workspace',
+  teams: 'teams',
   members: 'members',
   notifications: 'account/notifications',
   'priority-notifications': 'account/notifications/priority-filter',

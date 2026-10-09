@@ -1,10 +1,17 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useAppStore, type InterfaceTheme } from '@/store/useAppStore';
-import { SETTINGS_PAGE_KEYWORDS } from '@/lib/settingsPages';
+import {
+  ADMINISTRATION_PAGES,
+  SETTINGS_PAGE_GROUPS,
+  SETTINGS_PAGE_KEYWORDS,
+  canAdministerWorkspace,
+} from '@/lib/settingsPages';
 import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
 import type { SessionUser, Workspace } from '@/lib/types';
 import { ProfileSection } from './ProfileSection';
 import { MembersSection } from './MembersSection';
+import { WorkspaceSection } from './WorkspaceSection';
+import { TeamsSection } from './TeamsSection';
 import {
   EmailNotificationsSection,
   NotificationsSection,
@@ -59,12 +66,20 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
   const notificationsOpen = section === 'notifications' || section === 'priority-notifications'
     || section === 'email-notifications' || section === 'telegram-notifications';
   const selectedTheme = themeOptions.find((option) => option.value === interfaceTheme) || themeOptions[0];
+  const canAdminister = canAdministerWorkspace(workspace);
   const visibleSections = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return (Object.keys(sectionKeywords) as Array<keyof typeof sectionKeywords>).filter((key) =>
-      sectionKeywords[key].includes(query)
+      sectionKeywords[key].includes(query) && (canAdminister || !ADMINISTRATION_PAGES.includes(key))
     );
-  }, [searchQuery]);
+  }, [canAdminister, searchQuery]);
+  const administrationPages = (SETTINGS_PAGE_GROUPS.find((group) => group.heading === 'Administration')?.pages ?? [])
+    .filter((page) => visibleSections.includes(page.section));
+
+  useEffect(() => {
+    // A buyer or viewer has no Administration pages; their addresses open Preferences.
+    if (!canAdminister && (ADMINISTRATION_PAGES as string[]).includes(section)) setSection('preferences');
+  }, [canAdminister, section, setSection]);
 
   useEffect(() => {
     // Linear's "Back to app": Ctrl+Esc leaves Settings for the page it came from.
@@ -232,23 +247,26 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
             )}
           </div>
 
-          <div className="preferences-nav-group">
-            <h2 className="preferences-nav-heading">Workspace</h2>
-            {visibleSections.includes('members') && (
-              <a
-                href="#members"
-                className={`preferences-nav-item ${section === 'members' ? 'active' : ''}`}
-                data-active={section === 'members'}
-                onClick={(e) => {
-                  e.preventDefault();
-                  setSection('members');
-                }}
-              >
-                <SettingsPageIcon section="members" className="preferences-nav-icon" />
-                <span className="preferences-nav-label">Members</span>
-              </a>
-            )}
-          </div>
+          {administrationPages.length > 0 && (
+            <div className="preferences-nav-group">
+              <h2 className="preferences-nav-heading">Administration</h2>
+              {administrationPages.map((page) => (
+                <a
+                  key={page.section}
+                  href={`#${page.section}`}
+                  className={`preferences-nav-item ${section === page.section ? 'active' : ''}`}
+                  data-active={section === page.section}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setSection(page.section);
+                  }}
+                >
+                  <SettingsPageIcon section={page.section} className="preferences-nav-icon" />
+                  <span className="preferences-nav-label">{page.label}</span>
+                </a>
+              ))}
+            </div>
+          )}
 
           {visibleSections.length === 0 && (
             <div className="preferences-no-results">No settings found</div>
@@ -313,7 +331,15 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
 
             {section === 'security' && <SecuritySection />}
 
-            {section === 'members' && <MembersSection workspace={workspace} onUserChanged={onUserChanged} />}
+            {canAdminister && section === 'workspace' && (
+              <WorkspaceSection workspace={workspace} onUserChanged={onUserChanged} />
+            )}
+
+            {canAdminister && section === 'teams' && <TeamsSection />}
+
+            {canAdminister && section === 'members' && (
+              <MembersSection workspace={workspace} onUserChanged={onUserChanged} />
+            )}
 
             {section === 'preferences' && (
               <>

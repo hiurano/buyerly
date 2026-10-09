@@ -1406,6 +1406,118 @@ html[data-theme='dark'] .linear-sidebar-badge,
   cursor: default;
 }
 
+/* Linear's "Delete workspace" in Danger zone: the same borderless pill in red. */
+.preferences-row-ghost-button--danger,
+.preferences-row-ghost-button--danger:hover:not(:disabled) {
+  color: var(--rules-action-stop-text);
+}
+
+/*
+ * Settings → Workspace, read off Linear (2026-10-09): the logo is a 32px mark
+ * in a 34px frame with a 1px border and 9px corners; hovering darkens it to
+ * 45% black with an upload arrow. Name and URL fields are 256px wide.
+ */
+.preferences-workspace-logo {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: 9px;
+  background: transparent;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.preferences-workspace-logo > img,
+.preferences-workspace-logo > span:first-child {
+  border-radius: 8px !important;
+}
+
+.preferences-workspace-logo-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  opacity: 0;
+  transition: opacity var(--speed-quickTransition) var(--ease-out-quad);
+}
+
+.preferences-workspace-logo:hover .preferences-workspace-logo-overlay,
+.preferences-workspace-logo:focus-visible .preferences-workspace-logo-overlay,
+.preferences-workspace-logo:disabled .preferences-workspace-logo-overlay {
+  opacity: 1;
+}
+
+.preferences-workspace-logo:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
+}
+
+.preferences-row-item .preferences-row-input--wide {
+  width: 256px;
+  height: 32px;
+  font-size: 13px;
+}
+
+/* Linear's URL field: the address prefix in faint text inside the field, a pencil at its end. */
+.preferences-url-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 32px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--control-border-radius);
+  background: var(--bg-canvas);
+  font-family: var(--font-regular);
+  font-size: 13px;
+}
+
+.preferences-url-field:focus-within {
+  border-color: var(--focus-ring-color);
+}
+
+.preferences-url-prefix {
+  flex-shrink: 0;
+  padding-left: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.preferences-url-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0 30px 0 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  outline: none;
+  cursor: pointer;
+}
+
+.preferences-url-input--editable {
+  padding-right: 12px;
+  cursor: text;
+}
+
+.preferences-url-accessory {
+  position: absolute;
+  right: 10px;
+  display: inline-flex;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
 .preferences-row-copy {
   display: flex;
   flex-direction: column;
@@ -3205,6 +3317,7 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
   }
 
   .preferences-row-item--column-on-mobile > .preferences-row-input,
+  .preferences-row-item--column-on-mobile > .preferences-url-field,
   .preferences-row-item--column-on-mobile > .preferences-row-control,
   .preferences-row-item--column-on-mobile > .preferences-theme-control,
   .preferences-row-item--column-on-mobile .preferences-combobox-trigger {

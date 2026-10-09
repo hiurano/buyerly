@@ -177,7 +177,7 @@ export interface AdsManagerQuickFilter {
 export type AppTab = 'inbox' | 'campaigns' | 'rules';
 /** The search page has an address but is no app tab: Settings' back button never returns to it. */
 export type ActiveTab = AppTab | 'preferences' | 'search';
-/** Settings pages; `members` also has its own address under /<workspace>/settings. */
+/** Settings pages; most also have their own address under /<workspace>/settings. */
 export type SettingsSection =
   | 'preferences'
   | 'profile'
@@ -187,6 +187,8 @@ export type SettingsSection =
   | 'telegram-notifications'
   | 'connected-accounts'
   | 'security'
+  | 'workspace'
+  | 'teams'
   | 'members';
 /** Linear's "Open issue…" family: what each O-then-letter palette opens. */
 export type OpenPaletteKind = 'campaign' | 'adset' | 'ad' | 'rule' | 'account' | 'settings';

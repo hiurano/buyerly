@@ -46,6 +46,7 @@ class CreateWorkspaceRequest(BaseModel):
 
 class UpdateWorkspaceRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=60)
+    slug: Optional[str] = Field(None, min_length=1, max_length=60)
     badge_color: Optional[str] = Field(None, max_length=30)
     badge_text: Optional[str] = Field(None, max_length=5)
     logo_url: Optional[str] = Field(None, max_length=500)

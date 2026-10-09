@@ -107,6 +107,11 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
         .then(() => refreshUser())
         .catch(() => {});
     },
+    workspaceMoved: async (slug) => {
+      await refreshUser();
+      // In the same tick as the new profile, so the old address never reads as a lost workspace.
+      navigate(pathForTab(slug, 'preferences', 'campaigns', 'workspace'), true);
+    },
     openCreateWorkspace: () => navigate('/create-workspace'),
     openAddAccount: () => navigate('/auth/add-account'),
   }), [accounts, navigate, refreshUser, switchAccount, user, workspace]);
