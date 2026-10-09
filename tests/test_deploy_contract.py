@@ -56,52 +56,48 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("flock -w", self.script)
 
     def test_same_healthy_commit_is_not_recreated(self):
-        self.assertIn("CURRENT_REPO_SHA", self.script)
         self.assertIn("buyerly-app:${EXPECTED_SHA}", self.script)
         self.assertIn('bash "${SCRIPT_DIR}/verify_docker_log_rotation.sh"', self.script)
-        early_exit = self.script[:self.script.index("Creating a mandatory database backup")]
+        early_exit = self.script[:self.script.index("Creating a database backup")]
         self.assertIn("INITIAL_ENV_HASH", early_exit)
         self.assertIn("FINAL_ENV_HASH", early_exit)
+        self.assertIn("git rev-parse HEAD", early_exit)
         self.assertIn("post_deploy_smoke.py", early_exit)
         self.assertIn("is already deployed and healthy", self.script)
 
-    def test_cloudflare_tunnel_is_trusted_out_of_the_box(self):
-        # cloudflared on the host reaches nginx from the Docker gateway (#301).
-        self.assertIn("CLOUDFLARE_TUNNEL_CIDRS: ${CLOUDFLARE_TUNNEL_CIDRS:-172.16.0.0/12}", self.compose)
-        self.assertIn("BUYERLY_EDGE ${phase} cloudflared_service=", self.workflow)
+    def test_only_the_tunnel_is_trusted_to_report_the_visitor(self):
+        # cloudflared has a fixed address in the compose network; nothing else
+        # may supply CF-Connecting-IP, and no proxy sits in between.
+        self.assertIn("CLOUDFLARE_TUNNEL_CIDRS: 172.30.0.10/32", self.compose)
+        self.assertIn("ipv4_address: 172.30.0.10", self.compose)
+        self.assertIn("subnet: 172.30.0.0/24", self.compose)
+        self.assertIn('TRUSTED_PROXY_CIDRS: ""', self.compose)
 
-    def test_web_port_is_loopback_only_behind_the_tunnel(self):
-        # The site is reachable only through the Cloudflare Tunnel (#301).
-        self.assertIn('- "${WEB_PORT_BINDING:-127.0.0.1:8080}:80"', self.compose)
-        self.assertIn('WEB_LOOPBACK_BINDING="127.0.0.1:8080"', self.script)
+    def test_site_is_reachable_only_through_the_tunnel(self):
+        self.assertIn('- "127.0.0.1:8080:8080"', self.compose)
+        self.assertEqual(self.compose.count("ports:"), 1)
+        self.assertIn('profiles: ["tunnel"]', self.compose)
+        self.assertIn("TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}", self.compose)
         self.assertIn("https://buyerly.app/health/live", self.script)
         self.assertIn("cf-ray", self.script)
-        self.assertIn("capture_previous_web_binding", self.script)
-        self.assertGreaterEqual(self.script.count("\nensure_loopback_web_binding\n"), 2)
         after_smoke = self.script[self.script.index('record_running_version "${TARGET_SHA}"'):]
-        self.assertIn("verify_public_edge", after_smoke)
-        rollback = self.script[self.script.index("verify_public_edge() {"):]
-        self.assertIn('set_web_port_binding "${PREVIOUS_WEB_PORT_BINDING}"', rollback)
-        for marker in ("listeners=", "published=", "host_proxies=", "web_port_binding="):
-            self.assertIn(f"BUYERLY_EDGE ${{phase}} {marker}", self.workflow)
-        self.assertIn("ss -Hltnp", self.workflow)
-        self.assertIn("edge_report after", self.workflow)
+        self.assertIn("public_edge_ok", after_smoke)
 
     def test_production_roles_are_separate_services(self):
-        for service in ("db:", "api:", "web:", "worker:", "migrate:"):
+        for service in ("db:", "api:", "worker:", "migrate:", "tunnel:"):
             self.assertIn(f"  {service}", self.compose)
+        for retired in ("web:", "redis:", "bot:"):
+            self.assertNotIn(f"\n  {retired}", self.compose)
         self.assertIn("postgres:16-alpine", self.compose)
         self.assertIn('command: ["python", "-m", "services.api"]', self.compose)
-        self.assertNotIn("  bot:", self.compose)
         self.assertNotIn("services.bot", self.compose)
         self.assertIn('command: ["python", "-m", "services.worker"]', self.compose)
+        self.assertIn('profiles: ["migrate"]', self.compose)
 
     def test_cutover_has_migration_healthcheck_and_rollback(self):
         self.assertIn("docker compose run --rm migrate", self.script)
         self.assertIn("wait_for_container buyerly-api", self.script)
         self.assertIn("wait_for_container buyerly-worker", self.script)
-        self.assertIn("wait_for_container buyerly-web", self.script)
-        self.assertIn("wait_for_ready", self.script)
         self.assertIn("rollback", self.script)
 
     def test_docker_logs_are_bounded_for_every_service(self):
@@ -109,13 +105,13 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn('max-size: "20m"', self.compose)
         self.assertIn('max-file: "5"', self.compose)
         self.assertIn('compress: "true"', self.compose)
-        self.assertGreaterEqual(self.compose.count("logging: *default-logging"), 4)
+        # x-app (api, worker, migrate), db and tunnel.
+        self.assertEqual(self.compose.count("logging: *default-logging"), 3)
         for container_name in (
             "buyerly-db",
-            "buyerly-redis",
             "buyerly-api",
-            "buyerly-web",
             "buyerly-worker",
+            "buyerly-tunnel",
         ):
             self.assertIn(container_name, self.log_verification_script)
         self.assertIn("verify_docker_log_rotation.sh", self.script)
@@ -125,7 +121,6 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("greater than or equal to 2", self.cleanup_script)
         self.assertIn("docker ps -aq", self.cleanup_script)
         self.assertIn("buyerly-app", self.cleanup_script)
-        self.assertIn("buyerly-web", self.cleanup_script)
         self.assertIn("docker image prune", self.cleanup_script)
         self.assertIn("docker builder prune", self.cleanup_script)
         self.assertNotIn("docker volume prune", self.cleanup_script)
@@ -138,7 +133,7 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn('DISK_CRITICAL_PERCENT="${DISK_CRITICAL_PERCENT:-90}"', self.disk_script)
         cleanup_position = self.script.index("cleanup_docker_artifacts.sh")
         disk_check_position = self.script.index("check_disk_usage.sh")
-        build_position = self.script.index("docker compose build --pull api web")
+        build_position = self.script.index("docker compose build --pull api")
         self.assertLess(cleanup_position, disk_check_position)
         self.assertLess(disk_check_position, build_position)
 
@@ -212,45 +207,40 @@ class TestDeployContract(unittest.TestCase):
             self.compose,
         )
 
-    def test_user_uploads_are_durable_and_served_by_web(self):
-        nginx = (Path(__file__).parents[1] / "frontend" / "nginx.conf").read_text()
+    def test_user_uploads_are_durable_and_served_by_the_api(self):
+        server = (Path(__file__).parents[1] / "api" / "server.py").read_text()
         self.assertIn("buyerly-uploads:/app/uploads", self.compose)
-        self.assertIn(
-            "buyerly-uploads:/usr/share/nginx/html/uploads:ro",
-            self.compose,
-        )
-        self.assertIn("preserve_legacy_uploads", self.script)
-        self.assertIn("location /uploads/", nginx)
-        self.assertIn('X-Content-Type-Options "nosniff"', nginx)
+        self.assertIn('app.mount("/uploads", _ImmutableStaticFiles(', server)
+        self.assertIn("immutable", server)
 
-    def test_react_frontend_is_the_production_web_image(self):
+    def test_one_image_carries_the_api_and_the_react_build(self):
+        self.assertIn("FROM node:22-alpine AS frontend", self.dockerfile)
+        self.assertIn("RUN npm ci", self.dockerfile)
+        self.assertIn("RUN npm run build", self.dockerfile)
+        self.assertIn("frontend/package-lock.json", self.dockerfile)
+        self.assertIn("FROM python:3.12-slim", self.dockerfile)
+        self.assertIn("COPY --from=frontend /frontend/dist ./frontend/dist", self.dockerfile)
         root = Path(__file__).parents[1]
-        frontend_dockerfile = (root / "frontend" / "Dockerfile").read_text()
-        self.assertIn("dockerfile: frontend/Dockerfile", self.compose)
-        self.assertIn("FROM node:22-alpine AS build", frontend_dockerfile)
-        self.assertIn("RUN npm ci", frontend_dockerfile)
-        self.assertIn("RUN npm run build", frontend_dockerfile)
-        self.assertIn("FROM nginx:1.27-alpine", frontend_dockerfile)
-        self.assertIn("frontend/package-lock.json", frontend_dockerfile)
+        self.assertFalse((root / "frontend" / "Dockerfile").exists())
+        self.assertFalse((root / "frontend" / "nginx.conf").exists())
 
     def test_web_bundle_knows_its_release(self):
         # An open tab compares the release it was built from with /health/live
         # and offers a reload once they differ (#303).
         root = Path(__file__).parents[1]
-        frontend_dockerfile = (root / "frontend" / "Dockerfile").read_text()
         vite_config = (root / "frontend" / "vite.config.ts").read_text()
-        web_service = self.compose.split("\n  web:\n", 1)[1].split("\n  worker:\n", 1)[0]
-        self.assertIn("APP_VERSION: ${APP_VERSION:-local}", web_service)
-        self.assertIn("ARG APP_VERSION=local", frontend_dockerfile)
+        build = self.compose.split("x-app: &app\n", 1)[1].split("\n  image:", 1)[0]
+        self.assertIn("APP_VERSION: ${APP_VERSION:-local}", build)
+        self.assertIn("ARG APP_VERSION=local", self.dockerfile)
         self.assertLess(
-            frontend_dockerfile.index("ENV APP_VERSION=${APP_VERSION}"),
-            frontend_dockerfile.index("RUN npm run build"),
+            self.dockerfile.index("ENV APP_VERSION=${APP_VERSION}"),
+            self.dockerfile.index("RUN npm run build"),
         )
         self.assertIn("__APP_VERSION__: JSON.stringify(process.env.APP_VERSION || 'local')", vite_config)
         self.assertIn('export APP_VERSION="${TARGET_SHA}"', self.script)
         self.assertLess(
             self.script.index('export APP_VERSION="${TARGET_SHA}"'),
-            self.script.index("docker compose build --pull api web"),
+            self.script.index("docker compose build --pull api"),
         )
 
     def test_account_day_boundary_has_an_independent_minute_job(self):
@@ -266,7 +256,7 @@ class TestDeployContract(unittest.TestCase):
     def test_no_hardcoded_secrets_in_deploy_script(self):
         import re
         self.assertIsNone(re.search(r"\bre_[A-Za-z0-9_]{10,}", self.script))
-        self.assertIn("ensure_email_settings", self.script)
+        self.assertIn("ensure_repository_secrets", self.script)
 
     def test_meta_token_key_is_generated_and_validated_without_logging_it(self):
         self.assertIn("ensure_meta_token_encryption_key", self.script)
@@ -276,7 +266,6 @@ class TestDeployContract(unittest.TestCase):
 
     def test_rollback_restores_the_previous_image_version(self):
         self.assertIn("PREVIOUS_APP_TAG", self.script)
-        self.assertIn("PREVIOUS_WEB_TAG", self.script)
         self.assertIn('export APP_VERSION="${PREVIOUS_SHA}"', self.script)
         self.assertNotIn('export APP_VERSION="${CURRENT_SHA}"', self.script)
 
@@ -311,11 +300,8 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("actions/setup-node@v7", self.workflow)
         self.assertIn("actions/setup-python@v7", self.workflow)
 
-    def test_production_repository_owner_and_origin_are_fail_closed(self):
+    def test_production_repository_origin_is_fail_closed(self):
         self.assertIn("EXPECTED_GIT_REPOSITORY", self.script)
-        self.assertIn("normalize_repository_ownership", self.script)
-        self.assertIn("chown -R", self.script)
-        self.assertIn("sudo -n", self.script)
         self.assertIn("git remote get-url origin", self.script)
         self.assertIn("NORMALIZED_ORIGIN", self.script)
         self.assertIn("@hiurano", self.codeowners)
@@ -323,7 +309,7 @@ class TestDeployContract(unittest.TestCase):
     def test_production_build_context_matches_the_exact_git_revision(self):
         reset_position = self.script.index('git reset --hard "${TARGET_SHA}"')
         clean_position = self.script.index("git clean -ffd -q")
-        build_position = self.script.index("docker compose build --pull api web")
+        build_position = self.script.index("docker compose build --pull api")
         self.assertLess(reset_position, clean_position)
         self.assertLess(clean_position, build_position)
         self.assertIn("git status --short --untracked-files=all", self.script)

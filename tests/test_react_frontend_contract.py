@@ -39,7 +39,7 @@ class TestReactFrontendContract(unittest.TestCase):
             ROOT / "frontend" / "src" / "components" / "onboarding" / "WelcomeView.tsx"
         ).read_text()
         cls.compose = (ROOT / "docker-compose.yml").read_text()
-        cls.dockerfile = (ROOT / "frontend" / "Dockerfile").read_text()
+        cls.dockerfile = (ROOT / "Dockerfile").read_text()
         cls.main = (ROOT / "frontend" / "src" / "main.tsx").read_text()
         cls.styles = (
             ROOT / "frontend" / "src" / "styles" / "index.css"
@@ -221,9 +221,9 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("<NotFoundView", self.app)
 
     def test_production_ui_contract_points_to_the_react_runtime(self):
-        self.assertIn("dockerfile: frontend/Dockerfile", self.compose)
+        self.assertIn("FROM node:22-alpine AS frontend", self.dockerfile)
         self.assertIn("COPY frontend/src ./src", self.dockerfile)
-        self.assertIn("COPY --from=build /app/dist", self.dockerfile)
+        self.assertIn("COPY --from=frontend /frontend/dist ./frontend/dist", self.dockerfile)
         self.assertIn("import './styles/index.css'", self.main)
         self.assertTrue(self.styles.startswith("@import './tokens.css';"))
 

@@ -19,10 +19,6 @@ class Settings(BaseSettings):
         default="postgresql+asyncpg://buyerly:buyerly_secret@localhost:5432/buyerly",
         description="Async SQLAlchemy database URL",
     )
-    REDIS_URL: str = Field(
-        default="",
-        description="Shared Redis URL for atomic production rate limiting",
-    )
     TRUSTED_PROXY_CIDRS: str = Field(
         default="",
         description="Comma-separated proxy networks allowed to supply forwarding headers",
@@ -66,7 +62,7 @@ class Settings(BaseSettings):
     )
     API_PORT: int = Field(default=8080, description="Web API and static files port")
     API_HOST: str = Field(default="0.0.0.0", description="Web API host")
-    SERVE_STATIC: bool = Field(default=True, description="Serve the built React app from FastAPI in single-process local runs")
+    SERVE_STATIC: bool = Field(default=True, description="Serve the built React app, public pages and uploads from FastAPI")
     ENABLE_DEV_AUTH: bool = Field(default=False, description="Enable dev auth fallback for local tests")
     CORS_ORIGINS: str = Field(
         default="",

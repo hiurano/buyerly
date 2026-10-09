@@ -39,10 +39,11 @@ class AssetReferences(HTMLParser):
 
 class TestLegalPageFiles(unittest.TestCase):
     def test_public_pages_ship_with_fingerprinted_styles_and_local_fonts(self):
-        nginx = (PROJECT_ROOT / "frontend" / "nginx.conf").read_text()
-        self.assertIn("location = / {", nginx)
-        self.assertIn("try_files /landing.html =404", nginx)
-        self.assertIn("^/(about|privacy|terms|data-deletion)/?$", nginx)
+        server = (PROJECT_ROOT / "api" / "server.py").read_text()
+        self.assertIn('"/": "landing.html"', server)
+        for filename in DOCUMENTS:
+            if filename != "landing.html":
+                self.assertIn(f'"/{filename.removesuffix(".html")}": "{filename}"', server)
         for filename in DOCUMENTS:
             source = (PUBLIC_ROOT / filename).read_text()
             built = (BUILD_ROOT / filename).read_text()
