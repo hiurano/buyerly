@@ -30,6 +30,9 @@ utcnow_naive = utcnow
 
 class User(Base):
     __tablename__ = "users"
+    # A new user's INSERT leaves out columns the database fills itself (title),
+    # so code and tests on a revision before them can still create users.
+    __mapper_args__ = {"eager_defaults": False}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     telegram_id = Column(String, unique=True, nullable=True, index=True, doc="Telegram user ID (for push notifications)")
@@ -37,7 +40,7 @@ class User(Base):
     full_name = Column(String, default="", nullable=False)
     first_name = Column(String, default="", nullable=False, doc="First name")
     last_name = Column(String, default="", nullable=False, doc="Last name")
-    title = Column(String(128), default="", server_default="", nullable=False, doc="Job title or role, as in Linear's Profile")
+    title = Column(String(128), server_default="", nullable=False, doc="Job title or role, as in Linear's Profile (0035)")
     email = Column(String, unique=True, nullable=True, index=True, doc="Normalized unique work email")
     email_verified_at = Column(DateTime(timezone=True), nullable=True, index=True, doc="Date and time the email was confirmed (UTC)")
     unconfirmed_email = Column(String, nullable=True, index=True, doc="Newly requested email, pending OTP confirmation")

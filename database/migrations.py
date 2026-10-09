@@ -68,6 +68,10 @@ POST_BASELINE_COLUMNS = {
     "web_sessions": {
         "location",
     },
+    # Added by the profile title migration (0035).
+    "users": {
+        "title",
+    },
 }
 
 # Tables that were added after the legacy baseline and may be absent on pre-migration databases.
