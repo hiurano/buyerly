@@ -1,7 +1,8 @@
 // Exercise the real App with a synthetic API: Settings → Administration lists
-// Workspace, Teams and Members for an owner or admin, after Linear. Workspace
+// Workspace, Teams, Members and Security for an owner or admin, after Linear. Workspace
 // renames the workspace, uploads its logo, moves it to a new URL and deletes it;
-// Teams shows Linear's toolbar over an empty table; a buyer sees no
+// Teams shows Linear's toolbar over an empty table; Security turns the invite
+// link on, copies it, resets it and turns it off again; a buyer sees no
 // Administration and its addresses open Preferences instead.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -42,6 +43,8 @@ try {
       id: 8, slug: 'beta', name: 'Beta', role: 'owner', badge_text: 'B', badge_color: '#26B5CE', logo_url: '', is_active: false,
     };
     let deleted = false;
+    let inviteLink = null;
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin });
     const me = () => {
       const workspaces = deleted ? [{ ...other, is_active: true }] : [workspace, other];
       return {
@@ -76,6 +79,15 @@ try {
         deleted = true;
         return route.fulfill({ json: { status: 'ok', message: 'Workspace deleted', next_workspace_id: other.id } });
       }
+      if (path === `/api/workspaces/${workspace.id}/invite-link`) {
+        if (verb === 'POST') inviteLink ??= '/invite/inv_first';
+        if (verb === 'DELETE') inviteLink = null;
+        return route.fulfill({ json: { invite_url: inviteLink } });
+      }
+      if (verb === 'POST' && path === `/api/workspaces/${workspace.id}/invite-link/reset`) {
+        inviteLink = '/invite/inv_second';
+        return route.fulfill({ json: { invite_url: inviteLink } });
+      }
       if (path.startsWith('/uploads/')) return route.fulfill({ body: PNG, contentType: 'image/png' });
       if (verb === 'GET' && path === '/api/inbox') {
         return route.fulfill({ json: { items: [], has_more: false, unread_count: 0 } });
@@ -103,6 +115,9 @@ try {
         await page.waitForURL(`${origin}/alpha/settings`);
         assert.equal(await nav.getByRole('heading', { name: 'Administration' }).count(), 0);
         assert.equal(await nav.getByRole('link', { name: 'Workspace' }).count(), 0);
+        await page.goto(`${origin}/alpha/settings/security`);
+        await page.getByRole('heading', { name: 'Preferences', exact: true }).waitFor();
+        await page.waitForURL(`${origin}/alpha/settings`);
         await page.goto(`${origin}/alpha/settings/members`);
         await page.getByRole('heading', { name: 'Preferences', exact: true }).waitFor();
         await page.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined));
@@ -124,7 +139,7 @@ try {
       const administration = nav.locator('.preferences-nav-group').last();
       assert.deepEqual(
         await administration.locator('.preferences-nav-label').evaluateAll((labels) => labels.map((item) => item.textContent)),
-        ['Workspace', 'Teams', 'Members'],
+        ['Workspace', 'Teams', 'Members', 'Security'],
       );
       assert.equal(await administration.locator('.preferences-nav-heading').textContent(), 'Administration');
       // Time & region and Member onboarding are left out.
@@ -175,6 +190,34 @@ try {
       await assertNoOverflow('Teams');
       await page.screenshot({ path: `${output}/teams-${role}-${width}.png`, fullPage: true });
 
+      // Security: Linear's Invite links — off, on with the link, copy, reset after a confirm, off again.
+      await page.goto(`${origin}/alpha-media/settings/security`);
+      await page.getByRole('heading', { name: 'Security', exact: true }).waitFor();
+      await page.getByRole('heading', { name: 'Workspace access' }).waitFor();
+      await page.getByText('A uniquely generated invite link allows anyone with the link to join your workspace').waitFor();
+      await page.getByText('Who can invite new members to the workspace').waitFor();
+      const linkSwitch = page.getByRole('switch', { name: 'Enable invite links' });
+      await page.waitForFunction(() => document.querySelector('[role="switch"][aria-label="Enable invite links"]')?.getAttribute('aria-busy') !== 'true');
+      assert.equal(await linkSwitch.getAttribute('aria-checked'), 'false');
+      assert.equal(await page.getByRole('button', { name: 'Copy', exact: true }).count(), 0);
+      await linkSwitch.click();
+      await page.getByText(`${origin}/invite/inv_first`).waitFor();
+      assert.equal(await linkSwitch.getAttribute('aria-checked'), 'true');
+      await page.getByRole('button', { name: 'Copy', exact: true }).click();
+      await page.getByText('Invite link copied to clipboard').waitFor();
+      assert.equal(await page.evaluate(() => navigator.clipboard.readText()), `${origin}/invite/inv_first`);
+      await assertNoOverflow('Security');
+      await page.screenshot({ path: `${output}/security-${role}-${width}.png`, fullPage: true });
+      await page.getByRole('button', { name: 'Reset invite link' }).click();
+      const resetDialog = page.getByRole('dialog', { name: 'Reset invite link?' });
+      await resetDialog.getByText('This will expire the current link and generate a new one.').waitFor();
+      await resetDialog.getByRole('button', { name: 'Reset invite link' }).click();
+      await page.getByText('Invite link replaced').waitFor();
+      await page.getByText(`${origin}/invite/inv_second`).waitFor();
+      await linkSwitch.click();
+      await page.getByRole('button', { name: 'Copy', exact: true }).waitFor({ state: 'detached' });
+      assert.equal(await linkSwitch.getAttribute('aria-checked'), 'false');
+
       // Danger zone: only the owner deletes, after typing the name and acknowledging.
       await page.goto(`${origin}/alpha-media/settings/workspace`);
       const remove = page.getByRole('button', { name: 'Delete workspace' });
@@ -203,11 +246,14 @@ try {
         ['PATCH', '/api/workspaces/7', { logo_url: '/uploads/workspaces/logo_1_new.png' }],
         ['PATCH', '/api/workspaces/7', { slug: 'beta' }],
         ['PATCH', '/api/workspaces/7', { slug: 'alpha-media' }],
+        ['POST', '/api/workspaces/7/invite-link', {}],
+        ['POST', '/api/workspaces/7/invite-link/reset', {}],
+        ['DELETE', '/api/workspaces/7/invite-link', null],
         ...(role === 'owner' ? [['DELETE', '/api/workspaces/7', null]] : []),
       ];
       assert.deepEqual(writes.map(write => [write.verb, write.path, write.body]), expected);
       assert.deepEqual(errors, []);
-      console.log(`Workspace settings: rename, logo, URL, Teams and delete passed for ${label}`);
+      console.log(`Workspace settings: rename, logo, URL, Teams, Security and delete passed for ${label}`);
     } catch (error) {
       await page.screenshot({ path: `${output}/failure-${role}-${width}.png`, fullPage: true });
       console.error(errors);

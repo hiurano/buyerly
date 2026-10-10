@@ -10,6 +10,7 @@ from api.schemas.members import (
     TransferOwnershipRequest,
     CreateWorkspaceInviteRequest,
     WorkspaceInviteItem,
+    WorkspaceInviteLinkResponse,
     PublicInviteInfoResponse,
 )
 from api.schemas.auth import (
@@ -86,6 +87,7 @@ __all__ = [
     "TransferOwnershipRequest",
     "CreateWorkspaceInviteRequest",
     "WorkspaceInviteItem",
+    "WorkspaceInviteLinkResponse",
     "PublicInviteInfoResponse",
     "UserProfileResponse",
     "RequestTemporaryPasswordRequest",

@@ -117,6 +117,7 @@ export const SETTINGS_PATHS = {
   workspace: 'workspace',
   teams: 'teams',
   members: 'members',
+  'workspace-security': 'security',
   profile: 'account/profile',
   notifications: 'account/notifications',
   'priority-notifications': 'account/notifications/priority-filter',

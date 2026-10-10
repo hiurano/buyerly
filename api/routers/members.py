@@ -20,6 +20,7 @@ from api.schemas import (
     TransferOwnershipRequest,
     UpdateMemberRoleRequest,
     WorkspaceInviteItem,
+    WorkspaceInviteLinkResponse,
     WorkspaceMemberItem,
 )
 from core.config import settings
@@ -613,6 +614,151 @@ async def list_workspace_invites(
                 )
             )
         return items
+
+
+def _invite_link_query(workspace_id: int):
+    """The workspace's invite link: a pending public invite with no use limit and no expiry."""
+    return select(WorkspaceInvite).where(
+        WorkspaceInvite.workspace_id == workspace_id,
+        WorkspaceInvite.email.is_(None),
+        WorkspaceInvite.status == "pending",
+        WorkspaceInvite.max_uses == 0,
+        WorkspaceInvite.expires_at.is_(None),
+    )
+
+
+def _invite_url(token: str) -> str:
+    base_url = settings.WEBAPP_URL.rstrip("/") if settings.WEBAPP_URL else ""
+    return f"{base_url}/invite/{token}" if base_url else f"/invite/{token}"
+
+
+async def _require_invite_link_admin(session, workspace_id: int, user: User, action: str) -> None:
+    """Only a workspace owner or admin manages the invite link, as in Linear."""
+    ws = (await session.execute(select(Workspace).where(Workspace.id == workspace_id))).scalar_one_or_none()
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    caller_member = (
+        await session.execute(
+            select(WorkspaceMember).where(
+                WorkspaceMember.workspace_id == workspace_id,
+                WorkspaceMember.user_id == user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    caller_role = caller_member.role if caller_member else None
+    if not caller_role and user.role == "admin":
+        grant = await _active_support_grant(session, user.id, workspace_id)
+        if grant:
+            caller_role = grant.role or "admin"
+    if not caller_role:
+        await record_security_event_and_raise(
+            session,
+            status_code=403,
+            detail="You do not have access to this workspace",
+            user=user,
+            workspace_id=workspace_id,
+            action=action,
+            resource_type="workspace",
+            resource_id=str(workspace_id),
+        )
+    if caller_role not in ("owner", "admin"):
+        raise HTTPException(status_code=403, detail="Only workspace admins can manage the invite link")
+
+
+async def _revoke_invite_links(session, workspace_id: int) -> int:
+    links = (await session.execute(_invite_link_query(workspace_id).with_for_update())).scalars().all()
+    for link in links:
+        link.status = "revoked"
+    return len(links)
+
+
+async def _create_invite_link(session, workspace_id: int, user: User, event_type: str) -> WorkspaceInvite:
+    link = WorkspaceInvite(
+        workspace_id=workspace_id,
+        token=f"inv_{secrets.token_urlsafe(24)}",
+        email=None,
+        role="buyer",
+        inviter_user_id=user.id,
+        status="pending",
+        max_uses=0,
+        used_count=0,
+        expires_at=None,
+    )
+    session.add(link)
+    await session.flush()
+    session.add(
+        AuditEvent(
+            workspace_id=workspace_id,
+            owner_user_id=user.id,
+            actor_type="user",
+            actor_id=str(user.id),
+            category="WORKSPACE_INVITE",
+            event_type=event_type,
+            status="SUCCESS",
+            message="Invite link enabled" if event_type == "INVITE_LINK_ENABLE" else "Invite link reset",
+            details={"invite_id": link.id},
+        )
+    )
+    return link
+
+
+@router.get("/workspaces/{workspace_id}/invite-link", response_model=WorkspaceInviteLinkResponse)
+async def get_workspace_invite_link(workspace_id: int, user: User = Depends(get_current_user)):
+    """Settings → Security → Invite links: the current link, or null while links are off."""
+    async with async_session_maker() as session:
+        await _require_invite_link_admin(session, workspace_id, user, "VIEW_INVITE_LINK")
+        link = (
+            await session.execute(_invite_link_query(workspace_id).order_by(WorkspaceInvite.id.desc()).limit(1))
+        ).scalar_one_or_none()
+        return WorkspaceInviteLinkResponse(invite_url=_invite_url(link.token) if link else None)
+
+
+@router.post("/workspaces/{workspace_id}/invite-link", response_model=WorkspaceInviteLinkResponse)
+async def enable_workspace_invite_link(workspace_id: int, user: User = Depends(get_current_user)):
+    """Turns invite links on; an existing link stays the same."""
+    async with async_session_maker() as session:
+        await _require_invite_link_admin(session, workspace_id, user, "ENABLE_INVITE_LINK")
+        link = (
+            await session.execute(_invite_link_query(workspace_id).order_by(WorkspaceInvite.id.desc()).limit(1))
+        ).scalar_one_or_none()
+        if not link:
+            link = await _create_invite_link(session, workspace_id, user, "INVITE_LINK_ENABLE")
+            await session.commit()
+        return WorkspaceInviteLinkResponse(invite_url=_invite_url(link.token))
+
+
+@router.post("/workspaces/{workspace_id}/invite-link/reset", response_model=WorkspaceInviteLinkResponse)
+async def reset_workspace_invite_link(workspace_id: int, user: User = Depends(get_current_user)):
+    """Linear's "Reset invite link": the current link stops working and a new one replaces it."""
+    async with async_session_maker() as session:
+        await _require_invite_link_admin(session, workspace_id, user, "RESET_INVITE_LINK")
+        await _revoke_invite_links(session, workspace_id)
+        link = await _create_invite_link(session, workspace_id, user, "INVITE_LINK_RESET")
+        await session.commit()
+        return WorkspaceInviteLinkResponse(invite_url=_invite_url(link.token))
+
+
+@router.delete("/workspaces/{workspace_id}/invite-link", response_model=WorkspaceInviteLinkResponse)
+async def disable_workspace_invite_link(workspace_id: int, user: User = Depends(get_current_user)):
+    """Turns invite links off: the link stops working."""
+    async with async_session_maker() as session:
+        await _require_invite_link_admin(session, workspace_id, user, "DISABLE_INVITE_LINK")
+        if await _revoke_invite_links(session, workspace_id):
+            session.add(
+                AuditEvent(
+                    workspace_id=workspace_id,
+                    owner_user_id=user.id,
+                    actor_type="user",
+                    actor_id=str(user.id),
+                    category="WORKSPACE_INVITE",
+                    event_type="INVITE_LINK_DISABLE",
+                    status="SUCCESS",
+                    message="Invite link disabled",
+                    details={},
+                )
+            )
+            await session.commit()
+        return WorkspaceInviteLinkResponse(invite_url=None)
 
 
 @router.delete("/workspaces/{workspace_id}/invites/{invite_id}")

@@ -638,6 +638,68 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 dave_member = (await session.execute(select(WorkspaceMember).where(WorkspaceMember.workspace_id == ws_id, WorkspaceMember.user_id == dave_db.id))).scalar_one()
                 self.assertEqual(dave_member.role, 'viewer')
 
+    async def test_invite_link_from_security_settings(self):
+        """Settings → Security → Invite links: enable, copy, reset, disable; admins only."""
+        artem_headers = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
+        async with self.test_session_maker() as session:
+            ws_id = (await session.execute(select(Workspace).where(Workspace.slug == 'buyerly'))).scalar_one().id
+            for telegram_id, username in (('777000661', 'dana'), ('777000662', 'eli')):
+                session.add(User(telegram_id=telegram_id, username=username, full_name=username.title(), role='buyer', is_approved=True))
+            await session.commit()
+        dana_headers = await session_headers(self.test_session_maker, {'id': 777000661, 'first_name': 'Dana', 'username': 'dana'})
+        eli_headers = await session_headers(self.test_session_maker, {'id': 777000662, 'first_name': 'Eli', 'username': 'eli'})
+        url = f'/api/workspaces/{ws_id}/invite-link'
+        token_of = lambda invite_url: invite_url.rsplit('/', 1)[-1]
+
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
+            # Off until an admin turns it on.
+            self.assertIsNone((await client.get(url, headers=artem_headers)).json()['invite_url'])
+
+            enabled = await client.post(url, headers=artem_headers)
+            self.assertEqual(enabled.status_code, 200)
+            first_url = enabled.json()['invite_url']
+            self.assertIn('/invite/inv_', first_url)
+            # Turning it on again keeps the same link; reading it returns that link.
+            self.assertEqual((await client.post(url, headers=artem_headers)).json()['invite_url'], first_url)
+            self.assertEqual((await client.get(url, headers=artem_headers)).json()['invite_url'], first_url)
+            # The link is not one of the emailed invitations Members lists as pending.
+            invites = (await client.get(f'/api/workspaces/{ws_id}/invites', headers=artem_headers)).json()
+            link_invite = next(item for item in invites if item['token'] == token_of(first_url))
+            self.assertIsNone(link_invite['email'])
+            self.assertEqual(link_invite['max_uses'], 0)
+            self.assertFalse(link_invite['expires_at'])
+
+            # Anyone with the link joins as a buyer, and it keeps working.
+            joined = await client.post(f'/api/invites/{token_of(first_url)}/accept', headers=dana_headers)
+            self.assertEqual(joined.status_code, 200)
+            self.assertEqual(joined.json()['role'], 'buyer')
+            # A buyer can't see or change the link.
+            self.assertEqual((await client.get(url, headers=dana_headers)).status_code, 403)
+            self.assertEqual((await client.post(f'{url}/reset', headers=dana_headers)).status_code, 403)
+            self.assertEqual((await client.delete(url, headers=dana_headers)).status_code, 403)
+
+            # Reset: the old link stops working, the new one works.
+            reset = await client.post(f'{url}/reset', headers=artem_headers)
+            self.assertEqual(reset.status_code, 200)
+            second_url = reset.json()['invite_url']
+            self.assertNotEqual(second_url, first_url)
+            self.assertEqual((await client.post(f'/api/invites/{token_of(first_url)}/accept', headers=eli_headers)).status_code, 400)
+            self.assertEqual((await client.get(url, headers=artem_headers)).json()['invite_url'], second_url)
+
+            # Disable: no link, and the last one stops working.
+            disabled = await client.delete(url, headers=artem_headers)
+            self.assertEqual(disabled.status_code, 200)
+            self.assertIsNone(disabled.json()['invite_url'])
+            self.assertIsNone((await client.get(url, headers=artem_headers)).json()['invite_url'])
+            self.assertEqual((await client.post(f'/api/invites/{token_of(second_url)}/accept', headers=eli_headers)).status_code, 400)
+
+        async with self.test_session_maker() as session:
+            events = (await session.execute(
+                select(AuditEvent.event_type).where(AuditEvent.event_type.like('INVITE_LINK_%')).order_by(AuditEvent.id)
+            )).scalars().all()
+            self.assertEqual(events, ['INVITE_LINK_ENABLE', 'INVITE_LINK_RESET', 'INVITE_LINK_DISABLE'])
+
     async def test_resend_invite_emails_again_and_renews_expiry(self):
         artem_headers = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
         async with self.test_session_maker() as session:

@@ -1370,6 +1370,98 @@ html[data-theme='dark'] .linear-sidebar-badge,
   height: 64px;
 }
 
+/* Linear's Security → "Enable invite links": a 60px row with a switch. */
+.preferences-row-item--toggle {
+  height: 60px;
+}
+
+/*
+ * A subsection inside a section (Linear's Security → Invite links): a 13px
+ * title, its description 4px below, then the card 12px below that.
+ */
+.preferences-subsection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 16px;
+  margin-bottom: 12px;
+}
+
+.preferences-subsection-title {
+  margin: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-regular);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.preferences-subsection-desc {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-family: var(--font-regular);
+  font-size: 13px;
+  font-weight: 450;
+  line-height: 22px;
+}
+
+/* Linear's copy field under an enabled invite link: the link, Reset inside, then Copy. */
+.preferences-invite-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-top: 1px solid var(--color-border-primary);
+}
+
+.preferences-invite-link-field {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 32px;
+  padding: 0 4px 0 12px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: 6px;
+}
+
+.preferences-invite-link-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font-family: var(--font-regular);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: all;
+}
+
+.preferences-invite-link-reset {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text-tertiary);
+  background: transparent;
+  cursor: pointer;
+}
+
+.preferences-invite-link-reset:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--item-hover-bg);
+}
+
+.preferences-invite-link-reset:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
+}
+
 /*
  * Linear's Leave workspace button in Profile: no fill, no visible border,
  * 32px pill, 12px sides, 13px medium text; 0.6 opacity while it is off.

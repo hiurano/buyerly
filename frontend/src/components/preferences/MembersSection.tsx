@@ -4,13 +4,15 @@ import { apiRequest } from '@/lib/api';
 import type { Workspace } from '@/lib/types';
 import { Button } from '@/ui/Button';
 import { DataState } from '@/ui/DataState';
-import { LinearCloseIcon } from '@/icons/LinearIcons';
+import { LinearCheckIcon, LinearCloseIcon } from '@/icons/LinearIcons';
 import { toast } from '@/ui/toast';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
@@ -33,6 +35,49 @@ interface InviteItem {
 }
 
 type LoadState = 'loading' | 'ready' | 'error';
+
+/** Linear's filter beside the search; Applications, Suspended and Left workspace have no Buyerly counterpart. */
+type MemberFilter = 'all' | 'members' | 'invites';
+const FILTER_LABELS: Record<MemberFilter, string> = {
+  all: 'All',
+  members: 'Members',
+  invites: 'Pending invites',
+};
+
+const csvCell = (value: string) => (/[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
+
+/** Linear's Export CSV: every member and pending invitation, whatever the search or filter shows. */
+function downloadMembersCsv(workspace: Workspace, members: MemberItem[], invites: InviteItem[]) {
+  const rows = [
+    ['Name', 'Username', 'Email', 'Status', 'Joined'],
+    ...members.map((member) => [member.full_name, member.username, member.email || '', roleLabel(member.role), member.joined_at]),
+    ...invites.map((invite) => [
+      '',
+      '',
+      invite.email || '',
+      `${roleLabel(invite.role)} (${invite.status === 'expired' ? 'Expired' : 'Invited'})`,
+      '',
+    ]),
+  ];
+  const blob = new Blob([`${rows.map((row) => row.map(csvCell).join(',')).join('\r\n')}\r\n`], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${workspace.slug}-members.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+/** Linear marks only the roles above a member with a tinted badge. */
+const RoleStatus: React.FC<{ role: string }> = ({ role }) => (
+  role === 'owner' || role === 'admin' ? (
+    <span className="inline-flex h-[19px] items-center rounded-[3px] bg-[var(--role-badge-bg)] px-1.5 text-[12px] font-[450] text-[var(--role-badge-fg)]">
+      {roleLabel(role)}
+    </span>
+  ) : (
+    <>{roleLabel(role)}</>
+  )
+);
 
 /** Linear's short date in the Joined column: "Sep 25". */
 function shortDate(iso: string): string {
@@ -219,8 +264,9 @@ const RowMenu: React.FC<{ label: string; children: React.ReactNode }> = ({ label
 );
 
 /**
- * Settings → Members, after Linear: search, an Invite button, and one table
- * grouped into Active members and pending Invited emails. An invited row's
+ * Settings → Members, after Linear: search, the All / Members / Pending invites
+ * filter, Export CSV and Invite, and one table grouped into Active members and
+ * pending Invited emails; owners and admins carry a badge. An invited row's
  * menu resends or revokes the invitation; your own row's menu leaves the
  * workspace, and an owner or admin changes another member's role or removes them.
  */
@@ -234,6 +280,7 @@ export const MembersSection: React.FC<{
   const [state, setState] = useState<LoadState>('loading');
   const [loadError, setLoadError] = useState('');
   const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<MemberFilter>('all');
   const [inviteOpen, setInviteOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [roleTarget, setRoleTarget] = useState<MemberItem | null>(null);
@@ -306,7 +353,7 @@ export const MembersSection: React.FC<{
       </div>
 
       <div className="flex items-center gap-2">
-        <label className="relative flex h-8 w-[244px] max-w-full items-center">
+        <label className="relative flex h-8 w-[244px] min-w-0 max-w-full items-center">
           <span className="sr-only">Search by name or email</span>
           <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" className="pointer-events-none absolute left-2.5 fill-[var(--text-tertiary)]">
             <path d="M7 1.5a5.5 5.5 0 0 1 4.38 8.82l3.15 3.15a.75.75 0 1 1-1.06 1.06l-3.15-3.15A5.5 5.5 0 1 1 7 1.5Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
@@ -319,7 +366,38 @@ export const MembersSection: React.FC<{
             className="h-8 w-full rounded-[6px] border border-[var(--color-border-secondary)] bg-transparent pl-8 pr-2 text-[13px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)] focus:border-[var(--action-primary)]"
           />
         </label>
+        {canManage && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={`Show: ${FILTER_LABELS[filter]}`}
+                className="flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] border border-[var(--color-border-secondary)] px-2.5 text-[13px] text-[var(--text-primary)] outline-none hover:bg-[var(--item-hover-bg)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
+              >
+                {FILTER_LABELS[filter]}
+                <svg width="10" height="10" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" className="text-[var(--text-tertiary)]">
+                  <path d="M3.47 5.97a.75.75 0 0 1 1.06 0L8 9.44l3.47-3.47a.75.75 0 1 1 1.06 1.06l-4 4a.75.75 0 0 1-1.06 0l-4-4a.75.75 0 0 1 0-1.06Z" />
+                </svg>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" sideOffset={4}>
+              <div className="h-[6px] w-full" />
+              <DropdownMenuRadioGroup value={filter} onValueChange={(value) => setFilter(value as MemberFilter)}>
+                {(Object.keys(FILTER_LABELS) as MemberFilter[]).map((key) => (
+                  <DropdownMenuRadioItem key={key} value={key}>
+                    <span className="truncate">{FILTER_LABELS[key]}</span>
+                    {filter === key && <LinearCheckIcon size={14} />}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+              <div className="h-[6px] w-full" />
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         <div className="flex-1" />
+        {canManage && state === 'ready' && (
+          <Button className="max-sm:hidden" onClick={() => downloadMembersCsv(workspace, members, invites)}>Export CSV</Button>
+        )}
         {canManage && (
           <Button variant="primary" onClick={() => setInviteOpen(true)}>Invite</Button>
         )}
@@ -348,8 +426,8 @@ export const MembersSection: React.FC<{
             <span role="columnheader" className="sr-only">Actions</span>
           </div>
 
-          <GroupHeader label="Active" count={visibleMembers.length} />
-          {visibleMembers.map((member) => (
+          {filter !== 'invites' && <GroupHeader label="Active" count={visibleMembers.length} />}
+          {filter !== 'invites' && visibleMembers.map((member) => (
             <div key={member.id} role="row" className={`${ROW_GRID} group h-11 px-2`}>
               <span role="cell" className="flex min-w-0 items-center gap-2.5">
                 <Initials label={member.full_name || member.username} avatarUrl={member.avatar_url} />
@@ -361,7 +439,7 @@ export const MembersSection: React.FC<{
                 </span>
               </span>
               <span role="cell" className="truncate text-[var(--text-secondary)]">{member.email || ''}</span>
-              <span role="cell" className="text-[var(--text-secondary)]">{roleLabel(member.role)}</span>
+              <span role="cell" className="text-[var(--text-secondary)]"><RoleStatus role={member.role} /></span>
               <span role="cell" className="text-[var(--text-secondary)]">{shortDate(member.joined_at)}</span>
               <span role="cell" className="flex justify-end">
                 {/* Linear gives your row no menu while nobody else could run the workspace. */}
@@ -389,7 +467,7 @@ export const MembersSection: React.FC<{
             </div>
           ))}
 
-          {canManage && visibleInvites.length > 0 && (
+          {canManage && filter !== 'members' && (visibleInvites.length > 0 || filter === 'invites') && (
             <>
               <GroupHeader label="Invited" count={visibleInvites.length} />
               {visibleInvites.map((invite) => (

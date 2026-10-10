@@ -10,8 +10,8 @@ interface WelcomeViewProps {
   onCompleted: () => void;
 }
 
-interface CreatedInvite {
-  invite_url: string;
+interface WorkspaceInviteLink {
+  invite_url: string | null;
 }
 
 export const WelcomeView: React.FC<WelcomeViewProps> = ({
@@ -86,10 +86,12 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
   const copyInviteLink = async () => {
     setError('');
     try {
-      const invite = await apiRequest<CreatedInvite>(`/api/workspaces/${workspace.id}/invites`, {
+      // Linear's onboarding hands out the workspace invite link, the one Settings → Security turns off.
+      const invite = await apiRequest<WorkspaceInviteLink>(`/api/workspaces/${workspace.id}/invite-link`, {
         method: 'POST',
-        body: JSON.stringify({ role: 'buyer', max_uses: 0, expires_in_days: 7 }),
+        body: JSON.stringify({}),
       });
+      if (!invite.invite_url) throw new Error('Could not copy an invitation link');
       await navigator.clipboard.writeText(new URL(invite.invite_url, window.location.origin).toString());
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2200);

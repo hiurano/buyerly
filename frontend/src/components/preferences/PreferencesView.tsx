@@ -20,6 +20,7 @@ import {
 } from './NotificationsSection';
 import { ConnectedAccountsSection } from './ConnectedAccountsSection';
 import { SecuritySection } from './SecuritySection';
+import { WorkspaceSecuritySection } from './WorkspaceSecuritySection';
 import { SettingsPageIcon } from './SettingsPageIcon';
 import { LinearToggle } from '@/ui/LinearToggle';
 import { findModelContext, setWebMcpEnabled, useWebMcpEnabled } from '@/webmcp/register';
@@ -339,6 +340,10 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
 
             {canAdminister && section === 'members' && (
               <MembersSection workspace={workspace} onUserChanged={onUserChanged} />
+            )}
+
+            {canAdminister && section === 'workspace-security' && (
+              <WorkspaceSecuritySection workspace={workspace} />
             )}
 
             {section === 'preferences' && (

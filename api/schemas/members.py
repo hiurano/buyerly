@@ -47,6 +47,11 @@ class WorkspaceInviteItem(BaseModel):
     created_at: str
 
 
+class WorkspaceInviteLinkResponse(BaseModel):
+    """Settings → Security → Invite links: the link, or null while invite links are off."""
+    invite_url: Optional[str] = None
+
+
 class PublicInviteInfoResponse(BaseModel):
     valid: bool
     status: str

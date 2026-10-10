@@ -189,7 +189,8 @@ export type SettingsSection =
   | 'security'
   | 'workspace'
   | 'teams'
-  | 'members';
+  | 'members'
+  | 'workspace-security';
 /** Linear's "Open issue…" family: what each O-then-letter palette opens. */
 export type OpenPaletteKind = 'campaign' | 'adset' | 'ad' | 'rule' | 'account' | 'settings';
 export type InterfaceTheme = 'system' | 'light' | 'dark';
