@@ -204,7 +204,7 @@ class MetaClient:
         if not self.GRAPH_VERSION_PATTERN.fullmatch(requested_version):
             raise ValueError("META_GRAPH_VERSION must look like v26.0")
         self.graph_version = requested_version
-        self.base_url = f"https://graph.facebook.com/{self.graph_version}"
+        self.base_url = f"{settings.META_GRAPH_BASE_URL.rstrip('/')}/{self.graph_version}"
         self._client: Optional[httpx.AsyncClient] = None
         # Retry backoff waits through this, so a simulation can count the
         # seconds a retry costs without spending them.

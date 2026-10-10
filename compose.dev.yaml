@@ -1,8 +1,24 @@
 # Local development: the whole app on this computer, with changes visible at
 # once. `docker compose -f compose.dev.yaml up`, then open http://localhost:5173
 # and sign in with "Log in with password": dev / buyerly-dev.
-# Everything here is local test data; nothing reaches production or Meta.
+# Everything here is local test data; nothing reaches production or Meta:
+# Meta is the fake from scripts/fake_meta.py, with invented ad accounts.
 name: buyerly-dev
+
+x-app-environment: &app-environment
+  DATABASE_URL: postgresql+asyncpg://buyerly:buyerly-dev@db:5432/buyerly
+  WEBAPP_URL: http://${BUYERLY_WEB_HOST:-localhost}:${BUYERLY_WEB_PORT:-5173}
+  SERVE_STATIC: "false"
+  SESSION_COOKIE_SECURE: "false"
+  BOOTSTRAP_ADMIN_USERNAME: dev
+  BOOTSTRAP_ADMIN_PASSWORD: buyerly-dev
+  OTP_PEPPER: local-development-only
+  META_TOKEN_ENCRYPTION_KEY: CKOJW1eA4PLOe59rNqizKftdfj0lN17_CIFSpe7ihLw=
+  META_GRAPH_BASE_URL: http://fake-meta:8090
+  # File events do not cross the Windows bind mount; watch by polling.
+  WATCHFILES_FORCE_POLLING: "true"
+  TZ: UTC
+  BUYERLY_DEV_SEED: "1"
 
 services:
   db:
@@ -19,24 +35,25 @@ services:
       timeout: 3s
       retries: 20
 
+  # Invented ad accounts whose numbers grow through the day; rules can pause
+  # and rebudget them. Its state (who paused what, when) is in buyerly-dev-meta.
+  fake-meta:
+    image: buyerly-app:dev
+    command: ["uvicorn", "scripts.fake_meta:app", "--host", "0.0.0.0", "--port", "8090"]
+    environment:
+      FAKE_META_STATE: /data/fake-meta.json
+    volumes:
+      - .:/app
+      - buyerly-dev-meta:/data
+    depends_on:
+      - api
+
   # The API restarts by itself when Python code changes.
   api:
     build: .
     image: buyerly-app:dev
     command: ["sh", "-c", "python -m services.database && python -m scripts.dev_seed && exec uvicorn services.api:app --host 0.0.0.0 --port 8080 --reload --reload-dir api --reload-dir core --reload-dir database --reload-dir meta_api --reload-dir rules --reload-dir scheduler --reload-dir services"]
-    environment:
-      DATABASE_URL: postgresql+asyncpg://buyerly:buyerly-dev@db:5432/buyerly
-      WEBAPP_URL: http://${BUYERLY_WEB_HOST:-localhost}:${BUYERLY_WEB_PORT:-5173}
-      SERVE_STATIC: "false"
-      SESSION_COOKIE_SECURE: "false"
-      BOOTSTRAP_ADMIN_USERNAME: dev
-      BOOTSTRAP_ADMIN_PASSWORD: buyerly-dev
-      OTP_PEPPER: local-development-only
-      META_TOKEN_ENCRYPTION_KEY: CKOJW1eA4PLOe59rNqizKftdfj0lN17_CIFSpe7ihLw=
-      # File events do not cross the Windows bind mount; watch by polling.
-      WATCHFILES_FORCE_POLLING: "true"
-      TZ: UTC
-      BUYERLY_DEV_SEED: "1"
+    environment: *app-environment
     volumes:
       - .:/app
       - buyerly-dev-uploads:/app/uploads
@@ -45,6 +62,20 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  # Syncs the fake Meta's numbers and runs the rules, like production's worker.
+  # It does not reload: after changing worker code, restart this service.
+  worker:
+    image: buyerly-app:dev
+    command: ["python", "-m", "services.worker"]
+    # Starts beside the API, which may still be migrating: retry until ready.
+    restart: unless-stopped
+    environment: *app-environment
+    volumes:
+      - .:/app
+    depends_on:
+      - api
+      - fake-meta
 
   # Vite: the page updates in the browser as soon as a frontend file is saved.
   web:
@@ -66,3 +97,4 @@ volumes:
   buyerly-dev-postgres:
   buyerly-dev-uploads:
   buyerly-dev-node-modules:
+  buyerly-dev-meta:

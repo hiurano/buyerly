@@ -46,6 +46,13 @@ class Settings(BaseSettings):
         default="v26.0",
         description="Pinned Meta Graph API version (for example v26.0)",
     )
+    META_GRAPH_BASE_URL: str = Field(
+        default="https://graph.facebook.com",
+        description=(
+            "Graph API origin. Only compose.dev.yaml changes it, to the local fake "
+            "Meta (scripts/fake_meta.py); production always talks to Meta."
+        ),
+    )
     META_APP_ID: str = Field(default="", description="Meta application ID")
     META_APP_SECRET: str = Field(default="", description="Meta application secret")
     META_LOGIN_CONFIG_ID: str = Field(
