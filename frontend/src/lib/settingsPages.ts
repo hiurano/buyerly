@@ -14,13 +14,14 @@ export const SETTINGS_PAGE_KEYWORDS: Record<SettingsPage, string> = {
   'connected-accounts': 'connected accounts telegram connect disconnect',
   workspace: 'workspace name logo url address slug delete workspace',
   teams: 'teams team create team',
-  members: 'members invite invitations people team users roles',
+  members: 'members invite invitations people team users roles export csv',
+  'workspace-security': 'security workspace access invite links invitations admins permissions',
 };
 
 type SettingsPageGroup = { heading: string; pages: { section: SettingsPage; label: string }[] };
 
 /** Linear's Administration pages; only a workspace owner or admin sees them. */
-export const ADMINISTRATION_PAGES: SettingsPage[] = ['workspace', 'teams', 'members'];
+export const ADMINISTRATION_PAGES: SettingsPage[] = ['workspace', 'teams', 'members', 'workspace-security'];
 
 export function canAdministerWorkspace(workspace: Pick<Workspace, 'role'>): boolean {
   return workspace.role === 'owner' || workspace.role === 'admin';
@@ -29,7 +30,9 @@ export function canAdministerWorkspace(workspace: Pick<Workspace, 'role'>): bool
 /**
  * The pages in the sidebar's order, under the sidebar's names, in Linear's
  * "Open settings…" groups: the account's own pages first with no heading,
- * then "Administration" in Linear's order: Workspace, Teams, Members.
+ * then "Administration" in Linear's order: Workspace, Teams, Members, Security.
+ * The account's "Security & access" is the member's own sessions; the
+ * Administration "Security" is the workspace's, at Linear's /settings/security.
  */
 export const SETTINGS_PAGE_GROUPS: SettingsPageGroup[] = [
   {
@@ -48,6 +51,7 @@ export const SETTINGS_PAGE_GROUPS: SettingsPageGroup[] = [
       { section: 'workspace', label: 'Workspace' },
       { section: 'teams', label: 'Teams' },
       { section: 'members', label: 'Members' },
+      { section: 'workspace-security', label: 'Security' },
     ],
   },
 ];

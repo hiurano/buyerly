@@ -4,7 +4,7 @@
 // workspace (an owner transfers ownership first) from its row or from Profile,
 // and Log out (menu item or Alt+Shift+Q) ends the session — all after Linear.
 import assert from 'node:assert/strict';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 
 const require = createRequire(new URL('../frontend/package.json', import.meta.url));
@@ -188,6 +188,35 @@ try {
       assert.equal(await row('Olga Self').count(), 0);
       await row('Bob Buyer').waitFor();
       await page.getByRole('searchbox', { name: 'Search by name or email' }).fill('');
+
+      // Linear's filter: All, Members, Pending invites (no Applications, Suspended or Left workspace here).
+      const pickFilter = async (current, next) => {
+        await page.getByRole('button', { name: `Show: ${current}` }).click();
+        assert.deepEqual(await page.getByRole('menuitemradio').allTextContents(), ['All', 'Members', 'Pending invites']);
+        await page.getByRole('menuitemradio', { name: next }).click();
+        await page.locator('[role="menu"]').waitFor({ state: 'detached' });
+      };
+      await pickFilter('All', 'Pending invites');
+      await row('waiting@example.test').waitFor();
+      assert.equal(await row('Bob Buyer').count(), 0);
+      await pickFilter('Pending invites', 'Members');
+      await row('Bob Buyer').waitFor();
+      assert.equal(await row('waiting@example.test').count(), 0);
+      await pickFilter('Members', 'All');
+      await row('waiting@example.test').waitFor();
+
+      // Export CSV: every member and pending invitation; on a phone the toolbar keeps Invite only.
+      const exportButton = page.getByRole('button', { name: 'Export CSV', exact: true });
+      if (width < 640) {
+        assert.equal(await exportButton.isVisible(), false);
+      } else {
+        const [download] = await Promise.all([page.waitForEvent('download'), exportButton.click()]);
+        assert.equal(download.suggestedFilename(), `${workspace.slug}-members.csv`);
+        const csv = (await readFile(await download.path(), 'utf8')).split('\r\n');
+        assert.equal(csv[0], 'Name,Username,Email,Status,Joined');
+        assert.equal(csv.includes('Bob Buyer,bob,bob@example.test,Buyer,2026-09-25T10:00:00Z'), true);
+        assert.equal(csv.includes(',,waiting@example.test,Buyer (Invited),'), true);
+      }
 
       // Invite: one field, several comma-separated emails, one toast per email.
       await page.getByRole('button', { name: 'Invite', exact: true }).click();
