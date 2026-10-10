@@ -32,7 +32,17 @@ docker compose up -d
 curl -fsS http://127.0.0.1:8080/health/ready
 ```
 
-Для разработки вне Docker API запускается на порту 8080 — его ожидает Vite proxy:
+## Локальная разработка
+
+Всё приложение на своём компьютере, правки видны сразу (нужен только Docker Desktop):
+
+```bash
+docker compose -f compose.dev.yaml up -d --build
+```
+
+Сайт — http://localhost:5173, вход через «Log in with password»: `dev` / `buyerly-dev`. Изменения во frontend появляются в браузере без перезагрузки, API перезапускается сам при правке Python-кода. База отдельная и локальная (том `buyerly-dev-postgres`), production и Meta не затрагиваются. Остановить — `docker compose -f compose.dev.yaml down`; с `-v` удаляются и локальные данные.
+
+Без Docker API запускается на порту 8080 — его ожидает Vite proxy:
 
 ```bash
 uvicorn services.api:app --host 127.0.0.1 --port 8080 --reload

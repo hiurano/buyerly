@@ -1,0 +1,67 @@
+# Local development: the whole app on this computer, with changes visible at
+# once. `docker compose -f compose.dev.yaml up`, then open http://localhost:5173
+# and sign in with "Log in with password": dev / buyerly-dev.
+# Everything here is local test data; nothing reaches production or Meta.
+name: buyerly-dev
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: buyerly
+      POSTGRES_USER: buyerly
+      POSTGRES_PASSWORD: buyerly-dev
+    volumes:
+      - buyerly-dev-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U buyerly -d buyerly"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # The API restarts by itself when Python code changes.
+  api:
+    build: .
+    image: buyerly-app:dev
+    command: ["sh", "-c", "python -m services.database && exec uvicorn services.api:app --host 0.0.0.0 --port 8080 --reload --reload-dir api --reload-dir core --reload-dir database --reload-dir meta_api --reload-dir rules --reload-dir scheduler --reload-dir services"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://buyerly:buyerly-dev@db:5432/buyerly
+      WEBAPP_URL: http://localhost:5173
+      SERVE_STATIC: "false"
+      SESSION_COOKIE_SECURE: "false"
+      BOOTSTRAP_ADMIN_USERNAME: dev
+      BOOTSTRAP_ADMIN_PASSWORD: buyerly-dev
+      OTP_PEPPER: local-development-only
+      META_TOKEN_ENCRYPTION_KEY: CKOJW1eA4PLOe59rNqizKftdfj0lN17_CIFSpe7ihLw=
+      # File events do not cross the Windows bind mount; watch by polling.
+      WATCHFILES_FORCE_POLLING: "true"
+      TZ: UTC
+    volumes:
+      - .:/app
+      - buyerly-dev-uploads:/app/uploads
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Vite: the page updates in the browser as soon as a frontend file is saved.
+  web:
+    image: node:22-alpine
+    working_dir: /frontend
+    command: ["sh", "-c", "npm ci && exec npm run dev"]
+    environment:
+      VITE_API_ORIGIN: http://api:8080
+      VITE_POLL: "1"
+    volumes:
+      - ./frontend:/frontend
+      - buyerly-dev-node-modules:/frontend/node_modules
+    ports:
+      - "127.0.0.1:5173:5173"
+    depends_on:
+      - api
+
+volumes:
+  buyerly-dev-postgres:
+  buyerly-dev-uploads:
+  buyerly-dev-node-modules:
