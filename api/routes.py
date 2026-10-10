@@ -72,6 +72,7 @@ from api.routers import (
     search_router,
     settings_router,
     summary_router,
+    teams_router,
     telegram_router,
     trash_router,
     workspaces_router,
@@ -142,6 +143,7 @@ router.include_router(accounts_router)
 router.include_router(rules_router)
 router.include_router(search_router)
 router.include_router(trash_router)
+router.include_router(teams_router)
 router.include_router(summary_router)
 router.include_router(settings_router)
 router.include_router(audit_router)
@@ -172,6 +174,7 @@ class _RoutesModule(sys.modules[__name__].__class__):
             import api.routers.search
             import api.routers.settings
             import api.routers.summary
+            import api.routers.teams
             import api.routers.trash
             import api.routers.workspaces
             import api.routers.health
@@ -193,6 +196,7 @@ class _RoutesModule(sys.modules[__name__].__class__):
             api.routers.search.async_session_maker = value
             api.routers.settings.async_session_maker = value
             api.routers.summary.async_session_maker = value
+            api.routers.teams.async_session_maker = value
             api.routers.trash.async_session_maker = value
             api.routers.workspaces.async_session_maker = value
             api.routers.health.async_session_maker = value

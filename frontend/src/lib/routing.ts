@@ -21,6 +21,8 @@ export type Route =
       /** Priority inbox tab, as Linear keeps it in the address. */
       inboxTab?: 'priority' | 'other';
       settingsSection?: SettingsSection;
+      /** With settingsSection 'team': "<KEY>" or "<KEY>/<page>". */
+      teamPath?: string;
     }
   | { kind: 'unknown' };
 
@@ -103,6 +105,13 @@ export function parseRoute(location: Location = window.location): Route {
   if (parts[1] === 'settings' && parts.length === 2) {
     return { kind: 'workspace', workspace, tab: 'preferences' };
   }
+  if (
+    parts[1] === 'settings'
+    && parts[2] === 'teams'
+    && (parts.length === 4 || (parts.length === 5 && (TEAM_PAGES as readonly string[]).includes(parts[4])))
+  ) {
+    return { kind: 'workspace', workspace, tab: 'preferences', settingsSection: 'team', teamPath: parts.slice(3).join('/') };
+  }
   if (parts[1] === 'settings') {
     const subpath = parts.slice(2).join('/');
     const section = (Object.keys(SETTINGS_PATHS) as Array<keyof typeof SETTINGS_PATHS>)
@@ -116,6 +125,7 @@ export function parseRoute(location: Location = window.location): Route {
 export const SETTINGS_PATHS = {
   workspace: 'workspace',
   teams: 'teams',
+  'new-team': 'new-team',
   members: 'members',
   'workspace-security': 'security',
   profile: 'account/profile',
@@ -127,8 +137,16 @@ export const SETTINGS_PATHS = {
   security: 'account/security',
 } as const satisfies Partial<Record<SettingsSection, string>>;
 
-export function isRoutedSettingsSection(section: SettingsSection): section is keyof typeof SETTINGS_PATHS {
+/** A team's pages under /settings/teams/<KEY>/, after its overview. */
+export const TEAM_PAGES = ['general', 'members', 'accounts'] as const;
+
+function hasSettingsPath(section: SettingsSection): section is keyof typeof SETTINGS_PATHS {
   return section in SETTINGS_PATHS;
+}
+
+/** Settings sections whose address the app keeps in the URL. */
+export function isRoutedSettingsSection(section: SettingsSection): boolean {
+  return hasSettingsPath(section) || section === 'team';
 }
 
 export function pathForTab(
@@ -136,10 +154,14 @@ export function pathForTab(
   tab: ActiveTab,
   entity: AdsManagerEntity = 'campaigns',
   settingsSection: SettingsSection = 'preferences',
+  teamPath = '',
 ): string {
   if (tab === 'campaigns') return `/${workspace}/ads-manager/${entity}`;
   if (tab === 'preferences') {
-    return isRoutedSettingsSection(settingsSection)
+    if (settingsSection === 'team') {
+      return teamPath ? `/${workspace}/settings/teams/${teamPath}` : `/${workspace}/settings/teams`;
+    }
+    return hasSettingsPath(settingsSection)
       ? `/${workspace}/settings/${SETTINGS_PATHS[settingsSection]}`
       : `/${workspace}/settings`;
   }

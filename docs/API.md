@@ -89,6 +89,25 @@ Slug нормализуется в ASCII и ограничивается 60 си
 | `POST /api/workspaces/{id}/leave` | — | добровольный выход текущего пользователя из воркспейса |
 | `POST /api/workspaces/{id}/transfer-ownership` | `new_owner_user_id` | передача прав владельца воркспейса другому участнику (только `owner`) |
 
+## Команды (Teams)
+
+Settings → Administration → Teams, как в Linear (#371). Команда объединяет участников воркспейса и рекламные кабинеты, с которыми они работают; доступ она не меняет. Читают команды все участники воркспейса, создают, меняют, архивируют, удаляют и восстанавливают — `owner` и `admin`. Имя (до 48 символов) и идентификатор (1–7 латинских букв и цифр, с буквы, хранится заглавными) уникальны среди неудалённых команд без учёта регистра: повтор — 409 «A team with this name already exists» / «… identifier …». Ответ — `TeamItem`: `id`, `name`, `key`, `description`, `created_at`, `retired_at`, `deleted_at`, `restorable_until`, `member_user_ids`, `account_ids`, `is_member`.
+
+| Метод и путь | Тело | Назначение |
+|---|---|---|
+| `GET /api/workspaces/{workspace_id}/teams` | `?status=all\|active\|retired\|deleted` | команды по фильтру Linear: `all` — все неудалённые, `deleted` — Recently deleted (30 дней, потом удаляются насовсем) |
+| `POST /api/workspaces/{workspace_id}/teams` | `name`, `key`, `description?` | создать команду; создатель сразу в ней (201) |
+| `PATCH /api/workspaces/{workspace_id}/teams/{team_id}` | `name?`, `key?`, `description?` | General: имя, идентификатор, описание |
+| `POST /api/workspaces/{workspace_id}/teams/{team_id}/retire` | — | Retire: команда уходит из Active в Retired, участники и кабинеты сохраняются |
+| `POST /api/workspaces/{workspace_id}/teams/{team_id}/restore` | — | вернуть архивную в Active или удалённую — как была; 409, если её имя или идентификатор уже заняты |
+| `DELETE /api/workspaces/{workspace_id}/teams/{team_id}` | — | удалить; 30 дней её можно восстановить, ответ — `restorable_until` |
+| `POST /api/workspaces/{workspace_id}/teams/{team_id}/members` | `user_ids` | добавить участников воркспейса (уже состоящих пропускает; чужих — 400) |
+| `DELETE /api/workspaces/{workspace_id}/teams/{team_id}/members/{member_user_id}` | — | убрать из команды; себя может убрать любой участник команды (Leave team) |
+| `POST /api/workspaces/{workspace_id}/teams/{team_id}/accounts` | `account_ids` | добавить кабинеты этого воркспейса (`accounts.id`; чужие — 400) |
+| `DELETE /api/workspaces/{workspace_id}/teams/{team_id}/accounts/{account_pk}` | — | убрать кабинет из команды |
+
+Ушедший или исключённый из воркспейса участник пропадает из всех его команд; удалённый кабинет — тоже.
+
 ## Приглашения (Invites)
 
 | Метод и путь | Тело | Назначение |

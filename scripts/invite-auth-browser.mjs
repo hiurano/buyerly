@@ -124,6 +124,8 @@ try {
       if (verb === 'GET' && ['/api/accounts', '/api/meta/connections', '/api/account-groups'].includes(path)) {
         return route.fulfill({ json: [] });
       }
+      // Settings reads the workspace teams (#371) for "Your teams" and the Members Teams column.
+      if (verb === 'GET' && path.startsWith('/api/workspaces/') && path.endsWith('/teams')) return route.fulfill({ json: [] });
       errors.push(`Unexpected API request: ${verb} ${path}`);
       return route.fulfill({ status: 404, json: { detail: 'Unexpected test request' } });
     });
