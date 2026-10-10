@@ -51,6 +51,10 @@ META_GRAPH_VERSION=v26.0
 включает контейнер туннеля, второй — его токен (Cloudflare Zero Trust → Networks
 → Tunnels → `buyerly-prod`). Локально их нет, и туннель не запускается.
 
+`META_GRAPH_BASE_URL` на сервере не задают: по умолчанию это
+`https://graph.facebook.com`. Другой адрес ставит только `compose.dev.yaml` —
+локальный фейковый Meta (`scripts/fake_meta.py`) для разработки и превью.
+
 Деплой сам, один раз, создаёт и сохраняет в `.env` (значения в журнал не
 попадают):
 
