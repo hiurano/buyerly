@@ -372,15 +372,19 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
             </h2>
           </div>
 
-          {/* Always shown, at every width: the "+" on group headers needs a pointer over them. */}
+          {/* Always shown, at every width: the "+" on group headers needs a pointer over them.
+              Like Linear's "New project": the label shows above 1024px, below it only the "+". */}
           <Tooltip content="Create new rule" shortcut="C">
             <button
               type="button"
               aria-label="New rule"
               onClick={() => openCreateRuleModal()}
-              className="flex h-[28px] w-[28px] items-center justify-center rounded-full border border-transparent text-[var(--text-tertiary)] outline-none transition-all hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] [@media(hover:none)_and_(pointer:coarse)]:h-10 [@media(hover:none)_and_(pointer:coarse)]:w-10"
+              className="flex h-[28px] w-[28px] items-center justify-center rounded-full border border-transparent text-[var(--text-tertiary)] outline-none transition-all hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] min-[1025px]:w-auto min-[1025px]:gap-[6px] min-[1025px]:pl-[8px] min-[1025px]:pr-[10px] [@media(hover:none)_and_(pointer:coarse)]:h-10 [@media(hover:none)_and_(pointer:coarse)]:min-w-10"
             >
               <LinearPlusIcon size={14} />
+              <span aria-hidden="true" className="hidden whitespace-nowrap text-[12px] font-medium min-[1025px]:inline">
+                New rule
+              </span>
             </button>
           </Tooltip>
         </div>
