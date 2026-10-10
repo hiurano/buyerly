@@ -23,10 +23,10 @@ services:
   api:
     build: .
     image: buyerly-app:dev
-    command: ["sh", "-c", "python -m services.database && exec uvicorn services.api:app --host 0.0.0.0 --port 8080 --reload --reload-dir api --reload-dir core --reload-dir database --reload-dir meta_api --reload-dir rules --reload-dir scheduler --reload-dir services"]
+    command: ["sh", "-c", "python -m services.database && python -m scripts.dev_seed && exec uvicorn services.api:app --host 0.0.0.0 --port 8080 --reload --reload-dir api --reload-dir core --reload-dir database --reload-dir meta_api --reload-dir rules --reload-dir scheduler --reload-dir services"]
     environment:
       DATABASE_URL: postgresql+asyncpg://buyerly:buyerly-dev@db:5432/buyerly
-      WEBAPP_URL: http://localhost:5173
+      WEBAPP_URL: http://${BUYERLY_WEB_HOST:-localhost}:${BUYERLY_WEB_PORT:-5173}
       SERVE_STATIC: "false"
       SESSION_COOKIE_SECURE: "false"
       BOOTSTRAP_ADMIN_USERNAME: dev
@@ -36,11 +36,12 @@ services:
       # File events do not cross the Windows bind mount; watch by polling.
       WATCHFILES_FORCE_POLLING: "true"
       TZ: UTC
+      BUYERLY_DEV_SEED: "1"
     volumes:
       - .:/app
       - buyerly-dev-uploads:/app/uploads
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${BUYERLY_API_PORT:-8080}:8080"
     depends_on:
       db:
         condition: service_healthy
@@ -57,7 +58,7 @@ services:
       - ./frontend:/frontend
       - buyerly-dev-node-modules:/frontend/node_modules
     ports:
-      - "127.0.0.1:5173:5173"
+      - "127.0.0.1:${BUYERLY_WEB_PORT:-5173}:5173"
     depends_on:
       - api
 

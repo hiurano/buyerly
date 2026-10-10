@@ -40,7 +40,19 @@ curl -fsS http://127.0.0.1:8080/health/ready
 docker compose -f compose.dev.yaml up -d --build
 ```
 
-Сайт — http://localhost:5173, вход через «Log in with password»: `dev` / `buyerly-dev`. Изменения во frontend появляются в браузере без перезагрузки, API перезапускается сам при правке Python-кода. База отдельная и локальная (том `buyerly-dev-postgres`), production и Meta не затрагиваются. Остановить — `docker compose -f compose.dev.yaml down`; с `-v` удаляются и локальные данные.
+Сайт — http://localhost:5173, вход через «Log in with password»: `dev` / `buyerly-dev`. Изменения во frontend появляются в браузере без перезагрузки, API перезапускается сам при правке Python-кода. База отдельная и локальная (том `buyerly-dev-postgres`), production и Meta не затрагиваются. Остановить — `docker compose -f compose.dev.yaml down`; с `-v` удаляются и локальные данные. Новая база сразу открывается в workspace `Dev` (`scripts/dev_seed.py`), без онбординга.
+
+### Превью ветки
+
+Каждая рабочая копия (`git worktree`) может поднять своё превью рядом с основным стеком и превью других веток — со своей базой, портом и адресом:
+
+```bash
+scripts/preview.sh up     # поднять или обновить, печатает адрес
+scripts/preview.sh down   # остановить и удалить данные превью
+scripts/preview.sh list   # все превью на этом компьютере
+```
+
+Адрес вида `http://<ветка>.localhost:5180/dev`, вход тот же: `dev` / `buyerly-dev`. Отдельный хост нужен, чтобы вход в превью не выкидывал из `localhost:5173` и других превью. Правки в этой рабочей копии видны в её превью сразу, как и в основном стеке.
 
 Без Docker API запускается на порту 8080 — его ожидает Vite proxy:
 
