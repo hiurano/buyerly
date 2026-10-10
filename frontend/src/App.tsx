@@ -31,7 +31,7 @@ import { useWebMcpTools } from '@/webmcp/register';
 import { WorkspaceSessionProvider, type WorkspaceSession } from '@/lib/workspaceSession';
 import { isSmallScreen } from '@/lib/useMediaQuery';
 import { GO_TO_SETTINGS_SECTION, goToTargetFor } from '@/lib/shortcuts';
-import { ADMINISTRATION_PAGES, canAdministerWorkspace } from '@/lib/settingsPages';
+import { ADMINISTRATION_SECTIONS, canAdministerWorkspace } from '@/lib/settingsPages';
 import { logOut } from '@/lib/sessions';
 import {
   chooseAccount,
@@ -78,6 +78,8 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     setCampaignFilterTab,
     settingsSection,
     setSettingsSection,
+    settingsTeamPath,
+    openTeamSettings,
     setWorkspaceName,
     toggleDetailsPane,
     toggleSidebarCollapsed,
@@ -123,7 +125,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   useEffect(() => {
     // A buyer or viewer has no Administration pages: their addresses open Settings itself.
     if (route.settingsSection && !canAdministerWorkspace({ role: workspace.role })
-      && (ADMINISTRATION_PAGES as string[]).includes(route.settingsSection)) {
+      && ADMINISTRATION_SECTIONS.includes(route.settingsSection)) {
       navigate(`/${workspace.slug}/settings`, true);
       return;
     }
@@ -134,13 +136,14 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     if (route.tab === 'preferences') {
       const { settingsSection: current } = useAppStore.getState();
       // Plain /settings keeps any open section that has no address of its own.
-      if (route.settingsSection) setSettingsSection(route.settingsSection);
+      if (route.settingsSection === 'team') openTeamSettings(route.teamPath ?? '');
+      else if (route.settingsSection) setSettingsSection(route.settingsSection);
       else if (isRoutedSettingsSection(current)) setSettingsSection('preferences');
     }
     queueMicrotask(() => {
       syncingRoute.current = false;
     });
-  }, [navigate, route.entity, route.settingsSection, route.tab, setActiveTab, setCampaignFilterTab, setSettingsSection, setWorkspaceName, workspace.name, workspace.role, workspace.slug]);
+  }, [navigate, openTeamSettings, route.entity, route.settingsSection, route.teamPath, route.tab, setActiveTab, setCampaignFilterTab, setSettingsSection, setWorkspaceName, workspace.name, workspace.role, workspace.slug]);
 
   useEffect(() => {
     // Linear closes the small-screen sidebar drawer on every navigation. Some
@@ -148,17 +151,17 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     // The desktop peek over the content closes the same way.
     setSidebarOpen(false);
     setSidebarPeekOpen(false);
-  }, [route, activeTab, settingsSection, setSidebarOpen, setSidebarPeekOpen]);
+  }, [route, activeTab, settingsSection, settingsTeamPath, setSidebarOpen, setSidebarPeekOpen]);
 
   useEffect(() => {
     if (syncingRoute.current) return;
-    const desiredPath = pathForTab(workspace.slug, activeTab, campaignFilterTab, settingsSection);
+    const desiredPath = pathForTab(workspace.slug, activeTab, campaignFilterTab, settingsSection, settingsTeamPath);
     if (window.location.pathname !== desiredPath && !(activeTab === 'inbox' && window.location.pathname.startsWith(`${desiredPath}/`))) {
       const campaignQuery = activeTab === 'campaigns' && window.location.pathname.startsWith(`/${workspace.slug}/ads-manager/`)
         ? window.location.search : '';
       navigate(desiredPath + campaignQuery);
     }
-  }, [activeTab, campaignFilterTab, navigate, settingsSection, workspace.slug]);
+  }, [activeTab, campaignFilterTab, navigate, settingsSection, settingsTeamPath, workspace.slug]);
 
   useEffect(() => {
     // Linear keeps the unread count fresh in the sidebar and the tab title.

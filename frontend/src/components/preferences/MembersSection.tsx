@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { apiRequest } from '@/lib/api';
+import { plural, useTeams } from '@/lib/teams';
 import type { Workspace } from '@/lib/types';
 import { Button } from '@/ui/Button';
 import { DataState } from '@/ui/DataState';
@@ -69,7 +70,7 @@ function downloadMembersCsv(workspace: Workspace, members: MemberItem[], invites
 }
 
 /** Linear marks only the roles above a member with a tinted badge. */
-const RoleStatus: React.FC<{ role: string }> = ({ role }) => (
+export const RoleStatus: React.FC<{ role: string }> = ({ role }) => (
   role === 'owner' || role === 'admin' ? (
     <span className="inline-flex h-[19px] items-center rounded-[3px] bg-[var(--role-badge-bg)] px-1.5 text-[12px] font-[450] text-[var(--role-badge-fg)]">
       {roleLabel(role)}
@@ -80,7 +81,7 @@ const RoleStatus: React.FC<{ role: string }> = ({ role }) => (
 );
 
 /** Linear's short date in the Joined column: "Sep 25". */
-function shortDate(iso: string): string {
+export function shortDate(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -95,7 +96,7 @@ function parseEmails(text: string): string[] {
 
 const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-const Initials: React.FC<{ label: string; avatarUrl?: string; muted?: boolean }> = ({ label, avatarUrl, muted }) => {
+export const Initials: React.FC<{ label: string; avatarUrl?: string; muted?: boolean }> = ({ label, avatarUrl, muted }) => {
   if (avatarUrl) {
     return <img src={avatarUrl} alt="" className="h-5 w-5 shrink-0 rounded-full object-cover" />;
   }
@@ -113,14 +114,14 @@ const Initials: React.FC<{ label: string; avatarUrl?: string; muted?: boolean }>
   );
 };
 
-const GroupHeader: React.FC<{ label: string; count: number }> = ({ label, count }) => (
+export const GroupHeader: React.FC<{ label: string; count: number }> = ({ label, count }) => (
   <div className="flex h-8 items-center gap-1.5 rounded-[4px] bg-[var(--item-hover-bg)] px-2 text-[12px] font-medium text-[var(--text-primary)]">
     {label}
     <span className="text-[var(--text-tertiary)]">{count}</span>
   </div>
 );
 
-const ROW_GRID = 'grid grid-cols-[minmax(0,2.2fr)_minmax(0,2fr)_minmax(96px,1fr)_72px_28px] items-center gap-3';
+const ROW_GRID = 'grid grid-cols-[minmax(0,2.2fr)_minmax(0,2fr)_minmax(96px,1fr)_72px_28px] sm:grid-cols-[minmax(0,2.2fr)_minmax(0,2fr)_minmax(96px,1fr)_72px_72px_28px] items-center gap-3';
 
 interface InviteDialogProps {
   open: boolean;
@@ -240,7 +241,7 @@ const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onClose, o
   );
 };
 
-const RowMenu: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+export const RowMenu: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <button
@@ -286,6 +287,15 @@ export const MembersSection: React.FC<{
   const [roleTarget, setRoleTarget] = useState<MemberItem | null>(null);
   const [removeTarget, setRemoveTarget] = useState<MemberItem | null>(null);
   const canManage = workspace.role === 'owner' || workspace.role === 'admin';
+  // Linear's Teams column: how many teams each member is on, retired ones included.
+  const { teams } = useTeams(workspace.id, 'all');
+  const teamCounts = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const team of teams || []) {
+      for (const userId of team.member_user_ids) counts.set(userId, (counts.get(userId) || 0) + 1);
+    }
+    return counts;
+  }, [teams]);
   /** The server's rule: nobody manages the owner, and only the owner manages an admin. */
   const canManageMember = (member: MemberItem) => canManage && !member.is_current_user
     && member.role !== 'owner' && (member.role !== 'admin' || workspace.role === 'owner');
@@ -422,6 +432,7 @@ export const MembersSection: React.FC<{
             <span role="columnheader">Name</span>
             <span role="columnheader">Email</span>
             <span role="columnheader">Status</span>
+            <span role="columnheader" className="hidden sm:block">Teams</span>
             <span role="columnheader">Joined</span>
             <span role="columnheader" className="sr-only">Actions</span>
           </div>
@@ -440,6 +451,9 @@ export const MembersSection: React.FC<{
               </span>
               <span role="cell" className="truncate text-[var(--text-secondary)]">{member.email || ''}</span>
               <span role="cell" className="text-[var(--text-secondary)]"><RoleStatus role={member.role} /></span>
+              <span role="cell" className="hidden text-[var(--text-secondary)] sm:block">
+                {teamCounts.get(member.user_id) ? plural(teamCounts.get(member.user_id) as number, 'team') : ''}
+              </span>
               <span role="cell" className="text-[var(--text-secondary)]">{shortDate(member.joined_at)}</span>
               <span role="cell" className="flex justify-end">
                 {/* Linear gives your row no menu while nobody else could run the workspace. */}
@@ -480,6 +494,7 @@ export const MembersSection: React.FC<{
                   <span role="cell" className="text-[var(--text-secondary)]">
                     {roleLabel(invite.role)} ({invite.status === 'expired' ? 'Expired' : 'Invited'})
                   </span>
+                  <span role="cell" className="hidden sm:block" />
                   <span role="cell" className="text-[var(--text-secondary)]">{shortDate(invite.created_at)}</span>
                   <span role="cell" className="flex justify-end">
                     <RowMenu label={`Invite actions for ${invite.email}`}>

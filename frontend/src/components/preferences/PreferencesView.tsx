@@ -2,6 +2,7 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useAppStore, type InterfaceTheme } from '@/store/useAppStore';
 import {
   ADMINISTRATION_PAGES,
+  ADMINISTRATION_SECTIONS,
   SETTINGS_PAGE_GROUPS,
   SETTINGS_PAGE_KEYWORDS,
   canAdministerWorkspace,
@@ -12,6 +13,10 @@ import { ProfileSection } from './ProfileSection';
 import { MembersSection } from './MembersSection';
 import { WorkspaceSection } from './WorkspaceSection';
 import { TeamsSection } from './TeamsSection';
+import { NewTeamSection } from './NewTeamSection';
+import { TeamSettingsSection } from './TeamSettingsSection';
+import { TeamIcon } from './TeamIcon';
+import { useTeams } from '@/lib/teams';
 import {
   EmailNotificationsSection,
   NotificationsSection,
@@ -52,6 +57,8 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
     setActiveTab,
     settingsSection: section,
     setSettingsSection: setSection,
+    settingsTeamPath: teamPath,
+    openTeamSettings,
   } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
@@ -68,6 +75,10 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
     || section === 'email-notifications' || section === 'telegram-notifications';
   const selectedTheme = themeOptions.find((option) => option.value === interfaceTheme) || themeOptions[0];
   const canAdminister = canAdministerWorkspace(workspace);
+  const { teams } = useTeams(workspace.id, 'active');
+  // Linear's "Your teams" under Administration: the active teams you are on.
+  const yourTeams = canAdminister ? (teams || []).filter((team) => team.is_member) : [];
+  const openTeamKey = section === 'team' ? teamPath.split('/')[0].toUpperCase() : '';
   const visibleSections = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return (Object.keys(sectionKeywords) as Array<keyof typeof sectionKeywords>).filter((key) =>
@@ -79,7 +90,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
 
   useEffect(() => {
     // A buyer or viewer has no Administration pages; their addresses open Preferences.
-    if (!canAdminister && (ADMINISTRATION_PAGES as string[]).includes(section)) setSection('preferences');
+    if (!canAdminister && ADMINISTRATION_SECTIONS.includes(section)) setSection('preferences');
   }, [canAdminister, section, setSection]);
 
   useEffect(() => {
@@ -251,12 +262,16 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
           {administrationPages.length > 0 && (
             <div className="preferences-nav-group">
               <h2 className="preferences-nav-heading">Administration</h2>
-              {administrationPages.map((page) => (
+              {administrationPages.map((page) => {
+                // A team's pages belong to Teams, unless "Your teams" lists the open one.
+                const active = section === page.section || (page.section === 'teams'
+                  && section === 'team' && !yourTeams.some((team) => team.key === openTeamKey));
+                return (
                 <a
                   key={page.section}
                   href={`#${page.section}`}
-                  className={`preferences-nav-item ${section === page.section ? 'active' : ''}`}
-                  data-active={section === page.section}
+                  className={`preferences-nav-item ${active ? 'active' : ''}`}
+                  data-active={active}
                   onClick={(e) => {
                     e.preventDefault();
                     setSection(page.section);
@@ -265,7 +280,43 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                   <SettingsPageIcon section={page.section} className="preferences-nav-icon" />
                   <span className="preferences-nav-label">{page.label}</span>
                 </a>
+                );
+              })}
+            </div>
+          )}
+
+          {canAdminister && !searchQuery.trim() && (
+            <div className="preferences-nav-group">
+              <h2 className="preferences-nav-heading">Your teams</h2>
+              {yourTeams.map((team) => (
+                <a
+                  key={team.id}
+                  href={`#team-${team.key}`}
+                  className={`preferences-nav-item ${openTeamKey === team.key ? 'active' : ''}`}
+                  data-active={openTeamKey === team.key}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    openTeamSettings(team.key);
+                  }}
+                >
+                  <TeamIcon size={16} className="preferences-nav-icon" />
+                  <span className="preferences-nav-label">{team.name}</span>
+                </a>
               ))}
+              <a
+                href="#new-team"
+                className={`preferences-nav-item ${section === 'new-team' ? 'active' : ''}`}
+                data-active={section === 'new-team'}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSection('new-team');
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className="preferences-nav-icon">
+                  <path d="M8 2.75a.75.75 0 0 1 .75.75v3.75h3.75a.75.75 0 0 1 0 1.5H8.75v3.75a.75.75 0 0 1-1.5 0V8.75H3.5a.75.75 0 0 1 0-1.5h3.75V3.5A.75.75 0 0 1 8 2.75Z" />
+                </svg>
+                <span className="preferences-nav-label">Create a team</span>
+              </a>
             </div>
           )}
 
@@ -336,7 +387,13 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
               <WorkspaceSection workspace={workspace} onUserChanged={onUserChanged} />
             )}
 
-            {canAdminister && section === 'teams' && <TeamsSection />}
+            {canAdminister && section === 'teams' && <TeamsSection workspace={workspace} />}
+
+            {canAdminister && section === 'new-team' && <NewTeamSection workspace={workspace} />}
+
+            {canAdminister && section === 'team' && (
+              <TeamSettingsSection key={teamPath.split('/')[0]} workspace={workspace} path={teamPath} />
+            )}
 
             {canAdminister && section === 'members' && (
               <MembersSection workspace={workspace} onUserChanged={onUserChanged} />

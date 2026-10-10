@@ -76,6 +76,13 @@ from api.schemas.settings import (
 )
 from api.schemas.health import AccountHealthItem
 from api.schemas.search import SearchResponse, SearchResultItem
+from api.schemas.teams import (
+    TeamItem,
+    CreateTeamRequest,
+    UpdateTeamRequest,
+    TeamMembersRequest,
+    TeamAccountsRequest,
+)
 
 __all__ = [
     "WorkspaceItem",
@@ -139,4 +146,9 @@ __all__ = [
     "AccountHealthItem",
     "SearchResponse",
     "SearchResultItem",
+    "TeamItem",
+    "CreateTeamRequest",
+    "UpdateTeamRequest",
+    "TeamMembersRequest",
+    "TeamAccountsRequest",
 ]

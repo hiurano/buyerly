@@ -938,6 +938,77 @@ class AccountGroupMember(Base):
         return f"<AccountGroupMember(group={self.group_id}, account={self.account_id}, position={self.position})>"
 
 
+class Team(Base):
+    """A team inside a workspace, as Linear's Settings → Teams has them (#371).
+
+    A team gathers workspace members and the ad accounts they work on; it
+    changes nobody's access. Retiring keeps it out of the active list;
+    deleting hides it for TEAM_RESTORE_DAYS, during which it can be restored.
+    """
+
+    __tablename__ = "teams"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    workspace_id = Column(Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(48), nullable=False)
+    key = Column(String(7), nullable=False, doc="Identifier, as Linear's team key (e.g. 'BUY')")
+    description = Column(String(255), default="", nullable=False)
+    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+    retired_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
+
+    # Names and identifiers are unique among the teams not deleted, ignoring case.
+    __table_args__ = (
+        Index(
+            "uq_teams_workspace_key",
+            workspace_id,
+            func.upper(key),
+            unique=True,
+            postgresql_where=deleted_at.is_(None),
+        ),
+        Index(
+            "uq_teams_workspace_name",
+            workspace_id,
+            func.lower(name),
+            unique=True,
+            postgresql_where=deleted_at.is_(None),
+        ),
+    )
+
+    def __repr__(self):
+        return f"<Team(id={self.id}, workspace_id={self.workspace_id}, key='{self.key}')>"
+
+
+class TeamMember(Base):
+    """A workspace member on a team; leaving the workspace takes them off every team."""
+
+    __tablename__ = "team_members"
+    __table_args__ = (
+        UniqueConstraint("team_id", "member_id", name="uq_team_member"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    team_id = Column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True)
+    member_id = Column(Integer, ForeignKey("workspace_members.id", ondelete="CASCADE"), nullable=False, index=True)
+    joined_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class TeamAccount(Base):
+    """An ad account a team works on; an account may belong to several teams."""
+
+    __tablename__ = "team_accounts"
+    __table_args__ = (
+        UniqueConstraint("team_id", "account_id", name="uq_team_account"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    team_id = Column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True)
+    account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
 class SummarySnapshot(Base):
     """Durable, workspace/owner-isolated history of successful dashboard refreshes."""
 

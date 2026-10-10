@@ -189,6 +189,10 @@ export type SettingsSection =
   | 'security'
   | 'workspace'
   | 'teams'
+  /** Linear's "Create a new team" page, at /settings/new-team. */
+  | 'new-team'
+  /** One team's pages at /settings/teams/<KEY>[/general|/members|/accounts]; `settingsTeamPath` says which. */
+  | 'team'
   | 'members'
   | 'workspace-security';
 /** Linear's "Open issue…" family: what each O-then-letter palette opens. */
@@ -332,6 +336,10 @@ interface AppState {
   setActiveTab: (tab: ActiveTab) => void;
   settingsSection: SettingsSection;
   setSettingsSection: (section: SettingsSection) => void;
+  /** The open team page, "<KEY>" or "<KEY>/<page>", while `settingsSection` is 'team'. */
+  settingsTeamPath: string;
+  /** Opens a team's settings page: "MED", "MED/general", "MED/members" or "MED/accounts". */
+  openTeamSettings: (path: string) => void;
   interfaceTheme: InterfaceTheme;
   setInterfaceTheme: (theme: InterfaceTheme) => void;
 
@@ -675,6 +683,8 @@ export const useAppStore = create<AppState>((set, get) => {
     })),
   settingsSection: 'preferences',
   setSettingsSection: (section) => set({ settingsSection: section }),
+  settingsTeamPath: '',
+  openTeamSettings: (path) => set({ settingsSection: 'team', settingsTeamPath: path }),
   interfaceTheme:
     typeof window !== 'undefined' &&
     (window.localStorage.getItem('buyerly-interface-theme') === 'light' ||

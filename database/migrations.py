@@ -85,6 +85,10 @@ POST_BASELINE_TABLES: set[str] = {
     "inbox_telegram_deliveries",
     "meta_connection_invites",
     "rule_entity_states",
+    # Added by the teams migration (0036).
+    "team_accounts",
+    "team_members",
+    "teams",
     "telegram_connections",
     "telegram_link_tokens",
 }

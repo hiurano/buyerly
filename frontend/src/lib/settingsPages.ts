@@ -2,8 +2,11 @@ import type { SettingsSection } from '@/store/useAppStore';
 import type { Workspace } from './types';
 import { bestCommandScore } from './commandFilter';
 
-/** The settings pages in the sidebar; the notification channels open from Notifications. */
-export type SettingsPage = Exclude<SettingsSection, 'priority-notifications' | 'email-notifications' | 'telegram-notifications'>;
+/** The settings pages in the sidebar; the notification channels open from Notifications, team pages from Teams. */
+export type SettingsPage = Exclude<
+  SettingsSection,
+  'priority-notifications' | 'email-notifications' | 'telegram-notifications' | 'new-team' | 'team'
+>;
 
 /** Keywords the settings search and "Open settings…" match against, per page. */
 export const SETTINGS_PAGE_KEYWORDS: Record<SettingsPage, string> = {
@@ -13,7 +16,7 @@ export const SETTINGS_PAGE_KEYWORDS: Record<SettingsPage, string> = {
   security: 'security access sessions devices auth log out logout revoke sign in password',
   'connected-accounts': 'connected accounts telegram connect disconnect',
   workspace: 'workspace name logo url address slug delete workspace',
-  teams: 'teams team create team',
+  teams: 'teams team create team retire identifier',
   members: 'members invite invitations people team users roles export csv',
   'workspace-security': 'security workspace access invite links invitations admins permissions',
 };
@@ -22,6 +25,9 @@ type SettingsPageGroup = { heading: string; pages: { section: SettingsPage; labe
 
 /** Linear's Administration pages; only a workspace owner or admin sees them. */
 export const ADMINISTRATION_PAGES: SettingsPage[] = ['workspace', 'teams', 'members', 'workspace-security'];
+
+/** Every Administration section, with the team pages that open from Teams. */
+export const ADMINISTRATION_SECTIONS: SettingsSection[] = [...ADMINISTRATION_PAGES, 'new-team', 'team'];
 
 export function canAdministerWorkspace(workspace: Pick<Workspace, 'role'>): boolean {
   return workspace.role === 'owner' || workspace.role === 'admin';
