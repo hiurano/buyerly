@@ -69,6 +69,9 @@ function publicWebsite(): Plugin {
   };
 }
 
+// Where the dev server forwards API calls; compose.dev.yaml points it at its api service.
+const apiOrigin = process.env.VITE_API_ORIGIN || 'http://127.0.0.1:8080';
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [publicWebsite(), react()],
@@ -84,10 +87,13 @@ export default defineConfig({
   server: {
     port: 5173,
     host: '0.0.0.0',
+    // compose.dev.yaml runs the API in its own container and the source on a
+    // Windows bind mount, where file events do not arrive: it polls instead.
+    watch: process.env.VITE_POLL ? { usePolling: true, interval: 300 } : undefined,
     proxy: {
-      '/api': 'http://127.0.0.1:8080',
-      '/health': 'http://127.0.0.1:8080',
-      '/uploads': 'http://127.0.0.1:8080',
+      '/api': apiOrigin,
+      '/health': apiOrigin,
+      '/uploads': apiOrigin,
     },
   },
 });
