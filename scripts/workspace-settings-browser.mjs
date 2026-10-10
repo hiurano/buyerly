@@ -1,7 +1,8 @@
 // Exercise the real App with a synthetic API: Settings → Administration lists
 // Workspace, Teams, Members and Security for an owner or admin, after Linear. Workspace
 // renames the workspace, uploads its logo, moves it to a new URL and deletes it;
-// Teams shows Linear's toolbar over an empty table; Security turns the invite
+// Teams shows Linear's toolbar over an empty table (teams themselves are checked
+// by tests/test_teams.py); Security turns the invite
 // link on, copies it, resets it and turns it off again; a buyer sees no
 // Administration and its addresses open Preferences instead.
 import assert from 'node:assert/strict';
@@ -99,6 +100,8 @@ try {
       }
       // Settings reads the workspace teams (#371) for "Your teams" and the Members Teams column.
       if (verb === 'GET' && path.startsWith('/api/workspaces/') && path.endsWith('/teams')) return route.fulfill({ json: [] });
+      // Teams names each team's members on hover, so it reads the workspace members too.
+      if (verb === 'GET' && path === `/api/workspaces/${workspace.id}/members`) return route.fulfill({ json: [] });
       errors.push(`Unexpected API request: ${verb} ${path}`);
       return route.fulfill({ status: 404, json: { detail: 'Unexpected test request' } });
     });
@@ -138,12 +141,13 @@ try {
       await page.goto(`${origin}/alpha/settings/workspace`);
       await page.getByRole('heading', { name: 'Workspace', exact: true }).waitFor();
       // Linear's order under Administration (read from the DOM: on a phone the sidebar is a closed drawer).
-      const administration = nav.locator('.preferences-nav-group').last();
-      assert.deepEqual(
-        await administration.locator('.preferences-nav-label').evaluateAll((labels) => labels.map((item) => item.textContent)),
-        ['Workspace', 'Teams', 'Members', 'Security'],
-      );
-      assert.equal(await administration.locator('.preferences-nav-heading').textContent(), 'Administration');
+      const groupLabels = (heading) => nav.locator('.preferences-nav-group')
+        .filter({ has: page.locator('.preferences-nav-heading', { hasText: heading }) })
+        .locator('.preferences-nav-label')
+        .evaluateAll((labels) => labels.map((item) => item.textContent));
+      assert.deepEqual(await groupLabels('Administration'), ['Workspace', 'Teams', 'Members', 'Security']);
+      // Linear's "Your teams" after Administration: no team yet, so only Create a team (#371).
+      assert.deepEqual(await groupLabels('Your teams'), ['Create a team']);
       // Time & region and Member onboarding are left out.
       assert.equal(await page.getByText('Time & region').count(), 0);
       assert.equal(await page.getByText('Member onboarding').count(), 0);
@@ -182,11 +186,11 @@ try {
       await page.getByText('Workspace URL updated').waitFor();
       assert.equal(await page.getByRole('textbox', { name: 'URL', exact: true }).inputValue(), 'alpha-media');
 
-      // Teams: Linear's toolbar without Export CSV, an empty table, Create team off.
+      // Teams: Linear's toolbar without Export CSV over an empty table; Create team opens its page (#371).
       await page.goto(`${origin}/alpha-media/settings/teams`);
       await page.getByRole('heading', { name: 'Teams', exact: true }).waitFor();
       await page.getByRole('searchbox', { name: 'Filter by name…' }).waitFor();
-      assert.equal(await page.getByRole('button', { name: 'Create team' }).isDisabled(), true);
+      assert.equal(await page.getByRole('button', { name: 'Create team' }).first().isDisabled(), false);
       assert.equal(await page.getByRole('button', { name: 'Export CSV' }).count(), 0);
       await page.getByText('No teams yet').waitFor();
       await assertNoOverflow('Teams');
