@@ -61,3 +61,6 @@ frontend/.vite/
 /backups/
 # Scratch directory of scripts/offsite_restore_drill.sh, removed when it exits
 /.offsite_drill.*/
+
+# Local per-branch preview (scripts/preview.sh)
+.preview.env
