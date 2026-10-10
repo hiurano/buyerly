@@ -55,235 +55,83 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
+  # The browser checks used to run one after another inside the frontend job
+  # (~7.5 minutes, and the test shards waited for all of them). Each group is
+  # now its own runner, started at once beside the build and the test shards;
+  # the groups are balanced by how long their scripts took on 2026-10-10.
+  # Each script still serves the app itself through Vite on 127.0.0.1:5174,
+  # so none of them needs the built frontend.
+  browser:
+    name: Browser checks (${{ matrix.group }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: small screens and Inbox
+            scripts: mobile-screens inbox
+          - group: sidebar, command menu, rules
+            scripts: mobile-sidebar command-menu rule-states rules-phone
+          - group: workspace state, new version, WebMCP
+            scripts: scoped-state new-version webmcp
+          - group: members, search, settings
+            scripts: members search-page workspace-switcher security profile
+          - group: auth, details pane, Ads Manager rules
+            scripts: details-pane invite-auth auth-theme workspace-settings multi-account rules-attach
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
       # Playwright is a pinned devDependency in frontend/package-lock.json, so
-      # `npm ci` above already installed it. Installing it ad hoc without the
-      # lock file re-resolved the whole tree and once hit a package version
-      # npm listed but did not serve yet (#245).
-      - name: Check workspace state in Chromium
+      # `npm ci` installs it. Installing it ad hoc without the lock file
+      # re-resolved the whole tree and once hit a package version npm listed
+      # but did not serve yet (#245).
+      - name: Install Chromium
         working-directory: frontend
         run: |
+          npm ci
           npx --no-install playwright install --with-deps chromium
-          node ../scripts/scoped-state-browser.mjs
 
-      - name: Upload scoped state browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: scoped-state-browser
-          path: /tmp/buyerly-scoped-state
-
-      - name: Check invitation authentication in Chromium
-        working-directory: frontend
-        run: node ../scripts/invite-auth-browser.mjs
-
-      - name: Upload invitation authentication browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: invite-auth-browser
-          path: /tmp/buyerly-invite-auth
-
-      - name: Check members and log out in Chromium
-        working-directory: frontend
-        run: node ../scripts/members-browser.mjs
-
-      - name: Upload members browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: members-browser
-          path: /tmp/buyerly-members
-
-      - name: Check Settings → Administration (Workspace, Teams) in Chromium
-        working-directory: frontend
-        run: node ../scripts/workspace-settings-browser.mjs
-
-      - name: Upload workspace settings browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: workspace-settings-browser
-          path: /tmp/buyerly-workspace-settings
-
-      - name: Check Security & access sessions in Chromium
-        working-directory: frontend
-        run: node ../scripts/security-browser.mjs
-
-      - name: Upload Security & access browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: security-browser
-          path: /tmp/buyerly-security
-
-      - name: Check Settings → Profile in Chromium
-        working-directory: frontend
-        run: node ../scripts/profile-browser.mjs
-
-      - name: Upload Profile browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: profile-browser
-          path: /tmp/buyerly-profile
-
-      - name: Check workspace switching in Chromium
-        working-directory: frontend
-        run: node ../scripts/workspace-switcher-browser.mjs
-
-      - name: Upload workspace switcher browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: workspace-switcher-browser
-          path: /tmp/buyerly-workspace-switcher
-
-      - name: Check several logged-in accounts in Chromium
-        working-directory: frontend
-        run: node ../scripts/multi-account-browser.mjs
-
-      - name: Upload multi-account browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: multi-account-browser
-          path: /tmp/buyerly-multi-account
-
-      - name: Check Inbox in Chromium
-        working-directory: frontend
-        run: node ../scripts/inbox-browser.mjs
-
-      - name: Upload Inbox browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: inbox-browser
-          path: /tmp/buyerly-inbox
-
-      - name: Check the small-screen sidebar in Chromium
-        working-directory: frontend
-        run: node ../scripts/mobile-sidebar-browser.mjs
-
-      - name: Upload small-screen sidebar browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mobile-sidebar-browser
-          path: /tmp/buyerly-mobile-sidebar
-
-      - name: Check light and dark themes outside the app in Chromium
-        working-directory: frontend
-        run: node ../scripts/auth-theme-browser.mjs
-
-      - name: Upload light and dark theme browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: auth-theme-browser
-          path: /tmp/buyerly-auth-theme
-
-      - name: Check the command menu in Chromium
-        working-directory: frontend
-        run: node ../scripts/command-menu-browser.mjs
-
-      - name: Upload command menu browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: command-menu-browser
-          path: /tmp/buyerly-command-menu
-
-      - name: Check the search page in Chromium
-        working-directory: frontend
-        run: node ../scripts/search-page-browser.mjs
-
-      - name: Upload search page browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: search-page-browser
-          path: /tmp/buyerly-search-page
-
-      - name: Check rule states in Chromium
-        working-directory: frontend
-        run: node ../scripts/rule-states-browser.mjs
-
-      - name: Upload rule states browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: rule-states-browser
-          path: /tmp/buyerly-rule-states
-
-      - name: Check rules in Ads Manager in Chromium
-        working-directory: frontend
-        run: node ../scripts/rules-attach-browser.mjs
-
-      - name: Upload rules in Ads Manager browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: rules-attach-browser
-          path: /tmp/buyerly-rules-attach
-
-      - name: Check rules on a phone in Chromium
-        working-directory: frontend
-        run: node ../scripts/rules-phone-browser.mjs
-
-      - name: Upload rules on a phone browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: rules-phone-browser
-          path: /tmp/buyerly-rules-phone
-
-      - name: Check the new version notice in Chromium
-        working-directory: frontend
-        run: node ../scripts/new-version-browser.mjs
-
-      - name: Upload new version notice browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: new-version-browser
-          path: /tmp/buyerly-new-version
-
-      - name: Check the details pane on Ads Manager and Rules in Chromium
-        working-directory: frontend
-        run: node ../scripts/details-pane-browser.mjs
-
-      - name: Upload details pane browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: details-pane-browser
-          path: /tmp/buyerly-details-pane
-
-      - name: Check Rules, Ads Manager and Inbox on small screens in Chromium
-        working-directory: frontend
-        run: node ../scripts/mobile-screens-browser.mjs
-
-      - name: Upload small-screen screens browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mobile-screens-browser
-          path: /tmp/buyerly-mobile-screens
-
-      # The runner's Google Chrome has WebMCP behind a flag; Playwright's
-      # Chromium does not, and the check then uses a stand-in instead.
-      - name: Check WebMCP tools in Chromium
+      # Every script in the group runs even after one fails, so a single run
+      # reports all broken screens. The runner's Google Chrome has WebMCP
+      # behind a flag; Playwright's Chromium does not, and webmcp-browser.mjs
+      # then uses a stand-in instead.
+      - name: Check in Chromium
         working-directory: frontend
         run: |
-          export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="$(command -v google-chrome || true)"
-          node ../scripts/webmcp-browser.mjs
+          status=0
+          for name in ${{ matrix.scripts }}; do
+            echo "::group::${name}-browser.mjs"
+            if [ "${name}" = webmcp ]; then
+              export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="$(command -v google-chrome || true)"
+            else
+              unset PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+            fi
+            if ! node "../scripts/${name}-browser.mjs"; then
+              echo "::error title=Browser check failed::scripts/${name}-browser.mjs"
+              status=1
+            fi
+            echo "::endgroup::"
+          done
+          exit "${status}"
 
-      - name: Upload WebMCP browser evidence
+      # Screenshots land in /tmp/buyerly-<script name>.
+      - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: webmcp-browser
-          path: /tmp/buyerly-webmcp
+          name: browser-${{ strategy.job-index }}
+          path: /tmp/buyerly-*
+          if-no-files-found: ignore
 
   test:
     name: Run Unit & Integration Tests (shard ${{ matrix.shard }})
@@ -362,23 +210,24 @@ jobs:
   ci:
     name: CI
     runs-on: ubuntu-latest
-    needs: [frontend, test]
+    needs: [frontend, browser, test]
     if: always()
 
     steps:
       - name: Verify every job succeeded
         run: |
           frontend='${{ needs.frontend.result }}'
+          browser='${{ needs.browser.result }}'
           tests='${{ needs.test.result }}'
-          echo "frontend=${frontend} tests=${tests}"
-          if [ "${frontend}" != "success" ] || [ "${tests}" != "success" ]; then
-            echo "::error title=CI failed::frontend=${frontend} tests=${tests}"
+          echo "frontend=${frontend} browser=${browser} tests=${tests}"
+          if [ "${frontend}" != "success" ] || [ "${browser}" != "success" ] || [ "${tests}" != "success" ]; then
+            echo "::error title=CI failed::frontend=${frontend} browser=${browser} tests=${tests}"
             exit 1
           fi
 
   deploy:
     name: Deploy to Production VPS
-    needs: [frontend, test]
+    needs: [frontend, browser, test]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 15
