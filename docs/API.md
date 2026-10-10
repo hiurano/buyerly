@@ -432,7 +432,9 @@ curl -fsS https://buyerly.app/api/me \
 | `GET /api/workspaces/{workspace_id}/invites` | получение списка активных приглашений воркспейса |
 | `DELETE /api/workspaces/{workspace_id}/invites/{invite_id}` | отзыв/удаление приглашения |
 | `POST /api/workspaces/{workspace_id}/invites/{invite_id}/resend` | повторная отправка письма по ждущему персональному приглашению |
-| `GET/POST/DELETE /api/workspaces/{workspace_id}/invite-link` | ссылка-приглашение workspace: прочитать, включить, выключить |
+| `GET /api/workspaces/{workspace_id}/invite-link` | ссылка-приглашение workspace или `null`, пока она выключена |
+| `POST /api/workspaces/{workspace_id}/invite-link` | включить ссылку-приглашение |
+| `DELETE /api/workspaces/{workspace_id}/invite-link` | выключить ссылку-приглашение |
 | `POST /api/workspaces/{workspace_id}/invite-link/reset` | заменить ссылку-приглашение новой |
 | `GET /api/invites/{token}` | получение публичной информации о приглашении по токену |
 | `POST /api/invites/{token}/accept` | принятие приглашения и вступление в воркспейс |
