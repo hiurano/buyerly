@@ -406,6 +406,25 @@ class TestDeployContract(unittest.TestCase):
         # (tests/test_restore_check.py), not as table-name probes in shell.
         self.assertIn("python -m database.restore_check", self.drill_script)
 
+    def test_ci_runs_every_browser_script_exactly_once(self):
+        """Every scripts/*-browser.mjs must sit in exactly one browser group.
+
+        The browser checks run as parallel groups listed in the workflow
+        matrix; a new script nobody added to a group would never run.
+        """
+        project_root = Path(__file__).resolve().parents[1]
+        on_disk = sorted(
+            path.name.removesuffix("-browser.mjs")
+            for path in (project_root / "scripts").glob("*-browser.mjs")
+        )
+        self.assertTrue(on_disk, "no browser scripts found")
+        in_groups = [
+            name
+            for line in re.findall(r"(?m)^ +scripts: (.+)$", self.workflow)
+            for name in line.split()
+        ]
+        self.assertEqual(sorted(in_groups), on_disk)
+
     def test_ci_test_shards_cover_every_test_exactly_once(self):
         """Every test must land in exactly one CI shard.
 

@@ -571,7 +571,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("label: 'Apply rule…'", self.campaigns_view)
         self.assertIn("entityIds={selectedRowIds}", self.campaigns_view)
         workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
-        self.assertIn("node ../scripts/rules-attach-browser.mjs", workflow)
+        self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?rules-attach( .*)?$")
         # The Rules column is offered on both levels, never on ads.
         self.assertIn(
             "if (tab === 'campaigns' || tab === 'adsets') {", self.ads_manager_columns
@@ -786,13 +786,13 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertIn("useRevealRow({", view)
         self.assertIn("navigationKey={locationVersion}", self.app)
         self.assertIn("data-row-id={rule.id}", self.rule_card)
-        self.assertIn("node ../scripts/command-menu-browser.mjs", workflow)
-        self.assertIn("node ../scripts/search-page-browser.mjs", workflow)
+        self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?command-menu( .*)?$")
+        self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?search-page( .*)?$")
 
     def test_screens_reflow_on_small_screens(self):
         """Rules, Ads Manager and Inbox at 390px: details over the list, touch-sized headers (#286)."""
         workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
-        self.assertIn("node ../scripts/mobile-screens-browser.mjs", workflow)
+        self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?mobile-screens( .*)?$")
         for view in (self.campaigns_view, self.rules_view):
             self.assertIn("collapseOverflow", view)
         tabs = (ROOT / "frontend" / "src" / "ui" / "LinearTabs.tsx").read_text()
@@ -824,7 +824,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertNotIn("toggleRightSidebar", self.app)
         self.assertNotIn("toggleRulesRightSidebar", self.rules_view)
         self.assertIn("node scripts/check-details-pane.cjs", workflow)
-        self.assertIn("node ../scripts/details-pane-browser.mjs", workflow)
+        self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?details-pane( .*)?$")
 
 
 if __name__ == "__main__":
