@@ -153,6 +153,7 @@ try {
           if (path === '/api/onboarding/check-slug') return route.fulfill({ json: { available: true, message: '' } });
           // One account in this browser; several are checked by multi-account-browser.mjs (#231).
           if (path === '/api/auth/accounts') return route.fulfill({ json: [] });
+          if (route.request().method() === 'GET' && path.startsWith('/api/workspaces/') && path.endsWith('/teams')) return route.fulfill({ json: [] });
           errors.push(`Unexpected API request: ${route.request().method()} ${path}`);
           return route.fulfill({ status: 404, json: { detail: 'Unexpected test request' } });
         });
