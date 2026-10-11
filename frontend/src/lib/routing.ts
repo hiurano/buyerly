@@ -23,8 +23,14 @@ export type Route =
       settingsSection?: SettingsSection;
       /** With settingsSection 'team': "<KEY>" or "<KEY>/<page>". */
       teamPath?: string;
+      /** With tab 'rules': a page of Rules other than the list, as Linear's team archive. */
+      rulesPage?: RulesPage;
     }
   | { kind: 'unknown' };
+
+/** Rules pages beside the list: deleted rules and groups live at /rules/recently-deleted. */
+export const RECENTLY_DELETED_RULES = 'recently-deleted';
+export type RulesPage = typeof RECENTLY_DELETED_RULES;
 
 const SYSTEM_ROOTS = new Set([
   // Root segments the server itself serves. Everything else is a workspace slug.
@@ -95,6 +101,9 @@ export function parseRoute(location: Location = window.location): Route {
       recordId: parts[3],
     };
   }
+  if (parts[1] === 'rules' && parts[2] === RECENTLY_DELETED_RULES && parts.length === 3) {
+    return { kind: 'workspace', workspace, tab: 'rules', rulesPage: RECENTLY_DELETED_RULES };
+  }
   if (parts[1] === 'rules' && parts.length <= 3) {
     return { kind: 'workspace', workspace, tab: 'rules', recordId: parts[2] };
   }
@@ -155,8 +164,10 @@ export function pathForTab(
   entity: AdsManagerEntity = 'campaigns',
   settingsSection: SettingsSection = 'preferences',
   teamPath = '',
+  rulesPage?: RulesPage,
 ): string {
   if (tab === 'campaigns') return `/${workspace}/ads-manager/${entity}`;
+  if (tab === 'rules' && rulesPage) return `/${workspace}/rules/${rulesPage}`;
   if (tab === 'preferences') {
     if (settingsSection === 'team') {
       return teamPath ? `/${workspace}/settings/teams/${teamPath}` : `/${workspace}/settings/teams`;
@@ -166,6 +177,27 @@ export function pathForTab(
       : `/${workspace}/settings`;
   }
   return `/${workspace}/${tab}`;
+}
+
+/** Rules' Recently deleted page, as Linear's "Go to recently deleted issues". */
+export function recentlyDeletedRulesPath(workspace: string): string {
+  return pathForTab(workspace, 'rules', 'campaigns', 'preferences', '', RECENTLY_DELETED_RULES);
+}
+
+/**
+ * Opens an address of this app from outside a component (a toast's action):
+ * the App follows the history the same way it follows Back and Forward.
+ */
+export function openAppPath(path: string): void {
+  if (`${window.location.pathname}${window.location.search}` === path) return;
+  window.history.pushState({}, '', path);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
+/** Recently deleted of the workspace on screen: the "View recently deleted" of a toast. */
+export function openRecentlyDeletedRules(): void {
+  const route = parseRoute();
+  if (route.kind === 'workspace') openAppPath(recentlyDeletedRulesPath(route.workspace));
 }
 
 export function isWorkspaceReturnRoute(route: Route): boolean {

@@ -3,7 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Command } from 'cmdk';
 import { ArrowRight, Maximize2 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
-import { pathForTab } from '@/lib/routing';
+import { pathForTab, recentlyDeletedRulesPath } from '@/lib/routing';
 import type { Workspace } from '@/lib/types';
 import { openSearchPage } from '@/components/search/openSearchPage';
 import { StatusMark } from '@/components/search/SearchView';
@@ -247,6 +247,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
           : [{ id: 'inbox', label: 'Go to inbox', keywords: ['notifications', 'events'], icon: arrowIcon, shortcut: goToShortcut('inbox'), run: () => go(pathForTab(slug, 'inbox')) }]),
         { id: 'ads-manager', label: 'Go to Ads Manager', keywords: ['campaigns', 'ad sets', 'ads', 'meta'], icon: arrowIcon, shortcut: goToShortcut('campaigns'), run: () => go(pathForTab(slug, 'campaigns', campaignFilterTab)) },
         { id: 'rules', label: 'Go to rules', keywords: ['automation'], icon: arrowIcon, shortcut: goToShortcut('rules'), run: () => go(rulesPath) },
+        // Linear's "Go to recently deleted issues": deleted rules and groups have their own page.
+        { id: 'recently-deleted-rules', label: 'Go to recently deleted rules', keywords: ['trash', 'restore', 'archive', 'deleted', 'groups'], icon: arrowIcon, run: () => go(recentlyDeletedRulesPath(slug)) },
         { id: 'settings', label: 'Go to settings', keywords: ['preferences', 'profile', 'members', 'notifications'], icon: arrowIcon, shortcut: goToShortcut('preferences'), run: () => go(pathForTab(slug, 'preferences')) },
         // Linear's "Open issue…" and its siblings, each its own palette.
         ...OPEN_PALETTE_KINDS.map((kind) => ({

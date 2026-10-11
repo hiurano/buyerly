@@ -110,7 +110,7 @@ Buyerly reports actions the way Linear does, measured in the product on 2026-09-
 - server-owned rule definitions and assignments are distinguished from local editor state;
 - dangerous actions require explicit conditions, scope and review;
 - account coverage and active/inactive state use real workspace-scoped data.
-- deleting a rule or a group is confirmed first, then reported with a link to **Recently deleted**; a deleted rule stops running at once. Recently deleted is a tab of Rules that keeps rules and groups for 30 days: a restore brings a rule back under its id, into the groups that still exist and onto the ad accounts it ran on with the scope it had, and says which ad accounts could not take it back. There is no manual permanent delete;
+- deleting a rule or a group is confirmed first, then reported with a link to **Recently deleted**; a deleted rule stops running at once. Recently deleted is a page of its own, `/{workspace}/rules/recently-deleted` (Rules › Recently deleted, reached from Ctrl/Cmd+K "Go to recently deleted rules" and from the toasts), like Linear's team archive rather than a tab of the list; it keeps rules and groups for 30 days: a restore brings a rule back under its id, into the groups that still exist and onto the ad accounts it ran on with the scope it had, and says which ad accounts could not take it back. There is no manual permanent delete;
 
 ### Settings
 

@@ -4,7 +4,6 @@ import { useAppStore, type RuleFilterTab } from '@/store/useAppStore';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { RuleColumn } from './RuleColumn';
 import { RulesListView } from './RulesListView';
-import { RecentlyDeletedView } from './RecentlyDeletedView';
 import { deletionPrompt, runBulkRulesEnabled, runPendingDeletion } from './ruleActions';
 import { CreateRuleModal } from './CreateRuleModal';
 import { RuleStatesHost } from './RuleStatesDialog';
@@ -49,7 +48,7 @@ import { openCommandMenu } from '@/components/command/CommandMenu';
 import { takeRecordActions } from '@/components/command/OpenPalette';
 import { useRowSelection, type SelectionAction } from '@/ui/useRowSelection';
 import { useRevealRow } from '@/ui/useRevealRow';
-import { ATTACH_STEPS } from '@/lib/rules';
+import { openRecentlyDeletedRules } from '@/lib/routing';
 
 interface OpenFilterMenu {
   mode: FilterMenuMode;
@@ -120,7 +119,6 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
     rulesCollapsedGroups,
     toggleRulesGroupCollapse,
   } = useAppStore();
-  const showingDeleted = ruleFilterTab === 'deleted';
 
   // Rules are read again on arrival and whenever an address names one, so a
   // rule created since the list was loaded is found as well.
@@ -170,7 +168,6 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
       ? rules.length
       : rules.filter((rule) => rule.status === ruleFilterTab).length;
   const hiddenCount = totalForTab - filteredRules.length;
-  const unattachedRules = rules.filter((rule) => rule.preset.attached_account_ids.length === 0);
 
   // A change shows on the rows themselves; a failed write is the only thing
   // reported on its own, as a toast, and the list stays as it is.
@@ -200,12 +197,12 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
     setSelection: setRuleSelection,
     actions: selectionActions,
     // Selection lives in the list; the board has no row checkboxes.
-    enabled: rulesLoadState === 'ready' && rulesViewMode === 'list' && !showingDeleted,
+    enabled: rulesLoadState === 'ready' && rulesViewMode === 'list',
   });
 
   useEffect(() => {
-    if (rulesViewMode !== 'list' || showingDeleted) setRuleSelection([]);
-  }, [rulesViewMode, setRuleSelection, showingDeleted]);
+    if (rulesViewMode !== 'list') setRuleSelection([]);
+  }, [rulesViewMode, setRuleSelection]);
 
   // The rule an address names opens on its row, or its card on the board.
   // One already in the loaded list opens at once; any other waits for the
@@ -219,7 +216,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
     show: () => {
       if (!revealedRule) return false;
       let changed = false;
-      if (showingDeleted || (ruleFilterTab !== 'all' && revealedRule.status !== ruleFilterTab)) {
+      if (ruleFilterTab !== 'all' && revealedRule.status !== ruleFilterTab) {
         setRuleFilterTab('all');
         changed = true;
       }
@@ -251,6 +248,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
       title: "Couldn't open",
       message: `rule ${revealId ?? ''}.`,
       description: 'This workspace has no such rule. A deleted rule stays in Recently deleted for 30 days.',
+      action: { label: 'View recently deleted', onClick: openRecentlyDeletedRules },
     }),
     onDone: (shown) => {
       // Alt+Enter in an "Open rule…" palette: the row's own actions, as Linear's "More actions".
@@ -324,14 +322,13 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
     { id: 'all', label: 'All rules' },
     { id: 'active', label: 'Active' },
     { id: 'paused', label: 'Paused' },
-    { id: 'deleted', label: 'Recently deleted' },
   ];
 
   const detailsTabs: DetailsFacetTab[] = createRuleFacets(baseRules, ruleGroups).map((facet) => ({
     ...facet,
     options: facet.options.map((option) => ({ ...option, icon: ruleFacetIcon(facet.id, option.value, ruleGroups) })),
   }));
-  const details = rulesLoadState === 'ready' && !showingDeleted && rules.length > 0 ? (
+  const details = rulesLoadState === 'ready' && rules.length > 0 ? (
     <DetailsFacets
       tabs={detailsTabs}
       selection={quick}
@@ -456,21 +453,6 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
         />
       </header>
 
-      {/* A new rule runs nowhere until it is attached; the list says how. */}
-      {rulesLoadState === 'ready' && !showingDeleted && unattachedRules.length > 0 && (
-        <p
-          role="note"
-          className="shrink-0 border-b border-[var(--color-border-primary)] px-5 py-2 text-[12px] text-[var(--text-secondary)]"
-        >
-          <span className="font-medium text-[var(--text-primary)]">
-            {unattachedRules.length === 1
-              ? `“${unattachedRules[0].name}” runs nowhere yet.`
-              : `${unattachedRules.length} rules run nowhere yet.`}
-          </span>{' '}
-          {ATTACH_STEPS}
-        </p>
-      )}
-
       <LinearFilterMenu
         isOpen={Boolean(openFilterMenu)}
         mode={openFilterMenu?.mode ?? 'root'}
@@ -484,11 +466,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
 
       {/* 2. Main Content Area: the list or board, with the details pane on the right */}
       <DetailsPaneLayout pane="rules" label="Rules details" details={details}>
-        {showingDeleted ? (
-          <div className="flex min-w-0 flex-1">
-            <RecentlyDeletedView />
-          </div>
-        ) : rulesLoadState === 'loading' || rulesLoadState === 'idle' ? (
+        {rulesLoadState === 'loading' || rulesLoadState === 'idle' ? (
           <DataState
             title="Loading rules…"
             detail="Reading the automation rules saved in this workspace."
