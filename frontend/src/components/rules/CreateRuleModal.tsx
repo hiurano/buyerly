@@ -76,7 +76,7 @@ const OPERATORS: { value: RuleOperator; label: string }[] = [
   { value: 'eq', label: 'equals (=)' },
 ];
 
-const TIME_WINDOWS: RuleTimeWindow[] = ['today', 'yesterday', 'last_3d', 'last_7d'];
+const TIME_WINDOWS: RuleTimeWindow[] = ['today', 'yesterday', 'last_3d', 'last_7d', 'lifetime'];
 
 const LEVELS: RuleExecutionLevel[] = ['adset', 'campaign', 'ad'];
 

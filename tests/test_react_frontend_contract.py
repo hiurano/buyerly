@@ -376,7 +376,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertNotIn("'triggered'", self.app_store)
 
         # The create form may only offer what api/schemas/rules.py accepts.
-        for supported in ("'cpl'", "'cpreg'", "'cpp'", "'last_3d'", "'increase_budget'"):
+        for supported in ("'cpl'", "'cpreg'", "'cpp'", "'last_3d'", "'lifetime'", "'increase_budget'"):
             self.assertIn(supported, self.create_rule_modal)
         for unsupported in (
             "Cost per result",

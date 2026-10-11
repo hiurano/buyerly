@@ -5,6 +5,7 @@ from core.metrics import (
     normalize_rule_scope,
     rule_scope_matches_entity,
     validate_rule_semantics,
+    validate_public_rule_conditions,
     validate_rule_set_compatibility,
     validate_runtime_rule,
 )
@@ -99,7 +100,7 @@ class TestRuleEngine(unittest.TestCase):
                 "action": "turn_off",
                 "logic": "and",
                 "conditions": [
-                    {"metric": "spend", "operator": "gte", "value": 1.0, "time_window": "lifetime"}
+                    {"metric": "spend", "operator": "gte", "value": 1.0, "time_window": "last_30d"}
                 ],
             },
             {
@@ -637,6 +638,90 @@ class TestRuleEngine(unittest.TestCase):
         res = RuleEngine.evaluate(adset_today, self.account)
         self.assertEqual(res.action, RuleAction.STOP)
 
+    LIFETIME_LADDER = [
+        {"metric": "spend", "operator": "gte", "value": 4.0, "time_window": "lifetime"},
+        {"metric": "leads", "operator": "eq", "value": 0, "time_window": "lifetime"},
+    ]
+
+    def test_lifetime_window_reads_spend_since_launch(self):
+        """Past the account's midnight today is $0.40, but the ad set has spent $4.60."""
+        self.set_rule(conditions=self.LIFETIME_LADDER)
+        adset_today = {"adset_id": "1", "adset_name": "Test", "status": "ACTIVE",
+                       "spend": 0.40, "leads": 0, "registrations": 0}
+
+        res = RuleEngine.evaluate(
+            adset_today, self.account,
+            insights_by_window={"lifetime": {"spend": 4.60, "leads": 0, "registrations": 0}},
+        )
+
+        self.assertEqual(res.action, RuleAction.STOP)
+        self.assertIn("Spend [Lifetime] (4.60 USD) ≥ 4.00 USD", res.reason)
+
+    def test_lifetime_window_counts_conversions_from_earlier_days(self):
+        self.set_rule(conditions=self.LIFETIME_LADDER)
+        adset_today = {"adset_id": "1", "adset_name": "Test", "status": "ACTIVE",
+                       "spend": 5.0, "leads": 0, "registrations": 0}
+
+        res = RuleEngine.evaluate(
+            adset_today, self.account,
+            insights_by_window={"lifetime": {"spend": 9.0, "leads": 1, "registrations": 0}},
+        )
+
+        self.assertEqual(res.action, RuleAction.NOOP)
+
+    def test_lifetime_window_never_falls_back_to_today(self):
+        """Today's $15 with no lead must not stand in for unknown lifetime numbers."""
+        self.set_rule(conditions=self.LIFETIME_LADDER)
+        adset_today = {"adset_id": "1", "adset_name": "Test", "status": "ACTIVE",
+                       "spend": 15.0, "leads": 0, "registrations": 0}
+
+        self.assertEqual(RuleEngine.evaluate(adset_today, self.account).action, RuleAction.NOOP)
+        self.assertEqual(
+            RuleEngine.evaluate(
+                adset_today, self.account, insights_by_window={"yesterday": {"spend": 15.0}}
+            ).action,
+            RuleAction.NOOP,
+        )
+        check = RuleEngine.check(adset_today, self.account)[0]
+        self.assertEqual(check.outcome, "not_met")
+        self.assertIn("Spend [Lifetime]: no data", check.detail)
+
+    def test_lifetime_window_can_be_mixed_with_today(self):
+        self.set_rule(conditions=[
+            {"metric": "spend", "operator": "gte", "value": 4.0, "time_window": "lifetime"},
+            {"metric": "spend", "operator": "gte", "value": 1.0, "time_window": "today"},
+        ])
+        adset_today = {"adset_id": "1", "adset_name": "Test", "status": "ACTIVE",
+                       "spend": 0.5, "leads": 0, "registrations": 0}
+        lifetime = {"lifetime": {"spend": 6.0}}
+
+        self.assertEqual(
+            RuleEngine.evaluate(adset_today, self.account, insights_by_window=lifetime).action,
+            RuleAction.NOOP,
+        )
+        adset_today["spend"] = 1.0
+        self.assertEqual(
+            RuleEngine.evaluate(adset_today, self.account, insights_by_window=lifetime).action,
+            RuleAction.STOP,
+        )
+
+    def test_lifetime_is_a_valid_rule_window(self):
+        validate_public_rule_conditions(self.LIFETIME_LADDER)
+        validate_rule_semantics(self.LIFETIME_LADDER, logic="and", action="turn_off")
+        with self.assertRaisesRegex(ValueError, "since launch"):
+            validate_rule_semantics(
+                [
+                    {"metric": "spend", "operator": "gte", "value": 10, "time_window": "lifetime"},
+                    {"metric": "spend", "operator": "lt", "value": 5, "time_window": "lifetime"},
+                ],
+                logic="and",
+                action="turn_off",
+            )
+        with self.assertRaisesRegex(ValueError, "time window"):
+            validate_public_rule_conditions(
+                [{"metric": "spend", "operator": "gte", "value": 1, "time_window": "maximum"}]
+            )
+
     def test_cpreg_and_cpp_turn_off_validation_allowed(self):
         """Validating turn_off action with cpreg / cpp must succeed without throwing."""
         validate_rule_semantics(
@@ -943,6 +1028,80 @@ class TestCampaignRollup(unittest.TestCase):
         self.assertEqual(windows["c1"]["yesterday"]["spend"], 12.0)
         self.assertEqual(windows["c1"]["yesterday"]["leads"], 1)
         self.assertEqual(windows["c1"]["yesterday"]["ctr"], 2.0)
+
+    def test_a_window_counts_ad_sets_that_are_gone_today(self):
+        """An archived ad set left out of today's list still spent in the window."""
+        adsets = [self._adset("a1", "c1")]
+        campaigns = [{"campaign_id": "c1", "campaign_name": "Scale", "status": "ACTIVE"}]
+        insights_by_window = {
+            "last_3d": {
+                "a1": {"campaign_id": "c1", "spend": 5.0, "leads": 0},
+                "a_archived": {"campaign_id": "c1", "spend": 9.0, "leads": 2},
+            }
+        }
+
+        _, windows = MonitoringWorker._campaign_entities(adsets, campaigns, insights_by_window)
+
+        self.assertEqual(windows["c1"]["last_3d"]["spend"], 14.0)
+        self.assertEqual(windows["c1"]["last_3d"]["leads"], 2)
+
+    def test_campaign_lifetime_comes_from_the_campaign_row(self):
+        adsets = [self._adset("a1", "c1"), self._adset("a2", "c2")]
+        campaigns = [
+            {"campaign_id": "c1", "campaign_name": "Scale", "status": "ACTIVE"},
+            {"campaign_id": "c2", "campaign_name": "New", "status": "ACTIVE"},
+        ]
+        insights_by_window = {
+            # Ad set lifetime rows (for ad set rules) miss a deleted ad set.
+            "lifetime": {"a1": {"campaign_id": "c1", "spend": 3.0, "leads": 0}},
+        }
+        campaign_lifetime = {
+            "c1": {"campaign_id": "c1", "spend": 11.0, "leads": 1, "clicks": 5, "impressions": 500},
+        }
+
+        _, windows = MonitoringWorker._campaign_entities(
+            adsets, campaigns, insights_by_window, campaign_lifetime
+        )
+
+        self.assertEqual(windows["c1"]["lifetime"]["spend"], 11.0)
+        self.assertEqual(windows["c1"]["lifetime"]["leads"], 1)
+        self.assertEqual(windows["c1"]["lifetime"]["ctr"], 1.0)
+        # No row in a successful read: Meta omits what never delivered.
+        self.assertEqual(windows["c2"]["lifetime"]["spend"], 0.0)
+
+    def test_campaign_lifetime_is_absent_unless_it_was_read(self):
+        adsets = [self._adset("a1", "c1")]
+        campaigns = [{"campaign_id": "c1", "campaign_name": "Scale", "status": "ACTIVE"}]
+        insights_by_window = {"lifetime": {"a1": {"campaign_id": "c1", "spend": 3.0}}}
+
+        _, windows = MonitoringWorker._campaign_entities(adsets, campaigns, insights_by_window)
+
+        self.assertNotIn("lifetime", windows.get("c1", {}))
+
+    def test_entity_windows_leave_out_a_missing_lifetime_only(self):
+        windows = MonitoringWorker._entity_windows(
+            "a1",
+            {
+                "yesterday": {},
+                "lifetime": {},
+                "last_7d": {"a1": {"spend": 2.0}},
+            },
+        )
+
+        self.assertEqual(windows, {"yesterday": {}, "last_7d": {"spend": 2.0}})
+
+    def test_windows_are_collected_per_rule_level(self):
+        rules = [
+            {"level": "adset", "conditions": [{"time_window": "today"}, {"time_window": "lifetime"}]},
+            {"level": "campaign", "conditions": [{"time_window": "last_3d"}]},
+            {"level": "ad", "conditions": [{"time_window": "yesterday"}]},
+            {"conditions": [{"time_window": "last_7d"}]},
+        ]
+
+        self.assertEqual(
+            MonitoringWorker._windows_by_level(rules),
+            {"adset": {"lifetime", "last_7d"}, "campaign": {"last_3d"}, "ad": {"yesterday"}},
+        )
 
 
 class TestRuleScopeContract(unittest.TestCase):

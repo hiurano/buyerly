@@ -36,7 +36,7 @@ class ConditionItem(BaseModel):
     metric: Literal["spend", "cpl", "cpreg", "cpp", "leads", "registrations", "purchases", "ctr", "cpc", "clicks"] = "spend"
     operator: Literal["gte", "gt", "lte", "lt", "eq"] = "gte"
     value: float = Field(default=0.0, ge=0, le=1_000_000_000, allow_inf_nan=False)
-    time_window: Literal["today", "yesterday", "last_3d", "last_7d"] = "today"
+    time_window: Literal["today", "yesterday", "last_3d", "last_7d", "lifetime"] = "today"
 
 
 class RulePresetItem(BaseModel):

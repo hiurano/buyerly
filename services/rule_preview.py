@@ -25,9 +25,13 @@ GONE_STATUSES = {"DELETED", "ARCHIVED"}
 WINDOW_DAYS = {"yesterday": 1, "last_3d": 3, "last_7d": 7}
 
 
-def _window_dates(account: Account, now: datetime) -> Dict[str, List[str]]:
+def _local_today(account: Account, now: datetime):
     clock = resolve_account_clock(account.timezone_name)
-    local_today = (now.astimezone(clock.zone) if clock else now).date()
+    return (now.astimezone(clock.zone) if clock else now).date()
+
+
+def _window_dates(account: Account, now: datetime) -> Dict[str, List[str]]:
+    local_today = _local_today(account, now)
     windows = {"today": [local_today.isoformat()]}
     for window, days in WINDOW_DAYS.items():
         windows[window] = [
@@ -35,6 +39,13 @@ def _window_dates(account: Account, now: datetime) -> Dict[str, List[str]]:
             for offset in range(1, days + 1)
         ]
     return windows
+
+
+def _uses_lifetime(rule: Dict[str, Any]) -> bool:
+    return any(
+        isinstance(condition, dict) and condition.get("time_window") == "lifetime"
+        for condition in rule.get("conditions") or []
+    )
 
 
 def _sort_key(item: Dict[str, Any]):
@@ -57,6 +68,15 @@ async def preview_rule_on_account(
     now = now_utc or datetime.now(timezone.utc)
     windows = _window_dates(account, now)
     all_dates = sorted({day for days in windows.values() for day in days})
+    # The worker reads lifetime from Meta; the preview only has the days
+    # Buyerly stored, which can start after the launch. It sums every stored
+    # day and says from when (`lifetime_since`) instead of calling Meta.
+    lifetime = _uses_lifetime(rule)
+    date_filter = (
+        AnalyticsEntityFact.date <= _local_today(account, now).isoformat()
+        if lifetime
+        else AnalyticsEntityFact.date.in_(all_dates)
+    )
 
     rows = (
         await session.execute(
@@ -64,13 +84,14 @@ async def preview_rule_on_account(
                 AnalyticsEntityFact.workspace_id == account.workspace_id,
                 AnalyticsEntityFact.account_id == account.account_id,
                 AnalyticsEntityFact.entity_level == level,
-                AnalyticsEntityFact.date.in_(all_dates),
+                date_filter,
             )
         )
     ).scalars().all()
     facts_by_entity: Dict[str, List[AnalyticsEntityFact]] = {}
     for row in rows:
         facts_by_entity.setdefault(str(row.entity_id), []).append(row)
+    lifetime_since = min((str(row.date) for row in rows), default=None) if lifetime else None
 
     # The engine skips an account whose automation is off; the preview asks
     # what happens once attaching turns it on.
@@ -84,7 +105,12 @@ async def preview_rule_on_account(
     scoped_rule = {**rule, "enabled": True, "scope": {"level": "account", "ids": []}}
     items: List[Dict[str, Any]] = []
     latest_fetch: Optional[datetime] = None
+    recent_dates = set(all_dates)
     for entity_id, facts in facts_by_entity.items():
+        if lifetime and not any(fact.date in recent_dates for fact in facts):
+            # Older days only feed lifetime totals; the entities listed stay
+            # the ones with recent numbers, as for any other rule.
+            continue
         facts.sort(key=lambda fact: fact.date)
         latest = facts[-1]
         status = str(latest.status or "UNKNOWN").upper()
@@ -96,6 +122,8 @@ async def preview_rule_on_account(
             window: _period_metrics([fact for fact in facts if fact.date in set(days)])
             for window, days in windows.items()
         }
+        if lifetime:
+            insights["lifetime"] = _period_metrics(facts)
         entity = {
             **insights["today"],
             "entity_level": level,
@@ -132,5 +160,8 @@ async def preview_rule_on_account(
         "running": sum(1 for item in items if item["status"] == "ACTIVE"),
         "matching": sum(1 for item in items if item["outcome"] == "matched"),
         "data_as_of": latest_fetch.astimezone(timezone.utc).isoformat() if latest_fetch else None,
+        # First stored day the lifetime numbers start from; null when the
+        # rule has no lifetime condition or nothing is stored.
+        "lifetime_since": lifetime_since,
         "entities": items[:PREVIEW_ENTITY_LIMIT],
     }

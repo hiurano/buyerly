@@ -35,7 +35,19 @@ RULE_ACTIONS = frozenset(
     {"turn_off", "notify_only", "turn_on", "increase_budget", "decrease_budget"}
 )
 RULE_LOGICS = frozenset({"and", "or"})
-RULE_TIME_WINDOWS = frozenset({"today", "yesterday", "last_3d", "last_7d"})
+# `lifetime` is everything since the object launched (Meta's date_preset=maximum).
+RULE_TIME_WINDOWS = frozenset({"today", "yesterday", "last_3d", "last_7d", "lifetime"})
+# Meta's own name for a window where it differs. `maximum` is Meta's lifetime
+# preset (the old `lifetime` preset was retired): everything up to now,
+# today included, at most 37 months back.
+META_DATE_PRESET_BY_RULE_WINDOW = {"lifetime": "maximum"}
+
+
+def meta_date_preset(time_window: str) -> str:
+    """The `date_preset` that reads a rule window from Meta."""
+    return META_DATE_PRESET_BY_RULE_WINDOW.get(time_window, time_window)
+
+
 RULE_MAX_CONDITIONS = 20
 RULE_MAX_VALUE = 1_000_000_000.0
 RULE_MAX_BUDGET = 10_000_000.0
@@ -341,6 +353,7 @@ def _metric_context_label(metric: str, time_window: str) -> str:
         "yesterday": "yesterday",
         "last_3d": "over the last 3 days",
         "last_7d": "over the last 7 days",
+        "lifetime": "since launch",
     }
     return f"{metric_labels.get(metric, metric)} {window_labels.get(time_window, time_window)}"
 

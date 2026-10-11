@@ -136,6 +136,9 @@ class FakeMetaTest(unittest.IsolatedAsyncioTestCase):
         now = at(15)
         days = fake_meta.report_days(account, {"date_preset": "last_7d"}, now)
         self.assertEqual(days, [DAY - timedelta(days=n) for n in range(7, 0, -1)])
+        lifetime = fake_meta.report_days(account, {"date_preset": "maximum"}, now)
+        self.assertEqual(len(lifetime), fake_meta.LIFETIME_DAYS)
+        self.assertEqual(lifetime[-1], DAY)  # Meta's lifetime includes today
         window = fake_meta.report_days(
             account, {"time_range": json.dumps({"since": "2026-10-01", "until": "2026-10-03"})}, now
         )

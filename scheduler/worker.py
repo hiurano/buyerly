@@ -36,7 +36,7 @@ from core.timezones import (
     utc_offset_label,
 )
 from meta_api.client import MetaClient
-from core.metrics import normalize_rule_level
+from core.metrics import meta_date_preset, normalize_rule_level
 from rules.engine import (
     RULE_ACTION_BY_TYPE,
     RuleAction,
@@ -157,11 +157,47 @@ class MonitoringWorker:
         except ValueError:
             return "adset"
 
+    @classmethod
+    def _windows_by_level(cls, rules: list[dict[str, Any]]) -> dict[str, set[str]]:
+        """Windows other than today that the due rules of each level read."""
+        windows: dict[str, set[str]] = {"adset": set(), "campaign": set(), "ad": set()}
+        for rule in rules:
+            if not isinstance(rule, dict):
+                continue
+            level_windows = windows.setdefault(cls._rule_level(rule), set())
+            for condition in rule.get("conditions") or []:
+                if not isinstance(condition, dict):
+                    continue
+                window = str(condition.get("time_window") or "today")
+                if window != "today":
+                    level_windows.add(window)
+        return windows
+
+    @staticmethod
+    def _entity_windows(
+        entity_id: str, rows_by_window: dict[str, dict[str, Any]]
+    ) -> dict[str, dict[str, Any]]:
+        """One entity's row in each window it was read for.
+
+        A short window with no row means the entity did not deliver in it,
+        which is a real zero. A lifetime with no row is left out instead, so
+        the engine reports "no data" rather than a zero lifetime that
+        contradicts the entity's own numbers today.
+        """
+        windows: dict[str, dict[str, Any]] = {}
+        for window, rows in rows_by_window.items():
+            row = rows.get(entity_id)
+            if row is None and window == "lifetime":
+                continue
+            windows[window] = row or {}
+        return windows
+
     @staticmethod
     def _campaign_entities(
         adsets: list[dict[str, Any]],
         campaigns: list[dict[str, Any]],
         insights_by_window: dict[str, dict[str, Any]],
+        campaign_lifetime: Optional[dict[str, dict[str, Any]]] = None,
     ) -> tuple[list[dict[str, Any]], dict[str, dict[str, dict[str, Any]]]]:
         """Roll ad set rows up into the campaigns that own them.
 
@@ -231,14 +267,30 @@ class MonitoringWorker:
 
         windows_by_campaign: dict[str, dict[str, dict[str, Any]]] = {}
         for window, rows_by_adset in insights_by_window.items():
+            if window == "lifetime":
+                # Read on the campaign itself; ad set rows can miss deleted ones.
+                continue
             window_totals: dict[str, dict[str, Any]] = {}
             for adset_id, row in rows_by_adset.items():
-                campaign_id = campaign_of_adset.get(str(adset_id))
+                campaign_id = campaign_of_adset.get(str(adset_id)) or str(
+                    row.get("campaign_id") or ""
+                )
                 if not campaign_id:
                     continue
                 accumulate(window_totals.setdefault(campaign_id, blank()), row)
             for campaign_id, totals in window_totals.items():
                 windows_by_campaign.setdefault(campaign_id, {})[window] = derive(totals)
+
+        if campaign_lifetime is not None:
+            for entity in entities:
+                campaign_id = entity["campaign_id"]
+                totals = blank()
+                row = campaign_lifetime.get(campaign_id)
+                if row is not None:
+                    # Meta leaves out what never delivered, so a campaign
+                    # without a row in a successful read has spent nothing.
+                    accumulate(totals, row)
+                windows_by_campaign.setdefault(campaign_id, {})["lifetime"] = derive(totals)
 
         return entities, windows_by_campaign
 
@@ -298,26 +350,26 @@ class MonitoringWorker:
                 currency=currency,
                 priority=priority,
             )
-            windows = {
-                str(condition.get("time_window") or "today")
-                for rule in due_rules
-                for condition in (rule.get("conditions") or [])
-                if isinstance(condition, dict)
-                and str(condition.get("time_window") or "today") != "today"
-            }
+            windows_by_level = self._windows_by_level(due_rules)
+            # A campaign's windows are summed from its ad sets, except
+            # lifetime, which is read on the campaign itself (see
+            # `get_campaigns_insights`). An ad's windows are read on the ad.
+            campaign_windows = windows_by_level["campaign"]
+            adset_windows = windows_by_level["adset"] | (campaign_windows - {"lifetime"})
+            ad_windows = windows_by_level["ad"]
 
             async def fetch_window(window: str):
                 rows = await self.meta_client.get_adsets_insights(
                     account_id=account.account_id,
                     access_token=access_token,
-                    date_preset=window,
+                    date_preset=meta_date_preset(window),
                     currency=currency,
                     priority=priority,
                 )
                 return window, {str(row["adset_id"]): row for row in rows}
 
             results = await asyncio.gather(
-                *(fetch_window(window) for window in sorted(windows)),
+                *(fetch_window(window) for window in sorted(adset_windows)),
                 return_exceptions=True,
             )
             insights_by_window = {}
@@ -331,6 +383,7 @@ class MonitoringWorker:
 
             # Only paid for when a campaign rule is actually due this cycle.
             campaigns: list[dict[str, Any]] = []
+            campaign_lifetime: dict[str, dict[str, Any]] = {}
             campaigns_error = None
             if any(self._rule_level(rule) == "campaign" for rule in due_rules):
                 try:
@@ -339,12 +392,27 @@ class MonitoringWorker:
                         access_token=access_token,
                         priority=priority,
                     )
+                    if "lifetime" in campaign_windows:
+                        campaign_lifetime = {
+                            str(row["campaign_id"]): row
+                            for row in await self.meta_client.get_campaigns_insights(
+                                account_id=account.account_id,
+                                access_token=access_token,
+                                date_preset=meta_date_preset("lifetime"),
+                                currency=currency,
+                                priority=priority,
+                            )
+                        }
                 except Exception as campaign_error:
                     logger.warning(
-                        "Failed to read campaign inventory for %s: %s",
+                        "Failed to read campaigns for %s: %s",
                         account.account_id,
                         campaign_error,
                     )
+                    # Campaign rules sit this cycle out rather than run on
+                    # half the numbers.
+                    campaigns = []
+                    campaign_lifetime = {}
                     campaigns_error = campaign_error
 
             # An ad is a leaf, so nothing can be summed up to it: its rows and
@@ -362,11 +430,11 @@ class MonitoringWorker:
                         currency=currency,
                         priority=priority,
                     )
-                    for window in sorted(windows):
+                    for window in sorted(ad_windows):
                         rows = await self.meta_client.get_ads_insights(
                             account_id=account.account_id,
                             access_token=access_token,
-                            date_preset=window,
+                            date_preset=meta_date_preset(window),
                             currency=currency,
                             priority=priority,
                         )
@@ -442,6 +510,7 @@ class MonitoringWorker:
                 "currency": currency,
                 "adsets": today,
                 "campaigns": campaigns,
+                "campaign_lifetime": campaign_lifetime,
                 "campaigns_error": campaigns_error,
                 "ads": ads,
                 "ads_by_window": ads_by_window,
@@ -2176,21 +2245,25 @@ class MonitoringWorker:
                         for adset in adsets
                     ]
                     entity_windows: dict[str, dict[str, dict[str, Any]]] = {
-                        str(adset["adset_id"]): {
-                            window: rows_by_adset.get(str(adset["adset_id"]), {})
-                            for window, rows_by_adset in insights_by_window.items()
-                        }
+                        str(adset["adset_id"]): self._entity_windows(
+                            str(adset["adset_id"]), insights_by_window
+                        )
                         for adset in adsets
                     }
                     if campaigns:
                         campaign_entities, campaign_windows = self._campaign_entities(
-                            adsets, campaigns, insights_by_window
+                            adsets,
+                            campaigns,
+                            insights_by_window,
+                            snapshot.get("campaign_lifetime")
+                            if "lifetime" in self._windows_by_level(due_rules)["campaign"]
+                            else None,
                         )
                         entities.extend(campaign_entities)
                         entity_windows.update(campaign_windows)
                     elif snapshot.get("campaigns_error") is not None:
                         stats["errors"].append(
-                            f"Account {account_ref}: campaign inventory unavailable "
+                            f"Account {account_ref}: campaigns unavailable "
                             f"({snapshot['campaigns_error']}); campaign rules skipped "
                             "this cycle"
                         )
@@ -2203,10 +2276,7 @@ class MonitoringWorker:
                             "entity_id": ad_id,
                             "entity_name": str(ad.get("ad_name") or ""),
                         })
-                        entity_windows[ad_id] = {
-                            window: rows_by_ad.get(ad_id, {})
-                            for window, rows_by_ad in ads_by_window.items()
-                        }
+                        entity_windows[ad_id] = self._entity_windows(ad_id, ads_by_window)
                     if snapshot.get("ads_error") is not None:
                         stats["errors"].append(
                             f"Account {account_ref}: ads unavailable "

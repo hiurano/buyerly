@@ -21,7 +21,8 @@ export type RuleMetric =
 
 export type RuleOperator = 'gte' | 'gt' | 'lte' | 'lt' | 'eq';
 
-export type RuleTimeWindow = 'today' | 'yesterday' | 'last_3d' | 'last_7d';
+/** `lifetime` is everything since the object launched (Meta's "maximum" preset). */
+export type RuleTimeWindow = 'today' | 'yesterday' | 'last_3d' | 'last_7d' | 'lifetime';
 
 export type RuleAction =
   | 'turn_off'
@@ -190,6 +191,7 @@ export const RULE_TIME_WINDOW_LABELS: Record<RuleTimeWindow, string> = {
   yesterday: 'yesterday',
   last_3d: 'last 3d',
   last_7d: 'last 7d',
+  lifetime: 'lifetime',
 };
 
 export const RULE_LEVEL_LABELS: Record<RuleExecutionLevel, string> = {
@@ -620,6 +622,8 @@ export interface RuleAccountPreview {
   running: number;
   matching: number;
   data_as_of: string | null;
+  /** First synced day the preview's lifetime numbers start from; null without a lifetime condition. */
+  lifetime_since: string | null;
   entities: RulePreviewEntity[];
 }
 

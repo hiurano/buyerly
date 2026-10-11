@@ -119,6 +119,8 @@ class MockMetaClient(MetaClient):
         self.status_changes = []
         self.campaign_status_changes = []
         self.campaign_inventory_requests = 0
+        self.campaigns_by_window = {}
+        self.requested_campaign_windows = []
         self.budget_changes = []
 
     async def get_account_info(
@@ -185,6 +187,20 @@ class MockMetaClient(MetaClient):
     ):
         self.campaign_inventory_requests += 1
         return [dict(campaign) for campaign in self.campaigns_state.values()]
+
+    async def get_campaigns_insights(
+        self,
+        account_id: str,
+        access_token: str,
+        date_preset: str = "today",
+        currency: str = "UNKNOWN",
+        priority: str = "normal",
+    ):
+        self.requested_campaign_windows.append(date_preset)
+        source = self.campaigns_by_window[date_preset]
+        if isinstance(source, Exception):
+            raise source
+        return [dict(row) for row in source.values()]
 
     async def set_campaign_status(
         self,
@@ -496,6 +512,104 @@ class TestEndToEndFlow(unittest.IsolatedAsyncioTestCase):
         await worker.run_cycle()
 
         self.assertEqual(mock_meta.requested_ad_windows, ["today", "yesterday"])
+        self.assertEqual(mock_meta.ad_status_changes, [("ad_1", "PAUSED")])
+
+    LIFETIME_LADDER = [
+        {"metric": "spend", "operator": "gte", "value": 4.0, "time_window": "lifetime"},
+        {"metric": "leads", "operator": "eq", "value": 0.0, "time_window": "lifetime"},
+    ]
+
+    async def test_adset_lifetime_rule_reads_spend_since_launch(self):
+        """After the account's midnight today restarts at zero; lifetime does not."""
+        await self._set_rule(level="adset", name="$4 and no lead", conditions=self.LIFETIME_LADDER)
+        mock_meta = MockMetaClient()
+        for adset in mock_meta.adsets_state.values():
+            adset.update(spend=0.40, leads=0, clicks=0, impressions=10)
+        mock_meta.insights_by_window["maximum"] = {
+            "adset_1": {**mock_meta.adsets_state["adset_1"], "spend": 4.60, "leads": 0},
+            # Spent as much, but its lead came in yesterday.
+            "adset_2": {**mock_meta.adsets_state["adset_2"], "spend": 4.60, "leads": 1},
+        }
+        worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: 10_000.0)
+        stats = await worker.run_cycle()
+
+        # Meta's name for the window, never the rule's own word.
+        self.assertEqual(mock_meta.requested_windows, ["today", "maximum"])
+        self.assertEqual(mock_meta.status_changes, [("adset_1", "PAUSED")])
+        self.assertEqual(stats["adsets_stopped"], 1)
+        async with self.test_session_maker() as session:
+            event = (
+                await session.execute(select(AuditEvent).where(AuditEvent.event_type == "STOP"))
+            ).scalar_one()
+            self.assertIn("Spend [Lifetime]", event.message)
+
+    async def test_adset_lifetime_rule_waits_when_meta_has_no_lifetime_row(self):
+        """Missing lifetime numbers are not replaced by today's zero leads."""
+        await self._set_rule(level="adset", name="$4 and no lead", conditions=self.LIFETIME_LADDER)
+        mock_meta = MockMetaClient()
+        mock_meta.insights_by_window["maximum"] = {}
+        worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: 10_000.0)
+        await worker.run_cycle()
+
+        # adset_1 spent $15.50 today with no lead, but its lifetime is unknown.
+        self.assertEqual(mock_meta.status_changes, [])
+
+    async def test_campaign_lifetime_rule_reads_the_campaign_itself(self):
+        """A deleted ad set's lead still counts in the campaign's lifetime."""
+        await self._set_rule(conditions=[
+            {"metric": "spend", "operator": "gte", "value": 30.0, "time_window": "lifetime"},
+            {"metric": "leads", "operator": "eq", "value": 0.0, "time_window": "lifetime"},
+        ])
+        mock_meta = MockMetaClient()
+        mock_meta.campaigns_state["campaign_2"] = {
+            "campaign_id": "campaign_2",
+            "campaign_name": "Norway test",
+            "status": "ACTIVE",
+            "effective_status": "ACTIVE",
+        }
+        mock_meta.campaigns_by_window["maximum"] = {
+            "campaign_1": {"campaign_id": "campaign_1", "spend": 41.0, "leads": 0,
+                           "registrations": 0, "purchases": 0, "clicks": 9, "impressions": 300},
+            "campaign_2": {"campaign_id": "campaign_2", "spend": 41.0, "leads": 2,
+                           "registrations": 0, "purchases": 0, "clicks": 9, "impressions": 300},
+        }
+        worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: 10_000.0)
+        stats = await worker.run_cycle()
+
+        self.assertEqual(mock_meta.requested_campaign_windows, ["maximum"])
+        # Read on the campaign, so no ad set lifetime read is paid for.
+        self.assertEqual(mock_meta.requested_windows, ["today"])
+        self.assertEqual(mock_meta.campaign_status_changes, [("campaign_1", "PAUSED")])
+        self.assertEqual(mock_meta.status_changes, [])
+        self.assertEqual(stats["campaigns_stopped"], 1)
+
+    async def test_campaign_lifetime_read_failure_skips_campaign_rules(self):
+        await self._set_rule(conditions=self.LIFETIME_LADDER)
+        mock_meta = MockMetaClient()
+        mock_meta.campaigns_by_window["maximum"] = RuntimeError("Meta 500")
+        worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: 10_000.0)
+        stats = await worker.run_cycle()
+
+        self.assertEqual(mock_meta.campaign_status_changes, [])
+        self.assertTrue(
+            any("campaign rules skipped" in error for error in stats["errors"]),
+            stats["errors"],
+        )
+
+    async def test_ad_lifetime_rule_reads_ads_since_launch(self):
+        await self._set_rule(level="ad", name="Creative $4 and no lead", conditions=self.LIFETIME_LADDER)
+        mock_meta = MockMetaClient()
+        for ad in mock_meta.ads_state.values():
+            ad.update(spend=0.50, leads=0)
+        mock_meta.ads_by_window["maximum"] = {
+            "ad_1": {**mock_meta.ads_state["ad_1"], "spend": 6.0, "leads": 0},
+            "ad_2": {**mock_meta.ads_state["ad_2"], "spend": 6.0, "leads": 1},
+        }
+        worker = MonitoringWorker(meta_client=mock_meta, clock=lambda: 10_000.0)
+        await worker.run_cycle()
+
+        self.assertEqual(mock_meta.requested_ad_windows, ["today", "maximum"])
+        self.assertEqual(mock_meta.requested_windows, ["today"])
         self.assertEqual(mock_meta.ad_status_changes, [("ad_1", "PAUSED")])
 
     async def test_custom_rule_stops_adset(self):
