@@ -8,6 +8,7 @@ import {
   type DeletedKind,
 } from '@/lib/trash';
 import { pushHistory } from '@/lib/undoHistory';
+import { openRecentlyDeletedRules } from '@/lib/routing';
 import { toast } from '@/ui/toast';
 
 /*
@@ -138,7 +139,7 @@ export async function runPendingDeletion(): Promise<void> {
     description: `You can restore deleted ${NOUNS[kind].plural} from Recently deleted.`,
     action: {
       label: 'View recently deleted',
-      onClick: () => useAppStore.getState().setRuleFilterTab('deleted'),
+      onClick: openRecentlyDeletedRules,
     },
   });
 }

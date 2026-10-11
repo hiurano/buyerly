@@ -208,7 +208,8 @@ try {
       assert.deepEqual(await commandTexts(), [
         'Delete all notifications', 'Delete all read notifications · ⇧ ⌫', 'Create rule…', 'Search workspace…',
         // Linear leaves out Go to inbox on Inbox itself.
-        'Go to advanced search · /', 'Go to Ads Manager · G then A', 'Go to rules · G then R', 'Go to settings · G then S',
+        'Go to advanced search · /', 'Go to Ads Manager · G then A', 'Go to rules · G then R',
+        'Go to recently deleted rules', 'Go to settings · G then S',
         ...openCommands,
         ...(wide ? ['Collapse navigation sidebar · ['] : []),
       ]);
@@ -291,6 +292,21 @@ try {
       await page.getByRole('dialog', { name: 'New rule' }).waitFor();
       await page.keyboard.press('Escape');
       await page.getByRole('dialog', { name: 'New rule' }).waitFor({ state: 'detached' });
+
+      // 5b. Recently deleted is a page of its own, as Linear's "Go to recently deleted issues" (#381);
+      //     G R goes back to the list.
+      await page.keyboard.press('Control+K');
+      await commandField.fill('recently deleted');
+      await commands.getByRole('option', { name: 'Go to recently deleted rules' }).waitFor();
+      await page.keyboard.press('Enter');
+      await closed();
+      await page.waitForURL(`${origin}/alpha/rules/recently-deleted`);
+      await page.getByRole('heading', { name: 'Recently deleted' }).waitFor();
+      await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link', { name: 'Rules' }).waitFor();
+      await page.keyboard.press('g');
+      await page.keyboard.press('r');
+      await page.waitForURL(`${origin}/alpha/rules`);
+      await page.getByRole('heading', { name: 'Recently deleted' }).waitFor({ state: 'detached' });
 
       // 6. A quick result opens its record; Ctrl+/ and the footer open the search page with the words.
       await page.keyboard.press('Control+K');

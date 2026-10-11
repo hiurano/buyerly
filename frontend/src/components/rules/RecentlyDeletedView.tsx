@@ -41,7 +41,7 @@ function daysLeft(purgeAt: string): string {
  * first. Restore puts an item back and it simply leaves this list; there is no
  * permanent delete, the retention window does that.
  */
-export const RecentlyDeletedView: React.FC = () => {
+export const RecentlyDeletedView: React.FC<{ onCountChange?: (count: number | null) => void }> = ({ onCountChange }) => {
   const rules = useAppStore((state) => state.rules);
   const ruleGroups = useAppStore((state) => state.ruleGroups);
   const [items, setItems] = useState<DeletedItem[]>([]);
@@ -69,6 +69,11 @@ export const RecentlyDeletedView: React.FC = () => {
   useEffect(() => {
     void load();
   }, [load, rules, ruleGroups]);
+
+  // The page title shows the count beside it, as Linear's "Archived issues 3".
+  useEffect(() => {
+    onCountChange?.(loadState === 'ready' ? items.length : null);
+  }, [items.length, loadState, onCountChange]);
 
   const restore = useCallback(async (item: DeletedItem) => {
     if (restoringId !== null) return;

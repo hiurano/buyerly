@@ -639,11 +639,24 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertIn("requestDeletion(", menu)
             self.assertNotIn("void deleteRule", menu)
 
-        # Recently deleted is its own view over the server's thirty-day trash.
+        # Recently deleted is a page of its own over the server's thirty-day trash,
+        # /rules/recently-deleted, like Linear's team archive, not a tab of the list (#381).
         for contract in ("'/api/deleted-items'", "/api/deleted-items/${itemId}/restore", "TRASH_RETENTION_DAYS = 30"):
             self.assertIn(contract, self.trash_lib)
-        self.assertIn("{ id: 'deleted', label: 'Recently deleted' }", self.rules_view)
-        self.assertIn("<RecentlyDeletedView />", self.rules_view)
+        self.assertNotIn("label: 'Recently deleted'", self.rules_view)
+        self.assertNotIn("RecentlyDeletedView", self.rules_view)
+        self.assertNotIn("runs nowhere yet", self.rules_view)
+        self.assertIn("export const RECENTLY_DELETED_RULES = 'recently-deleted';", self.routing)
+        self.assertIn("<RecentlyDeletedRulesPage", self.app)
+        recently_deleted_page = (
+            ROOT / "frontend" / "src" / "components" / "rules" / "RecentlyDeletedRulesPage.tsx"
+        ).read_text()
+        self.assertIn('<nav aria-label="Breadcrumb"', recently_deleted_page)
+        self.assertIn("<RecentlyDeletedView onCountChange={setCount} />", recently_deleted_page)
+        command_menu = (ROOT / "frontend" / "src" / "components" / "command" / "CommandMenu.tsx").read_text()
+        self.assertIn("label: 'Go to recently deleted rules'", command_menu)
+        self.assertIn("action: { label: 'View recently deleted', onClick: openRecentlyDeletedRules }", self.rules_view)
+        self.assertIn("onClick: openRecentlyDeletedRules,", self.rule_actions)
         self.assertIn("event.key !== '#'", self.recently_deleted_view)
 
     def test_inbox_is_linear_notifications_over_workspace_events(self):

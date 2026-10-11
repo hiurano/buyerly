@@ -43,6 +43,7 @@ Buyerly использует workspace-first URL без технического
 | Конкретная рекламная сущность | `/{workspace}/ads-manager/{entityType}/{entityId}` |
 | Rules | `/{workspace}/rules` |
 | Правило | `/{workspace}/rules/{ruleId}` |
+| Удалённые правила и группы (Recently deleted, 30 дней) | `/{workspace}/rules/recently-deleted` |
 | Settings | `/{workspace}/settings` |
 
 Открытие `/{workspace}` канонизируется клиентом в `/{workspace}/inbox`.

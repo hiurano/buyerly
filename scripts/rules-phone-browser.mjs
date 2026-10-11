@@ -151,12 +151,14 @@ try {
         assert.equal(await page.evaluate(() => matchMedia('(hover: none) and (pointer: coarse)').matches), true, 'the phone is a touch screen');
       }
 
-      // 0. The condition carries its window and the account currency, and a
-      // rule attached nowhere says how to attach it (#324).
+      // 0. The condition carries its window and the account currency (#324). How to
+      // attach a rule is the hint on "Not attached"; no line above the list says it (#381).
       assert.match(await page.locator('[data-row-id="7"]').innerText(), /IF Spend ≥ USD\s10\.00 today/);
-      const attachNote = page.getByRole('note').filter({ hasText: 'nowhere yet' });
-      assert.match(await attachNote.innerText(), /^“First rule” runs nowhere yet\. Attach a rule to an ad account/);
-      await onScreen(attachNote, 'the attach note');
+      const notAttached = page.locator('[data-row-id="7"]').getByText('Not attached', { exact: true });
+      assert.match(await notAttached.getAttribute('title'), /^Attach a rule to an ad account/);
+      assert.equal(await page.getByText(/runs? nowhere yet/).count(), 0, 'no "runs nowhere yet" line');
+      // Three tabs: Recently deleted is a page of its own (#381).
+      assert.equal(await page.getByText('Recently deleted', { exact: true }).count(), 0, 'no Recently deleted tab');
 
       // 1. A second rule from the header button, shown with no pointer anywhere.
       const newRule = page.getByRole('button', { name: 'New rule' });
@@ -190,7 +192,6 @@ try {
       await form.waitFor({ state: 'detached' });
       await page.locator('[data-row-id="9"]').waitFor();
       await page.mouse.move(0, 0);
-      await attachNote.filter({ hasText: '2 rules run nowhere yet.' }).waitFor();
 
       // 2. Edit it from its row's menu.
       let menu = await openRowMenu('Second rule');
@@ -242,8 +243,6 @@ try {
       });
       await preview.waitFor({ state: 'detached' });
       await page.getByRole('menu').first().waitFor({ state: 'detached' });
-      // Attached, it leaves the note to the first rule.
-      await attachNote.filter({ hasText: '“First rule” runs nowhere yet.' }).waitFor();
 
       // 4. Delete it.
       menu = await openRowMenu('Second rule v2');
@@ -256,6 +255,18 @@ try {
       await waitForWrites(4);
       assert.deepEqual(lastWrite(), { verb: 'DELETE', path: '/api/presets/9', body: null });
       await page.locator('[data-row-id="9"]').waitFor({ state: 'detached' });
+      await page.locator('[data-row-id="7"]').waitFor();
+
+      // 5. The toast's "View recently deleted" opens its own page, Rules › Recently deleted (#381).
+      await press(page.getByRole('button', { name: 'View recently deleted' }));
+      await page.waitForURL(`${origin}/alpha/rules/recently-deleted`);
+      const deletedTitle = page.getByRole('heading', { name: 'Recently deleted' });
+      await deletedTitle.waitFor();
+      await onScreen(deletedTitle, 'the Recently deleted title');
+      await page.getByText('Nothing deleted', { exact: true }).waitFor();
+      await page.screenshot({ path: `${output}/recently-deleted-${width}.png` });
+      await press(page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link', { name: 'Rules' }));
+      await page.waitForURL(`${origin}/alpha/rules`);
       await page.locator('[data-row-id="7"]').waitFor();
 
       assert.deepEqual(errors, []);

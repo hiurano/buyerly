@@ -61,7 +61,7 @@ import {
 } from '@/lib/notificationChannels';
 import { NO_TELEGRAM_CONNECTION, fetchTelegramConnection, type TelegramConnection } from '@/lib/telegram';
 
-export type RuleFilterTab = 'active' | 'paused' | 'all' | 'deleted';
+export type RuleFilterTab = 'active' | 'paused' | 'all';
 
 export interface CampaignItem {
   id: string;
@@ -433,7 +433,7 @@ interface AppState {
   rulesMutationError: string;
   clearRulesMutationError: () => void;
   loadRules: () => Promise<void>;
-  /** `deleted` shows Recently deleted instead of the live rules. */
+  /** Recently deleted is a page of its own (/rules/recently-deleted), not a tab. */
   ruleFilterTab: RuleFilterTab;
   setRuleFilterTab: (tab: RuleFilterTab) => void;
   selectedRuleId: string | null;

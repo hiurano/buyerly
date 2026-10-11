@@ -7,6 +7,7 @@ import {
   LinearBoltIcon,
 } from '@/icons/LinearIcons';
 import { goToShortcut } from '@/lib/shortcuts';
+import { openAppPath, pathForTab } from '@/lib/routing';
 import { Tooltip } from '@/ui/Tooltip';
 import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
 import { SidebarBackdrop, useSidebarDrawer, useSidebarPeek } from './SidebarDrawer';
@@ -20,6 +21,7 @@ export const Sidebar: React.FC = () => {
     resetSidebarWidth,
     activeTab,
     setActiveTab,
+    workspaceSlug,
   } = useAppStore();
   const inboxUnreadCount = useAppStore(selectInboxBadgeCount);
   const [isDragging, setIsDragging] = useState(false);
@@ -206,7 +208,11 @@ export const Sidebar: React.FC = () => {
           <Tooltip content="Go to rules" shortcut={goToShortcut('rules')} side="right" sideOffset={8}>
             <button
               type="button"
-              onClick={() => setActiveTab('rules')}
+              onClick={() => {
+                // From Recently deleted, back to the list: the tab itself does not change.
+                if (activeTab === 'rules' && workspaceSlug) openAppPath(pathForTab(workspaceSlug, 'rules'));
+                setActiveTab('rules');
+              }}
               data-active={activeTab === 'rules' ? 'true' : 'false'}
               className="linear-sidebar-nav-item"
             >
