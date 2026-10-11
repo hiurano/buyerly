@@ -19,10 +19,11 @@ Each run reports, per ad set and per day:
 - after an undo: whether Meta is back, a repeated undo writes nothing and the
   rule leaves the ad set alone for the rest of the day.
 
-The default rules are a Netherlands lead-gen buyer's cheat sheet:
+The default rules are a Netherlands lead-gen buyer's cheat sheet, taken from
+the ready-made examples in `core/rule_examples.py`:
 
-- $3.00 and no click: dead;
-- $3.50 and one click: dead;
+- $3.00 and no link click: dead;
+- $3.50 and one link click: dead;
 - $4.00 and no lead: dead;
 - $7.00, no registration and fewer than two leads: hard stop;
 - $12.00: the ceiling, whatever happened.
@@ -51,6 +52,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from core.action_undo import UndoError, reverse_audit_event
+from core.rule_examples import EXAMPLE_PRESETS
 from database.models import (
     Account,
     AccountHealth,
@@ -67,13 +69,17 @@ TIMEZONE = "Europe/Amsterdam"
 ACCOUNT_ID = "act_simulated_nl"
 LAUNCH_HOUR = 9
 
-# (name, conditions) in the order a buyer reads the cheat sheet.
+# (name, conditions) in the order a buyer reads the cheat sheet: the very
+# examples every workspace gets (#386), so the two cannot drift apart.
 CHEAT_SHEET_RULES = [
-    ("$3 and no click", [("spend", "gte", 3.0), ("clicks", "eq", 0)]),
-    ("$3.50 and one click", [("spend", "gte", 3.5), ("clicks", "lte", 1)]),
-    ("$4 and no lead", [("spend", "gte", 4.0), ("leads", "eq", 0)]),
-    ("$7, no registration, under two leads", [("spend", "gte", 7.0), ("registrations", "eq", 0), ("leads", "lte", 1)]),
-    ("$12 ceiling", [("spend", "gte", 12.0)]),
+    (
+        preset["name"],
+        [
+            (condition["metric"], condition["operator"], float(condition["value"]))
+            for condition in preset["conditions"]
+        ],
+    )
+    for preset in EXAMPLE_PRESETS
 ]
 
 OPERATORS = {
@@ -120,8 +126,12 @@ class SimulatedAdSet:
         return self.history[max(0, min(minute, len(self.history) - 1))] / 100
 
     def counts_at(self, spend: float) -> dict:
+        # The simulated clicks are clicks on the ad's link; Meta's all-clicks
+        # count includes them, so both read the same here.
+        link_clicks = sum(1 for point in self.clicks_at if point <= spend + 1e-9)
         return {
-            "clicks": sum(1 for point in self.clicks_at if point <= spend + 1e-9),
+            "clicks": link_clicks,
+            "link_clicks": link_clicks,
             "leads": sum(1 for point in self.leads_at if point <= spend + 1e-9),
             "registrations": sum(1 for point in self.registrations_at if point <= spend + 1e-9),
         }

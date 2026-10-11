@@ -258,7 +258,7 @@ Meta возвращает браузер на служебный callback `/api/
 Разрешённые значения:
 
 - `action`: `turn_off`, `turn_on`, `notify_only`, `increase_budget`, `decrease_budget`;
-- `metric`: `spend`, `cpl`, `cpreg`, `cpp`, `leads`, `registrations`, `purchases`, `ctr`, `cpc`, `clicks`; счётчики (`leads`, `registrations`, `purchases`, `clicks`) — только целые значения;
+- `metric`: `spend`, `cpl`, `cpreg`, `cpp`, `leads`, `registrations`, `purchases`, `ctr`, `cpc`, `clicks`, `link_clicks` (клики по ссылке, `inline_link_clicks` Meta); счётчики (`leads`, `registrations`, `purchases`, `clicks`, `link_clicks`) — только целые значения;
 - `operator`: `gte`, `gt`, `lte`, `lt`, `eq`;
 - `time_window`: `today`, `yesterday`, `last_3d`, `last_7d`, `lifetime`; `lifetime` — всё с запуска объекта, worker читает его у Meta как `date_preset=maximum` (сегодня включено);
 - `condition_logic`: `and`, `or`;
@@ -281,7 +281,7 @@ Meta возвращает браузер на служебный callback `/api/
 
 `acted_at` сохраняется между проверками, в которых правило не действовало. Строки правил, отвязанных от кабинета, не возвращаются; не больше 1000 строк.
 
-При первом открытии правил Buyerly один раз создаёт для владельца шесть примеров и две метки с префиксом «Пример ·». Они не назначены кабинетам и не включают автоматику. Их можно редактировать или удалить; удалённые примеры не создаются повторно.
+При первом открытии правил в workspace (кем угодно из участников) Buyerly один раз создаёт готовые примеры (`core/rule_examples.py`, версия 2, #386): пять правил лесенки теста адсета NL-байера с меткой «NL launch» — `$3 and no click`, `$3.50 and one click`, `$4 and no lead`, `$7 and no registration`, `$12 ceiling`; все на уровне ad set, окно `lifetime`, проверка каждые 5 минут, действие — выключить. Они не назначены кабинетам и не включают автоматику. Их можно редактировать или удалить; удалённые примеры не создаются повторно. Workspace, где уже были примеры версии 1, получает набор NL один раз; старые примеры не трогаются.
 
 ## Метки правил
 

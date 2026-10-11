@@ -69,6 +69,24 @@ class TestRuleValidation(unittest.TestCase):
                 )
             )
 
+    def test_link_clicks_are_a_whole_number_rule_metric(self):
+        validate_runtime_rule(
+            rule(
+                conditions=[
+                    {"metric": "spend", "operator": "gte", "value": 3, "time_window": "lifetime"},
+                    {"metric": "link_clicks", "operator": "eq", "value": 0, "time_window": "lifetime"},
+                ]
+            )
+        )
+        with self.assertRaisesRegex(ValueError, "whole numbers"):
+            validate_runtime_rule(
+                rule(
+                    conditions=[
+                        {"metric": "link_clicks", "operator": "lte", "value": 1.5, "time_window": "today"}
+                    ],
+                )
+            )
+
     def test_stop_can_use_registration_or_purchase_conditions(self):
         validate_runtime_rule(
             rule(

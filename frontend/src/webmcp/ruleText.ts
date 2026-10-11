@@ -25,6 +25,7 @@ const METRIC_WORDS: Record<RuleMetric, string> = {
   ctr: 'CTR',
   cpc: 'cost per click',
   clicks: 'clicks',
+  link_clicks: 'link clicks',
 };
 
 const MONEY_METRICS: ReadonlySet<RuleMetric> = new Set(['spend', 'cpl', 'cpreg', 'cpp', 'cpc']);

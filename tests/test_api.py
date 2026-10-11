@@ -2107,8 +2107,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertIn(group_id, [item["id"] for item in buyer_list.json()])
             self.assertNotIn(group_id, [item["id"] for item in admin_list.json()])
             self.assertEqual(
-                len([item for item in admin_list.json() if item["name"].startswith("Example ·")]),
-                2,
+                [item["name"] for item in admin_list.json() if item["name"] == "NL launch"],
+                ["NL launch"],
             )
             self.assertEqual(forbidden_update.status_code, 404)
             self.assertEqual(forbidden_use.status_code, 400)
@@ -2137,6 +2137,66 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 await session.execute(select(RuleGroupItem).where(RuleGroupItem.group_id == group_id))
             ).scalars().all()
             self.assertEqual(group_items, [])
+
+    async def test_rule_examples_are_one_nl_launch_set_per_workspace(self):
+        """Every member of a team sees the same five examples, not a copy each (#386)."""
+        async with self.test_session_maker() as session:
+            teammate = User(
+                telegram_id="5550001386",
+                username="teammate",
+                full_name="Teammate",
+                role="buyer",
+                is_approved=True,
+                active_workspace_id=self.ws_buyer_id,
+            )
+            session.add(teammate)
+            await session.flush()
+            session.add(
+                WorkspaceMember(workspace_id=self.ws_buyer_id, user_id=teammate.id, role="buyer")
+            )
+            await session.commit()
+
+        buyer_headers = await session_headers(
+            self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
+        )
+        teammate_headers = await session_headers(
+            self.test_session_maker, {"id": 5550001386, "first_name": "Teammate", "username": "teammate"}
+        )
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            teammate_presets = await client.get("/api/presets", headers=teammate_headers)
+            buyer_presets = await client.get("/api/presets", headers=buyer_headers)
+            labels = await client.get("/api/rule-labels", headers=buyer_headers)
+
+        self.assertEqual(teammate_presets.status_code, 200)
+        self.assertEqual(
+            sorted(item["id"] for item in teammate_presets.json()),
+            sorted(item["id"] for item in buyer_presets.json()),
+        )
+        examples = sorted(
+            (item for item in buyer_presets.json() if item["name"].startswith("$")),
+            key=lambda item: item["id"],
+        )
+        self.assertEqual(
+            [item["name"] for item in examples],
+            [
+                "$3 and no click",
+                "$3.50 and one click",
+                "$4 and no lead",
+                "$7 and no registration",
+                "$12 ceiling",
+            ],
+        )
+        self.assertEqual(
+            examples[0]["conditions"],
+            [
+                {"metric": "spend", "operator": "gte", "value": 3, "time_window": "lifetime"},
+                {"metric": "link_clicks", "operator": "eq", "value": 0, "time_window": "lifetime"},
+            ],
+        )
+        nl_labels = [item for item in labels.json() if item["name"] == "NL launch"]
+        self.assertEqual(len(nl_labels), 1)
+        self.assertTrue(all(nl_labels[0]["id"] in item["label_ids"] for item in examples))
 
     async def test_deleted_rules_and_groups_are_restorable_for_thirty_days(self):
         async with self.test_session_maker() as session:
