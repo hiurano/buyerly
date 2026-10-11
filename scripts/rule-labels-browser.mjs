@@ -181,11 +181,11 @@ try {
       await page.goto(`${origin}/alpha/settings/rule-labels`);
       await page.getByRole('heading', { name: 'Rule labels' }).waitFor();
       const table = page.getByRole('table', { name: 'Rule labels' });
-      await table.getByRole('button', { name: 'Name of Launch' }).waitFor();
+      await table.getByRole('button', { name: 'Launch', exact: true }).waitFor();
       await page.getByRole('button', { name: 'New label' }).click();
       await page.getByRole('textbox', { name: 'Label name' }).fill('Night');
       await page.keyboard.press('Enter');
-      await table.getByRole('button', { name: 'Name of Night' }).waitFor();
+      await table.getByRole('button', { name: 'Night', exact: true }).waitFor();
       assert.equal(state.labels.find((label) => label.name === 'Night')?.description, '');
       await page.screenshot({ path: `${output}/settings-labels-1440.png` });
       assert.deepEqual(errors, []);
@@ -213,7 +213,7 @@ try {
       await page.screenshot({ path: `${output}/picker-390.png` });
       await page.goto(`${origin}/alpha/settings/rule-labels`);
       await page.getByRole('heading', { name: 'Rule labels' }).waitFor();
-      await page.getByRole('table', { name: 'Rule labels' }).getByRole('button', { name: 'Name of Launch' }).waitFor();
+      await page.getByRole('table', { name: 'Rule labels' }).getByRole('button', { name: 'Launch', exact: true }).waitFor();
       const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
       assert.ok(scrollWidth <= 390, `the page scrolls sideways: ${scrollWidth}`);
       await page.screenshot({ path: `${output}/settings-labels-390.png` });
