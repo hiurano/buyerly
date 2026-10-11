@@ -46,6 +46,8 @@ POST_BASELINE_COLUMNS = {
     },
     "rule_groups": {
         "icon",
+        # Added when groups became labels (0038).
+        "color",
     },
     "audit_events": {
         "entity_level",

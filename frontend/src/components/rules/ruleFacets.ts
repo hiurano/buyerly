@@ -1,9 +1,12 @@
-import type { RuleGroup, RuleItem } from '@/store/useAppStore';
+import type { RuleItem, RuleLabel } from '@/store/useAppStore';
 import type { RuleAction } from '@/lib/rules';
 
-/** The Rules details pane's quick filters (#367): state, what a rule does, its group. */
-export type RuleFacetId = 'status' | 'action' | 'group';
-export const RULE_FACET_IDS: RuleFacetId[] = ['status', 'action', 'group'];
+/** The Rules details pane's quick filters (#367): state, what a rule does, its labels (#383). */
+export type RuleFacetId = 'status' | 'action' | 'label';
+export const RULE_FACET_IDS: RuleFacetId[] = ['status', 'action', 'label'];
+
+/** A rule without labels, as Linear's "No labels". */
+export const NO_LABELS = 'none';
 
 export interface RuleQuickFilter {
   fieldId: string;
@@ -35,16 +38,17 @@ export function ruleState(rule: Pick<RuleItem, 'status' | 'needsReview'>): strin
   return rule.needsReview ? 'needs_review' : rule.status;
 }
 
-export function ruleFacetValue(rule: RuleItem, facet: string): string | null {
-  if (facet === 'status') return ruleState(rule);
-  if (facet === 'action') return rule.actionKind;
-  if (facet === 'group') return rule.groupId ?? 'ungrouped';
-  return null;
+/** What a rule holds for a facet: one state, one action, any number of labels. */
+export function ruleFacetValues(rule: RuleItem, facet: string): string[] {
+  if (facet === 'status') return [ruleState(rule)];
+  if (facet === 'action') return [rule.actionKind];
+  if (facet === 'label') return rule.labelIds.length ? rule.labelIds : [NO_LABELS];
+  return [];
 }
 
 /** Each tab's values with how many of `rules` hold them; a value no rule holds is left out. */
-export function createRuleFacets(rules: RuleItem[], groups: RuleGroup[]): RuleFacet[] {
-  const count = (facet: RuleFacetId, value: string) => rules.filter((rule) => ruleFacetValue(rule, facet) === value).length;
+export function createRuleFacets(rules: RuleItem[], labels: RuleLabel[]): RuleFacet[] {
+  const count = (facet: RuleFacetId, value: string) => rules.filter((rule) => ruleFacetValues(rule, facet).includes(value)).length;
   const listed = (facet: RuleFacetId, values: { value: string; label: string }[]) => values
     .map((option) => ({ ...option, count: count(facet, option.value) }))
     .filter((option) => option.count > 0);
@@ -60,11 +64,11 @@ export function createRuleFacets(rules: RuleItem[], groups: RuleGroup[]): RuleFa
       options: listed('action', Object.entries(ACTION_LABELS).map(([value, label]) => ({ value, label }))),
     },
     {
-      id: 'group',
-      label: 'Groups',
-      options: listed('group', [
-        ...groups.map((group) => ({ value: group.id, label: group.name })),
-        { value: 'ungrouped', label: 'Ungrouped' },
+      id: 'label',
+      label: 'Labels',
+      options: listed('label', [
+        ...labels.map((label) => ({ value: label.id, label: label.name })),
+        { value: NO_LABELS, label: 'No labels' },
       ]),
     },
   ];
@@ -72,7 +76,7 @@ export function createRuleFacets(rules: RuleItem[], groups: RuleGroup[]): RuleFa
 
 export function applyRuleQuickFilter(rules: RuleItem[], quick: RuleQuickFilter | null): RuleItem[] {
   if (!quick) return rules;
-  return rules.filter((rule) => ruleFacetValue(rule, quick.fieldId) === quick.value);
+  return rules.filter((rule) => ruleFacetValues(rule, quick.fieldId).includes(quick.value));
 }
 
 /** The pane's filter as this browser tab left it; only one the pane can show. */

@@ -506,7 +506,11 @@ class RulePreset(Base):
 
 
 class RuleGroup(Base):
-    """A reusable, ordered bundle of rule presets owned by one buyer."""
+    """A rule label, as Linear's issue labels (#383): a name, a color, a description.
+
+    The table keeps its old name from when labels were rule groups; a rule
+    can carry any number of labels through `rule_group_items`.
+    """
 
     __tablename__ = "rule_groups"
 
@@ -515,11 +519,12 @@ class RuleGroup(Base):
     owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     name = Column(String, nullable=False)
     description = Column(String, default="", nullable=False)
+    color = Column(String(7), default="#95a2b3", nullable=False, doc="Label color as #rrggbb")
     icon = Column(
         String,
         default="custom",
         nullable=False,
-        doc="Group marker: 'backlog', 'shield', 'rocket', 'flask' or 'custom'",
+        doc="Legacy group marker, kept only to color old snapshots; labels use `color`",
     )
     position = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
@@ -530,7 +535,7 @@ class RuleGroup(Base):
 
 
 class RuleGroupItem(Base):
-    """Ordered membership table between groups and executable presets."""
+    """A label on a rule; `created_at` is when the label was applied."""
 
     __tablename__ = "rule_group_items"
     __table_args__ = (

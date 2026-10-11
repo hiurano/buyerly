@@ -1023,6 +1023,63 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
             await init_test_db(engine)
             await engine.dispose()
 
+    async def test_rule_groups_become_labels_colored_by_their_icon(self):
+        from alembic import command
+        from alembic.config import Config
+        import os
+
+        engine = create_test_engine()
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text("DROP SCHEMA public CASCADE"))
+                await conn.execute(text("CREATE SCHEMA public"))
+
+            config = Config(
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic.ini")
+            )
+            config.set_main_option(
+                "script_location",
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic"),
+            )
+            command.upgrade(config, "0037_view_settings")
+            async with engine.begin() as conn:
+                for name, icon in (
+                    ("Safety", "shield"),
+                    ("Scale", "rocket"),
+                    ("Tests", "flask"),
+                    ("Backlog", "backlog"),
+                    ("Plain", "custom"),
+                ):
+                    await conn.execute(
+                        text(
+                            "INSERT INTO rule_groups "
+                            "(name, description, icon, position, created_at, updated_at) "
+                            "VALUES (:name, '', :icon, 0, NOW(), NOW())"
+                        ),
+                        {"name": name, "icon": icon},
+                    )
+
+            command.upgrade(config, "head")
+            async with engine.connect() as conn:
+                colors = dict(
+                    (
+                        await conn.execute(text("SELECT name, color FROM rule_groups"))
+                    ).all()
+                )
+            self.assertEqual(
+                colors,
+                {
+                    "Safety": "#4cb782",
+                    "Scale": "#bb87fc",
+                    "Tests": "#f2c94c",
+                    "Backlog": "#95a2b3",
+                    "Plain": "#95a2b3",
+                },
+            )
+        finally:
+            await init_test_db(engine)
+            await engine.dispose()
+
     async def test_manual_token_migration_encrypts_plaintext_and_downgrades_safely(self):
         from alembic import command
         from alembic.config import Config

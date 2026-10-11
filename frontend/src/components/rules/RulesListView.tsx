@@ -13,7 +13,7 @@ interface RulesListViewProps {
 }
 
 export const RulesListView: React.FC<RulesListViewProps> = ({ filteredRules }) => {
-  const { ruleGroups, rulesCollapsedGroups, toggleRulesGroupCollapse, openCreateRuleModal } = useAppStore();
+  const { ruleLabels, rulesCollapsedGroups, toggleRulesGroupCollapse, openCreateRuleModal } = useAppStore();
   const { view, update } = useRulesView();
   const columns = getRulesColumns(view.properties);
 
@@ -21,19 +21,20 @@ export const RulesListView: React.FC<RulesListViewProps> = ({ filteredRules }) =
     if (filteredRules.length === 0) {
       return <DataState title="No rules found" detail="No rules match the current filters." />;
     }
-    if (view.grouping !== 'status' && view.grouping !== 'groups') {
+    if (view.grouping !== 'status' && view.grouping !== 'labels') {
       return filteredRules.map((rule) => <RuleRow key={rule.id} rule={rule} />);
     }
-    return arrangeGroups(ruleGroupsFor(view.grouping, filteredRules, ruleGroups), view).map((group) => (
+    return arrangeGroups(ruleGroupsFor(view.grouping, filteredRules, ruleLabels), view).map((group) => (
       <LinearDataListGroup
         key={group.id}
         title={group.label}
         count={group.rows.length}
         dotColor={group.dotColor}
+        tint={group.tint}
         isCollapsed={rulesCollapsedGroups.includes(group.id)}
         onToggleCollapse={() => toggleRulesGroupCollapse(group.id)}
-        actionLabel="Create rule in group"
-        onAction={() => openCreateRuleModal(group.groupId)}
+        actionLabel={group.labelId ? `Create rule labelled ${group.label}` : 'Create rule in group'}
+        onAction={() => openCreateRuleModal(group.labelId)}
       >
         {group.rows.map((rule) => <RuleRow key={rule.id} rule={rule} />)}
       </LinearDataListGroup>

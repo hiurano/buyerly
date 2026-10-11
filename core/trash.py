@@ -1,4 +1,4 @@
-"""Recently deleted rules and rule groups.
+"""Recently deleted rules and rule labels (stored as rule groups).
 
 Deleting a rule or a group removes the live row exactly as before, so the
 worker and every list query keep reading only live data. What the deletion
@@ -34,7 +34,7 @@ PRESET_FIELDS = (
     "budget_max_daily",
     "owner_user_id",
 )
-GROUP_FIELDS = ("name", "description", "icon", "position", "owner_user_id")
+GROUP_FIELDS = ("name", "description", "color", "icon", "position", "owner_user_id")
 
 
 def _now() -> datetime:
@@ -78,7 +78,7 @@ def preset_snapshot(
 
 
 def group_snapshot(group: RuleGroup, items: List[Dict[str, int]]) -> Dict[str, Any]:
-    """What deleting a group removes. Its rules are not touched by the deletion."""
+    """What deleting a label removes. Its rules are not touched by the deletion."""
     return {
         "group": {field: getattr(group, field) for field in GROUP_FIELDS},
         "created_at": _iso(group.created_at),

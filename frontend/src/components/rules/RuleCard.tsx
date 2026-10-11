@@ -11,13 +11,15 @@ import {
   ContextMenuSeparator,
 } from '@/ui/ContextMenu';
 import {
-  LinearHalfStatusIcon,
+  LinearLabelIcon,
   LinearTrashIcon,
   LinearCheckIcon,
 } from '@/icons/LinearIcons';
 import { ruleActionTone } from '@/lib/rules';
 import type { RuleActionTone } from '@/lib/rules';
 import { ruleStatesTitle } from './RuleStatesDialog';
+import { labelsOf } from './rulesViewModel';
+import { RuleLabelPills } from './RuleLabelPills';
 
 const ACTION_DOT_COLORS: Record<RuleActionTone, string> = {
   stop: 'var(--rules-action-stop-text)',
@@ -36,7 +38,8 @@ export const RuleCard: React.FC<RuleCardProps> = ({
   isSelected,
   onSelect,
 }) => {
-  const { ruleGroups, addRuleToGroup, requestDeletion, openEditRuleModal } = useAppStore();
+  const { ruleLabels, setRuleLabels, requestDeletion, openEditRuleModal } = useAppStore();
+  const cardLabels = labelsOf(rule, ruleLabels);
 
   return (
     <ContextMenu>
@@ -147,6 +150,8 @@ export const RuleCard: React.FC<RuleCardProps> = ({
             </div>
           </div>
 
+          {cardLabels.length > 0 && <RuleLabelPills labels={cardLabels} className="mt-1.5" />}
+
           {/* 4. Bottom Metadata Row (Last check / Last action) */}
           <div
             style={{
@@ -171,50 +176,46 @@ export const RuleCard: React.FC<RuleCardProps> = ({
 
         <ContextMenuSeparator />
 
-        {/* Status / Group Cascading Submenu */}
+        {/* Labels, as Linear's card menu: each one on or off, the menu stays open. */}
         <ContextMenuSub>
           <ContextMenuSubTrigger>
             <div className="flex items-center gap-2">
-              <LinearHalfStatusIcon size={16} className="text-[#9d9d9e] group-hover:text-white group-data-[highlighted]:text-white" />
-              <span>Group</span>
+              <LinearLabelIcon size={16} className="text-[var(--text-tertiary)]" />
+              <span>Labels</span>
             </div>
-            <div className="flex items-center gap-1.5 text-[#9d9d9e]">
-              <kbd className="text-[12px] font-[500] font-sans">G</kbd>
+            <div className="flex items-center gap-1.5 text-[var(--text-tertiary)]">
+              <kbd className="text-[12px] font-[500] font-sans">L</kbd>
               <span className="text-[10px]">▶</span>
             </div>
           </ContextMenuSubTrigger>
 
           <ContextMenuSubContent>
-            {/* Search / Title Header */}
-            <div className="h-[37px] px-3.5 border-b border-[#282b2d] flex items-center">
-              <span className="text-[13px] text-[#e2e4e9] font-normal">Change group…</span>
-            </div>
-
-            {/* List of Groups */}
-            <div className="py-1.5">
-              {ruleGroups.map((group, index) => {
-                const isSelectedGroup = rule.groupId === group.id || group.ruleIds.includes(rule.id);
+            {ruleLabels.length === 0 ? (
+              <div className="px-3.5 py-2 text-[12px] text-[var(--text-muted)]">
+                No labels yet. Create one in Settings → Rules → Labels.
+              </div>
+            ) : (
+              ruleLabels.map((label) => {
+                const on = rule.labelIds.includes(label.id);
                 return (
                   <ContextMenuItem
-                    key={group.id}
-                    onClick={() => void addRuleToGroup(group.id, rule.id)}
+                    key={label.id}
+                    role="menuitemcheckbox"
+                    aria-checked={on}
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      void setRuleLabels(rule.id, on ? rule.labelIds.filter((id) => id !== label.id) : [...rule.labelIds, label.id]);
+                    }}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="truncate">{group.name}</span>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="h-[9px] w-[9px] shrink-0 rounded-full" style={{ backgroundColor: label.color }} />
+                      <span className="truncate">{label.name}</span>
                     </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      {isSelectedGroup && (
-                        <LinearCheckIcon size={16} className="text-[#95a2b3]" />
-                      )}
-                      <kbd className="text-[12px] font-[500] font-sans text-[#95a2b3]">
-                        {index + 1}
-                      </kbd>
-                    </div>
+                    {on && <LinearCheckIcon size={16} className="shrink-0 text-[var(--text-secondary)]" />}
                   </ContextMenuItem>
                 );
-              })}
-            </div>
+              })
+            )}
           </ContextMenuSubContent>
         </ContextMenuSub>
 

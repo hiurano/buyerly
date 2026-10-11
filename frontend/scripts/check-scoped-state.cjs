@@ -42,7 +42,7 @@ const preset = (id, name = `Rule ${id}`) => ({
   needs_review: false, review_reason: '', last_run_at: '', attached_account_ids: [], attached_scopes: {},
 });
 function rulesReplies() {
-  return [take('/api/presets'), take('/api/rule-groups'), take('/api/accounts')];
+  return [take('/api/presets'), take('/api/rule-labels'), take('/api/accounts')];
 }
 function replyRules(requests, presets, groups = []) {
   requests[0].reply(presets); requests[1].reply(groups); requests[2].reply([]);
