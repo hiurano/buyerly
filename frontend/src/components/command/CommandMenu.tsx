@@ -245,6 +245,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
         ...(activeTab === 'inbox'
           ? []
           : [{ id: 'inbox', label: 'Go to inbox', keywords: ['notifications', 'events'], icon: arrowIcon, shortcut: goToShortcut('inbox'), run: () => go(pathForTab(slug, 'inbox')) }]),
+        { id: 'ad-accounts', label: 'Go to ad accounts', keywords: ['accounts', 'meta', 'facebook', 'projects'], icon: arrowIcon, shortcut: goToShortcut('accounts'), run: () => go(pathForTab(slug, 'accounts')) },
         { id: 'ads-manager', label: 'Go to Ads Manager', keywords: ['campaigns', 'ad sets', 'ads', 'meta'], icon: arrowIcon, shortcut: goToShortcut('campaigns'), run: () => go(pathForTab(slug, 'campaigns', campaignFilterTab)) },
         { id: 'rules', label: 'Go to rules', keywords: ['automation'], icon: arrowIcon, shortcut: goToShortcut('rules'), run: () => go(rulesPath) },
         // Linear's "Go to recently deleted issues": deleted rules and groups have their own page.

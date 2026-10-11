@@ -101,6 +101,14 @@ export function parseRoute(location: Location = window.location): Route {
       recordId: parts[3],
     };
   }
+  if (parts[1] === 'accounts' && parts.length <= 3) {
+    // The Ad accounts list, and one account's page at /accounts/{act_id} (#388).
+    let recordId = parts[2];
+    try {
+      recordId = recordId ? decodeURIComponent(recordId) : recordId;
+    } catch { /* A broken escape stays as typed and finds no account. */ }
+    return { kind: 'workspace', workspace, tab: 'accounts', recordId };
+  }
   if (parts[1] === 'rules' && parts[2] === RECENTLY_DELETED_RULES && parts.length === 3) {
     return { kind: 'workspace', workspace, tab: 'rules', rulesPage: RECENTLY_DELETED_RULES };
   }

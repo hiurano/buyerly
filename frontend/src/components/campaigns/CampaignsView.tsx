@@ -11,6 +11,7 @@ import {
   type EntityLevel,
 } from '@/lib/delivery';
 import { pushHistory } from '@/lib/undoHistory';
+import { openAppPath, pathForTab } from '@/lib/routing';
 import { toast } from '@/ui/toast';
 import { ApiError, apiRequest } from '@/lib/api';
 import type {
@@ -948,6 +949,15 @@ const DropdownMenuAccount: React.FC<DropdownMenuAccountProps> = ({
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
+        {/* The Ad accounts page, as Linear's "All projects" (#388). */}
+        <DropdownMenuItem
+          onSelect={() => {
+            const slug = useAppStore.getState().workspaceSlug;
+            if (slug) openAppPath(pathForTab(slug, 'accounts'));
+          }}
+        >
+          <span>All ad accounts…</span>
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={onConnect}>
           <span className="flex items-center gap-1.5">
             <LinearPlusIcon size={14} aria-hidden="true" />

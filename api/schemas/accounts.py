@@ -53,6 +53,8 @@ class AccountItem(BaseModel):
     active_rules: List[Dict[str, Any]] = Field(default_factory=list)
     group_ids: List[int] = Field(default_factory=list)
     latest_metrics: Optional[AccountLatestMetrics] = None
+    # Today's figures from the analytics fact store; None until the first sync of the account's day.
+    today_metrics: Optional[AccountLatestMetrics] = None
     health: AccountHealthItem = Field(default_factory=AccountHealthItem)
     created_at: str
 

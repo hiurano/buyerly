@@ -9,6 +9,7 @@ Buyerly использует workspace-first URL без технического
 | Задача пользователя | Раздел | Результат |
 | --- | --- | --- |
 | Увидеть, что требует внимания | Inbox | Уведомления, состояние и быстрые действия |
+| Увидеть все рекламные кабинеты и их день | Ad accounts | Статус, расход и лиды за сегодня, правила и подключение каждого кабинета |
 | Управлять рекламной структурой | Ads Manager | Campaigns, Ad sets и Ads |
 | Настроить повторяемое действие | Rules | Правила, группы и назначения |
 | Изменить параметры продукта | Settings | Профиль, workspace и интерфейс |
@@ -18,9 +19,15 @@ Buyerly использует workspace-first URL без технического
 Единый порядок основного desktop-сайдбара:
 
 1. Inbox
-2. Ads Manager
-3. Rules
-4. Settings
+2. Ad accounts (G K)
+3. Ads Manager
+4. Rules
+5. Settings
+
+Ad accounts — как Projects в Linear: список кабинетов workspace и страница
+каждого (#388). Кампании, ad sets и объявления остаются в Ads Manager, который
+показывает один кабинет; со страницы кабинета туда ведёт «Open in Ads Manager»,
+а из переключателя кабинета в Ads Manager обратно — «All ad accounts…».
 
 Внутри Ads Manager тип сущности является частью URL, поэтому ссылку на список
 или конкретную запись можно сохранить и отправить коллеге.
@@ -37,6 +44,8 @@ Buyerly использует workspace-first URL без технического
 | Настройка профиля и приглашение команды | `/{workspace}/welcome` |
 | Inbox | `/{workspace}/inbox` |
 | Элемент Inbox | `/{workspace}/inbox/{itemId}` |
+| Ad accounts | `/{workspace}/accounts` |
+| Рекламный кабинет | `/{workspace}/accounts/{accountId}` (`act_…`) |
 | Campaigns | `/{workspace}/ads-manager/campaigns` |
 | Ad sets | `/{workspace}/ads-manager/adsets` |
 | Ads | `/{workspace}/ads-manager/ads` |
@@ -54,7 +63,8 @@ Buyerly использует workspace-first URL без технического
 ей фокус, а фильтр, вкладка или свёрнутая группа, которые её прячут, снимаются.
 Ads Manager показывает один рекламный кабинет, поэтому адрес сущности несёт его
 в `?account={accountId}`, а `/{workspace}/ads-manager/campaigns?account={accountId}`
-открывает сам кабинет. По этим адресам результаты открывает страница поиска
+открывает сам кабинет в Ads Manager. Найденный кабинет (поиск, палитра O K)
+открывает его страницу `/{workspace}/accounts/{accountId}`. По этим адресам результаты открывает страница поиска
 `/{workspace}/search?q=…&type=…` (`/` и лупа в сайдбаре), как в Linear: она ищет
 кампании, ad sets, объявления, правила и рекламные кабинеты только текущего
 workspace, а запрос, вкладка, фильтры (`status`, `account`) и Display options
