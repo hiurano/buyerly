@@ -20,6 +20,7 @@ import {
   LinearBoltIcon,
   LinearFilterIcon,
   LinearInboxUnreadIcon,
+  LinearLabelIcon,
   LinearProjectCubeIcon,
 } from '@/icons/LinearIcons';
 import {
@@ -175,6 +176,7 @@ const FilterFieldIcon: React.FC<{ fieldId: string; type: FilterFieldDefinition<u
   if (fieldId === 'adAccount') return <LinearProjectCubeIcon size={14} />;
   if (fieldId === 'eventStatus') return <Circle {...props} />;
   if (fieldId === 'status') return <LinearBacklogDashedIcon size={14} />;
+  if (fieldId === 'label') return <LinearLabelIcon size={14} />;
   if (fieldId.includes('group') || fieldId.includes('campaign') || fieldId.includes('adSet')) {
     return <Layers3 {...props} />;
   }

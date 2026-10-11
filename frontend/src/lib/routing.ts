@@ -145,6 +145,7 @@ export const SETTINGS_PATHS = {
   'new-team': 'new-team',
   members: 'members',
   'workspace-security': 'security',
+  'rule-labels': 'rule-labels',
   profile: 'account/profile',
   notifications: 'account/notifications',
   'priority-notifications': 'account/notifications/priority-filter',

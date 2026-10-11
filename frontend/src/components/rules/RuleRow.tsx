@@ -10,7 +10,8 @@ import type { RuleActionTone } from '@/lib/rules';
 import { getRulesColumns } from './tableColumns';
 import { RuleRowMenu } from './RuleRowMenu';
 import { useIsSmallScreen } from '@/lib/useMediaQuery';
-import { useRulesView } from './rulesViewModel';
+import { labelsOf, useRulesView } from './rulesViewModel';
+import { RuleLabelPills } from './RuleLabelPills';
 
 const ACTION_BADGE_STYLES: Record<
   RuleActionTone,
@@ -45,6 +46,8 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
     setFocusedRuleId,
   } = useAppStore();
   const rulesDisplayProperties = useRulesView().view.properties;
+  const ruleLabels = useAppStore((state) => state.ruleLabels);
+  const rowLabels = labelsOf(rule, ruleLabels);
 
   const isSelected = selectedRuleIds.includes(rule.id);
   const isDeliveryOn = rule.status !== 'paused';
@@ -106,6 +109,29 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
         dimmed={!isDeliveryOn}
         hint={rule.name}
       />
+
+      {rulesDisplayProperties.labels !== false && (
+        <div
+          role="button"
+          tabIndex={-1}
+          aria-label={`Labels of ${rule.name}`}
+          data-label-picker-trigger=""
+          data-rule-labels={rule.id}
+          className="flex h-full min-w-0 cursor-pointer items-center overflow-hidden"
+          onClick={(event) => {
+            event.stopPropagation();
+            const state = useAppStore.getState();
+            const open = state.ruleLabelPicker;
+            if (open && open.ruleIds.length === 1 && open.ruleIds[0] === rule.id) {
+              state.closeRuleLabelPicker();
+            } else {
+              state.openRuleLabelPicker([rule.id], event.currentTarget.getBoundingClientRect());
+            }
+          }}
+        >
+          <RuleLabelPills labels={rowLabels} />
+        </div>
+      )}
 
       {rulesDisplayProperties.condition !== false && (
           <div className="flex min-w-0 items-center overflow-hidden">

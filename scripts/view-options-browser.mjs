@@ -200,12 +200,12 @@ try {
       assert.equal(views.rules, undefined, 'a default view keeps nothing on the server');
       await page.keyboard.press('Escape');
 
-      // The filter menu: Status, then Groups, a line, one Dates row.
+      // The filter menu: Status, then Labels, a line, one Dates row.
       await page.keyboard.press('f');
       const menu = page.getByRole('dialog', { name: 'Add filter' });
       await menu.waitFor();
       const labels = await menu.getByRole('listbox', { name: 'Filter properties' }).getByRole('option').allTextContents();
-      assert.deepEqual(labels.map((label) => label.replace('▶', '').trim()), ['Status', 'Groups', 'Dates']);
+      assert.deepEqual(labels.map((label) => label.replace('▶', '').trim()), ['Status', 'Labels', 'Dates']);
       await menu.getByRole('option', { name: 'Dates' }).hover();
       const dateList = page.getByRole('listbox', { name: 'Date properties' });
       await dateList.waitFor();

@@ -24,16 +24,13 @@ import {
 import { createRuleFilterFields } from '@/components/filters/filterCatalogs';
 import { applyFilterClauses, type FilterClause } from '@/components/filters/filterModel';
 import { DisplayOptionsChangedDot } from '@/ui/LinearDisplayOptions';
-import { orderGroups } from '@/ui/listView';
+import { arrangeGroups } from '@/ui/listView';
 import { useFiltersInAddress, writeFilterParam } from '@/ui/useListView';
-import { sortRules, useRulesView } from './rulesViewModel';
+import { NO_LABEL_COLOR, NO_LABEL_GROUP_ID, ruleGroupsFor, sortRules, useRulesView } from './rulesViewModel';
+import { RuleLabelPickerHost } from './RuleLabelPickerHost';
 import {
-  LinearBacklogDashedIcon,
   LinearBoltIcon,
-  LinearFlaskIcon,
-  LinearPlusIcon,
-  LinearRocketIcon,
-  LinearShieldIcon,
+  LinearLabelIcon,
   LinearSlidersIcon,
   LinearStatusCircleIcon,
 } from '@/icons/LinearIcons';
@@ -70,22 +67,14 @@ function readQuickFilter(): RuleQuickFilter | null {
   }
 }
 
-function ruleFacetIcon(facet: string, value: string, groups: { id: string; icon: string }[]): React.ReactNode {
+function ruleFacetIcon(facet: string, value: string, labels: { id: string; color: string }[]): React.ReactNode {
   if (facet === 'status') {
     if (value === 'needs_review') return <span className="details-facets-dot" style={{ backgroundColor: '#f2994a' }} />;
     return <LinearStatusCircleIcon status={value === 'paused' ? 'paused' : 'active'} size={14} />;
   }
   if (facet === 'action') return <LinearBoltIcon size={14} style={{ color: 'var(--text-tertiary)' }} />;
-  switch (groups.find((group) => group.id === value)?.icon) {
-    case 'shield':
-      return <LinearShieldIcon size={14} className="text-emerald-400" />;
-    case 'rocket':
-      return <LinearRocketIcon size={14} className="text-purple-400" />;
-    case 'flask':
-      return <LinearFlaskIcon size={14} className="text-amber-400" />;
-    default:
-      return <LinearBacklogDashedIcon size={14} className="text-zinc-400" />;
-  }
+  const color = labels.find((label) => label.id === value)?.color ?? NO_LABEL_COLOR;
+  return <span className="details-facets-dot" style={{ backgroundColor: color }} />;
 }
 
 interface RulesViewProps {
@@ -98,10 +87,9 @@ interface RulesViewProps {
 export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey }) => {
   const {
     rules,
-    ruleGroups,
+    ruleLabels,
     ruleFilterTab,
     setRuleFilterTab,
-    addRuleGroup,
     openCreateRuleModal,
     isRulesDisplayOptionsOpen,
     toggleRulesDisplayOptions,
@@ -150,15 +138,13 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
     };
   }, [loadRules, revealKey]);
 
-  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
-  const [newGroupName, setNewGroupName] = useState('');
   const displayOptionsButtonRef = useRef<HTMLButtonElement>(null);
   const filterButtonRef = useRef<HTMLButtonElement>(null);
   const [openFilterMenu, setOpenFilterMenu] = useState<OpenFilterMenu | null>(null);
 
   const filterFields = useMemo(
-    () => createRuleFilterFields({ rules, ruleGroups }),
-    [ruleGroups, rules]
+    () => createRuleFilterFields({ rules, ruleLabels }),
+    [ruleLabels, rules]
   );
 
   // The details pane's one quick filter, on top of the filters; kept for this browser tab.
@@ -200,6 +186,14 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
   const selectionActions: SelectionAction[] = [
     { id: 'pause', label: 'Pause rules', shortcut: 'p', icon: <Pause size={14} />, run: () => void runBulkRulesEnabled(liveSelection(), false) },
     { id: 'resume', label: 'Resume rules', shortcut: 'r', icon: <Play size={14} />, run: () => void runBulkRulesEnabled(liveSelection(), true) },
+    // Linear's L on a selection: one picker puts a label on, or takes it off, every selected rule.
+    {
+      id: 'labels',
+      label: 'Labels…',
+      shortcut: 'l',
+      icon: <LinearLabelIcon size={14} />,
+      run: () => useAppStore.getState().openRuleLabelPicker(liveSelection(), null),
+    },
     {
       id: 'delete',
       label: 'Delete rules',
@@ -248,13 +242,10 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
         changed = true;
       }
       if (rulesViewMode === 'list') {
-        const memberOf = ruleGroups
-          .filter((group) => revealedRule.groupId === group.id || group.ruleIds.includes(revealedRule.id))
-          .map((group) => group.id);
         const groupKeys = rulesDisplayGrouping === 'status'
           ? [`status-${revealedRule.status}`]
-          : rulesDisplayGrouping === 'groups'
-            ? (memberOf.length > 0 ? memberOf : ['ungrouped'])
+          : rulesDisplayGrouping === 'labels'
+            ? (revealedRule.labelIds.length > 0 ? revealedRule.labelIds : [NO_LABEL_GROUP_ID])
             : [];
         for (const key of groupKeys.filter((candidate) => rulesCollapsedGroups.includes(candidate))) {
           toggleRulesGroupCollapse(key);
@@ -303,6 +294,20 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
         return;
       }
 
+      if ((e.key === 'l' || e.key === 'L') && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        // Linear's L on the row under the pointer, else the focused one; a selection has its own L.
+        if (e.defaultPrevented || document.querySelector('[role="dialog"]')) return;
+        const row = document.querySelector<HTMLElement>('[data-row-id]:hover')
+          ?? (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('[data-row-id]');
+        const id = row?.dataset.rowId;
+        if (!row || !id) return;
+        e.preventDefault();
+        const cell = row.querySelector<HTMLElement>('[data-rule-labels]') ?? row;
+        const rect = cell.getBoundingClientRect();
+        useAppStore.getState().openRuleLabelPicker([id], cell === row ? new DOMRect(rect.left + 40, rect.top, 0, rect.height) : rect);
+        return;
+      }
+
       if ((e.key === 'c' || e.key === 'C') && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
         openCreateRuleModal();
@@ -329,23 +334,15 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
     setOpenFilterMenu(null);
   }, [ruleFilterTab]);
 
-  const handleCreateGroup = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newGroupName.trim()) return;
-    void addRuleGroup(newGroupName.trim());
-    setNewGroupName('');
-    setIsCreatingGroup(false);
-  };
-
   const ruleTabs = [
     { id: 'all', label: 'All rules' },
     { id: 'active', label: 'Active' },
     { id: 'paused', label: 'Paused' },
   ];
 
-  const detailsTabs: DetailsFacetTab[] = createRuleFacets(baseRules, ruleGroups).map((facet) => ({
+  const detailsTabs: DetailsFacetTab[] = createRuleFacets(baseRules, ruleLabels).map((facet) => ({
     ...facet,
-    options: facet.options.map((option) => ({ ...option, icon: ruleFacetIcon(facet.id, option.value, ruleGroups) })),
+    options: facet.options.map((option) => ({ ...option, icon: ruleFacetIcon(facet.id, option.value, ruleLabels) })),
   }));
   const details = rulesLoadState === 'ready' && rules.length > 0 ? (
     <DetailsFacets
@@ -521,81 +518,20 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
           /* Left: Linear Board Container (Horizontal Scroll) */
           <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden px-5 py-3">
             <div className="flex h-full items-start gap-0 pb-2">
-              {/* Column 1: System Master Catalog ("All rules") */}
-              <RuleColumn
-                id="all"
-                title="All rules"
-                rules={filteredRules}
-                isSystemColumn={true}
-              />
-
-              {/* Columns 2..N: Dynamic Rule Groups */}
-              {(rulesDisplayGrouping === 'groups'
-                ? orderGroups(ruleGroups, rulesView).filter(
-                  (group) => !(rulesView.hiddenGroups.groups ?? []).includes(group.id),
-                )
-                : ruleGroups
-              ).map((group) => {
-                const groupRules = filteredRules.filter((rule) =>
-                  group.ruleIds.includes(rule.id)
-                );
-
-                return (
-                  <RuleColumn
-                    key={group.id}
-                    id={group.id}
-                    title={group.name}
-                    rules={groupRules}
-                  />
-                );
-              })}
-
-              {/* Column N+1: "+ New group" Button / Inline Creator */}
-              <div className="flex w-[240px] shrink-0 flex-col pt-0.5 pl-2">
-                {isCreatingGroup ? (
-                  <form onSubmit={handleCreateGroup} className="rounded-[8px] border border-[#5e6ad2] bg-[lch(8.2%_0.8_272_/_1)] p-2.5 shadow-md">
-                    <input
-                      type="text"
-                      autoFocus
-                      value={newGroupName}
-                      onChange={(e) => setNewGroupName(e.target.value)}
-                      placeholder="Group name... (e.g. Scaling v2)"
-                      style={{
-                        fontSize: '12px',
-                        color: '#ffffff',
-                      }}
-                      className="w-full bg-transparent outline-none placeholder-[#6b7280]"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') setIsCreatingGroup(false);
-                      }}
+              {/* The board's columns are the grouping's groups, as Linear's board columns:
+                  by label a rule with two labels sits in both, one without in "No label". */}
+              {rulesDisplayGrouping === 'labels' || rulesDisplayGrouping === 'status'
+                ? arrangeGroups(ruleGroupsFor(rulesDisplayGrouping, filteredRules, ruleLabels), { ...rulesView, showEmptyGroups: true })
+                  .map((group) => (
+                    <RuleColumn
+                      key={group.id}
+                      title={group.label}
+                      dotColor={group.dotColor}
+                      rules={group.rows}
+                      labelId={group.labelId}
                     />
-                    <div className="mt-2 flex items-center justify-end gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setIsCreatingGroup(false)}
-                        className="rounded px-2 py-0.5 text-[11px] text-[#9ca3af] hover:bg-white/[0.06]"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="rounded bg-[#5e6ad2] px-2.5 py-0.5 text-[11px] font-medium text-white hover:bg-[#6875e5]"
-                      >
-                        Create
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setIsCreatingGroup(true)}
-                    className="flex h-[36px] items-center gap-1.5 rounded-[6px] px-3 text-[13px] font-medium text-[#8a8f98] transition-colors hover:bg-white/[0.04] hover:text-white outline-none cursor-pointer"
-                  >
-                    <LinearPlusIcon size={14} />
-                    <span>New group</span>
-                  </button>
-                )}
-              </div>
+                  ))
+                : <RuleColumn title="All rules" rules={filteredRules} />}
             </div>
           </div>
         )}
@@ -623,6 +559,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
       {/* Linear Fast Create Rule Modal */}
       <CreateRuleModal />
       <RuleStatesHost />
+      <RuleLabelPickerHost />
     </div>
   );
 };

@@ -2,38 +2,26 @@ import React from 'react';
 import { RuleItem, useAppStore } from '@/store/useAppStore';
 import { RuleCard } from './RuleCard';
 import { Tooltip } from '@/ui/Tooltip';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from '@/ui/DropdownMenu';
 
 interface RuleColumnProps {
-  id: string;
   title: string;
   rules: RuleItem[];
-  isSystemColumn?: boolean;
-  onAddRule?: () => void;
+  /** The group's dot, as Linear's board columns have. */
+  dotColor?: string;
+  /** A label's column: its "+" makes a rule with that label. */
+  labelId?: string;
 }
 
+/** One board column: the grouping's group, its count and a "+" for a new rule in it. */
 export const RuleColumn: React.FC<RuleColumnProps> = ({
-  id,
   title,
   rules,
-  isSystemColumn = false,
-  onAddRule,
+  dotColor,
+  labelId,
 }) => {
-  const { selectedRuleId, setSelectedRuleId, requestDeletion, openCreateRuleModal } = useAppStore();
+  const { selectedRuleId, setSelectedRuleId, openCreateRuleModal } = useAppStore();
 
-  const handleDefaultAdd = () => {
-    if (onAddRule) {
-      onAddRule();
-    } else {
-      openCreateRuleModal(isSystemColumn ? undefined : id);
-    }
-  };
+  const handleDefaultAdd = () => openCreateRuleModal(labelId);
 
   return (
     <div
@@ -85,6 +73,11 @@ export const RuleColumn: React.FC<RuleColumnProps> = ({
             gap: '8px',
           }}
         >
+          {dotColor && (
+            <span aria-hidden="true" className="flex h-4 w-4 shrink-0 items-center justify-center">
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: dotColor }} />
+            </span>
+          )}
           <span
             style={{
               fontSize: '13px',
@@ -117,54 +110,6 @@ export const RuleColumn: React.FC<RuleColumnProps> = ({
             gap: '2px',
           }}
         >
-          {/* '...' More Actions Button & Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label="Open menu"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '24px',
-                  height: '24px',
-                  minWidth: '24px',
-                  padding: '0',
-                  border: '1px solid transparent',
-                  borderRadius: '9999px',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.15s ease',
-                }}
-                className="hover:bg-[var(--item-hover-bg)] group outline-none"
-              >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="var(--text-tertiary)" className="group-hover:fill-[var(--text-primary)] transition-colors">
-                  <path d="M3 6.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm5 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm5 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z" />
-                </svg>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" sideOffset={4}>
-              <DropdownMenuItem onClick={() => {}}>
-                <span>Select all in column</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => {}}>
-                <span>Hide column</span>
-              </DropdownMenuItem>
-              {!isSystemColumn && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => requestDeletion('rule_group', [id])}
-                    className="text-[#f87171] hover:text-[#f87171] focus:text-[#f87171]"
-                  >
-                    <span>Delete group</span>
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
           {/* '+' Add Button with Linear Tooltip */}
           <Tooltip
             side="bottom"

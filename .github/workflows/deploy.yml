@@ -74,7 +74,7 @@ jobs:
           - group: small screens and Inbox
             scripts: mobile-screens inbox
           - group: sidebar, command menu, rules
-            scripts: mobile-sidebar command-menu rule-states rules-phone
+            scripts: mobile-sidebar command-menu rule-states rules-phone rule-labels
           - group: workspace state, new version, WebMCP
             scripts: scoped-state new-version webmcp view-options accounts
           - group: members, search, settings

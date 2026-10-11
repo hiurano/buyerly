@@ -228,7 +228,11 @@ interface LinearDataListGroupHeaderProps {
   actionLabel?: string;
   onAction?: () => void;
   className?: string;
+  /** A label's color, washed into the header from the left as Linear does for label groups. */
+  tint?: string;
 }
+
+const GROUP_HEADER_BG = 'var(--rules-group-bg, var(--card-bg))';
 
 export const LinearDataListGroupHeader: React.FC<LinearDataListGroupHeaderProps> = ({
   title,
@@ -240,13 +244,16 @@ export const LinearDataListGroupHeader: React.FC<LinearDataListGroupHeaderProps>
   actionLabel = 'Create item in group',
   onAction,
   className = '',
+  tint,
 }) => (
   <div
     className={`sticky top-[-4px] z-[2] flex items-center ${className}`}
     style={{
       height: `${LINEAR_DATA_LIST.groupHeaderHeight}px`,
       borderRadius: `${LINEAR_DATA_LIST.radius}px`,
-      background: 'var(--rules-group-bg, var(--card-bg))',
+      background: tint
+        ? `linear-gradient(90deg, color-mix(in srgb, ${tint} 8%, ${GROUP_HEADER_BG}) 0%, ${GROUP_HEADER_BG} 100%)`
+        : GROUP_HEADER_BG,
       isolation: 'isolate',
     }}
   >

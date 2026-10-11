@@ -65,21 +65,21 @@ assert.equal(pane.isSwipeRight({ x: 10, y: 100, at: 0 }, { x: 70, y: 110, at: 40
 assert.equal(pane.isSwipeRight({ x: 10, y: 100, at: 0 }, { x: 70, y: 200, at: 100 }), false);
 assert.equal(pane.isSwipeRight({ x: 70, y: 100, at: 0 }, { x: 10, y: 100, at: 100 }), false);
 
-// Rules: Status counts a held-back rule as "Needs review", Action and Groups list only what is there.
-const rule = (id, fields) => ({ id, status: 'active', needsReview: false, actionKind: 'turn_off', ...fields });
+// Rules: Status counts a held-back rule as "Needs review", Action and Labels list only what is there; a rule with two labels counts under both (#383).
+const rule = (id, fields) => ({ id, status: 'active', needsReview: false, actionKind: 'turn_off', labelIds: [], ...fields });
 const rules = [
   rule('1'),
-  rule('2', { status: 'paused', actionKind: 'notify_only', groupId: 'g1' }),
-  rule('3', { needsReview: true, actionKind: 'increase_budget', groupId: 'g1' }),
+  rule('2', { status: 'paused', actionKind: 'notify_only', labelIds: ['g1', 'g2'] }),
+  rule('3', { needsReview: true, actionKind: 'increase_budget', labelIds: ['g1'] }),
 ];
-const groups = [{ id: 'g1', name: 'Scaling', ruleIds: ['2', '3'] }, { id: 'g2', name: 'Empty', ruleIds: [] }];
+const groups = [{ id: 'g1', name: 'Scaling', color: '#bb87fc' }, { id: 'g2', name: 'Tests', color: '#f2c94c' }, { id: 'g3', name: 'Empty', color: '#95a2b3' }];
 const built = facets.createRuleFacets(rules, groups);
 const options = id => built.find(facet => facet.id === id).options.map(option => [option.value, option.label, option.count]);
-assert.deepEqual(built.map(facet => facet.label), ['Status', 'Action', 'Groups']);
+assert.deepEqual(built.map(facet => facet.label), ['Status', 'Action', 'Labels']);
 assert.deepEqual(options('status'), [['active', 'Active', 1], ['paused', 'Paused', 1], ['needs_review', 'Needs review', 1]]);
 assert.deepEqual(options('action'), [['turn_off', 'Pause', 1], ['increase_budget', 'Increase budget', 1], ['notify_only', 'Notify', 1]]);
-assert.deepEqual(options('group'), [['g1', 'Scaling', 2], ['ungrouped', 'Ungrouped', 1]]);
-assert.deepEqual(facets.applyRuleQuickFilter(rules, { fieldId: 'group', value: 'g1' }).map(item => item.id), ['2', '3']);
+assert.deepEqual(options('label'), [['g1', 'Scaling', 2], ['g2', 'Tests', 1], ['none', 'No labels', 1]]);
+assert.deepEqual(facets.applyRuleQuickFilter(rules, { fieldId: 'label', value: 'g1' }).map(item => item.id), ['2', '3']);
 assert.deepEqual(facets.applyRuleQuickFilter(rules, { fieldId: 'status', value: 'active' }).map(item => item.id), ['1']);
 assert.equal(facets.applyRuleQuickFilter(rules, null), rules);
 assert.deepEqual(facets.parseRuleQuickFilter('{"fieldId":"action","value":"turn_off"}'), { fieldId: 'action', value: 'turn_off' });

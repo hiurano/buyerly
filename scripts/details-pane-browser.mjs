@@ -10,7 +10,7 @@
 //   list keeps its width.
 // - On a touch phone a backdrop dims the list and a tap on it closes the pane.
 // - Its tabs filter the list: Ads Manager Status (Meta's real delivery state)
-//   and Rules; Rules Status, Action and Groups. Switching tabs clears the filter.
+//   and Rules; Rules Status, Action and Labels. Switching tabs clears the filter.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -255,7 +255,7 @@ try {
       await settle(page);
       assert.equal(await pane.count(), 0, 'closed stays closed after a reload');
 
-      // Rules keeps its own pane: still closed, with Status, Action and Groups.
+      // Rules keeps its own pane: still closed, with Status, Action and Labels.
       await page.goto(`${origin}/alpha/rules`);
       await page.locator('[data-row-id="7"]').waitFor();
       const rulesPane = paneOf(page, 'Rules details');
@@ -264,7 +264,7 @@ try {
       await rulesPane.waitFor();
       await settle(page);
       assert.equal(Math.round((await rect(page.locator('.details-pane'))).width), 350, 'Rules has its own width');
-      assert.deepEqual(await rulesPane.getByRole('tab').allTextContents(), ['Status', 'Action', 'Groups']);
+      assert.deepEqual(await rulesPane.getByRole('tab').allTextContents(), ['Status', 'Action', 'Labels']);
       await assertNothingCovered(page, 'Rules 1440px');
       await page.screenshot({ path: `${output}/rules-1440.png` });
       await rulesPane.getByRole('tab', { name: 'Action' }).click();

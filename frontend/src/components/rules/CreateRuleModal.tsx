@@ -19,6 +19,8 @@ import {
   describeRuleReach,
 } from '@/lib/rules';
 import { TOUCH_HEIGHT_CLASS as TOUCH_HEIGHT } from '@/lib/useMediaQuery';
+import { LinearLabelIcon } from '@/icons/LinearIcons';
+import { RuleLabelPicker } from './RuleLabelPicker';
 import type {
   RuleAction,
   RuleConditionPayload,
@@ -140,13 +142,14 @@ const FIELD_CLASS =
 export const CreateRuleModal: React.FC = () => {
   const {
     isCreateRuleModalOpen,
-    createRuleTargetGroupId,
+    createRuleTargetLabelId,
     editingRuleId,
     closeCreateRuleModal,
     addRule,
     updateRule,
     rules,
-    ruleGroups,
+    ruleLabels,
+    createRuleLabel,
   } = useAppStore();
 
   const editedRule = editingRuleId
@@ -157,7 +160,8 @@ export const CreateRuleModal: React.FC = () => {
   const [name, setName] = useState('');
   const [action, setAction] = useState<RuleAction>('turn_off');
   const [level, setLevel] = useState<RuleExecutionLevel>('adset');
-  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
+  const [labelIds, setLabelIds] = useState<string[]>([]);
+  const [labelPickerOpen, setLabelPickerOpen] = useState(false);
   const [timeWindow, setTimeWindow] = useState<RuleTimeWindow>('today');
   const [checkInterval, setCheckInterval] = useState(5);
   const [repeatMinutes, setRepeatMinutes] = useState(DEFAULT_REPEAT_MINUTES);
@@ -242,14 +246,15 @@ export const CreateRuleModal: React.FC = () => {
     if (!isCreateRuleModalOpen) return;
     if (editedRule) {
       loadRuleIntoForm(editedRule);
-      setSelectedGroupId(editedRule.groupId || '');
+      setLabelIds(editedRule.labelIds);
     } else {
       resetForm();
-      setSelectedGroupId(createRuleTargetGroupId || '');
+      setLabelIds(createRuleTargetLabelId ? [createRuleTargetLabelId] : []);
     }
+    setLabelPickerOpen(false);
     // Creating several in a row makes no sense while editing one rule.
     setCreateMore(false);
-  }, [isCreateRuleModalOpen, createRuleTargetGroupId, editingRuleId]);
+  }, [isCreateRuleModalOpen, createRuleTargetLabelId, editingRuleId]);
 
   const updateCondition = (index: number, patch: Partial<ConditionDraft>) => {
     setConditions((current) =>
@@ -316,6 +321,8 @@ export const CreateRuleModal: React.FC = () => {
       // Non-budget actions must send exactly zero for both budget fields.
       budget_change_percent: isBudgetAction ? budgetPercent : 0,
       budget_max_daily: action === 'increase_budget' ? budgetCeiling : 0,
+      // Labels save with the rule, in the same write.
+      label_ids: labelIds.filter((id) => ruleLabels.some((label) => label.id === id)).map(Number),
     };
 
     try {
@@ -324,7 +331,7 @@ export const CreateRuleModal: React.FC = () => {
         if (!current()) return;
         closeCreateRuleModal();
       } else {
-        await addRule(payload, selectedGroupId || undefined);
+        await addRule(payload);
         if (!current()) return;
         if (createMore) {
           resetForm();
@@ -346,7 +353,7 @@ export const CreateRuleModal: React.FC = () => {
     }
   };
 
-  const selectedGroup = ruleGroups.find((g) => g.id === selectedGroupId);
+  const chosenLabels = ruleLabels.filter((label) => labelIds.includes(label.id));
 
   return (
     <Dialog.Root open={isCreateRuleModalOpen} onOpenChange={(open) => !open && closeCreateRuleModal()}>
@@ -355,6 +362,13 @@ export const CreateRuleModal: React.FC = () => {
 
         <div className="fixed inset-0 z-[501] flex items-start justify-center pt-[13vh] p-3 pointer-events-none overflow-y-auto">
           <Dialog.Content
+            onEscapeKeyDown={(event) => {
+              // Escape closes the open label picker first, then the window.
+              if (labelPickerOpen) {
+                event.preventDefault();
+                setLabelPickerOpen(false);
+              }
+            }}
             style={{
               // A phone gets the full width less the container's padding.
               width: '100%',
@@ -441,30 +455,55 @@ export const CreateRuleModal: React.FC = () => {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                {/* Group membership is changed from the rule row; editing here
-                    would need a second write the save button does not make. */}
-                {!isEditing && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button type="button" className={PILL_CLASS}>
-                      <span className="text-[var(--text-tertiary)]">Group:</span>
-                      <span className="text-[var(--text-primary)]">
-                        {selectedGroup ? selectedGroup.name : 'Unassigned'}
-                      </span>
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" sideOffset={4}>
-                    <DropdownMenuItem onClick={() => setSelectedGroupId('')}>
-                      <span>Unassigned</span>
-                    </DropdownMenuItem>
-                    {ruleGroups.map((group) => (
-                      <DropdownMenuItem key={group.id} onClick={() => setSelectedGroupId(group.id)}>
-                        <span>{group.name}</span>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                )}
+                {/* Linear's Labels chip: the picker opens under it and saves with the rule. */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    className={PILL_CLASS}
+                    data-label-picker-trigger=""
+                    aria-expanded={labelPickerOpen}
+                    onClick={() => setLabelPickerOpen((open) => !open)}
+                  >
+                    {chosenLabels.length === 0 ? (
+                      <>
+                        <LinearLabelIcon size={14} />
+                        <span>Labels</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex items-center" aria-hidden="true">
+                          {chosenLabels.slice(0, 4).map((label, index) => (
+                            <span
+                              key={label.id}
+                              className="block h-[9px] w-[9px] rounded-full"
+                              style={{ backgroundColor: label.color, marginLeft: index === 0 ? 0 : -3, boxShadow: '0 0 0 1.5px var(--card-bg)' }}
+                            />
+                          ))}
+                        </span>
+                        <span className="text-[var(--text-primary)]">
+                          {chosenLabels.length === 1 ? chosenLabels[0].name : `${chosenLabels.length} labels`}
+                        </span>
+                      </>
+                    )}
+                  </button>
+                  {labelPickerOpen && (
+                    <RuleLabelPicker
+                      inline
+                      placeholder="Add labels…"
+                      checked={labelIds}
+                      onToggle={(id, on) => setLabelIds((current) => (on ? [...current, id] : current.filter((item) => item !== id)))}
+                      onCreate={async (labelName) => {
+                        try {
+                          const label = await createRuleLabel(labelName);
+                          setLabelIds((current) => [...current, label.id]);
+                        } catch (error) {
+                          setSubmitError(error instanceof Error ? error.message : 'Could not create the label.');
+                        }
+                      }}
+                      onClose={() => setLabelPickerOpen(false)}
+                    />
+                  )}
+                </div>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

@@ -23,7 +23,7 @@ import { OpenPaletteIcon, OPEN_PALETTE_LABELS, openOpenPalette } from './OpenPal
 import { SETTINGS_PAGE_KEYWORDS, settingsGroupsFor } from '@/lib/settingsPages';
 import { SettingsPageIcon } from '@/components/preferences/SettingsPageIcon';
 import { isSmallScreen } from '@/lib/useMediaQuery';
-import { LinearPlusIcon, LinearSearchIcon, LinearSidebarLeftToggleIcon } from '@/icons/LinearIcons';
+import { LinearLabelIcon, LinearPlusIcon, LinearSearchIcon, LinearSidebarLeftToggleIcon } from '@/icons/LinearIcons';
 import { COMMAND_MENU_CLASSES, CommandMenuFooterKeys } from '@/ui/SelectionCommandMenu';
 import { usePageGroup, type PaletteCommand, type PaletteGroup } from './pageCommands';
 
@@ -229,6 +229,16 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
           go(rulesPath);
           openCreateRuleModal();
         },
+      }, {
+        // Linear's "Create new label…": Settings → Labels with its new row open.
+        id: 'create-rule-label',
+        label: 'Create new label…',
+        keywords: ['new label', 'tag', 'rule labels'],
+        icon: <LinearLabelIcon size={14} />,
+        run: () => {
+          useAppStore.getState().requestNewRuleLabel();
+          go(pathForTab(slug, 'preferences', 'campaigns', 'rule-labels'));
+        },
       }],
     },
     {
@@ -248,8 +258,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
         { id: 'ad-accounts', label: 'Go to ad accounts', keywords: ['accounts', 'meta', 'facebook', 'projects'], icon: arrowIcon, shortcut: goToShortcut('accounts'), run: () => go(pathForTab(slug, 'accounts')) },
         { id: 'ads-manager', label: 'Go to Ads Manager', keywords: ['campaigns', 'ad sets', 'ads', 'meta'], icon: arrowIcon, shortcut: goToShortcut('campaigns'), run: () => go(pathForTab(slug, 'campaigns', campaignFilterTab)) },
         { id: 'rules', label: 'Go to rules', keywords: ['automation'], icon: arrowIcon, shortcut: goToShortcut('rules'), run: () => go(rulesPath) },
-        // Linear's "Go to recently deleted issues": deleted rules and groups have their own page.
-        { id: 'recently-deleted-rules', label: 'Go to recently deleted rules', keywords: ['trash', 'restore', 'archive', 'deleted', 'groups'], icon: arrowIcon, run: () => go(recentlyDeletedRulesPath(slug)) },
+        // Linear's "Go to recently deleted issues": deleted rules and labels have their own page.
+        { id: 'recently-deleted-rules', label: 'Go to recently deleted rules', keywords: ['trash', 'restore', 'archive', 'deleted', 'labels'], icon: arrowIcon, run: () => go(recentlyDeletedRulesPath(slug)) },
         { id: 'settings', label: 'Go to settings', keywords: ['preferences', 'profile', 'members', 'notifications'], icon: arrowIcon, shortcut: goToShortcut('preferences'), run: () => go(pathForTab(slug, 'preferences')) },
         // Linear's "Open issue…" and its siblings, each its own palette.
         ...OPEN_PALETTE_KINDS.map((kind) => ({
@@ -314,8 +324,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
       </div>
       <p role="status" className="sr-only">{text ? `Showing ${shownCount} items` : 'Showing all items'}</p>
       <Command.List className={`min-h-0 flex-1 ${COMMAND_MENU_CLASSES.list}`}>
-        {shownGroups.map((group) => (
-          <Command.Group key={group.heading || 'pages'} heading={group.heading || undefined} className={COMMAND_MENU_CLASSES.group}>
+        {shownGroups.map((group, groupIndex) => (
+          <Command.Group key={`${groupIndex}:${group.heading}`} heading={group.heading || undefined} className={COMMAND_MENU_CLASSES.group}>
             {group.commands.map((command) => (
               <Command.Item
                 key={command.id}

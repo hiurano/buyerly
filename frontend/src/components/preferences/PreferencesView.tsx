@@ -25,6 +25,7 @@ import {
 } from './NotificationsSection';
 import { ConnectedAccountsSection } from './ConnectedAccountsSection';
 import { SecuritySection } from './SecuritySection';
+import { RuleLabelsSection } from './RuleLabelsSection';
 import { WorkspaceSecuritySection } from './WorkspaceSecuritySection';
 import { SettingsPageIcon } from './SettingsPageIcon';
 import { LinearToggle } from '@/ui/LinearToggle';
@@ -259,6 +260,24 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
             )}
           </div>
 
+          {visibleSections.includes('rule-labels') && (
+            <div className="preferences-nav-group">
+              <h2 className="preferences-nav-heading">Rules</h2>
+              <a
+                href="#rule-labels"
+                className={`preferences-nav-item ${section === 'rule-labels' ? 'active' : ''}`}
+                data-active={section === 'rule-labels'}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSection('rule-labels');
+                }}
+              >
+                <SettingsPageIcon section="rule-labels" className="preferences-nav-icon" />
+                <span className="preferences-nav-label">Labels</span>
+              </a>
+            </div>
+          )}
+
           {administrationPages.length > 0 && (
             <div className="preferences-nav-group">
               <h2 className="preferences-nav-heading">Administration</h2>
@@ -382,6 +401,8 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
             {section === 'connected-accounts' && <ConnectedAccountsSection />}
 
             {section === 'security' && <SecuritySection user={user} onUserChanged={onUserChanged} />}
+
+            {section === 'rule-labels' && <RuleLabelsSection workspace={workspace} />}
 
             {canAdminister && section === 'workspace' && (
               <WorkspaceSection workspace={workspace} onUserChanged={onUserChanged} />

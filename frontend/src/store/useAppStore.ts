@@ -10,25 +10,28 @@ import {
   attachedRuleScope,
   detachRuleFromAccount,
   setAttachedRuleScope,
-  createRuleGroup,
+  changePresetsLabels,
+  createRuleLabel as createRuleLabelRequest,
   createRulePreset,
-  deleteRuleGroup as deleteRuleGroupRequest,
+  deleteRuleLabel as deleteRuleLabelRequest,
   deleteRulePreset,
-  fetchRuleGroups,
+  fetchRuleLabels,
   fetchRulePresets,
   formatAction,
   formatCondition,
   formatRelativeTime,
   formatScope,
   presetToWriteRequest,
+  randomLabelColor,
   ruleCurrency,
-  updateRuleGroup,
+  setPresetLabels,
+  updateRuleLabel as updateRuleLabelRequest,
   updateRulePreset,
 } from '@/lib/rules';
 import type {
   RuleAction,
-  RuleGroupIcon,
-  RuleGroupPayload,
+  RuleLabelPayload,
+  RuleLabelWriteRequest,
   RulePresetPayload,
   RulePresetWriteRequest,
   RuleScope,
@@ -148,20 +151,24 @@ export interface RuleItem {
   lastRun: string;
   /** Last check, matched or not; "Never" before the worker checked it. */
   lastCheck: string;
-  groupId?: string;
+  /** The rule's labels (#383); a rule can carry several, or none. */
+  labelIds: string[];
   /** Set when the runtime holds the rule back until it is re-saved. */
   needsReview: boolean;
   reviewReason: string;
   preset: RulePresetPayload;
 }
 
-export interface RuleGroup {
+/** A rule label, as Linear's issue labels (#383). */
+export interface RuleLabel {
   id: string;
   name: string;
-  /** Kept so a membership edit round-trips it instead of clearing it. */
+  color: string;
   description: string;
-  icon: RuleGroupIcon;
-  ruleIds: string[];
+  ruleCount: number;
+  /** ISO time it was last put on a rule; empty when never. */
+  lastAppliedAt: string;
+  createdAt: string;
 }
 
 export type RulesLoadState = 'idle' | 'loading' | 'ready' | 'error';
@@ -201,29 +208,16 @@ export type SettingsSection =
   /** One team's pages at /settings/teams/<KEY>[/general|/members|/accounts]; `settingsTeamPath` says which. */
   | 'team'
   | 'members'
-  | 'workspace-security';
+  | 'workspace-security'
+  /** Settings → Rules → Labels, at /settings/rule-labels (#383). */
+  | 'rule-labels';
 /** Linear's "Open issue…" family: what each O-then-letter palette opens. */
 export type OpenPaletteKind = 'campaign' | 'adset' | 'ad' | 'rule' | 'account' | 'settings';
 export type InterfaceTheme = 'system' | 'light' | 'dark';
 export type { InboxDisplay };
 
-/**
- * A preset belongs to at most one group in the UI. The API models membership
- * as an ordered many-to-many, so the first group that lists the preset wins.
- */
-function buildGroupIndex(groups: RuleGroupPayload[]): Map<number, string> {
-  const index = new Map<number, string>();
-  for (const group of groups) {
-    for (const presetId of group.preset_ids) {
-      if (!index.has(presetId)) index.set(presetId, String(group.id));
-    }
-  }
-  return index;
-}
-
 function presetToRuleItem(
   preset: RulePresetPayload,
-  groupIndex: Map<number, string>,
   accounts: MetaAccount[],
 ): RuleItem {
   return {
@@ -238,20 +232,22 @@ function presetToRuleItem(
     status: preset.enabled ? 'active' : 'paused',
     lastRun: formatRelativeTime(preset.last_run_at),
     lastCheck: formatRelativeTime(preset.last_checked_at ?? ''),
-    groupId: groupIndex.get(preset.id),
+    labelIds: (preset.label_ids ?? []).map(String),
     needsReview: preset.needs_review,
     reviewReason: preset.review_reason,
     preset,
   };
 }
 
-function groupToRuleGroup(group: RuleGroupPayload): RuleGroup {
+function toRuleLabel(label: RuleLabelPayload): RuleLabel {
   return {
-    id: String(group.id),
-    name: group.name,
-    description: group.description,
-    icon: group.icon,
-    ruleIds: group.preset_ids.map(String),
+    id: String(label.id),
+    name: label.name,
+    color: label.color,
+    description: label.description,
+    ruleCount: label.rule_count,
+    lastAppliedAt: label.last_applied_at,
+    createdAt: label.created_at,
   };
 }
 
@@ -424,9 +420,10 @@ interface AppState {
   collapsedGroups: string[];
   toggleGroupCollapse: (groupId: string) => void;
 
-  // Rules State (served by /api/presets and /api/rule-groups)
+  // Rules State (served by /api/presets and /api/rule-labels)
   rules: RuleItem[];
-  ruleGroups: RuleGroup[];
+  /** The workspace's rule labels, by name. */
+  ruleLabels: RuleLabel[];
   rulesLoadState: RulesLoadState;
   rulesError: string;
   /** Ad accounts a rule can be attached to, loaded with the rules. */
@@ -446,21 +443,36 @@ interface AppState {
     ids: string[],
     enabled: boolean,
   ) => Promise<{ changed: string[]; unchanged: string[]; skipped: string[]; failed: { id: string; error: string }[] }>;
-  addRule: (payload: RulePresetWriteRequest, groupId?: string) => Promise<void>;
-  addRuleGroup: (name: string, icon?: RuleGroupIcon) => Promise<void>;
-  addRuleToGroup: (groupId: string, ruleId: string) => Promise<void>;
+  /** Creates a rule; `payload.label_ids` puts labels on it in the same write. */
+  addRule: (payload: RulePresetWriteRequest) => Promise<void>;
+  /** Creates a label (a random palette color unless one is given); throws on failure. */
+  createRuleLabel: (name: string, color?: string, description?: string) => Promise<RuleLabel>;
+  /** Renames, recolors or redescribes a label; throws on failure. */
+  updateRuleLabel: (id: string, patch: RuleLabelWriteRequest) => Promise<void>;
   /** Deletes without asking and returns its Recently deleted entry; throws on failure. */
-  deleteRuleGroup: (id: string) => Promise<number>;
+  deleteRuleLabel: (id: string) => Promise<number>;
+  /** A rule's whole set of labels; shown at once, saved in one write. */
+  setRuleLabels: (ruleId: string, labelIds: string[]) => Promise<void>;
+  /** Puts labels on, or takes them off, several rules at once. */
+  changeRulesLabels: (ruleIds: string[], change: { add?: string[]; remove?: string[] }) => Promise<void>;
+  /** The label picker on Rules: for these rules, under this box (null: near the top). */
+  ruleLabelPicker: { ruleIds: string[]; anchorRect: DOMRect | null } | null;
+  openRuleLabelPicker: (ruleIds: string[], anchorRect: DOMRect | null) => void;
+  closeRuleLabelPicker: () => void;
+  /** Ctrl/Cmd+K's "Create new label…": Settings → Rules → Labels opens its new row. */
+  newRuleLabelRequest: number;
+  requestNewRuleLabel: () => void;
   deleteRule: (id: string) => Promise<number>;
-  /** Rules or a group waiting on the delete confirmation. */
+  /** Rules or a label waiting on the delete confirmation. */
   pendingDeletion: { kind: DeletedKind; ids: string[] } | null;
   requestDeletion: (kind: DeletedKind, ids: string[]) => void;
   cancelDeletion: () => void;
   isCreateRuleModalOpen: boolean;
-  createRuleTargetGroupId?: string;
+  /** The label a new rule starts with: the "+" of a label's group. */
+  createRuleTargetLabelId?: string;
   /** Rule being edited in the shared modal; null while creating a new one. */
   editingRuleId: string | null;
-  openCreateRuleModal: (groupId?: string) => void;
+  openCreateRuleModal: (labelId?: string) => void;
   openEditRuleModal: (ruleId: string) => void;
   closeCreateRuleModal: () => void;
   /** Rule whose status on campaigns, ad sets or ads is open (#322). */
@@ -474,8 +486,6 @@ interface AppState {
   isRulesDisplayOptionsOpen: boolean;
   setIsRulesDisplayOptionsOpen: (open: boolean) => void;
   toggleRulesDisplayOptions: () => void;
-  selectedFilterRuleGroupId: string | null;
-  setSelectedFilterRuleGroupId: (groupId: string | null) => void;
   rulesCollapsedGroups: string[];
   toggleRulesGroupCollapse: (groupId: string) => void;
   selectedRuleIds: string[];
@@ -505,10 +515,10 @@ function emptyWorkspaceState() {
     viewSettings: {}, viewSettingsLoaded: false,
     notificationChannels: DEFAULT_NOTIFICATION_CHANNELS, notificationChannelsLoaded: false,
     telegramConnection: NO_TELEGRAM_CONNECTION, telegramConnectionLoaded: false,
-    rules: [], ruleGroups: [], ruleAccounts: [], rulesLoadState: 'idle' as RulesLoadState,
+    rules: [], ruleLabels: [], ruleAccounts: [], rulesLoadState: 'idle' as RulesLoadState,
     rulesError: '', rulesMutationError: '', selectedRuleId: null, selectedRuleIds: [],
     focusedRuleId: null, editingRuleId: null, ruleStatesRuleId: null, isCreateRuleModalOpen: false,
-    createRuleTargetGroupId: undefined, selectedFilterRuleGroupId: null,
+    createRuleTargetLabelId: undefined, ruleLabelPicker: null,
     rulesCollapsedGroups: [], pendingDeletion: null,
     adsManagerFilters: { campaigns: [], adsets: [], ads: [] },
     isCommandMenuOpen: false, openPalette: null, recordActionsFor: null, isDisplayOptionsOpen: false, isRulesDisplayOptionsOpen: false,
@@ -931,7 +941,7 @@ export const useAppStore = create<AppState>((set, get) => {
     })),
 
   rules: [],
-  ruleGroups: [],
+  ruleLabels: [],
   ruleAccounts: [],
   rulesLoadState: 'idle',
   rulesError: '',
@@ -947,19 +957,18 @@ export const useAppStore = create<AppState>((set, get) => {
     // first load of a workspace shows the loading state.
     if (get().rulesLoadState !== 'ready') set({ rulesLoadState: 'loading', rulesError: '' });
     try {
-      const [presets, groups, accounts] = await Promise.all([
+      const [presets, labels, accounts] = await Promise.all([
         fetchRulePresets(),
-        fetchRuleGroups(),
+        fetchRuleLabels(),
         // Needed to offer "run on this ad account"; a failure here must not
         // hide the rules themselves.
         apiRequest<MetaAccount[]>('/api/accounts').catch(() => []),
       ]);
       if (!current()) return;
-      const groupIndex = buildGroupIndex(groups);
       const ruleAccounts = eligibleMetaAccounts(accounts);
       set({
-        rules: presets.map((preset) => presetToRuleItem(preset, groupIndex, ruleAccounts)),
-        ruleGroups: groups.map(groupToRuleGroup),
+        rules: presets.map((preset) => presetToRuleItem(preset, ruleAccounts)),
+        ruleLabels: labels.map(toRuleLabel),
         ruleAccounts,
         rulesLoadState: 'ready',
       });
@@ -1044,24 +1053,12 @@ export const useAppStore = create<AppState>((set, get) => {
     return outcome;
   },
 
-  addRule: async (payload, groupId) => {
+  addRule: async (payload) => {
     const current = get().captureScope();
     if (!current()) return;
     set({ rulesMutationError: '' });
     try {
-      const preset = await createRulePreset(payload);
-      if (!current()) return;
-      if (groupId) {
-        const group = get().ruleGroups.find((item) => item.id === groupId);
-        if (group) {
-          await updateRuleGroup(Number(groupId), {
-            name: group.name,
-            description: group.description,
-            icon: group.icon,
-            preset_ids: [...group.ruleIds.map(Number), preset.id],
-          });
-        }
-      }
+      await createRulePreset(payload);
       if (!current()) return;
       await get().loadRules();
     } catch (error) {
@@ -1071,71 +1068,120 @@ export const useAppStore = create<AppState>((set, get) => {
     }
   },
 
-  addRuleGroup: async (name, icon = 'custom') => {
-    const current = get().captureScope();
-    if (!current()) return;
-    set({ rulesMutationError: '' });
-    try {
-      await createRuleGroup({ name, description: '', icon, preset_ids: [] });
-      if (!current()) return;
-      await get().loadRules();
-    } catch (error) {
-      if (!current()) return;
-      set({ rulesMutationError: requestErrorMessage(error) });
-    }
-  },
-
-  deleteRuleGroup: async (id) => {
+  createRuleLabel: async (name, color, description) => {
     const current = get().captureScope();
     if (!current()) throw new Error(OUT_OF_SCOPE);
-    if (!get().ruleGroups.some((item) => item.id === id)) throw new Error('This group no longer exists.');
-    const response = await deleteRuleGroupRequest(Number(id));
+    const created = toRuleLabel(
+      await createRuleLabelRequest({ name, color: color ?? randomLabelColor(), description: description ?? '' }),
+    );
     if (current()) {
       set((state) => ({
-        selectedFilterRuleGroupId:
-          state.selectedFilterRuleGroupId === id ? null : state.selectedFilterRuleGroupId,
+        ruleLabels: [...state.ruleLabels, created].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })),
       }));
     }
+    return created;
+  },
+
+  updateRuleLabel: async (id, patch) => {
+    const current = get().captureScope();
+    if (!current()) throw new Error(OUT_OF_SCOPE);
+    const updated = toRuleLabel(await updateRuleLabelRequest(Number(id), patch));
+    if (!current()) return;
+    set((state) => ({
+      ruleLabels: state.ruleLabels
+        .map((label) => (label.id === id ? updated : label))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })),
+    }));
+  },
+
+  deleteRuleLabel: async (id) => {
+    const current = get().captureScope();
+    if (!current()) throw new Error(OUT_OF_SCOPE);
+    if (!get().ruleLabels.some((item) => item.id === id)) throw new Error('This label no longer exists.');
+    const response = await deleteRuleLabelRequest(Number(id));
     return response.deleted_item_id;
   },
 
-  addRuleToGroup: async (groupId, ruleId) => {
+  setRuleLabels: async (ruleId, labelIds) => {
     const current = get().captureScope();
-    if (!current() || !(get().rules.some(item => item.id === ruleId) && get().ruleGroups.some(item => item.id === groupId))) return;
-    const { ruleGroups } = get();
-    const presetId = Number(ruleId);
-    // Group membership is stored as the group's full preset list, so moving a
-    // rule means rewriting both the group that loses it and the one that gains it.
-    const affected = ruleGroups.filter(
-      (group) => group.id === groupId || group.ruleIds.includes(ruleId),
-    );
-    if (affected.length === 0) return;
+    const rule = get().rules.find((item) => item.id === ruleId);
+    if (!current() || !rule) return;
+    const before = rule.labelIds;
+    if (before.length === labelIds.length && before.every((id) => labelIds.includes(id))) return;
+    // The row changes at once, as Linear's does; the write follows.
+    const apply = async (ids: string[]) => {
+      set((state) => ({
+        rules: state.rules.map((item) => (item.id === ruleId ? { ...item, labelIds: ids } : item)),
+      }));
+      try {
+        await setPresetLabels(rule.presetId, ids.map(Number));
+      } finally {
+        if (current()) await get().loadRules();
+      }
+    };
     set({ rulesMutationError: '' });
     try {
-      for (const group of affected) {
-        if (!current()) return;
-        const currentIds = group.ruleIds.map(Number);
-        const nextIds =
-          group.id === groupId
-            ? currentIds.includes(presetId)
-              ? currentIds
-              : [...currentIds, presetId]
-            : currentIds.filter((id) => id !== presetId);
-        if (nextIds.length === currentIds.length && group.id !== groupId) continue;
-        await updateRuleGroup(Number(group.id), {
-          name: group.name,
-          description: group.description,
-          icon: group.icon,
-          preset_ids: nextIds,
-        });
-      }
+      await apply(labelIds);
       if (!current()) return;
-      await get().loadRules();
+      pushHistory({
+        label: `change labels of ${rule.name}`,
+        undo: () => apply(before),
+        redo: () => apply(labelIds),
+      });
     } catch (error) {
       if (!current()) return;
       set({ rulesMutationError: requestErrorMessage(error) });
     }
   },
+
+  changeRulesLabels: async (ruleIds, change) => {
+    const current = get().captureScope();
+    const rules = get().rules.filter((item) => ruleIds.includes(item.id));
+    if (!current() || rules.length === 0) return;
+    const add = change.add ?? [];
+    const remove = change.remove ?? [];
+    const before = new Map(rules.map((rule) => [rule.id, rule.labelIds]));
+    const next = (ids: string[]) => [...ids.filter((id) => !remove.includes(id)), ...add.filter((id) => !ids.includes(id) && !remove.includes(id))];
+    set((state) => ({
+      rulesMutationError: '',
+      rules: state.rules.map((item) => (before.has(item.id) ? { ...item, labelIds: next(item.labelIds) } : item)),
+    }));
+    try {
+      await changePresetsLabels(rules.map((rule) => rule.presetId), { add: add.map(Number), remove: remove.map(Number) });
+      if (!current()) return;
+      await get().loadRules();
+      if (!current()) return;
+      // Undo puts back each rule's own labels, not the inverse change.
+      const restore = async () => {
+        await Promise.all(rules.map((rule) => setPresetLabels(rule.presetId, (before.get(rule.id) ?? []).map(Number))));
+        if (current()) await get().loadRules();
+      };
+      pushHistory({
+        label: `change labels of ${rules.length === 1 ? rules[0].name : `${rules.length} rules`}`,
+        undo: restore,
+        redo: async () => {
+          await changePresetsLabels(rules.map((rule) => rule.presetId), { add: add.map(Number), remove: remove.map(Number) });
+          if (current()) await get().loadRules();
+        },
+      });
+    } catch (error) {
+      if (!current()) return;
+      set({ rulesMutationError: requestErrorMessage(error) });
+      await get().loadRules();
+    }
+  },
+
+  ruleLabelPicker: null,
+  openRuleLabelPicker: (ruleIds, anchorRect) => {
+    if (ruleIds.length > 0) set({ ruleLabelPicker: { ruleIds, anchorRect } });
+  },
+  closeRuleLabelPicker: () => set({ ruleLabelPicker: null }),
+
+  newRuleLabelRequest: 0,
+  requestNewRuleLabel: () => set((state) => ({
+    newRuleLabelRequest: state.newRuleLabelRequest + 1,
+    settingsSection: 'rule-labels',
+  })),
 
   deleteRule: async (id) => {
     const current = get().captureScope();
@@ -1156,24 +1202,24 @@ export const useAppStore = create<AppState>((set, get) => {
   },
   cancelDeletion: () => set({ pendingDeletion: null }),
   isCreateRuleModalOpen: false,
-  createRuleTargetGroupId: undefined,
+  createRuleTargetLabelId: undefined,
   editingRuleId: null,
-  openCreateRuleModal: (groupId) =>
+  openCreateRuleModal: (labelId) =>
     set({
       isCreateRuleModalOpen: true,
-      createRuleTargetGroupId: groupId === 'all' ? undefined : groupId,
+      createRuleTargetLabelId: labelId,
       editingRuleId: null,
     }),
   openEditRuleModal: (ruleId) =>
     set({
       isCreateRuleModalOpen: true,
-      createRuleTargetGroupId: undefined,
+      createRuleTargetLabelId: undefined,
       editingRuleId: ruleId,
     }),
   closeCreateRuleModal: () =>
     set({
       isCreateRuleModalOpen: false,
-      createRuleTargetGroupId: undefined,
+      createRuleTargetLabelId: undefined,
       editingRuleId: null,
     }),
 
@@ -1222,8 +1268,6 @@ export const useAppStore = create<AppState>((set, get) => {
   setIsRulesDisplayOptionsOpen: (open) => set({ isRulesDisplayOptionsOpen: open }),
   toggleRulesDisplayOptions: () =>
     set((state) => ({ isRulesDisplayOptionsOpen: !state.isRulesDisplayOptionsOpen })),
-  selectedFilterRuleGroupId: null,
-  setSelectedFilterRuleGroupId: (groupId) => set({ selectedFilterRuleGroupId: groupId }),
   rulesCollapsedGroups: [],
   toggleRulesGroupCollapse: (groupId) =>
     set((state) => ({

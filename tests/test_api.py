@@ -1776,7 +1776,9 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             missing = await client.get("/api/presets/999999/states", headers=headers)
             self.assertEqual(missing.status_code, 404)
 
-    async def test_rule_group_icon_round_trips(self):
+    async def test_rule_labels_are_created_renamed_recolored_and_unique(self):
+        from core.rule_labels import LABEL_COLORS
+
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
         auth = await session_headers(self.test_session_maker, user_info)
         headers = {**auth}
@@ -1784,41 +1786,136 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             created = await client.post(
-                "/api/rule-groups",
+                "/api/rule-labels",
                 headers=headers,
-                json={"name": "Safety", "icon": "shield", "preset_ids": []},
+                json={"name": "  Safety  net ", "color": "#4CB782", "description": "Stops"},
             )
             self.assertEqual(created.status_code, 200)
-            self.assertEqual(created.json()["icon"], "shield")
-            group_id = created.json()["id"]
+            label = created.json()
+            self.assertEqual(label["name"], "Safety net")
+            self.assertEqual(label["color"], "#4cb782")
+            self.assertEqual(label["description"], "Stops")
+            self.assertEqual(label["rule_count"], 0)
+            self.assertEqual(label["last_applied_at"], "")
+            self.assertTrue(label["created_at"])
 
-            # Groups created without an icon fall back to the neutral marker.
-            default_icon = await client.post(
-                "/api/rule-groups",
+            # Without a color, a random one from Linear's palette.
+            random_color = await client.post(
+                "/api/rule-labels", headers=headers, json={"name": "Scaling"}
+            )
+            self.assertIn(random_color.json()["color"], LABEL_COLORS)
+
+            duplicate = await client.post(
+                "/api/rule-labels", headers=headers, json={"name": "safety NET"}
+            )
+            self.assertEqual(duplicate.status_code, 409)
+            bad_color = await client.post(
+                "/api/rule-labels", headers=headers, json={"name": "Odd", "color": "green"}
+            )
+            self.assertEqual(bad_color.status_code, 422)
+
+            renamed = await client.patch(
+                f"/api/rule-labels/{label['id']}",
                 headers=headers,
-                json={"name": "Unmarked", "preset_ids": []},
+                json={"name": "Safety", "color": "#eb5757"},
             )
-            self.assertEqual(default_icon.json()["icon"], "custom")
+            self.assertEqual(renamed.status_code, 200)
+            self.assertEqual(renamed.json()["name"], "Safety")
+            self.assertEqual(renamed.json()["color"], "#eb5757")
+            # Only what was sent changes.
+            self.assertEqual(renamed.json()["description"], "Stops")
+            clash = await client.patch(
+                f"/api/rule-labels/{label['id']}", headers=headers, json={"name": "scaling"}
+            )
+            self.assertEqual(clash.status_code, 409)
 
-            updated = await client.put(
-                f"/api/rule-groups/{group_id}",
+            listed = (await client.get("/api/rule-labels", headers=headers)).json()
+            names = [item["name"] for item in listed]
+            self.assertEqual(names, sorted(names, key=str.lower))
+            self.assertIn("Safety", names)
+
+    async def test_rule_labels_go_on_rules_in_one_write_and_in_bulk(self):
+        user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
+        auth = await session_headers(self.test_session_maker, user_info)
+        headers = {**auth}
+        rule = {
+            "name": "Stop no leads",
+            "action": "notify_only",
+            "conditions": [{"metric": "spend", "operator": "gte", "value": 10}],
+        }
+
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            safety = (await client.post("/api/rule-labels", headers=headers, json={"name": "Safety"})).json()
+            test = (await client.post("/api/rule-labels", headers=headers, json={"name": "Test"})).json()
+
+            # A new rule can start with labels.
+            first = await client.post(
+                "/api/presets", headers=headers, json={**rule, "label_ids": [safety["id"]]}
+            )
+            self.assertEqual(first.status_code, 200)
+            self.assertEqual(first.json()["label_ids"], [safety["id"]])
+            second = (await client.post("/api/presets", headers=headers, json=rule)).json()
+            self.assertEqual(second["label_ids"], [])
+
+            # Editing a rule without label_ids keeps its labels.
+            edited = await client.put(
+                f"/api/presets/{first.json()['id']}", headers=headers, json={**rule, "name": "Renamed"}
+            )
+            self.assertEqual(edited.json()["label_ids"], [safety["id"]])
+
+            both = await client.put(
+                f"/api/presets/{second['id']}/labels",
                 headers=headers,
-                json={"name": "Scaling", "icon": "rocket", "preset_ids": []},
+                json={"label_ids": [test["id"], safety["id"], test["id"]]},
             )
-            self.assertEqual(updated.json()["icon"], "rocket")
+            self.assertEqual(both.status_code, 200)
+            self.assertEqual(sorted(both.json()["label_ids"]), sorted([safety["id"], test["id"]]))
 
-            rejected = await client.post(
-                "/api/rule-groups",
+            unknown = await client.put(
+                f"/api/presets/{second['id']}/labels", headers=headers, json={"label_ids": [999999]}
+            )
+            self.assertEqual(unknown.status_code, 400)
+
+            counted = {
+                item["id"]: item for item in (await client.get("/api/rule-labels", headers=headers)).json()
+            }
+            self.assertEqual(counted[safety["id"]]["rule_count"], 2)
+            self.assertEqual(counted[test["id"]]["rule_count"], 1)
+            self.assertTrue(counted[safety["id"]]["last_applied_at"])
+
+            bulk = await client.patch(
+                "/api/presets/labels",
                 headers=headers,
-                json={"name": "Bad icon", "icon": "skull", "preset_ids": []},
+                json={
+                    "preset_ids": [first.json()["id"], second["id"]],
+                    "add_label_ids": [test["id"]],
+                    "remove_label_ids": [safety["id"]],
+                },
             )
-            self.assertEqual(rejected.status_code, 422)
+            self.assertEqual(bulk.status_code, 200)
+            self.assertEqual(bulk.json()["updated_count"], 2)
+            presets = {
+                item["id"]: item for item in (await client.get("/api/presets", headers=headers)).json()
+            }
+            self.assertEqual(presets[first.json()["id"]]["label_ids"], [test["id"]])
+            self.assertEqual(presets[second["id"]]["label_ids"], [test["id"]])
 
-            listed = await client.get("/api/rule-groups", headers=headers)
-            stored = next(
-                item for item in listed.json() if item["id"] == group_id
+            # Deleting a label keeps its rules and puts it in Recently deleted.
+            deleted = await client.delete(f"/api/rule-labels/{test['id']}", headers=headers)
+            self.assertEqual(deleted.status_code, 200)
+            presets = {
+                item["id"]: item for item in (await client.get("/api/presets", headers=headers)).json()
+            }
+            self.assertEqual(presets[second["id"]]["label_ids"], [])
+            restored = await client.post(
+                f"/api/deleted-items/{deleted.json()['deleted_item_id']}/restore", headers=headers
             )
-            self.assertEqual(stored["icon"], "rocket")
+            self.assertEqual(restored.status_code, 200)
+            presets = {
+                item["id"]: item for item in (await client.get("/api/presets", headers=headers)).json()
+            }
+            self.assertEqual(presets[second["id"]]["label_ids"], [test["id"]])
 
     async def test_rule_scope_is_attached_re_aimed_and_survives_preset_edits(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
@@ -2008,86 +2105,72 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         admin_headers = {**admin_data}
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            foreign_response = await client.post(
-                "/api/rule-groups",
-                headers=buyer_headers,
-                json={"name": "Invalid", "preset_ids": [foreign_id]},
-            )
             created = await client.post(
-                "/api/rule-groups",
+                "/api/rule-labels",
                 headers=buyer_headers,
-                json={
-                    "name": "  Launch safety  ",
-                    "description": "Start-of-day protection",
-                    "preset_ids": [buyer_ids[0], buyer_ids[1], buyer_ids[0]],
-                },
+                json={"name": "Launch safety", "description": "Start-of-day protection"},
             )
-
-            self.assertEqual(foreign_response.status_code, 400)
             self.assertEqual(created.status_code, 200)
-            group = created.json()
-            self.assertEqual(group["name"], "Launch safety")
-            self.assertEqual(group["preset_ids"], buyer_ids)
-            self.assertEqual([rule["name"] for rule in group["rules"]], ["Stop no leads", "Notify high CPL"])
+            group_id = created.json()["id"]
 
-            empty_created = await client.post(
-                "/api/rule-groups",
+            # A label goes only on the workspace's own rules.
+            foreign_response = await client.put(
+                f"/api/presets/{foreign_id}/labels",
                 headers=buyer_headers,
-                json={"name": "Empty Stage", "preset_ids": []},
+                json={"label_ids": [group_id]},
             )
-            self.assertEqual(empty_created.status_code, 200)
-            self.assertEqual(empty_created.json()["name"], "Empty Stage")
-            self.assertEqual(empty_created.json()["preset_ids"], [])
-            self.assertEqual(empty_created.json()["rules"], [])
+            self.assertEqual(foreign_response.status_code, 400)
+            foreign_bulk = await client.patch(
+                "/api/presets/labels",
+                headers=buyer_headers,
+                json={"preset_ids": [buyer_ids[0], foreign_id], "add_label_ids": [group_id]},
+            )
+            self.assertEqual(foreign_bulk.status_code, 400)
+            labelled = await client.patch(
+                "/api/presets/labels",
+                headers=buyer_headers,
+                json={"preset_ids": buyer_ids, "add_label_ids": [group_id]},
+            )
+            self.assertEqual(labelled.json()["updated_count"], 2)
 
-            group_id = group["id"]
-            buyer_list = await client.get("/api/rule-groups", headers=buyer_headers)
-            admin_list = await client.get("/api/rule-groups", headers=admin_headers)
-            forbidden_update = await client.put(
-                f"/api/rule-groups/{group_id}",
+            buyer_list = await client.get("/api/rule-labels", headers=buyer_headers)
+            admin_list = await client.get("/api/rule-labels", headers=admin_headers)
+            forbidden_update = await client.patch(
+                f"/api/rule-labels/{group_id}",
                 headers=admin_headers,
-                json={"name": "Hijack", "preset_ids": [foreign_id]},
+                json={"name": "Hijack"},
+            )
+            forbidden_use = await client.put(
+                f"/api/presets/{foreign_id}/labels",
+                headers=admin_headers,
+                json={"label_ids": [group_id]},
             )
             self.assertIn(group_id, [item["id"] for item in buyer_list.json()])
+            self.assertNotIn(group_id, [item["id"] for item in admin_list.json()])
             self.assertEqual(
                 len([item for item in admin_list.json() if item["name"].startswith("Example ·")]),
                 2,
             )
             self.assertEqual(forbidden_update.status_code, 404)
+            self.assertEqual(forbidden_use.status_code, 400)
 
+            # Assigning rules by label is gone: attaching stays per rule (#383).
             single_assign = await client.post(
                 "/api/accounts/act_1018756607700064/assign-rule",
                 headers=buyer_headers,
                 json={"preset_id": buyer_ids[0]},
             )
-            grouped_assign = await client.post(
-                f"/api/accounts/act_1018756607700064/assign-rule-group/{group_id}",
-                headers=buyer_headers,
-            )
-            repeated_assign = await client.post(
-                f"/api/accounts/act_1018756607700064/assign-rule-group/{group_id}",
-                headers=buyer_headers,
-            )
             self.assertEqual(single_assign.status_code, 200)
-            self.assertEqual(grouped_assign.status_code, 200)
-            self.assertEqual(grouped_assign.json()["added_count"], 1)
-            self.assertEqual(grouped_assign.json()["skipped_count"], 1)
-            self.assertEqual(len(grouped_assign.json()["active_rules"]), 2)
-            self.assertEqual(repeated_assign.json()["added_count"], 0)
-            self.assertEqual(repeated_assign.json()["skipped_count"], 2)
-
-            updated = await client.put(
-                f"/api/rule-groups/{group_id}",
+            retired = await client.post(
+                f"/api/accounts/act_1018756607700064/assign-rule-group/{group_id}",
                 headers=buyer_headers,
-                json={"name": "Launch bundle", "description": "Updated", "preset_ids": list(reversed(buyer_ids))},
             )
-            self.assertEqual(updated.status_code, 200)
-            self.assertEqual(updated.json()["preset_ids"], list(reversed(buyer_ids)))
+            self.assertIn(retired.status_code, (404, 405))
 
-            deleted = await client.delete(f"/api/rule-groups/{group_id}", headers=buyer_headers)
+            deleted = await client.delete(f"/api/rule-labels/{group_id}", headers=buyer_headers)
             accounts = await client.get("/api/accounts", headers=buyer_headers)
             self.assertEqual(deleted.status_code, 200)
-            self.assertEqual(len(accounts.json()[0]["active_rules"]), 2)
+            self.assertEqual(len(accounts.json()[0]["active_rules"]), 1)
 
         async with self.test_session_maker() as session:
             self.assertIsNone(await session.get(RuleGroup, group_id))
@@ -2128,10 +2211,19 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             group = (await client.post(
-                "/api/rule-groups",
+                "/api/rule-labels",
                 headers=buyer_headers,
-                json={"name": "Launch safety", "preset_ids": [stop_id, notify_id]},
+                json={"name": "Launch safety"},
             )).json()
+            await client.patch(
+                "/api/presets/labels",
+                headers=buyer_headers,
+                json={"preset_ids": [stop_id, notify_id], "add_label_ids": [group["id"]]},
+            )
+
+            async def label_ids_of(preset_id):
+                presets = (await client.get("/api/presets", headers=buyer_headers)).json()
+                return next(item for item in presets if item["id"] == preset_id)["label_ids"]
             attached = await client.post(
                 "/api/accounts/act_1018756607700064/assign-rule",
                 headers=buyer_headers,
@@ -2140,7 +2232,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(attached.status_code, 200)
 
             deleted_rule = await client.delete(f"/api/presets/{stop_id}", headers=buyer_headers)
-            deleted_group = await client.delete(f"/api/rule-groups/{group['id']}", headers=buyer_headers)
+            deleted_group = await client.delete(f"/api/rule-labels/{group['id']}", headers=buyer_headers)
             self.assertEqual(deleted_rule.status_code, 200)
             self.assertEqual(deleted_group.status_code, 200)
             rule_item_id = deleted_rule.json()["deleted_item_id"]
@@ -2174,11 +2266,11 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(restored_group.status_code, 200)
             self.assertEqual(restored_group.json()["entity_id"], group["id"])
             self.assertEqual(restored_group.json()["missing_rule_ids"], [])
-            groups = (await client.get("/api/rule-groups", headers=buyer_headers)).json()
-            self.assertEqual(
-                next(item for item in groups if item["id"] == group["id"])["preset_ids"],
-                [notify_id],
-            )
+            self.assertEqual(await label_ids_of(notify_id), [group["id"]])
+            labels = (await client.get("/api/rule-labels", headers=buyer_headers)).json()
+            restored_label = next(item for item in labels if item["id"] == group["id"])
+            self.assertEqual(restored_label["rule_count"], 1)
+            self.assertTrue(restored_label["color"].startswith("#"))
 
             # The rule comes back under its id, into that group and onto the
             # account with the scope it had there.
@@ -2189,9 +2281,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(restored_rule.json()["entity_id"], stop_id)
             self.assertEqual(restored_rule.json()["skipped_account_ids"], [])
 
-            groups = (await client.get("/api/rule-groups", headers=buyer_headers)).json()
-            restored = next(item for item in groups if item["id"] == group["id"])
-            self.assertEqual(sorted(restored["preset_ids"]), sorted([stop_id, notify_id]))
+            self.assertEqual(await label_ids_of(stop_id), [group["id"]])
             account = (await client.get("/api/accounts", headers=buyer_headers)).json()[0]
             self.assertEqual([rule["preset_id"] for rule in account["active_rules"]], [stop_id])
             self.assertEqual(account["active_rules"][0]["scope"], scope)
@@ -2222,39 +2312,6 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(listed, [])
             gone = await client.post(f"/api/deleted-items/{expired_id}/restore", headers=buyer_headers)
             self.assertEqual(gone.status_code, 404)
-
-    async def test_rule_groups_reorder(self):
-        user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
-        auth = await session_headers(self.test_session_maker, user_info)
-        headers = {**auth}
-        transport = httpx.ASGITransport(app=self.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            resp1 = await client.post("/api/rule-groups", headers=headers, json={"name": "Group Alpha", "preset_ids": []})
-            self.assertEqual(resp1.status_code, 200)
-            g1 = resp1.json()
-
-            resp2 = await client.post("/api/rule-groups", headers=headers, json={"name": "Group Beta", "preset_ids": []})
-            self.assertEqual(resp2.status_code, 200)
-            g2 = resp2.json()
-
-            resp3 = await client.post("/api/rule-groups", headers=headers, json={"name": "Group Gamma", "preset_ids": []})
-            self.assertEqual(resp3.status_code, 200)
-            g3 = resp3.json()
-
-            reorder_resp = await client.put(
-                "/api/rule-groups/reorder",
-                headers=headers,
-                json={"group_ids": [g3["id"], g1["id"], g2["id"]]},
-            )
-            self.assertEqual(reorder_resp.status_code, 200)
-            reordered = reorder_resp.json()
-            custom_groups = [g for g in reordered if g["id"] in {g1["id"], g2["id"], g3["id"]}]
-            self.assertEqual([g["id"] for g in custom_groups], [g3["id"], g1["id"], g2["id"]])
-
-            get_resp = await client.get("/api/rule-groups", headers=headers)
-            self.assertEqual(get_resp.status_code, 200)
-            get_groups = [g for g in get_resp.json() if g["id"] in {g1["id"], g2["id"], g3["id"]}]
-            self.assertEqual([g["id"] for g in get_groups], [g3["id"], g1["id"], g2["id"]])
 
     async def test_parse_raw_endpoint(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}

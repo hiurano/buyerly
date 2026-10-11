@@ -11,7 +11,7 @@ from api.schemas import (
     AccountGroupItem,
     ConditionItem,
     RuleEntityStateItem,
-    RuleGroupResponse,
+    RuleLabelResponse,
     RulePresetItem,
     WorkspaceItem,
 )
@@ -627,6 +627,7 @@ def _preset_response(
     preset: RulePreset,
     activity: Optional[Dict[str, str]] = None,
     attachments: Optional[Dict[str, Dict[str, Any]]] = None,
+    label_ids: Optional[List[int]] = None,
 ) -> RulePresetItem:
     try:
         raw_conditions = (
@@ -667,6 +668,7 @@ def _preset_response(
         last_checked_at=(activity or {}).get("last_checked_at", ""),
         attached_account_ids=list((attachments or {}).keys()),
         attached_scopes=dict(attachments or {}),
+        label_ids=list(label_ids or []),
     )
 
 
@@ -690,25 +692,32 @@ def _ensure_compatible_rule_set(rules: List[Dict[str, Any]]) -> None:
         raise HTTPException(status_code=409, detail=str(error)) from error
 
 
-def _ensure_compatible_presets(presets: List[RulePreset]) -> None:
-    snapshots = [_preset_snapshot(preset) for preset in presets]
-    if any(snapshot.get("needs_review") for snapshot in snapshots):
-        raise HTTPException(
-            status_code=400,
-            detail="The set contains an unsafe or outdated rule. Re-save it.",
-        )
-    _ensure_compatible_rule_set(snapshots)
-
-
 def _unique_preset_ids(preset_ids: List[int]) -> List[int]:
     return list(dict.fromkeys(preset_ids))
 
 
-def _clean_rule_group_name(value: str) -> str:
-    name = value.strip()
+def _clean_rule_label_name(value: str) -> str:
+    name = " ".join(value.split())
     if not name:
-        raise HTTPException(status_code=400, detail="Enter a group name.")
+        raise HTTPException(status_code=400, detail="Enter a label name.")
     return name
+
+
+async def _ensure_unique_label_name(
+    session, workspace_id: int, name: str, *, except_id: Optional[int] = None
+) -> None:
+    """Two labels of one workspace never share a name, whatever the case."""
+    stmt = select(RuleGroup.id).where(
+        RuleGroup.workspace_id == workspace_id,
+        func.lower(RuleGroup.name) == name.lower(),
+    )
+    if except_id is not None:
+        stmt = stmt.where(RuleGroup.id != except_id)
+    if (await session.execute(stmt.limit(1))).scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=f'A label named "{name}" already exists.',
+        )
 
 
 async def _get_workspace_presets(
@@ -734,31 +743,78 @@ async def _get_workspace_presets(
     return [by_id[preset_id] for preset_id in ordered_ids]
 
 
-def _rule_group_response(
-    group: RuleGroup,
-    presets: List[RulePreset],
-    last_runs: Optional[Dict[int, Dict[str, str]]] = None,
-    attachments: Optional[Dict[int, Dict[str, Dict[str, Any]]]] = None,
-) -> RuleGroupResponse:
-    last_runs = last_runs or {}
-    attachments = attachments or {}
-    return RuleGroupResponse(
-        id=group.id,
-        name=group.name,
-        description=group.description or "",
-        icon=getattr(group, "icon", "custom") or "custom",
-        position=getattr(group, "position", 0) or 0,
-        preset_ids=[preset.id for preset in presets],
-        rules=[
-            _preset_response(
-                preset,
-                last_runs.get(preset.id),
-                attachments.get(preset.id, {}),
+async def _get_workspace_labels(
+    session,
+    label_ids: List[int],
+    *,
+    workspace_id: int,
+) -> List[RuleGroup]:
+    """The workspace's labels with these ids; any other id is refused."""
+    ordered_ids = list(dict.fromkeys(label_ids))
+    if not ordered_ids:
+        return []
+    found = (
+        await session.execute(
+            select(RuleGroup).where(
+                RuleGroup.workspace_id == workspace_id,
+                RuleGroup.id.in_(ordered_ids),
             )
-            for preset in presets
-        ],
-        created_at=group.created_at.strftime("%Y-%m-%d %H:%M") if group.created_at else "",
-    )
+        )
+    ).scalars().all()
+    by_id = {label.id: label for label in found}
+    if any(label_id not in by_id for label_id in ordered_ids):
+        raise HTTPException(status_code=400, detail="One or more labels no longer exist.")
+    return [by_id[label_id] for label_id in ordered_ids]
+
+
+async def _preset_label_ids(session, preset_ids: List[int]) -> Dict[int, List[int]]:
+    """Each rule's labels, in the order they were put on."""
+    if not preset_ids:
+        return {}
+    rows = (
+        await session.execute(
+            select(RuleGroupItem.preset_id, RuleGroupItem.group_id)
+            .where(RuleGroupItem.preset_id.in_(preset_ids))
+            .order_by(RuleGroupItem.created_at, RuleGroupItem.id)
+        )
+    ).all()
+    result: Dict[int, List[int]] = {}
+    for preset_id, group_id in rows:
+        result.setdefault(preset_id, []).append(group_id)
+    return result
+
+
+async def _rule_label_responses(session, labels: List[RuleGroup]) -> List[RuleLabelResponse]:
+    """Labels with how many rules carry each and when one was last put on."""
+    ids = [label.id for label in labels]
+    usage: Dict[int, Any] = {}
+    if ids:
+        usage = {
+            row.group_id: row
+            for row in (
+                await session.execute(
+                    select(
+                        RuleGroupItem.group_id,
+                        func.count(RuleGroupItem.id).label("rule_count"),
+                        func.max(RuleGroupItem.created_at).label("last_applied_at"),
+                    )
+                    .where(RuleGroupItem.group_id.in_(ids))
+                    .group_by(RuleGroupItem.group_id)
+                )
+            ).all()
+        }
+    return [
+        RuleLabelResponse(
+            id=label.id,
+            name=label.name,
+            color=label.color or "#95a2b3",
+            description=label.description or "",
+            rule_count=int(usage[label.id].rule_count) if label.id in usage else 0,
+            last_applied_at=_utc_iso(usage[label.id].last_applied_at) if label.id in usage else "",
+            created_at=_utc_iso(label.created_at),
+        )
+        for label in labels
+    ]
 
 
 async def _preset_attachments(
@@ -931,39 +987,6 @@ async def _rule_entity_states(
             )
         )
     return items
-
-
-async def _load_group_presets(
-    session,
-    group_ids: List[int],
-    *,
-    workspace_id: int,
-) -> Dict[int, List[RulePreset]]:
-    if not group_ids:
-        return {}
-    item_rows = (
-        await session.execute(
-            select(RuleGroupItem)
-            .where(RuleGroupItem.group_id.in_(group_ids))
-            .order_by(RuleGroupItem.group_id, RuleGroupItem.position, RuleGroupItem.id)
-        )
-    ).scalars().all()
-    preset_ids = list(dict.fromkeys(item.preset_id for item in item_rows))
-    presets = (
-        await session.execute(
-            select(RulePreset).where(
-                RulePreset.id.in_(preset_ids),
-                RulePreset.workspace_id == workspace_id,
-            )
-        )
-    ).scalars().all() if preset_ids else []
-    by_id = {preset.id: preset for preset in presets}
-    grouped: Dict[int, List[RulePreset]] = {group_id: [] for group_id in group_ids}
-    for item in item_rows:
-        preset = by_id.get(item.preset_id)
-        if preset is not None:
-            grouped[item.group_id].append(preset)
-    return grouped
 
 
 # ----------------------------------------------------

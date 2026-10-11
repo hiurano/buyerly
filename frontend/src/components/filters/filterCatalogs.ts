@@ -3,8 +3,8 @@ import type {
   AdSetItem,
   CampaignGroup,
   CampaignItem,
-  RuleGroup,
   RuleItem,
+  RuleLabel,
 } from '@/store/useAppStore';
 import { DATE_OPERATORS, type FilterFieldDefinition, type FilterOption } from './filterModel';
 
@@ -42,13 +42,14 @@ const campaignGroupOptions = (groups: CampaignGroup[]): FilterOption[] => [
   { value: 'ungrouped', label: 'Ungrouped', color: '#73767c', icon: 'dot' },
 ];
 
-const ruleGroupOptions = (groups: RuleGroup[]): FilterOption[] => [
-  ...groups.map((group) => ({
-    value: group.id,
-    label: group.name,
-    icon: (`group-${group.icon === 'custom' ? 'backlog' : group.icon}`) as FilterOption['icon'],
+const ruleLabelOptions = (labels: RuleLabel[]): FilterOption[] => [
+  { value: 'none', label: 'No labels', color: '#95a2b3', icon: 'dot' },
+  ...labels.map((label) => ({
+    value: label.id,
+    label: label.name,
+    color: label.color,
+    icon: 'dot' as const,
   })),
-  { value: 'ungrouped', label: 'Ungrouped', icon: 'group-backlog' },
 ];
 
 const attachedRuleOptions = (rules: RuleItem[]): FilterOption[] => [
@@ -221,10 +222,10 @@ export const createAdFilterFields = ({
 
 export const createRuleFilterFields = ({
   rules,
-  ruleGroups,
+  ruleLabels,
 }: {
   rules: RuleItem[];
-  ruleGroups: RuleGroup[];
+  ruleLabels: RuleLabel[];
 }): FilterFieldDefinition<RuleItem>[] => [
   {
     id: 'status', label: 'Status', section: 'filters', type: 'enum',
@@ -232,11 +233,12 @@ export const createRuleFilterFields = ({
     options: withCounts(RULE_STATUS_OPTIONS, rules, (item) => item.status),
     getValue: (item) => item.status, pluralLabel: 'statuses',
   },
+  // Linear's Labels: include any of, include all of, exclude if any of; "No labels" first.
   {
-    id: 'group', label: 'Groups', section: 'filters', type: 'enum',
-    operators: [...enumOperators], defaultOperator: 'is',
-    options: withCounts(ruleGroupOptions(ruleGroups), rules, (item) => item.groupId ?? 'ungrouped'),
-    getValue: (item) => item.groupId ?? 'ungrouped', pluralLabel: 'groups',
+    id: 'label', label: 'Labels', section: 'filters', type: 'enum',
+    operators: ['includes_any', 'includes_all', 'excludes_any'], defaultOperator: 'includes_any',
+    options: withCounts(ruleLabelOptions(ruleLabels), rules, (item) => (item.labelIds.length ? item.labelIds : 'none')),
+    getValue: (item) => (item.labelIds.length ? item.labelIds : ['none']), pluralLabel: 'labels',
   },
   // Linear's Dates: one row, each date with its ready-made values (#385). More come with #390.
   {
