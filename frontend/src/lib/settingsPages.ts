@@ -19,6 +19,7 @@ export const SETTINGS_PAGE_KEYWORDS: Record<SettingsPage, string> = {
   teams: 'teams team create team retire identifier',
   members: 'members invite invitations people team users roles export csv',
   'workspace-security': 'security workspace access invite links invitations admins permissions',
+  'rule-labels': 'labels label rules tags groups colors',
 };
 
 type SettingsPageGroup = { heading: string; pages: { section: SettingsPage; label: string }[] };
@@ -50,6 +51,11 @@ export const SETTINGS_PAGE_GROUPS: SettingsPageGroup[] = [
       { section: 'security', label: 'Security & access' },
       { section: 'connected-accounts', label: 'Connected accounts' },
     ],
+  },
+  // Linear's Issues → Labels; here the labels are the rules' (#383). Every member sees them.
+  {
+    heading: 'Rules',
+    pages: [{ section: 'rule-labels', label: 'Labels' }],
   },
   {
     heading: 'Administration',

@@ -43,7 +43,7 @@ function daysLeft(purgeAt: string): string {
  */
 export const RecentlyDeletedView: React.FC<{ onCountChange?: (count: number | null) => void }> = ({ onCountChange }) => {
   const rules = useAppStore((state) => state.rules);
-  const ruleGroups = useAppStore((state) => state.ruleGroups);
+  const ruleLabels = useAppStore((state) => state.ruleLabels);
   const [items, setItems] = useState<DeletedItem[]>([]);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadError, setLoadError] = useState('');
@@ -68,7 +68,7 @@ export const RecentlyDeletedView: React.FC<{ onCountChange?: (count: number | nu
   // follows them instead of keeping its own copy of the history.
   useEffect(() => {
     void load();
-  }, [load, rules, ruleGroups]);
+  }, [load, rules, ruleLabels]);
 
   // The page title shows the count beside it, as Linear's "Archived issues 3".
   useEffect(() => {
@@ -118,7 +118,7 @@ export const RecentlyDeletedView: React.FC<{ onCountChange?: (count: number | nu
     return (
       <DataState
         title="Nothing deleted"
-        detail={`Rules and groups you delete stay here for ${TRASH_RETENTION_DAYS} days, and can be restored until then.`}
+        detail={`Rules and labels you delete stay here for ${TRASH_RETENTION_DAYS} days, and can be restored until then.`}
       />
     );
   }
@@ -135,7 +135,7 @@ export const RecentlyDeletedView: React.FC<{ onCountChange?: (count: number | nu
         >
           <LinearDataPrimaryCell title={item.name} dimmed hint={item.name} />
           <span className="truncate text-[12px] text-[var(--text-secondary)]">
-            {item.kind === 'rule' ? 'Rule' : 'Group'}
+            {item.kind === 'rule' ? 'Rule' : 'Label'}
           </span>
           <span className="truncate text-[12px] tabular-nums text-[var(--text-secondary)]">
             {shortDate(item.deleted_at)}

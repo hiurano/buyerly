@@ -33,7 +33,21 @@ export type RuleAction =
 
 export type RuleExecutionLevel = 'campaign' | 'adset' | 'ad';
 
-export type RuleGroupIcon = 'backlog' | 'shield' | 'rocket' | 'flask' | 'custom';
+/** Linear's label colors, in its picker's order; a new label takes one at random (#383). */
+export const LABEL_COLORS = [
+  '#95a2b3',
+  '#5e6ad2',
+  '#26b5ce',
+  '#4cb782',
+  '#f2c94c',
+  '#f2994a',
+  '#f7c8c1',
+  '#eb5757',
+  '#bb87fc',
+  '#4ea7fc',
+] as const;
+
+export const randomLabelColor = (): string => LABEL_COLORS[Math.floor(Math.random() * LABEL_COLORS.length)];
 
 /**
  * Which ad sets an attached rule may act on. A rule always acts on ad sets;
@@ -90,6 +104,8 @@ export interface RulePresetPayload {
   attached_account_ids: string[];
   /** Scope per attached account, keyed by ad account id. */
   attached_scopes: Record<string, RuleScope>;
+  /** The rule's labels, in the order they were put on. */
+  label_ids: number[];
 }
 
 /** Where one rule stands on one entity as of its latest check (#322). */
@@ -131,14 +147,16 @@ export interface RuleEntityStatePayload {
   acted_at: string;
 }
 
-export interface RuleGroupPayload {
+/** A rule label, as Linear's issue labels (#383). */
+export interface RuleLabelPayload {
   id: number;
   name: string;
+  color: string;
   description: string;
-  icon: RuleGroupIcon;
-  position: number;
-  preset_ids: number[];
-  rules: RulePresetPayload[];
+  /** How many rules carry it. */
+  rule_count: number;
+  /** When it was last put on a rule; empty when never. */
+  last_applied_at: string;
   created_at: string;
 }
 
@@ -153,14 +171,14 @@ export interface RulePresetWriteRequest {
   check_interval_minutes: number;
   budget_change_percent: number;
   budget_max_daily: number;
+  /** Labels a new rule starts with; left out, an edit keeps the rule's labels. */
+  label_ids?: number[];
 }
 
-export interface RuleGroupWriteRequest {
-  name: string;
-  description: string;
-  icon: RuleGroupIcon;
-  position?: number;
-  preset_ids: number[];
+export interface RuleLabelWriteRequest {
+  name?: string;
+  color?: string;
+  description?: string;
 }
 
 /* ---------------------------------------------------------------- labels -- */
@@ -516,8 +534,8 @@ export function fetchRulePresets(): Promise<RulePresetPayload[]> {
   return apiRequest<RulePresetPayload[]>('/api/presets');
 }
 
-export function fetchRuleGroups(): Promise<RuleGroupPayload[]> {
-  return apiRequest<RuleGroupPayload[]>('/api/rule-groups');
+export function fetchRuleLabels(): Promise<RuleLabelPayload[]> {
+  return apiRequest<RuleLabelPayload[]>('/api/rule-labels');
 }
 
 /** One rule's state on every entity it checks. */
@@ -567,28 +585,51 @@ export function deleteRulePreset(presetId: number): Promise<DeleteResponse> {
   });
 }
 
-export function createRuleGroup(
-  payload: RuleGroupWriteRequest,
-): Promise<RuleGroupPayload> {
-  return apiRequest<RuleGroupPayload>('/api/rule-groups', {
+export function createRuleLabel(
+  payload: { name: string; color?: string; description?: string },
+): Promise<RuleLabelPayload> {
+  return apiRequest<RuleLabelPayload>('/api/rule-labels', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
-export function updateRuleGroup(
-  groupId: number,
-  payload: RuleGroupWriteRequest,
-): Promise<RuleGroupPayload> {
-  return apiRequest<RuleGroupPayload>(`/api/rule-groups/${groupId}`, {
-    method: 'PUT',
+export function updateRuleLabel(
+  labelId: number,
+  payload: RuleLabelWriteRequest,
+): Promise<RuleLabelPayload> {
+  return apiRequest<RuleLabelPayload>(`/api/rule-labels/${labelId}`, {
+    method: 'PATCH',
     body: JSON.stringify(payload),
   });
 }
 
-export function deleteRuleGroup(groupId: number): Promise<DeleteResponse> {
-  return apiRequest<DeleteResponse>(`/api/rule-groups/${groupId}`, {
+export function deleteRuleLabel(labelId: number): Promise<DeleteResponse> {
+  return apiRequest<DeleteResponse>(`/api/rule-labels/${labelId}`, {
     method: 'DELETE',
+  });
+}
+
+/** A rule's whole set of labels, in one write. */
+export function setPresetLabels(presetId: number, labelIds: number[]): Promise<RulePresetPayload> {
+  return apiRequest<RulePresetPayload>(`/api/presets/${presetId}/labels`, {
+    method: 'PUT',
+    body: JSON.stringify({ label_ids: labelIds }),
+  });
+}
+
+/** Labels put on, or taken off, several rules at once. */
+export function changePresetsLabels(
+  presetIds: number[],
+  change: { add?: number[]; remove?: number[] },
+): Promise<{ updated_count: number }> {
+  return apiRequest<{ updated_count: number }>('/api/presets/labels', {
+    method: 'PATCH',
+    body: JSON.stringify({
+      preset_ids: presetIds,
+      add_label_ids: change.add ?? [],
+      remove_label_ids: change.remove ?? [],
+    }),
   });
 }
 

@@ -1,14 +1,15 @@
-import type { RuleGroup, RuleItem } from '@/store/useAppStore';
+import type { RuleItem, RuleLabel } from '@/store/useAppStore';
 import { listViewDefaults, type SortDirection } from '@/ui/listView';
 import { useListView } from '@/ui/useListView';
 
 /** The Rules page's view as it starts, and as Reset brings it back (#385). */
 export const RULES_VIEW_DEFAULTS = listViewDefaults({
-  grouping: 'groups',
+  grouping: 'labels',
   ordering: 'manual',
   direction: 'asc',
   properties: {
     status: true,
+    labels: true,
     condition: true,
     action: true,
     scope: true,
@@ -40,51 +41,54 @@ export function sortRules(rules: RuleItem[], ordering: string, direction: SortDi
   return rules;
 }
 
-export const groupDotColor = (iconType: string) => {
-  switch (iconType) {
-    case 'shield':
-      return 'rgb(52, 211, 153)';
-    case 'rocket':
-      return 'rgb(192, 132, 252)';
-    case 'flask':
-      return 'rgb(251, 191, 36)';
-    default:
-      return 'rgb(148, 163, 184)';
-  }
-};
+/** The dot of "No label", Linear's neutral gray. */
+export const NO_LABEL_COLOR = '#95a2b3';
+export const NO_LABEL_GROUP_ID = 'no-label';
+
+/** A rule's labels in the workspace's order (by name); a label since deleted is left out. */
+export function labelsOf(rule: Pick<RuleItem, 'labelIds'>, labels: RuleLabel[]): RuleLabel[] {
+  return labels.filter((label) => rule.labelIds.includes(label.id));
+}
 
 export interface RuleListGroup {
   id: string;
   label: string;
   dotColor: string;
   rows: RuleItem[];
-  /** The rule group a new rule from the header's "+" joins. */
-  groupId?: string;
+  /** The label a new rule from the header's "+" starts with. */
+  labelId?: string;
+  /** A label's color tints its header, as in Linear. */
+  tint?: string;
 }
 
-/** Every group the grouping has, empty ones included: Group ordering and Show empty groups pick from these. */
-export function ruleGroupsFor(grouping: string, rules: RuleItem[], ruleGroups: RuleGroup[]): RuleListGroup[] {
+/**
+ * Every group the grouping has, empty ones included: Group ordering and Show
+ * empty groups pick from these. By label, as in Linear, a rule with two labels
+ * shows in both groups and a rule without one under "No label", last.
+ */
+export function ruleGroupsFor(grouping: string, rules: RuleItem[], labels: RuleLabel[]): RuleListGroup[] {
   if (grouping === 'status') {
     return [
       { id: 'status-active', label: 'Active rules', dotColor: 'rgb(52, 211, 153)', rows: rules.filter((rule) => rule.status === 'active') },
       { id: 'status-paused', label: 'Paused rules', dotColor: 'rgb(156, 163, 175)', rows: rules.filter((rule) => rule.status === 'paused') },
     ];
   }
-  if (grouping === 'groups') {
-    const grouped = new Set(ruleGroups.flatMap((group) => group.ruleIds));
+  if (grouping === 'labels') {
+    const known = new Set(labels.map((label) => label.id));
     return [
-      ...ruleGroups.map((group) => ({
-        id: group.id,
-        label: group.name,
-        dotColor: groupDotColor(group.icon),
-        rows: rules.filter((rule) => rule.groupId === group.id || group.ruleIds.includes(rule.id)),
-        groupId: group.id,
+      ...labels.map((label) => ({
+        id: label.id,
+        label: label.name,
+        dotColor: label.color,
+        tint: label.color,
+        rows: rules.filter((rule) => rule.labelIds.includes(label.id)),
+        labelId: label.id,
       })),
       {
-        id: 'ungrouped',
-        label: 'Ungrouped rules',
-        dotColor: 'rgb(148, 163, 184)',
-        rows: rules.filter((rule) => !rule.groupId && !grouped.has(rule.id)),
+        id: NO_LABEL_GROUP_ID,
+        label: 'No label',
+        dotColor: NO_LABEL_COLOR,
+        rows: rules.filter((rule) => !rule.labelIds.some((id) => known.has(id))),
       },
     ];
   }

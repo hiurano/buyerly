@@ -19,7 +19,7 @@ import { toast } from '@/ui/toast';
 
 const NOUNS: Record<DeletedKind, { singular: string; plural: string }> = {
   rule: { singular: 'rule', plural: 'rules' },
-  rule_group: { singular: 'group', plural: 'groups' },
+  rule_group: { singular: 'label', plural: 'labels' },
 };
 
 function errorMessage(error: unknown): string {
@@ -33,7 +33,7 @@ function countOf(kind: DeletedKind, count: number): string {
 
 function nameOf(kind: DeletedKind, id: string): string {
   const state = useAppStore.getState();
-  const source = kind === 'rule' ? state.rules : state.ruleGroups;
+  const source = kind === 'rule' ? state.rules : state.ruleLabels;
   return source.find((item) => item.id === id)?.name ?? NOUNS[kind].singular;
 }
 
@@ -44,7 +44,7 @@ export function deletionPrompt(kind: DeletedKind, ids: string[]): { title: strin
     : `Delete ${countOf(kind, ids.length)}?`;
   const kept = kind === 'rule'
     ? 'They stop running on every ad account now.'
-    : 'Their rules are kept and keep running.';
+    : ids.length === 1 ? 'It comes off its rules; the rules are kept.' : 'They come off their rules; the rules are kept.';
   return {
     title,
     description: `${kept} Deleted ${NOUNS[kind].plural} are available in Recently deleted for ${TRASH_RETENTION_DAYS} days, before they are permanently deleted.`,
@@ -53,7 +53,7 @@ export function deletionPrompt(kind: DeletedKind, ids: string[]): { title: strin
 
 async function deleteOne(kind: DeletedKind, id: string): Promise<number> {
   const state = useAppStore.getState();
-  return kind === 'rule' ? state.deleteRule(id) : state.deleteRuleGroup(id);
+  return kind === 'rule' ? state.deleteRule(id) : state.deleteRuleLabel(id);
 }
 
 /** Deletes each item; reports which went to Recently deleted and which failed. */

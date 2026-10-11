@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from api.auth import get_current_user
 from api.deps import (
+    _ensure_unique_label_name,
     _load_active_rules,
     _preset_snapshot,
     _utc_iso,
@@ -17,6 +18,7 @@ from api.deps import (
 )
 from api.schemas import DeletedItemResponse, RestoreDeletedItemResponse
 from core.metrics import validate_rule_set_compatibility
+from core.rule_labels import color_for_icon
 from core.trash import (
     KIND_RULE,
     KIND_RULE_GROUP,
@@ -177,9 +179,13 @@ async def _restore_rule(session, ws_id: int, item: DeletedItem, user: User) -> R
 
 async def _restore_group(session, ws_id: int, item: DeletedItem) -> RestoreDeletedItemResponse:
     if await session.get(RuleGroup, item.entity_id):
-        raise HTTPException(status_code=409, detail="This group already exists.")
+        raise HTTPException(status_code=409, detail="This label already exists.")
     snapshot = item.snapshot or {}
     fields = dict(snapshot.get("group") or {})
+    # A group deleted before labels had colors comes back in its icon's color.
+    fields.setdefault("color", color_for_icon(fields.get("icon")))
+    # A label made since under the same name would make two of one name.
+    await _ensure_unique_label_name(session, ws_id, str(fields.get("name") or ""))
     fields["owner_user_id"] = await _existing_user_id(session, fields.get("owner_user_id"))
     group = RuleGroup(id=item.entity_id, workspace_id=ws_id, **fields)
     created_at = parse_created_at(snapshot.get("created_at"))

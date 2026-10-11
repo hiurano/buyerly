@@ -460,9 +460,9 @@ try {
       await settings.getByRole('option', { name: 'Members' }).waitFor();
       assert.deepEqual(
         await settings.getByRole('option').evaluateAll((options) => options.map((option) => option.getAttribute('aria-label'))),
-        ['Preferences', 'Profile', 'Notifications', 'Security & access', 'Connected accounts', 'Workspace', 'Teams', 'Members', 'Security'],
+        ['Preferences', 'Profile', 'Notifications', 'Security & access', 'Connected accounts', 'Labels', 'Workspace', 'Teams', 'Members', 'Security'],
       );
-      assert.deepEqual(await settings.locator('[cmdk-group-heading]').allInnerTexts(), ['Administration']);
+      assert.deepEqual(await settings.locator('[cmdk-group-heading]').allInnerTexts(), ['Rules', 'Administration']);
       assert.equal(await settings.getByRole('button', { name: /Open$/ }).count(), 0, 'settings pages have no footer');
       await settings.getByRole('combobox').fill('auth');
       await settings.getByRole('option', { name: 'Security & access' }).waitFor();
@@ -476,8 +476,8 @@ try {
       await blur();
       await page.keyboard.press('Control+K');
       await commandField.waitFor();
-      assert.deepEqual((await headings()).slice(0, 2), ['Administration', 'Rules']);
-      assert.deepEqual((await commandTexts()).slice(0, 9), ['Preferences', 'Profile', 'Notifications', 'Security & access', 'Connected accounts', 'Workspace', 'Teams', 'Members', 'Security']);
+      assert.deepEqual((await headings()).slice(0, 2), ['Rules', 'Administration']);
+      assert.deepEqual((await commandTexts()).slice(0, 10), ['Preferences', 'Profile', 'Notifications', 'Security & access', 'Connected accounts', 'Labels', 'Workspace', 'Teams', 'Members', 'Security']);
       await commands.getByRole('option', { name: 'Back to app' }).waitFor();
       assert.ok((await commandTexts()).includes('Back to app · Ctrl Esc'), 'Back to app shows its keys');
       assert.equal(await commands.getByRole('option', { name: /Collapse navigation sidebar/ }).count(), 0, 'Settings has its own sidebar');

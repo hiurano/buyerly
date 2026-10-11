@@ -2,7 +2,7 @@ import { apiRequest } from '@/lib/api';
 
 export type DeletedKind = 'rule' | 'rule_group';
 
-/** A deleted rule or group, restorable until `purge_at`. */
+/** A deleted rule or label, restorable until `purge_at`. */
 export interface DeletedItem {
   id: number;
   kind: DeletedKind;
@@ -19,7 +19,7 @@ export interface RestoreResult {
   name: string;
   /** Ad accounts a restored rule could not return to. */
   skipped_account_ids: string[];
-  /** Rules of a restored group that are themselves deleted. */
+  /** Rules of a restored label that are themselves deleted. */
   missing_rule_ids: number[];
 }
 

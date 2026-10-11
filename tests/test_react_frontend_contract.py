@@ -344,7 +344,7 @@ class TestReactFrontendContract(unittest.TestCase):
 
     def test_rules_surface_uses_workspace_api_without_production_fixtures(self):
         # The rules store is seeded by the API, never by shipped example rows.
-        self.assertIn("rules: [],\n  ruleGroups: [],", self.app_store)
+        self.assertIn("rules: [],\n  ruleLabels: [],", self.app_store)
         for fixture in (
             "Auto-Stop High CPA",
             "Scale Winner Budget",
@@ -355,7 +355,7 @@ class TestReactFrontendContract(unittest.TestCase):
         ):
             self.assertNotIn(fixture, self.app_store)
 
-        for endpoint in ("'/api/presets'", "'/api/rule-groups'"):
+        for endpoint in ("'/api/presets'", "'/api/rule-labels'"):
             self.assertIn(endpoint, self.rules_lib)
 
         for contract in (
@@ -643,6 +643,26 @@ class TestReactFrontendContract(unittest.TestCase):
         ).read_text()
         self.assertIn("const title = 'Add ad accounts';", dialog)
 
+    def test_rule_groups_became_labels_like_linear(self):
+        """#383: labels with colors, several per rule, created from the picker or Settings."""
+        src = ROOT / "frontend" / "src"
+        picker = (src / "components" / "rules" / "RuleLabelPicker.tsx").read_text()
+        self.assertIn("Create new label:", picker)
+        self.assertIn("aria-multiselectable", picker)
+        for contract in ("'/api/rule-labels'", "/api/presets/${presetId}/labels", "'/api/presets/labels'"):
+            self.assertIn(contract, self.rules_lib)
+        view_model = (src / "components" / "rules" / "rulesViewModel.ts").read_text()
+        self.assertIn("grouping: 'labels'", view_model)
+        self.assertIn("label: 'No label'", view_model)
+        catalogs = (src / "components" / "filters" / "filterCatalogs.ts").read_text()
+        self.assertIn("operators: ['includes_any', 'includes_all', 'excludes_any']", catalogs)
+        self.assertIn("label: 'No labels'", catalogs)
+        self.assertIn("'rule-labels': 'rule-labels'", (src / "lib" / "routing.ts").read_text())
+        self.assertIn("Rule labels", (src / "components" / "preferences" / "RuleLabelsSection.tsx").read_text())
+        self.assertIn("Create new label…", (src / "components" / "command" / "CommandMenu.tsx").read_text())
+        self.assertIn("shortcut: 'l'", self.rules_view)
+        self.assertNotIn("New group", self.rules_view)
+
     def test_actions_report_the_way_linear_does(self):
         """A change shows on the row; toasts are for deletion, undo/redo and failure."""
         # No screen keeps its own success banner above or under the table.
@@ -679,7 +699,11 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("<ConfirmDialog", self.rules_view)
         for contract in ("View recently deleted", "restoreMany(itemIds)", "setRuleSelection([])"):
             self.assertIn(contract, self.rule_actions)
-        for menu in (self.rule_row_menu, self.rule_card, self.rule_column):
+        # Labels are deleted from Settings → Rules → Labels (#383), not from a board column.
+        rule_labels_settings = (
+            ROOT / "frontend" / "src" / "components" / "preferences" / "RuleLabelsSection.tsx"
+        ).read_text()
+        for menu in (self.rule_row_menu, self.rule_card, rule_labels_settings):
             self.assertIn("requestDeletion(", menu)
             self.assertNotIn("void deleteRule", menu)
 

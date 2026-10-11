@@ -8,19 +8,20 @@ from sqlalchemy import delete, func, select
 
 from api.auth import get_current_user
 from api.deps import (
-    _clean_rule_group_name,
-    _ensure_compatible_presets,
+    _clean_rule_label_name,
     _ensure_compatible_rule_set,
     _ensure_stable_account_owner,
+    _ensure_unique_label_name,
+    _get_workspace_labels,
     _get_workspace_presets,
     _load_active_rules,
-    _load_group_presets,
     _preset_attachments,
+    _preset_label_ids,
     _preset_last_runs,
     _preset_response,
     _preset_snapshot,
     _rule_entity_states,
-    _rule_group_response,
+    _rule_label_responses,
     _validated_condition_payloads,
     ensure_workspace_write_access,
     get_user_workspace,
@@ -28,15 +29,18 @@ from api.deps import (
 )
 from api.schemas import (
     ApplyPresetRequest,
+    BulkPresetLabelsRequest,
     CreatePresetRequest,
-    RuleGroupResponse,
-    RuleGroupsReorderRequest,
-    RuleGroupWriteRequest,
+    PresetLabelsRequest,
     RuleEntityStateItem,
+    RuleLabelCreateRequest,
+    RuleLabelResponse,
+    RuleLabelUpdateRequest,
     RuleScopeItem,
     RulePresetItem,
 )
 from core.rule_examples import ensure_rule_examples
+from core.rule_labels import random_label_color
 from core.trash import (
     KIND_RULE,
     KIND_RULE_GROUP,
@@ -103,17 +107,6 @@ def _record_assistant_change(
     )
 
 
-def _grouped_preset_ids(presets_by_group: dict) -> List[int]:
-    """Flatten grouped presets into the unique id list an audit lookup needs."""
-    return list(
-        dict.fromkeys(
-            preset.id
-            for presets in presets_by_group.values()
-            for preset in presets
-        )
-    )
-
-
 @router.get("/presets", response_model=List[RulePresetItem])
 async def list_presets(user: User = Depends(get_current_user)):
     async with async_session_maker() as session:
@@ -130,11 +123,13 @@ async def list_presets(user: User = Depends(get_current_user)):
             session, ws.id, [preset.id for preset in presets]
         )
         attachments = await _preset_attachments(session, ws.id)
+        labels = await _preset_label_ids(session, [preset.id for preset in presets])
         return [
             _preset_response(
                 preset,
                 last_runs.get(preset.id),
                 attachments.get(preset.id, {}),
+                labels.get(preset.id, []),
             )
             for preset in presets
         ]
@@ -151,6 +146,7 @@ async def create_preset(
         ensure_workspace_write_access(user, member, "creating rules")
 
         condition_payloads = _validated_condition_payloads(payload.conditions)
+        labels = await _get_workspace_labels(session, payload.label_ids or [], workspace_id=ws.id)
         preset = RulePreset(
             workspace_id=ws.id if ws else None,
             owner_user_id=user.id,
@@ -167,6 +163,7 @@ async def create_preset(
         )
         session.add(preset)
         await session.flush()
+        await _set_preset_labels(session, preset.id, [label.id for label in labels])
         _record_assistant_change(
             session,
             request,
@@ -181,7 +178,7 @@ async def create_preset(
         )
         await session.commit()
         await session.refresh(preset)
-        return _preset_response(preset)
+        return _preset_response(preset, label_ids=[label.id for label in labels])
 
 
 @router.put("/presets/{preset_id}", response_model=RulePresetItem)
@@ -236,15 +233,13 @@ async def update_preset(preset_id: int, payload: CreatePresetRequest, user: User
                 _ensure_compatible_rule_set(active_rules)
                 account.active_rules = json.dumps(active_rules)
 
+        if payload.label_ids is not None:
+            labels = await _get_workspace_labels(session, payload.label_ids, workspace_id=ws.id)
+            await _set_preset_labels(session, preset.id, [label.id for label in labels])
+
         await session.commit()
         await session.refresh(preset)
-        last_runs = await _preset_last_runs(session, ws.id, [preset.id])
-        attachments = await _preset_attachments(session, ws.id)
-        return _preset_response(
-            preset,
-            last_runs.get(preset.id),
-            attachments.get(preset.id, {}),
-        )
+        return await _labelled_preset_response(session, ws.id, preset)
 
 
 @router.delete("/presets/{preset_id}")
@@ -337,206 +332,129 @@ async def delete_preset(preset_id: int, user: User = Depends(get_current_user)):
         }
 
 
-@router.get("/rule-groups", response_model=List[RuleGroupResponse])
-async def list_rule_groups(user: User = Depends(get_current_user)):
+async def _workspace_label(session, workspace_id: int, label_id: int) -> RuleGroup:
+    label = (
+        await session.execute(
+            select(RuleGroup).where(
+                RuleGroup.id == label_id,
+                RuleGroup.workspace_id == workspace_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not label:
+        raise HTTPException(status_code=404, detail="Label not found.")
+    return label
+
+
+async def _set_preset_labels(session, preset_id: int, label_ids: List[int]) -> None:
+    """Make the rule's labels exactly these; labels it keeps keep their applied time."""
+    current = (
+        await session.execute(
+            select(RuleGroupItem).where(RuleGroupItem.preset_id == preset_id)
+        )
+    ).scalars().all()
+    wanted = set(label_ids)
+    for item in current:
+        if item.group_id not in wanted:
+            await session.delete(item)
+    held = {item.group_id for item in current}
+    session.add_all(
+        RuleGroupItem(group_id=label_id, preset_id=preset_id, position=0)
+        for label_id in label_ids
+        if label_id not in held
+    )
+
+
+async def _labelled_preset_response(session, ws_id: int, preset: RulePreset) -> RulePresetItem:
+    last_runs = await _preset_last_runs(session, ws_id, [preset.id])
+    attachments = await _preset_attachments(session, ws_id)
+    labels = await _preset_label_ids(session, [preset.id])
+    return _preset_response(
+        preset,
+        last_runs.get(preset.id),
+        attachments.get(preset.id, {}),
+        labels.get(preset.id, []),
+    )
+
+
+@router.get("/rule-labels", response_model=List[RuleLabelResponse])
+async def list_rule_labels(user: User = Depends(get_current_user)):
+    """The workspace's rule labels by name, as Linear lists labels (#383)."""
     async with async_session_maker() as session:
         ws = await get_user_workspace(session, user)
         await ensure_rule_examples(session, user, workspace_id=ws.id)
-        groups = (
+        labels = (
             await session.execute(
                 select(RuleGroup)
                 .where(RuleGroup.workspace_id == ws.id)
-                .order_by(RuleGroup.position.asc(), RuleGroup.id.asc())
+                .order_by(func.lower(RuleGroup.name).asc(), RuleGroup.id.asc())
             )
         ).scalars().all()
-        presets_by_group = await _load_group_presets(
-            session,
-            [group.id for group in groups],
-            workspace_id=ws.id,
-        )
-        last_runs = await _preset_last_runs(
-            session, ws.id, _grouped_preset_ids(presets_by_group)
-        )
-        attachments = await _preset_attachments(session, ws.id)
-        return [
-            _rule_group_response(
-                group, presets_by_group.get(group.id, []), last_runs, attachments
-            )
-            for group in groups
-        ]
+        return await _rule_label_responses(session, list(labels))
 
 
-@router.put("/rule-groups/reorder", response_model=List[RuleGroupResponse])
-async def reorder_rule_groups(
-    payload: RuleGroupsReorderRequest,
+@router.post("/rule-labels", response_model=RuleLabelResponse)
+async def create_rule_label(
+    payload: RuleLabelCreateRequest,
     user: User = Depends(get_current_user),
 ):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "reordering rule groups")
-        groups = (
-            await session.execute(
-                select(RuleGroup).where(RuleGroup.workspace_id == ws.id)
-            )
-        ).scalars().all()
-        group_map = {g.id: g for g in groups}
-
-        requested_ids = list(dict.fromkeys(payload.group_ids))
-        if len(requested_ids) != len(payload.group_ids):
-            raise HTTPException(status_code=400, detail="The group list contains duplicates.")
-        inaccessible_ids = [group_id for group_id in requested_ids if group_id not in group_map]
-        if inaccessible_ids:
-            raise HTTPException(status_code=404, detail="One or more groups are unavailable.")
-
-        for idx, gid in enumerate(requested_ids):
-            group_map[gid].position = idx
-
-        await session.commit()
-
-        ordered_groups = (
-            await session.execute(
-                select(RuleGroup)
-                .where(RuleGroup.workspace_id == ws.id)
-                .order_by(RuleGroup.position.asc(), RuleGroup.id.asc())
-            )
-        ).scalars().all()
-        presets_by_group = await _load_group_presets(
-            session,
-            [g.id for g in ordered_groups],
+        ensure_workspace_write_access(user, member, "creating labels")
+        name = _clean_rule_label_name(payload.name)
+        await _ensure_unique_label_name(session, ws.id, name)
+        label = RuleGroup(
             workspace_id=ws.id,
-        )
-        last_runs = await _preset_last_runs(
-            session, ws.id, _grouped_preset_ids(presets_by_group)
-        )
-        attachments = await _preset_attachments(session, ws.id)
-        return [
-            _rule_group_response(
-                g, presets_by_group.get(g.id, []), last_runs, attachments
-            )
-            for g in ordered_groups
-        ]
-
-
-@router.post("/rule-groups", response_model=RuleGroupResponse)
-async def create_rule_group(
-    payload: RuleGroupWriteRequest,
-    user: User = Depends(get_current_user),
-):
-    async with async_session_maker() as session:
-        ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "creating rule groups")
-
-        presets = await _get_workspace_presets(
-            session,
-            payload.preset_ids,
-            workspace_id=ws.id,
-        )
-        _ensure_compatible_presets(presets)
-        if payload.position is not None:
-            position = payload.position
-        else:
-            max_pos = (
-                await session.execute(
-                    select(func.max(RuleGroup.position)).where(
-                        RuleGroup.workspace_id == ws.id
-                    )
-                )
-            ).scalar()
-            position = (max_pos + 1) if max_pos is not None else 0
-
-        group = RuleGroup(
-            workspace_id=ws.id if ws else None,
             owner_user_id=user.id,
-            name=_clean_rule_group_name(payload.name),
+            name=name,
             description=payload.description.strip(),
-            icon=payload.icon,
-            position=position,
+            color=(payload.color or random_label_color()).lower(),
         )
-        session.add(group)
-        await session.flush()
-        session.add_all(
-            RuleGroupItem(group_id=group.id, preset_id=preset.id, position=pos)
-            for pos, preset in enumerate(presets)
-        )
+        session.add(label)
         await session.commit()
-        await session.refresh(group)
-        last_runs = await _preset_last_runs(
-            session, ws.id, [preset.id for preset in presets]
-        )
-        attachments = await _preset_attachments(session, ws.id)
-        return _rule_group_response(group, presets, last_runs, attachments)
+        await session.refresh(label)
+        return (await _rule_label_responses(session, [label]))[0]
 
 
-@router.put("/rule-groups/{group_id}", response_model=RuleGroupResponse)
-async def update_rule_group(
-    group_id: int,
-    payload: RuleGroupWriteRequest,
+@router.patch("/rule-labels/{label_id}", response_model=RuleLabelResponse)
+async def update_rule_label(
+    label_id: int,
+    payload: RuleLabelUpdateRequest,
     user: User = Depends(get_current_user),
 ):
+    """Rename a label, recolor it or change its description; its rules keep it."""
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "editing rule groups")
-
-        group = (
-            await session.execute(
-                select(RuleGroup).where(
-                    RuleGroup.id == group_id,
-                    RuleGroup.workspace_id == ws.id,
-                )
-            )
-        ).scalar_one_or_none()
-        if not group:
-            raise HTTPException(status_code=404, detail="Rule group not found.")
-
-        presets = await _get_workspace_presets(
-            session,
-            payload.preset_ids,
-            workspace_id=ws.id,
-        )
-        _ensure_compatible_presets(presets)
-        group.name = _clean_rule_group_name(payload.name)
-        group.description = payload.description.strip()
-        group.icon = payload.icon
-        if payload.position is not None:
-            group.position = payload.position
-        await session.execute(delete(RuleGroupItem).where(RuleGroupItem.group_id == group.id))
-        session.add_all(
-            RuleGroupItem(group_id=group.id, preset_id=preset.id, position=pos)
-            for pos, preset in enumerate(presets)
-        )
+        ensure_workspace_write_access(user, member, "editing labels")
+        label = await _workspace_label(session, ws.id, label_id)
+        if payload.name is not None:
+            name = _clean_rule_label_name(payload.name)
+            await _ensure_unique_label_name(session, ws.id, name, except_id=label.id)
+            label.name = name
+        if payload.color is not None:
+            label.color = payload.color.lower()
+        if payload.description is not None:
+            label.description = payload.description.strip()
         await session.commit()
-        await session.refresh(group)
-        last_runs = await _preset_last_runs(
-            session, ws.id, [preset.id for preset in presets]
-        )
-        attachments = await _preset_attachments(session, ws.id)
-        return _rule_group_response(group, presets, last_runs, attachments)
+        await session.refresh(label)
+        return (await _rule_label_responses(session, [label]))[0]
 
 
-@router.delete("/rule-groups/{group_id}")
-async def delete_rule_group(
-    group_id: int,
+@router.delete("/rule-labels/{label_id}")
+async def delete_rule_label(
+    label_id: int,
     user: User = Depends(get_current_user),
 ):
+    """The label leaves every rule and goes to Recently deleted; the rules stay."""
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "deleting rule groups")
-
-        group = (
-            await session.execute(
-                select(RuleGroup).where(
-                    RuleGroup.id == group_id,
-                    RuleGroup.workspace_id == ws.id,
-                )
-            )
-        ).scalar_one_or_none()
-        if not group:
-            raise HTTPException(status_code=404, detail="Rule group not found.")
+        ensure_workspace_write_access(user, member, "deleting labels")
+        label = await _workspace_label(session, ws.id, label_id)
         items = [
             {"preset_id": item.preset_id, "position": item.position}
             for item in (
                 await session.execute(
-                    select(RuleGroupItem).where(RuleGroupItem.group_id == group.id)
+                    select(RuleGroupItem).where(RuleGroupItem.group_id == label.id)
                 )
             ).scalars().all()
         ]
@@ -544,20 +462,70 @@ async def delete_rule_group(
         trash_item = DeletedItem(
             workspace_id=ws.id,
             kind=KIND_RULE_GROUP,
-            entity_id=group.id,
-            name=group.name,
-            snapshot=group_snapshot(group, items),
+            entity_id=label.id,
+            name=label.name,
+            snapshot=group_snapshot(label, items),
             deleted_by_user_id=user.id,
         )
         session.add(trash_item)
-        await session.execute(delete(RuleGroupItem).where(RuleGroupItem.group_id == group.id))
-        await session.delete(group)
+        await session.execute(delete(RuleGroupItem).where(RuleGroupItem.group_id == label.id))
+        await session.delete(label)
         await session.commit()
         return {
             "success": True,
-            "message": "Group deleted. The assigned rules were kept on the ad accounts.",
+            "message": "Label deleted. Its rules were kept.",
             "deleted_item_id": trash_item.id,
         }
+
+
+@router.put("/presets/{preset_id}/labels", response_model=RulePresetItem)
+async def set_preset_labels(
+    preset_id: int,
+    payload: PresetLabelsRequest,
+    user: User = Depends(get_current_user),
+):
+    """A rule's whole set of labels in one write, as the label picker leaves it."""
+    async with async_session_maker() as session:
+        ws, member = await get_user_workspace_member(session, user)
+        ensure_workspace_write_access(user, member, "labelling rules")
+        preset = (await _get_workspace_presets(session, [preset_id], workspace_id=ws.id))[0]
+        labels = await _get_workspace_labels(session, payload.label_ids, workspace_id=ws.id)
+        await _set_preset_labels(session, preset.id, [label.id for label in labels])
+        await session.commit()
+        return await _labelled_preset_response(session, ws.id, preset)
+
+
+@router.patch("/presets/labels")
+async def change_presets_labels(
+    payload: BulkPresetLabelsRequest,
+    user: User = Depends(get_current_user),
+):
+    """Put labels on, or take them off, several rules at once."""
+    async with async_session_maker() as session:
+        ws, member = await get_user_workspace_member(session, user)
+        ensure_workspace_write_access(user, member, "labelling rules")
+        presets = await _get_workspace_presets(session, payload.preset_ids, workspace_id=ws.id)
+        add = await _get_workspace_labels(session, payload.add_label_ids, workspace_id=ws.id)
+        remove = {
+            label.id
+            for label in await _get_workspace_labels(
+                session, payload.remove_label_ids, workspace_id=ws.id
+            )
+        }
+        current = await _preset_label_ids(session, [preset.id for preset in presets])
+        changed = 0
+        for preset in presets:
+            held = current.get(preset.id, [])
+            wanted = [label_id for label_id in held if label_id not in remove]
+            wanted += [
+                label.id for label in add
+                if label.id not in wanted and label.id not in remove
+            ]
+            if wanted != held:
+                await _set_preset_labels(session, preset.id, wanted)
+                changed += 1
+        await session.commit()
+        return {"updated_count": changed}
 
 
 @router.post("/accounts/{account_id}/assign-rule")
@@ -741,83 +709,6 @@ async def preview_rule_on_account_endpoint(
             for item in _load_active_rules(acc.active_rules)
         )
         return preview
-
-
-@router.post("/accounts/{account_id}/assign-rule-group/{group_id}")
-async def assign_rule_group_to_account(
-    account_id: str,
-    group_id: int,
-    user: User = Depends(get_current_user),
-):
-    """Atomically attach every rule in a reusable group, skipping duplicates."""
-    async with async_session_maker() as session:
-        ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "assigning a rule group")
-
-        acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
-        account_stmt = select(Account).where(
-            Account.account_id == acc_id,
-            Account.workspace_id == ws.id,
-        )
-        account = (await session.execute(account_stmt)).scalar_one_or_none()
-        if not account:
-            raise HTTPException(status_code=404, detail="Ad account not found.")
-        await _ensure_stable_account_owner(session, account)
-
-        group_stmt = select(RuleGroup).where(
-            RuleGroup.id == group_id,
-            RuleGroup.workspace_id == ws.id,
-        )
-        group = (await session.execute(group_stmt)).scalar_one_or_none()
-        if not group:
-            raise HTTPException(status_code=404, detail="Rule group not found.")
-
-        group_items = (
-            await session.execute(
-                select(RuleGroupItem)
-                .where(RuleGroupItem.group_id == group.id)
-                .order_by(RuleGroupItem.position, RuleGroupItem.id)
-            )
-        ).scalars().all()
-        if not group_items:
-            raise HTTPException(status_code=400, detail="The group has no rules.")
-
-        presets = await _get_workspace_presets(
-            session,
-            [item.preset_id for item in group_items],
-            workspace_id=ws.id,
-        )
-        active_rules = _load_active_rules(account.active_rules)
-        attached_ids = {rule.get("preset_id") for rule in active_rules}
-        added_presets = [preset for preset in presets if preset.id not in attached_ids]
-        new_snapshots = [_preset_snapshot(preset) for preset in added_presets]
-        if any(snapshot.get("needs_review") for snapshot in new_snapshots):
-            raise HTTPException(
-                status_code=400,
-                detail="The group contains an unsafe or outdated rule. Re-save it before assigning.",
-            )
-        active_rules.extend(new_snapshots)
-        _ensure_compatible_rule_set(active_rules)
-        account.active_rules = json.dumps(active_rules)
-        account.rules_enabled = bool(active_rules)
-        await session.commit()
-
-        skipped_count = len(presets) - len(added_presets)
-        message = (
-            f"Group '{group.name}' assigned: {len(added_presets)} rule(s) added"
-            if added_presets
-            else f"Every rule in group '{group.name}' is already assigned to this ad account"
-        )
-        return {
-            "account_id": account.account_id,
-            "group_id": group.id,
-            "group_name": group.name,
-            "added_count": len(added_presets),
-            "skipped_count": skipped_count,
-            "active_rules": active_rules,
-            "rules_enabled": account.rules_enabled,
-            "message": message,
-        }
 
 
 @router.post("/accounts/{account_id}/detach-rule/{preset_id}")

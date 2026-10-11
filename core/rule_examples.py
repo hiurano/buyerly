@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from core.metrics import validate_runtime_rule
+from core.rule_labels import color_for_icon
 from database.models import (
     RuleExamplesBootstrap,
     RuleGroup,
@@ -187,6 +188,7 @@ async def ensure_rule_examples(session, user: User, *, workspace_id: int) -> boo
             name=group_definition["name"],
             description=group_definition["description"],
             icon=group_definition.get("icon", "custom"),
+            color=color_for_icon(group_definition.get("icon")),
         )
         session.add(group)
         await session.flush()

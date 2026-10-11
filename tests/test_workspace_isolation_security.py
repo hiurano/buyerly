@@ -361,31 +361,32 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
                     f"/api/presets/{preset_id}", headers=viewer_headers
                 ),
                 await client.post(
-                    "/api/rule-groups",
+                    "/api/rule-labels",
                     headers=viewer_headers,
-                    json={"name": "Blocked", "preset_ids": []},
+                    json={"name": "Blocked"},
                 ),
-                await client.put(
-                    "/api/rule-groups/reorder",
+                await client.patch(
+                    f"/api/rule-labels/{group_id}",
                     headers=viewer_headers,
-                    json={"group_ids": [group_id]},
-                ),
-                await client.put(
-                    f"/api/rule-groups/{group_id}",
-                    headers=viewer_headers,
-                    json={"name": "Blocked", "preset_ids": []},
+                    json={"name": "Blocked"},
                 ),
                 await client.delete(
-                    f"/api/rule-groups/{group_id}", headers=viewer_headers
+                    f"/api/rule-labels/{group_id}", headers=viewer_headers
+                ),
+                await client.put(
+                    f"/api/presets/{preset_id}/labels",
+                    headers=viewer_headers,
+                    json={"label_ids": [group_id]},
+                ),
+                await client.patch(
+                    "/api/presets/labels",
+                    headers=viewer_headers,
+                    json={"preset_ids": [preset_id], "add_label_ids": [group_id]},
                 ),
                 await client.post(
                     f"/api/accounts/{self.acc_a.account_id}/assign-rule",
                     headers=viewer_headers,
                     json={"preset_id": preset_id},
-                ),
-                await client.post(
-                    f"/api/accounts/{self.acc_a.account_id}/assign-rule-group/{group_id}",
-                    headers=viewer_headers,
                 ),
                 await client.post(
                     f"/api/accounts/{self.acc_a.account_id}/detach-rule/{preset_id}",
@@ -466,7 +467,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             presets = await client.get("/api/presets", headers=headers)
-            groups = await client.get("/api/rule-groups", headers=headers)
+            groups = await client.get("/api/rule-labels", headers=headers)
             visible_preset_ids = {item["id"] for item in presets.json()}
             visible_group_ids = {item["id"] for item in groups.json()}
             self.assertNotIn(foreign_preset_id, visible_preset_ids)
@@ -489,32 +490,28 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
                 await client.delete(
                     f"/api/presets/{foreign_preset_id}", headers=headers
                 ),
-                await client.post(
-                    "/api/rule-groups",
-                    headers=headers,
-                    json={"name": "Blocked", "preset_ids": [foreign_preset_id]},
-                ),
                 await client.put(
-                    "/api/rule-groups/reorder",
+                    f"/api/presets/{foreign_preset_id}/labels",
                     headers=headers,
-                    json={"group_ids": [foreign_group_id]},
+                    json={"label_ids": []},
                 ),
-                await client.put(
-                    f"/api/rule-groups/{foreign_group_id}",
+                await client.patch(
+                    "/api/presets/labels",
                     headers=headers,
-                    json={"name": "Blocked", "preset_ids": []},
+                    json={"preset_ids": [foreign_preset_id], "add_label_ids": []},
+                ),
+                await client.patch(
+                    f"/api/rule-labels/{foreign_group_id}",
+                    headers=headers,
+                    json={"name": "Blocked"},
                 ),
                 await client.delete(
-                    f"/api/rule-groups/{foreign_group_id}", headers=headers
+                    f"/api/rule-labels/{foreign_group_id}", headers=headers
                 ),
                 await client.post(
                     "/api/accounts/act_111112/assign-rule",
                     headers=headers,
                     json={"preset_id": foreign_preset_id},
-                ),
-                await client.post(
-                    f"/api/accounts/act_111112/assign-rule-group/{foreign_group_id}",
-                    headers=headers,
                 ),
                 await client.post(
                     f"/api/accounts/act_111112/detach-rule/{foreign_preset_id}",
@@ -535,7 +532,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(switched.status_code, 200)
             second_presets = await client.get("/api/presets", headers=headers)
-            second_groups = await client.get("/api/rule-groups", headers=headers)
+            second_groups = await client.get("/api/rule-labels", headers=headers)
             self.assertIn(foreign_preset_id, {item["id"] for item in second_presets.json()})
             self.assertIn(foreign_group_id, {item["id"] for item in second_groups.json()})
 

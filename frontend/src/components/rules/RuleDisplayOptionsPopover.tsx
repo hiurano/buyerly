@@ -12,7 +12,7 @@ interface RuleDisplayOptionsPopoverProps {
 }
 
 export const RuleDisplayOptionsPopover: React.FC<RuleDisplayOptionsPopoverProps> = ({ isOpen, onClose, anchorRef }) => {
-  const { rules, ruleGroups } = useAppStore();
+  const { rules, ruleLabels } = useAppStore();
   const { view, update, reset, displayChanged } = useRulesView();
   const popoverRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
@@ -43,8 +43,8 @@ export const RuleDisplayOptionsPopover: React.FC<RuleDisplayOptionsPopoverProps>
 
   if (!isOpen) return null;
 
-  // Status and rule groups are fixed sets, so their empty groups can be shown and ordered.
-  const groups = orderGroups(ruleGroupsFor(view.grouping, rules, ruleGroups), view);
+  // Status and labels are known sets, so their empty groups can be shown and ordered.
+  const groups = orderGroups(ruleGroupsFor(view.grouping, rules, ruleLabels), view);
   const hidden = view.hiddenGroups[view.grouping] ?? [];
 
   return createPortal(
@@ -55,7 +55,7 @@ export const RuleDisplayOptionsPopover: React.FC<RuleDisplayOptionsPopoverProps>
         grouping={view.grouping}
         groupingOptions={[
           { value: 'none', label: 'No grouping' },
-          { value: 'groups', label: 'Rule groups' },
+          { value: 'labels', label: 'Label' },
           { value: 'status', label: 'Status' },
         ]}
         onGroupingChange={(grouping) => update({ grouping })}
@@ -84,10 +84,10 @@ export const RuleDisplayOptionsPopover: React.FC<RuleDisplayOptionsPopoverProps>
         onOrderingChange={(ordering) => update({ ordering })}
         direction={view.direction}
         onDirectionChange={(direction) => update({ direction })}
-        // The board's columns are the rule groups themselves and always show.
+        // The board shows every column of its grouping, empty ones too.
         showEmptyGroups={view.grouping === 'none' || view.layout === 'board' ? undefined : view.showEmptyGroups}
         onShowEmptyGroupsChange={(showEmptyGroups) => update({ showEmptyGroups })}
-        properties={{ status: 'Status', condition: 'Condition', action: 'Action', scope: 'Scope', lastCheck: 'Last check', lastRun: 'Last action' }}
+        properties={{ status: 'Status', labels: 'Labels', condition: 'Condition', action: 'Action', scope: 'Scope', lastCheck: 'Last check', lastRun: 'Last action' }}
         enabledProperties={view.properties}
         onToggleProperty={(key) => update({ properties: { ...view.properties, [key]: !view.properties[key] } })}
         onReset={displayChanged ? reset : undefined}
