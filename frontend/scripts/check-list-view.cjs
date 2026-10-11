@@ -44,6 +44,7 @@ assert.deepEqual(saved.filters, [{ fieldId: 'status', operator: 'is', values: ['
 // Display options differ from the defaults; filters alone do not count (Linear's Reset ignores them).
 assert.equal(displayDiffers(defaults, defaults), false);
 assert.equal(displayDiffers({ ...defaults, filters: saved.filters }, defaults), false);
+assert.equal(displayDiffers(readListView({ filters: saved.filters }, defaults), defaults), false, 'a saved filter alone is no change');
 assert.equal(displayDiffers({ ...defaults, direction: 'desc' }, defaults), true);
 assert.equal(displayDiffers({ ...defaults, showEmptyGroups: true }, defaults), true);
 

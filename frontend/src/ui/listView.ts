@@ -86,9 +86,8 @@ const same = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.st
  * filters do not count: they have their own Clear.
  */
 export function displayDiffers(view: ListViewSettings, defaults: ListViewSettings): boolean {
-  const { filters: _viewFilters, ...display } = view;
-  const { filters: _defaultFilters, ...base } = defaults;
-  return !same(display, base);
+  return (Object.keys(defaults) as (keyof ListViewSettings)[])
+    .some((key) => key !== 'filters' && !same(view[key], defaults[key]));
 }
 
 /** Header click: the same column turns the direction round, another one sorts by it in its natural direction. */

@@ -163,7 +163,7 @@ try {
       await page.keyboard.press('Escape');
 
       // A header click on the sorted column turns it round too, and the Direction button follows.
-      await page.getByRole('button', { name: /^Name/ }).first().click();
+      await page.getByRole('button', { name: 'Order by Name', exact: true }).click();
       assert.deepEqual(await rowIds(page), ['8', '7', '9'], 'the header click sorts A→Z again');
       await settle(page);
       assert.deepEqual(views.rules, { ordering: 'name' }, 'only what differs from the defaults is saved');
@@ -205,11 +205,11 @@ try {
       const menu = page.getByRole('dialog', { name: 'Add filter' });
       await menu.waitFor();
       const labels = await menu.getByRole('listbox', { name: 'Filter properties' }).getByRole('option').allTextContents();
-      assert.deepEqual(labels.map((label) => label.trim()), ['Status', 'Groups', 'Dates']);
+      assert.deepEqual(labels.map((label) => label.replace('▶', '').trim()), ['Status', 'Groups', 'Dates']);
       await menu.getByRole('option', { name: 'Dates' }).hover();
       const dateList = page.getByRole('listbox', { name: 'Date properties' });
       await dateList.waitFor();
-      assert.deepEqual((await dateList.getByRole('option').allTextContents()).map((label) => label.trim()), ['Last action', 'Created date']);
+      assert.deepEqual((await dateList.getByRole('option').allTextContents()).map((label) => label.replace('▶', '').trim()), ['Last action', 'Created date']);
       await dateList.getByRole('option', { name: 'Last action' }).hover();
       const lastAction = page.getByRole('dialog', { name: 'Last action values' });
       await lastAction.waitFor();

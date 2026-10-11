@@ -875,12 +875,17 @@ export const LinearFilterMenu = <T,>({
     const { offsetWidth: width, offsetHeight: height } = grandRef.current;
     const childWidthNow = childRef.current.offsetWidth;
     const rightLeft = childPosition.left + childWidthNow - CHILD_OVERLAP;
-    const left = rightLeft + width <= window.innerWidth - VIEWPORT_GAP ? rightLeft : childPosition.left - width + CHILD_OVERLAP;
+    const leftLeft = childPosition.left - width + CHILD_OVERLAP;
+    // It keeps going the way the Dates list went: a list that flipped left of the menu opens its dates further left.
+    const goesLeft = childPosition.left < rootPosition.left
+      ? leftLeft >= VIEWPORT_GAP
+      : rightLeft + width > window.innerWidth - VIEWPORT_GAP;
+    const left = goesLeft ? leftLeft : rightLeft;
     setGrandPosition({
       left: clamp(left, VIEWPORT_GAP, window.innerWidth - width - VIEWPORT_GAP),
       top: clamp(grandRowTop - 1 - LIST_PADDING - SEARCH_ROW_HEIGHT, VIEWPORT_GAP, window.innerHeight - height - VIEWPORT_GAP),
     });
-  }, [activeDateFieldId, grandRowTop, childPosition]);
+  }, [activeDateFieldId, grandRowTop, childPosition, rootPosition]);
 
   useEffect(() => {
     if (!isOpen) return;
