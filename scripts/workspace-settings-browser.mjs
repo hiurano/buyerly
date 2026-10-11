@@ -95,6 +95,7 @@ try {
       }
       if (verb === 'GET' && path === '/api/inbox/unread-count') return route.fulfill({ json: { unread_count: 0 } });
       if (verb === 'GET' && path === '/api/inbox/display') return route.fulfill({ json: {} });
+      if (verb === 'GET' && path === '/api/view-settings') return route.fulfill({ json: { views: {} } });
       if (verb === 'GET' && ['/api/accounts', '/api/meta/connections', '/api/account-groups', '/api/auth/accounts'].includes(path)) {
         return route.fulfill({ json: [] });
       }
