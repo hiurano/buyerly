@@ -301,12 +301,12 @@ try {
       await page.keyboard.press('Enter');
       await closed();
       await page.waitForURL(`${origin}/alpha/rules/recently-deleted`);
-      await page.getByRole('heading', { name: 'Recently deleted' }).waitFor();
+      await page.getByRole('heading', { name: 'Recently deleted', exact: true }).waitFor();
       await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link', { name: 'Rules' }).waitFor();
       await page.keyboard.press('g');
       await page.keyboard.press('r');
       await page.waitForURL(`${origin}/alpha/rules`);
-      await page.getByRole('heading', { name: 'Recently deleted' }).waitFor({ state: 'detached' });
+      await page.getByRole('heading', { name: 'Recently deleted', exact: true }).waitFor({ state: 'detached' });
 
       // 6. A quick result opens its record; Ctrl+/ and the footer open the search page with the words.
       await page.keyboard.press('Control+K');

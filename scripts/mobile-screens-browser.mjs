@@ -234,18 +234,11 @@ try {
       await assertDisplayOptions('rules');
       await assertDetails('rules', 'Rules details');
       await assertDrawer('rules');
-      // The four Rules tabs do not fit a phone: they fold into the active tab's capsule.
-      const more = page.locator('main header').getByRole('button', { name: '3 more' });
-      if (width === 390) {
-        await press(more);
-        const views = page.getByRole('menu');
-        await views.waitFor();
-        await assertInside(views, 'the folded Rules tabs');
-        await press(views.getByRole('menuitem', { name: 'Paused' }));
-        await views.waitFor({ state: 'detached' });
-        assert.equal((await more.textContent()).trim(), 'Paused', 'the capsule shows the chosen tab');
-      } else {
-        assert.equal(await more.count(), 0, `the Rules tabs fit at ${width}px`);
+      // The three Rules tabs fit a phone too: Recently deleted is a page of its own (#381).
+      const header = page.locator('main header');
+      assert.equal(await header.getByRole('button', { name: /^\d+ more$/ }).count(), 0, `the Rules tabs fit at ${width}px`);
+      for (const tab of ['All rules', 'Active', 'Paused']) {
+        await assertInside(header.getByRole('tab', { name: tab, exact: true }), `the ${tab} tab`);
       }
 
       // Ads Manager: the table scrolls sideways inside its own viewport; amounts never wrap.

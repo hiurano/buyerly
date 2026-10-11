@@ -260,7 +260,7 @@ try {
       // 5. The toast's "View recently deleted" opens its own page, Rules › Recently deleted (#381).
       await press(page.getByRole('button', { name: 'View recently deleted' }));
       await page.waitForURL(`${origin}/alpha/rules/recently-deleted`);
-      const deletedTitle = page.getByRole('heading', { name: 'Recently deleted' });
+      const deletedTitle = page.getByRole('heading', { name: 'Recently deleted', exact: true });
       await deletedTitle.waitFor();
       await onScreen(deletedTitle, 'the Recently deleted title');
       await page.getByText('Nothing deleted', { exact: true }).waitFor();
