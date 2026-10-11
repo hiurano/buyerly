@@ -36,6 +36,7 @@ const WINDOW_WORDS: Record<RuleTimeWindow, string> = {
   yesterday: 'yesterday',
   last_3d: 'over the last 3 days',
   last_7d: 'over the last 7 days',
+  lifetime: 'since launch',
 };
 
 export const LEVEL_NOUNS: Record<RuleExecutionLevel, string> = { adset: 'ad set', campaign: 'campaign', ad: 'ad' };

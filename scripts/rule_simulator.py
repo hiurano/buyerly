@@ -201,6 +201,18 @@ def late_events_day() -> list[SimulatedAdSet]:
     ]
 
 
+def evening_launch() -> list[SimulatedAdSet]:
+    """Ad sets launched at 22:30 whose cheat-sheet cut falls after midnight."""
+    return [
+        SimulatedAdSet("eve_dead_fast", "Evening · dead, fast", "no click, crosses $3 before midnight", 5),
+        SimulatedAdSet("eve_dead_slow", "Evening · dead, slow", "no click, $2.70 at midnight", 3),
+        SimulatedAdSet("eve_no_lead", "Evening · clicks, no lead", "clicks but no lead, $3.60 at midnight", 4,
+                       clicks_at=[0.6, 1.5, 2.4, 3.1]),
+        SimulatedAdSet("eve_winner", "Evening · converts", "two leads and a registration before midnight", 5,
+                       daily_budget=10.0, clicks_at=[0.4, 1.0, 1.6], leads_at=[1.8, 3.3], registrations_at=[4.0]),
+    ]
+
+
 @dataclass
 class Scenario:
     name: str
@@ -217,6 +229,12 @@ class Scenario:
     # (ad set, minutes after its STOP) the buyer presses Undo, then again.
     undo: Optional[tuple[str, int]] = None
     undo_write_faults: tuple[str, ...] = ()
+    # Launch this many minutes before the account's midnight instead of at
+    # 09:00, so the run crosses into the next day (#384).
+    minutes_before_midnight: Optional[int] = None
+    # The window every cheat-sheet condition reads: `today` restarts at the
+    # account's midnight, `lifetime` (Meta's maximum) counts since launch.
+    time_window: str = "today"
 
 
 SCENARIOS = {
@@ -244,6 +262,10 @@ SCENARIOS = {
         Scenario("undo_timeout_after", "Undo applied in Meta, every retry times out", netherlands_day,
                  undo=("nl_dead_fast", 10),
                  undo_write_faults=("timeout_after", "timeout_before", "timeout_before"), hours=4),
+        Scenario("midnight_today", "Launched 22:30, sheet read with today", evening_launch,
+                 minutes_before_midnight=90, hours=3),
+        Scenario("midnight_lifetime", "Launched 22:30, sheet read with lifetime", evening_launch,
+                 minutes_before_midnight=90, hours=3, time_window="lifetime"),
     )
 }
 
@@ -308,6 +330,7 @@ class SimulatedMetaClient(MetaClient):
         self.scenario = scenario
         self.minute = 0
         self.backoff_seconds = 0.0
+        self.requested_presets: list[str] = []
         self._client = httpx.AsyncClient(transport=httpx.MockTransport(fake.handler))
 
         async def no_wait(seconds: float) -> None:
@@ -321,9 +344,17 @@ class SimulatedMetaClient(MetaClient):
                 {"code": 190, "error_subcode": 463, "message": "Error validating access token: Session has expired."}
             )
 
-    def _row(self, adset: SimulatedAdSet) -> dict:
+    def _row(self, adset: SimulatedAdSet, date_preset: str = "today") -> dict:
         spend = adset.spend_at_minute(self.minute - self.scenario.spend_lag)
         counts = adset.counts_at(adset.spend_at_minute(self.minute - self.scenario.event_lag))
+        midnight = self.scenario.minutes_before_midnight
+        if date_preset == "today" and midnight is not None and self.minute >= midnight:
+            # The account's new day: Meta's today starts again from zero,
+            # while `maximum` keeps everything since launch.
+            at_midnight = adset.spend_at_minute(midnight)
+            before = adset.counts_at(at_midnight)
+            spend = round(max(0.0, spend - at_midnight), 2)
+            counts = {key: max(0, value - before[key]) for key, value in counts.items()}
         return {
             "adset_id": adset.adset_id,
             "adset_name": adset.name,
@@ -345,9 +376,10 @@ class SimulatedMetaClient(MetaClient):
     async def get_adsets_insights(self, account_id, access_token, date_preset="today",
                                   currency="UNKNOWN", priority="normal"):
         self._check_token()
-        if date_preset != "today":
+        self.requested_presets.append(date_preset)
+        if date_preset not in {"today", "maximum"}:
             return []
-        return [self._row(adset) for adset in self.adsets.values()]
+        return [self._row(adset, date_preset) for adset in self.adsets.values()]
 
     async def get_hierarchical_insights(self, *args, **kwargs):
         self._check_token()
@@ -361,7 +393,8 @@ class SimulatedMetaClient(MetaClient):
                  "status": "ACTIVE", "effective_status": "ACTIVE"}]
 
 
-async def _seed(sessions, *, confirmation_minutes: int, repeat_minutes: int) -> tuple[int, int]:
+async def _seed(sessions, *, confirmation_minutes: int, repeat_minutes: int,
+                time_window: str = "today") -> tuple[int, int]:
     async with sessions() as session:
         user = User(telegram_id="simulator", username="simulator", full_name="Simulator",
                     role="admin", is_approved=True)
@@ -380,7 +413,7 @@ async def _seed(sessions, *, confirmation_minutes: int, repeat_minutes: int) -> 
                 "action": "turn_off",
                 "level": "adset",
                 "conditions": [
-                    {"metric": metric, "operator": op, "value": float(value), "time_window": "today"}
+                    {"metric": metric, "operator": op, "value": float(value), "time_window": time_window}
                     for metric, op, value in conditions
                 ],
                 "logic": "and",
@@ -401,13 +434,17 @@ async def _seed(sessions, *, confirmation_minutes: int, repeat_minutes: int) -> 
         return user.id, workspace.id
 
 
-def _launch_timestamp() -> float:
-    """09:00 of the account's real current day.
+def _launch_timestamp(minutes_before_midnight: Optional[int] = None) -> float:
+    """09:00 of the account's real current day, or late on the evening before it.
 
     Undo holds compare the database's own `created_at` (wall clock) with the
-    account's day, so the simulated day must be the real one.
+    account's day, so the simulated day must be the real one; a run that
+    crosses midnight ends in it.
     """
     today = datetime.now(ZoneInfo(TIMEZONE)).date()
+    if minutes_before_midnight is not None:
+        midnight = datetime(today.year, today.month, today.day, tzinfo=ZoneInfo(TIMEZONE))
+        return midnight.timestamp() - minutes_before_midnight * 60
     return datetime(today.year, today.month, today.day, LAUNCH_HOUR, tzinfo=ZoneInfo(TIMEZONE)).timestamp()
 
 
@@ -432,10 +469,11 @@ async def simulate(scenario: Scenario | str = "nl_day", *, lag_minutes: Optional
     await init_test_db(engine)
     worker_module.async_session_maker = sessions
     user_id, workspace_id = await _seed(
-        sessions, confirmation_minutes=scenario.confirmation_minutes, repeat_minutes=1440
+        sessions, confirmation_minutes=scenario.confirmation_minutes, repeat_minutes=1440,
+        time_window=scenario.time_window,
     )
 
-    launch = _launch_timestamp()
+    launch = _launch_timestamp(scenario.minutes_before_midnight)
     now = [launch]
     adsets = scenario.adsets()
     by_id = {adset.adset_id: adset for adset in adsets}
@@ -557,9 +595,11 @@ async def simulate(scenario: Scenario | str = "nl_day", *, lag_minutes: Optional
         "event_lag": scenario.event_lag,
         "confirmation_minutes": scenario.confirmation_minutes,
         "hours": scenario.hours,
+        "time_window": scenario.time_window,
         "rows": rows,
         "events": counts,
         "meta_posts": len(fake.posts),
+        "insight_presets": sorted(set(meta.requested_presets)),
         "meta_changes": len(fake.changes),
         "backoff_seconds": round(meta.backoff_seconds, 1),
         "account_active": account.is_active,
@@ -603,7 +643,8 @@ def render(result: dict) -> str:
     lines = [
         f"### {result['scenario']}: {result['title']}",
         f"Meta lag: spend {result['spend_lag']} min, events {result['event_lag']} min; "
-        f"stop confirmation {result['confirmation_minutes']} min; {result['hours']:g} h",
+        f"stop confirmation {result['confirmation_minutes']} min; {result['hours']:g} h; "
+        f"window {result['time_window']}",
         "",
         "| Ad set | $/min | Sheet | Buyerly | Over | Inbox delay | Manual 15/30/60 | Without rules |",
         "|---|---:|---:|---:|---:|---:|---:|---:|",

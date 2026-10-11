@@ -862,7 +862,7 @@ class MetaClient:
         priority: str = "normal",
     ) -> List[Dict[str, Any]]:
         """
-        Fetch a summary of every ad set in the account for the given period (today, yesterday, last_3d, last_7d):
+        Fetch a summary of every ad set in the account for the given period (today, yesterday, last_3d, last_7d, maximum):
         current status plus the independent Spend, Leads, Registrations and Purchases metrics.
         """
         acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
@@ -1444,6 +1444,56 @@ class MetaClient:
             for row in rows
             if row.get("id")
         ]
+
+    async def get_campaigns_insights(
+        self,
+        account_id: str,
+        access_token: str,
+        date_preset: str = "today",
+        currency: str = "UNKNOWN",
+        priority: str = "normal",
+    ) -> List[Dict[str, Any]]:
+        """Campaign totals read at the campaign level, keyed by ``campaign_id``.
+
+        Used for windows where summing ad sets is not exact. A campaign's own
+        row counts every ad set it ever had, while ad set rows can miss the
+        ones deleted or archived since (Meta does not return deleted objects by
+        default, and the inventory drops idle archived ones). Over
+        ``date_preset=maximum`` that gap can hide spend and leads, and a
+        missing lead can wrongly stop a campaign.
+        """
+        acc_id = self._normalize_account_id(account_id)
+        rows = await self._fetch_paginated_data(
+            f"{self.base_url}/{acc_id}/insights",
+            {
+                "level": "campaign",
+                "fields": "campaign_id,spend,impressions,clicks,cpc,ctr,actions,cost_per_action_type",
+                "date_preset": date_preset,
+                "limit": 100,
+                "access_token": access_token,
+            },
+            account_id=acc_id,
+            priority=priority,
+        )
+        unified: List[Dict[str, Any]] = []
+        for row in rows:
+            campaign_id = str(row.get("campaign_id") or "")
+            if not campaign_id:
+                continue
+            normalized = self._normalize_basic_insight(row)
+            unified.append({
+                "campaign_id": campaign_id,
+                "spend": normalized["spend"],
+                "clicks": normalized["clicks"],
+                "leads": normalized["leads"],
+                "registrations": normalized["registrations"],
+                "purchases": normalized["purchases"],
+                "impressions": normalized["impressions"],
+                "cpc": round(self._safe_float(row.get("cpc", 0.0)), 2),
+                "ctr": round(self._safe_float(row.get("ctr", 0.0)), 2),
+                "currency": normalize_currency(currency),
+            })
+        return unified
 
     async def set_campaign_status(
         self,

@@ -279,6 +279,33 @@ class TestMetaInsightsCollection(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(sum(url.endswith("/adsets") for url in urls), 1)
         self.assertEqual(sum(url.endswith("/insights") for url in urls), 2)
 
+    async def test_campaign_insights_are_read_at_the_campaign_level(self):
+        """#384: a campaign's lifetime comes from its own row (date_preset=maximum)."""
+        client = MetaClient()
+        client._fetch_paginated_data = AsyncMock(
+            return_value=[
+                {
+                    "campaign_id": "c1",
+                    "spend": "41.20",
+                    "impressions": "900",
+                    "clicks": "12",
+                    "actions": [{"action_type": "lead", "value": "2"}],
+                },
+                {"spend": "9.00"},
+            ]
+        )
+
+        rows = await client.get_campaigns_insights("act_1", "token", "maximum", currency="USD")
+
+        url, params = client._fetch_paginated_data.await_args.args
+        self.assertTrue(url.endswith("/act_1/insights"))
+        self.assertEqual((params["level"], params["date_preset"]), ("campaign", "maximum"))
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["campaign_id"], "c1")
+        self.assertEqual(rows[0]["spend"], 41.2)
+        self.assertEqual(rows[0]["leads"], 2)
+        self.assertEqual(rows[0]["clicks"], 12)
+
     async def test_hard_quota_defers_background_but_allows_critical_request(self):
         client = MetaClient()
         client.configure_automation(

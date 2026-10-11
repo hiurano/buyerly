@@ -137,6 +137,38 @@ class TestRuleSimulator(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(result["account_active"])
         self.assertEqual(result["health"], "critical")
 
+    async def test_a_today_sheet_restarts_at_midnight(self):
+        """#384: launched at 22:30, the sheet's cut falls after midnight. Read
+        with `today`, the account's new day starts every ad set from zero."""
+        result = await self.run_scenario("midnight_today")
+        self.assertEqual(result["insight_presets"], ["today"])
+        # Before midnight `today` is the whole life of the ad set: same stop.
+        fast = self.row(result, "eve_dead_fast")
+        self.assertEqual((fast["buyerly_rule"], fast["sheet_rule"]), ("$3 and no click", "$3 and no click"))
+        # $2.70 at midnight, then a second round of money: never stopped.
+        self.assertIsNone(self.row(result, "eve_dead_slow")["buyerly_stop"])
+        # Its clicks were yesterday, so today reads "no click" and it is
+        # stopped late by the wrong rule.
+        no_lead = self.row(result, "eve_no_lead")
+        self.assertEqual(no_lead["sheet_rule"], "$4 and no lead")
+        self.assertEqual(no_lead["buyerly_rule"], "$3 and no click")
+        self.assertGreater(no_lead["overshoot"], 2.5)
+        # The converting ad set is stopped for having no click "today".
+        winner = self.row(result, "eve_winner")
+        self.assertIsNone(winner["sheet_stop"])
+        self.assertIsNotNone(winner["buyerly_stop"])
+        self.assert_summary(result, sheet_stops=3, missed=1, extra=1, double_writes=0)
+
+    async def test_a_lifetime_sheet_stops_on_time_across_midnight(self):
+        result = await self.run_scenario("midnight_lifetime")
+        self.assertEqual(result["insight_presets"], ["maximum", "today"])
+        self.assert_follows_the_sheet(result)
+        self.assert_summary(result, sheet_stops=3)
+        self.assertIsNone(self.row(result, "eve_winner")["buyerly_stop"])
+        for adset_id in ("eve_dead_slow", "eve_no_lead"):
+            row = self.row(result, adset_id)
+            self.assertLessEqual(row["overshoot"], 0.60, row)
+
     async def test_undo_whose_write_timed_out_after_meta_applied_it(self):
         result = await self.run_scenario("undo_timeout_after")
         attempts = result["undo"]["attempts"]

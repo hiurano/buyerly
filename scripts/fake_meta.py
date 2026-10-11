@@ -49,6 +49,8 @@ from fastapi.responses import JSONResponse
 PAGE_SIZE = 25
 STATE_PATH = Path(os.environ.get("FAKE_META_STATE", "/data/fake-meta.json"))
 DAY_SECONDS = 24 * 60 * 60
+# How long the world has been delivering, which is what date_preset=maximum covers.
+LIFETIME_DAYS = 30
 
 
 # ---------------------------------------------------------------------------
@@ -465,6 +467,10 @@ def report_days(account: Account, params: dict, now: float) -> list[date]:
         return [today]
     if preset == "yesterday":
         return [today - timedelta(days=1)]
+    if preset == "maximum":
+        # Meta's lifetime: every day up to now, today included. The invented
+        # world has been running for LIFETIME_DAYS.
+        return [today - timedelta(days=n) for n in range(LIFETIME_DAYS - 1, -1, -1)]
     if preset.startswith("last_") and preset.endswith("d"):
         # Meta's last_Nd ends yesterday.
         count = int(preset[5:-1])
