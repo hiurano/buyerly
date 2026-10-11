@@ -124,6 +124,7 @@ try {
     const writes = [];
     // Display options are saved for the member on the server, as in Linear.
     let savedDisplay = { unread_only: false, ordering: 'newest', show_snoozed: false, unread_first: false };
+    const savedViews = {};
     // Settings → Notifications → Email (#274, #275).
     const allKinds = ['urgent', 'rule_alerts', 'rule_actions', 'assistant', 'manual', 'team', 'system'];
     let savedChannels = {
@@ -153,6 +154,17 @@ try {
       if (path === '/api/notifications/channels') {
         if (verb === 'PUT') savedChannels = body;
         return route.fulfill({ json: savedChannels });
+      }
+      // List views, filters included, are kept for the member on the server (#385).
+      const viewKey = path.match(/^\/api\/view-settings\/([\w.-]+)$/)?.[1];
+      if (path === '/api/view-settings') return route.fulfill({ json: { views: savedViews } });
+      if (viewKey && verb === 'PUT') {
+        savedViews[viewKey] = body.settings;
+        return route.fulfill({ json: { view_key: viewKey, settings: body.settings } });
+      }
+      if (viewKey && verb === 'DELETE') {
+        delete savedViews[viewKey];
+        return route.fulfill({ status: 204, body: '' });
       }
       if (path === '/api/telegram/connection') {
         if (verb === 'DELETE') telegram = { ...noTelegram };
@@ -282,10 +294,27 @@ try {
       await page.getByRole('dialog', { name: 'Notification type operator' }).getByRole('option', { name: 'is not' }).click();
       await waitForRows(3);
       await page.screenshot({ path: `${output}/filter-bar-${width}.png` });
+      // The filter is saved for the member (#385): an Inbox address without one gets it back.
+      await page.waitForTimeout(400);
+      assert.deepEqual(
+        savedViews.inbox?.filters?.map(({ field, operator, values }) => [field, operator, values.length]),
+        [['type', 'is_not', 1]],
+      );
+      await page.goto(`${origin}/${workspace.slug}/inbox`);
+      await waitForRows(3);
+      assert.match(await bar.innerText(), /Notification type\s*is not\s*Rule alert/);
+      assert.match(page.url(), /\?filter=/);
       await page.getByRole('button', { name: /Clear Filters/ }).click();
       await waitForRows(4);
       assert.doesNotMatch(page.url(), /filter=/);
       assert.equal(await bar.count(), 0);
+      await page.waitForTimeout(400);
+      assert.equal(savedViews.inbox, undefined, 'Clear forgets the saved filter');
+      // V opens Display options on Inbox too, as on every list (#385).
+      await page.keyboard.press('v');
+      await page.getByRole('dialog', { name: 'Display options' }).waitFor();
+      await page.keyboard.press('Escape');
+      await page.getByRole('dialog', { name: 'Display options' }).waitFor({ state: 'detached' });
 
       // Opening a notification reads it and gives it its own address.
       await row('CPL is $14').click();

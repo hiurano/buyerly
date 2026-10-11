@@ -93,6 +93,8 @@ try {
       const request = route.request();
       const url = new URL(request.url());
       const path = url.pathname;
+      // Saved list views (#385): nothing saved yet; a change is accepted without being checked here.
+      if (path.startsWith('/api/view-settings')) return route.fulfill({ json: request.method() === 'GET' ? { views: {} } : {} });
       if (request.method() !== 'GET') {
         // Opening a notification marks it read.
         if (request.method() === 'POST' && /^\/api\/inbox\/\d+\/read$/.test(path)) {

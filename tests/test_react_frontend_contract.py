@@ -402,7 +402,29 @@ class TestReactFrontendContract(unittest.TestCase):
             "clearAllRulesFilters",
         ):
             self.assertNotIn(retired_state, self.app_store)
-        self.assertIn("rulesFilterClauses", self.app_store)
+        # The filters are part of the saved Rules view (#385), not app state.
+        self.assertIn("rulesFilterClauses", self.rules_view)
+        self.assertNotIn("rulesFilterClauses", self.app_store)
+        self.assertIn("useFiltersInAddress", self.rules_view)
+
+    def test_list_views_are_saved_per_member_on_the_server(self):
+        # Display options and filters of every list survive a reload (#385):
+        # one generic API keyed by view, not per-page state in the store.
+        src = ROOT / "frontend" / "src"
+        view_settings = (src / "lib" / "viewSettings.ts").read_text()
+        self.assertIn("/api/view-settings", view_settings)
+        for retired_state in ("rulesViewMode", "rulesDisplayGrouping", "displayOrdering", "campaignsViewMode"):
+            self.assertNotIn(retired_state, self.app_store)
+        self.assertIn("useListView('rules'", (src / "components" / "rules" / "rulesViewModel.ts").read_text())
+        self.assertIn(
+            "ads-manager.${entity}",
+            (src / "components" / "campaigns" / "adsManagerViewModel.ts").read_text(),
+        )
+        self.assertIn("setViewSettings('inbox'", (src / "components" / "inbox" / "InboxView.tsx").read_text())
+        self.assertNotIn("useState<'asc' | 'desc'>", self.campaigns_view)
+        workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
+        self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?view-options( .*)?$")
+        self.assertIn("node scripts/check-list-view.cjs", workflow)
 
     def test_every_switch_is_the_one_linear_toggle(self):
         # One switch for the whole app (#263): LinearToggle in two sizes, coloured

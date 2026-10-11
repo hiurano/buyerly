@@ -10,6 +10,7 @@ import type { RuleActionTone } from '@/lib/rules';
 import { getRulesColumns } from './tableColumns';
 import { RuleRowMenu } from './RuleRowMenu';
 import { useIsSmallScreen } from '@/lib/useMediaQuery';
+import { useRulesView } from './rulesViewModel';
 
 const ACTION_BADGE_STYLES: Record<
   RuleActionTone,
@@ -42,8 +43,8 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
     toggleRuleSelection,
     toggleRuleStatus,
     setFocusedRuleId,
-    rulesDisplayProperties,
   } = useAppStore();
+  const rulesDisplayProperties = useRulesView().view.properties;
 
   const isSelected = selectedRuleIds.includes(rule.id);
   const isDeliveryOn = rule.status !== 'paused';

@@ -1,8 +1,9 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useAppStore } from '@/store/useAppStore';
-import { LinearDisplayOptions } from '@/ui/LinearDisplayOptions';
+import { LinearDisplayOptions, type DisplayGroupOption } from '@/ui/LinearDisplayOptions';
+import { orderGroups } from '@/ui/listView';
 import type { AdsManagerEntity } from '@/store/useAppStore';
+import { useAdsManagerView } from './adsManagerViewModel';
 
 interface DisplayOptionsPopoverProps {
   isOpen: boolean;
@@ -10,10 +11,12 @@ interface DisplayOptionsPopoverProps {
   anchorRef: React.RefObject<HTMLElement | null>;
   entity: AdsManagerEntity;
   hasAccountGroups: boolean;
+  /** Every group of the current grouping, in their natural order, for Group ordering. */
+  groups: DisplayGroupOption[];
 }
 
-export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ isOpen, onClose, anchorRef, entity, hasAccountGroups }) => {
-  const store = useAppStore();
+export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ isOpen, onClose, anchorRef, entity, hasAccountGroups, groups }) => {
+  const { view, update, reset, displayChanged } = useAdsManagerView(entity);
   const popoverRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
 
@@ -61,29 +64,46 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
     { value: 'cpa', label: 'CPA' },
     ...(supportsBudget ? [{ value: 'budget', label: 'Budget' }] : []),
   ];
-  const ordering = orderingOptions.some((option) => option.value === store.displayOrdering)
-    ? store.displayOrdering
-    : 'manual';
+  const ordering = orderingOptions.some((option) => option.value === view.ordering) ? view.ordering : 'manual';
+  const grouping = !hasAccountGroups && view.grouping === 'groups' ? 'none' : view.grouping;
+  const hidden = view.hiddenGroups[view.grouping] ?? [];
 
   return createPortal(
     <div ref={popoverRef} className="linear-display-options-popover" style={{ top: coords.top, right: coords.right }}>
       <LinearDisplayOptions
-        viewMode={store.campaignsViewMode}
-        onViewModeChange={store.setCampaignsViewMode}
-        grouping={!hasAccountGroups && store.displayGrouping === 'groups' ? 'none' : store.displayGrouping}
+        viewMode={view.layout}
+        onViewModeChange={(layout) => update({ layout })}
+        grouping={grouping}
         groupingOptions={[
           { value: 'none', label: 'No grouping' },
           { value: 'status', label: 'Status' },
           ...(hasAccountGroups ? [{ value: 'groups', label: 'Account groups' }] : []),
           { value: 'rules', label: 'Rules' },
         ]}
-        onGroupingChange={(value) => store.setDisplayGrouping(value as typeof store.displayGrouping)}
+        onGroupingChange={(value) => update({ grouping: value })}
+        groupOrdering={{
+          groups: orderGroups(groups, view),
+          hidden,
+          onReorder: (ids) => update({ groupOrder: { ...view.groupOrder, [view.grouping]: ids } }),
+          onToggleHidden: (id) => update({
+            hiddenGroups: {
+              ...view.hiddenGroups,
+              [view.grouping]: hidden.includes(id) ? hidden.filter((entry) => entry !== id) : [...hidden, id],
+            },
+          }),
+        }}
         ordering={ordering}
         orderingOptions={orderingOptions}
-        onOrderingChange={(value) => store.setDisplayOrdering(value as typeof store.displayOrdering)}
+        onOrderingChange={(value) => update({ ordering: value })}
+        direction={view.direction}
+        onDirectionChange={(direction) => update({ direction })}
+        // Delivery status is a fixed set of states; rules and groups only list what has rows.
+        showEmptyGroups={grouping === 'status' ? view.showEmptyGroups : undefined}
+        onShowEmptyGroupsChange={(showEmptyGroups) => update({ showEmptyGroups })}
         properties={liveProperties}
-        enabledProperties={store.displayProperties}
-        onToggleProperty={store.toggleDisplayProperty}
+        enabledProperties={view.properties}
+        onToggleProperty={(key) => update({ properties: { ...view.properties, [key]: !view.properties[key] } })}
+        onReset={displayChanged ? reset : undefined}
         showViewModes={false}
         showGrouping
       />

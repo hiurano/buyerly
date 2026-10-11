@@ -22,14 +22,19 @@ import {
   LinearProjectCubeIcon,
 } from '@/icons/LinearIcons';
 import {
+  DATE_PRESETS,
   FILTER_OPERATOR_LABELS,
+  FILTER_OPERATOR_NAMES,
   FilterClause,
   filterOperatorLabel,
   FilterFieldDefinition,
   FilterOption,
+  type FilterOperator,
   type FilterOptionAvatar,
   getFilterValueAccessibleName,
   getFilterValueSummary,
+  matchesFilterClause,
+  NUMBER_OPERATORS,
   removeFilterClause,
   upsertFilterClause,
 } from './filterModel';
@@ -101,7 +106,12 @@ interface FilterMenuProps<T> {
   countNoun?: [string, string];
   childWidth?: number;
   rootPlaceholder?: string;
+  /** The rows the list shows, for the counts next to ready-made dates, as Linear's "4 issues". */
+  items?: T[];
 }
+
+/** Linear folds every date property into one "Dates" row with its own submenu. */
+const DATES_GROUP_ID = '__dates__';
 
 interface MenuPosition {
   left: number;
@@ -485,6 +495,270 @@ const SectionSeparator = () => (
   </div>
 );
 
+const editorInputStyle: React.CSSProperties = {
+  width: '100%',
+  height: 32,
+  border: `1px solid ${MENU_BORDER}`,
+  borderRadius: 7,
+  padding: '0 9px',
+  outline: 0,
+  backgroundColor: 'var(--item-hover-bg)',
+  color: MENU_TEXT,
+  font: 'inherit',
+  colorScheme: 'inherit',
+};
+
+const ApplyButton: React.FC<{ disabled: boolean; onClick: () => void }> = ({ disabled, onClick }) => (
+  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 9 }}>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        height: 26,
+        padding: '0 10px',
+        border: `1px solid ${MENU_BORDER}`,
+        borderRadius: 9999,
+        backgroundColor: 'var(--tab-active-bg)',
+        color: disabled ? MENU_MUTED : MENU_TEXT,
+        font: 'inherit',
+        fontSize: 12,
+        cursor: disabled ? 'default' : 'pointer',
+      }}
+    >
+      Apply
+    </button>
+  </div>
+);
+
+interface ValueEditorProps<T> {
+  field: FilterFieldDefinition<T>;
+  clause?: FilterClause;
+  onApply: (operator: FilterOperator, value: string | number) => void;
+  onBack: () => void;
+  onClose: () => void;
+  /** Takes the keyboard on mount: opened by a click, Enter or →, or from a chip. */
+  autoFocus: boolean;
+  inputRef?: React.Ref<HTMLInputElement>;
+}
+
+/**
+ * A number property's filter: > ≥ < ≤ and the number, applied with Enter
+ * or Apply. Metrics such as Spend or CPA use it.
+ */
+const NumberValueEditor = <T,>({ field, clause, onApply, onBack, onClose, autoFocus, inputRef }: ValueEditorProps<T>) => {
+  const operators = field.operators.filter((operator) => NUMBER_OPERATORS.includes(operator));
+  const [operator, setOperator] = useState<FilterOperator>(
+    clause && operators.includes(clause.operator) ? clause.operator : field.defaultOperator,
+  );
+  const [value, setValue] = useState(clause?.values[0] !== undefined ? String(clause.values[0]) : '');
+  const localRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (autoFocus) window.setTimeout(() => localRef.current?.focus(), 0);
+  }, [autoFocus]);
+  const number = Number(value.replace(',', '.'));
+  const valid = value.trim() !== '' && Number.isFinite(number);
+  const apply = () => { if (valid) onApply(operator, number); };
+  return (
+    <div style={{ width: CHILD_WIDTH, padding: 10 }}>
+      <div role="radiogroup" aria-label={`${field.label} comparison`} style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+        {operators.map((candidate) => (
+          <button
+            key={candidate}
+            type="button"
+            role="radio"
+            aria-checked={operator === candidate}
+            aria-label={FILTER_OPERATOR_NAMES[candidate] ?? FILTER_OPERATOR_LABELS[candidate]}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => setOperator(candidate)}
+            style={{
+              flex: 1,
+              height: 26,
+              border: `1px solid ${operator === candidate ? 'var(--filter-checkbox-selected)' : MENU_BORDER}`,
+              borderRadius: 7,
+              backgroundColor: operator === candidate ? 'var(--filter-menu-highlight)' : 'transparent',
+              color: operator === candidate ? MENU_TEXT_ACTIVE : MENU_TEXT,
+              font: 'inherit',
+              fontSize: 13,
+              cursor: 'pointer',
+            }}
+          >
+            {FILTER_OPERATOR_LABELS[candidate]}
+          </button>
+        ))}
+      </div>
+      <input
+        ref={(element) => {
+          (localRef as React.MutableRefObject<HTMLInputElement | null>).current = element;
+          if (typeof inputRef === 'function') inputRef(element);
+          else if (inputRef) (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = element;
+        }}
+        aria-label={field.label}
+        inputMode="decimal"
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') { event.preventDefault(); onClose(); }
+          if (event.key === 'ArrowLeft' && event.currentTarget.selectionStart === 0) { event.preventDefault(); onBack(); }
+          if (event.key === 'Enter') { event.preventDefault(); apply(); }
+        }}
+        placeholder={field.placeholder ?? 'Enter a number…'}
+        style={editorInputStyle}
+      />
+      <ApplyButton disabled={!valid} onClick={apply} />
+    </div>
+  );
+};
+
+/** A text property's filter: "contains" and the words, applied with Enter or Apply. */
+const TextValueEditor = <T,>({ field, clause, onApply, onBack, onClose, autoFocus, inputRef }: ValueEditorProps<T>) => {
+  const [value, setValue] = useState(clause?.values[0] !== undefined ? String(clause.values[0]) : '');
+  const localRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (autoFocus) window.setTimeout(() => localRef.current?.focus(), 0);
+  }, [autoFocus]);
+  const apply = () => { if (value.trim()) onApply(clause?.operator ?? field.defaultOperator, value.trim()); };
+  return (
+    <div style={{ width: CHILD_WIDTH, padding: 10 }}>
+      <input
+        ref={(element) => {
+          (localRef as React.MutableRefObject<HTMLInputElement | null>).current = element;
+          if (typeof inputRef === 'function') inputRef(element);
+          else if (inputRef) (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = element;
+        }}
+        aria-label={field.label}
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') { event.preventDefault(); onClose(); }
+          if (event.key === 'ArrowLeft' && event.currentTarget.selectionStart === 0) { event.preventDefault(); onBack(); }
+          if (event.key === 'Enter') { event.preventDefault(); apply(); }
+        }}
+        placeholder={field.placeholder ?? `${field.label} contains…`}
+        style={editorInputStyle}
+      />
+      <ApplyButton disabled={value.trim() === ''} onClick={apply} />
+    </div>
+  );
+};
+
+/**
+ * Linear's date submenu: a search field, the ready-made dates back from now
+ * with how many rows each leaves, then "Custom date or timeframe…" for a
+ * day of one's own. A pick applies at once, after the date ("after"
+ * unless the chip says "before").
+ */
+const DateValueEditor = <T,>({
+  field,
+  clause,
+  onApply,
+  onBack,
+  onClose,
+  autoFocus,
+  inputRef,
+  items,
+  countNoun,
+  searchLabel,
+}: ValueEditorProps<T> & { items?: T[]; countNoun: [string, string]; searchLabel: string }) => {
+  const [search, setSearch] = useState('');
+  const [highlighted, setHighlighted] = useState(autoFocus ? 0 : -1);
+  const [custom, setCustom] = useState(false);
+  const [day, setDay] = useState(() => {
+    const value = clause?.values[0];
+    return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '';
+  });
+  const searchRef = useRef<HTMLInputElement>(null);
+  const dayRef = useRef<HTMLInputElement>(null);
+  const operator = clause?.operator ?? field.defaultOperator;
+  useEffect(() => {
+    if (!autoFocus && !custom) return;
+    window.setTimeout(() => (custom ? dayRef.current : searchRef.current)?.focus(), 0);
+  }, [autoFocus, custom]);
+
+  const query = search.trim().toLocaleLowerCase();
+  const rows = [
+    ...DATE_PRESETS.filter((preset) => preset.label.toLocaleLowerCase().includes(query)),
+    { value: 'custom', label: 'Custom date or timeframe…' },
+  ];
+  const countFor = (value: string) =>
+    items ? items.filter((item) => matchesFilterClause(item, field, { fieldId: field.id, operator, values: [value] })).length : 0;
+  const choose = (value: string) => {
+    if (value === 'custom') setCustom(true);
+    else onApply(operator, value);
+  };
+
+  if (custom) {
+    return (
+      <div style={{ width: CHILD_WIDTH, padding: 10 }}>
+        <label style={{ display: 'block', marginBottom: 7, color: MENU_MUTED, fontSize: 12 }}>
+          {field.label} {FILTER_OPERATOR_LABELS[operator]}
+        </label>
+        <input
+          ref={dayRef}
+          type="date"
+          aria-label={`${field.label} date`}
+          value={day}
+          onChange={(event) => setDay(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') { event.preventDefault(); onClose(); }
+            if (event.key === 'Enter' && day) { event.preventDefault(); onApply(operator, day); }
+          }}
+          style={editorInputStyle}
+        />
+        <ApplyButton disabled={!day} onClick={() => day && onApply(operator, day)} />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <SearchRow
+        ref={(element) => {
+          (searchRef as React.MutableRefObject<HTMLInputElement | null>).current = element;
+          if (typeof inputRef === 'function') inputRef(element);
+          else if (inputRef) (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = element;
+        }}
+        label={searchLabel}
+        value={search}
+        onChange={(value) => {
+          setSearch(value);
+          setHighlighted(0);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') { event.preventDefault(); onClose(); return; }
+          if (event.key === 'ArrowLeft' || (event.key === 'Backspace' && search === '')) { event.preventDefault(); onBack(); return; }
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            const direction = event.key === 'ArrowDown' ? 1 : -1;
+            setHighlighted((index) => (index < 0 ? (direction === 1 ? 0 : rows.length - 1) : (index + direction + rows.length) % rows.length));
+          }
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            const row = rows[Math.max(highlighted, 0)];
+            if (row) choose(row.value);
+          }
+        }}
+      />
+      <div role="listbox" aria-label={`${field.label} values`} style={{ padding: `${LIST_PADDING}px 0` }}>
+        {rows.map((row, index) => {
+          const count = row.value === 'custom' ? 0 : countFor(row.value);
+          return (
+            <MenuOption
+              key={row.value}
+              label={row.label}
+              selected={clause?.values[0] === row.value}
+              highlighted={highlighted === index}
+              onMouseEnter={() => setHighlighted(index)}
+              onClick={() => choose(row.value)}
+              meta={count > 0 ? `${count} ${count === 1 ? countNoun[0] : countNoun[1]}` : undefined}
+            />
+          );
+        })}
+      </div>
+    </>
+  );
+};
+
 export const LinearFilterMenu = <T,>({
   isOpen,
   mode,
@@ -497,13 +771,37 @@ export const LinearFilterMenu = <T,>({
   countNoun = ['issue', 'issues'],
   childWidth = CHILD_WIDTH,
   rootPlaceholder = 'Add Filter…',
+  items,
 }: FilterMenuProps<T>) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const childRef = useRef<HTMLDivElement>(null);
+  const grandRef = useRef<HTMLDivElement>(null);
   const rootInputRef = useRef<HTMLInputElement>(null);
   const childInputRef = useRef<HTMLInputElement>(null);
+  const grandInputRef = useRef<HTMLInputElement>(null);
   const childListRef = useRef<HTMLDivElement>(null);
   const lastPointerRef = useRef<Point | null>(null);
+  const lastChildPointerRef = useRef<Point | null>(null);
+  // Under Dates: the date property whose ready-made dates are open beside the list.
+  const [activeDateFieldId, setActiveDateFieldId] = useState<string | null>(null);
+  const [grandRowTop, setGrandRowTop] = useState(0);
+  const [grandPosition, setGrandPosition] = useState<MenuPosition>({ left: 0, top: 0 });
+  const [grandFocus, setGrandFocus] = useState(false);
+  const dateFields = useMemo(() => fields.filter((field) => field.type === 'date'), [fields]);
+  const datesGroup = useMemo<FilterFieldDefinition<T> | null>(() => (dateFields.length === 0 ? null : {
+    id: DATES_GROUP_ID,
+    label: 'Dates',
+    section: 'dates',
+    type: 'date',
+    operators: [],
+    defaultOperator: 'after',
+    getValue: () => null,
+  }), [dateFields.length]);
+  // Linear's sections, each under a line: properties, then metrics, then one Dates row.
+  const menuFields = useMemo(
+    () => [...fields.filter((field) => field.type !== 'date'), ...(datesGroup ? [datesGroup] : [])],
+    [datesGroup, fields],
+  );
   const [rootPosition, setRootPosition] = useState<MenuPosition>({ left: 0, top: 0 });
   const [transformOrigin, setTransformOrigin] = useState('0 0');
   const [childRowTop, setChildRowTop] = useState(0);
@@ -513,19 +811,23 @@ export const LinearFilterMenu = <T,>({
   const [activeFieldId, setActiveFieldId] = useState<string | null>(fieldId ?? null);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [childHighlightedIndex, setChildHighlightedIndex] = useState(0);
-  const [editorValue, setEditorValue] = useState('');
   // Stays mounted after the parent closes the menu, for Linear's closing fade.
   const { isMounted, isClosing } = useMenuExit(isOpen);
   const shownModeRef = useRef(mode);
   if (isOpen) shownModeRef.current = mode;
   const shownMode = shownModeRef.current;
 
-  const activeField = fields.find((field) => field.id === activeFieldId) ?? null;
+  const activeField =
+    fields.find((field) => field.id === activeFieldId)
+    ?? (activeFieldId === DATES_GROUP_ID ? datesGroup : null);
   const activeClause = activeField
     ? clauses.find((clause) => clause.fieldId === activeField.id)
     : undefined;
+  const isDatesGroup = activeField?.id === DATES_GROUP_ID;
+  const activeDateField = isDatesGroup ? dateFields.find((field) => field.id === activeDateFieldId) ?? null : null;
   const childHasSearch =
-    shownMode !== 'root' ||
+    (shownMode !== 'root' && (activeField?.type === 'enum' || activeField?.type === 'date')) ||
+    (activeField?.type === 'date' && !isDatesGroup) ||
     (activeField?.type === 'enum' && (activeField.options?.length ?? 0) >= CHILD_SEARCH_MIN_OPTIONS);
 
   useLayoutEffect(() => {
@@ -543,8 +845,9 @@ export const LinearFilterMenu = <T,>({
     setHighlightedIndex(mode === 'root' && !lastInputWasKeyboard ? -1 : 0);
     setChildHighlightedIndex(0);
     setActiveFieldId(fieldId ?? null);
-    setEditorValue('');
+    setActiveDateFieldId(null);
     lastPointerRef.current = null;
+    lastChildPointerRef.current = null;
 
     const focusTimer = window.setTimeout(() => {
       if (mode === 'root') rootInputRef.current?.focus();
@@ -566,6 +869,19 @@ export const LinearFilterMenu = <T,>({
     setChildPosition(getChildPosition(childRowTop, rootPosition, { width, height }, childHasSearch));
   }, [shownMode, activeFieldId, childRowTop, rootPosition, childHasSearch]);
 
+  // A date's ready-made values open beside the Dates list, level with its row, flipping left when they do not fit.
+  useLayoutEffect(() => {
+    if (!activeDateFieldId || !grandRef.current || !childRef.current) return;
+    const { offsetWidth: width, offsetHeight: height } = grandRef.current;
+    const childWidthNow = childRef.current.offsetWidth;
+    const rightLeft = childPosition.left + childWidthNow - CHILD_OVERLAP;
+    const left = rightLeft + width <= window.innerWidth - VIEWPORT_GAP ? rightLeft : childPosition.left - width + CHILD_OVERLAP;
+    setGrandPosition({
+      left: clamp(left, VIEWPORT_GAP, window.innerWidth - width - VIEWPORT_GAP),
+      top: clamp(grandRowTop - 1 - LIST_PADDING - SEARCH_ROW_HEIGHT, VIEWPORT_GAP, window.innerHeight - height - VIEWPORT_GAP),
+    });
+  }, [activeDateFieldId, grandRowTop, childPosition]);
+
   useEffect(() => {
     if (!isOpen) return;
     const handlePointerDown = (event: MouseEvent) => {
@@ -573,6 +889,7 @@ export const LinearFilterMenu = <T,>({
       if (
         !rootRef.current?.contains(target) &&
         !childRef.current?.contains(target) &&
+        !grandRef.current?.contains(target) &&
         !anchorElement?.contains(target)
       ) {
         onClose();
@@ -585,7 +902,7 @@ export const LinearFilterMenu = <T,>({
   const rootEntries = useMemo<RootEntry<T>[]>(() => {
     const query = rootSearch.trim().toLocaleLowerCase();
     if (!query) {
-      return fields.map((field) => ({ key: field.id, kind: 'field', field }));
+      return menuFields.map((field) => ({ key: field.id, kind: 'field', field }));
     }
 
     const matches: RootEntry<T>[] = [];
@@ -612,7 +929,7 @@ export const LinearFilterMenu = <T,>({
       });
     });
     return matches;
-  }, [fields, rootSearch]);
+  }, [fields, menuFields, rootSearch]);
 
   const childOptions = useMemo(() => {
     if (!activeField?.options) return [];
@@ -669,8 +986,8 @@ export const LinearFilterMenu = <T,>({
   const openField = (field: FilterFieldDefinition<T>, row: HTMLElement, focusChild: boolean) => {
     if (field.id !== activeFieldId) {
       setActiveFieldId(field.id);
+      setActiveDateFieldId(null);
       setChildSearch('');
-      setEditorValue(String(clauses.find((clause) => clause.fieldId === field.id)?.values[0] ?? ''));
       setChildRowTop(rowTopOf(row));
     }
     setChildHighlightedIndex(focusChild ? 0 : -1);
@@ -747,10 +1064,72 @@ export const LinearFilterMenu = <T,>({
   const closeChild = () => {
     if (shownMode === 'root') {
       setActiveFieldId(null);
+      setActiveDateFieldId(null);
       rootInputRef.current?.focus();
     } else {
       onClose();
     }
+  };
+
+  const dateRowAt = (index: number) =>
+    childRef.current?.querySelectorAll<HTMLElement>('[data-filter-date-option]')[index];
+
+  /** Under Dates, a date property opens its ready-made dates as soon as it is hovered or reached. */
+  const openDateField = (field: FilterFieldDefinition<T>, row: HTMLElement, focus: boolean) => {
+    if (field.id !== activeDateFieldId) {
+      setActiveDateFieldId(field.id);
+      setGrandRowTop(childPosition.top + 1 + row.offsetTop - (row.closest('[role="listbox"]')?.scrollTop ?? 0));
+    }
+    setGrandFocus(focus);
+    if (focus) window.setTimeout(() => grandInputRef.current?.focus(), 0);
+  };
+
+  const closeGrandchild = () => {
+    setActiveDateFieldId(null);
+    setGrandFocus(false);
+    childListRef.current?.focus();
+  };
+
+  const handleDatesListKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    const count = dateFields.length;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose();
+    } else if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      closeChild();
+    } else if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && count > 0) {
+      event.preventDefault();
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      const next = childHighlightedIndex < 0
+        ? (direction === 1 ? 0 : count - 1)
+        : (childHighlightedIndex + direction + count) % count;
+      setChildHighlightedIndex(next);
+      const row = dateRowAt(next);
+      if (row) openDateField(dateFields[next], row, false);
+    } else if (event.key === 'Enter' || event.key === 'ArrowRight') {
+      event.preventDefault();
+      const index = Math.max(childHighlightedIndex, 0);
+      const row = dateRowAt(index);
+      if (row && dateFields[index]) {
+        setChildHighlightedIndex(index);
+        openDateField(dateFields[index], row, true);
+      }
+    }
+  };
+
+  const handleDatesPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const point = { x: event.clientX, y: event.clientY };
+    const previous = lastChildPointerRef.current;
+    lastChildPointerRef.current = point;
+    const row = (event.target as HTMLElement).closest<HTMLElement>('[data-filter-date-option]');
+    const index = Number(row?.dataset.index);
+    const field = dateFields[index];
+    if (!row || !field || field.id === activeDateFieldId) return;
+    const submenu = grandRef.current?.getBoundingClientRect();
+    if (activeDateFieldId && previous && submenu && isMovingTowardSubmenu(previous, point, submenu)) return;
+    setChildHighlightedIndex(index);
+    openDateField(field, row, false);
   };
 
   const handleChildKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
@@ -785,22 +1164,74 @@ export const LinearFilterMenu = <T,>({
     }
   };
 
-  const applyEditorValue = () => {
-    if (!activeField || editorValue.trim() === '') return;
-    const current = clauses.find((clause) => clause.fieldId === activeField.id);
-    const value = activeField.type === 'number' ? Number(editorValue) : editorValue.trim();
-    if (activeField.type === 'number' && !Number.isFinite(value)) return;
-    onChange(
-      upsertFilterClause(clauses, {
-        fieldId: activeField.id,
-        operator: current?.operator ?? activeField.defaultOperator,
-        values: [value],
-      })
-    );
+  /** A number, text or date filter takes one value and closes the menu, as Linear's does. */
+  const applyValue = (field: FilterFieldDefinition<T>, operator: FilterOperator, value: string | number) => {
+    onChange(upsertFilterClause(clauses, { fieldId: field.id, operator, values: [value] }));
     onClose();
   };
 
+  const renderDatesList = () => (
+    <div
+      ref={childListRef}
+      role="listbox"
+      aria-label="Date properties"
+      tabIndex={-1}
+      onKeyDown={handleDatesListKeyDown}
+      onPointerMove={handleDatesPointerMove}
+      style={{ padding: `${LIST_PADDING}px 0`, outline: 'none' }}
+    >
+      {dateFields.map((field, index) => (
+        <div key={field.id} data-filter-date-option="true" data-index={index}>
+          <MenuOption
+            label={field.label}
+            highlighted={childHighlightedIndex === index || activeDateFieldId === field.id}
+            expanded={activeDateFieldId === field.id}
+            icon={<FilterFieldIcon fieldId={field.id} type="date" />}
+            meta={<SubmenuArrow />}
+            onClick={(event) => {
+              setChildHighlightedIndex(index);
+              openDateField(field, event.currentTarget, true);
+            }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+
   const renderValueBody = (field: FilterFieldDefinition<T>) => {
+    if (field.id === DATES_GROUP_ID) return renderDatesList();
+    if (field.type === 'date') {
+      return (
+        <DateValueEditor
+          key={field.id}
+          field={field}
+          clause={activeClause}
+          items={items}
+          countNoun={countNoun}
+          searchLabel={shownMode === 'value' ? field.label : 'Filter…'}
+          inputRef={childInputRef}
+          autoFocus={shownMode !== 'root'}
+          onApply={(operator, value) => applyValue(field, operator, value)}
+          onBack={closeChild}
+          onClose={onClose}
+        />
+      );
+    }
+    if (field.type === 'number' || field.type === 'text') {
+      const Editor = field.type === 'number' ? NumberValueEditor : TextValueEditor;
+      return (
+        <Editor
+          key={field.id}
+          field={field}
+          clause={activeClause}
+          inputRef={childInputRef}
+          autoFocus={shownMode !== 'root'}
+          onApply={(operator, value) => applyValue(field, operator, value)}
+          onBack={closeChild}
+          onClose={onClose}
+        />
+      );
+    }
     if (field.type === 'enum') {
       const currentValues = new Set((activeClause?.values ?? []).map(String));
       const selectedCount = childOptions.filter((option) => currentValues.has(option.value)).length;
@@ -869,64 +1300,13 @@ export const LinearFilterMenu = <T,>({
       );
     }
 
-    return (
-      <div style={{ width: shownMode === 'root' ? CHILD_WIDTH : undefined, padding: 10 }}>
-        <label style={{ display: 'block', marginBottom: 7, color: MENU_MUTED, fontSize: 12 }}>
-          {field.label}
-        </label>
-        <input
-          ref={childInputRef}
-          aria-label={field.label}
-          type={field.type === 'date' ? 'date' : field.type === 'number' ? 'number' : 'text'}
-          step={field.type === 'number' ? 'any' : undefined}
-          value={editorValue}
-          onChange={(event) => setEditorValue(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') onClose();
-            if (event.key === 'ArrowLeft' && event.currentTarget.selectionStart === 0) closeChild();
-            if (event.key === 'Enter') applyEditorValue();
-          }}
-          placeholder={field.placeholder ?? 'Enter a value…'}
-          style={{
-            width: '100%',
-            height: 32,
-            border: `1px solid ${MENU_BORDER}`,
-            borderRadius: 7,
-            padding: '0 9px',
-            outline: 0,
-            backgroundColor: 'var(--item-hover-bg)',
-            color: MENU_TEXT,
-            font: 'inherit',
-          }}
-        />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 9 }}>
-          <button
-            type="button"
-            onClick={applyEditorValue}
-            disabled={editorValue.trim() === ''}
-            style={{
-              height: 26,
-              padding: '0 10px',
-              border: `1px solid ${MENU_BORDER}`,
-              borderRadius: 9999,
-              backgroundColor: 'var(--tab-active-bg)',
-              color: editorValue.trim() ? MENU_TEXT : MENU_MUTED,
-              font: 'inherit',
-              fontSize: 12,
-              cursor: editorValue.trim() ? 'pointer' : 'default',
-            }}
-          >
-            Apply
-          </button>
-        </div>
-      </div>
-    );
+    return null;
   };
 
   const renderOperatorBody = (field: FilterFieldDefinition<T>) => {
     const query = childSearch.trim().toLocaleLowerCase();
     const operators = field.operators.filter((operator) =>
-      FILTER_OPERATOR_LABELS[operator].toLocaleLowerCase().includes(query)
+      `${FILTER_OPERATOR_LABELS[operator]} ${FILTER_OPERATOR_NAMES[operator] ?? ''}`.toLocaleLowerCase().includes(query)
     );
     return (
       <>
@@ -1079,6 +1459,31 @@ export const LinearFilterMenu = <T,>({
           transformOrigin={isSubmenu ? undefined : transformOrigin}
         >
           {childBody}
+        </MenuSurface>
+      )}
+      {/* Under Dates, the hovered date's ready-made values: Linear's third level. */}
+      {isSubmenu && isDatesGroup && activeDateField && !isClosing && (
+        <MenuSurface
+          ref={grandRef}
+          position={grandPosition}
+          width="content"
+          minWidth={CHILD_WIDTH - 25}
+          label={`${activeDateField.label} values`}
+          strongShadow
+        >
+          <DateValueEditor
+            key={activeDateField.id}
+            field={activeDateField}
+            clause={clauses.find((clause) => clause.fieldId === activeDateField.id)}
+            items={items}
+            countNoun={countNoun}
+            searchLabel="Filter…"
+            inputRef={grandInputRef}
+            autoFocus={grandFocus}
+            onApply={(operator, value) => applyValue(activeDateField, operator, value)}
+            onBack={closeGrandchild}
+            onClose={onClose}
+          />
         </MenuSurface>
       )}
     </>,

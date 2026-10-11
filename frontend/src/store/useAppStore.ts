@@ -52,6 +52,13 @@ import {
   type InboxUnread,
 } from '@/lib/inbox';
 import {
+  deleteViewSettings,
+  fetchViewSettings,
+  saveViewSettings,
+  type StoredView,
+  type StoredViews,
+} from '@/lib/viewSettings';
+import {
   DEFAULT_NOTIFICATION_CHANNELS,
   fetchNotificationChannels,
   saveNotificationChannels,
@@ -301,6 +308,13 @@ interface AppState {
   inboxDisplayLoaded: boolean;
   loadInboxDisplay: () => Promise<void>;
   setInboxDisplay: (patch: Partial<InboxDisplay>) => void;
+  /** Each list page's saved view by key, kept per member on the server (#385); a missing key means defaults. */
+  viewSettings: StoredViews;
+  /** False until this workspace's saved views arrive (or fail to). */
+  viewSettingsLoaded: boolean;
+  loadViewSettings: () => Promise<void>;
+  /** Saves a page's view, or with null resets it to the page's defaults. */
+  setViewSettings: (key: string, settings: StoredView | null) => void;
   /** Settings → Notifications → Email (later Telegram), saved per member like Display options. */
   notificationChannels: NotificationChannels;
   notificationChannelsLoaded: boolean;
@@ -398,27 +412,15 @@ interface AppState {
   setSelectedFilterPlatform: (platform: string | null) => void;
 
   // Display Options State
-  campaignsViewMode: 'list' | 'board';
-  setCampaignsViewMode: (mode: 'list' | 'board') => void;
   isDisplayOptionsOpen: boolean;
   setIsDisplayOptionsOpen: (open: boolean) => void;
   toggleDisplayOptions: () => void;
-  displayGrouping: 'none' | 'groups' | 'status' | 'rules';
-  setDisplayGrouping: (grouping: 'none' | 'groups' | 'status' | 'rules') => void;
-  displaySubGrouping: 'none' | 'status' | 'rules';
-  setDisplaySubGrouping: (subGrouping: 'none' | 'status' | 'rules') => void;
-  displayOrdering: 'manual' | 'name' | 'spend' | 'roi' | 'results' | 'budget' | 'cpa' | 'created';
-  setDisplayOrdering: (ordering: 'manual' | 'name' | 'spend' | 'roi' | 'results' | 'budget' | 'cpa' | 'created') => void;
-  showEmptyGroups: boolean;
-  setShowEmptyGroups: (show: boolean) => void;
   orderCompletedByRecency: boolean;
   setOrderCompletedByRecency: (val: boolean) => void;
   showSubIssues: boolean;
   setShowSubIssues: (show: boolean) => void;
   completedIssuesFilter: 'all' | 'day' | 'week' | 'month' | 'none';
   setCompletedIssuesFilter: (filter: 'all' | 'day' | 'week' | 'month' | 'none') => void;
-  displayProperties: Record<string, boolean>;
-  toggleDisplayProperty: (property: string) => void;
   collapsedGroups: string[];
   toggleGroupCollapse: (groupId: string) => void;
 
@@ -469,17 +471,9 @@ interface AppState {
   toggleRuleOnAccount: (ruleId: string, accountId: string) => Promise<void>;
 
   // Rules Display Options & Sidebar State
-  rulesViewMode: 'board' | 'list';
-  setRulesViewMode: (mode: 'board' | 'list') => void;
   isRulesDisplayOptionsOpen: boolean;
   setIsRulesDisplayOptionsOpen: (open: boolean) => void;
   toggleRulesDisplayOptions: () => void;
-  rulesDisplayGrouping: 'none' | 'groups' | 'status';
-  setRulesDisplayGrouping: (grouping: 'none' | 'groups' | 'status') => void;
-  rulesDisplayOrdering: 'manual' | 'name' | 'lastRun' | 'status';
-  setRulesDisplayOrdering: (ordering: 'manual' | 'name' | 'lastRun' | 'status') => void;
-  rulesDisplayProperties: Record<string, boolean>;
-  toggleRulesDisplayProperty: (property: string) => void;
   selectedFilterRuleGroupId: string | null;
   setSelectedFilterRuleGroupId: (groupId: string | null) => void;
   rulesCollapsedGroups: string[];
@@ -491,9 +485,6 @@ interface AppState {
   focusedRuleId: string | null;
   setFocusedRuleId: (id: string | null) => void;
 
-  // Rules Filter State
-  rulesFilterClauses: FilterClause[];
-  setRulesFilterClauses: (clauses: FilterClause[]) => void;
 }
 
 // Only domain/editor state is reset. Theme, layout and display preferences survive.
@@ -511,13 +502,14 @@ function emptyWorkspaceState() {
     ...emptyAccountState(), workspaceName: 'buyerly', inboxUnreadCount: 0, campaignGroups: [],
     inboxPriorityUnreadCount: 0,
     inboxDisplay: DEFAULT_INBOX_DISPLAY, inboxDisplayLoaded: false,
+    viewSettings: {}, viewSettingsLoaded: false,
     notificationChannels: DEFAULT_NOTIFICATION_CHANNELS, notificationChannelsLoaded: false,
     telegramConnection: NO_TELEGRAM_CONNECTION, telegramConnectionLoaded: false,
     rules: [], ruleGroups: [], ruleAccounts: [], rulesLoadState: 'idle' as RulesLoadState,
     rulesError: '', rulesMutationError: '', selectedRuleId: null, selectedRuleIds: [],
     focusedRuleId: null, editingRuleId: null, ruleStatesRuleId: null, isCreateRuleModalOpen: false,
     createRuleTargetGroupId: undefined, selectedFilterRuleGroupId: null,
-    rulesFilterClauses: [], rulesCollapsedGroups: [], pendingDeletion: null,
+    rulesCollapsedGroups: [], pendingDeletion: null,
     adsManagerFilters: { campaigns: [], adsets: [], ads: [] },
     isCommandMenuOpen: false, openPalette: null, recordActionsFor: null, isDisplayOptionsOpen: false, isRulesDisplayOptionsOpen: false,
   };
@@ -547,6 +539,10 @@ export const useAppStore = create<AppState>((set, get) => {
   /** A rule change is being written and read back; the next one waits for it. */
   let attachmentWriting = false;
   let inboxDisplaySave: Promise<unknown> = Promise.resolve();
+  /** One save chain for all views, so the last choice for a key is the one that stays. */
+  let viewSettingsSave: Promise<unknown> = Promise.resolve();
+  const viewSettingsTimers = new Map<string, number>();
+  let viewSettingsRequest: Promise<void> | null = null;
   let notificationChannelsSave: Promise<unknown> = Promise.resolve();
   return ({
   workspaceScope: null,
@@ -615,6 +611,44 @@ export const useAppStore = create<AppState>((set, get) => {
       .catch(() => {
         // The choice still applies until the page is reloaded.
       });
+  },
+  viewSettings: {},
+  viewSettingsLoaded: false,
+  loadViewSettings: () => {
+    if (get().viewSettingsLoaded) return Promise.resolve();
+    if (viewSettingsRequest) return viewSettingsRequest;
+    const inScope = get().captureScope();
+    viewSettingsRequest = fetchViewSettings()
+      .catch(() => ({}) as StoredViews)
+      .then((stored) => {
+        viewSettingsRequest = null;
+        if (!inScope()) return;
+        // A choice made while this was loading wins over the saved one.
+        set((state) => ({ viewSettings: { ...stored, ...state.viewSettings }, viewSettingsLoaded: true }));
+      });
+    return viewSettingsRequest;
+  },
+  setViewSettings: (key, settings) => {
+    const viewSettings = { ...get().viewSettings };
+    if (settings) viewSettings[key] = settings;
+    else delete viewSettings[key];
+    set({ viewSettings });
+    const inScope = get().captureScope();
+    // Quick toggles in a row make one request; a reset goes out at once.
+    window.clearTimeout(viewSettingsTimers.get(key));
+    const write = () => {
+      viewSettingsTimers.delete(key);
+      viewSettingsSave = viewSettingsSave
+        .then(() => {
+          if (!inScope()) return undefined;
+          return settings ? saveViewSettings(key, settings) : deleteViewSettings(key);
+        })
+        .catch(() => {
+          // The view still applies here until the page is reloaded.
+        });
+    };
+    if (settings) viewSettingsTimers.set(key, window.setTimeout(write, 150));
+    else write();
   },
   notificationChannels: DEFAULT_NOTIFICATION_CHANNELS,
   notificationChannelsLoaded: false,
@@ -879,43 +913,15 @@ export const useAppStore = create<AppState>((set, get) => {
     set((state) => ({ selectedFilterPlatform: state.selectedFilterPlatform === platform ? null : platform })),
 
   // Display Options implementation
-  campaignsViewMode: 'list',
-  setCampaignsViewMode: (mode) => set({ campaignsViewMode: mode }),
   isDisplayOptionsOpen: false,
   setIsDisplayOptionsOpen: (open) => set({ isDisplayOptionsOpen: open }),
   toggleDisplayOptions: () => set((state) => ({ isDisplayOptionsOpen: !state.isDisplayOptionsOpen })),
-  displayGrouping: 'none',
-  setDisplayGrouping: (grouping) => set({ displayGrouping: grouping }),
-  displaySubGrouping: 'none',
-  setDisplaySubGrouping: (subGrouping) => set({ displaySubGrouping: subGrouping }),
-  displayOrdering: 'manual',
-  setDisplayOrdering: (ordering) => set({ displayOrdering: ordering }),
-  showEmptyGroups: true,
-  setShowEmptyGroups: (show) => set({ showEmptyGroups: show }),
   orderCompletedByRecency: false,
   setOrderCompletedByRecency: (val) => set({ orderCompletedByRecency: val }),
   showSubIssues: false,
   setShowSubIssues: (show) => set({ showSubIssues: show }),
   completedIssuesFilter: 'all',
   setCompletedIssuesFilter: (filter) => set({ completedIssuesFilter: filter }),
-  displayProperties: {
-    status: true,
-    budget: true,
-    results: true,
-    cpa: true,
-    spend: true,
-    roi: true,
-    rules: true,
-    group: false,
-    created: false,
-  },
-  toggleDisplayProperty: (property) =>
-    set((state) => ({
-      displayProperties: {
-        ...state.displayProperties,
-        [property]: !state.displayProperties[property],
-      },
-    })),
   collapsedGroups: [],
   toggleGroupCollapse: (groupId) =>
     set((state) => ({
@@ -1212,31 +1218,10 @@ export const useAppStore = create<AppState>((set, get) => {
   },
 
   // Rules Display Options & Sidebar State
-  rulesViewMode: 'list',
-  setRulesViewMode: (mode) => set({ rulesViewMode: mode }),
   isRulesDisplayOptionsOpen: false,
   setIsRulesDisplayOptionsOpen: (open) => set({ isRulesDisplayOptionsOpen: open }),
   toggleRulesDisplayOptions: () =>
     set((state) => ({ isRulesDisplayOptionsOpen: !state.isRulesDisplayOptionsOpen })),
-  rulesDisplayGrouping: 'groups',
-  setRulesDisplayGrouping: (grouping) => set({ rulesDisplayGrouping: grouping }),
-  rulesDisplayOrdering: 'manual',
-  setRulesDisplayOrdering: (ordering) => set({ rulesDisplayOrdering: ordering }),
-  rulesDisplayProperties: {
-    status: true,
-    condition: true,
-    action: true,
-    scope: true,
-    lastCheck: true,
-    lastRun: true,
-  },
-  toggleRulesDisplayProperty: (property) =>
-    set((state) => ({
-      rulesDisplayProperties: {
-        ...state.rulesDisplayProperties,
-        [property]: !state.rulesDisplayProperties[property],
-      },
-    })),
   selectedFilterRuleGroupId: null,
   setSelectedFilterRuleGroupId: (groupId) => set({ selectedFilterRuleGroupId: groupId }),
   rulesCollapsedGroups: [],
@@ -1257,10 +1242,6 @@ export const useAppStore = create<AppState>((set, get) => {
   setRuleSelection: (ids) => set({ selectedRuleIds: ids }),
   focusedRuleId: null,
   setFocusedRuleId: (id) => set({ focusedRuleId: id }),
-
-  // Rules Filter State
-  rulesFilterClauses: [],
-  setRulesFilterClauses: (clauses) => set({ rulesFilterClauses: clauses }),
 });
 });
 

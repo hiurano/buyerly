@@ -22,7 +22,11 @@ import {
   LinearFilterMenu,
 } from '@/components/filters/LinearFilter';
 import { createRuleFilterFields } from '@/components/filters/filterCatalogs';
-import { applyFilterClauses } from '@/components/filters/filterModel';
+import { applyFilterClauses, type FilterClause } from '@/components/filters/filterModel';
+import { DisplayOptionsChangedDot } from '@/ui/LinearDisplayOptions';
+import { orderGroups } from '@/ui/listView';
+import { useFiltersInAddress, writeFilterParam } from '@/ui/useListView';
+import { sortRules, useRulesView } from './rulesViewModel';
 import {
   LinearBacklogDashedIcon,
   LinearBoltIcon,
@@ -99,12 +103,9 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
     setRuleFilterTab,
     addRuleGroup,
     openCreateRuleModal,
-    rulesViewMode,
     isRulesDisplayOptionsOpen,
     toggleRulesDisplayOptions,
     setIsRulesDisplayOptionsOpen,
-    rulesFilterClauses,
-    setRulesFilterClauses,
     rulesLoadState,
     rulesError,
     rulesMutationError,
@@ -115,10 +116,25 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
     pendingDeletion,
     requestDeletion,
     cancelDeletion,
-    rulesDisplayGrouping,
     rulesCollapsedGroups,
     toggleRulesGroupCollapse,
   } = useAppStore();
+
+  // The view and its filters are saved per member on the server (#385); filters also ride in the address.
+  const {
+    view: rulesView,
+    update: updateRulesView,
+    loaded: rulesViewLoaded,
+    displayChanged: rulesDisplayChanged,
+  } = useRulesView();
+  const rulesViewMode = rulesView.layout;
+  const rulesDisplayGrouping = rulesView.grouping;
+  const rulesFilterClauses = rulesView.filters;
+  const setRulesFilterClauses = (clauses: FilterClause[]) => {
+    updateRulesView({ filters: clauses });
+    writeFilterParam(clauses.length ? clauses : null);
+  };
+  useFiltersInAddress(rulesFilterClauses, (clauses) => updateRulesView({ filters: clauses }), rulesViewLoaded, navigationKey);
 
   // Rules are read again on arrival and whenever an address names one, so a
   // rule created since the list was loaded is found as well.
@@ -161,7 +177,10 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
       ? matchingFilters
       : matchingFilters.filter((rule) => rule.status === ruleFilterTab);
   }, [filterFields, ruleFilterTab, rules, rulesFilterClauses]);
-  const filteredRules = useMemo(() => applyRuleQuickFilter(baseRules, quick), [baseRules, quick]);
+  const filteredRules = useMemo(
+    () => sortRules(applyRuleQuickFilter(baseRules, quick), rulesView.ordering, rulesView.direction),
+    [baseRules, quick, rulesView.ordering, rulesView.direction],
+  );
 
   const totalForTab =
     ruleFilterTab === 'all'
@@ -431,6 +450,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
                   }`}
                 >
                   <LinearSlidersIcon size={14} />
+                  <DisplayOptionsChangedDot show={rulesDisplayChanged} />
                 </button>
               </Tooltip>
 
@@ -462,6 +482,8 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
         clauses={rulesFilterClauses}
         onChange={setRulesFilterClauses}
         onClose={() => setOpenFilterMenu(null)}
+        items={rules}
+        countNoun={['rule', 'rules']}
       />
 
       {/* 2. Main Content Area: the list or board, with the details pane on the right */}
@@ -508,7 +530,12 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
               />
 
               {/* Columns 2..N: Dynamic Rule Groups */}
-              {ruleGroups.map((group) => {
+              {(rulesDisplayGrouping === 'groups'
+                ? orderGroups(ruleGroups, rulesView).filter(
+                  (group) => !(rulesView.hiddenGroups.groups ?? []).includes(group.id),
+                )
+                : ruleGroups
+              ).map((group) => {
                 const groupRules = filteredRules.filter((rule) =>
                   group.ruleIds.includes(rule.id)
                 );

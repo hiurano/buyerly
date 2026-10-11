@@ -58,6 +58,8 @@ try {
       const request = route.request();
       const path = new URL(request.url()).pathname;
       const verb = request.method();
+      // Saved list views (#385): nothing saved yet; a change is accepted without being checked here.
+      if (path.startsWith('/api/view-settings')) return route.fulfill({ json: verb === 'GET' ? { views: {} } : {} });
       if (verb !== 'GET') {
         const body = request.postData() ? request.postDataJSON() : null;
         writes.push({ verb, path, body });

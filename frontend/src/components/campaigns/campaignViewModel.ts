@@ -1,10 +1,30 @@
 import type { MetaAccount } from '@/lib/types';
-import { applyFilterClauses } from '@/components/filters/filterModel';
+import { applyFilterClauses, NUMBER_OPERATORS } from '@/components/filters/filterModel';
 import type { FilterFieldDefinition, FilterClause, FilterOption } from '@/components/filters/filterModel';
 
 export interface AccountGroupOption { id: number; name: string; account_ids: string[] }
 export interface ViewRow {
   id: string; name: string; status: string; effectiveStatus?: string; campaignId?: string; adSetId?: string;
+  spend?: string; leadsCount?: number; cpa?: string; budget?: string;
+}
+
+const metric = (value: string | undefined) => {
+  if (!value) return null;
+  const number = Number.parseFloat(value.replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(number) ? number : null;
+};
+
+/** Metrics as number filters (> ≥ < ≤), in their own section under the properties (#385). */
+function metricFields<T extends ViewRow>(entity: 'campaigns' | 'adsets' | 'ads'): FilterFieldDefinition<T>[] {
+  const field = (id: string, label: string, getValue: (row: T) => number | null): FilterFieldDefinition<T> => ({
+    id, label, section: 'metrics', type: 'number', operators: [...NUMBER_OPERATORS], defaultOperator: 'gt', getValue,
+  });
+  return [
+    field('spend', 'Spend', row => metric(row.spend)),
+    field('results', 'Results', row => (typeof row.leadsCount === 'number' ? row.leadsCount : null)),
+    field('cpa', 'CPA', row => metric(row.cpa)),
+    ...(entity !== 'ads' ? [field('budget', 'Budget', row => metric(row.budget))] : []),
+  ];
 }
 
 /**
@@ -81,9 +101,9 @@ export function createLiveFields<T extends ViewRow>(
       getValue: () => memberships.length ? memberships : ['ungrouped'], pluralLabel: 'groups',
     });
   }
-  return fields.map(field => ({ ...field, options: field.options?.map(option => ({ ...option,
+  return [...fields.map(field => ({ ...field, options: field.options?.map(option => ({ ...option,
     count: applyFilterClauses(rows, [field], [{ fieldId: field.id, operator: 'is', values: [option.value] }]).length,
-  })) }));
+  })) })), ...metricFields<T>(entity)];
 }
 
 export function filterView<T>(rows: T[], fields: FilterFieldDefinition<T>[], clauses: FilterClause[], quick: QuickSelection | null) {
@@ -95,10 +115,11 @@ export function filterView<T>(rows: T[], fields: FilterFieldDefinition<T>[], cla
   return { baseRows, visibleRows, facets };
 }
 
+/** Every group of the grouping, empty ones included; the view decides which show and in what order. */
 export function groupView<T>(rows: T[], fields: FilterFieldDefinition<T>[], fieldId: string) {
   const field = fields.find(candidate => candidate.id === fieldId);
   if (!field) return [{ id: 'all', label: '', rows }];
   return (field.options ?? []).map(option => ({ id: option.value, label: option.label,
     rows: applyFilterClauses(rows, [field], [{ fieldId, operator: 'is', values: [option.value] }]),
-  })).filter(group => group.rows.length > 0);
+  }));
 }

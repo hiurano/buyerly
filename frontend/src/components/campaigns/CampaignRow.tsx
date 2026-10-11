@@ -16,7 +16,7 @@ interface CampaignRowProps {
   selectable?: boolean;
   /** Present when the row may really change delivery in Meta. */
   delivery?: DeliveryControl;
-  properties?: Record<string, boolean>;
+  properties: Record<string, boolean>;
 }
 
 export const CampaignRow: React.FC<CampaignRowProps> = ({
@@ -31,7 +31,6 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
     toggleCampaignSelection,
     campaignAttachedRules,
     setFocusedCampaignId,
-    displayProperties: storedDisplayProperties,
     campaignGroups,
   } = useAppStore();
 
@@ -43,7 +42,7 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
   const isSelected = selectable && selectedCampaignIds.includes(campaign.id);
   const isDeliveryKnown = campaign.status !== 'unknown';
   const isDeliveryOn = campaign.status === 'active';
-  const displayProperties = properties ?? storedDisplayProperties;
+  const displayProperties = properties;
   const isPositiveRoi = campaign.roi.startsWith('+');
   const assignedGroups = campaignGroups.filter((group) =>
     campaign.groupIds.includes(group.id)

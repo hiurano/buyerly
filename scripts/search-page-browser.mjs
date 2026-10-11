@@ -157,6 +157,8 @@ try {
       const path = url.pathname;
       const verb = request.method();
       const scope = request.headers()['x-workspace-slug'];
+      // Saved list views (#385): nothing saved yet; a change is accepted without being checked here.
+      if (path.startsWith('/api/view-settings')) return route.fulfill({ json: verb === 'GET' ? { views: {} } : {} });
       if (verb !== 'GET') {
         errors.push(`Unexpected write: ${verb} ${path}`);
         return route.fulfill({ status: 404, json: { detail: 'Unexpected test request' } });

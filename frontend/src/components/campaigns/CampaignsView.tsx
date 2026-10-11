@@ -54,6 +54,9 @@ import type { FilterMenuMode } from '@/components/filters/LinearFilter';
 import { createLiveFields, filterView, groupView } from './campaignViewModel';
 import type { AccountGroupOption } from './campaignViewModel';
 import { useCampaignViewFilters } from './useCampaignViewFilters';
+import { naturalAdsManagerDirection, useAdsManagerView } from './adsManagerViewModel';
+import { arrangeGroups, sortByColumn } from '@/ui/listView';
+import { DisplayOptionsChangedDot } from '@/ui/LinearDisplayOptions';
 import { DetailsPaneLayout, DetailsPaneToggle } from '@/ui/DetailsPane';
 import { DetailsFacets, type DetailsFacetTab } from '@/ui/DetailsFacets';
 import type { FilterOption } from '@/components/filters/filterModel';
@@ -130,10 +133,6 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   const {
     campaignFilterTab,
     setCampaignFilterTab,
-    displayGrouping,
-    displayOrdering,
-    setDisplayOrdering,
-    displayProperties,
     isDisplayOptionsOpen,
     toggleDisplayOptions,
     setIsDisplayOptionsOpen,
@@ -151,7 +150,12 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   const [accountGroups, setAccountGroups] = useState<AccountGroupOption[] | null>(null);
   const [groupsError, setGroupsError] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  // Each level's own view, saved per member on the server (#385).
+  const { view, update: updateView, displayChanged } = useAdsManagerView(campaignFilterTab);
+  const displayGrouping = view.grouping;
+  const displayOrdering = view.ordering;
+  const displayProperties = view.properties;
+  const sortDirection = view.direction;
   const [metaAccounts, setMetaAccounts] = useState<MetaAccount[]>([]);
   const [metaConnections, setMetaConnections] = useState<MetaConnection[]>([]);
   const [accountsState, setAccountsState] = useState<LoadState>('loading');
@@ -401,8 +405,9 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   const filteredAds = sortRows(adView.visibleRows);
   const clearFilters = () => { updateCurrentFilters([]); setQuick(null); };
   const groupingField = displayGrouping === 'groups' ? 'group' : displayGrouping === 'rules' ? 'rule' : displayGrouping;
+  // Delivery status is a fixed set, so only its empty groups can be shown.
   const renderGrouped = <T,>(rows: T[], fields: FilterFieldDefinition<T>[], render: (row: T) => React.ReactNode) =>
-    groupView(rows, fields, groupingField).map(group => (
+    arrangeGroups(groupView(rows, fields, groupingField), view, { allowEmpty: groupingField === 'status' }).map(group => (
       <React.Fragment key={group.id}>
         {group.label ? (
           <LinearDataListGroup title={group.label} count={group.rows.length}
@@ -721,14 +726,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
         columns={tableColumns}
         sortKey={effectiveOrdering === 'manual' ? undefined : effectiveOrdering}
         sortDirection={sortDirection}
-        onSort={(columnId) => {
-          if (effectiveOrdering === columnId) {
-            setSortDirection((current) => current === 'asc' ? 'desc' : 'asc');
-          } else {
-            setDisplayOrdering(columnId as typeof displayOrdering);
-            setSortDirection(columnId === 'name' ? 'asc' : 'desc');
-          }
-        }}
+        onSort={(columnId) => updateView(sortByColumn({ ...view, ordering: effectiveOrdering }, columnId, naturalAdsManagerDirection(columnId)))}
         after={filteredCurrentCount > 0 && filteredCurrentCount < totalCurrent && (
           <div className="campaign-filter-summary">
             <span>{totalCurrent - filteredCurrentCount} {entityLabels[campaignFilterTab].plural} hidden by filters</span>
@@ -829,6 +827,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
                 className={`linear-header-target group relative flex h-[28px] w-[28px] items-center justify-center rounded-full border border-transparent outline-none transition-all ${isDisplayOptionsOpen ? 'bg-[var(--item-active-bg)] text-[var(--text-primary)]' : 'bg-transparent text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'}`}
               >
                 <LinearSlidersIcon size={14} />
+                <DisplayOptionsChangedDot show={displayChanged} />
               </button>
             </Tooltip>
             <DisplayOptionsPopover
@@ -837,6 +836,9 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
               anchorRef={displayOptionsButtonRef}
               entity={campaignFilterTab}
               hasAccountGroups={accountGroups !== null}
+              groups={groupView(currentRows as never[], currentFilterFields as never[], groupingField)
+                .filter((group) => group.label)
+                .map((group) => ({ id: group.id, label: group.label }))}
             />
 
             <DetailsPaneToggle pane="adsManager" />
@@ -860,6 +862,8 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
         clauses={currentFilters}
         onChange={updateCurrentFilters}
         onClose={() => setOpenFilterMenu(null)}
+        items={currentRows as never[]}
+        countNoun={[entityLabels[campaignFilterTab].singular, entityLabels[campaignFilterTab].plural]}
       />
 
       <DetailsPaneLayout pane="adsManager" label="Ads Manager details" details={details}>
