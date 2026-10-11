@@ -237,7 +237,10 @@ try {
       assert.match(await properties.getByRole('group', { name: 'Team' }).innerText(), /Media/);
       assert.match(await properties.getByRole('group', { name: 'Connected by' }).innerText(), /Bo Buyer/);
       assert.match(await page.locator('section[aria-label="Today"]').innerText(), /USD\s?120\.50[\s\S]*CPL USD\s?30\.13/);
-      assert.match(await page.locator('section[aria-label="Rules"]').innerText(), /Stop ad sets without leads[\s\S]*Whole account/);
+      // The rule's own status and where it runs; no switch here — pausing a rule pauses it on every account.
+      const rulesSection = page.locator('section[aria-label="Rules"]');
+      assert.match(await rulesSection.innerText(), /Stop ad sets without leads[\s\S]*Active[\s\S]*Whole account/);
+      assert.equal(await rulesSection.getByRole('switch').count(), 0);
       assert.match(await page.locator('section[aria-label="Recent events"]').innerText(), /Paused: no leads after 20/);
       await page.screenshot({ path: `${output}/page-1440.png` });
 
@@ -250,6 +253,12 @@ try {
       await properties.getByRole('switch', { name: 'Automation' }).click();
       await properties.getByRole('group', { name: 'Automation' }).getByText('Off', { exact: true }).waitFor();
       assert.ok(writes.includes('toggle act_101 false'), writes.join('\n'));
+
+      // A rule opens on Rules.
+      await rulesSection.locator('[data-rule-id="7"]').click();
+      await page.waitForURL(`${origin}/alpha/rules/7`);
+      await page.goBack();
+      await page.waitForURL(`${origin}/alpha/accounts/act_101`);
 
       // Open in Ads Manager, then G K back to the list.
       await page.getByRole('button', { name: 'Open in Ads Manager' }).click();

@@ -922,6 +922,9 @@ class TestReactFrontendContract(unittest.TestCase):
         for words in ("Open in Ads Manager", "Attach rule", "Recent events", "Connected by", "Last sync", "Reconnect"):
             self.assertIn(words, page)
         self.assertIn("/api/audit-events?page=1&page_size=5&account_id=", page)
+        # Rules on the account show their own status; no switch that would pause them everywhere.
+        self.assertNotIn("toggleRuleStatus", page)
+        self.assertIn("<LinearStatusCircleIcon status={on ? 'active' : 'paused'}", page)
         self.assertIn("All ad accounts…", self.campaigns_view)
         self.assertIn("node scripts/check-accounts.cjs", workflow)
         self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?accounts( .*)?$")

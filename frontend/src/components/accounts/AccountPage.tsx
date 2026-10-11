@@ -20,7 +20,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
-import { LinearPlusIcon, LinearProjectCubeIcon } from '@/icons/LinearIcons';
+import { LinearPlusIcon, LinearProjectCubeIcon, LinearStatusCircleIcon } from '@/icons/LinearIcons';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { AccountRowMenu, type AccountRowActions } from './AccountRow';
 import { AccountStatusLabel, ConnectionProblemIcon, accountMoney } from './AccountParts';
@@ -76,7 +76,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ accountId, navigate, n
   const oneColumn = useMediaQuery(ONE_COLUMN_QUERY);
   const account = accounts.find((item) => item.account_id === accountId);
 
-  const { rules, loadRules, toggleRuleStatus, toggleRuleOnAccount } = useAppStore();
+  const { rules, loadRules, toggleRuleOnAccount } = useAppStore();
   useEffect(() => {
     void loadRules();
   }, [loadRules]);
@@ -135,7 +135,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ accountId, navigate, n
       </div>
       {account && account.is_active !== false && (
         <Button size="compact" className="shrink-0" aria-label="Open in Ads Manager" onClick={() => actions.openInAdsManager(account)}>
-          <span className="max-[639px]:hidden">Open in </span>Ads Manager
+          <span className="max-[639px]:hidden">{'Open in '}</span>Ads Manager
         </Button>
       )}
     </div>
@@ -170,7 +170,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ accountId, navigate, n
         onToggleAutomation={() => void data.toggleAutomation(account)}
         onReconnect={dialogs.openAdd}
         onOpenRule={(id) => navigate(`/${workspace.slug}/rules/${id}`)}
-        onToggleRule={(id) => void toggleRuleStatus(id)}
         onAttachRule={async (ruleId) => {
           await toggleRuleOnAccount(ruleId, account.account_id);
           await data.refresh(true);
@@ -200,7 +199,6 @@ interface AccountPageBodyProps {
   onToggleAutomation: () => void;
   onReconnect: () => void;
   onOpenRule: (id: string) => void;
-  onToggleRule: (id: string) => void;
   onAttachRule: (ruleId: string) => Promise<void>;
 }
 
@@ -216,7 +214,6 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
   onToggleAutomation,
   onReconnect,
   onOpenRule,
-  onToggleRule,
   onAttachRule,
 }) => {
   const [name, setName] = useState(accountName(account));
@@ -426,24 +423,27 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
             {attached.map((attachedRule) => {
               const rule = rules.find((item) => item.id === String(attachedRule.preset_id));
               const on = rule ? rule.status === 'active' : true;
+              // The rule's own state, as on Rules: pausing it there pauses it on every account,
+              // so the page shows it rather than offering a switch here.
               return (
-                <li key={attachedRule.preset_id} className="flex min-h-10 items-center gap-3 rounded-[8px] px-2 hover:bg-[var(--data-row-hover-bg)]">
-                  {rule && canEdit ? (
-                    <LinearToggle
-                      checked={on}
-                      disabled={rule.needsReview && !on}
-                      tooltipContent={rule.needsReview && !on ? rule.reviewReason || 'Re-save this rule before switching it on' : on ? 'Pause rule' : 'Resume rule'}
-                      onChange={() => onToggleRule(rule.id)}
-                    />
-                  ) : null}
+                <li key={attachedRule.preset_id}>
                   <button
                     type="button"
+                    data-rule-id={attachedRule.preset_id}
                     onClick={() => onOpenRule(String(attachedRule.preset_id))}
-                    className={`min-w-0 flex-1 truncate text-left text-[13px] font-medium hover:underline ${on ? 'text-[var(--text-primary)]' : 'text-[var(--text-tertiary)]'}`}
+                    className="flex min-h-10 w-full items-center gap-3 rounded-[8px] px-2 text-left outline-none hover:bg-[var(--data-row-hover-bg)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
                   >
-                    {rule?.name ?? attachedRule.name}
+                    <span className={`min-w-0 flex-1 truncate text-[13px] font-medium ${on ? 'text-[var(--text-primary)]' : 'text-[var(--text-tertiary)]'}`}>
+                      {rule?.name ?? attachedRule.name}
+                    </span>
+                    <span className="flex w-[76px] shrink-0 items-center gap-1.5 text-[12px] text-[var(--text-secondary)]">
+                      <LinearStatusCircleIcon status={on ? 'active' : 'paused'} size={14} />
+                      {on ? 'Active' : 'Paused'}
+                    </span>
+                    <span className="w-[104px] shrink-0 truncate text-right text-[12px] text-[var(--text-tertiary)]">
+                      {formatAccountScope(attachedRuleScope(attachedRule))}
+                    </span>
                   </button>
-                  <span className="shrink-0 text-[12px] text-[var(--text-tertiary)]">{formatAccountScope(attachedRuleScope(attachedRule))}</span>
                 </li>
               );
             })}
