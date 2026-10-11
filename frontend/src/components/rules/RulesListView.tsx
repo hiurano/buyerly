@@ -33,7 +33,7 @@ export const RulesListView: React.FC<RulesListViewProps> = ({ filteredRules }) =
         tint={group.tint}
         isCollapsed={rulesCollapsedGroups.includes(group.id)}
         onToggleCollapse={() => toggleRulesGroupCollapse(group.id)}
-        actionLabel={group.labelId ? `New rule labelled ${group.label}` : 'New rule'}
+        actionLabel={group.labelId ? `Create rule labelled ${group.label}` : 'Create rule in group'}
         onAction={() => openCreateRuleModal(group.labelId)}
       >
         {group.rows.map((rule) => <RuleRow key={rule.id} rule={rule} />)}

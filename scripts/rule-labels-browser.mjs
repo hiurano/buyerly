@@ -142,7 +142,7 @@ try {
       // The row's labels open the picker; a new name creates the label and puts it on.
       await page.locator('[data-rule-labels="9"]').click();
       await picker(page).waitFor();
-      await page.keyboard.type('Tests');
+      await picker(page).getByRole('textbox').fill('Tests');
       await picker(page).getByRole('option', { name: /Create new label/ }).waitFor();
       await page.screenshot({ path: `${output}/picker-create-1440.png` });
       await page.keyboard.press('Enter');
