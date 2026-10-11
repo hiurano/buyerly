@@ -87,6 +87,7 @@ try {
     const page = await context.newPage();
     page.setDefaultTimeout(10_000);
     const errors = [];
+    let noAccounts = false;
     page.on('pageerror', (error) => errors.push(error.message));
     await context.route('**/api/**', async (route) => {
       const request = route.request();
@@ -101,7 +102,7 @@ try {
         return route.fulfill({ status: 404, json: { detail: 'Unexpected test request' } });
       }
       if (path === '/api/me') return route.fulfill({ json: me });
-      if (path === '/api/accounts') return route.fulfill({ json: [account] });
+      if (path === '/api/accounts') return route.fulfill({ json: noAccounts ? [] : [account] });
       if (path === '/api/presets') return route.fulfill({ json: presets });
       if (path === '/api/analytics/hierarchy') {
         const parent = url.searchParams.get('parent_id');
@@ -125,6 +126,21 @@ try {
     const assertNoOverflow = async (where) => {
       const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
       assert.ok(scrollWidth <= width, `${where} overflows at ${width}px: ${scrollWidth}`);
+    };
+    // The shared header create button (HeaderCreateButton): a round, borderless 28px "+",
+    // labelled above 1024px, 40px on a touch screen.
+    const assertCreateButton = async (button, where) => {
+      const look = await button.evaluate((el) => {
+        const label = el.querySelector('span');
+        return {
+          height: el.getBoundingClientRect().height,
+          radius: getComputedStyle(el).borderRadius,
+          labelShown: Boolean(label) && getComputedStyle(label).display !== 'none',
+        };
+      });
+      assert.equal(look.height, touch ? 40 : 28, `${where}: height at ${width}px`);
+      assert.equal(look.radius, '9999px', `${where}: round`);
+      assert.equal(look.labelShown, width > 1024, `${where}: label shown only above 1024px`);
     };
     const assertInside = async (locator, what) => {
       const box = await locator.boundingBox();
@@ -230,22 +246,16 @@ try {
       await settled();
       await assertNoOverflow('rules');
       await assertHeaderControls('rules');
+      await assertCreateButton(page.locator('main header').getByRole('button', { name: 'New rule' }), 'Rules: New rule');
       await shot('rules');
       await assertDisplayOptions('rules');
       await assertDetails('rules', 'Rules details');
       await assertDrawer('rules');
-      // The four Rules tabs do not fit a phone: they fold into the active tab's capsule.
-      const more = page.locator('main header').getByRole('button', { name: '3 more' });
-      if (width === 390) {
-        await press(more);
-        const views = page.getByRole('menu');
-        await views.waitFor();
-        await assertInside(views, 'the folded Rules tabs');
-        await press(views.getByRole('menuitem', { name: 'Paused' }));
-        await views.waitFor({ state: 'detached' });
-        assert.equal((await more.textContent()).trim(), 'Paused', 'the capsule shows the chosen tab');
-      } else {
-        assert.equal(await more.count(), 0, `the Rules tabs fit at ${width}px`);
+      // The three Rules tabs fit a phone too: Recently deleted is a page of its own (#381).
+      const header = page.locator('main header');
+      assert.equal(await header.getByRole('button', { name: /^\d+ more$/ }).count(), 0, `the Rules tabs fit at ${width}px`);
+      for (const tab of ['All rules', 'Active', 'Paused']) {
+        await assertInside(header.getByRole('tab', { name: tab, exact: true }), `the ${tab} tab`);
       }
 
       // Ads Manager: the table scrolls sideways inside its own viewport; amounts never wrap.
@@ -266,6 +276,34 @@ try {
       await assertDisplayOptions('ads manager');
       await assertDetails('ads manager', 'Ads Manager details');
       await assertDrawer('ads manager');
+
+      // Adding an ad account is called "Add account" everywhere (#382): in the account menu...
+      await press(page.locator('main header').getByRole('button', { name: 'Select ad account' }));
+      const accountMenu = page.getByRole('menu');
+      await accountMenu.waitFor();
+      await accountMenu.getByRole('menuitem', { name: 'Add account' }).waitFor();
+      await page.keyboard.press('Escape');
+      await accountMenu.waitFor({ state: 'detached' });
+
+      // ...and, with no accounts yet, in the header and the empty state. The header button
+      // is the shared one from Rules: a round 28px "+", labelled above 1024px, 40px on touch.
+      noAccounts = true;
+      await page.goto(`${origin}/alpha/ads-manager/campaigns`);
+      await page.getByText('No ad accounts yet').waitFor();
+      await settled();
+      await assertNoOverflow('ads manager without accounts');
+      await assertHeaderControls('ads manager without accounts');
+      assert.equal(await page.getByRole('button', { name: 'Add account' }).count(), 2, 'Add account in the header and the empty state');
+      await assertCreateButton(page.locator('main header').getByRole('button', { name: 'Add account' }), 'Ads Manager: Add account');
+      await shot('ads-manager-empty');
+      await press(page.locator('main header').getByRole('button', { name: 'Add account' }));
+      const connect = page.getByRole('dialog', { name: 'Add ad accounts' });
+      await connect.waitFor();
+      await settled();
+      await assertInside(connect, 'the Add ad accounts dialog');
+      await page.keyboard.press('Escape');
+      await connect.waitFor({ state: 'detached' });
+      noAccounts = false;
 
       // Inbox: the list, its "…" menu, then a notification and Snooze.
       await page.goto(`${origin}/alpha/inbox`);

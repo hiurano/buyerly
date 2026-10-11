@@ -3,6 +3,7 @@ import { Sidebar } from '@/components/sidebar/Sidebar';
 import { InboxView } from '@/components/inbox/InboxView';
 import { CampaignsView } from '@/components/campaigns/CampaignsView';
 import { RulesView } from '@/components/rules/RulesView';
+import { RecentlyDeletedRulesPage } from '@/components/rules/RecentlyDeletedRulesPage';
 import { CommandMenu } from '@/components/command/CommandMenu';
 import { OpenPalette } from '@/components/command/OpenPalette';
 import { SearchView } from '@/components/search/SearchView';
@@ -17,7 +18,7 @@ import { useNewVersionNotice } from '@/lib/appVersion';
 import { selectInboxBadgeCount, useAppStore } from '@/store/useAppStore';
 import { apiRequest } from '@/lib/api';
 import type { LoginResult, SessionUser, Workspace } from '@/lib/types';
-import { isRoutedSettingsSection, isWorkspaceReturnRoute, parseRoute, pathForTab, type Route } from '@/lib/routing';
+import { isRoutedSettingsSection, isWorkspaceReturnRoute, openAppPath, parseRoute, pathForTab, type Route } from '@/lib/routing';
 import { AuthLoading } from '@/components/auth/AuthFrame';
 import { LoginView } from '@/components/auth/LoginView';
 import { VerifyEmailLinkView } from '@/components/auth/VerifyEmailLinkView';
@@ -229,6 +230,8 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
           if (target) {
             event.preventDefault();
             if (target === 'preferences') setSettingsSection(GO_TO_SETTINGS_SECTION);
+            // G R from Recently deleted goes back to the list: the tab itself does not change.
+            if (target === 'rules' && useAppStore.getState().activeTab === 'rules') openAppPath(pathForTab(workspace.slug, 'rules'));
             setActiveTab(target);
             goToPressedAt.current = 0;
           }
@@ -237,7 +240,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setActiveTab, setSettingsSection, toggleDetailsPane, setSidebarPeekOpen, toggleSidebarCollapsed, toggleSidebarOpen]);
+  }, [setActiveTab, setSettingsSection, toggleDetailsPane, setSidebarPeekOpen, toggleSidebarCollapsed, toggleSidebarOpen, workspace.slug]);
 
   useEffect(() => {
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
@@ -283,7 +286,13 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
                     navigationKey={navigationKey}
                   />
                 )}
-                {activeTab === 'rules' && (
+                {activeTab === 'rules' && route.tab === 'rules' && route.rulesPage === 'recently-deleted' && (
+                  <RecentlyDeletedRulesPage
+                    rulesPath={pathForTab(workspace.slug, 'rules')}
+                    onOpenRules={() => navigate(pathForTab(workspace.slug, 'rules'))}
+                  />
+                )}
+                {activeTab === 'rules' && !route.rulesPage && (
                   <RulesView
                     revealId={route.tab === 'rules' ? route.recordId : undefined}
                     navigationKey={navigationKey}

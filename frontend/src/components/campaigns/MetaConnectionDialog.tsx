@@ -146,7 +146,7 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
     }
   };
 
-  const title = 'Connect Facebook';
+  const title = 'Add ad accounts';
   const isBusy = step === 'discovering' || step === 'importing' || step === 'creating_invite';
 
   return (

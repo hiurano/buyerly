@@ -29,6 +29,7 @@ import { MetaConnectionDialog } from './MetaConnectionDialog';
 import { DataState } from '@/ui/DataState';
 import { Button } from '@/ui/Button';
 import { Tooltip } from '@/ui/Tooltip';
+import { HeaderCreateButton } from '@/ui/HeaderCreateButton';
 import { LinearTabs } from '@/ui/LinearTabs';
 import {
   DropdownMenu,
@@ -667,7 +668,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
           role="alert"
           actionLabel="Retry"
           onAction={() => void refreshMetaAccounts()}
-          secondaryLabel="Connect Facebook"
+          secondaryLabel="Add account"
           onSecondary={openMetaDialog}
         />
       );
@@ -675,9 +676,9 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     if (metaAccounts.length === 0) {
       return (
         <DataState
-          title="Connect an ad account"
-          detail="Connect Facebook and import at least one account to see real Meta entities. Automation stays off after import."
-          actionLabel="Connect Facebook"
+          title="No ad accounts yet"
+          detail="Add at least one ad account to see its campaigns, ad sets and ads. Automation stays off after import."
+          actionLabel="Add account"
           onAction={openAccountSelection}
         />
       );
@@ -693,7 +694,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
           role="alert"
           actionLabel="Retry"
           onAction={() => setHierarchyReloadKey((value) => value + 1)}
-          secondaryLabel="Connect Facebook"
+          secondaryLabel="Add account"
           onSecondary={openMetaDialog}
         />
       );
@@ -780,10 +781,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
               onConnect={openMetaDialog}
             />
           ) : (
-            <Button size="compact" className="shrink-0 gap-1.5 whitespace-nowrap" onClick={openMetaDialog}>
-              <LinearPlusIcon size={14} aria-hidden="true" />
-              <span>Connect Facebook</span>
-            </Button>
+            <HeaderCreateButton label="Add account" tooltip="Add ad account" onClick={openMetaDialog} />
           )}
         </div>
 
@@ -949,7 +947,7 @@ const DropdownMenuAccount: React.FC<DropdownMenuAccountProps> = ({
         <DropdownMenuItem onSelect={onConnect}>
           <span className="flex items-center gap-1.5">
             <LinearPlusIcon size={14} aria-hidden="true" />
-            Add Facebook account
+            Add account
           </span>
         </DropdownMenuItem>
       </DropdownMenuContent>
