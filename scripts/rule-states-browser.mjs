@@ -88,6 +88,8 @@ try {
       const request = route.request();
       const url = new URL(request.url());
       const path = url.pathname;
+      // Saved list views (#385): nothing saved yet; a change is accepted without being checked here.
+      if (path.startsWith('/api/view-settings')) return route.fulfill({ json: request.method() === 'GET' ? { views: {} } : {} });
       if (request.method() !== 'GET') {
         errors.push(`Unexpected write: ${request.method()} ${path}`);
         return route.fulfill({ status: 404, json: { detail: 'Unexpected test request' } });

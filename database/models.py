@@ -163,6 +163,28 @@ class WorkspaceMember(Base):
         return f"<WorkspaceMember(workspace_id={self.workspace_id}, user_id={self.user_id}, role='{self.role}')>"
 
 
+class ViewSetting(Base):
+    """One member's view of a list page, as Linear remembers each view per user (#385).
+
+    `view_key` names the page ("rules", "ads-manager.campaigns", …); `settings`
+    holds its layout, grouping, ordering, direction, display properties and
+    filters. The server keeps the blob as given: each page knows its own shape.
+    """
+
+    __tablename__ = "view_settings"
+    __table_args__ = (
+        UniqueConstraint("member_id", "view_key", name="uq_view_settings_member_key"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    member_id = Column(
+        Integer, ForeignKey("workspace_members.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    view_key = Column(String(64), nullable=False)
+    settings = Column(JSONB, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
+
 class WorkspaceInvite(Base):
     __tablename__ = "workspace_invites"
 

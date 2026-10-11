@@ -6,7 +6,7 @@ import type {
   RuleGroup,
   RuleItem,
 } from '@/store/useAppStore';
-import type { FilterFieldDefinition, FilterOption } from './filterModel';
+import { DATE_OPERATORS, type FilterFieldDefinition, type FilterOption } from './filterModel';
 
 const enumOperators = ['is', 'is_not'] as const;
 
@@ -237,5 +237,16 @@ export const createRuleFilterFields = ({
     operators: [...enumOperators], defaultOperator: 'is',
     options: withCounts(ruleGroupOptions(ruleGroups), rules, (item) => item.groupId ?? 'ungrouped'),
     getValue: (item) => item.groupId ?? 'ungrouped', pluralLabel: 'groups',
+  },
+  // Linear's Dates: one row, each date with its ready-made values (#385). More come with #390.
+  {
+    id: 'lastRun', label: 'Last action', section: 'dates', type: 'date',
+    operators: [...DATE_OPERATORS], defaultOperator: 'after',
+    getValue: (item) => item.preset.last_run_at || null,
+  },
+  {
+    id: 'created', label: 'Created date', section: 'dates', type: 'date',
+    operators: [...DATE_OPERATORS], defaultOperator: 'after',
+    getValue: (item) => item.preset.created_at || null,
   },
 ];

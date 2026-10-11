@@ -200,7 +200,7 @@ body {
   margin-right: 4px;
   padding: 0 2px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 9999px;
   color: var(--text-tertiary);
   background: transparent;
   cursor: pointer;
@@ -209,6 +209,129 @@ body {
 .linear-display-order-button:hover {
   color: var(--text-primary);
   background: var(--display-control-hover, var(--bg-canvas));
+}
+
+/* Linear's Group ordering panel (measured 11.10): a 49px header with Back and
+   the title, then 32px rows: handle, the group, and an eye to hide it. */
+.linear-display-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 49px;
+  padding: 8px;
+  border-bottom: 1px solid var(--display-divider, var(--color-border-primary));
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.linear-display-group-header .linear-display-order-button {
+  margin-right: 0;
+}
+
+.linear-display-group-list {
+  padding: 8px;
+  max-height: min(420px, calc(100vh - 160px));
+  overflow-y: auto;
+}
+
+.linear-display-group-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 4px 8px 4px 28px;
+  border-radius: 8px;
+  background: var(--card-bg);
+}
+
+.linear-display-group-row:hover {
+  background: var(--display-option-hover, var(--bg-canvas));
+}
+
+.linear-display-group-row[data-dragging] {
+  z-index: 1;
+  box-shadow: var(--dropdown-shadow);
+}
+
+.linear-display-group-handle {
+  position: absolute;
+  left: 4px;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 32px;
+  color: var(--text-tertiary);
+  cursor: grab;
+  touch-action: none;
+}
+
+.linear-display-group-label {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 450;
+  white-space: nowrap;
+}
+
+.linear-display-group-label[data-hidden] {
+  opacity: 0.5;
+}
+
+.linear-display-group-label > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.linear-display-group-icon {
+  display: inline-flex;
+  width: 16px;
+  justify-content: center;
+}
+
+.linear-display-group-row .linear-display-order-button {
+  margin-right: 0;
+}
+
+/* Linear's footer while the view differs from its default. */
+.linear-display-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 8px;
+  border-top: 1px solid var(--display-divider, var(--color-border-primary));
+}
+
+.linear-display-footer-button {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  color: var(--text-primary);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500 !important;
+  cursor: pointer;
+}
+
+.linear-display-footer-button:hover {
+  background: var(--display-control-hover, var(--bg-canvas));
+}
+
+/* Linear's 7px accent dot on the Display options icon while the view is changed. */
+.linear-display-changed-dot {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--action-primary, #5e6ad2);
+  pointer-events: none;
 }
 
 .linear-display-select-menu {

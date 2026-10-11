@@ -91,6 +91,8 @@ POST_BASELINE_TABLES: set[str] = {
     "teams",
     "telegram_connections",
     "telegram_link_tokens",
+    # Added by the view settings migration (0037).
+    "view_settings",
 }
 REQUIRED_COLUMN_TYPES = {
     ("automation_runtime_states", "payload"): "JSONB",

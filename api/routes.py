@@ -78,6 +78,7 @@ from api.routers import (
     workspaces_router,
     health_router,
     analytics_router,
+    views_router,
 )
 from api.schemas import (
     AccountGroupItem,
@@ -152,6 +153,7 @@ router.include_router(adsets_router)
 router.include_router(delivery_router)
 router.include_router(health_router)
 router.include_router(analytics_router)
+router.include_router(views_router)
 
 class _RoutesModule(sys.modules[__name__].__class__):
     """Custom module class to propagate dynamically patched attributes (e.g. in tests) to submodules."""
@@ -176,6 +178,7 @@ class _RoutesModule(sys.modules[__name__].__class__):
             import api.routers.summary
             import api.routers.teams
             import api.routers.trash
+            import api.routers.views
             import api.routers.workspaces
             import api.routers.health
             import database.db
@@ -198,6 +201,7 @@ class _RoutesModule(sys.modules[__name__].__class__):
             api.routers.summary.async_session_maker = value
             api.routers.teams.async_session_maker = value
             api.routers.trash.async_session_maker = value
+            api.routers.views.async_session_maker = value
             api.routers.workspaces.async_session_maker = value
             api.routers.health.async_session_maker = value
 

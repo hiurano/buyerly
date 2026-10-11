@@ -396,18 +396,22 @@ export function encodeInboxFilter(clauses: InboxFilterClause[]): string {
   return btoa(String.fromCharCode(...bytes)).replace(/=+$/, '');
 }
 
+/** Inbox filters read back from an address or the saved view; anything malformed is dropped. */
+export function sanitizeInboxFilters(parsed: unknown): InboxFilterClause[] {
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter((clause): clause is InboxFilterClause =>
+    Boolean(clause)
+    && ['type', 'from', 'account', 'status'].includes(clause.field)
+    && ['is', 'is_not'].includes(clause.operator)
+    && Array.isArray(clause.values)
+    && clause.values.every((entry: unknown) => typeof entry === 'string'));
+}
+
 export function decodeInboxFilter(value: string | null): InboxFilterClause[] {
   if (!value) return [];
   try {
     const bytes = Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
-    const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes));
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((clause): clause is InboxFilterClause =>
-      Boolean(clause)
-      && ['type', 'from', 'account', 'status'].includes(clause.field)
-      && ['is', 'is_not'].includes(clause.operator)
-      && Array.isArray(clause.values)
-      && clause.values.every((entry: unknown) => typeof entry === 'string'));
+    return sanitizeInboxFilters(JSON.parse(new TextDecoder().decode(bytes)));
   } catch {
     return [];
   }

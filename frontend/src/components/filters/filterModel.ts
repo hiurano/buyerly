@@ -76,12 +76,101 @@ export const FILTER_OPERATOR_LABELS: Record<FilterOperator, string> = {
   excludes_any: 'exclude if any of',
   contains: 'contains',
   not_contains: 'does not contain',
-  gt: 'is greater than',
-  gte: 'is greater than or equal to',
-  lt: 'is less than',
-  lte: 'is less than or equal to',
-  before: 'is before',
-  after: 'is after',
+  gt: '>',
+  gte: '≥',
+  lt: '<',
+  lte: '≤',
+  // Linear's date operators read "before" and "after".
+  before: 'before',
+  after: 'after',
+};
+
+/** Words for the symbols, for screen readers and the operator search. */
+export const FILTER_OPERATOR_NAMES: Partial<Record<FilterOperator, string>> = {
+  gt: 'greater than',
+  gte: 'greater than or equal to',
+  lt: 'less than',
+  lte: 'less than or equal to',
+};
+
+export const NUMBER_OPERATORS: FilterOperator[] = ['gt', 'gte', 'lt', 'lte'];
+export const DATE_OPERATORS: FilterOperator[] = ['after', 'before'];
+export const TEXT_OPERATORS: FilterOperator[] = ['contains', 'not_contains'];
+
+/**
+ * Linear's ready-made dates under Dates: a time back from now, stored as an
+ * ISO 8601 duration as Linear's own filter does ("-P1W"), so a saved filter
+ * keeps meaning "the last week". A picked day is stored as "YYYY-MM-DD".
+ */
+export const DATE_PRESETS: { value: string; label: string }[] = [
+  { value: '-P1D', label: '1 day ago' },
+  { value: '-P3D', label: '3 days ago' },
+  { value: '-P1W', label: '1 week ago' },
+  { value: '-P1M', label: '1 month ago' },
+  { value: '-P3M', label: '3 months ago' },
+  { value: '-P6M', label: '6 months ago' },
+  { value: '-P1Y', label: '1 year ago' },
+];
+
+const RELATIVE_DATE = /^-P(\d{1,3})([DWMY])$/;
+const DAY_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** The moment a filter date stands for: a preset counts back from `now`, a day starts at local midnight. */
+export const resolveFilterDate = (value: FilterValue, now: Date = new Date()): number => {
+  const text = String(value);
+  const relative = RELATIVE_DATE.exec(text);
+  if (relative) {
+    const amount = Number(relative[1]);
+    const date = new Date(now);
+    if (relative[2] === 'D') date.setDate(date.getDate() - amount);
+    if (relative[2] === 'W') date.setDate(date.getDate() - amount * 7);
+    if (relative[2] === 'M') date.setMonth(date.getMonth() - amount);
+    if (relative[2] === 'Y') date.setFullYear(date.getFullYear() - amount);
+    return date.getTime();
+  }
+  if (DAY_DATE.test(text)) {
+    const [year, month, day] = text.split('-').map(Number);
+    return new Date(year, month - 1, day).getTime();
+  }
+  return new Date(text).getTime();
+};
+
+export const filterDateLabel = (value: FilterValue): string => {
+  const preset = DATE_PRESETS.find((candidate) => candidate.value === value);
+  if (preset) return preset.label;
+  const relative = RELATIVE_DATE.exec(String(value));
+  if (relative) {
+    const unit = { D: 'day', W: 'week', M: 'month', Y: 'year' }[relative[2] as 'D' | 'W' | 'M' | 'Y'];
+    return `${relative[1]} ${unit}${relative[1] === '1' ? '' : 's'} ago`;
+  }
+  const time = resolveFilterDate(value);
+  if (!Number.isFinite(time)) return String(value);
+  return new Date(time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const KNOWN_OPERATORS = new Set(Object.keys(FILTER_OPERATOR_LABELS));
+
+/**
+ * Filters read back from an address or a saved view: anything malformed is
+ * dropped, so a hand-edited link opens the list with what still makes sense.
+ */
+export const sanitizeFilterClauses = (value: unknown): FilterClause[] => {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  return value.slice(0, 20).flatMap((clause): FilterClause[] => {
+    if (typeof clause !== 'object' || clause === null) return [];
+    const { fieldId, operator, values } = clause as Record<string, unknown>;
+    if (typeof fieldId !== 'string' || !/^[A-Za-z][\w.-]{0,63}$/.test(fieldId) || seen.has(fieldId)) return [];
+    if (typeof operator !== 'string' || !KNOWN_OPERATORS.has(operator) || !Array.isArray(values)) return [];
+    if (values.length === 0 || values.length > 100) return [];
+    const clean = values.filter((item): item is FilterValue =>
+      (typeof item === 'string' && item.length <= 200)
+      || (typeof item === 'number' && Number.isFinite(item))
+      || typeof item === 'boolean');
+    if (clean.length !== values.length) return [];
+    seen.add(fieldId);
+    return [{ fieldId, operator: operator as FilterOperator, values: clean }];
+  });
 };
 
 /** Linear says "is any of" once a clause holds more than one value. */
@@ -134,7 +223,7 @@ export const matchesFilterClause = <T>(
 
   if (clause.operator === 'before' || clause.operator === 'after') {
     const left = new Date(String(itemValue)).getTime();
-    const right = new Date(String(selectedValue)).getTime();
+    const right = resolveFilterDate(selectedValue);
     if (!Number.isFinite(left) || !Number.isFinite(right)) return false;
     return clause.operator === 'before' ? left < right : left > right;
   }
@@ -183,6 +272,11 @@ export const getFilterValueSummary = <T>(
   clause: FilterClause
 ) => {
   if (clause.values.length === 0) return 'Any';
+  if (field.type === 'date') return filterDateLabel(clause.values[0]);
+  if (field.type === 'number') {
+    const number = Number(clause.values[0]);
+    return Number.isFinite(number) ? number.toLocaleString('en-US') : String(clause.values[0]);
+  }
   if (clause.values.length > 1) {
     return `${clause.values.length} ${field.pluralLabel ?? 'values'}`;
   }
@@ -198,6 +292,7 @@ export const getFilterValueAccessibleName = <T>(
 ) =>
   clause.values
     .map((value) => {
+      if (field.type === 'date' || field.type === 'number') return getFilterValueSummary(field, clause);
       const option = field.options?.find((candidate) => equalValue(candidate.value, value));
       return option?.label ?? String(value);
     })

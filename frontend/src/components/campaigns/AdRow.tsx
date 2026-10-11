@@ -12,13 +12,13 @@ interface AdRowProps {
   selectable?: boolean;
   /** Present when the row may really change delivery in Meta. */
   delivery?: DeliveryControl;
-  properties?: Record<string, boolean>;
+  properties: Record<string, boolean>;
 }
 
 export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, selectable = false, delivery, properties }) => {
-  const { selectedCampaignIds, toggleCampaignSelection, displayProperties: storedDisplayProperties } = useAppStore();
+  const { selectedCampaignIds, toggleCampaignSelection } = useAppStore();
 
-  const displayProperties = properties ?? storedDisplayProperties;
+  const displayProperties = properties;
   const isSelected = selectable && selectedCampaignIds.includes(ad.id);
   const isDeliveryKnown = ad.status !== 'unknown';
   const isDeliveryOn = ad.status === 'active';

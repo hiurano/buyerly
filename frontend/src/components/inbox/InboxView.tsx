@@ -22,6 +22,7 @@ import {
   groupInboxItems,
   inboxTabQuery,
   markInboxRead,
+  sanitizeInboxFilters,
   snoozeInboxNotification,
   type InboxActionResponse,
   type InboxFacets,
@@ -138,6 +139,9 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
     inboxDisplayLoaded,
     loadInboxDisplay,
     setInboxDisplay,
+    viewSettingsLoaded,
+    loadViewSettings,
+    setViewSettings,
   } = useAppStore();
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [items, setItems] = useState<InboxItem[]>([]);
@@ -203,9 +207,29 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
     else if (!inboxDisplay.priorityInbox && inboxTab) onNavigate(null, selectedId);
   }, [inboxDisplay.priorityInbox, inboxDisplayLoaded, inboxTab, onNavigate, selectedId]);
 
+  // The saved filters (#385): an address without `?filter=` gets them back, a link with one replaces them.
+  useEffect(() => {
+    if (!viewSettingsLoaded) void loadViewSettings();
+  }, [loadViewSettings, viewSettingsLoaded]);
+  const [filtersSettled, setFiltersSettled] = useState(false);
+  useEffect(() => {
+    if (!viewSettingsLoaded || filtersSettled) return;
+    setFiltersSettled(true);
+    const saved = sanitizeInboxFilters(useAppStore.getState().viewSettings.inbox?.filters);
+    if (new URLSearchParams(window.location.search).get('filter') !== null) {
+      if (JSON.stringify(saved) !== JSON.stringify(filters)) {
+        setViewSettings('inbox', filters.length ? { filters } : null);
+      }
+    } else if (saved.length) {
+      applyFilters(saved);
+    }
+    // Settled once per arrival; later changes save as they happen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewSettingsLoaded]);
+
   const load = useCallback(async (quiet: boolean) => {
-    // The list waits for the member's saved Display options, so it is not drawn twice.
-    if (!inboxDisplayLoaded) return;
+    // The list waits for the member's saved Display options and filters, so it is not drawn twice.
+    if (!inboxDisplayLoaded || !filtersSettled) return;
     const generation = ++requestGenerationRef.current;
     if (!quiet) setLoadState('loading');
     try {
@@ -229,7 +253,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
       setLoadError(requestErrorMessage(error));
       setLoadState('error');
     }
-  }, [filters, inboxDisplayLoaded, listQuery, setInboxUnread]);
+  }, [filters, filtersSettled, inboxDisplayLoaded, listQuery, setInboxUnread]);
 
   useEffect(() => {
     itemsRef.current = [];
@@ -266,12 +290,13 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
 
   const applyFilters = useCallback((next: InboxFilterClause[]) => {
     setFilters(next);
+    setViewSettings('inbox', next.length ? { filters: next } : null);
     const params = new URLSearchParams(window.location.search);
     if (next.length) params.set('filter', encodeInboxFilter(next));
     else params.delete('filter');
     const search = params.toString();
     window.history.replaceState(window.history.state, '', `${window.location.pathname}${search ? `?${search}` : ''}`);
-  }, []);
+  }, [setViewSettings]);
 
   const openFilterMenu = useCallback((mode: FilterMenuMode, anchor: HTMLElement, fieldId?: string) => {
     setIsDisplayOpen(false);
@@ -455,6 +480,11 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
       } else if ((key === 'f' || key === 'F') && !event.shiftKey && filterButtonRef.current) {
         event.preventDefault();
         openFilterMenu('root', filterButtonRef.current);
+      } else if ((key === 'v' || key === 'V') && !event.shiftKey) {
+        // V opens Display options on every list, as in Linear (#385).
+        event.preventDefault();
+        setFilterMenu(null);
+        setIsDisplayOpen(true);
       }
     };
     // Capture phase: a Radix menu fading out after a choice still listens for Escape

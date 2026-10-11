@@ -1,31 +1,66 @@
 import { useEffect, useState } from 'react';
 import type { AdsManagerEntity } from '@/store/useAppStore';
-import type { FilterClause } from '@/components/filters/filterModel';
+import { sanitizeFilterClauses, type FilterClause } from '@/components/filters/filterModel';
+import { readFilterParam, writeFilterParam } from '@/ui/useListView';
 import type { QuickSelection } from './campaignViewModel';
+import { useAdsManagerView } from './adsManagerViewModel';
 
 type Filters = Record<AdsManagerEntity, FilterClause[]>;
-const empty = (): Filters => ({ campaigns: [], adsets: [], ads: [] });
-const operators = new Set(['is', 'is_not', 'includes_all', 'excludes_all', 'includes_any', 'excludes_any']);
-function readFilters(): Filters {
-  const result = empty();
-  try {
-    const raw = new URLSearchParams(window.location.search).get('filter');
-    if (!raw || raw.length > 20000) return result;
-    const value = JSON.parse(raw);
-    for (const entity of ['campaigns', 'adsets', 'ads'] as const) {
-      if (!Array.isArray(value?.[entity])) continue;
-      result[entity] = value[entity].slice(0, 20).filter((clause: FilterClause) => clause
-        && ['status', 'group', 'rule'].includes(clause.fieldId) && operators.has(clause.operator)
-        && Array.isArray(clause.values) && clause.values.length <= 100
-        && clause.values.every(item => typeof item === 'string' && item.length <= 200));
-    }
-  } catch { /* Invalid shared URLs use an unfiltered view. */ }
-  return result;
+const ENTITIES: AdsManagerEntity[] = ['campaigns', 'adsets', 'ads'];
+
+/** `?filter=` holds every level's filters in one object, so one link shares them all. */
+function filtersFromAddress(): Filters | null {
+  const value = readFilterParam();
+  if (value === null) return null;
+  const source = typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  return {
+    campaigns: sanitizeFilterClauses(source.campaigns),
+    adsets: sanitizeFilterClauses(source.adsets),
+    ads: sanitizeFilterClauses(source.ads),
+  };
 }
 
-/** `navigationKey` changes on every navigation, Back and Forward included. */
+function writeAddress(filters: Filters) {
+  writeFilterParam(ENTITIES.some((entity) => filters[entity].length) ? filters : null);
+}
+
+/**
+ * Ads Manager's filters, one set per level: saved with each level's view on
+ * the server (#385) and kept in the address so a link shares them. A link
+ * with `?filter=` wins and becomes the saved filters; an address without one
+ * gets the saved filters back. `navigationKey` changes on every navigation,
+ * Back and Forward included.
+ */
 export function useCampaignViewFilters(scope: string, navigationKey: number) {
-  const [filters, setFilters] = useState(readFilters);
+  const views = {
+    campaigns: useAdsManagerView('campaigns'),
+    adsets: useAdsManagerView('adsets'),
+    ads: useAdsManagerView('ads'),
+  };
+  const loaded = views.campaigns.loaded;
+  const filters: Filters = {
+    campaigns: views.campaigns.view.filters,
+    adsets: views.adsets.view.filters,
+    ads: views.ads.view.filters,
+  };
+
+  useEffect(() => {
+    if (!loaded) return;
+    const fromAddress = filtersFromAddress();
+    if (fromAddress) {
+      for (const entity of ENTITIES) {
+        if (JSON.stringify(fromAddress[entity]) !== JSON.stringify(filters[entity])) {
+          views[entity].update({ filters: fromAddress[entity] });
+        }
+      }
+      writeAddress(fromAddress);
+    } else {
+      writeAddress(filters);
+    }
+    // Only arrival and navigation read the address; later changes write it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, navigationKey]);
+
   const [quickState, setQuickState] = useState<{ scope: string; selection: QuickSelection | null } | null>(null);
   const key = `buyerly:quick-filter:${scope}`;
   let quick: QuickSelection | null = null;
@@ -40,18 +75,10 @@ export function useCampaignViewFilters(scope: string, navigationKey: number) {
     setQuickState({ scope, selection });
     try { sessionStorage.setItem(key, JSON.stringify(selection)); } catch { /* Storage is optional. */ }
   };
-  // An address carries its filters: a link without any, such as a search
-  // result, opens the list unfiltered.
-  useEffect(() => {
-    setFilters(readFilters());
-  }, [navigationKey]);
+
   const updateFilters = (entity: AdsManagerEntity, clauses: FilterClause[]) => {
-    const next = { ...filters, [entity]: clauses };
-    setFilters(next);
-    const url = new URL(window.location.href);
-    if (Object.values(next).some(items => items.length)) url.searchParams.set('filter', JSON.stringify(next));
-    else url.searchParams.delete('filter');
-    window.history.replaceState(window.history.state, '', url);
+    views[entity].update({ filters: clauses });
+    writeAddress({ ...filters, [entity]: clauses });
   };
   return { filters, updateFilters, quick, setQuick };
 }
