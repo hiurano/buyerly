@@ -153,7 +153,7 @@ Settings → Administration → Teams, как в Linear (#371). Команда �
 | `PATCH /api/accounts/{account_id}/profile` | `custom_name`, `note` | сохраняет внутреннее название до 120 символов и заметку до 500 символов, не меняя имя в Meta |
 | `DELETE /api/accounts/{account_id}` | — | удаляет доступный пользователю кабинет из Buyerly |
 | `POST /api/accounts/{account_id}/assign-rule` | `preset_id`, `scope` | назначает один пресет и включает исполнение правил кабинета; `scope` по умолчанию охватывает весь кабинет |
-| `GET /api/accounts/{account_id}/rules/{preset_id}/preview` | — | только чтение: что проверит правило, если привязать его ко всему кабинету. `level`, `total`, `running`, `matching`, `rules_enabled`, `already_attached`, `data_as_of` и до 50 сущностей уровня правила (`outcome`: `matched`, `not_met`, `inactive`; `detail` — показания) по последним синхронизированным данным, сначала подходящие. Meta не вызывается (#200) |
+| `GET /api/accounts/{account_id}/rules/{preset_id}/preview` | — | только чтение: что проверит правило, если привязать его ко всему кабинету. `level`, `total`, `running`, `matching`, `rules_enabled`, `already_attached`, `data_as_of`, `lifetime_since` (для правила с окном `lifetime` — первый сохранённый день, с которого посчитан lifetime: предпросмотр складывает сохранённые дни, а не читает Meta; иначе `null`) и до 50 сущностей уровня правила (`outcome`: `matched`, `not_met`, `inactive`; `detail` — показания) по последним синхронизированным данным, сначала подходящие. Meta не вызывается (#200) |
 | `PUT /api/accounts/{account_id}/rules/{preset_id}/scope` | `level`, `ids` | меняет область действия уже назначенного правила: `account`, `campaign` или `adset`; область сужает, какие сущности правило рассматривает, а на каком уровне оно действует задаёт `level` самого правила |
 | `POST /api/accounts/{account_id}/assign-rule-group/{group_id}` | — | атомарно назначает всю группу, уже назначенные пресеты пропускает |
 | `POST /api/accounts/{account_id}/detach-rule/{preset_id}` | — | удаляет назначение одного правила; при пустом списке выключает правила |
@@ -261,7 +261,7 @@ Meta возвращает браузер на служебный callback `/api/
 - `action`: `turn_off`, `turn_on`, `notify_only`, `increase_budget`, `decrease_budget`;
 - `metric`: `spend`, `cpl`, `cpreg`, `cpp`, `leads`, `registrations`, `purchases`, `ctr`, `cpc`, `clicks`; счётчики (`leads`, `registrations`, `purchases`, `clicks`) — только целые значения;
 - `operator`: `gte`, `gt`, `lte`, `lt`, `eq`;
-- `time_window`: `today`, `yesterday`, `last_3d`, `last_7d`;
+- `time_window`: `today`, `yesterday`, `last_3d`, `last_7d`, `lifetime`; `lifetime` — всё с запуска объекта, worker читает его у Meta как `date_preset=maximum` (сегодня включено);
 - `condition_logic`: `and`, `or`;
 - 1–20 условий, интервал 1–1440 минут, cooldown 0–10080 минут;
 - процент изменения бюджета 0–100; для `increase_budget` обязателен положительный `budget_max_daily`.

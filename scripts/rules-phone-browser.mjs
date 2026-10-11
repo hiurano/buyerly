@@ -184,6 +184,24 @@ try {
       await page.screenshot({ path: `${output}/form-menu-${width}.png` });
       await page.keyboard.press('Escape');
       await actionMenu.waitFor({ state: 'detached' });
+      // The Window menu, as in Meta's rule dialog (#384): five windows, the
+      // 3- and 7-day ones end yesterday, lifetime counts since launch.
+      const windowPill = form.getByRole('button', { name: /^Window:/ });
+      assert.equal((await windowPill.innerText()).replace(/\s+/g, ' '), 'Window: Today');
+      await press(windowPill);
+      const windowMenu = page.getByRole('menu');
+      await windowMenu.waitFor();
+      const windowItems = (await windowMenu.getByRole('menuitem').allInnerTexts())
+        .map((text) => text.replace(/\s+/g, ' ').trim());
+      assert.deepEqual(windowItems, [
+        'Today', 'Yesterday', 'Last 3 days excluding today', 'Last 7 days excluding today', 'Lifetime since launch',
+      ]);
+      const lifetimeItem = windowMenu.getByRole('menuitem', { name: /^Lifetime/ });
+      await fingerSized(lifetimeItem, 'a two-line Window item');
+      await page.screenshot({ path: `${output}/window-menu-${width}.png` });
+      await press(lifetimeItem);
+      await windowMenu.waitFor({ state: 'detached' });
+      assert.equal((await windowPill.innerText()).replace(/\s+/g, ' '), 'Window: Lifetime');
       const create = form.getByRole('button', { name: 'Create rule' });
       await fingerSized(create, 'Create rule');
       await press(create);
@@ -191,8 +209,10 @@ try {
       assert.equal(lastWrite().verb, 'POST');
       assert.equal(lastWrite().path, '/api/presets');
       assert.equal(lastWrite().body.name, 'Second rule');
+      assert.equal(lastWrite().body.conditions[0].time_window, 'lifetime');
       await form.waitFor({ state: 'detached' });
       await page.locator('[data-row-id="9"]').waitFor();
+      if (!phone) assert.match(await page.locator('[data-row-id="9"]').innerText(), /IF CPL > \S*\s?5\S* lifetime/);
       await page.mouse.move(0, 0);
 
       // 2. Edit it from its row's menu.

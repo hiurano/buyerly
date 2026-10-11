@@ -1375,7 +1375,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 {"name": "Unknown logic", "condition_logic": "xor", "conditions": base_condition},
                 {
                     "name": "Unknown window",
-                    "conditions": [{**base_condition[0], "time_window": "lifetime"}],
+                    "conditions": [{**base_condition[0], "time_window": "last_30d"}],
                 },
                 {
                     "name": "Unsafe percent",
@@ -3745,6 +3745,68 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             ).scalar_one()
             self.assertFalse(account.rules_enabled)
             self.assertNotIn(str(preset_id), account.active_rules or "")
+        self.assertIsNone(preview["lifetime_since"])
+
+    async def test_rule_preview_sums_every_stored_day_for_a_lifetime_rule(self):
+        """#384: the preview has no Meta lifetime, so it sums the stored days
+        and says from which day; every day counts, not only today's."""
+        utc_today = datetime.now(timezone.utc).date()
+        # Days that are past in every time zone, whatever the account's is.
+        days = [(utc_today - timedelta(days=back)).isoformat() for back in (3, 2, 1)]
+        async with self.test_session_maker() as session:
+            for entity_id, name, spends, leads in (
+                ("adset_ladder", "Ladder", (2.0, 1.5, 0.6), (0, 0, 0)),
+                ("adset_lead", "Lead early", (2.0, 1.5, 0.6), (1, 0, 0)),
+            ):
+                for day, spend, lead_count in zip(days, spends, leads):
+                    session.add(
+                        AnalyticsEntityFact(
+                            workspace_id=self.ws_buyer_id,
+                            account_id="act_1018756607700064",
+                            entity_level="adset",
+                            entity_id=entity_id,
+                            entity_name=name,
+                            date=day,
+                            currency="USD",
+                            spend=spend,
+                            leads=lead_count,
+                            status="ACTIVE",
+                            effective_status="ACTIVE",
+                        )
+                    )
+            await session.commit()
+
+        auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            preset = await client.post(
+                "/api/presets",
+                headers=auth,
+                json={
+                    "name": "$4 and no lead",
+                    "action": "turn_off",
+                    "level": "adset",
+                    "conditions": [
+                        {"metric": "spend", "operator": "gte", "value": 4.0, "time_window": "lifetime"},
+                        {"metric": "leads", "operator": "eq", "value": 0, "time_window": "lifetime"},
+                    ],
+                },
+            )
+            self.assertEqual(preset.status_code, 200, preset.text)
+            self.assertEqual(preset.json()["conditions"][0]["time_window"], "lifetime")
+            response = await client.get(
+                f"/api/accounts/act_1018756607700064/rules/{preset.json()['id']}/preview",
+                headers=auth,
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        preview = response.json()
+        self.assertEqual(preview["lifetime_since"], days[0])
+        self.assertEqual(
+            [(item["entity_id"], item["outcome"]) for item in preview["entities"]],
+            [("adset_ladder", "matched"), ("adset_lead", "not_met")],
+        )
+        self.assertIn("Spend [Lifetime] (4.10 USD)", preview["entities"][0]["detail"])
 
     async def test_an_ad_stop_can_be_undone(self):
         source_id = await self._seed_entity_stop_event(

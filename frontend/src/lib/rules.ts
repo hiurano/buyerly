@@ -21,7 +21,8 @@ export type RuleMetric =
 
 export type RuleOperator = 'gte' | 'gt' | 'lte' | 'lt' | 'eq';
 
-export type RuleTimeWindow = 'today' | 'yesterday' | 'last_3d' | 'last_7d';
+/** `lifetime` is everything since the object launched (Meta's "maximum" preset). */
+export type RuleTimeWindow = 'today' | 'yesterday' | 'last_3d' | 'last_7d' | 'lifetime';
 
 export type RuleAction =
   | 'turn_off'
@@ -185,11 +186,29 @@ export const RULE_OPERATOR_LABELS: Record<RuleOperator, string> = {
   eq: '=',
 };
 
+/** The window as it ends a condition: "IF Spend ≥ $4 & Leads = 0 lifetime". */
 export const RULE_TIME_WINDOW_LABELS: Record<RuleTimeWindow, string> = {
   today: 'today',
   yesterday: 'yesterday',
-  last_3d: 'last 3d',
-  last_7d: 'last 7d',
+  last_3d: 'last 3 days',
+  last_7d: 'last 7 days',
+  lifetime: 'lifetime',
+};
+
+/** The rule form's Window menu, as in Meta's rule dialog. */
+export const RULE_TIME_WINDOW_MENU_LABELS: Record<RuleTimeWindow, string> = {
+  today: 'Today',
+  yesterday: 'Yesterday',
+  last_3d: 'Last 3 days',
+  last_7d: 'Last 7 days',
+  lifetime: 'Lifetime',
+};
+
+/** Muted second line under a Window menu item; Meta's 3/7-day presets end yesterday. */
+export const RULE_TIME_WINDOW_HINTS: Partial<Record<RuleTimeWindow, string>> = {
+  last_3d: 'excluding today',
+  last_7d: 'excluding today',
+  lifetime: 'since launch',
 };
 
 export const RULE_LEVEL_LABELS: Record<RuleExecutionLevel, string> = {
@@ -620,6 +639,8 @@ export interface RuleAccountPreview {
   running: number;
   matching: number;
   data_as_of: string | null;
+  /** First synced day the preview's lifetime numbers start from; null without a lifetime condition. */
+  lifetime_since: string | null;
   entities: RulePreviewEntity[];
 }
 

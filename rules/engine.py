@@ -1,5 +1,5 @@
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import Optional, Dict, Any, List
 from database.models import Account
@@ -271,10 +271,18 @@ class RuleEngine:
 
                 if time_window != "today" and insights_by_window and time_window in insights_by_window:
                     source_data = insights_by_window[time_window]
+                elif time_window == "lifetime":
+                    # Never stand in today's numbers for the lifetime ones: a
+                    # threshold meant for spend since launch read against
+                    # today's spend (with its zero leads) would stop the wrong
+                    # object. Without the lifetime read the rule waits.
+                    source_data = None
                 else:
                     source_data = entity
 
-                reading = rule_metric_reading(metric, source_data)
+                reading = rule_metric_reading(metric, source_data or {})
+                if source_data is None:
+                    reading = replace(reading, value=None)
                 metric_val, metric_name, unit = reading.value, reading.label, reading.unit
 
                 op_symbol = {
@@ -287,7 +295,12 @@ class RuleEngine:
                 
                 window_label = ""
                 if time_window != "today":
-                    window_labels = {"yesterday": "Yesterday", "last_3d": "3 days", "last_7d": "7 days"}
+                    window_labels = {
+                        "yesterday": "Yesterday",
+                        "last_3d": "Last 3 days",
+                        "last_7d": "Last 7 days",
+                        "lifetime": "Lifetime",
+                    }
                     window_label = f" [{window_labels.get(time_window, time_window)}]"
 
                 if metric_val is None:

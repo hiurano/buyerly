@@ -28,6 +28,13 @@ const ACTION_RESULT: Record<string, string> = {
 
 const SHOWN_ENTITIES = 8;
 
+/** "Oct 3" from an ad account's YYYY-MM-DD, without shifting it into the viewer's zone. */
+function formatDay(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  if (!year || !month || !day) return isoDate;
+  return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 interface AttachRulePreviewDialogProps {
   open: boolean;
   presetId: number;
@@ -156,6 +163,11 @@ export const AttachRulePreviewDialog: React.FC<AttachRulePreviewDialogProps> = (
                     {preview.data_as_of
                       ? `Numbers synced ${formatRelativeTime(preview.data_as_of).toLowerCase()}. `
                       : ''}
+                    {preview.lifetime_since && (
+                      <span data-testid="attach-rule-preview-lifetime">
+                        {`Lifetime here counts the days Buyerly has synced, since ${formatDay(preview.lifetime_since)}; the rule itself reads lifetime from Meta. `}
+                      </span>
+                    )}
                     To run it on some campaigns or ad sets only, attach it from the Rules column in Ads Manager.
                   </p>
                 </>

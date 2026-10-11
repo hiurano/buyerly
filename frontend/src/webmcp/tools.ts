@@ -58,7 +58,7 @@ const AGENT_ACTIONS = ['notify_only', 'turn_off'] as const satisfies readonly Ru
 const METRICS: RuleMetric[] = ['spend', 'cpl', 'cpreg', 'cpp', 'cpc', 'leads', 'registrations', 'purchases', 'clicks', 'ctr'];
 const COUNT_METRICS: ReadonlySet<RuleMetric> = new Set(['leads', 'registrations', 'purchases', 'clicks']);
 const OPERATORS = ['gte', 'gt', 'lte', 'lt', 'eq'];
-const WINDOWS: RuleTimeWindow[] = ['today', 'yesterday', 'last_3d', 'last_7d'];
+const WINDOWS: RuleTimeWindow[] = ['today', 'yesterday', 'last_3d', 'last_7d', 'lifetime'];
 const LEVELS: RuleExecutionLevel[] = ['adset', 'campaign', 'ad'];
 /** The Repeat and Check choices the rule editor offers, with its defaults. */
 const REPEAT_MINUTES = [60, 180, 360, 720, 1440];
@@ -369,6 +369,7 @@ const RULE_OPTIONS = {
     yesterday: "The ad account's previous day.",
     last_3d: 'The last 3 days.',
     last_7d: 'The last 7 days.',
+    lifetime: 'Everything since the ad set, campaign or ad launched, today included.',
   },
   condition_logic: { and: 'Every condition must hold.', or: 'Any condition is enough.' },
   actions: {
