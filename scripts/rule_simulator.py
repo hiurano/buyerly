@@ -209,7 +209,7 @@ def evening_launch() -> list[SimulatedAdSet]:
         SimulatedAdSet("eve_no_lead", "Evening · clicks, no lead", "clicks but no lead, $3.60 at midnight", 4,
                        clicks_at=[0.6, 1.5, 2.4, 3.1]),
         SimulatedAdSet("eve_winner", "Evening · converts", "two leads and a registration before midnight", 5,
-                       clicks_at=[0.4, 1.0, 1.6], leads_at=[1.8, 3.3], registrations_at=[4.0]),
+                       daily_budget=10.0, clicks_at=[0.4, 1.0, 1.6], leads_at=[1.8, 3.3], registrations_at=[4.0]),
     ]
 
 
