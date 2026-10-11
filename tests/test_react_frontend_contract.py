@@ -378,6 +378,11 @@ class TestReactFrontendContract(unittest.TestCase):
         # The create form may only offer what api/schemas/rules.py accepts.
         for supported in ("'cpl'", "'cpreg'", "'cpp'", "'last_3d'", "'lifetime'", "'increase_budget'"):
             self.assertIn(supported, self.create_rule_modal)
+        # The Window menu reads like Meta's rule dialog (#384).
+        self.assertIn("RULE_TIME_WINDOW_MENU_LABELS[value]", self.create_rule_modal)
+        self.assertIn("RULE_TIME_WINDOW_HINTS[value]", self.create_rule_modal)
+        for label in ("'Last 3 days'", "'Last 7 days'", "'Lifetime'", "'excluding today'", "'since launch'"):
+            self.assertIn(label, self.rules_lib)
         for unsupported in (
             "Cost per result",
             "Lifetime spent",

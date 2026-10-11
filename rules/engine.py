@@ -297,8 +297,8 @@ class RuleEngine:
                 if time_window != "today":
                     window_labels = {
                         "yesterday": "Yesterday",
-                        "last_3d": "3 days",
-                        "last_7d": "7 days",
+                        "last_3d": "Last 3 days",
+                        "last_7d": "Last 7 days",
                         "lifetime": "Lifetime",
                     }
                     window_label = f" [{window_labels.get(time_window, time_window)}]"

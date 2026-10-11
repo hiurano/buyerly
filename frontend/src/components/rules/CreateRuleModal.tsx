@@ -14,7 +14,8 @@ import { FormCheckbox } from '@/ui/FormCheckbox';
 import {
   RULE_LEVEL_LABELS,
   RULE_METRIC_LABELS,
-  RULE_TIME_WINDOW_LABELS,
+  RULE_TIME_WINDOW_HINTS,
+  RULE_TIME_WINDOW_MENU_LABELS,
   describeRuleReach,
 } from '@/lib/rules';
 import { TOUCH_HEIGHT_CLASS as TOUCH_HEIGHT } from '@/lib/useMediaQuery';
@@ -470,16 +471,29 @@ export const CreateRuleModal: React.FC = () => {
                     <button type="button" className={PILL_CLASS}>
                       <span className="text-[var(--text-tertiary)]">Window:</span>
                       <span className="text-[var(--text-primary)]">
-                        {RULE_TIME_WINDOW_LABELS[timeWindow]}
+                        {RULE_TIME_WINDOW_MENU_LABELS[timeWindow]}
                       </span>
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" sideOffset={4}>
-                    {TIME_WINDOWS.map((value) => (
-                      <DropdownMenuItem key={value} onClick={() => setTimeWindow(value)}>
-                        <span>{RULE_TIME_WINDOW_LABELS[value]}</span>
-                      </DropdownMenuItem>
-                    ))}
+                    {TIME_WINDOWS.map((value) => {
+                      const hint = RULE_TIME_WINDOW_HINTS[value];
+                      return (
+                        <DropdownMenuItem
+                          key={value}
+                          data-testid={`rule-window-${value}`}
+                          className={hint ? '!h-auto py-[5px]' : ''}
+                          onClick={() => setTimeWindow(value)}
+                        >
+                          <span className="flex flex-col leading-[17px]">
+                            <span>{RULE_TIME_WINDOW_MENU_LABELS[value]}</span>
+                            {hint && (
+                              <span className="text-[12px] text-[var(--text-tertiary)]">{hint}</span>
+                            )}
+                          </span>
+                        </DropdownMenuItem>
+                      );
+                    })}
                   </DropdownMenuContent>
                 </DropdownMenu>
 
