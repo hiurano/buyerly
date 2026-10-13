@@ -64,3 +64,6 @@ frontend/.vite/
 
 # Local per-branch preview (scripts/preview.sh)
 .preview.env
+
+# Incremental build state of a local tsc run
+frontend/*.tsbuildinfo
