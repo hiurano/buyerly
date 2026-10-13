@@ -909,7 +909,7 @@ class MetaClient:
         insights_url = f"{self.base_url}/{acc_id}/insights"
         insights_params = {
             "level": "adset",
-            "fields": "campaign_id,adset_id,adset_name,spend,impressions,clicks,cpc,ctr,actions,cost_per_action_type",
+            "fields": "campaign_id,adset_id,adset_name,spend,impressions,clicks,inline_link_clicks,cpc,ctr,actions,cost_per_action_type",
             "date_preset": date_preset,
             "limit": 100,
             "access_token": access_token
@@ -961,6 +961,7 @@ class MetaClient:
                 "effective_status": effective_status,
                 "spend": spend,
                 "clicks": clicks,
+                "link_clicks": normalized["link_clicks"],
                 "leads": normalized["leads"],
                 "registrations": normalized["registrations"],
                 "purchases": normalized["purchases"],
@@ -985,6 +986,7 @@ class MetaClient:
                         "effective_status": "ARCHIVED",
                         "spend": spend,
                         "clicks": normalized["clicks"],
+                        "link_clicks": normalized["link_clicks"],
                         "leads": normalized["leads"],
                         "registrations": normalized["registrations"],
                         "purchases": normalized["purchases"],
@@ -1324,7 +1326,7 @@ class MetaClient:
             {
                 "level": "ad",
                 "fields": (
-                    "campaign_id,adset_id,ad_id,ad_name,spend,impressions,clicks,"
+                    "campaign_id,adset_id,ad_id,ad_name,spend,impressions,clicks,inline_link_clicks,"
                     "cpc,ctr,actions,cost_per_action_type"
                 ),
                 "date_preset": date_preset,
@@ -1372,6 +1374,7 @@ class MetaClient:
                 "effective_status": effective_status,
                 "spend": spend,
                 "clicks": clicks,
+                "link_clicks": normalized["link_clicks"],
                 "leads": normalized["leads"],
                 "registrations": normalized["registrations"],
                 "purchases": normalized["purchases"],
@@ -1467,7 +1470,7 @@ class MetaClient:
             f"{self.base_url}/{acc_id}/insights",
             {
                 "level": "campaign",
-                "fields": "campaign_id,spend,impressions,clicks,cpc,ctr,actions,cost_per_action_type",
+                "fields": "campaign_id,spend,impressions,clicks,inline_link_clicks,cpc,ctr,actions,cost_per_action_type",
                 "date_preset": date_preset,
                 "limit": 100,
                 "access_token": access_token,
@@ -1485,6 +1488,7 @@ class MetaClient:
                 "campaign_id": campaign_id,
                 "spend": normalized["spend"],
                 "clicks": normalized["clicks"],
+                "link_clicks": normalized["link_clicks"],
                 "leads": normalized["leads"],
                 "registrations": normalized["registrations"],
                 "purchases": normalized["purchases"],

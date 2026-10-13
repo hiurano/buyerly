@@ -1,10 +1,17 @@
+import asyncio
 import unittest
 
 from sqlalchemy import delete, func, select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from core.rule_examples import EXAMPLE_GROUPS, EXAMPLE_PRESETS, ensure_rule_examples
-from database.db import Base
+from core.metrics import validate_runtime_rule
+from core.rule_examples import (
+    EXAMPLE_LABELS,
+    EXAMPLE_PRESETS,
+    RULE_EXAMPLES_VERSION,
+    _runtime_payload,
+    ensure_rule_examples,
+)
 from database.models import (
     Account,
     RuleExamplesBootstrap,
@@ -15,9 +22,68 @@ from database.models import (
     Workspace,
     WorkspaceMember,
 )
-
-
 from tests.test_db_helper import create_test_engine, init_test_db
+
+
+NL_RULES = [
+    ("$3 and no click", [("spend", "gte", 3), ("link_clicks", "eq", 0)]),
+    ("$3.50 and one click", [("spend", "gte", 3.5), ("link_clicks", "lte", 1)]),
+    ("$4 and no lead", [("spend", "gte", 4), ("leads", "eq", 0)]),
+    (
+        "$7 and no registration",
+        [("spend", "gte", 7), ("registrations", "eq", 0), ("leads", "lte", 1)],
+    ),
+    ("$12 ceiling", [("spend", "gte", 12)]),
+]
+
+
+class TestExampleDefinitions(unittest.TestCase):
+    def test_the_set_is_the_nl_launch_ladder(self):
+        self.assertEqual(RULE_EXAMPLES_VERSION, 2)
+        self.assertEqual(
+            [
+                (
+                    preset["name"],
+                    [
+                        (condition["metric"], condition["operator"], condition["value"])
+                        for condition in preset["conditions"]
+                    ],
+                )
+                for preset in EXAMPLE_PRESETS
+            ],
+            NL_RULES,
+        )
+        for preset in EXAMPLE_PRESETS:
+            validate_runtime_rule(_runtime_payload(preset))
+            self.assertEqual(preset["action"], "turn_off")
+            self.assertEqual(preset["level"], "adset")
+            self.assertEqual(preset["check_interval_minutes"], 5)
+            self.assertEqual(
+                {condition["time_window"] for condition in preset["conditions"]},
+                {"lifetime"},
+            )
+
+    def test_one_label_says_where_to_attach_and_fits_the_label_form(self):
+        self.assertEqual([label["name"] for label in EXAMPLE_LABELS], ["NL launch"])
+        label = EXAMPLE_LABELS[0]
+        self.assertLessEqual(len(label["description"]), 500)
+        self.assertIn("test campaigns", label["description"])
+        self.assertIn("currency", label["description"])
+        self.assertEqual(
+            list(label["preset_keys"]),
+            [preset["key"] for preset in EXAMPLE_PRESETS],
+        )
+
+    def test_the_simulator_replays_the_same_rules(self):
+        from scripts.rule_simulator import CHEAT_SHEET_RULES
+
+        self.assertEqual(
+            [
+                (name, [(metric, operator, float(value)) for metric, operator, value in conditions])
+                for name, conditions in NL_RULES
+            ],
+            CHEAT_SHEET_RULES,
+        )
 
 
 class TestRuleExamples(unittest.IsolatedAsyncioTestCase):
@@ -33,178 +99,259 @@ class TestRuleExamples(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         await self.engine.dispose()
 
-    async def test_examples_are_owned_unassigned_and_created_only_once(self):
-        async with self.sessions() as session:
-            user = User(
-                telegram_id="111",
-                username="example_owner",
-                is_approved=True,
+    async def _workspace(self, session, slug: str, *member_names: str):
+        users = [
+            User(telegram_id=f"{slug}-{name}", username=f"{slug}_{name}", is_approved=True)
+            for name in member_names
+        ]
+        session.add_all(users)
+        await session.flush()
+        workspace = Workspace(name=slug.title(), slug=slug, owner_user_id=users[0].id)
+        session.add(workspace)
+        await session.flush()
+        for index, user in enumerate(users):
+            session.add(
+                WorkspaceMember(
+                    workspace_id=workspace.id,
+                    user_id=user.id,
+                    role="owner" if index == 0 else "buyer",
+                )
             )
+            user.active_workspace_id = workspace.id
+        await session.commit()
+        return workspace, users
+
+    async def _count(self, session, model, *where) -> int:
+        return (
+            await session.execute(select(func.count()).select_from(model).where(*where))
+        ).scalar_one()
+
+    async def test_a_new_workspace_gets_the_nl_launch_set_unattached_once(self):
+        async with self.sessions() as session:
+            workspace, (user,) = await self._workspace(session, "examples", "owner")
             account = Account(
                 account_id="act_examples",
                 name="Examples account",
                 access_token="token",
                 currency="USD",
                 rules_enabled=False,
-            )
-            session.add_all([user, account])
-            await session.flush()
-            workspace = Workspace(
-                name="Examples",
-                slug="examples",
+                workspace_id=workspace.id,
                 owner_user_id=user.id,
             )
-            session.add(workspace)
-            await session.flush()
-            session.add(
-                WorkspaceMember(
-                    workspace_id=workspace.id,
-                    user_id=user.id,
-                    role="owner",
-                )
-            )
-            user.active_workspace_id = workspace.id
-            account.workspace_id = workspace.id
-            account.owner_user_id = user.id
+            session.add(account)
             await session.commit()
-            await session.refresh(user)
 
-            self.assertTrue(
-                await ensure_rule_examples(
-                    session,
-                    user,
-                    workspace_id=workspace.id,
-                )
-            )
+            self.assertTrue(await ensure_rule_examples(session, user, workspace_id=workspace.id))
+
             presets = (
                 await session.execute(
                     select(RulePreset)
-                    .where(RulePreset.owner_user_id == user.id)
+                    .where(RulePreset.workspace_id == workspace.id)
                     .order_by(RulePreset.id)
                 )
             ).scalars().all()
-            groups = (
+            labels = (
                 await session.execute(
-                    select(RuleGroup).where(RuleGroup.owner_user_id == user.id)
+                    select(RuleGroup).where(RuleGroup.workspace_id == workspace.id)
                 )
             ).scalars().all()
-            group_items_count = (
-                await session.execute(select(func.count()).select_from(RuleGroupItem))
-            ).scalar_one()
-            await session.refresh(account)
-
-            self.assertEqual(len(presets), len(EXAMPLE_PRESETS))
-            self.assertEqual(len(groups), len(EXAMPLE_GROUPS))
             self.assertEqual(
-                group_items_count,
-                sum(len(group["preset_keys"]) for group in EXAMPLE_GROUPS),
+                [
+                    (
+                        preset.name,
+                        [
+                            (condition["metric"], condition["operator"], condition["value"])
+                            for condition in preset.conditions
+                        ],
+                    )
+                    for preset in presets
+                ],
+                NL_RULES,
             )
-            self.assertTrue(all(preset.owner_user_id == user.id for preset in presets))
+            self.assertTrue(all(preset.level == "adset" for preset in presets))
+            self.assertTrue(all(preset.check_interval_minutes == 5 for preset in presets))
+            self.assertEqual([label.name for label in labels], ["NL launch"])
+            self.assertEqual(labels[0].description, EXAMPLE_LABELS[0]["description"])
+            items = (
+                await session.execute(
+                    select(RuleGroupItem)
+                    .where(RuleGroupItem.group_id == labels[0].id)
+                    .order_by(RuleGroupItem.position)
+                )
+            ).scalars().all()
+            self.assertEqual([item.preset_id for item in items], [preset.id for preset in presets])
+
+            await session.refresh(account)
             self.assertFalse(account.rules_enabled)
             self.assertEqual(account.active_rules, "[]")
 
-            deleted_preset_id = presets[0].id
-            deleted_group_id = groups[0].id
-            await session.execute(
-                delete(RuleGroupItem).where(
-                    (RuleGroupItem.preset_id == deleted_preset_id)
-                    | (RuleGroupItem.group_id == deleted_group_id)
+            markers = (
+                await session.execute(
+                    select(RuleExamplesBootstrap).where(
+                        RuleExamplesBootstrap.workspace_id == workspace.id
+                    )
                 )
+            ).scalars().all()
+            self.assertEqual(
+                [(marker.owner_user_id, marker.version) for marker in markers],
+                [(user.id, 2)],
             )
-            await session.execute(delete(RulePreset).where(RulePreset.id == deleted_preset_id))
-            await session.execute(delete(RuleGroup).where(RuleGroup.id == deleted_group_id))
+
+            # Deletion is permanent: the examples are not created again.
+            await session.execute(delete(RulePreset).where(RulePreset.id == presets[0].id))
+            await session.execute(delete(RuleGroup).where(RuleGroup.id == labels[0].id))
             await session.commit()
-
-            self.assertFalse(
-                await ensure_rule_examples(
-                    session,
-                    user,
-                    workspace_id=workspace.id,
-                )
+            self.assertFalse(await ensure_rule_examples(session, user, workspace_id=workspace.id))
+            self.assertEqual(
+                await self._count(session, RulePreset, RulePreset.workspace_id == workspace.id),
+                len(EXAMPLE_PRESETS) - 1,
             )
-            remaining_presets = (
-                await session.execute(
-                    select(func.count())
-                    .select_from(RulePreset)
-                    .where(RulePreset.owner_user_id == user.id)
-                )
-            ).scalar_one()
-            remaining_groups = (
-                await session.execute(
-                    select(func.count())
-                    .select_from(RuleGroup)
-                    .where(RuleGroup.owner_user_id == user.id)
-                )
-            ).scalar_one()
-            marker_count = (
-                await session.execute(
-                    select(func.count())
-                    .select_from(RuleExamplesBootstrap)
-                    .where(RuleExamplesBootstrap.owner_user_id == user.id)
-                )
-            ).scalar_one()
+            self.assertEqual(
+                await self._count(session, RuleGroup, RuleGroup.workspace_id == workspace.id),
+                0,
+            )
 
-            self.assertEqual(remaining_presets, len(EXAMPLE_PRESETS) - 1)
-            self.assertEqual(remaining_groups, len(EXAMPLE_GROUPS) - 1)
-            self.assertEqual(marker_count, 1)
-
-    async def test_each_user_receives_an_isolated_library(self):
+    async def test_a_team_gets_one_set_not_one_per_member(self):
         async with self.sessions() as session:
-            first = User(telegram_id="201", username="first", is_approved=True)
-            second = User(telegram_id="202", username="second", is_approved=True)
-            session.add_all([first, second])
-            await session.flush()
-            first_workspace = Workspace(
-                name="First",
-                slug="first",
-                owner_user_id=first.id,
+            workspace, (owner, first, second) = await self._workspace(
+                session, "team", "owner", "first", "second"
             )
-            second_workspace = Workspace(
-                name="Second",
-                slug="second",
-                owner_user_id=second.id,
+
+            self.assertTrue(await ensure_rule_examples(session, first, workspace_id=workspace.id))
+            self.assertFalse(await ensure_rule_examples(session, second, workspace_id=workspace.id))
+            self.assertFalse(await ensure_rule_examples(session, owner, workspace_id=workspace.id))
+
+            self.assertEqual(
+                await self._count(session, RulePreset, RulePreset.workspace_id == workspace.id),
+                len(EXAMPLE_PRESETS),
             )
-            session.add_all([first_workspace, second_workspace])
-            await session.flush()
+            self.assertEqual(
+                await self._count(session, RuleGroup, RuleGroup.workspace_id == workspace.id),
+                1,
+            )
+            # The marker sits on the owner, whoever opened Rules first.
+            markers = (
+                await session.execute(
+                    select(RuleExamplesBootstrap.owner_user_id).where(
+                        RuleExamplesBootstrap.workspace_id == workspace.id
+                    )
+                )
+            ).scalars().all()
+            self.assertEqual(markers, [owner.id])
+
+    async def test_members_opening_rules_at_once_create_one_set(self):
+        async with self.sessions() as session:
+            workspace, members = await self._workspace(
+                session, "race", "owner", "first", "second"
+            )
+
+        async def open_rules(user):
+            async with self.sessions() as session:
+                return await ensure_rule_examples(session, user, workspace_id=workspace.id)
+
+        created = await asyncio.gather(*(open_rules(user) for user in members))
+
+        self.assertEqual(sorted(created), [False, False, True])
+        async with self.sessions() as session:
+            self.assertEqual(
+                await self._count(session, RulePreset, RulePreset.workspace_id == workspace.id),
+                len(EXAMPLE_PRESETS),
+            )
+
+    async def test_a_workspace_with_the_old_examples_gets_the_nl_set_once(self):
+        async with self.sessions() as session:
+            workspace, (owner, member) = await self._workspace(session, "legacy", "owner", "member")
+            # Version 1 left a marker per member and its own examples, which
+            # may have been edited since.
+            old_rule = RulePreset(
+                workspace_id=workspace.id,
+                owner_user_id=member.id,
+                name="Example · Stop with no leads after 20",
+                action="turn_off",
+                conditions=[
+                    {"metric": "spend", "operator": "gte", "value": 25, "time_window": "today"},
+                    {"metric": "leads", "operator": "eq", "value": 0, "time_window": "today"},
+                ],
+            )
+            old_label = RuleGroup(
+                workspace_id=workspace.id,
+                owner_user_id=member.id,
+                name="Example · Launch control",
+            )
             session.add_all(
                 [
-                    WorkspaceMember(
-                        workspace_id=first_workspace.id,
-                        user_id=first.id,
-                        role="owner",
-                    ),
-                    WorkspaceMember(
-                        workspace_id=second_workspace.id,
-                        user_id=second.id,
-                        role="owner",
-                    ),
+                    old_rule,
+                    old_label,
+                    RuleExamplesBootstrap(workspace_id=workspace.id, owner_user_id=owner.id, version=1),
+                    RuleExamplesBootstrap(workspace_id=workspace.id, owner_user_id=member.id, version=1),
                 ]
             )
-            first.active_workspace_id = first_workspace.id
-            second.active_workspace_id = second_workspace.id
             await session.commit()
-            await session.refresh(first)
-            await session.refresh(second)
 
-            await ensure_rule_examples(
-                session,
-                first,
-                workspace_id=first_workspace.id,
-            )
-            await ensure_rule_examples(
-                session,
-                second,
-                workspace_id=second_workspace.id,
-            )
+            self.assertTrue(await ensure_rule_examples(session, member, workspace_id=workspace.id))
+            self.assertFalse(await ensure_rule_examples(session, owner, workspace_id=workspace.id))
+            self.assertFalse(await ensure_rule_examples(session, member, workspace_id=workspace.id))
 
-            counts = {}
-            for user in (first, second):
-                counts[user.id] = (
+            names = (
+                await session.execute(
+                    select(RulePreset.name)
+                    .where(RulePreset.workspace_id == workspace.id)
+                    .order_by(RulePreset.id)
+                )
+            ).scalars().all()
+            self.assertEqual(
+                names,
+                ["Example · Stop with no leads after 20", *[name for name, _ in NL_RULES]],
+            )
+            await session.refresh(old_rule)
+            self.assertEqual(old_rule.conditions[0]["value"], 25)
+            label_names = (
+                await session.execute(
+                    select(RuleGroup.name)
+                    .where(RuleGroup.workspace_id == workspace.id)
+                    .order_by(RuleGroup.id)
+                )
+            ).scalars().all()
+            self.assertEqual(label_names, ["Example · Launch control", "NL launch"])
+            markers = (
+                await session.execute(
+                    select(RuleExamplesBootstrap.owner_user_id, RuleExamplesBootstrap.version)
+                    .where(RuleExamplesBootstrap.workspace_id == workspace.id)
+                    .order_by(RuleExamplesBootstrap.owner_user_id)
+                )
+            ).all()
+            self.assertEqual([tuple(row) for row in markers], [(owner.id, 2), (member.id, 1)])
+
+    async def test_a_workspace_whose_owner_never_opened_rules_gets_an_owner_marker(self):
+        async with self.sessions() as session:
+            workspace, (owner, member) = await self._workspace(session, "nomarker", "owner", "member")
+            session.add(
+                RuleExamplesBootstrap(workspace_id=workspace.id, owner_user_id=member.id, version=1)
+            )
+            await session.commit()
+
+            self.assertTrue(await ensure_rule_examples(session, member, workspace_id=workspace.id))
+            self.assertFalse(await ensure_rule_examples(session, member, workspace_id=workspace.id))
+            versions = dict(
+                (
                     await session.execute(
-                        select(func.count())
-                        .select_from(RulePreset)
-                        .where(RulePreset.owner_user_id == user.id)
+                        select(RuleExamplesBootstrap.owner_user_id, RuleExamplesBootstrap.version)
+                        .where(RuleExamplesBootstrap.workspace_id == workspace.id)
                     )
-                ).scalar_one()
-            self.assertEqual(counts[first.id], len(EXAMPLE_PRESETS))
-            self.assertEqual(counts[second.id], len(EXAMPLE_PRESETS))
+                ).all()
+            )
+            self.assertEqual(versions, {owner.id: 2, member.id: 1})
+
+    async def test_each_workspace_receives_its_own_set(self):
+        async with self.sessions() as session:
+            first_workspace, (first,) = await self._workspace(session, "first", "owner")
+            second_workspace, (second,) = await self._workspace(session, "second", "owner")
+
+            await ensure_rule_examples(session, first, workspace_id=first_workspace.id)
+            await ensure_rule_examples(session, second, workspace_id=second_workspace.id)
+
+            for workspace in (first_workspace, second_workspace):
+                self.assertEqual(
+                    await self._count(session, RulePreset, RulePreset.workspace_id == workspace.id),
+                    len(EXAMPLE_PRESETS),
+                )

@@ -17,7 +17,8 @@ export type RuleMetric =
   | 'purchases'
   | 'ctr'
   | 'cpc'
-  | 'clicks';
+  | 'clicks'
+  | 'link_clicks';
 
 export type RuleOperator = 'gte' | 'gt' | 'lte' | 'lt' | 'eq';
 
@@ -194,6 +195,7 @@ export const RULE_METRIC_LABELS: Record<RuleMetric, string> = {
   ctr: 'CTR',
   cpc: 'CPC',
   clicks: 'Clicks',
+  link_clicks: 'Link clicks',
 };
 
 export const RULE_OPERATOR_LABELS: Record<RuleOperator, string> = {

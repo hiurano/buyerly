@@ -686,6 +686,28 @@ class TestRuleEngine(unittest.TestCase):
         self.assertEqual(check.outcome, "not_met")
         self.assertIn("Spend [Lifetime]: no data", check.detail)
 
+    def test_link_clicks_are_not_all_clicks(self):
+        """A like or a profile tap is a click, but not a click on the ad's link (#386)."""
+        self.set_rule(conditions=[
+            {"metric": "spend", "operator": "gte", "value": 3.0, "time_window": "lifetime"},
+            {"metric": "link_clicks", "operator": "eq", "value": 0, "time_window": "lifetime"},
+        ])
+        adset_today = {"adset_id": "1", "adset_name": "Test", "status": "ACTIVE",
+                       "spend": 3.1, "clicks": 4, "link_clicks": 0}
+
+        res = RuleEngine.evaluate(
+            adset_today, self.account,
+            insights_by_window={"lifetime": {"spend": 3.1, "clicks": 4, "link_clicks": 0}},
+        )
+        self.assertEqual(res.action, RuleAction.STOP)
+        self.assertIn("Link clicks [Lifetime] (0) = 0", res.reason)
+
+        res = RuleEngine.evaluate(
+            adset_today, self.account,
+            insights_by_window={"lifetime": {"spend": 3.1, "clicks": 4, "link_clicks": 1}},
+        )
+        self.assertEqual(res.action, RuleAction.NOOP)
+
     def test_lifetime_window_can_be_mixed_with_today(self):
         self.set_rule(conditions=[
             {"metric": "spend", "operator": "gte", "value": 4.0, "time_window": "lifetime"},
@@ -1028,6 +1050,23 @@ class TestCampaignRollup(unittest.TestCase):
         self.assertEqual(windows["c1"]["yesterday"]["spend"], 12.0)
         self.assertEqual(windows["c1"]["yesterday"]["leads"], 1)
         self.assertEqual(windows["c1"]["yesterday"]["ctr"], 2.0)
+
+    def test_link_clicks_are_rolled_up_per_campaign(self):
+        adsets = [
+            self._adset("a1", "c1", clicks=9, link_clicks=3),
+            self._adset("a2", "c1", clicks=4, link_clicks=1),
+        ]
+        campaigns = [{"campaign_id": "c1", "campaign_name": "Scale", "status": "ACTIVE"}]
+
+        entities, windows = MonitoringWorker._campaign_entities(
+            adsets,
+            campaigns,
+            {"yesterday": {"a1": {"spend": 1.0, "link_clicks": 2}}},
+        )
+
+        self.assertEqual(entities[0]["link_clicks"], 4)
+        self.assertEqual(entities[0]["clicks"], 13)
+        self.assertEqual(windows["c1"]["yesterday"]["link_clicks"], 2)
 
     def test_a_window_counts_ad_sets_that_are_gone_today(self):
         """An archived ad set left out of today's list still spent in the window."""
