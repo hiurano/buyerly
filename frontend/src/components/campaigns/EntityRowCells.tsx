@@ -3,6 +3,8 @@ import { LinearCheckbox } from '@/ui/LinearCheckbox';
 import { LinearToggle } from '@/ui/LinearToggle';
 import { LinearDataMetricCell } from '@/ui/LinearDataList';
 import type { DeliveryControl } from '@/lib/delivery';
+import { findMetric, type AdsManagerMetrics } from './adsManagerMetrics';
+import { formatMetric } from './liveCampaigns';
 
 interface EntityRowControlsProps {
   /** Singular noun for tooltips, e.g. "ad set". */
@@ -63,17 +65,32 @@ export const EntityRowControls: React.FC<EntityRowControlsProps> = ({
   );
 };
 
-interface ResultsCpaCellProps {
-  leadsCount: number;
-  cpa: string;
-  showResults: boolean;
-  showCpa: boolean;
+export interface EntityPropertyRow {
+  identifier: string;
+  campaignName?: string;
+  adSetName?: string;
+  metrics?: AdsManagerMetrics;
+  currency?: string;
 }
 
-/** The combined Results / CPA column: the count, with its cost beside it. */
-export const ResultsCpaCell: React.FC<ResultsCpaCellProps> = ({ leadsCount, cpa, showResults, showCpa }) => (
-  <LinearDataMetricCell
-    value={showResults ? `${leadsCount} leads` : cpa}
-    suffix={showResults && showCpa ? `(${cpa})` : undefined}
-  />
+const EntityTextCell: React.FC<{ text: string; muted?: boolean }> = ({ text, muted = false }) => (
+  <div
+    className={`min-w-0 truncate whitespace-nowrap text-[12px] font-[450] ${muted ? 'text-[var(--text-tertiary)]' : 'text-[var(--text-secondary)]'}`}
+    title={text || undefined}
+  >
+    {text || '—'}
+  </div>
 );
+
+/**
+ * Any Ads Manager column after the name (#389): the parent campaign or ad
+ * set, the Meta ID, or one figure for the period. Rules has its own cell.
+ */
+export const EntityPropertyCell: React.FC<{ columnId: string; row: EntityPropertyRow }> = ({ columnId, row }) => {
+  if (columnId === 'campaign') return <EntityTextCell text={row.campaignName ?? ''} />;
+  if (columnId === 'adSet') return <EntityTextCell text={row.adSetName ?? ''} />;
+  if (columnId === 'id') return <EntityTextCell text={row.identifier} muted />;
+  const metric = findMetric(columnId);
+  if (!metric) return <div />;
+  return <LinearDataMetricCell value={formatMetric(metric, row.metrics?.[metric.id] ?? null, row.currency ?? '')} />;
+};

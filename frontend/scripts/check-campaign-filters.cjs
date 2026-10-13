@@ -71,4 +71,46 @@ assert.deepEqual(statusFacet.options.map(o => [o.value, o.count]), [['active', 1
 assert.deepEqual(ids(filterView(delivered, deliveredFields, [], { fieldId: 'status', value: 'disapproved' }).visibleRows), ['rejected']);
 // A shared link's old "Status is Paused" still finds what is not delivering because it is paused.
 assert.deepEqual(ids(applyFilterClauses(delivered, deliveredFields, [{ fieldId: 'status', operator: 'is', values: ['paused'] }])), ['parent-off']);
+// Every figure of the period filters as a number (#389); a row without one never matches.
+const { readMetrics, metricsFor, periodFromSearch } = load(path.join(root, 'components/campaigns/adsManagerMetrics.ts'));
+const { migrateAdsManagerClauses } = load(path.join(root, 'components/campaigns/campaignViewModel.ts'));
+const measured = [
+  { id: 'cheap', name: 'Cheap leads', status: 'active', campaignId: 'C1', metrics: readMetrics({ spend: 30, leads: 6, cost_per_lead: 5, daily_budget: 50, ctr: 1.5 }) },
+  { id: 'dear', name: 'Dear leads', status: 'active', campaignId: 'C1', metrics: readMetrics({ spend: 40, leads: 2, cost_per_lead: 20, daily_budget: 0, ctr: 0.4 }) },
+  { id: 'none', name: 'No leads', status: 'paused', campaignId: 'C2', metrics: readMetrics({ spend: 12, leads: 0, cost_per_lead: null }) },
+];
+assert.equal(measured[1].metrics.budget, null, 'no budget of its own is no budget, not zero');
+const measuredFields = createLiveFields(measured, account, null, 'adsets', [], [{ id: 'C1', name: 'Leads NL' }, { id: 'C2', name: 'Zeta' }, { id: 'C3', name: 'Empty' }]);
+const metric = (fieldId, operator, value) => ids(applyFilterClauses(measured, measuredFields, [{ fieldId, operator, values: [value] }]));
+assert.deepEqual(metric('cpl', 'lt', 10), ['cheap']);
+assert.deepEqual(metric('cpl', 'gte', 5), ['cheap', 'dear'], 'no CPL is not a CPL of 0');
+assert.deepEqual(metric('leads', 'gt', 0), ['cheap', 'dear']);
+assert.deepEqual(metric('budget', 'gt', 0), ['cheap']);
+assert.deepEqual(metric('ctr', 'gte', 1), ['cheap']);
+assert.equal(measuredFields.filter(f => f.section === 'metrics').map(f => f.id).join(','),
+  'budget,spend,impressions,cpm,clicks,ctr,cpc,leads,cpl,registrations,cpreg,purchases,cpp');
+assert.equal(createLiveFields(measured, account, null, 'ads', [], []).some(f => f.id === 'budget'), false, 'ads have no budget');
+assert.equal(metricsFor('ads').some(m => m.id === 'budget'), false);
+// Ad sets and ads filter and group by their campaign; only campaigns with rows are offered, A→Z.
+const campaignField = measuredFields.find(f => f.id === 'campaign');
+assert.deepEqual(campaignField.options.map(o => [o.label, o.count]), [['Leads NL', 2], ['Zeta', 1]]);
+assert.deepEqual(groupView(measured, measuredFields, 'campaign').map(g => [g.label, ids(g.rows)]), [['Leads NL', ['cheap', 'dear']], ['Zeta', ['none']]]);
+assert.equal(createLiveFields(measured, account, null, 'campaigns', []).some(f => f.id === 'campaign'), false);
+// An ad finds its campaign through its ad set; ads also filter by ad set.
+const adRows = [{ id: 'ad1', name: 'Ad one', status: 'active', adSetId: 'S1' }, { id: 'ad2', name: 'Ad two', status: 'active', adSetId: 'S2' }];
+const adFields = createLiveFields(adRows, account, null, 'ads', [{ id: 'S1', campaignId: 'C1', name: 'Set one' }, { id: 'S2', campaignId: 'C2', name: 'Set two' }], [{ id: 'C1', name: 'Leads NL' }, { id: 'C2', name: 'Zeta' }]);
+assert.deepEqual(ids(applyFilterClauses(adRows, adFields, [{ fieldId: 'campaign', operator: 'is', values: ['C2'] }])), ['ad2']);
+assert.deepEqual(ids(applyFilterClauses(adRows, adFields, [{ fieldId: 'adSet', operator: 'is_not', values: ['S2'] }])), ['ad1']);
+// Name contains matches the name or the Meta ID.
+assert.deepEqual(ids(applyFilterClauses(measured, measuredFields, [{ fieldId: 'name', operator: 'contains', values: ['LEADS'] }])), ['cheap', 'dear', 'none']);
+assert.deepEqual(ids(applyFilterClauses(measured, measuredFields, [{ fieldId: 'name', operator: 'contains', values: ['dear'] }])), ['dear']);
+// Links from before #389: Results was leads and CPA was CPL.
+assert.deepEqual(migrateAdsManagerClauses([{ fieldId: 'results', operator: 'gt', values: [1] }, { fieldId: 'cpa', operator: 'lt', values: [9] }]),
+  [{ fieldId: 'leads', operator: 'gt', values: [1] }, { fieldId: 'cpl', operator: 'lt', values: [9] }]);
+assert.deepEqual(migrateAdsManagerClauses([{ fieldId: 'cpa', operator: 'lt', values: [9] }, { fieldId: 'cpl', operator: 'lt', values: [5] }]),
+  [{ fieldId: 'cpl', operator: 'lt', values: [5] }], 'a newer CPL clause wins over the old CPA one');
+// The period comes from the address; anything unknown is today.
+assert.equal(periodFromSearch('?account=a&period=last_7d'), 'last_7d');
+assert.equal(periodFromSearch('?period=lifetime'), 'today');
+assert.equal(periodFromSearch(''), 'today');
 console.log('Campaign filter semantics passed');

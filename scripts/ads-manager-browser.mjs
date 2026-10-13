@@ -1,0 +1,298 @@
+// Exercise the real App with a synthetic API: Ads Manager's columns, filters,
+// grouping and period (#389).
+// - The default columns are the short daily set (Budget, Spend, Leads, CPL,
+//   Rules); any other figure of the API is one switch away in Display
+//   properties, and a column header orders by it, rows without the figure last.
+// - Leads/CPL replace "Results / CPA"; an old link's Results and CPA filters
+//   still mean leads and CPL.
+// - Metrics filter as numbers under Metrics; ad sets filter and group by their
+//   campaign, ads also by ad set, and show their parents as columns.
+// - The period sits beside the filters, rides in the address (`?period=`),
+//   reloads every figure and survives a reload.
+// - On a phone Spend follows the name.
+import assert from 'node:assert/strict';
+import { mkdir } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+
+const require = createRequire(new URL('../frontend/package.json', import.meta.url));
+const { chromium } = require('playwright');
+const { createServer } = await import(require.resolve('vite'));
+const root = new URL('../frontend/', import.meta.url).pathname;
+process.chdir(root);
+const output = '/tmp/buyerly-ads-manager';
+await mkdir(output, { recursive: true });
+const server = await createServer({ root, server: { host: '127.0.0.1', port: 0 } });
+
+const workspace = {
+  id: 1, slug: 'alpha', name: 'Alpha', role: 'owner', badge_text: 'A', badge_color: '#5E6AD2', logo_url: '', is_active: true,
+};
+const me = {
+  username: 'buyer', full_name: 'Bo Buyer', first_name: 'Bo', last_name: 'Buyer',
+  email: 'bo@example.test', email_verified: true, unconfirmed_email: null, avatar_url: '', has_password: true,
+  onboarding_completed: true, onboarding_step: 'completed', active_workspace: workspace, workspaces: [workspace],
+};
+const account = {
+  id: 100, account_id: 'act_100', name: 'Main account', custom_name: '', note: '',
+  connection_type: 'system_user', timezone_name: 'UTC', currency: 'USD', account_status: 1,
+  status_label: 'Active (ACTIVE)', rules_enabled: true, is_active: true, primary_result: '',
+  target_cost_per_result: null, active_rules: [],
+};
+// A longer period multiplies every figure, so the screen shows which one it read.
+const PERIOD_FACTOR = { today: 1, yesterday: 2, last_3d: 3, last_7d: 7 };
+const entity = (level, id, name, parent, spend, leads, extra = {}) => ({
+  entity_id: id, entity_name: name, entity_level: level, parent_entity_id: parent, account_id: 'act_100',
+  currency: 'USD', status: 'ACTIVE', effective_status: 'ACTIVE', daily_budget: level === 'ad' ? 0 : 25,
+  data_as_of: '2026-10-13T08:00:00Z', spend, impressions: spend * 100, reach: spend * 80, cpm: 10, clicks: spend,
+  link_clicks: Math.round(spend / 2), outbound_clicks: 0, landing_page_views: 0, leads, registrations: 0, purchases: 0,
+  cost_per_lead: leads ? spend / leads : null, cost_per_registration: null, cost_per_purchase: null,
+  cost_per_landing_page_view: null, cpc: 1, ctr: 1, cpc_link: 2, ctr_link: 0.5, ctr_outbound: 0, ...extra,
+});
+const inventory = {
+  campaign: [
+    entity('campaign', '801', 'Alpha campaign', 'act_100', 50, 5),
+    entity('campaign', '802', 'Bravo campaign', 'act_100', 300, 3),
+    entity('campaign', '803', 'Charlie campaign', 'act_100', 120, 0),
+  ],
+  adset: [
+    entity('adset', '901', 'Broad', '801', 30, 3),
+    entity('adset', '902', 'Lookalike', '801', 20, 2),
+    entity('adset', '903', 'Interests', '802', 300, 3),
+  ],
+  ad: [
+    entity('ad', '951', 'Video', '901', 30, 3),
+    entity('ad', '952', 'Static', '903', 300, 3),
+  ],
+};
+const scaled = (item, factor) => ({
+  ...item, spend: item.spend * factor, leads: item.leads * factor,
+  impressions: item.impressions * factor, cost_per_lead: item.cost_per_lead,
+});
+
+let browser;
+try {
+  await server.listen();
+  const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
+  browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH });
+
+  const openPage = async (width, touch = false) => {
+    const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: touch, isMobile: touch });
+    await context.addCookies([{ name: 'buyerly_csrf', value: 'csrf-test', url: origin }]);
+    const page = await context.newPage();
+    page.setDefaultTimeout(10_000);
+    const errors = [];
+    const views = {};
+    const periods = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await context.route('**/api/**', async (route) => {
+      const request = route.request();
+      const url = new URL(request.url());
+      const path = url.pathname;
+      const verb = request.method();
+      if (path === '/api/view-settings') return route.fulfill({ json: { views } });
+      const key = path.match(/^\/api\/view-settings\/([\w.-]+)$/)?.[1];
+      if (key && verb === 'PUT') {
+        views[key] = request.postDataJSON().settings;
+        return route.fulfill({ json: { view_key: key, settings: views[key] } });
+      }
+      if (key && verb === 'DELETE') {
+        delete views[key];
+        return route.fulfill({ status: 204, body: '' });
+      }
+      if (verb !== 'GET') {
+        errors.push(`Unexpected write: ${verb} ${path}`);
+        return route.fulfill({ status: 404, json: { detail: 'Unexpected test request' } });
+      }
+      if (path === '/api/me') return route.fulfill({ json: me });
+      if (path === '/api/accounts') return route.fulfill({ json: [account] });
+      if (path === '/api/analytics/hierarchy') {
+        const parent = url.searchParams.get('parent_id');
+        const level = url.searchParams.get('level');
+        const period = url.searchParams.get('period');
+        periods.push(period);
+        const factor = PERIOD_FACTOR[period];
+        if (!factor) return route.fulfill({ status: 422, json: { detail: 'Unknown period' } });
+        const items = parent === 'act_100' ? (inventory[level] ?? []).map((item) => scaled(item, factor)) : [];
+        return route.fulfill({ json: { parent_id: parent, level, period, source: 'analytics_fact_store', data_as_of: null, total: items.length, items } });
+      }
+      if (path === '/api/inbox/unread-count') return route.fulfill({ json: { unread_count: 0, priority_unread_count: 0 } });
+      if (path === '/api/inbox/display') {
+        return route.fulfill({ json: { unread_only: false, ordering: 'newest', show_snoozed: false, unread_first: false } });
+      }
+      return route.fulfill({ json: [] });
+    });
+    return { context, page, errors, views, periods };
+  };
+
+  const rowIds = (page) => page.locator('[data-row-id]').evaluateAll((rows) => rows.map((row) => row.dataset.rowId));
+  const headers = async (page) => (await page.locator('[role="columnheader"]').allTextContents()).map((text) => text.trim());
+  const cell = async (page, rowId, column) => {
+    const index = (await headers(page)).indexOf(column);
+    assert.ok(index > 0, `no ${column} column`);
+    // Intl puts a no-break space between the currency code and the amount.
+    return (await page.locator(`[data-row-id="${rowId}"] > *`).nth(index).innerText()).replace(/ /g, ' ').trim();
+  };
+  const settle = (page) => page.waitForTimeout(400);
+  const popover = (page) => page.locator('.linear-display-options-popover');
+  const displayButton = (page) => page.locator('main header').getByRole('button', { name: 'Display options' });
+  const select = async (page, row, option) => {
+    await popover(page).locator('.linear-display-row', { hasText: row }).getByRole('combobox').click();
+    await page.locator('.linear-display-select-menu').getByRole('option', { name: option, exact: true }).click();
+  };
+  const property = (page, label) => popover(page).locator('.linear-display-property', { hasText: new RegExp(`^${label}$`) });
+  const bar = (page) => page.locator('.linear-filter-formula, [aria-label="Active filters"]').first();
+
+  // 1440px.
+  {
+    const { context, page, errors, views, periods } = await openPage(1440);
+    try {
+      await page.goto(`${origin}/alpha/ads-manager/campaigns?account=act_100`);
+      await page.locator('[data-row-id="801"]').waitFor();
+      assert.deepEqual(await headers(page), ['Name', 'Budget', 'Spend', 'Leads', 'CPL', 'Rules'], 'the short daily set');
+      assert.equal(await cell(page, '802', 'Leads'), '3');
+      assert.equal(await cell(page, '802', 'CPL'), 'USD 100.00');
+      assert.equal(await cell(page, '803', 'CPL'), '—', 'no leads, no CPL');
+      assert.equal(await cell(page, '801', 'Budget'), 'USD 25.00/day');
+      assert.ok(periods.every((period) => period === 'today'), 'today by default');
+      await page.screenshot({ path: `${output}/campaigns-1440.png` });
+
+      // Any figure is one switch away; the new column orders like the rest.
+      await displayButton(page).click();
+      await popover(page).waitFor();
+      for (const label of ['Delivery', 'Impressions', 'Reach', 'CPM', 'Link clicks', 'Link CTR', 'Link CPC', 'Landing page views', 'Registrations', 'CPReg', 'Purchases', 'CPP', 'ID']) {
+        await property(page, label).waitFor();
+      }
+      assert.equal(await property(page, 'Results').count(), 0, 'no Results any more');
+      await property(page, 'Impressions').click();
+      await page.getByRole('columnheader', { name: 'Impressions' }).waitFor();
+      assert.equal(await cell(page, '802', 'Impressions'), '30,000');
+      await select(page, 'Ordering', 'Impressions');
+      assert.deepEqual(await rowIds(page), ['802', '803', '801'], 'Impressions sorts largest first');
+      await page.keyboard.press('Escape');
+
+      // A header click orders by CPL; a campaign without leads stays last both ways.
+      await page.getByRole('button', { name: 'Order by CPL', exact: true }).click();
+      assert.deepEqual(await rowIds(page), ['802', '801', '803'], 'CPL largest first, none last');
+      await page.getByRole('button', { name: 'Order by CPL', exact: true }).click();
+      assert.deepEqual(await rowIds(page), ['801', '802', '803'], 'CPL smallest first, none still last');
+      await settle(page);
+      assert.equal(views['ads-manager.campaigns'].properties.impressions, true, 'the column is saved with the view');
+      assert.deepEqual([views['ads-manager.campaigns'].ordering, views['ads-manager.campaigns'].direction], ['cpl', 'asc']);
+
+      // Metrics filter as numbers.
+      await page.keyboard.press('f');
+      const menu = page.getByRole('dialog', { name: 'Add filter' });
+      await menu.waitFor();
+      await menu.getByRole('option', { name: 'CPL', exact: true }).click();
+      const cpl = page.getByRole('dialog', { name: 'CPL values' });
+      await cpl.getByRole('radio', { name: 'less than', exact: true }).click();
+      await cpl.getByRole('textbox', { name: 'CPL' }).fill('50');
+      await page.keyboard.press('Enter');
+      await page.locator('[data-row-id="802"]').waitFor({ state: 'detached' });
+      assert.deepEqual(await rowIds(page), ['801'], 'CPL < 50');
+      assert.match(page.url(), /filter=/);
+      await page.getByRole('button', { name: 'Clear all filters' }).click();
+      await page.locator('[data-row-id="802"]').waitFor();
+
+      // An old link's Results and CPA mean leads and CPL.
+      const old = encodeURIComponent(JSON.stringify({ campaigns: [{ fieldId: 'results', operator: 'gt', values: [3] }], adsets: [], ads: [] }));
+      await page.goto(`${origin}/alpha/ads-manager/campaigns?account=act_100&filter=${old}`);
+      await page.locator('[data-row-id="801"]').waitFor();
+      assert.deepEqual(await rowIds(page), ['801'], 'Results > 3 is Leads > 3');
+      await page.getByRole('button', { name: 'Clear all filters' }).click();
+      await page.locator('[data-row-id="802"]').waitFor();
+
+      // The period: beside the filters, in the address, every figure reloaded, kept on reload.
+      await page.getByRole('button', { name: 'Period: Today' }).click();
+      await page.getByRole('menuitem', { name: 'Last 7 days' }).click();
+      await page.getByRole('button', { name: 'Period: Last 7 days' }).waitFor();
+      await page.locator('[data-row-id="802"]').waitFor();
+      assert.equal(await cell(page, '802', 'Spend'), 'USD 2,100.00');
+      assert.equal(await cell(page, '802', 'Leads'), '21');
+      assert.match(page.url(), /period=last_7d/);
+      assert.equal(periods.at(-1), 'last_7d');
+      await page.screenshot({ path: `${output}/campaigns-last-7-days-1440.png` });
+      await page.reload();
+      await page.getByRole('button', { name: 'Period: Last 7 days' }).waitFor();
+      await page.locator('[data-row-id="802"]').waitFor();
+      assert.equal(await cell(page, '802', 'Spend'), 'USD 2,100.00', 'the period survives a reload');
+
+      // Ad sets: group by campaign, filter by campaign, the parent as a column; the period stays.
+      await page.getByRole('tab', { name: /Ad sets/ }).click();
+      await page.locator('[data-row-id="901"]').waitFor();
+      assert.match(page.url(), /period=last_7d/, 'the period follows to the next level');
+      assert.equal(await cell(page, '903', 'Spend'), 'USD 2,100.00');
+      await displayButton(page).click();
+      await popover(page).waitFor();
+      await select(page, 'Grouping', 'Campaign');
+      await property(page, 'Campaign').click();
+      await page.keyboard.press('Escape');
+      const groups = await page.locator('.sticky span.truncate').allTextContents();
+      assert.deepEqual(groups, ['Alpha campaign', 'Bravo campaign'], 'ad sets under their campaigns');
+      assert.deepEqual(await rowIds(page), ['901', '902', '903']);
+      assert.equal(await cell(page, '903', 'Campaign'), 'Bravo campaign');
+      await page.screenshot({ path: `${output}/adsets-by-campaign-1440.png` });
+      const byCampaign = encodeURIComponent(JSON.stringify({ campaigns: [], adsets: [{ fieldId: 'campaign', operator: 'is', values: ['802'] }], ads: [] }));
+      await page.goto(`${origin}/alpha/ads-manager/adsets?account=act_100&filter=${byCampaign}`);
+      await page.locator('[data-row-id="903"]').waitFor();
+      assert.deepEqual(await rowIds(page), ['903'], 'Campaign is Bravo');
+      assert.match(await bar(page).innerText(), /Campaign/);
+      await page.getByRole('button', { name: 'Clear all filters' }).click();
+
+      // Ads: the ad set and campaign as columns.
+      await page.getByRole('tab', { name: /^Ads/ }).click();
+      await page.locator('[data-row-id="951"]').waitFor();
+      assert.deepEqual(await headers(page), ['Name', 'Spend', 'CTR', 'CPC', 'Leads', 'CPL'], 'ads have no budget or rules');
+      await displayButton(page).click();
+      await popover(page).waitFor();
+      await property(page, 'Campaign').click();
+      await property(page, 'Ad set').click();
+      await page.keyboard.press('Escape');
+      assert.equal(await cell(page, '952', 'Ad set'), 'Interests');
+      assert.equal(await cell(page, '952', 'Campaign'), 'Bravo campaign');
+      assert.deepEqual(errors, []);
+      console.log('Ads Manager at 1440px passed');
+    } catch (error) {
+      console.error(error);
+      await page.screenshot({ path: `${output}/failure-1440.png`, fullPage: true }).catch(() => {});
+      console.error(errors);
+      throw error;
+    } finally {
+      await context.close();
+    }
+  }
+
+  // 390px phone: Spend follows the name, the period control stays on screen.
+  {
+    const { context, page, errors } = await openPage(390, true);
+    try {
+      await page.goto(`${origin}/alpha/ads-manager/campaigns?account=act_100&period=yesterday`);
+      await page.locator('[data-row-id="801"]').waitFor();
+      assert.deepEqual((await headers(page)).slice(0, 2), ['Name', 'Spend'], 'Spend follows the name on a phone');
+      assert.equal(await cell(page, '801', 'Spend'), 'USD 100.00');
+      // Spend is on screen, left of the Rules cell pinned to the right edge.
+      const cells = page.locator('[data-row-id="801"] > *');
+      const spendBox = await cells.nth(1).boundingBox();
+      const rulesBox = await cells.last().boundingBox();
+      assert.ok(spendBox.x >= 0 && spendBox.x + spendBox.width <= rulesBox.x + 0.5,
+        `Spend hides under Rules: ${JSON.stringify({ spendBox, rulesBox })}`);
+      const period = page.getByRole('button', { name: 'Period: Yesterday' });
+      const box = await period.boundingBox();
+      assert.ok(box && box.x >= 0 && box.x + box.width <= 390.5, `the period control leaves the screen: ${JSON.stringify(box)}`);
+      const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+      assert.ok(scrollWidth <= 390, `the page scrolls sideways: ${scrollWidth}`);
+      await page.screenshot({ path: `${output}/campaigns-390.png` });
+      assert.deepEqual(errors, []);
+      console.log('Ads Manager at 390px passed');
+    } catch (error) {
+      console.error(error);
+      await page.screenshot({ path: `${output}/failure-390.png`, fullPage: true }).catch(() => {});
+      console.error(errors);
+      throw error;
+    } finally {
+      await context.close();
+    }
+  }
+} finally {
+  await browser?.close();
+  await server.close();
+}

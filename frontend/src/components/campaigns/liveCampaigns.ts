@@ -1,5 +1,6 @@
 import type { AdItem, AdSetItem, CampaignItem } from '@/store/useAppStore';
 import type { AnalyticsHierarchyItem, MetaAccount } from '@/lib/types';
+import { readMetrics, type AdsManagerMetric } from './adsManagerMetrics';
 
 const KNOWN_CURRENCY = /^[A-Z]{3}$/;
 
@@ -32,6 +33,15 @@ export function formatDailyBudget(value: number, currency: string): string {
   if (!Number.isFinite(value) || value <= 0) return '—';
   const money = formatMetricMoney(value, currency);
   return money === '—' ? money : `${money}/day`;
+}
+
+/** One Ads Manager figure as its column shows it; "—" when there is none. */
+export function formatMetric(metric: Pick<AdsManagerMetric, 'format'>, value: number | null, currency: string): string {
+  if (value === null || !Number.isFinite(value)) return '—';
+  if (metric.format === 'budget') return formatDailyBudget(value, currency);
+  if (metric.format === 'money') return formatMetricMoney(value, currency);
+  if (metric.format === 'percent') return `${value.toFixed(2)}%`;
+  return value.toLocaleString('en-US');
 }
 
 export function humanizeMetaStatus(value: string): string {
@@ -75,6 +85,8 @@ export function hierarchyCampaignToRow(item: AnalyticsHierarchyItem): CampaignIt
     roi: '—',
     date: '',
     groupIds: [],
+    metrics: readMetrics(item),
+    currency: item.currency,
   };
 }
 
@@ -98,6 +110,8 @@ export function hierarchyAdSetToRow(
     roi: '—',
     audience: '',
     date: '',
+    metrics: readMetrics(item),
+    currency: item.currency,
   };
 }
 
@@ -112,6 +126,7 @@ export function hierarchyAdToRow(
     name: item.entity_name || `Ad ${item.entity_id}`,
     adSetId: item.parent_entity_id,
     adSetName: adSet?.name || item.parent_entity_id,
+    campaignId: adSet?.campaignId || '',
     campaignName: adSet?.campaignName || '',
     platform: 'Meta',
     ...campaignDelivery(item),
@@ -121,5 +136,7 @@ export function hierarchyAdToRow(
     ctr: item.ctr !== null && Number.isFinite(item.ctr) ? `${item.ctr.toFixed(2)}%` : '—',
     cpc: formatMetricMoney(item.cpc, item.currency),
     date: '',
+    metrics: readMetrics(item),
+    currency: item.currency,
   };
 }

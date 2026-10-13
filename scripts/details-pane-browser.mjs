@@ -204,9 +204,9 @@ try {
       await assertNothingCovered(page, 'Ads Manager 1440px');
       await page.screenshot({ path: `${output}/ads-manager-1440.png` });
 
-      // Status is Meta's real delivery state: the rejected campaign is not "Active".
+      // Delivery is Meta's real delivery state: the rejected campaign is not "Active".
       const tabs = pane.getByRole('tab');
-      assert.deepEqual(await tabs.allTextContents(), ['Status', 'Rules']);
+      assert.deepEqual(await tabs.allTextContents(), ['Delivery', 'Rules']);
       const row = (name) => pane.locator('.details-facets-row', { hasText: name });
       assert.equal((await row('Active').locator('.details-facets-row-count').textContent()).trim(), '1');
       assert.equal((await row('Disapproved').locator('.details-facets-row-count').textContent()).trim(), '1');

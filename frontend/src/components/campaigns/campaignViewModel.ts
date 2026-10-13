@@ -1,30 +1,56 @@
 import type { MetaAccount } from '@/lib/types';
-import { applyFilterClauses, NUMBER_OPERATORS } from '@/components/filters/filterModel';
+import { applyFilterClauses, NUMBER_OPERATORS, TEXT_OPERATORS } from '@/components/filters/filterModel';
 import type { FilterFieldDefinition, FilterClause, FilterOption } from '@/components/filters/filterModel';
+import { metricsFor, type AdsManagerMetrics } from './adsManagerMetrics';
 
 export interface AccountGroupOption { id: number; name: string; account_ids: string[] }
 export interface ViewRow {
   id: string; name: string; status: string; effectiveStatus?: string; campaignId?: string; adSetId?: string;
-  spend?: string; leadsCount?: number; cpa?: string; budget?: string;
+  metrics?: AdsManagerMetrics;
+}
+type Entity = 'campaigns' | 'adsets' | 'ads';
+interface ParentOption { id: string; name?: string }
+
+/**
+ * Metrics as number filters (> ≥ < ≤) for the period on screen, in their own
+ * section under the properties (#385, #389).
+ */
+function metricFields<T extends ViewRow>(entity: Entity): FilterFieldDefinition<T>[] {
+  return metricsFor(entity).filter((metric) => metric.filter).map((metric) => ({
+    id: metric.id, label: metric.label, section: 'metrics', type: 'number',
+    operators: [...NUMBER_OPERATORS], defaultOperator: 'gt',
+    getValue: (row: T) => row.metrics?.[metric.id] ?? null,
+  }));
 }
 
-const metric = (value: string | undefined) => {
-  if (!value) return null;
-  const number = Number.parseFloat(value.replace(/[^0-9.-]/g, ''));
-  return Number.isFinite(number) ? number : null;
-};
-
-/** Metrics as number filters (> ≥ < ≤), in their own section under the properties (#385). */
-function metricFields<T extends ViewRow>(entity: 'campaigns' | 'adsets' | 'ads'): FilterFieldDefinition<T>[] {
-  const field = (id: string, label: string, getValue: (row: T) => number | null): FilterFieldDefinition<T> => ({
-    id, label, section: 'metrics', type: 'number', operators: [...NUMBER_OPERATORS], defaultOperator: 'gt', getValue,
+/**
+ * Links and saved views from before #389 named leads "results" and CPL "cpa";
+ * they keep meaning the same rows.
+ */
+export function migrateAdsManagerClauses(clauses: FilterClause[]): FilterClause[] {
+  const renamed: Record<string, string> = { results: 'leads', cpa: 'cpl' };
+  const ids = new Set(clauses.map((clause) => clause.fieldId));
+  return clauses.flatMap((clause) => {
+    const fieldId = renamed[clause.fieldId];
+    if (!fieldId) return [clause];
+    return ids.has(fieldId) ? [] : [{ ...clause, fieldId }];
   });
-  return [
-    field('spend', 'Spend', row => metric(row.spend)),
-    field('results', 'Results', row => (typeof row.leadsCount === 'number' ? row.leadsCount : null)),
-    field('cpa', 'CPA', row => metric(row.cpa)),
-    ...(entity !== 'ads' ? [field('budget', 'Budget', row => metric(row.budget))] : []),
-  ];
+}
+
+/** A parent the rows belong to, as a filter and a grouping: only parents with rows are listed, A→Z. */
+function parentField<T extends ViewRow>(
+  id: 'campaign' | 'adSet', label: string, pluralLabel: string, parents: ParentOption[], rows: T[], getValue: (row: T) => string,
+): FilterFieldDefinition<T> {
+  const present = new Set(rows.map(getValue));
+  return {
+    id, label, section: 'filters', type: 'enum',
+    operators: ['is', 'is_not'], defaultOperator: 'is',
+    options: parents
+      .filter((parent) => present.has(parent.id))
+      .map((parent) => ({ value: parent.id, label: parent.name || parent.id }))
+      .sort((left, right) => left.label.localeCompare(right.label)),
+    getValue, pluralLabel,
+  };
 }
 
 /**
@@ -58,7 +84,7 @@ export function deliveryStatus(row: Pick<ViewRow, 'status' | 'effectiveStatus'>)
 function deliveryStatusField<T extends ViewRow>(rows: T[]): FilterFieldDefinition<T> {
   const present = new Set(rows.map(deliveryStatus));
   return {
-    id: 'status', label: 'Status', section: 'filters', type: 'enum',
+    id: 'status', label: 'Delivery', section: 'filters', type: 'enum',
     operators: ['is', 'is_not'], defaultOperator: 'is',
     options: DELIVERY_STATUS_OPTIONS.filter(option => ['active', 'paused'].includes(option.value) || present.has(option.value)),
     getValue: row => deliveryStatus(row),
@@ -69,9 +95,11 @@ export interface QuickSelection { fieldId: string; value: string }
 
 export function createLiveFields<T extends ViewRow>(
   rows: T[], account: MetaAccount | undefined, groups: AccountGroupOption[] | null,
-  entity: 'campaigns' | 'adsets' | 'ads', adSets: { id: string; campaignId: string }[],
+  entity: Entity, adSets: { id: string; campaignId: string; name?: string }[],
+  campaigns: ParentOption[] = [],
 ): FilterFieldDefinition<T>[] {
   const parents = new Map(adSets.map(row => [row.id, row.campaignId]));
+  const campaignOf = (row: T) => row.campaignId || parents.get(row.adSetId ?? '') || '';
   const rules = account?.active_rules ?? [];
   const ruleValues = (row: T) => rules.filter(rule => {
     const scope = rule.scope ?? { level: 'account', ids: [] };
@@ -85,6 +113,8 @@ export function createLiveFields<T extends ViewRow>(
   }).map(rule => String(rule.preset_id));
   const fields: FilterFieldDefinition<T>[] = [
     deliveryStatusField(rows),
+    ...(entity !== 'campaigns' ? [parentField('campaign', 'Campaign', 'campaigns', campaigns, rows, campaignOf)] : []),
+    ...(entity === 'ads' ? [parentField('adSet', 'Ad set', 'ad sets', adSets, rows, (row: T) => row.adSetId ?? '')] : []),
     { id: 'rule', label: 'Rules', section: 'filters', type: 'enum',
       operators: ['includes_all', 'includes_any', 'excludes_any', 'excludes_all'], defaultOperator: 'includes_all',
       options: [...rules.map(rule => ({ value: String(rule.preset_id), label: rule.name, icon: 'rule' as const })),
@@ -94,13 +124,19 @@ export function createLiveFields<T extends ViewRow>(
   ];
   if (groups !== null) {
     const memberships = groups.filter(group => group.account_ids.includes(account?.account_id ?? '')).map(group => String(group.id));
-    fields.splice(1, 0, {
+    fields.push({
       id: 'group', label: 'Account groups', section: 'filters', type: 'enum',
       operators: ['includes_all', 'includes_any', 'excludes_any', 'excludes_all'], defaultOperator: 'includes_all',
       options: [...groups.map(group => ({ value: String(group.id), label: group.name })), { value: 'ungrouped', label: 'Ungrouped' }],
       getValue: () => memberships.length ? memberships : ['ungrouped'], pluralLabel: 'groups',
     });
   }
+  fields.push({
+    id: 'name', label: 'Name', section: 'filters', type: 'text',
+    operators: [...TEXT_OPERATORS], defaultOperator: 'contains',
+    placeholder: 'Name or ID', keywords: ['title', 'id', 'search'],
+    getValue: (row) => `${row.name} ${row.id}`,
+  });
   return [...fields.map(field => ({ ...field, options: field.options?.map(option => ({ ...option,
     count: applyFilterClauses(rows, [field], [{ fieldId: field.id, operator: 'is', values: [option.value] }]).length,
   })) })), ...metricFields<T>(entity)];

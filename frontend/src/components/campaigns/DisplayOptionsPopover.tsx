@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { LinearDisplayOptions, type DisplayGroupOption } from '@/ui/LinearDisplayOptions';
 import { orderGroups } from '@/ui/listView';
 import type { AdsManagerEntity } from '@/store/useAppStore';
-import { useAdsManagerView } from './adsManagerViewModel';
+import { adsManagerGroupings, adsManagerOrderings, adsManagerProperties, useAdsManagerView } from './adsManagerViewModel';
 
 interface DisplayOptionsPopoverProps {
   isOpen: boolean;
@@ -46,26 +46,12 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
 
   if (!isOpen) return null;
 
-  const supportsBudget = entity !== 'ads';
-  const liveProperties = {
-    status: 'Status',
-    ...(supportsBudget ? { budget: 'Budget' } : {}),
-    ...(entity === 'ads' ? { ctr: 'CTR', cpc: 'CPC' } : {}),
-    results: 'Results',
-    cpa: 'CPA',
-    spend: 'Spend',
-    ...(supportsBudget ? { rules: 'Rules' } : {}),
-  };
-  const orderingOptions = [
-    { value: 'manual', label: 'Default' },
-    { value: 'name', label: 'Name' },
-    { value: 'spend', label: 'Spend' },
-    { value: 'results', label: 'Results' },
-    { value: 'cpa', label: 'CPA' },
-    ...(supportsBudget ? [{ value: 'budget', label: 'Budget' }] : []),
-  ];
+  // Every column the level can show (#389), in column order.
+  const liveProperties = Object.fromEntries(adsManagerProperties(entity).map(({ id, label }) => [id, label]));
+  const orderingOptions = adsManagerOrderings(entity, view.properties);
+  const groupingOptions = adsManagerGroupings(entity, hasAccountGroups);
   const ordering = orderingOptions.some((option) => option.value === view.ordering) ? view.ordering : 'manual';
-  const grouping = !hasAccountGroups && view.grouping === 'groups' ? 'none' : view.grouping;
+  const grouping = groupingOptions.some((option) => option.value === view.grouping) ? view.grouping : 'none';
   const hidden = view.hiddenGroups[view.grouping] ?? [];
 
   return createPortal(
@@ -74,12 +60,7 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
         viewMode={view.layout}
         onViewModeChange={(layout) => update({ layout })}
         grouping={grouping}
-        groupingOptions={[
-          { value: 'none', label: 'No grouping' },
-          { value: 'status', label: 'Status' },
-          ...(hasAccountGroups ? [{ value: 'groups', label: 'Account groups' }] : []),
-          { value: 'rules', label: 'Rules' },
-        ]}
+        groupingOptions={groupingOptions}
         onGroupingChange={(value) => update({ grouping: value })}
         groupOrdering={{
           groups: orderGroups(groups, view),

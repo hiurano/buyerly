@@ -55,7 +55,14 @@ import type { FilterMenuMode } from '@/components/filters/LinearFilter';
 import { createLiveFields, filterView, groupView } from './campaignViewModel';
 import type { AccountGroupOption } from './campaignViewModel';
 import { useCampaignViewFilters } from './useCampaignViewFilters';
-import { naturalAdsManagerDirection, useAdsManagerView } from './adsManagerViewModel';
+import {
+  adsManagerGroupings,
+  adsManagerOrderings,
+  naturalAdsManagerDirection,
+  useAdsManagerView,
+} from './adsManagerViewModel';
+import { ADS_MANAGER_PERIODS, periodFromSearch, type AdsManagerMetrics, type AdsManagerPeriod } from './adsManagerMetrics';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 import { arrangeGroups, sortByColumn } from '@/ui/listView';
 import { DisplayOptionsChangedDot } from '@/ui/LinearDisplayOptions';
 import { DetailsPaneLayout, DetailsPaneToggle } from '@/ui/DetailsPane';
@@ -119,13 +126,23 @@ interface CampaignsViewProps {
 /** The level's own address; the entity a link named stays with the account being left. */
 const levelPath = (pathname: string) => pathname.split('/').slice(0, 4).join('/');
 
-/** The details pane's quick filters: real delivery state, then the rules on each row (#367). */
-const DETAILS_TABS = ['status', 'rule'];
+/**
+ * The details pane's quick filters: real delivery state, the parent campaign
+ * of ad sets and ads (#389), then the rules on each row (#367).
+ */
+const detailsTabs = (entity: AdsManagerEntity) => (entity === 'campaigns' ? ['status', 'rule'] : ['status', 'campaign', 'rule']);
+
+/** Fields a grouping groups by. */
+const GROUPING_FIELDS: Record<string, string> = { groups: 'group', rules: 'rule' };
+
+/** A phone keeps the name and Spend side by side; the other figures scroll (#389). */
+const PHONE_TABLE_QUERY = '(max-width: 640px)';
 
 function facetIcon(fieldId: string, option: FilterOption): React.ReactNode {
   if (fieldId === 'rule') {
     return <LinearBoltIcon size={14} style={{ color: option.value === 'no-rule' ? 'var(--text-muted)' : option.color }} />;
   }
+  if (fieldId === 'campaign') return <span className="details-facets-dot" style={{ backgroundColor: 'var(--text-tertiary)' }} />;
   if (option.value === 'active' || option.value === 'paused') return <LinearStatusCircleIcon status={option.value} size={14} />;
   return <span className="details-facets-dot" style={{ backgroundColor: option.color }} />;
 }
@@ -162,12 +179,28 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   const [accountsState, setAccountsState] = useState<LoadState>('loading');
   const [accountsError, setAccountsError] = useState('');
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  // The reporting window, in the address (`?period=`) so a link and a reload keep it (#389).
+  const [period, setPeriodState] = useState<AdsManagerPeriod>(() => periodFromSearch(window.location.search));
+  useEffect(() => {
+    setPeriodState(periodFromSearch(window.location.search));
+  }, [navigationKey]);
+  const setPeriod = (next: AdsManagerPeriod) => {
+    if (next === period) return;
+    requestGenerationRef.current += 1;
+    setHierarchyState('loading');
+    setPeriodState(next);
+    const url = new URL(window.location.href);
+    if (next === 'today') url.searchParams.delete('period');
+    else url.searchParams.set('period', next);
+    window.history.replaceState(window.history.state, '', url);
+  };
+  const periodLabel = ADS_MANAGER_PERIODS.find((option) => option.value === period)?.label ?? 'Today';
   const { filters: adsManagerFilters, updateFilters: setAdsManagerFilters, quick: savedQuick, setQuick } = useCampaignViewFilters(
     `${window.location.pathname}:${selectedAccountId ?? ''}:${campaignFilterTab}`,
     navigationKey,
   );
   // Only a quick filter the pane can show applies, so none is ever left on unseen.
-  const quick = savedQuick && DETAILS_TABS.includes(savedQuick.fieldId) ? savedQuick : null;
+  const quick = savedQuick && detailsTabs(campaignFilterTab).includes(savedQuick.fieldId) ? savedQuick : null;
   const [campaigns, setCampaigns] = useState<ReturnType<typeof hierarchyCampaignToRow>[]>([]);
   const [adSets, setAdSets] = useState<ReturnType<typeof hierarchyAdSetToRow>[]>([]);
   const [ads, setAds] = useState<ReturnType<typeof hierarchyAdToRow>[]>([]);
@@ -259,7 +292,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     const hierarchyRequest = (level: 'campaign' | 'adset' | 'ad') =>
       apiRequest<AnalyticsHierarchyResponse>(
         `/api/analytics/hierarchy?parent_id=${encodeURIComponent(selectedAccountId)}` +
-        `&level=${level}&period=today`,
+        `&level=${level}&period=${period}`,
       );
 
     void Promise.all([
@@ -287,7 +320,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     return () => {
       requestGenerationRef.current += 1;
     };
-  }, [hierarchyReloadKey, clearCampaignSelection, selectedAccountId]);
+  }, [hierarchyReloadKey, clearCampaignSelection, selectedAccountId, period]);
 
   useEffect(() => {
     setOpenFilterMenu(null);
@@ -350,8 +383,8 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   };
 
   const campaignFilterFields = useMemo(() => createLiveFields(campaigns, selectedAccount, accountGroups, 'campaigns', adSets), [campaigns, selectedAccount, accountGroups, adSets]);
-  const adSetFilterFields = useMemo(() => createLiveFields(adSets, selectedAccount, accountGroups, 'adsets', adSets), [adSets, selectedAccount, accountGroups]);
-  const adFilterFields = useMemo(() => createLiveFields(ads, selectedAccount, accountGroups, 'ads', adSets), [ads, selectedAccount, accountGroups, adSets]);
+  const adSetFilterFields = useMemo(() => createLiveFields(adSets, selectedAccount, accountGroups, 'adsets', adSets, campaigns), [adSets, selectedAccount, accountGroups, campaigns]);
+  const adFilterFields = useMemo(() => createLiveFields(ads, selectedAccount, accountGroups, 'ads', adSets, campaigns), [ads, selectedAccount, accountGroups, adSets, campaigns]);
   const currentFilters = adsManagerFilters[campaignFilterTab];
   const currentFilterFields = (
     campaignFilterTab === 'campaigns'
@@ -370,31 +403,20 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     setOpenFilterMenu({ mode, anchor, fieldId });
 
   const directionFactor = sortDirection === 'asc' ? 1 : -1;
-  const supportsBudget = campaignFilterTab !== 'ads';
-  const supportedOrdering = new Set([
-    'manual',
-    'name',
-    'spend',
-    'results',
-    'cpa',
-    ...(supportsBudget ? ['budget'] : []),
-  ]);
-  const effectiveOrdering = supportedOrdering.has(displayOrdering) ? displayOrdering : 'manual';
-  const parseMetric = (value: string) => Number.parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
-  const sortRows = <T extends { name: string; spend: string; leadsCount: number; cpa: string; budget?: string }>(rows: T[]) => {
-    const sorted = [...rows];
-    if (effectiveOrdering === 'name') {
-      sorted.sort((a, b) => a.name.localeCompare(b.name) * directionFactor);
-    } else if (effectiveOrdering === 'spend') {
-      sorted.sort((a, b) => (parseMetric(a.spend) - parseMetric(b.spend)) * directionFactor);
-    } else if (effectiveOrdering === 'results') {
-      sorted.sort((a, b) => (a.leadsCount - b.leadsCount) * directionFactor);
-    } else if (effectiveOrdering === 'cpa') {
-      sorted.sort((a, b) => (parseMetric(a.cpa) - parseMetric(b.cpa)) * directionFactor);
-    } else if (effectiveOrdering === 'budget') {
-      sorted.sort((a, b) => (parseMetric(a.budget || '') - parseMetric(b.budget || '')) * directionFactor);
-    }
-    return sorted;
+  // Name, or any figure the table shows (#389); a hidden one falls back to Meta's order.
+  const effectiveOrdering = adsManagerOrderings(campaignFilterTab, displayProperties)
+    .some((option) => option.value === displayOrdering) ? displayOrdering : 'manual';
+  const sortRows = <T extends { name: string; metrics?: AdsManagerMetrics }>(rows: T[]) => {
+    if (effectiveOrdering === 'manual') return rows;
+    if (effectiveOrdering === 'name') return [...rows].sort((a, b) => a.name.localeCompare(b.name) * directionFactor);
+    const metricId = effectiveOrdering as keyof AdsManagerMetrics;
+    // A row without the figure stays last whichever way the column runs.
+    return [...rows].sort((a, b) => {
+      const left = a.metrics?.[metricId] ?? null;
+      const right = b.metrics?.[metricId] ?? null;
+      if (left === null || right === null) return left === right ? 0 : left === null ? 1 : -1;
+      return (left - right) * directionFactor;
+    });
   };
 
   const campaignView = filterView(campaigns, campaignFilterFields, adsManagerFilters.campaigns, quick);
@@ -405,7 +427,10 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   const filteredAdSets = sortRows(adSetView.visibleRows);
   const filteredAds = sortRows(adView.visibleRows);
   const clearFilters = () => { updateCurrentFilters([]); setQuick(null); };
-  const groupingField = displayGrouping === 'groups' ? 'group' : displayGrouping === 'rules' ? 'rule' : displayGrouping;
+  const groupingField = adsManagerGroupings(campaignFilterTab, accountGroups !== null)
+    .some((option) => option.value === displayGrouping)
+    ? GROUPING_FIELDS[displayGrouping] ?? displayGrouping
+    : 'none';
   // Delivery status is a fixed set, so only its empty groups can be shown.
   const renderGrouped = <T,>(rows: T[], fields: FilterFieldDefinition<T>[], render: (row: T) => React.ReactNode) =>
     arrangeGroups(groupView(rows, fields, groupingField), view, { allowEmpty: groupingField === 'status' }).map(group => (
@@ -422,21 +447,12 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   const totalCurrent = campaignFilterTab === 'campaigns' ? campaigns.length : campaignFilterTab === 'adsets' ? adSets.length : ads.length;
   const filteredCurrentCount = campaignFilterTab === 'campaigns' ? filteredCampaigns.length : campaignFilterTab === 'adsets' ? filteredAdSets.length : filteredAds.length;
 
-  const supportedProperties = useMemo(() => ({
-    ...displayProperties,
-    status: displayProperties.status !== false,
-    budget: supportsBudget && displayProperties.budget !== false,
-    results: displayProperties.results !== false,
-    cpa: displayProperties.cpa !== false,
-    spend: displayProperties.spend !== false,
-    ctr: campaignFilterTab === 'ads' && displayProperties.ctr !== false,
-    cpc: campaignFilterTab === 'ads' && displayProperties.cpc !== false,
-    roi: false,
-    rules: campaignFilterTab !== 'ads' && displayProperties.rules !== false,
-    group: false,
-    created: false,
-  }), [campaignFilterTab, displayProperties, supportsBudget]);
-  const tableColumns = getAdsManagerColumns(campaignFilterTab, supportedProperties);
+  const isPhoneTable = useMediaQuery(PHONE_TABLE_QUERY);
+  const supportedProperties = displayProperties;
+  const tableColumns = useMemo(
+    () => getAdsManagerColumns(campaignFilterTab, displayProperties, { spendFirst: isPhoneTable }),
+    [campaignFilterTab, displayProperties, isPhoneTable],
+  );
 
   /** Shows delivery this session wrote on the given rows. */
   const showDelivery = useCallback((entityIds: string[], status: DeliveryStatus) => {
@@ -611,7 +627,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     missing: () => ({
       title: "Couldn't open",
       message: `${revealedNoun} ${reveal?.id ?? ''}.`,
-      description: `Ads Manager has no such ${revealedNoun} in ${selectedAccount ? metaAccountLabel(selectedAccount) : 'this ad account'} today.`,
+      description: `Ads Manager has no such ${revealedNoun} in ${selectedAccount ? metaAccountLabel(selectedAccount) : 'this ad account'} ${period === 'today' ? 'today' : `for ${periodLabel.toLowerCase()}`}.`,
     }),
   });
 
@@ -642,12 +658,12 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     }
     if (campaignFilterTab === 'adsets') {
       return renderGrouped(filteredAdSets, adSetFilterFields, (adSet) => (
-        <AdSetRow key={adSet.id} adSet={adSet} properties={supportedProperties} readOnly selectable delivery={deliveryControl('adset', adSet.id, adSet.status)} />
+        <AdSetRow key={adSet.id} adSet={adSet} properties={supportedProperties} columns={tableColumns} readOnly selectable delivery={deliveryControl('adset', adSet.id, adSet.status)} />
       ));
     }
     if (campaignFilterTab === 'ads') {
       return renderGrouped(filteredAds, adFilterFields, (ad) => (
-        <AdRow key={ad.id} ad={ad} properties={supportedProperties} readOnly selectable delivery={deliveryControl('ad', ad.id, ad.status)} />
+        <AdRow key={ad.id} ad={ad} properties={supportedProperties} columns={tableColumns} readOnly selectable delivery={deliveryControl('ad', ad.id, ad.status)} />
       ));
     }
     return renderGrouped(filteredCampaigns, campaignFilterFields, (campaign) => (
@@ -655,6 +671,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
         key={campaign.id}
         campaign={campaign}
         properties={supportedProperties}
+        columns={tableColumns}
         readOnly
         selectable
         delivery={deliveryControl('campaign', campaign.id, campaign.status)}
@@ -740,7 +757,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     );
   };
 
-  const detailsTabs: DetailsFacetTab[] = DETAILS_TABS.flatMap((fieldId) => {
+  const detailsFacetTabs: DetailsFacetTab[] = detailsTabs(campaignFilterTab).flatMap((fieldId) => {
     const facet = currentView.facets.find((candidate) => candidate.id === fieldId);
     return facet ? [{
       id: facet.id,
@@ -752,7 +769,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   });
   const details = hierarchyState === 'ready' && accountsState === 'ready' ? (
     <DetailsFacets
-      tabs={detailsTabs}
+      tabs={detailsFacetTabs}
       selection={quick}
       onSelect={setQuick}
       storageKey="buyerly:details-tab:ads-manager"
@@ -799,6 +816,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
           />
 
           <div className="flex shrink-0 items-center gap-1.5">
+            <PeriodMenu period={period} label={periodLabel} onChange={setPeriod} />
             <Tooltip content="Add filter" shortcut="F">
               <LinearFilterButton
                 ref={filterButtonRef}
@@ -912,6 +930,42 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     </div>
   );
 };
+
+interface PeriodMenuProps {
+  period: AdsManagerPeriod;
+  label: string;
+  onChange: (period: AdsManagerPeriod) => void;
+}
+
+/**
+ * The window every figure, metric filter and ordering is read for (#389):
+ * the periods the hierarchy API serves, as Meta's date picker names them.
+ */
+const PeriodMenu: React.FC<PeriodMenuProps> = ({ period, label, onChange }) => (
+  <DropdownMenu>
+    <Tooltip content="Period">
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Period: ${label}`}
+          className="inline-flex h-[28px] shrink-0 [@media(hover:none)_and_(pointer:coarse)]:h-8 items-center gap-1 whitespace-nowrap rounded-full border border-[var(--color-border-secondary)] px-2.5 text-[12px] font-medium text-[var(--text-secondary)] outline-none transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)]"
+        >
+          {label}
+          <span aria-hidden="true">▾</span>
+        </button>
+      </DropdownMenuTrigger>
+    </Tooltip>
+    <DropdownMenuContent align="end" style={{ minWidth: 160 }}>
+      <DropdownMenuLabel>Period</DropdownMenuLabel>
+      {ADS_MANAGER_PERIODS.map((option) => (
+        <DropdownMenuItem key={option.value} onSelect={() => onChange(option.value)}>
+          <span className="flex-1">{option.label}</span>
+          {option.value === period && <span aria-hidden="true">✓</span>}
+        </DropdownMenuItem>
+      ))}
+    </DropdownMenuContent>
+  </DropdownMenu>
+);
 
 interface DropdownMenuAccountProps {
   account: MetaAccount;

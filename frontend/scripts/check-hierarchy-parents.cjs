@@ -35,7 +35,14 @@ assert.deepEqual(adSets.map(s => [s.id, s.campaignId, s.campaignName]), [
 ]);
 const adSetsById = new Map(adSets.map(s => [s.id, s]));
 const ads = [item('ad', 'ad_x', 'set_a1'), item('ad', 'ad_y', 'set_b1')].map(i => hierarchyAdToRow(i, adSetsById));
-assert.deepEqual(ads.map(a => [a.id, a.adSetId, a.adSetName, a.campaignName]), [
-  ['ad_x', 'set_a1', 'set_a1 name', 'cmp_a name'], ['ad_y', 'set_b1', 'set_b1 name', 'cmp_b name'],
+assert.deepEqual(ads.map(a => [a.id, a.adSetId, a.adSetName, a.campaignId, a.campaignName]), [
+  ['ad_x', 'set_a1', 'set_a1 name', 'cmp_a', 'cmp_a name'], ['ad_y', 'set_b1', 'set_b1 name', 'cmp_b', 'cmp_b name'],
 ]);
+// Every row carries its figures as numbers for columns, ordering and filters (#389).
+assert.equal(ads[0].metrics.spend, 1);
+assert.equal(ads[0].metrics.cpl, null);
+assert.equal(ads[0].currency, 'USD');
+// A row from an older payload without a figure reads as no figure, not zero.
+const sparse = hierarchyCampaignToRow({ ...item('campaign', 'cmp_c', 'act_1'), impressions: undefined });
+assert.equal(sparse.metrics.impressions, null);
 console.log('Hierarchy parent mapping passed');
