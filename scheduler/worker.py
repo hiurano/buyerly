@@ -202,7 +202,7 @@ class MonitoringWorker:
         """Roll ad set rows up into the campaigns that own them.
 
         Every metric a rule can test is either additive (spend, leads,
-        registrations, purchases, clicks, impressions) or derived from additive
+        registrations, purchases, clicks, link clicks, impressions) or derived from additive
         ones (cpl, cpreg, cpp, cpc, ctr), so the rollup is exact and needs no
         extra Meta read. Identity and delivery state come from the campaign
         inventory: an ad set left ACTIVE inside a PAUSED campaign must not make
@@ -216,6 +216,7 @@ class MonitoringWorker:
                 "registrations": 0,
                 "purchases": 0,
                 "clicks": 0,
+                "link_clicks": 0,
                 "impressions": 0,
             }
 
@@ -225,6 +226,7 @@ class MonitoringWorker:
             target["registrations"] += int(row.get("registrations", 0) or 0)
             target["purchases"] += int(row.get("purchases", 0) or 0)
             target["clicks"] += int(row.get("clicks", 0) or 0)
+            target["link_clicks"] += int(row.get("link_clicks", 0) or 0)
             target["impressions"] += int(row.get("impressions", 0) or 0)
 
         def derive(totals: dict[str, Any]) -> dict[str, Any]:

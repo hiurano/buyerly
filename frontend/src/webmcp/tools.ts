@@ -55,8 +55,8 @@ interface ToolFailure {
 
 /** Only the rules an agent may set up: an alert, or a stop the person approves. */
 const AGENT_ACTIONS = ['notify_only', 'turn_off'] as const satisfies readonly RuleAction[];
-const METRICS: RuleMetric[] = ['spend', 'cpl', 'cpreg', 'cpp', 'cpc', 'leads', 'registrations', 'purchases', 'clicks', 'ctr'];
-const COUNT_METRICS: ReadonlySet<RuleMetric> = new Set(['leads', 'registrations', 'purchases', 'clicks']);
+const METRICS: RuleMetric[] = ['spend', 'cpl', 'cpreg', 'cpp', 'cpc', 'leads', 'registrations', 'purchases', 'clicks', 'link_clicks', 'ctr'];
+const COUNT_METRICS: ReadonlySet<RuleMetric> = new Set(['leads', 'registrations', 'purchases', 'clicks', 'link_clicks']);
 const OPERATORS = ['gte', 'gt', 'lte', 'lt', 'eq'];
 const WINDOWS: RuleTimeWindow[] = ['today', 'yesterday', 'last_3d', 'last_7d', 'lifetime'];
 const LEVELS: RuleExecutionLevel[] = ['adset', 'campaign', 'ad'];
@@ -361,6 +361,7 @@ const RULE_OPTIONS = {
     registrations: 'Number of completed registrations.',
     purchases: 'Number of purchases.',
     clicks: 'All clicks Meta reports, not only link clicks.',
+    link_clicks: 'Clicks on links in the ad (Meta inline link clicks).',
     ctr: 'All clicks / impressions × 100, in percent.',
   },
   operators: { gte: '≥', gt: '>', lte: '≤', lt: '<', eq: '=' },

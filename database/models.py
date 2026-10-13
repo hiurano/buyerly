@@ -577,7 +577,11 @@ class DeletedItem(Base):
 
 
 class RuleExamplesBootstrap(Base):
-    """One-time marker so deleted examples are never silently recreated."""
+    """One-time marker so deleted examples are never silently recreated.
+
+    Since examples version 2 (#386) a workspace gets one set, marked on the
+    workspace owner's row; older per-member rows only ever say "version 1".
+    """
 
     __tablename__ = "rule_examples_bootstrap"
     __table_args__ = (

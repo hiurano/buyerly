@@ -289,6 +289,7 @@ class TestMetaInsightsCollection(unittest.IsolatedAsyncioTestCase):
                     "spend": "41.20",
                     "impressions": "900",
                     "clicks": "12",
+                    "inline_link_clicks": "5",
                     "actions": [{"action_type": "lead", "value": "2"}],
                 },
                 {"spend": "9.00"},
@@ -300,11 +301,13 @@ class TestMetaInsightsCollection(unittest.IsolatedAsyncioTestCase):
         url, params = client._fetch_paginated_data.await_args.args
         self.assertTrue(url.endswith("/act_1/insights"))
         self.assertEqual((params["level"], params["date_preset"]), ("campaign", "maximum"))
+        self.assertIn("inline_link_clicks", params["fields"].split(","))
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["campaign_id"], "c1")
         self.assertEqual(rows[0]["spend"], 41.2)
         self.assertEqual(rows[0]["leads"], 2)
         self.assertEqual(rows[0]["clicks"], 12)
+        self.assertEqual(rows[0]["link_clicks"], 5)
 
     async def test_hard_quota_defers_background_but_allows_critical_request(self):
         client = MetaClient()
@@ -400,7 +403,8 @@ class TestMetaInsightsCollection(unittest.IsolatedAsyncioTestCase):
                         "daily_budget": "0",
                     },
                 ],
-                [{"adset_id": "adset_active", "spend": "15.5", "impressions": "100", "clicks": "5"}],
+                [{"adset_id": "adset_active", "spend": "15.5", "impressions": "100", "clicks": "5",
+                  "inline_link_clicks": "2"}],
             ]
         )
 
@@ -408,6 +412,10 @@ class TestMetaInsightsCollection(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["adset_id"], "adset_active")
         self.assertEqual(results[0]["spend"], 15.5)
+        # Rules read link clicks (#386): Meta's inline_link_clicks, not all clicks.
+        _, insight_params = client._fetch_paginated_data.await_args_list[1].args
+        self.assertIn("inline_link_clicks", insight_params["fields"].split(","))
+        self.assertEqual((results[0]["clicks"], results[0]["link_clicks"]), (5, 2))
 
     async def test_archived_adset_with_spend_is_preserved(self):
         client = MetaClient()
