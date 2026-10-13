@@ -188,7 +188,7 @@ export interface AdsManagerQuickFilter {
   fieldId: 'group' | 'rule';
   value: string;
 }
-export type AppTab = 'inbox' | 'campaigns' | 'rules';
+export type AppTab = 'inbox' | 'accounts' | 'campaigns' | 'rules';
 /** The search page has an address but is no app tab: Settings' back button never returns to it. */
 export type ActiveTab = AppTab | 'preferences' | 'search';
 /** Settings pages; most also have their own address under /<workspace>/settings. */

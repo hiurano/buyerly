@@ -210,7 +210,7 @@ try {
       assert.deepEqual(await commandTexts(), [
         'Delete all notifications', 'Delete all read notifications · ⇧ ⌫', 'Create rule…', 'Create new label…', 'Search workspace…',
         // Linear leaves out Go to inbox on Inbox itself.
-        'Go to advanced search · /', 'Go to Ads Manager · G then A', 'Go to rules · G then R',
+        'Go to advanced search · /', 'Go to ad accounts · G then K', 'Go to Ads Manager · G then A', 'Go to rules · G then R',
         'Go to recently deleted rules', 'Go to settings · G then S',
         ...openCommands,
         ...(wide ? ['Collapse navigation sidebar · ['] : []),

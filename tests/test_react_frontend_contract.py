@@ -907,6 +907,52 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("node scripts/check-details-pane.cjs", workflow)
         self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?details-pane( .*)?$")
 
+    def test_ad_accounts_page_is_linear_projects(self):
+        """#388: Ad accounts in the sidebar, a list with the shared view mechanics and a page per account."""
+        src = ROOT / "frontend" / "src"
+        accounts = src / "components" / "accounts"
+        routing = (src / "lib" / "routing.ts").read_text()
+        shortcuts = (src / "lib" / "shortcuts.ts").read_text()
+        sidebar = (src / "components" / "sidebar" / "Sidebar.tsx").read_text()
+        menu = (src / "components" / "command" / "CommandMenu.tsx").read_text()
+        search = (src / "lib" / "search.ts").read_text()
+        view = (accounts / "AccountsView.tsx").read_text()
+        page = (accounts / "AccountPage.tsx").read_text()
+        data = (accounts / "accountsData.ts").read_text()
+        model = (accounts / "accountsModel.ts").read_text()
+        workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
+
+        # Addresses, G K beside O K, Ctrl/Cmd+K, and the sidebar between Inbox and Ads Manager.
+        self.assertIn("parts[1] === 'accounts'", routing)
+        self.assertIn("accounts: 'K',", shortcuts)
+        self.assertIn("label: 'Go to ad accounts'", menu)
+        self.assertLess(sidebar.index("Inbox"), sidebar.index("Ad accounts"))
+        self.assertLess(sidebar.index("Ad accounts"), sidebar.index("Ads Manager"))
+        self.assertIn("return `/${workspace}/accounts/${encodeURIComponent(result.id)}`", search)
+        self.assertIn("<AccountsView", self.app)
+        self.assertIn("<AccountPage", self.app)
+
+        # The shared header button and empty state; the view is saved per member (#385).
+        self.assertIn('<HeaderCreateButton label="Add account" tooltip="Add ad account"', view)
+        self.assertIn('title="No ad accounts yet"', view)
+        self.assertIn("useListView('accounts'", data)
+        self.assertIn("useFiltersInAddress", view)
+        # Only what a buyer needs: four columns, three groupings, four orderings, four filters.
+        for prop in ("status: true", "spend: true", "leads: true", "rules: true"):
+            self.assertIn(prop, model)
+        for option in ("'No grouping'", "'Status'", "'Team'", "'Spend today'", "'Added'", "'Name or ID'", "'Automation'"):
+            self.assertIn(option, model)
+        # The page: name, note, today, rules, events, properties; one column on a phone.
+        for words in ("Open in Ads Manager", "Attach rule", "Recent events", "Connected by", "Last sync", "Reconnect"):
+            self.assertIn(words, page)
+        self.assertIn("/api/audit-events?page=1&page_size=5&account_id=", page)
+        # Rules on the account show their own status; no switch that would pause them everywhere.
+        self.assertNotIn("toggleRuleStatus", page)
+        self.assertIn("<LinearStatusCircleIcon status={on ? 'active' : 'paused'}", page)
+        self.assertIn("All ad accounts…", self.campaigns_view)
+        self.assertIn("node scripts/check-accounts.cjs", workflow)
+        self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?accounts( .*)?$")
+
 
 if __name__ == "__main__":
     unittest.main()

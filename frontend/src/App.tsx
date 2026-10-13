@@ -3,6 +3,8 @@ import { Sidebar } from '@/components/sidebar/Sidebar';
 import { InboxView } from '@/components/inbox/InboxView';
 import { CampaignsView } from '@/components/campaigns/CampaignsView';
 import { RulesView } from '@/components/rules/RulesView';
+import { AccountsView } from '@/components/accounts/AccountsView';
+import { AccountPage } from '@/components/accounts/AccountPage';
 import { RecentlyDeletedRulesPage } from '@/components/rules/RecentlyDeletedRulesPage';
 import { CommandMenu } from '@/components/command/CommandMenu';
 import { OpenPalette } from '@/components/command/OpenPalette';
@@ -157,7 +159,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   useEffect(() => {
     if (syncingRoute.current) return;
     const desiredPath = pathForTab(workspace.slug, activeTab, campaignFilterTab, settingsSection, settingsTeamPath);
-    if (window.location.pathname !== desiredPath && !(activeTab === 'inbox' && window.location.pathname.startsWith(`${desiredPath}/`))) {
+    if (window.location.pathname !== desiredPath && !((activeTab === 'inbox' || activeTab === 'accounts') && window.location.pathname.startsWith(`${desiredPath}/`))) {
       const campaignQuery = activeTab === 'campaigns' && window.location.pathname.startsWith(`/${workspace.slug}/ads-manager/`)
         ? window.location.search : '';
       navigate(desiredPath + campaignQuery);
@@ -181,7 +183,10 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
       ? (inboxBadge > 0 ? `Inbox (${inboxBadge})` : 'Inbox')
       : activeTab === 'search'
         ? searchPageTitle(window.location.search)
-        : `${workspace.name} — Buyerly`;
+        // An account's page names the account itself once it has loaded.
+        : activeTab === 'accounts'
+          ? (route.tab === 'accounts' && route.recordId ? document.title : 'Ad accounts')
+          : `${workspace.name} — Buyerly`;
     // The search page's title follows its query, which only the address holds.
   }, [activeTab, inboxBadge, navigationKey, workspace.name]);
 
@@ -231,7 +236,10 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
             event.preventDefault();
             if (target === 'preferences') setSettingsSection(GO_TO_SETTINGS_SECTION);
             // G R from Recently deleted goes back to the list: the tab itself does not change.
-            if (target === 'rules' && useAppStore.getState().activeTab === 'rules') openAppPath(pathForTab(workspace.slug, 'rules'));
+            // G K from an account's page goes back to the Ad accounts list the same way.
+            if ((target === 'rules' || target === 'accounts') && useAppStore.getState().activeTab === target) {
+              openAppPath(pathForTab(workspace.slug, target));
+            }
             setActiveTab(target);
             goToPressedAt.current = 0;
           }
@@ -278,6 +286,15 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
                     onOpenRecord={(path) => navigate(path)}
                   />
                 )}
+                {activeTab === 'accounts' && (route.tab === 'accounts' && route.recordId ? (
+                  <AccountPage
+                    accountId={route.recordId}
+                    navigate={navigate}
+                    navigationKey={navigationKey}
+                  />
+                ) : (
+                  <AccountsView navigate={navigate} navigationKey={navigationKey} />
+                ))}
                 {activeTab === 'campaigns' && (
                   <CampaignsView
                     reveal={route.tab === 'campaigns' && route.entity && route.recordId

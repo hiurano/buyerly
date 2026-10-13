@@ -76,6 +76,37 @@ export interface MetaAccount {
   is_active?: boolean;
   /** Runtime rule snapshots attached to this ad account, each with its scope. */
   active_rules?: AttachedRule[];
+  /** The member who connected it ("Connected by"). */
+  owner_user_id?: number | null;
+  /** Today's numbers from the fact store, in the account's own day; null before its first sync today. */
+  today_metrics?: AccountLatestMetrics | null;
+  /** How the connection to Meta is doing. */
+  health?: AccountHealth;
+  /** "YYYY-MM-DD HH:MM", when it was added to the workspace. */
+  created_at?: string;
+}
+
+/** Today's figures of one ad account, as GET /api/accounts returns them. */
+export interface AccountLatestMetrics {
+  generated_at: string;
+  saved_at: string;
+  data_status: 'synced' | 'blocked' | 'error';
+  spend: number | null;
+  leads: number;
+  registrations: number;
+  cpl: number | null;
+  cpreg: number | null;
+}
+
+export interface AccountHealth {
+  status: 'unknown' | 'healthy' | 'degraded' | 'critical';
+  cause: 'none' | 'user' | 'meta' | 'system';
+  consecutive_failures: number;
+  last_success_at: string | null;
+  last_error_at: string | null;
+  last_error_code: string;
+  last_error_message: string;
+  last_checked_at: string | null;
 }
 
 export interface MetaConnection {

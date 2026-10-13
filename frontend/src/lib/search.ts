@@ -147,7 +147,8 @@ const ADS_MANAGER_ENTITIES = { campaign: 'campaigns', adset: 'adsets', ad: 'ads'
 export function searchResultPath(workspace: string, result: SearchResult): string {
   const account = `?account=${encodeURIComponent(result.account_id)}`;
   if (result.kind === 'rule') return `/${workspace}/rules/${encodeURIComponent(result.id)}`;
-  if (result.kind === 'account') return `/${workspace}/ads-manager/campaigns${account}`;
+  // An ad account opens its own page (#388); its campaigns are one click away there.
+  if (result.kind === 'account') return `/${workspace}/accounts/${encodeURIComponent(result.id)}`;
   return `/${workspace}/ads-manager/${ADS_MANAGER_ENTITIES[result.kind]}/${encodeURIComponent(result.id)}${account}`;
 }
 

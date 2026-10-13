@@ -11,6 +11,7 @@ import {
   Plus,
   Type,
   UserRound,
+  UsersRound,
   X,
 } from 'lucide-react';
 import {
@@ -179,7 +180,8 @@ const FilterFieldIcon: React.FC<{ fieldId: string; type: FilterFieldDefinition<u
   if (fieldId.includes('group') || fieldId.includes('campaign') || fieldId.includes('adSet')) {
     return <Layers3 {...props} />;
   }
-  if (fieldId.includes('rule') || fieldId.includes('action')) return <LinearBoltIcon size={14} />;
+  if (fieldId === 'team') return <UsersRound {...props} />;
+  if (fieldId.includes('rule') || fieldId.includes('action') || fieldId === 'automation') return <LinearBoltIcon size={14} />;
   if (type === 'number') return <Gauge {...props} />;
   if (type === 'date') return <CalendarDays {...props} />;
   if (type === 'text') return <Type {...props} />;

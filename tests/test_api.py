@@ -748,6 +748,45 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("access_token", str(payload).lower())
         self.assertEqual(foreign.status_code, 404)
 
+    async def test_accounts_list_carries_todays_figures_from_the_fact_store(self):
+        """#388: the Ad accounts page shows today's spend, leads and registrations
+        per account, read from the facts the worker stores, in the account's own day."""
+        today = datetime.now(timezone.utc).date()
+        async with self.test_session_maker() as session:
+            for day, spend, leads in ((today, 120.5, 4), (today - timedelta(days=1), 999.0, 50)):
+                session.add(
+                    AnalyticsEntityFact(
+                        workspace_id=self.ws_buyer_id,
+                        account_id="act_1018756607700064",
+                        entity_level="account",
+                        entity_id="act_1018756607700064",
+                        entity_name="Швеция 1",
+                        date=day.isoformat(),
+                        currency="USD",
+                        spend=spend,
+                        impressions=1000,
+                        leads=leads,
+                        registrations=2,
+                        status="ACTIVE",
+                        effective_status="ACTIVE",
+                    )
+                )
+            await session.commit()
+
+        auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/api/accounts", headers={**auth})
+
+        self.assertEqual(response.status_code, 200)
+        figures = response.json()[0]["today_metrics"]
+        self.assertEqual(figures["data_status"], "synced")
+        self.assertEqual(figures["spend"], 120.5)
+        self.assertEqual(figures["leads"], 4)
+        self.assertEqual(figures["registrations"], 2)
+        self.assertEqual(figures["cpl"], 30.13)
+        self.assertEqual(figures["cpreg"], 60.25)
+
     async def test_get_accounts_endpoint(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
         auth = await session_headers(self.test_session_maker, user_info)
@@ -766,6 +805,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(data[0]["group_ids"], [])
             self.assertEqual(data[0]["connection_type"], "system_user")
             self.assertIsNone(data[0]["latest_metrics"])
+            # No sync today yet: no figures rather than zeros (#388).
+            self.assertIsNone(data[0]["today_metrics"])
             self.assertEqual(data[0]["active_rules"], [])
 
     async def test_account_groups_are_crud_owner_scoped_and_exposed_on_accounts(self):

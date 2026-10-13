@@ -5,6 +5,7 @@ import {
   LinearInboxIcon,
   LinearMetaIcon,
   LinearBoltIcon,
+  LinearProjectCubeIcon,
 } from '@/icons/LinearIcons';
 import { goToShortcut } from '@/lib/shortcuts';
 import { openAppPath, pathForTab } from '@/lib/routing';
@@ -171,7 +172,44 @@ export const Sidebar: React.FC = () => {
             </button>
           </Tooltip>
 
-          {/* Item 2: Ads Manager */}
+          {/* Item 2: Ad accounts, as Linear's Projects (#388) */}
+          <Tooltip content="Go to ad accounts" shortcut={goToShortcut('accounts')} side="right" sideOffset={8}>
+            <button
+              type="button"
+              onClick={() => {
+                // From an account's page, back to the list: the tab itself does not change.
+                if (activeTab === 'accounts' && workspaceSlug) openAppPath(pathForTab(workspaceSlug, 'accounts'));
+                setActiveTab('accounts');
+              }}
+              data-active={activeTab === 'accounts' ? 'true' : 'false'}
+              className="linear-sidebar-nav-item"
+            >
+              <div className="flex items-center min-w-0">
+                <span
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    marginRight: '8px',
+                  }}
+                  className="flex shrink-0 items-center justify-center"
+                >
+                  <LinearProjectCubeIcon size={14} />
+                </span>
+                <span
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    letterSpacing: '-0.1px',
+                  }}
+                  className="truncate"
+                >
+                  Ad accounts
+                </span>
+              </div>
+            </button>
+          </Tooltip>
+
+          {/* Item 3: Ads Manager */}
           <Tooltip content="Go to Ads Manager" shortcut={goToShortcut('campaigns')} side="right" sideOffset={8}>
             <button
               type="button"
@@ -204,7 +242,7 @@ export const Sidebar: React.FC = () => {
             </button>
           </Tooltip>
 
-          {/* Item 3: Rules */}
+          {/* Item 4: Rules */}
           <Tooltip content="Go to rules" shortcut={goToShortcut('rules')} side="right" sideOffset={8}>
             <button
               type="button"

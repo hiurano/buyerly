@@ -1,7 +1,7 @@
 import type { OpenPaletteKind, SettingsSection } from '@/store/useAppStore';
 
 /** The pages G then a letter opens; Settings opens on its first section. */
-export type GoToTarget = 'inbox' | 'campaigns' | 'rules' | 'preferences';
+export type GoToTarget = 'inbox' | 'accounts' | 'campaigns' | 'rules' | 'preferences';
 
 /**
  * Linear's "G then …": one letter per page, shown in the sidebar, the
@@ -10,6 +10,8 @@ export type GoToTarget = 'inbox' | 'campaigns' | 'rules' | 'preferences';
  */
 export const GO_TO_KEYS: Record<GoToTarget, string> = {
   inbox: 'I',
+  // G K beside O K, which opens one ad account (#388).
+  accounts: 'K',
   campaigns: 'A',
   rules: 'R',
   preferences: 'S',

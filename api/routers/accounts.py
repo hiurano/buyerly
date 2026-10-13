@@ -46,6 +46,7 @@ from database.models import (
     User,
 )
 from services.account_health import health_payload
+from services.analytics_store import AnalyticsFactService
 from meta_api.client import MetaClient
 from api.meta_dependencies import get_meta_client
 
@@ -78,6 +79,23 @@ async def list_accounts(user: User = Depends(get_current_user)):
                 )
             ).scalars().all()
         health_by_account = {row.account_pk: row for row in health_rows}
+        # Today's figures straight from the fact store the worker fills on every
+        # sync, in each account's own day (#388); the saved summary above is only
+        # as fresh as the last time someone asked for it. Read last, so a failure
+        # here leaves nothing else unread.
+        today_metrics: dict = {}
+        if accounts and ws is not None:
+            try:
+                report = await AnalyticsFactService.get_workspace_summary_report(
+                    session, ws.id, "today", accounts, group_ids_by_account
+                )
+                today_metrics = {
+                    account_id: metrics
+                    for account_id, metrics in _latest_account_metrics_by_id(report).items()
+                    if metrics.get("data_status") == "synced"
+                }
+            except Exception:
+                logger.exception("Today's account figures are unavailable")
 
         items = []
         for a in accounts:
@@ -106,6 +124,7 @@ async def list_accounts(user: User = Depends(get_current_user)):
                     active_rules=active_rules_list,
                     group_ids=group_ids_by_account.get(a.account_id, []),
                     latest_metrics=latest_metrics.get(a.account_id),
+                    today_metrics=today_metrics.get(a.account_id),
                     health=health_payload(health_by_account.get(a.id)),
                     created_at=a.created_at.strftime("%Y-%m-%d %H:%M") if a.created_at else "",
                 )
