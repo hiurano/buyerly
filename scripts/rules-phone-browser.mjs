@@ -60,6 +60,8 @@ try {
       const verb = request.method();
       // Saved list views (#385): nothing saved yet; a change is accepted without being checked here.
       if (path.startsWith('/api/view-settings')) return route.fulfill({ json: verb === 'GET' ? { views: {} } : {} });
+      // The rule window checks its draft as it is typed (#387); that writes nothing.
+      if (verb === 'POST' && path === '/api/presets/check') return route.fulfill({ json: { valid: true } });
       if (verb !== 'GET') {
         const body = request.postData() ? request.postDataJSON() : null;
         writes.push({ verb, path, body });
@@ -170,10 +172,10 @@ try {
       const form = page.getByRole('dialog', { name: 'New rule' });
       await form.waitFor();
       await onScreen(form, 'the rule form');
-      // What "Applies to" picks, and where the rule looks once attached.
-      assert.match(await form.innerText(), /Checks each ad set on its own\. Attached to an ad account, it covers every ad set there; attached to a campaign, every ad set in that campaign\./);
+      // One sentence says what the rule does, how often, when and where (#387).
       await form.getByRole('textbox', { name: 'Rule name' }).fill('Second rule');
-      await form.getByRole('spinbutton').first().fill('5');
+      await form.getByRole('textbox', { name: 'Spend value' }).fill('5');
+      assert.match(await form.getByTestId('rule-summary').innerText(), /^Checks each ad set every 5 min and turns it off when spend ≥ USD 5 \(today\)\. .*Runs nowhere until you pick where\.$/);
       // The form's own menus: a pill and its items are finger-sized.
       const actionPill = form.getByRole('button', { name: /^Action:/ });
       await fingerSized(actionPill, 'the Action pill');
@@ -187,7 +189,7 @@ try {
       // The Window menu, as in Meta's rule dialog (#384): five windows, the
       // 3- and 7-day ones end yesterday, lifetime counts since launch.
       const windowPill = form.getByRole('button', { name: /^Window:/ });
-      assert.equal((await windowPill.innerText()).replace(/\s+/g, ' '), 'Window: Today');
+      assert.equal(await windowPill.getAttribute('aria-label'), 'Window: Today');
       await press(windowPill);
       const windowMenu = page.getByRole('menu');
       await windowMenu.waitFor();
@@ -201,7 +203,7 @@ try {
       await page.screenshot({ path: `${output}/window-menu-${width}.png` });
       await press(lifetimeItem);
       await windowMenu.waitFor({ state: 'detached' });
-      assert.equal((await windowPill.innerText()).replace(/\s+/g, ' '), 'Window: Lifetime');
+      assert.equal(await windowPill.getAttribute('aria-label'), 'Window: Lifetime');
       const create = form.getByRole('button', { name: 'Create rule' });
       await fingerSized(create, 'Create rule');
       await press(create);
@@ -212,7 +214,7 @@ try {
       assert.equal(lastWrite().body.conditions[0].time_window, 'lifetime');
       await form.waitFor({ state: 'detached' });
       await page.locator('[data-row-id="9"]').waitFor();
-      if (!phone) assert.match(await page.locator('[data-row-id="9"]').innerText(), /IF CPL > \S*\s?5\S* lifetime/);
+      if (!phone) assert.match(await page.locator('[data-row-id="9"]').innerText(), /IF Spend ≥ \S*\s?5\S* lifetime/);
       await page.mouse.move(0, 0);
 
       // 2. Edit it from its row's menu.

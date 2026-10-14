@@ -482,7 +482,12 @@ interface AppState {
   createRuleTargetLabelId?: string;
   /** Rule being edited in the shared modal; null while creating a new one. */
   editingRuleId: string | null;
-  openCreateRuleModal: (labelId?: string) => void;
+  /**
+   * Where a new rule starts out running: the campaigns or ad sets selected in
+   * Ads Manager when it was opened from "Apply rule…" (#387).
+   */
+  createRulePrefill?: { accountId: string; scope: RuleScope };
+  openCreateRuleModal: (labelId?: string, prefill?: { accountId: string; scope: RuleScope }) => void;
   openEditRuleModal: (ruleId: string) => void;
   closeCreateRuleModal: () => void;
   /** Rule whose status on campaigns, ad sets or ads is open (#322). */
@@ -528,7 +533,7 @@ function emptyWorkspaceState() {
     rules: [], ruleLabels: [], ruleAccounts: [], rulesLoadState: 'idle' as RulesLoadState,
     rulesError: '', rulesMutationError: '', selectedRuleId: null, selectedRuleIds: [],
     focusedRuleId: null, editingRuleId: null, ruleStatesRuleId: null, isCreateRuleModalOpen: false,
-    createRuleTargetLabelId: undefined, ruleLabelPicker: null,
+    createRuleTargetLabelId: undefined, createRulePrefill: undefined, ruleLabelPicker: null,
     rulesCollapsedGroups: [], pendingDeletion: null,
     adsManagerFilters: { campaigns: [], adsets: [], ads: [] },
     isCommandMenuOpen: false, openPalette: null, recordActionsFor: null, isDisplayOptionsOpen: false, isRulesDisplayOptionsOpen: false,
@@ -564,6 +569,11 @@ export const useAppStore = create<AppState>((set, get) => {
   const viewSettingsTimers = new Map<string, number>();
   let viewSettingsRequest: Promise<void> | null = null;
   let notificationChannelsSave: Promise<unknown> = Promise.resolve();
+  /** A rule saved with where it runs changes the Rules column Ads Manager shows (#387). */
+  const refreshAttachments = async (payload: RulePresetWriteRequest) => {
+    const accountId = get().attachedRulesAccountId;
+    if (payload.attachments !== undefined && accountId) await get().loadAccountRuleAttachments(accountId);
+  };
   return ({
   workspaceScope: null,
   workspaceSlug: null,
@@ -1071,6 +1081,7 @@ export const useAppStore = create<AppState>((set, get) => {
       await createRulePreset(payload);
       if (!current()) return;
       await get().loadRules();
+      await refreshAttachments(payload);
     } catch (error) {
       if (!current()) return;
       set({ rulesMutationError: requestErrorMessage(error) });
@@ -1213,23 +1224,27 @@ export const useAppStore = create<AppState>((set, get) => {
   cancelDeletion: () => set({ pendingDeletion: null }),
   isCreateRuleModalOpen: false,
   createRuleTargetLabelId: undefined,
+  createRulePrefill: undefined,
   editingRuleId: null,
-  openCreateRuleModal: (labelId) =>
+  openCreateRuleModal: (labelId, prefill) =>
     set({
       isCreateRuleModalOpen: true,
       createRuleTargetLabelId: labelId,
+      createRulePrefill: prefill,
       editingRuleId: null,
     }),
   openEditRuleModal: (ruleId) =>
     set({
       isCreateRuleModalOpen: true,
       createRuleTargetLabelId: undefined,
+      createRulePrefill: undefined,
       editingRuleId: ruleId,
     }),
   closeCreateRuleModal: () =>
     set({
       isCreateRuleModalOpen: false,
       createRuleTargetLabelId: undefined,
+      createRulePrefill: undefined,
       editingRuleId: null,
     }),
 
@@ -1244,6 +1259,7 @@ export const useAppStore = create<AppState>((set, get) => {
       await updateRulePreset(Number(ruleId), payload);
       if (!current()) return;
       await get().loadRules();
+      await refreshAttachments(payload);
     } catch (error) {
       if (!current()) return;
       set({ rulesMutationError: requestErrorMessage(error) });

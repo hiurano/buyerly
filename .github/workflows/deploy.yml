@@ -47,6 +47,7 @@ jobs:
           node scripts/check-app-version.cjs
           node scripts/check-list-view.cjs
           node scripts/check-accounts.cjs
+          node scripts/check-rule-draft.cjs
           npm run build
 
       - name: Upload built frontend
@@ -74,7 +75,7 @@ jobs:
           - group: small screens and Inbox
             scripts: mobile-screens inbox
           - group: sidebar, command menu, rules
-            scripts: mobile-sidebar command-menu rule-states rules-phone rule-labels
+            scripts: mobile-sidebar command-menu rule-states rules-phone rule-labels rule-window
           - group: workspace state, new version, WebMCP
             scripts: scoped-state new-version webmcp view-options accounts
           - group: members, search, settings

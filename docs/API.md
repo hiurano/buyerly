@@ -154,6 +154,7 @@ Settings → Administration → Teams, как в Linear (#371). Команда �
 | `DELETE /api/accounts/{account_id}` | — | удаляет доступный пользователю кабинет из Buyerly |
 | `POST /api/accounts/{account_id}/assign-rule` | `preset_id`, `scope` | назначает один пресет и включает исполнение правил кабинета; `scope` по умолчанию охватывает весь кабинет |
 | `GET /api/accounts/{account_id}/rules/{preset_id}/preview` | — | только чтение: что проверит правило, если привязать его ко всему кабинету. `level`, `total`, `running`, `matching`, `rules_enabled`, `already_attached`, `data_as_of`, `lifetime_since` (для правила с окном `lifetime` — первый сохранённый день, с которого посчитан lifetime: предпросмотр складывает сохранённые дни, а не читает Meta; иначе `null`) и до 50 сущностей уровня правила (`outcome`: `matched`, `not_met`, `inactive`; `detail` — показания) по последним синхронизированным данным, сначала подходящие. Meta не вызывается (#200) |
+| `POST /api/accounts/{account_id}/rules/preview` | rule payload без `id` (имя необязательно) | то же, что `GET …/rules/{preset_id}/preview`, но для правила, которое ещё не сохранено: окно New rule показывает предпросмотр до создания (#387). `already_attached` всегда `false`; ничего не пишет |
 | `PUT /api/accounts/{account_id}/rules/{preset_id}/scope` | `level`, `ids` | меняет область действия уже назначенного правила: `account`, `campaign` или `adset`; область сужает, какие сущности правило рассматривает, а на каком уровне оно действует задаёт `level` самого правила |
 | `POST /api/accounts/{account_id}/detach-rule/{preset_id}` | — | удаляет назначение одного правила; при пустом списке выключает правила |
 | `POST /api/accounts/{account_id}/toggle-rules` | — | включает/выключает уже назначенные правила; без правил включение запрещено |
@@ -234,6 +235,7 @@ Meta возвращает браузер на служебный callback `/api/
 | `GET /api/rule-states?entity_level=campaign&entity_id=…` | — | состояние каждого правила, нацеленного на эту кампанию, ad set (`adset`) или объявление (`ad`) |
 | `POST /api/presets` | rule payload, включая `level` | создаёт пресет; `level` — уровень исполнения `adset` (по умолчанию), `campaign` или `ad`; действия с бюджетом допустимы только на `adset` |
 | `PUT /api/presets/{preset_id}` | полный rule payload | обновляет пресет и его назначенные snapshot |
+| `POST /api/presets/check` | rule payload (имя необязательно) | проверяет правило как при сохранении, ничего не записывая: `{"valid": true}` или ошибка 422/400 с причиной; окно New rule показывает её до нажатия кнопки (#387) |
 | `DELETE /api/presets/{preset_id}` | — | удаляет пресет, назначения и ссылки в группах; сохраняет его в «Recently deleted» и возвращает `deleted_item_id` |
 
 Полный rule payload:
@@ -297,6 +299,8 @@ Meta возвращает браузер на служебный callback `/api/
 | `PATCH /api/presets/labels` | `preset_ids`, `add_label_ids`, `remove_label_ids` | ставит и снимает метки сразу у нескольких правил; ответ `updated_count` |
 
 `POST /api/presets` и `PUT /api/presets/{id}` принимают необязательный `label_ids`: новое правило создаётся сразу с метками, а правка без `label_ids` метки не трогает. `POST /api/accounts/{id}/assign-rule-group/{group_id}` удалён: метка не набор для привязки, правило привязывается к кабинету по одному.
+
+Так же `attachments` — где правило работает (#387): список `{account_id, scope}` (до 100 кабинетов, каждый один раз). При создании правило привязывается к ним в той же записи и включает исполнение правил этих кабинетов; при правке список — весь набор: остальные привязки снимаются (кабинет без правил выключает исполнение), у оставшихся меняется `scope`; без `attachments` правка привязки не трогает. Неизвестный кабинет (404), противоречие с правилами кабинета (409) или правило, требующее пересохранения (400), не записывают ничего, в том числе само правило.
 
 ## Recently deleted
 

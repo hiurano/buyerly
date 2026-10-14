@@ -174,6 +174,19 @@ export interface RulePresetWriteRequest {
   budget_max_daily: number;
   /** Labels a new rule starts with; left out, an edit keeps the rule's labels. */
   label_ids?: number[];
+  /**
+   * Where the rule runs (#387): created and attached in one write; on an edit
+   * the whole set. Left out, an edit keeps where it runs.
+   */
+  attachments?: { account_id: string; scope: RuleScope }[];
+}
+
+/** A rule in the rule window before it is saved: no id, the name optional. */
+export type RuleDraftRequest = Omit<RulePresetWriteRequest, 'label_ids' | 'attachments'>;
+
+/** Whether a draft could be saved as it stands; the error says why not. */
+export function checkRuleDraft(draft: RuleDraftRequest): Promise<{ valid: true }> {
+  return apiRequest<{ valid: true }>('/api/presets/check', { method: 'POST', body: JSON.stringify(draft) });
 }
 
 export interface RuleLabelWriteRequest {
@@ -693,6 +706,17 @@ export function fetchRuleAccountPreview(
 ): Promise<RuleAccountPreview> {
   return apiRequest<RuleAccountPreview>(
     `/api/accounts/${encodeURIComponent(accountId)}/rules/${presetId}/preview`,
+  );
+}
+
+/** The same preview for a rule not saved yet: the rule window previews a draft (#387). */
+export function fetchRuleDraftPreview(
+  accountId: string,
+  draft: RuleDraftRequest,
+): Promise<RuleAccountPreview> {
+  return apiRequest<RuleAccountPreview>(
+    `/api/accounts/${encodeURIComponent(accountId)}/rules/preview`,
+    { method: 'POST', body: JSON.stringify(draft) },
   );
 }
 
