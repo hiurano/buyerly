@@ -4,6 +4,7 @@ import type { FilterClause } from '@/components/filters/filterModel';
 import { ApiError, apiRequest } from '@/lib/api';
 import type { MetaAccount } from '@/lib/types';
 import { eligibleMetaAccounts } from '@/components/campaigns/liveCampaigns';
+import type { AdsManagerMetrics } from '@/components/campaigns/adsManagerMetrics';
 import {
   ACCOUNT_SCOPE,
   assignRuleToAccount,
@@ -89,6 +90,9 @@ export interface CampaignItem {
   roi: string;
   date: string;
   groupIds: string[];
+  /** Every figure for the period Ads Manager shows, as numbers (#389). */
+  metrics?: AdsManagerMetrics;
+  currency?: string;
 }
 
 export interface AdSetItem {
@@ -109,6 +113,8 @@ export interface AdSetItem {
   roi: string;
   audience: string;
   date: string;
+  metrics?: AdsManagerMetrics;
+  currency?: string;
 }
 
 export interface AdItem {
@@ -117,6 +123,8 @@ export interface AdItem {
   name: string;
   adSetId: string;
   adSetName: string;
+  /** Empty when the ad's ad set is not in the inventory. */
+  campaignId?: string;
   campaignName: string;
   platform: 'Meta' | 'TikTok' | 'Google';
   status: 'active' | 'paused' | 'unknown';
@@ -129,6 +137,8 @@ export interface AdItem {
   ctr: string;
   cpc: string;
   date: string;
+  metrics?: AdsManagerMetrics;
+  currency?: string;
 }
 
 /**

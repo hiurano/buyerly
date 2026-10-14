@@ -334,9 +334,33 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertIn("delivery={delivery}", row)
         self.assertIn("showViewModes={false}", self.display_options)
         self.assertIn("showGrouping", self.display_options)
-        self.assertIn("Account groups", self.display_options)
-        self.assertNotIn("Campaign groups", self.display_options)
-        self.assertNotIn("'ROI'", self.display_options)
+        ads_manager_view = (
+            ROOT / "frontend" / "src" / "components" / "campaigns" / "adsManagerViewModel.ts"
+        ).read_text()
+        self.assertIn("Account groups", ads_manager_view)
+        for source in (self.display_options, ads_manager_view):
+            self.assertNotIn("Campaign groups", source)
+            self.assertNotIn("'ROI'", source)
+
+    def test_ads_manager_shows_any_api_metric_for_a_chosen_period(self):
+        # Columns, ordering and metric filters come from one catalog of what
+        # /api/analytics/hierarchy returns, read for the period in the address (#389).
+        campaigns = ROOT / "frontend" / "src" / "components" / "campaigns"
+        metrics = (campaigns / "adsManagerMetrics.ts").read_text()
+        for field in ("cost_per_lead", "cost_per_registration", "cost_per_purchase", "landing_page_views", "ctr_link", "cpc_link"):
+            self.assertIn(f"'{field}'", metrics)
+        for label in ("'Leads'", "'CPL'", "'Registrations'", "'CPReg'", "'Purchases'", "'CPP'", "'Last 7 days'"):
+            self.assertIn(label, metrics)
+        # "Results / CPA" was always leads; the explicit pairs replaced it.
+        for source in (self.ads_manager_columns, self.campaigns_row_sources, self.display_options):
+            self.assertNotIn("Results / CPA", source)
+            self.assertNotIn("ResultsCpaCell", source)
+        self.assertIn("&period=${period}", self.campaigns_view)
+        self.assertNotIn("period=today", self.campaigns_view)
+        self.assertIn("periodFromSearch(window.location.search)", self.campaigns_view)
+        self.assertIn("migrateAdsManagerClauses", (campaigns / "useCampaignViewFilters.ts").read_text())
+        workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
+        self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?ads-manager( .*)?$")
         self.assertIn("--action-primary:", self.tokens)
         self.assertIn("--action-primary-hover:", self.tokens)
         self.assertIn("export const Button", self.button)

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { AdsManagerEntity } from '@/store/useAppStore';
 import { sanitizeFilterClauses, type FilterClause } from '@/components/filters/filterModel';
 import { readFilterParam, writeFilterParam } from '@/ui/useListView';
-import type { QuickSelection } from './campaignViewModel';
+import { migrateAdsManagerClauses, type QuickSelection } from './campaignViewModel';
 import { useAdsManagerView } from './adsManagerViewModel';
 
 type Filters = Record<AdsManagerEntity, FilterClause[]>;
@@ -14,9 +14,9 @@ function filtersFromAddress(): Filters | null {
   if (value === null) return null;
   const source = typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
   return {
-    campaigns: sanitizeFilterClauses(source.campaigns),
-    adsets: sanitizeFilterClauses(source.adsets),
-    ads: sanitizeFilterClauses(source.ads),
+    campaigns: migrateAdsManagerClauses(sanitizeFilterClauses(source.campaigns)),
+    adsets: migrateAdsManagerClauses(sanitizeFilterClauses(source.adsets)),
+    ads: migrateAdsManagerClauses(sanitizeFilterClauses(source.ads)),
   };
 }
 
@@ -39,9 +39,9 @@ export function useCampaignViewFilters(scope: string, navigationKey: number) {
   };
   const loaded = views.campaigns.loaded;
   const filters: Filters = {
-    campaigns: views.campaigns.view.filters,
-    adsets: views.adsets.view.filters,
-    ads: views.ads.view.filters,
+    campaigns: migrateAdsManagerClauses(views.campaigns.view.filters),
+    adsets: migrateAdsManagerClauses(views.adsets.view.filters),
+    ads: migrateAdsManagerClauses(views.ads.view.filters),
   };
 
   useEffect(() => {
@@ -68,7 +68,7 @@ export function useCampaignViewFilters(scope: string, navigationKey: number) {
   else {
     try {
       const saved = JSON.parse(sessionStorage.getItem(key) ?? 'null');
-      if (saved && ['status', 'group', 'rule'].includes(saved.fieldId) && typeof saved.value === 'string') quick = saved;
+      if (saved && ['status', 'group', 'rule', 'campaign'].includes(saved.fieldId) && typeof saved.value === 'string') quick = saved;
     } catch { /* Storage is optional. */ }
   }
   const setQuick = (selection: QuickSelection | null) => {

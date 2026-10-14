@@ -98,6 +98,7 @@ Buyerly reports actions the way Linear does, measured in the product on 2026-09-
 - hierarchy is `Campaigns → Ad sets → Ads` and uses account/campaign data returned by the authenticated workspace API;
 - identity, name, parent relationship, delivery status and supported budget come from Meta inventory at campaign, ad set and ad level, while period metrics come from Insights; an entity remains visible when its period activity is zero;
 - level tabs, primary and sidebar filters, grouping, supported column visibility and ordering operate on the selected account's live hierarchy; board and ROI controls remain unavailable until their server data exists;
+- every figure `/api/analytics/hierarchy` returns can be a column, an ordering and a number filter, all read from one catalog (`adsManagerMetrics.ts`) for the period chosen beside the filters (Today, Yesterday, Last 3 days, Last 7 days; `?period=` in the address). Leads, registrations and purchases each show with their own cost (CPL, CPReg, CPP); there is no combined "Results / CPA". The default set is Delivery, Budget, Spend, Leads, CPL and Rules; a row without a figure shows "—" and orders last both ways. On a phone Spend follows the name so both stay on screen;
 - Meta connection is a real OAuth flow: explanation, Facebook authorization, account discovery, explicit import and result;
 - imported ad accounts are not the same entity as campaigns and must not be rendered as campaign rows;
 - fixtures such as LuckySpin, RoyalBet, NeonSlots and AcePlay are development examples only and must not ship as current workspace data;
@@ -189,15 +190,16 @@ Inside the screens (Rules, Ads Manager, Inbox; `scripts/mobile-screens-browser.m
 
 ## Ads Manager filter layers
 
-Main conditions are encoded in the URL along with the ad account and entity level.
+Main conditions are encoded in the URL along with the ad account, entity level and period.
 Multi-membership fields support include-all, include-any and both exclusion modes.
 The details pane's quick filters (`DetailsFacets`, Linear's quick-filter tabs) count the
 main-filter result before applying one quick selection. Selecting another value
 replaces that selection; changing tabs clears it. The pane opens on the tab whose
 filter is set, else the tab last open in this browser tab; tabs that do not fit the
-pane fold into one select. Ads Manager's tabs are Status — Meta's `effective_status`
-(Active, Paused, In review, Disapproved, With issues, Archived), not the switch — and
-Rules; the Rules view's are Status (Active, Paused, Needs review), Action and Groups.
+pane fold into one select. Ads Manager's tabs are Delivery — Meta's `effective_status`
+(Active, Paused, In review, Disapproved, With issues, Archived), not the switch — the
+parent Campaign on ad sets and ads, and Rules; the Rules view's are Status (Active,
+Paused, Needs review), Action and Groups.
 Quick selections are scoped to route/account/entity in session storage, outside the URL.
 Display grouping and ordering apply afterwards; a row can appear in multiple groups
 when it has multiple assignments, without changing the unique result count.
@@ -205,7 +207,8 @@ when it has multiple assignments, without changing the unique result count.
 Facet data comes from live inventory, `/api/account-groups`, and the selected
 account's rule snapshots. Account groups describe account membership, not custom
 campaign labels. Rule counts describe assignment scope, not automation enablement.
-Status, account groups and rules can also group rows. Board mode remains unavailable.
+Delivery, the parent campaign or ad set, account groups and rules can also group rows.
+Board mode remains unavailable.
 Account groups stay a filter and a grouping, but not a pane tab: every row of one ad
 account has the same groups. See the responsive contract for the pane itself.
 

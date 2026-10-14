@@ -1,9 +1,8 @@
 import React from 'react';
 import { AdItem, useAppStore } from '@/store/useAppStore';
 import type { DeliveryControl } from '@/lib/delivery';
-import { LinearDataListRow, LinearDataMetricCell, LinearDataPrimaryCell } from '@/ui/LinearDataList';
-import { getAdsManagerColumns } from './tableColumns';
-import { EntityRowControls, ResultsCpaCell } from './EntityRowCells';
+import { LinearDataListRow, LinearDataPrimaryCell, type LinearDataListColumn } from '@/ui/LinearDataList';
+import { EntityPropertyCell, EntityRowControls } from './EntityRowCells';
 
 interface AdRowProps {
   ad: AdItem;
@@ -13,16 +12,17 @@ interface AdRowProps {
   /** Present when the row may really change delivery in Meta. */
   delivery?: DeliveryControl;
   properties: Record<string, boolean>;
+  /** The table's columns, so every row lines up with the header. */
+  columns: LinearDataListColumn[];
 }
 
-export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, selectable = false, delivery, properties }) => {
+export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, selectable = false, delivery, properties, columns }) => {
   const { selectedCampaignIds, toggleCampaignSelection } = useAppStore();
 
   const displayProperties = properties;
   const isSelected = selectable && selectedCampaignIds.includes(ad.id);
   const isDeliveryKnown = ad.status !== 'unknown';
   const isDeliveryOn = ad.status === 'active';
-  const columns = getAdsManagerColumns('ads', displayProperties);
 
   return (
     <LinearDataListRow
@@ -51,20 +51,9 @@ export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, selectable =
         hint={`${ad.name} · ${ad.identifier}`}
       />
 
-      {displayProperties.ctr !== false && <LinearDataMetricCell value={ad.ctr} />}
-
-      {displayProperties.cpc !== false && <LinearDataMetricCell value={ad.cpc} />}
-
-      {(displayProperties.results !== false || displayProperties.cpa !== false) && (
-        <ResultsCpaCell
-          leadsCount={ad.leadsCount}
-          cpa={ad.cpa}
-          showResults={displayProperties.results !== false}
-          showCpa={displayProperties.cpa !== false}
-        />
-      )}
-
-      {displayProperties.spend !== false && <LinearDataMetricCell value={ad.spend} />}
+      {columns.slice(1).map((column) => (
+        <EntityPropertyCell key={column.id} columnId={column.id} row={ad} />
+      ))}
     </LinearDataListRow>
   );
 };

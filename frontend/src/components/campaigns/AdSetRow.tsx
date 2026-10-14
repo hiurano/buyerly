@@ -1,9 +1,8 @@
 import React from 'react';
 import { AdSetItem, useAppStore } from '@/store/useAppStore';
 import type { DeliveryControl } from '@/lib/delivery';
-import { LinearDataListRow, LinearDataMetricCell, LinearDataPrimaryCell } from '@/ui/LinearDataList';
-import { getAdsManagerColumns } from './tableColumns';
-import { EntityRowControls, ResultsCpaCell } from './EntityRowCells';
+import { LinearDataListRow, LinearDataPrimaryCell, type LinearDataListColumn } from '@/ui/LinearDataList';
+import { EntityPropertyCell, EntityRowControls } from './EntityRowCells';
 import { RuleAttachmentCell } from './RuleAttachmentCell';
 
 interface AdSetRowProps {
@@ -14,9 +13,11 @@ interface AdSetRowProps {
   /** Present when the row may really change delivery in Meta. */
   delivery?: DeliveryControl;
   properties: Record<string, boolean>;
+  /** The table's columns, so every row lines up with the header. */
+  columns: LinearDataListColumn[];
 }
 
-export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, selectable = false, delivery, properties }) => {
+export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, selectable = false, delivery, properties, columns }) => {
   const {
     selectedCampaignIds,
     toggleCampaignSelection,
@@ -27,8 +28,6 @@ export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, sel
   const isSelected = selectable && selectedCampaignIds.includes(adSet.id);
   const isDeliveryKnown = adSet.status !== 'unknown';
   const isDeliveryOn = adSet.status === 'active';
-  const isPositiveRoi = adSet.roi.startsWith('+');
-  const columns = getAdsManagerColumns('adsets', displayProperties);
 
   return (
     <LinearDataListRow
@@ -57,34 +56,17 @@ export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, sel
         hint={`${adSet.name} · ${adSet.identifier}`}
       />
 
-      {displayProperties.budget !== false && <LinearDataMetricCell value={adSet.budget} />}
-
-      {(displayProperties.results !== false || displayProperties.cpa !== false) && (
-        <ResultsCpaCell
-          leadsCount={adSet.leadsCount}
-          cpa={adSet.cpa}
-          showResults={displayProperties.results !== false}
-          showCpa={displayProperties.cpa !== false}
-        />
-      )}
-
-      {displayProperties.spend !== false && <LinearDataMetricCell value={adSet.spend} />}
-
-      {displayProperties.roi !== false && (
-        <LinearDataMetricCell
-          value={adSet.roi}
-          valueClassName={`font-semibold ${isDeliveryOn ? isPositiveRoi ? 'text-emerald-500' : 'text-rose-500' : 'text-[var(--text-muted)]'}`}
-        />
-      )}
-
-      {displayProperties.rules !== false && (
+      {columns.slice(1).map((column) => (column.id === 'rules' ? (
         <RuleAttachmentCell
+          key={column.id}
           level="adset"
           entityId={adSet.id}
           attachedRuleIds={adSetAttachedRules[adSet.id] || []}
           campaignId={adSet.campaignId}
         />
-      )}
+      ) : (
+        <EntityPropertyCell key={column.id} columnId={column.id} row={adSet} />
+      )))}
     </LinearDataListRow>
   );
 };
