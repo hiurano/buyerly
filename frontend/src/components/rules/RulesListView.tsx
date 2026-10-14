@@ -1,30 +1,52 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { RuleItem, useAppStore } from '@/store/useAppStore';
 import { RuleRow } from './RuleRow';
 import { DataState } from '@/ui/DataState';
 import { LinearDataListGroup, LinearDataTable } from '@/ui/LinearDataList';
 import { arrangeGroups, sortByColumn } from '@/ui/listView';
 import { getRulesColumns } from './tableColumns';
-import { naturalRuleDirection, ruleGroupsFor, useRulesView } from './rulesViewModel';
+import {
+  NOT_ATTACHED_GROUP_ID,
+  RULE_GROUPINGS,
+  naturalRuleDirection,
+  ruleGroupAccounts,
+  ruleGroupsFor,
+  useRulesView,
+  type RuleListGroup,
+} from './rulesViewModel';
 
 interface RulesListViewProps {
   /** Filtered and already in the view's ordering and direction. */
   filteredRules: RuleItem[];
 }
 
+/** Header sorting for these columns; Manual and Status keep no header arrow. */
+const SORTABLE = new Set(['name', 'lastRun', 'lastCheck', 'created']);
+
 export const RulesListView: React.FC<RulesListViewProps> = ({ filteredRules }) => {
-  const { ruleLabels, rulesCollapsedGroups, toggleRulesGroupCollapse, openCreateRuleModal } = useAppStore();
+  const { ruleLabels, ruleAccounts, rulesCollapsedGroups, toggleRulesGroupCollapse, openCreateRuleModal } = useAppStore();
   const { view, update } = useRulesView();
   const columns = getRulesColumns(view.properties);
+  const accounts = useMemo(() => ruleGroupAccounts(ruleAccounts), [ruleAccounts]);
+  const grouping = RULE_GROUPINGS.some((option) => option.value === view.grouping) ? view.grouping : 'none';
+
+  /** A group's "+": a rule with that label, or one that runs on that ad account (#387). */
+  const createIn = (group: RuleListGroup) => {
+    if (group.labelId) return openCreateRuleModal(group.labelId);
+    if (grouping === 'account' && group.id !== NOT_ATTACHED_GROUP_ID) {
+      return openCreateRuleModal(undefined, { accountId: group.id.replace(/^account-/, ''), scope: { level: 'account', ids: [] } });
+    }
+    return openCreateRuleModal();
+  };
 
   const renderRows = () => {
     if (filteredRules.length === 0) {
       return <DataState title="No rules found" detail="No rules match the current filters." />;
     }
-    if (view.grouping !== 'status' && view.grouping !== 'labels') {
+    if (grouping === 'none') {
       return filteredRules.map((rule) => <RuleRow key={rule.id} rule={rule} />);
     }
-    return arrangeGroups(ruleGroupsFor(view.grouping, filteredRules, ruleLabels), view).map((group) => (
+    return arrangeGroups(ruleGroupsFor(grouping, filteredRules, ruleLabels, accounts), view).map((group) => (
       <LinearDataListGroup
         key={group.id}
         title={group.label}
@@ -33,10 +55,10 @@ export const RulesListView: React.FC<RulesListViewProps> = ({ filteredRules }) =
         tint={group.tint}
         isCollapsed={rulesCollapsedGroups.includes(group.id)}
         onToggleCollapse={() => toggleRulesGroupCollapse(group.id)}
-        actionLabel={group.labelId ? `Create rule labelled ${group.label}` : 'Create rule in group'}
-        onAction={() => openCreateRuleModal(group.labelId)}
+        actionLabel={group.labelId ? `Create rule labelled ${group.label}` : grouping === 'account' ? `Create rule on ${group.label}` : 'Create rule in group'}
+        onAction={() => createIn(group)}
       >
-        {group.rows.map((rule) => <RuleRow key={rule.id} rule={rule} />)}
+        {group.rows.map((rule) => <RuleRow key={`${group.id}:${rule.id}`} rule={rule} />)}
       </LinearDataListGroup>
     ));
   };
@@ -44,7 +66,7 @@ export const RulesListView: React.FC<RulesListViewProps> = ({ filteredRules }) =
   return (
     <LinearDataTable
       columns={columns}
-      sortKey={view.ordering === 'manual' || view.ordering === 'status' ? undefined : view.ordering}
+      sortKey={SORTABLE.has(view.ordering) ? view.ordering : undefined}
       sortDirection={view.direction}
       onSort={(columnId) => update(sortByColumn(view, columnId, naturalRuleDirection(columnId)))}
     >

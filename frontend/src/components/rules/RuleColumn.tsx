@@ -10,6 +10,8 @@ interface RuleColumnProps {
   dotColor?: string;
   /** A label's column: its "+" makes a rule with that label. */
   labelId?: string;
+  /** How the board wraps each card, e.g. to drag it to another column (#390). */
+  renderCard?: (rule: RuleItem) => React.ReactNode;
 }
 
 /** One board column: the grouping's group, its count and a "+" for a new rule in it. */
@@ -18,6 +20,7 @@ export const RuleColumn: React.FC<RuleColumnProps> = ({
   rules,
   dotColor,
   labelId,
+  renderCard,
 }) => {
   const { selectedRuleId, setSelectedRuleId, openCreateRuleModal } = useAppStore();
 
@@ -167,7 +170,7 @@ export const RuleColumn: React.FC<RuleColumnProps> = ({
           gap: '8px',
         }}
       >
-        {rules.map((rule) => (
+        {rules.map((rule) => renderCard ? renderCard(rule) : (
           <RuleCard
             key={rule.id}
             rule={rule}

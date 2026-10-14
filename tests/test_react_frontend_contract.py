@@ -529,6 +529,28 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertIn(contract, self.rule_window)
         self.assertNotIn("preset.cooldown_minutes : 0", self.rule_window)
 
+    def test_rules_filter_group_and_board_like_linear(self):
+        # #390: one catalog of filters, the issue's groupings and properties,
+        # and a board whose columns are the grouping.
+        rules = ROOT / "frontend" / "src" / "components" / "rules"
+        view_model = (rules / "rulesViewModel.ts").read_text()
+        for grouping in ("'labels'", "'status'", "'action'", "'level'", "'account'"):
+            self.assertIn(f"value: {grouping}", view_model)
+        for ordering in ("'lastCheck'", "'created'"):
+            self.assertIn(f"value: {ordering}", view_model)
+        catalogs = (ROOT / "frontend" / "src" / "components" / "filters" / "filterCatalogs.ts").read_text()
+        for field in ("'action'", "'level'", "'metric'", "'window'", "'account'", "'scope'", "'lastCheck'"):
+            self.assertIn(f"id: {field}", catalogs)
+        self.assertIn("allowNever: true", catalogs)
+        self.assertIn("<RuleBoard rules={filteredRules} />", self.rules_view)
+        self.assertNotIn('<RuleColumn title="All rules"', self.rules_view)
+        board = (rules / "RuleBoard.tsx").read_text()
+        self.assertIn("setRuleLabels(rule.id", board)
+        self.assertIn("toggleRuleStatus(rule.id)", board)
+        workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
+        self.assertIn("node scripts/check-rules-view.cjs", workflow)
+        self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?rules-view( .*)?$")
+
     def test_the_rule_window_reads_when_then_and_runs_where_it_is_saved(self):
         # #387: WHEN/THEN, one sentence of what the rule does, created where it
         # runs in one write, from Rules, Ctrl/Cmd+K and Ads Manager alike.

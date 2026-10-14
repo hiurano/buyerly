@@ -77,7 +77,7 @@ const built = facets.createRuleFacets(rules, groups);
 const options = id => built.find(facet => facet.id === id).options.map(option => [option.value, option.label, option.count]);
 assert.deepEqual(built.map(facet => facet.label), ['Status', 'Action', 'Labels']);
 assert.deepEqual(options('status'), [['active', 'Active', 1], ['paused', 'Paused', 1], ['needs_review', 'Needs review', 1]]);
-assert.deepEqual(options('action'), [['turn_off', 'Pause', 1], ['increase_budget', 'Increase budget', 1], ['notify_only', 'Notify', 1]]);
+assert.deepEqual(options('action'), [['turn_off', 'Turn off', 1], ['notify_only', 'Notify', 1], ['increase_budget', 'Budget +', 1]]);
 assert.deepEqual(options('label'), [['g1', 'Scaling', 2], ['g2', 'Tests', 1], ['none', 'No labels', 1]]);
 assert.deepEqual(facets.applyRuleQuickFilter(rules, { fieldId: 'label', value: 'g1' }).map(item => item.id), ['2', '3']);
 assert.deepEqual(facets.applyRuleQuickFilter(rules, { fieldId: 'status', value: 'active' }).map(item => item.id), ['1']);

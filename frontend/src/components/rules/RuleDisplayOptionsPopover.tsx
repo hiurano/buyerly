@@ -1,9 +1,16 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '@/store/useAppStore';
 import { LinearDisplayOptions } from '@/ui/LinearDisplayOptions';
 import { orderGroups } from '@/ui/listView';
-import { ruleGroupsFor, useRulesView } from './rulesViewModel';
+import {
+  RULE_GROUPINGS,
+  RULE_ORDERINGS,
+  RULE_PROPERTIES,
+  ruleGroupAccounts,
+  ruleGroupsFor,
+  useRulesView,
+} from './rulesViewModel';
 
 interface RuleDisplayOptionsPopoverProps {
   isOpen: boolean;
@@ -12,10 +19,11 @@ interface RuleDisplayOptionsPopoverProps {
 }
 
 export const RuleDisplayOptionsPopover: React.FC<RuleDisplayOptionsPopoverProps> = ({ isOpen, onClose, anchorRef }) => {
-  const { rules, ruleLabels } = useAppStore();
+  const { rules, ruleLabels, ruleAccounts } = useAppStore();
   const { view, update, reset, displayChanged } = useRulesView();
   const popoverRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
+  const accounts = useMemo(() => ruleGroupAccounts(ruleAccounts), [ruleAccounts]);
 
   useLayoutEffect(() => {
     if (!isOpen || !anchorRef.current) return;
@@ -43,22 +51,20 @@ export const RuleDisplayOptionsPopover: React.FC<RuleDisplayOptionsPopoverProps>
 
   if (!isOpen) return null;
 
-  // Status and labels are known sets, so their empty groups can be shown and ordered.
-  const groups = orderGroups(ruleGroupsFor(view.grouping, rules, ruleLabels), view);
+  // Every grouping is a known set, so its empty groups can be shown and ordered.
+  const groups = orderGroups(ruleGroupsFor(view.grouping, rules, ruleLabels, accounts), view);
   const hidden = view.hiddenGroups[view.grouping] ?? [];
+  const grouping = RULE_GROUPINGS.some((option) => option.value === view.grouping) ? view.grouping : 'none';
+  const ordering = RULE_ORDERINGS.some((option) => option.value === view.ordering) ? view.ordering : 'manual';
 
   return createPortal(
     <div ref={popoverRef} className="linear-display-options-popover" style={{ top: coords.top, right: coords.right }}>
       <LinearDisplayOptions
         viewMode={view.layout}
         onViewModeChange={(layout) => update({ layout })}
-        grouping={view.grouping}
-        groupingOptions={[
-          { value: 'none', label: 'No grouping' },
-          { value: 'labels', label: 'Label' },
-          { value: 'status', label: 'Status' },
-        ]}
-        onGroupingChange={(grouping) => update({ grouping })}
+        grouping={grouping}
+        groupingOptions={RULE_GROUPINGS}
+        onGroupingChange={(next) => update({ grouping: next })}
         groupOrdering={{
           groups: groups.map((group) => ({
             id: group.id,
@@ -74,20 +80,15 @@ export const RuleDisplayOptionsPopover: React.FC<RuleDisplayOptionsPopoverProps>
             },
           }),
         }}
-        ordering={view.ordering}
-        orderingOptions={[
-          { value: 'manual', label: 'Manual' },
-          { value: 'name', label: 'Name' },
-          { value: 'lastRun', label: 'Last action' },
-          { value: 'status', label: 'Status' },
-        ]}
-        onOrderingChange={(ordering) => update({ ordering })}
+        ordering={ordering}
+        orderingOptions={RULE_ORDERINGS}
+        onOrderingChange={(next) => update({ ordering: next })}
         direction={view.direction}
         onDirectionChange={(direction) => update({ direction })}
         // The board shows every column of its grouping, empty ones too.
-        showEmptyGroups={view.grouping === 'none' || view.layout === 'board' ? undefined : view.showEmptyGroups}
+        showEmptyGroups={grouping === 'none' || view.layout === 'board' ? undefined : view.showEmptyGroups}
         onShowEmptyGroupsChange={(showEmptyGroups) => update({ showEmptyGroups })}
-        properties={{ status: 'Status', labels: 'Labels', condition: 'Condition', action: 'Action', scope: 'Scope', lastCheck: 'Last check', lastRun: 'Last action' }}
+        properties={Object.fromEntries(RULE_PROPERTIES.map((property) => [property.id, property.label]))}
         enabledProperties={view.properties}
         onToggleProperty={(key) => update({ properties: { ...view.properties, [key]: !view.properties[key] } })}
         onReset={displayChanged ? reset : undefined}

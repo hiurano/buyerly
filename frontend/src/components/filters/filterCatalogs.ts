@@ -7,6 +7,8 @@ import type {
   RuleLabel,
 } from '@/store/useAppStore';
 import { DATE_OPERATORS, type FilterFieldDefinition, type FilterOption } from './filterModel';
+import { RULE_LEVEL_LABELS, RULE_METRIC_LABELS, RULE_TIME_WINDOW_MENU_LABELS } from '@/lib/rules';
+import { RULE_ACTION_NAMES, ruleState } from '@/components/rules/ruleNames';
 
 const enumOperators = ['is', 'is_not'] as const;
 
@@ -14,9 +16,6 @@ const STATUS_OPTIONS: FilterOption[] = [
   { value: 'active', label: 'Active', color: '#34d399', icon: 'status-active' },
   { value: 'paused', label: 'Paused', color: '#8b8d93', icon: 'status-paused' },
 ];
-
-/** A rule is either switched on or off, the same two states a campaign has. */
-const RULE_STATUS_OPTIONS: FilterOption[] = STATUS_OPTIONS;
 
 const withCounts = <T>(
   options: FilterOption[],
@@ -220,35 +219,118 @@ export const createAdFilterFields = ({
   ];
 };
 
+const RULE_STATE_OPTIONS: FilterOption[] = [
+  ...STATUS_OPTIONS,
+  { value: 'needs_review', label: 'Needs review', color: '#f2994a', icon: 'dot' },
+];
+
+const ruleConditions = (rule: RuleItem) => rule.preset.conditions ?? [];
+
+/** Where an attached rule looks in an ad account; "Not attached" when it runs nowhere. */
+const ruleScopes = (rule: RuleItem): string[] => {
+  const levels = rule.preset.attached_account_ids.map((id) => rule.preset.attached_scopes?.[id]?.level ?? 'account');
+  return levels.length ? [...new Set(levels)] : ['none'];
+};
+
+/**
+ * The Rules page's filters (#390): what a rule is, what it does and where
+ * it runs, then its dates. Every enum lists what rules can hold, with counts.
+ */
 export const createRuleFilterFields = ({
   rules,
   ruleLabels,
+  accounts = [],
 }: {
   rules: RuleItem[];
   ruleLabels: RuleLabel[];
-}): FilterFieldDefinition<RuleItem>[] => [
-  {
-    id: 'status', label: 'Status', section: 'filters', type: 'enum',
-    operators: [...enumOperators], defaultOperator: 'is',
-    options: withCounts(RULE_STATUS_OPTIONS, rules, (item) => item.status),
-    getValue: (item) => item.status, pluralLabel: 'statuses',
-  },
-  // Linear's Labels: include any of, include all of, exclude if any of; "No labels" first.
-  {
-    id: 'label', label: 'Labels', section: 'filters', type: 'enum',
-    operators: ['includes_any', 'includes_all', 'excludes_any'], defaultOperator: 'includes_any',
-    options: withCounts(ruleLabelOptions(ruleLabels), rules, (item) => (item.labelIds.length ? item.labelIds : 'none')),
-    getValue: (item) => (item.labelIds.length ? item.labelIds : ['none']), pluralLabel: 'labels',
-  },
-  // Linear's Dates: one row, each date with its ready-made values (#385). More come with #390.
-  {
-    id: 'lastRun', label: 'Last action', section: 'dates', type: 'date',
-    operators: [...DATE_OPERATORS], defaultOperator: 'after',
-    getValue: (item) => item.preset.last_run_at || null,
-  },
-  {
-    id: 'created', label: 'Created date', section: 'dates', type: 'date',
-    operators: [...DATE_OPERATORS], defaultOperator: 'after',
-    getValue: (item) => item.preset.created_at || null,
-  },
-];
+  accounts?: { account_id: string; name: string }[];
+}): FilterFieldDefinition<RuleItem>[] => {
+  const options = (list: FilterOption[], getValues: (rule: RuleItem) => string | string[]) => withCounts(list, rules, getValues);
+  const metricOptions: FilterOption[] = Object.entries(RULE_METRIC_LABELS).map(([value, label]) => ({ value, label }));
+  const windowOptions: FilterOption[] = Object.entries(RULE_TIME_WINDOW_MENU_LABELS).map(([value, label]) => ({ value, label }));
+  const accountOptions: FilterOption[] = [
+    ...accounts.map((account) => ({ value: account.account_id, label: account.name, keywords: [account.account_id] })),
+    { value: 'none', label: 'Not attached' },
+  ];
+  const metricsOf = (rule: RuleItem) => [...new Set(ruleConditions(rule).map((condition) => condition.metric))];
+  const windowsOf = (rule: RuleItem) => [...new Set(ruleConditions(rule).map((condition) => condition.time_window))];
+  const accountsOf = (rule: RuleItem) => (rule.preset.attached_account_ids.length ? rule.preset.attached_account_ids : ['none']);
+  return [
+    {
+      id: 'status', label: 'Status', section: 'filters', type: 'enum',
+      operators: [...enumOperators], defaultOperator: 'is',
+      options: options(RULE_STATE_OPTIONS, ruleState),
+      getValue: ruleState, pluralLabel: 'statuses',
+    },
+    // Linear's Labels: include any of, include all of, exclude if any of; "No labels" first.
+    {
+      id: 'label', label: 'Labels', section: 'filters', type: 'enum',
+      operators: ['includes_any', 'includes_all', 'excludes_any'], defaultOperator: 'includes_any',
+      options: options(ruleLabelOptions(ruleLabels), (item) => (item.labelIds.length ? item.labelIds : 'none')),
+      getValue: (item) => (item.labelIds.length ? item.labelIds : ['none']), pluralLabel: 'labels',
+    },
+    {
+      id: 'action', label: 'Action', section: 'filters', type: 'enum',
+      operators: [...enumOperators], defaultOperator: 'is',
+      options: options(Object.entries(RULE_ACTION_NAMES).map(([value, label]) => ({ value, label })), (item) => item.actionKind),
+      getValue: (item) => item.actionKind, pluralLabel: 'actions',
+    },
+    {
+      id: 'level', label: 'Applies to', section: 'filters', type: 'enum',
+      operators: [...enumOperators], defaultOperator: 'is',
+      options: options((['campaign', 'adset', 'ad'] as const).map((value) => ({ value, label: RULE_LEVEL_LABELS[value] })), (item) => item.preset.level ?? 'adset'),
+      getValue: (item) => item.preset.level ?? 'adset', pluralLabel: 'levels', keywords: ['level'],
+    },
+    {
+      id: 'metric', label: 'Metric', section: 'filters', type: 'enum',
+      operators: ['includes_any', 'includes_all', 'excludes_any'], defaultOperator: 'includes_any',
+      options: options(metricOptions, metricsOf),
+      getValue: metricsOf, pluralLabel: 'metrics', keywords: ['condition'],
+    },
+    {
+      id: 'window', label: 'Window', section: 'filters', type: 'enum',
+      operators: ['includes_any', 'excludes_any'], defaultOperator: 'includes_any',
+      options: options(windowOptions, windowsOf),
+      getValue: windowsOf, pluralLabel: 'windows', keywords: ['period', 'lifetime'],
+    },
+    {
+      id: 'account', label: 'Ad account', section: 'filters', type: 'enum',
+      operators: ['includes_any', 'excludes_any'], defaultOperator: 'includes_any',
+      options: options(accountOptions, accountsOf),
+      getValue: accountsOf, pluralLabel: 'ad accounts', keywords: ['attached', 'runs on'],
+    },
+    {
+      id: 'scope', label: 'Scope', section: 'filters', type: 'enum',
+      operators: ['includes_any', 'excludes_any'], defaultOperator: 'includes_any',
+      options: options([
+        { value: 'account', label: 'Whole account' },
+        { value: 'campaign', label: 'Campaigns' },
+        { value: 'adset', label: 'Ad sets' },
+        { value: 'none', label: 'Not attached' },
+      ], ruleScopes),
+      getValue: ruleScopes, pluralLabel: 'scopes',
+    },
+    {
+      id: 'name', label: 'Name', section: 'filters', type: 'text',
+      operators: ['contains', 'not_contains'], defaultOperator: 'contains',
+      placeholder: 'Name or RUL-…', keywords: ['title', 'id', 'search'],
+      getValue: (item) => `${item.name} ${item.identifier}`,
+    },
+    // Linear's Dates: one row, each date with its ready-made values (#385); "Never" for the two that may be missing.
+    {
+      id: 'lastRun', label: 'Last action', section: 'dates', type: 'date',
+      operators: [...DATE_OPERATORS], defaultOperator: 'after', allowNever: true,
+      getValue: (item) => item.preset.last_run_at || null,
+    },
+    {
+      id: 'lastCheck', label: 'Last check', section: 'dates', type: 'date',
+      operators: [...DATE_OPERATORS], defaultOperator: 'after', allowNever: true,
+      getValue: (item) => item.preset.last_checked_at || null,
+    },
+    {
+      id: 'created', label: 'Created date', section: 'dates', type: 'date',
+      operators: [...DATE_OPERATORS], defaultOperator: 'after',
+      getValue: (item) => item.preset.created_at || null,
+    },
+  ];
+};
