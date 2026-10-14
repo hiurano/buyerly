@@ -269,7 +269,7 @@ try {
       await page.screenshot({ path: `${output}/rules-1440.png` });
       await rulesPane.getByRole('tab', { name: 'Action' }).click();
       const ruleRow = (name) => rulesPane.locator('.details-facets-row', { hasText: name });
-      await ruleRow('Increase budget').click();
+      await ruleRow('Budget +').click();
       await page.locator('[data-row-id="7"]').waitFor({ state: 'detached' });
       assert.equal(await page.locator('[data-row-id="8"]').count(), 1, 'Rules: the Action filter keeps the budget rule');
       await rulesPane.getByRole('tab', { name: 'Status' }).click();

@@ -181,7 +181,8 @@ try {
       const groupList = popover(page).getByRole('region', { name: 'Group ordering' }).or(popover(page).locator('.linear-display-group-list'));
       assert.deepEqual(
         await popover(page).locator('.linear-display-group-label').allTextContents(),
-        ['Active rules', 'Paused rules'],
+        // A rule held back for review is its own state (#390).
+        ['Active rules', 'Paused rules', 'Needs review'],
       );
       await groupList.locator('.linear-display-group-row', { hasText: 'Paused rules' }).getByRole('button', { name: 'Hide group' }).click();
       await page.locator('[data-row-id="9"]').waitFor({ state: 'detached' });
@@ -200,21 +201,23 @@ try {
       assert.equal(views.rules, undefined, 'a default view keeps nothing on the server');
       await page.keyboard.press('Escape');
 
-      // The filter menu: Status, then Labels, a line, one Dates row.
+      // The filter menu: what a rule is, does and runs on (#390), a line, one Dates row.
       await page.keyboard.press('f');
       const menu = page.getByRole('dialog', { name: 'Add filter' });
       await menu.waitFor();
       const labels = await menu.getByRole('listbox', { name: 'Filter properties' }).getByRole('option').allTextContents();
-      assert.deepEqual(labels.map((label) => label.replace('▶', '').trim()), ['Status', 'Labels', 'Dates']);
+      assert.deepEqual(labels.map((label) => label.replace('▶', '').trim()), ['Status', 'Labels', 'Action', 'Applies to', 'Metric', 'Window', 'Ad account', 'Scope', 'Name', 'Dates']);
       await menu.getByRole('option', { name: 'Dates' }).hover();
       const dateList = page.getByRole('listbox', { name: 'Date properties' });
       await dateList.waitFor();
-      assert.deepEqual((await dateList.getByRole('option').allTextContents()).map((label) => label.replace('▶', '').trim()), ['Last action', 'Created date']);
+      assert.deepEqual((await dateList.getByRole('option').allTextContents()).map((label) => label.replace('▶', '').trim()), ['Last action', 'Last check', 'Created date']);
       await dateList.getByRole('option', { name: 'Last action' }).hover();
       const lastAction = page.getByRole('dialog', { name: 'Last action values' });
       await lastAction.waitFor();
       const presetsShown = (await lastAction.getByRole('option').allTextContents()).map((label) => label.trim());
-      assert.equal(presetsShown[0], '1 day ago');
+      // A date that may be missing offers Never first (#390).
+      assert.match(presetsShown[0], /^Never/);
+      assert.equal(presetsShown[1], '1 day ago');
       assert.match(presetsShown.find((label) => label.startsWith('1 week ago')), /1 rule$/, 'one rule acted in the last week');
       assert.equal(presetsShown.at(-1), 'Custom date or timeframe…');
       await page.screenshot({ path: `${output}/filter-dates-1440.png` });

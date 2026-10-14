@@ -1,5 +1,7 @@
 import type { RuleItem, RuleLabel } from '@/store/useAppStore';
-import type { RuleAction } from '@/lib/rules';
+import { RULE_ACTION_NAMES, RULE_STATUS_NAMES, ruleState } from './ruleNames';
+
+export { ruleState };
 
 /** The Rules details pane's quick filters (#367): state, what a rule does, its labels (#383). */
 export type RuleFacetId = 'status' | 'action' | 'label';
@@ -17,25 +19,6 @@ export interface RuleFacet {
   id: RuleFacetId;
   label: string;
   options: { value: string; label: string; count: number }[];
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  active: 'Active',
-  paused: 'Paused',
-  needs_review: 'Needs review',
-};
-
-const ACTION_LABELS: Record<RuleAction, string> = {
-  turn_off: 'Pause',
-  turn_on: 'Resume',
-  increase_budget: 'Increase budget',
-  decrease_budget: 'Decrease budget',
-  notify_only: 'Notify',
-};
-
-/** A rule the runtime holds back is "Needs review" whatever its switch says: it does not run. */
-export function ruleState(rule: Pick<RuleItem, 'status' | 'needsReview'>): string {
-  return rule.needsReview ? 'needs_review' : rule.status;
 }
 
 /** What a rule holds for a facet: one state, one action, any number of labels. */
@@ -56,12 +39,12 @@ export function createRuleFacets(rules: RuleItem[], labels: RuleLabel[]): RuleFa
     {
       id: 'status',
       label: 'Status',
-      options: listed('status', Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))),
+      options: listed('status', Object.entries(RULE_STATUS_NAMES).map(([value, label]) => ({ value, label }))),
     },
     {
       id: 'action',
       label: 'Action',
-      options: listed('action', Object.entries(ACTION_LABELS).map(([value, label]) => ({ value, label }))),
+      options: listed('action', Object.entries(RULE_ACTION_NAMES).map(([value, label]) => ({ value, label }))),
     },
     {
       id: 'label',
