@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pause, Play, Trash2 } from 'lucide-react';
 import { useAppStore, type RuleFilterTab } from '@/store/useAppStore';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
-import { RuleColumn } from './RuleColumn';
+import { RuleBoard } from './RuleBoard';
 import { RulesListView } from './RulesListView';
 import { deletionPrompt, runBulkRulesEnabled, runPendingDeletion } from './ruleActions';
 import { RuleStatesHost } from './RuleStatesDialog';
@@ -23,9 +23,8 @@ import {
 import { createRuleFilterFields } from '@/components/filters/filterCatalogs';
 import { applyFilterClauses, type FilterClause } from '@/components/filters/filterModel';
 import { DisplayOptionsChangedDot } from '@/ui/LinearDisplayOptions';
-import { arrangeGroups } from '@/ui/listView';
 import { useFiltersInAddress, writeFilterParam } from '@/ui/useListView';
-import { NO_LABEL_COLOR, NO_LABEL_GROUP_ID, ruleGroupsFor, sortRules, useRulesView } from './rulesViewModel';
+import { NO_LABEL_COLOR, ruleGroupAccounts, ruleGroupIds, sortRules, useRulesView } from './rulesViewModel';
 import { RuleLabelPickerHost } from './RuleLabelPickerHost';
 import {
   LinearBoltIcon,
@@ -87,6 +86,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
   const {
     rules,
     ruleLabels,
+    ruleAccounts,
     ruleFilterTab,
     setRuleFilterTab,
     openCreateRuleModal,
@@ -141,9 +141,10 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
   const filterButtonRef = useRef<HTMLButtonElement>(null);
   const [openFilterMenu, setOpenFilterMenu] = useState<OpenFilterMenu | null>(null);
 
+  const groupAccounts = useMemo(() => ruleGroupAccounts(ruleAccounts), [ruleAccounts]);
   const filterFields = useMemo(
-    () => createRuleFilterFields({ rules, ruleLabels }),
-    [ruleLabels, rules]
+    () => createRuleFilterFields({ rules, ruleLabels, accounts: groupAccounts }),
+    [groupAccounts, ruleLabels, rules]
   );
 
   // The details pane's one quick filter, on top of the filters; kept for this browser tab.
@@ -241,11 +242,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
         changed = true;
       }
       if (rulesViewMode === 'list') {
-        const groupKeys = rulesDisplayGrouping === 'status'
-          ? [`status-${revealedRule.status}`]
-          : rulesDisplayGrouping === 'labels'
-            ? (revealedRule.labelIds.length > 0 ? revealedRule.labelIds : [NO_LABEL_GROUP_ID])
-            : [];
+        const groupKeys = ruleGroupIds(rulesDisplayGrouping, revealedRule, ruleLabels, groupAccounts);
         for (const key of groupKeys.filter((candidate) => rulesCollapsedGroups.includes(candidate))) {
           toggleRulesGroupCollapse(key);
           changed = true;
@@ -514,24 +511,9 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
             <SelectionDock count={selection.count} onOpenActions={() => selection.setMenuOpen(true)} onClear={selection.clear} />
           </div>
         ) : (
-          /* Left: Linear Board Container (Horizontal Scroll) */
+          /* Linear's Board: the columns are the grouping's groups (#390). */
           <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden px-5 py-3">
-            <div className="flex h-full items-start gap-0 pb-2">
-              {/* The board's columns are the grouping's groups, as Linear's board columns:
-                  by label a rule with two labels sits in both, one without in "No label". */}
-              {rulesDisplayGrouping === 'labels' || rulesDisplayGrouping === 'status'
-                ? arrangeGroups(ruleGroupsFor(rulesDisplayGrouping, filteredRules, ruleLabels), { ...rulesView, showEmptyGroups: true })
-                  .map((group) => (
-                    <RuleColumn
-                      key={group.id}
-                      title={group.label}
-                      dotColor={group.dotColor}
-                      rules={group.rows}
-                      labelId={group.labelId}
-                    />
-                  ))
-                : <RuleColumn title="All rules" rules={filteredRules} />}
-            </div>
+            <RuleBoard rules={filteredRules} />
           </div>
         )}
       </DetailsPaneLayout>

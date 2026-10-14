@@ -5,13 +5,22 @@ import { LinearToggle } from '@/ui/LinearToggle';
 
 import { LinearDataListRow, LinearDataMetricCell, LinearDataPrimaryCell } from '@/ui/LinearDataList';
 import { LinearLabelPill } from '@/ui/LinearLabelPill';
-import { ATTACH_STEPS, ruleActionTone } from '@/lib/rules';
+import { ATTACH_STEPS, RULE_LEVEL_LABELS, ruleActionTone } from '@/lib/rules';
 import type { RuleActionTone } from '@/lib/rules';
 import { getRulesColumns } from './tableColumns';
 import { RuleRowMenu } from './RuleRowMenu';
 import { useIsSmallScreen } from '@/lib/useMediaQuery';
 import { labelsOf, useRulesView } from './rulesViewModel';
 import { RuleLabelPills } from './RuleLabelPills';
+import { formatCheckInterval, formatRepeat } from './ruleDraft';
+
+const MUTED_CELL = 'font-[450] text-[var(--text-tertiary)]';
+
+/** A day as Linear's Created column shows it: Oct 14. */
+const createdDay = (iso: string) => {
+  const time = Date.parse(iso);
+  return Number.isFinite(time) ? new Date(time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+};
 
 const ACTION_BADGE_STYLES: Record<
   RuleActionTone,
@@ -110,6 +119,10 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
         hint={rule.name}
       />
 
+      {rulesDisplayProperties.id && (
+        <span className="truncate text-[12px] font-[450] tabular-nums text-[var(--text-tertiary)]">{rule.identifier}</span>
+      )}
+
       {rulesDisplayProperties.labels !== false && (
         <div
           role="button"
@@ -175,6 +188,10 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
           </div>
       )}
 
+      {rulesDisplayProperties.level && (
+        <span className="truncate text-[12px] font-[450] text-[var(--text-secondary)]">{RULE_LEVEL_LABELS[rule.preset.level ?? 'adset']}</span>
+      )}
+
       {rulesDisplayProperties.scope !== false && (
           <div className="flex min-w-0 items-center overflow-hidden">
             {rule.scope && (
@@ -197,12 +214,24 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
           </div>
       )}
 
+      {rulesDisplayProperties.check && (
+        <span className="truncate text-[12px] font-[450] text-[var(--text-secondary)]">{formatCheckInterval(rule.preset.check_interval_minutes)}</span>
+      )}
+
+      {rulesDisplayProperties.repeat && (
+        <span className="truncate text-[12px] font-[450] text-[var(--text-secondary)]">{formatRepeat(rule.preset.cooldown_minutes)}</span>
+      )}
+
       {rulesDisplayProperties.lastCheck !== false && (
         <LinearDataMetricCell value={rule.lastCheck} valueClassName="font-[450] text-[var(--text-tertiary)]" />
       )}
 
       {rulesDisplayProperties.lastRun !== false && (
-        <LinearDataMetricCell value={rule.lastRun} valueClassName="font-[450] text-[var(--text-tertiary)]" />
+        <LinearDataMetricCell value={rule.lastRun} valueClassName={MUTED_CELL} />
+      )}
+
+      {rulesDisplayProperties.created && (
+        <LinearDataMetricCell value={createdDay(rule.preset.created_at)} valueClassName={MUTED_CELL} />
       )}
 
       {/* Pinned to the right edge on a narrow screen, where this column is past the scroll. */}

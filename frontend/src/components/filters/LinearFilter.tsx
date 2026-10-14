@@ -25,6 +25,7 @@ import {
 } from '@/icons/LinearIcons';
 import {
   DATE_PRESETS,
+  NEVER_DATE,
   FILTER_OPERATOR_LABELS,
   FILTER_OPERATOR_NAMES,
   FilterClause,
@@ -681,14 +682,17 @@ const DateValueEditor = <T,>({
 
   const query = search.trim().toLocaleLowerCase();
   const rows = [
+    ...(field.allowNever ? [{ value: NEVER_DATE, label: 'Never' }] : []).filter((row) => row.label.toLocaleLowerCase().includes(query)),
     ...DATE_PRESETS.filter((preset) => preset.label.toLocaleLowerCase().includes(query)),
     { value: 'custom', label: 'Custom date or timeframe…' },
   ];
+  // "Never" reads "is Never", whatever the chip said before; a real date keeps before / after.
+  const operatorFor = (value: string): FilterOperator => (value === NEVER_DATE ? 'is' : operator === 'is' ? field.defaultOperator : operator);
   const countFor = (value: string) =>
-    items ? items.filter((item) => matchesFilterClause(item, field, { fieldId: field.id, operator, values: [value] })).length : 0;
+    items ? items.filter((item) => matchesFilterClause(item, field, { fieldId: field.id, operator: operatorFor(value), values: [value] })).length : 0;
   const choose = (value: string) => {
     if (value === 'custom') setCustom(true);
-    else onApply(operator, value);
+    else onApply(operatorFor(value), value);
   };
 
   if (custom) {

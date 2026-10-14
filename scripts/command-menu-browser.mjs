@@ -348,6 +348,9 @@ try {
       await page.getByText('No notifications', { exact: true }).waitFor();
       const goTo = [['a', /\/alpha\/ads-manager\/campaigns/], ['r', /\/alpha\/rules$/], ['s', /\/alpha\/settings/], ['i', /\/alpha\/inbox$/]];
       for (const [letter, address] of goTo) {
+        // G and the letter count only within 1.5s of each other: let the page the last
+        // pair opened finish loading first, so a slow runner does not split the pair.
+        await page.waitForLoadState('networkidle');
         await page.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined));
         await page.keyboard.press('g');
         await page.keyboard.press(letter);

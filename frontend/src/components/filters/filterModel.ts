@@ -65,7 +65,12 @@ export interface FilterFieldDefinition<T> {
   keywords?: string[];
   /** Known values with nothing to match, which Linear folds into one line. */
   unmatchedCount?: number;
+  /** A date that may be missing offers "Never" first: "Last action is Never" (#390). */
+  allowNever?: boolean;
 }
+
+/** The date filter's "Never": the item has no such date at all. */
+export const NEVER_DATE = 'never';
 
 export const FILTER_OPERATOR_LABELS: Record<FilterOperator, string> = {
   is: 'is',
@@ -136,6 +141,7 @@ export const resolveFilterDate = (value: FilterValue, now: Date = new Date()): n
 };
 
 export const filterDateLabel = (value: FilterValue): string => {
+  if (value === NEVER_DATE) return 'Never';
   const preset = DATE_PRESETS.find((candidate) => candidate.value === value);
   if (preset) return preset.label;
   const relative = RELATIVE_DATE.exec(String(value));
@@ -199,6 +205,11 @@ export const matchesFilterClause = <T>(
   const selectedValues = clause.values;
 
   if (selectedValues.length === 0) return true;
+
+  if (field.type === 'date' && selectedValues[0] === NEVER_DATE) {
+    const never = itemValues.length === 0 || itemValues.every((value) => value === '');
+    return clause.operator === 'is_not' ? !never : never;
+  }
 
   if (clause.operator === 'includes_all' || clause.operator === 'excludes_all') {
     const all = selectedValues.every((selected) => itemValues.some((value) => equalValue(value, selected)));
