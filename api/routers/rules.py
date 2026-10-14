@@ -36,6 +36,8 @@ from api.schemas import (
     RuleLabelCreateRequest,
     RuleLabelResponse,
     RuleLabelUpdateRequest,
+    RuleAttachmentRequest,
+    RuleDraftRequest,
     RuleScopeItem,
     RulePresetItem,
 )
@@ -107,6 +109,71 @@ def _record_assistant_change(
     )
 
 
+def _account_key(account_id: str) -> str:
+    return account_id if account_id.startswith("act_") else f"act_{account_id}"
+
+
+def _preset_fields(payload: RuleDraftRequest, condition_payloads: list) -> dict:
+    """The stored columns of a rule written from the rule window."""
+    return {
+        "name": payload.name.strip() or "New rule",
+        "action": payload.action or "turn_off",
+        "level": payload.level,
+        "enabled": payload.enabled,
+        "conditions": condition_payloads,
+        "condition_logic": payload.condition_logic or "and",
+        "cooldown_minutes": payload.cooldown_minutes or 0,
+        "check_interval_minutes": payload.check_interval_minutes or 5,
+        "budget_change_percent": payload.budget_change_percent or 0.0,
+        "budget_max_daily": payload.budget_max_daily or 0.0,
+    }
+
+
+async def _apply_rule_attachments(
+    session, ws, preset: RulePreset, desired: List[RuleAttachmentRequest]
+) -> None:
+    """Make `desired` the ad accounts the rule runs on, each with its scope (#387).
+
+    An account it newly runs on gets its automation turned on, as attaching
+    from Ads Manager does; one it leaves keeps its other rules, and an account
+    left without rules has its automation turned off, as detaching does. Any
+    error leaves every account as it was: the caller has not committed yet.
+    """
+    wanted = {_account_key(item.account_id): item.scope.model_dump() for item in desired}
+    accounts = (
+        await session.execute(select(Account).where(Account.workspace_id == ws.id))
+    ).scalars().all()
+    known = {account.account_id for account in accounts}
+    if any(account_id not in known for account_id in wanted):
+        raise HTTPException(status_code=404, detail="Ad account not found.")
+    snapshot = _preset_snapshot(preset)
+    if wanted and snapshot.get("needs_review"):
+        raise HTTPException(
+            status_code=400,
+            detail="This rule has unsafe or outdated settings. Open it and save it again.",
+        )
+    for account in accounts:
+        active_rules = _load_active_rules(account.active_rules)
+        attached = any(rule.get("preset_id") == preset.id for rule in active_rules)
+        if account.account_id in wanted:
+            await _ensure_stable_account_owner(session, account)
+            scope = wanted[account.account_id]
+            if attached:
+                for rule in active_rules:
+                    if rule.get("preset_id") == preset.id:
+                        rule["scope"] = scope
+            else:
+                active_rules.append({**snapshot, "scope": scope})
+                account.rules_enabled = True
+            _ensure_compatible_rule_set(active_rules)
+            account.active_rules = json.dumps(active_rules)
+        elif attached:
+            active_rules = [rule for rule in active_rules if rule.get("preset_id") != preset.id]
+            account.active_rules = json.dumps(active_rules)
+            if not active_rules:
+                account.rules_enabled = False
+
+
 @router.get("/presets", response_model=List[RulePresetItem])
 async def list_presets(user: User = Depends(get_current_user)):
     async with async_session_maker() as session:
@@ -150,20 +217,14 @@ async def create_preset(
         preset = RulePreset(
             workspace_id=ws.id if ws else None,
             owner_user_id=user.id,
-            name=payload.name.strip() or "New rule",
-            action=payload.action or "turn_off",
-            level=payload.level,
-            enabled=payload.enabled,
-            conditions=condition_payloads,
-            condition_logic=payload.condition_logic or "and",
-            cooldown_minutes=payload.cooldown_minutes or 0,
-            check_interval_minutes=payload.check_interval_minutes or 5,
-            budget_change_percent=payload.budget_change_percent or 0.0,
-            budget_max_daily=payload.budget_max_daily or 0.0,
+            **_preset_fields(payload, condition_payloads),
         )
         session.add(preset)
         await session.flush()
         await _set_preset_labels(session, preset.id, [label.id for label in labels])
+        # Created and attached in one write: the rule never sits "nowhere" (#387).
+        if payload.attachments:
+            await _apply_rule_attachments(session, ws, preset, payload.attachments)
         _record_assistant_change(
             session,
             request,
@@ -178,7 +239,60 @@ async def create_preset(
         )
         await session.commit()
         await session.refresh(preset)
-        return _preset_response(preset, label_ids=[label.id for label in labels])
+        return await _labelled_preset_response(session, ws.id, preset)
+
+
+@router.post("/presets/check")
+async def check_rule_draft(payload: RuleDraftRequest, user: User = Depends(get_current_user)):
+    """Whether a rule in the rule window could be saved as it stands (#387).
+
+    The same checks as saving run on it, so a contradiction or a missing
+    budget ceiling shows while the buyer is still typing. Writes nothing.
+    """
+    async with async_session_maker() as session:
+        await get_user_workspace(session, user)
+    _validated_condition_payloads(payload.conditions)
+    return {"valid": True}
+
+
+@router.post("/accounts/{account_id}/rules/preview")
+async def preview_rule_draft_on_account(
+    account_id: str,
+    payload: RuleDraftRequest,
+    user: User = Depends(get_current_user),
+):
+    """What a rule not saved yet would check on the whole ad account (#387).
+
+    The rule window previews before anything exists, so the rule comes in the
+    body instead of by id; the reading is the same as for a saved rule (#200).
+    """
+    async with async_session_maker() as session:
+        ws = await get_user_workspace(session, user)
+        if ws is None:
+            raise HTTPException(status_code=404, detail="Ad account not found.")
+        acc = (
+            await session.execute(
+                select(Account).where(
+                    Account.account_id == _account_key(account_id),
+                    Account.workspace_id == ws.id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not acc:
+            raise HTTPException(status_code=404, detail="Ad account not found.")
+        condition_payloads = _validated_condition_payloads(payload.conditions)
+        # Never added to the session: a draft is read, not stored.
+        draft = RulePreset(
+            workspace_id=ws.id,
+            owner_user_id=user.id,
+            **_preset_fields(payload, condition_payloads),
+        )
+        rule = _preset_snapshot(draft)
+        if rule.get("needs_review"):
+            raise HTTPException(status_code=400, detail=rule.get("review_reason") or "This rule cannot run as set.")
+        preview = await preview_rule_on_account(session, acc, rule)
+        preview["already_attached"] = False
+        return preview
 
 
 @router.put("/presets/{preset_id}", response_model=RulePresetItem)
@@ -236,6 +350,9 @@ async def update_preset(preset_id: int, payload: CreatePresetRequest, user: User
         if payload.label_ids is not None:
             labels = await _get_workspace_labels(session, payload.label_ids, workspace_id=ws.id)
             await _set_preset_labels(session, preset.id, [label.id for label in labels])
+        # Where it runs, edited in the same window (#387); left out, unchanged.
+        if payload.attachments is not None:
+            await _apply_rule_attachments(session, ws, preset, payload.attachments)
 
         await session.commit()
         await session.refresh(preset)

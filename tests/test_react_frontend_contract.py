@@ -149,6 +149,11 @@ class TestReactFrontendContract(unittest.TestCase):
         cls.create_rule_modal = (
             ROOT / "frontend" / "src" / "components" / "rules" / "CreateRuleModal.tsx"
         ).read_text()
+        # The rule window (#387): the dialog, its parts and its pure model.
+        cls.rule_window = "\n".join(
+            (ROOT / "frontend" / "src" / "components" / "rules" / name).read_text()
+            for name in ("CreateRuleModal.tsx", "RuleWindowParts.tsx", "ruleDraft.ts")
+        )
         cls.ads_manager_columns = (
             ROOT / "frontend" / "src" / "components" / "campaigns" / "tableColumns.ts"
         ).read_text()
@@ -401,7 +406,7 @@ class TestReactFrontendContract(unittest.TestCase):
 
         # The create form may only offer what api/schemas/rules.py accepts.
         for supported in ("'cpl'", "'cpreg'", "'cpp'", "'last_3d'", "'lifetime'", "'increase_budget'"):
-            self.assertIn(supported, self.create_rule_modal)
+            self.assertIn(supported, self.rule_window)
         # The Window menu reads like Meta's rule dialog (#384).
         self.assertIn("RULE_TIME_WINDOW_MENU_LABELS[value]", self.create_rule_modal)
         self.assertIn("RULE_TIME_WINDOW_HINTS[value]", self.create_rule_modal)
@@ -415,7 +420,7 @@ class TestReactFrontendContract(unittest.TestCase):
             "37 months",
             "is between",
         ):
-            self.assertNotIn(unsupported, self.create_rule_modal)
+            self.assertNotIn(unsupported, self.rule_window)
 
     def test_rules_screen_has_one_filter_implementation(self):
         # The live Rules screen filters through LinearFilterMenu and
@@ -484,15 +489,16 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("RULE_LEVEL_LABELS", self.rules_lib)
         # The displayed action carries the level rather than the bare verb.
         self.assertIn("RULE_LEVEL_LABELS[preset.level]", self.rules_lib)
-        for contract in ("RuleExecutionLevel", "Applies to:", "changeLevel", "'ad'"):
-            self.assertIn(contract, self.create_rule_modal)
+        for contract in ("RuleExecutionLevel", "Level:", "withLevel", "'ad'"):
+            self.assertIn(contract, self.rule_window)
         # Budget actions stay on ad sets; the form must not offer them higher up.
-        self.assertIn("BUDGET_ACTIONS", self.create_rule_modal)
+        self.assertIn("BUDGET_ACTIONS", self.rule_window)
+        self.assertIn("level === 'adset' || !BUDGET_ACTIONS.has(action)", self.rule_window)
 
     def test_a_rule_can_be_edited_and_run_on_chosen_ad_accounts(self):
         # One modal serves both create and edit rather than a second screen.
-        for contract in ("editingRuleId", "Edit rule", "Save changes", "loadRuleIntoForm"):
-            self.assertIn(contract, self.create_rule_modal)
+        for contract in ("editingRuleId", "Edit rule", "Save changes", "draftFromPreset"):
+            self.assertIn(contract, self.rule_window)
 
         # Row actions are built from the shared menu primitives, and the "…"
         # button now has a handler instead of an empty one.
@@ -516,12 +522,39 @@ class TestReactFrontendContract(unittest.TestCase):
         for contract in (
             "Repeat:",
             "REPEAT_INTERVALS",
-            "DEFAULT_REPEAT_MINUTES = 1440",
-            "setRepeatMinutes(preset.cooldown_minutes)",
-            "cooldown_minutes: repeatMinutes",
+            "repeatMinutes: 1440",
+            "repeatMinutes: preset.cooldown_minutes",
+            "cooldown_minutes: draft.repeatMinutes",
         ):
-            self.assertIn(contract, self.create_rule_modal)
-        self.assertNotIn("preset.cooldown_minutes : 0", self.create_rule_modal)
+            self.assertIn(contract, self.rule_window)
+        self.assertNotIn("preset.cooldown_minutes : 0", self.rule_window)
+
+    def test_the_rule_window_reads_when_then_and_runs_where_it_is_saved(self):
+        # #387: WHEN/THEN, one sentence of what the rule does, created where it
+        # runs in one write, from Rules, Ctrl/Cmd+K and Ads Manager alike.
+        for contract in (
+            "aria-label=\"When\"",
+            "aria-label=\"Then\"",
+            "data-testid=\"rule-summary\"",
+            "describeDraft(draft, accounts)",
+            "attachments: draftAttachments(draft)",
+            "autoRuleName(draft)",
+            "event.metaKey || event.ctrlKey",
+            "writeStoredDraft(storageKey, draft)",
+            "Create more",
+            "checkRuleDraft(rule)",
+            "fetchRuleDraftPreview(accountId, rule)",
+        ):
+            self.assertIn(contract, self.rule_window)
+        self.assertIn("<CreateRuleModal />", self.app)
+        self.assertNotIn("<CreateRuleModal />", self.rules_view)
+        self.assertIn("New rule…", self.rule_selector_popover)
+        self.assertIn("openCreateRuleModal(undefined, { accountId, scope", self.rule_selector_popover)
+        for endpoint in ("'/api/presets/check'", "/rules/preview`"):
+            self.assertIn(endpoint, self.rules_lib)
+        workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
+        self.assertIn("node scripts/check-rule-draft.cjs", workflow)
+        self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?rule-window( .*)?$")
 
     def test_row_selection_drives_real_bulk_actions(self):
         """A checkbox is shown only where selected rows can actually be acted on."""

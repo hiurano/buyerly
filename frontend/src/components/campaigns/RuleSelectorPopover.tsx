@@ -71,6 +71,8 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
     clearAttachmentError,
     rulesLoadState,
     loadRules,
+    attachedRulesAccountId,
+    openCreateRuleModal,
   } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -605,7 +607,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
               {rules.length > 0
                 ? 'No rules found'
                 : rulesLoadState === 'ready'
-                  ? 'No rules yet. Create one on the Rules screen.'
+                  ? 'No rules yet.'
                   : rulesLoadState === 'error'
                     ? "Couldn't load rules"
                     : 'Loading rules…'}
@@ -613,6 +615,24 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
           )}
         </ul>
       </div>
+
+      {/* A new rule that runs on what is selected here, made without leaving Ads Manager (#387). */}
+      {attachedRulesAccountId && (
+        <button
+          type="button"
+          onClick={() => {
+            const accountId = attachedRulesAccountId;
+            onClose();
+            openCreateRuleModal(undefined, { accountId, scope: { level, ids: [...entityIds] } });
+          }}
+          className={`flex shrink-0 items-center gap-2 border-t border-[var(--color-border-primary)] px-3.5 text-left text-[13px] text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] ${coarse ? 'h-11' : 'h-9'}`}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className="text-[var(--text-tertiary)]">
+            <path d="M8.75 4a.75.75 0 0 0-1.5 0v3.25H4a.75.75 0 0 0 0 1.5h3.25V12a.75.75 0 0 0 1.5 0V8.75H12a.75.75 0 0 0 0-1.5H8.75V4Z" />
+          </svg>
+          New rule…
+        </button>
+      )}
 
       {precedence.length > 0 && (
         <section

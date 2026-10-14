@@ -3905,6 +3905,141 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn(str(preset_id), account.active_rules or "")
         self.assertIsNone(preview["lifetime_since"])
 
+    async def test_rule_window_creates_and_attaches_in_one_write(self):
+        """#387: the rule window saves a rule where it runs, so no rule sits
+        "nowhere"; an edit makes its list the whole set; an error writes nothing."""
+        second = "act_2000000000000099"
+        async with self.test_session_maker() as session:
+            owner = (await session.execute(select(User).where(User.telegram_id == "8948797431"))).scalar_one()
+            session.add(Account(
+                account_id=second, name="Second", access_token="mock_token", owner_user_id=owner.id,
+                workspace_id=self.ws_buyer_id, timezone_name="UTC", currency="USD", rules_enabled=False, is_active=True,
+            ))
+            await session.commit()
+
+        async def stored():
+            async with self.test_session_maker() as session:
+                accounts = (await session.execute(
+                    select(Account).where(Account.workspace_id == self.ws_buyer_id)
+                )).scalars().all()
+                return {
+                    account.account_id: (account.rules_enabled, json.loads(account.active_rules or "[]"))
+                    for account in accounts
+                }
+
+        async def preset_count():
+            async with self.test_session_maker() as session:
+                return (await session.execute(
+                    select(func.count()).select_from(RulePreset).where(RulePreset.workspace_id == self.ws_buyer_id)
+                )).scalar_one()
+
+        rule = {
+            "name": "$4 and no lead",
+            "action": "turn_off",
+            "level": "adset",
+            "conditions": [
+                {"metric": "spend", "operator": "gte", "value": 4.0, "time_window": "lifetime"},
+                {"metric": "leads", "operator": "eq", "value": 0, "time_window": "lifetime"},
+            ],
+        }
+        auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            created = await client.post("/api/presets", headers=auth, json={**rule, "attachments": [
+                {"account_id": "act_1018756607700064", "scope": {"level": "account", "ids": []}},
+                {"account_id": "2000000000000099", "scope": {"level": "campaign", "ids": ["camp_a"]}},
+            ]})
+            self.assertEqual(created.status_code, 200, created.text)
+            body = created.json()
+            preset_id = body["id"]
+            self.assertEqual(sorted(body["attached_account_ids"]), ["act_1018756607700064", second])
+            self.assertEqual(body["attached_scopes"][second], {"level": "campaign", "ids": ["camp_a"]})
+            accounts = await stored()
+            for account_id in ("act_1018756607700064", second):
+                enabled, rules = accounts[account_id]
+                self.assertTrue(enabled, f"{account_id}: attaching turns its automation on")
+                self.assertEqual([item["preset_id"] for item in rules], [preset_id])
+
+            # An unknown account, or the same one twice, writes nothing at all.
+            before = await preset_count()
+            unknown = await client.post("/api/presets", headers=auth, json={**rule, "attachments": [
+                {"account_id": second}, {"account_id": "act_5555555555"},
+            ]})
+            twice = await client.post("/api/presets", headers=auth, json={**rule, "attachments": [
+                {"account_id": second}, {"account_id": "2000000000000099"},
+            ]})
+            self.assertEqual(unknown.status_code, 404, unknown.text)
+            self.assertEqual(twice.status_code, 422, twice.text)
+            self.assertEqual(await preset_count(), before)
+            self.assertEqual([item["preset_id"] for item in (await stored())[second][1]], [preset_id])
+
+            # An edit without attachments leaves where it runs alone.
+            renamed = await client.put(f"/api/presets/{preset_id}", headers=auth, json={**rule, "name": "Renamed"})
+            self.assertEqual(renamed.status_code, 200, renamed.text)
+            self.assertEqual(sorted(renamed.json()["attached_account_ids"]), ["act_1018756607700064", second])
+
+            # With attachments the list is the whole set: one account left, one re-aimed.
+            moved = await client.put(f"/api/presets/{preset_id}", headers=auth, json={**rule, "name": "Renamed", "attachments": [
+                {"account_id": second, "scope": {"level": "adset", "ids": ["set_1"]}},
+            ]})
+            self.assertEqual(moved.status_code, 200, moved.text)
+            self.assertEqual(moved.json()["attached_account_ids"], [second])
+            accounts = await stored()
+            self.assertEqual(accounts["act_1018756607700064"], (False, []), "the only rule left: automation off")
+            enabled, rules = accounts[second]
+            self.assertTrue(enabled)
+            self.assertEqual(rules[0]["scope"], {"level": "adset", "ids": ["set_1"]})
+            self.assertEqual(rules[0]["name"], "Renamed")
+
+            # An empty list stops it everywhere.
+            nowhere = await client.put(f"/api/presets/{preset_id}", headers=auth, json={**rule, "attachments": []})
+            self.assertEqual(nowhere.status_code, 200, nowhere.text)
+            self.assertEqual(nowhere.json()["attached_account_ids"], [])
+
+    async def test_rule_draft_is_checked_and_previewed_before_it_is_saved(self):
+        """#387: the rule window checks a draft and previews it on an ad account
+        without writing a rule or touching the account."""
+        today = datetime.now(timezone.utc).date().isoformat()
+        async with self.test_session_maker() as session:
+            for entity_id, spend in (("adset_hit", 15.0), ("adset_miss", 2.0)):
+                session.add(AnalyticsEntityFact(
+                    workspace_id=self.ws_buyer_id, account_id="act_1018756607700064", entity_level="adset",
+                    entity_id=entity_id, entity_name=entity_id, date=today, currency="USD", spend=spend,
+                    status="ACTIVE", effective_status="ACTIVE",
+                ))
+            await session.commit()
+        draft = {
+            "action": "turn_off",
+            "level": "adset",
+            "conditions": [{"metric": "spend", "operator": "gte", "value": 10.0, "time_window": "today"}],
+        }
+        auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            preview = await client.post("/api/accounts/act_1018756607700064/rules/preview", headers=auth, json=draft)
+            missing = await client.post("/api/accounts/act_5555555555/rules/preview", headers=auth, json=draft)
+            valid = await client.post("/api/presets/check", headers=auth, json=draft)
+            # Raising a budget without a ceiling is refused before saving.
+            unsafe = await client.post("/api/presets/check", headers=auth, json={
+                **draft, "action": "increase_budget", "budget_change_percent": 20,
+            })
+            listed = await client.get("/api/presets", headers=auth)
+
+        self.assertEqual(preview.status_code, 200, preview.text)
+        body = preview.json()
+        self.assertEqual((body["total"], body["matching"]), (2, 1))
+        self.assertEqual(body["rule_name"], "New rule")
+        self.assertFalse(body["already_attached"])
+        self.assertEqual(missing.status_code, 404)
+        self.assertEqual(valid.json(), {"valid": True})
+        self.assertEqual(unsafe.status_code, 422, unsafe.text)
+        self.assertFalse(any(item["name"] == "New rule" for item in listed.json()))
+        async with self.test_session_maker() as session:
+            account = (await session.execute(
+                select(Account).where(Account.account_id == "act_1018756607700064")
+            )).scalar_one()
+            self.assertFalse(account.rules_enabled)
+
     async def test_rule_preview_sums_every_stored_day_for_a_lifetime_rule(self):
         """#384: the preview has no Meta lifetime, so it sums the stored days
         and says from which day; every day counts, not only today's."""

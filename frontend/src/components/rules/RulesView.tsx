@@ -5,7 +5,6 @@ import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapse
 import { RuleColumn } from './RuleColumn';
 import { RulesListView } from './RulesListView';
 import { deletionPrompt, runBulkRulesEnabled, runPendingDeletion } from './ruleActions';
-import { CreateRuleModal } from './CreateRuleModal';
 import { RuleStatesHost } from './RuleStatesDialog';
 import { RuleDisplayOptionsPopover } from './RuleDisplayOptionsPopover';
 import {
@@ -556,8 +555,6 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
         onCancel={cancelDeletion}
       />
 
-      {/* Linear Fast Create Rule Modal */}
-      <CreateRuleModal />
       <RuleStatesHost />
       <RuleLabelPickerHost />
     </div>

@@ -30,6 +30,7 @@ import { CreateWorkspaceView } from '@/components/onboarding/CreateWorkspaceView
 import { WelcomeView } from '@/components/onboarding/WelcomeView';
 import { MetaConnectInviteView, MetaConnectSuccessView } from '@/components/auth/MetaConnectInviteView';
 import { ApprovalDialog } from '@/webmcp/ApprovalDialog';
+import { CreateRuleModal } from '@/components/rules/CreateRuleModal';
 import { useWebMcpTools } from '@/webmcp/register';
 import { WorkspaceSessionProvider, type WorkspaceSession } from '@/lib/workspaceSession';
 import { isSmallScreen } from '@/lib/useMediaQuery';
@@ -329,6 +330,8 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
         <WorkspaceSwitcher />
         <ToastRegion />
         <ApprovalDialog />
+        {/* The rule window opens from Rules, Ctrl/Cmd+K and Ads Manager's "Apply rule…" (#387). */}
+        <CreateRuleModal />
       </TooltipProvider>
     </WorkspaceSessionProvider>
   );

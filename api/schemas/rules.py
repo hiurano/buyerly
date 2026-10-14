@@ -75,10 +75,29 @@ class RulePresetItem(BaseModel):
     label_ids: List[int] = Field(default_factory=list)
 
 
-class CreatePresetRequest(BaseModel):
+class RuleAttachmentRequest(BaseModel):
+    """One ad account a rule runs on, and where in it (#387)."""
+
     model_config = ConfigDict(extra="forbid")
 
-    name: str = Field(min_length=1, max_length=120)
+    account_id: str = Field(min_length=1, max_length=64, pattern=r"^(act_)?\d+$")
+    scope: RuleScopeItem = Field(default_factory=RuleScopeItem)
+
+
+# One rule can run on this many ad accounts from the rule window.
+MAX_RULE_ATTACHMENTS = 100
+
+
+class RuleDraftRequest(BaseModel):
+    """A rule as the New rule window holds it, before it has a name or an id.
+
+    The same checks as a saved rule run on it, so the window can show what is
+    wrong and preview it on an ad account before anything is written (#387).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(default="", max_length=120)
     action: Literal["turn_off", "notify_only", "turn_on", "increase_budget", "decrease_budget"] = "turn_off"
     level: Literal["campaign", "adset", "ad"] = "adset"
     enabled: bool = True
@@ -88,9 +107,6 @@ class CreatePresetRequest(BaseModel):
     check_interval_minutes: int = Field(default=5, ge=1, le=1_440)
     budget_change_percent: float = Field(default=0.0, ge=0, le=100, allow_inf_nan=False)
     budget_max_daily: float = Field(default=0.0, ge=0, le=10_000_000, allow_inf_nan=False)
-    # Labels a new rule starts with; editing a rule leaves its labels to
-    # PUT /presets/{id}/labels, so a write without them never clears them.
-    label_ids: Optional[List[int]] = Field(default=None, max_length=MAX_RULE_LABELS)
 
     @model_validator(mode="after")
     def validate_safe_action_parameters(self):
@@ -106,6 +122,29 @@ class CreatePresetRequest(BaseModel):
                 "budget_max_daily": self.budget_max_daily,
             }
         )
+        return self
+
+
+class CreatePresetRequest(RuleDraftRequest):
+    name: str = Field(min_length=1, max_length=120)
+    # Labels a new rule starts with; editing a rule leaves its labels to
+    # PUT /presets/{id}/labels, so a write without them never clears them.
+    label_ids: Optional[List[int]] = Field(default=None, max_length=MAX_RULE_LABELS)
+    # Where the rule runs (#387). Creating attaches it to these ad accounts in
+    # the same write; editing makes these the whole set, detaching the rest.
+    # Left out, an edit keeps the rule where it runs.
+    attachments: Optional[List[RuleAttachmentRequest]] = Field(
+        default=None, max_length=MAX_RULE_ATTACHMENTS
+    )
+
+    @model_validator(mode="after")
+    def validate_unique_attachments(self):
+        accounts = [
+            item.account_id if item.account_id.startswith("act_") else f"act_{item.account_id}"
+            for item in self.attachments or []
+        ]
+        if len(accounts) != len(set(accounts)):
+            raise ValueError("Each ad account can be chosen once.")
         return self
 
 
