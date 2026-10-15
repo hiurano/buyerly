@@ -125,6 +125,20 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   /** When G was pressed; read straight from the listener, so G and a fast next key never race a render. */
   const goToPressedAt = useRef(0);
   const syncingRoute = useRef(true);
+  /**
+   * The address the shell opened itself for a tab change. When the route catches
+   * up with it the tab is already right, or already further on: on a slow device
+   * G A then G R can both land before the route renders, and taking the tab from
+   * the route would pull it back to Ads Manager and drop G R.
+   */
+  const ownPath = useRef<string | null>(null);
+
+  useEffect(() => {
+    // Back, Forward and openAppPath are someone else's navigation.
+    const forget = () => { ownPath.current = null; };
+    window.addEventListener('popstate', forget);
+    return () => window.removeEventListener('popstate', forget);
+  }, []);
 
   useEffect(() => {
     // A buyer or viewer has no Administration pages: their addresses open Settings itself.
@@ -133,6 +147,9 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
       navigate(`/${workspace.slug}/settings`, true);
       return;
     }
+    const caughtUp = ownPath.current !== null && ownPath.current === window.location.pathname;
+    ownPath.current = null;
+    if (caughtUp) return;
     syncingRoute.current = true;
     setWorkspaceName(workspace.name);
     setActiveTab(route.tab);
@@ -163,6 +180,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     if (window.location.pathname !== desiredPath && !((activeTab === 'inbox' || activeTab === 'accounts') && window.location.pathname.startsWith(`${desiredPath}/`))) {
       const campaignQuery = activeTab === 'campaigns' && window.location.pathname.startsWith(`/${workspace.slug}/ads-manager/`)
         ? window.location.search : '';
+      ownPath.current = desiredPath;
       navigate(desiredPath + campaignQuery);
     }
   }, [activeTab, campaignFilterTab, navigate, settingsSection, settingsTeamPath, workspace.slug]);
