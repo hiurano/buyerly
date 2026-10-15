@@ -653,8 +653,8 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
 
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
-            # Off until an admin turns it on.
-            self.assertIsNone((await client.get(url, headers=artem_headers)).json()['invite_url'])
+            # Off until an admin turns it on; never had one, so not "turned off" (onboarding turns it on).
+            self.assertEqual((await client.get(url, headers=artem_headers)).json(), {'invite_url': None, 'turned_off': False})
 
             enabled = await client.post(url, headers=artem_headers)
             self.assertEqual(enabled.status_code, 200)
@@ -685,13 +685,14 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             second_url = reset.json()['invite_url']
             self.assertNotEqual(second_url, first_url)
             self.assertEqual((await client.post(f'/api/invites/{token_of(first_url)}/accept', headers=eli_headers)).status_code, 400)
-            self.assertEqual((await client.get(url, headers=artem_headers)).json()['invite_url'], second_url)
+            # The revoked link of a reset doesn't count as links turned off.
+            self.assertEqual((await client.get(url, headers=artem_headers)).json(), {'invite_url': second_url, 'turned_off': False})
 
             # Disable: no link, and the last one stops working.
             disabled = await client.delete(url, headers=artem_headers)
             self.assertEqual(disabled.status_code, 200)
             self.assertIsNone(disabled.json()['invite_url'])
-            self.assertIsNone((await client.get(url, headers=artem_headers)).json()['invite_url'])
+            self.assertEqual((await client.get(url, headers=artem_headers)).json(), {'invite_url': None, 'turned_off': True})
             self.assertEqual((await client.post(f'/api/invites/{token_of(second_url)}/accept', headers=eli_headers)).status_code, 400)
 
         async with self.test_session_maker() as session:

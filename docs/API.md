@@ -116,7 +116,7 @@ Settings → Administration → Teams, как в Linear (#371). Команда �
 | `GET /api/workspaces/{id}/invites` | — | список активных и истекших приглашений воркспейса |
 | `DELETE /api/workspaces/{id}/invites/{invite_id}` | — | атомарный отзыв активного приглашения относительно конкурентного принятия |
 | `POST /api/workspaces/{id}/invites/{invite_id}/resend` | — | owner/admin: заново отправляет письмо по ждущему персональному приглашению (в т. ч. истёкшему) с той же ссылкой и новым сроком 7 дней; отозванное, принятое и публичную ссылку — 400, сбой письма — 502 |
-| `GET /api/workspaces/{id}/invite-link` | — | owner/admin: Settings → Security → Invite links — `{"invite_url": "…/invite/inv_…"}`, пока ссылки включены, иначе `{"invite_url": null}`; ссылка — публичное приглашение без почты, без лимита и срока, вступают по ней как buyer |
+| `GET /api/workspaces/{id}/invite-link` | — | owner/admin: Settings → Security → Invite links — `{"invite_url": "…/invite/inv_…"}`, пока ссылки включены, иначе `{"invite_url": null, "turned_off": …}` (`turned_off: true` — ссылку выключили в Security, `false` — её ещё не было: онбординг тогда включает её сам, как в Linear); ссылка — публичное приглашение без почты, без лимита и срока, вступают по ней как buyer |
 | `POST /api/workspaces/{id}/invite-link` | — | owner/admin: включает ссылку (уже включённая не меняется), отдаёт `invite_url`; этой же ссылкой делится онбординг |
 | `POST /api/workspaces/{id}/invite-link/reset` | — | owner/admin: «Reset invite link», как у Linear — старая ссылка перестаёт работать, отдаётся новая |
 | `DELETE /api/workspaces/{id}/invite-link` | — | owner/admin: выключает ссылку, вступить по ней больше нельзя; `{"invite_url": null}` |
@@ -473,7 +473,7 @@ curl -fsS https://buyerly.app/api/me \
 | `GET /api/workspaces/{workspace_id}/invites` | получение списка активных приглашений воркспейса |
 | `DELETE /api/workspaces/{workspace_id}/invites/{invite_id}` | отзыв/удаление приглашения |
 | `POST /api/workspaces/{workspace_id}/invites/{invite_id}/resend` | повторная отправка письма по ждущему персональному приглашению |
-| `GET /api/workspaces/{workspace_id}/invite-link` | ссылка-приглашение workspace или `null`, пока она выключена |
+| `GET /api/workspaces/{workspace_id}/invite-link` | ссылка-приглашение workspace или `null`, пока она выключена; `turned_off` — выключил ли её админ |
 | `POST /api/workspaces/{workspace_id}/invite-link` | включить ссылку-приглашение |
 | `DELETE /api/workspaces/{workspace_id}/invite-link` | выключить ссылку-приглашение |
 | `POST /api/workspaces/{workspace_id}/invite-link/reset` | заменить ссылку-приглашение новой |

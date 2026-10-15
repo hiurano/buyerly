@@ -40,7 +40,7 @@ export function errorMessage(error: unknown, fallback: string): string {
  * Roles a member can be given here; ownership moves only by transfer. Like
  * Linear's Change role… dialog, the admin option reads "Workspace admin".
  */
-const ASSIGNABLE_ROLES: Array<{ value: string; label: string; description: string }> = [
+export const ASSIGNABLE_ROLES: Array<{ value: string; label: string; description: string }> = [
   { value: 'admin', label: 'Workspace admin', description: 'Manages members, invites and workspace settings' },
   { value: 'buyer', label: 'Buyer', description: 'Works with accounts, campaigns and rules' },
   { value: 'viewer', label: 'Viewer', description: 'Sees the workspace without changing it' },

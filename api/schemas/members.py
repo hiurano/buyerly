@@ -50,6 +50,8 @@ class WorkspaceInviteItem(BaseModel):
 class WorkspaceInviteLinkResponse(BaseModel):
     """Settings → Security → Invite links: the link, or null while invite links are off."""
     invite_url: Optional[str] = None
+    # No link because an admin turned links off, not because the workspace never had one.
+    turned_off: bool = False
 
 
 class PublicInviteInfoResponse(BaseModel):

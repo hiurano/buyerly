@@ -1,17 +1,14 @@
-import React, { FormEvent, useMemo, useState } from 'react';
+import React, { FormEvent, useState } from 'react';
 import { apiRequest } from '@/lib/api';
 import type { OnboardingStatus, SessionUser, Workspace } from '@/lib/types';
 import { AuthFrame, BuyerlyBrand } from '@/components/auth/AuthFrame';
+import { InviteTeamStep } from './InviteTeamStep';
 
 interface WelcomeViewProps {
   user: SessionUser;
   workspace: Workspace;
   onUserChanged: (user: SessionUser) => void;
   onCompleted: () => void;
-}
-
-interface WorkspaceInviteLink {
-  invite_url: string | null;
 }
 
 export const WelcomeView: React.FC<WelcomeViewProps> = ({
@@ -23,15 +20,8 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
   const initialStep = user.onboarding_step === 'invites' ? 'invites' : 'profile';
   const [step, setStep] = useState<'profile' | 'invites'>(initialStep);
   const [name, setName] = useState(user.full_name || '');
-  const [emails, setEmails] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [copied, setCopied] = useState(false);
-
-  const parsedEmails = useMemo(
-    () => emails.split(/[\s,;]+/).map((email) => email.trim().toLowerCase()).filter(Boolean),
-    [emails],
-  );
 
   const submitProfile = async (event: FormEvent) => {
     event.preventDefault();
@@ -61,19 +51,15 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
     }
   };
 
-  const finishInvites = async (skip: boolean) => {
+  /** Sends the invites, or with null skips the step ("I'll do this later"). */
+  const finishInvites = async (invites: Array<{ email: string; role: string }> | null) => {
     setBusy(true);
     setError('');
     try {
-      if (skip) {
+      if (invites === null) {
         await apiRequest('/api/onboarding/skip', { method: 'POST', body: JSON.stringify({}) });
       } else {
-        await apiRequest('/api/onboarding/invites', {
-          method: 'POST',
-          body: JSON.stringify({
-            invites: parsedEmails.map((email) => ({ email, role: 'buyer' })),
-          }),
-        });
+        await apiRequest('/api/onboarding/invites', { method: 'POST', body: JSON.stringify({ invites }) });
       }
       onCompleted();
     } catch (inviteError) {
@@ -83,26 +69,9 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
     }
   };
 
-  const copyInviteLink = async () => {
-    setError('');
-    try {
-      // Linear's onboarding hands out the workspace invite link, the one Settings → Security turns off.
-      const invite = await apiRequest<WorkspaceInviteLink>(`/api/workspaces/${workspace.id}/invite-link`, {
-        method: 'POST',
-        body: JSON.stringify({}),
-      });
-      if (!invite.invite_url) throw new Error('Could not copy an invitation link');
-      await navigator.clipboard.writeText(new URL(invite.invite_url, window.location.origin).toString());
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2200);
-    } catch (copyError) {
-      setError(copyError instanceof Error ? copyError.message : 'Could not copy an invitation link');
-    }
-  };
-
   return (
     <AuthFrame>
-      <section className="buyerly-auth-card">
+      <section className={`buyerly-auth-card${step === 'invites' ? ' buyerly-auth-card--invites' : ''}`}>
         <BuyerlyBrand />
         {step === 'profile' ? (
           <form onSubmit={submitProfile} noValidate>
@@ -127,43 +96,13 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
             </button>
           </form>
         ) : (
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void finishInvites(false);
-            }}
-            noValidate
-          >
-            <h1>Invite teammates</h1>
-            <p className="buyerly-auth-copy">Bring your team into {workspace.name}.</p>
-            <label className="buyerly-auth-field buyerly-auth-field--labeled">
-              <span>Invitation email addresses</span>
-              <textarea
-                className="ui-input w-full"
-                autoFocus
-                rows={4}
-                placeholder="email@company.com, teammate@company.com"
-                value={emails}
-                onChange={(event) => setEmails(event.target.value)}
-                aria-invalid={Boolean(error)}
-              />
-            </label>
-            <button className="buyerly-auth-text-button" type="button" onClick={copyInviteLink}>
-              {copied ? 'Copied invite link' : 'Copy invite link'}
-            </button>
-            {error && <p className="buyerly-auth-error" role="alert">{error}</p>}
-            <button
-              className="buyerly-auth-button ui-button ui-button-primary"
-              type="submit"
-              disabled={busy || parsedEmails.length === 0}
-              aria-busy={busy}
-            >
-              {busy ? 'Sending…' : 'Send invitations'}
-            </button>
-            <button className="buyerly-auth-text-button" type="button" onClick={() => finishInvites(true)} disabled={busy}>
-              Skip for now
-            </button>
-          </form>
+          <InviteTeamStep
+            workspace={workspace}
+            busy={busy}
+            error={error}
+            onSend={(invites) => void finishInvites(invites)}
+            onSkip={() => void finishInvites(null)}
+          />
         )}
       </section>
     </AuthFrame>
