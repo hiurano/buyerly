@@ -238,6 +238,14 @@ jobs:
     environment: production
 
     steps:
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4.2.0
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          ping: 100.108.170.127
+
       - name: Execute Remote SSH Commands for Deployment
         id: production_ssh
         uses: appleboy/ssh-action@v1.2.5
