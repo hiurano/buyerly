@@ -99,5 +99,19 @@ function readValue(schema: JsonSchema, value: unknown, path: string): unknown {
 
 /** The input with defaults filled in, or a ToolInputError explaining what is wrong. */
 export function readToolInput<T>(schema: JsonSchema, input: unknown): T {
-  return readValue(schema, input ?? {}, '') as T;
+  return readValue(schema, parseLegacyInput(input) ?? {}, '') as T;
+}
+
+/**
+ * Chrome took the arguments as a JSON string until 155, which passes whatever
+ * the agent gives through as is, so an agent written for the old API still
+ * hands over a string.
+ */
+function parseLegacyInput(input: unknown): unknown {
+  if (typeof input !== 'string') return input;
+  try {
+    return JSON.parse(input);
+  } catch {
+    throw new ToolInputError('The input must be an object, or a JSON string of one.');
+  }
 }
