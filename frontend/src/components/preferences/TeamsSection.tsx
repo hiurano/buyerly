@@ -11,7 +11,6 @@ import {
   type TeamFilter,
   type TeamItem,
 } from '@/lib/teams';
-import { Button } from '@/ui/Button';
 import { DataState } from '@/ui/DataState';
 import { SubmenuArrow } from '@/ui/SubmenuArrow';
 import { Tooltip } from '@/ui/Tooltip';
@@ -29,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
 import { errorMessage, memberName, type MemberItem } from './MemberDialogs';
-import { GroupHeader, RowMenu, shortDate } from './MembersSection';
+import { RowMenu, shortDate } from './MembersSection';
 import { TeamIcon } from './TeamIcon';
 import { RestoreTeamDialog } from './TeamSettingsSection';
 
@@ -37,8 +36,6 @@ import { RestoreTeamDialog } from './TeamSettingsSection';
  * Linear's Teams table: Name, Visibility, Members, Issues, Created; Buyerly
  * counts ad accounts, not issues. A phone keeps Name and Members.
  */
-const ROW_GRID = 'grid grid-cols-[minmax(0,1fr)_72px_28px] sm:grid-cols-[minmax(0,2.4fr)_minmax(88px,1fr)_72px_72px_72px_28px] items-center gap-3';
-
 /** The team's pages, as Linear's row menu lists them under Settings ›. */
 const TEAM_SETTINGS_PAGES: Array<{ path: string; label: string }> = [
   { path: '', label: 'Overview' },
@@ -87,10 +84,10 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
         <h1 className="preferences-page-title">Teams</h1>
       </div>
 
-      <div className="flex items-center gap-2">
-        <label className="relative flex h-8 w-[244px] min-w-0 max-w-full flex-1 items-center sm:flex-none">
+      <div className="settings-list-toolbar">
+        <label className="settings-list-search">
           <span className="sr-only">Filter by name…</span>
-          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" className="pointer-events-none absolute left-2.5 fill-[var(--text-tertiary)]">
+          <svg viewBox="0 0 16 16" aria-hidden="true" className="settings-list-search-icon">
             <path d="M7 1.5a5.5 5.5 0 0 1 4.38 8.82l3.15 3.15a.75.75 0 1 1-1.06 1.06l-3.15-3.15A5.5 5.5 0 1 1 7 1.5Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
           </svg>
           <input
@@ -98,17 +95,17 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Filter by name…"
-            className="h-8 w-full rounded-[6px] border border-[var(--color-border-secondary)] bg-transparent pl-8 pr-2 text-[13px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)] focus:border-[var(--action-primary)]"
+            className="settings-list-search-input"
           />
         </label>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button aria-label={`Show teams: ${TEAM_FILTER_LABELS[filter]}`} className="shrink-0 gap-1.5">
+            <button type="button" aria-label={`Show teams: ${TEAM_FILTER_LABELS[filter]}`} className="settings-list-select">
               {TEAM_FILTER_LABELS[filter]}
-              <svg width="9" height="5" viewBox="0 0 9 5" fill="currentColor" aria-hidden="true">
+              <svg width="10" height="5" viewBox="0 0 9 5" aria-hidden="true">
                 <path d="M1.915.557a.667.667 0 0 0-.943.943l2.862 2.862a.942.942 0 0 0 1.333 0L8.028 1.5a.667.667 0 0 0-.943-.943L4.5 3.14 1.915.557Z" />
               </svg>
-            </Button>
+            </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" sideOffset={4}>
             <div className="h-[6px] w-full" />
@@ -124,7 +121,9 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
           </DropdownMenuContent>
         </DropdownMenu>
         <div className="flex-1" />
-        <Button variant="primary" className="shrink-0" onClick={() => setSettingsSection('new-team')}>Create team</Button>
+        <button type="button" className="settings-list-button settings-list-button--primary" onClick={() => setSettingsSection('new-team')}>
+          Create team
+        </button>
       </div>
 
       {error && (
@@ -134,16 +133,21 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
 
       {!error && teams !== null && (
         <>
-          <div className="mt-6 text-[13px]" role="table" aria-label="Teams">
-            <div role="row" className={`${ROW_GRID} h-8 px-2 text-[12px] font-medium text-[var(--text-secondary)]`}>
+          <div className="settings-list-table settings-list--teams" role="table" aria-label="Teams">
+            <div role="row" className="settings-list-row settings-list-row--header">
               <span role="columnheader">Name</span>
-              <span role="columnheader" className="hidden sm:block">Visibility</span>
+              <span role="columnheader" className="settings-list-col-wide">Visibility</span>
               <span role="columnheader">Members</span>
-              <span role="columnheader" className="hidden sm:block">Accounts</span>
-              <span role="columnheader" className="hidden sm:block">{filter === 'deleted' ? 'Deleted' : 'Created'}</span>
+              <span role="columnheader" className="settings-list-col-wide">Accounts</span>
+              <span role="columnheader" className="settings-list-col-wide">{filter === 'deleted' ? 'Deleted' : 'Created'}</span>
               <span role="columnheader" className="sr-only">Actions</span>
             </div>
-            {visible.length > 0 && <GroupHeader label={TEAM_FILTER_LABELS[filter]} count={visible.length} />}
+            {visible.length > 0 && (
+              <div className="settings-list-group">
+                {TEAM_FILTER_LABELS[filter]}
+                <span className="settings-list-group-count">{visible.length}</span>
+              </div>
+            )}
             {visible.map((team) => {
               const names = team.member_user_ids
                 .map((id) => membersById.get(id))
@@ -154,15 +158,15 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
                 <div
                   key={team.id}
                   role="row"
-                  className={`${ROW_GRID} group h-11 rounded-[4px] px-2 ${openable ? 'hover:bg-[var(--item-hover-bg)]' : ''}`}
+                  className="settings-list-row"
                   onClick={openable ? () => openTeamSettings(team.key) : undefined}
                 >
-                  <span role="cell" className="flex min-w-0 items-center gap-2">
+                  <span role="cell" className="settings-list-team">
                     <TeamIcon />
                     {openable ? (
                       <a
                         href={`#team-${team.key}`}
-                        className="truncate font-medium text-[var(--text-primary)] outline-none focus-visible:underline"
+                        className="settings-list-team-name focus-visible:underline"
                         onClick={(event) => {
                           event.preventDefault();
                           event.stopPropagation();
@@ -172,24 +176,24 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
                         {team.name}
                       </a>
                     ) : (
-                      <span className="truncate font-medium text-[var(--text-primary)]">{team.name}</span>
+                      <span className="settings-list-team-name">{team.name}</span>
                     )}
-                    <span className="shrink-0 font-medium text-[var(--text-tertiary)]">{team.key}</span>
+                    <span className="settings-list-team-key">{team.key}</span>
                   </span>
-                  <span role="cell" className="hidden text-[12px] font-medium text-[var(--text-secondary)] sm:block">Workspace</span>
-                  <span role="cell" className="text-[12px] font-medium text-[var(--text-secondary)]">
+                  <span role="cell" className="settings-list-cell settings-list-col-wide font-medium">Workspace</span>
+                  <span role="cell" className="settings-list-cell font-medium">
                     {names.length > 0 ? (
                       <Tooltip content={names.join(', ')} side="top">
                         <span>{team.member_user_ids.length}</span>
                       </Tooltip>
                     ) : team.member_user_ids.length}
                   </span>
-                  <span role="cell" className="hidden text-[12px] font-medium text-[var(--text-secondary)] sm:block">{team.account_ids.length}</span>
-                  <span role="cell" className="hidden text-[12px] text-[var(--text-secondary)] sm:block">
+                  <span role="cell" className="settings-list-cell settings-list-col-wide font-medium">{team.account_ids.length}</span>
+                  <span role="cell" className="settings-list-cell settings-list-col-wide">
                     {shortDate(filter === 'deleted' && team.deleted_at ? team.deleted_at : team.created_at)}
                   </span>
                   <span role="cell" className="flex justify-end" onClick={(event) => event.stopPropagation()}>
-                    <RowMenu label={`Team actions for ${team.name}`}>
+                    <RowMenu label={`Team actions for ${team.name}`} visible>
                       {openable && (
                         <DropdownMenuSub>
                           <DropdownMenuSubTrigger>

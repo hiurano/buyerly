@@ -113,13 +113,6 @@ export const Initials: React.FC<{ label: string; avatarUrl?: string; muted?: boo
   );
 };
 
-export const GroupHeader: React.FC<{ label: string; count: number }> = ({ label, count }) => (
-  <div className="flex h-8 items-center gap-1.5 rounded-[4px] bg-[var(--item-hover-bg)] px-2 text-[12px] font-medium text-[var(--text-primary)]">
-    {label}
-    <span className="text-[var(--text-tertiary)]">{count}</span>
-  </div>
-);
-
 interface InviteDialogProps {
   open: boolean;
   workspace: Workspace;
@@ -417,10 +410,10 @@ export const MembersSection: React.FC<{
         <h1 className="preferences-page-title">Members</h1>
       </div>
 
-      <div className="members-toolbar">
-        <label className="members-search">
+      <div className="settings-list-toolbar">
+        <label className="settings-list-search">
           <span className="sr-only">Search by name or email</span>
-          <svg viewBox="0 0 16 16" aria-hidden="true" className="members-search-icon">
+          <svg viewBox="0 0 16 16" aria-hidden="true" className="settings-list-search-icon">
             <path d="M7 1.5a5.5 5.5 0 0 1 4.38 8.82l3.15 3.15a.75.75 0 1 1-1.06 1.06l-3.15-3.15A5.5 5.5 0 1 1 7 1.5Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
           </svg>
           <input
@@ -428,7 +421,7 @@ export const MembersSection: React.FC<{
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search by name or email"
-            className="members-search-input"
+            className="settings-list-search-input"
           />
         </label>
         {canManage && (
@@ -437,7 +430,7 @@ export const MembersSection: React.FC<{
               <button
                 type="button"
                 aria-label={`Show: ${FILTER_LABELS[filter]}`}
-                className="members-select"
+                className="settings-list-select"
               >
                 {FILTER_LABELS[filter]}
                 <svg width="10" height="5" viewBox="0 0 9 5" aria-hidden="true">
@@ -461,12 +454,12 @@ export const MembersSection: React.FC<{
         )}
         <div className="flex-1" />
         {canManage && state === 'ready' && (
-          <button type="button" className="members-button max-sm:hidden" onClick={() => downloadMembersCsv(workspace, members, invites)}>
+          <button type="button" className="settings-list-button max-sm:hidden" onClick={() => downloadMembersCsv(workspace, members, invites)}>
             Export CSV
           </button>
         )}
         {canManage && (
-          <button type="button" className="members-button members-button--primary" onClick={() => setInviteOpen(true)}>
+          <button type="button" className="settings-list-button settings-list-button--primary" onClick={() => setInviteOpen(true)}>
             Invite
           </button>
         )}
@@ -486,37 +479,37 @@ export const MembersSection: React.FC<{
       )}
 
       {state === 'ready' && (
-        <div className="members-table" role="table" aria-label="Workspace members">
-          <div role="row" className="members-row members-row--header">
+        <div className="settings-list-table" role="table" aria-label="Workspace members">
+          <div role="row" className="settings-list-row settings-list-row--header">
             <span role="columnheader">Name</span>
-            <span role="columnheader" className="members-col-wide">Email</span>
+            <span role="columnheader" className="settings-list-col-wide">Email</span>
             <span role="columnheader">Status</span>
-            <span role="columnheader" className="members-col-wide">Teams</span>
-            <span role="columnheader" className="members-col-wide">Joined</span>
+            <span role="columnheader" className="settings-list-col-wide">Teams</span>
+            <span role="columnheader" className="settings-list-col-wide">Joined</span>
             <span role="columnheader" className="sr-only">Actions</span>
           </div>
 
           {filter !== 'invites' && (
-            <div className="members-group">
+            <div className="settings-list-group">
               Active
-              <span className="members-group-count">{visibleMembers.length}</span>
+              <span className="settings-list-group-count">{visibleMembers.length}</span>
             </div>
           )}
           {filter !== 'invites' && visibleMembers.map((member) => (
-            <div key={member.id} role="row" className="members-row">
-              <span role="cell" className="members-person">
+            <div key={member.id} role="row" className="settings-list-row">
+              <span role="cell" className="settings-list-person">
                 <Initials label={member.full_name || member.username} avatarUrl={member.avatar_url} size={24} />
                 <span className="min-w-0">
-                  <span className="members-person-name">{member.full_name || member.username}</span>
-                  <span className="members-person-handle">{member.username}</span>
+                  <span className="settings-list-person-name">{member.full_name || member.username}</span>
+                  <span className="settings-list-person-handle">{member.username}</span>
                 </span>
               </span>
-              <span role="cell" className="members-cell members-col-wide">{member.email || ''}</span>
-              <span role="cell" className="members-cell"><RoleStatus role={member.role} /></span>
-              <span role="cell" className="members-cell members-col-wide">
+              <span role="cell" className="settings-list-cell settings-list-col-wide">{member.email || ''}</span>
+              <span role="cell" className="settings-list-cell"><RoleStatus role={member.role} /></span>
+              <span role="cell" className="settings-list-cell settings-list-col-wide">
                 {teamCounts.get(member.user_id) ? plural(teamCounts.get(member.user_id) as number, 'team') : ''}
               </span>
-              <span role="cell" className="members-cell members-col-wide">{shortDate(member.joined_at)}</span>
+              <span role="cell" className="settings-list-cell settings-list-col-wide">{shortDate(member.joined_at)}</span>
               <span role="cell" className="flex justify-end">
                 {/* Linear gives your row no menu while nobody else could run the workspace. */}
                 {member.is_current_user ? (workspace.role === 'owner' && members.length < 2 ? null : (
@@ -545,22 +538,22 @@ export const MembersSection: React.FC<{
 
           {canManage && filter !== 'members' && (visibleInvites.length > 0 || filter === 'invites') && (
             <>
-              <div className="members-group">
+              <div className="settings-list-group">
                 Invited
-                <span className="members-group-count">{visibleInvites.length}</span>
+                <span className="settings-list-group-count">{visibleInvites.length}</span>
               </div>
               {visibleInvites.map((invite) => (
-                <div key={invite.id} role="row" className="members-row">
-                  <span role="cell" className="members-person">
+                <div key={invite.id} role="row" className="settings-list-row">
+                  <span role="cell" className="settings-list-person">
                     <Initials label={invite.email || ''} muted size={24} />
-                    <span className="members-person-name">{invite.email}</span>
+                    <span className="settings-list-person-name">{invite.email}</span>
                   </span>
-                  <span role="cell" className="members-cell members-col-wide">{invite.email}</span>
-                  <span role="cell" className="members-cell">
+                  <span role="cell" className="settings-list-cell settings-list-col-wide">{invite.email}</span>
+                  <span role="cell" className="settings-list-cell">
                     {roleLabel(invite.role)} ({invite.status === 'expired' ? 'Expired' : 'Invited'})
                   </span>
-                  <span role="cell" className="members-col-wide" />
-                  <span role="cell" className="members-cell members-col-wide">{shortDate(invite.created_at)}</span>
+                  <span role="cell" className="settings-list-col-wide" />
+                  <span role="cell" className="settings-list-cell settings-list-col-wide">{shortDate(invite.created_at)}</span>
                   <span role="cell" className="flex justify-end">
                     <RowMenu label={`Invite actions for ${invite.email}`} visible>
                       <DropdownMenuItem onSelect={() => void resend(invite)}>

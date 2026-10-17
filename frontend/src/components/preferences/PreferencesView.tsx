@@ -365,7 +365,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
               </button>
             </header>
           )}
-          <div className={`preferences-content-column${section === 'members' ? ' preferences-content-column--wide' : ''}`}>
+          <div className={`preferences-content-column${section === 'members' || section === 'teams' || section === 'rule-labels' ? ' preferences-content-column--wide' : ''}`}>
             {section === 'profile' && (
               <ProfileSection user={user} workspace={workspace} onUserChanged={onUserChanged} />
             )}
