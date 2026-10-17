@@ -98,7 +98,7 @@ export const LinearTabs: React.FC<LinearTabsProps> = ({
         flexDirection: 'row',
         alignItems: 'center',
         minHeight: '28px',
-        gap: '6px',
+        gap: '8px',
         padding: '0px',
         margin: '0px',
         userSelect: 'none',

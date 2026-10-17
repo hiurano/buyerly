@@ -358,11 +358,12 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
         <div
           style={{
             height: '44px',
-            borderBottom: '1px solid var(--color-border-primary)',
+            borderBottom: 'var(--canvas-border)',
             boxSizing: 'border-box',
-            paddingLeft: '14px',
+            paddingLeft: '18px',
+            paddingRight: '11px',
           }}
-          className="flex items-center justify-between pr-2.5"
+          className="flex items-center justify-between"
         >
           {/* Left: Clean Title */}
           <div className="flex items-center">
@@ -372,7 +373,6 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
                 fontSize: '13px',
                 fontWeight: 500,
                 lineHeight: '16px',
-                letterSpacing: '-0.01em',
                 color: 'var(--text-secondary)',
                 margin: 0,
                 padding: 0,
