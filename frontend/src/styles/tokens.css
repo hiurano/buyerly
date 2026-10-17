@@ -181,7 +181,7 @@
   --dock-bg: lch(9.232% 0.85 272 / 1);
   --dock-btn-bg: lch(13.861% 1.139 272 / 1);
   --checkbox-border-rest: lch(48.72% 1.48 272 / 1);
-  /* LinearToggle. Off = Linear (measured 2026-10-01); on = Buyerly yellow (#263). */
+  /* LinearToggle, as Linear's (off measured 2026-10-01, on and the knob 2026-10-18). */
   /* Members → Status: Linear's Admin badge, measured 2026-10-10. */
   --role-badge-bg: lch(48% 59.31 288.43 / 0.2);
   /* Linear's Settings → Members in dark (17.10). */
@@ -195,17 +195,17 @@
   --role-badge-fg: lch(80% 80 288.43 / 1);
   --toggle-unchecked-bg: lch(47.551% 0.913 272 / 1);
   --toggle-unchecked-hover-bg: lch(56.807% 1.019 272 / 1);
-  --toggle-checked-bg: #f5b800;
-  --toggle-checked-hover-bg: #ffc41a;
-  --toggle-knob: #ffffff;
+  --toggle-checked-bg: lch(47.918% 59.303 288.421 / 1);
+  --toggle-checked-hover-bg: lch(52.418% 61.103 288.421 / 1);
+  --toggle-knob: lch(100% 5 288.421 / 1);
   --focus-ring-color: #6d78d5;
   --action-primary: #5e6ad2;
   --action-primary-hover: #6875e5;
-  /* The main button: Buyerly yolk, as a switch that is on (#263) and the invite page's button (#284);
-     dark text on it in both themes, the hover from the switch (lighter in dark, darker in light). */
+  /* The main button, as Linear's (2026-10-18): its accent, the same as a switch that is on,
+     lighter under the cursor in dark and darker in light, with near-white text. */
   --button-primary-bg: var(--toggle-checked-bg);
   --button-primary-hover-bg: var(--toggle-checked-hover-bg);
-  --button-primary-text: rgb(27, 27, 27);
+  --button-primary-text: lch(100% 5 288.421 / 1);
   /* Snooze Custom… calendar: weekend columns, measured in Linear. */
   --calendar-weekend-bg: lch(13.553% 1.93 272 / 1);
   --calendar-selected-bg: var(--action-primary);
@@ -435,17 +435,17 @@ html[data-theme='light'] {
   --settings-list-search-border-hover: lch(76.44% 0 282 / 1);
   --toggle-unchecked-bg: lch(82.484% 0.054 282 / 1);
   --toggle-unchecked-hover-bg: lch(76.978% 0.076 282 / 1);
-  --toggle-checked-bg: #f5b800;
-  --toggle-checked-hover-bg: #e6ab00;
-  --toggle-knob: #ffffff;
+  --toggle-checked-bg: lch(53% 52.26 286.91 / 1);
+  --toggle-checked-hover-bg: lch(47% 50.26 286.91 / 1);
+  --toggle-knob: lch(100% 5 286.91 / 1);
   --focus-ring-color: #6d78d5;
   --action-primary: #5e6ad2;
   --action-primary-hover: #6875e5;
-  /* The main button: Buyerly yolk, as a switch that is on (#263) and the invite page's button (#284);
-     dark text on it in both themes, the hover from the switch (lighter in dark, darker in light). */
+  /* The main button, as Linear's (2026-10-18): its accent, the same as a switch that is on,
+     lighter under the cursor in dark and darker in light, with near-white text. */
   --button-primary-bg: var(--toggle-checked-bg);
   --button-primary-hover-bg: var(--toggle-checked-hover-bg);
-  --button-primary-text: rgb(27, 27, 27);
+  --button-primary-text: lch(100% 5 286.91 / 1);
   /* Snooze Custom… calendar, measured in light Linear 2026-10-07 (#244). */
   --calendar-weekend-bg: lch(97.3% 0 282 / 1);
   --calendar-selected-bg: lch(53% 52.26 286.91 / 1);
