@@ -20,19 +20,29 @@ export const SidebarCollapsedNavigation: React.FC = () => {
   const isTouch = useIsTouchScreen();
   const visible = isSmall || isSidebarCollapsed;
 
-  // A hidden button also cancels the header's own gap, as Linear's does.
+  // As Linear's: the button sits 8px from the header's edge and moves the title
+  // 32px right, whatever the header's own padding and gap. A hidden button
+  // also cancels the header's gap.
   const ref = useRef<HTMLDivElement>(null);
   const [parentGap, setParentGap] = useState(0);
+  const [inset, setInset] = useState(8);
   useLayoutEffect(() => {
-    const parent = ref.current?.parentElement;
-    if (parent) setParentGap(parseFloat(getComputedStyle(parent).columnGap) || 0);
+    const self = ref.current;
+    const parent = self?.parentElement;
+    if (!self || !parent) return;
+    setParentGap(parseFloat(getComputedStyle(parent).columnGap) || 0);
+    // The header's edge is the nearest box with left padding; measured before any margin is set.
+    let edge: HTMLElement | null = parent;
+    while (edge && !(parseFloat(getComputedStyle(edge).paddingLeft) > 0)) edge = edge.parentElement;
+    if (edge) setInset(self.getBoundingClientRect().left - edge.getBoundingClientRect().left);
   }, []);
+  const marginLeft = 8 - inset;
 
   const button = isSmall ? (
     <button
       type="button"
       onClick={toggleSidebarOpen}
-      className="linear-icon-btn linear-header-target"
+      className="linear-icon-btn linear-sidebar-toggle linear-header-target"
       aria-label="Menu"
       aria-expanded={isSidebarOpen}
     >
@@ -50,7 +60,7 @@ export const SidebarCollapsedNavigation: React.FC = () => {
           if (!isSidebarCollapsed || useAppStore.getState().activeTab === 'preferences') return;
           setSidebarPeekOpen(true);
         }}
-        className="linear-icon-btn linear-header-target"
+        className="linear-icon-btn linear-sidebar-toggle linear-header-target"
         aria-label="Open sidebar"
         tabIndex={visible ? undefined : -1}
       >
@@ -67,11 +77,12 @@ export const SidebarCollapsedNavigation: React.FC = () => {
         width: visible ? (isTouch ? '32px' : '28px') : '0px',
         opacity: visible ? 1 : 0,
         transform: visible ? 'scale(1)' : 'scale(0.85)',
-        marginRight: visible ? (parentGap > 0 ? '0px' : '6px') : `${-parentGap}px`,
+        marginLeft: visible ? `${marginLeft}px` : '0px',
+        marginRight: visible ? `${4 - parentGap - marginLeft}px` : `${-parentGap}px`,
         pointerEvents: visible ? 'auto' : 'none',
         overflow: 'hidden',
         transition:
-          'width 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), margin-right 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
+          'width 0.32s cubic-bezier(0.16, 1, 0.3, 1), margin-left 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), margin-right 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
       }}
       className="flex shrink-0 items-center justify-center"
     >

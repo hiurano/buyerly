@@ -953,6 +953,21 @@ html[data-theme='dark'] .linear-sidebar-badge,
   transition-duration: 0s;
 }
 
+/* The header's sidebar button, as Linear's: a 0.5px clear border, and hover or
+   press only darken the icon, at once, with no fill behind it. */
+.linear-sidebar-toggle {
+  border-width: 0.5px;
+  cursor: default;
+  transition: border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
+}
+
+.linear-sidebar-toggle:hover,
+.linear-sidebar-toggle:active {
+  background-color: transparent;
+  color: var(--text-primary);
+  transition-duration: 0s;
+}
+
 /* 3. Main View Header Action Icon Button (24x24px, 6px radius) */
 .linear-header-icon-btn {
   box-sizing: border-box;
