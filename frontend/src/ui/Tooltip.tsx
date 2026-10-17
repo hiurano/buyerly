@@ -69,7 +69,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
       textAlign: 'center',
       color: 'var(--text-tertiary)',
       backgroundColor: 'transparent',
-      borderColor: 'var(--color-border-secondary)',
+      borderColor: 'var(--tooltip-kbd-border)',
       borderWidth: '0.5px',
       borderStyle: 'solid',
       borderRadius: '4px',
@@ -83,7 +83,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
 
     if (isSequence) {
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', marginTop: '-1px' }}>
           <kbd aria-hidden="true" style={kbdStyle}>
             {keys[0]}
           </kbd>
@@ -106,7 +106,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
     }
 
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', marginTop: '-1px' }}>
         {keys.map((key, i) => (
           <kbd key={i} aria-hidden="true" style={kbdStyle}>
             {key}
@@ -133,7 +133,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
                 fontSize: '11px',
                 fontWeight: 450,
                 lineHeight: '16.5px',
-                color: 'var(--text-secondary)',
+                color: 'var(--tooltip-fg)',
                 whiteSpace: 'nowrap',
               }}
             >
