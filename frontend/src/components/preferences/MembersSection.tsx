@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { apiRequest } from '@/lib/api';
-import { isEmail, parseEmails } from '@/lib/emails';
+import { finishedEmails, isEmail, parseEmails } from '@/lib/emails';
 import { plural, useTeams } from '@/lib/teams';
 import type { Workspace } from '@/lib/types';
 import { Button } from '@/ui/Button';
@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
 import {
+  ASSIGNABLE_ROLES,
   ChangeRoleDialog,
   LeaveWorkspaceDialog,
   RemoveMemberDialog,
@@ -122,39 +123,48 @@ interface InviteDialogProps {
   onSent: () => void;
 }
 
-/** Linear's "Invite to your workspace": one field that takes several comma-separated emails. */
+/**
+ * Linear's "Invite to your workspace": one field that takes several comma-separated
+ * emails, flags a bad address before sending, and the role the invitees get.
+ */
 const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onClose, onSent }) => {
   const [text, setText] = useState('');
+  const [blurred, setBlurred] = useState(false);
+  const [role, setRole] = useState('buyer');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
   const fieldRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (open) {
       setText('');
-      setError('');
+      setBlurred(false);
+      setRole('buyer');
     }
   }, [open]);
 
+  const emails = useMemo(() => parseEmails(text), [text]);
+  const invalid = useMemo(() => emails.filter((email) => !isEmail(email)), [emails]);
+  // The address still being typed is judged once the field loses focus or a separator follows it.
+  const shownInvalid = useMemo(
+    () => (blurred ? invalid : finishedEmails(text).filter((email) => !isEmail(email))),
+    [blurred, invalid, text],
+  );
+  const count = emails.length - invalid.length;
+  const canSend = !busy && emails.length > 0 && invalid.length === 0;
+
   const send = async () => {
-    const emails = parseEmails(text);
-    if (emails.length === 0) {
-      setError('Enter at least one email address');
-      return;
-    }
-    const invalid = emails.filter((email) => !isEmail(email));
-    if (invalid.length > 0) {
-      setError(`Not a valid email: ${invalid.join(', ')}`);
+    if (!canSend) {
+      // Ctrl/Cmd+Enter on a half-typed address shows why nothing was sent.
+      setBlurred(true);
       return;
     }
     setBusy(true);
-    setError('');
     const failed: string[] = [];
     for (const email of emails) {
       try {
         await apiRequest(`/api/workspaces/${workspace.id}/invites`, {
           method: 'POST',
-          body: JSON.stringify({ email, role: 'buyer' }),
+          body: JSON.stringify({ email, role }),
         });
         toast.show({
           tone: 'info',
@@ -200,16 +210,51 @@ const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onClose, o
             <Dialog.Description className="sr-only">
               Enter one or more email addresses separated by commas.
             </Dialog.Description>
-            <label className="mt-4 block text-[12px] font-medium text-[var(--text-primary)]" htmlFor="invite-emails">
-              Email
-            </label>
+            <div className="mt-4 flex items-center justify-between gap-2">
+              <label className="block text-[12px] font-medium text-[var(--text-primary)]" htmlFor="invite-emails">
+                Email
+              </label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={`Role: ${roleLabel(role)}`}
+                    disabled={busy}
+                    className="flex h-6 items-center gap-1 rounded-[4px] px-1.5 text-[12px] font-medium text-[var(--text-primary)] outline-none hover:bg-[var(--item-hover-bg)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] disabled:opacity-50"
+                  >
+                    <span className="font-normal text-[var(--text-tertiary)]">Invite as</span>
+                    {roleLabel(role)}
+                    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" className="text-[var(--text-tertiary)]">
+                      <path d="M2.5 4l2.5 2.5L7.5 4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" style={{ width: 280 }}>
+                  <DropdownMenuRadioGroup value={role} onValueChange={setRole}>
+                    {ASSIGNABLE_ROLES.map((option) => (
+                      <DropdownMenuRadioItem key={option.value} value={option.value} className="!h-auto py-1.5">
+                        <span className="min-w-0">
+                          <span className="block truncate">{option.label}</span>
+                          <span className="block truncate text-[12px] text-[var(--text-tertiary)]">{option.description}</span>
+                        </span>
+                        {role === option.value && <LinearCheckIcon size={14} />}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             <textarea
               id="invite-emails"
               ref={fieldRef}
               rows={2}
               value={text}
               disabled={busy}
-              onChange={(event) => setText(event.target.value)}
+              onChange={(event) => {
+                setText(event.target.value);
+                setBlurred(false);
+              }}
+              onBlur={() => setBlurred(true)}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
                   event.preventDefault();
@@ -217,13 +262,24 @@ const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onClose, o
                 }
               }}
               placeholder="email@example.com, email2@example.com…"
-              aria-invalid={Boolean(error)}
-              className="mt-2 block w-full resize-none rounded-[6px] border border-[var(--color-border-secondary)] bg-transparent px-2.5 py-2 text-[13px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)] focus:border-[var(--action-primary)]"
+              aria-invalid={shownInvalid.length > 0}
+              aria-describedby={shownInvalid.length > 0 ? 'invite-emails-error' : undefined}
+              className={`mt-2 block w-full resize-none rounded-[6px] border bg-transparent px-2.5 py-2 text-[13px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)] ${
+                shownInvalid.length > 0
+                  ? 'border-[var(--toast-error-icon)]'
+                  : 'border-[var(--color-border-secondary)] focus:border-[var(--action-primary)]'
+              }`}
             />
-            {error && <p role="alert" className="m-0 mt-2 text-[12px] text-[var(--toast-error-icon)]">{error}</p>}
+            {shownInvalid.length > 0 && (
+              <p id="invite-emails-error" role="alert" className="m-0 mt-2 text-[12px] text-[var(--toast-error-icon)]">
+                {shownInvalid.length === 1
+                  ? `${shownInvalid[0]} isn’t a valid email address`
+                  : `These aren’t valid email addresses: ${shownInvalid.join(', ')}`}
+              </p>
+            )}
             <div className="mt-4 flex justify-end">
-              <Button variant="primary" onClick={() => void send()} disabled={busy}>
-                {busy ? 'Sending…' : 'Send invites'}
+              <Button variant="primary" onClick={() => void send()} disabled={!canSend}>
+                {busy ? 'Sending…' : count > 0 ? `Send ${count} ${count === 1 ? 'invite' : 'invites'}` : 'Send invites'}
               </Button>
             </div>
           </Dialog.Content>

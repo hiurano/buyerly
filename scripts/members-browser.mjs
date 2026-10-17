@@ -1,18 +1,22 @@
 // Exercise the real App with a synthetic API: the workspace menu opens
-// Settings → Members, invitations are sent, resent and revoked there, another
+// Settings → Members, invitations are sent (as a chosen role, with bad addresses
+// flagged first), resent and revoked there, another
 // member's role is changed and a member removed, the account leaves the
 // workspace (an owner transfers ownership first) from its row or from Profile,
 // and Log out (menu item or Alt+Shift+Q) ends the session — all after Linear.
 import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const require = createRequire(new URL('../frontend/package.json', import.meta.url));
 const { chromium } = require('playwright');
-const { createServer } = await import(require.resolve('vite'));
-const root = new URL('../frontend/', import.meta.url).pathname;
+const { createServer } = await import(pathToFileURL(require.resolve('vite')).href);
+const root = fileURLToPath(new URL('../frontend/', import.meta.url));
 process.chdir(root);
-const output = '/tmp/buyerly-members';
+const output = join(tmpdir(), 'buyerly-members');
 await mkdir(output, { recursive: true });
 const server = await createServer({ root, server: { host: '127.0.0.1', port: 0 } });
 const baseWorkspace = {
@@ -26,9 +30,10 @@ const nextWorkspace = {
 };
 const scenarios = [
   // The owner leaves from Profile → Workspace access and hands ownership to Bob first.
-  { width: 1440, logout: 'menu', role: 'owner', leaveFrom: 'profile' },
+  // The owner invites as Viewer, the admin as Workspace admin.
+  { width: 1440, logout: 'menu', role: 'owner', leaveFrom: 'profile', inviteAs: { role: 'viewer', label: 'Viewer', short: 'Viewer' } },
   // An admin leaves from the menu on their own row with a plain confirmation.
-  { width: 390, logout: 'shortcut', role: 'admin', leaveFrom: 'row' },
+  { width: 390, logout: 'shortcut', role: 'admin', leaveFrom: 'row', inviteAs: { role: 'admin', label: 'Workspace admin', short: 'Admin' } },
 ];
 const member = (user_id, full_name, role, joined_at, extra = {}) => ({
   id: user_id, user_id, username: full_name.split(' ')[0].toLowerCase(), full_name,
@@ -41,7 +46,7 @@ try {
   await server.listen();
   const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
   browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH });
-  for (const { width, logout, role, leaveFrom } of scenarios) {
+  for (const { width, logout, role, leaveFrom, inviteAs } of scenarios) {
     const context = await browser.newContext({ viewport: { width, height: 900 } });
     const page = await context.newPage();
     page.setDefaultTimeout(10_000);
@@ -225,17 +230,38 @@ try {
       await page.getByRole('button', { name: 'Invite', exact: true }).click();
       const dialog = page.getByRole('dialog', { name: 'Invite to your workspace' });
       await dialog.waitFor();
-      await dialog.getByRole('textbox', { name: 'Email' }).fill('first@example.test, Second@Example.test');
+      const emailField = dialog.getByRole('textbox', { name: 'Email' });
+      const sendButton = dialog.getByRole('button', { name: /^Send (\d+ )?invites?$/ });
+      // A bad address is flagged once a separator follows it, and nothing can be sent.
+      await emailField.fill('first@example');
+      assert.equal(await dialog.getByRole('alert').count(), 0, 'the address being typed is not judged yet');
+      await emailField.fill('first@example, ');
+      await dialog.getByRole('alert').filter({ hasText: 'first@example isn’t a valid email address' }).waitFor();
+      assert.equal(await emailField.getAttribute('aria-invalid'), 'true');
+      assert.equal(await sendButton.isDisabled(), true);
+      await emailField.fill('first@example.test, Second@Example.test');
+      assert.equal(await dialog.getByRole('alert').count(), 0);
+      assert.equal(await sendButton.textContent(), 'Send 2 invites');
+      // Invite as: Buyer by default, Admin or Viewer on request, as in onboarding.
+      await dialog.getByRole('button', { name: 'Role: Buyer', exact: true }).click();
+      await page.getByRole('menuitemradio', { name: new RegExp(`^${inviteAs.label}`) }).click();
+      await dialog.getByRole('button', { name: `Role: ${inviteAs.short}`, exact: true }).waitFor();
       await assertNoOverflow();
       await page.screenshot({ path: `${output}/invite-dialog-${width}.png` });
-      await dialog.getByRole('button', { name: 'Send invites', exact: true }).click();
+      await sendButton.click();
       await dialog.waitFor({ state: 'detached' });
       assert.deepEqual(writes.filter(write => write.path.endsWith('/invites')).map(write => write.body), [
-        { email: 'first@example.test', role: 'buyer' },
-        { email: 'second@example.test', role: 'buyer' },
+        { email: 'first@example.test', role: inviteAs.role },
+        { email: 'second@example.test', role: inviteAs.role },
       ]);
       await page.getByText('first@example.test has been notified by email to join Buyerly').waitFor();
-      await row('second@example.test').waitFor();
+      await row('second@example.test').getByText(`${inviteAs.short} (Invited)`, { exact: true }).waitFor();
+
+      // The next invite starts as Buyer again.
+      await page.getByRole('button', { name: 'Invite', exact: true }).click();
+      await dialog.getByRole('button', { name: 'Role: Buyer', exact: true }).waitFor();
+      await page.keyboard.press('Escape');
+      await dialog.waitFor({ state: 'detached' });
 
       // Invited row menu: Resend invite, Revoke invite.
       await row('waiting@example.test').hover();
