@@ -265,7 +265,13 @@
   --preferences-channel-on: lch(60% 64.37 141.95 / 1);
   --preferences-channel-off: lch(39.452% 1.425 272 / 1);
   --preferences-search-bg: lch(7.32% 0.85 272 / 1);
-  --preferences-search-border: lch(14.16% 1.48 272 / 1);
+  --preferences-search-border: lch(18.48% 1.48 272 / 1);
+  /* Linear's settings in dark (17.10): card ring 0.083, a control's ring 0.143
+     (0.238 and fill 18.49 under the cursor). */
+  --preferences-card-ring: 0 0 0 0.5px lch(100% 0 0 / 0.083);
+  --preferences-control-ring: 0 0 0 0.5px lch(100% 0 0 / 0.143);
+  --preferences-control-ring-hover: 0 0 0 0.5px lch(100% 0 0 / 0.238);
+  --preferences-control-hover-bg: lch(18.49% 1.525 272 / 1);
   --preferences-menu-bg: lch(11.5% 1.1 272 / 1);
   --preferences-menu-border: lch(20.032% 1.93 272 / 1);
   --preferences-menu-hover: lch(18% 1.2 272 / 1);
@@ -473,8 +479,14 @@ html[data-theme='light'] {
   --preferences-channel-icon-bg: var(--item-hover-bg);
   --preferences-channel-on: lch(60% 64.37 141.95 / 1);
   --preferences-channel-off: var(--text-muted);
-  --preferences-search-bg: lch(100% 0 282 / 1);   /* #fefeff */
-  --preferences-search-border: lch(95.24% 0 282 / 1); /* #f1f0f0 */
+  --preferences-search-bg: lch(99.997% 0.5 282 / 1);
+  --preferences-search-border: lch(89.84% 0 282 / 1);
+  /* Linear's settings (17.10): card and control rings 0.088, a control 95.886
+     with ring 0.147 under the cursor. */
+  --preferences-card-ring: 0 0 0 0.5px lch(0% 0 0 / 0.088);
+  --preferences-control-ring: 0 0 0 0.5px lch(0% 0 0 / 0.088);
+  --preferences-control-ring-hover: 0 0 0 0.5px lch(0% 0 0 / 0.147);
+  --preferences-control-hover-bg: lch(95.886% 0 282 / 1);
   --preferences-menu-bg: lch(100% 0 282 / 1);     /* #fefeff */
   --preferences-menu-border: lch(86.5% 0 282 / 1);/* #d8d8d8 */
   --preferences-menu-hover: lch(95% 0 282 / 1);   /* #f1f0f0 */

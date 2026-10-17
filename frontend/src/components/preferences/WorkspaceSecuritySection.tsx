@@ -111,6 +111,7 @@ export const WorkspaceSecuritySection: React.FC<{ workspace: Workspace }> = ({ w
               <span className="preferences-row-title">Enable invite links</span>
             </div>
             <LinearToggle
+              size="settings"
               label="Enable invite links"
               checked={enabled}
               busy={loading || busy}

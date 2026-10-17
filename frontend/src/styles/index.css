@@ -500,6 +500,43 @@ body {
   transform: translateX(calc(var(--toggle-width) - var(--toggle-knob-size) - 2 * var(--toggle-inset)));
 }
 
+/* Linear's settings switch (17.10): 30x20, a 14px knob 3px in that leans 2px
+   toward its travel under the cursor; its edges move 0.1s, the trailing one 50ms late. */
+.linear-toggle--settings {
+  --toggle-width: 30px;
+  --toggle-height: 20px;
+  --toggle-knob-size: 14px;
+  --toggle-inset: 3px;
+  /* Linear's switch sits in a 36px box, so it ends 6px before the row's padding. */
+  margin-right: 6px;
+}
+
+.linear-toggle--settings::after {
+  top: 3px;
+  left: 3px;
+  right: 13px;
+  width: auto;
+  height: 14px;
+  border-radius: 7px;
+  transform: none;
+  transition: left 0.1s ease-out, right 0.1s ease-out 0.05s;
+}
+
+.linear-toggle--settings[aria-checked='true']::after {
+  left: 13px;
+  right: 3px;
+  transform: none;
+  transition: left 0.1s ease-out 0.05s, right 0.1s ease-out;
+}
+
+.linear-toggle--settings[aria-checked='false']:not([aria-disabled='true'], [aria-busy='true']):hover::after {
+  right: 11px;
+}
+
+.linear-toggle--settings[aria-checked='true']:not([aria-disabled='true'], [aria-busy='true']):hover::after {
+  left: 11px;
+}
+
 .linear-toggle[aria-disabled='true'] {
   opacity: 0.5;
   cursor: not-allowed;
@@ -1251,7 +1288,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
 .preferences-back-container {
   display: flex;
   align-items: center;
-  height: 44px;
+  height: 44.5px;
   margin-top: 8px;
   padding: 0 0 0 4px;
   width: 220px;
@@ -1266,29 +1303,39 @@ html[data-theme='dark'] .linear-sidebar-badge,
   height: 28px;
   padding: 0 12px 0 6px;
   border-radius: 9999px;
-  border: 1px solid transparent;
+  border: 0.5px solid transparent;
   background: transparent;
-  color: var(--text-tertiary);
+  color: var(--sidebar-item-fg);
   font-family: var(--font-regular);
   font-size: 13px;
   font-weight: 500;
-  cursor: pointer;
+  cursor: default;
   white-space: nowrap;
-  transition: color 120ms ease, background-color 120ms ease;
+  transition: border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
 }
 
-.preferences-back-button:hover {
-  color: var(--text-primary);
-  background: var(--preferences-active-bg);
+/* Linear's: as the app sidebar's Search, the fill lands at once and fades out. */
+.preferences-back-button:active {
+  color: var(--sidebar-item-fg-strong);
+  background: var(--sidebar-icon-button-hover-bg);
+  transition-duration: 0s;
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .preferences-back-button:hover {
+    color: var(--sidebar-item-fg-strong);
+    background: var(--sidebar-icon-button-hover-bg);
+    transition-duration: 0s;
+  }
 }
 
 .preferences-back-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
-  margin-right: 4px;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
 }
 
 /* Search input: x: 12, y: 56, w: 220, h: 28 */
@@ -1313,16 +1360,16 @@ html[data-theme='dark'] .linear-sidebar-badge,
   height: 28px;
   padding: 6px 25px 6px 32px;
   border-radius: 8px;
-  border: 1px solid var(--preferences-search-border);
+  border: 0.5px solid var(--preferences-search-border);
   background: var(--preferences-search-bg);
-  color: var(--text-primary);
+  color: var(--sidebar-item-fg-strong);
   font-family: var(--font-regular);
   font-size: 13px;
   font-weight: 500;
   outline: none;
   box-shadow: var(--canvas-shadow);
   user-select: text;
-  transition: border-color 120ms ease;
+  transition: border-color 0.15s;
 }
 
 .preferences-search-input:focus {
@@ -1330,7 +1377,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
 }
 
 .preferences-search-input::placeholder {
-  color: var(--text-muted);
+  color: var(--sidebar-item-fg);
   opacity: 1;
 }
 
@@ -1340,7 +1387,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
 
 .preferences-search-icon {
   position: absolute;
-  left: 8px;
+  left: 10px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
@@ -1348,7 +1395,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
   justify-content: center;
   width: 16px;
   height: 16px;
-  color: var(--text-muted);
+  color: var(--sidebar-item-fg);
   pointer-events: none;
 }
 
@@ -1356,81 +1403,94 @@ html[data-theme='dark'] .linear-sidebar-badge,
 .preferences-nav-list {
   display: flex;
   flex-direction: column;
-  width: 210px;
+  width: 220px;
   margin: 29px 12px 0 12px;
 }
 
+/* Linear's items sit 1px apart, 6px under their heading, 16px over the next one. */
 .preferences-nav-group {
   display: flex;
   flex-direction: column;
+  gap: 1px;
   margin-bottom: 16px;
 }
 
 .preferences-nav-heading {
   display: flex;
   align-items: center;
-  width: 210px;
-  height: 16px;
+  width: 220px;
   margin-bottom: 5px;
   padding: 0 0 0 10px;
-  color: var(--text-tertiary);
+  color: var(--sidebar-item-fg);
   font-family: var(--font-regular);
   font-size: 13px;
   font-weight: 500;
-  line-height: 16px;
+  line-height: normal;
   letter-spacing: normal;
 }
 
 .preferences-nav-item {
   display: flex;
   align-items: center;
-  width: 210px;
+  width: 220px;
   height: 28px;
-  margin: 1px 0;
   padding: 0 0 0 10px;
   border-radius: 8px;
   border: 0;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--sidebar-item-fg);
   font-family: var(--font-regular);
   font-size: 13px;
   font-weight: 500;
   text-decoration: none;
-  cursor: pointer;
-  transition: background-color 100ms ease, color 100ms ease;
+  cursor: default;
+}
+
+/* As the app sidebar's items (Linear's settings use the same): hover and press
+   fill at once, the current item keeps its own fill. */
+.preferences-nav-item:not(.active):active {
+  background: var(--sidebar-item-hover-bg);
+  color: var(--sidebar-item-fg-strong);
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .preferences-nav-item:not(.active):hover {
+    background: var(--sidebar-item-hover-bg);
+    color: var(--sidebar-item-fg-strong);
+  }
 }
 
 .preferences-nav-item.active,
 .preferences-nav-item[data-active='true'] {
   background: var(--preferences-active-bg);
-  color: var(--text-primary);
-  cursor: default;
-}
-
-.preferences-nav-item:not(.active):hover {
-  background: var(--preferences-control-hover);
-  color: var(--text-primary);
+  color: var(--sidebar-item-fg-strong);
 }
 
 .preferences-nav-icon {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
-  fill: var(--text-tertiary);
+  fill: var(--sidebar-item-fg);
 }
 
-.preferences-nav-item.active .preferences-nav-icon {
-  fill: var(--text-primary);
+.preferences-nav-item.active .preferences-nav-icon,
+.preferences-nav-item:active .preferences-nav-icon {
+  fill: var(--sidebar-item-fg-strong);
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .preferences-nav-item:hover .preferences-nav-icon {
+    fill: var(--sidebar-item-fg-strong);
+  }
 }
 
 .preferences-nav-label {
   display: flex;
   align-items: center;
-  height: 28px;
   padding: 0 9px 0 6px;
   font-size: 13px;
   font-weight: 500;
-  line-height: 24px;
+  line-height: normal;
 }
 
 .preferences-no-results {
@@ -1449,7 +1509,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
   height: calc(100vh - 44px);
   margin: 8px 8px 36px 0;
   border-radius: 12px;
-  border: 1px solid var(--color-border-primary);
+  border: var(--canvas-border);
   background: var(--bg-canvas);
   box-shadow: var(--canvas-shadow);
   overflow: hidden;
@@ -1463,7 +1523,8 @@ html[data-theme='dark'] .linear-sidebar-badge,
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-right: 15px;
+  /* Linear's: the column stays centred under an overlay scrollbar. */
+  scrollbar-gutter: stable;
   scrollbar-color: var(--app-scrollbar-bg) transparent;
   scrollbar-width: thin;
 }
@@ -1509,7 +1570,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
   align-items: center;
   height: 23px;
   padding: 0 16px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .preferences-section-title {
@@ -1530,7 +1591,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
   border-radius: 10px;
   background: var(--preferences-card-bg);
   overflow: visible;
-  box-shadow: var(--canvas-shadow);
+  box-shadow: var(--preferences-card-ring), var(--canvas-shadow);
 }
 
 /* Row Item */
@@ -1539,7 +1600,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  height: 66px;
+  height: 65px;
   padding: 16px;
   border-radius: 10px;
   position: relative;
@@ -1804,7 +1865,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
   font-family: var(--font-regular);
   font-size: 13px;
   font-weight: 500;
-  line-height: 16px;
+  line-height: normal;
 }
 
 .preferences-row-desc {
@@ -1814,7 +1875,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
   font-family: var(--font-regular);
   font-size: 12px;
   font-weight: 450;
-  line-height: 15px;
+  line-height: normal;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2252,22 +2313,24 @@ html[data-theme='dark'] .linear-sidebar-badge,
   min-width: 192px;
   padding: 1px 28px 1px 4px;
   border-radius: 8px;
-  border: 1px solid transparent;
+  border: 0.5px solid transparent;
   background: var(--preferences-control-bg);
   color: var(--text-secondary);
   font-family: var(--font-regular);
   font-size: 13px;
   font-weight: 400;
-  cursor: pointer;
+  cursor: default;
   white-space: nowrap;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), var(--canvas-shadow);
+  box-shadow: var(--preferences-control-ring), var(--canvas-shadow);
   outline: none;
-  transition: background-color 100ms ease;
+  transition: background-color 0.15s, border 0.15s, color 0.15s, box-shadow 0.15s;
 }
 
 .preferences-combobox-trigger:hover,
 .preferences-combobox-trigger[aria-expanded='true'] {
-  background: var(--preferences-control-hover);
+  background: var(--preferences-control-hover-bg);
+  box-shadow: var(--preferences-control-ring-hover), var(--canvas-shadow);
+  transition-duration: 0s;
 }
 
 .preferences-combobox-content {
