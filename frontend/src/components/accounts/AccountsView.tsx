@@ -242,12 +242,12 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
     <div className="flex h-full w-full select-none flex-col overflow-hidden bg-transparent">
       <header className="flex shrink-0 flex-col">
         <div
-          style={{ borderBottom: '1px solid var(--color-border-primary)', paddingLeft: '14px' }}
-          className="flex h-[44px] items-center justify-between pr-2.5"
+          style={{ borderBottom: 'var(--canvas-border)', paddingLeft: '18px', paddingRight: '11px' }}
+          className="flex h-[44px] items-center justify-between"
         >
           <div className="flex items-center">
             <SidebarCollapsedNavigation />
-            <h2 className="text-[13px] font-medium leading-4 tracking-[-0.01em] text-[var(--text-secondary)]">Ad accounts</h2>
+            <h2 className="text-[13px] font-medium leading-4 text-[var(--text-secondary)]">Ad accounts</h2>
           </div>
           {canEdit && <HeaderCreateButton label="Add account" tooltip="Add ad account" onClick={dialogs.openAdd} />}
         </div>

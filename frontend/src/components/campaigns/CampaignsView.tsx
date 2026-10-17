@@ -781,12 +781,12 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     <div className="flex h-full w-full select-none flex-col overflow-hidden bg-transparent">
       <header className="flex shrink-0 flex-col">
         <div
-          style={{ borderBottom: '1px solid var(--color-border-primary)', paddingLeft: '14px' }}
-          className="flex h-[44px] items-center justify-between pr-2.5"
+          style={{ borderBottom: 'var(--canvas-border)', paddingLeft: '18px', paddingRight: '11px' }}
+          className="flex h-[44px] items-center justify-between"
         >
           <div className="flex items-center">
             <SidebarCollapsedNavigation />
-            <h2 className="text-[13px] font-medium tracking-[-0.01em] text-[var(--text-secondary)]">Ads Manager</h2>
+            <h2 className="text-[13px] font-medium text-[var(--text-secondary)]">Ads Manager</h2>
           </div>
           {selectedAccount ? (
             <DropdownMenuAccount

@@ -1,7 +1,7 @@
 import React from 'react';
 
 export const LINEAR_DATA_LIST = {
-  toolbarHeight: 43,
+  toolbarHeight: 43.5,
   rowHeight: 44,
   rowHeightComfortable: 56,
   groupHeaderHeight: 36,
@@ -10,7 +10,7 @@ export const LINEAR_DATA_LIST = {
   rowPaddingX: 12,
   columnGap: 6,
   toolbarPaddingLeft: 8,
-  toolbarPaddingRight: 10,
+  toolbarPaddingRight: 11,
   viewportPaddingX: 8,
   viewportPaddingY: 4,
 } as const;

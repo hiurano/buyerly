@@ -109,8 +109,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({ accountId, navigate, n
 
   const header = (
     <div
-      style={{ borderBottom: '1px solid var(--color-border-primary)', paddingLeft: '14px' }}
-      className="flex h-[44px] shrink-0 items-center justify-between gap-2 pr-2.5"
+      style={{ borderBottom: 'var(--canvas-border)', paddingLeft: '18px', paddingRight: '11px' }}
+      className="flex h-[44px] shrink-0 items-center justify-between gap-2"
     >
       <div className="flex min-w-0 items-center">
         <SidebarCollapsedNavigation />
@@ -122,12 +122,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({ accountId, navigate, n
               event.preventDefault();
               navigate(listPath);
             }}
-            className="shrink-0 rounded-[4px] text-[13px] font-medium leading-4 tracking-[-0.01em] text-[var(--text-tertiary)] outline-none transition-colors hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
+            className="shrink-0 rounded-[4px] text-[13px] font-medium leading-4 text-[var(--text-tertiary)] outline-none transition-colors hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
           >
             Ad accounts
           </a>
           <ChevronRight size={14} aria-hidden="true" className="mx-[4px] shrink-0 text-[var(--text-tertiary)]" />
-          <h2 aria-current="page" className="m-0 truncate p-0 text-[13px] font-medium leading-4 tracking-[-0.01em] text-[var(--text-primary)]">
+          <h2 aria-current="page" className="m-0 truncate p-0 text-[13px] font-medium leading-4 text-[var(--text-primary)]">
             {account ? accountName(account) : accountId}
           </h2>
         </nav>

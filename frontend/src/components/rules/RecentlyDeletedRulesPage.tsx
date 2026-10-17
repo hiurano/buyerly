@@ -24,11 +24,12 @@ export const RecentlyDeletedRulesPage: React.FC<RecentlyDeletedRulesPageProps> =
         <div
           style={{
             height: '44px',
-            borderBottom: '1px solid var(--color-border-primary)',
+            borderBottom: 'var(--canvas-border)',
             boxSizing: 'border-box',
-            paddingLeft: '14px',
+            paddingLeft: '18px',
+            paddingRight: '11px',
           }}
-          className="flex items-center pr-2.5"
+          className="flex items-center"
         >
           <SidebarCollapsedNavigation />
           <nav aria-label="Breadcrumb" className="flex min-w-0 items-center">
@@ -39,14 +40,14 @@ export const RecentlyDeletedRulesPage: React.FC<RecentlyDeletedRulesPageProps> =
                 event.preventDefault();
                 onOpenRules();
               }}
-              className="rounded-[4px] text-[13px] font-medium leading-4 tracking-[-0.01em] text-[var(--text-tertiary)] outline-none transition-colors hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
+              className="rounded-[4px] text-[13px] font-medium leading-4 text-[var(--text-tertiary)] outline-none transition-colors hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
             >
               Rules
             </a>
             <ChevronRight size={14} aria-hidden="true" className="mx-[4px] shrink-0 text-[var(--text-tertiary)]" />
             <h2
               aria-current="page"
-              className="m-0 truncate p-0 text-[13px] font-medium leading-4 tracking-[-0.01em] text-[var(--text-primary)]"
+              className="m-0 truncate p-0 text-[13px] font-medium leading-4 text-[var(--text-primary)]"
             >
               Recently deleted
             </h2>

@@ -588,7 +588,7 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
   margin: 8px 8px 36px 0px;
   border-radius: var(--canvas-border-radius);
   background-color: var(--bg-canvas);
-  border: 1px solid var(--color-border-primary);
+  border: var(--canvas-border);
   box-shadow: var(--canvas-shadow);
   overflow: hidden;
   display: flex;
@@ -2365,7 +2365,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
   margin: 0;
   box-sizing: border-box;
   border-radius: 9999px;
-  border: 1px solid transparent;
+  border: 0.5px solid transparent;
   font-family: var(--font-regular);
   font-size: 12px;
   font-weight: 500;
@@ -2374,8 +2374,8 @@ html[data-theme='dark'] .linear-sidebar-badge,
   user-select: none;
   white-space: nowrap;
   outline: none;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+  cursor: default;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
 }
 
 .linear-tab-capsule::after {
@@ -2395,13 +2395,13 @@ html[data-theme='dark'] .linear-sidebar-badge,
 
 /* Light Theme (html[data-theme='light']) */
 html[data-theme='light'] .linear-tab-capsule[data-active='false'] {
-  background-color: #ffffff;
+  background-color: lch(99.997% 0.5 282 / 1);
   color: var(--text-tertiary);
 }
 
 html[data-theme='light'] .linear-tab-capsule[data-active='false']::after {
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.105),
+    0 0 0 0.5px lch(0% 0 0 / 0.09),
     0 3px 6px -2px rgba(0, 0, 0, 0.02),
     0 1px 1px 0px rgba(0, 0, 0, 0.04);
 }
@@ -2413,7 +2413,7 @@ html[data-theme='light'] .linear-tab-capsule[data-active='false']:hover {
 
 html[data-theme='light'] .linear-tab-capsule[data-active='false']:hover::after {
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.15),
+    0 0 0 0.5px lch(0% 0 0 / 0.15),
     0 3px 6px -2px rgba(0, 0, 0, 0.02),
     0 1px 1px 0px rgba(0, 0, 0, 0.04);
 }
@@ -2430,7 +2430,7 @@ html[data-theme='light'] .linear-tab-capsule[data-active='true'] {
 }
 
 html[data-theme='light'] .linear-tab-capsule[data-active='true']::after {
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.105);
+  box-shadow: 0 0 0 0.5px lch(0% 0 0 / 0.09);
 }
 
 /* Dark Theme (:root:not([data-theme='light']) & html[data-theme='dark']) */
