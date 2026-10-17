@@ -405,7 +405,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
       } else if ((key === 'f' || key === 'F') && !event.shiftKey && hasFilters && filterButtonRef.current) {
         event.preventDefault();
         openFilterMenu('root', filterButtonRef.current);
-      } else if ((key === 'v' || key === 'V') && !event.shiftKey) {
+      } else if ((key === 'v' || key === 'V') && event.shiftKey) {
         event.preventDefault();
         setFilterMenu(null);
         setIsDisplayOpen(true);
@@ -656,7 +656,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
             />
           </div>
           {hasFilters && (
-            <Tooltip content="Filter" shortcut="F" disabled={Boolean(filterMenu)}>
+            <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(filterMenu)}>
               <LinearFilterButton
                 ref={filterButtonRef}
                 active={filterClauses.length > 0}
@@ -669,7 +669,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
               />
             </Tooltip>
           )}
-          <Tooltip content="Display options" shortcut="V" disabled={isDisplayOpen}>
+          <Tooltip content="Show display options" shortcut="Shift V" disabled={isDisplayOpen}>
             <button
               ref={displayButtonRef}
               type="button"

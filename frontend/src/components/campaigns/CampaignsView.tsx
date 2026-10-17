@@ -343,7 +343,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
             anchor: filterButtonRef.current as HTMLElement,
           });
         }
-      } else if (event.key === 'v' || event.key === 'V') {
+      } else if ((event.key === 'v' || event.key === 'V') && event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey) {
         event.preventDefault();
         setOpenFilterMenu(null);
         toggleDisplayOptions();
@@ -817,7 +817,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
 
           <div className="flex shrink-0 items-center gap-1.5">
             <PeriodMenu period={period} label={periodLabel} onChange={setPeriod} />
-            <Tooltip content="Add filter" shortcut="F">
+            <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(openFilterMenu)}>
               <LinearFilterButton
                 ref={filterButtonRef}
                 active={currentFilters.length > 0}
@@ -832,7 +832,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
                 }}
               />
             </Tooltip>
-            <Tooltip content="Display options" shortcut="V">
+            <Tooltip content="Show display options" shortcut="Shift V" disabled={isDisplayOptionsOpen}>
               <button
                 ref={displayOptionsButtonRef}
                 type="button"

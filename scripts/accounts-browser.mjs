@@ -184,7 +184,7 @@ try {
       await page.screenshot({ path: `${output}/list-1440.png` });
 
       // Display options: ordering by Spend today, grouping by Team, saved per member.
-      await page.keyboard.press('v');
+      await page.keyboard.press('Shift+V');
       await popover(page).waitFor();
       await select(page, 'Ordering', 'Spend today');
       assert.deepEqual(await rowIds(page), ['act_101', 'act_102', 'act_103'], 'smallest spend first, none last');

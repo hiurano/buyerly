@@ -27,7 +27,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
   shortcut,
   side = 'bottom',
   align = 'center',
-  sideOffset = 6,
+  sideOffset = 8,
   disabled = false,
 }) => {
   // Parse shortcut like "G I" into ["G", "then", "I"], "Shift V" into ["⇧", "V"], "Alt I" into ["⌥", "I"]
@@ -64,18 +64,17 @@ export const Tooltip: React.FC<TooltipProps> = ({
     const kbdStyle: React.CSSProperties = {
       fontFamily: 'inherit',
       fontSize: '11px',
-      fontWeight: 500,
-      lineHeight: '1',
+      fontWeight: 400,
+      lineHeight: '1.1',
       textAlign: 'center',
       color: 'var(--text-tertiary)',
       backgroundColor: 'transparent',
       borderColor: 'var(--color-border-secondary)',
-      borderWidth: '1px',
+      borderWidth: '0.5px',
       borderStyle: 'solid',
       borderRadius: '4px',
-      padding: '0 4px',
+      padding: '2px',
       minWidth: '18px',
-      height: '18px',
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -131,10 +130,10 @@ export const Tooltip: React.FC<TooltipProps> = ({
           {typeof content === 'string' ? (
             <span
               style={{
-                fontSize: '12px',
+                fontSize: '11px',
                 fontWeight: 450,
-                lineHeight: '16px',
-                color: 'var(--text-primary)',
+                lineHeight: '16.5px',
+                color: 'var(--text-secondary)',
                 whiteSpace: 'nowrap',
               }}
             >

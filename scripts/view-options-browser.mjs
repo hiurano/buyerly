@@ -145,8 +145,8 @@ try {
       assert.deepEqual(await rowIds(page), ['7', '8', '9'], 'Manual keeps the stored order');
       assert.equal(await displayButton(page).locator('[data-display-changed]').count(), 0, 'no dot on a default view');
 
-      // V opens Display options; Manual has no direction.
-      await page.keyboard.press('v');
+      // Shift V opens Display options; Manual has no direction.
+      await page.keyboard.press('Shift+V');
       await popover(page).waitFor();
       assert.equal(await popover(page).getByRole('button', { name: 'Direction' }).count(), 0);
       assert.equal(await popover(page).getByRole('button', { name: 'Reset to default' }).count(), 0);

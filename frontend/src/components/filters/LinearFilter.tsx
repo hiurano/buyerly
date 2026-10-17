@@ -1504,25 +1504,22 @@ export const LinearFilterMenu = <T,>({
   );
 };
 
-interface FilterButtonProps {
+interface FilterButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'type'> {
   active: boolean;
   open: boolean;
-  onMouseDown?: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  onPointerDown?: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
+/** Spreads the rest so a wrapping Tooltip trigger gets its pointer and focus handlers. */
 export const LinearFilterButton = React.forwardRef<HTMLButtonElement, FilterButtonProps>(
-  ({ active, open, onMouseDown, onPointerDown, onClick }, ref) => (
+  ({ active, open, ...rest }, ref) => (
     <button
+      {...rest}
       ref={ref}
       type="button"
       aria-label={active ? 'Add another filter' : 'Add filter'}
       aria-haspopup="dialog"
       aria-expanded={open}
-      onPointerDown={onPointerDown}
-      onMouseDown={onMouseDown}
-      onClick={onClick}
       className={`linear-header-target group relative flex h-[28px] w-[28px] items-center justify-center rounded-full border transition-[border-color,background-color,color,opacity,fill,stroke] duration-150 ease-[ease] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#8b8df8] ${
         open || active
           ? 'border-transparent bg-[var(--filter-trigger-active-bg)] text-[var(--text-primary)]'

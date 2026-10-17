@@ -152,13 +152,13 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
     reconnect: dialogs.openAdd,
   };
 
-  // V opens Display options and F the filter, as on every list.
+  // Shift V opens Display options and F the filter, as on every list.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (event.key === 'v' || event.key === 'V') {
+      if ((event.key === 'v' || event.key === 'V') && event.shiftKey) {
         event.preventDefault();
         setOpenFilterMenu(null);
         setIsDisplayOpen((open) => !open);
@@ -260,7 +260,7 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
             onChange={() => {}}
           />
           <div className="flex shrink-0 items-center gap-1.5">
-            <Tooltip content="Filter" shortcut="F">
+            <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(openFilterMenu)}>
               <LinearFilterButton
                 ref={filterButtonRef}
                 active={view.filters.length > 0}
@@ -273,7 +273,7 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
                 }}
               />
             </Tooltip>
-            <Tooltip content="Display options" shortcut="V">
+            <Tooltip content="Show display options" shortcut="Shift V" disabled={isDisplayOpen}>
               <button
                 ref={displayButtonRef}
                 type="button"

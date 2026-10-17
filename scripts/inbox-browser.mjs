@@ -310,8 +310,8 @@ try {
       assert.equal(await bar.count(), 0);
       await page.waitForTimeout(400);
       assert.equal(savedViews.inbox, undefined, 'Clear forgets the saved filter');
-      // V opens Display options on Inbox too, as on every list (#385).
-      await page.keyboard.press('v');
+      // Shift V opens Display options on Inbox too, as on every list.
+      await page.keyboard.press('Shift+V');
       await page.getByRole('dialog', { name: 'Display options' }).waitFor();
       await page.keyboard.press('Escape');
       await page.getByRole('dialog', { name: 'Display options' }).waitFor({ state: 'detached' });
