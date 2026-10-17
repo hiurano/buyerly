@@ -1,7 +1,7 @@
 {
   "name": "buyerly-frontend",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "FSL-1.1-ALv2",
   "version": "1.0.0",
   "type": "module",
   "scripts": {

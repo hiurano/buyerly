@@ -1,5 +1,7 @@
 # Buyerly
 
+[![License: FSL-1.1-ALv2](https://img.shields.io/badge/license-FSL--1.1--ALv2-blue)](LICENSE.md)
+
 Buyerly — сервис мониторинга и автоматизации Meta Ads для медиабайеров и команд.
 Production-интерфейс написан на React; прежний vanilla-интерфейс удалён.
 
@@ -106,4 +108,6 @@ gh run view <run-id> --log-failed
 
 ## License
 
-Copyright (c) 2026 Artem Petruchenko. All rights reserved. Код открыт только для просмотра: копировать, изменять, распространять, запускать и предоставлять как сервис без письменного разрешения нельзя. Подробности в [LICENSE](LICENSE).
+Buyerly распространяется по [Functional Source License 1.1, ALv2 Future License](LICENSE.md) (FSL-1.1-ALv2). Код можно читать, запускать, изменять и использовать для любых целей, кроме конкурирующего сервиса: нельзя предлагать на его основе продукт, который заменяет Buyerly или делает то же самое. Через два года после выхода каждая версия автоматически переходит под Apache 2.0. Copyright 2026 Artem Petruchenko.
+
+О безопасности и о том, как хранятся токены Meta, — в [SECURITY.md](SECURITY.md).
