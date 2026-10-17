@@ -2375,7 +2375,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
   white-space: nowrap;
   outline: none;
   cursor: default;
-  transition: border-color 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
+  transition: border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
 }
 
 .linear-tab-capsule::after {
@@ -2384,7 +2384,20 @@ html[data-theme='dark'] .linear-sidebar-badge,
   inset: 0;
   border-radius: 9999px;
   pointer-events: none;
-  transition: box-shadow 0.15s ease;
+  transition-property: box-shadow;
+  transition-duration: inherit;
+  transition-timing-function: inherit;
+}
+
+/* As Linear's: hover and press land at once, only leaving fades over 0.15s. */
+.linear-tab-capsule[data-active='false']:active {
+  transition-duration: 0s;
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .linear-tab-capsule[data-active='false']:hover {
+    transition-duration: 0s;
+  }
 }
 
 /* Keyboard Navigation Focus Indicator (Linear #5e6ad2 focus ring) */
@@ -2406,21 +2419,31 @@ html[data-theme='light'] .linear-tab-capsule[data-active='false']::after {
     0 1px 1px 0px rgba(0, 0, 0, 0.04);
 }
 
-html[data-theme='light'] .linear-tab-capsule[data-active='false']:hover {
+/* Pressed looks like hovered, as Linear's. */
+html[data-theme='light'] .linear-tab-capsule[data-active='false']:active {
   background-color: lch(94.854% 0.5 282 / 1); /* #f0f0f1 */
   color: var(--text-secondary);
 }
 
-html[data-theme='light'] .linear-tab-capsule[data-active='false']:hover::after {
+html[data-theme='light'] .linear-tab-capsule[data-active='false']:active::after {
   box-shadow:
     0 0 0 0.5px lch(0% 0 0 / 0.15),
     0 3px 6px -2px rgba(0, 0, 0, 0.02),
     0 1px 1px 0px rgba(0, 0, 0, 0.04);
 }
 
-html[data-theme='light'] .linear-tab-capsule[data-active='false']:active {
-  background-color: #e8e8e9;
-  transition-duration: 0s;
+@media (any-hover: hover) and (any-pointer: fine) {
+  html[data-theme='light'] .linear-tab-capsule[data-active='false']:hover {
+    background-color: lch(94.854% 0.5 282 / 1);
+    color: var(--text-secondary);
+  }
+
+  html[data-theme='light'] .linear-tab-capsule[data-active='false']:hover::after {
+    box-shadow:
+      0 0 0 0.5px lch(0% 0 0 / 0.15),
+      0 3px 6px -2px rgba(0, 0, 0, 0.02),
+      0 1px 1px 0px rgba(0, 0, 0, 0.04);
+  }
 }
 
 html[data-theme='light'] .linear-tab-capsule[data-active='true'] {
@@ -2445,21 +2468,28 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='false']::after {
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
-:root:not([data-theme='light']) .linear-tab-capsule[data-active='false']:hover,
-html[data-theme='dark'] .linear-tab-capsule[data-active='false']:hover {
+:root:not([data-theme='light']) .linear-tab-capsule[data-active='false']:active,
+html[data-theme='dark'] .linear-tab-capsule[data-active='false']:active {
   background-color: var(--item-hover-bg);
   color: var(--text-primary);
 }
 
-:root:not([data-theme='light']) .linear-tab-capsule[data-active='false']:hover::after,
-html[data-theme='dark'] .linear-tab-capsule[data-active='false']:hover::after {
+:root:not([data-theme='light']) .linear-tab-capsule[data-active='false']:active::after,
+html[data-theme='dark'] .linear-tab-capsule[data-active='false']:active::after {
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
-:root:not([data-theme='light']) .linear-tab-capsule[data-active='false']:active,
-html[data-theme='dark'] .linear-tab-capsule[data-active='false']:active {
-  background-color: var(--item-active-bg);
-  transition-duration: 0s;
+@media (any-hover: hover) and (any-pointer: fine) {
+  :root:not([data-theme='light']) .linear-tab-capsule[data-active='false']:hover,
+  html[data-theme='dark'] .linear-tab-capsule[data-active='false']:hover {
+    background-color: var(--item-hover-bg);
+    color: var(--text-primary);
+  }
+
+  :root:not([data-theme='light']) .linear-tab-capsule[data-active='false']:hover::after,
+  html[data-theme='dark'] .linear-tab-capsule[data-active='false']:hover::after {
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+  }
 }
 
 :root:not([data-theme='light']) .linear-tab-capsule[data-active='true'],
