@@ -247,7 +247,7 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
         >
           <div className="flex items-center">
             <SidebarCollapsedNavigation />
-            <h2 className="text-[13px] font-medium text-[var(--text-secondary)]">Ad accounts</h2>
+            <h2 className="overflow-hidden whitespace-nowrap text-[13px] font-medium text-[var(--text-secondary)]">Ad accounts</h2>
           </div>
           {canEdit && <HeaderCreateButton label="Add account" tooltip="Add ad account" onClick={dialogs.openAdd} />}
         </div>
@@ -273,7 +273,7 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
                 }}
               />
             </Tooltip>
-            <Tooltip content="Show display options" shortcut="Shift V" disabled={isDisplayOpen}>
+            <Tooltip content="Show display options" shortcut="Shift V" align="end" disabled={isDisplayOpen}>
               <button
                 ref={displayButtonRef}
                 type="button"

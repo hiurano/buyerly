@@ -786,7 +786,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
         >
           <div className="flex items-center">
             <SidebarCollapsedNavigation />
-            <h2 className="text-[13px] font-medium text-[var(--text-secondary)]">Ads Manager</h2>
+            <h2 className="overflow-hidden whitespace-nowrap text-[13px] font-medium text-[var(--text-secondary)]">Ads Manager</h2>
           </div>
           {selectedAccount ? (
             <DropdownMenuAccount
@@ -832,7 +832,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
                 }}
               />
             </Tooltip>
-            <Tooltip content="Show display options" shortcut="Shift V" disabled={isDisplayOptionsOpen}>
+            <Tooltip content="Show display options" shortcut="Shift V" align="end" disabled={isDisplayOptionsOpen}>
               <button
                 ref={displayOptionsButtonRef}
                 type="button"
