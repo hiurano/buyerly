@@ -201,6 +201,12 @@
   --filter-badge-border: lch(23.5% 1.9 272 / 1);
   --filter-trigger-bg: transparent;
   --filter-trigger-active-bg: var(--tab-active-bg);
+  /* Round icon buttons by Filter / Display options / details (see .linear-header-button). */
+  --header-button-hover-bg: var(--item-hover-bg);
+  --header-button-active-bg: var(--filter-trigger-active-bg);
+  --toolbar-button-bg: var(--filter-trigger-bg);
+  --toolbar-button-hover-bg: var(--item-hover-bg);
+  --toolbar-button-active-bg: var(--filter-trigger-active-bg);
   --filter-menu-shadow: var(--dropdown-shadow);
   --filter-menu-strong-shadow: 0px 9px 48px lch(0% 0 0 / 0.28), 0px 6px 24px lch(0% 0 0 / 0.24), 0px 1px 1px lch(0% 0 0 / 0.3);
 
@@ -386,6 +392,12 @@ html[data-theme='light'] {
   --filter-badge-border: lch(86.5% 0 282 / 1);
   --filter-trigger-bg: lch(99.997% 0.5 282 / 1);
   --filter-trigger-active-bg: lch(94.854% 0.157 282 / 1);
+  /* Measured on live Linear 17.10: Inbox header buttons sit bare, a list's toolbar ones on white. */
+  --header-button-hover-bg: lch(94.854% 0.5 282 / 1);
+  --header-button-active-bg: lch(94.854% 0.157 282 / 1);
+  --toolbar-button-bg: lch(99.997% 0.5 282 / 1);
+  --toolbar-button-hover-bg: lch(95.883% 0.157 282 / 1);
+  --toolbar-button-active-bg: lch(94.854% 0.157 282 / 1);
   --filter-menu-shadow: 0px 6px 18px lch(0% 0 0 / 0.02), 0px 3px 9px lch(0% 0 0 / 0.04), 0px 1px 1px lch(0% 0 0 / 0.04);
   --filter-menu-strong-shadow: 0px 9px 48px lch(0% 0 0 / 0.08), 0px 6px 24px lch(0% 0 0 / 0.1), 0px 1px 1px lch(0% 0 0 / 0.04);
 

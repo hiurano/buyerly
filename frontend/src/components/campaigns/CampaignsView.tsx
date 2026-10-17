@@ -843,7 +843,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
                   setOpenFilterMenu(null);
                   toggleDisplayOptions();
                 }}
-                className={`linear-header-target group relative flex h-[28px] w-[28px] items-center justify-center rounded-full border border-transparent outline-none transition-all ${isDisplayOptionsOpen ? 'bg-[var(--item-active-bg)] text-[var(--text-primary)]' : 'bg-transparent text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'}`}
+                className="linear-header-button linear-header-button--toolbar linear-header-target group"
               >
                 <LinearSlidersIcon size={14} />
                 <DisplayOptionsChangedDot show={displayChanged} />

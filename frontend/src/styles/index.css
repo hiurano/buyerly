@@ -3395,13 +3395,22 @@ html[data-theme='dark'] .buyerly-auth-page,
 body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !important; user-select: none !important; }
 
 /* The header's details button: lit while the pane is open. */
-.details-pane-toggle {
-  display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid transparent;
-  border-radius: 9999px; background: transparent; color: var(--text-tertiary); outline: none; transition: background-color 0.15s, color 0.15s;
+/* Linear's round 28px icon buttons in a view header (Filter, Display options, details), measured
+   17.10: 0.5px clear border, 14px icon in tertiary that turns primary on hover and while open.
+   --header sits bare (Inbox, Search), --toolbar on white (a list's tab row). */
+.linear-header-button {
+  position: relative; display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 28px; height: 28px;
+  border: 0.5px solid transparent; border-radius: 9999px; color: var(--text-tertiary); cursor: default; outline: none;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
 }
-.details-pane-toggle:hover { background-color: var(--item-hover-bg); color: var(--text-primary); }
-.details-pane-toggle[data-active='true'] { background-color: var(--item-hover-bg); border-color: var(--color-border-secondary); color: var(--text-primary); }
-.details-pane-toggle:focus-visible { box-shadow: 0 0 0 2px var(--focus-ring-color); }
+.linear-header-button:hover, .linear-header-button[data-active='true'], .linear-header-button--active { color: var(--text-primary); }
+.linear-header-button:focus-visible { outline: 1px solid #8b8df8; }
+.linear-header-button--header { background-color: transparent; }
+.linear-header-button--header:hover { background-color: var(--header-button-hover-bg); }
+.linear-header-button--header[data-active='true'], .linear-header-button--header.linear-header-button--active { background-color: var(--header-button-active-bg); }
+.linear-header-button--toolbar { background-color: var(--toolbar-button-bg); }
+.linear-header-button--toolbar:hover { background-color: var(--toolbar-button-hover-bg); }
+.linear-header-button--toolbar[data-active='true'], .linear-header-button--toolbar.linear-header-button--active { background-color: var(--toolbar-button-active-bg); }
 
 /* Linear's quick-filter section (DetailsFacets): one card filling the pane, 8px from its right and bottom. */
 .details-facets {

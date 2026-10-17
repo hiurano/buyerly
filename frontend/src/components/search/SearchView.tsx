@@ -56,11 +56,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 const headerButtonClass = (active = false) =>
-  `flex h-7 w-7 shrink-0 items-center justify-center rounded-full outline-none transition-[border-color,background-color,color,opacity,fill,stroke] duration-150 ease-[ease] ${
-    active
-      ? 'bg-[var(--item-active-bg)] text-[var(--text-primary)]'
-      : 'text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'
-  }`;
+  `linear-header-button linear-header-button--header linear-header-target${active ? ' linear-header-button--active' : ''}`;
 
 /** The answer on screen always belongs to the search in the address, never to an earlier one. */
 type SearchState =
@@ -658,6 +654,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
           {hasFilters && (
             <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(filterMenu)}>
               <LinearFilterButton
+                variant="header"
                 ref={filterButtonRef}
                 active={filterClauses.length > 0}
                 open={Boolean(filterMenu)}
