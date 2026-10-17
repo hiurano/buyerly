@@ -553,13 +553,27 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
    LINEAR FLOATING INSET CANVAS & RESIZER PHYSICS
    ========================================================= */
 
+/*
+ * Linear's sidebar spring, sampled live (17.10, 1280px and the 689px drawer):
+ * collapsing, expanding and the drawer all travel on it, about 400ms with a
+ * slow start. The header's sidebar button shows over the spring's last third
+ * and hides over its first, as Linear's opacity = 3 * progress - 2 (an easing is
+ * the share of the way, so hiding runs 3 * progress).
+ */
+:root {
+  --sidebar-spring-duration: 400ms;
+  --sidebar-spring: linear(0, 0.004 3.8%, 0.015 7.5%, 0.096 11.8%, 0.22 16%, 0.346 20.2%, 0.473 24.5%, 0.59 28.5%, 0.677 32.8%, 0.76 37.2%, 0.82 41.2%, 0.87 45.5%, 0.908 49.8%, 0.935 53.8%, 0.954 57.8%, 0.969 62%, 0.98 66.2%, 0.987 70.5%, 0.992 74.8%, 0.996 78.8%, 1 87%, 1);
+  --sidebar-spring-show: linear(0, 0 28.5%, 0.031 32.8%, 0.28 37.2%, 0.46 41.2%, 0.61 45.5%, 0.724 49.8%, 0.805 53.8%, 0.862 57.8%, 0.907 62%, 0.94 66.2%, 0.961 70.5%, 0.976 74.8%, 0.988 78.8%, 1 87%, 1);
+  --sidebar-spring-hide: linear(0, 0.012 3.8%, 0.045 7.5%, 0.288 11.8%, 0.66 16%, 1 20.2%, 1);
+}
+
 /* 0. 2-Tier Sidebar Container Model */
 .sidebar-slot-wrapper {
   position: relative;
   height: 100vh;
   flex-shrink: 0;
   overflow: visible;
-  transition: width 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: width var(--sidebar-spring-duration) var(--sidebar-spring);
 }
 
 .sidebar-surface {
@@ -573,7 +587,7 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
   user-select: none;
   overflow: visible;
   z-index: 96;
-  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform var(--sidebar-spring-duration) var(--sidebar-spring);
   will-change: transform;
 }
 
@@ -3748,7 +3762,7 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
   border-bottom-right-radius: 12px;
   box-shadow: 0 0 0 1px var(--color-border-primary), var(--canvas-shadow);
   transform: translateX(calc(-100% - 16px));
-  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform var(--sidebar-spring-duration) var(--sidebar-spring);
   will-change: transform;
 }
 
