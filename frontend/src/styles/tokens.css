@@ -280,6 +280,10 @@
   /* Linear's settings in dark (17.10): card ring 0.083, a control's ring 0.143
      (0.238 and fill 18.49 under the cursor). */
   --preferences-card-ring: 0 0 0 0.5px lch(100% 0 0 / 0.083);
+  /* Linear's settings in dark (17.10): the hairline between rows, a field's border. */
+  --preferences-divider: lch(100% 0 0 / 0.083);
+  --preferences-input-border: lch(30.833% 1.93 272 / 1);
+  --preferences-avatar-ring: transparent;
   --preferences-control-ring: 0 0 0 0.5px lch(100% 0 0 / 0.143);
   --preferences-control-ring-hover: 0 0 0 0.5px lch(100% 0 0 / 0.238);
   --preferences-control-hover-bg: lch(18.49% 1.525 272 / 1);
@@ -393,7 +397,7 @@ html[data-theme='light'] {
   --toast-success-icon: #2da562;
   --toast-error-icon: #b42318;
   --toast-warning-icon: #f0bf00;
-  --session-current-text: #2da562;
+  --session-current-text: lch(50% 80 141.95 / 1); /* Linear, 17.10 */
   --tab-active-bg: lch(93.483% 0.5 282 / 1);      /* #eeeef0 */
   --tab-inactive-bg: transparent;
   --sidebar-card-border: lch(97.3% 0 282 / 1);
@@ -509,6 +513,10 @@ html[data-theme='light'] {
   /* Linear's settings (17.10): card and control rings 0.088, a control 95.886
      with ring 0.147 under the cursor. */
   --preferences-card-ring: 0 0 0 0.5px lch(0% 0 0 / 0.088);
+  /* Linear's settings (17.10): the hairline between rows, a field's border. */
+  --preferences-divider: lch(0% 0 0 / 0.088);
+  --preferences-input-border: lch(86.5% 0 282 / 1);
+  --preferences-avatar-ring: lch(86.5% 0 282 / 1);
   --preferences-control-ring: 0 0 0 0.5px lch(0% 0 0 / 0.088);
   --preferences-control-ring-hover: 0 0 0 0.5px lch(0% 0 0 / 0.147);
   --preferences-control-hover-bg: lch(95.886% 0 282 / 1);
