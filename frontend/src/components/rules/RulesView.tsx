@@ -278,7 +278,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
     setOpenFilterMenu({ mode, anchor, fieldId });
   };
 
-  // Global hotkeys: 'C' for create rule, 'V' for display options, 'F' for filter; the app handles Ctrl+I.
+  // Global hotkeys: 'C' for create rule, Shift 'V' for display options, 'F' for filter; the app handles Ctrl+I.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -307,7 +307,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
       if ((e.key === 'c' || e.key === 'C') && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
         openCreateRuleModal();
-      } else if ((e.key === 'v' || e.key === 'V') && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      } else if ((e.key === 'v' || e.key === 'V') && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
         setOpenFilterMenu(null);
         toggleRulesDisplayOptions();
@@ -406,7 +406,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
           <div className="flex shrink-0 items-center gap-1.5">
             {/* Add Filter Button with Popover */}
             <div className="relative">
-              <Tooltip content="Filter" shortcut="F">
+              <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(openFilterMenu)}>
                 <LinearFilterButton
                   ref={filterButtonRef}
                   active={rulesFilterClauses.length > 0}
@@ -425,7 +425,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
 
             {/* Display Options Button with Popover */}
             <div className="relative">
-              <Tooltip content="Display options" shortcut="V">
+              <Tooltip content="Show display options" shortcut="Shift V" disabled={isRulesDisplayOptionsOpen}>
                 <button
                   ref={displayOptionsButtonRef}
                   type="button"

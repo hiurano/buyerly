@@ -480,8 +480,8 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
       } else if ((key === 'f' || key === 'F') && !event.shiftKey && filterButtonRef.current) {
         event.preventDefault();
         openFilterMenu('root', filterButtonRef.current);
-      } else if ((key === 'v' || key === 'V') && !event.shiftKey) {
-        // V opens Display options on every list, as in Linear (#385).
+      } else if ((key === 'v' || key === 'V') && event.shiftKey) {
+        // Shift V opens Display options on every list, as in Linear (checked live 17.10).
         event.preventDefault();
         setFilterMenu(null);
         setIsDisplayOpen(true);
@@ -655,7 +655,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
               <LinearInboxUnreadIcon size={16} />
             </button>
           </Tooltip>
-          <Tooltip content="Filter" shortcut="F" disabled={Boolean(filterMenu)}>
+          <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(filterMenu)}>
             <LinearFilterButton
               ref={filterButtonRef}
               active={filters.length > 0}
@@ -667,7 +667,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
               }}
             />
           </Tooltip>
-          <Tooltip content="Display options" shortcut="V" disabled={isDisplayOpen}>
+          <Tooltip content="Show display options" shortcut="Shift V" disabled={isDisplayOpen}>
             <button
               ref={displayButtonRef}
               type="button"
