@@ -2812,46 +2812,44 @@ input.settings-list-inline:focus {
 }
 
 /* Aa Badge */
+/*
+ * Linear's theme preview (17.10): "• Aa" in the theme's own colors and accent,
+ * 33×21, 11px, 2px 4px in, 8px corners, the interface's 0.5px border; 5px to the
+ * label. System previews the theme in use.
+ */
 .preferences-aa-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 22px;
-  padding: 2px 5px;
-  margin-right: 6px;
-  border-radius: 6px;
-  border: 1px solid var(--preferences-menu-border);
-  background: var(--preferences-control-bg);
-  color: var(--text-secondary);
+  padding: 2px 4px;
+  margin-right: 5px;
+  border-radius: 8px;
+  border: 0.5px solid var(--preferences-menu-border);
+  background: var(--preferences-aa-system-bg);
+  color: var(--preferences-aa-system-fg);
   font-family: var(--font-regular);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 450;
   flex-shrink: 0;
 }
 
 .preferences-aa-badge--light {
-  border-color: #d8d8d8;
+  --preferences-accent: #6d78d5;
   background: #f8f8f9;
   color: #2f2f31;
 }
 
 .preferences-aa-badge--dark {
-  border-color: #303235;
+  --preferences-accent: #5e69d1;
   background: #111212;
   color: #e2e3e5;
-}
-
-.preferences-aa-badge--system {
-  border-color: var(--preferences-menu-border);
-  background: var(--preferences-control-bg);
-  color: var(--text-secondary);
 }
 
 .preferences-aa-dot {
   color: var(--preferences-accent);
   font-size: 15px;
   line-height: 16px;
-  margin-right: 3px;
+  margin-right: 2px;
 }
 
 .preferences-combobox-text {
