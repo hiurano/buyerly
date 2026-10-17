@@ -1661,13 +1661,13 @@ html[data-theme='dark'] .linear-sidebar-badge,
 }
 
 .settings-list-button--primary {
-  background: var(--action-primary);
+  background: var(--button-primary-bg);
   box-shadow: var(--canvas-shadow);
-  color: #fff;
+  color: var(--button-primary-text);
 }
 
 .settings-list-button--primary:hover {
-  background: var(--settings-list-primary-hover);
+  background: var(--button-primary-hover-bg);
   box-shadow: var(--canvas-shadow);
 }
 
@@ -3375,16 +3375,17 @@ html[data-theme='dark'] .buyerly-auth-page,
 }
 
 /* Linear's first sign-in choice is filled with the accent; the rest stay outlined. */
+/* Buyerly's main button is yolk, as the invite page's; Linear fills it with its accent. */
 .buyerly-auth-button--primary {
   border-color: transparent;
-  background: var(--action-primary);
-  color: #fff;
+  background: var(--button-primary-bg);
+  color: var(--button-primary-text);
   box-shadow: var(--auth-button-primary-shadow);
 }
 
 .buyerly-auth-button--primary:hover:not(:disabled) {
   border-color: transparent;
-  background: var(--action-primary-hover);
+  background: var(--button-primary-hover-bg);
 }
 
 /* Linear's small line under the sign-in buttons ("Don't have an account? Sign up"). */

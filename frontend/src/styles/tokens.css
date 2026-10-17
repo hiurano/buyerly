@@ -192,7 +192,6 @@
   --settings-list-search-bg: lch(10.149% 0.689 272 / 1);
   --settings-list-search-border: lch(27.12% 1.48 272 / 1);
   --settings-list-search-border-hover: lch(24.32% 6.48 272 / 1);
-  --settings-list-primary-hover: lch(52.418% 61.103 288.421 / 1);
   --role-badge-fg: lch(80% 80 288.43 / 1);
   --toggle-unchecked-bg: lch(47.551% 0.913 272 / 1);
   --toggle-unchecked-hover-bg: lch(56.807% 1.019 272 / 1);
@@ -202,6 +201,11 @@
   --focus-ring-color: #6d78d5;
   --action-primary: #5e6ad2;
   --action-primary-hover: #6875e5;
+  /* The main button: Buyerly yolk, as a switch that is on (#263) and the invite page's button (#284);
+     dark text on it in both themes, the hover from the switch (lighter in dark, darker in light). */
+  --button-primary-bg: var(--toggle-checked-bg);
+  --button-primary-hover-bg: var(--toggle-checked-hover-bg);
+  --button-primary-text: rgb(27, 27, 27);
   /* Snooze Custom… calendar: weekend columns, measured in Linear. */
   --calendar-weekend-bg: lch(13.553% 1.93 272 / 1);
   --calendar-selected-bg: var(--action-primary);
@@ -429,7 +433,6 @@ html[data-theme='light'] {
   --settings-list-search-bg: lch(99.997% 0.5 282 / 1);
   --settings-list-search-border: lch(84.44% 0 282 / 1);
   --settings-list-search-border-hover: lch(76.44% 0 282 / 1);
-  --settings-list-primary-hover: lch(47% 50.26 286.91 / 1);
   --toggle-unchecked-bg: lch(82.484% 0.054 282 / 1);
   --toggle-unchecked-hover-bg: lch(76.978% 0.076 282 / 1);
   --toggle-checked-bg: #f5b800;
@@ -438,6 +441,11 @@ html[data-theme='light'] {
   --focus-ring-color: #6d78d5;
   --action-primary: #5e6ad2;
   --action-primary-hover: #6875e5;
+  /* The main button: Buyerly yolk, as a switch that is on (#263) and the invite page's button (#284);
+     dark text on it in both themes, the hover from the switch (lighter in dark, darker in light). */
+  --button-primary-bg: var(--toggle-checked-bg);
+  --button-primary-hover-bg: var(--toggle-checked-hover-bg);
+  --button-primary-text: rgb(27, 27, 27);
   /* Snooze Custom… calendar, measured in light Linear 2026-10-07 (#244). */
   --calendar-weekend-bg: lch(97.3% 0 282 / 1);
   --calendar-selected-bg: lch(53% 52.26 286.91 / 1);
