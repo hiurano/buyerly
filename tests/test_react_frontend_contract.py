@@ -38,6 +38,9 @@ class TestReactFrontendContract(unittest.TestCase):
         cls.welcome = (
             ROOT / "frontend" / "src" / "components" / "onboarding" / "WelcomeView.tsx"
         ).read_text()
+        cls.invite_team = (
+            ROOT / "frontend" / "src" / "components" / "onboarding" / "InviteTeamStep.tsx"
+        ).read_text()
         cls.compose = (ROOT / "docker-compose.yml").read_text()
         cls.dockerfile = (ROOT / "Dockerfile").read_text()
         cls.main = (ROOT / "frontend" / "src" / "main.tsx").read_text()
@@ -201,7 +204,9 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("Create a workspace", self.create_workspace)
         self.assertIn("Name", self.create_workspace)
         self.assertIn("Set up your profile", self.welcome)
-        self.assertIn("Invite teammates", self.welcome)
+        self.assertIn("InviteTeamStep", self.welcome)
+        self.assertIn("Invite your team", self.invite_team)
+        self.assertIn("I’ll do this later", self.invite_team)
         self.assertNotIn("Region", self.create_workspace)
         self.assertNotIn("Title", self.welcome)
 

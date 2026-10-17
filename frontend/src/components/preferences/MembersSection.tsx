@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { apiRequest } from '@/lib/api';
+import { isEmail, parseEmails } from '@/lib/emails';
 import { plural, useTeams } from '@/lib/teams';
 import type { Workspace } from '@/lib/types';
 import { Button } from '@/ui/Button';
@@ -86,15 +87,6 @@ export function shortDate(iso: string): string {
   if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
-
-/** Splits the invite field on commas, spaces and new lines, like Linear's email box. */
-function parseEmails(text: string): string[] {
-  return Array.from(new Set(
-    text.split(/[\s,;]+/).map((item) => item.trim().toLowerCase()).filter(Boolean),
-  ));
-}
-
-const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 export const Initials: React.FC<{ label: string; avatarUrl?: string; muted?: boolean }> = ({ label, avatarUrl, muted }) => {
   if (avatarUrl) {

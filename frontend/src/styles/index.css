@@ -2938,6 +2938,192 @@ html[data-theme='dark'] .buyerly-auth-page,
   color: #202124;
 }
 
+/* Onboarding's "Invite your team" (#403), after Linear's "Invite co-workers":
+   the invite link with Copy, the email field with the role, then Send and
+   "I'll do this later". Fields share the sign-in fields' look and focus line. */
+.buyerly-auth-card--invites {
+  width: min(100%, 400px);
+}
+
+.buyerly-onboarding-invites {
+  text-align: left;
+}
+
+.buyerly-onboarding-invites h1,
+.buyerly-onboarding-invites .buyerly-auth-copy {
+  text-align: center;
+}
+
+.buyerly-auth-card .buyerly-onboarding-invites h1 {
+  margin-bottom: 8px;
+  font-size: 18px;
+}
+
+.buyerly-onboarding-invites .buyerly-auth-copy {
+  margin: 0 auto 28px;
+}
+
+.buyerly-onboarding-invites__block + .buyerly-onboarding-invites__block {
+  margin-top: 22px;
+}
+
+.buyerly-onboarding-invites__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 7px;
+}
+
+.buyerly-onboarding-invites__label {
+  display: block;
+  margin: 0 0 7px 2px;
+  color: var(--auth-text-muted);
+  font-size: 12px;
+  font-weight: 520;
+}
+
+.buyerly-onboarding-invites__label-row .buyerly-onboarding-invites__label {
+  margin-bottom: 0;
+}
+
+.buyerly-onboarding-invites__link {
+  display: flex;
+  gap: 8px;
+}
+
+.buyerly-onboarding-invites__link input,
+.buyerly-onboarding-invites__emails {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--auth-input-border);
+  border-radius: 10px;
+  outline: none;
+  outline-offset: -1px;
+  box-shadow: none;
+  background: var(--auth-input-bg);
+  color: var(--auth-input-text);
+  font: inherit;
+  font-size: 13px;
+  appearance: none;
+  transition: border-color 150ms;
+}
+
+.buyerly-onboarding-invites__link input {
+  flex: 1;
+  height: 40px;
+  padding: 0 12px;
+  background: var(--auth-button-bg);
+  color: var(--auth-text-muted);
+  text-overflow: ellipsis;
+}
+
+.buyerly-onboarding-invites__emails {
+  display: block;
+  min-height: 84px;
+  padding: 10px 12px;
+  line-height: 20px;
+  resize: vertical;
+}
+
+.buyerly-onboarding-invites__emails::placeholder {
+  color: var(--auth-input-placeholder);
+}
+
+.buyerly-onboarding-invites__link input:hover,
+.buyerly-onboarding-invites__emails:hover:not(:disabled) {
+  border-color: var(--auth-input-hover-border);
+  transition-duration: 0s;
+}
+
+.buyerly-onboarding-invites__link input:focus,
+.buyerly-onboarding-invites__emails:focus {
+  outline: 1px solid var(--auth-input-focus);
+}
+
+.buyerly-onboarding-invites__emails[aria-invalid='true'] {
+  border-color: #d84949;
+}
+
+.buyerly-onboarding-invites__emails[aria-invalid='true']:focus {
+  outline-color: #d84949;
+}
+
+.buyerly-onboarding-invites__copy,
+.buyerly-onboarding-invites__role {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  background: var(--auth-button-bg);
+  color: var(--auth-button-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 520;
+  cursor: pointer;
+  box-shadow: var(--auth-button-shadow);
+  transition: background 120ms ease;
+}
+
+.buyerly-onboarding-invites__copy {
+  min-width: 84px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+}
+
+.buyerly-onboarding-invites__role {
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 7px;
+  font-size: 12px;
+}
+
+.buyerly-onboarding-invites__role-prefix {
+  color: var(--auth-text-muted);
+  font-weight: 450;
+}
+
+.buyerly-onboarding-invites__copy:hover,
+.buyerly-onboarding-invites__role:hover:not(:disabled),
+.buyerly-onboarding-invites__role[data-state='open'] {
+  background: var(--auth-button-hover-bg);
+}
+
+.buyerly-onboarding-invites__copy:focus-visible,
+.buyerly-onboarding-invites__role:focus-visible {
+  outline: 1px solid var(--auth-input-focus);
+  outline-offset: 1px;
+}
+
+.buyerly-onboarding-invites__role:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.buyerly-onboarding-invites .buyerly-auth-hint {
+  margin-top: 8px;
+}
+
+.buyerly-onboarding-invites__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.buyerly-onboarding-invites__actions .buyerly-auth-button {
+  margin-top: 0;
+}
+
+/* A disabled main button keeps its accent, faded, so it still reads as the main action. */
+.buyerly-onboarding-invites__actions .buyerly-auth-button--primary:disabled {
+  opacity: 0.45;
+}
+
 /* Linear's invitation page (linear.app/invite/<id>/accept, measured 2026-10-02).
    The one difference is the main button: Buyerly yolk yellow, as LinearToggle (#284). */
 .buyerly-invite-page {

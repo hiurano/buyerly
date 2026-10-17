@@ -710,7 +710,24 @@ async def get_workspace_invite_link(workspace_id: int, user: User = Depends(get_
         link = (
             await session.execute(_invite_link_query(workspace_id).order_by(WorkspaceInvite.id.desc()).limit(1))
         ).scalar_one_or_none()
-        return WorkspaceInviteLinkResponse(invite_url=_invite_url(link.token) if link else None)
+        if link:
+            return WorkspaceInviteLinkResponse(invite_url=_invite_url(link.token))
+        # Onboarding turns links on for a new workspace, as Linear's are on by
+        # default, but leaves them off once an admin has turned them off.
+        revoked = (
+            await session.execute(
+                select(WorkspaceInvite.id)
+                .where(
+                    WorkspaceInvite.workspace_id == workspace_id,
+                    WorkspaceInvite.email.is_(None),
+                    WorkspaceInvite.status == "revoked",
+                    WorkspaceInvite.max_uses == 0,
+                    WorkspaceInvite.expires_at.is_(None),
+                )
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        return WorkspaceInviteLinkResponse(invite_url=None, turned_off=revoked is not None)
 
 
 @router.post("/workspaces/{workspace_id}/invite-link", response_model=WorkspaceInviteLinkResponse)
