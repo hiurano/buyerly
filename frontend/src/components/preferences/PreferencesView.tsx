@@ -544,6 +544,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                     </span>
                   </div>
                   <LinearToggle
+                    size="settings"
                     checked={assistantOn}
                     onChange={setWebMcpEnabled}
                     disabled={!assistantSupported || assistantForced}

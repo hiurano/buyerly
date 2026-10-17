@@ -161,6 +161,7 @@ export const NotificationsSection: React.FC<{
               <span className="preferences-row-desc">Separate important notifications from the rest of your inbox</span>
             </div>
             <LinearToggle
+              size="settings"
               label="Priority inbox"
               checked={inboxDisplay.priorityInbox}
               onChange={(value) => setInboxDisplay({ priorityInbox: value })}
@@ -217,6 +218,7 @@ export const NotificationsSection: React.FC<{
               <span className="preferences-row-desc">Email when invitees accept an invite</span>
             </div>
             <LinearToggle
+              size="settings"
               label="Invite accepted"
               checked={notificationChannels.inviteAccepted}
               onChange={(value) => setNotificationChannels({ inviteAccepted: value })}
@@ -271,6 +273,7 @@ const ChannelNotificationsSection: React.FC<{
         </span>
       </div>
       <LinearToggle
+        size="settings"
         label="Only deliver priority notifications"
         checked={priorityOnly}
         disabled={!enabled || !inboxDisplay.priorityInbox}
@@ -297,7 +300,7 @@ const ChannelNotificationsSection: React.FC<{
                 <span className="preferences-row-title">{enableTitle}</span>
                 <span className="preferences-row-desc">{enableDescription}</span>
               </div>
-              <LinearToggle label={enableTitle} checked={settings.enabled} onChange={toggleChannel} />
+              <LinearToggle size="settings" label={enableTitle} checked={settings.enabled} onChange={toggleChannel} />
             </div>
             {inboxDisplay.priorityInbox ? priorityRow : (
               <Tooltip content="Priority inbox isn't enabled" side="bottom" sideOffset={8}>
@@ -320,6 +323,7 @@ const ChannelNotificationsSection: React.FC<{
                   <span className="preferences-row-desc">{KIND_DESCRIPTIONS[kind]}</span>
                 </div>
                 <LinearToggle
+                  size="settings"
                   label={INBOX_KIND_LABELS[kind]}
                   checked={settings.kinds.includes(kind)}
                   disabled={kindsDisabled}
@@ -423,6 +427,7 @@ export const PriorityNotificationsSection: React.FC<{ onBack: () => void }> = ({
                 <span className="preferences-row-desc">{KIND_DESCRIPTIONS[kind]}</span>
               </div>
               <LinearToggle
+                size="settings"
                 label={INBOX_KIND_LABELS[kind]}
                 checked={inboxDisplay.priorityKinds.includes(kind)}
                 disabled={!enabled}

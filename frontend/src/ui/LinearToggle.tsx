@@ -11,9 +11,11 @@ interface LinearToggleProps {
   /** A write is in flight: the control is inert but not reported as disabled. */
   busy?: boolean;
   className?: string;
+  /** "settings": Linear's larger settings switch (30x20); otherwise its Display options one (22x14). */
+  size?: 'default' | 'settings';
 }
 
-/** The only switch in Buyerly: one size (Linear's Display options), colours in tokens.css. */
+/** The only switch in Buyerly, in Linear's two sizes (Display options, settings); colours in tokens.css. */
 export const LinearToggle: React.FC<LinearToggleProps> = ({
   checked,
   onChange,
@@ -22,6 +24,7 @@ export const LinearToggle: React.FC<LinearToggleProps> = ({
   disabled = false,
   busy = false,
   className = '',
+  size = 'default',
 }) => {
   const interactive = Boolean(onChange) && !disabled && !busy;
   const toggle = () => {
@@ -37,7 +40,7 @@ export const LinearToggle: React.FC<LinearToggleProps> = ({
       aria-busy={busy || undefined}
       aria-label={label ?? tooltipContent}
       tabIndex={interactive ? 0 : -1}
-      className={`linear-toggle ${className}`.trim()}
+      className={`linear-toggle ${size === 'settings' ? 'linear-toggle--settings ' : ''}${className}`.trim()}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
