@@ -184,6 +184,15 @@
   /* LinearToggle. Off = Linear (measured 2026-10-01); on = Buyerly yellow (#263). */
   /* Members → Status: Linear's Admin badge, measured 2026-10-10. */
   --role-badge-bg: lch(48% 59.31 288.43 / 0.2);
+  /* Linear's Settings → Members in dark (17.10). */
+  --members-group-bg: lch(7.32% 0.85 272 / 1);
+  --members-group-count: lch(36.975% 1.2 272 / 1);
+  --members-row-hover-bg: lch(9.345% 0.85 272 / 1);
+  --members-muted: lch(61.803% 1.2 272 / 1);
+  --members-search-bg: lch(10.149% 0.689 272 / 1);
+  --members-search-border: lch(27.12% 1.48 272 / 1);
+  --members-search-border-hover: lch(24.32% 6.48 272 / 1);
+  --members-primary-hover: lch(52.418% 61.103 288.421 / 1);
   --role-badge-fg: lch(80% 80 288.43 / 1);
   --toggle-unchecked-bg: lch(47.551% 0.913 272 / 1);
   --toggle-unchecked-hover-bg: lch(56.807% 1.019 272 / 1);
@@ -401,8 +410,18 @@ html[data-theme='light'] {
   --dock-btn-bg: lch(93.483% 0.5 282 / 1);        /* #eeeef0 */
   --checkbox-border-rest: lch(52.04% 0 282 / 1);  /* Linear unchecked control */
   /* Members → Status badge: the dark theme's hue, darker text for a light page. */
-  --role-badge-bg: lch(48% 59.31 288.43 / 0.12);
-  --role-badge-fg: lch(42% 60 288.43 / 1);
+  /* Linear's Admin badge in light (17.10). */
+  --role-badge-bg: lch(48% 59.31 288.43 / 0.08);
+  --role-badge-fg: lch(50% 80 288.43 / 1);
+  /* Linear's Settings → Members in light (17.10). */
+  --members-group-bg: lch(92.44% 0.5 282 / 1);
+  --members-group-count: lch(64.64% 1.25 282 / 1);
+  --members-row-hover-bg: lch(94.44% 0.5 282 / 1);
+  --members-muted: var(--text-tertiary);
+  --members-search-bg: lch(99.997% 0.5 282 / 1);
+  --members-search-border: lch(84.44% 0 282 / 1);
+  --members-search-border-hover: lch(76.44% 0 282 / 1);
+  --members-primary-hover: lch(47% 50.26 286.91 / 1);
   --toggle-unchecked-bg: lch(82.484% 0.054 282 / 1);
   --toggle-unchecked-hover-bg: lch(76.978% 0.076 282 / 1);
   --toggle-checked-bg: #f5b800;

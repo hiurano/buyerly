@@ -89,14 +89,20 @@ export function shortDate(iso: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export const Initials: React.FC<{ label: string; avatarUrl?: string; muted?: boolean }> = ({ label, avatarUrl, muted }) => {
+export const Initials: React.FC<{ label: string; avatarUrl?: string; muted?: boolean; size?: 20 | 24 }> = ({
+  label,
+  avatarUrl,
+  muted,
+  size = 20,
+}) => {
+  const box = size === 24 ? 'h-6 w-6 text-[11px]' : 'h-5 w-5 text-[9px]';
   if (avatarUrl) {
-    return <img src={avatarUrl} alt="" className="h-5 w-5 shrink-0 rounded-full object-cover" />;
+    return <img src={avatarUrl} alt="" className={`${box} shrink-0 rounded-full object-cover`} />;
   }
   return (
     <span
       aria-hidden="true"
-      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold uppercase ${
+      className={`flex ${box} shrink-0 items-center justify-center rounded-full font-semibold uppercase ${
         muted
           ? 'border border-[var(--color-border-secondary)] text-[var(--text-tertiary)]'
           : 'bg-[var(--action-primary)] text-white'
@@ -113,8 +119,6 @@ export const GroupHeader: React.FC<{ label: string; count: number }> = ({ label,
     <span className="text-[var(--text-tertiary)]">{count}</span>
   </div>
 );
-
-const ROW_GRID = 'grid grid-cols-[minmax(0,2.2fr)_minmax(0,2fr)_minmax(96px,1fr)_72px_28px] sm:grid-cols-[minmax(0,2.2fr)_minmax(0,2fr)_minmax(96px,1fr)_72px_72px_28px] items-center gap-3';
 
 interface InviteDialogProps {
   open: boolean;
@@ -289,15 +293,18 @@ const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onClose, o
   );
 };
 
-export const RowMenu: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+/** A row's "…" menu; `visible` keeps it shown, as on Linear's Members page, instead of only under the cursor. */
+export const RowMenu: React.FC<{ label: string; children: React.ReactNode; visible?: boolean }> = ({ label, children, visible }) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
       <button
         type="button"
         aria-label={label}
-        className="flex h-6 w-6 items-center justify-center rounded-[4px] text-[var(--text-tertiary)] opacity-0 outline-none transition-opacity hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] group-hover:opacity-100 data-[state=open]:opacity-100"
+        className={`flex h-6 w-6 items-center justify-center rounded-[4px] text-[var(--text-tertiary)] outline-none transition-opacity hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] ${
+          visible ? '' : 'opacity-0 focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100'
+        }`}
       >
-        <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
+        <svg width={visible ? 16 : 14} height={visible ? 16 : 14} viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
           <circle cx="3" cy="8" r="1.25" />
           <circle cx="8" cy="8" r="1.25" />
           <circle cx="13" cy="8" r="1.25" />
@@ -410,10 +417,10 @@ export const MembersSection: React.FC<{
         <h1 className="preferences-page-title">Members</h1>
       </div>
 
-      <div className="flex items-center gap-2">
-        <label className="relative flex h-8 w-[244px] min-w-0 max-w-full items-center">
+      <div className="members-toolbar">
+        <label className="members-search">
           <span className="sr-only">Search by name or email</span>
-          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" className="pointer-events-none absolute left-2.5 fill-[var(--text-tertiary)]">
+          <svg viewBox="0 0 16 16" aria-hidden="true" className="members-search-icon">
             <path d="M7 1.5a5.5 5.5 0 0 1 4.38 8.82l3.15 3.15a.75.75 0 1 1-1.06 1.06l-3.15-3.15A5.5 5.5 0 1 1 7 1.5Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
           </svg>
           <input
@@ -421,7 +428,7 @@ export const MembersSection: React.FC<{
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search by name or email"
-            className="h-8 w-full rounded-[6px] border border-[var(--color-border-secondary)] bg-transparent pl-8 pr-2 text-[13px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)] focus:border-[var(--action-primary)]"
+            className="members-search-input"
           />
         </label>
         {canManage && (
@@ -430,11 +437,11 @@ export const MembersSection: React.FC<{
               <button
                 type="button"
                 aria-label={`Show: ${FILTER_LABELS[filter]}`}
-                className="flex h-8 shrink-0 items-center gap-1.5 rounded-[6px] border border-[var(--color-border-secondary)] px-2.5 text-[13px] text-[var(--text-primary)] outline-none hover:bg-[var(--item-hover-bg)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
+                className="members-select"
               >
                 {FILTER_LABELS[filter]}
-                <svg width="10" height="10" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" className="text-[var(--text-tertiary)]">
-                  <path d="M3.47 5.97a.75.75 0 0 1 1.06 0L8 9.44l3.47-3.47a.75.75 0 1 1 1.06 1.06l-4 4a.75.75 0 0 1-1.06 0l-4-4a.75.75 0 0 1 0-1.06Z" />
+                <svg width="10" height="5" viewBox="0 0 9 5" aria-hidden="true">
+                  <path d="M1.915.557a.667.667 0 0 0-.943.943l2.862 2.862a.942.942 0 0 0 1.333 0L8.028 1.5a.667.667 0 0 0-.943-.943L4.5 3.14 1.915.557Z" />
                 </svg>
               </button>
             </DropdownMenuTrigger>
@@ -454,10 +461,14 @@ export const MembersSection: React.FC<{
         )}
         <div className="flex-1" />
         {canManage && state === 'ready' && (
-          <Button className="max-sm:hidden" onClick={() => downloadMembersCsv(workspace, members, invites)}>Export CSV</Button>
+          <button type="button" className="members-button max-sm:hidden" onClick={() => downloadMembersCsv(workspace, members, invites)}>
+            Export CSV
+          </button>
         )}
         {canManage && (
-          <Button variant="primary" onClick={() => setInviteOpen(true)}>Invite</Button>
+          <button type="button" className="members-button members-button--primary" onClick={() => setInviteOpen(true)}>
+            Invite
+          </button>
         )}
       </div>
 
@@ -475,38 +486,41 @@ export const MembersSection: React.FC<{
       )}
 
       {state === 'ready' && (
-        <div className="mt-6 text-[13px]" role="table" aria-label="Workspace members">
-          <div role="row" className={`${ROW_GRID} h-8 px-2 text-[12px] font-medium text-[var(--text-secondary)]`}>
+        <div className="members-table" role="table" aria-label="Workspace members">
+          <div role="row" className="members-row members-row--header">
             <span role="columnheader">Name</span>
-            <span role="columnheader">Email</span>
+            <span role="columnheader" className="members-col-wide">Email</span>
             <span role="columnheader">Status</span>
-            <span role="columnheader" className="hidden sm:block">Teams</span>
-            <span role="columnheader">Joined</span>
+            <span role="columnheader" className="members-col-wide">Teams</span>
+            <span role="columnheader" className="members-col-wide">Joined</span>
             <span role="columnheader" className="sr-only">Actions</span>
           </div>
 
-          {filter !== 'invites' && <GroupHeader label="Active" count={visibleMembers.length} />}
+          {filter !== 'invites' && (
+            <div className="members-group">
+              Active
+              <span className="members-group-count">{visibleMembers.length}</span>
+            </div>
+          )}
           {filter !== 'invites' && visibleMembers.map((member) => (
-            <div key={member.id} role="row" className={`${ROW_GRID} group h-11 px-2`}>
-              <span role="cell" className="flex min-w-0 items-center gap-2.5">
-                <Initials label={member.full_name || member.username} avatarUrl={member.avatar_url} />
+            <div key={member.id} role="row" className="members-row">
+              <span role="cell" className="members-person">
+                <Initials label={member.full_name || member.username} avatarUrl={member.avatar_url} size={24} />
                 <span className="min-w-0">
-                  <span className="block truncate font-medium text-[var(--text-primary)]">
-                    {member.full_name || member.username}
-                  </span>
-                  <span className="block truncate text-[12px] text-[var(--text-tertiary)]">{member.username}</span>
+                  <span className="members-person-name">{member.full_name || member.username}</span>
+                  <span className="members-person-handle">{member.username}</span>
                 </span>
               </span>
-              <span role="cell" className="truncate text-[var(--text-secondary)]">{member.email || ''}</span>
-              <span role="cell" className="text-[var(--text-secondary)]"><RoleStatus role={member.role} /></span>
-              <span role="cell" className="hidden text-[var(--text-secondary)] sm:block">
+              <span role="cell" className="members-cell members-col-wide">{member.email || ''}</span>
+              <span role="cell" className="members-cell"><RoleStatus role={member.role} /></span>
+              <span role="cell" className="members-cell members-col-wide">
                 {teamCounts.get(member.user_id) ? plural(teamCounts.get(member.user_id) as number, 'team') : ''}
               </span>
-              <span role="cell" className="text-[var(--text-secondary)]">{shortDate(member.joined_at)}</span>
+              <span role="cell" className="members-cell members-col-wide">{shortDate(member.joined_at)}</span>
               <span role="cell" className="flex justify-end">
                 {/* Linear gives your row no menu while nobody else could run the workspace. */}
                 {member.is_current_user ? (workspace.role === 'owner' && members.length < 2 ? null : (
-                  <RowMenu label={`Member actions for ${memberName(member)}`}>
+                  <RowMenu label={`Member actions for ${memberName(member)}`} visible>
                     <DropdownMenuItem onSelect={() => setLeaveOpen(true)}>
                       <span className="truncate">Leave workspace…</span>
                     </DropdownMenuItem>
@@ -515,7 +529,7 @@ export const MembersSection: React.FC<{
                   // Linear: Change role…, then a divider, then Suspend user… (Remove here).
                   // Its Update name/username/email… and Manage sessions/teams… have no
                   // Buyerly counterpart, so they are left out.
-                  <RowMenu label={`Member actions for ${memberName(member)}`}>
+                  <RowMenu label={`Member actions for ${memberName(member)}`} visible>
                     <DropdownMenuItem onSelect={() => setRoleTarget(member)}>
                       <span className="truncate">Change role…</span>
                     </DropdownMenuItem>
@@ -531,21 +545,24 @@ export const MembersSection: React.FC<{
 
           {canManage && filter !== 'members' && (visibleInvites.length > 0 || filter === 'invites') && (
             <>
-              <GroupHeader label="Invited" count={visibleInvites.length} />
+              <div className="members-group">
+                Invited
+                <span className="members-group-count">{visibleInvites.length}</span>
+              </div>
               {visibleInvites.map((invite) => (
-                <div key={invite.id} role="row" className={`${ROW_GRID} group h-11 px-2`}>
-                  <span role="cell" className="flex min-w-0 items-center gap-2.5">
-                    <Initials label={invite.email || ''} muted />
-                    <span className="truncate font-medium text-[var(--text-primary)]">{invite.email}</span>
+                <div key={invite.id} role="row" className="members-row">
+                  <span role="cell" className="members-person">
+                    <Initials label={invite.email || ''} muted size={24} />
+                    <span className="members-person-name">{invite.email}</span>
                   </span>
-                  <span role="cell" className="truncate text-[var(--text-secondary)]">{invite.email}</span>
-                  <span role="cell" className="text-[var(--text-secondary)]">
+                  <span role="cell" className="members-cell members-col-wide">{invite.email}</span>
+                  <span role="cell" className="members-cell">
                     {roleLabel(invite.role)} ({invite.status === 'expired' ? 'Expired' : 'Invited'})
                   </span>
-                  <span role="cell" className="hidden sm:block" />
-                  <span role="cell" className="text-[var(--text-secondary)]">{shortDate(invite.created_at)}</span>
+                  <span role="cell" className="members-col-wide" />
+                  <span role="cell" className="members-cell members-col-wide">{shortDate(invite.created_at)}</span>
                   <span role="cell" className="flex justify-end">
-                    <RowMenu label={`Invite actions for ${invite.email}`}>
+                    <RowMenu label={`Invite actions for ${invite.email}`} visible>
                       <DropdownMenuItem onSelect={() => void resend(invite)}>
                         <span className="truncate">Resend invite</span>
                       </DropdownMenuItem>
