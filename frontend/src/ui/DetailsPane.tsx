@@ -352,16 +352,16 @@ export function DetailsPaneToggle({ pane }: { pane: DetailsPaneId }) {
   const toggleDetailsPane = useAppStore((store) => store.toggleDetailsPane);
   const label = open ? 'Close details' : 'Open details';
   return (
-    <Tooltip content={label} shortcut="Ctrl I">
+    <Tooltip content={label} shortcut={navigator.platform.includes('Mac') ? '⌘I' : 'Ctrl+I'}>
       <button
         type="button"
         aria-label={label}
         aria-expanded={open}
         data-active={open ? 'true' : undefined}
         onClick={() => toggleDetailsPane(pane)}
-        className="details-pane-toggle linear-header-target"
+        className="linear-header-button linear-header-button--toolbar linear-header-target"
       >
-        <LinearSidebarToggleIcon isOpen={open} size={16} />
+        <LinearSidebarToggleIcon isOpen={open} size={14} />
       </button>
     </Tooltip>
   );

@@ -121,11 +121,7 @@ const OPEN_LAYER_SELECTOR = [
 ].join(', ');
 
 const headerButtonClass = (active = false) =>
-  `linear-header-target flex h-7 w-7 shrink-0 items-center justify-center rounded-full outline-none transition-[border-color,background-color,color,opacity,fill,stroke] duration-150 ease-[ease] ${
-    active
-      ? 'bg-[var(--item-active-bg)] text-[var(--text-primary)]'
-      : 'text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]'
-  }`;
+  `linear-header-button linear-header-button--header linear-header-target${active ? ' linear-header-button--active' : ''}`;
 
 export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onNavigate, onOpenRecord }) => {
   const {
@@ -657,6 +653,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
           </Tooltip>
           <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(filterMenu)}>
             <LinearFilterButton
+              variant="header"
               ref={filterButtonRef}
               active={filters.length > 0}
               open={Boolean(filterMenu)}
