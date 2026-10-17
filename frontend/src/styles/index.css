@@ -1955,7 +1955,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
 
 /* Explanatory copy under a section heading, above its card. */
 .preferences-section-note {
-  margin: -4px 0 12px;
+  margin: -8px 0 12px;
   padding: 0 16px;
   max-width: 560px;
   color: var(--text-tertiary);
@@ -1994,12 +1994,17 @@ html[data-theme='dark'] .linear-sidebar-badge,
 
 .preferences-row-link .preferences-row-value,
 .preferences-row-item--disabled .preferences-row-value {
-  color: var(--text-tertiary);
+  color: var(--preferences-row-link-fg);
   font-size: 12px;
 }
 
+/* Linear's "10 types ›" is dimmer than a channel row's chevron. */
 .preferences-row-chevron {
-  color: var(--text-tertiary);
+  color: var(--preferences-channel-icon-fg);
+}
+
+.preferences-row-control .preferences-row-chevron {
+  color: var(--preferences-row-link-fg);
 }
 
 /* Linear's row while its setting is off: copy at half opacity, value and chevron dimmer. */
@@ -2009,7 +2014,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
 
 .preferences-row-item--disabled .preferences-row-value,
 .preferences-row-item--disabled .preferences-row-chevron {
-  color: var(--text-muted);
+  color: var(--preferences-row-link-fg);
 }
 
 /* Settings → Notifications, measured in Linear: 13px note 2px under the heading,
@@ -2019,7 +2024,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
 }
 
 .preferences-section-note--notifications {
-  margin: -10px 0 16px;
+  margin: -14px 0 16px;
   max-width: none;
   font-size: 13px;
   line-height: 22px;
@@ -2035,7 +2040,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
   flex-shrink: 0;
   border-radius: 6px;
   background: var(--preferences-channel-icon-bg);
-  color: var(--text-tertiary);
+  color: var(--preferences-channel-icon-fg);
 }
 
 .preferences-channel-status {
@@ -2079,6 +2084,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
 
 .preferences-section-header--sub {
   height: 16px;
+  margin-bottom: 12px;
 }
 
 /* A section title over sub-groups (Linear's Updates from Linear): 16px down to the first one. */
@@ -3968,7 +3974,7 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
    Rows: a 32px tile with the browser's mark, 16px gap, then the name over
    "Helsinki, 18, FI · Last seen …" that wraps; text buttons on the right. */
 .preferences-section-note--sessions {
-  margin: -8px 0 16px;
+  margin: -12px 0 16px;
   font-size: 13px;
   line-height: 20px;
 }
@@ -4039,7 +4045,7 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
   flex-shrink: 0;
   border-radius: 6px;
   background: var(--preferences-channel-icon-bg);
-  color: var(--text-tertiary);
+  color: var(--preferences-channel-icon-fg);
 }
 
 .preferences-session-copy {
