@@ -1106,9 +1106,9 @@ html[data-theme='dark'] .linear-sidebar-badge,
 
 .linear-tooltip-content {
   box-sizing: border-box;
-  background-color: var(--card-bg);
-  border: 0.5px solid var(--color-border-secondary);
-  box-shadow: var(--tooltip-shadow, var(--dropdown-shadow));
+  background-color: var(--tooltip-bg);
+  border: 0.5px solid var(--tooltip-border);
+  box-shadow: var(--tooltip-shadow);
   border-radius: 8px;
   padding: 5px 8px;
   gap: 8px;

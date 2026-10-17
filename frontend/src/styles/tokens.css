@@ -83,7 +83,15 @@
   /* Shadows */
   --canvas-shadow: 0px 0.5px 1px 1px lch(0% 0 0 / 0.3);
   /* The canvas edge and the line under a view's title bar. */
-  --canvas-border: 1px solid var(--color-border-primary);
+  /* Linear's main and its title bar's line in dark, measured 17.10. */
+  --canvas-border: 0.5px solid lch(13.08% 1.48 272 / 1);
+  /* Linear's tooltip in dark (17.10): fill 12.72, 0.5px border 25.68, the canvas's
+     shadow, label 91.178, shortcut keys outlined 20.28. */
+  --tooltip-bg: lch(12.72% 0.85 272 / 1);
+  --tooltip-border: lch(25.68% 1.93 272 / 1);
+  --tooltip-fg: lch(91.178% 1.425 272 / 1);
+  --tooltip-kbd-border: lch(20.28% 1.93 272 / 1);
+  --tooltip-shadow: lch(0% 0 0 / 0.3) 0 0.5px 1px 1px;
   --dropdown-shadow: 0px 3px 8px 0px rgba(0, 0, 0, 0.125), 0px 2px 5px 0px rgba(0, 0, 0, 0.125), 0px 1px 1px 0px rgba(0, 0, 0, 0.125);
   --dialog-elevation-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 24px rgba(0, 0, 0, 0.12), 0 12px 48px rgba(0, 0, 0, 0.18);
 
@@ -318,6 +326,10 @@ html[data-theme='light'] {
   --dropdown-shadow: 0px 6px 18px 0px rgba(0, 0, 0, 0.02), 0px 3px 9px 0px rgba(0, 0, 0, 0.04), 0px 1px 1px 0px rgba(0, 0, 0, 0.04);
   /* Linear's tooltip is lighter than its menus (checked live 17.10). */
   --tooltip-shadow: 0px 3px 6px -2px rgba(0, 0, 0, 0.02), 0px 1px 1px 0px rgba(0, 0, 0, 0.04);
+  --tooltip-bg: var(--card-bg);
+  --tooltip-border: var(--color-border-secondary);
+  --tooltip-fg: var(--text-secondary);
+  --tooltip-kbd-border: var(--color-border-secondary);
 
   /* Scrollbars */
   --app-scrollbar-bg: lch(64.94% 1.25 282 / 1);
