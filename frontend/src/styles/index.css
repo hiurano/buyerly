@@ -3412,6 +3412,13 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
 .linear-header-button--toolbar { background-color: var(--toolbar-button-bg); }
 .linear-header-button--toolbar:hover { background-color: var(--toolbar-button-hover-bg); }
 .linear-header-button--toolbar[data-active='true'], .linear-header-button--toolbar.linear-header-button--active { background-color: var(--toolbar-button-active-bg); }
+/* Linear draws the toolbar buttons' ring on ::after, like an inactive tab's. */
+.linear-header-button--toolbar::after {
+  content: ""; position: absolute; inset: 0; border-radius: 9999px; pointer-events: none;
+  box-shadow: var(--toolbar-button-ring); transition: box-shadow 0.15s;
+}
+.linear-header-button--toolbar:hover::after { box-shadow: var(--toolbar-button-ring-hover); }
+.linear-header-button--toolbar[data-active='true']::after, .linear-header-button--toolbar.linear-header-button--active::after { box-shadow: var(--toolbar-button-ring-active); }
 
 /* Linear's quick-filter section (DetailsFacets): one card filling the pane, 8px from its right and bottom. */
 .details-facets {
