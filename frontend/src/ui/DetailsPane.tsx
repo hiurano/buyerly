@@ -352,7 +352,7 @@ export function DetailsPaneToggle({ pane }: { pane: DetailsPaneId }) {
   const toggleDetailsPane = useAppStore((store) => store.toggleDetailsPane);
   const label = open ? 'Close details' : 'Open details';
   return (
-    <Tooltip content={label} shortcut={navigator.platform.includes('Mac') ? '⌘I' : 'Ctrl+I'}>
+    <Tooltip content={label} shortcut={navigator.platform.includes('Mac') ? '⌘I' : 'Ctrl+I'} align="end">
       <button
         type="button"
         aria-label={label}

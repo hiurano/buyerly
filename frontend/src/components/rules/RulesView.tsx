@@ -375,6 +375,8 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
                 color: 'var(--text-secondary)',
                 margin: 0,
                 padding: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
               }}
             >
               Rules
@@ -424,7 +426,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
 
             {/* Display Options Button with Popover */}
             <div className="relative">
-              <Tooltip content="Show display options" shortcut="Shift V" disabled={isRulesDisplayOptionsOpen}>
+              <Tooltip content="Show display options" shortcut="Shift V" align="end" disabled={isRulesDisplayOptionsOpen}>
                 <button
                   ref={displayOptionsButtonRef}
                   type="button"
