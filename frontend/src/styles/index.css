@@ -1538,6 +1538,255 @@ html[data-theme='dark'] .linear-sidebar-badge,
   padding: 64px 0 64px 0;
 }
 
+/*
+ * Linear's Settings → Members, measured live (17.10, 1280px, both themes): the page
+ * runs 56px in from the canvas, the table spans the canvas. Columns from the canvas
+ * edge: 60px in, Name and Email share the rest 3:2, Status 140, Teams 82, Joined
+ * 168 (Linear's 82 plus its Last seen, which Buyerly has no data for), the menu 24,
+ * 32px out; so at 1280px Name and Email are Linear's 312.6 and 208.4.
+ */
+.preferences-content-column--wide {
+  width: auto;
+  max-width: none;
+  margin: 0 56px;
+}
+
+.preferences-content-column--wide .preferences-title-container {
+  padding: 0;
+  margin-bottom: 13px;
+}
+
+.members-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.members-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 300px;
+  min-width: 0;
+  max-width: 100%;
+  height: 32px;
+}
+
+.members-search-icon {
+  position: absolute;
+  left: 10px;
+  width: 16px;
+  height: 16px;
+  fill: var(--members-muted);
+  pointer-events: none;
+}
+
+.members-search-input {
+  width: 100%;
+  height: 32px;
+  padding: 6px 25px 6px 32px;
+  border: 0.5px solid var(--members-search-border);
+  border-radius: 8px;
+  background: var(--members-search-bg);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.members-search-input::placeholder {
+  color: var(--members-muted);
+  opacity: 1;
+}
+
+.members-search-input:hover,
+.members-search-input:active {
+  border-color: var(--members-search-border-hover);
+  transition-duration: 0s;
+}
+
+.members-search-input:focus {
+  border-color: var(--focus-ring-color);
+}
+
+.members-search-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+/* The filter and Export CSV: Linear's toolbar controls (the list tab row's tokens). */
+.members-select,
+.members-button {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  height: 32px;
+  border: 0.5px solid transparent;
+  background: var(--toolbar-button-bg);
+  box-shadow: var(--toolbar-button-ring);
+  color: var(--text-secondary);
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: default;
+  outline: none;
+  transition: background-color 0.15s, border 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.members-select {
+  position: relative;
+  padding: 1px 28px 1px 10px;
+  border-radius: 8px;
+  font-weight: 400;
+}
+
+.members-select svg {
+  position: absolute;
+  right: 11px;
+  fill: var(--members-muted);
+}
+
+.members-button {
+  justify-content: center;
+  padding: 0 12px;
+  border-radius: 9999px;
+  font-weight: 500;
+}
+
+.members-select:hover,
+.members-select[data-state='open'],
+.members-button:hover {
+  background: var(--toolbar-button-hover-bg);
+  box-shadow: var(--toolbar-button-ring-hover);
+  transition-duration: 0s;
+}
+
+.members-button--primary {
+  background: var(--action-primary);
+  box-shadow: var(--canvas-shadow);
+  color: #fff;
+}
+
+.members-button--primary:hover {
+  background: var(--members-primary-hover);
+  box-shadow: var(--canvas-shadow);
+}
+
+.members-select:focus-visible,
+.members-button:focus-visible {
+  outline: 1px solid var(--focus-ring-color);
+  outline-offset: -1px;
+}
+
+.members-table {
+  margin: 21px -56px 0;
+  font-size: 12px;
+}
+
+.members-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) 140px 82px 168px 24px;
+  align-items: center;
+  height: 50px;
+  margin-bottom: 2px;
+  padding: 0 32px 0 60px;
+  color: var(--members-muted);
+  font-weight: 450;
+}
+
+.members-row > * {
+  position: relative;
+  min-width: 0;
+}
+
+/* Linear's row highlight: 8px in from the canvas, 8px corners, at once. */
+.members-row:not(.members-row--header):hover::before {
+  content: '';
+  position: absolute;
+  inset: 0 8px;
+  border-radius: 8px;
+  background: var(--members-row-hover-bg);
+}
+
+.members-row--header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 32px;
+  margin-bottom: 0;
+  background: var(--bg-canvas);
+}
+
+.members-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  margin: 0 8px 2px;
+  padding-left: 54px;
+  border-radius: 8px;
+  background: var(--members-group-bg);
+  color: var(--members-muted);
+  font-weight: 500;
+}
+
+.members-group-count {
+  color: var(--members-group-count);
+}
+
+.members-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.members-person-name {
+  display: block;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.members-person-handle {
+  display: block;
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.members-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .preferences-content-column--wide {
+    margin: 0 16px;
+  }
+
+  .members-table {
+    margin: 21px -16px 0;
+  }
+
+  .members-row {
+    grid-template-columns: minmax(0, 1fr) 96px 24px;
+    padding: 0 12px 0 16px;
+  }
+
+  .members-col-wide {
+    display: none;
+  }
+
+  .members-group {
+    padding-left: 8px;
+  }
+}
+
 /* Page Title: Preferences */
 .preferences-title-container {
   display: flex;
