@@ -3348,7 +3348,8 @@ html[data-theme='dark'] .buyerly-auth-page,
 .campaign-view-list { display: flex; flex: 1; min-width: 0; min-height: 0; overflow: hidden; }
 .campaign-filter-summary { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: var(--facet-sidebar-gap); padding: var(--facet-empty-padding); color: var(--text-secondary); font-size: var(--facet-font-size); }
 /* Override the shared fixed toolbar height when controls wrap on narrow views. */
-.campaign-view-toolbar { height: auto !important; min-height: var(--facet-row-height); flex-wrap: wrap; gap: var(--facet-sidebar-gap); padding-block: var(--facet-sidebar-gap); }
+/* One line is Linear's 43.5px tab row: (43.5 - 28) / 2 above and below the 28px controls. */
+.campaign-view-toolbar { height: auto !important; min-height: 43.5px; flex-wrap: wrap; gap: var(--facet-sidebar-gap); padding-block: 7.75px; }
 .campaign-view-toolbar > * { max-width: 100%; }
 .campaign-view-toolbar > div:last-child { flex-wrap: wrap; }
 

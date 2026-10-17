@@ -247,7 +247,7 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
         >
           <div className="flex items-center">
             <SidebarCollapsedNavigation />
-            <h2 className="text-[13px] font-medium leading-4 text-[var(--text-secondary)]">Ad accounts</h2>
+            <h2 className="text-[13px] font-medium text-[var(--text-secondary)]">Ad accounts</h2>
           </div>
           {canEdit && <HeaderCreateButton label="Add account" tooltip="Add ad account" onClick={dialogs.openAdd} />}
         </div>

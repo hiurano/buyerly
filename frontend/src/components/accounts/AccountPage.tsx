@@ -122,12 +122,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({ accountId, navigate, n
               event.preventDefault();
               navigate(listPath);
             }}
-            className="shrink-0 rounded-[4px] text-[13px] font-medium leading-4 text-[var(--text-tertiary)] outline-none transition-colors hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
+            className="shrink-0 rounded-[4px] text-[13px] font-medium text-[var(--text-tertiary)] outline-none transition-colors hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
           >
             Ad accounts
           </a>
           <ChevronRight size={14} aria-hidden="true" className="mx-[4px] shrink-0 text-[var(--text-tertiary)]" />
-          <h2 aria-current="page" className="m-0 truncate p-0 text-[13px] font-medium leading-4 text-[var(--text-primary)]">
+          <h2 aria-current="page" className="m-0 truncate p-0 text-[13px] font-medium text-[var(--text-primary)]">
             {account ? accountName(account) : accountId}
           </h2>
         </nav>
