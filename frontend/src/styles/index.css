@@ -976,6 +976,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
    press only darken the icon, at once, with no fill behind it. */
 .linear-sidebar-toggle {
   border-width: 0.5px;
+  color: var(--header-button-fg);
   cursor: default;
   transition: border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
 }
@@ -2513,38 +2514,40 @@ html[data-theme='light'] .linear-tab-capsule[data-active='true']::after {
 }
 
 /* Dark Theme (:root:not([data-theme='light']) & html[data-theme='dark']) */
+/* Measured on Linear in dark (17.10): an inactive tab is filled 10.149 with a 0.5px
+   0.137 ring and a shadow; hover and press fill 14.006, ring 0.229, label 90.451. */
 :root:not([data-theme='light']) .linear-tab-capsule[data-active='false'],
 html[data-theme='dark'] .linear-tab-capsule[data-active='false'] {
-  background-color: transparent;
-  color: var(--text-tertiary);
+  background-color: lch(10.149% 0.593 272 / 1);
+  color: lch(61.803% 1.2 272 / 1);
 }
 
 :root:not([data-theme='light']) .linear-tab-capsule[data-active='false']::after,
 html[data-theme='dark'] .linear-tab-capsule[data-active='false']::after {
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 0 0.5px lch(100% 0 0 / 0.137), 0 0.5px 1px 1px lch(0% 0 0 / 0.3);
 }
 
 :root:not([data-theme='light']) .linear-tab-capsule[data-active='false']:active,
 html[data-theme='dark'] .linear-tab-capsule[data-active='false']:active {
-  background-color: var(--item-hover-bg);
-  color: var(--text-primary);
+  background-color: lch(14.006% 0.593 272 / 1);
+  color: lch(90.451% 1.2 272 / 1);
 }
 
 :root:not([data-theme='light']) .linear-tab-capsule[data-active='false']:active::after,
 html[data-theme='dark'] .linear-tab-capsule[data-active='false']:active::after {
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 0 0.5px lch(100% 0 0 / 0.229), 0 0.5px 1px 1px lch(0% 0 0 / 0.3);
 }
 
 @media (any-hover: hover) and (any-pointer: fine) {
   :root:not([data-theme='light']) .linear-tab-capsule[data-active='false']:hover,
   html[data-theme='dark'] .linear-tab-capsule[data-active='false']:hover {
-    background-color: var(--item-hover-bg);
-    color: var(--text-primary);
+    background-color: lch(14.006% 0.593 272 / 1);
+    color: lch(90.451% 1.2 272 / 1);
   }
 
   :root:not([data-theme='light']) .linear-tab-capsule[data-active='false']:hover::after,
   html[data-theme='dark'] .linear-tab-capsule[data-active='false']:hover::after {
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 0 0.5px lch(100% 0 0 / 0.229), 0 0.5px 1px 1px lch(0% 0 0 / 0.3);
   }
 }
 
@@ -2557,7 +2560,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true'] {
 
 :root:not([data-theme='light']) .linear-tab-capsule[data-active='true']::after,
 html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 0.5px lch(100% 0 0 / 0.137);
 }
 /* Linear pill tabs draw their visible outline on an overlay rather than on the
    button border, keeping the 28px geometry stable across states. */
@@ -3487,10 +3490,12 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
    --header sits bare (Inbox, Search), --toolbar on white (a list's tab row). */
 .linear-header-button {
   position: relative; display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 28px; height: 28px;
-  border: 0.5px solid transparent; border-radius: 9999px; color: var(--text-tertiary); cursor: default; outline: none;
+  border: 0.5px solid transparent; border-radius: 9999px; color: var(--header-button-fg); cursor: default; outline: none;
   transition: border-color 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
 }
 .linear-header-button:hover, .linear-header-button[data-active='true'], .linear-header-button--active { color: var(--text-primary); }
+/* As Linear's: hover and press land at once, only leaving fades over 0.15s. */
+.linear-header-button:hover, .linear-header-button:active { transition-duration: 0s; }
 .linear-header-button:focus-visible { outline: 1px solid #8b8df8; }
 .linear-header-button--header { background-color: transparent; }
 .linear-header-button--header:hover { background-color: var(--header-button-hover-bg); }
