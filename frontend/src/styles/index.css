@@ -1977,11 +1977,12 @@ input.settings-list-inline:focus {
 }
 
 /* Section: Interface and theme */
+/* Linear's settings sections sit 48px apart. */
 .preferences-section {
   display: flex;
   flex-direction: column;
   width: 640px;
-  margin-bottom: 32px;
+  margin-bottom: 48px;
 }
 
 .preferences-section-header {
@@ -2019,20 +2020,20 @@ input.settings-list-inline:focus {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  height: 65px;
+  min-height: 60px;
   padding: 16px;
   border-radius: 10px;
   position: relative;
 }
 
-/* A row with one line of copy, like Linear's Workspace access row: 64px. */
-.preferences-row-item--single {
-  height: 64px;
-}
-
-/* Linear's Security → "Enable invite links": a 60px row with a switch. */
+/*
+ * Linear's rows (17.10) are at least 60px and otherwise as tall as their content
+ * plus 16px above and below: 60 with a switch or a 24px button, 64 with a 32px
+ * field or button, 65 with a title over a description, 66 with the avatar.
+ */
+.preferences-row-item--single,
 .preferences-row-item--toggle {
-  height: 60px;
+  min-height: 60px;
 }
 
 /*
@@ -2053,7 +2054,7 @@ input.settings-list-inline:focus {
   font-family: var(--font-regular);
   font-size: 13px;
   font-weight: 500;
-  line-height: 16px;
+  line-height: normal;
 }
 
 .preferences-subsection-desc {
@@ -2178,11 +2179,11 @@ input.settings-list-inline:focus {
   height: 34px;
   flex-shrink: 0;
   padding: 0;
-  border: 1px solid var(--color-border-secondary);
+  border: 1px solid var(--preferences-avatar-ring);
   border-radius: 9px;
   background: transparent;
   overflow: hidden;
-  cursor: pointer;
+  cursor: default;
 }
 
 .preferences-workspace-logo > img,
@@ -2213,7 +2214,9 @@ input.settings-list-inline:focus {
   box-shadow: 0 0 0 2px var(--focus-ring-color);
 }
 
-.preferences-row-item .preferences-row-input--wide {
+/* Three classes on the field, so it beats the plain row field's 192×30 further down. */
+.preferences-row-item .preferences-row-input.preferences-row-input--wide,
+.preferences-row-item .preferences-url-field.preferences-row-input--wide {
   width: 256px;
   height: 32px;
   font-size: 13px;
@@ -2226,9 +2229,9 @@ input.settings-list-inline:focus {
   align-items: center;
   flex-shrink: 0;
   height: 32px;
-  border: 1px solid var(--color-border-secondary);
-  border-radius: var(--control-border-radius);
-  background: var(--bg-canvas);
+  border: 0.5px solid var(--preferences-input-border);
+  border-radius: 8px;
+  background: var(--preferences-card-bg);
   font-family: var(--font-regular);
   font-size: 13px;
 }
@@ -2237,10 +2240,12 @@ input.settings-list-inline:focus {
   border-color: var(--focus-ring-color);
 }
 
+/* Linear's prefix (17.10): 13px/500 in the fields' placeholder color. */
 .preferences-url-prefix {
   flex-shrink: 0;
   padding-left: 12px;
-  color: var(--text-muted);
+  color: var(--preferences-row-link-fg);
+  font-weight: 500;
   white-space: nowrap;
 }
 
@@ -2300,10 +2305,16 @@ input.settings-list-inline:focus {
   text-overflow: ellipsis;
 }
 
-/* Profile: hairline between rows of one card */
-.preferences-card-container--divided .preferences-row-item + .preferences-row-item,
-.preferences-card-container--divided .preferences-filter-row + .preferences-filter-row {
-  border-top: 1px solid var(--color-border-primary);
+/* Linear's hairline between the rows of one card: 0.5px, 16px in from its sides. */
+.preferences-card-container--divided > .preferences-row-item:not(:last-child)::after,
+.preferences-card-container--divided > .preferences-filter-row:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 0;
+  border-bottom: 0.5px solid var(--preferences-divider);
+  pointer-events: none;
 }
 
 .preferences-row-control {
@@ -2315,7 +2326,7 @@ input.settings-list-inline:focus {
 }
 
 .preferences-row-value {
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-family: var(--font-regular);
   font-size: 13px;
   font-weight: 450;
@@ -2329,18 +2340,22 @@ input.settings-list-inline:focus {
   justify-content: center;
   width: 24px;
   height: 24px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  color: var(--text-tertiary);
+  margin-left: 6px;
+  border-radius: 9999px;
+  border: 0.5px solid transparent;
+  background: var(--preferences-control-bg);
+  box-shadow: var(--preferences-control-ring), var(--canvas-shadow);
+  color: var(--preferences-channel-icon-fg);
   cursor: default;
-  transition: background var(--speed-quickTransition) var(--ease-out-quad),
-    color var(--speed-quickTransition) var(--ease-out-quad);
+  transition: background-color 0.15s, color 0.15s, box-shadow 0.15s;
 }
 
+/* Linear's: a round 24px control with the settings ring, filling at once under the cursor. */
 .preferences-row-edit-button:hover {
-  background: var(--item-hover-bg);
+  background: var(--preferences-control-hover-bg);
+  box-shadow: var(--preferences-control-ring-hover), var(--canvas-shadow);
   color: var(--text-primary);
+  transition-duration: 0s;
 }
 
 .preferences-row-edit-button:focus-visible {
@@ -2354,6 +2369,18 @@ input.settings-list-inline:focus {
   width: 192px;
   height: 30px;
   flex-shrink: 0;
+  border-width: 0.5px;
+  border-color: var(--preferences-input-border);
+  background: var(--preferences-card-bg);
+  transition: border-color 0.15s;
+}
+
+.preferences-row-item .preferences-row-input::placeholder {
+  color: var(--preferences-row-link-fg);
+}
+
+.preferences-row-item .preferences-row-input:focus {
+  border-color: var(--focus-ring-color);
 }
 
 /* Linear's Profile fields (2026-10-09): 180×32, 13px text, 12px side padding,
@@ -2363,7 +2390,7 @@ input.settings-list-inline:focus {
   height: 32px;
   padding: 6px 12px;
   border-radius: 8px;
-  background: transparent;
+  background: var(--preferences-card-bg);
   font-size: 13px;
 }
 
@@ -2502,7 +2529,7 @@ input.settings-list-inline:focus {
 }
 
 .preferences-section-header--sub {
-  height: 16px;
+  height: 15.5px;
   margin-bottom: 12px;
 }
 
@@ -2514,7 +2541,7 @@ input.settings-list-inline:focus {
 .preferences-section-title--sub {
   color: var(--text-secondary);
   font-size: 13px;
-  line-height: 16px;
+  line-height: normal;
 }
 
 /* "‹ Notifications" above a settings page that sits under another one. */
@@ -2542,6 +2569,16 @@ input.settings-list-inline:focus {
 }
 
 /* Page title with Linear's 13px line under it (Priority notifications). */
+/* Linear's Connected accounts (17.10): 66px rows, the description 4px under the name,
+   Connect 10px from the card's edge. */
+.preferences-connection-row {
+  padding-right: 10px;
+}
+
+.preferences-connection-copy .preferences-row-desc {
+  margin-top: 4px;
+}
+
 .preferences-title-container--with-note {
   flex-direction: column;
   align-items: flex-start;
@@ -2549,9 +2586,10 @@ input.settings-list-inline:focus {
   gap: 4px;
 }
 
+/* Linear's note under a page title is tertiary (17.10). */
 .preferences-page-note {
   margin: 0;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
   font-family: var(--font-regular);
   font-size: 13px;
   font-weight: 450;
@@ -2676,7 +2714,10 @@ input.settings-list-inline:focus {
   flex-shrink: 0;
 }
 
+/* Linear's profile picture sits in a 34px ring (1px, none in dark), so its row is 66px. */
 .preferences-avatar--button {
+  margin: 1px;
+  box-shadow: 0 0 0 1px var(--preferences-avatar-ring);
   cursor: default;
 }
 
@@ -4390,10 +4431,11 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
    Revoke all over a full-width hairline, its rows split by hairlines inset 16px.
    Rows: a 32px tile with the browser's mark, 16px gap, then the name over
    "Helsinki, 18, FI · Last seen …" that wraps; text buttons on the right. */
+/* Linear's desktop (17.10): the note 2px under the title, 22px lines, as Notifications'. */
 .preferences-section-note--sessions {
-  margin: -12px 0 16px;
+  margin: -14px 0 16px;
   font-size: 13px;
-  line-height: 20px;
+  line-height: 22px;
 }
 
 .preferences-sessions-card + .preferences-sessions-card {
@@ -4408,7 +4450,7 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 66px;
+  min-height: 65px;
   padding-right: 16px;
   border-radius: 10px;
   transition: background-color 150ms ease, opacity 150ms ease;
@@ -4428,7 +4470,7 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
   top: 0;
   left: 16px;
   right: 16px;
-  border-top: 1px solid var(--color-border-primary);
+  border-top: 0.5px solid var(--preferences-divider);
 }
 
 .preferences-session-main {
@@ -4438,7 +4480,7 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
   flex: 1 1 0;
   align-self: stretch;
   min-width: 0;
-  padding: 12px 0 12px 16px;
+  padding: 0 0 0 16px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -4465,10 +4507,11 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
   color: var(--preferences-channel-icon-fg);
 }
 
+/* Linear's (17.10): the name, then 2.5px down the 12px line; 65px rows with the tile centred. */
 .preferences-session-copy {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 2.5px;
   min-width: 0;
 }
 
@@ -4477,7 +4520,7 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
   font-family: var(--font-regular);
   font-size: 12px;
   font-weight: 450;
-  line-height: 16px;
+  line-height: normal;
 }
 
 /* "Helsinki, 18, FI · Last seen …" wraps between its parts only. */
@@ -4492,12 +4535,13 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
   color: var(--session-current-text);
 }
 
+/* Linear's dot is the lighter green of its channel dots. */
 .preferences-session-current::before {
   content: '';
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: currentColor;
+  background: var(--preferences-channel-on);
 }
 
 .preferences-session-spinner {
@@ -4645,9 +4689,9 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 58px;
+  min-height: 64.5px;
   padding: 0 16px;
-  border-bottom: 1px solid var(--color-border-primary);
+  border-bottom: 0.5px solid var(--preferences-divider);
   color: var(--text-primary);
   font-family: var(--font-regular);
   font-size: 13px;
@@ -4706,14 +4750,14 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
   height: 32px;
   padding: 0 12px;
   flex-shrink: 0;
-  border: 0;
+  border: 0.5px solid transparent;
   border-radius: 9999px;
   background: transparent;
   color: var(--text-secondary);
   font-family: var(--font-regular);
   font-size: 13px;
   font-weight: 500;
-  cursor: pointer;
+  cursor: default;
   transition: background-color 150ms ease;
 }
 
