@@ -40,19 +40,19 @@ export const RecentlyDeletedRulesPage: React.FC<RecentlyDeletedRulesPageProps> =
                 event.preventDefault();
                 onOpenRules();
               }}
-              className="rounded-[4px] text-[13px] font-medium leading-4 text-[var(--text-tertiary)] outline-none transition-colors hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
+              className="rounded-[4px] text-[13px] font-medium text-[var(--text-tertiary)] outline-none transition-colors hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
             >
               Rules
             </a>
             <ChevronRight size={14} aria-hidden="true" className="mx-[4px] shrink-0 text-[var(--text-tertiary)]" />
             <h2
               aria-current="page"
-              className="m-0 truncate p-0 text-[13px] font-medium leading-4 text-[var(--text-primary)]"
+              className="m-0 truncate p-0 text-[13px] font-medium text-[var(--text-primary)]"
             >
               Recently deleted
             </h2>
             {count !== null && count > 0 && (
-              <span className="ml-[6px] text-[13px] font-medium leading-4 tabular-nums text-[var(--text-tertiary)]">
+              <span className="ml-[6px] text-[13px] font-medium tabular-nums text-[var(--text-tertiary)]">
                 {count}
               </span>
             )}

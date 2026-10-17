@@ -372,7 +372,6 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
               style={{
                 fontSize: '13px',
                 fontWeight: 500,
-                lineHeight: '16px',
                 color: 'var(--text-secondary)',
                 margin: 0,
                 padding: 0,
