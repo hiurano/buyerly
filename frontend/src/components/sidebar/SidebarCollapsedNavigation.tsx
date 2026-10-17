@@ -26,6 +26,12 @@ export const SidebarCollapsedNavigation: React.FC = () => {
   const ref = useRef<HTMLDivElement>(null);
   const [parentGap, setParentGap] = useState(0);
   const [inset, setInset] = useState(8);
+  // Transitions start a frame after the measure, so the button does not slide into place on load.
+  const [settled, setSettled] = useState(false);
+  useLayoutEffect(() => {
+    const frame = requestAnimationFrame(() => setSettled(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
   useLayoutEffect(() => {
     const self = ref.current;
     const parent = self?.parentElement;
@@ -74,17 +80,23 @@ export const SidebarCollapsedNavigation: React.FC = () => {
       ref={ref}
       aria-hidden={visible ? undefined : true}
       style={{
+        // As Linear's: the button keeps its size and place, only the room before
+        // the title opens and closes, on the sidebar's spring; the button fades
+        // in over the spring's last third and out over its first.
         width: visible ? (isTouch ? '32px' : '28px') : '0px',
         opacity: visible ? 1 : 0,
-        transform: visible ? 'scale(1)' : 'scale(0.85)',
-        marginLeft: visible ? `${marginLeft}px` : '0px',
-        marginRight: visible ? `${4 - parentGap - marginLeft}px` : `${-parentGap}px`,
+        marginLeft: `${marginLeft}px`,
+        marginRight: visible ? `${4 - parentGap - marginLeft}px` : `${-parentGap - marginLeft}px`,
         pointerEvents: visible ? 'auto' : 'none',
-        overflow: 'hidden',
-        transition:
-          'width 0.32s cubic-bezier(0.16, 1, 0.3, 1), margin-left 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), margin-right 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
+        transition: settled
+          ? [
+              'width var(--sidebar-spring-duration) var(--sidebar-spring)',
+              'margin var(--sidebar-spring-duration) var(--sidebar-spring)',
+              `opacity var(--sidebar-spring-duration) var(${visible ? '--sidebar-spring-show' : '--sidebar-spring-hide'})`,
+            ].join(', ')
+          : 'none',
       }}
-      className="flex shrink-0 items-center justify-center"
+      className="flex shrink-0 items-center"
     >
       {button}
     </div>
