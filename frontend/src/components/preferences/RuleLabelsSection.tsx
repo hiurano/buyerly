@@ -4,20 +4,17 @@ import { useAppStore, type RuleLabel } from '@/store/useAppStore';
 import { ApiError } from '@/lib/api';
 import { LABEL_COLORS, formatRelativeTime, randomLabelColor } from '@/lib/rules';
 import { openAppPath, pathForTab } from '@/lib/routing';
-import { Button } from '@/ui/Button';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { DataState } from '@/ui/DataState';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/ui/DropdownMenu';
 import { toast } from '@/ui/toast';
 import { deletionPrompt, runPendingDeletion } from '@/components/rules/ruleActions';
-import { GroupHeader, RowMenu, shortDate } from './MembersSection';
+import { RowMenu, shortDate } from './MembersSection';
 
 /**
  * Linear's Issue labels table: Name, Description, Last applied, Created; Buyerly
  * adds how many rules carry each label, linking to them. A phone keeps Name and Rules.
  */
-const ROW_GRID = 'grid grid-cols-[minmax(0,1fr)_56px_28px] sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1.6fr)_56px_84px_64px_28px] items-center gap-3';
-
 const errorText = (error: unknown) =>
   error instanceof ApiError || error instanceof Error ? error.message : 'Please try again.';
 
@@ -49,7 +46,7 @@ const ColorDot: React.FC<{ color: string; label: string; disabled?: boolean; onP
     };
   }, [open]);
   return (
-    <span ref={ref} className="relative flex h-5 w-5 shrink-0 items-center justify-center">
+    <span ref={ref} className="relative flex h-[14px] w-[14px] shrink-0 items-center justify-center">
       <button
         type="button"
         aria-label={`Color of ${label}`}
@@ -59,7 +56,7 @@ const ColorDot: React.FC<{ color: string; label: string; disabled?: boolean; onP
           event.stopPropagation();
           setOpen((value) => !value);
         }}
-        className="flex h-5 w-5 items-center justify-center rounded-full outline-none hover:bg-[var(--item-hover-bg)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] disabled:cursor-default disabled:hover:bg-transparent"
+        className="flex h-[14px] w-[14px] items-center justify-center rounded-full outline-none hover:bg-[var(--item-hover-bg)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] disabled:cursor-default disabled:hover:bg-transparent"
       >
         <span className="block h-[9px] w-[9px] rounded-full" style={{ backgroundColor: color }} />
       </button>
@@ -113,7 +110,7 @@ const InlineText: React.FC<{
   useEffect(() => {
     if (editing) setDraft(value);
   }, [editing, value]);
-  const textClass = strong ? 'font-medium text-[var(--text-primary)]' : 'text-[var(--text-secondary)]';
+  const textClass = strong ? 'settings-list-inline settings-list-inline--strong' : 'settings-list-inline';
   if (editing) {
     const finish = (save: boolean) => {
       setEditing(false);
@@ -135,7 +132,7 @@ const InlineText: React.FC<{
             finish(false);
           }
         }}
-        className={`h-7 w-full min-w-0 rounded-[6px] border border-[var(--color-border-secondary)] bg-transparent px-2 text-[13px] outline-none focus:border-[var(--action-primary)] ${textClass}`}
+        className={`w-full ${textClass}`}
       />
     );
   }
@@ -144,7 +141,7 @@ const InlineText: React.FC<{
       type="button"
       disabled={disabled}
       onClick={() => setEditing(true)}
-      className={`h-7 min-w-0 truncate rounded-[6px] px-2 text-left text-[13px] outline-none enabled:hover:bg-[var(--item-hover-bg)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] disabled:cursor-default ${value ? textClass : 'text-[var(--text-tertiary)]'}`}
+      className={`${textClass} disabled:cursor-default ${value ? '' : 'settings-list-inline--placeholder'}`}
     >
       {value || (disabled ? '' : placeholder)}
     </button>
@@ -181,8 +178,8 @@ const NewLabelRow: React.FC<{ onDone: () => void }> = ({ onDone }) => {
     }
   };
   return (
-    <div role="row" className={`${ROW_GRID} h-11 rounded-[4px] px-2`}>
-      <span role="cell" className="flex min-w-0 items-center gap-1.5">
+    <div role="row" className="settings-list-row">
+      <span role="cell" className="settings-list-label">
         <ColorDot color={color} label="the new label" onPick={setColor} />
         <input
           autoFocus
@@ -193,10 +190,10 @@ const NewLabelRow: React.FC<{ onDone: () => void }> = ({ onDone }) => {
           disabled={busy}
           onChange={(event) => setName(event.target.value)}
           onKeyDown={onKeyDown}
-          className="h-7 w-full min-w-0 rounded-[6px] border border-[var(--color-border-secondary)] bg-transparent px-2 text-[13px] font-medium text-[var(--text-primary)] outline-none placeholder:font-normal placeholder:text-[var(--text-tertiary)] focus:border-[var(--action-primary)]"
+          className="settings-list-inline settings-list-inline--strong w-full"
         />
       </span>
-      <span role="cell" className="hidden min-w-0 sm:block">
+      <span role="cell" className="settings-list-col-wide settings-list-description">
         <input
           aria-label="Label description"
           placeholder="Add label description…"
@@ -205,12 +202,12 @@ const NewLabelRow: React.FC<{ onDone: () => void }> = ({ onDone }) => {
           disabled={busy}
           onChange={(event) => setDescription(event.target.value)}
           onKeyDown={onKeyDown}
-          className="h-7 w-full min-w-0 rounded-[6px] border border-transparent bg-transparent px-2 text-[13px] text-[var(--text-secondary)] outline-none placeholder:text-[var(--text-tertiary)] focus:border-[var(--action-primary)]"
+          className="settings-list-inline w-full"
         />
       </span>
       <span role="cell" />
-      <span role="cell" className="hidden sm:block" />
-      <span role="cell" className="hidden sm:block" />
+      <span role="cell" className="settings-list-col-wide" />
+      <span role="cell" className="settings-list-col-wide" />
       <span role="cell" />
     </div>
   );
@@ -271,14 +268,21 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
 
   return (
     <>
-      <div className="preferences-title-container">
-        <h1 className="preferences-page-title">Rule labels</h1>
+      <div className="settings-list-title-row">
+        <div className="preferences-title-container">
+          <h1 className="preferences-page-title">Rule labels</h1>
+        </div>
+        {canEdit && (
+          <button type="button" className="settings-list-button settings-list-button--primary" onClick={() => setAdding(true)}>
+            New label
+          </button>
+        )}
       </div>
 
-      <div className="flex items-center gap-2">
-        <label className="relative flex h-8 w-[244px] min-w-0 max-w-full flex-1 items-center sm:flex-none">
+      <div className="settings-list-filter-row">
+        <label className="settings-list-search">
           <span className="sr-only">Filter by name…</span>
-          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" className="pointer-events-none absolute left-2.5 fill-[var(--text-tertiary)]">
+          <svg viewBox="0 0 16 16" aria-hidden="true" className="settings-list-search-icon">
             <path d="M7 1.5a5.5 5.5 0 0 1 4.38 8.82l3.15 3.15a.75.75 0 1 1-1.06 1.06l-3.15-3.15A5.5 5.5 0 1 1 7 1.5Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
           </svg>
           <input
@@ -286,13 +290,9 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Filter by name…"
-            className="h-8 w-full rounded-[6px] border border-[var(--color-border-secondary)] bg-transparent pl-8 pr-2 text-[13px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)] focus:border-[var(--action-primary)]"
+            className="settings-list-search-input"
           />
         </label>
-        <div className="flex-1" />
-        {canEdit && (
-          <Button variant="primary" className="shrink-0" onClick={() => setAdding(true)}>New label</Button>
-        )}
       </div>
 
       {loadState === 'error' && (
@@ -304,20 +304,19 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
 
       {loadState === 'ready' && (
         <>
-          <div className="mt-6 text-[13px]" role="table" aria-label="Rule labels">
-            <div role="row" className={`${ROW_GRID} h-8 px-2 text-[12px] font-medium text-[var(--text-secondary)]`}>
-              <span role="columnheader" className="pl-[26px]">Name</span>
-              <span role="columnheader" className="hidden pl-2 sm:block">Description</span>
+          <div className="settings-list-table settings-list--labels" role="table" aria-label="Rule labels">
+            <div role="row" className="settings-list-row settings-list-row--header">
+              <span role="columnheader">Name</span>
+              <span role="columnheader" className="settings-list-col-wide">Description</span>
               <span role="columnheader">Rules</span>
-              <span role="columnheader" className="hidden sm:block">Last applied</span>
-              <span role="columnheader" className="hidden sm:block">Created</span>
+              <span role="columnheader" className="settings-list-col-wide">Last applied</span>
+              <span role="columnheader" className="settings-list-col-wide">Created</span>
               <span role="columnheader" className="sr-only">Actions</span>
             </div>
             {adding && <NewLabelRow onDone={() => setAdding(false)} />}
-            {visible.length > 0 && <GroupHeader label="Labels" count={visible.length} />}
             {visible.map((label) => (
-              <div key={label.id} role="row" className={`${ROW_GRID} group h-11 rounded-[4px] px-2 hover:bg-[var(--item-hover-bg)]`}>
-                <span role="cell" className="flex min-w-0 items-center gap-1.5">
+              <div key={label.id} role="row" className="settings-list-row">
+                <span role="cell" className="settings-list-label">
                   <ColorDot
                     color={label.color}
                     label={label.name}
@@ -335,7 +334,7 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
                     onSave={(name) => void save(label, { name })}
                   />
                 </span>
-                <span role="cell" className="hidden min-w-0 sm:flex">
+                <span role="cell" className="settings-list-col-wide settings-list-description">
                   <InlineText
                     value={label.description}
                     placeholder="Add label description…"
@@ -344,12 +343,12 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
                     onSave={(description) => void save(label, { description })}
                   />
                 </span>
-                <span role="cell" className="text-[12px] font-medium text-[var(--text-secondary)]">
+                <span role="cell" className="settings-list-cell">
                   {label.ruleCount > 0 ? (
                     <a
                       href={`${pathForTab(workspace.slug, 'rules')}`}
                       aria-label={`${label.ruleCount} ${label.ruleCount === 1 ? 'rule' : 'rules'} labelled ${label.name}`}
-                      className="rounded-[4px] px-1 py-0.5 outline-none hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
+                      className="settings-list-count"
                       onClick={(event) => {
                         event.preventDefault();
                         openRules(label);
@@ -358,16 +357,16 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
                       {label.ruleCount}
                     </a>
                   ) : (
-                    <span className="px-1 text-[var(--text-tertiary)]">0</span>
+                    <span className="settings-list-count">0</span>
                   )}
                 </span>
-                <span role="cell" className="hidden text-[12px] text-[var(--text-secondary)] sm:block">
+                <span role="cell" className="settings-list-cell settings-list-col-wide">
                   {label.lastAppliedAt ? formatRelativeTime(label.lastAppliedAt) : ''}
                 </span>
-                <span role="cell" className="hidden text-[12px] text-[var(--text-secondary)] sm:block">{shortDate(label.createdAt)}</span>
+                <span role="cell" className="settings-list-cell settings-list-col-wide">{shortDate(label.createdAt)}</span>
                 <span role="cell" className="flex justify-end">
                   {canEdit && (
-                    <RowMenu label={`Label actions for ${label.name}`}>
+                    <RowMenu label={`Label actions for ${label.name}`} visible>
                       <DropdownMenuItem onSelect={() => setRenaming(label.id)}>
                         <span className="truncate">Rename…</span>
                       </DropdownMenuItem>

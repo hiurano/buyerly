@@ -1556,13 +1556,13 @@ html[data-theme='dark'] .linear-sidebar-badge,
   margin-bottom: 13px;
 }
 
-.members-toolbar {
+.settings-list-toolbar {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.members-search {
+.settings-list-search {
   position: relative;
   display: flex;
   align-items: center;
@@ -1572,22 +1572,22 @@ html[data-theme='dark'] .linear-sidebar-badge,
   height: 32px;
 }
 
-.members-search-icon {
+.settings-list-search-icon {
   position: absolute;
   left: 10px;
   width: 16px;
   height: 16px;
-  fill: var(--members-muted);
+  fill: var(--settings-list-muted);
   pointer-events: none;
 }
 
-.members-search-input {
+.settings-list-search-input {
   width: 100%;
   height: 32px;
   padding: 6px 25px 6px 32px;
-  border: 0.5px solid var(--members-search-border);
+  border: 0.5px solid var(--settings-list-search-border);
   border-radius: 8px;
-  background: var(--members-search-bg);
+  background: var(--settings-list-search-bg);
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 500;
@@ -1595,28 +1595,28 @@ html[data-theme='dark'] .linear-sidebar-badge,
   transition: border-color 0.15s;
 }
 
-.members-search-input::placeholder {
-  color: var(--members-muted);
+.settings-list-search-input::placeholder {
+  color: var(--settings-list-muted);
   opacity: 1;
 }
 
-.members-search-input:hover,
-.members-search-input:active {
-  border-color: var(--members-search-border-hover);
+.settings-list-search-input:hover,
+.settings-list-search-input:active {
+  border-color: var(--settings-list-search-border-hover);
   transition-duration: 0s;
 }
 
-.members-search-input:focus {
+.settings-list-search-input:focus {
   border-color: var(--focus-ring-color);
 }
 
-.members-search-input::-webkit-search-cancel-button {
+.settings-list-search-input::-webkit-search-cancel-button {
   display: none;
 }
 
 /* The filter and Export CSV: Linear's toolbar controls (the list tab row's tokens). */
-.members-select,
-.members-button {
+.settings-list-select,
+.settings-list-button {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
@@ -1632,57 +1632,57 @@ html[data-theme='dark'] .linear-sidebar-badge,
   transition: background-color 0.15s, border 0.15s, color 0.15s, box-shadow 0.15s;
 }
 
-.members-select {
+.settings-list-select {
   position: relative;
   padding: 1px 28px 1px 10px;
   border-radius: 8px;
   font-weight: 400;
 }
 
-.members-select svg {
+.settings-list-select svg {
   position: absolute;
   right: 11px;
-  fill: var(--members-muted);
+  fill: var(--settings-list-muted);
 }
 
-.members-button {
+.settings-list-button {
   justify-content: center;
   padding: 0 12px;
   border-radius: 9999px;
   font-weight: 500;
 }
 
-.members-select:hover,
-.members-select[data-state='open'],
-.members-button:hover {
+.settings-list-select:hover,
+.settings-list-select[data-state='open'],
+.settings-list-button:hover {
   background: var(--toolbar-button-hover-bg);
   box-shadow: var(--toolbar-button-ring-hover);
   transition-duration: 0s;
 }
 
-.members-button--primary {
+.settings-list-button--primary {
   background: var(--action-primary);
   box-shadow: var(--canvas-shadow);
   color: #fff;
 }
 
-.members-button--primary:hover {
-  background: var(--members-primary-hover);
+.settings-list-button--primary:hover {
+  background: var(--settings-list-primary-hover);
   box-shadow: var(--canvas-shadow);
 }
 
-.members-select:focus-visible,
-.members-button:focus-visible {
+.settings-list-select:focus-visible,
+.settings-list-button:focus-visible {
   outline: 1px solid var(--focus-ring-color);
   outline-offset: -1px;
 }
 
-.members-table {
+.settings-list-table {
   margin: 21px -56px 0;
   font-size: 12px;
 }
 
-.members-row {
+.settings-list-row {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) 140px 82px 168px 24px;
@@ -1690,25 +1690,25 @@ html[data-theme='dark'] .linear-sidebar-badge,
   height: 50px;
   margin-bottom: 2px;
   padding: 0 32px 0 60px;
-  color: var(--members-muted);
+  color: var(--settings-list-muted);
   font-weight: 450;
 }
 
-.members-row > * {
+.settings-list-row > * {
   position: relative;
   min-width: 0;
 }
 
 /* Linear's row highlight: 8px in from the canvas, 8px corners, at once. */
-.members-row:not(.members-row--header):hover::before {
+.settings-list-row:not(.settings-list-row--header):hover::before {
   content: '';
   position: absolute;
   inset: 0 8px;
   border-radius: 8px;
-  background: var(--members-row-hover-bg);
+  background: var(--settings-list-row-hover-bg);
 }
 
-.members-row--header {
+.settings-list-row--header {
   position: sticky;
   top: 0;
   z-index: 1;
@@ -1717,7 +1717,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
   background: var(--bg-canvas);
 }
 
-.members-group {
+.settings-list-group {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1725,22 +1725,22 @@ html[data-theme='dark'] .linear-sidebar-badge,
   margin: 0 8px 2px;
   padding-left: 54px;
   border-radius: 8px;
-  background: var(--members-group-bg);
-  color: var(--members-muted);
+  background: var(--settings-list-group-bg);
+  color: var(--settings-list-muted);
   font-weight: 500;
 }
 
-.members-group-count {
-  color: var(--members-group-count);
+.settings-list-group-count {
+  color: var(--settings-list-group-count);
 }
 
-.members-person {
+.settings-list-person {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.members-person-name {
+.settings-list-person-name {
   display: block;
   overflow: hidden;
   color: var(--text-secondary);
@@ -1750,7 +1750,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
   white-space: nowrap;
 }
 
-.members-person-handle {
+.settings-list-person-handle {
   display: block;
   overflow: hidden;
   font-weight: 500;
@@ -1758,10 +1758,167 @@ html[data-theme='dark'] .linear-sidebar-badge,
   white-space: nowrap;
 }
 
-.members-cell {
+.settings-list-cell {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* A count that opens its list (Linear's Members and Issues): a 24px pill 6px out. */
+.settings-list-count {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  margin-left: -6px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  color: inherit;
+  font-weight: 500;
+  outline: none;
+}
+
+a.settings-list-count:hover,
+a.settings-list-count:active {
+  background: var(--header-button-hover-bg);
+  color: var(--text-primary);
+}
+
+a.settings-list-count:focus-visible {
+  outline: 1px solid var(--focus-ring-color);
+}
+
+/*
+ * Linear's Settings → Teams (17.10): rows 44px; Name takes the rest, Visibility 120,
+ * Members 92, Issues 82 (Buyerly's Accounts), Created 86, the menu 24.
+ */
+.settings-list--teams .settings-list-row {
+  grid-template-columns: minmax(0, 1fr) 120px 92px 82px 86px 24px;
+}
+
+.settings-list--teams .settings-list-row:not(.settings-list-row--header),
+.settings-list--labels .settings-list-row:not(.settings-list-row--header) {
+  height: 44px;
+}
+
+.settings-list-team {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 2px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.settings-list-team-name {
+  overflow: hidden;
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  outline: none;
+}
+
+.settings-list-team-key {
+  flex-shrink: 0;
+  margin-left: -2px;
+  color: var(--text-muted);
+}
+
+/*
+ * Linear's Settings → Labels (17.10): the actions sit in the title row over a line
+ * across the canvas, a 28px pill search in a 43.5px row below, rows 44px with no
+ * group band; Name and Description share the rest 2:3, Issues (Buyerly's Rules)
+ * 75, Last applied 102, Created 86, the menu 24.
+ */
+.settings-list-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  height: 44.5px;
+  margin: 0 -56px;
+  padding: 0 56px;
+  border-bottom: var(--canvas-border);
+}
+
+.settings-list-title-row .preferences-title-container {
+  margin-bottom: 0;
+}
+
+.settings-list-filter-row {
+  display: flex;
+  align-items: center;
+  height: 43.5px;
+}
+
+.settings-list-filter-row .settings-list-search {
+  height: 28px;
+  margin-left: -6px;
+}
+
+.settings-list-filter-row .settings-list-search-input {
+  height: 28px;
+  border-color: transparent;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.settings-list-filter-row .settings-list-search-input::placeholder {
+  color: var(--settings-list-group-count);
+}
+
+.settings-list--labels {
+  margin-top: 0;
+}
+
+.settings-list--labels .settings-list-row {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) 75px 102px 86px 24px;
+}
+
+.settings-list-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* A label's name and description: text until the cursor, then Linear's field. */
+.settings-list-inline {
+  height: 28.5px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 6px 10px 6px 6px;
+  overflow: hidden;
+  border: 0.5px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  outline: none;
+}
+
+.settings-list-inline--strong {
+  font-weight: 500;
+}
+
+.settings-list-inline--placeholder {
+  color: var(--settings-list-muted);
+}
+
+.settings-list-inline:enabled:hover,
+.settings-list-inline:enabled:focus-visible,
+input.settings-list-inline {
+  border-color: var(--preferences-search-border);
+  background: var(--preferences-search-bg);
+}
+
+input.settings-list-inline:focus {
+  border-color: var(--focus-ring-color);
+}
+
+.settings-list-description {
+  margin-left: -6px;
 }
 
 @media (max-width: 767px) {
@@ -1769,21 +1926,34 @@ html[data-theme='dark'] .linear-sidebar-badge,
     margin: 0 16px;
   }
 
-  .members-table {
+  .settings-list-table {
     margin: 21px -16px 0;
   }
 
-  .members-row {
+  .settings-list-row {
     grid-template-columns: minmax(0, 1fr) 96px 24px;
     padding: 0 12px 0 16px;
   }
 
-  .members-col-wide {
+  .settings-list-col-wide {
     display: none;
   }
 
-  .members-group {
+  .settings-list-group {
     padding-left: 8px;
+  }
+
+  .settings-list--teams .settings-list-row {
+    grid-template-columns: minmax(0, 1fr) 72px 24px;
+  }
+
+  .settings-list--labels .settings-list-row {
+    grid-template-columns: minmax(0, 1fr) 56px 24px;
+  }
+
+  .settings-list-title-row {
+    margin: 0 -16px;
+    padding: 0 16px;
   }
 }
 
