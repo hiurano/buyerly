@@ -762,9 +762,11 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
    EXACT LINEAR SIDEBAR ITEM HOVER & PHYSICS
    ========================================================= */
 
+/* Linear's sidebar item, measured live (17.10): 14px icon 8px in, label 6px after
+   it, 9px right; hover and press fill 91.64 and darken text and icon at once. */
 .linear-sidebar-nav-item {
   height: 28px;
-  padding: 0px 8px;
+  padding: 0 9px 0 8px;
   border-radius: 8px;
   display: flex;
   width: 100%;
@@ -773,14 +775,12 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
   cursor: default;
   outline: none;
   background-color: transparent;
-  color: var(--text-tertiary);
-  letter-spacing: -0.1px;
+  color: var(--sidebar-item-fg);
+  letter-spacing: normal;
   font-size: 13px;
   font-weight: 500;
-  line-height: 16px;
+  line-height: normal;
   user-select: none;
-  transition: color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-              background-color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .linear-sidebar-nav-item:focus-visible {
@@ -789,24 +789,37 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
 }
 
 .linear-sidebar-nav-item svg {
-  color: var(--text-tertiary);
+  color: var(--sidebar-item-fg);
   transition: none;
 }
 
-.linear-sidebar-nav-item:hover {
-  background-color: var(--item-hover-bg);
-  color: var(--text-primary);
-  transition-duration: 0s;
+.linear-sidebar-nav-item:active {
+  background-color: var(--sidebar-item-hover-bg);
+  color: var(--sidebar-item-fg-strong);
 }
 
+@media (any-hover: hover) and (any-pointer: fine) {
+  .linear-sidebar-nav-item:hover {
+    background-color: var(--sidebar-item-hover-bg);
+    color: var(--sidebar-item-fg-strong);
+  }
+}
+
+/* The current item keeps its fill under the cursor, as Linear's. */
 .linear-sidebar-nav-item[data-active="true"] {
   background-color: var(--item-active-bg);
-  color: var(--text-primary);
+  color: var(--sidebar-item-fg-strong);
 }
 
-.linear-sidebar-nav-item:hover svg,
+.linear-sidebar-nav-item:active svg,
 .linear-sidebar-nav-item[data-active="true"] svg {
-  color: var(--text-primary);
+  color: var(--sidebar-item-fg-strong);
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .linear-sidebar-nav-item:hover svg {
+    color: var(--sidebar-item-fg-strong);
+  }
 }
 
 /* Exact Linear Sidebar Unread Badge (18px Pill, Tabular Nums) */
@@ -839,7 +852,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
 
 .linear-sidebar-nav-item:hover .linear-sidebar-badge,
 .linear-sidebar-nav-item[data-active="true"] .linear-sidebar-badge {
-  color: var(--text-primary);
+  color: var(--sidebar-item-fg-strong);
 }
 
 /* Linear's unread count after Inbox: plain muted digits, no pill. */
@@ -903,35 +916,27 @@ html[data-theme='dark'] .linear-sidebar-badge,
   display: inline-flex;
   align-items: center;
   background-color: transparent;
-  color: var(--text-primary);
-  cursor: pointer;
+  color: var(--sidebar-workspace-fg);
+  cursor: default;
   user-select: none;
   white-space: nowrap;
   text-overflow: ellipsis;
   outline: none;
-  transition: background-color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-              color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-.linear-workspace-btn:hover {
-  background-color: var(--item-hover-bg);
-  color: var(--text-primary);
-  transition-duration: 0s;
-}
-
+/* Linear's: hover and press fill 91.64 at once; the name and chevron keep their color. */
 .linear-workspace-btn:active {
-  background-color: var(--item-active-bg);
-  transition-duration: 0s;
+  background-color: var(--sidebar-item-hover-bg);
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .linear-workspace-btn:hover {
+    background-color: var(--sidebar-item-hover-bg);
+  }
 }
 
 .linear-workspace-btn .chevron {
-  color: var(--text-tertiary);
-  transition: color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-.linear-workspace-btn:hover .chevron {
-  color: var(--text-primary);
-  transition-duration: 0s;
+  color: var(--sidebar-item-fg);
 }
 
 /* 2. Top Header Action Circular Icon Button (Search) */
@@ -980,6 +985,28 @@ html[data-theme='dark'] .linear-sidebar-badge,
   background-color: transparent;
   color: var(--text-primary);
   transition-duration: 0s;
+}
+
+/* The sidebar header's Search, as Linear's: 6% black under the cursor. */
+.linear-sidebar-icon-btn {
+  border-width: 0.5px;
+  color: var(--sidebar-item-fg);
+  cursor: default;
+  transition: border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
+}
+
+.linear-sidebar-icon-btn:active {
+  background-color: var(--sidebar-icon-button-hover-bg);
+  color: var(--sidebar-item-fg-strong);
+  transition-duration: 0s;
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .linear-sidebar-icon-btn:hover {
+    background-color: var(--sidebar-icon-button-hover-bg);
+    color: var(--sidebar-item-fg-strong);
+    transition-duration: 0s;
+  }
 }
 
 /* 3. Main View Header Action Icon Button (24x24px, 6px radius) */

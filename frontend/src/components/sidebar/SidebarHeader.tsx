@@ -75,7 +75,7 @@ export const SidebarHeader: React.FC = () => {
                   fontWeight: 550,
                   lineHeight: '23px',
                   letterSpacing: '-0.1px',
-                  color: 'var(--text-primary)',
+                  color: 'var(--sidebar-workspace-fg)',
                 }}
                 className="truncate min-w-0"
               >
@@ -255,7 +255,7 @@ export const SidebarHeader: React.FC = () => {
               type="button"
               onClick={openSearchPage}
               aria-label="Search workspace"
-              className="linear-icon-btn"
+              className="linear-icon-btn linear-sidebar-icon-btn"
             >
               <span className="flex h-[14px] w-[14px] items-center justify-center">
                 <svg

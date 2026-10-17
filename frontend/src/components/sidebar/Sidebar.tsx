@@ -133,7 +133,7 @@ export const Sidebar: React.FC = () => {
         <SidebarHeader />
 
         {/* 2. Navigation Section */}
-        <div className="flex-1 overflow-y-auto px-3 pb-4 space-y-[1px]">
+        <div className="flex-1 overflow-y-auto px-3 pb-4 pt-[0.5px] space-y-[1px]">
           {/* Item 1: Inbox */}
           <Tooltip content="Inbox" shortcut={goToShortcut('inbox')} side="right" sideOffset={8}>
             <button
@@ -145,9 +145,9 @@ export const Sidebar: React.FC = () => {
               <div className="flex items-center min-w-0">
                 <span
                   style={{
-                    width: '16px',
-                    height: '16px',
-                    marginRight: '8px',
+                    width: '14px',
+                    height: '14px',
+                    marginRight: '6px',
                   }}
                   className="flex shrink-0 items-center justify-center"
                 >
@@ -157,7 +157,6 @@ export const Sidebar: React.FC = () => {
                   style={{
                     fontSize: '13px',
                     fontWeight: 500,
-                    letterSpacing: '-0.1px',
                   }}
                   className="truncate"
                 >
@@ -187,9 +186,9 @@ export const Sidebar: React.FC = () => {
               <div className="flex items-center min-w-0">
                 <span
                   style={{
-                    width: '16px',
-                    height: '16px',
-                    marginRight: '8px',
+                    width: '14px',
+                    height: '14px',
+                    marginRight: '6px',
                   }}
                   className="flex shrink-0 items-center justify-center"
                 >
@@ -199,7 +198,6 @@ export const Sidebar: React.FC = () => {
                   style={{
                     fontSize: '13px',
                     fontWeight: 500,
-                    letterSpacing: '-0.1px',
                   }}
                   className="truncate"
                 >
@@ -220,9 +218,9 @@ export const Sidebar: React.FC = () => {
               <div className="flex items-center min-w-0">
                 <span
                   style={{
-                    width: '16px',
-                    height: '16px',
-                    marginRight: '8px',
+                    width: '14px',
+                    height: '14px',
+                    marginRight: '6px',
                   }}
                   className="flex shrink-0 items-center justify-center"
                 >
@@ -232,7 +230,6 @@ export const Sidebar: React.FC = () => {
                   style={{
                     fontSize: '13px',
                     fontWeight: 500,
-                    letterSpacing: '-0.1px',
                   }}
                   className="truncate"
                 >
@@ -257,9 +254,9 @@ export const Sidebar: React.FC = () => {
               <div className="flex items-center min-w-0">
                 <span
                   style={{
-                    width: '16px',
-                    height: '16px',
-                    marginRight: '8px',
+                    width: '14px',
+                    height: '14px',
+                    marginRight: '6px',
                   }}
                   className="flex shrink-0 items-center justify-center"
                 >
@@ -269,7 +266,6 @@ export const Sidebar: React.FC = () => {
                   style={{
                     fontSize: '13px',
                     fontWeight: 500,
-                    letterSpacing: '-0.1px',
                   }}
                   className="truncate"
                 >
