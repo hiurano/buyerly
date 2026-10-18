@@ -146,7 +146,7 @@ try {
           await page.getByText(`Logged in as${otherEmail}`).waitFor();
         }
         if (width === 1440) {
-          // Linear's measurements (#284); the Log in button is Buyerly yellow instead of Linear's violet.
+          // Linear's measurements (#284); the Log in button is Linear's accent, as every main button.
           const looks = await page.evaluate(() => {
             const style = selector => getComputedStyle(document.querySelector(selector));
             const box = selector => document.querySelector(selector).getBoundingClientRect();
@@ -169,7 +169,7 @@ try {
             title: ['24px', '500'],
             // Logged out, Linear describes the product under a divider; logged in, neither is shown.
             divider: method !== 'other',
-            button: 'rgb(245, 184, 0)',
+            button: dark ? 'lch(47.918 59.303 288.421)' : 'lch(53 52.26 286.91)',
             buttonBox: [396, 44],
           }, `${method} at ${width}px: invite page measurements`);
         }
