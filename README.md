@@ -1,6 +1,6 @@
 # Buyerly
 
-[![License: FSL-1.1-ALv2](https://img.shields.io/badge/license-FSL--1.1--ALv2-blue)](LICENSE.md)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
 Buyerly — сервис мониторинга и автоматизации Meta Ads для медиабайеров и команд.
 Production-интерфейс написан на React; прежний vanilla-интерфейс удалён.
@@ -108,6 +108,16 @@ gh run view <run-id> --log-failed
 
 ## License
 
-Buyerly распространяется по [Functional Source License 1.1, ALv2 Future License](LICENSE.md) (FSL-1.1-ALv2). Код можно читать, запускать, изменять и использовать для любых целей, кроме конкурирующего сервиса: нельзя предлагать на его основе продукт, который заменяет Buyerly или делает то же самое. Через два года после выхода каждая версия автоматически переходит под Apache 2.0. Copyright 2026 Artem Petruchenko.
+Copyright 2026 Artem Petruchenko.
+
+Buyerly is free software under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0). You may use, study, change and share it, including running it as a service, as long as everything you build on it stays under the same license: whoever runs a modified Buyerly for other people over a network must offer them its full source code.
+
+Код Buyerly открыт по лицензии AGPL-3.0: его можно использовать, изучать, менять и распространять, в том числе запускать как сервис, но всё, что построено на его основе, остаётся под той же лицензией. Кто запускает изменённый Buyerly для других людей по сети, обязан дать им полный исходный код.
+
+### Name and logo
+
+The license covers the code, not the Buyerly name or logo. A fork may not call itself Buyerly or use its logo, or present itself in a way that could be mistaken for Buyerly. The only official Buyerly is the one at buyerly.app.
+
+Лицензия касается кода, а не названия и логотипа Buyerly. Форк не может называться Buyerly, использовать его логотип или выдавать себя за Buyerly. Официальный Buyerly — только на buyerly.app.
 
 О безопасности и о том, как хранятся токены Meta, — в [SECURITY.md](SECURITY.md).

@@ -1,7 +1,7 @@
 {
   "name": "buyerly-frontend",
   "private": true,
-  "license": "FSL-1.1-ALv2",
+  "license": "AGPL-3.0-only",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
