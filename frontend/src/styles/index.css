@@ -1661,13 +1661,13 @@ html[data-theme='dark'] .linear-sidebar-badge,
 }
 
 .settings-list-button--primary {
-  background: var(--action-primary);
+  background: var(--button-primary-bg);
   box-shadow: var(--canvas-shadow);
-  color: #fff;
+  color: var(--button-primary-text);
 }
 
 .settings-list-button--primary:hover {
-  background: var(--settings-list-primary-hover);
+  background: var(--button-primary-hover-bg);
   box-shadow: var(--canvas-shadow);
 }
 
@@ -3305,7 +3305,7 @@ html[data-theme='dark'] .buyerly-auth-page,
   transition-duration: 0s;
 }
 
-/* Linear: a thin accent line on the border, no glow. Yellow stays only on the invite button (#284). */
+/* Linear: a thin accent line on the border, no glow. */
 .buyerly-auth-field input:focus {
   outline: 1px solid var(--auth-input-focus);
 }
@@ -3377,14 +3377,14 @@ html[data-theme='dark'] .buyerly-auth-page,
 /* Linear's first sign-in choice is filled with the accent; the rest stay outlined. */
 .buyerly-auth-button--primary {
   border-color: transparent;
-  background: var(--action-primary);
-  color: #fff;
+  background: var(--button-primary-bg);
+  color: var(--button-primary-text);
   box-shadow: var(--auth-button-primary-shadow);
 }
 
 .buyerly-auth-button--primary:hover:not(:disabled) {
   border-color: transparent;
-  background: var(--action-primary-hover);
+  background: var(--button-primary-hover-bg);
 }
 
 /* Linear's small line under the sign-in buttons ("Don't have an account? Sign up"). */
@@ -3741,7 +3741,7 @@ html[data-theme='dark'] .buyerly-auth-page,
 }
 
 /* Linear's invitation page (linear.app/invite/<id>/accept, measured 2026-10-02).
-   The one difference is the main button: Buyerly yolk yellow, as LinearToggle (#284). */
+   Its main button is Linear's accent, as every main button. */
 .buyerly-invite-page {
   --invite-bg: rgb(248, 248, 249);
   --invite-card-bg: #fff;
@@ -3755,10 +3755,10 @@ html[data-theme='dark'] .buyerly-auth-page,
   --invite-corner-strong: rgb(27, 27, 27);
   --invite-back-hover-bg: rgb(234, 234, 236);
   --invite-account-hover-bg: rgb(234, 234, 236);
-  --invite-button-bg: var(--toggle-checked-bg, #f5b800);
+  --invite-button-bg: var(--button-primary-bg);
   /* Light theme hovers darker, dark theme lighter, as Linear's own button does. */
-  --invite-button-hover-bg: var(--toggle-checked-hover-bg, #e6ab00);
-  --invite-button-text: rgb(27, 27, 27);
+  --invite-button-hover-bg: var(--button-primary-hover-bg);
+  --invite-button-text: var(--button-primary-text);
   --invite-button-shadow: rgba(0, 0, 0, 0.1) 0 0.5px 1px 0.5px;
   background: var(--invite-bg);
   color: var(--invite-text);

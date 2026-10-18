@@ -486,7 +486,9 @@ class TestReactFrontendContract(unittest.TestCase):
             "--toggle-knob:",
         ):
             self.assertIn(token, self.tokens)
-        self.assertIn("--toggle-checked-bg: #f5b800;", self.tokens)
+        # Linear's accent, light and dark (#429).
+        self.assertIn("--toggle-checked-bg: lch(53% 52.26 286.91 / 1);", self.tokens)
+        self.assertIn("--toggle-checked-bg: lch(47.918% 59.303 288.421 / 1);", self.tokens)
 
     def test_rule_form_exposes_the_execution_level(self):
         # A rule that pauses a whole campaign must be distinguishable from one
