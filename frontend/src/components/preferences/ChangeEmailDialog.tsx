@@ -105,7 +105,7 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
               {step === 'address' ? (
                 <>
                   <p className="text-[13px] leading-[20px] text-[var(--text-secondary)]">
-                    We will send a six-digit confirmation code to the new address. Until the code is
+                    We will send a confirmation code to the new address. Until the code is
                     entered, you keep signing in with the current address.
                   </p>
                   <div className="flex flex-col gap-1.5">
@@ -146,15 +146,15 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
                     </label>
                     <Input
                       id="change-email-code"
-                      inputMode="numeric"
                       autoFocus
+                      autoCapitalize="characters"
                       autoComplete="one-time-code"
                       spellCheck={false}
-                      placeholder="000000"
+                      placeholder="Enter code"
                       maxLength={10}
                       value={code}
                       disabled={busy}
-                      onChange={(event) => setCode(event.target.value)}
+                      onChange={(event) => setCode(event.target.value.replace(/[^a-z]/gi, '').toUpperCase().slice(0, 10))}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter') confirmCode();
                       }}

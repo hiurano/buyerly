@@ -49,7 +49,7 @@ class RequestTemporaryPasswordRequest(BaseModel):
 class VerifyTemporaryPasswordRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: str = Field(..., min_length=3, max_length=255)
-    code: str = Field(..., min_length=6, max_length=6)
+    code: str = Field(..., min_length=10, max_length=20)
 
 
 class VerifyEmailLinkRequest(BaseModel):
@@ -64,7 +64,7 @@ class RequestEmailChangeRequest(BaseModel):
 
 class VerifyEmailChangeRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    code: str = Field(..., min_length=1, max_length=10)
+    code: str = Field(..., min_length=1, max_length=20)
 
 
 class LoginRequest(BaseModel):
