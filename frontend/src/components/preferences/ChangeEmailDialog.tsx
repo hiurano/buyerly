@@ -151,7 +151,6 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
                       autoComplete="one-time-code"
                       spellCheck={false}
                       placeholder="Enter code"
-                      maxLength={10}
                       value={code}
                       disabled={busy}
                       onChange={(event) => setCode(event.target.value.replace(/[^a-z]/gi, '').toUpperCase().slice(0, 10))}

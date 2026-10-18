@@ -249,7 +249,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 autoCorrect="off"
                 spellCheck={false}
                 autoFocus
-                maxLength={10}
                 placeholder="Enter code"
                 value={code}
                 onChange={(event) => setCode(event.target.value.replace(/[^a-z]/gi, '').toUpperCase().slice(0, 10))}
