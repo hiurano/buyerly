@@ -64,81 +64,18 @@ async def send_otp_verification_email(
     otp_code: str,
     login_link: Optional[str] = None,
 ) -> bool:
-    """Send a one-time login link and its six-digit manual fallback code."""
-    subject = f"Your Buyerly verification code is {otp_code}"
-    safe_login_link = escape(login_link or "", quote=True)
-    login_link_html = ""
-    if safe_login_link:
-        login_link_html = f"""
-          <tr>
-            <td align="center" style="padding-bottom:20px;">
-              <a href="{safe_login_link}" target="_blank" rel="noopener" style="display:inline-block;background:#F5A300;color:#171717;text-decoration:none;font-size:14px;font-weight:600;padding:12px 28px;border-radius:8px;">
-                Log in to Buyerly
-              </a>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding-bottom:18px;color:#898A8D;font-size:12px;line-height:1.5;text-align:center;">
-              Or enter this code manually:
-            </td>
-          </tr>"""
-    
-    html_content = f"""<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Your Buyerly verification code</title>
-</head>
-<body style="margin:0;padding:0;background-color:#F5F6F8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#101112;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#F5F6F8;padding:40px 20px;">
-    <tr>
-      <td align="center">
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:480px;background:#ffffff;border-radius:12px;border:1px solid #E6E7EA;box-shadow:0 2px 8px rgba(0,0,0,0.04);overflow:hidden;padding:36px 32px;">
-          <tr>
-            <td align="center" style="padding-bottom:20px;">
-              <div style="font-size:24px;font-weight:700;letter-spacing:-0.5px;color:#101112;">Buyerly</div>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding-bottom:12px;">
-              <h1 style="margin:0;font-size:20px;font-weight:600;color:#101112;text-align:center;">Your verification code</h1>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding-bottom:24px;color:#5A5E66;font-size:14px;line-height:1.5;text-align:center;">
-              Use the secure link below to sign in. The link and manual code are valid for 15 minutes and can be used only once.
-            </td>
-          </tr>
-          {login_link_html}
-          <tr>
-            <td align="center" style="padding-bottom:24px;">
-              <div style="display:inline-block;background:#F5F6F8;border:1px solid #E6E7EA;border-radius:8px;padding:14px 28px;font-size:32px;font-weight:700;letter-spacing:6px;color:#266DF0;font-family:monospace,sans-serif;">
-                {otp_code}
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding-bottom:28px;color:#898A8D;font-size:12px;line-height:1.5;text-align:center;">
-              If you didn't request this verification code, you can safely ignore this email.
-            </td>
-          </tr>
-          <tr>
-            <td style="border-top:1px solid #E6E7EA;padding-top:20px;text-align:center;color:#898A8D;font-size:11px;">
-              &copy; 2026 Buyerly &middot; Automated Media Buying Platform
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>"""
-
-    link_text = f"Log in: {login_link}\n\n" if login_link else ""
+    """Send a one-time login link and its ten-letter manual fallback code, like Linear's login email."""
+    subject = "Login for Buyerly" if login_link else f"Your Buyerly verification code is {otp_code}"
+    html_content = _login_code_email_html(otp_code=otp_code, login_link=login_link)
+    link_text = (
+        f"To log in to Buyerly, follow this link {login_link}\n"
+        "If you can't click on the link, you can also copy the verification code into your browser:\n"
+        if login_link
+        else "Your Buyerly verification code:\n"
+    )
     text_content = (
-        f"{link_text}Your Buyerly verification code is: {otp_code}\n\n"
-        "The link and code are valid for 15 minutes and can be used only once.\n"
-        "If you didn't request this, please ignore this email."
+        f"{link_text}{otp_code}\n\n"
+        "The link and code are valid for 5 minutes and can be used only once."
     )
     return await send_email(to_email, subject, html_content, text_content)
 
@@ -264,6 +201,75 @@ def _linear_email_html(
       </td>
     </tr>
   </table>
+</body>
+</html>"""
+
+
+# Linear's "Login for Linear" email, copied from a live one (2026-10-19). Gmail keeps the
+# head styles but not the body rule, so there the paragraphs fall back to Arial 13px,
+# exactly as Linear's do. Like Linear, no dark styles: mail apps darken it themselves.
+LOGIN_EMAIL_HEAD_CSS = """
+* { box-sizing: border-box; }
+body { font-family: Inter, "SF Pro", -apple-system, BlinkMacSystemFont, ui-sans-serif, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif; font-size: 15px; line-height: 1.4; color: #3c4149; background: #f9f8f9; }
+table { border-spacing: 0; }
+a { color: #6666ff; text-decoration: none; }
+code, pre { font-family: "Berkeley Mono", "SFMono Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; }
+h1, h2, h3, h4, h5, h6 { font-family: "Inter Display", Inter, "SF Pro", -apple-system, BlinkMacSystemFont, ui-sans-serif, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif; }
+p { margin-top: 0; margin-bottom: 16px; }
+#__bodyTable__ { margin: 0; padding: 0; width: 100% !important; }
+"""
+
+
+def _login_code_email_html(*, otp_code: str, login_link: Optional[str]) -> str:
+    """Linear's login email: logotype, heading, button, then the code."""
+    font = escape(LINEAR_EMAIL_FONT, quote=True)
+    code = escape(otp_code)
+    if login_link:
+        link = escape(login_link, quote=True)
+        heading = "Your login code for Buyerly"
+        preheader = (
+            f'To log in to Buyerly, follow this link <a href="{link}">{link}</a>.\n'
+            f"If you can't click on the link, you can also copy the verification code into your browser:\n{code}"
+        )
+        button = (
+            f'<a href="{link}" target="_blank" rel="noopener" style="margin-top:8px;margin-bottom:24px;'
+            "display:inline-block;padding:12px 16px;color:#fff;background:#5e6ad2;border-radius:5px;"
+            'font-size:13px;line-height:1.2;font-weight:500;text-decoration:none">Log in to Buyerly</a>'
+        )
+        intro = (
+            "This link and code will only be valid for the next 5 minutes. "
+            "If the link does not work, you can use the login verification code directly:"
+        )
+    else:
+        heading = "Your verification code for Buyerly"
+        preheader = f"Your Buyerly verification code:\n{code}"
+        button = ""
+        intro = "This code will only be valid for the next 5 minutes:"
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{heading}</title>
+  <style>{LOGIN_EMAIL_HEAD_CSS}</style>
+</head>
+<body>
+  <div bgcolor="#F9F8F9" width="100%" style="width:100%!important;background:#f9f8f9;margin:0;padding:0;min-width:100%;direction:ltr">
+    <table bgcolor="#F9F8F9" id="__bodyTable__" width="100%" style="width:100%!important;background:#f9f8f9;margin:0;padding:0;min-width:100%">
+      <tr>
+        <td align="center">
+          <span style="display:none!important;color:#f9f8f9;margin:0;padding:0;font-size:1px;line-height:1px">{preheader}</span>
+          <table id="main" width="602" style="width:602px;margin:24px;max-width:90vw" border="0" cellspacing="0" cellpadding="0"><tr><td align="left">
+            <table width="100%" style="border:1px solid #eff1f4;border-radius:5px;padding:32px 28px 24px 28px;background:#fff;color:#3c4149" border="0" cellspacing="0" cellpadding="0"><tr><td>
+              <table width="100%" style="margin-bottom:46px" border="0" cellspacing="0" cellpadding="0"><tr><td><a href="https://buyerly.app" target="_blank" rel="noopener"><img alt="Buyerly" src="https://buyerly.app/buyerly-logotype@4x.png" height="22" width="92" style="display:block"></a></td></tr></table>
+              <h1 style="font-size:24px;line-height:1.2;font-weight:700;font-family:{font};margin-top:0;margin-bottom:24px;color:#282a30">{heading}</h1>{button}<p>{intro}</p><p><code style="display:inline-block;padding:4px 6px;line-height:1em;font-size:1.2em;font-weight:bold;border-radius:4px;letter-spacing:1.4px;background:#dfe1e4">{code}</code></p>
+            </td></tr></table>
+            <table width="100%" style="width:100%;margin-top:32px;padding-left:28px;padding-right:28px;font-size:14px;line-height:1.5" border="0" cellspacing="0" cellpadding="0"><tr><td style="width:50%"><a href="https://buyerly.app" style="color:#3c4149;white-space:nowrap" target="_blank" rel="noopener">Buyerly</a></td></tr></table>
+          </td></tr></table>
+        </td>
+      </tr>
+    </table>
+  </div>
 </body>
 </html>"""
 

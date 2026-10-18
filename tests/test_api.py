@@ -4417,14 +4417,14 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             for _ in range(4):
                 failed = await client.post(
                     "/api/auth/verify-temporary-password",
-                    json={"email": "bruteforce@example.com", "code": "000000"},
+                    json={"email": "bruteforce@example.com", "code": "AAAAAAAAAA"},
                 )
                 self.assertEqual(failed.status_code, 401)
 
             # 5th failed attempt locks out the OTP
             fifth = await client.post(
                 "/api/auth/verify-temporary-password",
-                json={"email": "bruteforce@example.com", "code": "000000"},
+                json={"email": "bruteforce@example.com", "code": "AAAAAAAAAA"},
             )
             self.assertEqual(fifth.status_code, 401)
             self.assertIn("Too many incorrect code attempts", fifth.json()["detail"])
@@ -4889,7 +4889,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             bad_verify = await client.post(
                 "/api/auth/verify-email-change",
                 headers=headers,
-                json={"code": "999999"},
+                json={"code": "ZZZZZZZZZZ"},
             )
             self.assertEqual(bad_verify.status_code, 400)
 

@@ -95,7 +95,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
   const verifyCode = async (event: FormEvent) => {
     event.preventDefault();
-    if (!/^\d{6}$/.test(code)) {
+    if (!/^[A-Z]{10}$/.test(code)) {
       setError('Please enter a valid verification code.');
       return;
     }
@@ -244,13 +244,14 @@ export const LoginView: React.FC<LoginViewProps> = ({
               <span className="sr-only">Login code</span>
               <input
                 type="text"
-                inputMode="numeric"
                 autoComplete="one-time-code"
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
                 autoFocus
-                maxLength={6}
                 placeholder="Enter code"
                 value={code}
-                onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                onChange={(event) => setCode(event.target.value.replace(/[^a-z]/gi, '').toUpperCase().slice(0, 10))}
                 aria-invalid={Boolean(error)}
               />
             </label>

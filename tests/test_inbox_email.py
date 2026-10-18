@@ -277,5 +277,56 @@ class TestInboxEmailLayout(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Open your Inbox: https://app.example.test/acme/inbox/5", captured["text"])
 
 
+class TestLoginCodeFormat(unittest.TestCase):
+    def test_codes_are_ten_capital_letters_like_linears(self):
+        import services.otp as otp
+
+        self.assertEqual(otp.OTP_LENGTH, 10)
+        self.assertEqual(otp.OTP_ALPHABET, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+        self.assertEqual(otp.normalize_otp(" kqzm rtwp\tda "), "KQZMRTWPDA")
+
+
+class TestLoginCodeEmailLayout(unittest.IsolatedAsyncioTestCase):
+    """The login code email is laid out like Linear's: heading, button, then the code."""
+
+    async def _send(self, login_link):
+        import core.email as email_module
+
+        captured = {}
+
+        async def fake_send(to_email, subject, html_content, text_content=None):
+            captured.update(subject=subject, html=html_content, text=text_content)
+            return True
+
+        original = email_module.send_email
+        email_module.send_email = fake_send
+        try:
+            await email_module.send_otp_verification_email("a@example.test", "KQZMRTWPDA", login_link)
+        finally:
+            email_module.send_email = original
+        return captured
+
+    async def test_login_email_has_the_link_button_then_the_code(self):
+        sent = await self._send("https://app.example.test/auth/email/verify?token=a&b")
+        html = sent["html"]
+        self.assertEqual(sent["subject"], "Login for Buyerly")
+        self.assertIn(">Your login code for Buyerly</h1>", html)
+        self.assertIn('href="https://app.example.test/auth/email/verify?token=a&amp;b"', html)
+        self.assertLess(html.index(">Log in to Buyerly</a>"), html.index(">KQZMRTWPDA</code>"))
+        self.assertIn("This link and code will only be valid for the next 5 minutes. If the link", html)
+        self.assertNotIn("ignore", html)
+        self.assertIn('src="https://buyerly.app/buyerly-logotype@4x.png"', html)
+        self.assertIn("To log in to Buyerly, follow this link https://app.example.test/auth/email/verify?token=a&b", sent["text"])
+        self.assertIn("KQZMRTWPDA", sent["text"])
+
+    async def test_code_only_email_has_no_button(self):
+        sent = await self._send(None)
+        html = sent["html"]
+        self.assertEqual(sent["subject"], "Your Buyerly verification code is KQZMRTWPDA")
+        self.assertIn(">Your verification code for Buyerly</h1>", html)
+        self.assertNotIn("Log in to Buyerly", html)
+        self.assertIn(">KQZMRTWPDA</code>", html)
+
+
 if __name__ == "__main__":
     unittest.main()

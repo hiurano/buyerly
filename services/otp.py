@@ -15,6 +15,10 @@ OTP_LOGIN = "login"
 OTP_EMAIL_CHANGE = "email_change"
 OTP_EMAIL_VERIFICATION = "email_verification"
 
+# Like Linear's: ten capital letters, typed or pasted in any case and spacing.
+OTP_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+OTP_LENGTH = 10
+
 
 @dataclass(frozen=True)
 class IssuedOtp:
@@ -37,6 +41,10 @@ def login_scope(email: str) -> str:
 
 def email_scope(user_id: int) -> str:
     return f"email:{user_id}"
+
+
+def normalize_otp(code: str) -> str:
+    return "".join(code.split()).upper()
 
 
 def _hash_code(code: str) -> str:
@@ -95,7 +103,7 @@ async def create_otp(
         .values(is_used=True)
     )
 
-    code = str(secrets.randbelow(900000) + 100000)
+    code = "".join(secrets.choice(OTP_ALPHABET) for _ in range(OTP_LENGTH))
     link_token = secrets.token_urlsafe(32)
     record = EmailVerificationCode(
         email=email.strip().lower(),
@@ -105,7 +113,7 @@ async def create_otp(
         invite_id=invite_id,
         purpose=purpose,
         scope=scope,
-        expires_at=now + timedelta(minutes=15),
+        expires_at=now + timedelta(minutes=5),
         is_used=False,
         failed_attempts=0,
         delivered_at=None,
@@ -165,7 +173,7 @@ async def consume_otp(
     if record_id is None:
         return ConsumedOtp(status="invalid")
 
-    expected_hash = _hash_code(entered_code.strip())
+    expected_hash = _hash_code(normalize_otp(entered_code))
     consumed = (
         await session.execute(
             update(EmailVerificationCode)

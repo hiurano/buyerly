@@ -85,7 +85,7 @@ try {
         return route.fulfill({ json: { message: 'Email sent' } });
       }
       if (verb === 'POST' && ['/api/auth/verify-temporary-password', '/api/auth/verify-email-link'].includes(path)) {
-        if (path.endsWith('verify-temporary-password') && body.code !== '123456') {
+        if (path.endsWith('verify-temporary-password') && body.code !== 'KQZMRTWPDA') {
           return route.fulfill({ status: 400, json: { detail: 'Invalid or expired temporary password' } });
         }
         await verificationGate;
@@ -208,12 +208,12 @@ try {
         } else {
           await page.getByRole('button', { name: 'Enter code manually', exact: true }).click();
           const code = page.getByRole('textbox', { name: 'Login code', exact: true });
-          await code.fill('111111');
+          await code.fill('aaaaaaaaaa');
           await page.getByRole('button', { name: 'Continue with login code', exact: true }).click();
           await page.getByRole('alert').waitFor();
           assert.equal(await page.getByRole('alert').innerText(), 'Invalid or expired temporary password');
           await assertNoOverflow();
-          await code.fill('123456');
+          await code.fill('kqzm rtwpda');
           await page.getByRole('button', { name: 'Continue with login code', exact: true }).click();
           const checking = page.getByRole('button', { name: 'Checking…', exact: true });
           await checking.waitFor();
@@ -241,7 +241,7 @@ try {
         : [{ path: '/api/onboarding/personal-details', body: { first_name: 'Invited', last_name: 'Buyer' } }]);
       assert.deepEqual(writes.filter(write => write.path.includes('/api/auth/verify-')), method === 'session' ? []
         : method === 'link' ? [{ path: '/api/auth/verify-email-link', body: { token: 'link_browser_test' } }]
-          : ['111111', '123456'].map(code => ({ path: '/api/auth/verify-temporary-password', body: { email, code } })));
+          : ['AAAAAAAAAA', 'KQZMRTWPDA'].map(code => ({ path: '/api/auth/verify-temporary-password', body: { email, code } })));
       assert.deepEqual(errors, []);
       console.log(`Invitation ${method}: log in as the invited email and automatic acceptance passed at ${width}px`);
     } catch (error) {
