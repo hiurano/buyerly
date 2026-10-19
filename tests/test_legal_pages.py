@@ -14,6 +14,7 @@ DOCUMENTS = {
     "privacy.html": ("Privacy", "Data we use", "Your choices and deletion"),
     "terms.html": ("Terms", "Advertising and automation", "Ending access and changes"),
     "data-deletion.html": ("Data deletion", "Send a deletion request", "What happens next"),
+    "changelog.html": ("Changelog", "Sign up for Buyerly", "Rules in Ads Manager"),
 }
 # Links into the React app rather than to public documents.
 APP_ROUTES = {"/login", "/signup"}

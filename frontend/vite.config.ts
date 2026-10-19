@@ -12,9 +12,14 @@ function publicWebsite(): Plugin {
     '/privacy': 'privacy.html',
     '/terms': 'terms.html',
     '/data-deletion': 'data-deletion.html',
+    '/changelog': 'changelog.html',
   };
   const stylesheet = '/static/css/legal.css';
   const publicDir = path.resolve(__dirname, 'public');
+  // One page per release, built by scripts/build_changelog.py (#435).
+  for (const file of fs.readdirSync(path.join(publicDir, 'changelog'))) {
+    if (file.endsWith('.html')) routes[`/changelog/${file.slice(0, -5)}`] = `changelog/${file}`;
+  }
   const tokensPath = path.resolve(__dirname, 'src/styles/tokens.css');
   const cssPath = path.join(publicDir, stylesheet.slice(1));
   const css = () => `${fs.readFileSync(tokensPath, 'utf8')}\n${fs.readFileSync(cssPath, 'utf8')}`;
