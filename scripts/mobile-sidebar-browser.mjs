@@ -20,7 +20,7 @@ const workspace = {
 };
 const me = {
   username: 'phone', full_name: 'Pat Phone', first_name: 'Pat', last_name: 'Phone',
-  email: 'pat@example.test', email_verified: true, unconfirmed_email: null, avatar_url: '', has_password: true,
+  email: 'pat@example.test', email_verified: true, unconfirmed_email: null, avatar_url: '',
   onboarding_completed: true, onboarding_step: 'completed', active_workspace: workspace, workspaces: [workspace],
 };
 const accounts = [{

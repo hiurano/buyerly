@@ -133,7 +133,7 @@ Two menus, as in Linear.
 
 ### Auth and onboarding
 
-- password login (email code or link only for invitations), workspace creation and initial profile setup remain separate, comprehensible states;
+- email sign-in (a code or link, no password), workspace creation and initial profile setup remain separate, comprehensible states;
 - a blocked invitation or a failed human check surfaces a clear next action;
 - authenticated product navigation is unavailable until the session and workspace are resolved.
 

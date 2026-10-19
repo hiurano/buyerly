@@ -16,13 +16,13 @@ import database.db as database_db_module
 from api.server import create_app
 from core.config import settings
 from core.rate_limit import limiter
-from database.db import hash_password
 from database.models import (
     User,
     Workspace,
     WorkspaceInvite,
     WorkspaceMember,
 )
+from tests.sign_in_helper import sign_in
 from tests.test_db_helper import create_test_engine, init_test_db
 
 
@@ -68,7 +68,6 @@ class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
                 username="admin_user",
                 full_name="Admin User",
                 email="admin@buyerly.com",
-                password_hash=hash_password("adminpassword123"),
                 role="admin",
                 is_approved=True,
             )
@@ -77,7 +76,6 @@ class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
                 username="buyer_user",
                 full_name="Buyer User",
                 email="buyer@buyerly.com",
-                password_hash=hash_password("buyerpassword123"),
                 role="buyer",
                 is_approved=True,
             )
@@ -197,48 +195,12 @@ class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(response.json()["redirect_url"], f"/invite/{token}")
                 self.assertTrue(client.cookies.get("buyerly_session"))
 
-    async def test_password_login_accepts_only_username_or_email(self):
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
-            for identifier, expected in (
-                ("buyer_user", 200),
-                ("BUYER@buyerly.com", 200),
-                ("Buyer User", 401),
-                ("987654321", 401),
-            ):
-                client.cookies.clear()
-                response = await client.post(
-                    "/api/auth/login",
-                    json={"username": identifier, "password": "buyerpassword123"},
-                )
-                self.assertEqual(response.status_code, expected, identifier)
-                if expected == 200:
-                    self.assertEqual(response.json()["username"], "buyer_user")
-
-    async def test_password_login_prefers_exact_username_over_email_match(self):
-        async with self.sessions() as session:
-            session.add(User(
-                username="buyer@buyerly.com.alias",
-                email="buyer_user",
-                password_hash=hash_password("otherpassword123"),
-                role="buyer",
-                is_approved=True,
-            ))
-            await session.commit()
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
-            response = await client.post(
-                "/api/auth/login",
-                json={"username": "buyer_user", "password": "buyerpassword123"},
-            )
-        self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(response.json()["username"], "buyer_user")
-
     async def _add_user(self, username, *, email=None, verified=False, role="buyer"):
         async with self.sessions() as session:
             user = User(
                 username=username,
                 email=email,
                 email_verified_at=datetime.now(timezone.utc) if verified else None,
-                password_hash=hash_password("accountpassword123"),
                 role=role,
                 is_approved=True,
             )
@@ -246,14 +208,14 @@ class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
             await session.commit()
             return user.id
 
-    async def _login(self, client, username, password="accountpassword123"):
+    async def _login(self, client, email):
         client.cookies.clear()
-        response = await client.post("/api/auth/login", json={"username": username, "password": password})
+        response = await sign_in(client, email)
         self.assertEqual(response.status_code, 200, response.text)
         return {"X-CSRF-Token": client.cookies.get("buyerly_csrf")}
 
-    async def _create_first_workspace(self, client, username, name, password="accountpassword123"):
-        headers = await self._login(client, username, password)
+    async def _create_first_workspace(self, client, email, name):
+        headers = await self._login(client, email)
         return await client.post("/api/onboarding/workspace", headers=headers, json={"name": name})
 
     async def _request_code(self, client, email, **extra):
@@ -291,7 +253,7 @@ class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
     async def test_any_existing_account_can_create_a_workspace(self):
         await self._add_user("no_workspace_yet", email="nows@agency.com", verified=True)
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
-            response = await self._create_first_workspace(client, "no_workspace_yet", "Solo Team")
+            response = await self._create_first_workspace(client, "nows@agency.com", "Solo Team")
             self.assertEqual(response.status_code, 200, response.text)
 
     async def test_unapproved_account_gets_a_code_but_cannot_sign_in(self):
@@ -334,7 +296,7 @@ class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
     async def test_onboarding_does_not_set_an_email(self):
         user_id = await self._add_user("namer", email="namer@agency.com", verified=True)
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
-            headers = await self._login(client, "namer")
+            headers = await self._login(client, "namer@agency.com")
             response = await client.post(
                 "/api/onboarding/personal-details",
                 headers=headers,

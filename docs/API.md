@@ -10,7 +10,7 @@ Production: `https://buyerly.app`.
 
 | Способ | Заголовок | Назначение |
 |---|---|---|
-| Web session | Secure + HttpOnly cookie `buyerly_session` | прямой вход по логину, паролю или OTP |
+| Web session | Secure + HttpOnly cookie `buyerly_session` | вход по коду или ссылке из письма |
 | CSRF | cookie `buyerly_csrf` + `X-CSRF-Token` | обязательная защита изменяющих запросов web-сессии |
 | Legacy web token | `Authorization: Bearer <token>` | одноразовый переход старой сессии на cookie до истечения |
 | Несколько аккаунтов | `X-Buyerly-Account: <user id>` | от чьего имени идёт запрос, когда в браузере вошли несколько аккаунтов |
@@ -46,8 +46,6 @@ monitoring cycle делает обзор `degraded` или `critical`, даже 
 | `POST /api/auth/request-email-verification` | — | высылает 6-значный одноразовый код на текущий неподтверждённый email |
 | `POST /api/auth/request-email-change` | `new_email` | высылает 6-значный код подтверждения для привязки нового email |
 | `POST /api/auth/verify-email-change` | `code` | верифицирует OTP и активирует подтверждённый email |
-| `POST /api/auth/login` | `username`, `password` | основной вход: `username` — логин или email аккаунта; проверяет постоянный пароль, создаёт ограниченную по времени HttpOnly web-сессию и возвращает профиль/роль |
-| `POST /api/auth/change-password` | `old_password`, `new_password` | меняет пароль; минимум 8 символов |
 | `POST /api/auth/update-profile` | `first_name?`, `last_name?`, `email?`, `avatar_url?`, `full_name?`, `title?` (до 128), `username?` (до 40: буквы, цифры, `-` `_` `.`) | обновляет персональные данные профиля; пустое имя, неверный или занятый username — 400 с текстом Linear |
 | `POST /api/auth/logout` | — | немедленно отзывает текущую web-сессию; другие аккаунты этого браузера остаются |
 | `GET /api/auth/accounts` | — | аккаунты, вошедшие в этом браузере, в порядке добавления: `id`, `username`, `full_name`, `email`, `avatar_url`, `slot`, `onboarding_completed`, `workspaces`; cookie закончившихся сессий удаляет; без входа — пустой список |
@@ -423,10 +421,10 @@ Inbox, как в Linear, показывает события workspace как у
 | Метод и путь | Доступ | Назначение |
 |---|---|---|
 | `GET /api/settings` | авторизованный пользователь | параметры опроса, роль и последний сохранённый статус worker |
-| `POST /api/settings/automation` | только admin + текущий пароль | атомарно сохраняет параметры автоматики и защиты квоты |
-| `POST /api/settings/interval` | только admin + текущий пароль | совместимый endpoint базового интервала; тело `{"minutes": 10, "current_password": "…"}` |
+| `POST /api/settings/automation` | только admin | атомарно сохраняет параметры автоматики и защиты квоты |
+| `POST /api/settings/interval` | только admin | совместимый endpoint базового интервала; тело `{"minutes": 10}` |
 
-`POST /api/settings/automation` принимает `current_password`, `poll_interval_minutes`, `critical_rule_interval_minutes`, `stop_confirmation_minutes`, `inventory_cache_minutes`, `account_health_interval_minutes`, `max_concurrent_accounts`, `max_concurrent_actions`, `usage_soft_limit_percent`, `usage_hard_limit_percent` и `adaptive_polling_enabled`. `stop_confirmation_minutes` задаёт непрерывное окно повторной проверки перед STOP (0–60 минут, по умолчанию 10). Пароль проверяется по защищённому хэшу текущей учётной записи и не сохраняется. Мягкий порог должен быть ниже жёсткого; числовые пределы проверяются API.
+`POST /api/settings/automation` принимает `poll_interval_minutes`, `critical_rule_interval_minutes`, `stop_confirmation_minutes`, `inventory_cache_minutes`, `account_health_interval_minutes`, `max_concurrent_accounts`, `max_concurrent_actions`, `usage_soft_limit_percent`, `usage_hard_limit_percent` и `adaptive_polling_enabled`. `stop_confirmation_minutes` задаёт непрерывное окно повторной проверки перед STOP (0–60 минут, по умолчанию 10). Мягкий порог должен быть ниже жёсткого; числовые пределы проверяются API.
 
 Интервал правила применяется к самому правилу, но STOP-правило никогда не ждёт дольше защищённого критического интервала. Базовый интервал относится к фоновому мониторингу кабинета, а здоровье (статус, валюта, часовой пояс) имеет отдельный более редкий график. Worker запускает диспетчерский цикл каждую минуту, но обращается к Meta только при наступлении сохранённого расписания или когда нужно уточнить неизвестную валюту.
 

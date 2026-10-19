@@ -1441,6 +1441,37 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
             await init_test_db(engine)
             await engine.dispose()
 
+    async def test_email_only_sign_in_drops_password_hash(self):
+        from alembic.config import Config
+        from alembic import command
+        import os
+
+        engine = create_test_engine()
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text("DROP SCHEMA public CASCADE"))
+                await conn.execute(text("CREATE SCHEMA public"))
+
+            root = os.path.dirname(os.path.dirname(__file__))
+            alembic_cfg = Config(os.path.join(root, "alembic.ini"))
+            alembic_cfg.set_main_option("script_location", os.path.join(root, "alembic"))
+
+            async def user_columns():
+                async with engine.connect() as conn:
+                    return await conn.run_sync(
+                        lambda sync: {column["name"] for column in inspect(sync).get_columns("users")}
+                    )
+
+            command.upgrade(alembic_cfg, "0041_drop_password_hash")
+            self.assertNotIn("password_hash", await user_columns())
+
+            # The way back brings the column back empty.
+            command.downgrade(alembic_cfg, "0040_clear_unverified_emails")
+            self.assertIn("password_hash", await user_columns())
+        finally:
+            await init_test_db(engine)
+            await engine.dispose()
+
     async def test_alembic_upgrade_head_applies_successfully(self):
         from alembic.config import Config
         from alembic import command

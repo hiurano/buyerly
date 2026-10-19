@@ -1,15 +1,13 @@
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class SetIntervalRequest(BaseModel):
     minutes: int = Field(ge=1, le=1440)
-    current_password: SecretStr
 
 
 class AutomationSettingsUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    current_password: SecretStr
     poll_interval_minutes: int = Field(ge=5, le=120)
     critical_rule_interval_minutes: int = Field(ge=1, le=15)
     stop_confirmation_minutes: int = Field(default=10, ge=0, le=60)

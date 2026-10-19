@@ -13,7 +13,6 @@ import api.routes as api_routes_module
 import api.server as api_server_module
 from api.server import create_app
 from core.config import settings
-from database.db import hash_password
 from database.models import (
     Account,
     AnalyticsEntityFact,
@@ -62,7 +61,6 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
                 telegram_id="11111111",
                 username="buyer1",
                 full_name="Buyer One",
-                password_hash=hash_password("password123"),
                 role="buyer",
                 is_approved=True,
             )
@@ -119,7 +117,6 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
                 telegram_id="22222222",
                 username="buyer2",
                 full_name="Buyer Two",
-                password_hash=hash_password("password123"),
                 role="buyer",
                 is_approved=True,
             )

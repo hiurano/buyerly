@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException
-from pydantic import SecretStr, ValidationError
+from pydantic import ValidationError
 from sqlalchemy import and_, delete, func, or_, select
 
 from api.schemas import (
@@ -27,7 +27,6 @@ from core.metrics import (
 )
 from core.ownership import owned_by, owned_by_ids
 from core.workspace_slugs import RESERVED_WORKSPACE_SLUGS, normalize_workspace_slug
-from database.db import verify_password
 from database.models import (
     Account,
     AccountGroup,
@@ -1475,12 +1474,6 @@ async def _persist_summary(
 # ----------------------------------------------------
 # Settings Helpers
 # ----------------------------------------------------
-async def _confirm_admin_password(session, user: User, password: SecretStr) -> User:
+def _require_admin(user: User) -> None:
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="Only an administrator can change automation settings.")
-    db_user = (
-        await session.execute(select(User).where(User.id == user.id))
-    ).scalar_one_or_none()
-    if not db_user or not verify_password(password.get_secret_value(), db_user.password_hash):
-        raise HTTPException(status_code=403, detail="Incorrect account password.")
-    return db_user

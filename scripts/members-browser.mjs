@@ -381,7 +381,7 @@ try {
       await page.waitForURL('**/login');
       await page.getByRole('heading', { name: 'Log in to Buyerly', exact: true }).waitFor();
       await page.getByRole('button', { name: 'Continue with email', exact: true }).waitFor();
-      await page.getByRole('button', { name: 'Log in with password', exact: true }).waitFor();
+      assert.equal(await page.getByText('Log in with password').count(), 0);
       assert.equal(writes.filter(write => write.path === '/api/auth/logout').length, 1);
       await assertNoOverflow();
       await page.screenshot({ path: `${output}/login-${width}.png`, fullPage: true });
