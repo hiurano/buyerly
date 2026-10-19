@@ -55,7 +55,7 @@ const checkHeading = async (page, text, theme, label) => {
     const css = getComputedStyle(element);
     const rect = element.getBoundingClientRect();
     const brand = element.closest('.buyerly-auth-card').querySelector('.buyerly-auth-brand').getBoundingClientRect();
-    const logo = element.closest('.buyerly-auth-card').querySelector('.buyerly-auth-brand img').getBoundingClientRect();
+    const logo = element.closest('.buyerly-auth-card').querySelector('.buyerly-auth-brand svg').getBoundingClientRect();
     const next = element.nextElementSibling;
     const control = (next?.matches('label') ? next.querySelector('input') : next).getBoundingClientRect();
     return {
