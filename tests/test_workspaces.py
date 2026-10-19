@@ -65,6 +65,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             "create-workspace",
             "invite",
             "login",
+            "signup",
             "uploads",
         ):
             self.assertIn(system_slug, RESERVED_WORKSPACE_SLUGS)

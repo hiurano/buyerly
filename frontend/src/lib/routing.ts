@@ -3,6 +3,8 @@ import type { ActiveTab, AdsManagerEntity, SettingsSection } from '@/store/useAp
 export type Route =
   | { kind: 'root' }
   | { kind: 'login' }
+  /** Linear's /signup: the same email sign-in, titled "Create your workspace". */
+  | { kind: 'signup' }
   | { kind: 'verify-email-link'; token: string }
   /** Linear's "Add an account…": log in to another account without leaving this one. */
   /** `inviteToken`: opened from an invitation page, which the login returns to. */
@@ -47,6 +49,7 @@ const SYSTEM_ROOTS = new Set([
   'login',
   'privacy',
   'redoc',
+  'signup',
   'static',
   'terms',
   'uploads',
@@ -56,6 +59,7 @@ export function parseRoute(location: Location = window.location): Route {
   const parts = location.pathname.split('/').filter(Boolean);
   if (parts.length === 0) return { kind: 'root' };
   if (parts.length === 1 && parts[0] === 'login') return { kind: 'login' };
+  if (parts.length === 1 && parts[0] === 'signup') return { kind: 'signup' };
   if (parts.length === 1 && parts[0] === 'create-workspace') return { kind: 'create-workspace' };
   if (parts.length === 3 && parts[0] === 'auth' && parts[1] === 'email' && parts[2] === 'verify') {
     return { kind: 'verify-email-link', token: new URLSearchParams(location.search).get('token') || '' };

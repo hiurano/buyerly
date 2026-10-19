@@ -1,9 +1,13 @@
-import React, { FormEvent, useState } from 'react';
-import { apiRequest } from '@/lib/api';
+import React, { FormEvent, useEffect, useState } from 'react';
+import { ApiError, apiRequest } from '@/lib/api';
 import type { LoginResult } from '@/lib/types';
 import { AuthFrame, BuyerlyBrand } from './AuthFrame';
+import { TurnstileWidget, loadTurnstile } from './TurnstileWidget';
 
-type LoginStage = 'start' | 'password' | 'email' | 'check' | 'code';
+type LoginStage = 'start' | 'password' | 'email' | 'verify' | 'check' | 'code';
+
+// The server's answer when a new address has not passed Cloudflare Turnstile yet.
+const HUMAN_CHECK_FAILED = "We couldn't verify you're human. Please try again.";
 
 interface LoginViewProps {
   inviteToken?: string;
@@ -14,12 +18,18 @@ interface LoginViewProps {
   title?: string;
   loggedInAs?: string;
   onBack?: () => void;
+  /** Linear's /signup: "Create your workspace", legal note and "Already have an account? Log in". */
+  mode?: 'login' | 'signup';
+  /** Opens /login or /signup; when set, the first screen links to the other one. */
+  onSwitchMode?: (path: '/login' | '/signup') => void;
 }
 
 /**
- * Linear's sign-in: a first screen of choices, then "What's your email
- * address?", "Check your email" with the emailed link, and the same code by
- * hand. Buyerly keeps its username-and-password login as the second choice.
+ * Linear's sign-in and sign-up: a first screen of choices, then "What's your
+ * email address?", "Verifying it's you" (Cloudflare Turnstile, always on
+ * sign-up and for a new address on login), "Check your email" with the
+ * emailed link, and the same code by hand. Buyerly keeps its
+ * username-and-password login as the second choice on login.
  */
 export const LoginView: React.FC<LoginViewProps> = ({
   inviteToken,
@@ -29,7 +39,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
   title = 'Log in to Buyerly',
   loggedInAs,
   onBack,
+  mode = 'login',
+  onSwitchMode,
 }) => {
+  const signup = mode === 'signup';
   const [stage, setStage] = useState<LoginStage>(startWithEmail ? 'email' : 'start');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -42,6 +55,24 @@ export const LoginView: React.FC<LoginViewProps> = ({
     setError('');
     setStage(next);
   };
+
+  // Linear loads Turnstile as soon as the sign-up email step opens.
+  useEffect(() => {
+    if (signup && stage === 'email') loadTurnstile().catch(() => undefined);
+  }, [signup, stage]);
+
+  const switchLink = (path: '/login' | '/signup', label: string) => (
+    <a
+      href={path}
+      onClick={(event) => {
+        if (!onSwitchMode || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        onSwitchMode(path);
+      }}
+    >
+      {label}
+    </a>
+  );
 
   const logInWithPassword = async (event: FormEvent) => {
     event.preventDefault();
@@ -66,31 +97,50 @@ export const LoginView: React.FC<LoginViewProps> = ({
     }
   };
 
-  const requestLogin = async (event?: FormEvent) => {
-    event?.preventDefault();
-    const normalizedEmail = email.trim().toLowerCase();
-    if (!normalizedEmail || !normalizedEmail.includes('@')) {
-      setError('Enter a valid email address');
-      return;
-    }
+  const sendCode = async (address: string, turnstileToken?: string) => {
     setBusy(true);
     setError('');
     try {
       await apiRequest('/api/auth/request-temporary-password', {
         method: 'POST',
         body: JSON.stringify({
-          email: normalizedEmail,
+          email: address,
           ...(inviteToken ? { invite_token: inviteToken } : {}),
+          ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
         }),
       });
-      setEmail(normalizedEmail);
       setCode('');
       setStage('check');
     } catch (requestError) {
+      if (!turnstileToken && requestError instanceof ApiError && requestError.status === 400
+        && requestError.message === HUMAN_CHECK_FAILED) {
+        // A new address on login: the server wants the same check as sign-up.
+        goTo('verify');
+        return;
+      }
       setError(requestError instanceof Error ? requestError.message : 'Could not send the email');
     } finally {
       setBusy(false);
     }
+  };
+
+  const requestLogin = async (event?: FormEvent) => {
+    event?.preventDefault();
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setError('Please enter an email address for login.');
+      return;
+    }
+    if (!normalizedEmail.includes('@')) {
+      setError('Enter a valid email address');
+      return;
+    }
+    setEmail(normalizedEmail);
+    if (signup) {
+      goTo('verify');
+      return;
+    }
+    await sendCode(normalizedEmail);
   };
 
   const verifyCode = async (event: FormEvent) => {
@@ -130,7 +180,24 @@ export const LoginView: React.FC<LoginViewProps> = ({
       <section className="buyerly-auth-card buyerly-auth-card--signin">
         <BuyerlyBrand />
 
-        {stage === 'start' && (
+        {stage === 'start' && signup && (
+          <>
+            <h1>Create your workspace</h1>
+            <button className="buyerly-auth-button buyerly-auth-button--primary" type="button" onClick={() => goTo('email')}>
+              Continue with email
+            </button>
+            <p className="buyerly-auth-legal">
+              By signing up, you agree to our
+              <br />
+              <a href="/terms">Terms of Service</a> and <a href="/privacy">Privacy Policy</a>.
+            </p>
+            <p className="buyerly-auth-switch">
+              Already have an account? {switchLink('/login', 'Log in')}
+            </p>
+          </>
+        )}
+
+        {stage === 'start' && !signup && (
           <>
             <h1>{title}</h1>
             <button className="buyerly-auth-button buyerly-auth-button--primary" type="button" onClick={() => goTo('email')}>
@@ -143,6 +210,11 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 Log in with password
               </button>
             </p>
+            {onSwitchMode && (
+              <p className="buyerly-auth-switch">
+                Don’t have an account? {switchLink('/signup', 'Sign up')}
+              </p>
+            )}
           </>
         )}
 
@@ -181,7 +253,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               {busy ? 'Logging in…' : 'Log in'}
             </button>
             <button className="buyerly-auth-text-button" type="button" onClick={() => goTo('start')}>
-              Back to login
+              {signup ? 'Back to signup' : 'Back to login'}
             </button>
           </form>
         )}
@@ -207,9 +279,23 @@ export const LoginView: React.FC<LoginViewProps> = ({
               {busy ? 'Sending…' : 'Continue with email'}
             </button>
             <button className="buyerly-auth-text-button" type="button" onClick={() => goTo('start')}>
-              Back to login
+              {signup ? 'Back to signup' : 'Back to login'}
             </button>
           </form>
+        )}
+
+        {stage === 'verify' && (
+          <>
+            <h1>Verifying it’s you</h1>
+            <TurnstileWidget
+              onToken={(token) => sendCode(email, token)}
+              onError={() => setError(HUMAN_CHECK_FAILED)}
+            />
+            {error && <p className="buyerly-auth-error" role="alert">{error}</p>}
+            <button className="buyerly-auth-text-button" type="button" onClick={() => goTo('start')}>
+              {signup ? 'Back to signup' : 'Back to login'}
+            </button>
+          </>
         )}
 
         {stage === 'check' && (
@@ -226,7 +312,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               Enter code manually
             </button>
             <button className="buyerly-auth-text-button" type="button" onClick={() => goTo('start')}>
-              Back to login
+              {signup ? 'Back to signup' : 'Back to login'}
             </button>
           </>
         )}
@@ -260,7 +346,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               {busy ? 'Checking…' : 'Continue with login code'}
             </button>
             <button className="buyerly-auth-text-button" type="button" onClick={() => goTo('start')}>
-              Back to login
+              {signup ? 'Back to signup' : 'Back to login'}
             </button>
           </form>
         )}

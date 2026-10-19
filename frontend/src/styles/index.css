@@ -3189,6 +3189,8 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
     rgba(0, 0, 0, 0.04) 0 1px 1px 0;
   --auth-button-primary-shadow: rgba(0, 0, 0, 0.02) 0 3px 6px -2px, rgba(0, 0, 0, 0.04) 0 1px 1px 0;
   --auth-error: #b32f2f;
+  /* Linear's sign-in field error, linear.app/signup → Continue with email, 2026-10-20. */
+  --auth-signin-error: rgb(225, 36, 58);
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -3220,6 +3222,7 @@ html[data-theme='dark'] .buyerly-auth-page,
   --auth-button-shadow: none;
   --auth-button-primary-shadow: rgba(0, 0, 0, 0.298) 0 0.5px 1px 1px;
   --auth-error: rgb(235, 87, 87);
+  --auth-signin-error: rgb(235, 87, 87);
   color-scheme: dark;
 }
 
@@ -3458,6 +3461,43 @@ html[data-theme='dark'] .buyerly-auth-page,
   text-decoration: underline;
 }
 
+/* linear.app/signup, measured 2026-10-20 at 1024×768: the legal note 36px under the
+   last button, "Already have an account? Log in" 24px under it; both 13px / 450 /
+   19.5px in the muted color with links in the text color. /login ends with the same
+   line: "Don't have an account? Sign up". */
+.buyerly-auth-legal,
+.buyerly-auth-switch {
+  margin: 36px 0 0;
+  color: var(--auth-text-muted);
+  font-size: 13px;
+  font-weight: 450;
+  line-height: 19.5px;
+}
+
+.buyerly-auth-switch {
+  margin-top: 24px;
+}
+
+.buyerly-auth-legal a,
+.buyerly-auth-switch a {
+  color: var(--auth-text);
+  text-decoration: none;
+}
+
+.buyerly-auth-legal a:hover,
+.buyerly-auth-switch a:hover {
+  color: var(--auth-link-hover);
+}
+
+/* "Verifying it's you": Cloudflare's 300×65 check, centred over the 288px column;
+   Linear keeps a 71.5px slot for it, so "Back to signup" does not move when it loads. */
+.buyerly-auth-turnstile {
+  display: flex;
+  min-height: 71.5px;
+  justify-content: center;
+  margin: 0 -6px;
+}
+
 /* Linear's account screens: "Back to …" top left, "Logged in as <email>" top right. */
 .buyerly-auth-back {
   position: fixed;
@@ -3532,6 +3572,16 @@ html[data-theme='dark'] .buyerly-auth-page,
 
 .buyerly-auth-hint {
   color: var(--auth-text-muted);
+}
+
+/* Linear: "Please enter an email address for login." 24px under the field and 16px
+   above the button, 11px / 450. */
+.buyerly-auth-card--signin .buyerly-auth-error {
+  margin: 24px 0 0;
+  color: var(--auth-signin-error);
+  font-size: 11px;
+  font-weight: 450;
+  line-height: normal;
 }
 
 .buyerly-auth-card--loading {

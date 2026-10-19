@@ -22,6 +22,7 @@ RESERVED_WORKSPACE_SLUGS = frozenset(
         "login",
         "privacy",
         "redoc",
+        "signup",
         "static",
         "terms",
         "uploads",
