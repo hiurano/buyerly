@@ -561,14 +561,58 @@ html[data-theme='dark'] {
   color-scheme: dark;
 }
 
-/* Public website: long-form reading and marketing scale, independent of app density. */
+/* Public website: long-form reading and marketing scale, independent of app density.
+   Colours as linear.app's homepage (measured 2026-10-19, dark only there); the light set mirrors them on our light app palette (#434). */
 :root {
-  --site-width: 1200px;
-  --site-background: var(--bg-canvas);
-  --site-border-color: var(--color-border-secondary);
+  --site-bg: #08090a;
+  --site-fg: #f7f8f8;
+  --site-fg-secondary: #d0d6e0;
+  --site-fg-tertiary: #8a8f98;
+  --site-fg-quaternary: #62666d;
+  --site-line: rgb(255 255 255 / 0.08);
+  --site-divider: #23252a;
+  --site-hover-bg: rgb(255 255 255 / 0.08);
+  --site-invert-bg: #e5e5e6;
+  --site-invert-fg: #08090a;
+  --site-header-bg: linear-gradient(rgb(11 11 11 / 0.8), rgb(18 18 18 / 0.76));
+  --site-header-fade: linear-gradient(#08090a, rgb(0 0 0 / 0));
+  --site-hero-floor: #d0d6e0;
+  --site-fig-hi: #d0d6e0;
+  --site-fig-mid: #3e3e44;
+  --site-fig-low: #2e2e32;
+  --site-panel-bg: #0f1011;
+  --site-logo: #fff;  /* monochrome mark (#432): white in dark, Linear's #222326 in light */
+  --site-ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+html[data-theme='light'] {
+  --site-bg: #fcfcfd;
+  --site-fg: #08090a;
+  --site-fg-secondary: #282a30;
+  --site-fg-tertiary: #62666d;
+  --site-fg-quaternary: #8a8f98;
+  --site-line: rgb(0 0 0 / 0.08);
+  --site-divider: #e0e1e4;
+  --site-hover-bg: rgb(0 0 0 / 0.05);
+  --site-invert-bg: #08090a;
+  --site-invert-fg: #f7f8f8;
+  --site-header-bg: linear-gradient(rgb(252 252 253 / 0.8), rgb(247 247 248 / 0.76));
+  --site-header-fade: linear-gradient(#fcfcfd, rgb(255 255 255 / 0));
+  --site-hero-floor: #c9ccd3;
+  --site-fig-hi: #3c3f46;
+  --site-fig-mid: #c4c6cc;
+  --site-fig-low: #dcdde1;
+  --site-panel-bg: #ffffff;
+  --site-logo: #222326;
+}
+
+:root {
+  --site-width: 1280px;
+  --site-background: var(--site-bg);
+  --site-border-color: var(--site-line);
   --site-reading-width: 624px;
-  --site-gutter: clamp(24px, 5vw, 72px);
-  --site-header-height: 72px;
+  --site-gutter: clamp(24px, 5.4vw, 78px);
+  --site-header-height: 73px;
   --site-logo-size: 32px;
   --site-brand-size: 22px;
   --site-body-size: 16px;

@@ -12,52 +12,408 @@
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
-    <div class="site-container site-header-inner">
-      <a class="site-brand" href="/" aria-label="Buyerly home"><img src="/static/icons/buyerly_logo_badge.svg" width="32" height="32" alt=""><span>Buyerly</span></a>
-      <nav class="site-nav" aria-label="Main navigation">
-        <a href="#contact">Contact</a>
-        <a href="/login">Log in</a>
-      </nav>
-    </div>
+    <nav class="site-container site-header-inner" aria-label="Main navigation">
+      <a class="site-brand" href="/" aria-label="Buyerly home"><span class="site-brand-mark" aria-hidden="true"></span><span>Buyerly</span></a>
+      <div class="site-nav">
+        <a class="site-nav-link is-secondary" href="/#product">Product</a>
+        <a class="site-nav-link is-secondary" href="/#changelog">Changelog</a>
+        <a class="site-nav-link is-secondary" href="#contact">Contact</a>
+        <span class="site-nav-divider" aria-hidden="true"></span>
+        <a class="site-nav-link" href="/login">Log in</a>
+        <a class="site-button-invert" href="/signup">Sign up</a>
+        <button class="site-menu-button" type="button" popovertarget="site-menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 4.75A.75.75 0 0 1 2.75 4h10.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75Zm0 6.5a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z"/></svg></button>
+      </div>
+      <div id="site-menu" class="site-menu" popover><a href="/#product">Product</a><a href="/#changelog">Changelog</a><a href="#contact">Contact</a><a href="/login">Log in</a></div>
+    </nav>
   </header>
-  <main id="main" class="site-container landing-main" tabindex="-1">
-    <h1>Your Meta Ads operations,<br> in one place.</h1>
-    <p>Monitor performance, automate routine actions,<br class="desktop-break"> and keep your team informed with Buyerly.</p>
-    <section class="landing-capabilities" aria-label="What Buyerly does">
-      <div>
-        <h2>Performance in one view</h2>
-        <p>Campaign, ad set and creative metrics from the Meta Marketing API, without switching between accounts.</p>
+  <main id="main" class="landing" tabindex="-1">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="site-container hero-copy">
+        <h1 id="hero-title" class="hero-title"><span class="hero-line">The operations system</span><br class="hero-break"> <span class="hero-line">for Meta Ads teams</span></h1>
+        <div class="hero-sub">
+          <p>Purpose-built for media buyers. Monitor every account, automate the routine, and keep the team in the loop.</p>
+          <a class="hero-new" href="#changelog"><span class="hero-new-label">New</span><span>Rules board →</span></a>
+        </div>
       </div>
-      <div>
-        <h2>Routine work, automated</h2>
-        <p>Rules watch your campaigns and act on them, so the checks that used to be manual happen on their own.</p>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="hero-frame-wrap">
+          <div class="app-frame">
+            <div class="app-sidebar">
+              <div class="app-ws"><span class="app-ws-name"><span class="app-ws-mark"></span>Northwind<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4.47 6.47a.75.75 0 0 1 1.06 0L8 8.94l2.47-2.47a.75.75 0 1 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z"/></svg></span><span class="app-icon-btn"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M7 2.5a4.5 4.5 0 1 0 2.81 8.02l2.84 2.84a.75.75 0 1 0 1.06-1.06l-2.84-2.84A4.5 4.5 0 0 0 7 2.5ZM4 7a3 3 0 1 1 6 0 3 3 0 0 1-6 0Z"/></svg></span></div>
+              <div class="app-nav">
+            <span class="app-nav-item"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M11.0069 1.00879C12.0235 1.09224 12.8967 1.78967 13.1944 2.78027L14.8907 8.42871C15.0034 8.80411 15.0258 9.20103 14.9571 9.58691L14.5069 12.1143L14.4375 12.4219C14.0542 13.8306 12.8312 14.8559 11.378 14.9863L11.0625 15H4.92875L4.6143 14.9863C3.16087 14.8561 1.93819 13.8307 1.55473 12.4219L1.48539 12.1143L1.03422 9.58691C0.974045 9.24914 0.984493 8.90311 1.06352 8.57031L1.1016 8.42871L2.79691 2.78027C3.09453 1.78948 3.96862 1.09214 4.98539 1.00879L5.19047 1H10.8018L11.0069 1.00879ZM2.96098 11.8516C3.13119 12.8053 3.96043 13.4999 4.92875 13.5H11.0625C12.031 13.5 12.8611 12.8054 13.0313 11.8516L13.2715 10.5H11.6211C11.2249 10.5 10.8512 10.6738 10.5957 10.9697L10.4932 11.1035C10.1201 11.6634 9.49195 11.9999 8.81938 12H7.17191C6.54154 11.9998 5.95019 11.7042 5.57133 11.2061L5.49809 11.1035C5.24687 10.7266 4.82396 10.5 4.37113 10.5H2.71977L2.96098 11.8516ZM5.19047 2.5C4.80433 2.50005 4.45748 2.72173 4.29203 3.06055L4.23246 3.21191L2.53715 8.86035C2.5234 8.90613 2.514 8.95293 2.50688 9H4.37113C5.32524 9.00001 6.21689 9.47715 6.74613 10.2715L6.78422 10.3223C6.88083 10.4341 7.02214 10.4998 7.17191 10.5H8.81938C8.99076 10.4999 9.15106 10.4142 9.24613 10.2715L9.34965 10.126C9.88713 9.41919 10.7268 9 11.6211 9H13.4854C13.4785 8.95295 13.4689 8.90616 13.4551 8.86035L11.7588 3.21191C11.6318 2.78947 11.2427 2.50018 10.8018 2.5H5.19047Z"/></svg>Inbox<span class="app-nav-count">3</span></span>
+            <span class="app-nav-item"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M7.331 1.07a3.2 3.2 0 0 1 1.338 0c.498.106.967.377 1.904.917l1.354.78c.937.541 1.406.812 1.747 1.19.301.334.53.728.669 1.156.157.484.157 1.025.157 2.107v1.56l-.003.718c-.007.63-.036 1.026-.154 1.389l-.057.158a3.2 3.2 0 0 1-.612.998l-.135.138c-.33.312-.792.578-1.612 1.051l-1.354.78-.623.357c-.55.309-.907.481-1.281.56l-.166.032a3.2 3.2 0 0 1-1.006 0l-.166-.031c-.374-.08-.73-.252-1.281-.561l-.623-.356-1.354-.78c-.82-.474-1.281-.74-1.612-1.052l-.135-.138a3.2 3.2 0 0 1-.612-.998l-.057-.158c-.118-.363-.147-.758-.154-1.39L1.5 8.78V7.22c0-.946 0-1.479.105-1.921l.052-.186c.122-.374.312-.723.56-1.028l.11-.128c.255-.284.583-.507 1.126-.83l.62-.36 1.354-.78c.82-.473 1.281-.739 1.718-.869zM3 7.22v1.56c0 1.183.018 1.439.084 1.643l.064.167q.11.246.292.449l.059.06c.151.143.427.318 1.323.835l1.354.78.632.36c.188.104.33.178.442.233V8.482l-4.247-1.93zm5.75 1.262v4.826c.212-.106.533-.282 1.074-.594l1.354-.78.628-.368c.499-.297.646-.407.754-.527l.113-.14q.158-.218.243-.476l.022-.081c.035-.144.051-.351.058-.835L13 8.78V7.22l-.004-.668zM7.82 2.51l-.177.027c-.159.034-.328.106-.835.39l-.632.359-1.354.78c-.896.517-1.172.692-1.323.834l-.059.06q-.046.051-.086.104l4.645 2.112 4.645-2.112-.084-.103c-.109-.12-.255-.23-.754-.528l-.628-.367-1.354-.78c-.897-.517-1.186-.668-1.386-.728l-.08-.021a1.7 1.7 0 0 0-.538-.027"/></svg>Ad accounts</span>
+            <span class="app-nav-item is-active"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M11.265 3.002c-1.23 0-2.191.93-3.061 2.11-1.196-1.528-2.197-2.11-3.394-2.11C2.37 3.002.5 6.188.5 9.56c0 2.11 1.018 3.441 2.722 3.441 1.227 0 2.11-.58 3.678-3.331l1.104-1.956q.236.383.498.825l.735 1.241c1.433 2.406 2.232 3.221 3.678 3.221 1.66 0 2.585-1.35 2.585-3.504 0-3.53-1.912-6.496-4.235-6.496M5.704 8.926c-1.272 2-1.712 2.448-2.42 2.448-.729 0-1.162-.641-1.162-1.786 0-2.448 1.217-4.952 2.668-4.952.785 0 1.442.456 2.447 1.9a200 200 0 0 0-1.533 2.39m4.8-.252-.88-1.471a31 31 0 0 0-.686-1.072c.793-1.228 1.447-1.84 2.224-1.84 1.616 0 2.908 2.387 2.908 5.318 0 1.117-.365 1.765-1.12 1.765-.725 0-1.07-.48-2.446-2.7"/></svg>Ads Manager</span>
+            <span class="app-nav-item"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M8.397 1.482a1.501 1.501 0 0 1 2.594 1.184L10.677 5.5H12.5a1.5 1.5 0 0 1 1.102 2.518l-6 6.5a1.5 1.5 0 0 1-2.593-1.184l.314-2.834H3.5a1.5 1.5 0 0 1-1.103-2.518zM3.5 9H7l-.5 4.5 6-6.5H9l.5-4.5z"/></svg>Rules</span>
+              </div>
+            </div>
+            <div class="app-view">
+              <div class="app-view-header"><span class="app-view-title">Ads Manager</span><span class="app-ghost-btn"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8.75 4C8.75 3.58579 8.41421 3.25 8 3.25C7.58579 3.25 7.25 3.58579 7.25 4V7.25H4C3.58579 7.25 3.25 7.58579 3.25 8C3.25 8.41421 3.58579 8.75 4 8.75H7.25V12C7.25 12.4142 7.58579 12.75 8 12.75C8.41421 12.75 8.75 12.4142 8.75 12V8.75H12C12.4142 8.75 12.75 8.41421 12.75 8C12.75 7.58579 12.4142 7.25 12 7.25H8.75V4Z"/></svg>Add account</span></div>
+              <div class="app-toolbar">
+                <div class="app-tabs"><span class="app-tab is-active">Campaigns</span><span class="app-tab">Ad sets</span><span class="app-tab">Ads</span></div>
+                <div class="app-tools"><span class="app-period">Today <span>▾</span></span><span class="app-icon-btn"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M14.25 3a.75.75 0 0 1 0 1.5H1.75a.75.75 0 0 1 0-1.5h12.5ZM4 8a.75.75 0 0 1 .75-.75h6.5a.75.75 0 0 1 0 1.5h-6.5A.75.75 0 0 1 4 8Zm2.75 3.5a.75.75 0 0 0 0 1.5h2.5a.75.75 0 0 0 0-1.5h-2.5Z"/></svg></span><span class="app-icon-btn"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M7 2.5C8.11933 2.5 9.06613 3.23584 9.38477 4.25H14.75C15.1642 4.25 15.5 4.58579 15.5 5C15.5 5.41421 15.1642 5.75 14.75 5.75H9.38477C9.06613 6.76416 8.11933 7.5 7 7.5C5.88067 7.5 4.93387 6.76416 4.61523 5.75H2.25C1.83579 5.75 1.5 5.41421 1.5 5C1.5 4.58579 1.83579 4.25 2.25 4.25H4.61523C4.93387 3.23584 5.88067 2.5 7 2.5ZM7 4C6.44772 4 6 4.44772 6 5C6 5.55228 6.44772 6 7 6C7.55228 6 8 5.55228 8 5C8 4.44772 7.55228 4 7 4Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M10 13.5C8.88067 13.5 7.93387 12.7642 7.61523 11.75H2.25C1.83579 11.75 1.5 11.4142 1.5 11C1.5 10.5858 1.83579 10.25 2.25 10.25H7.61523C7.93387 9.23584 8.88067 8.5 10 8.5C11.1193 8.5 12.0661 9.23584 12.3848 10.25H14.75C15.1642 10.25 15.5 10.5858 15.5 11C15.5 11.4142 15.1642 11.75 14.75 11.75H12.3848C12.0661 12.7642 11.1193 13.5 10 13.5ZM10 12C10.5523 12 11 11.5523 11 11C11 10.4477 10.5523 10 10 10C9.44772 10 9 10.4477 9 11C9 11.5523 9.44772 12 10 12Z"/></svg></span></div>
+              </div>
+              <div class="app-table">
+                <div class="app-row is-head"><span>Name</span><span>Budget</span><span>Spend</span><span>Impr.</span><span>CTR</span><span>CPC</span><span>Leads</span><span>CPL</span><span>Rules</span></div>
+              <div class="app-group">NL · Lead gen <span>5</span></div>
+              <div class="app-row"><span class="app-name"><i class="app-switch is-on"></i><b>NL | Leads | Broad 25–44</b></span><span>$120</span><span>$96.40</span><span>18,204</span><span>1.84%</span><span>$0.29</span><span>41</span><span>$2.35</span><span class="app-rules"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M8.397 1.482a1.501 1.501 0 0 1 2.594 1.184L10.677 5.5H12.5a1.5 1.5 0 0 1 1.102 2.518l-6 6.5a1.5 1.5 0 0 1-2.593-1.184l.314-2.834H3.5a1.5 1.5 0 0 1-1.103-2.518zM3.5 9H7l-.5 4.5 6-6.5H9l.5-4.5z"/></svg>2 rules</span></div>
+              <div class="app-row"><span class="app-name"><i class="app-switch is-on"></i><b>NL | Leads | Lookalike 3%</b></span><span>$80</span><span>$71.12</span><span>12,950</span><span>2.10%</span><span>$0.26</span><span>33</span><span>$2.16</span><span class="app-rules"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M8.397 1.482a1.501 1.501 0 0 1 2.594 1.184L10.677 5.5H12.5a1.5 1.5 0 0 1 1.102 2.518l-6 6.5a1.5 1.5 0 0 1-2.593-1.184l.314-2.834H3.5a1.5 1.5 0 0 1-1.103-2.518zM3.5 9H7l-.5 4.5 6-6.5H9l.5-4.5z"/></svg>1 rule</span></div>
+              <div class="app-row"><span class="app-name"><i class="app-switch is-on"></i><b>NL | Leads | Retargeting 30d</b></span><span>$40</span><span>$38.75</span><span>6,412</span><span>2.95%</span><span>$0.20</span><span>22</span><span>$1.76</span><span class="app-rules"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M8.397 1.482a1.501 1.501 0 0 1 2.594 1.184L10.677 5.5H12.5a1.5 1.5 0 0 1 1.102 2.518l-6 6.5a1.5 1.5 0 0 1-2.593-1.184l.314-2.834H3.5a1.5 1.5 0 0 1-1.103-2.518zM3.5 9H7l-.5 4.5 6-6.5H9l.5-4.5z"/></svg>1 rule</span></div>
+              <div class="app-row is-off"><span class="app-name"><i class="app-switch"></i><b>NL | Leads | Interests · Finance</b></span><span>$60</span><span>$44.10</span><span>9,870</span><span>0.92%</span><span>$0.49</span><span>0</span><span><span class="app-muted">—</span></span><span class="app-rules"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M8.397 1.482a1.501 1.501 0 0 1 2.594 1.184L10.677 5.5H12.5a1.5 1.5 0 0 1 1.102 2.518l-6 6.5a1.5 1.5 0 0 1-2.593-1.184l.314-2.834H3.5a1.5 1.5 0 0 1-1.103-2.518zM3.5 9H7l-.5 4.5 6-6.5H9l.5-4.5z"/></svg>1 rule</span></div>
+              <div class="app-row"><span class="app-name"><i class="app-switch is-on"></i><b>NL | Leads | Creative test #14</b></span><span>$50</span><span>$23.30</span><span>4,118</span><span>1.37%</span><span>$0.41</span><span>9</span><span>$2.59</span><span class="app-rules app-muted">—</span></div>
+              <div class="app-group">US · Sweepstakes <span>4</span></div>
+              <div class="app-row"><span class="app-name"><i class="app-switch is-on"></i><b>US | Sweeps | Broad</b></span><span>$300</span><span>$212.84</span><span>41,226</span><span>1.12%</span><span>$0.46</span><span>118</span><span>$1.80</span><span class="app-rules"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M8.397 1.482a1.501 1.501 0 0 1 2.594 1.184L10.677 5.5H12.5a1.5 1.5 0 0 1 1.102 2.518l-6 6.5a1.5 1.5 0 0 1-2.593-1.184l.314-2.834H3.5a1.5 1.5 0 0 1-1.103-2.518zM3.5 9H7l-.5 4.5 6-6.5H9l.5-4.5z"/></svg>3 rules</span></div>
+              <div class="app-row"><span class="app-name"><i class="app-switch is-on"></i><b>US | Sweeps | Advantage+</b></span><span>$250</span><span>$187.03</span><span>38,904</span><span>1.31%</span><span>$0.37</span><span>97</span><span>$1.93</span><span class="app-rules"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M8.397 1.482a1.501 1.501 0 0 1 2.594 1.184L10.677 5.5H12.5a1.5 1.5 0 0 1 1.102 2.518l-6 6.5a1.5 1.5 0 0 1-2.593-1.184l.314-2.834H3.5a1.5 1.5 0 0 1-1.103-2.518zM3.5 9H7l-.5 4.5 6-6.5H9l.5-4.5z"/></svg>2 rules</span></div>
+              <div class="app-row"><span class="app-name"><i class="app-switch is-on"></i><b>US | Sweeps | Lookalike 1%</b></span><span>$150</span><span>$131.66</span><span>22,310</span><span>1.48%</span><span>$0.40</span><span>64</span><span>$2.06</span><span class="app-rules"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M8.397 1.482a1.501 1.501 0 0 1 2.594 1.184L10.677 5.5H12.5a1.5 1.5 0 0 1 1.102 2.518l-6 6.5a1.5 1.5 0 0 1-2.593-1.184l.314-2.834H3.5a1.5 1.5 0 0 1-1.103-2.518zM3.5 9H7l-.5 4.5 6-6.5H9l.5-4.5z"/></svg>1 rule</span></div>
+              <div class="app-row is-off"><span class="app-name"><i class="app-switch"></i><b>US | Sweeps | Retargeting 7d</b></span><span>$70</span><span>$12.40</span><span>1,905</span><span>0.74%</span><span>$0.88</span><span>2</span><span>$6.20</span><span class="app-rules"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M8.397 1.482a1.501 1.501 0 0 1 2.594 1.184L10.677 5.5H12.5a1.5 1.5 0 0 1 1.102 2.518l-6 6.5a1.5 1.5 0 0 1-2.593-1.184l.314-2.834H3.5a1.5 1.5 0 0 1-1.103-2.518zM3.5 9H7l-.5 4.5 6-6.5H9l.5-4.5z"/></svg>1 rule</span></div>
+              <div class="app-group">UK · Lead gen <span>3</span></div>
+              <div class="app-row"><span class="app-name"><i class="app-switch is-on"></i><b>UK | Leads | Broad 30–55</b></span><span>$90</span><span>$64.18</span><span>11,407</span><span>1.62%</span><span>$0.35</span><span>26</span><span>$2.47</span><span class="app-rules"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M8.397 1.482a1.501 1.501 0 0 1 2.594 1.184L10.677 5.5H12.5a1.5 1.5 0 0 1 1.102 2.518l-6 6.5a1.5 1.5 0 0 1-2.593-1.184l.314-2.834H3.5a1.5 1.5 0 0 1-1.103-2.518zM3.5 9H7l-.5 4.5 6-6.5H9l.5-4.5z"/></svg>1 rule</span></div>
+              <div class="app-row"><span class="app-name"><i class="app-switch is-on"></i><b>UK | Leads | Lookalike 2%</b></span><span>$70</span><span>$49.92</span><span>8,833</span><span>1.71%</span><span>$0.33</span><span>19</span><span>$2.63</span><span class="app-rules"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M8.397 1.482a1.501 1.501 0 0 1 2.594 1.184L10.677 5.5H12.5a1.5 1.5 0 0 1 1.102 2.518l-6 6.5a1.5 1.5 0 0 1-2.593-1.184l.314-2.834H3.5a1.5 1.5 0 0 1-1.103-2.518zM3.5 9H7l-.5 4.5 6-6.5H9l.5-4.5z"/></svg>1 rule</span></div>
+              <div class="app-row"><span class="app-name"><i class="app-switch is-on"></i><b>UK | Leads | Creative test #6</b></span><span>$40</span><span>$17.45</span><span>3,201</span><span>1.28%</span><span>$0.43</span><span>6</span><span>$2.91</span><span class="app-rules app-muted">—</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div>
-        <h2>Your team, informed</h2>
-        <p>Rule alerts and account changes land in each teammate’s Buyerly inbox, and by email or Telegram for those who turn it on.</p>
+    </section>
+    <section class="site-container manifesto" aria-labelledby="manifesto-title">
+      <h2 id="manifesto-title" class="manifesto-title"><strong>A new kind of ad ops tool.</strong> Built around how buying teams actually work, Buyerly turns hours of manual checks into rules that run on their own.</h2>
+      <div class="manifesto-grid">
+        <div class="manifesto-item">
+          <span class="manifesto-fig">Fig 0.1</span>
+          <div class="manifesto-art"><svg class="fig-art" viewBox="0 0 265 262" width="265" height="262" aria-hidden="true"><polygon class="f-low" points="21.1,153.0 132.0,217.0 132.0,229.0 21.1,165.0"/><polygon class="f-low" points="242.9,153.0 132.0,217.0 132.0,229.0 242.9,165.0"/><polygon class="f-mid" points="132.0,89.0 242.9,153.0 132.0,217.0 21.1,153.0"/><g class="lift-1"><line class="s-dot" x1="132.0" y1="183.0" x2="132.0" y2="203.0"/><line class="s-dot" x1="52.3" y1="137.0" x2="52.3" y2="157.0"/><line class="s-dot" x1="211.7" y1="137.0" x2="211.7" y2="157.0"/><polygon class="f-low" points="52.3,125.0 132.0,171.0 132.0,183.0 52.3,137.0"/><polygon class="f-low" points="211.7,125.0 132.0,171.0 132.0,183.0 211.7,137.0"/><polygon class="f-mid" points="132.0,79.0 211.7,125.0 132.0,171.0 52.3,125.0"/></g><g class="lift-2"><line class="s-dot" x1="132.0" y1="137.0" x2="132.0" y2="157.0"/><line class="s-dot" x1="83.5" y1="109.0" x2="83.5" y2="129.0"/><line class="s-dot" x1="180.5" y1="109.0" x2="180.5" y2="129.0"/><polygon class="f-mid" points="83.5,97.0 132.0,125.0 132.0,137.0 83.5,109.0"/><polygon class="f-mid" points="180.5,97.0 132.0,125.0 132.0,137.0 180.5,109.0"/><polygon class="f-hi" points="132.0,69.0 180.5,97.0 132.0,125.0 83.5,97.0"/></g><g class="lift-2"><polygon class="s-hi-thin" points="132.0,83.0 156.2,97.0 132.0,111.0 107.8,97.0"/></g></svg></div>
+          <div class="manifesto-text"><h3>Purpose-built</h3><p>Shaped by the daily routine of media buyers: accounts, campaigns, ad sets and ads in one place.</p></div>
+        </div>
+        <div class="manifesto-item">
+          <span class="manifesto-fig">Fig 0.2</span>
+          <div class="manifesto-art"><svg class="fig-art" viewBox="0 0 265 262" width="265" height="262" aria-hidden="true"><g transform="matrix(0.8660254 0.5 -0.8660254 0.5 132 175)"><circle class="f-low" r="86"/></g><line class="s-mid" x1="26.7" y1="161" x2="26.7" y2="175"/><line class="s-mid" x1="237.3" y1="161" x2="237.3" y2="175"/><g transform="matrix(0.8660254 0.5 -0.8660254 0.5 132 161)"><circle class="f-mid" r="86"/><circle class="s-dot" r="60"/><line class="s-hi" x1="72.0" y1="0.0" x2="80.0" y2="0.0"/><line class="s-mid" x1="62.4" y1="36.0" x2="69.3" y2="40.0"/><line class="s-mid" x1="36.0" y1="62.4" x2="40.0" y2="69.3"/><line class="s-hi" x1="0.0" y1="72.0" x2="0.0" y2="80.0"/><line class="s-mid" x1="-36.0" y1="62.4" x2="-40.0" y2="69.3"/><line class="s-mid" x1="-62.4" y1="36.0" x2="-69.3" y2="40.0"/><line class="s-hi" x1="-72.0" y1="0.0" x2="-80.0" y2="0.0"/><line class="s-mid" x1="-62.4" y1="-36.0" x2="-69.3" y2="-40.0"/><line class="s-mid" x1="-36.0" y1="-62.4" x2="-40.0" y2="-69.3"/><line class="s-hi" x1="-0.0" y1="-72.0" x2="-0.0" y2="-80.0"/><line class="s-mid" x1="36.0" y1="-62.4" x2="40.0" y2="-69.3"/><line class="s-mid" x1="62.4" y1="-36.0" x2="69.3" y2="-40.0"/><g class="sweep"><path class="f-sweep" d="M0 0 L56 0 A56 56 0 0 0 46.2 -31.6 Z"/><line class="s-hi" x1="0" y1="0" x2="56" y2="0"/></g><circle class="f-hi-dot" r="4"/></g></svg></div>
+          <div class="manifesto-text"><h3>Automated</h3><p>Rules check your campaigns every few minutes, around the clock, and act on them.</p></div>
+        </div>
+        <div class="manifesto-item">
+          <span class="manifesto-fig">Fig 0.3</span>
+          <div class="manifesto-art"><svg class="fig-art" viewBox="0 0 265 262" width="265" height="262" aria-hidden="true"><polygon class="f-low" points="24.6,129.0 163.2,209.0 163.2,217.0 24.6,137.0"/><polygon class="f-low" points="239.4,165.0 163.2,209.0 163.2,217.0 239.4,173.0"/><polygon class="f-mid" points="100.8,85.0 239.4,165.0 163.2,209.0 24.6,129.0"/><g class=""><polygon class="f-mid" points="52.3,111.0 100.8,139.0 100.8,157.0 52.3,129.0"/><polygon class="f-mid" points="149.3,111.0 100.8,139.0 100.8,157.0 149.3,129.0"/><polygon class="f-hi" points="100.8,83.0 149.3,111.0 100.8,139.0 52.3,111.0"/><g transform="matrix(0.8660254 0.5 -0.8660254 0.5 132.0 129.0)"><text class="t-key" x="-36" y="0" text-anchor="middle" dominant-baseline="central">⌘</text></g></g><g class="press"><polygon class="f-mid" points="114.7,147.0 163.2,175.0 163.2,193.0 114.7,165.0"/><polygon class="f-mid" points="211.7,147.0 163.2,175.0 163.2,193.0 211.7,165.0"/><polygon class="f-hi" points="163.2,119.0 211.7,147.0 163.2,175.0 114.7,147.0"/><g transform="matrix(0.8660254 0.5 -0.8660254 0.5 132.0 129.0)"><text class="t-key" x="36" y="0" text-anchor="middle" dominant-baseline="central">K</text></g></g></svg></div>
+          <div class="manifesto-text"><h3>Designed for speed</h3><p>Keyboard-first, with ⌘K on every page to jump anywhere and act on anything.</p></div>
+        </div>
       </div>
+    </section>
+    <section id="product" class="feature" aria-labelledby="feature-ads">
+      <div class="site-container feature-header">
+        <h2 id="feature-ads" class="feature-title">Ads Manager<br> and accounts</h2>
+        <p class="feature-desc">Every ad account, campaign, ad set and ad in one view. Any metric as a column, with filters, sorting, grouping and any period.</p>
+      </div>
+      <div class="site-container feature-stage" aria-hidden="true">
+        <div class="feature-art">
+          <div class="feature-panel">
+            <div class="acc-view">
+              <div class="acc-head"><span class="app-view-title">Ad accounts</span><span class="app-tools"><span class="app-period">Group: Team <span>▾</span></span></span></div>
+              <div class="acc-table">
+                <div class="acc-row is-head"><span>Name</span><span>Status</span><span>Team</span><span class="acc-num">Spend today</span><span class="acc-num">Rules</span><span class="acc-auto">Automation</span></div>
+                <div class="acc-group">Lead gen <span>3</span></div>
+                <div class="acc-row"><span class="acc-name"><i class="acc-avatar">NL</i>NL · Lead gen</span><span class="acc-status"><i class="acc-dot is-ok"></i>Active</span><span>Lead gen</span><span class="acc-num">$412.80</span><span class="acc-num">4</span><span class="acc-auto"><i class="app-switch is-on"></i></span></div>
+                <div class="acc-row"><span class="acc-name"><i class="acc-avatar">UK</i>UK · Lead gen</span><span class="acc-status"><i class="acc-dot is-ok"></i>Active</span><span>Lead gen</span><span class="acc-num">$131.55</span><span class="acc-num">2</span><span class="acc-auto"><i class="app-switch is-on"></i></span></div>
+                <div class="acc-row"><span class="acc-name"><i class="acc-avatar">DE</i>DE · Lead gen</span><span class="acc-status"><i class="acc-dot is-warn"></i>In review</span><span>Lead gen</span><span class="acc-num">$0.00</span><span class="acc-num">1</span><span class="acc-auto"><i class="app-switch"></i></span></div>
+                <div class="acc-group">Sweepstakes <span>2</span></div>
+                <div class="acc-row"><span class="acc-name"><i class="acc-avatar">US</i>US · Sweepstakes</span><span class="acc-status"><i class="acc-dot is-ok"></i>Active</span><span>Sweepstakes</span><span class="acc-num">$544.03</span><span class="acc-num">7</span><span class="acc-auto"><i class="app-switch is-on"></i></span></div>
+                <div class="acc-row"><span class="acc-name"><i class="acc-avatar">CA</i>CA · Sweepstakes</span><span class="acc-status"><i class="acc-dot is-ok"></i>Active</span><span>Sweepstakes</span><span class="acc-num">$96.17</span><span class="acc-num">3</span><span class="acc-auto"><i class="app-switch is-on"></i></span></div>
+                <div class="acc-group">E-commerce <span>2</span></div>
+                <div class="acc-row"><span class="acc-name"><i class="acc-avatar">DE</i>DE · E-commerce</span><span class="acc-status"><i class="acc-dot is-ok"></i>Active</span><span>E-commerce</span><span class="acc-num">$228.40</span><span class="acc-num">2</span><span class="acc-auto"><i class="app-switch is-on"></i></span></div>
+                <div class="acc-row"><span class="acc-name"><i class="acc-avatar">FR</i>FR · E-commerce</span><span class="acc-status"><i class="acc-dot is-warn"></i>Grace period</span><span>E-commerce</span><span class="acc-num">$18.90</span><span class="acc-num">0</span><span class="acc-auto"><i class="app-switch"></i></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="feature-card">
+          <div class="dopt">
+            <div class="dopt-row"><span>Grouping</span><span class="dopt-select">Campaign <span>▾</span></span></div>
+            <div class="dopt-row"><span>Ordering</span><span class="dopt-select">Spend <span>▾</span></span></div>
+            <div class="dopt-sep"></div>
+            <div class="dopt-title">List options</div>
+            <div class="dopt-sub">Display properties</div>
+            <div class="dopt-chips"><span class="dopt-chip is-on">Delivery</span><span class="dopt-chip is-on">Budget</span><span class="dopt-chip is-on">Spend</span><span class="dopt-chip">Impressions</span><span class="dopt-chip">Reach</span><span class="dopt-chip">CPM</span><span class="dopt-chip">Clicks</span><span class="dopt-chip is-on">CTR</span><span class="dopt-chip">CPC</span><span class="dopt-chip">Link clicks</span><span class="dopt-chip">Link CTR</span><span class="dopt-chip">Link CPC</span><span class="dopt-chip">Landing page views</span><span class="dopt-chip is-on">Leads</span><span class="dopt-chip is-on">CPL</span><span class="dopt-chip">Registrations</span><span class="dopt-chip">CPReg</span><span class="dopt-chip">Purchases</span><span class="dopt-chip">CPP</span><span class="dopt-chip is-on">Rules</span><span class="dopt-chip">ID</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="site-container feature-footer">
+        <span class="feature-label">Features</span>
+        <ul class="feature-list">
+          <li class="feature-item"><button class="feature-button" type="button" popovertarget="ads-accounts"><span>Ad accounts</span><span class="feature-plus" aria-hidden="true">+</span></button></li>
+          <li class="feature-item is-uneven"><button class="feature-button" type="button" popovertarget="ads-columns"><span>Metrics and columns</span><span class="feature-plus" aria-hidden="true">+</span></button></li>
+          <li class="feature-item"><button class="feature-button" type="button" popovertarget="ads-filters"><span>Filters and sorting</span><span class="feature-plus" aria-hidden="true">+</span></button></li>
+          <li class="feature-item is-uneven"><button class="feature-button" type="button" popovertarget="ads-grouping"><span>Grouping and periods</span><span class="feature-plus" aria-hidden="true">+</span></button></li>
+        </ul>
+      </div>
+    <div class="spec" id="ads-accounts" popover>
+      <div class="spec-header"><span class="spec-label">Tech specs</span><button class="spec-close" type="button" popovertarget="ads-accounts" popovertargetaction="hide" aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22Z"/></svg></button></div>
+      <div class="spec-body"><h3>Ad accounts</h3><p>Every connected Meta ad account on one page, grouped by team, with its status, today’s spend, attached rules and whether automation is on.</p></div>
+    </div>
+    <div class="spec" id="ads-columns" popover>
+      <div class="spec-header"><span class="spec-label">Tech specs</span><button class="spec-close" type="button" popovertarget="ads-columns" popovertargetaction="hide" aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22Z"/></svg></button></div>
+      <div class="spec-body"><h3>Metrics and columns</h3><p>Any metric as a column on campaigns, ad sets and ads: spend, impressions, CTR, CPC, link clicks, leads, CPL, registrations, purchases and more.</p></div>
+    </div>
+    <div class="spec" id="ads-filters" popover>
+      <div class="spec-header"><span class="spec-label">Tech specs</span><button class="spec-close" type="button" popovertarget="ads-filters" popovertargetaction="hide" aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22Z"/></svg></button></div>
+      <div class="spec-body"><h3>Filters and sorting</h3><p>Filter and sort by any metric, status or attached rule. Filters and display options stay as you left them after a reload.</p></div>
+    </div>
+    <div class="spec" id="ads-grouping" popover>
+      <div class="spec-header"><span class="spec-label">Tech specs</span><button class="spec-close" type="button" popovertarget="ads-grouping" popovertargetaction="hide" aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22Z"/></svg></button></div>
+      <div class="spec-body"><h3>Grouping and periods</h3><p>Group ad sets and ads by campaign, and switch the period between today, yesterday and the last 3 or 7 days.</p></div>
+    </div>
+    </section>
+    <section id="rules" class="feature" aria-labelledby="feature-rules">
+      <div class="site-container feature-header">
+        <h2 id="feature-rules" class="feature-title">Rules<br> and automations</h2>
+        <p class="feature-desc">Rules read like a sentence: when an ad set spends $20 with no leads, turn it off. They check every few minutes, around the clock, and act or notify you, with Undo.</p>
+      </div>
+      <div class="feature-stage is-split" aria-hidden="true">
+        <div class="split-art">
+          <div class="split-panel">
+            <div class="rules-list">
+              <div class="acc-head"><span class="app-view-title">Rules</span><span class="app-tools"><span class="app-period">Group: Status <span>▾</span></span></span></div>
+              <div class="acc-group"><i class="rule-status is-active"></i>Active <span>4</span></div>
+              <div class="rule-row"><span class="rule-id">RUL-01</span><span class="rule-name">Stop with no leads after $20</span><span class="rule-chip">Spend ≥ $20 · Leads = 0</span><span class="rule-chip">Turn off</span><span class="rule-last">12 min ago</span></div>
+              <div class="rule-row"><span class="rule-id">RUL-02</span><span class="rule-name">Stop expensive leads</span><span class="rule-chip">CPL &gt; $12</span><span class="rule-chip">Turn off</span><span class="rule-last">1 h ago</span></div>
+              <div class="rule-row"><span class="rule-id">RUL-03</span><span class="rule-name">+20% on cheap purchases</span><span class="rule-chip">CPP &lt; $15</span><span class="rule-chip">Budget +20%</span><span class="rule-last">3 h ago</span></div>
+              <div class="rule-row"><span class="rule-id">RUL-05</span><span class="rule-name">Alert on CPReg above $25</span><span class="rule-chip">CPReg &gt; $25</span><span class="rule-chip">Notify</span><span class="rule-last">Yesterday</span></div>
+              <div class="acc-group"><i class="rule-status is-paused"></i>Paused <span>1</span></div>
+              <div class="rule-row"><span class="rule-id">RUL-04</span><span class="rule-name">−20% on weak CTR</span><span class="rule-chip">CTR &lt; 0.8%</span><span class="rule-chip">Budget −20%</span><span class="rule-last">Oct 12</span></div>
+              <div class="acc-group"><i class="rule-status is-review"></i>Needs review <span>1</span></div>
+              <div class="rule-row"><span class="rule-id">RUL-06</span><span class="rule-name">Turn on when a purchase lands</span><span class="rule-chip">Purchases ≥ 1</span><span class="rule-chip">Turn on</span><span class="rule-last">Never</span></div>
+            </div>
+          </div>
+          <div class="split-box">
+            <div class="nr">
+              <div class="nr-head"><span class="nr-crumb">Rules</span><span class="nr-sep">›</span><span class="nr-title">New rule</span></div>
+              <div class="nr-name">Spend ≥ 20 &amp; Leads = 0 → Turn off</div>
+              <div class="nr-line"><span class="nr-kw">When</span><span class="nr-pill">Ad set</span><span class="nr-word">has</span><span class="nr-pill">all</span><span class="nr-word">of</span><span class="nr-cond"><b>Spend</b><i></i><span>≥</span><i></i><b>$20</b></span><span class="nr-cond"><b>Leads</b><i></i><span>=</span><i></i><b>0</b></span><span class="nr-pill is-dashed">+ Condition</span><span class="nr-pill">Today</span></div>
+              <div class="nr-line"><span class="nr-kw">Then</span><span class="nr-pill">Turn the ad set off</span></div>
+              <div class="nr-line is-props"><span class="nr-pill">Run on</span><span class="nr-pill">Labels</span><span class="nr-pill">Every 5 min</span><span class="nr-pill">Once a day</span></div>
+              <p class="nr-hint">Checks each ad set every 5 min and turns it off when spend ≥ $20 and leads = 0 (today). Acts on the same ad set at most once a day.</p>
+              <div class="nr-foot"><span class="app-switch is-on"></span><span>Create more</span><span class="nr-create">Create rule</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="site-container feature-footer">
+        <span class="feature-label">Features</span>
+        <ul class="feature-list">
+          <li class="feature-item"><button class="feature-button" type="button" popovertarget="rules-onoff"><span>Turn off and on</span><span class="feature-plus" aria-hidden="true">+</span></button></li>
+          <li class="feature-item is-uneven"><button class="feature-button" type="button" popovertarget="rules-budget"><span>Budget up and down</span><span class="feature-plus" aria-hidden="true">+</span></button></li>
+          <li class="feature-item"><button class="feature-button" type="button" popovertarget="rules-examples"><span>Ready-made examples</span><span class="feature-plus" aria-hidden="true">+</span></button></li>
+          <li class="feature-item is-uneven"><button class="feature-button" type="button" popovertarget="rules-board"><span>Board view</span><span class="feature-plus" aria-hidden="true">+</span></button></li>
+        </ul>
+      </div>
+    <div class="spec" id="rules-onoff" popover>
+      <div class="spec-header"><span class="spec-label">Tech specs</span><button class="spec-close" type="button" popovertarget="rules-onoff" popovertargetaction="hide" aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22Z"/></svg></button></div>
+      <div class="spec-body"><h3>Turn off and on</h3><p>Rules turn campaigns, ad sets and ads off, or back on, when their conditions are met. Every action can be undone from the Inbox.</p></div>
+    </div>
+    <div class="spec" id="rules-budget" popover>
+      <div class="spec-header"><span class="spec-label">Tech specs</span><button class="spec-close" type="button" popovertarget="rules-budget" popovertargetaction="hide" aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22Z"/></svg></button></div>
+      <div class="spec-body"><h3>Budget up and down</h3><p>Raise or lower an ad set’s budget by a percentage when it does well or badly, with a daily cap you set.</p></div>
+    </div>
+    <div class="spec" id="rules-examples" popover>
+      <div class="spec-header"><span class="spec-label">Tech specs</span><button class="spec-close" type="button" popovertarget="rules-examples" popovertargetaction="hide" aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22Z"/></svg></button></div>
+      <div class="spec-body"><h3>Ready-made examples</h3><p>Start from tested examples, like stopping an ad set that spends without leads, and adjust the numbers to your account.</p></div>
+    </div>
+    <div class="spec" id="rules-board" popover>
+      <div class="spec-header"><span class="spec-label">Tech specs</span><button class="spec-close" type="button" popovertarget="rules-board" popovertargetaction="hide" aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22Z"/></svg></button></div>
+      <div class="spec-body"><h3>Board view</h3><p>See rules as a list or a board, grouped by status or label, and filter them by action, metric, window or ad account.</p></div>
+    </div>
+    </section>
+    <section id="inbox" class="feature" aria-labelledby="feature-inbox">
+      <div class="site-container feature-header">
+        <h2 id="feature-inbox" class="feature-title">Inbox<br> and notifications</h2>
+        <p class="feature-desc">Every rule action and account change lands in each teammate’s Inbox, and by email or Telegram for those who turn it on.</p>
+      </div>
+      <div class="feature-stage is-carousel" aria-hidden="true">
+        <div class="carousel-track">
+          <div class="carousel-frame">
+            <div class="cf-head"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M11.0069 1.00879C12.0235 1.09224 12.8967 1.78967 13.1944 2.78027L14.8907 8.42871C15.0034 8.80411 15.0258 9.20103 14.9571 9.58691L14.5069 12.1143L14.4375 12.4219C14.0542 13.8306 12.8312 14.8559 11.378 14.9863L11.0625 15H4.92875L4.6143 14.9863C3.16087 14.8561 1.93819 13.8307 1.55473 12.4219L1.48539 12.1143L1.03422 9.58691C0.974045 9.24914 0.984493 8.90311 1.06352 8.57031L1.1016 8.42871L2.79691 2.78027C3.09453 1.78948 3.96862 1.09214 4.98539 1.00879L5.19047 1H10.8018L11.0069 1.00879ZM2.96098 11.8516C3.13119 12.8053 3.96043 13.4999 4.92875 13.5H11.0625C12.031 13.5 12.8611 12.8054 13.0313 11.8516L13.2715 10.5H11.6211C11.2249 10.5 10.8512 10.6738 10.5957 10.9697L10.4932 11.1035C10.1201 11.6634 9.49195 11.9999 8.81938 12H7.17191C6.54154 11.9998 5.95019 11.7042 5.57133 11.2061L5.49809 11.1035C5.24687 10.7266 4.82396 10.5 4.37113 10.5H2.71977L2.96098 11.8516ZM5.19047 2.5C4.80433 2.50005 4.45748 2.72173 4.29203 3.06055L4.23246 3.21191L2.53715 8.86035C2.5234 8.90613 2.514 8.95293 2.50688 9H4.37113C5.32524 9.00001 6.21689 9.47715 6.74613 10.2715L6.78422 10.3223C6.88083 10.4341 7.02214 10.4998 7.17191 10.5H8.81938C8.99076 10.4999 9.15106 10.4142 9.24613 10.2715L9.34965 10.126C9.88713 9.41919 10.7268 9 11.6211 9H13.4854C13.4785 8.95295 13.4689 8.90616 13.4551 8.86035L11.7588 3.21191C11.6318 2.78947 11.2427 2.50018 10.8018 2.5H5.19047Z"/></svg><span>Inbox</span></div>
+            <div class="ib-list">
+                <div class="ib-row is-unread"><span class="ib-avatar"><span class="app-ws-mark"></span></span><span class="ib-text"><b>Turned off</b><span>NL | Leads | Interests · Finance · Spend $21.40 ≥ $20 and 0 leads today</span></span><span class="ib-time">2m</span></div>
+                <div class="ib-row is-unread"><span class="ib-avatar"><span class="app-ws-mark"></span></span><span class="ib-text"><b>Budget raised</b><span>US | Sweeps | Broad · $250 → $300 a day, CPL $1.80 &lt; $2</span></span><span class="ib-time">14m</span></div>
+                <div class="ib-row"><span class="ib-avatar"><span class="app-ws-mark"></span></span><span class="ib-text"><b>Rule alert</b><span>UK | Leads | Creative test #6 · CPReg $27.10 &gt; $25</span></span><span class="ib-time">1h</span></div>
+                <div class="ib-row"><span class="ib-avatar"><span class="app-ws-mark"></span></span><span class="ib-text"><b>Ad account needs attention</b><span>FR · E-commerce · Payment is in a grace period</span></span><span class="ib-time">3h</span></div>
+                <div class="ib-row"><span class="ib-avatar"><span class="app-ws-mark"></span></span><span class="ib-text"><b>Turned on</b><span>DE | Shop | Retargeting 7d · A purchase landed after the pause</span></span><span class="ib-time">5h</span></div>
+            </div>
+          </div>
+          <div class="carousel-frame is-glow-right">
+            <div class="cf-head"><span class="cf-crumb">Inbox</span><span class="nr-sep">›</span><span>Turned off</span></div>
+            <div class="ib-detail">
+              <h4>Turned off</h4>
+              <p class="ib-target">NL | Leads | Interests · Finance</p>
+              <div class="ib-message">Spend $21.40 ≥ $20 and 0 leads today. Rule RUL-01 “Stop with no leads after $20”.</div>
+              <div class="ib-meta"><span>Ad set</span><span>NL · Lead gen</span><span>2 min ago</span></div>
+              <div class="ib-actions"><span class="nr-pill">Snooze</span><span class="ib-undo">Undo</span></div>
+            </div>
+          </div>
+          <div class="carousel-frame is-glow-left">
+            <div class="cf-head"><span>Email</span><span class="cf-sub">notifications@buyerly.app</span></div>
+            <div class="em-card">
+              <span class="em-logo"><span class="app-ws-mark"></span></span>
+              <h4>Budget raised · US | Sweeps | Broad</h4>
+              <p class="em-context">US · Sweepstakes · Northwind</p>
+              <div class="em-message">$250 → $300 a day: CPL $1.80 is under $2.</div>
+              <span class="em-button">Open your Inbox</span>
+              <p class="em-foot">Buyerly · Unsubscribe</p>
+            </div>
+          </div>
+          <div class="carousel-frame">
+            <div class="cf-head"><span>Telegram</span><span class="cf-sub">Buyerly bot</span></div>
+            <div class="tg-chat">
+              <div class="tg-bubble"><b>Rule alert</b> · UK | Leads | Creative test #6<br>CPReg $27.10 &gt; $25<br><span>UK · Lead gen · Northwind</span><i>10:42</i></div>
+              <div class="tg-bubble"><b>Turned off</b> · NL | Leads | Interests · Finance<br>Spend $21.40 ≥ $20 and 0 leads today<br><span>NL · Lead gen · Northwind</span><i>10:58</i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="site-container feature-footer">
+        <span class="feature-label">Features</span>
+        <ul class="feature-list">
+          <li class="feature-item"><button class="feature-button" type="button" popovertarget="inbox-feed"><span>Inbox</span><span class="feature-plus" aria-hidden="true">+</span></button></li>
+          <li class="feature-item is-uneven"><button class="feature-button" type="button" popovertarget="inbox-snooze"><span>Snooze</span><span class="feature-plus" aria-hidden="true">+</span></button></li>
+          <li class="feature-item"><button class="feature-button" type="button" popovertarget="inbox-email"><span>Email</span><span class="feature-plus" aria-hidden="true">+</span></button></li>
+          <li class="feature-item is-uneven"><button class="feature-button" type="button" popovertarget="inbox-telegram"><span>Telegram</span><span class="feature-plus" aria-hidden="true">+</span></button></li>
+        </ul>
+      </div>
+    <div class="spec" id="inbox-feed" popover>
+      <div class="spec-header"><span class="spec-label">Tech specs</span><button class="spec-close" type="button" popovertarget="inbox-feed" popovertargetaction="hide" aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22Z"/></svg></button></div>
+      <div class="spec-body"><h3>Inbox</h3><p>Rule actions, alerts and ad account changes in one feed for each teammate, with filters, search and the details of every event.</p></div>
+    </div>
+    <div class="spec" id="inbox-snooze" popover>
+      <div class="spec-header"><span class="spec-label">Tech specs</span><button class="spec-close" type="button" popovertarget="inbox-snooze" popovertargetaction="hide" aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22Z"/></svg></button></div>
+      <div class="spec-body"><h3>Snooze</h3><p>Snooze a notification to a time you type, like 4 pm or 2 days, or pick a date. It comes back to the Inbox then.</p></div>
+    </div>
+    <div class="spec" id="inbox-email" popover>
+      <div class="spec-header"><span class="spec-label">Tech specs</span><button class="spec-close" type="button" popovertarget="inbox-email" popovertargetaction="hide" aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22Z"/></svg></button></div>
+      <div class="spec-body"><h3>Email</h3><p>Get Inbox notifications by email a few minutes after they happen, all of them or only priority ones.</p></div>
+    </div>
+    <div class="spec" id="inbox-telegram" popover>
+      <div class="spec-header"><span class="spec-label">Tech specs</span><button class="spec-close" type="button" popovertarget="inbox-telegram" popovertargetaction="hide" aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22Z"/></svg></button></div>
+      <div class="spec-body"><h3>Telegram</h3><p>Connect Telegram and get the same notifications as chat messages, with the ad account and workspace they came from.</p></div>
+    </div>
+    </section>
+    <section id="team" class="feature" aria-labelledby="feature-team">
+      <div class="site-container feature-header">
+        <h2 id="feature-team" class="feature-title">Your team</h2>
+        <p class="feature-desc">Invite teammates as admins, buyers or viewers, split work into teams, and switch between workspaces.</p>
+      </div>
+      <div class="feature-stage is-layered" aria-hidden="true">
+        <div class="layer-art">
+          <div class="layer-list">
+            <div class="layer-list-panel">
+              <div class="acc-head"><span class="app-view-title">Members</span><span class="app-tools"><span class="app-period">8 members</span></span></div>
+              <div class="mb-row is-head"><span>Name</span><span>Email</span><span>Role</span><span>Team</span></div>
+                <div class="mb-row"><span class="mb-name"><i class="acc-avatar">AK</i>Anna Kovacs</span><span>anna@northwind.io</span><span>Workspace admin</span><span>Lead gen</span></div>
+                <div class="mb-row"><span class="mb-name"><i class="acc-avatar">MR</i>Max Romero</span><span>max@northwind.io</span><span>Buyer</span><span>Sweepstakes</span></div>
+                <div class="mb-row"><span class="mb-name"><i class="acc-avatar">LS</i>Lena Schulz</span><span>lena@northwind.io</span><span>Buyer</span><span>E-commerce</span></div>
+                <div class="mb-row"><span class="mb-name"><i class="acc-avatar">DT</i>Didier Thomas</span><span>didier@northwind.io</span><span>Buyer</span><span>Lead gen</span></div>
+                <div class="mb-row"><span class="mb-name"><i class="acc-avatar">JP</i>Jori Park</span><span>jori@northwind.io</span><span>Viewer</span><span>—</span></div>
+                <div class="mb-row"><span class="mb-name"><i class="acc-avatar">KB</i>Karri Berg</span><span>karri@northwind.io</span><span>Buyer</span><span>Sweepstakes</span></div>
+                <div class="mb-row"><span class="mb-name"><i class="acc-avatar">NO</i>Nik Olsen</span><span>nik@northwind.io</span><span>Buyer</span><span>Lead gen</span></div>
+                <div class="mb-row"><span class="mb-name"><i class="acc-avatar">GP</i>Gabriel Price</span><span>gabriel@northwind.io</span><span>Viewer</span><span>—</span></div>
+            </div>
+          </div>
+          <div class="layer-top">
+            <div class="layer-top-head"><span class="nr-crumb">Settings</span><span class="nr-sep">›</span><span class="nr-title">Invite to your workspace</span></div>
+            <div class="layer-top-body">
+              <div class="iv">
+                <div class="iv-label">Invite link</div>
+                <div class="iv-field"><span>buyerly.app/invite/8f2kq7xw</span><span class="iv-copy">Copy</span></div>
+                <div class="iv-label">Email</div>
+                <div class="iv-field is-tall"><span class="iv-chip">lena@northwind.io</span><span class="iv-chip">karri@northwind.io</span></div>
+                <div class="iv-row"><span class="nr-pill">Invite as Buyer ▾</span><span class="nr-create">Send 2 invites</span></div>
+                <div class="iv-menu"><div class="iv-role"><b>Workspace admin</b><span>Manages members, invites and workspace settings</span></div><div class="iv-role is-on"><b>Buyer</b><span>Works with accounts, campaigns and rules</span></div><div class="iv-role"><b>Viewer</b><span>Sees the workspace without changing it</span></div></div>
+              </div>
+              <div class="tm">
+                <div class="iv-label">Teams</div>
+                <div class="tm-row"><i class="acc-avatar">LG</i><b>Lead gen</b><span>4 members · 3 ad accounts</span></div><div class="tm-row"><i class="acc-avatar">SW</i><b>Sweepstakes</b><span>2 members · 2 ad accounts</span></div><div class="tm-row"><i class="acc-avatar">EC</i><b>E-commerce</b><span>1 member · 2 ad accounts</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="site-container feature-footer">
+        <span class="feature-label">Features</span>
+        <ul class="feature-list">
+          <li class="feature-item"><button class="feature-button" type="button" popovertarget="team-roles"><span>Roles</span><span class="feature-plus" aria-hidden="true">+</span></button></li>
+          <li class="feature-item is-uneven"><button class="feature-button" type="button" popovertarget="team-teams"><span>Teams</span><span class="feature-plus" aria-hidden="true">+</span></button></li>
+          <li class="feature-item"><button class="feature-button" type="button" popovertarget="team-invite"><span>Invite link</span><span class="feature-plus" aria-hidden="true">+</span></button></li>
+          <li class="feature-item is-uneven"><button class="feature-button" type="button" popovertarget="team-workspaces"><span>Workspaces</span><span class="feature-plus" aria-hidden="true">+</span></button></li>
+        </ul>
+      </div>
+    <div class="spec" id="team-roles" popover>
+      <div class="spec-header"><span class="spec-label">Tech specs</span><button class="spec-close" type="button" popovertarget="team-roles" popovertargetaction="hide" aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22Z"/></svg></button></div>
+      <div class="spec-body"><h3>Roles</h3><p>Workspace admins manage members, invites and settings. Buyers work with accounts, campaigns and rules. Viewers see the workspace without changing it.</p></div>
+    </div>
+    <div class="spec" id="team-teams" popover>
+      <div class="spec-header"><span class="spec-label">Tech specs</span><button class="spec-close" type="button" popovertarget="team-teams" popovertargetaction="hide" aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22Z"/></svg></button></div>
+      <div class="spec-body"><h3>Teams</h3><p>Split the workspace into teams, for example one per vertical or geo, and group ad accounts by team.</p></div>
+    </div>
+    <div class="spec" id="team-invite" popover>
+      <div class="spec-header"><span class="spec-label">Tech specs</span><button class="spec-close" type="button" popovertarget="team-invite" popovertargetaction="hide" aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22Z"/></svg></button></div>
+      <div class="spec-body"><h3>Invite link</h3><p>Share one invite link, or invite people by email with a role. Admins can reset the link or turn it off at any time.</p></div>
+    </div>
+    <div class="spec" id="team-workspaces" popover>
+      <div class="spec-header"><span class="spec-label">Tech specs</span><button class="spec-close" type="button" popovertarget="team-workspaces" popovertargetaction="hide" aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22Z"/></svg></button></div>
+      <div class="spec-body"><h3>Workspaces</h3><p>Belong to several workspaces and switch between them, or stay signed in to more than one account at once.</p></div>
+    </div>
+    </section>
+    <section id="changelog" class="site-container changelog" aria-labelledby="changelog-title">
+      <h2 id="changelog-title" class="changelog-title">Changelog</h2>
+      <div class="changelog-grid">
+        <article class="changelog-item is-latest">
+          <span class="changelog-dot" aria-hidden="true"></span>
+          <h3>Invite your team</h3>
+          <p>Invite teammates by link or email while setting up, each with a role.</p>
+          <time datetime="2026-10-17">Oct 17, 2026</time>
+        </article>
+        <article class="changelog-item">
+          <span class="changelog-dot" aria-hidden="true"></span>
+          <h3>Rules board and filters</h3>
+          <p>Filter, group and sort your rules, and see them as a board.</p>
+          <time datetime="2026-10-14">Oct 14, 2026</time>
+        </article>
+        <article class="changelog-item">
+          <span class="changelog-dot" aria-hidden="true"></span>
+          <h3>Ads Manager columns and periods</h3>
+          <p>Any metric as a column, with filters, grouping and a period.</p>
+          <time datetime="2026-10-14">Oct 14, 2026</time>
+        </article>
+        <article class="changelog-item">
+          <span class="changelog-dot" aria-hidden="true"></span>
+          <h3>Ad accounts page</h3>
+          <p>All your ad accounts on one page, grouped by team.</p>
+          <time datetime="2026-10-13">Oct 13, 2026</time>
+        </article>
+      </div>
+    </section>
+    <section class="cta" aria-labelledby="cta-title">
+      <h2 id="cta-title" class="cta-title">Built for buyers. Available today.</h2>
+      <div class="cta-actions"><a class="site-button-invert is-large" href="/signup">Sign up</a><a class="site-button-secondary" href="/login">Log in</a></div>
     </section>
   </main>
   <footer class="site-footer">
-    <div class="site-container site-footer-grid">
-      <div class="site-operator">
-        <a class="site-brand" href="/" aria-label="Buyerly home"><img src="/static/icons/buyerly_logo_badge.svg" width="32" height="32" alt=""><span>Buyerly</span></a>
-        <p>Buyerly is operated by<br><strong>individual entrepreneur ARTEM PETRUCHENKO</strong></p>
+    <div class="site-footer-grid">
+      <div class="site-footer-logo"><a class="site-footer-mark" href="/" aria-label="Buyerly home"><span class="site-brand-mark" aria-hidden="true"></span></a></div>
+      <nav class="site-footer-col" aria-labelledby="footer-product">
+        <h2 id="footer-product">Product</h2>
+        <ul><li><a href="/#product">Ads Manager</a></li><li><a href="/#rules">Rules</a></li><li><a href="/#inbox">Inbox</a></li><li><a href="/#team">Your team</a></li><li><a href="/#changelog">Changelog</a></li></ul>
+      </nav>
+      <nav class="site-footer-col" aria-labelledby="footer-company">
+        <h2 id="footer-company">Company</h2>
+        <ul><li><a href="/about">About</a></li></ul>
+      </nav>
+      <section id="contact" class="site-footer-col" aria-labelledby="contact-heading">
+        <h2 id="contact-heading">Contact</h2>
+        <ul><li><a href="mailto:contact@buyerly.app">contact@buyerly.app</a></li></ul>
+      </section>
+      <div class="site-footer-operator">
+        <p>Buyerly is operated by <strong>individual entrepreneur ARTEM PETRUCHENKO</strong></p>
         <p>Identification Number: 305879234</p>
         <address>Georgia, Tbilisi, Vake District, Besarion Zhgenti Street, No. 49, Apartment 20</address>
-        <p class="site-copyright">© 2026 Buyerly</p>
       </div>
-      <nav class="site-footer-links" aria-label="Company">
-        <h2>Company</h2>
-        <a href="/about">About</a>
-      </nav>
-      <section id="contact" aria-labelledby="contact-heading">
-        <h2 id="contact-heading">Contact</h2>
-        <a href="mailto:contact@buyerly.app">contact@buyerly.app</a>
-      </section>
-      <nav class="site-footer-links" aria-label="Legal">
-        <h2>Legal</h2>
-        <a href="/privacy">Privacy</a><a href="/terms">Terms</a>
+      <nav class="site-footer-legal" aria-label="Legal">
+        <a href="/privacy">Privacy</a><a href="/terms">Terms</a><span class="site-copyright">© 2026 Buyerly</span>
       </nav>
     </div>
   </footer>

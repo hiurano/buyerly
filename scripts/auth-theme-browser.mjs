@@ -24,7 +24,7 @@ const user = {
 const pages = [
   { name: 'login', path: '/login', ready: 'Log in to Buyerly', surface: '.buyerly-auth-page', field: 'Continue with email' },
   { name: 'create-workspace', path: '/create-workspace', ready: 'Create a workspace', surface: '.buyerly-auth-page', signedIn: true, field: true },
-  { name: 'landing', path: '/', ready: 'Your Meta Ads operations', surface: 'body' },
+  { name: 'landing', path: '/', ready: 'The operations system', surface: 'body' },
   { name: 'about', path: '/about', ready: 'Get in touch', surface: 'body' },
   { name: 'privacy', path: '/privacy', ready: 'Data we use', surface: 'body' },
   { name: 'terms', path: '/terms', ready: 'Advertising and automation', surface: 'body' },
@@ -178,8 +178,14 @@ try {
               const rect = element.getBoundingClientRect();
               const style = getComputedStyle(element);
               if (!rect.width || !rect.height || style.visibility === 'hidden' || style.display === 'none') continue;
+              // A logo drawn through a mask and an inverted button (dark text on a light fill, as Linear's
+              // "Sign up" in dark) are light on purpose; a faint overlay (alpha < 0.5) is not a white piece.
+              if (style.maskImage !== 'none' || style.webkitMaskImage && style.webkitMaskImage !== 'none') continue;
+              const fill = style.backgroundColor.match(/[\d.]+/g)?.map(Number) || [];
+              if (fill.length === 4 && fill[3] < 0.5) continue;
               const value = luminance(style.backgroundColor);
-              if (value !== null && value > 0.85) white.push(`${element.tagName}.${element.className}`);
+              const text = luminance(style.color);
+              if (value !== null && value > 0.85 && !(text !== null && text < 0.3)) white.push(`${element.tagName}.${element.className}`);
             }
             return {
               themeAtBody: window.__themeAtBody,

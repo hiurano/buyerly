@@ -9,12 +9,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_ROOT = PROJECT_ROOT / "frontend" / "public"
 BUILD_ROOT = PROJECT_ROOT / "frontend" / "dist"
 DOCUMENTS = {
-    "landing.html": ("Your Meta Ads operations", "in one place.", "Routine work, automated"),
+    "landing.html": ("The operations system", "for Meta Ads teams", "Rules read like a sentence"),
     "about.html": ("About", "Company", "Get in touch"),
     "privacy.html": ("Privacy", "Data we use", "Your choices and deletion"),
     "terms.html": ("Terms", "Advertising and automation", "Ending access and changes"),
     "data-deletion.html": ("Data deletion", "Send a deletion request", "What happens next"),
 }
+# Links into the React app rather than to public documents.
+APP_ROUTES = {"/login", "/signup"}
 BUSINESS_NAME = "individual entrepreneur ARTEM PETRUCHENKO"
 BUSINESS_ADDRESS = "Georgia, Tbilisi, Vake District, Besarion Zhgenti Street, No. 49, Apartment 20"
 
@@ -82,7 +84,8 @@ class TestLegalPageFiles(unittest.TestCase):
             for text in (*required_text, BUSINESS_NAME, BUSINESS_ADDRESS, "Identification Number: 305879234", "contact@buyerly.app"):
                 self.assertIn(text, content)
             self.assertEqual(content.count("<script"), 1)
-            self.assertNotIn("Sign up", content)
+            # Sign up opens the app's sign-up screen (#436), as Log in opens its login.
+            self.assertIn('<a class="site-button-invert" href="/signup">Sign up</a>', content)
             self.assertNotIn("fonts.googleapis.com", content)
             header = re.search(r'<header\b.*?</header>', content, re.S)[0]
             footer = re.search(r'<footer\b.*?</footer>', content, re.S)[0].replace(' aria-current="page"', '')
@@ -99,7 +102,7 @@ class TestLegalPageFiles(unittest.TestCase):
             for link in parser.links:
                 if link.startswith('#'):
                     self.assertIn(link[1:], parser.ids, filename)
-                elif link.startswith('/') and link != '/login':
+                elif link.startswith('/') and link not in APP_ROUTES:
                     route, _, anchor = link.partition('#')
                     target = 'landing.html' if route == '/' else route[1:] + '.html'
                     self.assertTrue((PUBLIC_ROOT / target).is_file(), link)
@@ -118,7 +121,7 @@ class TestLegalPageFiles(unittest.TestCase):
         # on, email (services/inbox_email.py) or Telegram (services/inbox_telegram.py).
         # There are no scheduled reports and no other channels to promise.
         landing = (PUBLIC_ROOT / "landing.html").read_text()
-        self.assertIn("Buyerly inbox, and by email or Telegram for those who turn it on", landing)
+        self.assertIn("lands in each teammate’s Inbox, and by email or Telegram for those who turn it on", landing)
         for filename in DOCUMENTS:
             content = (PUBLIC_ROOT / filename).read_text().lower()
             for claim in ("scheduled report", "channels they already use", "team reporting", "slack"):
