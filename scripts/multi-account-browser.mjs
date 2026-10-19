@@ -72,7 +72,14 @@ try {
       if (verb === 'GET' && path === '/api/auth/accounts') {
         return route.fulfill({ json: loggedIn.map((id, slot) => ({ ...profile(id), slot })) });
       }
-      if (verb === 'POST' && path === '/api/auth/login') {
+      if (verb === 'POST' && path === '/api/auth/request-temporary-password') {
+        return route.fulfill({ json: { ok: true, message: 'A temporary password has been sent to your email' } });
+      }
+      if (verb === 'POST' && path === '/api/auth/verify-temporary-password') {
+        const body = request.postDataJSON();
+        if (body.email !== 'lee@example.test' || body.code !== 'KQZMRTWPDA') {
+          return route.fulfill({ status: 401, json: { detail: 'Invalid or expired temporary password' } });
+        }
         if (!loggedIn.includes(3)) loggedIn.push(3);
         return route.fulfill({ json: { account_id: 3, username: 'lee', full_name: 'lee', role: 'buyer', message: 'Signed in successfully' } });
       }
@@ -143,7 +150,7 @@ try {
       const asKim = since(mark).filter(item => item.path !== '/api/auth/accounts');
       assert.equal(asKim.length > 0, true);
       assert.deepEqual([...new Set(asKim.map(item => item.account))], [2]);
-      assert.equal(asKim.some(item => item.path === '/api/auth/login'), false);
+      assert.equal(asKim.some(item => item.path.startsWith('/api/auth/verify-')), false);
 
       // Sam's late answer never reaches Kim's screen.
       for (const route of delayedSamRules.splice(0)) await route.fulfill({ json: [preset(1, 'late alpha rule')] });
@@ -176,10 +183,12 @@ try {
       await page.getByText('sam@example.test', { exact: true }).waitFor();
       await page.getByText('Logged in as').waitFor();
       await page.screenshot({ path: `${output}/add-account-${width}.png` });
-      await page.getByRole('button', { name: 'Log in with password' }).click();
-      await page.getByPlaceholder('Username or email').fill('lee');
-      await page.getByPlaceholder('Password').fill('lee-password');
-      await page.getByRole('button', { name: 'Log in', exact: true }).click();
+      await page.getByRole('button', { name: 'Continue with email', exact: true }).click();
+      await page.getByRole('textbox', { name: 'Email address', exact: true }).fill('lee@example.test');
+      await page.getByRole('button', { name: 'Continue with email', exact: true }).click();
+      await page.getByRole('button', { name: 'Enter code manually', exact: true }).click();
+      await page.getByRole('textbox', { name: 'Login code', exact: true }).fill('KQZMRTWPDA');
+      await page.getByRole('button', { name: 'Continue with login code', exact: true }).click();
       await page.waitForURL(`${origin}/delta/inbox`);
       await page.getByRole('button', { name: 'Delta Workspace Menu' }).waitFor();
       assert.deepEqual(loggedIn, [1, 2, 3]);

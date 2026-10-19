@@ -10,7 +10,8 @@
 #
 # The page is http://<branch>.localhost:<port>: a host of its own, so its login
 # cookie never replaces the one of localhost:5173 or of another preview.
-# Sign in with "Log in with password": dev / buyerly-dev. Everything is local
+# Sign in with "Continue with email": dev@buyerly.localhost; the code and link
+# are in `scripts/preview.sh logs` after "[DEV EMAIL]". Everything is local
 # test data from compose.dev.yaml and scripts/dev_seed.py; nothing reaches
 # production or Meta.
 set -euo pipefail
@@ -86,7 +87,7 @@ case "${1:-up}" in
     pick_ports
     compose up -d --build
     wait_until_ready
-    echo "preview: $(url)  (dev / buyerly-dev)"
+    echo "preview: $(url)  (dev@buyerly.localhost, code in: scripts/preview.sh logs)"
     ;;
   url)
     pick_ports

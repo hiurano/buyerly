@@ -13,7 +13,7 @@ export const SETTINGS_PAGE_KEYWORDS: Record<SettingsPage, string> = {
   preferences: 'preferences interface theme appearance ai assistant agent webmcp chrome',
   profile: 'profile account email name avatar picture photo title role username leave',
   notifications: 'notifications inbox priority inbox custom filters push email telegram',
-  security: 'security access sessions devices auth log out logout revoke sign in password',
+  security: 'security access sessions devices auth log out logout revoke sign in',
   'connected-accounts': 'connected accounts telegram connect disconnect',
   workspace: 'workspace name logo url address slug delete workspace',
   teams: 'teams team create team retire identifier',

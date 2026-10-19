@@ -21,10 +21,8 @@ from api.schemas.auth import (
     VerifyEmailLinkRequest,
     RequestEmailChangeRequest,
     VerifyEmailChangeRequest,
-    LoginRequest,
     LoginResponse,
     WebSessionItem,
-    ChangePasswordRequest,
     UpdateProfileRequest,
 )
 from api.schemas.onboarding import (
@@ -104,11 +102,9 @@ __all__ = [
     "VerifyEmailLinkRequest",
     "RequestEmailChangeRequest",
     "VerifyEmailChangeRequest",
-    "LoginRequest",
     "LoginResponse",
     "BrowserAccountItem",
     "WebSessionItem",
-    "ChangePasswordRequest",
     "UpdateProfileRequest",
     "OnboardingStatusResponse",
     "PersonalDetailsRequest",

@@ -89,22 +89,15 @@ Compose задаёт сам и в `.env` не нужны: `APP_VERSION`, `DATABA
 cross-origin клиентов; `ENABLE_DEV_AUTH` в production всегда `false`.
 
 Допустимые операционные overrides: `ADMIN_CHAT_ID` (legacy Telegram ID
-супер-админа для bootstrap и dev-входа), `DEFAULT_POLL_INTERVAL_MINUTES`,
-`WEB_SESSION_TTL_HOURS` и `WEB_SESSION_ROTATE_MINUTES`. Пара
-`BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD` используется только при
-первом запуске пустой установки и после создания администратора удаляется.
+супер-админа для dev-входа), `DEFAULT_POLL_INTERVAL_MINUTES`,
+`WEB_SESSION_TTL_HOURS` и `WEB_SESSION_ROTATE_MINUTES`. `DEV_EMAIL_LOG` включает
+только локальный стек (`compose.dev.yaml`): без `RESEND_API_KEY` письмо со
+ссылкой и кодом входа пишется в лог; в production всегда `false`.
 Полный перечень — в `.env.example`.
 
-Вход и регистрация — по коду и ссылке из письма, для любой почты; новая почта
-без приглашения сначала проходит Cloudflare Turnstile. Вход по паролю временно оставлен ссылкой «Log in
-with password»; пароль задаётся в Settings → Profile или командой (пароль
-запрашивается интерактивно):
-
-```bash
-docker compose exec api python -m scripts.set_user_password <username>
-# переименовать существующий email-аккаунт, сохранив его workspaces:
-docker compose exec api python -m scripts.set_user_password <username> --email <email>
-```
+Вход и регистрация — только по коду и ссылке из письма, как в Linear, для любой
+почты; новая почта без приглашения сначала проходит Cloudflare Turnstile.
+Паролей нет: первый пользователь пустой установки регистрируется сам.
 
 ## Установка на новый сервер
 

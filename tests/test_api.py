@@ -1,5 +1,4 @@
 import asyncio
-import hashlib
 import io
 import json
 import os
@@ -23,7 +22,7 @@ from api.server import create_app
 from core.config import settings
 from core.meta_tokens import decrypt_meta_token
 from core.rate_limit import limiter
-from database.db import Base, hash_password, verify_password
+from database.db import Base
 from database.models import (
     Account,
     AccountHealth,
@@ -52,6 +51,7 @@ from database.models import (
 )
 
 
+from tests.sign_in_helper import confirm_email, sign_in
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
 
 
@@ -80,7 +80,6 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 telegram_id="8634201356",
                 username="admin_user",
                 full_name="Admin Test",
-                password_hash=hash_password("admin-password"),
                 role="admin",
                 is_approved=True,
             )
@@ -173,62 +172,12 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(ready_response.json()["status"], "ready")
         self.assertIn("version", ready_response.json())
 
-    async def test_password_login_upgrades_legacy_hash(self):
-        legacy_password = "legacy-password"
-        async with self.test_session_maker() as session:
-            result = await session.execute(
-                select(User).where(User.username == "buyer_nick")
-            )
-            buyer = result.scalar_one()
-            buyer.password_hash = hashlib.sha256(legacy_password.encode()).hexdigest()
-            await session.commit()
-
-        transport = httpx.ASGITransport(app=self.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            missing_password = await client.post(
-                "/api/auth/login",
-                json={"username": "admin_user", "password": "anything"},
-            )
-            wrong_password = await client.post(
-                "/api/auth/login",
-                json={"username": "buyer_nick", "password": "wrong-password"},
-            )
-            login = await client.post(
-                "/api/auth/login",
-                json={"username": "buyer_nick", "password": legacy_password},
-            )
-
-        self.assertEqual(missing_password.status_code, 401)
-        self.assertEqual(wrong_password.status_code, 401)
-        self.assertEqual(login.status_code, 200)
-        self.assertNotIn("token", login.json())
-        self.assertIn("buyerly_session=", login.headers.get("set-cookie", ""))
-        self.assertIn("HttpOnly", login.headers.get("set-cookie", ""))
-
-        async with self.test_session_maker() as session:
-            result = await session.execute(
-                select(User).where(User.username == "buyer_nick")
-            )
-            upgraded_buyer = result.scalar_one()
-            self.assertTrue(upgraded_buyer.password_hash.startswith("pbkdf2_sha256$"))
-            self.assertTrue(verify_password(legacy_password, upgraded_buyer.password_hash))
-
     async def test_browser_sessions_are_hashed_csrf_protected_and_individually_revocable(self):
-        password = "browser-session-password"
-        async with self.test_session_maker() as session:
-            buyer = (
-                await session.execute(select(User).where(User.username == "buyer_nick"))
-            ).scalar_one()
-            buyer.password_hash = hash_password(password)
-            await session.commit()
+        await confirm_email(self.test_session_maker, "buyer_nick", "buyer@example.test")
 
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
-            login = await client.post(
-                "/api/auth/login",
-                headers={"User-Agent": "Buyerly test browser"},
-                json={"username": "buyer_nick", "password": password},
-            )
+            login = await sign_in(client, "buyer@example.test", headers={"User-Agent": "Buyerly test browser"})
             self.assertEqual(login.status_code, 200)
             raw_token = client.cookies.get("buyerly_session")
             csrf_token = client.cookies.get("buyerly_csrf")
@@ -238,10 +187,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             me = await client.get("/api/me")
             self.assertEqual(me.status_code, 200)
 
-            csrf_blocked = await client.post(
-                "/api/auth/change-password",
-                json={"old_password": password, "new_password": "changed-password"},
-            )
+            csrf_blocked = await client.post("/api/auth/logout-all")
             self.assertEqual(csrf_blocked.status_code, 403)
 
             sessions_response = await client.get("/api/auth/sessions")
@@ -264,13 +210,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertIsNotNone(stored.revoked_at)
 
     async def test_logout_all_keep_current_ends_only_other_sessions(self):
-        password = "browser-session-password"
-        async with self.test_session_maker() as session:
-            buyer = (
-                await session.execute(select(User).where(User.username == "buyer_nick"))
-            ).scalar_one()
-            buyer.password_hash = hash_password(password)
-            await session.commit()
+        await confirm_email(self.test_session_maker, "buyer_nick", "buyer@example.test")
 
         transport = httpx.ASGITransport(app=self.app)
         async with (
@@ -278,11 +218,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             httpx.AsyncClient(transport=transport, base_url="https://test") as phone,
         ):
             for client, agent in ((laptop, "Laptop browser"), (phone, "Phone browser")):
-                login = await client.post(
-                    "/api/auth/login",
-                    headers={"User-Agent": agent},
-                    json={"username": "buyer_nick", "password": password},
-                )
+                login = await sign_in(client, "buyer@example.test", headers={"User-Agent": agent})
                 self.assertEqual(login.status_code, 200)
 
             sessions = (await laptop.get("/api/auth/sessions")).json()
@@ -313,23 +249,15 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
     async def test_one_browser_keeps_isolated_sessions_for_several_accounts(self):
         """Linear's "Add an account…": each account has its own session, CSRF and scope."""
-        async with self.test_session_maker() as session:
-            buyer = (
-                await session.execute(select(User).where(User.username == "buyer_nick"))
-            ).scalar_one()
-            buyer.password_hash = hash_password("buyer-password")
-            await session.commit()
+        await confirm_email(self.test_session_maker, "buyer_nick", "buyer@example.test")
+        await confirm_email(self.test_session_maker, "admin_user", "admin@example.test")
 
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="https://test") as browser:
-            first = await browser.post(
-                "/api/auth/login", json={"username": "buyer_nick", "password": "buyer-password"}
-            )
+            first = await sign_in(browser, "buyer@example.test")
             self.assertEqual(first.status_code, 200, first.text)
             buyer_id = first.json()["account_id"]
-            second = await browser.post(
-                "/api/auth/login", json={"username": "admin_user", "password": "admin-password"}
-            )
+            second = await sign_in(browser, "admin@example.test")
             self.assertEqual(second.status_code, 200, second.text)
             admin_id = second.json()["account_id"]
             self.assertNotEqual(buyer_id, admin_id)
@@ -388,9 +316,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual([item["id"] for item in remaining], [admin_id])
 
             # Logging in again as an account already here replaces its own session.
-            again = await browser.post(
-                "/api/auth/login", json={"username": "admin_user", "password": "admin-password"}
-            )
+            again = await sign_in(browser, "admin@example.test")
             self.assertEqual(again.status_code, 200)
             self.assertEqual([item["id"] for item in (await browser.get("/api/auth/accounts")).json()], [admin_id])
 
@@ -405,7 +331,8 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             for index in range(6):
                 session.add(User(
                     username=f"extra_{index}",
-                    password_hash=hash_password("extra-password"),
+                    email=f"extra_{index}@example.test",
+                    email_verified_at=datetime.now(timezone.utc),
                     role="buyer",
                     is_approved=True,
                 ))
@@ -415,30 +342,20 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         async with httpx.AsyncClient(transport=transport, base_url="https://test") as browser:
             statuses = []
             for index in range(6):
-                response = await browser.post(
-                    "/api/auth/login", json={"username": f"extra_{index}", "password": "extra-password"}
-                )
+                response = await sign_in(browser, f"extra_{index}@example.test")
                 statuses.append(response.status_code)
             self.assertEqual(statuses, [200, 200, 200, 200, 200, 409])
             self.assertEqual(len((await browser.get("/api/auth/accounts")).json()), 5)
 
     async def test_security_revocation_ends_only_its_own_account_in_a_shared_browser(self):
         """Security & access acts on the named account; the other one stays logged in."""
-        async with self.test_session_maker() as session:
-            buyer = (
-                await session.execute(select(User).where(User.username == "buyer_nick"))
-            ).scalar_one()
-            buyer.password_hash = hash_password("buyer-password")
-            await session.commit()
+        await confirm_email(self.test_session_maker, "buyer_nick", "buyer@example.test")
+        await confirm_email(self.test_session_maker, "admin_user", "admin@example.test")
 
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="https://test") as browser:
-            buyer_id = (await browser.post(
-                "/api/auth/login", json={"username": "buyer_nick", "password": "buyer-password"}
-            )).json()["account_id"]
-            admin_id = (await browser.post(
-                "/api/auth/login", json={"username": "admin_user", "password": "admin-password"}
-            )).json()["account_id"]
+            buyer_id = (await sign_in(browser, "buyer@example.test")).json()["account_id"]
+            admin_id = (await sign_in(browser, "admin@example.test")).json()["account_id"]
             as_buyer = {"X-Buyerly-Account": str(buyer_id)}
             as_admin = {"X-Buyerly-Account": str(admin_id)}
 
@@ -477,24 +394,14 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.json(), [])
 
     async def test_sessions_record_the_browser_address_behind_the_proxy(self):
-        password = "browser-session-password"
-        async with self.test_session_maker() as session:
-            buyer = (
-                await session.execute(select(User).where(User.username == "buyer_nick"))
-            ).scalar_one()
-            buyer.password_hash = hash_password(password)
-            await session.commit()
+        await confirm_email(self.test_session_maker, "buyer_nick", "buyer@example.test")
 
         original_proxies = api_auth_module.settings.TRUSTED_PROXY_CIDRS
         api_auth_module.settings.TRUSTED_PROXY_CIDRS = "127.0.0.1/32"
         transport = httpx.ASGITransport(app=self.app)
         try:
             async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
-                login = await client.post(
-                    "/api/auth/login",
-                    headers={"X-Forwarded-For": "203.0.113.10"},
-                    json={"username": "buyer_nick", "password": password},
-                )
+                login = await sign_in(client, "buyer@example.test", headers={"X-Forwarded-For": "203.0.113.10"})
                 self.assertEqual(login.status_code, 200)
                 sessions = (
                     await client.get("/api/auth/sessions", headers={"X-Forwarded-For": "203.0.113.10"})
@@ -507,13 +414,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(sessions[0]["location"], "")
 
     async def test_sessions_record_the_place_cloudflare_reports(self):
-        password = "browser-session-password"
-        async with self.test_session_maker() as session:
-            buyer = (
-                await session.execute(select(User).where(User.username == "buyer_nick"))
-            ).scalar_one()
-            buyer.password_hash = hash_password(password)
-            await session.commit()
+        await confirm_email(self.test_session_maker, "buyer_nick", "buyer@example.test")
 
         # Browser -> Cloudflare edge (162.158.1.2) -> our proxy (127.0.0.1) -> API.
         helsinki = {
@@ -528,11 +429,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         transport = httpx.ASGITransport(app=self.app)
         try:
             async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
-                login = await client.post(
-                    "/api/auth/login",
-                    headers=helsinki,
-                    json={"username": "buyer_nick", "password": password},
-                )
+                login = await sign_in(client, "buyer@example.test", headers=helsinki)
                 self.assertEqual(login.status_code, 200)
                 sessions = (await client.get("/api/auth/sessions", headers=helsinki)).json()
                 self.assertEqual(sessions[0]["ip_address"], "203.0.113.10")
@@ -576,24 +473,14 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(stored.location, "")
 
     async def test_session_address_follows_the_browser_when_it_is_seen_again(self):
-        password = "browser-session-password"
-        async with self.test_session_maker() as session:
-            buyer = (
-                await session.execute(select(User).where(User.username == "buyer_nick"))
-            ).scalar_one()
-            buyer.password_hash = hash_password(password)
-            await session.commit()
+        await confirm_email(self.test_session_maker, "buyer_nick", "buyer@example.test")
 
         original_proxies = api_auth_module.settings.TRUSTED_PROXY_CIDRS
         api_auth_module.settings.TRUSTED_PROXY_CIDRS = "127.0.0.1/32"
         transport = httpx.ASGITransport(app=self.app)
         try:
             async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
-                login = await client.post(
-                    "/api/auth/login",
-                    headers={"X-Forwarded-For": "203.0.113.10"},
-                    json={"username": "buyer_nick", "password": password},
-                )
+                login = await sign_in(client, "buyer@example.test", headers={"X-Forwarded-For": "203.0.113.10"})
                 self.assertEqual(login.status_code, 200)
                 # The last-seen time is refreshed every five minutes; pretend that has passed.
                 async with self.test_session_maker() as session:
@@ -608,86 +495,6 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         async with self.test_session_maker() as session:
             stored = (await session.execute(select(WebSession))).scalar_one()
         self.assertEqual(stored.ip_address, "198.51.100.7")
-
-    async def test_change_password_requires_current_password(self):
-        old_password = "old-password"
-        new_password = "new-password"
-        async with self.test_session_maker() as session:
-            result = await session.execute(
-                select(User).where(User.username == "buyer_nick")
-            )
-            buyer = result.scalar_one()
-            buyer.password_hash = hashlib.sha256(old_password.encode()).hexdigest()
-            buyer.auth_token = "test-web-token"
-            await session.commit()
-
-        headers = {"Authorization": "Bearer test-web-token"}
-        transport = httpx.ASGITransport(app=self.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            missing_current = await client.post(
-                "/api/auth/change-password",
-                headers=headers,
-                json={"new_password": new_password},
-            )
-            wrong_current = await client.post(
-                "/api/auth/change-password",
-                headers=headers,
-                json={"old_password": "wrong-password", "new_password": new_password},
-            )
-            changed = await client.post(
-                "/api/auth/change-password",
-                headers=headers,
-                json={"old_password": old_password, "new_password": new_password},
-            )
-
-        self.assertEqual(missing_current.status_code, 400)
-        self.assertEqual(wrong_current.status_code, 400)
-        self.assertEqual(changed.status_code, 200)
-
-        async with self.test_session_maker() as session:
-            result = await session.execute(
-                select(User).where(User.username == "buyer_nick")
-            )
-            changed_buyer = result.scalar_one()
-        self.assertTrue(verify_password(new_password, changed_buyer.password_hash))
-
-    async def test_email_only_account_sets_a_password_for_password_login(self):
-        async with self.test_session_maker() as session:
-            buyer = (await session.execute(select(User).where(User.username == "buyer_nick"))).scalar_one()
-            buyer.password_hash = ""  # accounts created by email sign-in have no password
-            buyer.auth_token = "test-web-token"
-            await session.commit()
-
-        headers = {"Authorization": "Bearer test-web-token"}
-        transport = httpx.ASGITransport(app=self.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            before = await client.get("/api/me", headers=headers)
-            self.assertEqual(before.status_code, 200, before.text)
-            self.assertFalse(before.json()["has_password"])
-            self.assertNotIn("password_hash", before.json())
-
-            # Without a password yet, the first one is set without a current password.
-            set_first = await client.post(
-                "/api/auth/change-password",
-                headers=headers,
-                json={"new_password": "first-password"},
-            )
-            self.assertEqual(set_first.status_code, 200, set_first.text)
-            self.assertTrue((await client.get("/api/me", headers=headers)).json()["has_password"])
-
-            login = await client.post(
-                "/api/auth/login",
-                json={"username": "buyer_nick", "password": "first-password"},
-            )
-            self.assertEqual(login.status_code, 200, login.text)
-
-            # From now on a change needs the current password.
-            replace_without_current = await client.post(
-                "/api/auth/change-password",
-                headers=headers,
-                json={"new_password": "second-password"},
-            )
-            self.assertEqual(replace_without_current.status_code, 400)
 
     async def test_health_overview_is_workspace_isolated_and_secret_safe(self):
         async with self.test_session_maker() as session:
@@ -3305,6 +3112,9 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
     async def test_settings_endpoint(self):
         admin_info = {"id": 8634201356, "first_name": "Admin", "username": "admin_user"}
         admin_auth = await session_headers(self.test_session_maker, admin_info)
+        buyer_auth = await session_headers(
+            self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
+        )
 
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -3318,27 +3128,22 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(s_resp.json()["stop_confirmation_minutes"], 10)
             self.assertEqual(s_resp.json()["usage_hard_limit_percent"], 80)
 
-            missing_password = await client.post(
+            # Administrators only; there is no password to confirm any more.
+            as_buyer = await client.post(
                 "/api/settings/interval",
-                headers=headers,
+                headers=buyer_auth,
                 json={"minutes": 30},
-            )
-            wrong_password = await client.post(
-                "/api/settings/interval",
-                headers=headers,
-                json={"minutes": 30, "current_password": "wrong"},
             )
             set_resp = await client.post(
                 "/api/settings/interval",
                 headers=headers,
-                json={"minutes": 30, "current_password": "admin-password"},
+                json={"minutes": 30},
             )
 
             automation_resp = await client.post(
                 "/api/settings/automation",
                 headers=headers,
                 json={
-                    "current_password": "admin-password",
                     "poll_interval_minutes": 15,
                     "critical_rule_interval_minutes": 1,
                     "stop_confirmation_minutes": 7,
@@ -3356,7 +3161,6 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 "/api/settings/automation",
                 headers=headers,
                 json={
-                    "current_password": "admin-password",
                     "poll_interval_minutes": 15,
                     "critical_rule_interval_minutes": 1,
                     "stop_confirmation_minutes": 7,
@@ -3372,8 +3176,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
             refreshed = await client.get("/api/settings", headers=headers)
 
-        self.assertEqual(missing_password.status_code, 422)
-        self.assertEqual(wrong_password.status_code, 403)
+        self.assertEqual(as_buyer.status_code, 403)
         self.assertEqual(set_resp.status_code, 200)
         self.assertEqual(set_resp.json()["poll_interval_minutes"], 30)
         self.assertEqual(automation_resp.status_code, 200)

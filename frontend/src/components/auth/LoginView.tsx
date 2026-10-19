@@ -4,7 +4,7 @@ import type { LoginResult } from '@/lib/types';
 import { AuthFrame, BuyerlyBrand } from './AuthFrame';
 import { TurnstileWidget, loadTurnstile } from './TurnstileWidget';
 
-type LoginStage = 'start' | 'password' | 'email' | 'verify' | 'check' | 'code';
+type LoginStage = 'start' | 'email' | 'verify' | 'check' | 'code';
 
 // The server's answer when a new address has not passed Cloudflare Turnstile yet.
 const HUMAN_CHECK_FAILED = "We couldn't verify you're human. Please try again.";
@@ -28,8 +28,7 @@ interface LoginViewProps {
  * Linear's sign-in and sign-up: a first screen of choices, then "What's your
  * email address?", "Verifying it's you" (Cloudflare Turnstile, always on
  * sign-up and for a new address on login), "Check your email" with the
- * emailed link, and the same code by hand. Buyerly keeps its
- * username-and-password login as the second choice on login.
+ * emailed link, and the same code by hand. As in Linear, there is no password.
  */
 export const LoginView: React.FC<LoginViewProps> = ({
   inviteToken,
@@ -44,8 +43,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
 }) => {
   const signup = mode === 'signup';
   const [stage, setStage] = useState<LoginStage>(startWithEmail ? 'email' : 'start');
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
   const [email, setEmail] = useState(initialEmail);
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -73,29 +70,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
       {label}
     </a>
   );
-
-  const logInWithPassword = async (event: FormEvent) => {
-    event.preventDefault();
-    const normalizedIdentifier = identifier.trim();
-    if (!normalizedIdentifier || !password) {
-      setError('Enter your username and password');
-      return;
-    }
-    setBusy(true);
-    setError('');
-    try {
-      const result = await apiRequest<LoginResult>('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ username: normalizedIdentifier, password }),
-      });
-      await onAuthenticated(result);
-    } catch (loginError) {
-      setPassword('');
-      setError(loginError instanceof Error ? loginError.message : 'Invalid username or password');
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const sendCode = async (address: string, turnstileToken?: string) => {
     setBusy(true);
@@ -203,59 +177,12 @@ export const LoginView: React.FC<LoginViewProps> = ({
             <button className="buyerly-auth-button buyerly-auth-button--primary" type="button" onClick={() => goTo('email')}>
               Continue with email
             </button>
-            {/* Temporary: one account still logs in with a password. Linear has only email here. */}
-            <p className="buyerly-auth-footnote">
-              Have a password?{' '}
-              <button type="button" onClick={() => goTo('password')}>
-                Log in with password
-              </button>
-            </p>
             {onSwitchMode && (
               <p className="buyerly-auth-switch">
                 Don’t have an account? {switchLink('/signup', 'Sign up')}
               </p>
             )}
           </>
-        )}
-
-        {stage === 'password' && (
-          <form onSubmit={logInWithPassword} noValidate>
-            <h1>{title}</h1>
-            <label className="buyerly-auth-field">
-              <span className="sr-only">Username or email</span>
-              <input
-                type="text"
-                name="username"
-                autoComplete="username"
-                autoCapitalize="none"
-                spellCheck={false}
-                autoFocus
-                placeholder="Username or email"
-                value={identifier}
-                onChange={(event) => setIdentifier(event.target.value)}
-                aria-invalid={Boolean(error)}
-              />
-            </label>
-            <label className="buyerly-auth-field">
-              <span className="sr-only">Password</span>
-              <input
-                type="password"
-                name="password"
-                autoComplete="current-password"
-                placeholder="Password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                aria-invalid={Boolean(error)}
-              />
-            </label>
-            {error && <p className="buyerly-auth-error" role="alert">{error}</p>}
-            <button className="buyerly-auth-button" type="submit" disabled={busy}>
-              {busy ? 'Logging in…' : 'Log in'}
-            </button>
-            <button className="buyerly-auth-text-button" type="button" onClick={() => goTo('start')}>
-              {signup ? 'Back to signup' : 'Back to login'}
-            </button>
-          </form>
         )}
 
         {stage === 'email' && (

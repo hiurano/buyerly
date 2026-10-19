@@ -3,7 +3,7 @@
 // Title and Username in one card, then Workspace access. Fields save on blur or
 // Enter without a confirmation; a refused value stays in the field next to an
 // error toast. The avatar uploads on click, and once set opens Change avatar /
-// Remove avatar. Password lives in Security & access now.
+// Remove avatar. There is no password: sign-in is email-only.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -22,7 +22,7 @@ const workspace = {
 };
 const initialUser = () => ({
   id: 1, username: 'olga', full_name: 'Olga Owner', first_name: 'Olga', last_name: 'Owner', title: '',
-  email: 'owner@example.test', email_verified: true, unconfirmed_email: null, avatar_url: '', has_password: true,
+  email: 'owner@example.test', email_verified: true, unconfirmed_email: null, avatar_url: '',
   onboarding_completed: true, onboarding_step: 'completed', active_workspace: workspace, workspaces: [workspace],
 });
 // A 1×1 PNG for the avatar upload.
@@ -205,17 +205,14 @@ try {
         'DELETE avatar',
       ]);
 
-      // Password: its own block in Security & access, after Sessions.
+      // Sign-in is email-only, as in Linear: Security & access has no Password block.
       await page.goto(`${origin}/${workspace.slug}/settings/account/security`);
-      await page.getByRole('heading', { name: 'Password', exact: true }).waitFor();
-      await page.getByText('Password set', { exact: true }).waitFor();
-      await page.getByRole('button', { name: 'Change password', exact: true }).click();
-      await page.getByRole('dialog', { name: 'Change password' }).waitFor();
-      await page.keyboard.press('Escape');
-      await page.screenshot({ path: `${output}/security-password-${width}.png`, fullPage: true });
+      await page.getByRole('heading', { name: 'Sessions', exact: true }).waitFor();
+      assert.equal(await page.getByText('Password', { exact: true }).count(), 0);
+      await page.screenshot({ path: `${output}/security-${width}.png`, fullPage: true });
 
       assert.deepEqual(errors, []);
-      console.log(`Profile: layout, saving, errors, avatar and password block passed at ${width}px`);
+      console.log(`Profile: layout, saving, errors, avatar and no password block passed at ${width}px`);
     } catch (error) {
       await page.screenshot({ path: `${output}/failure-${width}.png`, fullPage: true });
       console.error(errors, writes);

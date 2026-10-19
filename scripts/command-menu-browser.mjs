@@ -28,7 +28,7 @@ const workspace = {
 };
 const me = {
   username: 'finder', full_name: 'Fay Finder', first_name: 'Fay', last_name: 'Finder',
-  email: 'fay@example.test', email_verified: true, unconfirmed_email: null, avatar_url: '', has_password: true,
+  email: 'fay@example.test', email_verified: true, unconfirmed_email: null, avatar_url: '',
   onboarding_completed: true, onboarding_step: 'completed', active_workspace: workspace, workspaces: [workspace],
 };
 const account = (accountId, name) => ({

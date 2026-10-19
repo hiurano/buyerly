@@ -1,8 +1,10 @@
-"""Give a fresh local database a workspace to open.
+"""Give a fresh local database a user and a workspace to open.
 
-`compose.dev.yaml` runs this after the migrations and the bootstrap admin, so a
-new local stack (or a per-branch preview from `scripts/preview.sh`) opens
-straight into the "Dev" workspace instead of onboarding.
+`compose.dev.yaml` runs this after the migrations, so a new local stack (or a
+per-branch preview from `scripts/preview.sh`) has the user dev@buyerly.localhost
+and opens straight into the "Dev" workspace instead of onboarding. Sign-in is
+by email, as everywhere: the local stack writes the email, code and link
+included, to the API log (DEV_EMAIL_LOG).
 
 With the fake Meta (compose.dev.yaml) it also connects that fake's ad
 accounts, so Ads Manager has campaigns and numbers.
@@ -15,6 +17,7 @@ import asyncio
 import logging
 import os
 import sys
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 
@@ -24,21 +27,25 @@ from database.models import Account, User, Workspace, WorkspaceMember
 
 logger = logging.getLogger("buyerly.dev_seed")
 
+USERNAME = "dev"
+EMAIL = "dev@buyerly.localhost"
 WORKSPACE_NAME = "Dev"
 WORKSPACE_SLUG = "dev"
 
 
 async def seed() -> None:
-    username = settings.BOOTSTRAP_ADMIN_USERNAME
-    if not username:
-        raise SystemExit("dev_seed: BOOTSTRAP_ADMIN_USERNAME is not set")
-
     async with async_session_maker() as session:
         user = (
-            await session.execute(select(User).where(User.username.ilike(username)))
+            await session.execute(select(User).where(User.username.ilike(USERNAME)))
         ).scalar_one_or_none()
         if user is None:
-            raise SystemExit(f"dev_seed: the bootstrap user {username!r} does not exist yet")
+            user = User(username=USERNAME, full_name=USERNAME, role="admin", is_approved=True)
+            session.add(user)
+        if not user.email:
+            # Also a local database from before email-only sign-in: its dev user had no email.
+            user.email = EMAIL
+            user.email_verified_at = datetime.now(timezone.utc)
+        await session.flush()
 
         workspace = (
             await session.execute(select(Workspace).where(Workspace.slug == WORKSPACE_SLUG))
@@ -71,7 +78,7 @@ async def seed() -> None:
         added = await _add_fake_meta_accounts(session, workspace, user)
         await session.commit()
 
-    logger.info("dev_seed: %s owns workspace %r (/%s)", username, WORKSPACE_NAME, WORKSPACE_SLUG)
+    logger.info("dev_seed: %s owns workspace %r (/%s)", user.email, WORKSPACE_NAME, WORKSPACE_SLUG)
     if added:
         logger.info("dev_seed: added fake Meta ad accounts %s", ", ".join(added))
 
