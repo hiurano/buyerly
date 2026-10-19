@@ -1,4 +1,5 @@
 import React from 'react';
+import { isSplashShown } from '@/lib/splash';
 
 export const BuyerlyBrand: React.FC<{ compact?: boolean }> = ({ compact = false }) => (
   <div
@@ -23,12 +24,17 @@ export const AuthFrame: React.FC<React.PropsWithChildren<{ dark?: boolean; class
 export const AuthLoading: React.FC<{ label?: string; dark?: boolean }> = ({
   label = 'Loading Buyerly…',
   dark = false,
-}) => (
-  <AuthFrame dark={dark}>
-    <div className="buyerly-auth-card buyerly-auth-card--loading" role="status">
-      <BuyerlyBrand />
-      <span className="buyerly-auth-spinner" aria-hidden="true" />
-      <p>{label}</p>
-    </div>
-  </AuthFrame>
-);
+}) => {
+  // While the reload splash from index.html is up, it is the loader; App removes it
+  // after the first render without one (#433).
+  if (isSplashShown()) return <div data-boot-loading hidden />;
+  return (
+    <AuthFrame dark={dark}>
+      <div className="buyerly-auth-card buyerly-auth-card--loading" role="status">
+        <BuyerlyBrand />
+        <span className="buyerly-auth-spinner" aria-hidden="true" />
+        <p>{label}</p>
+      </div>
+    </AuthFrame>
+  );
+};
