@@ -1395,6 +1395,52 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
             await init_test_db(engine)
             await engine.dispose()
 
+    async def test_unconfirmed_account_emails_are_cleared(self):
+        from alembic.config import Config
+        from alembic import command
+        import os
+
+        engine = create_test_engine()
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text("DROP SCHEMA public CASCADE"))
+                await conn.execute(text("CREATE SCHEMA public"))
+
+            root = os.path.dirname(os.path.dirname(__file__))
+            alembic_cfg = Config(os.path.join(root, "alembic.ini"))
+            alembic_cfg.set_main_option("script_location", os.path.join(root, "alembic"))
+            command.upgrade(alembic_cfg, "0039_drop_allowed_emails")
+            async with engine.begin() as conn:
+                for username, email, verified in (
+                    ("confirmed", "confirmed@agency.com", "NOW()"),
+                    ("unconfirmed", "unconfirmed@agency.com", "NULL"),
+                    ("no_email", "NULL", "NULL"),
+                ):
+                    email_sql = "NULL" if email == "NULL" else f"'{email}'"
+                    await conn.execute(
+                        text(
+                            "INSERT INTO users (username, full_name, first_name, last_name, avatar_url, "
+                            "onboarding_step, onboarding_completed, password_hash, role, is_approved, "
+                            "email, email_verified_at, created_at) "
+                            f"VALUES ('{username}', '', '', '', '', 'workspace', false, '', 'buyer', true, "
+                            f"{email_sql}, {verified}, NOW())"
+                        )
+                    )
+
+            command.upgrade(alembic_cfg, "0040_clear_unverified_emails")
+            async with engine.connect() as conn:
+                emails = dict(
+                    (await conn.execute(text("SELECT username, email FROM users"))).all()
+                )
+            self.assertEqual(
+                emails,
+                {"confirmed": "confirmed@agency.com", "unconfirmed": None, "no_email": None},
+            )
+            command.downgrade(alembic_cfg, "0039_drop_allowed_emails")
+        finally:
+            await init_test_db(engine)
+            await engine.dispose()
+
     async def test_alembic_upgrade_head_applies_successfully(self):
         from alembic.config import Config
         from alembic import command

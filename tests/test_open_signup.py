@@ -313,6 +313,40 @@ class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
         async with self.sessions() as session:
             self.assertFalse((await session.get(User, self.buyer_id)).is_approved)
 
+    async def test_code_does_not_open_an_account_with_an_unconfirmed_email(self):
+        # buyer@buyerly.com was never confirmed on its account: whoever reads
+        # that inbox must not be signed in to it, nor have it marked confirmed.
+        with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock, return_value=True) as send:
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+                for use_link in (False, True):
+                    response = await self._request_code(client, "buyer@buyerly.com")
+                    self.assertEqual(response.status_code, 200, response.text)
+                    _, code, link = send.call_args.args
+                    endpoint = "verify-email-link" if use_link else "verify-temporary-password"
+                    payload = {"token": parse_qs(urlsplit(link).query)["token"][0]} if use_link else {"email": "buyer@buyerly.com", "code": code}
+                    response = await client.post(f"/api/auth/{endpoint}", json=payload)
+                    self.assertEqual(response.status_code, 403, response.text)
+                    self.assertIn("isn't confirmed", response.json()["detail"])
+                    self.assertIsNone(client.cookies.get("buyerly_session"))
+        async with self.sessions() as session:
+            self.assertIsNone((await session.get(User, self.buyer_id)).email_verified_at)
+
+    async def test_onboarding_does_not_set_an_email(self):
+        user_id = await self._add_user("namer", email="namer@agency.com", verified=True)
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+            headers = await self._login(client, "namer")
+            response = await client.post(
+                "/api/onboarding/personal-details",
+                headers=headers,
+                json={"first_name": "Nora", "last_name": "Mer", "email": "someone.else@agency.com"},
+            )
+            self.assertEqual(response.status_code, 200, response.text)
+        async with self.sessions() as session:
+            user = await session.get(User, user_id)
+            self.assertEqual(user.full_name, "Nora Mer")
+            self.assertEqual(user.email, "namer@agency.com")
+            self.assertIsNotNone(user.email_verified_at)
+
     async def test_spent_or_foreign_invitation_is_refused(self):
         token = await self._seed_pending_invite()
         with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock, return_value=True) as send:

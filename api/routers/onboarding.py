@@ -105,24 +105,21 @@ async def submit_onboarding_personal_details(
     req: PersonalDetailsRequest,
     user: User = Depends(get_current_user),
 ):
-    """Save user first name, last name, and optional email during onboarding."""
+    """Save the user's first and last name during onboarding.
+
+    The email is not set here: it changes only through the confirmed
+    email-change flow, so no account holds an address nobody has proven.
+    """
     first_name = req.first_name.strip()
     last_name = req.last_name.strip()
     if not first_name:
         raise HTTPException(status_code=400, detail="Name is required")
-
-    clean_email = req.email.strip().lower() if req.email and req.email.strip() else None
 
     async with async_session_maker() as session:
         db_user = (await session.execute(select(User).where(User.id == user.id))).scalar_one()
         db_user.first_name = first_name
         db_user.last_name = last_name
         db_user.full_name = f"{first_name} {last_name}".strip()
-        if clean_email:
-            existing_email = (db_user.email or "").strip().lower() or None
-            if clean_email != existing_email:
-                db_user.email = clean_email
-                db_user.email_verified_at = None
 
         workspaces = await get_user_workspaces_list(session, db_user)
         active_ws = next((w for w in workspaces if w.is_active), workspaces[0] if workspaces else None)
