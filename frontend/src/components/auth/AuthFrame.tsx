@@ -1,4 +1,5 @@
 import React from 'react';
+import { BuyerlyMark } from '@/icons/LinearIcons';
 
 export const BuyerlyBrand: React.FC<{ compact?: boolean }> = ({ compact = false }) => (
   <div
@@ -6,7 +7,7 @@ export const BuyerlyBrand: React.FC<{ compact?: boolean }> = ({ compact = false 
     role="img"
     aria-label="Buyerly"
   >
-    <img src="/buyerly-logo.png" alt="" aria-hidden="true" />
+    <BuyerlyMark />
   </div>
 );
 

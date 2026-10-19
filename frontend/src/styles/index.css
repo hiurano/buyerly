@@ -3207,6 +3207,7 @@ html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
 
 html[data-theme='dark'] .buyerly-auth-page,
 .buyerly-auth-page.buyerly-auth-page--dark {
+  --site-logo: #fff;
   --auth-bg: rgb(9, 9, 10);
   --auth-text: rgb(226, 227, 229);
   --auth-text-muted: rgb(148, 149, 151);
@@ -3248,7 +3249,7 @@ html[data-theme='dark'] .buyerly-auth-page,
   margin-bottom: 24px;
 }
 
-.buyerly-auth-brand img {
+.buyerly-auth-brand svg {
   width: 40px;
   height: 40px;
   object-fit: contain;
@@ -3260,7 +3261,7 @@ html[data-theme='dark'] .buyerly-auth-page,
   color: var(--auth-text);
 }
 
-.buyerly-auth-brand--compact img {
+.buyerly-auth-brand--compact svg {
   width: 32px;
   height: 32px;
 }
@@ -3287,7 +3288,7 @@ html[data-theme='dark'] .buyerly-auth-page,
   margin-bottom: 32px;
 }
 
-.buyerly-auth-card--signin .buyerly-auth-brand img {
+.buyerly-auth-card--signin .buyerly-auth-brand svg {
   width: 48px;
   height: 48px;
 }
