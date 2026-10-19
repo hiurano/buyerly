@@ -1764,6 +1764,57 @@ html[data-theme='dark'] .linear-sidebar-badge,
   white-space: nowrap;
 }
 
+/*
+ * Linear's sortable column header (17.10): a 24px pill 6px out, 12px/450 muted with a
+ * 12px arrow 2px after; the sorted column's arrow is secondary; under the cursor the
+ * pill fills and its text and arrow turn primary, at once.
+ */
+.settings-list-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 24px;
+  margin-left: -6px;
+  padding: 0 6px;
+  border: 0.5px solid transparent;
+  border-radius: 9999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+  cursor: default;
+  outline: none;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.settings-list-sort svg {
+  flex-shrink: 0;
+  fill: var(--settings-list-muted);
+  transition: fill 0.15s;
+}
+
+.settings-list-sort[data-active='true'] svg {
+  fill: var(--text-secondary);
+}
+
+.settings-list-sort:hover,
+.settings-list-sort:active {
+  background: var(--header-button-hover-bg);
+  color: var(--text-primary);
+  transition-duration: 0s;
+}
+
+.settings-list-sort:hover svg,
+.settings-list-sort:active svg {
+  fill: var(--text-primary);
+  transition-duration: 0s;
+}
+
+.settings-list-sort:focus-visible {
+  outline: 1px solid var(--focus-ring-color);
+  outline-offset: -1px;
+}
+
 /* A count that opens its list (Linear's Members and Issues): a 24px pill 6px out. */
 .settings-list-count {
   display: inline-flex;

@@ -10,6 +10,7 @@ import { DropdownMenuItem, DropdownMenuSeparator } from '@/ui/DropdownMenu';
 import { toast } from '@/ui/toast';
 import { deletionPrompt, runPendingDeletion } from '@/components/rules/ruleActions';
 import { RowMenu, shortDate } from './MembersSection';
+import { SortHeader, sortedBy, useListSort } from './SettingsListSort';
 
 /**
  * Linear's Issue labels table: Name, Description, Last applied, Created; Buyerly
@@ -263,7 +264,14 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
   };
 
   const needle = query.trim().toLocaleLowerCase();
-  const visible = labels.filter((label) => !needle || label.name.toLocaleLowerCase().includes(needle));
+  const [sort, toggleSort] = useListSort<'name' | 'description' | 'rules' | 'lastApplied' | 'created'>('name');
+  const visible = sortedBy(labels.filter((label) => !needle || label.name.toLocaleLowerCase().includes(needle)), (label) => {
+    if (sort.key === 'description') return label.description;
+    if (sort.key === 'rules') return label.ruleCount;
+    if (sort.key === 'lastApplied') return label.lastAppliedAt ? Date.parse(label.lastAppliedAt) : null;
+    if (sort.key === 'created') return Date.parse(label.createdAt);
+    return label.name;
+  }, sort.direction);
   const deletion = pendingDeletion?.kind === 'rule_group' ? deletionPrompt('rule_group', pendingDeletion.ids) : null;
 
   return (
@@ -306,11 +314,11 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
         <>
           <div className="settings-list-table settings-list--labels" role="table" aria-label="Rule labels">
             <div role="row" className="settings-list-row settings-list-row--header">
-              <span role="columnheader">Name</span>
-              <span role="columnheader" className="settings-list-col-wide">Description</span>
-              <span role="columnheader">Rules</span>
-              <span role="columnheader" className="settings-list-col-wide">Last applied</span>
-              <span role="columnheader" className="settings-list-col-wide">Created</span>
+              <SortHeader label="Name" column="name" sort={sort} onSort={toggleSort} />
+              <SortHeader label="Description" column="description" sort={sort} onSort={toggleSort} className="settings-list-col-wide" />
+              <SortHeader label="Rules" column="rules" sort={sort} onSort={toggleSort} />
+              <SortHeader label="Last applied" column="lastApplied" sort={sort} onSort={toggleSort} className="settings-list-col-wide" />
+              <SortHeader label="Created" column="created" sort={sort} onSort={toggleSort} className="settings-list-col-wide" />
               <span role="columnheader" className="sr-only">Actions</span>
             </div>
             {adding && <NewLabelRow onDone={() => setAdding(false)} />}

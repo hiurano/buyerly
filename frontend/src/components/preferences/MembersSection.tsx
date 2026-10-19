@@ -8,6 +8,7 @@ import { Button } from '@/ui/Button';
 import { DataState } from '@/ui/DataState';
 import { LinearCheckIcon, LinearCloseIcon } from '@/icons/LinearIcons';
 import { toast } from '@/ui/toast';
+import { SortHeader, sortedBy, useListSort } from './SettingsListSort';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
 import {
   DropdownMenu,
@@ -46,6 +47,10 @@ const FILTER_LABELS: Record<MemberFilter, string> = {
   members: 'Members',
   invites: 'Pending invites',
 };
+
+type MemberSort = 'name' | 'email' | 'status' | 'joined';
+/** Status sorts as the roles rank, owner first. */
+const ROLE_ORDER = ['owner', 'admin', 'buyer', 'viewer'];
 
 const csvCell = (value: string) => (/[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
 
@@ -377,6 +382,18 @@ export const MembersSection: React.FC<{
     || (member.email || '').toLowerCase().includes(needle)), [members, needle]);
   const visibleInvites = useMemo(() => invites.filter((invite) => !needle
     || (invite.email || '').includes(needle)), [invites, needle]);
+  const [sort, toggleSort] = useListSort<MemberSort>('name');
+  const sortedMembers = useMemo(() => sortedBy(visibleMembers, (member) => {
+    if (sort.key === 'email') return member.email || '';
+    if (sort.key === 'status') return ROLE_ORDER.indexOf(member.role);
+    if (sort.key === 'joined') return Date.parse(member.joined_at);
+    return member.full_name || member.username;
+  }, sort.direction), [visibleMembers, sort]);
+  const sortedInvites = useMemo(() => sortedBy(visibleInvites, (invite) => {
+    if (sort.key === 'status') return ROLE_ORDER.indexOf(invite.role);
+    if (sort.key === 'joined') return Date.parse(invite.created_at);
+    return invite.email || '';
+  }, sort.direction), [visibleInvites, sort]);
 
   const resend = async (invite: InviteItem) => {
     try {
@@ -481,11 +498,11 @@ export const MembersSection: React.FC<{
       {state === 'ready' && (
         <div className="settings-list-table" role="table" aria-label="Workspace members">
           <div role="row" className="settings-list-row settings-list-row--header">
-            <span role="columnheader">Name</span>
-            <span role="columnheader" className="settings-list-col-wide">Email</span>
-            <span role="columnheader">Status</span>
+            <SortHeader label="Name" column="name" sort={sort} onSort={toggleSort} />
+            <SortHeader label="Email" column="email" sort={sort} onSort={toggleSort} className="settings-list-col-wide" />
+            <SortHeader label="Status" column="status" sort={sort} onSort={toggleSort} />
             <span role="columnheader" className="settings-list-col-wide">Teams</span>
-            <span role="columnheader" className="settings-list-col-wide">Joined</span>
+            <SortHeader label="Joined" column="joined" sort={sort} onSort={toggleSort} className="settings-list-col-wide" />
             <span role="columnheader" className="sr-only">Actions</span>
           </div>
 
@@ -495,7 +512,7 @@ export const MembersSection: React.FC<{
               <span className="settings-list-group-count">{visibleMembers.length}</span>
             </div>
           )}
-          {filter !== 'invites' && visibleMembers.map((member) => (
+          {filter !== 'invites' && sortedMembers.map((member) => (
             <div key={member.id} role="row" className="settings-list-row">
               <span role="cell" className="settings-list-person">
                 <Initials label={member.full_name || member.username} avatarUrl={member.avatar_url} size={24} />
@@ -542,7 +559,7 @@ export const MembersSection: React.FC<{
                 Invited
                 <span className="settings-list-group-count">{visibleInvites.length}</span>
               </div>
-              {visibleInvites.map((invite) => (
+              {sortedInvites.map((invite) => (
                 <div key={invite.id} role="row" className="settings-list-row">
                   <span role="cell" className="settings-list-person">
                     <Initials label={invite.email || ''} muted size={24} />

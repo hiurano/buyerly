@@ -29,6 +29,7 @@ import {
 } from '@/ui/DropdownMenu';
 import { errorMessage, memberName, type MemberItem } from './MemberDialogs';
 import { RowMenu, shortDate } from './MembersSection';
+import { SortHeader, sortedBy, useListSort } from './SettingsListSort';
 import { TeamIcon } from './TeamIcon';
 import { RestoreTeamDialog } from './TeamSettingsSection';
 
@@ -64,9 +65,16 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
 
   const membersById = useMemo(() => new Map(members.map((member) => [member.user_id, member])), [members]);
   const needle = query.trim().toLowerCase();
-  const visible = (teams || []).filter((team) => !needle
+  const [sort, toggleSort] = useListSort<'name' | 'visibility' | 'members' | 'accounts' | 'created'>('name');
+  const visible = sortedBy((teams || []).filter((team) => !needle
     || team.name.toLowerCase().includes(needle)
-    || team.key.toLowerCase().includes(needle));
+    || team.key.toLowerCase().includes(needle)), (team) => {
+    if (sort.key === 'members') return team.member_user_ids.length;
+    if (sort.key === 'accounts') return team.account_ids.length;
+    if (sort.key === 'created') return Date.parse(filter === 'deleted' && team.deleted_at ? team.deleted_at : team.created_at);
+    if (sort.key === 'visibility') return 'Workspace';
+    return team.name;
+  }, sort.direction);
 
   const restore = async (team: TeamItem) => {
     try {
@@ -135,11 +143,17 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
         <>
           <div className="settings-list-table settings-list--teams" role="table" aria-label="Teams">
             <div role="row" className="settings-list-row settings-list-row--header">
-              <span role="columnheader">Name</span>
-              <span role="columnheader" className="settings-list-col-wide">Visibility</span>
-              <span role="columnheader">Members</span>
-              <span role="columnheader" className="settings-list-col-wide">Accounts</span>
-              <span role="columnheader" className="settings-list-col-wide">{filter === 'deleted' ? 'Deleted' : 'Created'}</span>
+              <SortHeader label="Name" column="name" sort={sort} onSort={toggleSort} />
+              <SortHeader label="Visibility" column="visibility" sort={sort} onSort={toggleSort} className="settings-list-col-wide" />
+              <SortHeader label="Members" column="members" sort={sort} onSort={toggleSort} />
+              <SortHeader label="Accounts" column="accounts" sort={sort} onSort={toggleSort} className="settings-list-col-wide" />
+              <SortHeader
+                label={filter === 'deleted' ? 'Deleted' : 'Created'}
+                column="created"
+                sort={sort}
+                onSort={toggleSort}
+                className="settings-list-col-wide"
+              />
               <span role="columnheader" className="sr-only">Actions</span>
             </div>
             {visible.length > 0 && (
