@@ -27,7 +27,7 @@ const absoluteUrl = (url: string) => new URL(url, window.location.origin).toStri
  * Linear's Settings → Administration → Security, with what applies to Buyerly:
  * Workspace access → Invite links (on, off, copy, reset), and Workspace
  * management showing who may invite and who manages admins. Buyerly signs in
- * only with email and password and has no plans, so Linear's approved domains,
+ * only with email and has no plans, so Linear's approved domains,
  * authentication methods, SAML, file upload limits, integrations, AI and
  * compliance blocks are left out.
  */

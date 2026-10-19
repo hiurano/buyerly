@@ -13,6 +13,7 @@ RESERVED_WORKSPACE_SLUGS = frozenset(
         "api",
         "assets",
         "auth",
+        "changelog",
         "connect",
         "create-workspace",
         "data-deletion",

@@ -38,7 +38,6 @@ COPY rules ./rules
 COPY scheduler ./scheduler
 COPY services ./services
 COPY scripts/rotate_meta_tokens.py ./scripts/rotate_meta_tokens.py
-COPY scripts/set_user_password.py ./scripts/set_user_password.py
 COPY --from=frontend /frontend/dist ./frontend/dist
 
 # The command is selected per service in docker-compose.yml.

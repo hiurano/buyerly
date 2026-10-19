@@ -3442,26 +3442,6 @@ html[data-theme='dark'] .buyerly-auth-page,
   background: var(--button-primary-hover-bg);
 }
 
-/* Linear's small line under the sign-in buttons ("Don't have an account? Sign up"). */
-.buyerly-auth-footnote {
-  margin: 22px 0 0;
-  color: var(--auth-text-muted);
-  font-size: 12px;
-}
-
-.buyerly-auth-footnote button {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--auth-text);
-  font: inherit;
-  cursor: pointer;
-}
-
-.buyerly-auth-footnote button:hover {
-  text-decoration: underline;
-}
-
 /* linear.app/signup, measured 2026-10-20 at 1024×768: the legal note 36px under the
    last button, "Already have an account? Log in" 24px under it; both 13px / 450 /
    19.5px in the muted color with links in the text color. /login ends with the same

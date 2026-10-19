@@ -6,6 +6,7 @@ from starlette.requests import Request
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 import api.auth as api_auth_module
+import api.routers.auth as auth_router_module
 import api.routes as api_routes_module
 import api.server as api_server_module
 from api.server import create_app
@@ -16,7 +17,7 @@ from core.rate_limit import (
     get_client_location,
     limiter,
 )
-from database.db import Base, hash_password
+from database.db import Base
 from database.models import User, Workspace
 from tests.test_db_helper import create_test_engine, init_test_db
 
@@ -248,12 +249,16 @@ class TestApiRateLimitingAndDosProtection(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
         await limiter.reset()
+        self.original_otp_pepper = settings.OTP_PEPPER
+        settings.OTP_PEPPER = "test-otp-pepper"
+        self.original_auth_router_session_maker = auth_router_module.async_session_maker
         self.test_engine = create_test_engine()
         self.test_session_maker = async_sessionmaker(self.test_engine, class_=AsyncSession, expire_on_commit=False)
         await init_test_db(self.test_engine)
 
         api_routes_module.async_session_maker = self.test_session_maker
         api_auth_module.async_session_maker = self.test_session_maker
+        auth_router_module.async_session_maker = self.test_session_maker
         api_server_module.async_session_maker = self.test_session_maker
         settings.ADMIN_CHAT_ID = "8634201356"
 
@@ -263,7 +268,6 @@ class TestApiRateLimitingAndDosProtection(unittest.IsolatedAsyncioTestCase):
                 username="test_buyer",
                 full_name="Test Buyer",
                 email="buyer@test.com",
-                password_hash=hash_password("correct-password"),
                 role="buyer",
                 is_approved=True,
                 auth_token="test-valid-auth-token-12345",
@@ -281,29 +285,31 @@ class TestApiRateLimitingAndDosProtection(unittest.IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self):
         await limiter.reset()
+        settings.OTP_PEPPER = self.original_otp_pepper
+        auth_router_module.async_session_maker = self.original_auth_router_session_maker
         await self.test_engine.dispose()
 
-    async def test_login_rate_limiting(self):
+    async def test_login_code_rate_limiting(self):
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            # Send 10 failed login requests (limit is 10/min)
+            # Send 10 wrong login codes (limit is 10/min)
             for _ in range(10):
                 res = await client.post(
-                    "/api/auth/login",
-                    json={"username": "test_buyer", "password": "wrong-password"},
+                    "/api/auth/verify-temporary-password",
+                    json={"email": "buyer@test.com", "code": "WRONGCODES"},
                 )
                 self.assertEqual(res.status_code, 401)
 
             # 11th request must be rate-limited (HTTP 429)
             rate_limited_res = await client.post(
-                "/api/auth/login",
-                json={"username": "test_buyer", "password": "correct-password"},
+                "/api/auth/verify-temporary-password",
+                json={"email": "buyer@test.com", "code": "OTHERCODES"},
             )
             self.assertEqual(rate_limited_res.status_code, 429)
             self.assertIn("Retry-After", rate_limited_res.headers)
             self.assertIn("Too many requests", rate_limited_res.json()["detail"])
 
-    async def test_login_identity_limit_cannot_be_bypassed_by_rotating_ips(self):
+    async def test_login_code_identity_limit_cannot_be_bypassed_by_rotating_ips(self):
         original = settings.TRUSTED_PROXY_CIDRS
         settings.TRUSTED_PROXY_CIDRS = "127.0.0.1/32"
         try:
@@ -311,16 +317,16 @@ class TestApiRateLimitingAndDosProtection(unittest.IsolatedAsyncioTestCase):
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
                 for index in range(10):
                     response = await client.post(
-                        "/api/auth/login",
+                        "/api/auth/verify-temporary-password",
                         headers={"X-Forwarded-For": f"203.0.113.{index + 1}"},
-                        json={"username": "test_buyer", "password": "wrong-password"},
+                        json={"email": "buyer@test.com", "code": "WRONGCODES"},
                     )
                     self.assertEqual(response.status_code, 401)
 
                 blocked = await client.post(
-                    "/api/auth/login",
+                    "/api/auth/verify-temporary-password",
                     headers={"X-Forwarded-For": "198.51.100.200"},
-                    json={"username": "test_buyer", "password": "correct-password"},
+                    json={"email": "buyer@test.com", "code": "OTHERCODES"},
                 )
                 self.assertEqual(blocked.status_code, 429)
         finally:

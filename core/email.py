@@ -56,6 +56,9 @@ async def send_email(
 
     # 2. Local fallback / logging mode
     logger.info("[DEV EMAIL] To: %s | Subject: %s | (No RESEND_API_KEY configured)", recipient, subject)
+    if settings.DEV_EMAIL_LOG and text_content:
+        # The local stack signs in by email: its code and link go to the log.
+        logger.info("[DEV EMAIL] %s", text_content)
     return True
 
 

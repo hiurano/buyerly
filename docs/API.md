@@ -10,7 +10,7 @@ Production: `https://buyerly.app`.
 
 | Способ | Заголовок | Назначение |
 |---|---|---|
-| Web session | Secure + HttpOnly cookie `buyerly_session` | прямой вход по логину, паролю или OTP |
+| Web session | Secure + HttpOnly cookie `buyerly_session` | вход по коду или ссылке из письма |
 | CSRF | cookie `buyerly_csrf` + `X-CSRF-Token` | обязательная защита изменяющих запросов web-сессии |
 | Legacy web token | `Authorization: Bearer <token>` | одноразовый переход старой сессии на cookie до истечения |
 | Несколько аккаунтов | `X-Buyerly-Account: <user id>` | от чьего имени идёт запрос, когда в браузере вошли несколько аккаунтов |
@@ -41,13 +41,11 @@ monitoring cycle делает обзор `degraded` или `critical`, даже 
 | Метод и путь | Тело | Результат |
 |---|---|---|
 | `POST /api/auth/request-temporary-password` | `email`, `invite_token?`, `turnstile_token?` | вход и регистрация по почте: любой почте высылает одно письмо с одноразовой ссылкой и кодом. Новой почте без приглашения нужен `turnstile_token` от виджета Cloudflare Turnstile, иначе 400 без письма (проверка выключена, пока на сервере не задан `TURNSTILE_SECRET_KEY`). Недействительное или чужое `invite_token` — 403 |
-| `POST /api/auth/verify-temporary-password` | `email`, `code` | атомарно потребляет общий login credential, повторно проверяет доступ и открывает web-сессию |
+| `POST /api/auth/verify-temporary-password` | `email`, `code` | атомарно потребляет общий login credential, повторно проверяет доступ и открывает web-сессию; аккаунт с неподтверждённой почтой не открывает (403) |
 | `POST /api/auth/verify-email-link` | `token` | атомарно потребляет тот же login credential по ссылке; после этого код также недействителен |
 | `POST /api/auth/request-email-verification` | — | высылает 6-значный одноразовый код на текущий неподтверждённый email |
 | `POST /api/auth/request-email-change` | `new_email` | высылает 6-значный код подтверждения для привязки нового email |
 | `POST /api/auth/verify-email-change` | `code` | верифицирует OTP и активирует подтверждённый email |
-| `POST /api/auth/login` | `username`, `password` | основной вход: `username` — логин или email аккаунта; проверяет постоянный пароль, создаёт ограниченную по времени HttpOnly web-сессию и возвращает профиль/роль |
-| `POST /api/auth/change-password` | `old_password`, `new_password` | меняет пароль; минимум 8 символов |
 | `POST /api/auth/update-profile` | `first_name?`, `last_name?`, `email?`, `avatar_url?`, `full_name?`, `title?` (до 128), `username?` (до 40: буквы, цифры, `-` `_` `.`) | обновляет персональные данные профиля; пустое имя, неверный или занятый username — 400 с текстом Linear |
 | `POST /api/auth/logout` | — | немедленно отзывает текущую web-сессию; другие аккаунты этого браузера остаются |
 | `GET /api/auth/accounts` | — | аккаунты, вошедшие в этом браузере, в порядке добавления: `id`, `username`, `full_name`, `email`, `avatar_url`, `slot`, `onboarding_completed`, `workspaces`; cookie закончившихся сессий удаляет; без входа — пустой список |
@@ -125,7 +123,7 @@ Settings → Administration → Teams, как в Linear (#371). Команда �
 | Метод и путь | Тело | Назначение |
 |---|---|---|
 | `GET /api/onboarding/status` | — | проверка текущего шага онбординга и профиля пользователя |
-| `POST /api/onboarding/personal-details` | `first_name`, `last_name?`, `email?` | сохранение отображаемого имени после создания или принятия workspace; поле Title отсутствует |
+| `POST /api/onboarding/personal-details` | `first_name`, `last_name?` | сохранение отображаемого имени после создания или принятия workspace; поле Title отсутствует; почту здесь не меняют |
 | `POST /api/onboarding/avatar` | `file` (multipart) | проверка реального содержимого и загрузка фотографии профиля (PNG, JPG, WEBP до 5 МБ) |
 | `DELETE /api/onboarding/avatar` | — | удаление аватара и возврат к инициальному бейджу |
 | `GET /api/onboarding/check-slug` | `slug` (query) | живая проверка доступности слага воркспейса в реальном времени |
@@ -423,10 +421,10 @@ Inbox, как в Linear, показывает события workspace как у
 | Метод и путь | Доступ | Назначение |
 |---|---|---|
 | `GET /api/settings` | авторизованный пользователь | параметры опроса, роль и последний сохранённый статус worker |
-| `POST /api/settings/automation` | только admin + текущий пароль | атомарно сохраняет параметры автоматики и защиты квоты |
-| `POST /api/settings/interval` | только admin + текущий пароль | совместимый endpoint базового интервала; тело `{"minutes": 10, "current_password": "…"}` |
+| `POST /api/settings/automation` | только admin | атомарно сохраняет параметры автоматики и защиты квоты |
+| `POST /api/settings/interval` | только admin | совместимый endpoint базового интервала; тело `{"minutes": 10}` |
 
-`POST /api/settings/automation` принимает `current_password`, `poll_interval_minutes`, `critical_rule_interval_minutes`, `stop_confirmation_minutes`, `inventory_cache_minutes`, `account_health_interval_minutes`, `max_concurrent_accounts`, `max_concurrent_actions`, `usage_soft_limit_percent`, `usage_hard_limit_percent` и `adaptive_polling_enabled`. `stop_confirmation_minutes` задаёт непрерывное окно повторной проверки перед STOP (0–60 минут, по умолчанию 10). Пароль проверяется по защищённому хэшу текущей учётной записи и не сохраняется. Мягкий порог должен быть ниже жёсткого; числовые пределы проверяются API.
+`POST /api/settings/automation` принимает `poll_interval_minutes`, `critical_rule_interval_minutes`, `stop_confirmation_minutes`, `inventory_cache_minutes`, `account_health_interval_minutes`, `max_concurrent_accounts`, `max_concurrent_actions`, `usage_soft_limit_percent`, `usage_hard_limit_percent` и `adaptive_polling_enabled`. `stop_confirmation_minutes` задаёт непрерывное окно повторной проверки перед STOP (0–60 минут, по умолчанию 10). Мягкий порог должен быть ниже жёсткого; числовые пределы проверяются API.
 
 Интервал правила применяется к самому правилу, но STOP-правило никогда не ждёт дольше защищённого критического интервала. Базовый интервал относится к фоновому мониторингу кабинета, а здоровье (статус, валюта, часовой пояс) имеет отдельный более редкий график. Worker запускает диспетчерский цикл каждую минуту, но обращается к Meta только при наступлении сохранённого расписания или когда нужно уточнить неизвестную валюту.
 
@@ -482,7 +480,7 @@ curl -fsS https://buyerly.app/api/me \
 | Метод и путь | Назначение |
 |---|---|
 | `GET /api/onboarding/status` | текущий шаг и статус прохождения онбординга |
-| `POST /api/onboarding/personal-details` | сохранение Name; фамилия и email опциональны, Title отсутствует |
+| `POST /api/onboarding/personal-details` | сохранение Name; фамилия опциональна, Title отсутствует |
 | `POST /api/onboarding/avatar` | загрузка аватара профиля |
 | `DELETE /api/onboarding/avatar` | удаление аватара профиля |
 | `GET /api/onboarding/check-slug` | проверка доступности slug воркспейса |

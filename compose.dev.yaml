@@ -1,6 +1,8 @@
 # Local development: the whole app on this computer, with changes visible at
 # once. `docker compose -f compose.dev.yaml up`, then open http://localhost:5173
-# and sign in with "Log in with password": dev / buyerly-dev.
+# and sign in with "Continue with email": dev@buyerly.localhost. No email is
+# sent: the code and link are in the API log (`docker compose -f
+# compose.dev.yaml logs api`, the line after "[DEV EMAIL]").
 # Everything here is local test data; nothing reaches production or Meta:
 # Meta is the fake from scripts/fake_meta.py, with invented ad accounts.
 name: buyerly-dev
@@ -10,8 +12,7 @@ x-app-environment: &app-environment
   WEBAPP_URL: http://${BUYERLY_WEB_HOST:-localhost}:${BUYERLY_WEB_PORT:-5173}
   SERVE_STATIC: "false"
   SESSION_COOKIE_SECURE: "false"
-  BOOTSTRAP_ADMIN_USERNAME: dev
-  BOOTSTRAP_ADMIN_PASSWORD: buyerly-dev
+  DEV_EMAIL_LOG: "true"
   OTP_PEPPER: local-development-only
   META_TOKEN_ENCRYPTION_KEY: CKOJW1eA4PLOe59rNqizKftdfj0lN17_CIFSpe7ihLw=
   META_GRAPH_BASE_URL: http://fake-meta:8090

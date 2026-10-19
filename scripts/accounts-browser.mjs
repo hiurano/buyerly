@@ -28,7 +28,7 @@ const workspaceFor = (role) => ({
 });
 const meFor = (role) => ({
   id: 5, username: 'bo', full_name: 'Bo Buyer', first_name: 'Bo', last_name: 'Buyer',
-  email: 'bo@example.test', email_verified: true, unconfirmed_email: null, avatar_url: '', has_password: true,
+  email: 'bo@example.test', email_verified: true, unconfirmed_email: null, avatar_url: '',
   onboarding_completed: true, onboarding_step: 'completed', active_workspace: workspaceFor(role), workspaces: [workspaceFor(role)],
 });
 const healthy = {

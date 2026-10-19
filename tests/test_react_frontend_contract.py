@@ -181,12 +181,9 @@ class TestReactFrontendContract(unittest.TestCase):
             / "RuleSelectorPopover.tsx"
         ).read_text()
 
-    def test_login_surface_follows_linear_with_email_first_and_password_second(self):
-        self.assertIn("'/api/auth/login'", self.login)
-        self.assertIn('autoComplete="current-password"', self.login)
+    def test_login_surface_follows_linear_with_email_only(self):
         self.assertIn("Log in to Buyerly", self.login)
         self.assertIn("Continue with email", self.login)
-        self.assertIn("Log in with password", self.login)
         self.assertIn("We’ve sent you a temporary login link.", self.login)
         self.assertIn("Enter code manually", self.login)
         self.assertIn("Continue with login code", self.login)
@@ -195,6 +192,9 @@ class TestReactFrontendContract(unittest.TestCase):
             "Continue with Google",
             "Continue with SSO",
             "passkey",
+            "'/api/auth/login'",
+            "current-password",
+            "Log in with password",
         ):
             self.assertNotIn(forbidden, self.login)
 

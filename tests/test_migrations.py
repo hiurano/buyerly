@@ -924,6 +924,10 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                 os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic"),
             )
             command.upgrade(config, "0011_workspace_slugs")
+            # This old revision still has users.password_hash (NOT NULL, no database
+            # default); the model lost it in 0041, so the column gets a default here.
+            async with engine.begin() as conn:
+                await conn.execute(text("ALTER TABLE users ALTER COLUMN password_hash SET DEFAULT ''"))
 
             session_maker = async_sessionmaker(
                 engine,
@@ -1174,6 +1178,10 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                 os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic"),
             )
             command.upgrade(config, "0010_atomic_otp")
+            # This old revision still has users.password_hash (NOT NULL, no database
+            # default); the model lost it in 0041, so the column gets a default here.
+            async with engine.begin() as conn:
+                await conn.execute(text("ALTER TABLE users ALTER COLUMN password_hash SET DEFAULT ''"))
 
             session_maker = async_sessionmaker(
                 engine,
@@ -1391,6 +1399,83 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                 await conn.execute(
                     text("INSERT INTO allowed_emails (email, created_at) VALUES ('back@agency.com', NOW())")
                 )
+        finally:
+            await init_test_db(engine)
+            await engine.dispose()
+
+    async def test_unconfirmed_account_emails_are_cleared(self):
+        from alembic.config import Config
+        from alembic import command
+        import os
+
+        engine = create_test_engine()
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text("DROP SCHEMA public CASCADE"))
+                await conn.execute(text("CREATE SCHEMA public"))
+
+            root = os.path.dirname(os.path.dirname(__file__))
+            alembic_cfg = Config(os.path.join(root, "alembic.ini"))
+            alembic_cfg.set_main_option("script_location", os.path.join(root, "alembic"))
+            command.upgrade(alembic_cfg, "0039_drop_allowed_emails")
+            async with engine.begin() as conn:
+                for username, email, verified in (
+                    ("confirmed", "confirmed@agency.com", "NOW()"),
+                    ("unconfirmed", "unconfirmed@agency.com", "NULL"),
+                    ("no_email", "NULL", "NULL"),
+                ):
+                    email_sql = "NULL" if email == "NULL" else f"'{email}'"
+                    await conn.execute(
+                        text(
+                            "INSERT INTO users (username, full_name, first_name, last_name, avatar_url, "
+                            "onboarding_step, onboarding_completed, password_hash, role, is_approved, "
+                            "email, email_verified_at, created_at) "
+                            f"VALUES ('{username}', '', '', '', '', 'workspace', false, '', 'buyer', true, "
+                            f"{email_sql}, {verified}, NOW())"
+                        )
+                    )
+
+            command.upgrade(alembic_cfg, "0040_clear_unverified_emails")
+            async with engine.connect() as conn:
+                emails = dict(
+                    (await conn.execute(text("SELECT username, email FROM users"))).all()
+                )
+            self.assertEqual(
+                emails,
+                {"confirmed": "confirmed@agency.com", "unconfirmed": None, "no_email": None},
+            )
+            command.downgrade(alembic_cfg, "0039_drop_allowed_emails")
+        finally:
+            await init_test_db(engine)
+            await engine.dispose()
+
+    async def test_email_only_sign_in_drops_password_hash(self):
+        from alembic.config import Config
+        from alembic import command
+        import os
+
+        engine = create_test_engine()
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text("DROP SCHEMA public CASCADE"))
+                await conn.execute(text("CREATE SCHEMA public"))
+
+            root = os.path.dirname(os.path.dirname(__file__))
+            alembic_cfg = Config(os.path.join(root, "alembic.ini"))
+            alembic_cfg.set_main_option("script_location", os.path.join(root, "alembic"))
+
+            async def user_columns():
+                async with engine.connect() as conn:
+                    return await conn.run_sync(
+                        lambda sync: {column["name"] for column in inspect(sync).get_columns("users")}
+                    )
+
+            command.upgrade(alembic_cfg, "0041_drop_password_hash")
+            self.assertNotIn("password_hash", await user_columns())
+
+            # The way back brings the column back empty.
+            command.downgrade(alembic_cfg, "0040_clear_unverified_emails")
+            self.assertIn("password_hash", await user_columns())
         finally:
             await init_test_db(engine)
             await engine.dispose()

@@ -21,7 +21,7 @@ from core.workspace_slugs import (
     RESERVED_WORKSPACE_SLUGS,
     normalize_workspace_slug,
 )
-from database.db import Base, hash_password
+from database.db import Base
 from database.models import (
     Account,
     AuditEvent,
@@ -66,6 +66,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             "invite",
             "login",
             "signup",
+            "changelog",
             "uploads",
         ):
             self.assertIn(system_slug, RESERVED_WORKSPACE_SLUGS)
@@ -91,7 +92,6 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 telegram_id='777000111',
                 username='artem',
                 full_name='Артем',
-                password_hash=hash_password('artem-password'),
                 role='buyer',
                 is_approved=True,
             )
@@ -421,7 +421,6 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                     telegram_id='777000222',
                     username='bob',
                     full_name='Bob Buyer',
-                    password_hash=hash_password('bob-password'),
                     role='buyer',
                     is_approved=True,
                 )
@@ -429,7 +428,6 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                     telegram_id='777000333',
                     username='charlie',
                     full_name='Charlie Viewer',
-                    password_hash=hash_password('charlie-password'),
                     role='buyer',
                     is_approved=True,
                 )
@@ -541,7 +539,6 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                     telegram_id='777000444',
                     username='dave',
                     full_name='Dave Analyst',
-                    password_hash=hash_password('dave-password'),
                     role='buyer',
                     is_approved=True,
                 )
@@ -864,7 +861,6 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                     telegram_id='777000555',
                     username='victor_viewer',
                     full_name='Victor Viewer',
-                    password_hash=hash_password('victor-password'),
                     role='buyer',
                     is_approved=True,
                 )
@@ -979,7 +975,6 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 telegram_id='777000999',
                 username='hacker',
                 full_name='Hacker Buyer',
-                password_hash=hash_password('hacker-password'),
                 role='buyer',
                 is_approved=True,
             )
@@ -1044,7 +1039,6 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 telegram_id='777000555',
                 username='workspace_admin',
                 full_name='Workspace Admin',
-                password_hash=hash_password('workspace-admin-password'),
                 role='buyer',
                 is_approved=True,
                 active_workspace_id=ws.id,
@@ -1104,7 +1098,6 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 email='imposter@evil.com',
                 email_verified_at=now_dt,
                 full_name='Imposter User',
-                password_hash=hash_password('imposter-password'),
                 role='buyer',
                 is_approved=True,
             )
@@ -1114,7 +1107,6 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 email='legit@company.com',
                 email_verified_at=now_dt,
                 full_name='Legit User',
-                password_hash=hash_password('legit-password'),
                 role='buyer',
                 is_approved=True,
             )
@@ -1166,7 +1158,6 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 email='partner@agency.com',
                 email_verified_at=None,
                 full_name='Unverified Partner',
-                password_hash=hash_password('partner-password'),
                 role='buyer',
                 is_approved=True,
             )
@@ -1176,7 +1167,6 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 email=None,
                 email_verified_at=None,
                 full_name='No Email User',
-                password_hash=hash_password('noemail-password'),
                 role='buyer',
                 is_approved=True,
             )

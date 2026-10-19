@@ -56,7 +56,6 @@ class User(Base):
         nullable=False,
         doc="Whether the user finished the full onboarding",
     )
-    password_hash = Column(String, default="", nullable=False, doc="Versioned secure password hash")
     auth_token = Column(String, unique=True, nullable=True, index=True, doc="Legacy browser token; migrated to web_sessions and cleared")
     role = Column(String, default="admin", nullable=False, doc="'admin' or 'buyer'")
     is_approved = Column(Boolean, default=True, nullable=False, doc="Whether access is approved")
