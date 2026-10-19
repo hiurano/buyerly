@@ -12,7 +12,6 @@ import api.routes as api_routes_module
 import api.server as api_server_module
 from api.server import create_app
 from core.config import settings
-from database.db import hash_password
 from database.models import (
     Account,
     AuditEvent,
@@ -47,7 +46,6 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
                 telegram_id="999000111",
                 username="admin_user",
                 full_name="Platform Admin",
-                password_hash=hash_password("admin-password"),
                 role="admin",
                 is_approved=True,
             )
@@ -58,7 +56,6 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
                 telegram_id="111000111",
                 username="tenant_a",
                 full_name="Tenant A Owner",
-                password_hash=hash_password("tenant-a-password"),
                 role="buyer",
                 is_approved=True,
             )
@@ -69,7 +66,6 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
                 telegram_id="222000222",
                 username="tenant_b",
                 full_name="Tenant B Owner",
-                password_hash=hash_password("tenant-b-password"),
                 role="buyer",
                 is_approved=True,
             )
@@ -262,7 +258,6 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
                 telegram_id="333000333",
                 username="viewer_user",
                 full_name="Viewer User",
-                password_hash=hash_password("viewer-password"),
                 role="admin",  # Even with global role=admin!
                 is_approved=True,
                 active_workspace_id=self.ws_a.id,

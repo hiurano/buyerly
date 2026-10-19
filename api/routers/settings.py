@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 
 from api.auth import get_current_user
-from api.deps import _confirm_admin_password, _load_json_object, _utc_iso
+from api.deps import _require_admin, _load_json_object, _utc_iso
 from api.schemas import AutomationSettingsUpdateRequest, SetIntervalRequest
 from database.db import async_session_maker
 from database.models import AppSettings, AutomationRuntimeState, User
@@ -85,9 +85,9 @@ async def update_automation_settings(
     payload: AutomationSettingsUpdateRequest,
     user: User = Depends(get_current_user),
 ):
-    """Update global polling controls after explicit account-password confirmation."""
+    """Update global polling controls; administrators only."""
+    _require_admin(user)
     async with async_session_maker() as session:
-        await _confirm_admin_password(session, user, payload.current_password)
         app_settings = (
             await session.execute(select(AppSettings).limit(1))
         ).scalar_one_or_none()
@@ -118,8 +118,8 @@ async def update_automation_settings(
 
 @router.post("/settings/interval")
 async def set_poll_interval(payload: SetIntervalRequest, user: User = Depends(get_current_user)):
+    _require_admin(user)
     async with async_session_maker() as session:
-        await _confirm_admin_password(session, user, payload.current_password)
         res = await session.execute(select(AppSettings).limit(1))
         app_settings = res.scalar_one_or_none()
         if not app_settings:

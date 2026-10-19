@@ -1,6 +1,4 @@
-import base64
 import hashlib
-import hmac
 import json
 import logging
 import secrets
@@ -38,71 +36,6 @@ Base = declarative_base()
 async def get_db():
     async with async_session_maker() as session:
         yield session
-
-PASSWORD_SCHEME = "pbkdf2_sha256"
-PASSWORD_ITERATIONS = 600_000
-
-
-def _encode_password_part(value: bytes) -> str:
-    return base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")
-
-
-def _decode_password_part(value: str) -> bytes:
-    return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
-
-
-def hash_password(password: str) -> str:
-    salt = secrets.token_bytes(16)
-    digest = hashlib.pbkdf2_hmac(
-        "sha256",
-        password.encode("utf-8"),
-        salt,
-        PASSWORD_ITERATIONS,
-    )
-    return "$".join(
-        (
-            PASSWORD_SCHEME,
-            str(PASSWORD_ITERATIONS),
-            _encode_password_part(salt),
-            _encode_password_part(digest),
-        )
-    )
-
-
-def verify_password(password: str, encoded_password: str) -> bool:
-    if not encoded_password:
-        return False
-
-    if encoded_password.startswith(f"{PASSWORD_SCHEME}$"):
-        try:
-            _, iterations_raw, salt_raw, expected_raw = encoded_password.split("$", 3)
-            iterations = int(iterations_raw)
-            if iterations < 1 or iterations > 2_000_000:
-                return False
-            actual = hashlib.pbkdf2_hmac(
-                "sha256",
-                password.encode("utf-8"),
-                _decode_password_part(salt_raw),
-                iterations,
-            )
-            return hmac.compare_digest(actual, _decode_password_part(expected_raw))
-        except (TypeError, ValueError):
-            return False
-
-    if len(encoded_password) == 64:
-        legacy = hashlib.sha256(password.encode("utf-8")).hexdigest()
-        return hmac.compare_digest(legacy, encoded_password)
-    return False
-
-
-def password_needs_rehash(encoded_password: str) -> bool:
-    if not encoded_password.startswith(f"{PASSWORD_SCHEME}$"):
-        return True
-    try:
-        return int(encoded_password.split("$", 2)[1]) < PASSWORD_ITERATIONS
-    except (IndexError, ValueError):
-        return True
-
 
 async def migrate_legacy_account_rules(conn) -> int:
     """Add active_rules and migrate the previous single-rule account fields.
@@ -1303,31 +1236,6 @@ async def init_schema():
     await run_production_migrations()
 
 
-async def ensure_bootstrap_admin():
-    if settings.BOOTSTRAP_ADMIN_USERNAME and settings.BOOTSTRAP_ADMIN_PASSWORD:
-        from sqlalchemy import select
-        from database.models import User
-
-        async with async_session_maker() as session:
-            result = await session.execute(
-                select(User).where(
-                    User.username.ilike(settings.BOOTSTRAP_ADMIN_USERNAME)
-                )
-            )
-            if not result.scalar_one_or_none():
-                admin = User(
-                    telegram_id=settings.ADMIN_CHAT_ID or None,
-                    username=settings.BOOTSTRAP_ADMIN_USERNAME,
-                    full_name=settings.BOOTSTRAP_ADMIN_USERNAME,
-                    password_hash=hash_password(settings.BOOTSTRAP_ADMIN_PASSWORD),
-                    role="admin",
-                    is_approved=True,
-                )
-                session.add(admin)
-                await session.commit()
-                logger.info("Created bootstrap admin from environment configuration.")
-
-
 async def ensure_default_settings():
     from sqlalchemy import select
     from database.models import AppSettings
@@ -1341,5 +1249,4 @@ async def ensure_default_settings():
 
 async def init_db():
     await init_schema()
-    await ensure_bootstrap_admin()
     await ensure_default_settings()

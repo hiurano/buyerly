@@ -40,6 +40,7 @@ const SYSTEM_ROOTS = new Set([
   'api',
   'assets',
   'auth',
+  'changelog',
   'connect',
   'create-workspace',
   'data-deletion',

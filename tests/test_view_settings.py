@@ -11,7 +11,6 @@ import api.routes as api_routes_module
 import api.server as api_server_module
 from api.server import create_app
 from core.rate_limit import limiter
-from database.db import hash_password
 from database.models import User, ViewSetting, Workspace, WorkspaceMember
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
 
@@ -38,9 +37,9 @@ class TestViewSettings(unittest.IsolatedAsyncioTestCase):
 
         async with self.sessions() as session:
             owner = User(telegram_id='910000001', username='owner', full_name='Olga Owner',
-                         password_hash=hash_password('x'), role='buyer', is_approved=True)
+                         role='buyer', is_approved=True)
             buyer = User(telegram_id='910000002', username='buyer', full_name='Boris Buyer',
-                         password_hash=hash_password('x'), role='buyer', is_approved=True)
+                         role='buyer', is_approved=True)
             session.add_all([owner, buyer])
             await session.flush()
             ws = Workspace(name='Buyerly', slug='buyerly', owner_user_id=owner.id)

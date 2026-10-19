@@ -19,8 +19,6 @@ from api.auth import (
 from api.deps import _utc_iso, get_user_workspaces_list
 from api.schemas import (
     BrowserAccountItem,
-    ChangePasswordRequest,
-    LoginRequest,
     LoginResponse,
     RequestEmailChangeRequest,
     RequestTemporaryPasswordRequest,
@@ -34,12 +32,7 @@ from api.schemas import (
 from core.config import settings
 from core.email import send_otp_verification_email
 from core.rate_limit import get_client_ip, rate_limit_dep
-from database.db import (
-    async_session_maker,
-    hash_password,
-    password_needs_rehash,
-    verify_password,
-)
+from database.db import async_session_maker
 from database.models import (
     Account,
     ActionUndoState,
@@ -195,7 +188,13 @@ async def _complete_passwordless_login(
         await session.flush()
     else:
         if not user.email_verified_at:
-            user.email_verified_at = datetime.now(timezone.utc)
+            # Nobody proved this address belongs to the account: a code to the
+            # inbox must not hand over an account someone else set it on.
+            await session.commit()
+            raise HTTPException(
+                status_code=403,
+                detail="This email isn't confirmed on its account. Contact support to sign in.",
+            )
         if not user.is_approved and invite is not None:
             # An invitation is an administrator letting this person in.
             user.is_approved = True
@@ -312,63 +311,6 @@ async def request_temporary_password(req: RequestTemporaryPasswordRequest, reque
 
 
 @router.post(
-    "/auth/login",
-    response_model=LoginResponse,
-    dependencies=[Depends(rate_limit_dep(
-        limit=10,
-        window_seconds=60,
-        scope="login",
-        identity_fields=("username",),
-    ))],
-)
-async def login_user(req: LoginRequest, request: Request, response: Response):
-    async with async_session_maker() as session:
-        identifier = req.username.strip().lower()
-
-        # Only stable identifiers sign in: the username or the account email.
-        # An exact username match wins if another account uses it as an email.
-        matches = (
-            await session.execute(
-                select(User)
-                .where(
-                    (func.lower(User.username) == identifier)
-                    | (func.lower(User.email) == identifier)
-                )
-                .limit(2)
-            )
-        ).scalars().all()
-        user = next(
-            (item for item in matches if item.username.lower() == identifier),
-            matches[0] if len(matches) == 1 else None,
-        )
-
-        if not user or not verify_password(req.password, user.password_hash):
-            raise HTTPException(status_code=401, detail="Invalid username or password")
-
-        if not user.is_approved:
-            raise HTTPException(status_code=403, detail="Your account is awaiting administrator approval.")
-
-        if password_needs_rehash(user.password_hash):
-            user.password_hash = hash_password(req.password)
-
-        await create_web_session(
-            session,
-            user=user,
-            request=request,
-            response=response,
-        )
-        await session.commit()
-
-        return LoginResponse(
-            account_id=user.id,
-            username=user.username,
-            full_name=user.full_name or user.username,
-            role=user.role,
-            message="Signed in successfully",
-        )
-
-
-@router.post(
     "/auth/verify-temporary-password",
     response_model=LoginResponse,
     dependencies=[Depends(rate_limit_dep(
@@ -440,27 +382,6 @@ async def verify_email_link(
             request=request,
             response=response,
         )
-
-
-@router.post("/auth/change-password")
-async def change_password(req: ChangePasswordRequest, user: User = Depends(get_current_user)):
-    new_pw = req.new_password
-    if len(new_pw) < 8:
-        raise HTTPException(status_code=400, detail="The password must be at least 8 characters")
-
-    async with async_session_maker() as session:
-        res = await session.execute(select(User).where(User.id == user.id))
-        db_user = res.scalar_one_or_none()
-        if not db_user:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        if db_user.password_hash:
-            if not req.old_password or not verify_password(req.old_password, db_user.password_hash):
-                raise HTTPException(status_code=400, detail="The current password is incorrect")
-
-        db_user.password_hash = hash_password(new_pw)
-        await session.commit()
-        return {"message": "Password updated"}
 
 
 async def _deliver_otp(session, *, issued, email: str, log_context: str) -> None:
@@ -914,7 +835,6 @@ async def get_me(user: User = Depends(get_authenticated_user)):
             email_verified=bool(getattr(db_user, "email_verified_at", None)),
             unconfirmed_email=getattr(db_user, "unconfirmed_email", None),
             avatar_url=getattr(db_user, "avatar_url", "") or "",
-            has_password=bool(db_user.password_hash),
             role=db_user.role,
             is_approved=db_user.is_approved,
             onboarding_step=getattr(db_user, "onboarding_step", "completed") or "completed",

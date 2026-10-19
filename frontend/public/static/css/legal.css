@@ -442,3 +442,65 @@ html[data-theme='light'] .hero-new:hover { filter: brightness(0.7); }
   .site-footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); width: calc(100% - 32px); row-gap: 32px; padding-bottom: 24px; }
   .site-footer-logo, .site-footer-operator, .site-footer-legal { grid-column: 1 / -1; grid-row: auto; }
 }
+
+/* Changelog page as linear.app/changelog (#435; measured 2026-10-20 at 1440, 1280, 1024, 900, 768 and 390px, light and dark).
+   Linear's 12-column grid with 32px gaps: the date in columns 1–3, the release in 4–9. Dark uses the site tokens, which are
+   Linear's; light uses the changelog page's own light values. */
+.changelog-body { --cl-fg: var(--site-fg); --cl-text: var(--site-fg-secondary); --cl-muted: var(--site-fg-tertiary); --cl-faint: var(--site-fg-quaternary); --cl-divider: #18191a; --cl-bar: #23252a; --cl-dot: #3e3e44; --cl-row-line: rgb(255 255 255 / 0.05); }
+html[data-theme='light'] .changelog-body { --site-background: #fff; --cl-fg: #282a30; --cl-text: #3c4149; --cl-muted: #6f6e77; --cl-faint: #86848d; --cl-divider: #f0f0f0; --cl-bar: #e9e8ea; --cl-dot: #dcdbdd; --cl-row-line: rgb(0 0 0 / 0.05); }
+.changelog-page { padding-bottom: 96px; }
+.changelog-page-title { margin: 80px 0 0 -2px; color: var(--cl-fg); font-size: 48px; font-weight: 510; line-height: 48px; letter-spacing: -0.022em; }
+.changelog-divider { height: 1px; margin: 72px 0 64px; border: 0; background: var(--cl-divider); }
+.changelog-release { position: relative; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-areas: "a a a b b b b b b c c c"; gap: 32px; padding-bottom: 72px; }
+.changelog-page:not(.changelog-permalink) .changelog-release::before { content: ""; position: absolute; top: 9px; bottom: -9px; left: 9px; width: 1px; background: var(--cl-bar); }
+.changelog-release-date { grid-area: a; position: sticky; top: 96px; align-self: start; height: 24px; padding-left: 24px; color: var(--cl-fg); font-size: 14px; line-height: 24px; letter-spacing: -0.013em; }
+.changelog-release-date::after { content: ""; position: absolute; top: 12px; left: 9.5px; width: 7px; height: 7px; border-radius: 100%; background: var(--cl-dot); transform: translate(-50%, -50%); }
+.is-latest .changelog-release-date::after { background: #fc7840; }
+.changelog-release-body { grid-area: b; min-width: 0; }
+.changelog-release-title { margin: 0; color: var(--cl-fg); font-size: 32px; font-weight: 590; line-height: 36px; letter-spacing: -0.022em; }
+.changelog-release-title a { color: inherit; text-decoration: none; }
+.changelog-release-body p { margin: 20px 0 0; color: var(--cl-text); font-size: 17px; line-height: 27.2px; }
+.changelog-release-body p a { color: var(--cl-fg); text-decoration: underline; text-decoration-color: var(--cl-faint); text-underline-offset: 0.175em; transition: color 0.25s, text-decoration-color 0.25s; }
+.changelog-release-body p a:hover { color: var(--cl-fg); text-decoration-color: var(--cl-fg); }
+.changelog-release-body h3 { margin: 56px 0 0; color: var(--cl-fg); font-size: 24px; font-weight: 590; line-height: 31.92px; letter-spacing: -0.012em; }
+.changelog-release-body h3 + p { margin-top: 12px; }
+.changelog-anchor { display: inline-grid; place-items: center; width: 24px; height: 24px; margin-left: 4px; vertical-align: -2px; color: var(--cl-faint); visibility: hidden; }
+.changelog-release-body h3:hover .changelog-anchor, .changelog-anchor:focus-visible { visibility: visible; }
+.changelog-anchor:hover { color: var(--cl-fg); }
+.changelog-more-group { margin-top: 20px; }
+.changelog-more + .changelog-more { border-top: 1px solid var(--cl-row-line); }
+.changelog-more summary { display: flex; align-items: center; padding: 16px 0; color: var(--cl-fg); font-size: 15px; font-weight: 510; line-height: 24px; letter-spacing: -0.011em; list-style: none; cursor: pointer; }
+.changelog-more summary::-webkit-details-marker { display: none; }
+.changelog-chevron { display: flex; margin-left: auto; color: var(--cl-faint); transition: transform 0.12s; }
+.changelog-more[open] .changelog-chevron { transform: rotate(90deg); }
+.changelog-more ul { margin: 0 0 16px; padding-left: 24px; color: var(--cl-text); font-size: 17px; line-height: 27.2px; }
+.changelog-more li + li { margin-top: 8px; }
+/* A release on its own page, as Linear's permalink: "‹ Changelog" over the date column, the date over the release. */
+.changelog-permalink-bar { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-areas: "a a a b b b b b b c c c"; gap: 32px; margin-top: 64px; }
+.changelog-back { grid-area: a; justify-self: start; display: flex; align-items: baseline; gap: 4px; align-self: center; color: var(--cl-muted); font-size: 14px; line-height: 24px; text-decoration: none; }
+.changelog-back svg { align-self: center; }
+.changelog-back:hover { color: var(--cl-fg); }
+.changelog-permalink-date { grid-area: b; justify-self: start; color: var(--cl-fg); font-size: 16px; line-height: 24px; text-decoration: none; }
+.changelog-permalink .changelog-release { margin-top: 49px; }
+/* "View all →" under the landing's Changelog cards, as Linear's homepage. */
+.changelog-item { color: inherit; text-decoration: none; }
+.changelog-item:hover h3 { color: var(--site-fg); }
+.changelog-all { display: inline-flex; margin-top: 80px; color: var(--site-fg-tertiary); font-size: 16px; line-height: 24px; text-decoration: none; transition: filter 0.2s var(--site-ease); }
+.changelog-all:hover { color: var(--site-fg-tertiary); filter: brightness(1.3); }
+.changelog-all-arrow { margin-left: 6px; color: var(--site-fg-quaternary); }
+@media (max-width: 1024px) {
+  .changelog-page.site-container { width: calc(100% - 72px); }
+}
+@media (max-width: 768px) {
+  .changelog-release, .changelog-permalink-bar { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  .changelog-release-title { font-size: 24px; line-height: 31.92px; letter-spacing: -0.012em; }
+  .changelog-release-body p { font-size: 15px; line-height: 24px; }
+}
+@media (max-width: 640px) {
+  .changelog-page.site-container { width: calc(100% - 48px); }
+  .changelog-page-title { margin-left: -1px; }
+  .changelog-release, .changelog-permalink-bar { grid-template-columns: minmax(0, 1fr); grid-template-areas: "a" "b"; }
+  .changelog-page:not(.changelog-permalink) .changelog-release::before, .changelog-release-date::after { display: none; }
+  .changelog-release-date { position: relative; top: auto; margin: 20px 0 -20px; padding-left: 0; }
+  .changelog-permalink-bar { row-gap: 16px; }
+}

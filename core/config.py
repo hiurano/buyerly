@@ -40,7 +40,7 @@ class Settings(BaseSettings):
         ),
     )
     DEFAULT_POLL_INTERVAL_MINUTES: int = Field(default=5, description="Monitoring interval in minutes")
-    ADMIN_CHAT_ID: str = Field(default="", description="Legacy Telegram ID of the bootstrap and dev-auth super-admin")
+    ADMIN_CHAT_ID: str = Field(default="", description="Legacy Telegram ID of the dev-auth super-admin")
     WEBAPP_URL: str = Field(default="", description="Public HTTPS URL of the web app")
     META_GRAPH_VERSION: str = Field(
         default="v26.0",
@@ -91,13 +91,12 @@ class Settings(BaseSettings):
         default=True,
         description="Send browser authentication cookies only over HTTPS",
     )
-    BOOTSTRAP_ADMIN_USERNAME: str = Field(
-        default="",
-        description="Optional first admin username for an empty installation",
-    )
-    BOOTSTRAP_ADMIN_PASSWORD: str = Field(
-        default="",
-        description="Optional first admin password for an empty installation",
+    DEV_EMAIL_LOG: bool = Field(
+        default=False,
+        description=(
+            "Local stack only (compose.dev.yaml): without RESEND_API_KEY, write the "
+            "whole email, sign-in link and code included, to the log"
+        ),
     )
     TELEGRAM_BOT_TOKEN: str = Field(
         default="",

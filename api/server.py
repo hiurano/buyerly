@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
@@ -185,6 +186,7 @@ def create_app() -> FastAPI:
         "/privacy": "privacy.html",
         "/terms": "terms.html",
         "/data-deletion": "data-deletion.html",
+        "/changelog": "changelog.html",
     }
 
     @app.get("/", include_in_schema=False)
@@ -192,6 +194,7 @@ def create_app() -> FastAPI:
     @app.get("/privacy", include_in_schema=False)
     @app.get("/terms", include_in_schema=False)
     @app.get("/data-deletion", include_in_schema=False)
+    @app.get("/changelog", include_in_schema=False)
     async def serve_public_document(request: Request):
         document_path = frontend_dir / public_documents[request.url.path]
         if document_path.is_file():
@@ -199,6 +202,14 @@ def create_app() -> FastAPI:
                 document_path,
                 headers={"Cache-Control": "public, max-age=300"},
             )
+        return JSONResponse(status_code=404, content={"detail": "Document not found"})
+
+    # One page per release, built by scripts/build_changelog.py (#435).
+    @app.get("/changelog/{slug}", include_in_schema=False)
+    async def serve_changelog_release(slug: str):
+        release_path = frontend_dir / "changelog" / f"{slug}.html"
+        if re.fullmatch(r"[a-z0-9-]+", slug) and release_path.is_file():
+            return FileResponse(release_path, headers={"Cache-Control": "public, max-age=300"})
         return JSONResponse(status_code=404, content={"detail": "Document not found"})
 
     # Root segments the React app routes itself (frontend/src/lib/routing.ts);

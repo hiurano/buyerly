@@ -30,8 +30,6 @@ class UserProfileResponse(BaseModel):
     email_verified: bool = False
     unconfirmed_email: Optional[str] = None
     avatar_url: str = ""
-    # Whether username-and-password login works; the hash itself never leaves the server.
-    has_password: bool = False
     role: str
     is_approved: bool
     onboarding_step: str = "completed"
@@ -69,13 +67,6 @@ class VerifyEmailChangeRequest(BaseModel):
     code: str = Field(..., min_length=1, max_length=20)
 
 
-class LoginRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    username: str = Field(..., min_length=1, max_length=255)
-    password: str = Field(..., min_length=1, max_length=255)
-
-
 class LoginResponse(BaseModel):
     # The signed-in account; the browser sends it back as X-Buyerly-Account.
     account_id: Optional[int] = None
@@ -95,13 +86,6 @@ class WebSessionItem(BaseModel):
     expires_at: datetime
     last_seen_at: datetime
     current: bool = False
-
-
-class ChangePasswordRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    old_password: str = Field(default="", max_length=255)
-    new_password: str = Field(..., min_length=8, max_length=255)
 
 
 class UpdateProfileRequest(BaseModel):
