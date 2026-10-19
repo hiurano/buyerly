@@ -12,13 +12,19 @@
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
-    <div class="site-container site-header-inner">
-      <a class="site-brand" href="/" aria-label="Buyerly home"><img src="/static/icons/buyerly_logo_badge.svg" width="32" height="32" alt=""><span>Buyerly</span></a>
-      <nav class="site-nav" aria-label="Main navigation">
-        <a href="#contact">Contact</a>
-        <a href="/login">Log in</a>
-      </nav>
-    </div>
+    <nav class="site-container site-header-inner" aria-label="Main navigation">
+      <a class="site-brand" href="/" aria-label="Buyerly home"><span class="site-brand-mark" aria-hidden="true"></span><span>Buyerly</span></a>
+      <div class="site-nav">
+        <a class="site-nav-link is-secondary" href="/#product">Product</a>
+        <a class="site-nav-link is-secondary" href="/#changelog">Changelog</a>
+        <a class="site-nav-link is-secondary" href="#contact">Contact</a>
+        <span class="site-nav-divider" aria-hidden="true"></span>
+        <a class="site-nav-link" href="/login">Log in</a>
+        <a class="site-button-invert" href="/signup">Sign up</a>
+        <button class="site-menu-button" type="button" popovertarget="site-menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 4.75A.75.75 0 0 1 2.75 4h10.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75Zm0 6.5a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z"/></svg></button>
+      </div>
+      <div id="site-menu" class="site-menu" popover><a href="/#product">Product</a><a href="/#changelog">Changelog</a><a href="#contact">Contact</a><a href="/login">Log in</a></div>
+    </nav>
   </header>
   <main id="main" class="legal-article" tabindex="-1">
     <h1>Privacy</h1>
@@ -76,25 +82,27 @@
       </section>
   </main>
   <footer class="site-footer">
-    <div class="site-container site-footer-grid">
-      <div class="site-operator">
-        <a class="site-brand" href="/" aria-label="Buyerly home"><img src="/static/icons/buyerly_logo_badge.svg" width="32" height="32" alt=""><span>Buyerly</span></a>
-        <p>Buyerly is operated by<br><strong>individual entrepreneur ARTEM PETRUCHENKO</strong></p>
+    <div class="site-footer-grid">
+      <div class="site-footer-logo"><a class="site-footer-mark" href="/" aria-label="Buyerly home"><span class="site-brand-mark" aria-hidden="true"></span></a></div>
+      <nav class="site-footer-col" aria-labelledby="footer-product">
+        <h2 id="footer-product">Product</h2>
+        <ul><li><a href="/#product">Ads Manager</a></li><li><a href="/#rules">Rules</a></li><li><a href="/#inbox">Inbox</a></li><li><a href="/#team">Your team</a></li><li><a href="/#changelog">Changelog</a></li></ul>
+      </nav>
+      <nav class="site-footer-col" aria-labelledby="footer-company">
+        <h2 id="footer-company">Company</h2>
+        <ul><li><a href="/about">About</a></li></ul>
+      </nav>
+      <section id="contact" class="site-footer-col" aria-labelledby="contact-heading">
+        <h2 id="contact-heading">Contact</h2>
+        <ul><li><a href="mailto:contact@buyerly.app">contact@buyerly.app</a></li></ul>
+      </section>
+      <div class="site-footer-operator">
+        <p>Buyerly is operated by <strong>individual entrepreneur ARTEM PETRUCHENKO</strong></p>
         <p>Identification Number: 305879234</p>
         <address>Georgia, Tbilisi, Vake District, Besarion Zhgenti Street, No. 49, Apartment 20</address>
-        <p class="site-copyright">© 2026 Buyerly</p>
       </div>
-      <nav class="site-footer-links" aria-label="Company">
-        <h2>Company</h2>
-        <a href="/about">About</a>
-      </nav>
-      <section id="contact" aria-labelledby="contact-heading">
-        <h2 id="contact-heading">Contact</h2>
-        <a href="mailto:contact@buyerly.app">contact@buyerly.app</a>
-      </section>
-      <nav class="site-footer-links" aria-label="Legal">
-        <h2>Legal</h2>
-        <a href="/privacy" aria-current="page">Privacy</a><a href="/terms">Terms</a>
+      <nav class="site-footer-legal" aria-label="Legal">
+        <a href="/privacy" aria-current="page">Privacy</a><a href="/terms">Terms</a><span class="site-copyright">© 2026 Buyerly</span>
       </nav>
     </div>
   </footer>

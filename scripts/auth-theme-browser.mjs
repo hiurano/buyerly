@@ -24,7 +24,7 @@ const user = {
 const pages = [
   { name: 'login', path: '/login', ready: 'Log in to Buyerly', surface: '.buyerly-auth-page', field: 'Continue with email' },
   { name: 'create-workspace', path: '/create-workspace', ready: 'Create a workspace', surface: '.buyerly-auth-page', signedIn: true, field: true },
-  { name: 'landing', path: '/', ready: 'Your Meta Ads operations', surface: 'body' },
+  { name: 'landing', path: '/', ready: 'The operations system', surface: 'body' },
   { name: 'about', path: '/about', ready: 'Get in touch', surface: 'body' },
   { name: 'privacy', path: '/privacy', ready: 'Data we use', surface: 'body' },
   { name: 'terms', path: '/terms', ready: 'Advertising and automation', surface: 'body' },

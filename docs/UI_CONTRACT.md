@@ -86,13 +86,16 @@ A shared primitive owns its own geometry. If a page needs a different height for
 
 ## Public website
 
-The static landing page and legal documents in `frontend/public/` use the
-Linear-inspired public website scale: up to 64px headings and 16px reading text,
-with semantic `--site-*` tokens. These values are scoped to public composition
+The static landing page and legal documents in `frontend/public/` follow
+linear.app's homepage (#434): its header, 64px hero, 48px section headings,
+feature sections with app mockups in the product's own tokens, changelog,
+closing call to action and six-column footer, in light and dark, with semantic
+`--site-*` tokens. Feature "Tech specs" panels and the phone menu use the HTML
+`popover` attribute, so the pages still need no JavaScript beyond the theme bootstrap. These values are scoped to public composition
 and do not change product control geometry or density. Public navigation uses
 native links and requires no React hydration. Vite emits shared tokens, public
-CSS and local fonts as fingerprinted assets. The landing page, Privacy and Terms
-share header/footer markup, verified by the public-page tests. Only Privacy and
+CSS and local fonts as fingerprinted assets. All public pages share header/footer
+markup, verified by the public-page tests. Only Privacy and
 Terms are in footer Legal; deletion instructions remain linked from Privacy.
 
 ## Known gaps
