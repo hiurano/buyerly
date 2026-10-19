@@ -117,6 +117,10 @@ ensure_repository_secrets() {
         clean_value=$(printf '%s' "${RESEND_API_KEY}" | tr -d " \t\r\n\"'")
         set_env_value RESEND_API_KEY "${clean_value}"
     fi
+    if [[ -n "${TURNSTILE_SECRET_KEY:-}" ]]; then
+        clean_value=$(printf '%s' "${TURNSTILE_SECRET_KEY}" | tr -d " \t\r\n\"'")
+        set_env_value TURNSTILE_SECRET_KEY "${clean_value}"
+    fi
     if [[ -n "${TELEGRAM_BOT_TOKEN:-}" ]]; then
         clean_value=$(printf '%s' "${TELEGRAM_BOT_TOKEN}" | tr -d " \t\r\n\"'")
         if [[ "${clean_value}" =~ ^[0-9]+:[A-Za-z0-9_-]+$ ]]; then

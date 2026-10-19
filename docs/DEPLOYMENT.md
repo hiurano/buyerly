@@ -45,13 +45,7 @@ META_APP_SECRET=...
 META_LOGIN_CONFIG_ID=...
 META_OAUTH_REDIRECT_URI=https://buyerly.app/api/meta/oauth/callback
 META_GRAPH_VERSION=v26.0
-TURNSTILE_SECRET_KEY=...
 ```
-
-`TURNSTILE_SECRET_KEY` — секретный ключ виджета «Buyerly sign-up» (Cloudflare →
-Turnstile, режим Managed, домен `buyerly.app`). С ним новый email без
-приглашения получает код только после проверки Turnstile; без него проверка
-выключена.
 
 `COMPOSE_PROFILES` и `CLOUDFLARE_TUNNEL_TOKEN` читает сам Docker Compose: первый
 включает контейнер туннеля, второй — его токен (Cloudflare Zero Trust → Networks
@@ -77,8 +71,12 @@ Turnstile, режим Managed, домен `buyerly.app`). С ним новый e
 docker compose exec api python -m scripts.rotate_meta_tokens
 ```
 
-`RESEND_API_KEY` и `TELEGRAM_BOT_TOKEN` хранятся в секретах репозитория GitHub;
-деплой записывает их в `.env`, пустой секрет `.env` не трогает. С ключом
+`RESEND_API_KEY`, `TELEGRAM_BOT_TOKEN` и `TURNSTILE_SECRET_KEY` хранятся в
+секретах репозитория GitHub; деплой записывает их в `.env`, пустой секрет `.env`
+не трогает. `TURNSTILE_SECRET_KEY` — секретный ключ виджета «Buyerly sign-up»
+(Cloudflare → Turnstile, режим Managed, домен `buyerly.app`): с ним новый email
+без приглашения получает код только после проверки Turnstile, без него проверка
+выключена. С ключом
 Telegram API при старте сам регистрирует webhook
 `https://<WEBAPP_URL>/api/telegram/webhook`; без ключа строка Telegram в
 Settings неактивна. Почта отправляется только через Resend REST API.
