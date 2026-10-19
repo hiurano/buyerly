@@ -30,7 +30,6 @@ from database.models import (
     AccountGroup,
     AccountGroupMember,
     ActionUndoState,
-    AllowedEmail,
     AnalyticsEntityFact,
     AppSettings,
     AutomationRuntimeState,
@@ -4342,10 +4341,6 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(resp.headers.get("x-xss-protection"), "1; mode=block")
 
     async def test_otp_request_rate_limiting(self):
-        async with self.test_session_maker() as session:
-            session.add(AllowedEmail(email="ratelimit@example.com", added_by="test"))
-            await session.commit()
-
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             with patch("api.routers.auth.send_otp_verification_email", new=AsyncMock()):
@@ -4362,10 +4357,6 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(second.status_code, 429)
 
     async def test_otp_request_delivery_failure_raises_502(self):
-        async with self.test_session_maker() as session:
-            session.add(AllowedEmail(email="deliveryfail@example.com", added_by="test"))
-            await session.commit()
-
         transport = httpx.ASGITransport(app=self.app)
         orig_key = settings.RESEND_API_KEY
         settings.RESEND_API_KEY = "re_test_dummy_key"
@@ -4400,10 +4391,6 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             settings.RESEND_API_KEY = orig_key
 
     async def test_otp_brute_force_lockout(self):
-        async with self.test_session_maker() as session:
-            session.add(AllowedEmail(email="bruteforce@example.com", added_by="test"))
-            await session.commit()
-
         transport = httpx.ASGITransport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             with patch("api.routers.auth.send_otp_verification_email", new=AsyncMock()):
@@ -4441,10 +4428,6 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 self.assertTrue(code_record.is_used)
 
     async def test_otp_is_consumed_once_and_user_is_created_only_after_verification(self):
-        async with self.test_session_maker() as session:
-            session.add(AllowedEmail(email="atomic@example.com", added_by="test"))
-            await session.commit()
-
         delivered = {}
 
         async def capture_code(email, code, login_link):
@@ -4493,10 +4476,6 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(replay.status_code, 401)
 
     async def test_magic_link_is_consumed_once_and_never_stored_in_plaintext(self):
-        async with self.test_session_maker() as session:
-            session.add(AllowedEmail(email="magic@example.com", added_by="test"))
-            await session.commit()
-
         delivered = {}
 
         async def capture_message(email, code, login_link):

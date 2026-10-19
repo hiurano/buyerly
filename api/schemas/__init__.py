@@ -26,8 +26,6 @@ from api.schemas.auth import (
     WebSessionItem,
     ChangePasswordRequest,
     UpdateProfileRequest,
-    AllowedEmailItem,
-    AddAllowedEmailRequest,
 )
 from api.schemas.onboarding import (
     OnboardingStatusResponse,
@@ -112,8 +110,6 @@ __all__ = [
     "WebSessionItem",
     "ChangePasswordRequest",
     "UpdateProfileRequest",
-    "AllowedEmailItem",
-    "AddAllowedEmailRequest",
     "OnboardingStatusResponse",
     "PersonalDetailsRequest",
     "CheckSlugResponse",

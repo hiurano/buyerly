@@ -1323,7 +1323,7 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                     )
                 )
 
-            command.upgrade(alembic_cfg, "head")
+            command.upgrade(alembic_cfg, "0027_allowlist_user_grants")
 
             async with engine.begin() as conn:
                 kept = (
@@ -1350,6 +1350,47 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
             async with engine.connect() as conn:
                 remaining = (await conn.execute(text("SELECT email FROM allowed_emails"))).scalars().all()
             self.assertEqual(remaining, ["kept@agency.com"])
+        finally:
+            await init_test_db(engine)
+            await engine.dispose()
+
+    async def test_open_sign_up_drops_the_allowlist(self):
+        from alembic.config import Config
+        from alembic import command
+        import os
+
+        engine = create_test_engine()
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text("DROP SCHEMA public CASCADE"))
+                await conn.execute(text("CREATE SCHEMA public"))
+
+            root = os.path.dirname(os.path.dirname(__file__))
+            alembic_cfg = Config(os.path.join(root, "alembic.ini"))
+            alembic_cfg.set_main_option("script_location", os.path.join(root, "alembic"))
+            command.upgrade(alembic_cfg, "0038_rule_label_colors")
+            async with engine.begin() as conn:
+                await conn.execute(
+                    text(
+                        "INSERT INTO allowed_emails (email, added_by, created_at) "
+                        "VALUES ('old@agency.com', 'admin', NOW())"
+                    )
+                )
+
+            command.upgrade(alembic_cfg, "head")
+            async with engine.connect() as conn:
+                tables = await conn.run_sync(lambda sync: inspect(sync).get_table_names())
+            self.assertNotIn("allowed_emails", tables)
+
+            # The way back restores the table as 0027 left it, without the grants.
+            command.downgrade(alembic_cfg, "0038_rule_label_colors")
+            async with engine.begin() as conn:
+                self.assertEqual(
+                    (await conn.execute(text("SELECT count(*) FROM allowed_emails"))).scalar_one(), 0
+                )
+                await conn.execute(
+                    text("INSERT INTO allowed_emails (email, created_at) VALUES ('back@agency.com', NOW())")
+                )
         finally:
             await init_test_db(engine)
             await engine.dispose()

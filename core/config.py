@@ -107,6 +107,10 @@ class Settings(BaseSettings):
         default="",
         description="Resend.com API Key for sending transactional emails",
     )
+    TURNSTILE_SECRET_KEY: str = Field(
+        default="",
+        description="Cloudflare Turnstile secret key for sign-up; empty turns the check off. Only in the server's .env",
+    )
     OTP_PEPPER: str = Field(
         default="",
         description="Required HMAC secret for OTP storage",

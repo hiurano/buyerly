@@ -134,7 +134,7 @@ Two menus, as in Linear.
 ### Auth and onboarding
 
 - password login (email code or link only for invitations), workspace creation and initial profile setup remain separate, comprehensible states;
-- blocked invitation or whitelist checks surface a clear next action;
+- a blocked invitation or a failed human check surfaces a clear next action;
 - authenticated product navigation is unavailable until the session and workspace are resolved.
 
 ### Meta connection dialog

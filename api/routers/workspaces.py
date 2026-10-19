@@ -21,7 +21,6 @@ from api.schemas import (
 from database.db import async_session_maker
 from database.models import User, Workspace, WorkspaceMember
 from core.workspace_slugs import normalize_workspace_slug
-from services.allowlist import find_account_grant
 from services.image_uploads import (
     delete_workspace_logo_if_unreferenced,
     is_owned_workspace_logo,
@@ -55,22 +54,6 @@ async def create_workspace(req: CreateWorkspaceRequest, user: User = Depends(get
         raise HTTPException(status_code=400, detail="Logo not found, or it belongs to another user")
 
     async with async_session_maker() as session:
-        existing_membership = (
-            await session.execute(
-                select(WorkspaceMember.id).where(
-                    WorkspaceMember.user_id == user.id
-                ).limit(1)
-            )
-        ).scalar_one_or_none()
-        allowlisted = None
-        if existing_membership is None:
-            allowlisted = await find_account_grant(session, user)
-        if existing_membership is None and allowlisted is None:
-            raise HTTPException(
-                status_code=403,
-                detail="Workspace creation is not available in an invite-only session",
-            )
-
         try:
             slug = await allocate_workspace_slug(session, requested_slug)
         except WorkspaceSlugUnavailable as exc:
