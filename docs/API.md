@@ -41,7 +41,7 @@ monitoring cycle делает обзор `degraded` или `critical`, даже 
 | Метод и путь | Тело | Результат |
 |---|---|---|
 | `POST /api/auth/request-temporary-password` | `email`, `invite_token?`, `turnstile_token?` | вход и регистрация по почте: любой почте высылает одно письмо с одноразовой ссылкой и кодом. Новой почте без приглашения нужен `turnstile_token` от виджета Cloudflare Turnstile, иначе 400 без письма (проверка выключена, пока на сервере не задан `TURNSTILE_SECRET_KEY`). Недействительное или чужое `invite_token` — 403 |
-| `POST /api/auth/verify-temporary-password` | `email`, `code` | атомарно потребляет общий login credential, повторно проверяет доступ и открывает web-сессию |
+| `POST /api/auth/verify-temporary-password` | `email`, `code` | атомарно потребляет общий login credential, повторно проверяет доступ и открывает web-сессию; аккаунт с неподтверждённой почтой не открывает (403) |
 | `POST /api/auth/verify-email-link` | `token` | атомарно потребляет тот же login credential по ссылке; после этого код также недействителен |
 | `POST /api/auth/request-email-verification` | — | высылает 6-значный одноразовый код на текущий неподтверждённый email |
 | `POST /api/auth/request-email-change` | `new_email` | высылает 6-значный код подтверждения для привязки нового email |
@@ -125,7 +125,7 @@ Settings → Administration → Teams, как в Linear (#371). Команда �
 | Метод и путь | Тело | Назначение |
 |---|---|---|
 | `GET /api/onboarding/status` | — | проверка текущего шага онбординга и профиля пользователя |
-| `POST /api/onboarding/personal-details` | `first_name`, `last_name?`, `email?` | сохранение отображаемого имени после создания или принятия workspace; поле Title отсутствует |
+| `POST /api/onboarding/personal-details` | `first_name`, `last_name?` | сохранение отображаемого имени после создания или принятия workspace; поле Title отсутствует; почту здесь не меняют |
 | `POST /api/onboarding/avatar` | `file` (multipart) | проверка реального содержимого и загрузка фотографии профиля (PNG, JPG, WEBP до 5 МБ) |
 | `DELETE /api/onboarding/avatar` | — | удаление аватара и возврат к инициальному бейджу |
 | `GET /api/onboarding/check-slug` | `slug` (query) | живая проверка доступности слага воркспейса в реальном времени |
@@ -482,7 +482,7 @@ curl -fsS https://buyerly.app/api/me \
 | Метод и путь | Назначение |
 |---|---|
 | `GET /api/onboarding/status` | текущий шаг и статус прохождения онбординга |
-| `POST /api/onboarding/personal-details` | сохранение Name; фамилия и email опциональны, Title отсутствует |
+| `POST /api/onboarding/personal-details` | сохранение Name; фамилия опциональна, Title отсутствует |
 | `POST /api/onboarding/avatar` | загрузка аватара профиля |
 | `DELETE /api/onboarding/avatar` | удаление аватара профиля |
 | `GET /api/onboarding/check-slug` | проверка доступности slug воркспейса |

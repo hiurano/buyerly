@@ -195,7 +195,13 @@ async def _complete_passwordless_login(
         await session.flush()
     else:
         if not user.email_verified_at:
-            user.email_verified_at = datetime.now(timezone.utc)
+            # Nobody proved this address belongs to the account: a code to the
+            # inbox must not hand over an account someone else set it on.
+            await session.commit()
+            raise HTTPException(
+                status_code=403,
+                detail="This email isn't confirmed on its account. Contact support to sign in.",
+            )
         if not user.is_approved and invite is not None:
             # An invitation is an administrator letting this person in.
             user.is_approved = True
