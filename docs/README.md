@@ -7,6 +7,7 @@
 | Что делает продукт | [README](../README.md) |
 | Как поднять у себя, проверки, структура репозитория | [DEVELOPMENT.md](DEVELOPMENT.md) |
 | Как связаны компоненты | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Загрузка приложения рядом с Linear | [LINEAR_RELOAD_COMPARISON.md](LINEAR_RELOAD_COMPARISON.md) |
 | HTTP-контракты | [API.md](API.md) |
 | Вход, workspace и приглашения | [WORKSPACES_AUTH_AND_INVITES.md](WORKSPACES_AUTH_AND_INVITES.md) |
 | URL и терминология | [INFORMATION_ARCHITECTURE.md](INFORMATION_ARCHITECTURE.md) |

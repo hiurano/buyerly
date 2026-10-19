@@ -22,6 +22,7 @@ import { apiRequest } from '@/lib/api';
 import type { LoginResult, SessionUser, Workspace } from '@/lib/types';
 import { isRoutedSettingsSection, isWorkspaceReturnRoute, openAppPath, parseRoute, pathForTab, type Route } from '@/lib/routing';
 import { AuthLoading } from '@/components/auth/AuthFrame';
+import { finishSplash } from '@/lib/splash';
 import { LoginView } from '@/components/auth/LoginView';
 import { VerifyEmailLinkView } from '@/components/auth/VerifyEmailLinkView';
 import { InviteView } from '@/components/auth/InviteView';
@@ -373,6 +374,10 @@ export const App: React.FC = () => {
   useLayoutEffect(() => {
     useAppStore.getState().setWorkspaceScope(desiredScope, resolvedWorkspace?.slug);
   }, [desiredScope, resolvedWorkspace?.slug]);
+  // The reload splash goes once a screen other than the boot loader is on the page (#433).
+  useLayoutEffect(() => {
+    if (!document.querySelector('[data-boot-loading]')) finishSplash();
+  });
 
   const navigate = useCallback((path: string, replace = false) => {
     const method = replace ? 'replaceState' : 'pushState';
