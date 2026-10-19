@@ -27,18 +27,21 @@ class TestDocumentationContract(unittest.TestCase):
 
         self.assertEqual(missing, [], f"API.md is missing operations: {missing}")
 
-    def test_readme_links_the_supported_document_set(self):
+    def test_documentation_index_links_the_supported_document_set(self):
         readme = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("docs/README.md", readme)
+        index = (PROJECT_ROOT / "docs" / "README.md").read_text(encoding="utf-8")
         for path in (
-            "docs/DESIGN_SYSTEM.md",
-            "docs/ARCHITECTURE.md",
-            "docs/INFORMATION_ARCHITECTURE.md",
-            "docs/API.md",
-            "docs/DEPLOYMENT.md",
-            "docs/DECISIONS.md",
-            "docs/PRODUCT_BACKLOG.md",
+            "DEVELOPMENT.md",
+            "DESIGN_SYSTEM.md",
+            "ARCHITECTURE.md",
+            "INFORMATION_ARCHITECTURE.md",
+            "API.md",
+            "DEPLOYMENT.md",
+            "DECISIONS.md",
+            "PRODUCT_BACKLOG.md",
         ):
-            self.assertIn(path, readme)
+            self.assertIn(f"]({path})", index)
 
     def test_current_documentation_links_resolve(self):
         documents = [PROJECT_ROOT / "README.md", PROJECT_ROOT / "CHANGELOG.md"]
@@ -55,10 +58,10 @@ class TestDocumentationContract(unittest.TestCase):
                     missing.append(f"{document.relative_to(PROJECT_ROOT)}: {target}")
         self.assertEqual(missing, [])
 
-    def test_readme_directs_tests_to_cloud_and_changelog_has_one_unreleased(self):
-        readme = (PROJECT_ROOT / "README.md").read_text()
-        self.assertIn("gh run view <run-id> --log-failed", readme)
-        self.assertNotIn("unittest discover", readme)
+    def test_development_guide_directs_tests_to_cloud_and_changelog_has_one_unreleased(self):
+        development = (PROJECT_ROOT / "docs" / "DEVELOPMENT.md").read_text()
+        self.assertIn("gh run view <run-id> --log-failed", development)
+        self.assertNotIn("unittest discover", development)
         changelog = (PROJECT_ROOT / "CHANGELOG.md").read_text()
         self.assertEqual(changelog.count("## [Unreleased]"), 1)
 

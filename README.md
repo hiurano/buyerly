@@ -1,110 +1,54 @@
-# Buyerly
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/branding/buyerly/logo-white.svg">
+    <img src="docs/branding/buyerly/logo-black.svg" alt="Buyerly" width="72">
+  </picture>
+</p>
 
-[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+<h1 align="center">Buyerly</h1>
 
-Buyerly — сервис мониторинга и автоматизации Meta Ads для медиабайеров и команд.
-Production-интерфейс написан на React; прежний vanilla-интерфейс удалён.
+<p align="center">
+  <b>The operations system for Meta Ads teams.</b><br>
+  Purpose-built for media buyers. Monitor every account, automate the routine, and keep the team in the loop.
+</p>
 
-## Возможности
+<p align="center">
+  <a href="https://buyerly.app">buyerly.app</a> ·
+  <a href="https://buyerly.app/signup">Sign up</a> ·
+  <a href="CHANGELOG.md">Changelog</a>
+</p>
 
-- **Inbox** — события текущего workspace, фильтры, поиск, подробности и безопасная отмена поддерживаемых действий.
-- **Ads Manager** — подключение Meta, выбор кабинета и иерархия Campaigns → Ad sets → Ads с реальными статусами и метриками.
-- **Rules** — создание правил и групп, условия AND/OR, периоды проверки, включение/выключение и назначения. Изменение бюджета поддерживается на уровне ad set.
-- **Settings и onboarding** — профиль, workspace, подключения, открытая регистрация и вход по одноразовой email-ссылке или коду; новый адрес проходит проверку Cloudflare Turnstile.
-- **Worker** — периодическая синхронизация Meta и выполнение правил с аудитом.
+---
 
-Наличие backend API не означает наличие соответствующего экрана. Текущие поверхности описаны в [дизайн-системе](docs/DESIGN_SYSTEM.md), ограничения и будущие задачи — в [бэклоге](docs/PRODUCT_BACKLOG.md).
+A media buyer's day is mostly checks: open every ad account, look at spend, find the ad set that burned $20 without a single lead, turn it off, raise the budget on the one that's working, tell the team. Buyerly turns those hours of manual checks into rules that run on their own, and puts everything that happened in one place.
 
-## Архитектура
+- **Purpose-built.** Shaped by the daily routine of media buyers: accounts, campaigns, ad sets and ads in one place.
+- **Automated.** Rules check your campaigns every few minutes, around the clock, and act on them.
+- **Designed for speed.** Keyboard-first, with ⌘K on every page to jump anywhere and act on anything.
 
-Cloudflare Tunnel → `api` (FastAPI, отдаёт и React-приложение) → PostgreSQL 16.
-Отдельно работает `worker` (APScheduler). Всё собрано в один образ и один проект Docker Compose.
-Одноразовый сервис `migrate` выполняет миграции Alembic перед запуском приложения.
+## Ads Manager and accounts
 
-## Запуск
+Every ad account, campaign, ad set and ad in one view. Connected Meta accounts sit on one page, grouped by team, with their status, today's spend and attached rules. Any metric becomes a column — spend, CTR, CPC, leads, CPL, registrations, purchases and more — with filters, sorting, grouping and a period from today to the last 7 days.
 
-Требуются Docker Compose и настроенное окружение по [.env.example](.env.example).
+## Rules and automations
 
-```bash
-cp .env.example .env
-# Заполните конфигурацию и секреты перед запуском.
-docker compose build
-docker compose run --rm migrate
-docker compose up -d
-curl -fsS http://127.0.0.1:8080/health/ready
-```
+Rules read like a sentence: *when an ad set spends $20 with no leads, turn it off.* They can turn ad sets off or on, raise or lower the budget, or just notify you. Every rule checks your campaigns every few minutes, around the clock, and every action it takes can be undone.
 
-## Локальная разработка
+## Inbox
 
-Всё приложение на своём компьютере, правки видны сразу (нужен только Docker Desktop):
+Rule actions, alerts and ad account changes land in one feed for each teammate, with filters, search and the details of every event. Snooze a notification until 4 pm or for two days, and get the same updates by email or in Telegram.
 
-```bash
-docker compose -f compose.dev.yaml up -d --build
-```
+## Your team
 
-Сайт — http://localhost:5173, вход через «Continue with email»: `dev@buyerly.localhost`. Письмо никуда не уходит: ссылка и код входа — в логе API (`docker compose -f compose.dev.yaml logs api`, строка после `[DEV EMAIL]`). Изменения во frontend появляются в браузере без перезагрузки, API перезапускается сам при правке Python-кода. База отдельная и локальная (том `buyerly-dev-postgres`), production и Meta не затрагиваются. Остановить — `docker compose -f compose.dev.yaml down`; с `-v` удаляются и локальные данные. Новая база сразу открывается в workspace `Dev` (`scripts/dev_seed.py`), без онбординга.
+Invite teammates as admins, buyers or viewers by link or email, split the work into teams — one per vertical or geo — and switch between workspaces.
 
-Meta здесь фейковый (`scripts/fake_meta.py`, сервис `fake-meta`): три выдуманных кабинета (NL · Lead gen, US · Sweepstakes, DE · E-commerce) с кампаниями, ad sets и объявлениями уже подключены к `Dev`. Расход за сегодня растёт по ходу дня в часовом поясе кабинета, прошлые дни не меняются. Локальный worker синхронизирует цифры и запускает правила: привяжите правило в Ads Manager, и оно остановит ad set или поменяет бюджет в фейковом Meta, с записью в Inbox и Undo. Кто и когда что остановил, фейк хранит в томе `buyerly-dev-meta`. Worker не перезапускается сам при правке кода — `docker compose -f compose.dev.yaml restart worker`.
+## Built for buyers. Available today.
 
-### Превью ветки
+Sign up at [buyerly.app](https://buyerly.app) with your email and connect Meta. Questions — [contact@buyerly.app](mailto:contact@buyerly.app).
 
-Каждая рабочая копия (`git worktree`) может поднять своё превью рядом с основным стеком и превью других веток — со своей базой, портом и адресом:
+---
 
-```bash
-scripts/preview.sh up     # поднять или обновить, печатает адрес
-scripts/preview.sh down   # остановить и удалить данные превью
-scripts/preview.sh list   # все превью на этом компьютере
-```
-
-Адрес вида `http://<ветка>.localhost:5180/dev`, вход тот же: `dev@buyerly.localhost`, код — в `scripts/preview.sh logs`. Отдельный хост нужен, чтобы вход в превью не выкидывал из `localhost:5173` и других превью. Правки в этой рабочей копии видны в её превью сразу, как и в основном стеке.
-
-Без Docker API запускается на порту 8080 — его ожидает Vite proxy:
-
-```bash
-uvicorn services.api:app --host 127.0.0.1 --port 8080 --reload
-```
-
-Frontend запускается командой `npm run dev` из `frontend/` после установки зависимостей.
-Для API нужны PostgreSQL, Python-зависимости из `requirements.txt` и применённые миграции. На локальном HTTP используется `SESSION_COOKIE_SECURE=false`; production-настройки описаны в [DEPLOYMENT.md](docs/DEPLOYMENT.md).
-
-## Проверки и изменения
-
-Сборка React и тесты выполняются в GitHub Actions через [.github/workflows/deploy.yml](.github/workflows/deploy.yml).
-
-```bash
-gh run watch <run-id> --exit-status
-gh run view <run-id> --log-failed
-```
-
-Каждая задача выполняется в отдельной ветке от обновлённого `main`. Слияние PR допускается после успешного CI; `main` автоматически деплоится на VPS.
-
-## Структура
-
-| Каталог | Назначение |
-|---|---|
-| `frontend/` | React, TypeScript, Vite, UI primitives и tokens |
-| `frontend/public/` | Публичные юридические HTML и ресурсы |
-| `api/` | HTTP-маршруты, схемы, авторизация и зависимости |
-| `core/` | Метрики, правила валидации, аудит, почта и общие механизмы |
-| `database/`, `alembic/` | Модели, подключение и миграции PostgreSQL |
-| `meta_api/` | Meta HTTP-клиент и OAuth |
-| `rules/`, `scheduler/` | Оценка правил и фоновое выполнение |
-| `services/` | Точки запуска и прикладные сервисы |
-| `scripts/` | Деплой, backup/restore и обслуживание |
-| `tests/` | Облачные проверки |
-| `uploads/` | Runtime-файлы; не хранятся в Git |
-| `docs/` | Действующая документация |
-
-## Документация
-
-Начните с [индекса документации](docs/README.md).
-
-- [Архитектура](docs/ARCHITECTURE.md) и [история решений](docs/DECISIONS.md)
-- [UI-контракт](docs/UI_CONTRACT.md) и [дизайн-система](docs/DESIGN_SYSTEM.md)
-- [Маршруты и терминология](docs/INFORMATION_ARCHITECTURE.md)
-- [HTTP API](docs/API.md) и [workspace, вход, приглашения](docs/WORKSPACES_AUTH_AND_INVITES.md)
-- [Деплой](docs/DEPLOYMENT.md)
-- [Бэклог](docs/PRODUCT_BACKLOG.md)
+<sub>For the team: how to run Buyerly locally, check changes and find your way around the code — in the [documentation](docs/README.md). Security and how Meta tokens are stored — in [SECURITY.md](SECURITY.md).</sub>
 
 ## License
 
@@ -119,5 +63,3 @@ Buyerly is free software under the [GNU Affero General Public License v3.0](LICE
 The license covers the code, not the Buyerly name or logo. A fork may not call itself Buyerly or use its logo, or present itself in a way that could be mistaken for Buyerly. The only official Buyerly is the one at buyerly.app.
 
 Лицензия касается кода, а не названия и логотипа Buyerly. Форк не может называться Buyerly, использовать его логотип или выдавать себя за Buyerly. Официальный Buyerly — только на buyerly.app.
-
-О безопасности и о том, как хранятся токены Meta, — в [SECURITY.md](SECURITY.md).
