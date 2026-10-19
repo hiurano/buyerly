@@ -1,6 +1,6 @@
 from datetime import datetime
-from typing import List, Literal, Optional
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from typing import List, Optional
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from api.schemas.workspaces import WorkspaceItem
 
@@ -44,6 +44,8 @@ class RequestTemporaryPasswordRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: str = Field(..., min_length=3, max_length=255)
     invite_token: Optional[str] = Field(None, min_length=16, max_length=255)
+    # Cloudflare Turnstile token; required for a new address without an invitation.
+    turnstile_token: Optional[str] = Field(None, max_length=2048)
 
 
 class VerifyTemporaryPasswordRequest(BaseModel):
@@ -131,30 +133,3 @@ class UpdateProfileRequest(BaseModel):
         if cleaned.startswith("http://") or cleaned.startswith("https://"):
             return cleaned
         raise ValueError("avatar_url must start with https://, http:// or /uploads/avatars/")
-
-
-class AllowedEmailItem(BaseModel):
-    id: int
-    # "email": a pre-registration email grant; "user": an existing account.
-    kind: Literal["email", "user"]
-    email: Optional[str] = None
-    user_id: Optional[int] = None
-    username: Optional[str] = None
-    added_by: Optional[str] = None
-    comment: Optional[str] = None
-    created_at: datetime
-
-
-class AddAllowedEmailRequest(BaseModel):
-    """Allowlist either an email or an existing account's username."""
-
-    model_config = ConfigDict(extra="forbid")
-    email: Optional[str] = Field(None, min_length=3, max_length=255)
-    username: Optional[str] = Field(None, min_length=1, max_length=255)
-    comment: Optional[str] = Field(None, max_length=255)
-
-    @model_validator(mode="after")
-    def _exactly_one_target(self):
-        if (self.email is None) == (self.username is None):
-            raise ValueError("Provide either email or username")
-        return self

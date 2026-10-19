@@ -1306,7 +1306,7 @@ async def init_schema():
 async def ensure_bootstrap_admin():
     if settings.BOOTSTRAP_ADMIN_USERNAME and settings.BOOTSTRAP_ADMIN_PASSWORD:
         from sqlalchemy import select
-        from database.models import AllowedEmail, User
+        from database.models import User
 
         async with async_session_maker() as session:
             result = await session.execute(
@@ -1324,10 +1324,6 @@ async def ensure_bootstrap_admin():
                     is_approved=True,
                 )
                 session.add(admin)
-                await session.flush()
-                # The first administrator of an empty installation must be able
-                # to create its first workspace, which the allowlist gates.
-                session.add(AllowedEmail(user_id=admin.id, added_by="bootstrap"))
                 await session.commit()
                 logger.info("Created bootstrap admin from environment configuration.")
 

@@ -2,8 +2,7 @@
 
 `compose.dev.yaml` runs this after the migrations and the bootstrap admin, so a
 new local stack (or a per-branch preview from `scripts/preview.sh`) opens
-straight into the "Dev" workspace instead of onboarding, which a fresh
-database cannot finish: creating a workspace needs an allowlist grant.
+straight into the "Dev" workspace instead of onboarding.
 
 With the fake Meta (compose.dev.yaml) it also connects that fake's ad
 accounts, so Ads Manager has campaigns and numbers.
@@ -21,7 +20,7 @@ from sqlalchemy import select
 
 from core.config import settings
 from database.db import async_session_maker
-from database.models import Account, AllowedEmail, User, Workspace, WorkspaceMember
+from database.models import Account, User, Workspace, WorkspaceMember
 
 logger = logging.getLogger("buyerly.dev_seed")
 
@@ -40,11 +39,6 @@ async def seed() -> None:
         ).scalar_one_or_none()
         if user is None:
             raise SystemExit(f"dev_seed: the bootstrap user {username!r} does not exist yet")
-
-        if (
-            await session.execute(select(AllowedEmail.id).where(AllowedEmail.user_id == user.id))
-        ).scalar_one_or_none() is None:
-            session.add(AllowedEmail(user_id=user.id, added_by="dev_seed", comment="Local development"))
 
         workspace = (
             await session.execute(select(Workspace).where(Workspace.slug == WORKSPACE_SLUG))

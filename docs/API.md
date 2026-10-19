@@ -40,7 +40,7 @@ monitoring cycle делает обзор `degraded` или `critical`, даже 
 
 | Метод и путь | Тело | Результат |
 |---|---|---|
-| `POST /api/auth/request-temporary-password` | `email`, `invite_token?` | вход по почте: участнику workspace, почте из белого списка или по действующему приглашению (`invite_token`, либо ждущее приглашение на эту почту) высылает одно письмо с одноразовой ссылкой и 6-значным кодом; незнакомой почте — 403 без письма |
+| `POST /api/auth/request-temporary-password` | `email`, `invite_token?`, `turnstile_token?` | вход и регистрация по почте: любой почте высылает одно письмо с одноразовой ссылкой и кодом. Новой почте без приглашения нужен `turnstile_token` от виджета Cloudflare Turnstile, иначе 400 без письма (проверка выключена, пока на сервере не задан `TURNSTILE_SECRET_KEY`). Недействительное или чужое `invite_token` — 403 |
 | `POST /api/auth/verify-temporary-password` | `email`, `code` | атомарно потребляет общий login credential, повторно проверяет доступ и открывает web-сессию |
 | `POST /api/auth/verify-email-link` | `token` | атомарно потребляет тот же login credential по ссылке; после этого код также недействителен |
 | `POST /api/auth/request-email-verification` | — | высылает 6-значный одноразовый код на текущий неподтверждённый email |
@@ -56,9 +56,6 @@ monitoring cycle делает обзор `degraded` или `critical`, даже 
 | `POST /api/auth/logout-all` | `keep_current?` | отзывает все web-сессии пользователя; с `keep_current=true` текущая остаётся (Revoke all в Settings → Security & access) |
 | `GET /api/me` | — | `username`, `full_name`, `first_name`, `last_name`, `email`, `email_verified`, `unconfirmed_email`, `avatar_url`, `role`, `is_approved`, `active_workspace`, `workspaces` |
 | `GET /api/admin/overview` | — | сводная таблица всех пользователей, воркспейсов и инвайтов (только админ) |
-| `GET /api/auth/admin/allowed-emails` | — | белый список (только админ): записи `kind: "email"` (email до регистрации) и `kind: "user"` (существующий аккаунт: `user_id` и его текущий `username`) |
-| `POST /api/auth/admin/allowed-emails` | `email` или `username`, `comment?` | добавление в белый список (только админ). `username` ищется без учёта регистра и пробелов по краям; разрешение привязывается к `user_id`, смена ника его не переносит. Неизвестный ник — 404, совпадающий с несколькими аккаунтами — 409. Повторное добавление возвращает существующую запись. Добавление по нику снимает блокировку `is_approved=false` с этого аккаунта |
-| `DELETE /api/auth/admin/allowed-emails/{email_id}` | — | отзыв записи (только админ): у охваченных аккаунтов (кроме админов) снимается одобрение и удаляются сессии, а вместе с записью удаляются и остальные записи этих аккаунтов (по email и по `user_id`). Ответ: `removed_ids`, `revoked_user_ids` |
 | `POST /api/admin/support-sessions` | `workspace_id`, `reason`, `duration_minutes?` | создание ограниченной по времени сессии техподдержки администратора платформы (5–240 мин) с обязательным обоснованием |
 | `GET /api/admin/support-sessions` | `active_only?` | список активных или исторических сессий техподдержки администратора платформы |
 | `POST /api/admin/support-sessions/{grant_id}/revoke` | — | досрочный отзыв временной сессии техподдержки администратора |

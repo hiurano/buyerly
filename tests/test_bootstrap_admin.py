@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import database.db as database_db_module
 from core.config import settings
-from database.models import AllowedEmail, User
+from database.models import User
 from tests.test_db_helper import create_test_engine, init_test_db
 
 
@@ -31,16 +31,13 @@ class TestBootstrapAdmin(unittest.IsolatedAsyncioTestCase):
         ) = self.original_settings
         await self.engine.dispose()
 
-    async def test_first_admin_is_allowlisted_once(self):
-        # Without the grant an empty installation could not create its first workspace.
+    async def test_first_admin_is_created_once(self):
         await database_db_module.ensure_bootstrap_admin()
         await database_db_module.ensure_bootstrap_admin()
 
         async with self.sessions() as session:
-            admin = (await session.execute(select(User).where(User.username == "dev"))).scalar_one()
-            grants = (await session.execute(select(AllowedEmail))).scalars().all()
-        self.assertEqual([grant.user_id for grant in grants], [admin.id])
-        self.assertEqual(grants[0].added_by, "bootstrap")
+            admins = (await session.execute(select(User).where(User.username == "dev"))).scalars().all()
+        self.assertEqual([(admin.role, admin.is_approved) for admin in admins], [("admin", True)])
 
 
 if __name__ == "__main__":

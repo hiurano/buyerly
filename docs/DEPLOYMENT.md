@@ -45,7 +45,13 @@ META_APP_SECRET=...
 META_LOGIN_CONFIG_ID=...
 META_OAUTH_REDIRECT_URI=https://buyerly.app/api/meta/oauth/callback
 META_GRAPH_VERSION=v26.0
+TURNSTILE_SECRET_KEY=...
 ```
+
+`TURNSTILE_SECRET_KEY` — секретный ключ виджета «Buyerly sign-up» (Cloudflare →
+Turnstile, режим Managed, домен `buyerly.app`). С ним новый email без
+приглашения получает код только после проверки Turnstile; без него проверка
+выключена.
 
 `COMPOSE_PROFILES` и `CLOUDFLARE_TUNNEL_TOKEN` читает сам Docker Compose: первый
 включает контейнер туннеля, второй — его токен (Cloudflare Zero Trust → Networks
@@ -91,8 +97,8 @@ cross-origin клиентов; `ENABLE_DEV_AUTH` в production всегда `fal
 первом запуске пустой установки и после создания администратора удаляется.
 Полный перечень — в `.env.example`.
 
-Вход в приложение — по коду и ссылке из письма (участники workspace, почты из
-белого списка и приглашённые). Вход по паролю временно оставлен ссылкой «Log in
+Вход и регистрация — по коду и ссылке из письма, для любой почты; новая почта
+без приглашения сначала проходит Cloudflare Turnstile. Вход по паролю временно оставлен ссылкой «Log in
 with password»; пароль задаётся в Settings → Profile или командой (пароль
 запрашивается интерактивно):
 
