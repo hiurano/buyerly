@@ -924,6 +924,10 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                 os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic"),
             )
             command.upgrade(config, "0011_workspace_slugs")
+            # This old revision still has users.password_hash (NOT NULL, no database
+            # default); the model lost it in 0041, so the column gets a default here.
+            async with engine.begin() as conn:
+                await conn.execute(text("ALTER TABLE users ALTER COLUMN password_hash SET DEFAULT ''"))
 
             session_maker = async_sessionmaker(
                 engine,
@@ -1174,6 +1178,10 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                 os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic"),
             )
             command.upgrade(config, "0010_atomic_otp")
+            # This old revision still has users.password_hash (NOT NULL, no database
+            # default); the model lost it in 0041, so the column gets a default here.
+            async with engine.begin() as conn:
+                await conn.execute(text("ALTER TABLE users ALTER COLUMN password_hash SET DEFAULT ''"))
 
             session_maker = async_sessionmaker(
                 engine,

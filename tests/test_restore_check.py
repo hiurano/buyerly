@@ -217,6 +217,13 @@ class RestoreCheckTests(unittest.IsolatedAsyncioTestCase):
         head = head_revision()
         previous = ScriptDirectory.from_config(alembic_config()).get_revision(head).down_revision
         await upgrade(self.engine, previous)
+        # Before 0041 users.password_hash is NOT NULL with no database default, and
+        # the model no longer fills it.
+        await self.execute(
+            "DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.columns "
+            "WHERE table_name = 'users' AND column_name = 'password_hash') THEN "
+            "ALTER TABLE users ALTER COLUMN password_hash SET DEFAULT ''; END IF; END $$"
+        )
         # The models match the previous revision for users and workspaces.
         async with AsyncSession(self.engine) as session:
             user = User(username="old", email="old@example.test")
