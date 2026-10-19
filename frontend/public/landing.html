@@ -16,14 +16,14 @@
       <a class="site-brand" href="/" aria-label="Buyerly home"><span class="site-brand-mark" aria-hidden="true"></span><span>Buyerly</span></a>
       <div class="site-nav">
         <a class="site-nav-link is-secondary" href="/#product">Product</a>
-        <a class="site-nav-link is-secondary" href="/#changelog">Changelog</a>
+        <a class="site-nav-link is-secondary" href="/changelog">Changelog</a>
         <a class="site-nav-link is-secondary" href="#contact">Contact</a>
         <span class="site-nav-divider" aria-hidden="true"></span>
         <a class="site-nav-link" href="/login">Log in</a>
         <a class="site-button-invert" href="/signup">Sign up</a>
         <button class="site-menu-button" type="button" popovertarget="site-menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 4.75A.75.75 0 0 1 2.75 4h10.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75Zm0 6.5a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z"/></svg></button>
       </div>
-      <div id="site-menu" class="site-menu" popover><a href="/#product">Product</a><a href="/#changelog">Changelog</a><a href="#contact">Contact</a><a href="/login">Log in</a></div>
+      <div id="site-menu" class="site-menu" popover><a href="/#product">Product</a><a href="/changelog">Changelog</a><a href="#contact">Contact</a><a href="/login">Log in</a></div>
     </nav>
   </header>
   <main id="main" class="landing" tabindex="-1">
@@ -361,31 +361,34 @@
     <section id="changelog" class="site-container changelog" aria-labelledby="changelog-title">
       <h2 id="changelog-title" class="changelog-title">Changelog</h2>
       <div class="changelog-grid">
-        <article class="changelog-item is-latest">
+        <!-- changelog:cards -->
+        <a class="changelog-item is-latest" href="/changelog/2026-10-20-open-sign-up">
+          <span class="changelog-dot" aria-hidden="true"></span>
+          <h3>Sign up for Buyerly</h3>
+          <p>Anyone can now create a Buyerly account and set up a workspace.</p>
+          <time datetime="2026-10-20">Oct 20, 2026</time>
+        </a>
+        <a class="changelog-item" href="/changelog/2026-10-17-invite-your-team">
           <span class="changelog-dot" aria-hidden="true"></span>
           <h3>Invite your team</h3>
           <p>Invite teammates by link or email while setting up, each with a role.</p>
           <time datetime="2026-10-17">Oct 17, 2026</time>
-        </article>
-        <article class="changelog-item">
+        </a>
+        <a class="changelog-item" href="/changelog/2026-10-14-rules-board-and-filters">
           <span class="changelog-dot" aria-hidden="true"></span>
           <h3>Rules board and filters</h3>
           <p>Filter, group and sort your rules, and see them as a board.</p>
           <time datetime="2026-10-14">Oct 14, 2026</time>
-        </article>
-        <article class="changelog-item">
-          <span class="changelog-dot" aria-hidden="true"></span>
-          <h3>Ads Manager columns and periods</h3>
-          <p>Any metric as a column, with filters, grouping and a period.</p>
-          <time datetime="2026-10-14">Oct 14, 2026</time>
-        </article>
-        <article class="changelog-item">
+        </a>
+        <a class="changelog-item" href="/changelog/2026-10-13-ad-accounts-page">
           <span class="changelog-dot" aria-hidden="true"></span>
           <h3>Ad accounts page</h3>
           <p>All your ad accounts on one page, grouped by team.</p>
           <time datetime="2026-10-13">Oct 13, 2026</time>
-        </article>
+        </a>
+        <!-- /changelog:cards -->
       </div>
+      <a class="changelog-all" href="/changelog"><span>View all</span><span class="changelog-all-arrow" aria-hidden="true">→</span></a>
     </section>
     <section class="cta" aria-labelledby="cta-title">
       <h2 id="cta-title" class="cta-title">Built for buyers. Available today.</h2>
@@ -397,7 +400,7 @@
       <div class="site-footer-logo"><a class="site-footer-mark" href="/" aria-label="Buyerly home"><span class="site-brand-mark" aria-hidden="true"></span></a></div>
       <nav class="site-footer-col" aria-labelledby="footer-product">
         <h2 id="footer-product">Product</h2>
-        <ul><li><a href="/#product">Ads Manager</a></li><li><a href="/#rules">Rules</a></li><li><a href="/#inbox">Inbox</a></li><li><a href="/#team">Your team</a></li><li><a href="/#changelog">Changelog</a></li></ul>
+        <ul><li><a href="/#product">Ads Manager</a></li><li><a href="/#rules">Rules</a></li><li><a href="/#inbox">Inbox</a></li><li><a href="/#team">Your team</a></li><li><a href="/changelog">Changelog</a></li></ul>
       </nav>
       <nav class="site-footer-col" aria-labelledby="footer-company">
         <h2 id="footer-company">Company</h2>
