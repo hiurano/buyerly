@@ -203,7 +203,7 @@ def create_app() -> FastAPI:
 
     # Root segments the React app routes itself (frontend/src/lib/routing.ts);
     # every other reserved root belongs to the server.
-    app_roots = {"login", "auth", "create-workspace", "invite", "connect"}
+    app_roots = {"login", "signup", "auth", "create-workspace", "invite", "connect"}
 
     @app.exception_handler(404)
     async def serve_frontend_file_or_app(request: Request, exc: StarletteHTTPException):

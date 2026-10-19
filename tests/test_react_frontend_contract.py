@@ -195,10 +195,34 @@ class TestReactFrontendContract(unittest.TestCase):
             "Continue with Google",
             "Continue with SSO",
             "passkey",
-            "Sign up",
-            "Don't have an account",
         ):
             self.assertNotIn(forbidden, self.login)
+
+    def test_signup_follows_linear_with_a_human_check_before_the_code(self):
+        # linear.app/signup (#436): "Create your workspace", the legal note, a link
+        # back to login, then "Verifying it's you" with Cloudflare Turnstile.
+        for contract in (
+            "Create your workspace",
+            "By signing up, you agree to our",
+            'href="/terms"',
+            'href="/privacy"',
+            "Already have an account?",
+            "Don’t have an account?",
+            "Back to signup",
+            "Verifying it’s you",
+            "turnstile_token",
+            "Please enter an email address for login.",
+        ):
+            self.assertIn(contract, self.login)
+        # The server's refusal for a new address that skipped the check.
+        auth_router = (ROOT / "api" / "routers" / "auth.py").read_text()
+        self.assertIn("We couldn't verify you're human. Please try again.", self.login)
+        self.assertIn("We couldn't verify you're human. Please try again.", auth_router)
+        turnstile = (ROOT / "frontend" / "src" / "components" / "auth" / "TurnstileWidget.tsx").read_text()
+        self.assertIn("challenges.cloudflare.com/turnstile/v0/api.js?render=explicit", turnstile)
+        self.assertIn("0x4AAAAAAFb_r8WtuISX0Y1E", turnstile)
+        self.assertIn("parts[0] === 'signup'", self.routing)
+        self.assertIn("mode={route.kind === 'signup' ? 'signup' : 'login'}", self.app)
 
     def test_workspace_creation_and_welcome_have_only_approved_fields(self):
         self.assertIn("Create a workspace", self.create_workspace)
@@ -213,6 +237,7 @@ class TestReactFrontendContract(unittest.TestCase):
     def test_router_contains_only_canonical_entry_and_workspace_shapes(self):
         for contract in (
             "parts[0] === 'login'",
+            "parts[0] === 'signup'",
             "parts[0] === 'create-workspace'",
             "parts[0] === 'auth'",
             "parts[0] === 'invite'",

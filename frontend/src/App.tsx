@@ -490,7 +490,7 @@ export const App: React.FC = () => {
     if (user === undefined || route.kind === 'verify-email-link' || route.kind === 'invite' || route.kind === 'meta-connect-invite' || route.kind === 'meta-connect-success' || route.kind === 'unknown') return;
 
     if (user === null) {
-      if (route.kind !== 'login') {
+      if (route.kind !== 'login' && route.kind !== 'signup') {
         if (isWorkspaceReturnRoute(route)) {
           window.sessionStorage.setItem(RETURN_ROUTE_KEY, window.location.pathname + window.location.search);
         }
@@ -529,7 +529,7 @@ export const App: React.FC = () => {
       if (route.kind !== 'welcome' || route.workspace !== workspace.slug) navigate(welcomePath, true);
       return;
     }
-    if (route.kind === 'root' || route.kind === 'login' || route.kind === 'welcome') {
+    if (route.kind === 'root' || route.kind === 'login' || route.kind === 'signup' || route.kind === 'welcome') {
       navigate(`/${workspace.slug}/inbox`, true);
       return;
     }
@@ -596,7 +596,16 @@ export const App: React.FC = () => {
   if (route.kind === 'meta-connect-invite') return <MetaConnectInviteView token={route.token} />;
   if (route.kind === 'meta-connect-success') return <MetaConnectSuccessView />;
 
-  if (user === null) return <LoginView onAuthenticated={handleAuthenticated} />;
+  if (user === null) {
+    return (
+      <LoginView
+        key={route.kind === 'signup' ? 'signup' : 'login'}
+        mode={route.kind === 'signup' ? 'signup' : 'login'}
+        onSwitchMode={(path) => navigate(path)}
+        onAuthenticated={handleAuthenticated}
+      />
+    );
+  }
 
   const workspace = activeWorkspace(user);
   if (route.kind === 'add-account') {
