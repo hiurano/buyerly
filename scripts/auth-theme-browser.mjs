@@ -85,6 +85,9 @@ const checkField = async (page, target, theme, label) => {
   await input.waitFor();
   await page.mouse.move(0, 0);
   await input.evaluate(element => element.blur());
+  // The click that opened the field can leave the pointer over it; let the
+  // 150ms hover-out border transition finish before reading the rest state.
+  await input.evaluate(element => Promise.all(element.getAnimations().map(animation => animation.finished)));
   const read = () => input.evaluate(element => {
     const style = getComputedStyle(element);
     const rect = element.getBoundingClientRect();
