@@ -117,6 +117,33 @@ class TestLegalPageFiles(unittest.TestCase):
         self.assertIn('email address', privacy)
         self.assertNotIn('securely hashed web password', privacy)
 
+    def test_every_page_links_the_monochrome_icons(self):
+        # Issue #432: no yellow icon anywhere. `?v=2` drops browsers' cached
+        # yellow favicon, and /favicon.ico is a real file, not the app shell.
+        icons = (
+            '<link rel="icon" href="/favicon.ico?v=2" sizes="32x32"',
+            '<link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg?v=2"',
+            '<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" sizes="180x180"',
+        )
+        pages = [PROJECT_ROOT / "frontend" / "index.html", *(PUBLIC_ROOT / name for name in DOCUMENTS)]
+        pages += sorted((PUBLIC_ROOT / "changelog").glob("*.html"))
+        for page in pages:
+            head = re.search(r"<head>.*?</head>", page.read_text(), re.S)[0]
+            for icon in icons:
+                self.assertIn(icon, head, page.name)
+            self.assertEqual(len(re.findall(r'rel="(?:icon|apple-touch-icon)"', head)), 3, page.name)
+        from PIL import Image
+
+        for path in ("favicon.ico", "apple-touch-icon.png", "static/icons/favicon-32x32.png", "buyerly-logo.png"):
+            with Image.open(PUBLIC_ROOT / path) as image:
+                pixels = image.convert("RGBA").getdata()
+                colours = {(r, g, b) for r, g, b, a in pixels if a > 32}
+            # Grey only: #222326, white and the shades between them.
+            self.assertTrue(all(max(c) - min(c) <= 4 for c in colours), path)
+        svg = (PUBLIC_ROOT / "static" / "icons" / "favicon.svg").read_text()
+        self.assertIn("fill: #222326", svg)
+        self.assertIn("@media (prefers-color-scheme: dark) { path { fill: #fff; } }", svg)
+
     def test_public_pages_promise_only_delivered_notification_channels(self):
         # Issue #196: alerts reach people through the Inbox and, if they turn it
         # on, email (services/inbox_email.py) or Telegram (services/inbox_telegram.py).
