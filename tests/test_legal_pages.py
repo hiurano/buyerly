@@ -118,11 +118,12 @@ class TestLegalPageFiles(unittest.TestCase):
         self.assertNotIn('securely hashed web password', privacy)
 
     def test_every_page_links_the_monochrome_icons(self):
-        # Issue #432: no yellow icon anywhere. `?v=2` drops browsers' cached
-        # yellow favicon, and /favicon.ico is a real file, not the app shell.
+        # Issue #432: no yellow icon anywhere. Pages link only the SVG favicon,
+        # so every browser shows the mark without a tile: #222326 on light tab
+        # bars, white on dark. `?v=3` drops the cached tiled one, and the
+        # unlinked /favicon.ico is a real file, not the app shell.
         icons = (
-            '<link rel="icon" href="/favicon.ico?v=2" sizes="32x32"',
-            '<link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg?v=2"',
+            '<link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg?v=3"',
             '<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" sizes="180x180"',
         )
         pages = [PROJECT_ROOT / "frontend" / "index.html", *(PUBLIC_ROOT / name for name in DOCUMENTS)]
@@ -131,7 +132,7 @@ class TestLegalPageFiles(unittest.TestCase):
             head = re.search(r"<head>.*?</head>", page.read_text(), re.S)[0]
             for icon in icons:
                 self.assertIn(icon, head, page.name)
-            self.assertEqual(len(re.findall(r'rel="(?:icon|apple-touch-icon)"', head)), 3, page.name)
+            self.assertEqual(len(re.findall(r'rel="(?:icon|apple-touch-icon)"', head)), 2, page.name)
         from PIL import Image
 
         for path in ("favicon.ico", "apple-touch-icon.png", "static/icons/favicon-32x32.png", "buyerly-logo.png"):
@@ -140,6 +141,10 @@ class TestLegalPageFiles(unittest.TestCase):
                 colours = {(r, g, b) for r, g, b, a in pixels if a > 32}
             # Grey only: #222326, white and the shades between them.
             self.assertTrue(all(max(c) - min(c) <= 4 for c in colours), path)
+        # The tab icons are the bare mark: no tile, transparent corners.
+        for path in ("favicon.ico", "static/icons/favicon-32x32.png"):
+            with Image.open(PUBLIC_ROOT / path) as image:
+                self.assertEqual(image.convert("RGBA").getpixel((0, 0))[3], 0, path)
         svg = (PUBLIC_ROOT / "static" / "icons" / "favicon.svg").read_text()
         self.assertIn("fill: #222326", svg)
         self.assertIn("@media (prefers-color-scheme: dark) { path { fill: #fff; } }", svg)
