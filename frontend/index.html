@@ -4,7 +4,8 @@
     <meta charset="UTF-8" />
     <script>/* Theme before first paint (#232): the choice from Settings → Preferences, otherwise the system. */(function(){var d=document.documentElement,m=matchMedia('(prefers-color-scheme: dark)');function a(){var t;try{t=localStorage.getItem('buyerly-interface-theme')}catch(e){}if(t!=='light'&&t!=='dark')t=m.matches?'dark':'light';d.setAttribute('data-theme',t);d.style.colorScheme=t;d.classList.toggle('dark',t==='dark')}a();m.addEventListener('change',a)})()</script>
     <!-- Reload splash like Linear's (#433): the app frame in the theme's colors before any JS or CSS,
-         the mark with a pulsing ring only after 1s, "Loading…" after 8s. src/lib/splash.ts removes it. -->
+         the mark with a pulsing ring only after 1s, "Loading…" after 8s. src/lib/splash.ts removes it;
+         AuthLoading (src/components/auth/AuthFrame.tsx) draws the same splash for later loading states. -->
     <script>/* Signed-out pages get a plain backdrop instead of the app frame, like Linear's html.logged-out. */(function(){var d=document.documentElement,p=location.pathname,o=/^\/(login|signup|auth|invite|connect|create-workspace)(\/|$)|^\/[^/]+\/welcome\/?$/.test(p);try{o=o||!localStorage.getItem('buyerly-last-account')}catch(e){o=true}o&&d.classList.add('logged-out');var m=document.createElement('meta');m.name='theme-color';m.content=d.getAttribute('data-theme')==='dark'?'#09090A':'#EEEEF0';document.head.appendChild(m)})()</script>
     <style>
       html{--splash-sidebar:lch(94.44% 0.5 282);--splash-canvas:lch(97.94% 0.5 282);--splash-border:lch(89.84% 0 282);--splash-shadow:0 3px 6px -2px rgb(0 0 0/.02),0 1px 1px rgb(0 0 0/.04);--splash-signed-out:rgb(248 248 249);--splash-content:#b0b5c0;background-color:var(--splash-sidebar)}
@@ -13,23 +14,23 @@
       body{margin:0}
       @keyframes splashPulse{0%{opacity:0;transform:scale(.8)}70%{opacity:1}100%{opacity:0;transform:scale(1)}}
       @keyframes splashFadeIn{0%{opacity:0}100%{opacity:1}}
-      #loading{position:fixed;inset:0;z-index:99999;display:flex;overflow:hidden;pointer-events:none;background-color:var(--splash-sidebar);color:var(--splash-content);font:500 13px/1.5 "Inter Variable",Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased;transition:opacity .1s}
-      #loading.loaded{opacity:0}
-      #appBorders{flex-grow:1;display:flex;margin:8px 8px 36px 244px;border:.5px solid var(--splash-border);border-radius:12px;background-color:var(--splash-canvas);box-shadow:var(--splash-shadow)}
-      html.logged-out #loading,html.logged-out #appBorders{background-color:var(--splash-signed-out)}
-      html.logged-out #appBorders{margin:0;border:0;border-radius:0;box-shadow:none}
-      #loading-content{position:absolute;top:50%;left:calc(50% - 220px);width:440px;height:64px;margin:-46px 0 0 122px;display:flex;flex-direction:column;align-items:center;animation:splashFadeIn .4s ease-out 1s both}
-      html.logged-out #loading-content{margin:-32px 0 0}
-      #preloaderContent{position:relative;width:64px;height:64px;display:grid;place-items:center}
-      #preloaderContent svg{grid-area:1/1}
-      #loading .bkg{opacity:0}
-      #loading .bkg circle{fill:none;stroke:currentColor;stroke-opacity:.4;stroke-width:8}
-      #loading.content-loaded .bkg{animation:splashPulse 3.2s ease-out 1.2s infinite forwards}
-      #loading.loaded .bkg{animation-play-state:paused}
-      #loadingText{position:relative;top:8px;margin-bottom:-8px;opacity:0;transition:opacity .8s .8s ease-out}
-      #loading.loading-text #loadingText{opacity:1}
-      @media (max-width:880px){#appBorders{margin:0;border:0;border-radius:0;box-shadow:none}#loading-content{margin-left:0}}
-      @media (prefers-reduced-motion:reduce){#loading.content-loaded .bkg{animation:none}}
+      .splash{position:fixed;inset:0;z-index:99999;display:flex;overflow:hidden;pointer-events:none;background-color:var(--splash-sidebar);color:var(--splash-content);font:500 13px/1.5 "Inter Variable",Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased;transition:opacity .1s}
+      .splash.loaded{opacity:0}
+      .splash-frame{flex-grow:1;display:flex;margin:8px 8px 36px 244px;border:.5px solid var(--splash-border);border-radius:12px;background-color:var(--splash-canvas);box-shadow:var(--splash-shadow)}
+      html.logged-out #loading,html.logged-out #loading .splash-frame,.splash.plain,.splash.plain .splash-frame{background-color:var(--splash-signed-out)}
+      html.logged-out #loading .splash-frame,.splash.plain .splash-frame{margin:0;border:0;border-radius:0;box-shadow:none}
+      .splash-content{position:absolute;top:50%;left:calc(50% - 220px);width:440px;height:64px;margin:-46px 0 0 122px;display:flex;flex-direction:column;align-items:center;animation:splashFadeIn .4s ease-out 1s both}
+      html.logged-out #loading .splash-content,.splash.plain .splash-content{margin:-32px 0 0}
+      .splash-mark{position:relative;width:64px;height:64px;display:grid;place-items:center}
+      .splash-mark svg{grid-area:1/1}
+      .splash .bkg{opacity:0}
+      .splash .bkg circle{fill:none;stroke:currentColor;stroke-opacity:.4;stroke-width:8}
+      .splash.content-loaded .bkg{animation:splashPulse 3.2s ease-out 1.2s infinite forwards}
+      .splash.loaded .bkg{animation-play-state:paused}
+      .splash-text{position:relative;top:8px;margin-bottom:-8px;opacity:0;transition:opacity .8s .8s ease-out}
+      .splash.loading-text .splash-text{opacity:1}
+      @media (max-width:880px){.splash .splash-frame{margin:0;border:0;border-radius:0;box-shadow:none}.splash .splash-content{margin-left:0}}
+      @media (prefers-reduced-motion:reduce){.splash.content-loaded .bkg{animation:none}}
     </style>
     <link rel="icon" href="/favicon.ico?v=2" sizes="32x32" />
     <link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg?v=2" />
@@ -43,14 +44,14 @@
   </head>
   <body>
     <div id="root"></div>
-    <div id="loading" aria-hidden="true">
-      <div id="appBorders">
-        <div id="loading-content">
-          <div id="preloaderContent">
+    <div id="loading" class="splash" aria-hidden="true">
+      <div class="splash-frame">
+        <div class="splash-content">
+          <div class="splash-mark">
             <svg class="bkg" width="64" height="64" viewBox="0 0 512 512" fill="none"><circle cx="256" cy="256" r="244" /></svg>
             <svg width="32" height="32" viewBox="0 0 512 512" fill="none"><path fill="currentColor" fill-rule="evenodd" d="M192 464V336H112L80 224H192V192H288V48H320L432 464H192Z M288 224L224 256H288V224Z M192 176V48H224L256 176H192Z" /></svg>
           </div>
-          <div id="loadingText">Loading…</div>
+          <div class="splash-text">Loading…</div>
         </div>
       </div>
     </div>

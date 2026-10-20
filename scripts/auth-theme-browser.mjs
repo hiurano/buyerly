@@ -139,6 +139,16 @@ try {
         page.setDefaultTimeout(10_000);
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
+        // Every loading state looks like the reload splash (#433): the old yellow spinner card never shows.
+        const oldLoaders = [];
+        await context.exposeFunction('reportOldLoader', where => oldLoaders.push(where));
+        await context.addInitScript(() => {
+          new MutationObserver((_records, observer) => {
+            if (!document.querySelector('.buyerly-auth-spinner, .buyerly-auth-card--loading')) return;
+            observer.disconnect();
+            window.reportOldLoader(location.pathname);
+          }).observe(document, { childList: true, subtree: true });
+        });
         await context.addInitScript(saved => {
           if (saved) window.localStorage.setItem('buyerly-interface-theme', saved);
           // Record the theme at the moment <body> is created: before any paint.
@@ -207,6 +217,7 @@ try {
             assert.ok(state.surface > 0.9, `${label}: light background, got ${state.surface}`);
           }
           assert.equal(state.overflow, false, `${label}: horizontal overflow`);
+          assert.deepEqual(oldLoaders, [], `${label}: no old loader`);
           assert.deepEqual(errors, [], `${label}: errors`);
           if (!theme.saved) {
             await page.screenshot({ path: `${output}/${target.name}-${theme.expected}-${width}.png`, fullPage: true });
