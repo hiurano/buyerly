@@ -1,8 +1,10 @@
 """Raster icons of the Buyerly mark, drawn from the same path as favicon.svg (#432).
 
-The SVG favicon follows the system theme (#222326 in light, white in dark).
-Raster icons cannot, so like Linear's favicon.ico they put the white mark on
-a #222326 tile, which reads on light and dark tab bars alike.
+Pages link only the SVG favicon, which follows the system theme: the #222326
+mark on light tab bars, the white one on dark, with no tile behind it. The
+unlinked /favicon.ico and favicon-32x32.png are the same #222326 mark on a
+transparent square. Only the home screen icon keeps a #222326 tile, because
+iOS fills a transparent one with black.
 
     python3 scripts/build_icons.py
 """
@@ -58,15 +60,15 @@ def tile(size: int, radius: float) -> Image.Image:
 def main() -> None:
     # Each size drawn on its own grid rather than shrunk from the largest.
     sizes = [(16, 16), (32, 32), (48, 48)]
-    favicon = tile(48, radius=0.125)
-    smaller = [tile(16, radius=0.125), tile(32, radius=0.125)]
+    favicon = mark(48, INK)
+    smaller = [mark(16, INK), mark(32, INK)]
     for directory in (PUBLIC_DIR, BRANDING_DIR):
         favicon.save(directory / "favicon.ico", sizes=sizes, append_images=smaller)
     # iOS rounds the corners of the home screen icon itself.
     touch = tile(180, radius=0)
     touch.save(PUBLIC_DIR / "apple-touch-icon.png", optimize=True)
     touch.save(BRANDING_DIR / "apple-touch-icon.png", optimize=True)
-    favicon_32 = tile(32, radius=0.125)
+    favicon_32 = mark(32, INK)
     favicon_32.save(PUBLIC_DIR / "static" / "icons" / "favicon-32x32.png", optimize=True)
     favicon_32.save(BRANDING_DIR / "favicon-32x32.png", optimize=True)
     favicon_32.save(BRANDING_DIR / "favicon.png", optimize=True)
