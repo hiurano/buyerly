@@ -182,8 +182,7 @@ def _linear_email_html(
                   <td style="font-family:{font};">
                     <table border="0" cellspacing="0" cellpadding="0" style="margin-bottom:48px;">
                       <tr>
-                        <td style="vertical-align:middle;padding-right:8px;"><img src="https://buyerly.app/buyerly-logo.png" width="20" height="20" alt="" style="display:block;border-radius:4px;"></td>
-                        <td style="vertical-align:middle;font-size:15px;font-weight:600;color:#282a30;">Buyerly</td>
+                        <td><a href="https://buyerly.app" target="_blank" rel="noopener"><img alt="Buyerly" src="https://buyerly.app/buyerly-logotype@4x.png" height="22" width="92" style="display:block"></a></td>
                       </tr>
                     </table>
                     <h1 style="font-size:24px;line-height:1.2;font-weight:700;font-family:{font};margin-top:0;margin-bottom:24px;color:#282a30;">{safe_heading}</h1>

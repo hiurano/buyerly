@@ -333,7 +333,31 @@ export const LinearLogoAvatar: React.FC<{ size?: number; className?: string }> =
   </svg>
 );
 
-// 12b. Official Buyerly Logo Avatar (Gold Anubis)
+// 12a. Buyerly mark (#432): monochrome, follows the theme through --site-logo
+// (Linear's #222326 in light, white in dark). Same 512 frame as /buyerly-logo.png.
+export const BuyerlyMark: React.FC<{ size?: number; className?: string }> = ({
+  size = 16,
+  className = '',
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 512 512"
+    fill="none"
+    aria-hidden="true"
+    className={className}
+    style={{ display: 'block', color: 'var(--site-logo)' }}
+  >
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M192 464V336H112L80 224H192V192H288V48H320L432 464H192Z M288 224L224 256H288V224Z M192 176V48H224L256 176H192Z"
+    />
+  </svg>
+);
+
+// 12b. Buyerly Logo Avatar
 export const BuyerlyLogoAvatar: React.FC<{
   size?: number;
   className?: string;
@@ -348,17 +372,10 @@ export const BuyerlyLogoAvatar: React.FC<{
       border: '1px solid var(--color-border-secondary)',
     }}
     className={`relative flex shrink-0 items-center justify-center overflow-hidden select-none ${className}`}
+    role="img"
+    aria-label="Buyerly"
   >
-    <img
-      src="/buyerly-logo.png"
-      alt="Buyerly"
-      style={{
-        width: `${size * 0.75}px`,
-        height: `${size * 0.75}px`,
-        objectFit: 'contain',
-      }}
-      draggable={false}
-    />
+    <BuyerlyMark size={size * 0.75} />
   </div>
 );
 
