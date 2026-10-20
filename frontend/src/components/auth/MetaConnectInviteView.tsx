@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { apiRequest } from '@/lib/api';
 import type { PublicMetaInviteInfo } from '@/lib/types';
-import { AuthFrame, BuyerlyBrand } from './AuthFrame';
+import { AuthFrame, AuthLoading, BuyerlyBrand } from './AuthFrame';
 
 export const MetaConnectInviteView: React.FC<{ token: string }> = ({ token }) => {
   const [invite, setInvite] = useState<PublicMetaInviteInfo | null>(null);
@@ -15,11 +15,11 @@ export const MetaConnectInviteView: React.FC<{ token: string }> = ({ token }) =>
     return () => { active = false; };
   }, [token]);
 
+  if (!invite && !error) return <AuthLoading plain label="Checking link" />;
   return (
     <AuthFrame>
       <section className="buyerly-auth-card buyerly-invite-card">
         <BuyerlyBrand />
-        {!invite && !error && <span className="buyerly-auth-spinner" aria-label="Checking link" />}
         {(error || (invite && !invite.valid)) && <><h1>Link unavailable</h1><p className="buyerly-auth-copy">{error || 'This link has already been used, revoked, or has expired.'}</p></>}
         {invite?.valid && <>
           <h1>Connect Facebook</h1>

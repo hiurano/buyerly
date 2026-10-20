@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { apiRequest } from '@/lib/api';
 import type { LoginResult } from '@/lib/types';
-import { AuthFrame, BuyerlyBrand } from './AuthFrame';
+import { AuthFrame, AuthLoading, BuyerlyBrand } from './AuthFrame';
 
 interface VerifyEmailLinkViewProps {
   token: string;
@@ -39,24 +39,16 @@ export const VerifyEmailLinkView: React.FC<VerifyEmailLinkViewProps> = ({
       });
   }, [onAuthenticated, token]);
 
+  if (!error) return <AuthLoading plain label="Logging you in securely…" />;
   return (
     <AuthFrame>
-      <section className="buyerly-auth-card buyerly-auth-card--loading">
+      <section className="buyerly-auth-card">
         <BuyerlyBrand />
-        {error ? (
-          <>
-            <h1>Link expired</h1>
-            <p className="buyerly-auth-copy">{error}</p>
-            <button className="buyerly-auth-button" type="button" onClick={onBackToLogin}>
-              Back to login
-            </button>
-          </>
-        ) : (
-          <>
-            <span className="buyerly-auth-spinner" aria-hidden="true" />
-            <p>Logging you in securely…</p>
-          </>
-        )}
+        <h1>Link expired</h1>
+        <p className="buyerly-auth-copy">{error}</p>
+        <button className="buyerly-auth-button" type="button" onClick={onBackToLogin}>
+          Back to login
+        </button>
       </section>
     </AuthFrame>
   );

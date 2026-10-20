@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
-import { AuthFrame, BuyerlyBrand } from './AuthFrame';
+import { AuthFrame, AuthLoading, BuyerlyBrand } from './AuthFrame';
 import { LoginView } from './LoginView';
 
 /**
@@ -147,6 +147,8 @@ export const InviteView: React.FC<InviteViewProps> = ({
     else setShowLogin(true);
   };
 
+  if (!invite && !error) return <AuthLoading plain label="Loading invitation" />;
+
   if (!user && showLogin && invite) {
     return (
       <LoginView
@@ -195,7 +197,6 @@ export const InviteView: React.FC<InviteViewProps> = ({
       <section className="buyerly-invite-card">
         {/* Linear shows only the workspace's own mark on a valid invitation. */}
         {!invite?.valid && <BuyerlyBrand />}
-        {!invite && !error && <span className="buyerly-auth-spinner" aria-label="Loading invitation" />}
         {(error || (invite && !invite.valid)) && !invite?.valid && (
           <>
             <h1 className="buyerly-invite-title">Invitation unavailable</h1>

@@ -3565,28 +3565,6 @@ html[data-theme='dark'] .buyerly-auth-page,
   line-height: normal;
 }
 
-.buyerly-auth-card--loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  color: var(--auth-text-muted);
-  font-size: 13px;
-}
-
-.buyerly-auth-spinner {
-  width: 20px;
-  height: 20px;
-  margin: 6px auto 14px;
-  border: 2px solid rgba(245, 163, 0, 0.25);
-  border-top-color: #f5a300;
-  border-radius: 50%;
-  animation: buyerly-spin 700ms linear infinite;
-}
-
-@keyframes buyerly-spin {
-  to { transform: rotate(360deg); }
-}
-
 .buyerly-workspace-create {
   display: flex;
   min-height: min(620px, calc(100dvh - 64px));
