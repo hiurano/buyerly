@@ -37,6 +37,16 @@ try {
     const context = await browser.newContext({ viewport: { width, height: 900 } });
     const page = await context.newPage();
     page.setDefaultTimeout(10_000);
+    // Every loading state looks like the reload splash (#433): the old yellow spinner card never shows.
+    const oldLoaders = [];
+    await context.exposeFunction('reportOldLoader', where => oldLoaders.push(where));
+    await context.addInitScript(() => {
+      new MutationObserver((_records, observer) => {
+        if (!document.querySelector('.buyerly-auth-spinner, .buyerly-auth-card--loading')) return;
+        observer.disconnect();
+        window.reportOldLoader(location.pathname);
+      }).observe(document, { childList: true, subtree: true });
+    });
     const errors = [];
     const requests = [];
     const delayedSamRules = [];
@@ -218,6 +228,7 @@ try {
       await page.waitForURL(`${origin}/login`);
       await page.getByRole('heading', { name: 'Log in to Buyerly', exact: true }).waitFor();
       assert.deepEqual(loggedIn, []);
+      assert.deepEqual(oldLoaders, [], 'no old loader');
       assert.deepEqual(errors, []);
       console.log(`Multi-account: grouped switcher, switch with data and rights, late answer, add account and log out passed at ${width}px`);
     } catch (error) {

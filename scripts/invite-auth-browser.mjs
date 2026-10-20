@@ -38,6 +38,16 @@ try {
     const context = await browser.newContext({ viewport: { width, height: 1000 }, colorScheme: dark ? 'dark' : 'light' });
     const page = await context.newPage();
     page.setDefaultTimeout(10_000);
+    // Every loading state looks like the reload splash (#433): the old yellow spinner card never shows.
+    const oldLoaders = [];
+    await context.exposeFunction('reportOldLoader', where => oldLoaders.push(where));
+    await context.addInitScript(() => {
+      new MutationObserver((_records, observer) => {
+        if (!document.querySelector('.buyerly-auth-spinner, .buyerly-auth-card--loading')) return;
+        observer.disconnect();
+        window.reportOldLoader(location.pathname);
+      }).observe(document, { childList: true, subtree: true });
+    });
     const errors = [];
     const writes = [];
     let documents = 0;
@@ -204,7 +214,10 @@ try {
         assert.deepEqual(writes, [{ path: '/api/auth/request-temporary-password', body: { email, invite_token: inviteToken } }]);
         if (method === 'link') {
           await page.goto(`${origin}/auth/email/verify?token=link_browser_test`);
-          await page.getByText('Logging you in securely…', { exact: true }).waitFor();
+          // While the link is checked, the reload splash stays up, on the signed-out backdrop.
+          await page.locator('#loading').waitFor();
+          assert.equal(await page.evaluate(() => document.documentElement.classList.contains('logged-out')), true);
+          assert.equal(await page.locator('.buyerly-auth-card').count(), 0, 'no card while the link is checked');
         } else {
           await page.getByRole('button', { name: 'Enter code manually', exact: true }).click();
           const code = page.getByRole('textbox', { name: 'Login code', exact: true });
@@ -242,6 +255,7 @@ try {
       assert.deepEqual(writes.filter(write => write.path.includes('/api/auth/verify-')), method === 'session' ? []
         : method === 'link' ? [{ path: '/api/auth/verify-email-link', body: { token: 'link_browser_test' } }]
           : ['AAAAAAAAAA', 'KQZMRTWPDA'].map(code => ({ path: '/api/auth/verify-temporary-password', body: { email, code } })));
+      assert.deepEqual(oldLoaders, [], 'no old loader');
       assert.deepEqual(errors, []);
       console.log(`Invitation ${method}: log in as the invited email and automatic acceptance passed at ${width}px`);
     } catch (error) {
