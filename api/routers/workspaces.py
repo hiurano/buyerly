@@ -20,6 +20,7 @@ from api.schemas import (
 )
 from database.db import async_session_maker
 from database.models import User, Workspace, WorkspaceMember
+from core.default_team import create_default_team, join_default_team
 from core.workspace_slugs import normalize_workspace_slug
 from services.image_uploads import (
     delete_workspace_logo_if_unreferenced,
@@ -75,6 +76,10 @@ async def create_workspace(req: CreateWorkspaceRequest, user: User = Depends(get
 
         member = WorkspaceMember(workspace_id=ws.id, user_id=user.id, role="owner")
         session.add(member)
+        await session.flush()
+        # Linear's workspace starts with a team named after it.
+        await create_default_team(session, ws.id, ws.name, user.id)
+        await join_default_team(session, ws.id, member_id=member.id)
 
         db_user = (await session.execute(select(User).where(User.id == user.id))).scalar_one()
         db_user.active_workspace_id = ws.id

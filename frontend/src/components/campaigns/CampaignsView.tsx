@@ -21,6 +21,9 @@ import type {
 } from '@/lib/types';
 import { useAppStore } from '@/store/useAppStore';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
+import { ViewTitle } from '@/components/teams/ViewTitle';
+import { useActiveTeam } from '@/lib/teams';
+import { useWorkspaceSession } from '@/lib/workspaceSession';
 import type { AdsManagerEntity } from '@/store/useAppStore';
 import { CampaignRow } from './CampaignRow';
 import { AdSetRow } from './AdSetRow';
@@ -124,7 +127,7 @@ interface CampaignsViewProps {
 }
 
 /** The level's own address; the entity a link named stays with the account being left. */
-const levelPath = (pathname: string) => pathname.split('/').slice(0, 4).join('/');
+const levelPath = (pathname: string) => pathname.replace(/(\/ads-manager\/[^/]+)\/.*$/, '$1');
 
 /**
  * The details pane's quick filters: real delivery state, the parent campaign
@@ -174,7 +177,15 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   const displayOrdering = view.ordering;
   const displayProperties = view.properties;
   const sortDirection = view.direction;
-  const [metaAccounts, setMetaAccounts] = useState<MetaAccount[]>([]);
+  const [allMetaAccounts, setAllMetaAccounts] = useState<MetaAccount[]>([]);
+  // A team's Ads Manager, as Linear's team Issues: only the team's ad accounts.
+  const { workspace } = useWorkspaceSession();
+  const activeTeam = useActiveTeam(workspace.id);
+  const metaAccounts = useMemo(() => {
+    if (!activeTeam.key) return allMetaAccounts;
+    const team = activeTeam.team;
+    return team ? allMetaAccounts.filter((account) => account.id !== undefined && team.account_ids.includes(account.id)) : [];
+  }, [activeTeam.key, activeTeam.team, allMetaAccounts]);
   const [metaConnections, setMetaConnections] = useState<MetaConnection[]>([]);
   const [accountsState, setAccountsState] = useState<LoadState>('loading');
   const [accountsError, setAccountsError] = useState('');
@@ -228,7 +239,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
       ]);
       if (!inScope()) return;
       const eligibleAccounts = eligibleMetaAccounts(accounts);
-      setMetaAccounts(eligibleAccounts);
+      setAllMetaAccounts(eligibleAccounts);
       setMetaConnections(connections);
       setHierarchyState(eligibleAccounts.length > 0 ? 'loading' : 'idle');
       setSelectedAccountId((current) => {
@@ -250,6 +261,14 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   useEffect(() => {
     void refreshMetaAccounts();
   }, [refreshMetaAccounts]);
+
+  // Another team, or the team's accounts arriving: the account on screen must be one of them.
+  useEffect(() => {
+    if (accountsState !== 'ready') return;
+    setSelectedAccountId((current) => (
+      current && metaAccounts.some((account) => account.account_id === current) ? current : metaAccounts[0]?.account_id ?? null
+    ));
+  }, [accountsState, metaAccounts]);
 
   // The address names the ad account on every navigation — a search result, a
   // shared link, Back — and it wins over the one on screen.
@@ -696,6 +715,20 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
         />
       );
     }
+    if (activeTeam.missing) {
+      return <DataState title="Team not found" detail="This workspace has no team with that identifier." />;
+    }
+    if (activeTeam.loading) {
+      return <DataState title="Loading Ads Manager…" detail="Reading the team's ad accounts." />;
+    }
+    if (metaAccounts.length === 0 && activeTeam.team) {
+      return (
+        <DataState
+          title="No ad accounts in this team"
+          detail={`Add ad accounts to ${activeTeam.team.name} in its settings to see their campaigns here.`}
+        />
+      );
+    }
     if (metaAccounts.length === 0) {
       return (
         <DataState
@@ -786,7 +819,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
         >
           <div className="flex items-center">
             <SidebarCollapsedNavigation />
-            <h2 className="overflow-hidden whitespace-nowrap text-[13px] font-medium text-[var(--text-secondary)]">Ads Manager</h2>
+            <ViewTitle title="Ads Manager" team={activeTeam.team} />
           </div>
           {selectedAccount ? (
             <DropdownMenuAccount

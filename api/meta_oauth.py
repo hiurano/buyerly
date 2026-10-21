@@ -22,6 +22,7 @@ from api.deps import (
 )
 from core.config import settings
 from core.currency import normalize_currency
+from core.default_team import join_default_team
 from core.meta_tokens import (
     MetaTokenError,
     decrypt_meta_token,
@@ -1255,6 +1256,9 @@ async def import_accounts(
                     account.is_active = True
                     if not existing:
                         session.add(account)
+                        await session.flush()
+                        # A new ad account joins the workspace's default team, as Linear's issues have one.
+                        await join_default_team(session, account.workspace_id, account_id=account.id)
 
                     if was_migrated:
                         session.add(

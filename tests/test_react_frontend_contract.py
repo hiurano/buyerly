@@ -1033,12 +1033,16 @@ class TestReactFrontendContract(unittest.TestCase):
         model = (accounts / "accountsModel.ts").read_text()
         workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
 
-        # Addresses, G K beside O K, Ctrl/Cmd+K, and the sidebar between Inbox and Ads Manager.
+        # Addresses, G K beside O K, Ctrl/Cmd+K, and the sidebar's Workspace section as Linear's:
+        # Members, Ad accounts (Linear's Projects), Teams; each team has Ads Manager, Ad accounts, Rules.
         self.assertIn("parts[1] === 'accounts'", routing)
         self.assertIn("accounts: 'K',", shortcuts)
         self.assertIn("label: 'Go to ad accounts'", menu)
-        self.assertLess(sidebar.index("Inbox"), sidebar.index("Ad accounts"))
-        self.assertLess(sidebar.index("Ad accounts"), sidebar.index("Ads Manager"))
+        self.assertLess(sidebar.index('label="Inbox"'), sidebar.index('title="Workspace"'))
+        self.assertLess(sidebar.index('label="Members"'), sidebar.index('label="Ad accounts"'))
+        self.assertLess(sidebar.index('label="Ad accounts"'), sidebar.index('label="Teams"'))
+        self.assertLess(sidebar.index('title="Workspace"'), sidebar.index('title="Your teams"'))
+        self.assertLess(sidebar.index("label: 'Ads Manager'"), sidebar.index("label: 'Rules'"))
         self.assertIn("return `/${workspace}/accounts/${encodeURIComponent(result.id)}`", search)
         self.assertIn("<AccountsView", self.app)
         self.assertIn("<AccountPage", self.app)

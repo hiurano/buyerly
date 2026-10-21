@@ -859,6 +859,384 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
   }
 }
 
+/* A team's page in the sidebar, as Linear's: 19px in, its icon 6px from the edge. */
+.linear-sidebar-nav-item--nested {
+  margin-left: 19px;
+  width: calc(100% - 19px);
+  padding-left: 6px;
+}
+
+/* Linear's foldable sections ("Workspace", "Your teams"), measured live (21.10):
+   16px above the header, a 12px/500 label 9px in, items 2px under it, 8px after. */
+.sidebar-section {
+  padding-top: 15px;
+}
+
+.sidebar-section + .sidebar-section {
+  padding-top: 7px;
+}
+
+.sidebar-section-header-row {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  margin-bottom: 2px;
+  padding-left: 5px;
+}
+
+.sidebar-section-header {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  height: 28px;
+  padding: 0 4px;
+  border-radius: 8px;
+  color: var(--sidebar-item-fg);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: normal;
+  cursor: default;
+  outline: none;
+  user-select: none;
+}
+
+.sidebar-section-header:focus-visible {
+  outline: 1px solid var(--focus-ring-color);
+  outline-offset: -1px;
+}
+
+/* Under the cursor only the label darkens, at once; no fill. */
+@media (any-hover: hover) and (any-pointer: fine) {
+  .sidebar-section-header:hover {
+    color: var(--sidebar-item-fg-strong);
+  }
+}
+
+/* The triangle points right while folded and down while open. */
+.sidebar-disclosure {
+  flex-shrink: 0;
+  margin: 1px 0 0 2px;
+  transform: rotate(0deg);
+}
+
+.sidebar-disclosure[data-open='true'] {
+  transform: rotate(90deg);
+}
+
+.sidebar-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-bottom: 8px;
+}
+
+.sidebar-team .sidebar-section-body {
+  padding-bottom: 0;
+  margin-top: 1px;
+}
+
+/* The header's own button ("Join a team") and a team's "…": shown under the cursor. */
+.sidebar-section-action {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 2px;
+  padding: 0 2px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  background-color: transparent;
+  opacity: 0;
+  cursor: default;
+  outline: none;
+  transition: opacity 0.15s;
+}
+
+.sidebar-section-header-row:focus-within .sidebar-section-action,
+.sidebar-section-action:focus-visible {
+  opacity: 1;
+  transition-duration: 0s;
+}
+
+.sidebar-section-action:active,
+.sidebar-section-action[data-state='open'] {
+  background-color: var(--sidebar-icon-button-hover-bg);
+  color: var(--sidebar-item-fg-strong);
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .sidebar-section-header-row:hover .sidebar-section-action {
+    opacity: 1;
+    transition-duration: 0s;
+  }
+
+  .sidebar-section-action:hover {
+    background-color: var(--sidebar-icon-button-hover-bg);
+    color: var(--sidebar-item-fg-strong);
+  }
+}
+
+/* A team in "Your teams": its icon 9px in, the name 7px after, a dimmer triangle. */
+.sidebar-team-row {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.sidebar-team-row[data-menu-open='true'] {
+  background-color: var(--sidebar-item-hover-bg);
+}
+
+.sidebar-team-toggle {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  height: 28px;
+  padding-left: 9px;
+  border-radius: 8px;
+  cursor: default;
+  outline: none;
+  user-select: none;
+}
+
+.sidebar-team-toggle:focus-visible {
+  outline: 1px solid var(--focus-ring-color);
+  outline-offset: -1px;
+}
+
+.sidebar-team-name {
+  min-width: 0;
+  margin-left: 7px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--sidebar-item-fg);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: normal;
+}
+
+.sidebar-team-disclosure {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--sidebar-disclosure-fg);
+}
+
+.sidebar-team-row:active .sidebar-team-name,
+.sidebar-team-row:active .sidebar-team-disclosure {
+  color: var(--sidebar-item-fg-strong);
+}
+
+/* The "…" takes no room until the row is under the cursor. */
+.sidebar-team-menu {
+  display: flex;
+  flex-shrink: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+.sidebar-team-row:focus-within .sidebar-team-menu,
+.sidebar-team-row[data-menu-open='true'] .sidebar-team-menu {
+  width: 26px;
+}
+
+.sidebar-team-row:focus-within .sidebar-section-action,
+.sidebar-team-row[data-menu-open='true'] .sidebar-section-action {
+  opacity: 1;
+  transition-duration: 0s;
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .sidebar-team-row:hover {
+    background-color: var(--sidebar-item-hover-bg);
+  }
+
+  .sidebar-team-row:hover .sidebar-team-name,
+  .sidebar-team-row:hover .sidebar-team-disclosure {
+    color: var(--sidebar-item-fg-strong);
+  }
+
+  .sidebar-team-row:hover .sidebar-team-menu {
+    width: 26px;
+  }
+
+  .sidebar-team-row:hover .sidebar-section-action {
+    opacity: 1;
+    transition-duration: 0s;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .sidebar-section-header-row,
+  .sidebar-section-header,
+  .sidebar-team-row,
+  .sidebar-team-toggle {
+    height: 36px;
+  }
+
+  .sidebar-section-action {
+    opacity: 1;
+  }
+
+  .sidebar-team-menu {
+    width: 26px;
+  }
+}
+
+/* A team page's header, as Linear's "Team › Issues": the team links to it, a dim "›", the page. */
+.team-breadcrumb-link {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  height: 24px;
+  margin: 0 -5px 0 -4px;
+  padding: 0 5px 0 4px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: default;
+  outline: none;
+}
+
+.team-breadcrumb-link:focus-visible {
+  outline: 1px solid var(--focus-ring-color);
+  outline-offset: -1px;
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .team-breadcrumb-link:hover {
+    background-color: var(--item-hover-bg);
+    color: var(--text-primary);
+  }
+}
+
+.team-breadcrumb-separator {
+  margin: -2px 8px 0;
+  color: var(--breadcrumb-separator-fg);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Linear's search above the workspace Members and Teams lists, measured live (21.10). */
+.list-search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 300px;
+  min-width: 0;
+  max-width: 100%;
+  height: 28px;
+}
+
+.list-search-field__icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-primary);
+  pointer-events: none;
+}
+
+.list-search-field__input {
+  width: 100%;
+  height: 28px;
+  padding: 6px 25px 6px 32px;
+  border: 0.5px solid transparent;
+  border-radius: 999px;
+  background-color: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+}
+
+.list-search-field__input::placeholder {
+  color: var(--text-muted);
+}
+
+.list-search-field__input::-webkit-search-cancel-button {
+  display: none;
+}
+
+/* A team in a list cell (Members' Teams column): its icon and identifier, a pill under the cursor. */
+.team-chip {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 3px 6px;
+  border-radius: 9999px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 450;
+  cursor: default;
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .team-chip:hover {
+    background-color: var(--item-hover-bg);
+  }
+}
+
+/* Linear's Membership cell on Teams: a "Joined" pill that offers Leave under the cursor, or Join. */
+.team-membership {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background-color: var(--item-hover-bg);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 450;
+  cursor: default;
+}
+
+.team-membership:disabled {
+  opacity: 0.6;
+}
+
+.team-membership__leave {
+  display: none;
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .team-membership[data-joined='true']:hover svg,
+  .team-membership[data-joined='true']:hover .team-membership__label {
+    display: none;
+  }
+
+  .team-membership[data-joined='true']:hover .team-membership__leave {
+    display: inline;
+  }
+
+  .team-membership:hover {
+    color: var(--text-primary);
+  }
+}
+
+/* Members' faces on a team row overlap a little, as Linear's. */
+.team-face {
+  position: relative;
+  display: inline-flex;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 1.5px var(--bg-canvas);
+}
+
+.team-face + .team-face {
+  margin-left: -4px;
+}
+
 /* Exact Linear Sidebar Unread Badge (18px Pill, Tabular Nums) */
 .linear-sidebar-badge {
   display: inline-flex;

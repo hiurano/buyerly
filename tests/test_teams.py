@@ -105,6 +105,37 @@ class TestTeams(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([item['key'] for item in listed], ['GRW'])
         self.assertFalse(listed[0]['is_member'])
 
+    async def test_new_workspace_starts_with_its_team(self):
+        # Linear's workspace starts with a team named after it; its creator is on it.
+        res = await self.client.post('/api/workspaces', json={'name': 'Canada Traffic'}, headers=self.owner)
+        self.assertEqual(res.status_code, 200, res.text)
+        workspace_id = res.json()['id']
+        teams = (await self.client.get(f'/api/workspaces/{workspace_id}/teams', headers=self.owner)).json()
+        self.assertEqual([(team['name'], team['key'], team['member_user_ids']) for team in teams],
+                         [('Canada Traffic', 'CAN', [self.owner_id])])
+
+    async def test_new_members_and_accounts_join_the_default_team(self):
+        from core.default_team import default_team_key, join_default_team
+
+        self.assertEqual(default_team_key('12 Media buying'), 'MED')
+        self.assertEqual(default_team_key('Канада'), 'TEAM')
+        first = await self.create('First', 'FIR')
+        await self.create('Second', 'SEC')
+        async with self.sessions() as session:
+            buyer_member = (await session.execute(select(WorkspaceMember.id).where(
+                WorkspaceMember.workspace_id == self.ws_id, WorkspaceMember.user_id == self.buyer_id,
+            ))).scalar_one()
+            await join_default_team(session, self.ws_id, member_id=buyer_member, account_id=self.account_id)
+            # Joining twice changes nothing.
+            await session.flush()
+            await join_default_team(session, self.ws_id, member_id=buyer_member, account_id=self.account_id)
+            await session.commit()
+        teams = {team['key']: team for team in (await self.client.get(self.url(), headers=self.owner)).json()}
+        self.assertEqual(teams['FIR']['id'], first['id'])
+        self.assertEqual(teams['FIR']['member_user_ids'], [self.owner_id, self.buyer_id])
+        self.assertEqual(teams['FIR']['account_ids'], [self.account_id])
+        self.assertEqual(teams['SEC']['account_ids'], [])
+
     async def test_only_owner_and_admin_manage_and_outsiders_see_nothing(self):
         team = await self.create()
         res = await self.client.post(self.url(), json={'name': 'B', 'key': 'B'}, headers=self.buyer)
@@ -113,12 +144,19 @@ class TestTeams(unittest.IsolatedAsyncioTestCase):
             ('PATCH', f"/{team['id']}", {'name': 'Y'}),
             ('POST', f"/{team['id']}/retire", None),
             ('DELETE', f"/{team['id']}", None),
-            ('POST', f"/{team['id']}/members", {'user_ids': [self.buyer_id]}),
+            ('POST', f"/{team['id']}/members", {'user_ids': [self.owner_id]}),
+            ('POST', f"/{team['id']}/members", {'user_ids': [self.buyer_id, self.owner_id]}),
             ('POST', f"/{team['id']}/accounts", {'account_ids': [self.account_id]}),
             ('DELETE', f"/{team['id']}/members/{self.owner_id}", None),
         ):
             res = await self.client.request(method, self.url(suffix), json=body, headers=self.buyer)
             self.assertEqual(res.status_code, 403, (method, suffix))
+
+        # Linear's "Join a team": anyone may add themselves.
+        res = await self.client.post(self.url(f"/{team['id']}/members"), json={'user_ids': [self.buyer_id]},
+                                     headers=self.buyer)
+        self.assertEqual(res.status_code, 200, res.text)
+        self.assertTrue(res.json()['is_member'])
 
         res = await self.client.get(self.url(), headers=self.outsider)
         self.assertEqual(res.status_code, 404)
@@ -155,14 +193,16 @@ class TestTeams(unittest.IsolatedAsyncioTestCase):
         res = await self.client.delete(self.url(f'/{tid}/members/{self.buyer_id}'), headers=self.owner)
         self.assertEqual(res.status_code, 404)
 
-        # Leaving the workspace takes a member off its teams.
+        # Leaving the workspace takes a member off its teams (the workspace made for them
+        # in its place has a default team of its own).
         await self.client.post(self.url(f'/{tid}/members'), json={'user_ids': [self.buyer_id]}, headers=self.owner)
         res = await self.client.post(f'/api/workspaces/{self.ws_id}/leave', json={}, headers=self.buyer)
         self.assertEqual(res.status_code, 200, res.text)
         async with self.sessions() as session:
             left = (await session.execute(
                 select(TeamMember).join(WorkspaceMember, WorkspaceMember.id == TeamMember.member_id)
-                .where(WorkspaceMember.user_id == self.buyer_id)
+                .join(Team, Team.id == TeamMember.team_id)
+                .where(WorkspaceMember.user_id == self.buyer_id, Team.workspace_id == self.ws_id)
             )).scalars().all()
         self.assertEqual(left, [])
 

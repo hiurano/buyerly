@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiRequest } from './api';
+import { useAppStore } from '@/store/useAppStore';
 
 /** One team as GET /api/workspaces/{id}/teams returns it (#371). */
 export interface TeamItem {
@@ -76,3 +77,25 @@ export function useTeams(workspaceId: number, filter: TeamFilter | 'all' = 'all'
 
 /** "1 member", "3 members"; "1 ad account", "2 ad accounts". */
 export const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
+
+/**
+ * The team whose pages are on screen (/team/<KEY>/…), as Linear's team Issues
+ * and Projects: `team` is null on the workspace's own pages; `missing` when the
+ * address names no team of this workspace.
+ */
+export function useActiveTeam(workspaceId: number) {
+  const key = useAppStore((state) => state.activeTeamKey);
+  const { teams, error } = useTeams(workspaceId, 'all');
+  const team = key && teams ? teams.find((item) => item.key === key) ?? null : null;
+  return {
+    key,
+    team,
+    loading: Boolean(key) && teams === null && !error,
+    missing: Boolean(key) && (teams !== null || Boolean(error)) && team === null,
+  };
+}
+
+/** Ad accounts of a team, by Meta id ("act_…"): the accounts its pages show. */
+export function teamAccountIds(team: TeamItem, accounts: { id?: number; account_id: string }[]): Set<string> {
+  return new Set(accounts.filter((account) => account.id !== undefined && team.account_ids.includes(account.id)).map((account) => account.account_id));
+}

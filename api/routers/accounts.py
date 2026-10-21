@@ -33,6 +33,7 @@ from api.schemas import (
 )
 from core.accounts import parse_fb_raw_accounts
 from core.currency import normalize_currency
+from core.default_team import join_default_team
 from core.meta_tokens import MetaTokenError, encrypt_meta_token
 from core.ownership import owned_by
 from core.rate_limit import rate_limit_dep
@@ -448,6 +449,9 @@ async def batch_add_accounts(
                         is_active=True,
                     )
                     session.add(new_acc)
+                    await session.flush()
+                    # A new ad account joins the workspace's default team, as Linear's issues have one.
+                    await join_default_team(session, new_acc.workspace_id, account_id=new_acc.id)
 
                 added_list.append({
                     "account_id": acc_id,

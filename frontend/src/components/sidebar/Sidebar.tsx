@@ -3,15 +3,28 @@ import { SidebarHeader } from './SidebarHeader';
 import { selectInboxBadgeCount, useAppStore } from '@/store/useAppStore';
 import {
   LinearInboxIcon,
+  LinearMembersIcon,
   LinearMetaIcon,
   LinearBoltIcon,
+  LinearPlusIcon,
+  LinearTeamsIcon,
   LinearWalletIcon,
 } from '@/icons/LinearIcons';
 import { goToShortcut } from '@/lib/shortcuts';
 import { openAppPath, pathForTab } from '@/lib/routing';
-import { Tooltip } from '@/ui/Tooltip';
+import { useTeams } from '@/lib/teams';
+import { useWorkspaceSession } from '@/lib/workspaceSession';
+import type { AppTab } from '@/store/useAppStore';
+import { SidebarLink, SidebarSection, SidebarTeam } from './SidebarSections';
 import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
 import { SidebarBackdrop, useSidebarDrawer, useSidebarPeek } from './SidebarDrawer';
+
+/** A team's pages, as Linear's Issues and Projects: Ads Manager, Ad accounts and Rules. */
+const TEAM_PAGES: { tab: AppTab; label: string; icon: React.ReactNode }[] = [
+  { tab: 'campaigns', label: 'Ads Manager', icon: <LinearMetaIcon size={14} /> },
+  { tab: 'accounts', label: 'Ad accounts', icon: <LinearWalletIcon size={14} /> },
+  { tab: 'rules', label: 'Rules', icon: <LinearBoltIcon size={14} /> },
+];
 
 export const Sidebar: React.FC = () => {
   const {
@@ -25,6 +38,18 @@ export const Sidebar: React.FC = () => {
     workspaceSlug,
   } = useAppStore();
   const inboxUnreadCount = useAppStore(selectInboxBadgeCount);
+  const activeTeamKey = useAppStore((state) => state.activeTeamKey);
+  const setActiveTeamKey = useAppStore((state) => state.setActiveTeamKey);
+  const { workspace } = useWorkspaceSession();
+  const { teams } = useTeams(workspace.id, 'active');
+  const yourTeams = (teams ?? []).filter((team) => team.is_member);
+
+  /** A page of the workspace itself; from an account's page, Ad accounts goes back to the list. */
+  const openWorkspacePage = (tab: AppTab) => {
+    if (tab === 'accounts' && activeTab === tab && !activeTeamKey && workspaceSlug) openAppPath(pathForTab(workspaceSlug, tab));
+    setActiveTeamKey(null);
+    setActiveTab(tab);
+  };
   const [isDragging, setIsDragging] = useState(false);
 
   const trackRef = useRef<HTMLDivElement>(null);
@@ -132,148 +157,57 @@ export const Sidebar: React.FC = () => {
         {/* 1. Header (Workspace + Search + Create) */}
         <SidebarHeader />
 
-        {/* 2. Navigation Section */}
+        {/* 2. Navigation: Inbox, then Linear's "Workspace" and "Your teams" sections */}
         <div className="flex-1 overflow-y-auto px-3 pb-4 pt-[0.5px] space-y-[1px]">
-          {/* Item 1: Inbox */}
-          <Tooltip content="Inbox" shortcut={goToShortcut('inbox')} side="right" sideOffset={8}>
-            <button
-              type="button"
-              onClick={() => setActiveTab('inbox')}
-              data-active={activeTab === 'inbox' ? 'true' : 'false'}
-              className="linear-sidebar-nav-item group"
-            >
-              <div className="flex items-center min-w-0">
-                <span
-                  style={{
-                    width: '14px',
-                    height: '14px',
-                    marginRight: '6px',
-                  }}
-                  className="flex shrink-0 items-center justify-center"
-                >
-                  <LinearInboxIcon size={14} />
-                </span>
-                <span
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: 500,
-                  }}
-                  className="truncate"
-                >
-                  Inbox
-                </span>
-              </div>
-              {inboxUnreadCount > 0 && (
-                <span className="linear-sidebar-count" aria-label={`${inboxUnreadCount} unread`}>
-                  {inboxUnreadCount}
-                </span>
-              )}
-            </button>
-          </Tooltip>
+          <SidebarLink
+            icon={<LinearInboxIcon size={14} />}
+            label="Inbox"
+            tooltip="Inbox"
+            shortcut={goToShortcut('inbox')}
+            active={activeTab === 'inbox'}
+            onClick={() => openWorkspacePage('inbox')}
+            trailing={inboxUnreadCount > 0 && (
+              <span className="linear-sidebar-count" aria-label={`${inboxUnreadCount} unread`}>
+                {inboxUnreadCount}
+              </span>
+            )}
+          />
 
-          {/* Item 2: Ad accounts, as Linear's Projects (#388) */}
-          <Tooltip content="Go to ad accounts" shortcut={goToShortcut('accounts')} side="right" sideOffset={8}>
-            <button
-              type="button"
-              onClick={() => {
-                // From an account's page, back to the list: the tab itself does not change.
-                if (activeTab === 'accounts' && workspaceSlug) openAppPath(pathForTab(workspaceSlug, 'accounts'));
-                setActiveTab('accounts');
-              }}
-              data-active={activeTab === 'accounts' ? 'true' : 'false'}
-              className="linear-sidebar-nav-item"
-            >
-              <div className="flex items-center min-w-0">
-                <span
-                  style={{
-                    width: '14px',
-                    height: '14px',
-                    marginRight: '6px',
-                  }}
-                  className="flex shrink-0 items-center justify-center"
-                >
-                  <LinearWalletIcon size={14} />
-                </span>
-                <span
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: 500,
-                  }}
-                  className="truncate"
-                >
-                  Ad accounts
-                </span>
-              </div>
-            </button>
-          </Tooltip>
+          <SidebarSection id="workspace" title="Workspace">
+            <SidebarLink
+              icon={<LinearMembersIcon size={14} />}
+              label="Members"
+              tooltip="Go to members"
+              active={activeTab === 'members'}
+              onClick={() => openWorkspacePage('members')}
+            />
+            {/* Ad accounts, as Linear's Projects (#388) */}
+            <SidebarLink
+              icon={<LinearWalletIcon size={14} />}
+              label="Ad accounts"
+              tooltip="Go to ad accounts"
+              shortcut={goToShortcut('accounts')}
+              active={activeTab === 'accounts' && !activeTeamKey}
+              onClick={() => openWorkspacePage('accounts')}
+            />
+            <SidebarLink
+              icon={<LinearTeamsIcon size={14} />}
+              label="Teams"
+              tooltip="Go to teams"
+              active={activeTab === 'teams'}
+              onClick={() => openWorkspacePage('teams')}
+            />
+          </SidebarSection>
 
-          {/* Item 3: Ads Manager */}
-          <Tooltip content="Go to Ads Manager" shortcut={goToShortcut('campaigns')} side="right" sideOffset={8}>
-            <button
-              type="button"
-              onClick={() => setActiveTab('campaigns')}
-              data-active={activeTab === 'campaigns' ? 'true' : 'false'}
-              className="linear-sidebar-nav-item"
-            >
-              <div className="flex items-center min-w-0">
-                <span
-                  style={{
-                    width: '14px',
-                    height: '14px',
-                    marginRight: '6px',
-                  }}
-                  className="flex shrink-0 items-center justify-center"
-                >
-                  <LinearMetaIcon size={14} />
-                </span>
-                <span
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: 500,
-                  }}
-                  className="truncate"
-                >
-                  Ads Manager
-                </span>
-              </div>
-            </button>
-          </Tooltip>
-
-          {/* Item 4: Rules */}
-          <Tooltip content="Go to rules" shortcut={goToShortcut('rules')} side="right" sideOffset={8}>
-            <button
-              type="button"
-              onClick={() => {
-                // From Recently deleted, back to the list: the tab itself does not change.
-                if (activeTab === 'rules' && workspaceSlug) openAppPath(pathForTab(workspaceSlug, 'rules'));
-                setActiveTab('rules');
-              }}
-              data-active={activeTab === 'rules' ? 'true' : 'false'}
-              className="linear-sidebar-nav-item"
-            >
-              <div className="flex items-center min-w-0">
-                <span
-                  style={{
-                    width: '14px',
-                    height: '14px',
-                    marginRight: '6px',
-                  }}
-                  className="flex shrink-0 items-center justify-center"
-                >
-                  <LinearBoltIcon size={14} />
-                </span>
-                <span
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: 500,
-                  }}
-                  className="truncate"
-                >
-                  Rules
-                </span>
-              </div>
-            </button>
-          </Tooltip>
+          <SidebarSection
+            id="teams"
+            title="Your teams"
+            action={{ label: 'Join a team', icon: <LinearPlusIcon size={14} />, onClick: () => openWorkspacePage('teams') }}
+          >
+            {yourTeams.map((team) => (
+              <SidebarTeam key={team.id} team={team} workspaceSlug={workspace.slug} pages={TEAM_PAGES} />
+            ))}
+          </SidebarSection>
         </div>
 
         <SidebarUtilityFooter />

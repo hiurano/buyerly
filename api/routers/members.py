@@ -23,6 +23,7 @@ from api.schemas import (
     WorkspaceInviteLinkResponse,
     WorkspaceMemberItem,
 )
+from core.default_team import create_default_team, join_default_team
 from core.config import settings
 from core.email import send_invite_accepted_email, send_workspace_invitation_email
 from core.rate_limit import rate_limit_dep
@@ -271,7 +272,11 @@ async def remove_workspace_member(
                 )
                 session.add(new_ws)
                 await session.flush()
-                session.add(WorkspaceMember(workspace_id=new_ws.id, user_id=target_user.id, role="owner"))
+                new_member = WorkspaceMember(workspace_id=new_ws.id, user_id=target_user.id, role="owner")
+                session.add(new_member)
+                await session.flush()
+                await create_default_team(session, new_ws.id, new_ws.name, target_user.id)
+                await join_default_team(session, new_ws.id, member_id=new_member.id)
                 target_user.active_workspace_id = new_ws.id
 
         await session.commit()
@@ -336,7 +341,11 @@ async def leave_workspace(
                 )
                 session.add(new_ws)
                 await session.flush()
-                session.add(WorkspaceMember(workspace_id=new_ws.id, user_id=user.id, role="owner"))
+                new_member = WorkspaceMember(workspace_id=new_ws.id, user_id=user.id, role="owner")
+                session.add(new_member)
+                await session.flush()
+                await create_default_team(session, new_ws.id, new_ws.name, user.id)
+                await join_default_team(session, new_ws.id, member_id=new_member.id)
                 db_user.active_workspace_id = new_ws.id
                 next_ws_id = new_ws.id
 
@@ -1200,6 +1209,9 @@ async def accept_workspace_invite(
                 role=invite.role,
             )
             session.add(member)
+            await session.flush()
+            # As Linear's invite: the new member joins the workspace's default team.
+            await join_default_team(session, invite.workspace_id, member_id=member.id)
             invite.used_count += 1
             if invite.max_uses > 0 and invite.used_count >= invite.max_uses:
                 invite.status = "accepted"

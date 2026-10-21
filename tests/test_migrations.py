@@ -1480,6 +1480,61 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
             await init_test_db(engine)
             await engine.dispose()
 
+    async def test_workspaces_without_a_team_get_their_default_team(self):
+        from alembic.config import Config
+        from alembic import command
+        import os
+
+        engine = create_test_engine()
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text("DROP SCHEMA public CASCADE"))
+                await conn.execute(text("CREATE SCHEMA public"))
+
+            root = os.path.dirname(os.path.dirname(__file__))
+            alembic_cfg = Config(os.path.join(root, "alembic.ini"))
+            alembic_cfg.set_main_option("script_location", os.path.join(root, "alembic"))
+
+            command.upgrade(alembic_cfg, "0041_drop_password_hash")
+            async with engine.begin() as conn:
+                owner_id = (await conn.execute(text(
+                    "INSERT INTO users (username, full_name, first_name, last_name, avatar_url, "
+                    "onboarding_step, onboarding_completed, role, is_approved, created_at) "
+                    "VALUES ('owner', '', '', '', '', 'completed', true, 'buyer', true, NOW()) RETURNING id"
+                ))).scalar_one()
+                workspace_ids = {}
+                for name, slug in (("12 Media buying", "media"), ("Has team", "has-team")):
+                    workspace_ids[slug] = (await conn.execute(text(
+                        "INSERT INTO workspaces (name, slug, badge_text, badge_color, logo_url, owner_user_id, "
+                        f"created_at, updated_at) VALUES ('{name}', '{slug}', 'M', '#F5A300', '', {owner_id}, "
+                        "NOW(), NOW()) RETURNING id"
+                    ))).scalar_one()
+                    await conn.execute(text(
+                        "INSERT INTO workspace_members (workspace_id, user_id, role, joined_at, inbox_read_before) "
+                        f"VALUES ({workspace_ids[slug]}, {owner_id}, 'owner', NOW(), NOW())"
+                    ))
+                await conn.execute(text(
+                    "INSERT INTO teams (workspace_id, name, key, description, created_at, updated_at) "
+                    f"VALUES ({workspace_ids['has-team']}, 'Growth', 'GRO', '', NOW(), NOW())"
+                ))
+
+            command.upgrade(alembic_cfg, "0042_default_teams")
+            async with engine.connect() as conn:
+                teams = (await conn.execute(text(
+                    "SELECT t.workspace_id, t.name, t.key, COUNT(m.id) FROM teams t "
+                    "LEFT JOIN team_members m ON m.team_id = t.id GROUP BY t.id ORDER BY t.id"
+                ))).all()
+            self.assertEqual(
+                [tuple(row) for row in teams],
+                [
+                    (workspace_ids["has-team"], "Growth", "GRO", 0),
+                    (workspace_ids["media"], "12 Media buying", "MED", 1),
+                ],
+            )
+        finally:
+            await init_test_db(engine)
+            await engine.dispose()
+
     async def test_alembic_upgrade_head_applies_successfully(self):
         from alembic.config import Config
         from alembic import command
