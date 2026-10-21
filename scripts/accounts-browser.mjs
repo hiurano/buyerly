@@ -232,7 +232,7 @@ try {
       await page.waitForURL(`${origin}/alpha/accounts/act_101`);
       const properties = page.getByRole('region', { name: 'Properties' }).or(page.locator('section[aria-label="Properties"]'));
       await properties.waitFor();
-      assert.equal(await page.title(), 'NL · Lead gen — Buyerly');
+      assert.equal(await page.title(), 'NL · Lead gen');
       const panel = await properties.boundingBox();
       const title = await page.getByRole('textbox', { name: 'Ad account name' }).boundingBox();
       assert.ok(panel.x > title.x + title.width, 'properties sit in a panel to the right');

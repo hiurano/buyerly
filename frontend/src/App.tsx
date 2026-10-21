@@ -13,6 +13,8 @@ import { WorkspaceMembersView } from '@/components/workspace/WorkspaceMembersVie
 import { WorkspaceTeamsView } from '@/components/workspace/WorkspaceTeamsView';
 import { TeamHomeView } from '@/components/teams/TeamHomeView';
 import { searchPageTitle } from '@/lib/search';
+import { pageTitle } from '@/lib/pageTitle';
+import { useTeams } from '@/lib/teams';
 import { WorkspaceSwitcher } from '@/components/command/WorkspaceSwitcher';
 import { PreferencesView } from '@/components/preferences/PreferencesView';
 import { AppUtilityBar } from '@/components/layout/AppUtilityBar';
@@ -103,6 +105,11 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   useUndoShortcuts();
   useNewVersionNotice();
   useWebMcpTools(workspace);
+  // The open workspace, on the page: set after its WebMCP tools are offered (the hook's
+  // effect above runs first), so whoever waits for it finds that workspace's tools.
+  useEffect(() => {
+    document.documentElement.dataset.workspace = workspace.slug;
+  }, [workspace.slug]);
   const session = useMemo<WorkspaceSession>(() => ({
     user,
     workspace,
@@ -210,17 +217,25 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     };
   }, [refreshInboxUnreadCount, workspace.slug]);
 
+  // The tab's title is the page's name, as Linear's ("Members", "Team › Ads Manager").
+  const { teams: titleTeams } = useTeams(workspace.id, 'all');
   useEffect(() => {
-    document.title = activeTab === 'inbox'
-      ? (inboxBadge > 0 ? `Inbox (${inboxBadge})` : 'Inbox')
-      : activeTab === 'search'
-        ? searchPageTitle(window.location.search)
-        // An account's page names the account itself once it has loaded.
-        : activeTab === 'accounts'
-          ? (route.tab === 'accounts' && route.recordId ? document.title : 'Ad accounts')
-          : `${workspace.name} — Buyerly`;
+    // An account's page and a document name their record themselves once it has loaded.
+    if ((activeTab === 'accounts' || activeTab === 'team') && route.recordId) return;
+    document.title = activeTab === 'search'
+      ? searchPageTitle(window.location.search)
+      : pageTitle({
+        activeTab,
+        activeTeamKey,
+        settingsSection,
+        settingsTeamPath,
+        teamName: (key) => titleTeams?.find((team) => team.key === key)?.name ?? null,
+        teamPage: route.tab === 'team' ? route.teamPage : undefined,
+        rulesPage: route.tab === 'rules' ? route.rulesPage : undefined,
+        inboxBadge,
+      });
     // The search page's title follows its query, which only the address holds.
-  }, [activeTab, inboxBadge, navigationKey, workspace.name]);
+  }, [activeTab, activeTeamKey, inboxBadge, navigationKey, route.recordId, route.rulesPage, route.tab, route.teamPage, settingsSection, settingsTeamPath, titleTeams]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

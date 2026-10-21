@@ -264,14 +264,14 @@ const navigate = (page, path) => page.evaluate((next) => {
 }, path);
 
 /**
- * The workspace sets its title in an effect declared after the one that
- * registers its tools, so once the title shows, the old workspace's tools are
- * gone and the new ones have been offered.
+ * The app marks the open workspace on <html data-workspace> in an effect
+ * declared after the one that registers its tools, so once the mark shows, the
+ * old workspace's tools are gone and the new ones have been offered.
  */
 async function openWorkspace(page, path) {
   if (page.url() === 'about:blank') await page.goto(`${origin}${path}`);
   else await navigate(page, path);
-  await page.waitForFunction((slug) => document.title === `${slug} — Buyerly`, path.split('/')[1]);
+  await page.waitForFunction((slug) => document.documentElement.dataset.workspace === slug, path.split('/')[1]);
   await page.getByRole('main').waitFor();
 }
 
