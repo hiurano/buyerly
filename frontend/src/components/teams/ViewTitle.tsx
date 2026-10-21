@@ -8,7 +8,7 @@ import type { TeamItem } from '@/lib/teams';
  * "Team › Issues": the team's icon and name, which open the team, then the page.
  */
 export const ViewTitle: React.FC<{ title: string; team?: TeamItem | null }> = ({ title, team }) => {
-  const openTeamSettings = useAppStore((state) => state.openTeamSettings);
+  const setActiveTeamKey = useAppStore((state) => state.setActiveTeamKey);
   const setActiveTab = useAppStore((state) => state.setActiveTab);
   const heading = (
     <h2 className="overflow-hidden whitespace-nowrap text-[13px] font-medium text-[var(--text-secondary)]">{title}</h2>
@@ -20,8 +20,8 @@ export const ViewTitle: React.FC<{ title: string; team?: TeamItem | null }> = ({
         type="button"
         className="team-breadcrumb-link"
         onClick={() => {
-          openTeamSettings(team.key);
-          setActiveTab('preferences');
+          setActiveTeamKey(team.key);
+          setActiveTab('team');
         }}
       >
         <TeamIcon size={16} className="mr-[6px]" />

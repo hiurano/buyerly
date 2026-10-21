@@ -53,7 +53,7 @@ export const WorkspaceTeamsView: React.FC = () => {
 
   const openTeam = (team: TeamItem) => {
     setActiveTeamKey(team.key);
-    setActiveTab('campaigns');
+    setActiveTab('team');
   };
 
   /** Linear's Join and Leave: anyone may put themselves on a team, or take themselves off. */

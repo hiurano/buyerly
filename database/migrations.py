@@ -88,6 +88,8 @@ POST_BASELINE_TABLES: set[str] = {
     "rule_entity_states",
     # Added by the teams migration (0036).
     "team_accounts",
+    # Added by the team documents migration (0043).
+    "team_documents",
     "team_members",
     "teams",
     "telegram_connections",

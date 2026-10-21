@@ -36,3 +36,20 @@ class TeamMembersRequest(BaseModel):
 
 class TeamAccountsRequest(BaseModel):
     account_ids: List[int] = Field(..., min_length=1, max_length=1000)
+
+
+class TeamDocumentItem(BaseModel):
+    """A document on a team's Home (Linear's team Documents)."""
+    id: int
+    team_id: int
+    title: str = ""
+    content: str = ""
+    created_by_user_id: Optional[int] = None
+    updated_by_user_id: Optional[int] = None
+    created_at: str
+    updated_at: str
+
+
+class SaveTeamDocumentRequest(BaseModel):
+    title: Optional[str] = Field(None, max_length=255)
+    content: Optional[str] = Field(None, max_length=200_000)

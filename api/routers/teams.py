@@ -20,13 +20,15 @@ from api.auth import get_current_user
 from api.deps import _utc_iso, get_user_workspace_member
 from api.schemas import (
     CreateTeamRequest,
+    SaveTeamDocumentRequest,
     TeamAccountsRequest,
+    TeamDocumentItem,
     TeamItem,
     TeamMembersRequest,
     UpdateTeamRequest,
 )
 from database.db import async_session_maker
-from database.models import Account, Team, TeamAccount, TeamMember, User, WorkspaceMember
+from database.models import Account, Team, TeamAccount, TeamDocument, TeamMember, User, WorkspaceMember
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Teams"])
@@ -427,3 +429,114 @@ async def remove_team_account(
             raise HTTPException(status_code=404, detail="This ad account is not on the team")
         await session.commit()
         return await _team_item(session, team, user)
+
+
+# --- Team documents: Linear's Documents tab on a team's Home -------------------------------------
+
+
+def _require_writer(member: WorkspaceMember) -> None:
+    """Everyone but a viewer writes the team's documents, as anyone in Linear edits a team's docs."""
+    if member.role == "viewer":
+        raise HTTPException(status_code=403, detail="Viewers can't change documents")
+
+
+def _document_item(document: TeamDocument) -> TeamDocumentItem:
+    return TeamDocumentItem(
+        id=document.id,
+        team_id=document.team_id,
+        title=document.title or "",
+        content=document.content or "",
+        created_by_user_id=document.created_by_user_id,
+        updated_by_user_id=document.updated_by_user_id,
+        created_at=_utc_iso(document.created_at),
+        updated_at=_utc_iso(document.updated_at),
+    )
+
+
+async def _load_document(session, team: Team, document_id: int) -> TeamDocument:
+    document = (
+        await session.execute(
+            select(TeamDocument).where(TeamDocument.id == document_id, TeamDocument.team_id == team.id)
+        )
+    ).scalar_one_or_none()
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return document
+
+
+@router.get("/workspaces/{workspace_id}/teams/{team_id}/documents", response_model=List[TeamDocumentItem])
+async def list_team_documents(workspace_id: int, team_id: int, user: User = Depends(get_current_user)):
+    """The team's documents, the last edited first, as Linear's list."""
+    async with async_session_maker() as session:
+        await _workspace_role(session, user, workspace_id)
+        team = await _load_team(session, workspace_id, team_id)
+        documents = (
+            await session.execute(
+                select(TeamDocument)
+                .where(TeamDocument.team_id == team.id)
+                .order_by(TeamDocument.updated_at.desc(), TeamDocument.id.desc())
+            )
+        ).scalars().all()
+        return [_document_item(document) for document in documents]
+
+
+@router.post("/workspaces/{workspace_id}/teams/{team_id}/documents", response_model=TeamDocumentItem, status_code=201)
+async def create_team_document(
+    workspace_id: int,
+    team_id: int,
+    req: SaveTeamDocumentRequest,
+    user: User = Depends(get_current_user),
+):
+    async with async_session_maker() as session:
+        _require_writer(await _workspace_role(session, user, workspace_id))
+        team = await _load_team(session, workspace_id, team_id)
+        document = TeamDocument(
+            team_id=team.id,
+            title=(req.title or "").strip(),
+            content=req.content or "",
+            created_by_user_id=user.id,
+            updated_by_user_id=user.id,
+        )
+        session.add(document)
+        await session.commit()
+        await session.refresh(document)
+        return _document_item(document)
+
+
+@router.patch("/workspaces/{workspace_id}/teams/{team_id}/documents/{document_id}", response_model=TeamDocumentItem)
+async def update_team_document(
+    workspace_id: int,
+    team_id: int,
+    document_id: int,
+    req: SaveTeamDocumentRequest,
+    user: User = Depends(get_current_user),
+):
+    async with async_session_maker() as session:
+        _require_writer(await _workspace_role(session, user, workspace_id))
+        team = await _load_team(session, workspace_id, team_id)
+        document = await _load_document(session, team, document_id)
+        if req.title is not None:
+            document.title = req.title.strip()
+        if req.content is not None:
+            document.content = req.content
+        document.updated_by_user_id = user.id
+        document.updated_at = _now()
+        await session.commit()
+        await session.refresh(document)
+        return _document_item(document)
+
+
+@router.delete("/workspaces/{workspace_id}/teams/{team_id}/documents/{document_id}")
+async def delete_team_document(
+    workspace_id: int,
+    team_id: int,
+    document_id: int,
+    user: User = Depends(get_current_user),
+):
+    async with async_session_maker() as session:
+        _require_writer(await _workspace_role(session, user, workspace_id))
+        team = await _load_team(session, workspace_id, team_id)
+        document = await _load_document(session, team, document_id)
+        await session.delete(document)
+        await session.commit()
+        return {"status": "ok"}

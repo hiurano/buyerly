@@ -29,6 +29,8 @@ export type Route =
       rulesPage?: RulesPage;
       /** Linear's team pages: Ads Manager, Ad accounts and Rules under /team/<KEY>/, for that team's ad accounts. */
       teamKey?: string;
+      /** With tab 'team': the tab of the team's Home (/team/<KEY>/overview, …/documents, …/members). */
+      teamPage?: TeamHomePage;
     }
   | { kind: 'unknown' };
 
@@ -82,9 +84,15 @@ export function parseRoute(location: Location = window.location): Route {
   if (SYSTEM_ROOTS.has(parts[0])) return { kind: 'unknown' };
 
   const workspace = parts[0];
-  if (parts[1] === 'team' && parts.length >= 4) {
-    // /<workspace>/team/<KEY>/<page>: the workspace page of that name, for the team.
+  if (parts[1] === 'team' && parts.length >= 3) {
     const teamKey = parts[2].toUpperCase();
+    // The team's Home, as Linear's: Overview, Documents (and one document), Members.
+    if (parts.length === 3) return { kind: 'workspace', workspace, tab: 'team', teamKey, teamPage: 'overview' };
+    const homePage = TEAM_HOME_PAGES.find((page) => page === parts[3]);
+    if (homePage && (parts.length === 4 || (homePage === 'documents' && parts.length === 5))) {
+      return { kind: 'workspace', workspace, tab: 'team', teamKey, teamPage: homePage, recordId: parts[4] };
+    }
+    // /<workspace>/team/<KEY>/<page>: the workspace page of that name, for the team.
     if (!TEAM_SCOPED_ROOTS.includes(parts[3])) return { kind: 'unknown' };
     const inner = parseRoute({ pathname: `/${[workspace, ...parts.slice(3)].join('/')}`, search: location.search } as Location);
     return inner.kind === 'workspace' ? { ...inner, teamKey } : inner;
@@ -173,6 +181,14 @@ export const SETTINGS_PATHS = {
   security: 'account/security',
 } as const satisfies Partial<Record<SettingsSection, string>>;
 
+/** The tabs of a team's Home. */
+export const TEAM_HOME_PAGES = ['overview', 'documents', 'members'] as const;
+export type TeamHomePage = typeof TEAM_HOME_PAGES[number];
+
+/** A team's Home tab, or one of its documents. */
+export const teamHomePath = (workspace: string, teamKey: string, page: TeamHomePage = 'overview', documentId?: number | string) =>
+  `/${workspace}/team/${teamKey}/${page}${documentId !== undefined ? `/${documentId}` : ''}`;
+
 /** Workspace pages a team has its own copy of, as Linear's team Issues and Projects. */
 const TEAM_SCOPED_ROOTS = ['ads-manager', 'accounts', 'rules'];
 
@@ -197,6 +213,7 @@ export function pathForTab(
   rulesPage?: RulesPage,
   teamKey: string | null = null,
 ): string {
+  if (teamKey && tab === 'team') return teamHomePath(workspace, teamKey);
   if (teamKey && (tab === 'campaigns' || tab === 'accounts' || tab === 'rules')) {
     return pathForTab(`${workspace}/team/${teamKey}`, tab, entity);
   }
