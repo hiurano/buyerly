@@ -11,6 +11,7 @@ import { OpenPalette } from '@/components/command/OpenPalette';
 import { SearchView } from '@/components/search/SearchView';
 import { WorkspaceMembersView } from '@/components/workspace/WorkspaceMembersView';
 import { WorkspaceTeamsView } from '@/components/workspace/WorkspaceTeamsView';
+import { TeamHomeView } from '@/components/teams/TeamHomeView';
 import { searchPageTitle } from '@/lib/search';
 import { WorkspaceSwitcher } from '@/components/command/WorkspaceSwitcher';
 import { PreferencesView } from '@/components/preferences/PreferencesView';
@@ -186,7 +187,10 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     const desiredPath = pathForTab(
       workspace.slug, activeTab, campaignFilterTab, settingsSection, settingsTeamPath, undefined, activeTeamKey,
     );
-    if (window.location.pathname !== desiredPath && !((activeTab === 'inbox' || activeTab === 'accounts') && window.location.pathname.startsWith(`${desiredPath}/`))) {
+    // A record under the page (a notification, an account) and the team Home's other tabs keep their address.
+    const underPage = ((activeTab === 'inbox' || activeTab === 'accounts') && window.location.pathname.startsWith(`${desiredPath}/`))
+      || (activeTab === 'team' && activeTeamKey !== null && window.location.pathname.startsWith(`/${workspace.slug}/team/${activeTeamKey}/`));
+    if (window.location.pathname !== desiredPath && !underPage) {
       const campaignQuery = activeTab === 'campaigns' && window.location.pathname.includes('/ads-manager/')
         ? window.location.search : '';
       ownPath.current = desiredPath;
@@ -342,6 +346,9 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
                     revealId={route.tab === 'rules' ? route.recordId : undefined}
                     navigationKey={navigationKey}
                   />
+                )}
+                {activeTab === 'team' && route.tab === 'team' && (
+                  <TeamHomeView page={route.teamPage ?? 'overview'} documentId={route.recordId} navigate={navigate} />
                 )}
                 {activeTab === 'members' && <WorkspaceMembersView />}
                 {activeTab === 'teams' && <WorkspaceTeamsView />}

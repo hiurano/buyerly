@@ -1237,6 +1237,262 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
   margin-left: -4px;
 }
 
+/* Linear's team Overview, measured live (21.10): the page 37px in and 32px under the tabs,
+   a 36px icon tile beside the 24px/600 name, Members and Go to in a 212px column on the right. */
+.team-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 212px;
+  gap: 34px;
+  align-content: start;
+  width: 100%;
+  min-width: 0;
+  padding: 32px 46px 48px 37px;
+  overflow-y: auto;
+  container-type: inline-size;
+  user-select: text;
+}
+
+@media (max-width: 900px) {
+  .team-overview {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 24px 20px 40px;
+  }
+
+  .team-overview__aside {
+    order: -1;
+  }
+}
+
+.team-overview__heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.team-overview__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background-color: color-mix(in lch, var(--action-primary) 12.5%, transparent);
+}
+
+.team-overview__title {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+}
+
+.team-overview__description {
+  display: block;
+  width: 100%;
+  margin: 14px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 15px;
+  font-weight: 450;
+  line-height: 23px;
+  resize: none;
+  outline: none;
+}
+
+.team-overview__description--input::placeholder {
+  color: var(--text-muted);
+}
+
+.team-overview__resources {
+  margin-top: 36px;
+}
+
+.team-overview__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+}
+
+.team-overview__section-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.team-overview__placeholder {
+  margin: 11px 0 0;
+  color: var(--text-muted);
+  font-size: 15px;
+  font-weight: 450;
+  line-height: 23px;
+}
+
+.team-overview__resource-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+}
+
+.team-resource {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: default;
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .team-resource:hover {
+    background-color: var(--data-row-hover-bg);
+  }
+}
+
+.team-overview__aside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-top: 16px;
+}
+
+.team-overview__aside-label {
+  color: var(--text-tertiary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.team-overview__aside-label--spaced {
+  margin-top: 24px;
+}
+
+.team-overview__faces {
+  display: flex;
+  align-items: center;
+  margin: 10px 0 0 -4px;
+  padding: 4px 8px 4px 4px;
+  border-radius: 9999px;
+  cursor: default;
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .team-overview__faces:hover {
+    background-color: var(--item-hover-bg);
+  }
+}
+
+.team-overview__links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0 0 -7px;
+}
+
+.team-overview__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 5px 8px 5px 6px;
+  border-radius: 9999px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: default;
+}
+
+.team-overview__link-icon {
+  display: inline-flex;
+  color: var(--text-tertiary);
+}
+
+.team-overview__link-arrow {
+  margin-left: 3px;
+  color: var(--text-primary);
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .team-overview__link:hover {
+    background-color: var(--item-hover-bg);
+    color: var(--text-primary);
+  }
+}
+
+/* One team document: Linear's centered page, a 24px/600 title over a 15px body. */
+.team-document {
+  width: 100%;
+  min-width: 0;
+  overflow-y: auto;
+  user-select: text;
+}
+
+.team-document__inner {
+  display: flex;
+  flex-direction: column;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 32px 80px;
+}
+
+.team-document__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 450;
+}
+
+.team-document__title,
+.team-document__body {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  resize: none;
+  outline: none;
+}
+
+.team-document__title {
+  margin-top: 20px;
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+}
+
+.team-document__body {
+  min-height: 240px;
+  margin-top: 14px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 15px;
+  font-weight: 450;
+  line-height: 23px;
+}
+
+.team-document__title::placeholder,
+.team-document__body::placeholder {
+  color: var(--text-muted);
+}
+
 /* Exact Linear Sidebar Unread Badge (18px Pill, Tabular Nums) */
 .linear-sidebar-badge {
   display: inline-flex;

@@ -99,3 +99,21 @@ export function useActiveTeam(workspaceId: number) {
 export function teamAccountIds(team: TeamItem, accounts: { id?: number; account_id: string }[]): Set<string> {
   return new Set(accounts.filter((account) => account.id !== undefined && team.account_ids.includes(account.id)).map((account) => account.account_id));
 }
+
+/** A document on a team's Home (Linear's team Documents). */
+export interface TeamDocument {
+  id: number;
+  team_id: number;
+  title: string;
+  content: string;
+  created_by_user_id: number | null;
+  updated_by_user_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const teamDocumentsPath = (workspaceId: number, teamId: number, documentId?: number) =>
+  teamsPath(workspaceId, `/${teamId}/documents${documentId !== undefined ? `/${documentId}` : ''}`);
+
+/** A document's name in lists and headers; Linear shows "Untitled" for one without a title. */
+export const documentTitle = (document: Pick<TeamDocument, 'title'>) => document.title.trim() || 'Untitled';
