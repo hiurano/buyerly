@@ -20,7 +20,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
-import { LinearPlusIcon, LinearProjectCubeIcon, LinearStatusCircleIcon } from '@/icons/LinearIcons';
+import { LinearPlusIcon, LinearWalletIcon, LinearStatusCircleIcon } from '@/icons/LinearIcons';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { AccountRowMenu, type AccountRowActions } from './AccountRow';
 import { AccountStatusLabel, ConnectionProblemIcon, accountMoney } from './AccountParts';
@@ -308,7 +308,7 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
   const main = (
     <div className="min-w-0">
       <span className="flex h-9 w-9 items-center justify-center rounded-[8px] text-[var(--text-secondary)]" aria-hidden="true">
-        <LinearProjectCubeIcon size={22} />
+        <LinearWalletIcon size={22} />
       </span>
       {canEdit ? (
         <input

@@ -5,7 +5,7 @@ import {
   LinearInboxIcon,
   LinearMetaIcon,
   LinearBoltIcon,
-  LinearProjectCubeIcon,
+  LinearWalletIcon,
 } from '@/icons/LinearIcons';
 import { goToShortcut } from '@/lib/shortcuts';
 import { openAppPath, pathForTab } from '@/lib/routing';
@@ -192,7 +192,7 @@ export const Sidebar: React.FC = () => {
                   }}
                   className="flex shrink-0 items-center justify-center"
                 >
-                  <LinearProjectCubeIcon size={14} />
+                  <LinearWalletIcon size={14} />
                 </span>
                 <span
                   style={{
