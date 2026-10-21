@@ -96,12 +96,16 @@ Settings → Administration → Teams, как в Linear (#371). Команда �
 | `POST /api/workspaces/{workspace_id}/teams/{team_id}/retire` | — | Retire: команда уходит из Active в Retired, участники и кабинеты сохраняются |
 | `POST /api/workspaces/{workspace_id}/teams/{team_id}/restore` | — | вернуть архивную в Active или удалённую — как была; 409, если её имя или идентификатор уже заняты |
 | `DELETE /api/workspaces/{workspace_id}/teams/{team_id}` | — | удалить; 30 дней её можно восстановить, ответ — `restorable_until` |
-| `POST /api/workspaces/{workspace_id}/teams/{team_id}/members` | `user_ids` | добавить участников воркспейса (уже состоящих пропускает; чужих — 400) |
+| `POST /api/workspaces/{workspace_id}/teams/{team_id}/members` | `user_ids` | добавить участников воркспейса (уже состоящих пропускает; чужих — 400); себя добавить может любой участник (Join a team), других — `owner` и `admin` |
 | `DELETE /api/workspaces/{workspace_id}/teams/{team_id}/members/{member_user_id}` | — | убрать из команды; себя может убрать любой участник команды (Leave team) |
 | `POST /api/workspaces/{workspace_id}/teams/{team_id}/accounts` | `account_ids` | добавить кабинеты этого воркспейса (`accounts.id`; чужие — 400) |
 | `DELETE /api/workspaces/{workspace_id}/teams/{team_id}/accounts/{account_pk}` | — | убрать кабинет из команды |
+| `GET /api/workspaces/{workspace_id}/teams/{team_id}/documents` | — | документы команды (Documents на её Home), последние изменённые первыми; `TeamDocumentItem`: `id`, `team_id`, `title`, `content` (Markdown), `created_by_user_id`, `updated_by_user_id`, `created_at`, `updated_at` |
+| `POST /api/workspaces/{workspace_id}/teams/{team_id}/documents` | `title?`, `content?` | создать документ (201); пишут все, кроме `viewer` |
+| `PATCH /api/workspaces/{workspace_id}/teams/{team_id}/documents/{document_id}` | `title?`, `content?` | изменить документ; документ другой команды — 404 |
+| `DELETE /api/workspaces/{workspace_id}/teams/{team_id}/documents/{document_id}` | — | удалить документ |
 
-Ушедший или исключённый из воркспейса участник пропадает из всех его команд; удалённый кабинет — тоже.
+Ушедший или исключённый из воркспейса участник пропадает из всех его команд; удалённый кабинет — тоже. Новый воркспейс, как в Linear, сразу получает команду со своим именем (идентификатор — первые три буквы имени); новые участники и подключённые кабинеты попадают в его первую активную команду.
 
 ## Приглашения (Invites)
 
