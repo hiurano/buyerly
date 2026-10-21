@@ -5,7 +5,7 @@ import {
   LinearDataMetricCell,
   type LinearDataListColumn,
 } from '@/ui/LinearDataList';
-import { LinearProjectCubeIcon, LinearDotsIcon } from '@/icons/LinearIcons';
+import { LinearWalletIcon, LinearDotsIcon } from '@/icons/LinearIcons';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -131,7 +131,7 @@ export const AccountRow: React.FC<AccountRowProps> = ({ account, columns, proper
         {/* A phone keeps the width for the name. */}
         {!phone && (
           <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[var(--text-tertiary)]" aria-hidden="true">
-            <LinearProjectCubeIcon size={14} />
+            <LinearWalletIcon size={14} />
           </span>
         )}
         <span className="flex min-w-0 items-center gap-1.5">
