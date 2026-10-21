@@ -1000,6 +1000,21 @@ class TeamAccount(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
+class TeamDocument(Base):
+    """A document on a team's Home, as Linear's team Documents: a title and a Markdown body."""
+
+    __tablename__ = "team_documents"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    team_id = Column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = Column(String(255), default="", nullable=False)
+    content = Column(Text, default="", nullable=False)
+    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    updated_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
+
 class SummarySnapshot(Base):
     """Durable, workspace/owner-isolated history of successful dashboard refreshes."""
 

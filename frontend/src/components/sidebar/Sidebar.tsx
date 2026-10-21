@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { SidebarHeader } from './SidebarHeader';
 import { selectInboxBadgeCount, useAppStore } from '@/store/useAppStore';
 import {
+  LinearHomeIcon,
   LinearInboxIcon,
   LinearMembersIcon,
   LinearMetaIcon,
@@ -19,8 +20,9 @@ import { SidebarLink, SidebarSection, SidebarTeam } from './SidebarSections';
 import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
 import { SidebarBackdrop, useSidebarDrawer, useSidebarPeek } from './SidebarDrawer';
 
-/** A team's pages, as Linear's Issues and Projects: Ads Manager, Ad accounts and Rules. */
+/** A team's pages, as Linear's: its Home, then Ads Manager, Ad accounts and Rules (Linear's Issues and Projects). */
 const TEAM_PAGES: { tab: AppTab; label: string; icon: React.ReactNode }[] = [
+  { tab: 'team', label: 'Home', icon: <LinearHomeIcon size={14} /> },
   { tab: 'campaigns', label: 'Ads Manager', icon: <LinearMetaIcon size={14} /> },
   { tab: 'accounts', label: 'Ad accounts', icon: <LinearWalletIcon size={14} /> },
   { tab: 'rules', label: 'Rules', icon: <LinearBoltIcon size={14} /> },

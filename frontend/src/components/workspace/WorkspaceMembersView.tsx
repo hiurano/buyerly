@@ -105,7 +105,7 @@ export const WorkspaceMembersView: React.FC = () => {
                   title={team.name}
                   onClick={() => {
                     setActiveTeamKey(team.key);
-                    setActiveTab('campaigns');
+                    setActiveTab('team');
                   }}
                 >
                   <TeamIcon size={14} />

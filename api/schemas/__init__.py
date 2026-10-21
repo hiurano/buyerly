@@ -82,6 +82,8 @@ from api.schemas.teams import (
     UpdateTeamRequest,
     TeamMembersRequest,
     TeamAccountsRequest,
+    TeamDocumentItem,
+    SaveTeamDocumentRequest,
 )
 
 __all__ = [
@@ -151,4 +153,6 @@ __all__ = [
     "UpdateTeamRequest",
     "TeamMembersRequest",
     "TeamAccountsRequest",
+    "TeamDocumentItem",
+    "SaveTeamDocumentRequest",
 ]

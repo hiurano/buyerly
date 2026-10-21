@@ -136,6 +136,34 @@ class TestTeams(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(teams['FIR']['account_ids'], [self.account_id])
         self.assertEqual(teams['SEC']['account_ids'], [])
 
+    async def test_team_documents(self):
+        team = await self.create()
+        docs = self.url(f"/{team['id']}/documents")
+        # Linear's team Documents: any member writes them; the last edited comes first.
+        first = await self.client.post(docs, json={'title': '  Launch plan ', 'content': '# Goals'}, headers=self.buyer)
+        self.assertEqual(first.status_code, 201, first.text)
+        self.assertEqual((first.json()['title'], first.json()['content']), ('Launch plan', '# Goals'))
+        second = await self.client.post(docs, json={}, headers=self.owner)
+        self.assertEqual(second.json()['title'], '')
+        res = await self.client.patch(f"{docs}/{first.json()['id']}", json={'content': '# Goals\n- CPL under 5'},
+                                      headers=self.owner)
+        self.assertEqual(res.status_code, 200, res.text)
+        self.assertEqual(res.json()['title'], 'Launch plan')
+        self.assertEqual(res.json()['updated_by_user_id'], self.owner_id)
+        listed = (await self.client.get(docs, headers=self.buyer)).json()
+        self.assertEqual([item['id'] for item in listed], [first.json()['id'], second.json()['id']])
+
+        # Outsiders find nothing; a document of another team is not found under this one.
+        self.assertEqual((await self.client.get(docs, headers=self.outsider)).status_code, 404)
+        other = await self.create('Growth', 'GRO')
+        res = await self.client.patch(self.url(f"/{other['id']}/documents/{first.json()['id']}"), json={'title': 'X'},
+                                      headers=self.owner)
+        self.assertEqual(res.status_code, 404)
+
+        res = await self.client.delete(f"{docs}/{second.json()['id']}", headers=self.buyer)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len((await self.client.get(docs, headers=self.owner)).json()), 1)
+
     async def test_only_owner_and_admin_manage_and_outsiders_see_nothing(self):
         team = await self.create()
         res = await self.client.post(self.url(), json={'name': 'B', 'key': 'B'}, headers=self.buyer)

@@ -1042,6 +1042,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertLess(sidebar.index('label="Members"'), sidebar.index('label="Ad accounts"'))
         self.assertLess(sidebar.index('label="Ad accounts"'), sidebar.index('label="Teams"'))
         self.assertLess(sidebar.index('title="Workspace"'), sidebar.index('title="Your teams"'))
+        self.assertLess(sidebar.index("label: 'Home'"), sidebar.index("label: 'Ads Manager'"))
         self.assertLess(sidebar.index("label: 'Ads Manager'"), sidebar.index("label: 'Rules'"))
         self.assertIn("return `/${workspace}/accounts/${encodeURIComponent(result.id)}`", search)
         self.assertIn("<AccountsView", self.app)
