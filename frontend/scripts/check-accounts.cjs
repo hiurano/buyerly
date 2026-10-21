@@ -36,10 +36,10 @@ const accounts = [
 ];
 const teams = [{ id: 10, name: 'Media', account_ids: [1, 3] }];
 
-// Defaults: list, no grouping, Name A→Z, the four columns a buyer needs.
+// Defaults: list, no grouping, Name A→Z, the columns a buyer needs, Lead as Linear's Projects.
 assert.equal(ACCOUNTS_VIEW_DEFAULTS.grouping, 'none');
 assert.equal(ACCOUNTS_VIEW_DEFAULTS.ordering, 'name');
-assert.deepEqual(Object.keys(ACCOUNTS_VIEW_DEFAULTS.properties), ['status', 'spend', 'leads', 'rules']);
+assert.deepEqual(Object.keys(ACCOUNTS_VIEW_DEFAULTS.properties), ['status', 'lead', 'spend', 'leads', 'rules']);
 
 // The buyer's own name wins over Meta's; Meta's status reads in words.
 assert.equal(accountName(accounts[0]), 'Bravo');
