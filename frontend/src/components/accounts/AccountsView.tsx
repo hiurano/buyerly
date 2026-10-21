@@ -220,7 +220,8 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
         />
       );
     }
-    if (accounts.length === 0 && team) {
+    // With none in the workspace yet, the team shows the workspace's own empty state and Add account.
+    if (accounts.length === 0 && team && data.accounts.length > 0) {
       return (
         <DataState
           title="No ad accounts in this team"

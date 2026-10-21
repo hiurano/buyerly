@@ -1237,16 +1237,17 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
   margin-left: -4px;
 }
 
-/* Linear's team Overview, measured live (21.10): the page 37px in and 32px under the tabs,
-   a 36px icon tile beside the 24px/600 name, Members and Go to in a 212px column on the right. */
+/* Linear's team Overview, measured live at 1280px (21.10): the page 32px in and 24px under
+   the tabs' toolbar, a 36px icon tile 12px before the 24px/500 name, Members and Go to in a 212px
+   column 32px to the right of the page and 51px from the canvas edge. */
 .team-overview {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 212px;
-  gap: 34px;
+  gap: 32px;
   align-content: start;
   width: 100%;
   min-width: 0;
-  padding: 32px 46px 48px 37px;
+  padding: 24px 51.5px 48px 32.5px;
   overflow-y: auto;
   container-type: inline-size;
   user-select: text;
@@ -1266,7 +1267,7 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
 .team-overview__heading {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 12.5px;
 }
 
 .team-overview__icon {
@@ -1288,14 +1289,14 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
   text-overflow: ellipsis;
   color: var(--text-primary);
   font-size: 24px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 32px;
 }
 
 .team-overview__description {
   display: block;
   width: 100%;
-  margin: 14px 0 0;
+  margin: 20px 0 0;
   padding: 0;
   border: 0;
   background: transparent;
@@ -1312,7 +1313,7 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
 }
 
 .team-overview__resources {
-  margin-top: 36px;
+  margin-top: 34px;
 }
 
 .team-overview__section-header {
@@ -1378,13 +1379,13 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
 }
 
 .team-overview__aside-label--spaced {
-  margin-top: 24px;
+  margin-top: 22.5px;
 }
 
 .team-overview__faces {
   display: flex;
   align-items: center;
-  margin: 10px 0 0 -4px;
+  margin: 13.5px 0 0 -4px;
   padding: 4px 8px 4px 4px;
   border-radius: 9999px;
   cursor: default;
@@ -1422,9 +1423,15 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
   color: var(--text-tertiary);
 }
 
+/* Linear shows the chevron only on the link under the cursor or in focus. */
 .team-overview__link-arrow {
   margin-left: 3px;
   color: var(--text-primary);
+  opacity: 0;
+}
+
+.team-overview__link:focus-visible .team-overview__link-arrow {
+  opacity: 1;
 }
 
 @media (any-hover: hover) and (any-pointer: fine) {
@@ -1432,7 +1439,64 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
     background-color: var(--item-hover-bg);
     color: var(--text-primary);
   }
+
+  .team-overview__link:hover .team-overview__link-arrow {
+    opacity: 1;
+  }
 }
+
+@media (hover: none) and (pointer: coarse) {
+  .team-overview__link-arrow {
+    opacity: 1;
+  }
+}
+
+/* Linear's empty Documents tab, measured live (21.10): a 280px column in the middle of the
+   page, the 74px illustration, a 15px/600 title 24px under it, the text 8px lower, the button 16px. */
+.documents-empty {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 88px 16px;
+  overflow-y: auto;
+}
+
+.documents-empty__column {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 280px;
+  max-width: 100%;
+}
+
+.documents-empty__title {
+  margin-top: 24px;
+  color: var(--text-secondary);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 23px;
+}
+
+.documents-empty__detail {
+  margin-top: 8px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  font-weight: 450;
+  line-height: normal;
+}
+
+.documents-empty__action {
+  margin-top: 16px;
+  padding: 0 10px;
+}
+
+.documents-illustration__paper { fill: var(--bg-canvas); }
+.documents-illustration__ink-1 { fill: var(--illustration-ink-1); }
+.documents-illustration__ink-2 { fill: var(--illustration-ink-2); }
+.documents-illustration__ink-3 { fill: var(--illustration-ink-3); }
+.documents-illustration__ink-4 { fill: var(--illustration-ink-4); }
 
 /* One team document: Linear's centered page, a 24px/600 title over a 15px body. */
 .team-document {
