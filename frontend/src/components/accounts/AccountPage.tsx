@@ -93,7 +93,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ accountId, navigate, n
   }, [accountId, navigationKey]);
 
   useEffect(() => {
-    if (account) document.title = `${accountName(account)} — Buyerly`;
+    if (account) document.title = accountName(account);
   }, [account]);
 
   const actions: AccountRowActions = {

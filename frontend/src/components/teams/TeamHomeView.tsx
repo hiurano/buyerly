@@ -474,6 +474,11 @@ const TeamDocumentEditor: React.FC<TeamDocumentEditorProps> = ({ team, document,
   flushRef.current = flush;
   useEffect(() => () => void flushRef.current(), []);
 
+  // The tab is named after the document, as Linear's.
+  useEffect(() => {
+    window.document.title = documentTitle({ title });
+  }, [title]);
+
   // The body grows with its text, as Linear's editor.
   useEffect(() => {
     const body = bodyRef.current;

@@ -103,7 +103,7 @@ try {
       // Alpha's rules are still loading when the user leaves for Beta.
       await page.goto(`${origin}/alpha/rules`);
       await page.getByRole('button', { name: 'Alpha Workspace Menu' }).waitFor();
-      await page.waitForFunction(() => document.title === 'Alpha — Buyerly');
+      await page.waitForFunction(() => document.documentElement.dataset.workspace === 'alpha' && document.title === 'Rules');
       assert.equal(delayedAlphaRules.length > 0, true);
 
       // Menu → Switch workspace: the account's email, its workspaces numbered 1…N with
