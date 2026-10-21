@@ -160,8 +160,8 @@ try {
         // Navigation closes it.
         await page.keyboard.press('Control+Backslash');
         await settled();
-        await sidebar.getByRole('button', { name: 'Rules', exact: true }).click();
-        await page.waitForURL(`${origin}/acme/rules`);
+        await sidebar.getByRole('button', { name: 'Ad accounts', exact: true }).click();
+        await page.waitForURL(`${origin}/acme/accounts`);
         await settled();
         assert.ok(await isClosed(sidebar));
 
@@ -218,8 +218,8 @@ try {
       // Navigation closes it.
       await menu.click();
       await settled();
-      await sidebar.getByRole('button', { name: 'Rules', exact: true }).click();
-      await page.waitForURL(`${origin}/acme/rules`);
+      await sidebar.getByRole('button', { name: 'Ad accounts', exact: true }).click();
+      await page.waitForURL(`${origin}/acme/accounts`);
       await settled();
       assert.ok(await isClosed(sidebar));
       assert.ok(await menu.isVisible());

@@ -48,6 +48,9 @@ import { takeRecordActions } from '@/components/command/OpenPalette';
 import { useRowSelection, type SelectionAction } from '@/ui/useRowSelection';
 import { useRevealRow } from '@/ui/useRevealRow';
 import { openRecentlyDeletedRules } from '@/lib/routing';
+import { teamAccountIds, useActiveTeam } from '@/lib/teams';
+import { useWorkspaceSession } from '@/lib/workspaceSession';
+import { ViewTitle } from '@/components/teams/ViewTitle';
 
 interface OpenFilterMenu {
   mode: FilterMenuMode;
@@ -84,7 +87,7 @@ interface RulesViewProps {
 
 export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey }) => {
   const {
-    rules,
+    rules: workspaceRules,
     ruleLabels,
     ruleAccounts,
     ruleFilterTab,
@@ -106,6 +109,19 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
     rulesCollapsedGroups,
     toggleRulesGroupCollapse,
   } = useAppStore();
+
+  // A team's Rules: the rules on the team's ad accounts, and those on none yet, so a new rule shows.
+  const { workspace } = useWorkspaceSession();
+  const activeTeam = useActiveTeam(workspace.id);
+  const rules = useMemo(() => {
+    const team = activeTeam.team;
+    if (!team) return workspaceRules;
+    const teamAccounts = teamAccountIds(team, ruleAccounts);
+    return workspaceRules.filter((rule) => (
+      rule.preset.attached_account_ids.length === 0
+      || rule.preset.attached_account_ids.some((accountId) => teamAccounts.has(accountId))
+    ));
+  }, [activeTeam.team, ruleAccounts, workspaceRules]);
 
   // The view and its filters are saved per member on the server (#385); filters also ride in the address.
   const {
@@ -368,19 +384,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
           {/* Left: Clean Title */}
           <div className="flex items-center">
             <SidebarCollapsedNavigation />
-            <h2
-              style={{
-                fontSize: '13px',
-                fontWeight: 500,
-                color: 'var(--text-secondary)',
-                margin: 0,
-                padding: 0,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-              }}
-            >
-              Rules
-            </h2>
+            <ViewTitle title="Rules" team={activeTeam.team} />
           </div>
 
           {/* Always shown, at every width: the "+" on group headers needs a pointer over them.

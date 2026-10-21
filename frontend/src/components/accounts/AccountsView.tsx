@@ -21,6 +21,7 @@ import { arrangeGroups, sortByColumn } from '@/ui/listView';
 import { useFiltersInAddress, writeFilterParam } from '@/ui/useListView';
 import { LinearSlidersIcon } from '@/icons/LinearIcons';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
+import { useActiveTeam } from '@/lib/teams';
 import { AccountDisplayOptionsPopover } from './AccountDisplayOptionsPopover';
 import { AccountRow, getAccountColumns, usePhoneWidth, type AccountRowActions } from './AccountRow';
 import { RenameAccountDialog } from './AccountParts';
@@ -118,7 +119,14 @@ interface AccountsViewProps {
 export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigationKey }) => {
   const { workspace } = useWorkspaceSession();
   const data = useWorkspaceAccounts();
-  const { accounts, teams, state, error, canEdit } = data;
+  const { teams, state, error, canEdit } = data;
+  // A team's Ad accounts, as Linear's team Projects: only the accounts on that team.
+  const activeTeam = useActiveTeam(workspace.id);
+  const team = activeTeam.team;
+  const accounts = useMemo(
+    () => (team ? data.accounts.filter((account) => account.id !== undefined && team.account_ids.includes(account.id)) : data.accounts),
+    [data.accounts, team],
+  );
   const dialogs = useAccountDialogs(data);
   const { view, update, loaded, displayChanged } = useAccountsView();
   const phone = usePhoneWidth();
@@ -195,7 +203,10 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
   };
 
   const renderBody = () => {
-    if (state === 'loading') {
+    if (activeTeam.missing) {
+      return <DataState title="Team not found" detail="This workspace has no team with that identifier." />;
+    }
+    if (state === 'loading' || activeTeam.loading) {
       return <DataState title="Loading ad accounts…" detail="Reading the ad accounts of this workspace." />;
     }
     if (state === 'error') {
@@ -206,6 +217,14 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
           role="alert"
           actionLabel="Retry"
           onAction={() => void data.refresh()}
+        />
+      );
+    }
+    if (accounts.length === 0 && team) {
+      return (
+        <DataState
+          title="No ad accounts in this team"
+          detail={`Ad accounts added to ${team.name} in its settings show here.`}
         />
       );
     }

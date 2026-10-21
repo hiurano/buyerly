@@ -295,11 +295,16 @@ async def add_team_members(
     req: TeamMembersRequest,
     user: User = Depends(get_current_user),
 ):
-    """Linear's "Add members to <team>": workspace members only; those already on it are skipped."""
+    """Linear's "Add members to <team>": workspace members only; those already on it are skipped.
+
+    Anyone may add themselves, as Linear's "Join a team"; adding others takes the owner or an admin.
+    """
     async with async_session_maker() as session:
-        _require_admin(await _workspace_role(session, user, workspace_id))
-        team = await _load_team(session, workspace_id, team_id)
+        member = await _workspace_role(session, user, workspace_id)
         wanted = set(req.user_ids)
+        if wanted != {user.id}:
+            _require_admin(member)
+        team = await _load_team(session, workspace_id, team_id)
         rows = (
             await session.execute(
                 select(WorkspaceMember).where(

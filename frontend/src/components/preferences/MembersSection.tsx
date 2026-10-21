@@ -129,7 +129,7 @@ interface InviteDialogProps {
  * Linear's "Invite to your workspace": one field that takes several comma-separated
  * emails, flags a bad address before sending, and the role the invitees get.
  */
-const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onClose, onSent }) => {
+export const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onClose, onSent }) => {
   const [text, setText] = useState('');
   const [blurred, setBlurred] = useState(false);
   const [role, setRole] = useState('buyer');

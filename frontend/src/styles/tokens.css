@@ -114,6 +114,10 @@
   --sidebar-item-hover-bg: var(--item-hover-bg);
   --sidebar-workspace-fg: lch(90.155% 1.2 272 / 1);
   --sidebar-icon-button-hover-bg: lch(10.149% 0.689 272 / 1);
+  /* Linear's disclosure triangle after a team's name in the sidebar. */
+  --sidebar-disclosure-fg: lch(35.024% 1.2 272 / 1);
+  /* The "›" between a team and its page in a header. */
+  --breadcrumb-separator-fg: lch(61.803% 1.2 272 / 1);
   --row-selected-bg: lch(13.2% 6 282 / 1);
   --inbox-unread-dot: lch(47.918% 59.303 288.421 / 1); /* Linear unread notification dot */
   /* Linear Inbox Focus group headers and Priority / Other tabs, measured in dark Linear. */
@@ -374,6 +378,8 @@ html[data-theme='light'] {
   --sidebar-item-hover-bg: lch(91.64% 0.5 282 / 1);
   --sidebar-workspace-fg: lch(18.888% 1.25 282 / 1);
   --sidebar-icon-button-hover-bg: lch(0% 0 0 / 0.06);
+  --sidebar-disclosure-fg: lch(62.33% 1.25 282 / 1);
+  --breadcrumb-separator-fg: lch(39.176% 1.25 282 / 1);
   --row-selected-bg: lch(92.254% 5.903 282.518 / 1);       /* Linear selected row */
   --inbox-unread-dot: lch(47.918% 59.303 288.421 / 1);
   /* Linear Inbox Focus group headers and Priority / Other tabs, measured in light Linear. */

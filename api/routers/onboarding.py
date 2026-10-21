@@ -25,6 +25,7 @@ from api.schemas import (
     WorkspaceInviteItem,
     WorkspaceItem,
 )
+from core.default_team import create_default_team, join_default_team
 from core.email import send_workspace_invitation_email
 from core.rate_limit import rate_limit_dep
 from core.workspace_slugs import normalize_workspace_slug
@@ -334,6 +335,10 @@ async def submit_onboarding_workspace(
 
         member = WorkspaceMember(workspace_id=ws.id, user_id=user.id, role="owner")
         session.add(member)
+        await session.flush()
+        # Linear's workspace starts with a team named after it.
+        await create_default_team(session, ws.id, ws.name, user.id)
+        await join_default_team(session, ws.id, member_id=member.id)
 
         db_user.active_workspace_id = ws.id
         db_user.onboarding_step = "personal_details"

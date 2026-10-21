@@ -198,7 +198,7 @@ export interface AdsManagerQuickFilter {
   fieldId: 'group' | 'rule';
   value: string;
 }
-export type AppTab = 'inbox' | 'accounts' | 'campaigns' | 'rules';
+export type AppTab = 'inbox' | 'accounts' | 'campaigns' | 'rules' | 'members' | 'teams';
 /** The search page has an address but is no app tab: Settings' back button never returns to it. */
 export type ActiveTab = AppTab | 'preferences' | 'search';
 /** Settings pages; most also have their own address under /<workspace>/settings. */
@@ -354,6 +354,9 @@ interface AppState {
   activeTab: ActiveTab;
   lastAppTab: AppTab;
   setActiveTab: (tab: ActiveTab) => void;
+  /** The team whose Ads Manager, Ad accounts or Rules are on screen (/team/<KEY>/…); null for the workspace's own. */
+  activeTeamKey: string | null;
+  setActiveTeamKey: (key: string | null) => void;
   settingsSection: SettingsSection;
   setSettingsSection: (section: SettingsSection) => void;
   /** The open team page, "<KEY>" or "<KEY>/<page>", while `settingsSection` is 'team'. */
@@ -745,6 +748,8 @@ export const useAppStore = create<AppState>((set, get) => {
       activeTab: tab,
       lastAppTab: tab === 'preferences' || tab === 'search' ? state.lastAppTab : tab,
     })),
+  activeTeamKey: null,
+  setActiveTeamKey: (key) => set({ activeTeamKey: key }),
   settingsSection: 'preferences',
   setSettingsSection: (section) => set({ settingsSection: section }),
   settingsTeamPath: '',

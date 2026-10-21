@@ -9,6 +9,8 @@ import { RecentlyDeletedRulesPage } from '@/components/rules/RecentlyDeletedRule
 import { CommandMenu } from '@/components/command/CommandMenu';
 import { OpenPalette } from '@/components/command/OpenPalette';
 import { SearchView } from '@/components/search/SearchView';
+import { WorkspaceMembersView } from '@/components/workspace/WorkspaceMembersView';
+import { WorkspaceTeamsView } from '@/components/workspace/WorkspaceTeamsView';
 import { searchPageTitle } from '@/lib/search';
 import { WorkspaceSwitcher } from '@/components/command/WorkspaceSwitcher';
 import { PreferencesView } from '@/components/preferences/PreferencesView';
@@ -85,6 +87,8 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     setSettingsSection,
     settingsTeamPath,
     openTeamSettings,
+    activeTeamKey,
+    setActiveTeamKey,
     setWorkspaceName,
     toggleDetailsPane,
     toggleSidebarCollapsed,
@@ -153,6 +157,8 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     if (caughtUp) return;
     syncingRoute.current = true;
     setWorkspaceName(workspace.name);
+    // Settings and search keep the team they were opened from, for their way back.
+    if (route.tab !== 'preferences' && route.tab !== 'search') setActiveTeamKey(route.teamKey ?? null);
     setActiveTab(route.tab);
     if (route.entity) setCampaignFilterTab(route.entity);
     if (route.tab === 'preferences') {
@@ -165,7 +171,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     queueMicrotask(() => {
       syncingRoute.current = false;
     });
-  }, [navigate, openTeamSettings, route.entity, route.settingsSection, route.teamPath, route.tab, setActiveTab, setCampaignFilterTab, setSettingsSection, setWorkspaceName, workspace.name, workspace.role, workspace.slug]);
+  }, [navigate, openTeamSettings, route.entity, route.settingsSection, route.teamKey, route.teamPath, route.tab, setActiveTab, setActiveTeamKey, setCampaignFilterTab, setSettingsSection, setWorkspaceName, workspace.name, workspace.role, workspace.slug]);
 
   useEffect(() => {
     // Linear closes the small-screen sidebar drawer on every navigation. Some
@@ -177,14 +183,16 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
 
   useEffect(() => {
     if (syncingRoute.current) return;
-    const desiredPath = pathForTab(workspace.slug, activeTab, campaignFilterTab, settingsSection, settingsTeamPath);
+    const desiredPath = pathForTab(
+      workspace.slug, activeTab, campaignFilterTab, settingsSection, settingsTeamPath, undefined, activeTeamKey,
+    );
     if (window.location.pathname !== desiredPath && !((activeTab === 'inbox' || activeTab === 'accounts') && window.location.pathname.startsWith(`${desiredPath}/`))) {
-      const campaignQuery = activeTab === 'campaigns' && window.location.pathname.startsWith(`/${workspace.slug}/ads-manager/`)
+      const campaignQuery = activeTab === 'campaigns' && window.location.pathname.includes('/ads-manager/')
         ? window.location.search : '';
       ownPath.current = desiredPath;
       navigate(desiredPath + campaignQuery);
     }
-  }, [activeTab, campaignFilterTab, navigate, settingsSection, settingsTeamPath, workspace.slug]);
+  }, [activeTab, activeTeamKey, campaignFilterTab, navigate, settingsSection, settingsTeamPath, workspace.slug]);
 
   useEffect(() => {
     // Linear keeps the unread count fresh in the sidebar and the tab title.
@@ -335,6 +343,8 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
                     navigationKey={navigationKey}
                   />
                 )}
+                {activeTab === 'members' && <WorkspaceMembersView />}
+                {activeTab === 'teams' && <WorkspaceTeamsView />}
                 {activeTab === 'search' && (
                   <SearchView workspace={workspace} navigate={navigate} navigationKey={navigationKey} />
                 )}

@@ -27,6 +27,8 @@ export type Route =
       teamPath?: string;
       /** With tab 'rules': a page of Rules other than the list, as Linear's team archive. */
       rulesPage?: RulesPage;
+      /** Linear's team pages: Ads Manager, Ad accounts and Rules under /team/<KEY>/, for that team's ad accounts. */
+      teamKey?: string;
     }
   | { kind: 'unknown' };
 
@@ -80,6 +82,13 @@ export function parseRoute(location: Location = window.location): Route {
   if (SYSTEM_ROOTS.has(parts[0])) return { kind: 'unknown' };
 
   const workspace = parts[0];
+  if (parts[1] === 'team' && parts.length >= 4) {
+    // /<workspace>/team/<KEY>/<page>: the workspace page of that name, for the team.
+    const teamKey = parts[2].toUpperCase();
+    if (!TEAM_SCOPED_ROOTS.includes(parts[3])) return { kind: 'unknown' };
+    const inner = parseRoute({ pathname: `/${[workspace, ...parts.slice(3)].join('/')}`, search: location.search } as Location);
+    return inner.kind === 'workspace' ? { ...inner, teamKey } : inner;
+  }
   if (parts.length === 1) {
     return { kind: 'workspace', workspace, tab: 'inbox' };
   }
@@ -119,6 +128,10 @@ export function parseRoute(location: Location = window.location): Route {
   }
   if (parts[1] === 'rules' && parts.length <= 3) {
     return { kind: 'workspace', workspace, tab: 'rules', recordId: parts[2] };
+  }
+  if ((parts[1] === 'members' || parts[1] === 'teams') && parts.length === 2) {
+    // Linear's workspace Members and Teams pages, beside their Settings pages.
+    return { kind: 'workspace', workspace, tab: parts[1] === 'members' ? 'members' : 'teams' };
   }
   if (parts[1] === 'search' && parts.length === 2) {
     // Linear's search page; the query, tab and filters live in `?q=…&type=…`.
@@ -160,6 +173,9 @@ export const SETTINGS_PATHS = {
   security: 'account/security',
 } as const satisfies Partial<Record<SettingsSection, string>>;
 
+/** Workspace pages a team has its own copy of, as Linear's team Issues and Projects. */
+const TEAM_SCOPED_ROOTS = ['ads-manager', 'accounts', 'rules'];
+
 /** A team's pages under /settings/teams/<KEY>/, after its overview. */
 export const TEAM_PAGES = ['general', 'members', 'accounts'] as const;
 
@@ -179,7 +195,11 @@ export function pathForTab(
   settingsSection: SettingsSection = 'preferences',
   teamPath = '',
   rulesPage?: RulesPage,
+  teamKey: string | null = null,
 ): string {
+  if (teamKey && (tab === 'campaigns' || tab === 'accounts' || tab === 'rules')) {
+    return pathForTab(`${workspace}/team/${teamKey}`, tab, entity);
+  }
   if (tab === 'campaigns') return `/${workspace}/ads-manager/${entity}`;
   if (tab === 'rules' && rulesPage) return `/${workspace}/rules/${rulesPage}`;
   if (tab === 'preferences') {

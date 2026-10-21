@@ -157,7 +157,11 @@ try {
       await page.goto(`${origin}/alpha/rules`, { timeout: 120_000 });
       const nav = page.locator('.linear-sidebar-nav-item');
       await nav.first().waitFor();
-      assert.deepEqual((await nav.allInnerTexts()).map((text) => text.trim()), ['Inbox', 'Ad accounts', 'Ads Manager', 'Rules']);
+      // Linear's sidebar: Inbox, the Workspace section, then each of Your teams with its own pages.
+      assert.deepEqual(
+        (await nav.allInnerTexts()).map((text) => text.trim()),
+        ['Inbox', 'Members', 'Ad accounts', 'Teams', 'Ads Manager', 'Ad accounts', 'Rules'],
+      );
 
       // G K opens the list.
       await page.locator('[data-row-id="7"]').waitFor();
@@ -166,7 +170,8 @@ try {
       await page.waitForURL(`${origin}/alpha/accounts`);
       await page.locator('[data-row-id="act_101"]').waitFor();
       assert.equal(await page.title(), 'Ad accounts');
-      assert.equal(await nav.nth(1).getAttribute('data-active'), 'true');
+      assert.equal(await nav.nth(2).getAttribute('data-active'), 'true');
+      assert.equal(await nav.nth(5).getAttribute('data-active'), 'false', "the team's Ad accounts is another page");
       assert.deepEqual((await headers(page)).map((text) => text.trim()).filter(Boolean), ['Name', 'Status', 'Spend today', 'Leads/CPL today', 'Rules']);
       assert.deepEqual(await rowIds(page), ['act_102', 'act_101', 'act_103'], 'Name A→Z by default');
       await page.locator('main header').getByRole('button', { name: 'Add account' }).waitFor();
