@@ -356,7 +356,12 @@ interface AppState {
   setActiveTab: (tab: ActiveTab) => void;
   /** The team whose Ads Manager, Ad accounts or Rules are on screen (/team/<KEY>/…); null for the workspace's own. */
   activeTeamKey: string | null;
+  /** Opening a team's page leaves My campaigns. */
   setActiveTeamKey: (key: string | null) => void;
+  /** Ads Manager over the ad accounts you lead (/my-campaigns), as Linear's My issues. */
+  myCampaigns: boolean;
+  /** Turning it on leaves any team's pages. */
+  setMyCampaigns: (on: boolean) => void;
   settingsSection: SettingsSection;
   setSettingsSection: (section: SettingsSection) => void;
   /** The open team page, "<KEY>" or "<KEY>/<page>", while `settingsSection` is 'team'. */
@@ -749,7 +754,9 @@ export const useAppStore = create<AppState>((set, get) => {
       lastAppTab: tab === 'preferences' || tab === 'search' ? state.lastAppTab : tab,
     })),
   activeTeamKey: null,
-  setActiveTeamKey: (key) => set({ activeTeamKey: key }),
+  setActiveTeamKey: (key) => set({ activeTeamKey: key, myCampaigns: false }),
+  myCampaigns: false,
+  setMyCampaigns: (on) => set((state) => ({ myCampaigns: on, activeTeamKey: on ? null : state.activeTeamKey })),
   settingsSection: 'preferences',
   setSettingsSection: (section) => set({ settingsSection: section }),
   settingsTeamPath: '',

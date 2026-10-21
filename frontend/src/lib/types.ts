@@ -62,6 +62,8 @@ export interface OnboardingStatus {
 export interface MetaAccount {
   id?: number;
   account_id: string;
+  /** The buyer responsible for the account, as a Linear project's lead; null when nobody leads it. */
+  lead_user_id?: number | null;
   name: string;
   custom_name?: string;
   note?: string;

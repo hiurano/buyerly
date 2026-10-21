@@ -92,6 +92,8 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     openTeamSettings,
     activeTeamKey,
     setActiveTeamKey,
+    myCampaigns,
+    setMyCampaigns,
     setWorkspaceName,
     toggleDetailsPane,
     toggleSidebarCollapsed,
@@ -166,7 +168,10 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     syncingRoute.current = true;
     setWorkspaceName(workspace.name);
     // Settings and search keep the team they were opened from, for their way back.
-    if (route.tab !== 'preferences' && route.tab !== 'search') setActiveTeamKey(route.teamKey ?? null);
+    if (route.tab !== 'preferences' && route.tab !== 'search') {
+      if (route.mine) setMyCampaigns(true);
+      else setActiveTeamKey(route.teamKey ?? null);
+    }
     setActiveTab(route.tab);
     if (route.entity) setCampaignFilterTab(route.entity);
     if (route.tab === 'preferences') {
@@ -179,7 +184,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     queueMicrotask(() => {
       syncingRoute.current = false;
     });
-  }, [navigate, openTeamSettings, route.entity, route.settingsSection, route.teamKey, route.teamPath, route.tab, setActiveTab, setActiveTeamKey, setCampaignFilterTab, setSettingsSection, setWorkspaceName, workspace.name, workspace.role, workspace.slug]);
+  }, [navigate, openTeamSettings, route.entity, route.settingsSection, route.mine, route.teamKey, route.teamPath, route.tab, setActiveTab, setActiveTeamKey, setMyCampaigns, setCampaignFilterTab, setSettingsSection, setWorkspaceName, workspace.name, workspace.role, workspace.slug]);
 
   useEffect(() => {
     // Linear closes the small-screen sidebar drawer on every navigation. Some
@@ -192,7 +197,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   useEffect(() => {
     if (syncingRoute.current) return;
     const desiredPath = pathForTab(
-      workspace.slug, activeTab, campaignFilterTab, settingsSection, settingsTeamPath, undefined, activeTeamKey,
+      workspace.slug, activeTab, campaignFilterTab, settingsSection, settingsTeamPath, undefined, activeTeamKey, myCampaigns,
     );
     // A record under the page (a notification, an account) and the team Home's other tabs keep their address.
     const underPage = ((activeTab === 'inbox' || activeTab === 'accounts') && window.location.pathname.startsWith(`${desiredPath}/`))
@@ -200,12 +205,12 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
         window.location.pathname.startsWith(teamHomePath(workspace.slug, activeTeamKey, page))
       )));
     if (window.location.pathname !== desiredPath && !underPage) {
-      const campaignQuery = activeTab === 'campaigns' && window.location.pathname.includes('/ads-manager/')
+      const campaignQuery = activeTab === 'campaigns' && /\/(ads-manager|my-campaigns)\//.test(window.location.pathname)
         ? window.location.search : '';
       ownPath.current = desiredPath;
       navigate(desiredPath + campaignQuery);
     }
-  }, [activeTab, activeTeamKey, campaignFilterTab, navigate, settingsSection, settingsTeamPath, workspace.slug]);
+  }, [activeTab, activeTeamKey, campaignFilterTab, myCampaigns, navigate, settingsSection, settingsTeamPath, workspace.slug]);
 
   useEffect(() => {
     // Linear keeps the unread count fresh in the sidebar and the tab title.
@@ -229,6 +234,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
       : pageTitle({
         activeTab,
         activeTeamKey,
+        myCampaigns,
         settingsSection,
         settingsTeamPath,
         teamName: (key) => titleTeams?.find((team) => team.key === key)?.name ?? null,
@@ -237,7 +243,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
         inboxBadge,
       });
     // The search page's title follows its query, which only the address holds.
-  }, [activeTab, activeTeamKey, inboxBadge, navigationKey, route.recordId, route.rulesPage, route.tab, route.teamPage, settingsSection, settingsTeamPath, titleTeams]);
+  }, [activeTab, activeTeamKey, inboxBadge, myCampaigns, navigationKey, route.recordId, route.rulesPage, route.tab, route.teamPage, settingsSection, settingsTeamPath, titleTeams]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

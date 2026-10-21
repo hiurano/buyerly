@@ -19,6 +19,8 @@ LEGACY_BASELINE_REVISION = "0009_web_sessions"
 POST_BASELINE_COLUMNS = {
     "accounts": {
         "access_token_encrypted",
+        # Added by the account lead migration (0044).
+        "lead_user_id",
         # Added by the Statistics cost target migration (0025).
         "primary_result",
         "target_cost_per_result",

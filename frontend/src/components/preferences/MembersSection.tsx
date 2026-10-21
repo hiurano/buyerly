@@ -94,13 +94,13 @@ export function shortDate(iso: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export const Initials: React.FC<{ label: string; avatarUrl?: string; muted?: boolean; size?: 20 | 24 }> = ({
+export const Initials: React.FC<{ label: string; avatarUrl?: string; muted?: boolean; size?: 16 | 20 | 24 }> = ({
   label,
   avatarUrl,
   muted,
   size = 20,
 }) => {
-  const box = size === 24 ? 'h-6 w-6 text-[11px]' : 'h-5 w-5 text-[9px]';
+  const box = size === 24 ? 'h-6 w-6 text-[11px]' : size === 16 ? 'h-4 w-4 text-[7px]' : 'h-5 w-5 text-[9px]';
   if (avatarUrl) {
     return <img src={avatarUrl} alt="" className={`${box} shrink-0 rounded-full object-cover`} />;
   }

@@ -41,6 +41,8 @@ class AccountItem(BaseModel):
     note: str
     connection_type: Literal["facebook_login", "system_user"]
     owner_user_id: Optional[int] = None
+    # The buyer responsible for the account (Linear's project lead); None when nobody leads it.
+    lead_user_id: Optional[int] = None
     workspace_id: Optional[int] = None
     owner_id: str = ""
     batch_name: str
@@ -64,6 +66,13 @@ class AccountProfileUpdateRequest(BaseModel):
 
     custom_name: str = Field(default="", max_length=120)
     note: str = Field(default="", max_length=500)
+
+
+class AccountLeadUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    # A member of the account's workspace, or None for no lead.
+    lead_user_id: Optional[int] = None
 
 
 class AccountGroupRequest(BaseModel):

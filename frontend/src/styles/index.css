@@ -1557,6 +1557,45 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
   color: var(--text-muted);
 }
 
+/* Linear's Lead on a project row: a 28px round button around a 16px avatar. */
+.account-lead-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  cursor: default;
+}
+
+/* The same Lead on the account's page, with the member's name. */
+.account-lead-property {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  margin-left: -6px;
+  padding: 0 8px 0 6px;
+  border-radius: 9999px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 450;
+  cursor: default;
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .account-lead-cell:not(:disabled):hover,
+  .account-lead-property:not(:disabled):hover {
+    background-color: var(--item-hover-bg);
+  }
+}
+
+.account-lead-cell[data-state='open'],
+.account-lead-property[data-state='open'] {
+  background-color: var(--item-hover-bg);
+}
+
 /* Exact Linear Sidebar Unread Badge (18px Pill, Tabular Nums) */
 .linear-sidebar-badge {
   display: inline-flex;

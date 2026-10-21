@@ -26,7 +26,7 @@ from core.action_undo import (
     undo_audit_action,
 )
 from database.db import async_session_maker
-from database.models import AuditEvent, InboxNotificationState, RulePreset, User, WorkspaceMember
+from database.models import Account, AuditEvent, InboxNotificationState, RulePreset, User, WorkspaceMember
 from meta_api.client import MetaClient
 from api.meta_dependencies import get_meta_client
 
@@ -360,9 +360,20 @@ INBOX_RULE_ACTION_EVENT_TYPES = (
 INBOX_HIDDEN_EVENT_TYPES = ("INVITE_ACCEPT", "ACCOUNT_DAY_STARTED")
 
 
-def _in_inbox():
-    """Audit events that are Inbox notifications."""
-    return AuditEvent.event_type.not_in(INBOX_HIDDEN_EVENT_TYPES)
+def _in_inbox(user_id: Optional[int]):
+    """Audit events that are this member's Inbox notifications.
+
+    As Linear notifies you about your own work, an event on an ad account that
+    somebody else leads is theirs; events on no account, or on an account
+    nobody leads, reach everyone.
+    """
+    led_by_someone_else = select(Account.id).where(
+        Account.workspace_id == AuditEvent.workspace_id,
+        Account.account_id == AuditEvent.account_id,
+        Account.lead_user_id.is_not(None),
+        Account.lead_user_id != user_id,
+    )
+    return and_(AuditEvent.event_type.not_in(INBOX_HIDDEN_EVENT_TYPES), ~led_by_someone_else.exists())
 
 
 def _inbox_kind():
@@ -539,7 +550,7 @@ async def _inbox_unread(
             .outerjoin(InboxNotificationState, join_on)
             .where(
                 AuditEvent.workspace_id == workspace_id,
-                _in_inbox(),
+                _in_inbox(user.id),
                 ~deleted,
                 ~snoozed,
                 ~is_read,
@@ -655,10 +666,10 @@ def _parse_inbox_priority(raw: Optional[str]) -> Optional[InboxPriority]:
 
 
 def _inbox_view_filters(
-    ws, is_read, deleted, snoozed, *, unread_only, show_snoozed, tab=None, priority=None
+    ws, user_id, is_read, deleted, snoozed, *, unread_only, show_snoozed, tab=None, priority=None
 ):
     """What the list shows before filters; a tab keeps Priority or Other."""
-    filters = [AuditEvent.workspace_id == ws.id, _in_inbox(), ~deleted]
+    filters = [AuditEvent.workspace_id == ws.id, _in_inbox(user_id), ~deleted]
     if not show_snoozed:
         filters.append(~snoozed)
     if unread_only:
@@ -691,6 +702,7 @@ async def list_inbox(
         join_on, is_read, deleted, snoozed = _inbox_columns(user, member)
         view_filters = _inbox_view_filters(
             ws,
+            user.id,
             is_read,
             deleted,
             snoozed,
@@ -804,6 +816,7 @@ async def inbox_facets(
         join_on, is_read, deleted, snoozed = _inbox_columns(user, member)
         view_filters = _inbox_view_filters(
             ws,
+            user.id,
             is_read,
             deleted,
             snoozed,

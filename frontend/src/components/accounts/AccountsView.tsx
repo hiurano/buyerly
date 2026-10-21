@@ -151,6 +151,8 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
 
   const actions: AccountRowActions = {
     canEdit,
+    members: data.members,
+    setLead: (account, leadUserId) => void data.saveLead(account, leadUserId),
     open: (account) => navigate(accountPagePath(workspace.slug, account.account_id)),
     openInAdsManager: (account) => navigate(accountAdsManagerPath(workspace.slug, account.account_id)),
     rename: dialogs.rename,

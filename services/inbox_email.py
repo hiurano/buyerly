@@ -140,7 +140,7 @@ async def due_inbox_events(session, user, member, workspace_id, *, wanted, deliv
             .outerjoin(InboxNotificationState, join_on)
             .where(
                 AuditEvent.workspace_id == workspace_id,
-                _in_inbox(),
+                _in_inbox(user.id),
                 AuditEvent.created_at > since,
                 AuditEvent.created_at <= until,
                 ~deleted,

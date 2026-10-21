@@ -5,6 +5,7 @@ import {
   LinearHomeIcon,
   LinearInboxIcon,
   LinearMembersIcon,
+  LinearMyIssuesIcon,
   LinearMetaIcon,
   LinearBoltIcon,
   LinearPlusIcon,
@@ -42,6 +43,8 @@ export const Sidebar: React.FC = () => {
   const inboxUnreadCount = useAppStore(selectInboxBadgeCount);
   const activeTeamKey = useAppStore((state) => state.activeTeamKey);
   const setActiveTeamKey = useAppStore((state) => state.setActiveTeamKey);
+  const myCampaigns = useAppStore((state) => state.myCampaigns);
+  const setMyCampaigns = useAppStore((state) => state.setMyCampaigns);
   const { workspace } = useWorkspaceSession();
   const { teams } = useTeams(workspace.id, 'active');
   const yourTeams = (teams ?? []).filter((team) => team.is_member);
@@ -173,6 +176,21 @@ export const Sidebar: React.FC = () => {
                 {inboxUnreadCount}
               </span>
             )}
+          />
+
+          {/* Linear's My issues: Ads Manager over the ad accounts you lead. */}
+          <SidebarLink
+            icon={<LinearMyIssuesIcon size={14} />}
+            label="My campaigns"
+            tooltip="Go to my campaigns"
+            active={activeTab === 'campaigns' && myCampaigns}
+            onClick={() => {
+              if (activeTab === 'campaigns' && myCampaigns && workspaceSlug) {
+                openAppPath(pathForTab(workspaceSlug, 'campaigns', 'campaigns', 'preferences', '', undefined, null, true));
+              }
+              setMyCampaigns(true);
+              setActiveTab('campaigns');
+            }}
           />
 
           <SidebarSection id="workspace" title="Workspace">
