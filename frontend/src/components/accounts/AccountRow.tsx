@@ -15,6 +15,8 @@ import {
 } from '@/ui/DropdownMenu';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { accountName } from './accountsModel';
+import { AccountLeadPicker } from './AccountLeadPicker';
+import type { AccountMember } from './accountsData';
 import { AccountRulesLabel, AccountStatusLabel, ConnectionProblemIcon, accountMoney, leadsText } from './AccountParts';
 
 /** At phone width the list keeps Name, Status and Spend today (#388). */
@@ -26,6 +28,8 @@ export function getAccountColumns(properties: Record<string, boolean>, phone: bo
     { id: 'name', label: 'Name', width: phone ? 'minmax(120px, 1fr)' : 'minmax(260px, 1fr)', sortable: true, headerInset: phone ? undefined : 22 },
   ];
   if (properties.status !== false) columns.push({ id: 'status', label: 'Status', width: phone ? '84px' : '150px', sortable: true });
+  // Linear's Lead column on Projects: a 48px column of 28px avatar buttons.
+  if (!phone && properties.lead !== false) columns.push({ id: 'lead', label: 'Lead', width: '48px' });
   if (properties.spend !== false) columns.push({ id: 'spend', label: 'Spend today', width: phone ? '94px' : '130px', align: 'right', sortable: true });
   if (!phone && properties.leads !== false) columns.push({ id: 'leads', label: 'Leads/CPL today', width: '150px', align: 'right' });
   // Text after right-aligned numbers: 24px of air so "Rules" does not read as part of the figure.
@@ -36,6 +40,9 @@ export function getAccountColumns(properties: Record<string, boolean>, phone: bo
 
 export interface AccountRowActions {
   canEdit: boolean;
+  /** The workspace's members, who may lead an account. */
+  members: AccountMember[];
+  setLead: (account: MetaAccount, leadUserId: number | null) => void;
   open: (account: MetaAccount) => void;
   openInAdsManager: (account: MetaAccount) => void;
   rename: (account: MetaAccount) => void;
@@ -145,6 +152,18 @@ export const AccountRow: React.FC<AccountRowProps> = ({ account, columns, proper
       {properties.status !== false && (
         <div className="flex min-w-0 items-center text-[12px] font-[450] text-[var(--text-secondary)]">
           <AccountStatusLabel account={account} />
+        </div>
+      )}
+
+      {!phone && properties.lead !== false && (
+        <div className="flex items-center" onClick={(event) => event.stopPropagation()}>
+          <AccountLeadPicker
+            account={account}
+            members={actions.members}
+            canEdit={actions.canEdit}
+            onChange={(leadUserId) => actions.setLead(account, leadUserId)}
+            variant="cell"
+          />
         </div>
       )}
 

@@ -22,6 +22,7 @@ export const ACCOUNTS_VIEW_DEFAULTS = listViewDefaults({
   direction: 'asc',
   properties: {
     status: true,
+    lead: true,
     spend: true,
     leads: true,
     rules: true,
@@ -30,6 +31,7 @@ export const ACCOUNTS_VIEW_DEFAULTS = listViewDefaults({
 
 export const ACCOUNT_PROPERTY_LABELS: Record<string, string> = {
   status: 'Status',
+  lead: 'Lead',
   spend: 'Spend today',
   leads: 'Leads/CPL today',
   rules: 'Rules',

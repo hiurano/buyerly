@@ -40,6 +40,8 @@ export interface PageTitleInput {
   /** The name of the team whose page is on screen, once the teams have loaded. */
   teamName: (key: string) => string | null;
   activeTeamKey: string | null;
+  /** Ads Manager over the accounts you lead. */
+  myCampaigns?: boolean;
   teamPage?: TeamHomePage;
   inboxBadge: number;
   /** Set on a page of Rules beside the list: Recently deleted. */
@@ -63,7 +65,7 @@ export function pageTitle(input: PageTitleInput): string {
     case 'accounts':
       return inTeam('Ad accounts');
     case 'campaigns':
-      return inTeam('Ads Manager');
+      return input.myCampaigns ? 'My campaigns' : inTeam('Ads Manager');
     case 'rules':
       return input.rulesPage ? 'Recently deleted' : inTeam('Rules');
     case 'members':

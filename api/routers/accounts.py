@@ -26,6 +26,7 @@ from api.schemas import (
     AccountGroupItem,
     AccountGroupRequest,
     AccountItem,
+    AccountLeadUpdateRequest,
     AccountProfileUpdateRequest,
     BatchAddRequest,
     ParsedAccountItem,
@@ -45,6 +46,7 @@ from database.models import (
     AccountGroup,
     AccountGroupMember,
     User,
+    WorkspaceMember,
 )
 from services.account_health import health_payload
 from services.analytics_store import AnalyticsFactService
@@ -113,6 +115,7 @@ async def list_accounts(user: User = Depends(get_current_user)):
                         "facebook_login" if a.meta_connection_id else "system_user"
                     ),
                     owner_user_id=a.owner_user_id,
+                    lead_user_id=a.lead_user_id,
                     workspace_id=a.workspace_id,
                     owner_id="",
                     batch_name=a.batch_name or "",
@@ -291,6 +294,44 @@ async def update_account_profile(
         }
 
 
+@router.patch("/accounts/{account_id}/lead")
+async def update_account_lead(
+    account_id: str,
+    payload: AccountLeadUpdateRequest,
+    user: User = Depends(get_current_user),
+):
+    """Linear's project Lead for an ad account: any member who may edit it picks one of the workspace's members."""
+    async with async_session_maker() as session:
+        ws, member = await get_user_workspace_member(session, user)
+        ensure_workspace_write_access(user, member, "changing an ad account's lead")
+        if ws is None:
+            raise HTTPException(status_code=404, detail="Workspace not found")
+        account = (
+            await session.execute(
+                select(Account).where(
+                    Account.workspace_id == ws.id,
+                    Account.account_id == (account_id if account_id.startswith("act_") else f"act_{account_id}"),
+                )
+            )
+        ).scalar_one_or_none()
+        if account is None:
+            raise HTTPException(status_code=404, detail="Ad account not found")
+        if payload.lead_user_id is not None:
+            in_workspace = (
+                await session.execute(
+                    select(WorkspaceMember.id).where(
+                        WorkspaceMember.workspace_id == ws.id,
+                        WorkspaceMember.user_id == payload.lead_user_id,
+                    )
+                )
+            ).first()
+            if not in_workspace:
+                raise HTTPException(status_code=400, detail="The lead must be a member of this workspace")
+        account.lead_user_id = payload.lead_user_id
+        await session.commit()
+        return {"account_id": account.account_id, "lead_user_id": account.lead_user_id}
+
+
 @router.delete("/accounts/{account_id}")
 async def delete_account(account_id: str, user: User = Depends(get_current_user)):
     async with async_session_maker() as session:
@@ -440,6 +481,7 @@ async def batch_add_accounts(
                         access_token="",
                         access_token_encrypted=encrypt_meta_token(token),
                         owner_user_id=user.id,
+                        lead_user_id=user.id,
                         batch_name=batch_name if batch_name != "-" else "",
                         timezone_name=timezone_name,
                         currency=currency,

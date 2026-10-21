@@ -90,6 +90,21 @@ export function useWorkspaceAccounts() {
     }
   };
 
+  /** Linear's project Lead: shown at once, put back if the server refuses. */
+  const saveLead = async (account: MetaAccount, leadUserId: number | null) => {
+    if ((account.lead_user_id ?? null) === leadUserId) return;
+    patch(account.account_id, { lead_user_id: leadUserId });
+    try {
+      await apiRequest(`/api/accounts/${encodeURIComponent(account.account_id)}/lead`, {
+        method: 'PATCH',
+        body: JSON.stringify({ lead_user_id: leadUserId }),
+      });
+    } catch (saveError) {
+      patch(account.account_id, { lead_user_id: account.lead_user_id ?? null });
+      toast.error("Couldn't change the lead", errorText(saveError));
+    }
+  };
+
   const toggleAutomation = async (account: MetaAccount) => {
     const enabled = !account.rules_enabled;
     patch(account.account_id, { rules_enabled: enabled });
@@ -119,7 +134,7 @@ export function useWorkspaceAccounts() {
 
   return {
     accounts, teams, members, connections, state, error, canEdit,
-    refresh, saveProfile, toggleAutomation, remove,
+    refresh, saveProfile, saveLead, toggleAutomation, remove,
   };
 }
 

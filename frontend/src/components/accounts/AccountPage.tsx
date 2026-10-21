@@ -24,7 +24,8 @@ import { LinearPlusIcon, LinearWalletIcon, LinearStatusCircleIcon } from '@/icon
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { AccountRowMenu, type AccountRowActions } from './AccountRow';
 import { AccountStatusLabel, ConnectionProblemIcon, accountMoney } from './AccountParts';
-import { copyAccountId, useWorkspaceAccounts } from './accountsData';
+import { copyAccountId, useWorkspaceAccounts, type AccountMember } from './accountsData';
+import { AccountLeadPicker } from './AccountLeadPicker';
 import { useAccountDialogs } from './AccountsView';
 import {
   accountAdsManagerPath,
@@ -98,6 +99,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({ accountId, navigate, n
 
   const actions: AccountRowActions = {
     canEdit,
+    members,
+    setLead: (item, leadUserId) => void data.saveLead(item, leadUserId),
     open: () => {},
     openInAdsManager: (item) => navigate(accountAdsManagerPath(workspace.slug, item.account_id)),
     rename: dialogs.rename,
@@ -164,6 +167,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({ accountId, navigate, n
         canEdit={canEdit}
         teamsText={teamsOf(account, teams).map((team) => team.name).join(', ')}
         connectedBy={members.find((member) => member.user_id === account.owner_user_id)}
+        members={members}
+        onSetLead={(leadUserId) => void data.saveLead(account, leadUserId)}
         rules={rules}
         events={events}
         onSaveProfile={(change) => void data.saveProfile(account, change)}
@@ -193,6 +198,8 @@ interface AccountPageBodyProps {
   canEdit: boolean;
   teamsText: string;
   connectedBy?: { full_name: string; username: string };
+  members: AccountMember[];
+  onSetLead: (leadUserId: number | null) => void;
   rules: ReturnType<typeof useAppStore.getState>['rules'];
   events: AuditEventItem[] | null;
   onSaveProfile: (change: { custom_name?: string; note?: string }) => void;
@@ -208,6 +215,8 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
   canEdit,
   teamsText,
   connectedBy,
+  members,
+  onSetLead,
   rules,
   events,
   onSaveProfile,
@@ -282,6 +291,9 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
           onChange={canEdit ? onToggleAutomation : undefined}
         />
         <span className="text-[var(--text-secondary)]">{account.rules_enabled ? 'On' : 'Off'}</span>
+      </PropertyRow>
+      <PropertyRow label="Lead">
+        <AccountLeadPicker account={account} members={members} canEdit={canEdit} onChange={onSetLead} variant="property" />
       </PropertyRow>
       <PropertyRow label="Team">
         <span className={teamsText ? 'truncate' : 'text-[var(--text-tertiary)]'}>{teamsText || 'No team'}</span>

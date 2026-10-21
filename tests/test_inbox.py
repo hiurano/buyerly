@@ -12,7 +12,7 @@ import api.server as api_server_module
 from api.server import create_app
 from core.config import settings
 from core.rate_limit import limiter
-from database.models import AuditEvent, InboxNotificationState, RulePreset, User, Workspace, WorkspaceMember
+from database.models import Account, AuditEvent, InboxNotificationState, RulePreset, User, Workspace, WorkspaceMember
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
 
 OWNER = {"id": 7100000001, "first_name": "Owner", "username": "inbox_owner"}
@@ -108,6 +108,42 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
         # The buyer did not make the owner's change, so it is unread for them.
         buyer = await self.inbox(self.buyer_headers)
         self.assertEqual(buyer["unread_count"], 3)
+
+    async def test_account_lead_gets_the_accounts_notifications(self):
+        # Linear notifies you about your own work: the lead of act_1 gets its events.
+        async with self.session_maker() as session:
+            owner_id, buyer_id, outsider_id = [
+                (await session.execute(select(User.id).where(User.username == name))).scalar_one()
+                for name in ("inbox_owner", "inbox_buyer", "inbox_outsider")
+            ]
+            workspace_id = (await session.execute(select(Workspace.id).where(Workspace.slug == "inbox-ws"))).scalar_one()
+            session.add(Account(account_id="act_1", name="Account", workspace_id=workspace_id, owner_user_id=owner_id))
+            await session.commit()
+
+        async def lead(user_id, headers=None):
+            return await self.client.patch(
+                "/api/accounts/act_1/lead", headers=headers or self.owner_headers, json={"lead_user_id": user_id}
+            )
+
+        self.assertEqual((await lead(buyer_id)).json()["lead_user_id"], buyer_id)
+        accounts = (await self.client.get("/api/accounts", headers=self.owner_headers)).json()
+        self.assertEqual([item["lead_user_id"] for item in accounts], [buyer_id])
+        self.assertEqual(set(self.read_map(await self.inbox(self.buyer_headers))), {"owner change", "rule alert", "rule stop", "before mark"})
+        owner = await self.inbox(self.owner_headers)
+        self.assertEqual(owner["items"], [])
+        self.assertEqual(owner["unread_count"], 0)
+
+        # Only a member of the workspace leads its accounts; nobody leading it gives it back to everyone.
+        self.assertEqual((await lead(outsider_id)).status_code, 400)
+        self.assertEqual((await lead(None)).json()["lead_user_id"], None)
+        self.assertEqual((await self.inbox(self.owner_headers))["unread_count"], 2)
+
+        # Leaving the workspace leaves the account without a lead.
+        await lead(buyer_id)
+        response = await self.client.post(f"/api/workspaces/{workspace_id}/leave", json={}, headers=self.buyer_headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        async with self.session_maker() as session:
+            self.assertIsNone((await session.execute(select(Account.lead_user_id))).scalar_one())
 
     async def test_read_state_is_per_member(self):
         response = await self.client.post(

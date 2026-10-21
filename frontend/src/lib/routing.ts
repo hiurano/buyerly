@@ -29,6 +29,8 @@ export type Route =
       rulesPage?: RulesPage;
       /** Linear's team pages: Ads Manager, Ad accounts and Rules under /team/<KEY>/, for that team's ad accounts. */
       teamKey?: string;
+      /** Ads Manager over the ad accounts you lead, as Linear's My issues (/my-campaigns/<level>). */
+      mine?: boolean;
       /** With tab 'team': the tab of the team's Home (/team/<KEY>/overview, …/documents, …/members). */
       teamPage?: TeamHomePage;
     }
@@ -96,6 +98,14 @@ export function parseRoute(location: Location = window.location): Route {
     if (!TEAM_SCOPED_ROOTS.includes(parts[3])) return { kind: 'unknown' };
     const inner = parseRoute({ pathname: `/${[workspace, ...parts.slice(3)].join('/')}`, search: location.search } as Location);
     return inner.kind === 'workspace' ? { ...inner, teamKey } : inner;
+  }
+  if (parts[1] === 'my-campaigns' && parts.length <= 4) {
+    // Ads Manager's levels and records, over the ad accounts you lead.
+    const inner = parseRoute({
+      pathname: `/${[workspace, 'ads-manager', ...(parts.length > 2 ? parts.slice(2) : ['campaigns'])].join('/')}`,
+      search: location.search,
+    } as Location);
+    return inner.kind === 'workspace' ? { ...inner, mine: true } : inner;
   }
   if (parts.length === 1) {
     return { kind: 'workspace', workspace, tab: 'inbox' };
@@ -212,7 +222,9 @@ export function pathForTab(
   teamPath = '',
   rulesPage?: RulesPage,
   teamKey: string | null = null,
+  mine = false,
 ): string {
+  if (mine && tab === 'campaigns') return `/${workspace}/my-campaigns/${entity}`;
   if (teamKey && tab === 'team') return teamHomePath(workspace, teamKey);
   if (teamKey && (tab === 'campaigns' || tab === 'accounts' || tab === 'rules')) {
     return pathForTab(`${workspace}/team/${teamKey}`, tab, entity);

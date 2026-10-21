@@ -1235,6 +1235,7 @@ async def import_accounts(
                         name=str(account_info.get("name") or asset.name or account_id),
                         workspace_id=ws.id if ws else None,
                         owner_user_id=user.id,
+                        lead_user_id=user.id,
                         access_token="",
                         rules_enabled=False,
                         is_active=True,

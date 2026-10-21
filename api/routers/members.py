@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from sqlalchemy import case, delete, select
+from sqlalchemy import case, delete, select, update
 
 from api.auth import get_current_user
 from api.deps import (
@@ -28,7 +28,7 @@ from core.config import settings
 from core.email import send_invite_accepted_email, send_workspace_invitation_email
 from core.rate_limit import rate_limit_dep
 from database.db import async_session_maker
-from database.models import AuditEvent, User, Workspace, WorkspaceInvite, WorkspaceMember
+from database.models import Account, AuditEvent, User, Workspace, WorkspaceInvite, WorkspaceMember
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Members & Invites"])
@@ -251,6 +251,12 @@ async def remove_workspace_member(
                 WorkspaceMember.user_id == member_user_id,
             )
         )
+        # Their ad accounts in this workspace are left without a lead, as Linear's projects are.
+        await session.execute(
+            update(Account)
+            .where(Account.workspace_id == workspace_id, Account.lead_user_id == member_user_id)
+            .values(lead_user_id=None)
+        )
 
         target_user = (await session.execute(select(User).where(User.id == member_user_id))).scalar_one_or_none()
         if target_user and target_user.active_workspace_id == workspace_id:
@@ -317,6 +323,12 @@ async def leave_workspace(
                 WorkspaceMember.workspace_id == workspace_id,
                 WorkspaceMember.user_id == user.id,
             )
+        )
+        # Their ad accounts in this workspace are left without a lead, as Linear's projects are.
+        await session.execute(
+            update(Account)
+            .where(Account.workspace_id == workspace_id, Account.lead_user_id == user.id)
+            .values(lead_user_id=None)
         )
 
         db_user = (await session.execute(select(User).where(User.id == user.id))).scalar_one()

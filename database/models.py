@@ -807,6 +807,13 @@ class Account(Base):
     
     # Owner link (multi-user isolation)
     owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    lead_user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        doc="The buyer responsible for the account, as a Linear project's lead; whoever connects it at first",
+    )
     batch_name = Column(String, default="", nullable=False, doc="Batch name (if the accounts were added as a batch)")
     currency = Column(String, default="UNKNOWN", nullable=False, doc="ISO 4217 ad account currency from Meta")
     
