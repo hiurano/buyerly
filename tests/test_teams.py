@@ -193,14 +193,16 @@ class TestTeams(unittest.IsolatedAsyncioTestCase):
         res = await self.client.delete(self.url(f'/{tid}/members/{self.buyer_id}'), headers=self.owner)
         self.assertEqual(res.status_code, 404)
 
-        # Leaving the workspace takes a member off its teams.
+        # Leaving the workspace takes a member off its teams (the workspace made for them
+        # in its place has a default team of its own).
         await self.client.post(self.url(f'/{tid}/members'), json={'user_ids': [self.buyer_id]}, headers=self.owner)
         res = await self.client.post(f'/api/workspaces/{self.ws_id}/leave', json={}, headers=self.buyer)
         self.assertEqual(res.status_code, 200, res.text)
         async with self.sessions() as session:
             left = (await session.execute(
                 select(TeamMember).join(WorkspaceMember, WorkspaceMember.id == TeamMember.member_id)
-                .where(WorkspaceMember.user_id == self.buyer_id)
+                .join(Team, Team.id == TeamMember.team_id)
+                .where(WorkspaceMember.user_id == self.buyer_id, Team.workspace_id == self.ws_id)
             )).scalars().all()
         self.assertEqual(left, [])
 
