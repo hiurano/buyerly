@@ -721,7 +721,8 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     if (activeTeam.loading) {
       return <DataState title="Loading Ads Manager…" detail="Reading the team's ad accounts." />;
     }
-    if (metaAccounts.length === 0 && activeTeam.team) {
+    // With none in the workspace yet, the team shows the workspace's own empty state and Add account.
+    if (metaAccounts.length === 0 && activeTeam.team && allMetaAccounts.length > 0) {
       return (
         <DataState
           title="No ad accounts in this team"

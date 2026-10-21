@@ -25,7 +25,7 @@ import { useNewVersionNotice } from '@/lib/appVersion';
 import { selectInboxBadgeCount, useAppStore } from '@/store/useAppStore';
 import { apiRequest } from '@/lib/api';
 import type { LoginResult, SessionUser, Workspace } from '@/lib/types';
-import { isRoutedSettingsSection, isWorkspaceReturnRoute, openAppPath, parseRoute, pathForTab, type Route } from '@/lib/routing';
+import { TEAM_HOME_PAGES, isRoutedSettingsSection, isWorkspaceReturnRoute, openAppPath, parseRoute, pathForTab, teamHomePath, type Route } from '@/lib/routing';
 import { AuthLoading } from '@/components/auth/AuthFrame';
 import { finishSplash } from '@/lib/splash';
 import { LoginView } from '@/components/auth/LoginView';
@@ -196,7 +196,9 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     );
     // A record under the page (a notification, an account) and the team Home's other tabs keep their address.
     const underPage = ((activeTab === 'inbox' || activeTab === 'accounts') && window.location.pathname.startsWith(`${desiredPath}/`))
-      || (activeTab === 'team' && activeTeamKey !== null && window.location.pathname.startsWith(`/${workspace.slug}/team/${activeTeamKey}/`));
+      || (activeTab === 'team' && activeTeamKey !== null && TEAM_HOME_PAGES.some((page) => (
+        window.location.pathname.startsWith(teamHomePath(workspace.slug, activeTeamKey, page))
+      )));
     if (window.location.pathname !== desiredPath && !underPage) {
       const campaignQuery = activeTab === 'campaigns' && window.location.pathname.includes('/ads-manager/')
         ? window.location.search : '';

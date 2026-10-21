@@ -27,6 +27,8 @@ import {
   LinearWalletIcon,
 } from '@/icons/LinearIcons';
 import { DataState } from '@/ui/DataState';
+import { Button } from '@/ui/Button';
+import { DocumentsIllustration } from './DocumentsIllustration';
 import { LinearTabs } from '@/ui/LinearTabs';
 import { Tooltip } from '@/ui/Tooltip';
 import { toast } from '@/ui/toast';
@@ -135,12 +137,18 @@ export const TeamHomeView: React.FC<TeamHomeViewProps> = ({ page, documentId, na
       }
       if (documents.length === 0) {
         return (
-          <DataState
-            title="Team documents"
-            detail="Create documents to share notes, decisions, and plans with your team."
-            actionLabel={canWrite ? 'Create document' : undefined}
-            onAction={canWrite ? () => void createDocument() : undefined}
-          />
+          <div className="documents-empty" role="status">
+            <div className="documents-empty__column">
+              <DocumentsIllustration />
+              <span className="documents-empty__title">Team documents</span>
+              <span className="documents-empty__detail">Create documents to share notes, decisions, and plans with your team.</span>
+              {canWrite && (
+                <Button variant="primary" size="compact" className="documents-empty__action" onClick={() => void createDocument()}>
+                  Create document
+                </Button>
+              )}
+            </div>
+          </div>
         );
       }
       return <TeamDocumentsList documents={documents} members={members ?? []} onOpen={(id) => open('documents', id)} />;
@@ -596,7 +604,7 @@ const TeamMembersTab: React.FC<{ team: TeamItem; members: MemberItem[] | null }>
             <Initials label={memberName(member)} avatarUrl={member.avatar_url} size={24} />
             <div className="flex min-w-0 flex-col">
               <span className="truncate text-[13px] font-medium text-[var(--text-secondary)]">{memberName(member)}</span>
-              {member.username && <span className="truncate text-[12px] font-medium text-[var(--text-tertiary)]">{member.username}</span>}
+              {member.username && member.username !== member.email && <span className="truncate text-[12px] font-medium text-[var(--text-tertiary)]">{member.username}</span>}
             </div>
           </div>
           <span className="truncate text-[13px] font-[450] text-[var(--text-secondary)]">{member.email ?? ''}</span>
