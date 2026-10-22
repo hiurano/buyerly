@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const LINEAR_DATA_LIST = {
+export const BUYERLY_DATA_LIST = {
   toolbarHeight: 43.5,
   rowHeight: 44,
   rowHeightComfortable: 56,
@@ -59,8 +59,8 @@ export const getLinearDataListMinWidth = (columns: BuyerlyDataListColumn[]) => {
   }, 0);
   return (
     columnWidth
-    + Math.max(columns.length - 1, 0) * LINEAR_DATA_LIST.columnGap
-    + LINEAR_DATA_LIST.rowPaddingX * 2
+    + Math.max(columns.length - 1, 0) * BUYERLY_DATA_LIST.columnGap
+    + BUYERLY_DATA_LIST.rowPaddingX * 2
   );
 };
 
@@ -71,9 +71,9 @@ export const BuyerlyDataListToolbar: React.FC<React.PropsWithChildren<{ classNam
   <div
     className={`flex shrink-0 items-center justify-between ${className}`}
     style={{
-      height: `${LINEAR_DATA_LIST.toolbarHeight}px`,
-      paddingLeft: `${LINEAR_DATA_LIST.toolbarPaddingLeft}px`,
-      paddingRight: `${LINEAR_DATA_LIST.toolbarPaddingRight}px`,
+      height: `${BUYERLY_DATA_LIST.toolbarHeight}px`,
+      paddingLeft: `${BUYERLY_DATA_LIST.toolbarPaddingLeft}px`,
+      paddingRight: `${BUYERLY_DATA_LIST.toolbarPaddingRight}px`,
       boxSizing: 'border-box',
     }}
   >
@@ -90,7 +90,7 @@ export const BuyerlyDataListViewport: React.FC<
   <div
     className={`min-w-0 flex-1 overflow-y-auto ${horizontal ? 'overflow-x-auto' : 'overflow-x-hidden'} ${className}`}
     style={{
-      padding: `${LINEAR_DATA_LIST.viewportPaddingY}px ${LINEAR_DATA_LIST.viewportPaddingX}px`,
+      padding: `${BUYERLY_DATA_LIST.viewportPaddingY}px ${BUYERLY_DATA_LIST.viewportPaddingX}px`,
     }}
   >
     {children}
@@ -101,7 +101,7 @@ export const BuyerlyDataListStack: React.FC<React.PropsWithChildren<{ className?
   children,
   className = '',
 }) => (
-  <div className={`flex flex-col ${className}`} style={{ gap: `${LINEAR_DATA_LIST.rowGap}px` }}>
+  <div className={`flex flex-col ${className}`} style={{ gap: `${BUYERLY_DATA_LIST.rowGap}px` }}>
     {children}
   </div>
 );
@@ -114,7 +114,7 @@ interface BuyerlyDataListRowProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export const BuyerlyDataListRow = React.forwardRef<HTMLDivElement, BuyerlyDataListRowProps>(
-  ({ selected = false, height = LINEAR_DATA_LIST.rowHeight, layout = 'flex', columns, className = '', style, children, ...props }, ref) => (
+  ({ selected = false, height = BUYERLY_DATA_LIST.rowHeight, layout = 'flex', columns, className = '', style, children, ...props }, ref) => (
     <div
       ref={ref}
       role="row"
@@ -127,9 +127,9 @@ export const BuyerlyDataListRow = React.forwardRef<HTMLDivElement, BuyerlyDataLi
       } ${className}`}
       style={{
         minHeight: `${height}px`,
-        borderRadius: `${LINEAR_DATA_LIST.radius}px`,
-        paddingInline: `${LINEAR_DATA_LIST.rowPaddingX}px`,
-        gap: layout === 'grid' ? `${LINEAR_DATA_LIST.columnGap}px` : undefined,
+        borderRadius: `${BUYERLY_DATA_LIST.radius}px`,
+        paddingInline: `${BUYERLY_DATA_LIST.rowPaddingX}px`,
+        gap: layout === 'grid' ? `${BUYERLY_DATA_LIST.columnGap}px` : undefined,
         gridTemplateColumns: columns ? getLinearDataListTemplate(columns) : undefined,
         ...style,
       }}
@@ -165,8 +165,8 @@ export const BuyerlyDataListColumnHeader: React.FC<BuyerlyDataListColumnHeaderPr
     style={{
       gridTemplateColumns: getLinearDataListTemplate(columns),
       minWidth: minWidth ? `${minWidth}px` : undefined,
-      gap: `${LINEAR_DATA_LIST.columnGap}px`,
-      paddingInline: `${LINEAR_DATA_LIST.rowPaddingX}px`,
+      gap: `${BUYERLY_DATA_LIST.columnGap}px`,
+      paddingInline: `${BUYERLY_DATA_LIST.rowPaddingX}px`,
       ...style,
     }}
     {...props}
@@ -252,8 +252,8 @@ export const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProp
   <div
     className={`sticky top-[-4px] z-[2] flex items-center ${className}`}
     style={{
-      height: `${LINEAR_DATA_LIST.groupHeaderHeight}px`,
-      borderRadius: `${LINEAR_DATA_LIST.radius}px`,
+      height: `${BUYERLY_DATA_LIST.groupHeaderHeight}px`,
+      borderRadius: `${BUYERLY_DATA_LIST.radius}px`,
       background: tint
         ? `linear-gradient(90deg, color-mix(in srgb, ${tint} 8%, ${GROUP_HEADER_BG}) 0%, ${GROUP_HEADER_BG} 100%)`
         : GROUP_HEADER_BG,
