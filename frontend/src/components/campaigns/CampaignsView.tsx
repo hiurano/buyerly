@@ -858,9 +858,9 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
           <LinearTabs
             collapseOverflow
             tabs={[
-              { id: 'campaigns', label: 'Campaigns', count: hierarchyState === 'ready' ? campaigns.length : undefined },
-              { id: 'adsets', label: 'Ad sets', count: hierarchyState === 'ready' ? adSets.length : undefined },
-              { id: 'ads', label: 'Ads', count: hierarchyState === 'ready' ? ads.length : undefined },
+              { id: 'campaigns', label: 'Campaigns' },
+              { id: 'adsets', label: 'Ad sets' },
+              { id: 'ads', label: 'Ads' },
             ]}
             activeTabId={campaignFilterTab}
             onChange={(id) => setCampaignFilterTab(id as AdsManagerEntity)}
