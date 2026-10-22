@@ -21,7 +21,7 @@ import {
   LinearFilterIcon,
   LinearInboxUnreadIcon,
   LinearLabelIcon,
-  LinearWalletIcon,
+  LinearProjectIcon,
 } from '@/icons/LinearIcons';
 import {
   DATE_PRESETS,
@@ -174,7 +174,7 @@ const FilterFieldIcon: React.FC<{ fieldId: string; type: FilterFieldDefinition<u
   const props = { size: 15, strokeWidth: 1.8, 'aria-hidden': true } as const;
   if (fieldId === 'notificationType') return <LinearInboxUnreadIcon size={14} />;
   if (fieldId === 'from') return <UserRound {...props} />;
-  if (fieldId === 'adAccount') return <LinearWalletIcon size={14} />;
+  if (fieldId === 'adAccount') return <LinearProjectIcon size={14} />;
   if (fieldId === 'eventStatus') return <Circle {...props} />;
   if (fieldId === 'status') return <LinearBacklogDashedIcon size={14} />;
   if (fieldId === 'label') return <LinearLabelIcon size={14} />;

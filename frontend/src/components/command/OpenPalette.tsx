@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Command } from 'cmdk';
-import { Settings, Wallet } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { useAppStore, type OpenPaletteKind } from '@/store/useAppStore';
 import type { Workspace } from '@/lib/types';
 import {
@@ -15,7 +15,7 @@ import {
 } from '@/lib/search';
 import { filterSettingsGroups, settingsGroupsFor, type SettingsPage } from '@/lib/settingsPages';
 import { openPaletteFor } from '@/lib/shortcuts';
-import { LinearBoltIcon, LinearMetaIcon } from '@/icons/LinearIcons';
+import { LinearBoltIcon, LinearIssuesIcon, LinearProjectIcon } from '@/icons/LinearIcons';
 import { COMMAND_MENU_CLASSES, CommandMenuFooterKeys } from '@/ui/SelectionCommandMenu';
 import { SearchResultFacts, StatusMark, formatAge, statusLabel } from '@/components/search/SearchView';
 import { SettingsPageIcon } from '@/components/preferences/SettingsPageIcon';
@@ -47,9 +47,9 @@ export const OPEN_PALETTE_LABELS: Record<OpenPaletteKind, string> = {
 /** The mark in the field and on each command: the sidebar's page icons. */
 export const OpenPaletteIcon: React.FC<{ kind: OpenPaletteKind; size?: number }> = ({ kind, size = 16 }) => {
   if (kind === 'settings') return <Settings size={size} strokeWidth={1.75} />;
-  if (kind === 'account') return <Wallet size={size} strokeWidth={1.75} />;
+  if (kind === 'account') return <LinearProjectIcon size={size} />;
   if (kind === 'rule') return <LinearBoltIcon size={size} />;
-  return <LinearMetaIcon size={size} />;
+  return <LinearIssuesIcon size={size} />;
 };
 
 /** What had focus when a palette opened; it gets focus back unless a choice moves it on. */

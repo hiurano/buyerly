@@ -6,11 +6,11 @@ import {
   LinearInboxIcon,
   LinearMembersIcon,
   LinearMyIssuesIcon,
-  LinearMetaIcon,
+  LinearIssuesIcon,
   LinearBoltIcon,
   LinearPlusIcon,
   LinearTeamsIcon,
-  LinearWalletIcon,
+  LinearProjectIcon,
 } from '@/icons/LinearIcons';
 import { goToShortcut } from '@/lib/shortcuts';
 import { openAppPath, pathForTab } from '@/lib/routing';
@@ -24,8 +24,8 @@ import { SidebarBackdrop, useSidebarDrawer, useSidebarPeek } from './SidebarDraw
 /** A team's pages, as Linear's: its Home, then Campaigns, Ad accounts and Rules (Linear's Issues and Projects). */
 const TEAM_PAGES: { tab: AppTab; label: string; icon: React.ReactNode }[] = [
   { tab: 'team', label: 'Home', icon: <LinearHomeIcon size={14} /> },
-  { tab: 'campaigns', label: 'Campaigns', icon: <LinearMetaIcon size={14} /> },
-  { tab: 'accounts', label: 'Ad accounts', icon: <LinearWalletIcon size={14} /> },
+  { tab: 'campaigns', label: 'Campaigns', icon: <LinearIssuesIcon size={14} /> },
+  { tab: 'accounts', label: 'Ad accounts', icon: <LinearProjectIcon size={14} /> },
   { tab: 'rules', label: 'Rules', icon: <LinearBoltIcon size={14} /> },
 ];
 
@@ -203,7 +203,7 @@ export const Sidebar: React.FC = () => {
             />
             {/* Ad accounts, as Linear's Projects (#388) */}
             <SidebarLink
-              icon={<LinearWalletIcon size={14} />}
+              icon={<LinearProjectIcon size={14} />}
               label="Ad accounts"
               tooltip="Go to ad accounts"
               shortcut={goToShortcut('accounts')}

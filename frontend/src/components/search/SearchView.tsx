@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, Wallet, X } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { apiRequest } from '@/lib/api';
 import { pathForTab } from '@/lib/routing';
@@ -32,7 +32,7 @@ import { LinearFilterButton, LinearFilterMenu, type FilterMenuMode } from '@/com
 import type { FilterClause, FilterFieldDefinition } from '@/components/filters/filterModel';
 import { InboxFilterBar } from '@/components/inbox/InboxFilterBar';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
-import { LinearSearchIcon, LinearSlidersIcon, LinearStatusCircleIcon } from '@/icons/LinearIcons';
+import { LinearProjectIcon, LinearSearchIcon, LinearSlidersIcon, LinearStatusCircleIcon } from '@/icons/LinearIcons';
 import { LinearSelect } from '@/ui/LinearDisplayOptions';
 import { LinearToggle } from '@/ui/LinearToggle';
 import { LinearTabs } from '@/ui/LinearTabs';
@@ -126,9 +126,9 @@ function highlight(name: string, query: string): React.ReactNode {
   return parts;
 }
 
-/** A result's mark: its delivery or run state, or a wallet for an ad account. */
+/** A result's mark: its delivery or run state, or a cube for an ad account. */
 export const StatusMark: React.FC<{ result: SearchResult }> = ({ result }) => {
-  if (result.kind === 'account') return <Wallet size={14} strokeWidth={1.75} className="text-[var(--text-tertiary)]" />;
+  if (result.kind === 'account') return <LinearProjectIcon size={14} className="text-[var(--text-tertiary)]" />;
   const status = searchStatusOf(result);
   if (status === 'active' || status === 'paused') return <LinearStatusCircleIcon status={status} size={14} />;
   return (
