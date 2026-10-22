@@ -206,10 +206,9 @@ Quick selections are scoped to route/account/entity in session storage, outside 
 Display grouping and ordering apply afterwards; a row can appear in multiple groups
 when it has multiple assignments, without changing the unique result count.
 
-Facet data comes from live inventory, `/api/account-groups`, and the selected
-account's rule snapshots. Account groups describe account membership, not custom
-campaign labels. Rule counts describe assignment scope, not automation enablement.
-Delivery, the parent campaign or ad set, account groups and rules can also group rows.
+Facet data comes from live inventory and the selected account's rule snapshots.
+Rule counts describe assignment scope, not automation enablement.
+Status, the parent campaign or ad set, the ad account and rules can also group rows.
 Board mode remains unavailable.
 Account groups stay a filter and a grouping, but not a pane tab: every row of one ad
 account has the same groups. See the responsive contract for the pane itself.

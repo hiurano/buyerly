@@ -57,17 +57,6 @@ async def collect_checks() -> list[dict]:
             WHERE account.workspace_id IS NULL
                OR account.workspace_id <> connection.workspace_id
         """,
-        "account_group_workspace_mismatch": """
-            SELECT count(*)
-            FROM account_group_members AS membership
-            JOIN account_groups AS account_group
-              ON account_group.id = membership.group_id
-            JOIN accounts AS account
-              ON account.id = membership.account_id
-            WHERE account_group.workspace_id IS NULL
-               OR account.workspace_id IS NULL
-               OR account_group.workspace_id <> account.workspace_id
-        """,
     }
     for name, query in isolation_queries.items():
         try:

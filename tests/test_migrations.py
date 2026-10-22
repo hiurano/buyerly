@@ -28,7 +28,6 @@ from core.config import settings
 from core.meta_tokens import decrypt_meta_token
 from database.models import (
     Account,
-    AccountGroup,
     RuleGroup,
     RuleGroupItem,
     RulePreset,
@@ -905,7 +904,7 @@ class TestRuleWorkspaceMigration(unittest.IsolatedAsyncioTestCase):
 
 
 class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
-    async def test_account_group_uniqueness_migration_preserves_and_scopes_names(self):
+    async def test_account_groups_are_scoped_by_0012_and_dropped_by_0047(self):
         from alembic.config import Config
         from alembic import command
         import os
@@ -955,28 +954,22 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                     {"workspace_id": workspace.id, "user_id": first_owner.id},
                 )
                 first_owner.active_workspace_id = workspace.id
-                session.add_all(
-                    [
-                        AccountGroup(
-                            workspace_id=workspace.id,
-                            owner_user_id=first_owner.id,
-                            name="  Alpha  ",
+                # Raw SQL too: account groups have no model any more (#469).
+                for workspace_id, owner_user_id, name in [
+                    (workspace.id, first_owner.id, "  Alpha  "),
+                    (workspace.id, second_owner.id, "alpha"),
+                    (None, first_owner.id, "Legacy"),
+                ]:
+                    await session.execute(
+                        text(
+                            "INSERT INTO account_groups (workspace_id, owner_user_id, name, description, created_at, updated_at) "
+                            "VALUES (:workspace_id, :owner_user_id, :name, '', NOW(), NOW())"
                         ),
-                        AccountGroup(
-                            workspace_id=workspace.id,
-                            owner_user_id=second_owner.id,
-                            name="alpha",
-                        ),
-                        AccountGroup(
-                            workspace_id=None,
-                            owner_user_id=first_owner.id,
-                            name="Legacy",
-                        ),
-                    ]
-                )
+                        {"workspace_id": workspace_id, "owner_user_id": owner_user_id, "name": name},
+                    )
                 await session.commit()
 
-            command.upgrade(config, "head")
+            command.upgrade(config, "0012_group_ws_unique")
 
             async with engine.connect() as conn:
                 rows = (
@@ -995,6 +988,10 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                     ],
                 )
 
+            insert_group = text(
+                "INSERT INTO account_groups (workspace_id, owner_user_id, name, description, created_at, updated_at) "
+                "VALUES (:workspace_id, :owner_user_id, :name, '', NOW(), NOW())"
+            )
             async with session_maker() as session:
                 second_workspace = Workspace(
                     name="Second Group Workspace",
@@ -1003,26 +1000,50 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
                 )
                 session.add(second_workspace)
                 await session.flush()
-                session.add(
-                    AccountGroup(
-                        workspace_id=second_workspace.id,
-                        owner_user_id=first_owner.id,
-                        name="Alpha",
-                    )
+                await session.execute(
+                    insert_group,
+                    {"workspace_id": second_workspace.id, "owner_user_id": first_owner.id, "name": "Alpha"},
                 )
                 await session.commit()
 
             async with session_maker() as session:
-                session.add(
-                    AccountGroup(
-                        workspace_id=workspace.id,
-                        owner_user_id=first_owner.id,
-                        name="ALPHA",
+                with self.assertRaises(Exception):
+                    await session.execute(
+                        insert_group,
+                        {"workspace_id": workspace.id, "owner_user_id": first_owner.id, "name": "ALPHA"},
                     )
+                await session.rollback()
+
+            def table_names(sync_conn):
+                return set(inspect(sync_conn).get_table_names())
+
+            command.upgrade(config, "head")
+            async with engine.connect() as conn:
+                tables = await conn.run_sync(table_names)
+            self.assertNotIn("account_groups", tables)
+            self.assertNotIn("account_group_members", tables)
+
+            # Downgrading brings the tables back empty, still unique per workspace.
+            command.downgrade(config, "0046_private_teams")
+            async with engine.connect() as conn:
+                tables = await conn.run_sync(table_names)
+                self.assertIn("account_groups", tables)
+                self.assertIn("account_group_members", tables)
+                self.assertEqual(
+                    (await conn.execute(text("SELECT count(*) FROM account_groups"))).scalar_one(), 0
+                )
+            async with session_maker() as session:
+                await session.execute(
+                    insert_group,
+                    {"workspace_id": workspace.id, "owner_user_id": first_owner.id, "name": "Alpha"},
                 )
                 with self.assertRaises(Exception):
-                    await session.commit()
+                    await session.execute(
+                        insert_group,
+                        {"workspace_id": workspace.id, "owner_user_id": first_owner.id, "name": " alpha "},
+                    )
                 await session.rollback()
+            command.upgrade(config, "head")
         finally:
             await init_test_db(engine)
             await engine.dispose()
