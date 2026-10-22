@@ -25,6 +25,7 @@ from core.metrics import (
     validate_rule_set_compatibility,
     validate_runtime_rule,
 )
+from core.account_access import EVERYTHING, AccountAccess, account_access
 from core.ownership import owned_by, owned_by_ids
 from core.workspace_slugs import RESERVED_WORKSPACE_SLUGS, normalize_workspace_slug
 from database.models import (
@@ -397,6 +398,9 @@ async def load_writable_account(session, user, ws, account_id: str, action: str)
     stmt = select(Account).where(Account.account_id == acc_id, scope_clause)
     account = (await session.execute(stmt)).scalar_one_or_none()
     if account:
+        # An account of a private team you're not on, or of no team of a guest's, is not there for you.
+        if ws is not None and not (await workspace_account_access(session, user, ws.id)).allows_pk(account.id):
+            raise HTTPException(status_code=404, detail="Ad account not found.")
         return account
 
     exists_any = (
@@ -416,19 +420,36 @@ async def load_writable_account(session, user, ws, account_id: str, action: str)
     raise HTTPException(status_code=404, detail="Ad account not found.")
 
 
+async def workspace_account_access(session, user: User, workspace_id: int) -> AccountAccess:
+    """The ad accounts this user sees in the workspace (`core.account_access`)."""
+    member = (
+        await session.execute(
+            select(WorkspaceMember).where(
+                WorkspaceMember.workspace_id == workspace_id,
+                WorkspaceMember.user_id == user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    return await account_access(session, member, workspace_id)
+
+
 def ensure_workspace_write_access(
     user: User,
     member: Optional[WorkspaceMember],
     action_description: str = "changing data",
+    *,
+    guest_allowed: bool = False,
 ) -> None:
     """Ensure user has write access to workspace (owner, admin, member).
 
-    Guests and non-members are blocked. Linear's guests act inside the teams they
-    are added to; until Buyerly scopes data by team, a guest only reads.
+    Non-members are blocked. Guests act only inside their teams, as Linear's:
+    `guest_allowed` marks the writes on one ad account, which reaches them only
+    through `load_writable_account` and so only when it is on one of their teams.
+    Workspace-wide writes (rules, labels, connections) stay closed to them.
     """
     if not member:
         raise HTTPException(status_code=403, detail=f"You do not have access to this workspace for {action_description}")
-    if member.role == "guest":
+    if member.role == "guest" and not guest_allowed:
         raise HTTPException(
             status_code=403,
             detail=f"Guests can't perform {action_description}",
@@ -454,7 +475,8 @@ async def get_user_accounts(session, user: User, workspace_id: Optional[int] = N
         .order_by(Account.id.desc())
     )
     res = await session.execute(stmt)
-    accounts = res.scalars().all()
+    access = await workspace_account_access(session, user, ws.id)
+    accounts = [account for account in res.scalars().all() if account.workspace_id is None or access.allows_pk(account.id)]
 
     # Auto-backfill workspace_id for legacy unassigned accounts owned by this user in their active workspace
     needs_flush = False
@@ -821,9 +843,11 @@ async def _rule_label_responses(session, labels: List[RuleGroup]) -> List[RuleLa
 
 
 async def _preset_attachments(
-    session, workspace_id: int
+    session, workspace_id: int, access: AccountAccess = EVERYTHING
 ) -> Dict[int, Dict[str, Dict[str, Any]]]:
     """Map each preset to the ad accounts holding it, and the scope on each.
+
+    Only accounts in `access` are named: a private team's accounts stay out of sight.
 
     The scope travels with the attachment so a client can say what detaching
     would remove before the buyer clicks, instead of silently discarding a rule
@@ -838,6 +862,8 @@ async def _preset_attachments(
     ).all()
     attachments: Dict[int, Dict[str, Dict[str, Any]]] = {}
     for account_id, raw_rules in accounts:
+        if not access.allows(account_id):
+            continue
         for rule in _load_active_rules(raw_rules):
             preset_id = rule.get("preset_id")
             if not isinstance(preset_id, int):
@@ -900,6 +926,7 @@ async def _rule_entity_states(
     preset_id: Optional[int] = None,
     entity_level: Optional[str] = None,
     entity_id: Optional[str] = None,
+    access: AccountAccess = EVERYTHING,
 ) -> List[RuleEntityStateItem]:
     """Where rules stand on entities, from one rule's or one entity's side (#322).
 
@@ -922,6 +949,7 @@ async def _rule_entity_states(
             )
         )
     ).scalars().all()
+    rows = [row for row in rows if access.allows(row.account_id)]
     if not rows:
         return []
 

@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { useAppStore, type AppTab } from '@/store/useAppStore';
-import { LinearDisclosureIcon, LinearDotsIcon } from '@/icons/LinearIcons';
+import { LinearDisclosureIcon, LinearDotsIcon, LinearLockIcon } from '@/icons/LinearIcons';
 import { TeamIcon } from '@/components/preferences/TeamIcon';
 import { Tooltip } from '@/ui/Tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
@@ -150,6 +150,7 @@ export const SidebarTeam: React.FC<SidebarTeamProps> = ({ team, workspaceSlug, p
         <button type="button" className="sidebar-team-toggle" aria-expanded={!collapsed} onClick={toggle}>
           <TeamIcon size={14} />
           <span className="sidebar-team-name">{team.name}</span>
+          {team.private && <LinearLockIcon size={12} className="sidebar-team-lock" aria-label="Private team" />}
           <span className="sidebar-team-disclosure">
             <LinearDisclosureIcon size={16} className="sidebar-disclosure" data-open={collapsed ? 'false' : 'true'} />
           </span>

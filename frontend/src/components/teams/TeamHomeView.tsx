@@ -55,7 +55,8 @@ export const TeamHomeView: React.FC<TeamHomeViewProps> = ({ page, documentId, na
   const [members, setMembers] = useState<MemberItem[] | null>(null);
   const [documents, setDocuments] = useState<TeamDocument[] | null>(null);
   const [documentsError, setDocumentsError] = useState('');
-  const canWrite = workspace.role !== 'guest';
+  // Guests write in the teams they're on, which are the only ones they see, as in Linear.
+  const canWrite = true;
 
   useEffect(() => {
     let active = true;
@@ -246,6 +247,7 @@ interface TeamOverviewProps {
 
 /** Linear's team Overview: icon and name, the description, Team resources; Members and Go to beside them. */
 const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, canEdit, canWrite, onOpenTab, onCreateDocument }) => {
+  const { workspace } = useWorkspaceSession();
   const setActiveTab = useAppStore((state) => state.setActiveTab);
   const setActiveTeamKey = useAppStore((state) => state.setActiveTeamKey);
   const openTeamSettings = useAppStore((state) => state.openTeamSettings);
@@ -259,7 +261,7 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
   };
   const links: { id: string; label: string; icon: React.ReactNode; run: () => void }[] = [
     // Guests don't open settings, as in Linear.
-    ...(canWrite ? [{
+    ...(workspace.role !== 'guest' ? [{
       id: 'settings',
       label: 'Team settings',
       icon: <TeamSettingsIcon />,

@@ -18,18 +18,22 @@ class TeamItem(BaseModel):
     owner_user_ids: List[int] = Field(default_factory=list)
     account_ids: List[int] = Field(default_factory=list)
     is_member: bool = False
+    # Linear's private team: only its members see it and its ad accounts.
+    private: bool = False
 
 
 class CreateTeamRequest(BaseModel):
     name: str = Field(..., max_length=48)
     key: str = Field(..., max_length=7)
     description: str = Field(default="", max_length=255)
+    private: bool = False
 
 
 class UpdateTeamRequest(BaseModel):
     name: Optional[str] = Field(None, max_length=48)
     key: Optional[str] = Field(None, max_length=7)
     description: Optional[str] = Field(None, max_length=255)
+    private: Optional[bool] = None
 
 
 class TeamMembersRequest(BaseModel):

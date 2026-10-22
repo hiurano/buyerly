@@ -13,6 +13,7 @@ from api.deps import (
     get_user_workspace_member,
     invalidate_summary_cache,
     record_security_event_and_raise,
+    workspace_account_access,
 )
 from core.audit import build_audit_event
 from core.currency import UNKNOWN_CURRENCY, normalize_currency
@@ -76,7 +77,7 @@ async def reactivate_adset(
 ):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "turning on an ad set")
+        ensure_workspace_write_access(user, member, "turning on an ad set", guest_allowed=True)
 
         stopped_res = await session.execute(select(StoppedAdSet).where(StoppedAdSet.adset_id == adset_id))
         stopped_entry = stopped_res.scalar_one_or_none()
@@ -92,6 +93,8 @@ async def reactivate_adset(
             select(Account).where(Account.account_id == stopped_entry.account_id, scope_clause)
         )
         account = acc_res.scalar_one_or_none()
+        if account and ws is not None and not (await workspace_account_access(session, user, ws.id)).allows_pk(account.id):
+            account = None
         if not account:
             await record_security_event_and_raise(
                 session,
@@ -188,7 +191,7 @@ async def reactivate_adset(
 async def dismiss_adset(adset_id: str, user: User = Depends(get_current_user)):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "hiding an ad set notification")
+        ensure_workspace_write_access(user, member, "hiding an ad set notification", guest_allowed=True)
 
         stopped_res = await session.execute(select(StoppedAdSet).where(StoppedAdSet.adset_id == adset_id))
         stopped_entry = stopped_res.scalar_one_or_none()
@@ -204,6 +207,8 @@ async def dismiss_adset(adset_id: str, user: User = Depends(get_current_user)):
             select(Account).where(Account.account_id == stopped_entry.account_id, scope_clause)
         )
         account = account_res.scalar_one_or_none()
+        if account and ws is not None and not (await workspace_account_access(session, user, ws.id)).allows_pk(account.id):
+            account = None
         if not account:
             await record_security_event_and_raise(
                 session,

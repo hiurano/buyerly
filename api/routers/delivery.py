@@ -115,7 +115,7 @@ async def _prepare(
     what Meta reported immediately before the write.
     """
     ws, member = await get_user_workspace_member(session, user)
-    ensure_workspace_write_access(user, member, description)
+    ensure_workspace_write_access(user, member, description, guest_allowed=True)
     account = await load_writable_account(session, user, ws, account_id, action)
 
     access_token = await resolve_account_access_token(session, account)

@@ -14,7 +14,7 @@ from sqlalchemy import and_, case, func, not_, or_, select
 from sqlalchemy.orm import aliased
 
 from api.auth import get_current_user
-from api.deps import _preset_snapshot, get_user_accounts, get_user_workspace
+from api.deps import _preset_snapshot, get_user_accounts, get_user_workspace_member
 from api.schemas import SearchResponse, SearchResultItem
 from api.schemas.search import SearchKind, SearchOrder, SearchStatus
 from database.db import async_session_maker
@@ -301,9 +301,12 @@ async def search_workspace(
     if status:
         kinds = [candidate for candidate in kinds if candidate != "account"]
     async with async_session_maker() as session:
-        ws = await get_user_workspace(session, user)
+        ws, member = await get_user_workspace_member(session, user)
         if ws is None:
             raise HTTPException(status_code=404, detail="Workspace not found.")
+        if member is not None and member.role == "guest":
+            # Rules are the workspace's; a guest sees only their teams, as in Linear.
+            kinds = [candidate for candidate in kinds if candidate != "rule"]
         # Only ad accounts Ads Manager can open, so a result never leads nowhere.
         accounts = [
             candidate

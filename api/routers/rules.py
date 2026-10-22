@@ -26,7 +26,9 @@ from api.deps import (
     ensure_workspace_write_access,
     get_user_workspace,
     get_user_workspace_member,
+    workspace_account_access,
 )
+from core.account_access import EVERYTHING, AccountAccess
 from api.schemas import (
     ApplyPresetRequest,
     BulkPresetLabelsRequest,
@@ -130,7 +132,7 @@ def _preset_fields(payload: RuleDraftRequest, condition_payloads: list) -> dict:
 
 
 async def _apply_rule_attachments(
-    session, ws, preset: RulePreset, desired: List[RuleAttachmentRequest]
+    session, ws, preset: RulePreset, desired: List[RuleAttachmentRequest], access: AccountAccess = EVERYTHING
 ) -> None:
     """Make `desired` the ad accounts the rule runs on, each with its scope (#387).
 
@@ -140,9 +142,14 @@ async def _apply_rule_attachments(
     error leaves every account as it was: the caller has not committed yet.
     """
     wanted = {_account_key(item.account_id): item.scope.model_dump() for item in desired}
-    accounts = (
-        await session.execute(select(Account).where(Account.workspace_id == ws.id))
-    ).scalars().all()
+    # Accounts out of sight (a private team's) are neither named nor changed: the rule stays on them.
+    accounts = [
+        account
+        for account in (
+            await session.execute(select(Account).where(Account.workspace_id == ws.id))
+        ).scalars().all()
+        if access.allows(account.account_id)
+    ]
     known = {account.account_id for account in accounts}
     if any(account_id not in known for account_id in wanted):
         raise HTTPException(status_code=404, detail="Ad account not found.")
@@ -186,10 +193,15 @@ async def list_presets(user: User = Depends(get_current_user)):
         )
         res = await session.execute(stmt)
         presets = res.scalars().all()
+        access = await workspace_account_access(session, user, ws.id)
+        attachments = await _preset_attachments(session, ws.id, access)
+        _, member = await get_user_workspace_member(session, user, workspace_id=ws.id)
+        if member is not None and member.role == "guest":
+            # A guest sees the rules at work on their teams' ad accounts, as Linear's guests see only their teams.
+            presets = [preset for preset in presets if attachments.get(preset.id)]
         last_runs = await _preset_last_runs(
             session, ws.id, [preset.id for preset in presets]
         )
-        attachments = await _preset_attachments(session, ws.id)
         labels = await _preset_label_ids(session, [preset.id for preset in presets])
         return [
             _preset_response(
@@ -224,7 +236,9 @@ async def create_preset(
         await _set_preset_labels(session, preset.id, [label.id for label in labels])
         # Created and attached in one write: the rule never sits "nowhere" (#387).
         if payload.attachments:
-            await _apply_rule_attachments(session, ws, preset, payload.attachments)
+            await _apply_rule_attachments(
+                session, ws, preset, payload.attachments, await workspace_account_access(session, user, ws.id)
+            )
         _record_assistant_change(
             session,
             request,
@@ -239,7 +253,9 @@ async def create_preset(
         )
         await session.commit()
         await session.refresh(preset)
-        return await _labelled_preset_response(session, ws.id, preset)
+        return await _labelled_preset_response(
+            session, ws.id, preset, await workspace_account_access(session, user, ws.id)
+        )
 
 
 @router.post("/presets/check")
@@ -278,7 +294,7 @@ async def preview_rule_draft_on_account(
                 )
             )
         ).scalar_one_or_none()
-        if not acc:
+        if not acc or not (await workspace_account_access(session, user, ws.id)).allows(acc.account_id):
             raise HTTPException(status_code=404, detail="Ad account not found.")
         condition_payloads = _validated_condition_payloads(payload.conditions)
         # Never added to the session: a draft is read, not stored.
@@ -352,11 +368,15 @@ async def update_preset(preset_id: int, payload: CreatePresetRequest, user: User
             await _set_preset_labels(session, preset.id, [label.id for label in labels])
         # Where it runs, edited in the same window (#387); left out, unchanged.
         if payload.attachments is not None:
-            await _apply_rule_attachments(session, ws, preset, payload.attachments)
+            await _apply_rule_attachments(
+                session, ws, preset, payload.attachments, await workspace_account_access(session, user, ws.id)
+            )
 
         await session.commit()
         await session.refresh(preset)
-        return await _labelled_preset_response(session, ws.id, preset)
+        return await _labelled_preset_response(
+            session, ws.id, preset, await workspace_account_access(session, user, ws.id)
+        )
 
 
 @router.delete("/presets/{preset_id}")
@@ -482,9 +502,11 @@ async def _set_preset_labels(session, preset_id: int, label_ids: List[int]) -> N
     )
 
 
-async def _labelled_preset_response(session, ws_id: int, preset: RulePreset) -> RulePresetItem:
+async def _labelled_preset_response(
+    session, ws_id: int, preset: RulePreset, access: AccountAccess = EVERYTHING
+) -> RulePresetItem:
     last_runs = await _preset_last_runs(session, ws_id, [preset.id])
-    attachments = await _preset_attachments(session, ws_id)
+    attachments = await _preset_attachments(session, ws_id, access)
     labels = await _preset_label_ids(session, [preset.id])
     return _preset_response(
         preset,
@@ -609,7 +631,9 @@ async def set_preset_labels(
         labels = await _get_workspace_labels(session, payload.label_ids, workspace_id=ws.id)
         await _set_preset_labels(session, preset.id, [label.id for label in labels])
         await session.commit()
-        return await _labelled_preset_response(session, ws.id, preset)
+        return await _labelled_preset_response(
+            session, ws.id, preset, await workspace_account_access(session, user, ws.id)
+        )
 
 
 @router.patch("/presets/labels")
@@ -655,7 +679,7 @@ async def assign_rule_to_account(
     """Add a rule/preset to an ad account's rule list."""
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "attaching rules to an ad account")
+        ensure_workspace_write_access(user, member, "attaching rules to an ad account", guest_allowed=True)
 
         acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
         stmt = select(Account).where(
@@ -665,7 +689,7 @@ async def assign_rule_to_account(
 
         res = await session.execute(stmt)
         acc = res.scalar_one_or_none()
-        if not acc:
+        if not acc or not (await workspace_account_access(session, user, ws.id)).allows(acc.account_id):
             raise HTTPException(status_code=404, detail="Ad account not found.")
         await _ensure_stable_account_owner(session, acc)
 
@@ -737,7 +761,7 @@ async def set_attached_rule_scope(
     """Re-aim an already attached rule at an account, campaigns or ad sets."""
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "changing a rule's scope")
+        ensure_workspace_write_access(user, member, "changing a rule's scope", guest_allowed=True)
 
         acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
         acc = (
@@ -748,7 +772,7 @@ async def set_attached_rule_scope(
                 )
             )
         ).scalar_one_or_none()
-        if not acc:
+        if not acc or not (await workspace_account_access(session, user, ws.id)).allows(acc.account_id):
             raise HTTPException(status_code=404, detail="Ad account not found.")
         await _ensure_stable_account_owner(session, acc)
 
@@ -802,7 +826,7 @@ async def preview_rule_on_account_endpoint(
                 )
             )
         ).scalar_one_or_none()
-        if not acc:
+        if not acc or not (await workspace_account_access(session, user, ws.id)).allows(acc.account_id):
             raise HTTPException(status_code=404, detail="Ad account not found.")
         preset = (
             await session.execute(
@@ -838,7 +862,7 @@ async def detach_rule_from_account(
     """Remove a specific rule from an ad account's list."""
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "detaching rules from an ad account")
+        ensure_workspace_write_access(user, member, "detaching rules from an ad account", guest_allowed=True)
 
         acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
         stmt = select(Account).where(
@@ -848,7 +872,7 @@ async def detach_rule_from_account(
 
         res = await session.execute(stmt)
         acc = res.scalar_one_or_none()
-        if not acc:
+        if not acc or not (await workspace_account_access(session, user, ws.id)).allows(acc.account_id):
             raise HTTPException(status_code=404, detail="Ad account not found.")
 
         active_rules = _load_active_rules(acc.active_rules)
@@ -890,7 +914,7 @@ async def detach_rule_from_account(
 async def toggle_rules(account_id: str, user: User = Depends(get_current_user)):
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "enabling/disabling rules")
+        ensure_workspace_write_access(user, member, "enabling/disabling rules", guest_allowed=True)
 
         acc_id = account_id if account_id.startswith("act_") else f"act_{account_id}"
         stmt = select(Account).where(
@@ -900,7 +924,7 @@ async def toggle_rules(account_id: str, user: User = Depends(get_current_user)):
 
         res = await session.execute(stmt)
         acc = res.scalar_one_or_none()
-        if not acc:
+        if not acc or not (await workspace_account_access(session, user, ws.id)).allows(acc.account_id):
             raise HTTPException(status_code=404, detail="Ad account not found.")
 
         active_rules = _load_active_rules(acc.active_rules)
@@ -937,7 +961,8 @@ async def list_preset_states(preset_id: int, user: User = Depends(get_current_us
         ).scalar_one_or_none()
         if preset is None:
             raise HTTPException(status_code=404, detail="Preset not found")
-        return await _rule_entity_states(session, ws.id, preset_id=preset_id)
+        access = await workspace_account_access(session, user, ws.id)
+        return await _rule_entity_states(session, ws.id, preset_id=preset_id, access=access)
 
 
 @router.get("/rule-states", response_model=List[RuleEntityStateItem])
@@ -949,6 +974,7 @@ async def list_entity_rule_states(
     """Where each rule aimed at one campaign, ad set or ad stands on it (#322)."""
     async with async_session_maker() as session:
         ws = await get_user_workspace(session, user)
+        access = await workspace_account_access(session, user, ws.id)
         return await _rule_entity_states(
-            session, ws.id, entity_level=entity_level, entity_id=entity_id
+            session, ws.id, entity_level=entity_level, entity_id=entity_id, access=access
         )

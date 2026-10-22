@@ -7,7 +7,7 @@ import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapse
 import { Initials } from '@/components/preferences/MembersSection';
 import { memberName, type MemberItem } from '@/components/preferences/MemberDialogs';
 import { TeamIcon } from '@/components/preferences/TeamIcon';
-import { LinearCheckIcon } from '@/icons/LinearIcons';
+import { LinearCheckIcon, LinearLockIcon } from '@/icons/LinearIcons';
 import { DataState } from '@/ui/DataState';
 import { HeaderCreateButton } from '@/ui/HeaderCreateButton';
 import { LinearDataListRow, LinearDataListToolbar, LinearDataTable, type LinearDataListColumn } from '@/ui/LinearDataList';
@@ -112,6 +112,7 @@ export const WorkspaceTeamsView: React.FC = () => {
                 <TeamIcon size={14} />
                 <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">{team.name}</span>
                 <span className="shrink-0 text-[13px] font-medium text-[var(--text-muted)]">{team.key}</span>
+                {team.private && <LinearLockIcon size={12} className="shrink-0 text-[var(--text-muted)]" aria-label="Private team" />}
               </div>
               <div>
                 <button

@@ -22,6 +22,7 @@ from api.routers.audit import (
     _stored_inbox_display,
     _stored_notification_channels,
 )
+from core.account_access import account_access
 from core.config import settings
 from core.email import send_inbox_notification_email
 from database.db import async_session_maker
@@ -140,7 +141,7 @@ async def due_inbox_events(session, user, member, workspace_id, *, wanted, deliv
             .outerjoin(InboxNotificationState, join_on)
             .where(
                 AuditEvent.workspace_id == workspace_id,
-                _in_inbox(user.id),
+                _in_inbox(user.id, await account_access(session, member, workspace_id), member.role == "guest"),
                 AuditEvent.created_at > since,
                 AuditEvent.created_at <= until,
                 ~deleted,

@@ -45,7 +45,7 @@ export function errorMessage(error: unknown, fallback: string): string {
 export const ASSIGNABLE_ROLES: Array<{ value: string; label: string; description: string }> = [
   { value: 'admin', label: 'Workspace admin', description: 'Manages members, invites and workspace settings' },
   { value: 'member', label: 'Member', description: 'Works with ad accounts, campaigns and rules, and creates teams' },
-  { value: 'guest', label: 'Guest', description: 'Sees only the teams they are added to; reads for now' },
+  { value: 'guest', label: 'Guest', description: 'Works only in the teams they are added to' },
 ];
 
 /** "an admin", "a member": the wording of Linear's "Role has been changed to a member". */

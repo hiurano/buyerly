@@ -914,9 +914,9 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(batch_add_res.status_code, 403)
 
-            # 5. Victor is blocked from mutating account rules
+            # 5. Victor, a guest on no team, doesn't see the account whose rules he'd switch
             toggle_res = await client.post('/api/accounts/act_111111/toggle-rules', headers=viewer_headers)
-            self.assertEqual(toggle_res.status_code, 403)
+            self.assertEqual(toggle_res.status_code, 404)
 
             # 6. Victor is blocked from deleting accounts
             del_acc_res = await client.delete('/api/accounts/act_111111', headers=viewer_headers)

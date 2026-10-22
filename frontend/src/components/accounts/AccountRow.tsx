@@ -39,7 +39,10 @@ export function getAccountColumns(properties: Record<string, boolean>, phone: bo
 }
 
 export interface AccountRowActions {
+  /** Adding, reconnecting and removing accounts: not for guests. */
   canEdit: boolean;
+  /** Renaming, automation and Lead on an account you see: guests too. */
+  canAct: boolean;
   /** The workspace's members, who may lead an account. */
   members: AccountMember[];
   setLead: (account: MetaAccount, leadUserId: number | null) => void;
@@ -79,7 +82,7 @@ export const AccountRowMenu: React.FC<{
         {!inHeader && account.is_active !== false && (
           <DropdownMenuItem onSelect={() => actions.openInAdsManager(account)}><span>Open in Ads Manager</span></DropdownMenuItem>
         )}
-        {actions.canEdit && (
+        {actions.canAct && (
           <>
             {!inHeader && <DropdownMenuSeparator />}
             <DropdownMenuItem onSelect={() => actions.rename(account)}><span>Rename…</span></DropdownMenuItem>
@@ -93,7 +96,7 @@ export const AccountRowMenu: React.FC<{
             </DropdownMenuItem>
           </>
         )}
-        {(!inHeader || actions.canEdit) && <DropdownMenuSeparator />}
+        {(!inHeader || actions.canAct) && <DropdownMenuSeparator />}
         <DropdownMenuItem onSelect={() => actions.copyId(account)}><span>Copy account ID</span></DropdownMenuItem>
         {actions.canEdit && (
           <>
@@ -160,7 +163,7 @@ export const AccountRow: React.FC<AccountRowProps> = ({ account, columns, proper
           <AccountLeadPicker
             account={account}
             members={actions.members}
-            canEdit={actions.canEdit}
+            canEdit={actions.canAct}
             onChange={(leadUserId) => actions.setLead(account, leadUserId)}
             variant="cell"
           />

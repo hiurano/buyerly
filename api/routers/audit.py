@@ -14,6 +14,7 @@ from api.deps import (
     ensure_workspace_write_access,
     get_user_workspace_member,
 )
+from core.account_access import EVERYTHING, AccountAccess, account_access
 from core.action_undo import (
     MUTATING_EVENT_TYPES,
     REVERSIBLE_EVENT_TYPES,
@@ -186,6 +187,10 @@ async def list_audit_events(
             if workspace_id is not None
             else false()
         ]
+        if workspace_id is not None:
+            # A private team's accounts, and for a guest everything off their teams, stay out of the history.
+            access = await account_access(session, member, workspace_id)
+            filters.append(_visible_events(access, bool(member and member.role == "guest")))
         if category:
             filters.append(AuditEvent.category == category.upper())
         if account_id:
@@ -289,6 +294,14 @@ async def undo_audit_event(
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
         ensure_workspace_write_access(user, member, "undoing an action")
+        if ws is not None:
+            event_account = (
+                await session.execute(
+                    select(AuditEvent.account_id).where(AuditEvent.id == event_id, AuditEvent.workspace_id == ws.id)
+                )
+            ).scalar_one_or_none()
+            if event_account and not (await account_access(session, member, ws.id)).allows(event_account):
+                raise HTTPException(status_code=404, detail="Event not found")
         try:
             return await undo_audit_action(
                 session,
@@ -360,7 +373,15 @@ INBOX_RULE_ACTION_EVENT_TYPES = (
 INBOX_HIDDEN_EVENT_TYPES = ("INVITE_ACCEPT", "ACCOUNT_DAY_STARTED")
 
 
-def _in_inbox(user_id: Optional[int]):
+def _visible_events(access: AccountAccess, guest: bool):
+    """Events on ad accounts this member sees; events on no account are everyone's but a guest's."""
+    if access.everything:
+        return true()
+    on_visible = AuditEvent.account_id.in_(sorted(access.act_ids)) if access.act_ids else false()
+    return on_visible if guest else or_(on_visible, AuditEvent.account_id == "")
+
+
+def _in_inbox(user_id: Optional[int], access: AccountAccess = EVERYTHING, guest: bool = False):
     """Audit events that are this member's Inbox notifications.
 
     As Linear notifies you about your own work, an event on an ad account that
@@ -373,7 +394,11 @@ def _in_inbox(user_id: Optional[int]):
         Account.lead_user_id.is_not(None),
         Account.lead_user_id != user_id,
     )
-    return and_(AuditEvent.event_type.not_in(INBOX_HIDDEN_EVENT_TYPES), ~led_by_someone_else.exists())
+    return and_(
+        AuditEvent.event_type.not_in(INBOX_HIDDEN_EVENT_TYPES),
+        ~led_by_someone_else.exists(),
+        _visible_events(access, guest),
+    )
 
 
 def _inbox_kind():
@@ -550,7 +575,7 @@ async def _inbox_unread(
             .outerjoin(InboxNotificationState, join_on)
             .where(
                 AuditEvent.workspace_id == workspace_id,
-                _in_inbox(user.id),
+                _in_inbox(user.id, await account_access(session, member, workspace_id), member.role == "guest"),
                 ~deleted,
                 ~snoozed,
                 ~is_read,
@@ -666,10 +691,11 @@ def _parse_inbox_priority(raw: Optional[str]) -> Optional[InboxPriority]:
 
 
 def _inbox_view_filters(
-    ws, user_id, is_read, deleted, snoozed, *, unread_only, show_snoozed, tab=None, priority=None
+    ws, user_id, is_read, deleted, snoozed, *, unread_only, show_snoozed, tab=None, priority=None,
+    access: AccountAccess = EVERYTHING, guest: bool = False,
 ):
     """What the list shows before filters; a tab keeps Priority or Other."""
-    filters = [AuditEvent.workspace_id == ws.id, _in_inbox(user_id), ~deleted]
+    filters = [AuditEvent.workspace_id == ws.id, _in_inbox(user_id, access, guest), ~deleted]
     if not show_snoozed:
         filters.append(~snoozed)
     if unread_only:
@@ -710,6 +736,8 @@ async def list_inbox(
             show_snoozed=show_snoozed,
             tab=tab,
             priority=priority,
+            access=await account_access(session, member, ws.id),
+            guest=member.role == "guest",
         )
         filters = view_filters + _inbox_filter_conditions(clauses)
         hidden_by_filters = 0
@@ -824,6 +852,8 @@ async def inbox_facets(
             show_snoozed=show_snoozed,
             tab=tab,
             priority=priority,
+            access=await account_access(session, member, ws.id),
+            guest=member.role == "guest",
         )
 
         async def grouped(column, label=None):
