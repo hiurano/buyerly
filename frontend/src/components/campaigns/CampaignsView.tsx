@@ -147,7 +147,8 @@ async function loadAccountHierarchy(account: MetaAccount, period: AdsManagerPeri
 function accountLinkToFilter() {
   const url = new URL(window.location.href);
   const accountId = url.searchParams.get('account');
-  if (!accountId) return;
+  // The view can mount for a moment on another page's address (Search's own `?account=`) before the route settles.
+  if (!accountId || !/\/(ads-manager|my-campaigns)\//.test(url.pathname)) return;
   url.searchParams.delete('account');
   if (!url.searchParams.has('filter')) {
     const clause = [{ fieldId: 'account', operator: 'is', values: [accountId] }];
