@@ -272,6 +272,12 @@ export function formatAddedDate(value: string | undefined): string {
 export const accountPagePath = (workspace: string, accountId: string) =>
   `/${workspace}/accounts/${encodeURIComponent(accountId)}`;
 
-/** The account in Ads Manager, where its campaigns, ad sets and ads live. */
-export const accountAdsManagerPath = (workspace: string, accountId: string) =>
-  `/${workspace}/ads-manager/campaigns?account=${encodeURIComponent(accountId)}`;
+/**
+ * Campaigns filtered to this account, as Linear's project opens its issues:
+ * every level filters by Ad account, and the filter is one click to clear.
+ */
+export const accountAdsManagerPath = (workspace: string, accountId: string) => {
+  const clause = [{ fieldId: 'account', operator: 'is', values: [accountId] }];
+  const filter = encodeURIComponent(JSON.stringify({ campaigns: clause, adsets: clause, ads: clause }));
+  return `/${workspace}/ads-manager/campaigns?filter=${filter}`;
+};

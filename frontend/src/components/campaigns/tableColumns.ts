@@ -14,13 +14,15 @@ const primaryColumn = (statusVisible: boolean, width: string) =>
 export const getAdsManagerColumns = (
   tab: AdsManagerTableTab,
   properties: Record<string, boolean>,
-  options: { spendFirst?: boolean } = {},
+  options: { spendFirst?: boolean; groupedByAccount?: boolean } = {},
 ): LinearDataListColumn[] => {
   const phone = Boolean(options.spendFirst);
   const columns: LinearDataListColumn[] = [
     primaryColumn(properties.status !== false, phone ? 'minmax(150px, 1fr)' : 'minmax(260px, 1fr)'),
   ];
 
+  // Grouped by account, the group names it; as Linear drops the project from rows grouped by project.
+  if (properties.account && !options.groupedByAccount) columns.push({ id: 'account', label: 'Ad account', width: '160px' });
   if (tab !== 'campaigns' && properties.campaign) columns.push({ id: 'campaign', label: 'Campaign', width: '160px' });
   if (tab === 'ads' && properties.adSet) columns.push({ id: 'adSet', label: 'Ad set', width: '160px' });
 

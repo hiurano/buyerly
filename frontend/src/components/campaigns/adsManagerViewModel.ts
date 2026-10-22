@@ -11,6 +11,7 @@ import { metricsFor } from './adsManagerMetrics';
 export function adsManagerProperties(entity: AdsManagerEntity): { id: string; label: string }[] {
   return [
     { id: 'status', label: 'Delivery' },
+    { id: 'account', label: 'Ad account' },
     ...(entity !== 'campaigns' ? [{ id: 'campaign', label: 'Campaign' }] : []),
     ...(entity === 'ads' ? [{ id: 'adSet', label: 'Ad set' }] : []),
     ...metricsFor(entity).map((metric) => ({ id: metric.id, label: metric.label })),
@@ -20,39 +21,45 @@ export function adsManagerProperties(entity: AdsManagerEntity): { id: string; la
 }
 
 /** The short set a buyer reads every day; everything else is one switch away in Display properties. */
-const DEFAULT_ON = new Set(['status', 'budget', 'spend', 'leads', 'cpl', 'rules']);
-const DEFAULT_ON_ADS = new Set(['status', 'spend', 'leads', 'cpl', 'ctr', 'cpc']);
+const DEFAULT_ON = new Set(['status', 'account', 'budget', 'spend', 'leads', 'cpl', 'rules']);
+const DEFAULT_ON_ADS = new Set(['status', 'account', 'spend', 'leads', 'cpl', 'ctr', 'cpc']);
 
 const defaultProperties = (entity: AdsManagerEntity) => Object.fromEntries(
   adsManagerProperties(entity).map(({ id }) => [id, (entity === 'ads' ? DEFAULT_ON_ADS : DEFAULT_ON).has(id)]),
 );
 
-/** Each Ads Manager level keeps its own view, as each Linear view does (#385). */
+/**
+ * Each Ads Manager level keeps its own view, as each Linear view does (#385).
+ * Every ad account is on screen at once, grouped by account: a group's figures
+ * share one currency, and a buyer reads limits and billing per account.
+ */
 export const ADS_MANAGER_VIEW_DEFAULTS: Record<AdsManagerEntity, ListViewSettings> = {
   campaigns: listViewDefaults({
-    grouping: 'none',
+    grouping: 'account',
     ordering: 'manual',
     direction: 'desc',
     properties: defaultProperties('campaigns'),
   }),
   adsets: listViewDefaults({
-    grouping: 'none',
+    grouping: 'account',
     ordering: 'manual',
     direction: 'desc',
     properties: defaultProperties('adsets'),
   }),
   ads: listViewDefaults({
-    grouping: 'none',
+    grouping: 'account',
     ordering: 'manual',
     direction: 'desc',
     properties: defaultProperties('ads'),
   }),
 };
 
-export const adsManagerViewKey = (entity: AdsManagerEntity) => `ads-manager.${entity}`;
+/** My campaigns keeps views of its own, as Linear's My issues does beside a team's Issues. */
+export const adsManagerViewKey = (entity: AdsManagerEntity, mine = false) =>
+  `${mine ? 'my-campaigns' : 'ads-manager'}.${entity}`;
 
-export const useAdsManagerView = (entity: AdsManagerEntity) =>
-  useListView(adsManagerViewKey(entity), ADS_MANAGER_VIEW_DEFAULTS[entity]);
+export const useAdsManagerView = (entity: AdsManagerEntity, mine = false) =>
+  useListView(adsManagerViewKey(entity, mine), ADS_MANAGER_VIEW_DEFAULTS[entity]);
 
 /** Names sort A→Z first, metrics largest first. */
 export const naturalAdsManagerDirection = (ordering: string): SortDirection => (ordering === 'name' ? 'asc' : 'desc');
@@ -61,6 +68,7 @@ export const naturalAdsManagerDirection = (ordering: string): SortDirection => (
 export function adsManagerGroupings(entity: AdsManagerEntity, hasAccountGroups: boolean) {
   return [
     { value: 'none', label: 'No grouping' },
+    { value: 'account', label: 'Ad account' },
     { value: 'status', label: 'Delivery' },
     ...(entity !== 'campaigns' ? [{ value: 'campaign', label: 'Campaign' }] : []),
     ...(entity === 'ads' ? [{ value: 'adSet', label: 'Ad set' }] : []),

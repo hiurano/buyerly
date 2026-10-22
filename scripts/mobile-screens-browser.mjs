@@ -261,7 +261,7 @@ try {
       }
 
       // Ads Manager: the table scrolls sideways inside its own viewport; amounts never wrap.
-      await page.goto(`${origin}/alpha/ads-manager/campaigns?account=act_100`);
+      await page.goto(`${origin}/alpha/ads-manager/campaigns`);
       await page.locator('[data-row-id="801"]').waitFor();
       await settled();
       await assertNoOverflow('ads manager');
@@ -279,26 +279,20 @@ try {
       await assertDetails('ads manager', 'Campaigns details');
       await assertDrawer('ads manager');
 
-      // Adding an ad account is called "Add account" everywhere (#382): in the account menu...
-      await press(page.locator('main header').getByRole('button', { name: 'Select ad account' }));
-      const accountMenu = page.getByRole('menu');
-      await accountMenu.waitFor();
-      await accountMenu.getByRole('menuitem', { name: 'Add account' }).waitFor();
-      await page.keyboard.press('Escape');
-      await accountMenu.waitFor({ state: 'detached' });
+      // Every ad account is on screen at once: no account menu and no "+" in the header (Linear's team Issues).
+      assert.equal(await page.locator('main header').getByRole('button', { name: 'Select ad account' }).count(), 0);
+      assert.equal(await page.locator('main header').getByRole('button', { name: 'Add account' }).count(), 0);
 
-      // ...and, with no accounts yet, in the header and the empty state. The header button
-      // is the shared one from Rules: a round 28px "+", labelled above 1024px, 40px on touch.
+      // With no accounts yet, "Add account" (#382) is the empty state's own button.
       noAccounts = true;
       await page.goto(`${origin}/alpha/ads-manager/campaigns`);
       await page.getByText('No ad accounts yet').waitFor();
       await settled();
       await assertNoOverflow('ads manager without accounts');
       await assertHeaderControls('ads manager without accounts');
-      assert.equal(await page.getByRole('button', { name: 'Add account' }).count(), 2, 'Add account in the header and the empty state');
-      await assertCreateButton(page.locator('main header').getByRole('button', { name: 'Add account' }), 'Ads Manager: Add account');
+      assert.equal(await page.getByRole('button', { name: 'Add account' }).count(), 1, 'Add account in the empty state only');
       await shot('ads-manager-empty');
-      await press(page.locator('main header').getByRole('button', { name: 'Add account' }));
+      await press(page.locator('main').getByRole('button', { name: 'Add account' }));
       const connect = page.getByRole('dialog', { name: 'Add ad accounts' });
       await connect.waitFor();
       await settled();

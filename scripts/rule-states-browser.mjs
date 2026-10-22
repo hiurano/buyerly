@@ -183,7 +183,7 @@ try {
       await dialog.waitFor({ state: 'detached' });
 
       // 3. The campaign's side: the picker of one campaign shows each rule's state.
-      await page.goto(`${origin}/alpha/ads-manager/campaigns?account=act_100`);
+      await page.goto(`${origin}/alpha/ads-manager/campaigns`);
       const cell = page.locator('[data-row-id="801"] [data-rule-cell]');
       await cell.waitFor();
       // The account-wide rule counts on every campaign: 801 has its own and

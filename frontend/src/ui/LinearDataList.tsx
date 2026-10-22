@@ -222,6 +222,8 @@ interface LinearDataListGroupHeaderProps {
   title: string;
   count: number;
   dotColor?: string;
+  /** In place of the dot, e.g. Ad accounts' icon on an account's group, as Linear's project groups. */
+  icon?: React.ReactNode;
   description?: string;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -238,6 +240,7 @@ export const LinearDataListGroupHeader: React.FC<LinearDataListGroupHeaderProps>
   title,
   count,
   dotColor = 'rgb(148, 163, 184)',
+  icon,
   description,
   isCollapsed = false,
   onToggleCollapse,
@@ -281,8 +284,8 @@ export const LinearDataListGroupHeader: React.FC<LinearDataListGroupHeaderProps>
         )}
       </div>
 
-      <span className="flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden="true">
-        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: dotColor }} />
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[var(--text-tertiary)]" aria-hidden="true">
+        {icon ?? <span className="h-2 w-2 rounded-full" style={{ backgroundColor: dotColor }} />}
       </span>
 
       <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">{title}</span>

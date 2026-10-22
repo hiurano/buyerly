@@ -100,7 +100,9 @@ assert.equal(formatAddedDate(''), '—');
 
 // Addresses: /accounts and /accounts/{act_id}; Ads Manager opens on the account.
 assert.equal(accountPagePath('alpha', 'act_1'), '/alpha/accounts/act_1');
-assert.equal(accountAdsManagerPath('alpha', 'act_1'), '/alpha/ads-manager/campaigns?account=act_1');
+const onlyAct1 = [{ fieldId: 'account', operator: 'is', values: ['act_1'] }];
+assert.equal(accountAdsManagerPath('alpha', 'act_1'),
+  `/alpha/ads-manager/campaigns?filter=${encodeURIComponent(JSON.stringify({ campaigns: onlyAct1, adsets: onlyAct1, ads: onlyAct1 }))}`);
 assert.equal(pathForTab('alpha', 'accounts'), '/alpha/accounts');
 const at = (pathname) => parseRoute({ pathname, search: '' });
 assert.deepEqual(at('/alpha/accounts'), { kind: 'workspace', workspace: 'alpha', tab: 'accounts', recordId: undefined });

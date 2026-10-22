@@ -247,7 +247,7 @@ try {
       assert.doesNotMatch(page.url(), /filter=/);
 
       // Ads Manager: a number filter on Spend, and a view for each level.
-      await page.goto(`${origin}/alpha/ads-manager/campaigns?account=act_100`);
+      await page.goto(`${origin}/alpha/ads-manager/campaigns`);
       await page.locator('[data-row-id="801"]').waitFor();
       await page.keyboard.press('f');
       await menu.waitFor();

@@ -11,7 +11,6 @@ import {
   type EntityLevel,
 } from '@/lib/delivery';
 import { pushHistory } from '@/lib/undoHistory';
-import { openAppPath, pathForTab } from '@/lib/routing';
 import { toast } from '@/ui/toast';
 import { ApiError, apiRequest } from '@/lib/api';
 import type {
@@ -33,14 +32,12 @@ import { MetaConnectionDialog } from './MetaConnectionDialog';
 import { DataState } from '@/ui/DataState';
 import { Button } from '@/ui/Button';
 import { Tooltip } from '@/ui/Tooltip';
-import { HeaderCreateButton } from '@/ui/HeaderCreateButton';
 import { LinearTabs } from '@/ui/LinearTabs';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
 import {
@@ -55,7 +52,7 @@ import {
   LinearFilterMenu,
 } from '@/components/filters/LinearFilter';
 import type { FilterMenuMode } from '@/components/filters/LinearFilter';
-import { createLiveFields, filterView, groupView } from './campaignViewModel';
+import { adAccountName, createLiveFields, filterView, groupView } from './campaignViewModel';
 import type { AccountGroupOption } from './campaignViewModel';
 import { useCampaignViewFilters } from './useCampaignViewFilters';
 import {
@@ -81,7 +78,7 @@ import { useRowSelection, type SelectionAction } from '@/ui/useRowSelection';
 import { useRevealRow } from '@/ui/useRevealRow';
 import type { FilterClause, FilterFieldDefinition } from '@/components/filters/filterModel';
 import {
-  LinearPlusIcon,
+  LinearProjectIcon,
   LinearSlidersIcon,
   LinearStatusCircleIcon,
 } from '@/icons/LinearIcons';
@@ -91,10 +88,21 @@ import {
   hierarchyAdSetToRow,
   hierarchyAdToRow,
   hierarchyCampaignToRow,
-  metaAccountLabel,
 } from './liveCampaigns';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
+type CampaignRowItem = ReturnType<typeof hierarchyCampaignToRow>;
+type AdSetRowItem = ReturnType<typeof hierarchyAdSetToRow>;
+type AdRowItem = ReturnType<typeof hierarchyAdToRow>;
+
+/** One ad account's three levels for the period, or why they could not be read. */
+interface AccountHierarchy {
+  account: MetaAccount;
+  campaigns: CampaignRowItem[];
+  adSets: AdSetRowItem[];
+  ads: AdRowItem[];
+  error?: string;
+}
 
 interface OpenFilterMenu {
   mode: FilterMenuMode;
@@ -105,6 +113,47 @@ interface OpenFilterMenu {
 function requestErrorMessage(error: unknown): string {
   if (error instanceof ApiError || error instanceof Error) return error.message;
   return 'Something went wrong. Please try again.';
+}
+
+/** Reads one account; a failure stays with that account and never hides the others. */
+async function loadAccountHierarchy(account: MetaAccount, period: AdsManagerPeriod): Promise<AccountHierarchy> {
+  const request = (level: 'campaign' | 'adset' | 'ad') =>
+    apiRequest<AnalyticsHierarchyResponse>(
+      `/api/analytics/hierarchy?parent_id=${encodeURIComponent(account.account_id)}&level=${level}&period=${period}`,
+    );
+  try {
+    const [campaignResponse, adSetResponse, adResponse] = await Promise.all([
+      request('campaign'),
+      request('adset'),
+      request('ad'),
+    ]);
+    const accountName = adAccountName(account);
+    const named = <T,>(row: T) => ({ ...row, accountId: account.account_id, accountName });
+    const campaigns = campaignResponse.items.map((item) => named(hierarchyCampaignToRow(item)));
+    const campaignNames = new Map(campaigns.map((campaign) => [campaign.id, campaign.name]));
+    const adSets = adSetResponse.items.map((item) => named(hierarchyAdSetToRow(item, campaignNames)));
+    const adSetsById = new Map(adSets.map((adSet) => [adSet.id, adSet]));
+    return { account, campaigns, adSets, ads: adResponse.items.map((item) => named(hierarchyAdToRow(item, adSetsById))) };
+  } catch (error) {
+    return { account, campaigns: [], adSets: [], ads: [], error: requestErrorMessage(error) };
+  }
+}
+
+/**
+ * An old link's `?account=` on a level, from before every account was on
+ * screen at once, becomes Linear's filter: Ad account is that account, on
+ * every level. A link to one record keeps it; the record is found anyway.
+ */
+function accountLinkToFilter() {
+  const url = new URL(window.location.href);
+  const accountId = url.searchParams.get('account');
+  if (!accountId) return;
+  url.searchParams.delete('account');
+  if (!url.searchParams.has('filter')) {
+    const clause = [{ fieldId: 'account', operator: 'is', values: [accountId] }];
+    url.searchParams.set('filter', JSON.stringify({ campaigns: clause, adsets: clause, ads: clause }));
+  }
+  window.history.replaceState(window.history.state, '', url);
 }
 
 const entityLevels: Record<AdsManagerEntity, EntityLevel> = {
@@ -120,20 +169,21 @@ const entityLabels: Record<AdsManagerEntity, { plural: string; singular: string 
 };
 
 interface CampaignsViewProps {
+  /** My campaigns: only the ad accounts you lead, as Linear's My issues (/my-campaigns/<level>). */
+  mine?: boolean;
   /** The entity the address names (`/ads-manager/{level}/{id}`): a search result, a shared link. */
   reveal?: { entity: AdsManagerEntity; id: string };
   /** Changes on every navigation, Back and Forward included. */
   navigationKey: number;
 }
 
-/** The level's own address; the entity a link named stays with the account being left. */
-const levelPath = (pathname: string) => pathname.replace(/(\/(?:ads-manager|my-campaigns)\/[^/]+)\/.*$/, '$1');
-
 /**
  * The details pane's quick filters: real delivery state, the parent campaign
  * of ad sets and ads (#389), then the rules on each row (#367).
  */
-const detailsTabs = (entity: AdsManagerEntity) => (entity === 'campaigns' ? ['status', 'rule'] : ['status', 'campaign', 'rule']);
+const detailsTabs = (entity: AdsManagerEntity) => (
+  entity === 'campaigns' ? ['status', 'account', 'rule'] : ['status', 'account', 'campaign', 'rule']
+);
 
 /** Fields a grouping groups by. */
 const GROUPING_FIELDS: Record<string, string> = { groups: 'group', rules: 'rule' };
@@ -145,12 +195,13 @@ function facetIcon(fieldId: string, option: FilterOption): React.ReactNode {
   if (fieldId === 'rule') {
     return <LinearBoltIcon size={14} style={{ color: option.value === 'no-rule' ? 'var(--text-muted)' : option.color }} />;
   }
+  if (fieldId === 'account') return <LinearProjectIcon size={14} className="text-[var(--text-tertiary)]" />;
   if (fieldId === 'campaign') return <span className="details-facets-dot" style={{ backgroundColor: 'var(--text-tertiary)' }} />;
   if (option.value === 'active' || option.value === 'paused') return <LinearStatusCircleIcon status={option.value} size={14} />;
   return <span className="details-facets-dot" style={{ backgroundColor: option.color }} />;
 }
 
-export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigationKey }) => {
+export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reveal, navigationKey }) => {
   const {
     campaignFilterTab,
     setCampaignFilterTab,
@@ -160,9 +211,16 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     clearCampaignSelection,
     selectedCampaignIds,
     setCampaignSelection,
-    loadAccountRuleAttachments,
+    loadRuleAttachments,
     attachmentsLoadState,
   } = useAppStore();
+
+  // Before the filters read the address on this navigation.
+  const accountLinkRead = useRef<number | null>(null);
+  if (accountLinkRead.current !== navigationKey) {
+    accountLinkRead.current = navigationKey;
+    if (!reveal) accountLinkToFilter();
+  }
 
   const requestGenerationRef = useRef(0);
   const filterButtonRef = useRef<HTMLButtonElement>(null);
@@ -172,24 +230,30 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   const [groupsError, setGroupsError] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   // Each level's own view, saved per member on the server (#385).
-  const { view, update: updateView, displayChanged } = useAdsManagerView(campaignFilterTab);
+  const { view, update: updateView, displayChanged } = useAdsManagerView(campaignFilterTab, mine);
   const displayGrouping = view.grouping;
   const displayOrdering = view.ordering;
   const displayProperties = view.properties;
   const sortDirection = view.direction;
   const [allMetaAccounts, setAllMetaAccounts] = useState<MetaAccount[]>([]);
-  // A team's Ads Manager, as Linear's team Issues: only the team's ad accounts.
-  const { workspace } = useWorkspaceSession();
-  const activeTeam = useActiveTeam(workspace.id);
+  // Every ad account at once, as Linear's team Issues lists every project's issues:
+  // a team's only its own, My campaigns only those you lead.
+  const { workspace, user } = useWorkspaceSession();
+  const teamScope = useActiveTeam(workspace.id);
+  const activeTeam = mine ? { key: null, team: null, missing: false, loading: false } : teamScope;
   const metaAccounts = useMemo(() => {
+    if (mine) return allMetaAccounts.filter((account) => account.lead_user_id != null && account.lead_user_id === user.id);
     if (!activeTeam.key) return allMetaAccounts;
     const team = activeTeam.team;
     return team ? allMetaAccounts.filter((account) => account.id !== undefined && team.account_ids.includes(account.id)) : [];
-  }, [activeTeam.key, activeTeam.team, allMetaAccounts]);
+  }, [mine, user.id, activeTeam.key, activeTeam.team, allMetaAccounts]);
+  const accountIds = useMemo(() => metaAccounts.map((account) => account.account_id), [metaAccounts]);
+  const accountIdsKey = accountIds.join(',');
+  const metaAccountsRef = useRef(metaAccounts);
+  metaAccountsRef.current = metaAccounts;
   const [metaConnections, setMetaConnections] = useState<MetaConnection[]>([]);
   const [accountsState, setAccountsState] = useState<LoadState>('loading');
   const [accountsError, setAccountsError] = useState('');
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   // The reporting window, in the address (`?period=`) so a link and a reload keep it (#389).
   const [period, setPeriodState] = useState<AdsManagerPeriod>(() => periodFromSearch(window.location.search));
   useEffect(() => {
@@ -207,16 +271,19 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   };
   const periodLabel = ADS_MANAGER_PERIODS.find((option) => option.value === period)?.label ?? 'Today';
   const { filters: adsManagerFilters, updateFilters: setAdsManagerFilters, quick: savedQuick, setQuick } = useCampaignViewFilters(
-    `${window.location.pathname}:${selectedAccountId ?? ''}:${campaignFilterTab}`,
+    `${window.location.pathname}:${campaignFilterTab}`,
     navigationKey,
+    mine,
   );
   // Only a quick filter the pane can show applies, so none is ever left on unseen.
   const quick = savedQuick && detailsTabs(campaignFilterTab).includes(savedQuick.fieldId) ? savedQuick : null;
-  const [campaigns, setCampaigns] = useState<ReturnType<typeof hierarchyCampaignToRow>[]>([]);
-  const [adSets, setAdSets] = useState<ReturnType<typeof hierarchyAdSetToRow>[]>([]);
-  const [ads, setAds] = useState<ReturnType<typeof hierarchyAdToRow>[]>([]);
-  const [hierarchyState, setHierarchyState] = useState<LoadState>('idle');
+  const [campaigns, setCampaigns] = useState<CampaignRowItem[]>([]);
+  const [adSets, setAdSets] = useState<AdSetRowItem[]>([]);
+  const [ads, setAds] = useState<AdRowItem[]>([]);
+  const [hierarchyState, setHierarchyState] = useState<LoadState>('loading');
   const [hierarchyError, setHierarchyError] = useState('');
+  // Accounts that could not be read while the others could: named above the list.
+  const [failedAccounts, setFailedAccounts] = useState<{ account: MetaAccount; error: string }[]>([]);
   // Delivery this session wrote to Meta, shown on the row over the stored
   // snapshot, which only catches up on its next sync.
   const [deliveryActions, setDeliveryActions] = useState<Record<string, { busy: boolean; status?: 'active' | 'paused' }>>({});
@@ -241,15 +308,6 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
       const eligibleAccounts = eligibleMetaAccounts(accounts);
       setAllMetaAccounts(eligibleAccounts);
       setMetaConnections(connections);
-      setHierarchyState(eligibleAccounts.length > 0 ? 'loading' : 'idle');
-      setSelectedAccountId((current) => {
-        const sharedAccount = new URLSearchParams(window.location.search).get('account');
-        if (!current && sharedAccount && eligibleAccounts.some(account => account.account_id === sharedAccount)) return sharedAccount;
-        if (current && eligibleAccounts.some((account) => account.account_id === current)) {
-          return current;
-        }
-        return eligibleAccounts[0]?.account_id ?? null;
-      });
       setAccountsState('ready');
     } catch (error) {
       if (!inScope()) return;
@@ -262,25 +320,6 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     void refreshMetaAccounts();
   }, [refreshMetaAccounts]);
 
-  // Another team, or the team's accounts arriving: the account on screen must be one of them.
-  useEffect(() => {
-    if (accountsState !== 'ready') return;
-    setSelectedAccountId((current) => (
-      current && metaAccounts.some((account) => account.account_id === current) ? current : metaAccounts[0]?.account_id ?? null
-    ));
-  }, [accountsState, metaAccounts]);
-
-  // The address names the ad account on every navigation — a search result, a
-  // shared link, Back — and it wins over the one on screen.
-  useEffect(() => {
-    const accountId = new URLSearchParams(window.location.search).get('account');
-    if (!accountId || accountId === selectedAccountId) return;
-    if (!metaAccounts.some((account) => account.account_id === accountId)) return;
-    requestGenerationRef.current += 1;
-    setHierarchyState('loading');
-    setSelectedAccountId(accountId);
-  }, [metaAccounts, navigationKey, selectedAccountId]);
-
   useEffect(() => {
     let cancelled = false;
     void apiRequest<AccountGroupOption[]>('/api/account-groups')
@@ -289,10 +328,10 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     return () => { cancelled = true; };
   }, []);
 
-  // Rule attachments are per ad account, so they reload whenever it changes.
+  // Rules attach per ad account; every account on screen has its own read.
   useEffect(() => {
-    void loadAccountRuleAttachments(selectedAccountId);
-  }, [loadAccountRuleAttachments, selectedAccountId]);
+    void loadRuleAttachments(accountsState === 'ready' && accountIdsKey ? accountIdsKey.split(',') : []);
+  }, [loadRuleAttachments, accountsState, accountIdsKey]);
 
   useEffect(() => {
     const generation = ++requestGenerationRef.current;
@@ -301,45 +340,35 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     setCampaigns([]);
     setAdSets([]);
     setAds([]);
+    setFailedAccounts([]);
     setHierarchyError('');
-    if (!selectedAccountId) {
+    if (accountsState !== 'ready') return undefined;
+    const accounts = metaAccountsRef.current;
+    if (accounts.length === 0) {
       setHierarchyState('idle');
       return undefined;
     }
 
     setHierarchyState('loading');
-    const hierarchyRequest = (level: 'campaign' | 'adset' | 'ad') =>
-      apiRequest<AnalyticsHierarchyResponse>(
-        `/api/analytics/hierarchy?parent_id=${encodeURIComponent(selectedAccountId)}` +
-        `&level=${level}&period=${period}`,
-      );
-
-    void Promise.all([
-      hierarchyRequest('campaign'),
-      hierarchyRequest('adset'),
-      hierarchyRequest('ad'),
-    ])
-      .then(([campaignResponse, adSetResponse, adResponse]) => {
-        if (generation !== requestGenerationRef.current) return;
-        const campaignRows = campaignResponse.items.map(hierarchyCampaignToRow);
-        const campaignNames = new Map(campaignRows.map((campaign) => [campaign.id, campaign.name]));
-        const adSetRows = adSetResponse.items.map((item) => hierarchyAdSetToRow(item, campaignNames));
-        const adSetsById = new Map(adSetRows.map((adSet) => [adSet.id, adSet]));
-        setCampaigns(campaignRows);
-        setAdSets(adSetRows);
-        setAds(adResponse.items.map((item) => hierarchyAdToRow(item, adSetsById)));
-        setHierarchyState('ready');
-      })
-      .catch((error) => {
-        if (generation !== requestGenerationRef.current) return;
-        setHierarchyError(requestErrorMessage(error));
+    void Promise.all(accounts.map((account) => loadAccountHierarchy(account, period))).then((results) => {
+      if (generation !== requestGenerationRef.current) return;
+      const loaded = results.filter((result) => !result.error);
+      if (loaded.length === 0) {
+        setHierarchyError(results[0]?.error ?? '');
         setHierarchyState('error');
-      });
+        return;
+      }
+      setCampaigns(loaded.flatMap((result) => result.campaigns));
+      setAdSets(loaded.flatMap((result) => result.adSets));
+      setAds(loaded.flatMap((result) => result.ads));
+      setFailedAccounts(results.flatMap((result) => (result.error ? [{ account: result.account, error: result.error }] : [])));
+      setHierarchyState('ready');
+    });
 
     return () => {
       requestGenerationRef.current += 1;
     };
-  }, [hierarchyReloadKey, clearCampaignSelection, selectedAccountId, period]);
+  }, [hierarchyReloadKey, clearCampaignSelection, accountsState, accountIdsKey, period]);
 
   useEffect(() => {
     setOpenFilterMenu(null);
@@ -389,21 +418,9 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     openMetaDialog();
   };
 
-  const selectedAccount = metaAccounts.find((account) => account.account_id === selectedAccountId);
-  const selectAccount = (accountId: string) => {
-    if (accountId === selectedAccountId) return;
-    requestGenerationRef.current += 1;
-    setHierarchyState('loading');
-    setSelectedAccountId(accountId);
-    const url = new URL(window.location.href);
-    url.searchParams.set('account', accountId);
-    if (reveal) url.pathname = levelPath(url.pathname);
-    window.history.replaceState(window.history.state, '', url);
-  };
-
-  const campaignFilterFields = useMemo(() => createLiveFields(campaigns, selectedAccount, accountGroups, 'campaigns', adSets), [campaigns, selectedAccount, accountGroups, adSets]);
-  const adSetFilterFields = useMemo(() => createLiveFields(adSets, selectedAccount, accountGroups, 'adsets', adSets, campaigns), [adSets, selectedAccount, accountGroups, campaigns]);
-  const adFilterFields = useMemo(() => createLiveFields(ads, selectedAccount, accountGroups, 'ads', adSets, campaigns), [ads, selectedAccount, accountGroups, adSets, campaigns]);
+  const campaignFilterFields = useMemo(() => createLiveFields(campaigns, metaAccounts, accountGroups, 'campaigns', adSets), [campaigns, metaAccounts, accountGroups, adSets]);
+  const adSetFilterFields = useMemo(() => createLiveFields(adSets, metaAccounts, accountGroups, 'adsets', adSets, campaigns), [adSets, metaAccounts, accountGroups, campaigns]);
+  const adFilterFields = useMemo(() => createLiveFields(ads, metaAccounts, accountGroups, 'ads', adSets, campaigns), [ads, metaAccounts, accountGroups, adSets, campaigns]);
   const currentFilters = adsManagerFilters[campaignFilterTab];
   const currentFilterFields = (
     campaignFilterTab === 'campaigns'
@@ -412,12 +429,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
         ? adSetFilterFields
         : adFilterFields
   ) as unknown as typeof campaignFilterFields;
-  const updateCurrentFilters = (clauses: FilterClause[]) => {
-    setAdsManagerFilters(campaignFilterTab, clauses);
-    const url = new URL(window.location.href);
-    if (selectedAccountId) url.searchParams.set('account', selectedAccountId);
-    window.history.replaceState(window.history.state, '', url);
-  };
+  const updateCurrentFilters = (clauses: FilterClause[]) => setAdsManagerFilters(campaignFilterTab, clauses);
   const showFilterMenu = (mode: FilterMenuMode, anchor: HTMLElement, fieldId?: string) =>
     setOpenFilterMenu({ mode, anchor, fieldId });
 
@@ -456,7 +468,9 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
       <React.Fragment key={group.id}>
         {group.label ? (
           <LinearDataListGroup title={group.label} count={group.rows.length}
-            dotColor="var(--text-tertiary)" isCollapsed={Boolean(collapsedGroups[`${groupingField}:${group.id}`])}
+            dotColor="var(--text-tertiary)"
+            icon={groupingField === 'account' ? <LinearProjectIcon size={14} /> : undefined}
+            isCollapsed={Boolean(collapsedGroups[`${groupingField}:${group.id}`])}
             onToggleCollapse={() => setCollapsedGroups(state => ({ ...state, [`${groupingField}:${group.id}`]: !state[`${groupingField}:${group.id}`] }))}>
             {group.rows.map(render)}
           </LinearDataListGroup>
@@ -469,8 +483,11 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   const isPhoneTable = useMediaQuery(PHONE_TABLE_QUERY);
   const supportedProperties = displayProperties;
   const tableColumns = useMemo(
-    () => getAdsManagerColumns(campaignFilterTab, displayProperties, { spendFirst: isPhoneTable }),
-    [campaignFilterTab, displayProperties, isPhoneTable],
+    () => getAdsManagerColumns(campaignFilterTab, displayProperties, {
+      spendFirst: isPhoneTable,
+      groupedByAccount: groupingField === 'account',
+    }),
+    [campaignFilterTab, displayProperties, isPhoneTable, groupingField],
   );
 
   /** Shows delivery this session wrote on the given rows. */
@@ -487,20 +504,19 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   );
 
   // A write that finishes after the user left the workspace stays out of its
-  // history and toasts; one that finishes after an account switch still records
-  // its undo, but no longer paints rows of the account now on screen.
-  const captureAccountScope = () => {
+  // history and toasts; one that finishes after the list reloaded (another
+  // period, another team) still records its undo, but no longer paints rows.
+  const captureListScope = () => {
     const inScope = useAppStore.getState().captureScope();
     const generation = requestGenerationRef.current;
     return () => inScope() && generation === requestGenerationRef.current;
   };
 
   /** One row's toggle: the row shows the result, Ctrl+Z takes it back, only a failure speaks. */
-  const runDelivery = async (level: EntityLevel, entityId: string, next: boolean) => {
-    if (!selectedAccountId || hierarchyState !== 'ready') return;
+  const runDelivery = async (level: EntityLevel, entityId: string, accountId: string, next: boolean) => {
+    if (hierarchyState !== 'ready') return;
     const inWorkspace = useAppStore.getState().captureScope();
-    const onAccount = captureAccountScope();
-    const accountId = selectedAccountId;
+    const onAccount = captureListScope();
     const status: DeliveryStatus = next ? 'ACTIVE' : 'PAUSED';
     const name = rowName(entityId);
     setDeliveryActions((current) => ({ ...current, [entityId]: { ...current[entityId], busy: true } }));
@@ -511,8 +527,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
       if (result.changed && result.audit_event_id) {
         pushHistory(deliveryHistoryEntry({
           label: `${next ? 'resume' : 'pause'} ${name}`,
-          accountId,
-          targets: [{ level, entityId }],
+          targets: [{ level, entityId, accountId }],
           status,
           auditEventIds: [result.audit_event_id],
           onStatus: (ids, status) => { if (onAccount()) showDelivery(ids, status); },
@@ -536,22 +551,22 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
 
   /** Pauses or resumes every selected row of the current level, reporting each outcome. */
   const runBulkDelivery = async (next: 'active' | 'paused') => {
-    if (!selectedAccountId || hierarchyState !== 'ready') return;
+    if (hierarchyState !== 'ready') return;
     const inWorkspace = useAppStore.getState().captureScope();
-    const onAccount = captureAccountScope();
+    const onAccount = captureListScope();
     const level = entityLevels[campaignFilterTab];
     const rows = currentRows.filter((row) => selectedCampaignIds.includes(row.id));
-    const eligible = rows.filter((row) => row.status !== 'unknown');
+    const eligible = rows.filter((row) => row.status !== 'unknown' && row.accountId);
     const status: DeliveryStatus = next === 'active' ? 'ACTIVE' : 'PAUSED';
-    const accountId = selectedAccountId;
+    // Each row's own ad account: a selection may span several.
+    const accountOf = new Map(eligible.map((row) => [row.id, row.accountId ?? '']));
     const noun = entityLabels[campaignFilterTab];
     setDeliveryActions((current) => ({
       ...current,
       ...Object.fromEntries(eligible.map((row) => [row.id, { ...current[row.id], busy: true }])),
     }));
     const outcome = await setDeliveryForMany(
-      eligible.map((row) => ({ level, entityId: row.id })),
-      selectedAccountId,
+      eligible.map((row) => ({ level, entityId: row.id, accountId: row.accountId ?? '' })),
       status,
       inWorkspace,
     );
@@ -570,8 +585,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     if (changed.length > 0) {
       pushHistory(deliveryHistoryEntry({
         label: `${next === 'active' ? 'resume' : 'pause'} ${describeEntities(changed.map((item) => rowName(item.entityId)), noun)}`,
-        accountId,
-        targets: changed.map((item) => ({ level, entityId: item.entityId })),
+        targets: changed.map((item) => ({ level, entityId: item.entityId, accountId: accountOf.get(item.entityId) ?? '' })),
         status,
         auditEventIds: changed.flatMap((item) => (item.auditEventId ? [item.auditEventId] : [])),
         onStatus: (ids, status) => { if (onAccount()) showDelivery(ids, status); },
@@ -581,15 +595,19 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   };
 
   const selectionNoun = entityLabels[campaignFilterTab];
+  const selectedRows = currentRows.filter((row) => selectedCampaignIds.includes(row.id));
+  const selectedRowIds = selectedRows.map((row) => row.id);
+  // Rules attach per ad account, so "Apply rule…" works on rows of one account at a time.
+  const selectedAccountIds = [...new Set(selectedRows.map((row) => row.accountId ?? ''))];
+  const ruleAccountId = selectedAccountIds.length === 1 ? selectedAccountIds[0] : '';
   const selectionActions: SelectionAction[] = [
     { id: 'pause', label: 'Pause delivery', shortcut: 'p', icon: <Pause size={14} />, run: () => void runBulkDelivery('paused') },
     { id: 'resume', label: 'Resume delivery', shortcut: 'r', icon: <Play size={14} />, run: () => void runBulkDelivery('active') },
     // Meta's "Apply rule to" the selected campaigns or ad sets; ads take no rules.
-    ...(campaignFilterTab !== 'ads' && attachmentsLoadState === 'ready'
+    ...(campaignFilterTab !== 'ads' && attachmentsLoadState === 'ready' && ruleAccountId
       ? [{ id: 'rule', label: 'Apply rule…', shortcut: 'a', icon: <LinearBoltIcon size={14} />, run: () => setIsBulkRulePickerOpen(true) }]
       : []),
   ];
-  const selectedRowIds = currentRows.filter((row) => selectedCampaignIds.includes(row.id)).map((row) => row.id);
   const visibleRowIds = useMemo(() => (
     campaignFilterTab === 'campaigns' ? filteredCampaigns : campaignFilterTab === 'adsets' ? filteredAdSets : filteredAds
   ).map((row) => row.id), [campaignFilterTab, filteredAds, filteredAdSets, filteredCampaigns]);
@@ -598,26 +616,20 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     visibleIds: visibleRowIds,
     setSelection: setCampaignSelection,
     actions: selectionActions,
-    enabled: accountsState === 'ready' && hierarchyState === 'ready' && Boolean(selectedAccountId),
+    enabled: accountsState === 'ready' && hierarchyState === 'ready',
   });
-  // A picker left over a selection that is gone must not reopen on the next one.
+  // A picker left over a selection that is gone, or now spans accounts, must not reopen on the next one.
   useEffect(() => {
-    if (selectedRowIds.length === 0) setIsBulkRulePickerOpen(false);
-  }, [selectedRowIds.length]);
+    if (!ruleAccountId) setIsBulkRulePickerOpen(false);
+  }, [ruleAccountId]);
 
-  // The entity an address names opens on its row once its ad account and
-  // level are on screen; an account the address names but Ads Manager cannot
-  // open leaves the one on screen in place.
-  const requestedAccountId = new URLSearchParams(window.location.search).get('account');
-  const accountSettled = !requestedAccountId
-    || requestedAccountId === selectedAccountId
-    || !metaAccounts.some((account) => account.account_id === requestedAccountId);
+  // The entity an address names opens on its row once its level is on screen.
   const revealedNoun = reveal ? entityLabels[reveal.entity].singular : '';
   useRevealRow({
     id: reveal?.id,
     navigationKey,
     ready: reveal?.entity === campaignFilterTab && accountsState === 'ready' && hierarchyState === 'ready'
-      && accountSettled && (accountGroups !== null || groupsError),
+      && (accountGroups !== null || groupsError),
     exists: currentRows.some((row) => row.id === reveal?.id),
     show: () => {
       if (!reveal) return false;
@@ -646,22 +658,22 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     missing: () => ({
       title: "Couldn't open",
       message: `${revealedNoun} ${reveal?.id ?? ''}.`,
-      description: `There is no such ${revealedNoun} in ${selectedAccount ? metaAccountLabel(selectedAccount) : 'this ad account'} ${period === 'today' ? 'today' : `for ${periodLabel.toLowerCase()}`}.`,
+      description: `There is no such ${revealedNoun} in ${mine ? 'the ad accounts you lead' : 'these ad accounts'} ${period === 'today' ? 'today' : `for ${periodLabel.toLowerCase()}`}.`,
     }),
   });
 
   /** A live control, or nothing when the row cannot honestly be acted on. */
   const deliveryControl = (
     level: EntityLevel,
-    entityId: string,
-    status: 'active' | 'paused' | 'unknown',
+    row: { id: string; accountId?: string; status: 'active' | 'paused' | 'unknown' },
   ): DeliveryControl | undefined => {
-    if (!selectedAccountId || status === 'unknown') return undefined;
-    const local = deliveryActions[entityId];
+    const accountId = row.accountId;
+    if (!accountId || row.status === 'unknown') return undefined;
+    const local = deliveryActions[row.id];
     return {
-      status: local?.status ?? status,
+      status: local?.status ?? row.status,
       busy: Boolean(local?.busy),
-      onChange: (next) => void runDelivery(level, entityId, next),
+      onChange: (next) => void runDelivery(level, row.id, accountId, next),
     };
   };
 
@@ -677,12 +689,12 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     }
     if (campaignFilterTab === 'adsets') {
       return renderGrouped(filteredAdSets, adSetFilterFields, (adSet) => (
-        <AdSetRow key={adSet.id} adSet={adSet} properties={supportedProperties} columns={tableColumns} readOnly selectable delivery={deliveryControl('adset', adSet.id, adSet.status)} />
+        <AdSetRow key={adSet.id} adSet={adSet} properties={supportedProperties} columns={tableColumns} readOnly selectable delivery={deliveryControl('adset', adSet)} />
       ));
     }
     if (campaignFilterTab === 'ads') {
       return renderGrouped(filteredAds, adFilterFields, (ad) => (
-        <AdRow key={ad.id} ad={ad} properties={supportedProperties} columns={tableColumns} readOnly selectable delivery={deliveryControl('ad', ad.id, ad.status)} />
+        <AdRow key={ad.id} ad={ad} properties={supportedProperties} columns={tableColumns} readOnly selectable delivery={deliveryControl('ad', ad)} />
       ));
     }
     return renderGrouped(filteredCampaigns, campaignFilterFields, (campaign) => (
@@ -693,7 +705,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
         columns={tableColumns}
         readOnly
         selectable
-        delivery={deliveryControl('campaign', campaign.id, campaign.status)}
+        delivery={deliveryControl('campaign', campaign)}
       />
     ));
   };
@@ -710,8 +722,6 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
           role="alert"
           actionLabel="Retry"
           onAction={() => void refreshMetaAccounts()}
-          secondaryLabel="Add account"
-          onSecondary={openMetaDialog}
         />
       );
     }
@@ -727,6 +737,14 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
         <DataState
           title="No ad accounts in this team"
           detail={`Add ad accounts to ${activeTeam.team.name} in its settings to see their campaigns here.`}
+        />
+      );
+    }
+    if (mine && metaAccounts.length === 0) {
+      return (
+        <DataState
+          title="No ad accounts you lead"
+          detail="Campaigns of the ad accounts you lead show here. Set yourself as Lead on an ad account's page or in the Ad accounts list."
         />
       );
     }
@@ -751,8 +769,6 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
           role="alert"
           actionLabel="Retry"
           onAction={() => setHierarchyReloadKey((value) => value + 1)}
-          secondaryLabel="Add account"
-          onSecondary={openMetaDialog}
         />
       );
     }
@@ -764,8 +780,8 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     if (totalCurrent === 0) {
       return (
         <DataState
-          title={`No ${entityLabels[campaignFilterTab].plural} in this ad account`}
-          detail={`Meta returned no ${entityLabels[campaignFilterTab].singular} inventory for this imported account. Zero-activity entities are included when they exist.`}
+          title={`No ${entityLabels[campaignFilterTab].plural} in ${metaAccounts.length === 1 ? 'this ad account' : 'these ad accounts'}`}
+          detail={`Meta returned no ${entityLabels[campaignFilterTab].singular} inventory for ${metaAccounts.length === 1 ? 'this imported account' : 'the imported accounts'}. Zero-activity entities are included when they exist.`}
           actionLabel="Retry"
           onAction={() => setHierarchyReloadKey((value) => value + 1)}
         />
@@ -779,6 +795,17 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
         sortKey={effectiveOrdering === 'manual' ? undefined : effectiveOrdering}
         sortDirection={sortDirection}
         onSort={(columnId) => updateView(sortByColumn({ ...view, ordering: effectiveOrdering }, columnId, naturalAdsManagerDirection(columnId)))}
+        before={failedAccounts.length > 0 && (
+          <div className="campaign-filter-summary" role="alert">
+            <span>
+              {"Couldn't load "}
+              {failedAccounts.length === 1
+                ? `${adAccountName(failedAccounts[0].account)}: ${failedAccounts[0].error}`
+                : `${failedAccounts.length} ad accounts: ${failedAccounts.map(({ account }) => adAccountName(account)).join(', ')}`}
+            </span>
+            <Button size="compact" onClick={() => setHierarchyReloadKey((value) => value + 1)}>Retry</Button>
+          </div>
+        )}
         after={filteredCurrentCount > 0 && filteredCurrentCount < totalCurrent && (
           <div className="campaign-filter-summary">
             <span>{totalCurrent - filteredCurrentCount} {entityLabels[campaignFilterTab].plural} hidden by filters</span>
@@ -818,21 +845,11 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
           style={{ borderBottom: 'var(--canvas-border)', paddingLeft: '18px', paddingRight: '11px' }}
           className="flex h-[44px] items-center justify-between"
         >
+          {/* Every ad account is on screen; one is connected on Ad accounts, as a Linear project is made under Projects. */}
           <div className="flex items-center">
             <SidebarCollapsedNavigation />
-            <ViewTitle title="Campaigns" team={activeTeam.team} />
+            <ViewTitle title={mine ? 'My campaigns' : 'Campaigns'} team={activeTeam.team} />
           </div>
-          {selectedAccount ? (
-            <DropdownMenuAccount
-              account={selectedAccount}
-              accounts={metaAccounts}
-              selectedAccountId={selectedAccountId}
-              onSelect={selectAccount}
-              onConnect={openMetaDialog}
-            />
-          ) : (
-            <HeaderCreateButton label="Add account" tooltip="Add ad account" onClick={openMetaDialog} />
-          )}
         </div>
 
         <LinearDataListToolbar className="campaign-view-toolbar">
@@ -888,6 +905,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
               onClose={() => setIsDisplayOptionsOpen(false)}
               anchorRef={displayOptionsButtonRef}
               entity={campaignFilterTab}
+              mine={mine}
               hasAccountGroups={accountGroups !== null}
               groups={groupView(currentRows as never[], currentFilterFields as never[], groupingField)
                 .filter((group) => group.label)
@@ -936,11 +954,12 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
         onClearScope={openCommandMenu}
       />
 
-      {campaignFilterTab !== 'ads' && (
+      {campaignFilterTab !== 'ads' && ruleAccountId && (
         <RuleSelectorPopover
-          isOpen={isBulkRulePickerOpen && selectedRowIds.length > 0}
+          isOpen={isBulkRulePickerOpen}
           onClose={() => setIsBulkRulePickerOpen(false)}
           anchorRect={null}
+          accountId={ruleAccountId}
           level={campaignFilterTab === 'campaigns' ? 'campaign' : 'adset'}
           entityIds={selectedRowIds}
           shortcut="A"
@@ -1000,59 +1019,3 @@ const PeriodMenu: React.FC<PeriodMenuProps> = ({ period, label, onChange }) => (
     </DropdownMenuContent>
   </DropdownMenu>
 );
-
-interface DropdownMenuAccountProps {
-  account: MetaAccount;
-  accounts: MetaAccount[];
-  selectedAccountId: string | null;
-  onSelect: (accountId: string) => void;
-  onConnect: () => void;
-}
-
-const DropdownMenuAccount: React.FC<DropdownMenuAccountProps> = ({
-  account,
-  accounts,
-  selectedAccountId,
-  onSelect,
-  onConnect,
-}) => {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className="max-w-[120px] truncate rounded-full border border-[var(--color-border-secondary)] px-2.5 py-1 text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)] sm:max-w-[220px] lg:max-w-[280px] [@media(hover:none)_and_(pointer:coarse)]:min-h-8"
-          aria-label="Select ad account"
-          title={metaAccountLabel(account)}
-        >
-          {metaAccountLabel(account)} ▾
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" style={{ width: 'min(360px, calc(100vw - 32px))' }}>
-        <DropdownMenuLabel>Ad account</DropdownMenuLabel>
-        {accounts.map((candidate) => (
-          <DropdownMenuItem key={candidate.account_id} onSelect={() => onSelect(candidate.account_id)}>
-            <span className="truncate">{metaAccountLabel(candidate)}</span>
-            {candidate.account_id === selectedAccountId && <span aria-hidden="true">✓</span>}
-          </DropdownMenuItem>
-        ))}
-        <DropdownMenuSeparator />
-        {/* The Ad accounts page, as Linear's "All projects" (#388). */}
-        <DropdownMenuItem
-          onSelect={() => {
-            const slug = useAppStore.getState().workspaceSlug;
-            if (slug) openAppPath(pathForTab(slug, 'accounts'));
-          }}
-        >
-          <span>All ad accounts…</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onConnect}>
-          <span className="flex items-center gap-1.5">
-            <LinearPlusIcon size={14} aria-hidden="true" />
-            Add account
-          </span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-};

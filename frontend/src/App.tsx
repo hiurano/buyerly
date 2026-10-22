@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { Sidebar } from '@/components/sidebar/Sidebar';
 import { InboxView } from '@/components/inbox/InboxView';
 import { CampaignsView } from '@/components/campaigns/CampaignsView';
-import { MyCampaignsView } from '@/components/campaigns/MyCampaignsView';
 import { RulesView } from '@/components/rules/RulesView';
 import { AccountsView } from '@/components/accounts/AccountsView';
 import { AccountPage } from '@/components/accounts/AccountPage';
@@ -205,8 +204,11 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
         window.location.pathname.startsWith(teamHomePath(workspace.slug, activeTeamKey, page))
       )));
     if (window.location.pathname !== desiredPath && !underPage) {
+      // The filters and period follow to the next level; an old link's ad account stays behind.
+      const campaignSearch = new URLSearchParams(window.location.search);
+      campaignSearch.delete('account');
       const campaignQuery = activeTab === 'campaigns' && /\/(ads-manager|my-campaigns)\//.test(window.location.pathname)
-        ? window.location.search : '';
+        && campaignSearch.toString() ? `?${campaignSearch}` : '';
       ownPath.current = desiredPath;
       navigate(desiredPath + campaignQuery);
     }
@@ -350,9 +352,10 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
                 ) : (
                   <AccountsView navigate={navigate} navigationKey={navigationKey} />
                 ))}
-                {activeTab === 'campaigns' && myCampaigns && <MyCampaignsView navigate={navigate} />}
-                {activeTab === 'campaigns' && !myCampaigns && (
+                {activeTab === 'campaigns' && (
                   <CampaignsView
+                    key={myCampaigns ? 'mine' : 'all'}
+                    mine={myCampaigns}
                     reveal={route.tab === 'campaigns' && route.entity && route.recordId
                       ? { entity: route.entity, id: route.recordId }
                       : undefined}

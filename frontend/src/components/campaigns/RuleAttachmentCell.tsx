@@ -7,6 +7,8 @@ import { RuleSelectorPopover } from './RuleSelectorPopover';
 import type { RuleTargetLevel } from './RuleSelectorPopover';
 
 interface RuleAttachmentCellProps {
+  /** The row's ad account, where its rules are attached. */
+  accountId: string;
   level: RuleTargetLevel;
   entityId: string;
   attachedRuleIds: string[];
@@ -30,7 +32,7 @@ const LABEL_FONT = '"Inter Variable", "SF Pro Display", -apple-system, sans-seri
 export const RuleAttachmentCell = forwardRef<
   RuleAttachmentCellHandle,
   RuleAttachmentCellProps
->(({ level, entityId, attachedRuleIds, campaignId, onOpen }, ref) => {
+>(({ accountId, level, entityId, attachedRuleIds, campaignId, onOpen }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const cellRef = useRef<HTMLDivElement>(null);
@@ -38,12 +40,12 @@ export const RuleAttachmentCell = forwardRef<
 
   // Rules on the whole ad account (or an ad set's campaign) check this row as
   // well (#300): counted, so "+ Rule" never claims a checked row has none.
-  const scopes = useAppStore((state) => state.attachedRuleScopes);
-  const order = useAppStore((state) => state.attachedRuleOrder);
+  const scopes = useAppStore((state) => state.attachedRuleScopes[accountId]);
+  const order = useAppStore((state) => state.attachedRuleOrder[accountId]);
   const rules = useAppStore((state) => state.rules);
   const inheritedCount = useMemo(() => {
     const ruleLevels = Object.fromEntries(rules.map((rule) => [rule.id, rule.preset.level]));
-    return inheritedRuleIds(scopes, order, ruleLevels, level, campaignId)
+    return inheritedRuleIds(scopes ?? {}, order ?? [], ruleLevels, level, campaignId)
       .filter((ruleId) => !attachedRuleIds.includes(ruleId)).length;
   }, [scopes, order, rules, level, campaignId, attachedRuleIds]);
 
@@ -165,6 +167,7 @@ export const RuleAttachmentCell = forwardRef<
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
         anchorRect={anchorRect}
+        accountId={accountId}
         level={level}
         entityIds={[entityId]}
         campaignId={campaignId}

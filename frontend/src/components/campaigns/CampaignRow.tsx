@@ -94,6 +94,7 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
           <RuleAttachmentCell
             key={column.id}
             ref={ruleCellRef}
+            accountId={campaign.accountId ?? ''}
             level="campaign"
             entityId={campaign.id}
             attachedRuleIds={campaignAttachedRules[campaign.id] || []}

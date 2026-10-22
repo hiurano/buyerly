@@ -47,6 +47,8 @@ export function undoAction(auditEventId: number): Promise<unknown> {
 export interface BulkDeliveryTarget {
   level: EntityLevel;
   entityId: string;
+  /** The entity's ad account: a selection may span several. */
+  accountId: string;
 }
 
 export interface BulkDeliveryOutcome {
@@ -67,7 +69,6 @@ const BULK_DELIVERY_CONCURRENCY = 3;
  */
 export async function setDeliveryForMany(
   targets: BulkDeliveryTarget[],
-  accountId: string,
   status: DeliveryStatus,
   isCurrent: () => boolean = () => true,
 ): Promise<BulkDeliveryOutcome> {
@@ -77,7 +78,7 @@ export async function setDeliveryForMany(
     for (let target = queue.shift(); target; target = queue.shift()) {
       if (!isCurrent()) return;
       try {
-        const result = await setEntityDelivery(target.level, target.entityId, accountId, status);
+        const result = await setEntityDelivery(target.level, target.entityId, target.accountId, status);
         if (result.changed) {
           outcome.changed.push({ entityId: target.entityId, auditEventId: result.audit_event_id });
         } else {
@@ -158,14 +159,12 @@ export function reportBulkDelivery(
  */
 export function deliveryHistoryEntry({
   label,
-  accountId,
   targets,
   status,
   auditEventIds,
   onStatus,
 }: {
   label: string;
-  accountId: string;
   /** The entities that changed. */
   targets: BulkDeliveryTarget[];
   /** What was written. */
@@ -190,7 +189,7 @@ export function deliveryHistoryEntry({
     },
     redo: async () => {
       if (!inScope()) return;
-      const outcome = await setDeliveryForMany(targets, accountId, status, inScope);
+      const outcome = await setDeliveryForMany(targets, status, inScope);
       if (!inScope()) return;
       reversible = outcome.changed.flatMap((item) => (item.auditEventId ? [item.auditEventId] : []));
       onStatus([...outcome.changed.map((item) => item.entityId), ...outcome.unchanged], status);

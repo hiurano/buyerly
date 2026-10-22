@@ -265,12 +265,14 @@ try {
       await page.goBack();
       await page.waitForURL(`${origin}/alpha/accounts/act_101`);
 
-      // Open in Ads Manager, then G K back to the list.
+      // Open campaigns: every account is in Campaigns, filtered to this one, as a Linear project opens its issues.
       await page.getByRole('button', { name: 'Open campaigns' }).click();
-      await page.waitForURL(`${origin}/alpha/ads-manager/campaigns?account=act_101`);
-      await page.getByRole('button', { name: 'Select ad account' }).click();
-      await page.getByRole('menuitem', { name: 'All ad accounts…' }).click();
-      await page.waitForURL(`${origin}/alpha/accounts`);
+      await page.waitForURL(/\/alpha\/ads-manager\/campaigns\?filter=/);
+      const onlyThis = [{ fieldId: 'account', operator: 'is', values: ['act_101'] }];
+      assert.deepEqual(JSON.parse(new URL(page.url()).searchParams.get('filter')), { campaigns: onlyThis, adsets: onlyThis, ads: onlyThis });
+      assert.equal(await page.getByRole('button', { name: 'Select ad account' }).count(), 0, 'no account switcher');
+      await page.goBack();
+      await page.waitForURL(`${origin}/alpha/accounts/act_101`);
 
       // Ctrl/Cmd+K → Go to ad accounts from elsewhere.
       await page.goto(`${origin}/alpha/rules`);

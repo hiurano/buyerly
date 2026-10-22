@@ -3,6 +3,7 @@ import { LinearCheckbox } from '@/ui/LinearCheckbox';
 import { LinearToggle } from '@/ui/LinearToggle';
 import { LinearDataMetricCell } from '@/ui/LinearDataList';
 import type { DeliveryControl } from '@/lib/delivery';
+import { LinearProjectIcon } from '@/icons/LinearIcons';
 import { findMetric, type AdsManagerMetrics } from './adsManagerMetrics';
 import { formatMetric } from './liveCampaigns';
 
@@ -67,6 +68,7 @@ export const EntityRowControls: React.FC<EntityRowControlsProps> = ({
 
 export interface EntityPropertyRow {
   identifier: string;
+  accountName?: string;
   campaignName?: string;
   adSetName?: string;
   metrics?: AdsManagerMetrics;
@@ -82,11 +84,22 @@ const EntityTextCell: React.FC<{ text: string; muted?: boolean }> = ({ text, mut
   </div>
 );
 
+/** The row's ad account with Ad accounts' icon, as Linear shows a project on an issue row. */
+const EntityAccountCell: React.FC<{ name: string }> = ({ name }) => (
+  <div className="flex min-w-0 items-center gap-1.5 text-[12px] font-[450] text-[var(--text-secondary)]" title={name || undefined}>
+    <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center text-[var(--text-tertiary)]" aria-hidden="true">
+      <LinearProjectIcon size={12} />
+    </span>
+    <span className="min-w-0 truncate whitespace-nowrap">{name || '—'}</span>
+  </div>
+);
+
 /**
  * Any Ads Manager column after the name (#389): the parent campaign or ad
  * set, the Meta ID, or one figure for the period. Rules has its own cell.
  */
 export const EntityPropertyCell: React.FC<{ columnId: string; row: EntityPropertyRow }> = ({ columnId, row }) => {
+  if (columnId === 'account') return <EntityAccountCell name={row.accountName ?? ''} />;
   if (columnId === 'campaign') return <EntityTextCell text={row.campaignName ?? ''} />;
   if (columnId === 'adSet') return <EntityTextCell text={row.adSetName ?? ''} />;
   if (columnId === 'id') return <EntityTextCell text={row.identifier} muted />;
