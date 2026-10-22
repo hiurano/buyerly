@@ -753,6 +753,9 @@ class TestReactFrontendContract(unittest.TestCase):
             ROOT / "frontend" / "src" / "components" / "campaigns" / "MetaConnectionDialog.tsx"
         ).read_text()
         self.assertIn("const title = 'Add ad accounts';", dialog)
+        # Ad accounts are picked with Linear's row checkbox, not the browser's.
+        self.assertIn("<LinearCheckbox checked={checked}", dialog)
+        self.assertNotIn('type="checkbox"', dialog)
 
     def test_rule_groups_became_labels_like_linear(self):
         """#383: labels with colors, several per rule, created from the picker or Settings."""

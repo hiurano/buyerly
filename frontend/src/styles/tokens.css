@@ -136,9 +136,9 @@
   --inbox-filter-bg: lch(9.345% 0.85 272 / 1); /* Linear Inbox filter box */
   --inbox-filter-chip-bg: lch(10.149% 0.689 272 / 1);
   --row-selected-hover-bg: lch(15.8% 6 282 / 1);
-  --checkbox-checked-bg: #5e6ad2;
-  --checkbox-checked-fg: lch(100% 5 286.91 / 1);
-  --checkbox-border-hover: lch(70% 1 272 / 1);
+  --checkbox-checked-bg: lch(47.918% 59.303 288.421 / 1);  /* Linear accent */
+  --checkbox-checked-fg: lch(100% 5 288.421 / 1);
+  --checkbox-border-hover: lch(52.418% 61.103 288.421 / 1); /* Linear: the box under the pointer */
   --dock-border: var(--color-border-secondary);
   --dock-clear-btn-bg: lch(13.861% 1.139 272 / 1);
   --command-menu-shadow: lch(0% 0 0 / 0.1) 0px 4px 40px 0px, lch(0% 0 0 / 0.125) 0px 3px 20px 0px, lch(0% 0 0 / 0.125) 0px 3px 12px 0px, lch(0% 0 0 / 0.125) 0px 2px 8px 0px, lch(0% 0 0 / 0.125) 0px 1px 1px 0px;
@@ -404,7 +404,7 @@ html[data-theme='light'] {
   --row-selected-hover-bg: lch(88.754% 5.903 282.518 / 1); /* Linear selected row under the pointer */
   --checkbox-checked-bg: lch(53% 52.26 286.91 / 1);        /* Linear accent */
   --checkbox-checked-fg: lch(100% 5 286.91 / 1);
-  --checkbox-border-hover: lch(30% 0 282 / 1);
+  --checkbox-border-hover: lch(47% 50.26 286.91 / 1);      /* Linear: the box under the pointer */
   --dock-border: transparent;
   --dock-clear-btn-bg: lch(96.914% 0 282 / 1);
   --command-menu-shadow: 0px 9px 48px 0px lch(0% 0 0 / 0.08), 0px 6px 24px 0px lch(0% 0 0 / 0.1), 0px 1px 1px 0px lch(0% 0 0 / 0.04);

@@ -3,6 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { apiRequest } from '@/lib/api';
 import type { MetaAssetsResponse, MetaConnectionAsset, MetaInviteCreated } from '@/lib/types';
 import { LinearCloseIcon, LinearMetaIcon } from '@/icons/LinearIcons';
+import { LinearCheckbox } from '@/ui/LinearCheckbox';
 
 type FlowStep = 'choice' | 'creating_invite' | 'invite_ready' | 'discovering' | 'selecting' | 'importing' | 'done';
 
@@ -204,11 +205,25 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
                           const imported = asset.import_status === 'this_connection';
                           const checked = selectedIds.has(asset.account_id);
                           return (
-                            <label key={asset.account_id} className="flex min-h-10 cursor-default items-center gap-3 border-b border-[var(--color-border-primary)] px-3.5 last:border-b-0 transition-colors hover:bg-[var(--item-hover-bg)]">
-                              <input type="checkbox" checked={imported || checked} disabled={imported} onChange={() => toggleAsset(asset)} className="h-4 w-4 rounded" />
+                            <div
+                              key={asset.account_id}
+                              role="checkbox"
+                              aria-checked={imported || checked}
+                              aria-disabled={imported || undefined}
+                              tabIndex={imported ? -1 : 0}
+                              onClick={() => toggleAsset(asset)}
+                              onKeyDown={(event) => {
+                                if (event.key !== ' ' && event.key !== 'Enter') return;
+                                event.preventDefault();
+                                toggleAsset(asset);
+                              }}
+                              className={`flex min-h-10 cursor-default select-none items-center gap-2 border-b border-[var(--color-border-primary)] px-3 last:border-b-0 transition-colors focus-visible:outline-none focus-visible:bg-[var(--item-hover-bg)] ${imported ? '' : 'hover:bg-[var(--item-hover-bg)]'}`}
+                            >
+                              {/* An added account keeps the slot, like a row that cannot be selected. */}
+                              <LinearCheckbox checked={checked} onChange={() => toggleAsset(asset)} hidden={imported} alwaysVisible decorative />
                               <span className="min-w-0 flex-1 text-[13px] text-[var(--text-primary)]">{accountLabel(asset)}</span>
                               <span className="text-[12px] text-[var(--text-tertiary)]">{imported ? 'Added' : asset.currency}</span>
-                            </label>
+                            </div>
                           );
                         })}
                       </div>
