@@ -232,6 +232,64 @@ class TestTeams(unittest.IsolatedAsyncioTestCase):
         res = await self.client.post(self.url(), json={'name': 'G', 'key': 'G'}, headers=self.buyer)
         self.assertEqual(res.status_code, 403)
 
+    async def account_ids_for(self, headers):
+        res = await self.client.get('/api/accounts', headers=headers)
+        self.assertEqual(res.status_code, 200, res.text)
+        return [item['account_id'] for item in res.json()]
+
+    async def test_private_teams_hide_their_accounts(self):
+        team = await self.create()
+        tid = team['id']
+        await self.client.post(self.url(f'/{tid}/accounts'), json={'account_ids': [self.account_id]}, headers=self.owner)
+        self.assertEqual(await self.account_ids_for(self.buyer), ['act_1'])
+
+        res = await self.client.patch(self.url(f'/{tid}'), json={'private': True}, headers=self.owner)
+        self.assertTrue(res.json()['private'])
+        # Linear: a private team's work is its members' only; the team itself is hidden from others.
+        self.assertEqual(await self.account_ids_for(self.buyer), [])
+        self.assertEqual(await self.account_ids_for(self.owner), ['act_1'])
+        res = await self.client.patch('/api/accounts/act_1/profile', json={'custom_name': 'X', 'note': ''}, headers=self.buyer)
+        self.assertEqual(res.status_code, 404)
+        self.assertEqual((await self.client.get(self.url(), headers=self.buyer)).json(), [])
+        res = await self.client.get(self.url(f'/{tid}/documents'), headers=self.buyer)
+        self.assertEqual(res.status_code, 404)
+        # Joined only by invitation.
+        res = await self.client.post(self.url(f'/{tid}/members'), json={'user_ids': [self.buyer_id]}, headers=self.buyer)
+        self.assertEqual(res.status_code, 403)
+        await self.client.post(self.url(f'/{tid}/members'), json={'user_ids': [self.buyer_id]}, headers=self.owner)
+        self.assertEqual(await self.account_ids_for(self.buyer), ['act_1'])
+
+        # An account also on a public team is everyone's again.
+        await self.client.delete(self.url(f'/{tid}/members/{self.buyer_id}'), headers=self.owner)
+        public = await self.create('Public', 'PUB')
+        await self.client.post(self.url(f"/{public['id']}/accounts"), json={'account_ids': [self.account_id]}, headers=self.owner)
+        self.assertEqual(await self.account_ids_for(self.buyer), ['act_1'])
+
+    async def test_guests_work_only_inside_their_teams(self):
+        team = await self.create()
+        tid = team['id']
+        await self.client.post(self.url(f'/{tid}/accounts'), json={'account_ids': [self.account_id]}, headers=self.owner)
+        async with self.sessions() as session:
+            await session.execute(
+                update(WorkspaceMember).where(WorkspaceMember.user_id == self.buyer_id).values(role='guest')
+            )
+            await session.commit()
+        # Off every team, a guest sees no account and no team.
+        self.assertEqual(await self.account_ids_for(self.buyer), [])
+        self.assertEqual((await self.client.get(self.url(), headers=self.buyer)).json(), [])
+
+        await self.client.post(self.url(f'/{tid}/members'), json={'user_ids': [self.buyer_id]}, headers=self.owner)
+        self.assertEqual(await self.account_ids_for(self.buyer), ['act_1'])
+        self.assertEqual([item['key'] for item in (await self.client.get(self.url(), headers=self.buyer)).json()], ['MED'])
+        # Inside the team the guest works as a member: on the account itself, and on team documents.
+        res = await self.client.patch('/api/accounts/act_1/profile', json={'custom_name': 'Mine', 'note': ''}, headers=self.buyer)
+        self.assertEqual(res.status_code, 200, res.text)
+        res = await self.client.post(self.url(f'/{tid}/documents'), json={'title': 'Notes'}, headers=self.buyer)
+        self.assertEqual(res.status_code, 201, res.text)
+        # Workspace-wide things stay closed.
+        res = await self.client.post('/api/account-groups', json={'name': 'G', 'account_ids': []}, headers=self.buyer)
+        self.assertEqual(res.status_code, 403)
+
     async def test_members_and_accounts(self):
         team = await self.create()
         tid = team['id']

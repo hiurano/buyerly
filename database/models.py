@@ -956,6 +956,12 @@ class Team(Base):
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
     retired_at = Column(DateTime(timezone=True), nullable=True)
     deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    private = Column(
+        Boolean,
+        default=False,
+        nullable=False,
+        doc="Linear's private team: only its members see it and its ad accounts",
+    )
 
     # Names and identifiers are unique among the teams not deleted, ignoring case.
     __table_args__ = (

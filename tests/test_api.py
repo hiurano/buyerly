@@ -1161,7 +1161,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             entity_level="campaign", account_id=account_id,
         )
 
-        # A guest only reads for now, and is stopped before Meta is touched.
+        # A guest on none of the account's teams doesn't see it, and is stopped before Meta is touched.
         async with self.test_session_maker() as session:
             member = (
                 await session.execute(
@@ -1181,7 +1181,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                     delivery_url, headers=headers,
                     json={"account_id": account_id, "status": "PAUSED"},
                 )
-        self.assertEqual(viewer.status_code, 403)
+        self.assertEqual(viewer.status_code, 404)
 
     async def test_toggle_rules_and_presets(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}

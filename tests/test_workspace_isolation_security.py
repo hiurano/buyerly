@@ -251,8 +251,12 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(res.status_code, 403)
 
-    async def test_viewer_role_write_access_strictly_blocked(self):
-        """Workspace viewer is strictly blocked from write access, regardless of platform admin role."""
+    async def test_guest_off_every_team_sees_and_changes_nothing(self):
+        """A guest works only inside their teams (Linear's guest), whatever their platform role.
+
+        Off every team, the workspace's ad accounts are not there for them (404), and its
+        workspace-wide things (rules, labels) are closed (403).
+        """
         async with self.test_session_maker() as session:
             viewer_user = User(
                 telegram_id="333000333",
@@ -305,23 +309,19 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
             get_res = await client.get("/api/accounts", headers=viewer_headers)
             self.assertEqual(get_res.status_code, 200)
 
-            # Write is blocked with 403
+            self.assertEqual(get_res.json(), [])
+
+            # An account off the guest's teams is not there for them.
             patch_res = await client.patch(
                 "/api/accounts/act_111111/profile",
                 headers=viewer_headers,
                 json={"custom_name": "Viewer Edit", "note": "Blocked"},
             )
-            self.assertEqual(patch_res.status_code, 403)
-            self.assertIn("Guests", patch_res.json()["detail"])
+            self.assertEqual(patch_res.status_code, 404)
 
             audit_res = await client.get("/api/audit-events", headers=viewer_headers)
             self.assertEqual(audit_res.status_code, 200)
-            viewer_item = next(
-                item for item in audit_res.json()["items"]
-                if item["id"] == viewer_visible_event_id
-            )
-            self.assertFalse(viewer_item["can_undo"])
-            self.assertIn("Guests", viewer_item["undo_reason"])
+            self.assertNotIn(viewer_visible_event_id, [item["id"] for item in audit_res.json()["items"]])
 
             undo_res = await client.post(
                 f"/api/audit-events/{viewer_visible_event_id}/undo",
@@ -392,7 +392,9 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
                     headers=viewer_headers,
                 ),
             ]
-            self.assertTrue(all(response.status_code == 403 for response in rule_writes))
+            # The rule library and labels are the workspace's: closed. Attaching, detaching and the
+            # automation switch act on one ad account, which the guest can't see.
+            self.assertEqual([response.status_code for response in rule_writes], [403] * 8 + [404] * 3)
 
     async def test_same_owner_rule_libraries_are_isolated_by_active_workspace(self):
         async with self.test_session_maker() as session:

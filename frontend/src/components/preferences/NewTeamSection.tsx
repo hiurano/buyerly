@@ -14,6 +14,7 @@ import {
 import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/ui/Button';
 import { Input } from '@/ui/Input';
+import { LinearToggle } from '@/ui/LinearToggle';
 import { toast } from '@/ui/toast';
 import { errorMessage } from './MemberDialogs';
 import { TeamIcon } from './TeamIcon';
@@ -30,6 +31,8 @@ export const NewTeamSection: React.FC<{ workspace: Workspace }> = ({ workspace }
   const [name, setName] = useState('');
   const [key, setKey] = useState('');
   const [keyEdited, setKeyEdited] = useState(false);
+  // Linear's "Make team private" on Create team.
+  const [isPrivate, setIsPrivate] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -47,7 +50,7 @@ export const NewTeamSection: React.FC<{ workspace: Workspace }> = ({ workspace }
     try {
       const team = await apiRequest<TeamItem>(teamsPath(workspace.id), {
         method: 'POST',
-        body: JSON.stringify({ name: name.trim(), key }),
+        body: JSON.stringify({ name: name.trim(), key, private: isPrivate }),
       });
       notifyTeamsChanged();
       openTeamSettings(team.key);
@@ -122,6 +125,13 @@ export const NewTeamSection: React.FC<{ workspace: Workspace }> = ({ workspace }
                 setKeyEdited(event.target.value !== '');
               }}
             />
+          </div>
+          <div className="preferences-row-item">
+            <div className="preferences-row-copy">
+              <span className="preferences-row-title">Make team private</span>
+              <span className="preferences-row-desc">Only members see this team, its ad accounts and their campaigns</span>
+            </div>
+            <LinearToggle checked={isPrivate} label="Make team private" disabled={busy} onChange={setIsPrivate} />
           </div>
         </section>
         {error && <p role="alert" className="preferences-row-error">{error}</p>}

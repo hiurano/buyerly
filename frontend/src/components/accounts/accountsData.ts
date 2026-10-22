@@ -32,7 +32,10 @@ function errorText(error: unknown): string {
  */
 export function useWorkspaceAccounts() {
   const { workspace } = useWorkspaceSession();
+  // Adding, reconnecting and removing ad accounts is the workspace's; a guest only works on the accounts
+  // of their teams, which are all they see, as Linear's guests act inside their teams.
   const canEdit = workspace.role !== 'guest';
+  const canAct = true;
   const [accounts, setAccounts] = useState<MetaAccount[]>([]);
   const [teams, setTeams] = useState<AccountTeam[]>([]);
   const [members, setMembers] = useState<AccountMember[]>([]);
@@ -133,7 +136,7 @@ export function useWorkspaceAccounts() {
   };
 
   return {
-    accounts, teams, members, connections, state, error, canEdit,
+    accounts, teams, members, connections, state, error, canEdit, canAct,
     refresh, saveProfile, saveLead, toggleAutomation, remove,
   };
 }

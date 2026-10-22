@@ -21,6 +21,7 @@ from api.deps import (
     invalidate_summary_cache,
     load_writable_account,
     record_security_event_and_raise,
+    workspace_account_access,
 )
 from api.schemas import (
     AccountGroupItem,
@@ -276,7 +277,7 @@ async def update_account_profile(
     """Update owner-only Buyerly labels without changing the Meta account name."""
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "editing an ad account")
+        ensure_workspace_write_access(user, member, "editing an ad account", guest_allowed=True)
 
         account = await load_writable_account(
             session, user, ws, account_id, "UPDATE_ACCOUNT_PROFILE"
@@ -303,7 +304,7 @@ async def update_account_lead(
     """Linear's project Lead for an ad account: any member who may edit it picks one of the workspace's members."""
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
-        ensure_workspace_write_access(user, member, "changing an ad account's lead")
+        ensure_workspace_write_access(user, member, "changing an ad account's lead", guest_allowed=True)
         if ws is None:
             raise HTTPException(status_code=404, detail="Workspace not found")
         account = (
@@ -314,7 +315,7 @@ async def update_account_lead(
                 )
             )
         ).scalar_one_or_none()
-        if account is None:
+        if account is None or not (await workspace_account_access(session, user, ws.id)).allows_pk(account.id):
             raise HTTPException(status_code=404, detail="Ad account not found")
         if payload.lead_user_id is not None:
             in_workspace = (

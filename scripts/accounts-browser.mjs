@@ -8,7 +8,7 @@
 // - The account's page at /accounts/{act_id}: the name is edited in place,
 //   automation is switched, properties sit in a panel on the right, and
 //   "Open in Ads Manager" opens the account there.
-// - A guest sees no Add account, Rename or Remove.
+// - A guest works on the accounts they see (Rename, automation) but adds and removes none.
 // - 390px: Name, Status and Spend today only; the page is one column.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -292,7 +292,7 @@ try {
     }
   }
 
-  // A guest only looks.
+  // A guest works on the accounts of their teams, as Linear's guests, but adds and removes none.
   {
     const { context, page, errors } = await openPage(1440, { role: 'guest' });
     try {
@@ -301,12 +301,15 @@ try {
       assert.equal(await page.locator('main header').getByRole('button', { name: 'Add account' }).count(), 0);
       await page.locator('[data-row-id="act_101"]').hover();
       await page.getByRole('button', { name: 'Actions for NL · Lead gen' }).click();
-      assert.deepEqual((await page.getByRole('menuitem').allInnerTexts()).map((text) => text.trim()), ['Open', 'Open in Ads Manager', 'Copy account ID']);
+      assert.deepEqual(
+        (await page.getByRole('menuitem').allInnerTexts()).map((text) => text.trim()),
+        ['Open', 'Open in Ads Manager', 'Rename…', 'Turn automation off', 'Copy account ID'],
+      );
       await page.keyboard.press('Escape');
       await page.goto(`${origin}/alpha/accounts/act_101`);
       await page.getByRole('heading', { name: 'NL · Lead gen', level: 1 }).waitFor();
-      assert.equal(await page.getByRole('textbox', { name: 'Ad account name' }).count(), 0);
-      assert.equal(await page.getByRole('button', { name: 'Attach rule' }).count(), 0);
+      await page.getByRole('textbox', { name: 'Ad account name' }).waitFor();
+      assert.equal(await page.getByRole('button', { name: 'Reconnect' }).count(), 0);
       assert.deepEqual(errors, []);
       console.log('Ad accounts for a guest passed');
     } catch (error) {

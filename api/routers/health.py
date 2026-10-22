@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 
 from api.auth import get_current_user
-from api.deps import get_user_workspace
+from api.deps import get_user_workspace, workspace_account_access
 from database.db import async_session_maker
 from database.models import Account, AccountHealth, AppSettings, AuditEvent, AutomationRuntimeState, MetaConnection, User
 from services import worker_watchdog
@@ -46,6 +46,8 @@ async def health_overview(user: User = Depends(get_current_user)):
                 select(Account).where(Account.workspace_id == workspace.id).order_by(Account.name, Account.id)
             )
         ).scalars().all()
+        access = await workspace_account_access(session, user, workspace.id)
+        accounts = [account for account in accounts if access.allows_pk(account.id)]
         account_pks = [account.id for account in accounts]
         health_rows = []
         if account_pks:
@@ -170,6 +172,8 @@ async def account_health(account_id: str, user: User = Depends(get_current_user)
                 select(Account).where(Account.workspace_id == workspace.id, Account.account_id == account_id)
             )
         ).scalar_one_or_none()
+        if account is not None and not (await workspace_account_access(session, user, workspace.id)).allows_pk(account.id):
+            account = None
         if account is None:
             raise HTTPException(status_code=404, detail="Ad account not found")
         row = (

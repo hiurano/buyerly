@@ -17,6 +17,8 @@ export interface TeamItem {
   owner_user_ids: number[];
   account_ids: number[];
   is_member: boolean;
+  /** Linear's private team: only its members see it and its ad accounts. */
+  private: boolean;
 }
 
 /** Linear's filter on Settings → Teams. */

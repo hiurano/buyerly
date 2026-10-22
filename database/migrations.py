@@ -66,6 +66,10 @@ POST_BASELINE_COLUMNS = {
     "team_members": {
         "is_owner",
     },
+    # Added by the private teams migration (0046).
+    "teams": {
+        "private",
+    },
     "workspace_members": {
         "inbox_read_before",
         "inbox_deleted_before",

@@ -167,6 +167,7 @@ async def _team_items(session, teams: List[Team], user: User) -> List[TeamItem]:
             owner_user_ids=owners[team.id],
             account_ids=accounts[team.id],
             is_member=user.id in members[team.id],
+            private=bool(team.private),
         )
         for team in teams
     ]
@@ -193,7 +194,7 @@ async def list_teams(
 ):
     """Teams by Linear's filter: Active, Retired or Recently deleted; "all" is every team not deleted."""
     async with async_session_maker() as session:
-        await _workspace_role(session, user, workspace_id)
+        member = await _workspace_role(session, user, workspace_id)
         await _purge_expired(session, workspace_id)
         await session.commit()
         stmt = select(Team).where(Team.workspace_id == workspace_id)
@@ -206,8 +207,15 @@ async def list_teams(
             elif status == "retired":
                 stmt = stmt.where(Team.retired_at.is_not(None))
             stmt = stmt.order_by(func.lower(Team.name).asc(), Team.id.asc())
-        teams = (await session.execute(stmt)).scalars().all()
-        return await _team_items(session, list(teams), user)
+        teams = list((await session.execute(stmt)).scalars().all())
+        items = await _team_items(session, teams, user)
+        # As Linear's: a private team shows to its members, and to admins in Settings so they can join it;
+        # a guest sees only the teams they're on.
+        manager = member.role in ("owner", "admin")
+        return [
+            item for item in items
+            if item.is_member or (member.role != "guest" and (not item.private or manager))
+        ]
 
 
 @router.post("/workspaces/{workspace_id}/teams", response_model=TeamItem, status_code=201)
@@ -230,6 +238,7 @@ async def create_team(
             key=key,
             description=req.description.strip(),
             created_by_user_id=user.id,
+            private=req.private,
         )
         session.add(team)
         await session.flush()
@@ -259,6 +268,8 @@ async def update_team(
         team.key = key
         if req.description is not None:
             team.description = req.description.strip()
+        if req.private is not None:
+            team.private = req.private
         team.updated_at = _now()
         await _commit_unique(session)
         return await _team_item(session, team, user)
@@ -329,7 +340,8 @@ async def add_team_members(
         member = await _workspace_role(session, user, workspace_id)
         wanted = set(req.user_ids)
         team = await _load_team(session, workspace_id, team_id)
-        if wanted != {user.id} or member.role == "guest":
+        # A private team is joined only by invitation, as Linear's; admins may add themselves.
+        if wanted != {user.id} or member.role == "guest" or team.private:
             await _require_team_manager(session, member, team)
         rows = (
             await session.execute(
@@ -490,10 +502,18 @@ async def remove_team_account(
 # --- Team documents: Linear's Documents tab on a team's Home -------------------------------------
 
 
-def _require_writer(member: WorkspaceMember) -> None:
-    """Everyone but a guest writes the team's documents for now, as anyone in Linear edits a team's docs."""
-    if member.role == "guest":
-        raise HTTPException(status_code=403, detail="Guests can't change documents")
+async def _require_team_content(session, member: WorkspaceMember, team: Team) -> None:
+    """A team's documents, read and written as Linear's: by everyone but guests for a public team, and by its
+    members for a private one; a guest works only in the teams they're on."""
+    if not team.private and member.role != "guest":
+        return
+    on_team = member.id is not None and (
+        await session.execute(
+            select(TeamMember.id).where(TeamMember.team_id == team.id, TeamMember.member_id == member.id)
+        )
+    ).first()
+    if not on_team:
+        raise HTTPException(status_code=404, detail="Team not found")
 
 
 def _document_item(document: TeamDocument) -> TeamDocumentItem:
@@ -524,8 +544,9 @@ async def _load_document(session, team: Team, document_id: int) -> TeamDocument:
 async def list_team_documents(workspace_id: int, team_id: int, user: User = Depends(get_current_user)):
     """The team's documents, the last edited first, as Linear's list."""
     async with async_session_maker() as session:
-        await _workspace_role(session, user, workspace_id)
+        member = await _workspace_role(session, user, workspace_id)
         team = await _load_team(session, workspace_id, team_id)
+        await _require_team_content(session, member, team)
         documents = (
             await session.execute(
                 select(TeamDocument)
@@ -544,8 +565,9 @@ async def create_team_document(
     user: User = Depends(get_current_user),
 ):
     async with async_session_maker() as session:
-        _require_writer(await _workspace_role(session, user, workspace_id))
+        member = await _workspace_role(session, user, workspace_id)
         team = await _load_team(session, workspace_id, team_id)
+        await _require_team_content(session, member, team)
         document = TeamDocument(
             team_id=team.id,
             title=(req.title or "").strip(),
@@ -568,8 +590,9 @@ async def update_team_document(
     user: User = Depends(get_current_user),
 ):
     async with async_session_maker() as session:
-        _require_writer(await _workspace_role(session, user, workspace_id))
+        member = await _workspace_role(session, user, workspace_id)
         team = await _load_team(session, workspace_id, team_id)
+        await _require_team_content(session, member, team)
         document = await _load_document(session, team, document_id)
         if req.title is not None:
             document.title = req.title.strip()
@@ -590,8 +613,9 @@ async def delete_team_document(
     user: User = Depends(get_current_user),
 ):
     async with async_session_maker() as session:
-        _require_writer(await _workspace_role(session, user, workspace_id))
+        member = await _workspace_role(session, user, workspace_id)
         team = await _load_team(session, workspace_id, team_id)
+        await _require_team_content(session, member, team)
         document = await _load_document(session, team, document_id)
         await session.delete(document)
         await session.commit()

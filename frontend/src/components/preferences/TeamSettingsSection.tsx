@@ -22,6 +22,7 @@ import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { DataState } from '@/ui/DataState';
 import { DropdownMenuItem } from '@/ui/DropdownMenu';
 import { Input } from '@/ui/Input';
+import { LinearToggle } from '@/ui/LinearToggle';
 import { toast } from '@/ui/toast';
 import { ChoiceDialog, errorMessage, memberName, type MemberItem } from './MemberDialogs';
 import { Initials, RoleStatus, RowMenu } from './MembersSection';
@@ -142,7 +143,7 @@ const TeamOverview: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
       <div className="preferences-title-container preferences-title-container--with-note">
         <h1 className="preferences-page-title">{team.name}</h1>
         <p className="preferences-page-note">
-          {retired ? 'Retired · ' : ''}Accessible to all workspace members
+          {retired ? 'Retired · ' : ''}{team.private ? 'Private · only members see it' : 'Accessible to all workspace members'}
         </p>
       </div>
 
@@ -398,6 +399,19 @@ const TeamGeneral: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
     }
   };
 
+  const savePrivate = async (next: boolean) => {
+    try {
+      await apiRequest<TeamItem>(teamsPath(workspace.id, `/${team.id}`), {
+        method: 'PATCH',
+        body: JSON.stringify({ private: next }),
+      });
+      notifyTeamsChanged();
+      toast.show({ tone: 'success', title: next ? `${team.name} is now private` : `${team.name} is now public` });
+    } catch (saveError) {
+      toast.error('Unable to update team', errorMessage(saveError, 'Please try again.'));
+    }
+  };
+
   const fieldKeys = (reset: () => void) => (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') event.currentTarget.blur();
     if (event.key === 'Escape') reset();
@@ -449,6 +463,20 @@ const TeamGeneral: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
               onChange={(event) => setKey(cleanTeamKey(event.target.value))}
               onBlur={() => void save('key', key, () => setKey(team.key))}
               onKeyDown={fieldKeys(() => setKey(team.key))}
+            />
+          </div>
+          {/* Linear's "Change team visibility": only those who run the team change it. */}
+          <div className="preferences-row-item">
+            <div className="preferences-row-copy">
+              <span className="preferences-row-title">Private team</span>
+              <span className="preferences-row-desc">Only members see this team, its ad accounts and their campaigns</span>
+            </div>
+            <LinearToggle
+              checked={team.private}
+              label="Private team"
+              disabled={readOnly}
+              tooltipContent={readOnly ? 'Only team owners and admins change who sees this team' : undefined}
+              onChange={readOnly ? undefined : (next) => void savePrivate(next)}
             />
           </div>
         </section>

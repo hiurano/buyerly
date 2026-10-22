@@ -99,6 +99,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ accountId, navigate, n
 
   const actions: AccountRowActions = {
     canEdit,
+    canAct: data.canAct,
     members,
     setLead: (item, leadUserId) => void data.saveLead(item, leadUserId),
     open: () => {},
@@ -165,6 +166,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ accountId, navigate, n
         account={account}
         oneColumn={oneColumn}
         canEdit={canEdit}
+        canAct={data.canAct}
         teamsText={teamsOf(account, teams).map((team) => team.name).join(', ')}
         connectedBy={members.find((member) => member.user_id === account.owner_user_id)}
         members={members}
@@ -196,6 +198,8 @@ interface AccountPageBodyProps {
   account: MetaAccount;
   oneColumn: boolean;
   canEdit: boolean;
+  /** Changing this account itself: everyone who sees it, guests too. */
+  canAct: boolean;
   teamsText: string;
   connectedBy?: { full_name: string; username: string };
   members: AccountMember[];
@@ -213,6 +217,7 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
   account,
   oneColumn,
   canEdit,
+  canAct,
   teamsText,
   connectedBy,
   members,
@@ -281,19 +286,19 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
       <PropertyRow label="Automation">
         <LinearToggle
           checked={Boolean(account.rules_enabled)}
-          disabled={!canEdit || automationBlocked}
+          disabled={!canAct || automationBlocked}
           label="Automation"
           tooltipContent={
-            !canEdit ? 'Guests can’t change automation'
+            !canAct ? 'You can’t change automation'
               : automationBlocked ? 'Attach a rule to the account first'
                 : account.rules_enabled ? 'Turn automation off' : 'Turn automation on'
           }
-          onChange={canEdit ? onToggleAutomation : undefined}
+          onChange={canAct ? onToggleAutomation : undefined}
         />
         <span className="text-[var(--text-secondary)]">{account.rules_enabled ? 'On' : 'Off'}</span>
       </PropertyRow>
       <PropertyRow label="Lead">
-        <AccountLeadPicker account={account} members={members} canEdit={canEdit} onChange={onSetLead} variant="property" />
+        <AccountLeadPicker account={account} members={members} canEdit={canAct} onChange={onSetLead} variant="property" />
       </PropertyRow>
       <PropertyRow label="Team">
         <span className={teamsText ? 'truncate' : 'text-[var(--text-tertiary)]'}>{teamsText || 'No team'}</span>
@@ -322,7 +327,7 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
       <span className="flex h-9 w-9 items-center justify-center rounded-[8px] text-[var(--text-secondary)]" aria-hidden="true">
         <LinearWalletIcon size={22} />
       </span>
-      {canEdit ? (
+      {canAct ? (
         <input
           aria-label="Ad account name"
           value={name}
@@ -362,7 +367,7 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
         </Tooltip>
       </div>
 
-      {canEdit ? (
+      {canAct ? (
         <textarea
           ref={noteRef}
           aria-label="Note"
@@ -400,7 +405,7 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
 
       <section aria-label="Rules" className="mt-8">
         <SectionTitle
-          action={canEdit && (
+          action={canAct && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
