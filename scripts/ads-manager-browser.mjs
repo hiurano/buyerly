@@ -162,7 +162,8 @@ try {
   const popover = (page) => page.locator('.buyerly-display-options-popover');
   const displayButton = (page) => page.locator('main header').getByRole('button', { name: 'Display options' });
   const select = async (page, row, option) => {
-    await popover(page).locator('.buyerly-display-row', { hasText: row }).getByRole('combobox').click();
+    // By the exact label: "Grouping" is also part of "Sub-grouping".
+    await popover(page).locator('.buyerly-display-row', { has: page.getByText(row, { exact: true }) }).getByRole('combobox').click();
     await page.locator('.buyerly-display-select-menu').getByRole('option', { name: option, exact: true }).click();
   };
   const property = (page, label) => popover(page).locator('.buyerly-display-property', { hasText: new RegExp(`^${label}$`) });
