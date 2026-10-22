@@ -3,7 +3,7 @@ import { RULE_LEVEL_LABELS, type RuleAction, type RuleExecutionLevel } from '@/l
 import { RULE_ACTION_NAMES, RULE_STATUS_NAMES, ruleState } from './ruleNames';
 
 export { RULE_ACTION_NAMES, RULE_STATUS_NAMES, ruleState };
-import { listViewDefaults, type SortDirection } from '@/ui/listView';
+import { boardGrouping, listViewDefaults, type ListViewSettings, type SortDirection } from '@/ui/listView';
 import { useListView } from '@/ui/useListView';
 
 /**
@@ -47,6 +47,30 @@ export const RULE_GROUPINGS = [
   { value: 'level', label: 'Applies to' },
   { value: 'account', label: 'Ad account' },
 ];
+
+/** The grouping on screen: a saved one Rules offers, else none; on a board never none, as Linear's Columns. */
+export function ruleActiveGrouping(view: Pick<ListViewSettings, 'grouping' | 'layout'>): string {
+  const saved = RULE_GROUPINGS.some((option) => option.value === view.grouping) ? view.grouping : 'none';
+  return view.layout === 'board' ? boardGrouping(saved, RULE_BOARD_FALLBACK) : saved;
+}
+
+/**
+ * Sub-grouping, the board's Rows (Linear's swimlanes): one setting for both
+ * layouts, so Ctrl/Cmd+B keeps it. A list grouped by nothing has no sub-groups.
+ */
+export function ruleActiveRows(view: Pick<ListViewSettings, 'grouping' | 'subGrouping' | 'layout'>): string {
+  if (ruleActiveGrouping(view) === 'none') return 'none';
+  return RULE_GROUPINGS.some((option) => option.value === view.subGrouping) ? view.subGrouping : 'none';
+}
+
+/** The Display property each grouping already shows: greyed out on a board grouped or banded by it. */
+export const RULE_GROUPING_PROPERTY: Record<string, string> = {
+  labels: 'labels',
+  status: 'status',
+  action: 'action',
+  level: 'level',
+  account: 'scope',
+};
 
 export const RULE_ORDERINGS = [
   { value: 'manual', label: 'Manual' },

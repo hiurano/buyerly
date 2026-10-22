@@ -2,12 +2,14 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import { createPortal } from 'react-dom';
 import { useAppStore } from '@/store/useAppStore';
 import { BuyerlyDisplayOptions } from '@/ui/BuyerlyDisplayOptions';
-import { boardGrouping, orderGroups, toggleHiddenGroup } from '@/ui/listView';
+import { orderGroups, toggleHiddenGroup } from '@/ui/listView';
 import {
-  RULE_BOARD_FALLBACK,
   RULE_GROUPINGS,
+  RULE_GROUPING_PROPERTY,
   RULE_ORDERINGS,
   RULE_PROPERTIES,
+  ruleActiveGrouping,
+  ruleActiveRows,
   ruleGroupAccounts,
   ruleGroupsFor,
   useRulesView,
@@ -53,9 +55,9 @@ export const RuleDisplayOptionsPopover: React.FC<RuleDisplayOptionsPopoverProps>
   if (!isOpen) return null;
 
   const board = view.layout === 'board';
-  const saved = RULE_GROUPINGS.some((option) => option.value === view.grouping) ? view.grouping : 'none';
-  // A board's Columns, as Linear's, has no "No grouping".
-  const grouping = board ? boardGrouping(saved, RULE_BOARD_FALLBACK) : saved;
+  // A board's Columns, as Linear's, has no "No grouping"; its Rows does.
+  const grouping = ruleActiveGrouping(view);
+  const rows = ruleActiveRows(view);
   const groupingView = { ...view, grouping };
   // Every grouping is a known set, so its empty groups can be shown and ordered.
   const groups = orderGroups(ruleGroupsFor(grouping, rules, ruleLabels, accounts), groupingView);
@@ -80,6 +82,10 @@ export const RuleDisplayOptionsPopover: React.FC<RuleDisplayOptionsPopoverProps>
           onReorder: (ids) => update({ groupOrder: { ...view.groupOrder, [grouping]: ids } }),
           onToggleHidden: (id) => update(toggleHiddenGroup(groupingView, id)),
         }}
+        // Sub-grouping splits groups, so a list grouped by nothing doesn't offer it.
+        subGrouping={grouping !== 'none' ? rows : undefined}
+        subGroupingOptions={grouping !== 'none' ? RULE_GROUPINGS : undefined}
+        onSubGroupingChange={(next) => update({ subGrouping: next })}
         ordering={ordering}
         orderingOptions={RULE_ORDERINGS}
         onOrderingChange={(next) => update({ ordering: next })}
@@ -88,6 +94,10 @@ export const RuleDisplayOptionsPopover: React.FC<RuleDisplayOptionsPopoverProps>
         // On the board this is Show empty columns; the others wait in Hidden columns.
         showEmptyGroups={grouping === 'none' ? undefined : view.showEmptyGroups}
         onShowEmptyGroupsChange={(showEmptyGroups) => update({ showEmptyGroups })}
+        showEmptySubGroups={board && rows !== 'none' ? view.showEmptySubGroups : undefined}
+        onShowEmptySubGroupsChange={(showEmptySubGroups) => update({ showEmptySubGroups })}
+        // The board's columns and rows already show these, as on the Campaigns board.
+        inactiveProperties={board ? [grouping, rows].map((value) => RULE_GROUPING_PROPERTY[value]).filter(Boolean) : undefined}
         properties={Object.fromEntries(RULE_PROPERTIES.map((property) => [property.id, property.label]))}
         enabledProperties={view.properties}
         onToggleProperty={(key) => update({ properties: { ...view.properties, [key]: !view.properties[key] } })}

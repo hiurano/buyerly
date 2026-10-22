@@ -1,12 +1,12 @@
 import React, { useMemo } from 'react';
 import { RuleItem, useAppStore } from '@/store/useAppStore';
-import { arrangeBoardColumns, boardGrouping, toggleHiddenGroup } from '@/ui/listView';
-import { BuyerlyBoard } from '@/ui/BuyerlyBoard';
+import { arrangeBoardColumns, toggleHiddenGroup } from '@/ui/listView';
+import { BuyerlyBoard, type BoardLane } from '@/ui/BuyerlyBoard';
 import { toast } from '@/ui/toast';
 import { RuleCard } from './RuleCard';
 import {
-  RULE_BOARD_FALLBACK,
-  RULE_GROUPINGS,
+  ruleActiveGrouping,
+  ruleActiveRows,
   ruleGroupAccounts,
   ruleGroupsFor,
   useRulesView,
@@ -23,14 +23,26 @@ const Dot: React.FC<{ color: string }> = ({ color }) => (
  * By label or status a card moves between columns, which changes that value:
  * into a label it trades the label it came from for the new one, into "No
  * label" it drops that label, into Active or Paused it switches the rule.
+ * Rows band the columns; only the column a card lands in decides what changes.
  */
 export const RuleBoard: React.FC<{ rules: RuleItem[] }> = ({ rules }) => {
   const { ruleLabels, ruleAccounts, selectedRuleId, setSelectedRuleId, setRuleLabels, toggleRuleStatus, openCreateRuleModal } = useAppStore();
   const { view, update } = useRulesView();
   const accounts = useMemo(() => ruleGroupAccounts(ruleAccounts), [ruleAccounts]);
-  const saved = RULE_GROUPINGS.some((option) => option.value === view.grouping) ? view.grouping : 'none';
-  const boardView = { ...view, grouping: boardGrouping(saved, RULE_BOARD_FALLBACK) };
+  const boardView = { ...view, grouping: ruleActiveGrouping(view) };
+  const rowsGrouping = ruleActiveRows(view);
   const { shown, hidden } = arrangeBoardColumns(ruleGroupsFor(boardView.grouping, rules, ruleLabels, accounts), boardView);
+  // Every grouping is a known set, so Show empty rows can show any band without cards.
+  const lanes: BoardLane<RuleItem>[] | undefined = rowsGrouping === 'none'
+    ? undefined
+    : ruleGroupsFor(rowsGrouping, rules, ruleLabels, accounts)
+      .filter((lane) => lane.rows.length > 0 || view.showEmptySubGroups)
+      .map((lane) => ({
+        id: lane.id,
+        label: lane.label,
+        icon: <Dot color={lane.dotColor} />,
+        cells: Object.fromEntries(shown.map((column) => [column.id, column.rows.filter((rule) => lane.rows.includes(rule))])),
+      }));
   // A card can also drop on a hidden column's row in the lane.
   const groupOf = (id: string): RuleListGroup | undefined =>
     [...shown, ...hidden.map(({ group }) => group)].find((group) => group.id === id);
@@ -72,6 +84,7 @@ export const RuleBoard: React.FC<{ rules: RuleItem[] }> = ({ rules }) => {
         count: group.rows.length,
         hiddenByMember,
       }))}
+      lanes={lanes}
       rowKey={(rule) => rule.id}
       renderCard={card}
       onHideColumn={(id) => update(toggleHiddenGroup(boardView, id))}

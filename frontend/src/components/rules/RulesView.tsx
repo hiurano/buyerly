@@ -25,7 +25,7 @@ import { createRuleFilterFields } from '@/components/filters/filterCatalogs';
 import { applyFilterClauses, type FilterClause } from '@/components/filters/filterModel';
 import { DisplayOptionsChangedDot } from '@/ui/BuyerlyDisplayOptions';
 import { useFiltersInAddress, writeFilterParam } from '@/ui/useListView';
-import { NO_LABEL_COLOR, ruleGroupAccounts, ruleGroupIds, sortRules, useRulesView } from './rulesViewModel';
+import { NO_LABEL_COLOR, ruleActiveRows, ruleGroupAccounts, ruleGroupIds, sortRules, useRulesView } from './rulesViewModel';
 import { RuleLabelPickerHost } from './RuleLabelPickerHost';
 import {
   BuyerlyBoltIcon,
@@ -264,7 +264,11 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
         changed = true;
       }
       if (rulesViewMode === 'list') {
-        const groupKeys = ruleGroupIds(rulesDisplayGrouping, revealedRule, ruleLabels, groupAccounts);
+        // Its groups, and its sub-groups inside each of them.
+        const parents = ruleGroupIds(rulesDisplayGrouping, revealedRule, ruleLabels, groupAccounts);
+        const rowsGrouping = ruleActiveRows(rulesView);
+        const subs = rowsGrouping === 'none' ? [] : ruleGroupIds(rowsGrouping, revealedRule, ruleLabels, groupAccounts);
+        const groupKeys = [...parents, ...parents.flatMap((parent) => subs.map((sub) => `${parent}/${sub}`))];
         for (const key of groupKeys.filter((candidate) => rulesCollapsedGroups.includes(candidate))) {
           toggleRulesGroupCollapse(key);
           changed = true;

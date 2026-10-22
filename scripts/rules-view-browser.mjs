@@ -8,6 +8,8 @@
 // - The board's columns are the grouping (Columns = Grouping): by status a
 //   card dragged to Paused pauses the rule; by label a card dragged to a
 //   label trades the label it came from for that one.
+// - Rows band the board and the same setting is the list's Sub-grouping
+//   (#471); with rows on, the column a card lands in still decides.
 // - The view survives a reload; filters ride in the address.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -123,7 +125,8 @@ try {
   const popover = () => page.locator('.buyerly-display-options-popover');
   const displayButton = () => page.locator('main header').getByRole('button', { name: 'Display options' });
   const select = async (row, option) => {
-    await popover().locator('.buyerly-display-row', { hasText: row }).getByRole('combobox').click();
+    // By the exact label: "Grouping" is also part of "Sub-grouping".
+    await popover().locator('.buyerly-display-row', { has: page.getByText(row, { exact: true }) }).getByRole('combobox').click();
     await page.locator('.buyerly-display-select-menu').getByRole('option', { name: option, exact: true }).click();
   };
   const property = (label) => popover().locator('.buyerly-display-property', { hasText: new RegExp(`^${label}$`) });
@@ -237,6 +240,42 @@ try {
     await page.keyboard.press('Escape');
     await column('Notify').waitFor();
     assert.equal(await page.locator('[data-board-drag]').count(), 0, 'Action columns take no drops');
+
+    // Rows (#471): columns by Status banded by Label; what the columns and rows show is greyed out.
+    await displayButton().click();
+    await select('Columns', 'Status');
+    await select('Rows', 'Label');
+    await popover().getByText('Show empty rows', { exact: true }).waitFor();
+    assert.equal(await property('Status').isDisabled(), true, 'the columns show the status');
+    assert.equal(await property('Labels').isDisabled(), true, 'the rows show the labels');
+    await page.keyboard.press('Escape');
+    await column('Paused rules').waitFor();
+    assert.deepEqual(await page.locator('.buyerly-board-lane .buyerly-board-column-name').allTextContents(), ['NL launch', 'No label']);
+    await page.screenshot({ path: `${output}/board-rows-1440.png` });
+    // With rows on, the column decides: No label's card dropped on Paused is paused and keeps its labels.
+    const card = await page.locator('[data-board-column="status-active"] [data-row-id="8"]').boundingBox();
+    const paused = await page.locator('[data-board-column="status-paused"]').first().boundingBox();
+    await page.mouse.move(card.x + 40, card.y + 20);
+    await page.mouse.down();
+    await page.mouse.move(card.x + 60, card.y + 30, { steps: 4 });
+    await page.mouse.move(paused.x + paused.width / 2, paused.y + paused.height / 2, { steps: 12 });
+    await page.mouse.up();
+    for (let tries = 0; writes.length < 3 && tries < 100; tries += 1) await page.waitForTimeout(50);
+    assert.deepEqual([writes[2].verb, writes[2].path, writes[2].body.enabled], ['PUT', '/api/presets/8', false]);
+    await page.locator('[data-board-column="status-paused"] [data-row-id="8"]').waitFor();
+    await settle();
+    assert.equal(writes.length, 3, 'the band it crossed changes nothing');
+
+    // Ctrl/Cmd+B: the list keeps the setting as Sub-grouping, Label inside each Status group.
+    await page.keyboard.press('ControlOrMeta+b');
+    await page.locator('[data-row-id="7"]').first().waitFor();
+    assert.deepEqual(await groupTitles(), ['Active rules', 'Paused rules']);
+    assert.deepEqual(await page.locator('.buyerly-data-subgroup-header span.truncate').allTextContents(), ['NL launch', 'NL launch', 'No label']);
+    await page.locator('.buyerly-data-subgroup-header').last().getByRole('button', { name: 'Collapse group' }).click();
+    await page.locator('[data-row-id="8"]').waitFor({ state: 'detached' });
+    await page.screenshot({ path: `${output}/list-sub-groups-1440.png` });
+    await settle();
+    assert.equal(views.rules.subGrouping, 'labels');
     assert.deepEqual(errors, []);
     console.log('Rules view at 1440px passed');
   } catch (error) {
