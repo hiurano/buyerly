@@ -400,7 +400,7 @@ async def batch_add_accounts(
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
         ensure_workspace_write_access(user, member, "adding ad accounts")
-        caller_role = member.role if member else "buyer"
+        caller_role = member.role if member else "member"
         try:
             _ = encrypt_meta_token(token)
         except MetaTokenError as exc:

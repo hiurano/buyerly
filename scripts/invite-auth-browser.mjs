@@ -15,7 +15,7 @@ const output = '/tmp/buyerly-invite-auth';
 await mkdir(output, { recursive: true });
 const server = await createServer({ root, server: { host: '127.0.0.1', port: 0 } });
 const workspace = {
-  id: 1, slug: 'invite-team', name: 'Invite Team', role: 'buyer',
+  id: 1, slug: 'invite-team', name: 'Invite Team', role: 'member',
   badge_text: 'IT', badge_color: '', logo_url: '', is_active: true,
 };
 const inviteToken = 'inv_browser_test';
@@ -84,7 +84,7 @@ try {
         return route.fulfill({ json: {
           valid: true, status: 'pending', workspace_name: workspace.name,
           workspace_slug: workspace.slug, workspace_badge_text: workspace.badge_text,
-          inviter_name: 'Team Owner', role: 'buyer', target_email: email,
+          inviter_name: 'Team Owner', role: 'member', target_email: email,
         } });
       }
       if (verb === 'POST' && path === '/api/auth/logout') {

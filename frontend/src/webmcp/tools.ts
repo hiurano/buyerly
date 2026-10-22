@@ -38,7 +38,7 @@ const ASSISTANT_HEADERS = { 'X-Buyerly-Agent': 'webmcp' };
 export interface ToolContext {
   /** Slug of the workspace the tools were registered for. */
   workspace: string;
-  /** False for the Viewer role; the server enforces it regardless. */
+  /** False for a guest; the server enforces it regardless. */
   canWrite: boolean;
   /** True while that workspace is still the one open in this tab. */
   inScope: () => boolean;
@@ -135,8 +135,8 @@ function accountName(account: MetaAccount): string {
   return account.custom_name?.trim() || account.name.trim() || account.account_id;
 }
 
-function viewerFailure(what: string): ToolFailure {
-  return { error: `The Viewer role is read-only in this workspace and cannot ${what}.`, status: 403 };
+function guestFailure(what: string): ToolFailure {
+  return { error: `Guests can't ${what} in this workspace.`, status: 403 };
 }
 
 function refusal(outcome: Exclude<ApprovalOutcome, 'approved'>): ToolFailure {
@@ -627,7 +627,7 @@ export function workspaceTools(context: ToolContext): WebMcpTool[] {
     },
     annotations: { consequentialHint: true },
   }, async (input, options) => {
-    if (!context.canWrite) return viewerFailure('create rules');
+    if (!context.canWrite) return guestFailure('create rules');
     const counted = input.conditions.find(
       (condition) => COUNT_METRICS.has(condition.metric) && !Number.isInteger(condition.value),
     );
@@ -686,7 +686,7 @@ export function workspaceTools(context: ToolContext): WebMcpTool[] {
     },
     annotations: { consequentialHint: true },
   }, async (input, options) => {
-    if (!context.canWrite) return viewerFailure('attach rules to ad accounts');
+    if (!context.canWrite) return guestFailure('attach rules to ad accounts');
     if (input.campaign_ids && input.adset_ids) return { error: 'Give campaign_ids or adset_ids, not both.' };
     const accountId = normalizeAccountId(input.account_id);
     const scope: RuleScope = input.campaign_ids
@@ -773,7 +773,7 @@ export function workspaceTools(context: ToolContext): WebMcpTool[] {
     },
     annotations: { consequentialHint: true },
   }, async (input, options) => {
-    if (!context.canWrite) return viewerFailure('detach rules from ad accounts');
+    if (!context.canWrite) return guestFailure('detach rules from ad accounts');
     const accountId = normalizeAccountId(input.account_id);
     const [presets, accounts] = await Promise.all([
       read<RulePresetPayload[]>(context, '/api/presets'),

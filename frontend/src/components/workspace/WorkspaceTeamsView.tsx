@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '@/lib/api';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { notifyTeamsChanged, teamsPath, useTeams, type TeamItem } from '@/lib/teams';
-import { canAdministerWorkspace } from '@/lib/settingsPages';
 import { useAppStore } from '@/store/useAppStore';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { Initials } from '@/components/preferences/MembersSection';
@@ -34,7 +33,8 @@ export const WorkspaceTeamsView: React.FC = () => {
   const [query, setQuery] = useState('');
   const [direction, setDirection] = useState<'asc' | 'desc'>('asc');
   const [busyTeam, setBusyTeam] = useState<number | null>(null);
-  const canCreate = canAdministerWorkspace({ role: workspace.role });
+  // As in Linear, every member may create a team; guests can't.
+  const canCreate = workspace.role !== 'guest';
 
   useEffect(() => {
     let active = true;

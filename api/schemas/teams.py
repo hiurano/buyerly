@@ -14,6 +14,8 @@ class TeamItem(BaseModel):
     # Until when a deleted team can still be restored.
     restorable_until: Optional[str] = None
     member_user_ids: List[int] = Field(default_factory=list)
+    # Linear's team owners; workspace owners and admins manage every team besides.
+    owner_user_ids: List[int] = Field(default_factory=list)
     account_ids: List[int] = Field(default_factory=list)
     is_member: bool = False
 
@@ -32,6 +34,10 @@ class UpdateTeamRequest(BaseModel):
 
 class TeamMembersRequest(BaseModel):
     user_ids: List[int] = Field(..., min_length=1, max_length=500)
+
+
+class TeamOwnerRequest(BaseModel):
+    is_owner: bool
 
 
 class TeamAccountsRequest(BaseModel):

@@ -1161,7 +1161,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             entity_level="campaign", account_id=account_id,
         )
 
-        # The Viewer role is read-only, and is stopped before Meta is touched.
+        # A guest only reads for now, and is stopped before Meta is touched.
         async with self.test_session_maker() as session:
             member = (
                 await session.execute(
@@ -1170,7 +1170,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                     )
                 )
             ).scalars().first()
-            member.role = "viewer"
+            member.role = "guest"
             await session.commit()
         with patch.object(
             self.app.state.meta_client, "get_entity_state",
@@ -3101,7 +3101,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                     select(WorkspaceMember).where(WorkspaceMember.workspace_id == self.ws_buyer_id)
                 )
             ).scalars().first()
-            member.role = "viewer"
+            member.role = "guest"
             await session.commit()
         response = await read_settings()
         for leaked in (secret, foreign_account, "SYNTHETIC_BEARER_VALUE", "SYNTHETIC_PASSWORD"):

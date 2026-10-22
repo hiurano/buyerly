@@ -13,6 +13,8 @@ export interface TeamItem {
   deleted_at: string | null;
   restorable_until: string | null;
   member_user_ids: number[];
+  /** Linear's team owners; the workspace's owner and admins run every team besides. */
+  owner_user_ids: number[];
   account_ids: number[];
   is_member: boolean;
 }
@@ -117,3 +119,13 @@ export const teamDocumentsPath = (workspaceId: number, teamId: number, documentI
 
 /** A document's name in lists and headers; Linear shows "Untitled" for one without a title. */
 export const documentTitle = (document: Pick<TeamDocument, 'title'>) => document.title.trim() || 'Untitled';
+
+/**
+ * Who runs a team, as in Linear: its team owners, and the workspace's owner and
+ * admins for every team. Guests never do.
+ */
+export function canManageTeam(team: Pick<TeamItem, 'owner_user_ids'>, workspaceRole: string, userId: number | null | undefined): boolean {
+  if (workspaceRole === 'owner' || workspaceRole === 'admin') return true;
+  if (workspaceRole === 'guest' || userId == null) return false;
+  return (team.owner_user_ids ?? []).includes(userId);
+}

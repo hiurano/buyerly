@@ -677,7 +677,7 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
             response = await self.client.post(
                 f"/api/workspaces/{workspace_id}/invites",
                 headers=self.owner_headers,
-                json={"role": "buyer", "max_uses": 0},
+                json={"role": "member", "max_uses": 0},
             )
             self.assertEqual(response.status_code, 200, response.text)
             token = response.json()["token"]

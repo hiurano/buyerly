@@ -6,6 +6,7 @@ import {
   TEAM_DESCRIPTION_MAX,
   TEAM_KEY_MAX,
   TEAM_NAME_MAX,
+  canManageTeam,
   cleanTeamKey,
   notifyTeamsChanged,
   plural,
@@ -121,6 +122,7 @@ const TeamOverview: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const retired = Boolean(team.retired_at);
+  const canManage = canManageTeam(team, workspace.role, user.id);
 
   const run = async (action: () => Promise<unknown>, done: string, failed: string) => {
     try {
@@ -166,7 +168,7 @@ const TeamOverview: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
         </section>
       </div>
 
-      <div className="preferences-section">
+      {(team.is_member || canManage) && <div className="preferences-section">
         <div className="preferences-section-header">
           <h3 className="preferences-section-title">Danger zone</h3>
         </div>
@@ -179,7 +181,7 @@ const TeamOverview: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
               onClick={() => setLeaveOpen(true)}
             />
           )}
-          {retired ? (
+          {canManage && (retired ? (
             <DangerRow
               title="Restore team"
               description="Make this retired team active again"
@@ -193,15 +195,17 @@ const TeamOverview: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
               action="Retire…"
               onClick={() => setRetireOpen(true)}
             />
+          ))}
+          {canManage && (
+            <DangerRow
+              title="Delete team"
+              description="Delete this team, with a 30-day restoration window"
+              action="Delete…"
+              onClick={() => setDeleteOpen(true)}
+            />
           )}
-          <DangerRow
-            title="Delete team"
-            description="Delete this team, with a 30-day restoration window"
-            action="Delete…"
-            onClick={() => setDeleteOpen(true)}
-          />
         </section>
-      </div>
+      </div>}
 
       <ConfirmDialog
         open={leaveOpen}
@@ -360,6 +364,9 @@ const DeleteTeamDialog: React.FC<{
  */
 const TeamGeneral: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ workspace, team }) => {
   const { openTeamSettings } = useAppStore();
+  const { user } = useWorkspaceSession();
+  // Only those who run the team change it; everyone else reads it.
+  const readOnly = !canManageTeam(team, workspace.role, user.id);
   const [name, setName] = useState(team.name);
   const [key, setKey] = useState(team.key);
   const [description, setDescription] = useState(team.description);
@@ -418,6 +425,7 @@ const TeamGeneral: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
                 autoComplete="off"
                 className="preferences-row-input preferences-profile-input"
                 maxLength={TEAM_NAME_MAX}
+                readOnly={readOnly}
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 onBlur={() => void save('name', name, () => setName(team.name))}
@@ -436,6 +444,7 @@ const TeamGeneral: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
               spellCheck={false}
               className="preferences-row-input preferences-profile-input"
               maxLength={TEAM_KEY_MAX}
+              readOnly={readOnly}
               value={key}
               onChange={(event) => setKey(cleanTeamKey(event.target.value))}
               onBlur={() => void save('key', key, () => setKey(team.key))}
@@ -455,6 +464,7 @@ const TeamGeneral: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
             aria-label="Team description"
             rows={4}
             maxLength={TEAM_DESCRIPTION_MAX}
+            readOnly={readOnly}
             value={description}
             placeholder="e.g. Scales winning campaigns for the US market"
             onChange={(event) => setDescription(event.target.value)}
@@ -596,6 +606,8 @@ const MEMBER_GRID = 'grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_28px] sm:grid-c
  * removes them from it, at once, as Linear does.
  */
 const TeamMembers: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ workspace, team }) => {
+  const { user } = useWorkspaceSession();
+  const canManage = canManageTeam(team, workspace.role, user.id);
   const [members, setMembers] = useState<MemberItem[] | null>(null);
   const [query, setQuery] = useState('');
   const [addOpen, setAddOpen] = useState(false);
@@ -627,6 +639,23 @@ const TeamMembers: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
     }
   };
 
+  /** Linear's "Make team owner" / "Remove team owner". */
+  const setOwner = async (member: MemberItem, isOwner: boolean) => {
+    try {
+      await apiRequest(teamsPath(workspace.id, `/${team.id}/members/${member.user_id}`), {
+        method: 'PATCH',
+        body: JSON.stringify({ is_owner: isOwner }),
+      });
+      toast.show({
+        tone: 'success',
+        title: isOwner ? `${memberName(member)} is now a team owner` : `${memberName(member)} is no longer a team owner`,
+      });
+      notifyTeamsChanged();
+    } catch (ownerError) {
+      toast.error("Couldn't change the team owner", errorMessage(ownerError, 'Please try again.'));
+    }
+  };
+
   return (
     <>
       <TeamBreadcrumb team={team} />
@@ -636,7 +665,7 @@ const TeamMembers: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
       <div className="flex items-center gap-2">
         <SearchField value={query} onChange={setQuery} placeholder="Search by name or email" />
         <div className="flex-1" />
-        <Button variant="primary" className="shrink-0" onClick={() => setAddOpen(true)}>Add a member</Button>
+        {canManage && <Button variant="primary" className="shrink-0" onClick={() => setAddOpen(true)}>Add a member</Button>}
       </div>
 
       {members === null ? (
@@ -659,13 +688,30 @@ const TeamMembers: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
                 </span>
               </span>
               <span role="cell" className="truncate text-[var(--text-secondary)]">{member.email || ''}</span>
-              <span role="cell" className="hidden text-[var(--text-secondary)] sm:block"><RoleStatus role={member.role} /></span>
+              <span role="cell" className="hidden text-[var(--text-secondary)] sm:block">
+                {team.owner_user_ids.includes(member.user_id) ? <RoleStatus role="team-owner" /> : <RoleStatus role={member.role} />}
+              </span>
               <span role="cell" className="flex justify-end">
-                <RowMenu label={`Member actions for ${memberName(member)}`}>
-                  <DropdownMenuItem onSelect={() => void remove(member)}>
-                    <span className="truncate">{member.is_current_user ? 'Leave team' : 'Remove from team'}</span>
-                  </DropdownMenuItem>
-                </RowMenu>
+                {(canManage || member.is_current_user) && (
+                  <RowMenu label={`Member actions for ${memberName(member)}`}>
+                    {canManage && member.role !== 'guest' && (
+                      team.owner_user_ids.includes(member.user_id) ? (
+                        <DropdownMenuItem onSelect={() => void setOwner(member, false)}>
+                          <span className="truncate">Remove team owner</span>
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem onSelect={() => void setOwner(member, true)}>
+                          <span className="truncate">Make team owner</span>
+                        </DropdownMenuItem>
+                      )
+                    )}
+                    {(canManage || member.is_current_user) && (
+                      <DropdownMenuItem onSelect={() => void remove(member)}>
+                        <span className="truncate">{member.is_current_user ? 'Leave team' : 'Remove from team'}</span>
+                      </DropdownMenuItem>
+                    )}
+                  </RowMenu>
+                )}
               </span>
             </div>
           ))}
@@ -715,6 +761,8 @@ const ACCOUNT_GRID = 'grid grid-cols-[minmax(0,1fr)_28px] sm:grid-cols-[minmax(0
  * come off the team from their menu.
  */
 const TeamAccounts: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ workspace, team }) => {
+  const { user } = useWorkspaceSession();
+  const canManage = canManageTeam(team, workspace.role, user.id);
   const [accounts, setAccounts] = useState<MetaAccount[] | null>(null);
   const [query, setQuery] = useState('');
   const [addOpen, setAddOpen] = useState(false);
@@ -752,7 +800,7 @@ const TeamAccounts: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
       <div className="flex items-center gap-2">
         <SearchField value={query} onChange={setQuery} placeholder="Search by name or ID" />
         <div className="flex-1" />
-        <Button variant="primary" className="shrink-0" onClick={() => setAddOpen(true)}>Add ad accounts</Button>
+        {canManage && <Button variant="primary" className="shrink-0" onClick={() => setAddOpen(true)}>Add ad accounts</Button>}
       </div>
 
       {accounts === null ? (
@@ -773,11 +821,13 @@ const TeamAccounts: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
                 {account.is_active === false ? 'Off in Buyerly' : (account.status_label || '').replace(/\s*\(.*\)$/, '') || 'Active'}
               </span>
               <span role="cell" className="flex justify-end">
-                <RowMenu label={`Ad account actions for ${accountName(account)}`}>
-                  <DropdownMenuItem onSelect={() => void remove(account)}>
-                    <span className="truncate">Remove from team</span>
-                  </DropdownMenuItem>
-                </RowMenu>
+                {canManage && (
+                  <RowMenu label={`Ad account actions for ${accountName(account)}`}>
+                    <DropdownMenuItem onSelect={() => void remove(account)}>
+                      <span className="truncate">Remove from team</span>
+                    </DropdownMenuItem>
+                  </RowMenu>
+                )}
               </span>
             </div>
           ))}

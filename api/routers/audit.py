@@ -109,7 +109,7 @@ async def serialize_audit_events(session, rows, *, workspace_id, can_write_works
             and event_is_within_undo_window(row)
         )
         if not can_write_workspace:
-            undo_reason = "The Viewer role cannot undo actions."
+            undo_reason = "Guests can't undo actions."
         elif reversal_id is not None:
             undo_reason = "This action has already been undone."
         elif not is_reversible:
@@ -177,7 +177,7 @@ async def list_audit_events(
     async with async_session_maker() as session:
         ws, member = await get_user_workspace_member(session, user)
         workspace_id = ws.id if ws else None
-        can_write_workspace = bool(member and member.role != "viewer")
+        can_write_workspace = bool(member and member.role != "guest")
         # Legacy NULL rows are intentionally quarantined from the tenant UI.
         # owner_user_id cannot identify one active workspace when the same user
         # belongs to multiple workspaces.
@@ -756,7 +756,7 @@ async def list_inbox(
             session,
             [row for row, *_ in page],
             workspace_id=ws.id,
-            can_write_workspace=member.role != "viewer",
+            can_write_workspace=member.role != "guest",
             user=user,
         )
         for item, (_, read, snoozed_until, returned, kind) in zip(items, page):

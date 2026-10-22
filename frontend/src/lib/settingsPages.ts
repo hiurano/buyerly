@@ -27,8 +27,18 @@ type SettingsPageGroup = { heading: string; pages: { section: SettingsPage; labe
 /** Linear's Administration pages; only a workspace owner or admin sees them. */
 export const ADMINISTRATION_PAGES: SettingsPage[] = ['workspace', 'teams', 'members', 'workspace-security'];
 
-/** Every Administration section, with the team pages that open from Teams. */
-export const ADMINISTRATION_SECTIONS: SettingsSection[] = [...ADMINISTRATION_PAGES, 'new-team', 'team'];
+/** Every Administration section. */
+export const ADMINISTRATION_SECTIONS: SettingsSection[] = [...ADMINISTRATION_PAGES];
+
+/** A team's settings and Create team: open to every member, as in Linear; never to guests. */
+export const TEAM_SECTIONS: SettingsSection[] = ['new-team', 'team'];
+
+/** Whether this member may open a settings section. */
+export function canOpenSettingsSection(workspace: Pick<Workspace, 'role'>, section: SettingsSection): boolean {
+  if (ADMINISTRATION_SECTIONS.includes(section)) return canAdministerWorkspace(workspace);
+  if (TEAM_SECTIONS.includes(section)) return workspace.role !== 'guest';
+  return true;
+}
 
 export function canAdministerWorkspace(workspace: Pick<Workspace, 'role'>): boolean {
   return workspace.role === 'owner' || workspace.role === 'admin';

@@ -55,7 +55,7 @@ export const TeamHomeView: React.FC<TeamHomeViewProps> = ({ page, documentId, na
   const [members, setMembers] = useState<MemberItem[] | null>(null);
   const [documents, setDocuments] = useState<TeamDocument[] | null>(null);
   const [documentsError, setDocumentsError] = useState('');
-  const canWrite = workspace.role !== 'viewer';
+  const canWrite = workspace.role !== 'guest';
 
   useEffect(() => {
     let active = true;
@@ -258,7 +258,8 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
     setActiveTab(tab);
   };
   const links: { id: string; label: string; icon: React.ReactNode; run: () => void }[] = [
-    {
+    // Guests don't open settings, as in Linear.
+    ...(canWrite ? [{
       id: 'settings',
       label: 'Team settings',
       icon: <TeamSettingsIcon />,
@@ -266,7 +267,7 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
         openTeamSettings(team.key);
         setActiveTab('preferences');
       },
-    },
+    }] : []),
     { id: 'campaigns', label: 'Ads Manager', icon: <LinearMetaIcon size={16} />, run: () => goTo('campaigns') },
     { id: 'accounts', label: 'Ad accounts', icon: <LinearWalletIcon size={16} />, run: () => goTo('accounts') },
     { id: 'rules', label: 'Rules', icon: <LinearBoltIcon size={16} />, run: () => goTo('rules') },

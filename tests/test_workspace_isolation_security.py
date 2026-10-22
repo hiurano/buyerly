@@ -264,7 +264,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
             )
             session.add(viewer_user)
             await session.flush()
-            session.add(WorkspaceMember(workspace_id=self.ws_a.id, user_id=viewer_user.id, role="viewer"))
+            session.add(WorkspaceMember(workspace_id=self.ws_a.id, user_id=viewer_user.id, role="guest"))
             preset = RulePreset(
                 workspace_id=self.ws_a.id,
                 owner_user_id=self.tenant_a_user.id,
@@ -312,7 +312,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
                 json={"custom_name": "Viewer Edit", "note": "Blocked"},
             )
             self.assertEqual(patch_res.status_code, 403)
-            self.assertIn("Viewer", patch_res.json()["detail"])
+            self.assertIn("Guests", patch_res.json()["detail"])
 
             audit_res = await client.get("/api/audit-events", headers=viewer_headers)
             self.assertEqual(audit_res.status_code, 200)
@@ -321,7 +321,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
                 if item["id"] == viewer_visible_event_id
             )
             self.assertFalse(viewer_item["can_undo"])
-            self.assertIn("Viewer", viewer_item["undo_reason"])
+            self.assertIn("Guests", viewer_item["undo_reason"])
 
             undo_res = await client.post(
                 f"/api/audit-events/{viewer_visible_event_id}/undo",

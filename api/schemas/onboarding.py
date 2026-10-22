@@ -36,7 +36,7 @@ class OnboardingWorkspaceRequest(BaseModel):
 
 class BulkInviteItem(BaseModel):
     email: str = Field(..., min_length=3, max_length=255)
-    role: str = Field(default="buyer", pattern="^(admin|buyer|viewer)$")
+    role: str = Field(default="member", pattern="^(admin|member|guest)$")
 
 
 class OnboardingBulkInvitesRequest(BaseModel):

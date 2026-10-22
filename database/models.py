@@ -133,7 +133,7 @@ class WorkspaceMember(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     workspace_id = Column(Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    role = Column(String, default="owner", nullable=False, doc="'owner', 'admin', 'buyer', 'viewer'")
+    role = Column(String, default="owner", nullable=False, doc="Linear's roles: 'owner', 'admin', 'member', 'guest'")
     joined_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     inbox_read_before = Column(
         DateTime(timezone=True),
@@ -209,9 +209,9 @@ class WorkspaceInvite(Base):
     )
     role = Column(
         String,
-        default="buyer",
+        default="member",
         nullable=False,
-        doc="Role on joining: 'admin', 'buyer', 'viewer'",
+        doc="Role on joining: 'admin', 'member', 'guest'",
     )
     inviter_user_id = Column(
         Integer,
@@ -284,7 +284,7 @@ class WorkspaceSupportGrant(Base):
         String,
         default="admin",
         nullable=False,
-        doc="Temporary workspace role for the session ('admin' or 'viewer')",
+        doc="Temporary workspace role for the session ('admin' or 'guest')",
     )
     reason = Column(
         Text,
@@ -991,6 +991,12 @@ class TeamMember(Base):
     team_id = Column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True)
     member_id = Column(Integer, ForeignKey("workspace_members.id", ondelete="CASCADE"), nullable=False, index=True)
     joined_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    is_owner = Column(
+        Boolean,
+        default=False,
+        nullable=False,
+        doc="Linear's team owner: runs the team without being a workspace admin; its creator at first",
+    )
 
 
 class TeamAccount(Base):

@@ -189,7 +189,7 @@ async def _workspace_connection(
         raise HTTPException(status_code=404, detail="Workspace not found")
     if require_write:
         ensure_workspace_write_access(user, member, "changing the Meta connection")
-    caller_role = member.role if member else "buyer"
+    caller_role = member.role if member else "member"
     stmt = select(MetaConnection).where(
         MetaConnection.id == connection_id,
         MetaConnection.workspace_id == ws.id,
@@ -367,7 +367,7 @@ async def list_meta_invites(user: User = Depends(get_current_user)):
         ws, member = await get_user_workspace_member(session, user)
         if not ws:
             return []
-        caller_role = member.role if member else "buyer"
+        caller_role = member.role if member else "member"
         stmt = select(MetaConnectionInvite, User).outerjoin(
             User, MetaConnectionInvite.created_by_user_id == User.id
         ).where(MetaConnectionInvite.workspace_id == ws.id)
@@ -413,7 +413,7 @@ async def revoke_meta_invite(
             MetaConnectionInvite.id == invite_id,
             MetaConnectionInvite.workspace_id == ws.id,
         )
-        caller_role = member.role if member else "buyer"
+        caller_role = member.role if member else "member"
         if caller_role not in ("owner", "admin"):
             stmt = stmt.where(MetaConnectionInvite.created_by_user_id == user.id)
 
@@ -670,7 +670,7 @@ async def oauth_callback(
                 owner,
                 workspace_id=target_workspace_id,
             )
-            if not ws or not member or member.role == "viewer":
+            if not ws or not member or member.role == "guest":
                 return RedirectResponse(
                     _app_redirect(return_path, meta_status="permission_denied"),
                     status_code=303,
@@ -828,7 +828,7 @@ async def list_connections(user: User = Depends(get_current_user)):
         ws, member = await get_user_workspace_member(session, user)
         if not ws:
             return []
-        caller_role = member.role if member else "buyer"
+        caller_role = member.role if member else "member"
         stmt = select(MetaConnection).where(MetaConnection.workspace_id == ws.id)
         if caller_role not in ("owner", "admin"):
             stmt = stmt.where(MetaConnection.owner_user_id == user.id)
@@ -1159,7 +1159,7 @@ async def import_accounts(
             user,
             require_write=True,
         )
-        caller_role = member.role if member else "buyer"
+        caller_role = member.role if member else "member"
 
         if connection.status != "active":
             raise HTTPException(status_code=409, detail="Reconnect your Meta profile first")

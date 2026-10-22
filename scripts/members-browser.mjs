@@ -30,8 +30,8 @@ const nextWorkspace = {
 };
 const scenarios = [
   // The owner leaves from Profile → Workspace access and hands ownership to Bob first.
-  // The owner invites as Viewer, the admin as Workspace admin.
-  { width: 1440, logout: 'menu', role: 'owner', leaveFrom: 'profile', inviteAs: { role: 'viewer', label: 'Viewer', short: 'Viewer' } },
+  // The owner invites as Guest, the admin as Workspace admin.
+  { width: 1440, logout: 'menu', role: 'owner', leaveFrom: 'profile', inviteAs: { role: 'guest', label: 'Guest', short: 'Guest' } },
   // An admin leaves from the menu on their own row with a plain confirmation.
   { width: 390, logout: 'shortcut', role: 'admin', leaveFrom: 'row', inviteAs: { role: 'admin', label: 'Workspace admin', short: 'Admin' } },
 ];
@@ -60,8 +60,8 @@ try {
       member(1, 'Olga Self', role, '2026-09-02T10:00:00Z', { is_current_user: true }),
       ...(role === 'owner' ? [] : [member(5, 'Oscar Owner', 'owner', '2026-09-01T10:00:00Z')]),
       member(4, 'Adam Admin', 'admin', '2026-09-10T10:00:00Z'),
-      member(2, 'Bob Buyer', 'buyer', '2026-09-25T10:00:00Z'),
-      member(3, 'Vera Viewer', 'viewer', '2026-09-26T10:00:00Z'),
+      member(2, 'Bob Buyer', 'member', '2026-09-25T10:00:00Z'),
+      member(3, 'Vera Viewer', 'guest', '2026-09-26T10:00:00Z'),
     ];
     const me = () => ({
       username: 'olga', full_name: 'Olga Self', first_name: 'Olga', last_name: 'Self',
@@ -71,9 +71,9 @@ try {
       workspaces: left ? [{ ...nextWorkspace, is_active: true }] : [workspace],
     });
     const invites = [
-      { id: 21, email: 'waiting@example.test', role: 'buyer', status: 'pending', created_at: '2026-09-28T10:00:00Z' },
-      { id: 22, email: null, role: 'viewer', status: 'pending', created_at: '2026-09-28T10:00:00Z' },
-      { id: 23, email: 'gone@example.test', role: 'buyer', status: 'revoked', created_at: '2026-09-20T10:00:00Z' },
+      { id: 21, email: 'waiting@example.test', role: 'member', status: 'pending', created_at: '2026-09-28T10:00:00Z' },
+      { id: 22, email: null, role: 'guest', status: 'pending', created_at: '2026-09-28T10:00:00Z' },
+      { id: 23, email: 'gone@example.test', role: 'member', status: 'revoked', created_at: '2026-09-20T10:00:00Z' },
     ];
     page.on('pageerror', error => errors.push(error.message));
     await context.route('**/api/**', async route => {
@@ -185,7 +185,7 @@ try {
       await row('Bob Buyer').waitFor();
       assert.equal(await row('Olga Self').getByText(role === 'owner' ? 'Owner' : 'Admin', { exact: true }).count(), 1);
       // Only personal invitations still waiting for someone are listed.
-      await row('waiting@example.test').getByText('Buyer (Invited)', { exact: true }).waitFor();
+      await row('waiting@example.test').getByText('Member (Invited)', { exact: true }).waitFor();
       assert.equal(await row('gone@example.test').count(), 0);
       assert.equal(await table.getByText('Invited', { exact: false }).count() >= 1, true);
       await assertNoOverflow();
@@ -222,8 +222,8 @@ try {
         assert.equal(download.suggestedFilename(), `${workspace.slug}-members.csv`);
         const csv = (await readFile(await download.path(), 'utf8')).split('\r\n');
         assert.equal(csv[0], 'Name,Username,Email,Status,Joined');
-        assert.equal(csv.includes('Bob Buyer,bob,bob@example.test,Buyer,2026-09-25T10:00:00Z'), true);
-        assert.equal(csv.includes(',,waiting@example.test,Buyer (Invited),'), true);
+        assert.equal(csv.includes('Bob Buyer,bob,bob@example.test,Member,2026-09-25T10:00:00Z'), true);
+        assert.equal(csv.includes(',,waiting@example.test,Member (Invited),'), true);
       }
 
       // Invite: one field, several comma-separated emails, one toast per email.
@@ -242,8 +242,8 @@ try {
       await emailField.fill('first@example.test, Second@Example.test');
       assert.equal(await dialog.getByRole('alert').count(), 0);
       assert.equal(await sendButton.textContent(), 'Send 2 invites');
-      // Invite as: Buyer by default, Admin or Viewer on request, as in onboarding.
-      await dialog.getByRole('button', { name: 'Role: Buyer', exact: true }).click();
+      // Invite as: Member by default, Admin or Guest on request, as in onboarding.
+      await dialog.getByRole('button', { name: 'Role: Member', exact: true }).click();
       await page.getByRole('menuitemradio', { name: new RegExp(`^${inviteAs.label}`) }).click();
       await dialog.getByRole('button', { name: `Role: ${inviteAs.short}`, exact: true }).waitFor();
       await assertNoOverflow();
@@ -257,9 +257,9 @@ try {
       await page.getByText('first@example.test has been notified by email to join Buyerly').waitFor();
       await row('second@example.test').getByText(`${inviteAs.short} (Invited)`, { exact: true }).waitFor();
 
-      // The next invite starts as Buyer again.
+      // The next invite starts as Member again.
       await page.getByRole('button', { name: 'Invite', exact: true }).click();
-      await dialog.getByRole('button', { name: 'Role: Buyer', exact: true }).waitFor();
+      await dialog.getByRole('button', { name: 'Role: Member', exact: true }).waitFor();
       await page.keyboard.press('Escape');
       await dialog.waitFor({ state: 'detached' });
 
@@ -294,10 +294,10 @@ try {
       const roleDialog = page.getByRole('dialog', { name: "Change Bob Buyer's role" });
       await roleDialog.waitFor();
       await roleDialog.getByRole('button', { name: 'Close', exact: true }).waitFor();
-      assert.equal(await roleDialog.getByRole('radio', { name: /^Buyer/ }).isChecked(), true);
+      assert.equal(await roleDialog.getByRole('radio', { name: /^Member/ }).isChecked(), true);
       assert.deepEqual(
         (await roleDialog.getByRole('radio').evaluateAll(radios => radios.map(radio => radio.value))),
-        ['admin', 'buyer', 'viewer'],
+        ['admin', 'member', 'guest'],
       );
       await roleDialog.getByRole('button', { name: 'Cancel', exact: true }).waitFor();
       await assertNoOverflow();

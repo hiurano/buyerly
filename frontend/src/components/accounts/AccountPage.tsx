@@ -284,7 +284,7 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
           disabled={!canEdit || automationBlocked}
           label="Automation"
           tooltipContent={
-            !canEdit ? 'Viewers can’t change automation'
+            !canEdit ? 'Guests can’t change automation'
               : automationBlocked ? 'Attach a rule to the account first'
                 : account.rules_enabled ? 'Turn automation off' : 'Turn automation on'
           }

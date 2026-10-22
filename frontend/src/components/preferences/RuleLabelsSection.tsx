@@ -233,7 +233,7 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
   const [query, setQuery] = useState('');
   const [adding, setAdding] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
-  const canEdit = workspace.role !== 'viewer';
+  const canEdit = workspace.role !== 'guest';
 
   // Read again once the workspace is known: a direct address opens before it is.
   const scope = useAppStore((state) => state.workspaceScope);

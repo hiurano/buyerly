@@ -7,7 +7,7 @@ export interface Workspace {
   badge_text: string;
   badge_color: string;
   logo_url: string;
-  role: 'owner' | 'admin' | 'buyer' | 'viewer';
+  role: 'owner' | 'admin' | 'member' | 'guest';
   is_active: boolean;
 }
 

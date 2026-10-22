@@ -103,8 +103,8 @@ class TestDocumentationContract(unittest.TestCase):
             "/{workspace}/ads-manager/campaigns",
             "/{workspace}/rules",
             "Admin",
-            "Buyer",
-            "Viewer",
+            "Member",
+            "Guest",
         ):
             self.assertIn(contract, ia)
         self.assertIn("Зарезервированы только корневые сегменты", ia)

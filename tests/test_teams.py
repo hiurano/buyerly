@@ -111,8 +111,8 @@ class TestTeams(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(res.status_code, 200, res.text)
         workspace_id = res.json()['id']
         teams = (await self.client.get(f'/api/workspaces/{workspace_id}/teams', headers=self.owner)).json()
-        self.assertEqual([(team['name'], team['key'], team['member_user_ids']) for team in teams],
-                         [('Canada Traffic', 'CAN', [self.owner_id])])
+        self.assertEqual([(team['name'], team['key'], team['member_user_ids'], team['owner_user_ids']) for team in teams],
+                         [('Canada Traffic', 'CAN', [self.owner_id], [self.owner_id])])
 
     async def test_new_members_and_accounts_join_the_default_team(self):
         from core.default_team import default_team_key, join_default_team
@@ -166,8 +166,11 @@ class TestTeams(unittest.IsolatedAsyncioTestCase):
 
     async def test_only_owner_and_admin_manage_and_outsiders_see_nothing(self):
         team = await self.create()
+        # As Linear's, any member creates a team and owns it; a guest can't.
         res = await self.client.post(self.url(), json={'name': 'B', 'key': 'B'}, headers=self.buyer)
-        self.assertEqual(res.status_code, 403)
+        self.assertEqual(res.status_code, 201, res.text)
+        self.assertEqual(res.json()['owner_user_ids'], [self.buyer_id])
+        await self.client.delete(self.url(f"/{res.json()['id']}"), headers=self.buyer)
         for method, suffix, body in (
             ('PATCH', f"/{team['id']}", {'name': 'Y'}),
             ('POST', f"/{team['id']}/retire", None),
@@ -193,6 +196,41 @@ class TestTeams(unittest.IsolatedAsyncioTestCase):
             f"/api/workspaces/{self.other_ws_id}/teams/{team['id']}", json={'name': 'Z'}, headers=self.outsider,
         )
         self.assertEqual(res.status_code, 404)
+
+    async def test_team_owners_run_their_team(self):
+        team = await self.create()
+        tid = team['id']
+        self.assertEqual(team['owner_user_ids'], [self.owner_id])
+        await self.client.post(self.url(f'/{tid}/members'), json={'user_ids': [self.buyer_id]}, headers=self.owner)
+        # A plain member can't rename the team or make owners.
+        res = await self.client.patch(self.url(f'/{tid}'), json={'name': 'Renamed'}, headers=self.buyer)
+        self.assertEqual(res.status_code, 403)
+        res = await self.client.patch(self.url(f'/{tid}/members/{self.buyer_id}'), json={'is_owner': True}, headers=self.buyer)
+        self.assertEqual(res.status_code, 403)
+
+        # Made a team owner, the member runs the team without being a workspace admin.
+        res = await self.client.patch(self.url(f'/{tid}/members/{self.buyer_id}'), json={'is_owner': True}, headers=self.owner)
+        self.assertEqual(res.status_code, 200, res.text)
+        self.assertEqual(sorted(res.json()['owner_user_ids']), sorted([self.owner_id, self.buyer_id]))
+        res = await self.client.patch(self.url(f'/{tid}'), json={'name': 'Renamed'}, headers=self.buyer)
+        self.assertEqual(res.status_code, 200, res.text)
+        res = await self.client.post(self.url(f'/{tid}/accounts'), json={'account_ids': [self.account_id]}, headers=self.buyer)
+        self.assertEqual(res.json()['account_ids'], [self.account_id])
+        res = await self.client.patch(self.url(f'/{tid}/members/{self.owner_id}'), json={'is_owner': False}, headers=self.buyer)
+        self.assertEqual(res.json()['owner_user_ids'], [self.buyer_id])
+
+        # Only someone on the team can be its owner, and never a guest.
+        res = await self.client.patch(self.url(f'/{tid}/members/{self.outsider_id}'), json={'is_owner': True}, headers=self.owner)
+        self.assertEqual(res.status_code, 404)
+        async with self.sessions() as session:
+            await session.execute(
+                update(WorkspaceMember).where(WorkspaceMember.user_id == self.buyer_id).values(role='guest')
+            )
+            await session.commit()
+        res = await self.client.patch(self.url(f'/{tid}/members/{self.buyer_id}'), json={'is_owner': True}, headers=self.owner)
+        self.assertEqual(res.status_code, 400)
+        res = await self.client.post(self.url(), json={'name': 'G', 'key': 'G'}, headers=self.buyer)
+        self.assertEqual(res.status_code, 403)
 
     async def test_members_and_accounts(self):
         team = await self.create()

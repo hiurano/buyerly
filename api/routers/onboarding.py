@@ -338,7 +338,7 @@ async def submit_onboarding_workspace(
         await session.flush()
         # Linear's workspace starts with a team named after it.
         await create_default_team(session, ws.id, ws.name, user.id)
-        await join_default_team(session, ws.id, member_id=member.id)
+        await join_default_team(session, ws.id, member_id=member.id, as_owner=True)
 
         db_user.active_workspace_id = ws.id
         db_user.onboarding_step = "personal_details"
@@ -415,7 +415,7 @@ async def submit_onboarding_invites(
             if not clean_email or "@" not in clean_email:
                 continue
 
-            role = item.role if item.role in ("admin", "buyer", "viewer") else "buyer"
+            role = item.role if item.role in ("admin", "member", "guest") else "member"
             token = f"inv_{secrets.token_urlsafe(24)}"
             invite = WorkspaceInvite(
                 workspace_id=active_ws.id,
