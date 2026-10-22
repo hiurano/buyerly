@@ -420,6 +420,8 @@ interface BuyerlyDisplayOptionsProps {
   showGrouping?: boolean;
   /** Linear's footer once the view differs from its default: Reset brings the default back. */
   onReset?: () => void;
+  /** Linear's "Set default for everyone" beside Reset, for admins and owners (#472). */
+  onSetDefault?: () => void;
 }
 
 export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
@@ -448,6 +450,7 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
   showViewModes = true,
   showGrouping = true,
   onReset,
+  onSetDefault,
 }) => {
   const [panel, setPanel] = useState<'main' | 'groups'>('main');
   const groupingLabel = viewMode === 'board' ? 'Columns' : 'Grouping';
@@ -584,11 +587,18 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
         </div>
       </section>
 
-      {onReset && (
+      {(onReset || onSetDefault) && (
         <section className="buyerly-display-footer">
-          <button type="button" className="buyerly-display-footer-button" aria-label="Reset to default" onClick={onReset}>
-            Reset
-          </button>
+          {onReset && (
+            <button type="button" className="buyerly-display-footer-button" aria-label="Reset to default" onClick={onReset}>
+              Reset
+            </button>
+          )}
+          {onSetDefault && (
+            <button type="button" className="buyerly-display-footer-button buyerly-display-footer-button--accent" onClick={onSetDefault}>
+              Set default for everyone
+            </button>
+          )}
         </section>
       )}
     </>

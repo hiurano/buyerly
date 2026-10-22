@@ -260,6 +260,8 @@
   --rules-group-bg: lch(9.232% 0.85 272 / 1);
   /* Hairline of a list's sub-group header, as Linear's (measured 2026-10-22, 0.5px). */
   --list-subgroup-line: lch(22.193% 1.93 272 / 1);
+  /* Display options' "Set default for everyone", Linear's accent text (measured 2026-10-22). */
+  --display-footer-accent: lch(60.303% 70 288.421 / 1);
   --rules-group-hover-bg: lch(13.845% 1.3 272 / 1);
   --rules-row-hover-bg: lch(8.445% 1.3 272 / 1);
   --rules-row-focus-bg: lch(11.033% 1.3 272 / 1);
@@ -505,6 +507,8 @@ html[data-theme='light'] {
   --rules-group-bg: var(--bg-sidebar);
   /* Hairline of a list's sub-group header, as Linear's (measured 2026-10-22, 0.5px). */
   --list-subgroup-line: lch(86.34% 0 282 / 1);      /* #d8d8d8 */
+  /* Display options' "Set default for everyone", Linear's accent text (measured 2026-10-22). */
+  --display-footer-accent: lch(45% 70 286.91 / 1);
   --rules-group-hover-bg: var(--item-hover-bg);
   --rules-row-hover-bg: lch(99.997% 0.5 282 / 1);
   --rules-row-focus-bg: var(--item-hover-bg);

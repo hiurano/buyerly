@@ -11,14 +11,30 @@ export type StoredViews = Record<string, StoredView>;
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-export async function fetchViewSettings(): Promise<StoredViews> {
-  const payload = await apiRequest<{ views?: unknown }>('/api/view-settings');
-  const views = isObject(payload) && isObject(payload.views) ? payload.views : {};
-  return Object.fromEntries(Object.entries(views).filter(([, value]) => isObject(value))) as StoredViews;
+const viewsIn = (value: unknown): StoredViews =>
+  isObject(value)
+    ? Object.fromEntries(Object.entries(value).filter(([, view]) => isObject(view))) as StoredViews
+    : {};
+
+/** The member's own views, and the workspace's defaults under them (#472). */
+export async function fetchViewSettings(): Promise<{ views: StoredViews; defaults: StoredViews }> {
+  const payload = await apiRequest<{ views?: unknown; defaults?: unknown }>('/api/view-settings');
+  return {
+    views: viewsIn(isObject(payload) ? payload.views : null),
+    defaults: viewsIn(isObject(payload) ? payload.defaults : null),
+  };
 }
 
 export async function saveViewSettings(key: string, settings: StoredView): Promise<void> {
   await apiRequest(`/api/view-settings/${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ settings }),
+  });
+}
+
+/** Linear's "Set default for everyone" (#472), for admins and owners; an empty view clears it. */
+export async function saveViewDefault(key: string, settings: StoredView): Promise<void> {
+  await apiRequest(`/api/view-settings/${encodeURIComponent(key)}/default`, {
     method: 'PUT',
     body: JSON.stringify({ settings }),
   });

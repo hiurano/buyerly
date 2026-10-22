@@ -11,7 +11,7 @@ import api.routes as api_routes_module
 import api.server as api_server_module
 from api.server import create_app
 from core.rate_limit import limiter
-from database.models import User, ViewSetting, Workspace, WorkspaceMember
+from database.models import User, ViewSetting, Workspace, WorkspaceMember, WorkspaceViewDefault
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
 
 RULES_VIEW = {
@@ -70,6 +70,25 @@ class TestViewSettings(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(res.status_code, 200, res.text)
         return res.json()['views']
 
+    async def defaults(self, headers):
+        res = await self.client.get('/api/view-settings', headers=headers)
+        self.assertEqual(res.status_code, 200, res.text)
+        return res.json()['defaults']
+
+    async def set_default(self, key, settings, headers=None):
+        return await self.client.put(
+            f'/api/view-settings/{key}/default', json={'settings': settings}, headers=headers or self.owner
+        )
+
+    async def set_role(self, user_id, role):
+        async with self.sessions() as session:
+            await session.execute(
+                update(WorkspaceMember)
+                .where(WorkspaceMember.workspace_id == self.ws_id, WorkspaceMember.user_id == user_id)
+                .values(role=role)
+            )
+            await session.commit()
+
     async def save(self, key, settings, headers=None):
         return await self.client.put(
             f'/api/view-settings/{key}', json={'settings': settings}, headers=headers or self.owner
@@ -77,6 +96,48 @@ class TestViewSettings(unittest.IsolatedAsyncioTestCase):
 
     async def test_nothing_saved_means_defaults(self):
         self.assertEqual(await self.views(self.owner), {})
+        self.assertEqual(await self.defaults(self.owner), {})
+
+    async def test_an_admin_sets_the_default_for_everyone(self):
+        board = {'layout': 'board', 'grouping': 'status'}
+        res = await self.set_default('ads-manager.campaigns', board)
+        self.assertEqual(res.status_code, 200, res.text)
+        self.assertEqual(res.json(), {'view_key': 'ads-manager.campaigns', 'settings': board})
+        # Every member gets it; nobody's own view changes.
+        self.assertEqual(await self.defaults(self.buyer), {'ads-manager.campaigns': board})
+        self.assertEqual(await self.views(self.buyer), {})
+        # Setting it again replaces it; an empty view clears it.
+        await self.set_default('ads-manager.campaigns', {'layout': 'board'})
+        self.assertEqual(await self.defaults(self.buyer), {'ads-manager.campaigns': {'layout': 'board'}})
+        res = await self.set_default('ads-manager.campaigns', {})
+        self.assertEqual(res.status_code, 200, res.text)
+        self.assertEqual(await self.defaults(self.buyer), {})
+        async with self.sessions() as session:
+            self.assertEqual((await session.execute(select(WorkspaceViewDefault))).scalars().all(), [])
+
+    async def test_only_admins_and_owners_set_defaults(self):
+        for role in ('member', 'guest', 'buyer'):
+            await self.set_role(self.buyer_id, role)
+            res = await self.set_default('rules', {'grouping': 'none'}, headers=self.buyer)
+            self.assertEqual(res.status_code, 403, role)
+        self.assertEqual(await self.defaults(self.owner), {})
+        await self.set_role(self.buyer_id, 'admin')
+        res = await self.set_default('rules', {'grouping': 'none'}, headers=self.buyer)
+        self.assertEqual(res.status_code, 200, res.text)
+        self.assertEqual(await self.defaults(self.owner), {'rules': {'grouping': 'none'}})
+
+    async def test_defaults_are_per_workspace_and_checked_like_views(self):
+        await self.set_default('rules', RULES_VIEW)
+        async with self.sessions() as session:
+            await session.execute(
+                update(User).where(User.id == self.owner_id).values(active_workspace_id=self.other_ws_id)
+            )
+            await session.commit()
+        self.assertEqual(await self.defaults(self.owner), {})
+        self.assertEqual((await self.set_default('Rules', RULES_VIEW)).status_code, 404)
+        self.assertEqual((await self.set_default('rules', {'filters': ['x' * 20_000]})).status_code, 422)
+        res = await self.client.put('/api/view-settings/rules/default', json={'settings': {}})
+        self.assertIn(res.status_code, (401, 403))
 
     async def test_saved_view_comes_back_and_replaces_the_last_one(self):
         res = await self.save('rules', RULES_VIEW)

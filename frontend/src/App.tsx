@@ -112,6 +112,10 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   useEffect(() => {
     document.documentElement.dataset.workspace = workspace.slug;
   }, [workspace.slug]);
+  // Admins and owners see "Set default for everyone" in Display options (#472).
+  useEffect(() => {
+    useAppStore.getState().setWorkspaceRole(workspace.role);
+  }, [workspace.role]);
   const session = useMemo<WorkspaceSession>(() => ({
     user,
     workspace,

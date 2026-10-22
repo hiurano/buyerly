@@ -5,6 +5,9 @@
 //   and the footer's Reset while the view differs from its default.
 // - The view is saved per member on the server (here a stand-in), so it
 //   survives a reload; Reset brings the default back and keeps the filters.
+// - An owner's "Set default for everyone" (#472) makes the view the
+//   workspace's default, which Reset then comes back to; a member has no such
+//   button.
 // - Filters ride in the address: an address without `?filter=` gets the
 //   saved filter back, a link with one wins and becomes the saved filter.
 // - The filter menu: sections under lines, one "Dates" row with each date's
@@ -84,13 +87,22 @@ try {
     const errors = [];
     // The member's saved views, as /api/view-settings keeps them.
     const views = {};
+    // The workspace's defaults, as Set default for everyone keeps them.
+    const defaults = {};
     page.on('pageerror', (error) => errors.push(error.message));
     await context.route('**/api/**', async (route) => {
       const request = route.request();
       const url = new URL(request.url());
       const path = url.pathname;
       const verb = request.method();
-      if (path === '/api/view-settings') return route.fulfill({ json: { views } });
+      if (path === '/api/view-settings') return route.fulfill({ json: { views, defaults } });
+      const defaultKey = path.match(/^\/api\/view-settings\/([\w.-]+)\/default$/)?.[1];
+      if (defaultKey && verb === 'PUT') {
+        const settings = request.postDataJSON().settings;
+        if (Object.keys(settings).length) defaults[defaultKey] = settings;
+        else delete defaults[defaultKey];
+        return route.fulfill({ json: { view_key: defaultKey, settings } });
+      }
       const key = path.match(/^\/api\/view-settings\/([\w.-]+)$/)?.[1];
       if (key && verb === 'PUT') {
         views[key] = request.postDataJSON().settings;
@@ -119,7 +131,7 @@ try {
       }
       return route.fulfill({ json: [] });
     });
-    return { context, page, errors, views };
+    return { context, page, errors, views, defaults };
   };
 
   const rowIds = (page) => page.locator('[data-row-id]').evaluateAll((rows) => rows.map((row) => row.dataset.rowId));
@@ -139,7 +151,7 @@ try {
 
   // 1440px: Rules, then Ads Manager.
   {
-    const { context, page, errors, views } = await openPage(1440);
+    const { context, page, errors, views, defaults } = await openPage(1440);
     try {
       await page.goto(`${origin}/alpha/rules`);
       await page.locator('[data-row-id="7"]').waitFor();
@@ -200,6 +212,27 @@ try {
       assert.equal(await popover(page).getByRole('button', { name: 'Reset to default' }).count(), 0, 'and the footer');
       await settle(page);
       assert.equal(views.rules, undefined, 'a default view keeps nothing on the server');
+
+      // Set default for everyone (#472): the owner's view becomes the workspace's; the dot and the
+      // button go, the member keeps nothing of their own, and Reset now comes back to it.
+      await select(page, 'Ordering', 'Name');
+      await popover(page).getByRole('button', { name: 'Set default for everyone' }).click();
+      for (let tries = 0; !defaults.rules && tries < 100; tries += 1) await page.waitForTimeout(50);
+      assert.deepEqual(defaults.rules, { ordering: 'name' });
+      await popover(page).getByRole('button', { name: 'Set default for everyone' }).waitFor({ state: 'detached' });
+      assert.equal(await displayButton(page).locator('[data-display-changed]').count(), 0, 'the default view has no dot');
+      await page.screenshot({ path: `${output}/rules-set-default-1440.png` });
+      await settle(page);
+      assert.equal(views.rules, undefined, 'nothing of the member\'s own is left');
+      await select(page, 'Ordering', 'Manual');
+      assert.deepEqual(await rowIds(page), ['7', '8', '9']);
+      await popover(page).getByRole('button', { name: 'Reset to default' }).click();
+      assert.deepEqual(await rowIds(page), ['8', '7', '9'], 'Reset comes back to the workspace default');
+      // The page's own view, set as the default, clears it.
+      await select(page, 'Ordering', 'Manual');
+      await popover(page).getByRole('button', { name: 'Set default for everyone' }).click();
+      for (let tries = 0; defaults.rules && tries < 100; tries += 1) await page.waitForTimeout(50);
+      assert.equal(defaults.rules, undefined);
       await page.keyboard.press('Escape');
 
       // The filter menu: what a rule is, does and runs on (#390), a line, one Dates row.
@@ -288,7 +321,9 @@ try {
     }
   }
 
-  // 390px phone: Display options and the filter menus stay on screen.
+  // 390px phone: Display options and the filter menus stay on screen. Here as a member,
+  // who has Reset but no "Set default for everyone".
+  workspace.role = 'member';
   {
     const { context, page, errors } = await openPage(390, true);
     try {
@@ -297,6 +332,9 @@ try {
       await displayButton(page).tap();
       await popover(page).waitFor();
       await assertInside(popover(page), 'Rules Display options');
+      await select(page, 'Ordering', 'Name');
+      await popover(page).getByRole('button', { name: 'Reset to default' }).waitFor();
+      assert.equal(await popover(page).getByRole('button', { name: 'Set default for everyone' }).count(), 0);
       await page.screenshot({ path: `${output}/rules-display-390.png` });
       await page.keyboard.press('Escape');
       await page.locator('main header').getByRole('button', { name: 'Add filter' }).tap();

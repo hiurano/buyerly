@@ -24,7 +24,7 @@ interface DisplayOptionsPopoverProps {
 }
 
 export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ isOpen, onClose, anchorRef, entity, mine = false, groups }) => {
-  const { view, update, reset, displayChanged } = useAdsManagerView(entity, mine);
+  const { view, update, reset, displayChanged, canSetDefault, setDefaultForEveryone } = useAdsManagerView(entity, mine);
   const popoverRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
 
@@ -103,6 +103,7 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
         enabledProperties={view.properties}
         onToggleProperty={(key) => update({ properties: { ...view.properties, [key]: !view.properties[key] } })}
         onReset={displayChanged ? reset : undefined}
+        onSetDefault={displayChanged && canSetDefault ? () => void setDefaultForEveryone() : undefined}
         showGrouping
       />
     </div>,
