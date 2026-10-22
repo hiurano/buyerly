@@ -172,7 +172,6 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("_assert_database_at_head", self.internal_smoke)
         self.assertIn("_assert_schema_contract", self.internal_smoke)
         self.assertIn("account_connection_workspace_mismatch", self.internal_smoke)
-        self.assertIn("account_group_workspace_mismatch", self.internal_smoke)
         self.assertIn("summary_workspace_scope", self.internal_smoke)
         self.assertIn("meta_configuration", self.internal_smoke)
         self.assertIn("normalize_synthetic_metrics", self.reliability_metrics)

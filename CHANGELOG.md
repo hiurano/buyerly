@@ -5,7 +5,8 @@
 ## [Unreleased]
 
 ### Fixed
-- Campaigns: группировка и фильтр Account groups убраны. Групп кабинетов в интерфейсе больше нет, кабинеты входят в команды; сохранённый фильтр по группам отбрасывается. `/api/account-groups` на сервере пока остаётся. Delivery в группировке, фильтре, правой панели и Display properties теперь называется Status.
+- Группы кабинетов убраны и с сервера (#469): `GET/POST/PUT/DELETE /api/account-groups`, поле `group_ids` в `GET /api/accounts` и `GET /api/summary`, модели `AccountGroup` / `AccountGroupMember` и smoke-проверка `account_group_workspace_mismatch`. Миграция `0047_drop_account_groups` удаляет таблицы `account_groups` и `account_group_members`; откат возвращает их пустыми.
+- Campaigns: группировка и фильтр Account groups убраны. Групп кабинетов в интерфейсе больше нет, кабинеты входят в команды; сохранённый фильтр по группам отбрасывается. Delivery в группировке, фильтре, правой панели и Display properties теперь называется Status.
 - Разные иконки на вкладках Inbox, Ad accounts, Ads Manager, Rules и других (#432): Safari хранит иконку отдельно для каждого адреса и при переходе внутри приложения без перезагрузки показывал ту, что когда-то сохранил для этого адреса, — жёлтую или с плиткой. Теперь после каждой смены адреса приложение заново подключает ссылку на `favicon.svg`, и Safari берёт текущий знак и запоминает его для нового адреса.
 
 ### Added

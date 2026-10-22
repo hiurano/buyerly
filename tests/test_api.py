@@ -26,8 +26,6 @@ from database.db import Base
 from database.models import (
     Account,
     AccountHealth,
-    AccountGroup,
-    AccountGroupMember,
     ActionUndoState,
     AnalyticsEntityFact,
     AppSettings,
@@ -608,211 +606,11 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(data[0]["name"], "Швеция 1")
             self.assertEqual(data[0]["custom_name"], "")
             self.assertEqual(data[0]["note"], "")
-            self.assertEqual(data[0]["group_ids"], [])
             self.assertEqual(data[0]["connection_type"], "system_user")
             self.assertIsNone(data[0]["latest_metrics"])
             # No sync today yet: no figures rather than zeros (#388).
             self.assertIsNone(data[0]["today_metrics"])
             self.assertEqual(data[0]["active_rules"], [])
-
-    async def test_account_groups_are_crud_owner_scoped_and_exposed_on_accounts(self):
-        async with self.test_session_maker() as session:
-            buyer = (await session.execute(select(User).where(User.telegram_id == "8948797431"))).scalar_one()
-            admin = (await session.execute(select(User).where(User.telegram_id == "8634201356"))).scalar_one()
-            session.add_all(
-                [
-                    Account(
-                        account_id="act_2000000000000001",
-                        name="NL second",
-                        access_token="mock_token",
-                        owner_user_id=buyer.id,
-                        workspace_id=buyer.active_workspace_id,
-                        timezone_name="UTC",
-                        currency="USD",
-                    ),
-                    Account(
-                        account_id="act_9000000000000001",
-                        name="Admin foreign",
-                        access_token="mock_token",
-                        owner_user_id=admin.id,
-                        workspace_id=admin.active_workspace_id,
-                        timezone_name="UTC",
-                        currency="USD",
-                    ),
-                ]
-            )
-            await session.commit()
-
-        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
-        admin_data = await session_headers(self.test_session_maker, {"id": 8634201356, "first_name": "Admin", "username": "admin_user"})
-        buyer_headers = {**buyer_data}
-        admin_headers = {**admin_data}
-        transport = httpx.ASGITransport(app=self.app)
-
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            created = await client.post(
-                "/api/account-groups",
-                headers=buyer_headers,
-                json={
-                    "name": "  NL · основной  ",
-                    "description": "  Нидерланды, основной оффер  ",
-                    "account_ids": ["act_2000000000000001", "act_1018756607700064"],
-                },
-            )
-            self.assertEqual(created.status_code, 201)
-            group = created.json()
-            self.assertEqual(group["name"], "NL · основной")
-            self.assertEqual(group["description"], "Нидерланды, основной оффер")
-            self.assertEqual(
-                group["account_ids"],
-                ["act_2000000000000001", "act_1018756607700064"],
-            )
-            self.assertEqual(group["accounts_count"], 2)
-
-            duplicate = await client.post(
-                "/api/account-groups",
-                headers=buyer_headers,
-                json={"name": "nl · ОСНОВНОЙ", "account_ids": []},
-            )
-            self.assertEqual(duplicate.status_code, 409)
-
-            foreign_member = await client.post(
-                "/api/account-groups",
-                headers=buyer_headers,
-                json={"name": "Invalid", "account_ids": ["act_9000000000000001"]},
-            )
-            self.assertEqual(foreign_member.status_code, 422)
-
-            buyer_groups = await client.get("/api/account-groups", headers=buyer_headers)
-            admin_groups = await client.get("/api/account-groups", headers=admin_headers)
-            accounts = await client.get("/api/accounts", headers=buyer_headers)
-            self.assertEqual(len(buyer_groups.json()), 1)
-            self.assertEqual(admin_groups.json(), [])
-            grouped_accounts = {
-                item["account_id"]: item["group_ids"] for item in accounts.json()
-            }
-            self.assertEqual(grouped_accounts["act_1018756607700064"], [group["id"]])
-            self.assertEqual(grouped_accounts["act_2000000000000001"], [group["id"]])
-
-            forbidden_update = await client.put(
-                f"/api/account-groups/{group['id']}",
-                headers=admin_headers,
-                json={"name": "Hijack", "account_ids": []},
-            )
-            self.assertEqual(forbidden_update.status_code, 404)
-
-            updated = await client.put(
-                f"/api/account-groups/{group['id']}",
-                headers=buyer_headers,
-                json={
-                    "name": "NL · масштабирование",
-                    "description": "",
-                    "account_ids": ["act_1018756607700064"],
-                },
-            )
-            self.assertEqual(updated.status_code, 200)
-            self.assertEqual(updated.json()["accounts_count"], 1)
-            self.assertEqual(updated.json()["account_ids"], ["act_1018756607700064"])
-
-            account_deleted = await client.delete(
-                "/api/accounts/act_1018756607700064",
-                headers=buyer_headers,
-            )
-            self.assertEqual(account_deleted.status_code, 200)
-            group_after_account_delete = await client.get(
-                "/api/account-groups",
-                headers=buyer_headers,
-            )
-            self.assertEqual(group_after_account_delete.json()[0]["accounts_count"], 0)
-            self.assertEqual(group_after_account_delete.json()[0]["account_ids"], [])
-
-            deleted = await client.delete(
-                f"/api/account-groups/{group['id']}",
-                headers=buyer_headers,
-            )
-            self.assertEqual(deleted.status_code, 200)
-            self.assertEqual(
-                (await client.get("/api/account-groups", headers=buyer_headers)).json(),
-                [],
-            )
-
-        async with self.test_session_maker() as session:
-            self.assertEqual(
-                int((await session.execute(select(func.count()).select_from(AccountGroup))).scalar_one()),
-                0,
-            )
-            self.assertEqual(
-                int((await session.execute(select(func.count()).select_from(AccountGroupMember))).scalar_one()),
-                0,
-            )
-
-    async def test_account_group_names_are_atomic_and_unique_per_workspace(self):
-        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
-        headers = {**buyer_data}
-        transport = httpx.ASGITransport(app=self.app)
-
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            primary = await client.post(
-                "/api/account-groups",
-                headers=headers,
-                json={"name": "Shared Name", "account_ids": []},
-            )
-            self.assertEqual(primary.status_code, 201)
-
-            first_race, second_race = await asyncio.gather(
-                client.post(
-                    "/api/account-groups",
-                    headers=headers,
-                    json={"name": "Concurrent", "account_ids": []},
-                ),
-                client.post(
-                    "/api/account-groups",
-                    headers=headers,
-                    json={"name": "CONCURRENT", "account_ids": []},
-                ),
-            )
-            self.assertEqual(
-                sorted((first_race.status_code, second_race.status_code)),
-                [201, 409],
-            )
-
-            second_workspace = await client.post(
-                "/api/workspaces",
-                headers=headers,
-                json={"name": "Secondary Group Scope"},
-            )
-            self.assertEqual(second_workspace.status_code, 200)
-
-            same_name_other_workspace = await client.post(
-                "/api/account-groups",
-                headers=headers,
-                json={"name": "Shared Name", "account_ids": []},
-            )
-            self.assertEqual(same_name_other_workspace.status_code, 201)
-
-            switch_back = await client.post(
-                "/api/workspaces/switch",
-                headers=headers,
-                json={"slug": "buyer-workspace"},
-            )
-            self.assertEqual(switch_back.status_code, 200)
-            duplicate_primary = await client.post(
-                "/api/account-groups",
-                headers=headers,
-                json={"name": "  SHARED NAME  ", "account_ids": []},
-            )
-            self.assertEqual(duplicate_primary.status_code, 409)
-
-        async with self.test_session_maker() as session:
-            shared_rows = (
-                await session.execute(
-                    select(AccountGroup.workspace_id).where(
-                        func.lower(AccountGroup.name) == "shared name"
-                    )
-                )
-            ).scalars().all()
-            self.assertEqual(len(shared_rows), 2)
-            self.assertEqual(len(set(shared_rows)), 2)
 
     async def test_account_profile_and_latest_saved_metrics_are_owner_isolated(self):
         async with self.test_session_maker() as session:
@@ -861,15 +659,6 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                     },
                 )
             )
-            account_group = AccountGroup(
-                workspace_id=buyer.active_workspace_id,
-                owner_user_id=buyer.id,
-                name="NL",
-                description="Netherlands",
-            )
-            session.add(account_group)
-            await session.flush()
-            session.add(AccountGroupMember(group_id=account_group.id, account_id=account.id, position=0))
             admin = (await session.execute(select(User).where(User.telegram_id == "8634201356"))).scalar_one()
             session.add(
                 Account(
@@ -921,7 +710,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         summary_account = summary.json()["accounts"][0]
         self.assertEqual(summary_account["custom_name"], "NL · основной")
         self.assertEqual(summary_account["note"], "Льётся NL, новый оффер")
-        self.assertEqual(summary_account["group_ids"], [account_group.id])
+        self.assertNotIn("group_ids", summary_account)
         self.assertEqual(forbidden.status_code, 404)
         self.assertEqual(invalid.status_code, 422)
 

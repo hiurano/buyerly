@@ -287,7 +287,11 @@ class TestTeams(unittest.IsolatedAsyncioTestCase):
         res = await self.client.post(self.url(f'/{tid}/documents'), json={'title': 'Notes'}, headers=self.buyer)
         self.assertEqual(res.status_code, 201, res.text)
         # Workspace-wide things stay closed.
-        res = await self.client.post('/api/account-groups', json={'name': 'G', 'account_ids': []}, headers=self.buyer)
+        res = await self.client.post(
+            '/api/presets',
+            json={'name': 'Guest Rule', 'action': 'turn_off', 'conditions': [{'metric': 'cpl', 'operator': 'gt', 'value': 25.0}]},
+            headers=self.buyer,
+        )
         self.assertEqual(res.status_code, 403)
 
     async def test_members_and_accounts(self):

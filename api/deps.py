@@ -8,7 +8,6 @@ from pydantic import ValidationError
 from sqlalchemy import and_, delete, func, or_, select
 
 from api.schemas import (
-    AccountGroupItem,
     ConditionItem,
     RuleEntityStateItem,
     RuleLabelResponse,
@@ -30,8 +29,6 @@ from core.ownership import owned_by, owned_by_ids
 from core.workspace_slugs import RESERVED_WORKSPACE_SLUGS, normalize_workspace_slug
 from database.models import (
     Account,
-    AccountGroup,
-    AccountGroupMember,
     AnalyticsViewPreference,
     AuditEvent,
     RuleGroup,
@@ -457,7 +454,7 @@ def ensure_workspace_write_access(
 
 
 # ----------------------------------------------------
-# Account & AccountGroup Helpers
+# Account Helpers
 # ----------------------------------------------------
 async def get_user_accounts(session, user: User, workspace_id: Optional[int] = None) -> List[Account]:
     ws = await get_user_workspace(session, user, workspace_id=workspace_id)
@@ -491,92 +488,6 @@ async def get_user_accounts(session, user: User, workspace_id: Optional[int] = N
             pass
 
     return accounts
-
-
-async def _account_group_ids_by_account(
-    session,
-    user: User,
-    workspace_id: Optional[int] = None,
-) -> Dict[str, List[int]]:
-    """Return live workspace/owner-scoped group membership keyed by Meta account ID."""
-    ws = await get_user_workspace(session, user, workspace_id=workspace_id)
-    scope_clause = AccountGroup.workspace_id == ws.id if ws else owned_by(AccountGroup, user)
-
-    rows = (
-        await session.execute(
-            select(Account.account_id, AccountGroupMember.group_id)
-            .join(AccountGroupMember, AccountGroupMember.account_id == Account.id)
-            .join(AccountGroup, AccountGroup.id == AccountGroupMember.group_id)
-            .where(scope_clause)
-            .order_by(AccountGroupMember.position, AccountGroupMember.id)
-        )
-    ).all()
-    result: Dict[str, List[int]] = {}
-    for account_id, group_id in rows:
-        result.setdefault(str(account_id), []).append(int(group_id))
-    return result
-
-
-async def _account_group_items(
-    session,
-    user: User,
-    workspace_id: Optional[int] = None,
-) -> List[AccountGroupItem]:
-    ws = await get_user_workspace(session, user, workspace_id=workspace_id)
-    scope_clause = AccountGroup.workspace_id == ws.id if ws else owned_by(AccountGroup, user)
-
-    groups = (
-        await session.execute(
-            select(AccountGroup)
-            .where(scope_clause)
-            .order_by(AccountGroup.name.asc(), AccountGroup.id.asc())
-        )
-    ).scalars().all()
-    if not groups:
-        return []
-
-    group_ids = [group.id for group in groups]
-    member_rows = (
-        await session.execute(
-            select(AccountGroupMember.group_id, Account.account_id)
-            .join(Account, Account.id == AccountGroupMember.account_id)
-            .where(AccountGroupMember.group_id.in_(group_ids))
-            .order_by(AccountGroupMember.group_id, AccountGroupMember.position, AccountGroupMember.id)
-        )
-    ).all()
-    members: Dict[int, List[str]] = {group_id: [] for group_id in group_ids}
-    for group_id, account_id in member_rows:
-        members.setdefault(int(group_id), []).append(str(account_id))
-
-    return [
-        AccountGroupItem(
-            id=group.id,
-            name=group.name,
-            description=group.description or "",
-            account_ids=members.get(group.id, []),
-            accounts_count=len(members.get(group.id, [])),
-            created_at=_utc_iso(group.created_at),
-            updated_at=_utc_iso(group.updated_at),
-        )
-        for group in groups
-    ]
-
-
-async def _validate_account_group_members(
-    session,
-    user: User,
-    requested_account_ids: List[str],
-) -> List[Account]:
-    unique_ids = list(dict.fromkeys(str(value).strip() for value in requested_account_ids if str(value).strip()))
-    visible_accounts = await get_user_accounts(session, user)
-    visible_by_id = {account.account_id: account for account in visible_accounts}
-    invalid = [account_id for account_id in unique_ids if account_id not in visible_by_id]
-    if invalid:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Ad accounts unavailable to the current user: {', '.join(invalid[:5])}",
-        )
-    return [visible_by_id[account_id] for account_id in unique_ids]
 
 
 async def _ensure_stable_account_owner(session, account: Account) -> None:
@@ -1325,10 +1236,9 @@ async def _enrich_summary_account_metadata(
     user: User,
     workspace_id: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """Overlay live Buyerly labels and groups on cached Meta metric rows."""
+    """Overlay live Buyerly labels on cached Meta metric rows."""
     accounts = await get_user_accounts(session, user, workspace_id=workspace_id)
     accounts_by_id = {account.account_id: account for account in accounts}
-    group_ids_by_account = await _account_group_ids_by_account(session, user, workspace_id=workspace_id)
     rows = payload.get("accounts") if isinstance(payload.get("accounts"), list) else []
     enriched_rows = []
     for raw_row in rows:
@@ -1344,7 +1254,6 @@ async def _enrich_summary_account_metadata(
         row["short_name"] = get_short_account_label(account.name, account.account_id)
         row["custom_name"] = account.custom_name or ""
         row["note"] = account.note or ""
-        row["group_ids"] = group_ids_by_account.get(account_id, [])
         enriched_rows.append(row)
     return {**payload, "accounts": enriched_rows, "accounts_count": len(enriched_rows)}
 

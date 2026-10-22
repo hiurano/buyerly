@@ -53,7 +53,6 @@ class AccountItem(BaseModel):
     rules_enabled: bool
     is_active: bool
     active_rules: List[Dict[str, Any]] = Field(default_factory=list)
-    group_ids: List[int] = Field(default_factory=list)
     latest_metrics: Optional[AccountLatestMetrics] = None
     # Today's figures from the analytics fact store; None until the first sync of the account's day.
     today_metrics: Optional[AccountLatestMetrics] = None
@@ -73,24 +72,6 @@ class AccountLeadUpdateRequest(BaseModel):
 
     # A member of the account's workspace, or None for no lead.
     lead_user_id: Optional[int] = None
-
-
-class AccountGroupRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    name: str = Field(min_length=1, max_length=80)
-    description: str = Field(default="", max_length=300)
-    account_ids: List[str] = Field(default_factory=list, max_length=250)
-
-
-class AccountGroupItem(BaseModel):
-    id: int
-    name: str
-    description: str
-    account_ids: List[str] = Field(default_factory=list)
-    accounts_count: int = 0
-    created_at: str = ""
-    updated_at: str = ""
 
 
 class ParseRawRequest(BaseModel):
