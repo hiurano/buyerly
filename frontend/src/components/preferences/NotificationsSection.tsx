@@ -14,19 +14,19 @@ import {
 import { channelStatus, type NotificationChannel } from '@/lib/notificationChannels';
 import { telegramAccountName } from '@/lib/telegram';
 import { useAppStore } from '@/store/useAppStore';
-import { LinearFilterMenu, type FilterMenuMode } from '@/components/filters/LinearFilter';
+import { BuyerlyFilterMenu, type FilterMenuMode } from '@/components/filters/BuyerlyFilter';
 import type { FilterClause } from '@/components/filters/filterModel';
 import { InboxFilterChip } from '@/components/inbox/InboxFilterBar';
 import { fromMenuClauses, inboxFilterFields, toMenuClause } from '@/components/inbox/inboxFilterFields';
 import {
-  LinearDotsIcon,
-  LinearEmailIcon,
-  LinearFilterIcon,
-  LinearPencilIcon,
-  LinearPlusIcon,
-  LinearTrashIcon,
+  BuyerlyDotsIcon,
+  BuyerlyEmailIcon,
+  BuyerlyFilterIcon,
+  BuyerlyPencilIcon,
+  BuyerlyPlusIcon,
+  BuyerlyTrashIcon,
   TelegramIcon,
-} from '@/icons/LinearIcons';
+} from '@/icons/BuyerlyIcons';
 import { Button } from '@/ui/Button';
 import {
   DropdownMenu,
@@ -34,7 +34,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
-import { LinearToggle } from '@/ui/LinearToggle';
+import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { Tooltip } from '@/ui/Tooltip';
 
 /** What each kind holds, in place of Linear's descriptions of its notification types. */
@@ -160,7 +160,7 @@ export const NotificationsSection: React.FC<{
               <span className="preferences-row-title">Priority inbox</span>
               <span className="preferences-row-desc">Separate important notifications from the rest of your inbox</span>
             </div>
-            <LinearToggle
+            <BuyerlyToggle
               size="settings"
               label="Priority inbox"
               checked={inboxDisplay.priorityInbox}
@@ -189,7 +189,7 @@ export const NotificationsSection: React.FC<{
         <section className="preferences-card-container preferences-card-container--divided">
           <ChannelRow
             name="Email"
-            icon={<LinearEmailIcon size={16} />}
+            icon={<BuyerlyEmailIcon size={16} />}
             status={channelStatus(email.enabled, email.kinds)}
             onOpen={onOpenEmail}
           />
@@ -217,7 +217,7 @@ export const NotificationsSection: React.FC<{
               <span className="preferences-row-title">Invite accepted</span>
               <span className="preferences-row-desc">Email when invitees accept an invite</span>
             </div>
-            <LinearToggle
+            <BuyerlyToggle
               size="settings"
               label="Invite accepted"
               checked={notificationChannels.inviteAccepted}
@@ -272,7 +272,7 @@ const ChannelNotificationsSection: React.FC<{
           </button>
         </span>
       </div>
-      <LinearToggle
+      <BuyerlyToggle
         size="settings"
         label="Only deliver priority notifications"
         checked={priorityOnly}
@@ -300,7 +300,7 @@ const ChannelNotificationsSection: React.FC<{
                 <span className="preferences-row-title">{enableTitle}</span>
                 <span className="preferences-row-desc">{enableDescription}</span>
               </div>
-              <LinearToggle size="settings" label={enableTitle} checked={settings.enabled} onChange={toggleChannel} />
+              <BuyerlyToggle size="settings" label={enableTitle} checked={settings.enabled} onChange={toggleChannel} />
             </div>
             {inboxDisplay.priorityInbox ? priorityRow : (
               <Tooltip content="Priority inbox isn't enabled" side="bottom" sideOffset={8}>
@@ -322,7 +322,7 @@ const ChannelNotificationsSection: React.FC<{
                   <span className="preferences-row-title">{INBOX_KIND_LABELS[kind]}</span>
                   <span className="preferences-row-desc">{KIND_DESCRIPTIONS[kind]}</span>
                 </div>
-                <LinearToggle
+                <BuyerlyToggle
                   size="settings"
                   label={INBOX_KIND_LABELS[kind]}
                   checked={settings.kinds.includes(kind)}
@@ -426,7 +426,7 @@ export const PriorityNotificationsSection: React.FC<{ onBack: () => void }> = ({
                 <span className="preferences-row-title">{INBOX_KIND_LABELS[kind]}</span>
                 <span className="preferences-row-desc">{KIND_DESCRIPTIONS[kind]}</span>
               </div>
-              <LinearToggle
+              <BuyerlyToggle
                 size="settings"
                 label={INBOX_KIND_LABELS[kind]}
                 checked={inboxDisplay.priorityKinds.includes(kind)}
@@ -513,7 +513,7 @@ const CustomFilters: React.FC<{
             className="preferences-filter-button"
             onClick={(event) => openMenu('root', event.currentTarget)}
           >
-            <LinearFilterIcon size={14} />
+            <BuyerlyFilterIcon size={14} />
             Filter
           </button>
         ) : (
@@ -537,7 +537,7 @@ const CustomFilters: React.FC<{
                 className="preferences-filter-icon-button"
                 onClick={(event) => openMenu('root', event.currentTarget)}
               >
-                <LinearPlusIcon size={14} />
+                <BuyerlyPlusIcon size={14} />
               </button>
             )}
           </>
@@ -576,7 +576,7 @@ const CustomFilters: React.FC<{
               className="preferences-filter-icon-button"
               onClick={() => startEditing('new')}
             >
-              <LinearPlusIcon size={14} />
+              <BuyerlyPlusIcon size={14} />
             </button>
           ))}
         </div>
@@ -594,7 +594,7 @@ const CustomFilters: React.FC<{
         )))}
         {editing === 'new' && editor}
       </section>
-      <LinearFilterMenu
+      <BuyerlyFilterMenu
         isOpen={Boolean(menu)}
         mode={menu?.mode ?? 'root'}
         anchorElement={menu?.anchor ?? null}
@@ -636,19 +636,19 @@ const SavedFilter: React.FC<{
               aria-label="Custom filter actions"
               className="preferences-filter-icon-button preferences-filter-actions-trigger"
             >
-              <LinearDotsIcon size={14} />
+              <BuyerlyDotsIcon size={14} />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onSelect={onEdit}>
               <span className="flex items-center gap-2.5">
-                <LinearPencilIcon size={14} />
+                <BuyerlyPencilIcon size={14} />
                 Edit
               </span>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={onDelete}>
               <span className="flex items-center gap-2.5">
-                <LinearTrashIcon size={14} />
+                <BuyerlyTrashIcon size={14} />
                 Delete
               </span>
             </DropdownMenuItem>

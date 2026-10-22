@@ -52,22 +52,22 @@ Implemented shared primitives:
 | Component | Production source | Required states |
 |---|---|---|
 | Button | `Button` | primary/secondary/danger, hover, keyboard focus, disabled |
-| Tabs | `LinearTabs` | selected, hover, keyboard focus, overflow |
-| DataList | `LinearDataList` | loading, empty, populated, partial/error |
-| DataTable | `LinearDataTable`, `LinearDataPrimaryCell`, `LinearDataMetricCell` | sortable header, horizontal scroll, grouped and flat rows |
+| Tabs | `BuyerlyTabs` | selected, hover, keyboard focus, overflow |
+| DataList | `BuyerlyDataList` | loading, empty, populated, partial/error |
+| DataTable | `BuyerlyDataTable`, `BuyerlyDataPrimaryCell`, `BuyerlyDataMetricCell` | sortable header, horizontal scroll, grouped and flat rows |
 | Selection | `useRowSelection`, `SelectionDock`, `SelectionCommandMenu` | hover-revealed checkbox, X / Ctrl+A / Esc, dock over the list, Ctrl+K actions menu, Ctrl+Delete where deleting is offered |
 | Command menu | `COMMAND_MENU_CLASSES` (with `SelectionCommandMenu`) | one panel, field, group, row and note for search, the command menu and the selection's actions; selected row, searching, nothing found and failure |
 | Record reveal | `useRevealRow` | the row an address names is scrolled into view and focused; a filter, tab or collapsed group hiding it is cleared; a missing record is an error toast |
 | Toast | `ToastRegion`, `toast` | success (deletion), undo, redo, error; auto-dismiss after 8s unless hovered or focused; errors stay until dismissed |
 | ConfirmDialog | `ConfirmDialog` | question, consequence, Cancel and a focused confirming button; Enter confirms, Esc cancels; `placement="top"` sets it above the centre, as Linear's session confirmations |
-| Checkbox | `LinearCheckbox` | unchecked, checked, focus, disabled |
-| Toggle | `LinearToggle` | the only switch, one size everywhere (22×14, as in Linear Display options); yellow `--toggle-checked-bg` when on; on, off, hover, focus, disabled/busy where applicable |
+| Checkbox | `BuyerlyCheckbox` | unchecked, checked, focus, disabled |
+| Toggle | `BuyerlyToggle` | the only switch, one size everywhere (22×14, as in Linear Display options); yellow `--toggle-checked-bg` when on; on, off, hover, focus, disabled/busy where applicable |
 | DropdownMenu | `DropdownMenu` | open, selected, keyboard navigation, dismiss |
 | ContextMenu | `ContextMenu` | anchored, viewport-safe, keyboard navigation |
 | Tooltip | `Tooltip` | accessible optional explanation |
 | Input | `Input` | text, search, placeholder, focus, disabled |
-| LabelPill | `LinearLabelPill` | neutral and semantic text-labelled states |
-| DisplayOptions | `LinearDisplayOptions` | current selection and real state update |
+| LabelPill | `BuyerlyLabelPill` | neutral and semantic text-labelled states |
+| DisplayOptions | `BuyerlyDisplayOptions` | current selection and real state update |
 
 IconButton, form Dialog, EmptyState and Skeleton are required product patterns but do not yet have one canonical React primitive. Existing implementations are migration debt. When a task touches or repeats one of these patterns, create the shared primitive in `frontend/src/ui/` before spreading another implementation.
 
@@ -162,10 +162,10 @@ Buyerly is laid out for `1024px` and wider and reflows down to a `390px` phone. 
 
 Inside the screens (Rules, Ads Manager, Inbox; `scripts/mobile-screens-browser.mjs` at 390/768/1024/1440px):
 
-- view tabs that no longer fit their strip all fold into one capsule with the active tab's label and a chevron, named "N more", that opens a menu of the views (`LinearTabs collapseOverflow`, as Linear's view header); the header actions stay on the right and are never cut;
-- entity tables scroll sideways inside their own viewport (`LinearDataTable`), never the document; figures do not wrap;
+- view tabs that no longer fit their strip all fold into one capsule with the active tab's label and a chevron, named "N more", that opens a menu of the views (`BuyerlyTabs collapseOverflow`, as Linear's view header); the header actions stay on the right and are never cut;
+- entity tables scroll sideways inside their own viewport (`BuyerlyDataTable`), never the document; figures do not wrap;
 - a view's details pane is one component for every view (`DetailsPaneLayout` with `DetailsPaneToggle`, read from Linear's `DetailsPaneContainer`, #367): wider than `1024px` it is a column the list gives its room to, 350px until dragged on its left edge (360–600px, never leaving the list under 300px; a click on the edge closes it); at `1024px` and below it lies over the list from the right below the view header, 350px wide (the window when narrower), without a resizer; on a pure-touch phone (`640px` and below) a 40% black backdrop dims the list and closes it, and a swipe right closes it too. It slides on Linear's spring (tension 1000, friction 40, mass 0.1: about 170ms, no overshoot) while the list narrows or widens with it. Its card sits 4px from its left edge and 8px from the right and bottom. It starts closed; open/closed and the dragged width are kept per view on the device (`buyerly:details-panes`); Ctrl/Cmd+I and `]` toggle the pane of the view on screen;
-- on a pure-touch screen (`TOUCH_SCREEN_QUERY`) header icon buttons grow from 28px to 32px square (`.linear-header-target`) and view tabs to 32px tall, as Linear's on a touch phone;
+- on a pure-touch screen (`TOUCH_SCREEN_QUERY`) header icon buttons grow from 28px to 32px square (`.buyerly-header-target`) and view tabs to 32px tall, as Linear's on a touch phone;
 - popovers anchored to a header button stay inside the window.
 
 ## Migration map

@@ -1,6 +1,6 @@
 import React from 'react';
 import type { DeliveryControl } from '@/lib/delivery';
-import { LinearToggle } from '@/ui/LinearToggle';
+import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 
 export interface CardChip {
   key: string;
@@ -81,7 +81,7 @@ export const AdsManagerCard: React.FC<AdsManagerCardProps> = ({
           {showSwitch && (
             // The switch acts on Meta; it never selects the card.
             <span onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
-              <LinearToggle
+              <BuyerlyToggle
                 checked={control ? control.status === 'active' : status === 'active'}
                 busy={control?.busy}
                 onChange={control?.onChange}

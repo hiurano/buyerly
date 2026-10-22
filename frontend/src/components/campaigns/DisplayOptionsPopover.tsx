@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { LinearDisplayOptions, type DisplayGroupOption } from '@/ui/LinearDisplayOptions';
+import { BuyerlyDisplayOptions, type DisplayGroupOption } from '@/ui/BuyerlyDisplayOptions';
 import { orderGroups, toggleHiddenGroup } from '@/ui/listView';
 import type { AdsManagerEntity } from '@/store/useAppStore';
 import {
@@ -38,11 +38,11 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
     if (!isOpen) return;
     const onPointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
-      if (target instanceof Element && target.closest('.linear-display-select-menu')) return;
+      if (target instanceof Element && target.closest('.buyerly-display-select-menu')) return;
       if (!popoverRef.current?.contains(target) && !anchorRef.current?.contains(target)) onClose();
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !document.querySelector('.linear-display-select-menu')) onClose();
+      if (event.key === 'Escape' && !document.querySelector('.buyerly-display-select-menu')) onClose();
     };
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
@@ -68,8 +68,8 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
   const hidden = view.hiddenGroups[grouping] ?? [];
 
   return createPortal(
-    <div ref={popoverRef} className="linear-display-options-popover" style={{ top: coords.top, right: coords.right }}>
-      <LinearDisplayOptions
+    <div ref={popoverRef} className="buyerly-display-options-popover" style={{ top: coords.top, right: coords.right }}>
+      <BuyerlyDisplayOptions
         viewMode={view.layout}
         onViewModeChange={(layout) => update({ layout })}
         grouping={grouping}

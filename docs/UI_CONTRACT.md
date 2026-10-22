@@ -31,9 +31,9 @@ Use the existing primitives from `frontend/src/ui/`:
 |---|---|---|
 | Button | `Button` | Primary and secondary variants share geometry, visible focus and disabled state. |
 | Text input | `Input` | Shared height, radius, focus ring and disabled state; a page may set width, not geometry. |
-| Tabs | `LinearTabs` | Selected state, keyboard focus and overflow remain accessible. |
-| Data list | `LinearDataList` | One outer data surface; loading, empty, populated and error states are explicit. |
-| Entity table | `LinearDataTable`, `LinearDataListGroup`, `LinearDataPrimaryCell`, `LinearDataMetricCell` | Every entity table (Ads Manager, Rules) is built from these; a screen chooses its columns, not its cell typography, row geometry or scroll behaviour. |
+| Tabs | `BuyerlyTabs` | Selected state, keyboard focus and overflow remain accessible. |
+| Data list | `BuyerlyDataList` | One outer data surface; loading, empty, populated and error states are explicit. |
+| Entity table | `BuyerlyDataTable`, `BuyerlyDataListGroup`, `BuyerlyDataPrimaryCell`, `BuyerlyDataMetricCell` | Every entity table (Ads Manager, Rules) is built from these; a screen chooses its columns, not its cell typography, row geometry or scroll behaviour. |
 | Row selection | `useRowSelection`, `SelectionDock`, `SelectionCommandMenu` | Linear selection model: the checkbox appears on row hover and stays on selected rows; X toggles the row under the pointer, Ctrl/Cmd+A selects visible rows, Esc clears; the dock sits over its own list and Actions / Ctrl+K opens the actions for the selection. A screen offers a checkbox only where its selection has a real bulk action. |
 | Command menu | `COMMAND_MENU_CLASSES`, `SelectionCommandMenu` | The command menu and the selection's actions are one control: Linear's panel, field, groups and rows. Ctrl/Cmd+K opens commands from anywhere and, with rows selected, the selection's actions: the page's group first (`usePageCommands`), then fixed groups, each command with the keys that really run it; from two typed letters it adds Quick results from GET /api/search. The selection's actions name their scope on a chip over the field (one record by name, as Linear's "BUY-4 ⋅ Title", or a count), with no group heading; ⌫ drops the scope into the whole menu. The "Open …" palettes (O then a letter) are the same panel with one kind of record; their Alt+↵ opens a record with that actions menu. Esc closes and returns focus to what had it. Commands have real handlers. |
 | Search page | `SearchView` | Linear's search is a page at `/<workspace>/search`, not a window: `/` outside a text field or over another dialog and the sidebar's Search button open it, the sidebar stays. Field over the panel, tabs per kind with their own prompt, Filter (Status, Ad account) and Display options (Ordering, Include deleted), all in the address. It searches on Enter only; results are one flat list (kind, status mark, name with the match in bold, ad account and age with its date on hover); searching, nothing found and failure are stated in words. ↑/↓ open the preview, the first Esc closes it, the second goes back where search opened. Empty field: Recent searches with Clear History, or Linear's empty illustration. |
@@ -41,12 +41,12 @@ Use the existing primitives from `frontend/src/ui/`:
 | Action feedback | `ToastRegion`, `toast`, `useUndoShortcuts`, `pushHistory` | A change shows on its rows and raises no message. Toasts are only for a deletion, an undo or redo, and a failure; they stack bottom right from the `--toast-*` tokens in an `aria-live="polite"` region (Alt+T). Every change a screen makes is pushed to the history so Ctrl/Cmd+Z undoes it and Ctrl/Cmd+Shift+Z redoes it; a screen does not render its own success banner or Undo button. |
 | Confirmation | `ConfirmDialog` | A destructive action is confirmed with a question naming what is affected, its consequence and the way back; the confirming button (`Button variant="danger"`) takes focus, Esc cancels and keeps the selection. |
 | Data states | `DataState` | Loading, empty, unavailable and error blocks are rendered through it rather than re-invented per screen. |
-| Checkbox | `LinearCheckbox`, `FormCheckbox` | Labelled state is operable by keyboard and not communicated by color alone. `FormCheckbox` is for form rows where `LinearCheckbox` does not apply. |
-| Toggle | `LinearToggle` | The only switch; no other `role="switch"` in the code. One size everywhere (22×14, as in Linear Display options). Has an accessible name, clear checked state and disabled/busy handling when applicable. |
+| Checkbox | `BuyerlyCheckbox`, `FormCheckbox` | Labelled state is operable by keyboard and not communicated by color alone. `FormCheckbox` is for form rows where `BuyerlyCheckbox` does not apply. |
+| Toggle | `BuyerlyToggle` | The only switch; no other `role="switch"` in the code. One size everywhere (22×14, as in Linear Display options). Has an accessible name, clear checked state and disabled/busy handling when applicable. |
 | Menu | `DropdownMenu`, `ContextMenu` | Viewport-safe, dismissible, keyboard-operable and layered through semantic tokens. |
 | Tooltip | `Tooltip` | Provides optional explanation; never hides a required action or status. |
-| Label/status | `LinearLabelPill` | Semantic text or icon accompanies color. |
-| Display controls | `LinearDisplayOptions` | Changes real view state and exposes the current selection. |
+| Label/status | `BuyerlyLabelPill` | Semantic text or icon accompanies color. |
+| Display controls | `BuyerlyDisplayOptions` | Changes real view state and exposes the current selection. |
 
 Tailwind utilities may be used for composition. Repeated arbitrary values for color, geometry, shadow, z-index or motion must be promoted to `tokens.css` or a shared primitive. External brand colors, user-configured colors and runtime-calculated dimensions are allowed as local, explained exceptions.
 

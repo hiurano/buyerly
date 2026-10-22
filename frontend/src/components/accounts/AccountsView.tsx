@@ -4,22 +4,22 @@ import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapse
 import {
   ActiveFilterFormula,
   FilteredEmptyState,
-  LinearFilterButton,
-  LinearFilterMenu,
+  BuyerlyFilterButton,
+  BuyerlyFilterMenu,
   type FilterMenuMode,
-} from '@/components/filters/LinearFilter';
+} from '@/components/filters/BuyerlyFilter';
 import { applyFilterClauses, type FilterClause } from '@/components/filters/filterModel';
 import { MetaConnectionDialog } from '@/components/campaigns/MetaConnectionDialog';
-import { DisplayOptionsChangedDot } from '@/ui/LinearDisplayOptions';
-import { LinearDataListGroup, LinearDataListToolbar, LinearDataTable } from '@/ui/LinearDataList';
-import { LinearTabs } from '@/ui/LinearTabs';
+import { DisplayOptionsChangedDot } from '@/ui/BuyerlyDisplayOptions';
+import { BuyerlyDataListGroup, BuyerlyDataListToolbar, BuyerlyDataTable } from '@/ui/BuyerlyDataList';
+import { BuyerlyTabs } from '@/ui/BuyerlyTabs';
 import { DataState } from '@/ui/DataState';
 import { Tooltip } from '@/ui/Tooltip';
 import { HeaderCreateButton } from '@/ui/HeaderCreateButton';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { arrangeGroups, sortByColumn } from '@/ui/listView';
 import { useFiltersInAddress, writeFilterParam } from '@/ui/useListView';
-import { LinearSlidersIcon } from '@/icons/LinearIcons';
+import { BuyerlySlidersIcon } from '@/icons/BuyerlyIcons';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { useActiveTeam } from '@/lib/teams';
 import { AccountDisplayOptionsPopover } from './AccountDisplayOptionsPopover';
@@ -194,7 +194,7 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
     );
     if (view.grouping !== 'status' && view.grouping !== 'team' && view.grouping !== 'lead') return shown.map(row);
     return arrangeGroups(accountGroupsFor(view.grouping, shown, teams, leads), view).map((group) => (
-      <LinearDataListGroup
+      <BuyerlyDataListGroup
         key={group.id}
         title={group.label}
         count={group.rows.length}
@@ -205,7 +205,7 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
         ))}
       >
         {group.rows.map(row)}
-      </LinearDataListGroup>
+      </BuyerlyDataListGroup>
     ));
   };
 
@@ -254,14 +254,14 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
       );
     }
     return (
-      <LinearDataTable
+      <BuyerlyDataTable
         columns={columns}
         sortKey={view.ordering === 'added' ? undefined : view.ordering}
         sortDirection={view.direction}
         onSort={(columnId) => update(sortByColumn(view, columnId, naturalAccountDirection(columnId)))}
       >
         {renderRows()}
-      </LinearDataTable>
+      </BuyerlyDataTable>
     );
   };
 
@@ -279,8 +279,8 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
           {canEdit && <HeaderCreateButton label="Add account" tooltip="Add ad account" onClick={dialogs.openAdd} />}
         </div>
 
-        <LinearDataListToolbar className="gap-2">
-          <LinearTabs
+        <BuyerlyDataListToolbar className="gap-2">
+          <BuyerlyTabs
             collapseOverflow
             tabs={[{ id: 'all', label: 'All ad accounts' }]}
             activeTabId="all"
@@ -288,7 +288,7 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
           />
           <div className="flex shrink-0 items-center gap-1.5">
             <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(openFilterMenu)}>
-              <LinearFilterButton
+              <BuyerlyFilterButton
                 ref={filterButtonRef}
                 active={view.filters.length > 0}
                 open={Boolean(openFilterMenu)}
@@ -311,9 +311,9 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
                   setOpenFilterMenu(null);
                   setIsDisplayOpen((open) => !open);
                 }}
-                className="linear-header-button linear-header-button--toolbar linear-header-target group"
+                className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target group"
               >
-                <LinearSlidersIcon size={14} />
+                <BuyerlySlidersIcon size={14} />
                 <DisplayOptionsChangedDot show={displayChanged} />
               </button>
             </Tooltip>
@@ -326,7 +326,7 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
               leads={leads}
             />
           </div>
-        </LinearDataListToolbar>
+        </BuyerlyDataListToolbar>
 
         <ActiveFilterFormula
           fields={filterFields}
@@ -336,7 +336,7 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
         />
       </header>
 
-      <LinearFilterMenu
+      <BuyerlyFilterMenu
         isOpen={Boolean(openFilterMenu)}
         mode={openFilterMenu?.mode ?? 'root'}
         anchorElement={openFilterMenu?.anchor ?? null}

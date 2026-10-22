@@ -5,16 +5,16 @@ import { fetchDeletedItems, TRASH_RETENTION_DAYS, type DeletedItem } from '@/lib
 import { DataState } from '@/ui/DataState';
 import { Button } from '@/ui/Button';
 import {
-  LinearDataListRow,
-  LinearDataPrimaryCell,
-  LinearDataTable,
-  linearDataNameColumn,
-  type LinearDataListColumn,
-} from '@/ui/LinearDataList';
+  BuyerlyDataListRow,
+  BuyerlyDataPrimaryCell,
+  BuyerlyDataTable,
+  buyerlyDataNameColumn,
+  type BuyerlyDataListColumn,
+} from '@/ui/BuyerlyDataList';
 import { restoreFromTrash } from './ruleActions';
 
-const COLUMNS: LinearDataListColumn[] = [
-  linearDataNameColumn({ width: 'minmax(240px, 1fr)', statusVisible: false }),
+const COLUMNS: BuyerlyDataListColumn[] = [
+  buyerlyDataNameColumn({ width: 'minmax(240px, 1fr)', statusVisible: false }),
   { id: 'kind', label: 'Type', width: '88px' },
   { id: 'deleted', label: 'Deleted', width: '96px' },
   { id: 'by', label: 'Deleted by', width: '160px' },
@@ -124,16 +124,16 @@ export const RecentlyDeletedView: React.FC<{ onCountChange?: (count: number | nu
   }
 
   return (
-    <LinearDataTable columns={COLUMNS}>
+    <BuyerlyDataTable columns={COLUMNS}>
       {items.map((item) => (
-        <LinearDataListRow
+        <BuyerlyDataListRow
           key={item.id}
           layout="grid"
           columns={COLUMNS}
           data-deleted-item-id={item.id}
           tabIndex={0}
         >
-          <LinearDataPrimaryCell title={item.name} dimmed hint={item.name} />
+          <BuyerlyDataPrimaryCell title={item.name} dimmed hint={item.name} />
           <span className="truncate text-[12px] text-[var(--text-secondary)]">
             {item.kind === 'rule' ? 'Rule' : 'Label'}
           </span>
@@ -159,8 +159,8 @@ export const RecentlyDeletedView: React.FC<{ onCountChange?: (count: number | nu
               {restoringId === item.id ? 'Restoring…' : 'Restore'}
             </Button>
           </span>
-        </LinearDataListRow>
+        </BuyerlyDataListRow>
       ))}
-    </LinearDataTable>
+    </BuyerlyDataTable>
   );
 };

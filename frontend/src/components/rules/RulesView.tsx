@@ -18,26 +18,26 @@ import {
   ActiveFilterFormula,
   FilteredEmptyState,
   FilterMenuMode,
-  LinearFilterButton,
-  LinearFilterMenu,
-} from '@/components/filters/LinearFilter';
+  BuyerlyFilterButton,
+  BuyerlyFilterMenu,
+} from '@/components/filters/BuyerlyFilter';
 import { createRuleFilterFields } from '@/components/filters/filterCatalogs';
 import { applyFilterClauses, type FilterClause } from '@/components/filters/filterModel';
-import { DisplayOptionsChangedDot } from '@/ui/LinearDisplayOptions';
+import { DisplayOptionsChangedDot } from '@/ui/BuyerlyDisplayOptions';
 import { useFiltersInAddress, writeFilterParam } from '@/ui/useListView';
 import { NO_LABEL_COLOR, ruleGroupAccounts, ruleGroupIds, sortRules, useRulesView } from './rulesViewModel';
 import { RuleLabelPickerHost } from './RuleLabelPickerHost';
 import {
-  LinearBoltIcon,
-  LinearLabelIcon,
-  LinearSlidersIcon,
-  LinearStatusCircleIcon,
-} from '@/icons/LinearIcons';
-import { LinearTabs } from '@/ui/LinearTabs';
+  BuyerlyBoltIcon,
+  BuyerlyLabelIcon,
+  BuyerlySlidersIcon,
+  BuyerlyStatusCircleIcon,
+} from '@/icons/BuyerlyIcons';
+import { BuyerlyTabs } from '@/ui/BuyerlyTabs';
 import { DetailsPaneLayout, DetailsPaneToggle } from '@/ui/DetailsPane';
 import { DetailsFacets, type DetailsFacetTab } from '@/ui/DetailsFacets';
 import { DataState } from '@/ui/DataState';
-import { LinearDataListToolbar } from '@/ui/LinearDataList';
+import { BuyerlyDataListToolbar } from '@/ui/BuyerlyDataList';
 import { Tooltip } from '@/ui/Tooltip';
 import { HeaderCreateButton } from '@/ui/HeaderCreateButton';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
@@ -72,9 +72,9 @@ function readQuickFilter(): RuleQuickFilter | null {
 function ruleFacetIcon(facet: string, value: string, labels: { id: string; color: string }[]): React.ReactNode {
   if (facet === 'status') {
     if (value === 'needs_review') return <span className="details-facets-dot" style={{ backgroundColor: '#f2994a' }} />;
-    return <LinearStatusCircleIcon status={value === 'paused' ? 'paused' : 'active'} size={14} />;
+    return <BuyerlyStatusCircleIcon status={value === 'paused' ? 'paused' : 'active'} size={14} />;
   }
-  if (facet === 'action') return <LinearBoltIcon size={14} style={{ color: 'var(--text-tertiary)' }} />;
+  if (facet === 'action') return <BuyerlyBoltIcon size={14} style={{ color: 'var(--text-tertiary)' }} />;
   const color = labels.find((label) => label.id === value)?.color ?? NO_LABEL_COLOR;
   return <span className="details-facets-dot" style={{ backgroundColor: color }} />;
 }
@@ -213,7 +213,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
       id: 'labels',
       label: 'Labels…',
       shortcut: 'l',
-      icon: <LinearLabelIcon size={14} />,
+      icon: <BuyerlyLabelIcon size={14} />,
       run: () => useAppStore.getState().openRuleLabelPicker(liveSelection(), null),
     },
     {
@@ -404,9 +404,9 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
         </div>
 
         {/* Tier 2: View Filter Tabs & Action Buttons (Height: 43px, NO border bottom) */}
-        <LinearDataListToolbar className="gap-2">
+        <BuyerlyDataListToolbar className="gap-2">
           {/* Left: Capsule Tabs; when they no longer fit they fold into one menu, as in Linear. */}
-          <LinearTabs
+          <BuyerlyTabs
             collapseOverflow
             tabs={ruleTabs}
             activeTabId={ruleFilterTab}
@@ -418,7 +418,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
             {/* Add Filter Button with Popover */}
             <div className="relative">
               <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(openFilterMenu)}>
-                <LinearFilterButton
+                <BuyerlyFilterButton
                   ref={filterButtonRef}
                   active={rulesFilterClauses.length > 0}
                   open={Boolean(openFilterMenu)}
@@ -447,9 +447,9 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
                     setOpenFilterMenu(null);
                     toggleRulesDisplayOptions();
                   }}
-                  className="linear-header-button linear-header-button--toolbar linear-header-target group"
+                  className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target group"
                 >
-                  <LinearSlidersIcon size={14} />
+                  <BuyerlySlidersIcon size={14} />
                   <DisplayOptionsChangedDot show={rulesDisplayChanged} />
                 </button>
               </Tooltip>
@@ -463,7 +463,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
 
             <DetailsPaneToggle pane="rules" />
           </div>
-        </LinearDataListToolbar>
+        </BuyerlyDataListToolbar>
 
         <ActiveFilterFormula
           fields={filterFields}
@@ -473,7 +473,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
         />
       </header>
 
-      <LinearFilterMenu
+      <BuyerlyFilterMenu
         isOpen={Boolean(openFilterMenu)}
         mode={openFilterMenu?.mode ?? 'root'}
         anchorElement={openFilterMenu?.anchor ?? null}

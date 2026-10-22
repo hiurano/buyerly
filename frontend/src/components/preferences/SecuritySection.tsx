@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Info, LogOut } from 'lucide-react';
 import { BrowserIcon } from '@/icons/BrowserIcons';
-import { LinearCloseIcon } from '@/icons/LinearIcons';
+import { BuyerlyCloseIcon } from '@/icons/BuyerlyIcons';
 import {
   browserOf,
   byLastSeen,
@@ -164,7 +164,7 @@ const SessionDetailsDialog: React.FC<SessionDetailsDialogProps> = ({ session, bu
                 aria-label="Close dialog"
                 className="ui-icon-button absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-tertiary)] transition-colors duration-150 hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
               >
-                <LinearCloseIcon size={14} />
+                <BuyerlyCloseIcon size={14} />
               </button>
             </Dialog.Close>
             <header className="flex items-center gap-2.5">

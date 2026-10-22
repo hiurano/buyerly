@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CircleAlert, CircleCheck, Info, Redo2, TriangleAlert, Undo2 } from 'lucide-react';
-import { LinearCloseIcon } from '@/icons/LinearIcons';
+import { BuyerlyCloseIcon } from '@/icons/BuyerlyIcons';
 import { Button } from '@/ui/Button';
 import { TOAST_DURATION_MS, useToastStore, type ToastItem, type ToastTone } from '@/ui/toast';
 
@@ -85,7 +85,7 @@ const ToastCard: React.FC<{ item: ToastItem }> = ({ item }) => {
         onClick={() => dismiss(item.id)}
         className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] text-[var(--text-tertiary)] outline-none transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
       >
-        <LinearCloseIcon size={12} />
+        <BuyerlyCloseIcon size={12} />
       </button>
     </div>
   );

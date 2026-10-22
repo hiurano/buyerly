@@ -1,10 +1,10 @@
-import { LinearDataListColumn, linearDataNameColumn } from '@/ui/LinearDataList';
+import { BuyerlyDataListColumn, buyerlyDataNameColumn } from '@/ui/BuyerlyDataList';
 import { metricsFor } from './adsManagerMetrics';
 
 export type AdsManagerTableTab = 'campaigns' | 'adsets' | 'ads';
 
 const primaryColumn = (statusVisible: boolean, width: string) =>
-  linearDataNameColumn({ width, statusVisible });
+  buyerlyDataNameColumn({ width, statusVisible });
 
 /**
  * The columns a level shows, in the order Display properties lists them
@@ -15,9 +15,9 @@ export const getAdsManagerColumns = (
   tab: AdsManagerTableTab,
   properties: Record<string, boolean>,
   options: { spendFirst?: boolean; groupedByAccount?: boolean } = {},
-): LinearDataListColumn[] => {
+): BuyerlyDataListColumn[] => {
   const phone = Boolean(options.spendFirst);
-  const columns: LinearDataListColumn[] = [
+  const columns: BuyerlyDataListColumn[] = [
     primaryColumn(properties.status !== false, phone ? 'minmax(150px, 1fr)' : 'minmax(260px, 1fr)'),
   ];
 

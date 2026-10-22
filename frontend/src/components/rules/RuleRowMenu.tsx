@@ -13,7 +13,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from '@/ui/DropdownMenu';
-import { LinearCheckIcon, LinearDotsIcon } from '@/icons/LinearIcons';
+import { BuyerlyCheckIcon, BuyerlyDotsIcon } from '@/icons/BuyerlyIcons';
 import { metaAccountLabel } from '@/components/campaigns/liveCampaigns';
 import { useIsTouchScreen } from '@/lib/useMediaQuery';
 import { formatAccountScope } from '@/lib/rules';
@@ -77,7 +77,7 @@ export const RuleRowMenu: React.FC<RuleRowMenuProps> = ({ rule }) => {
                 </span>
               )}
               {isAttached && (
-                <LinearCheckIcon size={16} className="text-[var(--text-secondary)]" />
+                <BuyerlyCheckIcon size={16} className="text-[var(--text-secondary)]" />
               )}
             </span>
           </DropdownMenuItem>
@@ -94,7 +94,7 @@ export const RuleRowMenu: React.FC<RuleRowMenuProps> = ({ rule }) => {
           aria-label={`Actions for ${rule.name}`}
           className="flex h-6 w-6 items-center justify-center rounded text-[var(--text-tertiary)] opacity-0 transition-all hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] group-hover/row:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] [@media(hover:none)]:opacity-100 [@media(hover:none)_and_(pointer:coarse)]:h-10 [@media(hover:none)_and_(pointer:coarse)]:w-8"
         >
-          <LinearDotsIcon size={14} />
+          <BuyerlyDotsIcon size={14} />
         </button>
       </DropdownMenuTrigger>
 

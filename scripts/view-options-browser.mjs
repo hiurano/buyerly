@@ -124,11 +124,11 @@ try {
 
   const rowIds = (page) => page.locator('[data-row-id]').evaluateAll((rows) => rows.map((row) => row.dataset.rowId));
   const settle = (page) => page.waitForTimeout(400);
-  const popover = (page) => page.locator('.linear-display-options-popover');
+  const popover = (page) => page.locator('.buyerly-display-options-popover');
   const displayButton = (page) => page.locator('main header').getByRole('button', { name: 'Display options' });
   const select = async (page, row, option) => {
-    await popover(page).locator('.linear-display-row', { hasText: row }).getByRole('combobox').click();
-    await page.locator('.linear-display-select-menu').getByRole('option', { name: option, exact: true }).click();
+    await popover(page).locator('.buyerly-display-row', { hasText: row }).getByRole('combobox').click();
+    await page.locator('.buyerly-display-select-menu').getByRole('option', { name: option, exact: true }).click();
   };
   const assertInside = async (locator, where) => {
     const box = await locator.boundingBox();
@@ -178,15 +178,15 @@ try {
       await displayButton(page).click();
       await select(page, 'Grouping', 'Status');
       await popover(page).getByRole('button', { name: 'Group ordering' }).click();
-      const groupList = popover(page).getByRole('region', { name: 'Group ordering' }).or(popover(page).locator('.linear-display-group-list'));
+      const groupList = popover(page).getByRole('region', { name: 'Group ordering' }).or(popover(page).locator('.buyerly-display-group-list'));
       assert.deepEqual(
-        await popover(page).locator('.linear-display-group-label').allTextContents(),
+        await popover(page).locator('.buyerly-display-group-label').allTextContents(),
         // A rule held back for review is its own state (#390).
         ['Active rules', 'Paused rules', 'Needs review'],
       );
-      await groupList.locator('.linear-display-group-row', { hasText: 'Paused rules' }).getByRole('button', { name: 'Hide group' }).click();
+      await groupList.locator('.buyerly-display-group-row', { hasText: 'Paused rules' }).getByRole('button', { name: 'Hide group' }).click();
       await page.locator('[data-row-id="9"]').waitFor({ state: 'detached' });
-      assert.equal(await groupList.locator('.linear-display-group-row', { hasText: 'Paused rules' }).getByRole('button', { name: 'Show group' }).count(), 1);
+      assert.equal(await groupList.locator('.buyerly-display-group-row', { hasText: 'Paused rules' }).getByRole('button', { name: 'Show group' }).count(), 1);
       await page.screenshot({ path: `${output}/rules-group-ordering-1440.png` });
       await popover(page).getByRole('button', { name: 'Back' }).click();
       await popover(page).getByRole('switch', { name: 'Show empty groups' }).waitFor();

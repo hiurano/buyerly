@@ -64,7 +64,7 @@ try {
     const wrapper = page.locator('.sidebar-slot-wrapper');
     const backdrop = page.locator('.sidebar-backdrop').first();
     const isPeeking = async () => (await isOpen(sidebar)) && (await backdrop.getAttribute('data-open')) === 'true';
-    const contentX = async () => Math.round((await page.locator('main.linear-floating-canvas').boundingBox()).x);
+    const contentX = async () => Math.round((await page.locator('main.buyerly-floating-canvas').boundingBox()).x);
     const assertNoOverflow = async (label) => {
       const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
       assert.ok(scrollWidth <= width, `${label} overflows at ${width}px: ${scrollWidth}`);
@@ -197,7 +197,7 @@ try {
 
       // Closed by default; the content fills the window and the header has Menu.
       assert.ok(await isClosed(sidebar));
-      const content = await page.locator('main.linear-floating-canvas').boundingBox();
+      const content = await page.locator('main.buyerly-floating-canvas').boundingBox();
       assert.equal(content.x, 0);
       assert.equal(Math.round(content.width), width);
       await page.screenshot({ path: `${output}/start-${width}.png` });
@@ -251,7 +251,7 @@ try {
       assert.ok(await isClosed(sidebar));
 
       // Touch screens get Linear's 36px navigation rows.
-      const row = await sidebar.locator('.linear-sidebar-nav-item').first().boundingBox();
+      const row = await sidebar.locator('.buyerly-sidebar-nav-item').first().boundingBox();
       assert.equal(row.height, 36);
 
       for (const path of ['inbox', 'ads-manager/campaigns']) {

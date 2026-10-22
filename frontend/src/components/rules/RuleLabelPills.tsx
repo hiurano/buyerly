@@ -1,6 +1,6 @@
 import React from 'react';
 import type { RuleLabel } from '@/store/useAppStore';
-import { LinearLabelPill } from '@/ui/LinearLabelPill';
+import { BuyerlyLabelPill } from '@/ui/BuyerlyLabelPill';
 
 /**
  * A rule's labels as Linear's pills: one or two side by side, more folded
@@ -14,7 +14,7 @@ export const RuleLabelPills: React.FC<{ labels: RuleLabel[]; className?: string 
       // A long name ends in an ellipsis inside its pill instead of being cut at the column's edge.
       <span className={`flex min-w-0 items-center gap-1 overflow-hidden [&>div]:min-w-0 [&>div]:!shrink ${labels.length === 2 ? '[&>div]:!max-w-[calc(50%-2px)]' : ''} ${className}`}>
         {labels.map((label) => (
-          <LinearLabelPill key={label.id} label={label.name} dotColor={label.color} />
+          <BuyerlyLabelPill key={label.id} label={label.name} dotColor={label.color} />
         ))}
       </span>
     );

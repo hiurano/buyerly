@@ -1,6 +1,6 @@
 import React from 'react';
 
-interface LinearCheckboxProps {
+interface BuyerlyCheckboxProps {
   checked: boolean;
   indeterminate?: boolean;
   onChange?: (checked: boolean) => void;
@@ -12,7 +12,7 @@ interface LinearCheckboxProps {
   decorative?: boolean;
 }
 
-export const LinearCheckbox: React.FC<LinearCheckboxProps> = ({
+export const BuyerlyCheckbox: React.FC<BuyerlyCheckboxProps> = ({
   checked,
   indeterminate = false,
   onChange,

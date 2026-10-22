@@ -15,14 +15,14 @@ import {
 } from '@/lib/search';
 import { filterSettingsGroups, settingsGroupsFor, type SettingsPage } from '@/lib/settingsPages';
 import { openPaletteFor } from '@/lib/shortcuts';
-import { LinearBoltIcon, LinearIssuesIcon, LinearProjectIcon } from '@/icons/LinearIcons';
+import { BuyerlyBoltIcon, BuyerlyIssuesIcon, BuyerlyProjectIcon } from '@/icons/BuyerlyIcons';
 import { COMMAND_MENU_CLASSES, CommandMenuFooterKeys } from '@/ui/SelectionCommandMenu';
 import { SearchResultFacts, StatusMark, formatAge, statusLabel } from '@/components/search/SearchView';
 import { SettingsPageIcon } from '@/components/preferences/SettingsPageIcon';
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, another palette. */
 const OPEN_LAYER_SELECTOR = [
-  '[role="dialog"]:not(.linear-menu-exit)',
+  '[role="dialog"]:not(.buyerly-menu-exit)',
   '[role="alertdialog"]',
   '[role="menu"]:not([data-state="closed"])',
   '[cmdk-root]',
@@ -47,9 +47,9 @@ export const OPEN_PALETTE_LABELS: Record<OpenPaletteKind, string> = {
 /** The mark in the field and on each command: the sidebar's page icons. */
 export const OpenPaletteIcon: React.FC<{ kind: OpenPaletteKind; size?: number }> = ({ kind, size = 16 }) => {
   if (kind === 'settings') return <Settings size={size} strokeWidth={1.75} />;
-  if (kind === 'account') return <LinearProjectIcon size={size} />;
-  if (kind === 'rule') return <LinearBoltIcon size={size} />;
-  return <LinearIssuesIcon size={size} />;
+  if (kind === 'account') return <BuyerlyProjectIcon size={size} />;
+  if (kind === 'rule') return <BuyerlyBoltIcon size={size} />;
+  return <BuyerlyIssuesIcon size={size} />;
 };
 
 /** What had focus when a palette opened; it gets focus back unless a choice moves it on. */

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Command } from 'cmdk';
-import { LinearCheckIcon } from '@/icons/LinearIcons';
+import { BuyerlyCheckIcon } from '@/icons/BuyerlyIcons';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { accountBlocks } from '@/lib/accounts';
@@ -101,7 +101,7 @@ export const WorkspaceSwitcher: React.FC = () => {
                     <span className="relative z-10 flex shrink-0 items-center gap-[6px] text-[var(--text-tertiary)]">
                       {item.id === workspace.id && isOpenAccount(block.accountId) && (
                         <span className="text-[var(--text-primary)]" aria-label="Current workspace">
-                          <LinearCheckIcon size={16} />
+                          <BuyerlyCheckIcon size={16} />
                         </span>
                       )}
                       {!query && number <= 9 && (

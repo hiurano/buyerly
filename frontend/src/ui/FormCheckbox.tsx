@@ -13,7 +13,7 @@ export interface FormCheckboxProps {
 /**
  * Labelled checkbox for forms and dialogs.
  *
- * `LinearCheckbox` is built for data rows — it stays transparent until the row
+ * `BuyerlyCheckbox` is built for data rows — it stays transparent until the row
  * is hovered or the box is checked — so it cannot carry a standing form
  * choice. This one is always visible, always labelled, and operable by
  * keyboard through the native input.

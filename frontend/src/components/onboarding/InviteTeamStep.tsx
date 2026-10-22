@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest } from '@/lib/api';
 import { finishedEmails, isEmail, parseEmails } from '@/lib/emails';
 import type { Workspace } from '@/lib/types';
-import { LinearCheckIcon } from '@/icons/LinearIcons';
+import { BuyerlyCheckIcon } from '@/icons/BuyerlyIcons';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -131,7 +131,7 @@ export const InviteTeamStep: React.FC<InviteTeamStepProps> = ({ workspace, busy,
                 onFocus={(event) => event.currentTarget.select()}
               />
               <button type="button" className="buyerly-onboarding-invites__copy" onClick={() => void copy()}>
-                {copied && <LinearCheckIcon size={14} />}
+                {copied && <BuyerlyCheckIcon size={14} />}
                 {copied ? 'Copied' : 'Copy'}
               </button>
             </div>
@@ -178,7 +178,7 @@ export const InviteTeamStep: React.FC<InviteTeamStepProps> = ({ workspace, busy,
                       <span className="block truncate">{option.label}</span>
                       <span className="block truncate text-[12px] text-[var(--text-tertiary)]">{option.description}</span>
                     </span>
-                    {role === option.value && <LinearCheckIcon size={14} />}
+                    {role === option.value && <BuyerlyCheckIcon size={14} />}
                   </DropdownMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>

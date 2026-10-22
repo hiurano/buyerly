@@ -1,5 +1,5 @@
 import React from 'react';
-import { LinearCommandIcon, LinearCloseIcon } from '@/icons/LinearIcons';
+import { BuyerlyCommandIcon, BuyerlyCloseIcon } from '@/icons/BuyerlyIcons';
 import { Tooltip } from '@/ui/Tooltip';
 
 interface SelectionDockProps {
@@ -35,7 +35,7 @@ export const SelectionDock: React.FC<SelectionDockProps> = ({ count, onOpenActio
             className="inline-flex h-7 items-center justify-center gap-1.5 rounded-full border border-[var(--color-border-secondary)] bg-[var(--dock-bg)] px-2.5 text-[12px] font-medium text-[var(--text-primary)] outline-none transition-colors duration-150 hover:bg-[var(--item-hover-bg)] focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)]"
           >
             <span className="flex h-3.5 w-3.5 items-center justify-center text-[var(--text-tertiary)]" aria-hidden="true">
-              <LinearCommandIcon size={14} />
+              <BuyerlyCommandIcon size={14} />
             </span>
             Actions
           </button>
@@ -48,7 +48,7 @@ export const SelectionDock: React.FC<SelectionDockProps> = ({ count, onOpenActio
             onClick={onClear}
             className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--dock-clear-btn-bg)] text-[var(--text-primary)] outline-none transition-colors duration-150 hover:bg-[var(--item-hover-bg)] focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)]"
           >
-            <LinearCloseIcon size={12} />
+            <BuyerlyCloseIcon size={12} />
           </button>
         </Tooltip>
       </div>

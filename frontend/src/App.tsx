@@ -330,7 +330,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
           ) : (
             <>
               <Sidebar />
-              <main className="linear-floating-canvas">
+              <main className="buyerly-floating-canvas">
                 {activeTab === 'inbox' && (
                   <InboxView
                     openEventId={route.tab === 'inbox' ? route.recordId : undefined}

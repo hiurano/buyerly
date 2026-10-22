@@ -142,10 +142,10 @@ try {
 
   const rowIds = (page) => page.locator('[data-row-id]').evaluateAll((rows) => rows.map((row) => row.dataset.rowId));
   const headers = (page) => page.getByRole('columnheader').allInnerTexts();
-  const popover = (page) => page.locator('.linear-display-options-popover');
+  const popover = (page) => page.locator('.buyerly-display-options-popover');
   const select = async (page, row, option) => {
-    await popover(page).locator('.linear-display-row', { hasText: row }).getByRole('combobox').click();
-    await page.locator('.linear-display-select-menu').getByRole('option', { name: option, exact: true }).click();
+    await popover(page).locator('.buyerly-display-row', { hasText: row }).getByRole('combobox').click();
+    await page.locator('.buyerly-display-select-menu').getByRole('option', { name: option, exact: true }).click();
   };
   const settle = (page) => page.waitForTimeout(400);
 
@@ -155,7 +155,7 @@ try {
     try {
       // The first page waits for Vite to prepare the app.
       await page.goto(`${origin}/alpha/rules`, { timeout: 120_000 });
-      const nav = page.locator('.linear-sidebar-nav-item');
+      const nav = page.locator('.buyerly-sidebar-nav-item');
       await nav.first().waitFor();
       // Linear's sidebar: Inbox, the Workspace section, then each of Your teams with its own pages.
       assert.deepEqual(

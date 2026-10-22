@@ -180,7 +180,7 @@ try {
       if (!touch) return;
       const tooSmall = await page.evaluate(() => [...document.querySelectorAll('main header :is(button, [role="tab"])')]
         .filter((el) => !el.closest('[aria-hidden="true"]') && el.getClientRects().length)
-        .filter((el) => (el.getAttribute('role') === 'tab' || el.classList.contains('linear-tab-capsule')
+        .filter((el) => (el.getAttribute('role') === 'tab' || el.classList.contains('buyerly-tab-capsule')
           ? el.offsetHeight < 32
           : el.offsetHeight < 32 || el.offsetWidth < 32))
         .map((el) => `${el.getAttribute('aria-label') || el.textContent.trim()} ${el.offsetWidth}×${el.offsetHeight}`));
@@ -202,7 +202,7 @@ try {
     const assertDisplayOptions = async (where) => {
       const button = page.locator('main header').getByRole('button', { name: 'Display options' }).first();
       await press(button);
-      const popover = page.locator('.linear-display-options-popover').first();
+      const popover = page.locator('.buyerly-display-options-popover').first();
       await popover.waitFor();
       await settled();
       await assertInside(popover, `${where}: Display options`);

@@ -10,13 +10,13 @@ import { memberName, type MemberItem } from '@/components/preferences/MemberDial
 import { TeamIcon } from '@/components/preferences/TeamIcon';
 import { DataState } from '@/ui/DataState';
 import { HeaderCreateButton } from '@/ui/HeaderCreateButton';
-import { LinearDataListRow, LinearDataListToolbar, LinearDataTable, type LinearDataListColumn } from '@/ui/LinearDataList';
+import { BuyerlyDataListRow, BuyerlyDataListToolbar, BuyerlyDataTable, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 import { ListSearchField } from './ListSearchField';
 
 type MemberSort = 'name' | 'status' | 'joined';
 const ROLE_ORDER = ['owner', 'admin', 'member', 'guest'];
 
-const COLUMNS: LinearDataListColumn[] = [
+const COLUMNS: BuyerlyDataListColumn[] = [
   { id: 'name', label: 'Name', width: 'minmax(220px, 1fr)', sortable: true },
   { id: 'status', label: 'Status', width: '100px', sortable: true },
   { id: 'joined', label: 'Joined', width: '100px', sortable: true },
@@ -74,7 +74,7 @@ export const WorkspaceMembersView: React.FC = () => {
       return <DataState title="No members found" detail="No member's name, username or email matches the search." />;
     }
     return (
-      <LinearDataTable
+      <BuyerlyDataTable
         columns={COLUMNS}
         sortKey={sort.key}
         sortDirection={sort.direction}
@@ -84,7 +84,7 @@ export const WorkspaceMembersView: React.FC = () => {
         }))}
       >
         {shown.map((member) => (
-          <LinearDataListRow key={member.id} layout="grid" columns={COLUMNS} height={50}>
+          <BuyerlyDataListRow key={member.id} layout="grid" columns={COLUMNS} height={50}>
             <div className="flex min-w-0 items-center gap-[10px]">
               <Initials label={memberName(member)} avatarUrl={member.avatar_url} size={24} />
               <div className="flex min-w-0 flex-col">
@@ -113,9 +113,9 @@ export const WorkspaceMembersView: React.FC = () => {
                 </button>
               ))}
             </div>
-          </LinearDataListRow>
+          </BuyerlyDataListRow>
         ))}
-      </LinearDataTable>
+      </BuyerlyDataTable>
     );
   };
 
@@ -132,9 +132,9 @@ export const WorkspaceMembersView: React.FC = () => {
           </div>
           {canInvite && <HeaderCreateButton label="Invite members" tooltip="Invite members" onClick={() => setInviting(true)} />}
         </div>
-        <LinearDataListToolbar className="gap-2">
+        <BuyerlyDataListToolbar className="gap-2">
           <ListSearchField value={query} onChange={setQuery} placeholder="Find members…" />
-        </LinearDataListToolbar>
+        </BuyerlyDataListToolbar>
       </header>
       <div className="flex min-h-0 min-w-0 flex-1">{renderBody()}</div>
       <InviteDialog

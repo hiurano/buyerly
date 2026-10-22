@@ -159,14 +159,14 @@ try {
     return (await page.locator(`[data-row-id="${rowId}"] > *`).nth(index).innerText()).replace(/ /g, ' ').trim();
   };
   const settle = (page) => page.waitForTimeout(400);
-  const popover = (page) => page.locator('.linear-display-options-popover');
+  const popover = (page) => page.locator('.buyerly-display-options-popover');
   const displayButton = (page) => page.locator('main header').getByRole('button', { name: 'Display options' });
   const select = async (page, row, option) => {
-    await popover(page).locator('.linear-display-row', { hasText: row }).getByRole('combobox').click();
-    await page.locator('.linear-display-select-menu').getByRole('option', { name: option, exact: true }).click();
+    await popover(page).locator('.buyerly-display-row', { hasText: row }).getByRole('combobox').click();
+    await page.locator('.buyerly-display-select-menu').getByRole('option', { name: option, exact: true }).click();
   };
-  const property = (page, label) => popover(page).locator('.linear-display-property', { hasText: new RegExp(`^${label}$`) });
-  const bar = (page) => page.locator('.linear-filter-formula, [aria-label="Active filters"]').first();
+  const property = (page, label) => popover(page).locator('.buyerly-display-property', { hasText: new RegExp(`^${label}$`) });
+  const bar = (page) => page.locator('.buyerly-filter-formula, [aria-label="Active filters"]').first();
 
   // 1440px.
   {
@@ -406,9 +406,9 @@ try {
       await displayButton(page).click();
       await popover(page).waitFor();
       await popover(page).getByText('Columns', { exact: true }).waitFor();
-      await popover(page).locator('.linear-display-row', { hasText: 'Columns' }).getByRole('combobox').click();
-      assert.deepEqual(await page.locator('.linear-display-select-menu').getByRole('option').allTextContents(), ['Ad account', 'Status', 'Rules'], 'no "No grouping" on a board');
-      await page.locator('.linear-display-select-menu').getByRole('option', { name: 'Ad account', exact: true }).click();
+      await popover(page).locator('.buyerly-display-row', { hasText: 'Columns' }).getByRole('combobox').click();
+      assert.deepEqual(await page.locator('.buyerly-display-select-menu').getByRole('option').allTextContents(), ['Ad account', 'Status', 'Rules'], 'no "No grouping" on a board');
+      await page.locator('.buyerly-display-select-menu').getByRole('option', { name: 'Ad account', exact: true }).click();
       assert.equal(await property(page, 'Ad account').isDisabled(), true, 'the columns already show the account');
       await select(page, 'Rows', 'Status');
       await popover(page).getByText('Show empty rows', { exact: true }).waitFor();

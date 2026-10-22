@@ -1,10 +1,10 @@
 import React from 'react';
 import { RuleItem, useAppStore } from '@/store/useAppStore';
-import { LinearCheckbox } from '@/ui/LinearCheckbox';
-import { LinearToggle } from '@/ui/LinearToggle';
+import { BuyerlyCheckbox } from '@/ui/BuyerlyCheckbox';
+import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 
-import { LinearDataListRow, LinearDataMetricCell, LinearDataPrimaryCell } from '@/ui/LinearDataList';
-import { LinearLabelPill } from '@/ui/LinearLabelPill';
+import { BuyerlyDataListRow, BuyerlyDataMetricCell, BuyerlyDataPrimaryCell } from '@/ui/BuyerlyDataList';
+import { BuyerlyLabelPill } from '@/ui/BuyerlyLabelPill';
 import { ATTACH_STEPS, RULE_LEVEL_LABELS, ruleActionTone } from '@/lib/rules';
 import type { RuleActionTone } from '@/lib/rules';
 import { getRulesColumns } from './tableColumns';
@@ -70,7 +70,7 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
   const actionStyle = ACTION_BADGE_STYLES[ruleActionTone(rule.actionKind)];
 
   return (
-    <LinearDataListRow
+    <BuyerlyDataListRow
       data-row-id={rule.id}
       layout="grid"
       columns={columns}
@@ -85,13 +85,13 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
       selected={isSelected}
       className="cursor-pointer"
     >
-      <LinearDataPrimaryCell
+      <BuyerlyDataPrimaryCell
         leading={(
           <>
-            <LinearCheckbox checked={isSelected} onChange={() => toggleRuleSelection(rule.id)} />
+            <BuyerlyCheckbox checked={isSelected} onChange={() => toggleRuleSelection(rule.id)} />
             {rulesDisplayProperties.status !== false && (
               <div onClick={(e) => e.stopPropagation()}>
-                <LinearToggle
+                <BuyerlyToggle
                   checked={isDeliveryOn}
                   disabled={rule.needsReview && !isDeliveryOn}
                   tooltipContent={
@@ -109,7 +109,7 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
         )}
         title={rule.name}
         badge={rule.needsReview && (
-          <LinearLabelPill
+          <BuyerlyLabelPill
             label="Needs review"
             dotColor="var(--rules-action-stop-text)"
             className="shrink-0"
@@ -223,24 +223,24 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
       )}
 
       {rulesDisplayProperties.lastCheck !== false && (
-        <LinearDataMetricCell value={rule.lastCheck} valueClassName="font-[450] text-[var(--text-tertiary)]" />
+        <BuyerlyDataMetricCell value={rule.lastCheck} valueClassName="font-[450] text-[var(--text-tertiary)]" />
       )}
 
       {rulesDisplayProperties.lastRun !== false && (
-        <LinearDataMetricCell value={rule.lastRun} valueClassName={MUTED_CELL} />
+        <BuyerlyDataMetricCell value={rule.lastRun} valueClassName={MUTED_CELL} />
       )}
 
       {rulesDisplayProperties.created && (
-        <LinearDataMetricCell value={createdDay(rule.preset.created_at)} valueClassName={MUTED_CELL} />
+        <BuyerlyDataMetricCell value={createdDay(rule.preset.created_at)} valueClassName={MUTED_CELL} />
       )}
 
       {/* Pinned to the right edge on a narrow screen, where this column is past the scroll. */}
       <div
-        className={`flex items-center justify-end ${isSmall ? 'linear-data-sticky sticky right-0 z-[1]' : ''}`}
+        className={`flex items-center justify-end ${isSmall ? 'buyerly-data-sticky sticky right-0 z-[1]' : ''}`}
         onClick={(e) => e.stopPropagation()}
       >
         <RuleRowMenu rule={rule} />
       </div>
-    </LinearDataListRow>
+    </BuyerlyDataListRow>
   );
 };

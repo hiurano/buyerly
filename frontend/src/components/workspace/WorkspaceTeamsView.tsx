@@ -7,14 +7,14 @@ import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapse
 import { Initials } from '@/components/preferences/MembersSection';
 import { memberName, type MemberItem } from '@/components/preferences/MemberDialogs';
 import { TeamIcon } from '@/components/preferences/TeamIcon';
-import { LinearCheckIcon, LinearLockIcon } from '@/icons/LinearIcons';
+import { BuyerlyCheckIcon, BuyerlyLockIcon } from '@/icons/BuyerlyIcons';
 import { DataState } from '@/ui/DataState';
 import { HeaderCreateButton } from '@/ui/HeaderCreateButton';
-import { LinearDataListRow, LinearDataListToolbar, LinearDataTable, type LinearDataListColumn } from '@/ui/LinearDataList';
+import { BuyerlyDataListRow, BuyerlyDataListToolbar, BuyerlyDataTable, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 import { toast } from '@/ui/toast';
 import { ListSearchField } from './ListSearchField';
 
-const COLUMNS: LinearDataListColumn[] = [
+const COLUMNS: BuyerlyDataListColumn[] = [
   { id: 'name', label: 'Name', width: 'minmax(220px, 1fr)', sortable: true },
   { id: 'membership', label: 'Membership', width: '110px' },
   { id: 'members', label: 'Members', width: '120px' },
@@ -88,7 +88,7 @@ export const WorkspaceTeamsView: React.FC = () => {
       return <DataState title="No teams found" detail={query ? 'No team name or identifier matches the search.' : 'This workspace has no active team.'} />;
     }
     return (
-      <LinearDataTable
+      <BuyerlyDataTable
         columns={COLUMNS}
         sortKey="name"
         sortDirection={direction}
@@ -97,7 +97,7 @@ export const WorkspaceTeamsView: React.FC = () => {
         {shown.map((team) => {
           const people = faces(team);
           return (
-            <LinearDataListRow
+            <BuyerlyDataListRow
               key={team.id}
               layout="grid"
               columns={COLUMNS}
@@ -112,7 +112,7 @@ export const WorkspaceTeamsView: React.FC = () => {
                 <TeamIcon size={14} />
                 <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">{team.name}</span>
                 <span className="shrink-0 text-[13px] font-medium text-[var(--text-muted)]">{team.key}</span>
-                {team.private && <LinearLockIcon size={12} className="shrink-0 text-[var(--text-muted)]" aria-label="Private team" />}
+                {team.private && <BuyerlyLockIcon size={12} className="shrink-0 text-[var(--text-muted)]" aria-label="Private team" />}
               </div>
               <div>
                 <button
@@ -125,7 +125,7 @@ export const WorkspaceTeamsView: React.FC = () => {
                     void setMembership(team, !team.is_member);
                   }}
                 >
-                  {team.is_member && <LinearCheckIcon size={12} />}
+                  {team.is_member && <BuyerlyCheckIcon size={12} />}
                   <span className="team-membership__label">{team.is_member ? 'Joined' : 'Join'}</span>
                   {team.is_member && <span className="team-membership__leave">Leave</span>}
                 </button>
@@ -140,10 +140,10 @@ export const WorkspaceTeamsView: React.FC = () => {
                   <span className="ml-1 text-[12px] text-[var(--text-tertiary)]">+{people.length - MAX_FACES}</span>
                 )}
               </div>
-            </LinearDataListRow>
+            </BuyerlyDataListRow>
           );
         })}
-      </LinearDataTable>
+      </BuyerlyDataTable>
     );
   };
 
@@ -169,9 +169,9 @@ export const WorkspaceTeamsView: React.FC = () => {
             />
           )}
         </div>
-        <LinearDataListToolbar className="gap-2">
+        <BuyerlyDataListToolbar className="gap-2">
           <ListSearchField value={query} onChange={setQuery} placeholder="Find teams…" />
-        </LinearDataListToolbar>
+        </BuyerlyDataListToolbar>
       </header>
       <div className="flex min-h-0 min-w-0 flex-1">{renderBody()}</div>
     </div>

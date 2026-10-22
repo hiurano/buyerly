@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BuyerlyMark } from '@/icons/LinearIcons';
+import { BuyerlyMark } from '@/icons/BuyerlyIcons';
 import { isSplashShown } from '@/lib/splash';
 
 export const BuyerlyBrand: React.FC<{ compact?: boolean }> = ({ compact = false }) => (

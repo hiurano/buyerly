@@ -1,5 +1,5 @@
 import React from 'react';
-import { LinearSearchIcon } from '@/icons/LinearIcons';
+import { BuyerlySearchIcon } from '@/icons/BuyerlyIcons';
 
 /** Linear's "Find members…" above a workspace list: a borderless 300px pill with the search icon. */
 export const ListSearchField: React.FC<{ value: string; placeholder: string; onChange: (value: string) => void }> = ({
@@ -9,7 +9,7 @@ export const ListSearchField: React.FC<{ value: string; placeholder: string; onC
 }) => (
   <label className="list-search-field">
     <span className="sr-only">{placeholder}</span>
-    <LinearSearchIcon size={14} aria-hidden="true" className="list-search-field__icon" />
+    <BuyerlySearchIcon size={14} aria-hidden="true" className="list-search-field__icon" />
     <input
       type="search"
       value={value}

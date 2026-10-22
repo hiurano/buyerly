@@ -3,7 +3,7 @@ import { apiRequest } from '@/lib/api';
 import type { Workspace } from '@/lib/types';
 import { Button } from '@/ui/Button';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
-import { LinearToggle } from '@/ui/LinearToggle';
+import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { Tooltip } from '@/ui/Tooltip';
 import { toast } from '@/ui/toast';
 import { errorMessage } from './MemberDialogs';
@@ -110,7 +110,7 @@ export const WorkspaceSecuritySection: React.FC<{ workspace: Workspace }> = ({ w
             <div className="preferences-row-copy">
               <span className="preferences-row-title">Enable invite links</span>
             </div>
-            <LinearToggle
+            <BuyerlyToggle
               size="settings"
               label="Enable invite links"
               checked={enabled}

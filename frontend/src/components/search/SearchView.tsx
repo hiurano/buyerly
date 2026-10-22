@@ -28,23 +28,23 @@ import {
 } from '@/lib/search';
 import type { MetaAccount, Workspace } from '@/lib/types';
 import { eligibleMetaAccounts, humanizeMetaStatus } from '@/components/campaigns/liveCampaigns';
-import { LinearFilterButton, LinearFilterMenu, type FilterMenuMode } from '@/components/filters/LinearFilter';
+import { BuyerlyFilterButton, BuyerlyFilterMenu, type FilterMenuMode } from '@/components/filters/BuyerlyFilter';
 import type { FilterClause, FilterFieldDefinition } from '@/components/filters/filterModel';
 import { InboxFilterBar } from '@/components/inbox/InboxFilterBar';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
-import { LinearProjectIcon, LinearSearchIcon, LinearSlidersIcon, LinearStatusCircleIcon } from '@/icons/LinearIcons';
-import { LinearSelect } from '@/ui/LinearDisplayOptions';
-import { LinearToggle } from '@/ui/LinearToggle';
-import { LinearTabs } from '@/ui/LinearTabs';
+import { BuyerlyProjectIcon, BuyerlySearchIcon, BuyerlySlidersIcon, BuyerlyStatusCircleIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlySelect } from '@/ui/BuyerlyDisplayOptions';
+import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
+import { BuyerlyTabs } from '@/ui/BuyerlyTabs';
 import { Tooltip } from '@/ui/Tooltip';
 import { useMenuExit } from '@/ui/useMenuExit';
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, a select. */
 const OPEN_LAYER_SELECTOR = [
-  '[role="dialog"]:not(.linear-menu-exit)',
+  '[role="dialog"]:not(.buyerly-menu-exit)',
   '[role="alertdialog"]',
   '[role="menu"]:not([data-state="closed"])',
-  '.linear-display-select-menu',
+  '.buyerly-display-select-menu',
   '[cmdk-root]',
 ].join(', ');
 
@@ -56,7 +56,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 const headerButtonClass = (active = false) =>
-  `linear-header-button linear-header-button--header linear-header-target${active ? ' linear-header-button--active' : ''}`;
+  `buyerly-header-button buyerly-header-button--header buyerly-header-target${active ? ' buyerly-header-button--active' : ''}`;
 
 /** The answer on screen always belongs to the search in the address, never to an earlier one. */
 type SearchState =
@@ -128,9 +128,9 @@ function highlight(name: string, query: string): React.ReactNode {
 
 /** A result's mark: its delivery or run state, or a cube for an ad account. */
 export const StatusMark: React.FC<{ result: SearchResult }> = ({ result }) => {
-  if (result.kind === 'account') return <LinearProjectIcon size={14} className="text-[var(--text-tertiary)]" />;
+  if (result.kind === 'account') return <BuyerlyProjectIcon size={14} className="text-[var(--text-tertiary)]" />;
   const status = searchStatusOf(result);
-  if (status === 'active' || status === 'paused') return <LinearStatusCircleIcon status={status} size={14} />;
+  if (status === 'active' || status === 'paused') return <BuyerlyStatusCircleIcon status={status} size={14} />;
   return (
     <svg width={14} height={14} viewBox="0 0 14 14" fill="none" aria-hidden="true">
       <circle cx="7" cy="7" r="5.5" stroke="var(--text-tertiary)" strokeWidth="1.5" />
@@ -199,11 +199,11 @@ const SearchDisplayOptions: React.FC<SearchDisplayOptionsProps> = ({
     if (!isOpen) return undefined;
     const onPointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
-      if (target instanceof Element && target.closest('.linear-display-select-menu')) return;
+      if (target instanceof Element && target.closest('.buyerly-display-select-menu')) return;
       if (!popoverRef.current?.contains(target) && !anchorRef.current?.contains(target)) onClose();
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !document.querySelector('.linear-display-select-menu')) {
+      if (event.key === 'Escape' && !document.querySelector('.buyerly-display-select-menu')) {
         event.stopPropagation();
         onClose();
       }
@@ -222,13 +222,13 @@ const SearchDisplayOptions: React.FC<SearchDisplayOptionsProps> = ({
       ref={popoverRef}
       role="dialog"
       aria-label="Display options"
-      className={isClosing ? 'linear-display-options-popover linear-menu-exit' : 'linear-display-options-popover'}
+      className={isClosing ? 'buyerly-display-options-popover buyerly-menu-exit' : 'buyerly-display-options-popover'}
       style={{ top: coords.top, left: coords.left }}
     >
-      <section className="linear-display-main-section">
-        <div className="linear-display-row">
+      <section className="buyerly-display-main-section">
+        <div className="buyerly-display-row">
           <span>Ordering</span>
-          <LinearSelect
+          <BuyerlySelect
             value={order}
             options={[
               { value: 'relevance', label: 'Most relevant' },
@@ -238,10 +238,10 @@ const SearchDisplayOptions: React.FC<SearchDisplayOptionsProps> = ({
           />
         </div>
       </section>
-      <section className="linear-display-options-section">
-        <div className="linear-display-row">
+      <section className="buyerly-display-options-section">
+        <div className="buyerly-display-row">
           <span>Include deleted</span>
-          <LinearToggle
+          <BuyerlyToggle
             label="Include deleted"
             checked={includeDeleted}
             onChange={(value) => onChange({ includeDeleted: value })}
@@ -488,7 +488,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
                     onClick={() => runSearch(query)}
                     className="flex h-9 w-full items-center gap-2.5 rounded-[6px] px-3 text-left text-[13px] text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
                   >
-                    <span className="shrink-0 text-[var(--text-tertiary)]" aria-hidden="true"><LinearSearchIcon size={14} /></span>
+                    <span className="shrink-0 text-[var(--text-tertiary)]" aria-hidden="true"><BuyerlySearchIcon size={14} /></span>
                     <span className="min-w-0 truncate">{query}</span>
                   </button>
                 </li>
@@ -595,7 +595,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
               runSearch(draft);
             }}
           >
-            <span className="shrink-0 text-[var(--text-tertiary)]" aria-hidden="true"><LinearSearchIcon size={16} /></span>
+            <span className="shrink-0 text-[var(--text-tertiary)]" aria-hidden="true"><BuyerlySearchIcon size={16} /></span>
             <input
               ref={inputRef}
               data-search-page-input=""
@@ -635,7 +635,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
 
         <div className="flex shrink-0 items-center gap-2 px-3 py-2">
           <div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none]">
-            <LinearTabs
+            <BuyerlyTabs
               aria-label="Search in"
               // As wide as its tabs: on a phone they scroll sideways instead of shrinking to "Ca…".
               className="w-max"
@@ -653,7 +653,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
           </div>
           {hasFilters && (
             <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(filterMenu)}>
-              <LinearFilterButton
+              <BuyerlyFilterButton
                 variant="header"
                 ref={filterButtonRef}
                 active={filterClauses.length > 0}
@@ -676,7 +676,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
               onClick={() => setIsDisplayOpen((open) => !open)}
               className={headerButtonClass(isDisplayOpen)}
             >
-              <LinearSlidersIcon size={14} />
+              <BuyerlySlidersIcon size={14} />
             </button>
           </Tooltip>
           <SearchDisplayOptions
@@ -690,7 +690,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
         </div>
 
         <InboxFilterBar fields={filterFields} clauses={filterClauses} onChange={applyFilters} onOpenMenu={openFilterMenu} />
-        <LinearFilterMenu
+        <BuyerlyFilterMenu
           isOpen={Boolean(filterMenu)}
           mode={filterMenu?.mode ?? 'root'}
           anchorElement={filterMenu?.anchor ?? null}
@@ -717,7 +717,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
         <section aria-label="Preview" className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
           <header className="flex h-[52px] shrink-0 items-center justify-between gap-3 border-b border-[var(--color-border-primary)] px-2.5 sm:px-4">
             <div className="flex min-w-0 items-center gap-2">
-              <button type="button" onClick={() => setPreviewOpen(false)} className="linear-icon-btn md:hidden" aria-label="Back to results">
+              <button type="button" onClick={() => setPreviewOpen(false)} className="buyerly-icon-btn md:hidden" aria-label="Back to results">
                 <ArrowLeft size={16} aria-hidden="true" />
               </button>
               <span className="flex shrink-0 items-center" aria-hidden="true"><StatusMark result={preview} /></span>

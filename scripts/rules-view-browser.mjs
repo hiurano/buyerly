@@ -120,13 +120,13 @@ try {
   const rowIds = () => page.locator('[data-row-id]').evaluateAll((rows) => rows.map((row) => row.dataset.rowId));
   const groupTitles = () => page.locator('.sticky span.truncate.text-\\[13px\\]').allTextContents();
   const headers = async () => (await page.locator('[role="columnheader"]').allTextContents()).map((text) => text.trim()).filter(Boolean);
-  const popover = () => page.locator('.linear-display-options-popover');
+  const popover = () => page.locator('.buyerly-display-options-popover');
   const displayButton = () => page.locator('main header').getByRole('button', { name: 'Display options' });
   const select = async (row, option) => {
-    await popover().locator('.linear-display-row', { hasText: row }).getByRole('combobox').click();
-    await page.locator('.linear-display-select-menu').getByRole('option', { name: option, exact: true }).click();
+    await popover().locator('.buyerly-display-row', { hasText: row }).getByRole('combobox').click();
+    await page.locator('.buyerly-display-select-menu').getByRole('option', { name: option, exact: true }).click();
   };
-  const property = (label) => popover().locator('.linear-display-property', { hasText: new RegExp(`^${label}$`) });
+  const property = (label) => popover().locator('.buyerly-display-property', { hasText: new RegExp(`^${label}$`) });
   const settle = () => page.waitForTimeout(400);
   const bar = page.locator('[aria-label="Active filters"]');
 

@@ -3,7 +3,7 @@ import { apiRequest } from '@/lib/api';
 import type { Workspace } from '@/lib/types';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { TOUCH_HEIGHT_CLASS } from '@/lib/useMediaQuery';
-import { LinearPencilIcon } from '@/icons/LinearIcons';
+import { BuyerlyPencilIcon } from '@/icons/BuyerlyIcons';
 import { Button } from '@/ui/Button';
 import { FormCheckbox } from '@/ui/FormCheckbox';
 import { Input } from '@/ui/Input';
@@ -164,7 +164,7 @@ export const WorkspaceSection: React.FC<WorkspaceSectionProps> = ({ workspace, o
                 }}
               />
               <span className="preferences-url-accessory" aria-hidden="true">
-                <LinearPencilIcon size={14} />
+                <BuyerlyPencilIcon size={14} />
               </span>
             </div>
           </div>

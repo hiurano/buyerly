@@ -5,7 +5,7 @@ import { Input } from '@/ui/Input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import { Tooltip } from '@/ui/Tooltip';
 import { toast } from '@/ui/toast';
-import { LinearCloseIcon, LinearPencilIcon, LinearPlusIcon } from '@/icons/LinearIcons';
+import { BuyerlyCloseIcon, BuyerlyPencilIcon, BuyerlyPlusIcon } from '@/icons/BuyerlyIcons';
 import { ChangeEmailDialog } from './ChangeEmailDialog';
 import { LeaveWorkspaceDialog } from './MemberDialogs';
 
@@ -165,7 +165,7 @@ const ProfileAvatar: React.FC<{ user: SessionUser; onUserChanged: () => void | P
         <span className="preferences-avatar-initials">{initials(user)}</span>
       )}
       <span className="preferences-avatar-overlay" aria-hidden="true">
-        {hasPhoto ? <LinearPencilIcon size={16} /> : <LinearPlusIcon size={16} />}
+        {hasPhoto ? <BuyerlyPencilIcon size={16} /> : <BuyerlyPlusIcon size={16} />}
       </span>
     </>
   );
@@ -200,13 +200,13 @@ const ProfileAvatar: React.FC<{ user: SessionUser; onUserChanged: () => void | P
           <DropdownMenuContent align="end" style={{ width: '174px' }}>
             <DropdownMenuItem onSelect={() => fileRef.current?.click()}>
               <span className="flex items-center gap-2.5">
-                <LinearPencilIcon size={16} className="text-[var(--text-tertiary)]" />
+                <BuyerlyPencilIcon size={16} className="text-[var(--text-tertiary)]" />
                 Change avatar
               </span>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => void remove()}>
               <span className="flex items-center gap-2.5">
-                <LinearCloseIcon size={16} className="text-[var(--text-tertiary)]" />
+                <BuyerlyCloseIcon size={16} className="text-[var(--text-tertiary)]" />
                 Remove avatar
               </span>
             </DropdownMenuItem>
@@ -289,7 +289,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, workspace,
                 aria-label="Change email"
                 onClick={() => setEmailDialogOpen(true)}
               >
-                <LinearPencilIcon size={13} />
+                <BuyerlyPencilIcon size={13} />
               </button>
             </div>
           </div>

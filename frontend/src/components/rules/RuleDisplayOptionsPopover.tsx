@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '@/store/useAppStore';
-import { LinearDisplayOptions } from '@/ui/LinearDisplayOptions';
+import { BuyerlyDisplayOptions } from '@/ui/BuyerlyDisplayOptions';
 import { boardGrouping, orderGroups, toggleHiddenGroup } from '@/ui/listView';
 import {
   RULE_BOARD_FALLBACK,
@@ -36,11 +36,11 @@ export const RuleDisplayOptionsPopover: React.FC<RuleDisplayOptionsPopoverProps>
     if (!isOpen) return;
     const onPointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
-      if (target instanceof Element && target.closest('.linear-display-select-menu')) return;
+      if (target instanceof Element && target.closest('.buyerly-display-select-menu')) return;
       if (!popoverRef.current?.contains(target) && !anchorRef.current?.contains(target)) onClose();
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !document.querySelector('.linear-display-select-menu')) onClose();
+      if (event.key === 'Escape' && !document.querySelector('.buyerly-display-select-menu')) onClose();
     };
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
@@ -63,8 +63,8 @@ export const RuleDisplayOptionsPopover: React.FC<RuleDisplayOptionsPopoverProps>
   const ordering = RULE_ORDERINGS.some((option) => option.value === view.ordering) ? view.ordering : 'manual';
 
   return createPortal(
-    <div ref={popoverRef} className="linear-display-options-popover" style={{ top: coords.top, right: coords.right }}>
-      <LinearDisplayOptions
+    <div ref={popoverRef} className="buyerly-display-options-popover" style={{ top: coords.top, right: coords.right }}>
+      <BuyerlyDisplayOptions
         viewMode={view.layout}
         onViewModeChange={(layout) => update({ layout })}
         grouping={grouping}

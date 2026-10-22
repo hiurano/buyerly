@@ -9,9 +9,9 @@ import {
   type InboxOrdering,
 } from '@/lib/inbox';
 import { useAppStore } from '@/store/useAppStore';
-import { LinearPlusIcon } from '@/icons/LinearIcons';
-import { LinearMultiSelect, LinearSelect } from '@/ui/LinearDisplayOptions';
-import { LinearToggle } from '@/ui/LinearToggle';
+import { BuyerlyPlusIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyMultiSelect, BuyerlySelect } from '@/ui/BuyerlyDisplayOptions';
+import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { useMenuExit } from '@/ui/useMenuExit';
 
 interface InboxDisplayOptionsPopoverProps {
@@ -25,9 +25,9 @@ const SwitchRow: React.FC<{ label: string; checked: boolean; onChange: (value: b
   checked,
   onChange,
 }) => (
-  <div className="linear-display-row">
+  <div className="buyerly-display-row">
     <span>{label}</span>
-    <LinearToggle label={label} checked={checked} onChange={onChange} />
+    <BuyerlyToggle label={label} checked={checked} onChange={onChange} />
   </div>
 );
 
@@ -56,11 +56,11 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
     if (!isOpen) return;
     const onPointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
-      if (target instanceof Element && target.closest('.linear-display-select-menu')) return;
+      if (target instanceof Element && target.closest('.buyerly-display-select-menu')) return;
       if (!popoverRef.current?.contains(target) && !anchorRef.current?.contains(target)) onClose();
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !document.querySelector('.linear-display-select-menu')) {
+      if (event.key === 'Escape' && !document.querySelector('.buyerly-display-select-menu')) {
         event.stopPropagation();
         onClose();
       }
@@ -80,11 +80,11 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
       ref={popoverRef}
       role="dialog"
       aria-label="Display options"
-      className={isClosing ? 'linear-display-options-popover linear-menu-exit' : 'linear-display-options-popover'}
+      className={isClosing ? 'buyerly-display-options-popover buyerly-menu-exit' : 'buyerly-display-options-popover'}
       style={{ top: coords.top, left: coords.left }}
       data-wide={inboxDisplay.priorityInbox || undefined}
     >
-      <section className="linear-display-main-section">
+      <section className="buyerly-display-main-section">
         <SwitchRow
           label="Enable priority inbox"
           checked={inboxDisplay.priorityInbox}
@@ -92,9 +92,9 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
         />
         {inboxDisplay.priorityInbox && (
           <>
-            <div className="linear-display-row">
+            <div className="buyerly-display-row">
               <span>Include in priority inbox</span>
-              <LinearMultiSelect
+              <BuyerlyMultiSelect
                 ariaLabel="Priority notification options"
                 values={inboxDisplay.priorityKinds}
                 options={INBOX_KINDS.map((kind) => ({ value: kind, label: INBOX_KIND_LABELS[kind] }))}
@@ -103,7 +103,7 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
                   label: customFilters > 0
                     ? `${customFilters} custom filter${customFilters === 1 ? '' : 's'}`
                     : 'Add custom filters',
-                  icon: <LinearPlusIcon size={14} />,
+                  icon: <BuyerlyPlusIcon size={14} />,
                   // Linear opens Settings → Notifications → Priority notifications.
                   onSelect: () => {
                     onClose();
@@ -113,9 +113,9 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
                 }}
               />
             </div>
-            <div className="linear-display-row">
+            <div className="buyerly-display-row">
               <span>Badge count</span>
-              <LinearSelect
+              <BuyerlySelect
                 value={inboxDisplay.badgeCount}
                 options={[
                   { value: 'all', label: 'Priority & Other' },
@@ -128,10 +128,10 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
           </>
         )}
       </section>
-      <section className="linear-display-options-section">
-        <div className="linear-display-row">
+      <section className="buyerly-display-options-section">
+        <div className="buyerly-display-row">
           <span>Group unreads by</span>
-          <LinearSelect
+          <BuyerlySelect
             value={inboxDisplay.grouping}
             options={[
               { value: 'none', label: 'No grouping' },
@@ -140,9 +140,9 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
             onChange={(value) => setInboxDisplay({ grouping: value as InboxGrouping })}
           />
         </div>
-        <div className="linear-display-row">
+        <div className="buyerly-display-row">
           <span>Ordering</span>
-          <LinearSelect
+          <BuyerlySelect
             value={inboxDisplay.ordering}
             options={[
               { value: 'newest', label: 'Newest' },
@@ -152,7 +152,7 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
           />
         </div>
       </section>
-      <section className="linear-display-options-section">
+      <section className="buyerly-display-options-section">
         <SwitchRow
           label="Show snoozed"
           checked={inboxDisplay.showSnoozed}

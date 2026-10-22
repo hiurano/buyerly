@@ -37,7 +37,7 @@ body {
 }
 
 /* Linear My Issues Display options contract, shared by Ads Manager and Rules. */
-.linear-display-options-popover {
+.buyerly-display-options-popover {
   position: fixed;
   width: 302px;
   z-index: 9999;
@@ -53,29 +53,29 @@ body {
   line-height: 18px;
   user-select: none;
   animation:
-    linearMenuFadeIn 40ms linear,
-    linearMenuScaleIn 250ms cubic-bezier(0.25, 0.95, 0.6, 1);
+    buyerlyMenuFadeIn 40ms linear,
+    buyerlyMenuScaleIn 250ms cubic-bezier(0.25, 0.95, 0.6, 1);
   transform-origin: 100% 0;
 }
 
-.linear-display-options-popover button,
-.linear-display-select-menu button {
+.buyerly-display-options-popover button,
+.buyerly-display-select-menu button {
   font: inherit;
   outline: none;
 }
 
-.linear-display-main-section,
-.linear-display-options-section {
+.buyerly-display-main-section,
+.buyerly-display-options-section {
   padding: 8px 16px;
 }
 
-.linear-display-options-section {
+.buyerly-display-options-section {
   display: flex;
   flex-direction: column;
   border-top: 1px solid var(--display-divider, var(--color-border-primary));
 }
 
-.linear-display-tabs {
+.buyerly-display-tabs {
   display: flex;
   align-items: center;
   width: 268px;
@@ -87,14 +87,14 @@ body {
   background: var(--card-bg);
 }
 
-.linear-display-tab-slot {
+.buyerly-display-tab-slot {
   display: flex;
   flex: 1 1 0;
   align-items: center;
   height: 32px;
 }
 
-.linear-display-tab {
+.buyerly-display-tab {
   position: relative;
   display: flex;
   width: calc(100% - 4px);
@@ -112,14 +112,14 @@ body {
   cursor: pointer;
 }
 
-.linear-display-tab::before {
+.buyerly-display-tab::before {
   content: '';
   position: absolute;
   inset: -2px;
   pointer-events: none;
 }
 
-.linear-display-tab::after {
+.buyerly-display-tab::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -131,25 +131,25 @@ body {
   pointer-events: none;
 }
 
-.linear-display-tab[aria-selected='true'] {
+.buyerly-display-tab[aria-selected='true'] {
   color: var(--text-primary);
   background: var(--display-selected, var(--tab-active-bg));
 }
 
-.linear-display-tab[aria-selected='true']::after {
+.buyerly-display-tab[aria-selected='true']::after {
   box-shadow:
     0 0 0 1px lch(0% 0 282 / 14.7%),
     0 0 0 0 transparent;
 }
 
-.linear-display-tab > svg {
+.buyerly-display-tab > svg {
   width: 14px;
   height: 14px;
   flex: none;
   color: currentColor;
 }
 
-.linear-display-row {
+.buyerly-display-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -159,13 +159,13 @@ body {
   font-weight: 500;
 }
 
-.linear-display-row-controls {
+.buyerly-display-row-controls {
   display: flex;
   align-items: center;
   flex-direction: row-reverse;
 }
 
-.linear-display-select {
+.buyerly-display-select {
   position: relative;
   display: flex;
   align-items: center;
@@ -182,17 +182,17 @@ body {
   cursor: pointer;
 }
 
-.linear-display-select > svg {
+.buyerly-display-select > svg {
   flex: none;
   color: var(--text-tertiary);
 }
 
-.linear-display-select[data-open='true'],
-.linear-display-select:hover {
+.buyerly-display-select[data-open='true'],
+.buyerly-display-select:hover {
   background: var(--display-control-hover, var(--bg-canvas));
 }
 
-.linear-display-order-button {
+.buyerly-display-order-button {
   display: grid;
   place-items: center;
   width: 24px;
@@ -206,14 +206,14 @@ body {
   cursor: pointer;
 }
 
-.linear-display-order-button:hover {
+.buyerly-display-order-button:hover {
   color: var(--text-primary);
   background: var(--display-control-hover, var(--bg-canvas));
 }
 
 /* Linear's Group ordering panel (measured 11.10): a 49px header with Back and
    the title, then 32px rows: handle, the group, and an eye to hide it. */
-.linear-display-group-header {
+.buyerly-display-group-header {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -224,17 +224,17 @@ body {
   font-weight: 500;
 }
 
-.linear-display-group-header .linear-display-order-button {
+.buyerly-display-group-header .buyerly-display-order-button {
   margin-right: 0;
 }
 
-.linear-display-group-list {
+.buyerly-display-group-list {
   padding: 8px;
   max-height: min(420px, calc(100vh - 160px));
   overflow-y: auto;
 }
 
-.linear-display-group-row {
+.buyerly-display-group-row {
   position: relative;
   display: flex;
   align-items: center;
@@ -244,16 +244,16 @@ body {
   background: var(--card-bg);
 }
 
-.linear-display-group-row:hover {
+.buyerly-display-group-row:hover {
   background: var(--display-option-hover, var(--bg-canvas));
 }
 
-.linear-display-group-row[data-dragging] {
+.buyerly-display-group-row[data-dragging] {
   z-index: 1;
   box-shadow: var(--dropdown-shadow);
 }
 
-.linear-display-group-handle {
+.buyerly-display-group-handle {
   position: absolute;
   left: 4px;
   top: 0;
@@ -266,7 +266,7 @@ body {
   touch-action: none;
 }
 
-.linear-display-group-label {
+.buyerly-display-group-label {
   display: flex;
   flex: 1;
   min-width: 0;
@@ -278,27 +278,27 @@ body {
   white-space: nowrap;
 }
 
-.linear-display-group-label[data-hidden] {
+.buyerly-display-group-label[data-hidden] {
   opacity: 0.5;
 }
 
-.linear-display-group-label > span:last-child {
+.buyerly-display-group-label > span:last-child {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.linear-display-group-icon {
+.buyerly-display-group-icon {
   display: inline-flex;
   width: 16px;
   justify-content: center;
 }
 
-.linear-display-group-row .linear-display-order-button {
+.buyerly-display-group-row .buyerly-display-order-button {
   margin-right: 0;
 }
 
 /* Linear's footer while the view differs from its default. */
-.linear-display-footer {
+.buyerly-display-footer {
   display: flex;
   justify-content: flex-end;
   gap: 4px;
@@ -306,7 +306,7 @@ body {
   border-top: 1px solid var(--display-divider, var(--color-border-primary));
 }
 
-.linear-display-footer-button {
+.buyerly-display-footer-button {
   height: 24px;
   padding: 0 8px;
   border: 1px solid transparent;
@@ -318,12 +318,12 @@ body {
   cursor: pointer;
 }
 
-.linear-display-footer-button:hover {
+.buyerly-display-footer-button:hover {
   background: var(--display-control-hover, var(--bg-canvas));
 }
 
 /* Linear's 7px accent dot on the Display options icon while the view is changed. */
-.linear-display-changed-dot {
+.buyerly-display-changed-dot {
   position: absolute;
   top: 1px;
   right: 1px;
@@ -334,7 +334,7 @@ body {
   pointer-events: none;
 }
 
-.linear-display-select-menu {
+.buyerly-display-select-menu {
   position: fixed;
   z-index: 10000;
   display: flex;
@@ -350,7 +350,7 @@ body {
   box-shadow: var(--dropdown-shadow);
 }
 
-.linear-display-select-option {
+.buyerly-display-select-option {
   position: relative;
   display: flex;
   align-items: center;
@@ -365,17 +365,17 @@ body {
   cursor: pointer;
 }
 
-.linear-display-select-option:hover,
-.linear-display-select-option:focus-visible {
+.buyerly-display-select-option:hover,
+.buyerly-display-select-option:focus-visible {
   background: var(--display-option-hover, var(--bg-canvas));
 }
 
-.linear-display-select-option > svg {
+.buyerly-display-select-option > svg {
   position: absolute;
   right: 10px;
 }
 
-.linear-display-section-title {
+.buyerly-display-section-title {
   height: 15px;
   margin: 8px 0 2px;
   color: var(--text-secondary);
@@ -383,7 +383,7 @@ body {
   line-height: 15px;
 }
 
-.linear-display-properties-label {
+.buyerly-display-properties-label {
   display: flex;
   height: 15px;
   margin: 8px 0 4px;
@@ -394,7 +394,7 @@ body {
   line-height: normal;
 }
 
-.linear-display-properties {
+.buyerly-display-properties {
   display: flex;
   flex-wrap: wrap;
   width: 268px;
@@ -403,7 +403,7 @@ body {
   line-height: 24px;
 }
 
-.linear-display-property {
+.buyerly-display-property {
   position: relative;
   display: flex;
   align-items: center;
@@ -424,7 +424,7 @@ body {
   cursor: pointer;
 }
 
-.linear-display-property::after {
+.buyerly-display-property::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -436,33 +436,33 @@ body {
   pointer-events: none;
 }
 
-.linear-display-property[aria-pressed='true'] {
+.buyerly-display-property[aria-pressed='true'] {
   color: var(--text-primary);
   background: var(--display-property-selected, var(--tab-active-bg));
 }
 
-.linear-display-property[aria-pressed='true']::after {
+.buyerly-display-property[aria-pressed='true']::after {
   box-shadow:
     0 0 0 1px lch(0% 0 282 / 10.3%),
     0 0 0 0 transparent;
 }
 
-.linear-display-property:hover {
+.buyerly-display-property:hover {
   background: var(--display-control-hover, var(--bg-canvas));
 }
 
 /* The board's columns or rows already show it: off and not clickable, as Linear's. */
-.linear-display-property:disabled {
+.buyerly-display-property:disabled {
   cursor: default;
 }
 
-.linear-display-property:disabled:hover {
+.buyerly-display-property:disabled:hover {
   background: var(--card-bg);
 }
 
-/* LinearToggle, the only switch: one size everywhere, as in Linear's Display
+/* BuyerlyToggle, the only switch: one size everywhere, as in Linear's Display
    options (22×14, knob 10, inset 2). Colours come from tokens.css. */
-.linear-toggle {
+.buyerly-toggle {
   --toggle-width: 22px;
   --toggle-height: 14px;
   --toggle-knob-size: 10px;
@@ -481,7 +481,7 @@ body {
   transition: background-color 150ms ease-out, opacity 150ms ease-out;
 }
 
-.linear-toggle::after {
+.buyerly-toggle::after {
   content: '';
   position: absolute;
   top: var(--toggle-inset);
@@ -493,25 +493,25 @@ body {
   transition: transform 100ms ease-out;
 }
 
-.linear-toggle:not([aria-disabled='true'], [aria-busy='true']):hover {
+.buyerly-toggle:not([aria-disabled='true'], [aria-busy='true']):hover {
   background: var(--toggle-unchecked-hover-bg);
 }
 
-.linear-toggle[aria-checked='true'] {
+.buyerly-toggle[aria-checked='true'] {
   background: var(--toggle-checked-bg);
 }
 
-.linear-toggle[aria-checked='true']:not([aria-disabled='true'], [aria-busy='true']):hover {
+.buyerly-toggle[aria-checked='true']:not([aria-disabled='true'], [aria-busy='true']):hover {
   background: var(--toggle-checked-hover-bg);
 }
 
-.linear-toggle[aria-checked='true']::after {
+.buyerly-toggle[aria-checked='true']::after {
   transform: translateX(calc(var(--toggle-width) - var(--toggle-knob-size) - 2 * var(--toggle-inset)));
 }
 
 /* Linear's settings switch (17.10): 30x20, a 14px knob 3px in that leans 2px
    toward its travel under the cursor; its edges move 0.1s, the trailing one 50ms late. */
-.linear-toggle--settings {
+.buyerly-toggle--settings {
   --toggle-width: 30px;
   --toggle-height: 20px;
   --toggle-knob-size: 14px;
@@ -520,7 +520,7 @@ body {
   margin-right: 6px;
 }
 
-.linear-toggle--settings::after {
+.buyerly-toggle--settings::after {
   top: 3px;
   left: 3px;
   right: 13px;
@@ -531,39 +531,39 @@ body {
   transition: left 0.1s ease-out, right 0.1s ease-out 0.05s;
 }
 
-.linear-toggle--settings[aria-checked='true']::after {
+.buyerly-toggle--settings[aria-checked='true']::after {
   left: 13px;
   right: 3px;
   transform: none;
   transition: left 0.1s ease-out 0.05s, right 0.1s ease-out;
 }
 
-.linear-toggle--settings[aria-checked='false']:not([aria-disabled='true'], [aria-busy='true']):hover::after {
+.buyerly-toggle--settings[aria-checked='false']:not([aria-disabled='true'], [aria-busy='true']):hover::after {
   right: 11px;
 }
 
-.linear-toggle--settings[aria-checked='true']:not([aria-disabled='true'], [aria-busy='true']):hover::after {
+.buyerly-toggle--settings[aria-checked='true']:not([aria-disabled='true'], [aria-busy='true']):hover::after {
   left: 11px;
 }
 
-.linear-toggle[aria-disabled='true'] {
+.buyerly-toggle[aria-disabled='true'] {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.linear-toggle[aria-busy='true'] {
+.buyerly-toggle[aria-busy='true'] {
   opacity: 0.7;
   cursor: progress;
 }
 
-.linear-toggle:focus-visible {
+.buyerly-toggle:focus-visible {
   outline: 2px solid var(--focus-ring-color);
   outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .linear-toggle,
-  .linear-toggle::after {
+  .buyerly-toggle,
+  .buyerly-toggle::after {
     transition: none;
   }
 }
@@ -578,20 +578,20 @@ html[data-theme='light'] {
   --display-option-hover: lch(95.543% 0 282);
 }
 
-html[data-theme='light'] .linear-display-tab {
+html[data-theme='light'] .buyerly-display-tab {
   color: lch(40% 1 282);
 }
 
-html[data-theme='light'] .linear-display-tab[aria-selected='true'] {
+html[data-theme='light'] .buyerly-display-tab[aria-selected='true'] {
   color: lch(10% 0 282);
 }
 
-html[data-theme='light'] .linear-display-properties-label,
-html[data-theme='light'] .linear-display-property {
+html[data-theme='light'] .buyerly-display-properties-label,
+html[data-theme='light'] .buyerly-display-property {
   color: lch(40% 1 282);
 }
 
-html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
+html[data-theme='light'] .buyerly-display-property[aria-pressed='true'] {
   color: lch(10% 0 282);
 }
 
@@ -639,12 +639,12 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
 
 .sidebar-slot-wrapper[data-resizing="true"],
 .sidebar-surface[data-resizing="true"],
-.linear-floating-canvas[data-resizing="true"] {
+.buyerly-floating-canvas[data-resizing="true"] {
   transition: none !important;
 }
 
 /* Floating Inset Canvas */
-.linear-floating-canvas {
+.buyerly-floating-canvas {
   margin: 8px 8px 36px 0px;
   border-radius: var(--canvas-border-radius);
   background-color: var(--bg-canvas);
@@ -714,7 +714,7 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
 }
 
 /* 1. Interactive Sidebar Resizer Hit Target (7px) */
-.linear-resizer-hit-target {
+.buyerly-resizer-hit-target {
   position: absolute;
   top: 14px;
   bottom: 40px;
@@ -730,7 +730,7 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
 }
 
 /* 2. Track Container with Edge Feathering Mask */
-.linear-resizer-track {
+.buyerly-resizer-track {
   position: absolute;
   top: 12px;
   bottom: 12px;
@@ -755,13 +755,13 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
   );
 }
 
-.linear-resizer-hit-target:hover .linear-resizer-track,
-.linear-resizer-hit-target[data-dragging="true"] .linear-resizer-track {
+.buyerly-resizer-hit-target:hover .buyerly-resizer-track,
+.buyerly-resizer-hit-target[data-dragging="true"] .buyerly-resizer-track {
   opacity: 1;
 }
 
 /* 3. Moving Spotlight Indicator Line (14-Stop Mask Gradient) */
-.linear-resizer-indicator {
+.buyerly-resizer-indicator {
   position: absolute;
   top: -50%;
   height: 200%;
@@ -810,7 +810,7 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
 
 /* Linear's sidebar item, measured live (17.10): 14px icon 8px in, label 6px after
    it, 9px right; hover and press fill 91.64 and darken text and icon at once. */
-.linear-sidebar-nav-item {
+.buyerly-sidebar-nav-item {
   height: 28px;
   padding: 0 9px 0 8px;
   border-radius: 8px;
@@ -829,47 +829,47 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
   user-select: none;
 }
 
-.linear-sidebar-nav-item:focus-visible {
+.buyerly-sidebar-nav-item:focus-visible {
   outline: 1px solid var(--focus-ring-color);
   outline-offset: -1px;
 }
 
-.linear-sidebar-nav-item svg {
+.buyerly-sidebar-nav-item svg {
   color: var(--sidebar-item-fg);
   transition: none;
 }
 
-.linear-sidebar-nav-item:active {
+.buyerly-sidebar-nav-item:active {
   background-color: var(--sidebar-item-hover-bg);
   color: var(--sidebar-item-fg-strong);
 }
 
 @media (any-hover: hover) and (any-pointer: fine) {
-  .linear-sidebar-nav-item:hover {
+  .buyerly-sidebar-nav-item:hover {
     background-color: var(--sidebar-item-hover-bg);
     color: var(--sidebar-item-fg-strong);
   }
 }
 
 /* The current item keeps its fill under the cursor, as Linear's. */
-.linear-sidebar-nav-item[data-active="true"] {
+.buyerly-sidebar-nav-item[data-active="true"] {
   background-color: var(--item-active-bg);
   color: var(--sidebar-item-fg-strong);
 }
 
-.linear-sidebar-nav-item:active svg,
-.linear-sidebar-nav-item[data-active="true"] svg {
+.buyerly-sidebar-nav-item:active svg,
+.buyerly-sidebar-nav-item[data-active="true"] svg {
   color: var(--sidebar-item-fg-strong);
 }
 
 @media (any-hover: hover) and (any-pointer: fine) {
-  .linear-sidebar-nav-item:hover svg {
+  .buyerly-sidebar-nav-item:hover svg {
     color: var(--sidebar-item-fg-strong);
   }
 }
 
 /* A team's page in the sidebar, as Linear's: 19px in, its icon 6px from the edge. */
-.linear-sidebar-nav-item--nested {
+.buyerly-sidebar-nav-item--nested {
   margin-left: 19px;
   width: calc(100% - 19px);
   padding-left: 6px;
@@ -1612,7 +1612,7 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
 }
 
 /* Exact Linear Sidebar Unread Badge (18px Pill, Tabular Nums) */
-.linear-sidebar-badge {
+.buyerly-sidebar-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1633,19 +1633,19 @@ html[data-theme='light'] .linear-display-property[aria-pressed='true'] {
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-html[data-theme='dark'] .linear-sidebar-badge,
-:root:not([data-theme='light']) .linear-sidebar-badge {
+html[data-theme='dark'] .buyerly-sidebar-badge,
+:root:not([data-theme='light']) .buyerly-sidebar-badge {
   background-color: rgba(255, 255, 255, 0.08);
   color: var(--text-secondary);
 }
 
-.linear-sidebar-nav-item:hover .linear-sidebar-badge,
-.linear-sidebar-nav-item[data-active="true"] .linear-sidebar-badge {
+.buyerly-sidebar-nav-item:hover .buyerly-sidebar-badge,
+.buyerly-sidebar-nav-item[data-active="true"] .buyerly-sidebar-badge {
   color: var(--sidebar-item-fg-strong);
 }
 
 /* Linear's unread count after Inbox: plain muted digits, no pill. */
-.linear-sidebar-count {
+.buyerly-sidebar-count {
   font-size: 12px;
   font-weight: 450;
   line-height: 15px;
@@ -1692,7 +1692,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
    ========================================================= */
 
 /* 1. Workspace Button */
-.linear-workspace-btn {
+.buyerly-workspace-btn {
   box-sizing: border-box;
   font-family: var(--font-regular);
   margin: 0;
@@ -1714,22 +1714,22 @@ html[data-theme='dark'] .linear-sidebar-badge,
 }
 
 /* Linear's: hover and press fill 91.64 at once; the name and chevron keep their color. */
-.linear-workspace-btn:active {
+.buyerly-workspace-btn:active {
   background-color: var(--sidebar-item-hover-bg);
 }
 
 @media (any-hover: hover) and (any-pointer: fine) {
-  .linear-workspace-btn:hover {
+  .buyerly-workspace-btn:hover {
     background-color: var(--sidebar-item-hover-bg);
   }
 }
 
-.linear-workspace-btn .chevron {
+.buyerly-workspace-btn .chevron {
   color: var(--sidebar-item-fg);
 }
 
 /* 2. Top Header Action Circular Icon Button (Search) */
-.linear-icon-btn {
+.buyerly-icon-btn {
   box-sizing: border-box;
   margin: 0;
   padding: 0 2px;
@@ -1750,49 +1750,49 @@ html[data-theme='dark'] .linear-sidebar-badge,
               color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-.linear-icon-btn:hover {
+.buyerly-icon-btn:hover {
   background-color: var(--item-hover-bg);
   color: var(--text-primary);
   transition-duration: 0s;
 }
 
-.linear-icon-btn:active {
+.buyerly-icon-btn:active {
   background-color: var(--item-active-bg);
   transition-duration: 0s;
 }
 
 /* The header's sidebar button, as Linear's: a 0.5px clear border, and hover or
    press only darken the icon, at once, with no fill behind it. */
-.linear-sidebar-toggle {
+.buyerly-sidebar-toggle {
   border-width: 0.5px;
   color: var(--header-button-fg);
   cursor: default;
   transition: border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
 }
 
-.linear-sidebar-toggle:hover,
-.linear-sidebar-toggle:active {
+.buyerly-sidebar-toggle:hover,
+.buyerly-sidebar-toggle:active {
   background-color: transparent;
   color: var(--text-primary);
   transition-duration: 0s;
 }
 
 /* The sidebar header's Search, as Linear's: 6% black under the cursor. */
-.linear-sidebar-icon-btn {
+.buyerly-sidebar-icon-btn {
   border-width: 0.5px;
   color: var(--sidebar-item-fg);
   cursor: default;
   transition: border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
 }
 
-.linear-sidebar-icon-btn:active {
+.buyerly-sidebar-icon-btn:active {
   background-color: var(--sidebar-icon-button-hover-bg);
   color: var(--sidebar-item-fg-strong);
   transition-duration: 0s;
 }
 
 @media (any-hover: hover) and (any-pointer: fine) {
-  .linear-sidebar-icon-btn:hover {
+  .buyerly-sidebar-icon-btn:hover {
     background-color: var(--sidebar-icon-button-hover-bg);
     color: var(--sidebar-item-fg-strong);
     transition-duration: 0s;
@@ -1800,7 +1800,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
 }
 
 /* 3. Main View Header Action Icon Button (24x24px, 6px radius) */
-.linear-header-icon-btn {
+.buyerly-header-icon-btn {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -1821,20 +1821,20 @@ html[data-theme='dark'] .linear-sidebar-badge,
               color 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-.linear-header-icon-btn:hover {
+.buyerly-header-icon-btn:hover {
   background-color: var(--item-hover-bg);
   color: var(--text-primary);
   transition-duration: 0s;
 }
 
-.linear-header-icon-btn:active {
+.buyerly-header-icon-btn:active {
   background-color: lch(14.777% 1.075 272 / 1);
   transition-duration: 0s;
 }
 
-.linear-header-icon-btn svg,
-.linear-icon-btn svg,
-.linear-workspace-btn svg {
+.buyerly-header-icon-btn svg,
+.buyerly-icon-btn svg,
+.buyerly-workspace-btn svg {
   fill: currentColor;
 }
 
@@ -1871,7 +1871,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
    EXACT LINEAR TOOLTIP SPRING & SCALE ANIMATIONS
    ========================================================= */
 
-@keyframes linearTooltipScaleIn {
+@keyframes buyerlyTooltipScaleIn {
   0% {
     opacity: 0;
     transform: scale(0.98);
@@ -1882,7 +1882,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
   }
 }
 
-@keyframes linearTooltipScaleOut {
+@keyframes buyerlyTooltipScaleOut {
   0% {
     opacity: 1;
     transform: scale(1);
@@ -1893,7 +1893,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
   }
 }
 
-.linear-tooltip-content {
+.buyerly-tooltip-content {
   box-sizing: border-box;
   background-color: var(--tooltip-bg);
   border: 0.5px solid var(--tooltip-border);
@@ -1909,37 +1909,37 @@ html[data-theme='dark'] .linear-sidebar-badge,
   will-change: transform, opacity;
 }
 
-.linear-tooltip-content[data-side="right"] {
+.buyerly-tooltip-content[data-side="right"] {
   transform-origin: 0px 50%;
 }
 
-.linear-tooltip-content[data-side="left"] {
+.buyerly-tooltip-content[data-side="left"] {
   transform-origin: 100% 50%;
 }
 
-.linear-tooltip-content[data-side="top"] {
+.buyerly-tooltip-content[data-side="top"] {
   transform-origin: 50% 100%;
 }
 
-.linear-tooltip-content[data-side="bottom"] {
+.buyerly-tooltip-content[data-side="bottom"] {
   transform-origin: 50% 0px;
 }
 
-.linear-tooltip-content[data-side="bottom"][data-align="end"] {
+.buyerly-tooltip-content[data-side="bottom"][data-align="end"] {
   transform-origin: 100% 0px;
 }
 
-.linear-tooltip-content[data-side="bottom"][data-align="start"] {
+.buyerly-tooltip-content[data-side="bottom"][data-align="start"] {
   transform-origin: 0px 0px;
 }
 
-.linear-tooltip-content[data-state="delayed-open"],
-.linear-tooltip-content[data-state="instant-open"] {
-  animation: linearTooltipScaleIn 0.12s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.buyerly-tooltip-content[data-state="delayed-open"],
+.buyerly-tooltip-content[data-state="instant-open"] {
+  animation: buyerlyTooltipScaleIn 0.12s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.linear-tooltip-content[data-state="closed"] {
-  animation: linearTooltipScaleOut 0.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.buyerly-tooltip-content[data-state="closed"] {
+  animation: buyerlyTooltipScaleOut 0.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Radix Animations */
@@ -1953,7 +1953,7 @@ html[data-theme='dark'] .linear-sidebar-badge,
   to { opacity: 0; transform: scale(0.96); }
 }
 
-@keyframes linearPopoverScale {
+@keyframes buyerlyPopoverScale {
   from {
     opacity: 0;
     transform: scale(0.96);
@@ -1966,35 +1966,35 @@ html[data-theme='dark'] .linear-sidebar-badge,
 
 /* Linear's menus, measured frame by frame: opacity 0→1 in ~40ms, scale 0.98→1
    easing out over ~250ms; on close the scale drops back to 0.98 and it fades out. */
-.linear-menu-enter {
+.buyerly-menu-enter {
   animation:
-    linearMenuFadeIn 40ms linear,
-    linearMenuScaleIn 250ms cubic-bezier(0.25, 0.95, 0.6, 1);
+    buyerlyMenuFadeIn 40ms linear,
+    buyerlyMenuScaleIn 250ms cubic-bezier(0.25, 0.95, 0.6, 1);
 }
 
 /* Radix menus: the same motion, with the fade-out held until it ends. */
-.linear-menu[data-state="open"] {
+.buyerly-menu[data-state="open"] {
   animation:
-    linearMenuFadeIn 40ms linear,
-    linearMenuScaleIn 250ms cubic-bezier(0.25, 0.95, 0.6, 1);
+    buyerlyMenuFadeIn 40ms linear,
+    buyerlyMenuScaleIn 250ms cubic-bezier(0.25, 0.95, 0.6, 1);
 }
 
-.linear-menu[data-state="closed"],
-.linear-menu-exit {
+.buyerly-menu[data-state="closed"],
+.buyerly-menu-exit {
   transform: scale(0.98);
   pointer-events: none;
-  animation: linearMenuFadeOut 140ms cubic-bezier(0.2, 0.65, 0.2, 1) forwards;
+  animation: buyerlyMenuFadeOut 140ms cubic-bezier(0.2, 0.65, 0.2, 1) forwards;
 }
 
-@keyframes linearMenuFadeIn {
+@keyframes buyerlyMenuFadeIn {
   from { opacity: 0; }
 }
 
-@keyframes linearMenuScaleIn {
+@keyframes buyerlyMenuScaleIn {
   from { transform: scale(0.98); }
 }
 
-@keyframes linearMenuFadeOut {
+@keyframes buyerlyMenuFadeOut {
   to { opacity: 0; }
 }
 
@@ -3740,7 +3740,7 @@ input.settings-list-inline:focus {
 /* =========================================================
    EXACT LINEAR PILL TABS (1:1 UI & UX SPECIFICATION)
    ========================================================= */
-.linear-tab-capsule {
+.buyerly-tab-capsule {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -3765,7 +3765,7 @@ input.settings-list-inline:focus {
   transition: border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
 }
 
-.linear-tab-capsule::after {
+.buyerly-tab-capsule::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -3777,29 +3777,29 @@ input.settings-list-inline:focus {
 }
 
 /* As Linear's: hover and press land at once, only leaving fades over 0.15s. */
-.linear-tab-capsule[data-active='false']:active {
+.buyerly-tab-capsule[data-active='false']:active {
   transition-duration: 0s;
 }
 
 @media (any-hover: hover) and (any-pointer: fine) {
-  .linear-tab-capsule[data-active='false']:hover {
+  .buyerly-tab-capsule[data-active='false']:hover {
     transition-duration: 0s;
   }
 }
 
 /* Keyboard Navigation Focus Indicator (Linear #5e6ad2 focus ring) */
-.linear-tab-capsule:focus-visible {
+.buyerly-tab-capsule:focus-visible {
   outline: 1px solid var(--focus-ring-color, #5e6ad2);
   outline-offset: -1px;
 }
 
 /* Light Theme (html[data-theme='light']) */
-html[data-theme='light'] .linear-tab-capsule[data-active='false'] {
+html[data-theme='light'] .buyerly-tab-capsule[data-active='false'] {
   background-color: lch(99.997% 0.5 282 / 1);
   color: var(--text-tertiary);
 }
 
-html[data-theme='light'] .linear-tab-capsule[data-active='false']::after {
+html[data-theme='light'] .buyerly-tab-capsule[data-active='false']::after {
   box-shadow:
     0 0 0 0.5px lch(0% 0 0 / 0.09),
     0 3px 6px -2px rgba(0, 0, 0, 0.02),
@@ -3807,12 +3807,12 @@ html[data-theme='light'] .linear-tab-capsule[data-active='false']::after {
 }
 
 /* Pressed looks like hovered, as Linear's. */
-html[data-theme='light'] .linear-tab-capsule[data-active='false']:active {
+html[data-theme='light'] .buyerly-tab-capsule[data-active='false']:active {
   background-color: lch(94.854% 0.5 282 / 1); /* #f0f0f1 */
   color: var(--text-secondary);
 }
 
-html[data-theme='light'] .linear-tab-capsule[data-active='false']:active::after {
+html[data-theme='light'] .buyerly-tab-capsule[data-active='false']:active::after {
   box-shadow:
     0 0 0 0.5px lch(0% 0 0 / 0.15),
     0 3px 6px -2px rgba(0, 0, 0, 0.02),
@@ -3820,12 +3820,12 @@ html[data-theme='light'] .linear-tab-capsule[data-active='false']:active::after 
 }
 
 @media (any-hover: hover) and (any-pointer: fine) {
-  html[data-theme='light'] .linear-tab-capsule[data-active='false']:hover {
+  html[data-theme='light'] .buyerly-tab-capsule[data-active='false']:hover {
     background-color: lch(94.854% 0.5 282 / 1);
     color: var(--text-secondary);
   }
 
-  html[data-theme='light'] .linear-tab-capsule[data-active='false']:hover::after {
+  html[data-theme='light'] .buyerly-tab-capsule[data-active='false']:hover::after {
     box-shadow:
       0 0 0 0.5px lch(0% 0 0 / 0.15),
       0 3px 6px -2px rgba(0, 0, 0, 0.02),
@@ -3833,63 +3833,63 @@ html[data-theme='light'] .linear-tab-capsule[data-active='false']:active::after 
   }
 }
 
-html[data-theme='light'] .linear-tab-capsule[data-active='true'] {
+html[data-theme='light'] .buyerly-tab-capsule[data-active='true'] {
   background-color: var(--tab-active-bg); /* lch(93.483% 0.5 282 / 1) */
   color: var(--text-primary);
   cursor: default;
 }
 
-html[data-theme='light'] .linear-tab-capsule[data-active='true']::after {
+html[data-theme='light'] .buyerly-tab-capsule[data-active='true']::after {
   box-shadow: 0 0 0 0.5px lch(0% 0 0 / 0.09);
 }
 
 /* Dark Theme (:root:not([data-theme='light']) & html[data-theme='dark']) */
 /* Measured on Linear in dark (17.10): an inactive tab is filled 10.149 with a 0.5px
    0.137 ring and a shadow; hover and press fill 14.006, ring 0.229, label 90.451. */
-:root:not([data-theme='light']) .linear-tab-capsule[data-active='false'],
-html[data-theme='dark'] .linear-tab-capsule[data-active='false'] {
+:root:not([data-theme='light']) .buyerly-tab-capsule[data-active='false'],
+html[data-theme='dark'] .buyerly-tab-capsule[data-active='false'] {
   background-color: lch(10.149% 0.593 272 / 1);
   color: lch(61.803% 1.2 272 / 1);
 }
 
-:root:not([data-theme='light']) .linear-tab-capsule[data-active='false']::after,
-html[data-theme='dark'] .linear-tab-capsule[data-active='false']::after {
+:root:not([data-theme='light']) .buyerly-tab-capsule[data-active='false']::after,
+html[data-theme='dark'] .buyerly-tab-capsule[data-active='false']::after {
   box-shadow: 0 0 0 0.5px lch(100% 0 0 / 0.137), 0 0.5px 1px 1px lch(0% 0 0 / 0.3);
 }
 
-:root:not([data-theme='light']) .linear-tab-capsule[data-active='false']:active,
-html[data-theme='dark'] .linear-tab-capsule[data-active='false']:active {
+:root:not([data-theme='light']) .buyerly-tab-capsule[data-active='false']:active,
+html[data-theme='dark'] .buyerly-tab-capsule[data-active='false']:active {
   background-color: lch(14.006% 0.593 272 / 1);
   color: lch(90.451% 1.2 272 / 1);
 }
 
-:root:not([data-theme='light']) .linear-tab-capsule[data-active='false']:active::after,
-html[data-theme='dark'] .linear-tab-capsule[data-active='false']:active::after {
+:root:not([data-theme='light']) .buyerly-tab-capsule[data-active='false']:active::after,
+html[data-theme='dark'] .buyerly-tab-capsule[data-active='false']:active::after {
   box-shadow: 0 0 0 0.5px lch(100% 0 0 / 0.229), 0 0.5px 1px 1px lch(0% 0 0 / 0.3);
 }
 
 @media (any-hover: hover) and (any-pointer: fine) {
-  :root:not([data-theme='light']) .linear-tab-capsule[data-active='false']:hover,
-  html[data-theme='dark'] .linear-tab-capsule[data-active='false']:hover {
+  :root:not([data-theme='light']) .buyerly-tab-capsule[data-active='false']:hover,
+  html[data-theme='dark'] .buyerly-tab-capsule[data-active='false']:hover {
     background-color: lch(14.006% 0.593 272 / 1);
     color: lch(90.451% 1.2 272 / 1);
   }
 
-  :root:not([data-theme='light']) .linear-tab-capsule[data-active='false']:hover::after,
-  html[data-theme='dark'] .linear-tab-capsule[data-active='false']:hover::after {
+  :root:not([data-theme='light']) .buyerly-tab-capsule[data-active='false']:hover::after,
+  html[data-theme='dark'] .buyerly-tab-capsule[data-active='false']:hover::after {
     box-shadow: 0 0 0 0.5px lch(100% 0 0 / 0.229), 0 0.5px 1px 1px lch(0% 0 0 / 0.3);
   }
 }
 
-:root:not([data-theme='light']) .linear-tab-capsule[data-active='true'],
-html[data-theme='dark'] .linear-tab-capsule[data-active='true'] {
+:root:not([data-theme='light']) .buyerly-tab-capsule[data-active='true'],
+html[data-theme='dark'] .buyerly-tab-capsule[data-active='true'] {
   background-color: var(--tab-active-bg); /* lch(16.706% 0.979 272 / 1) */
   color: var(--text-primary);
   cursor: default;
 }
 
-:root:not([data-theme='light']) .linear-tab-capsule[data-active='true']::after,
-html[data-theme='dark'] .linear-tab-capsule[data-active='true']::after {
+:root:not([data-theme='light']) .buyerly-tab-capsule[data-active='true']::after,
+html[data-theme='dark'] .buyerly-tab-capsule[data-active='true']::after {
   box-shadow: 0 0 0 0.5px lch(100% 0 0 / 0.137);
 }
 /* Linear pill tabs draw their visible outline on an overlay rather than on the
@@ -4820,28 +4820,28 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
 /* Linear's round 28px icon buttons in a view header (Filter, Display options, details), measured
    17.10: 0.5px clear border, 14px icon in tertiary that turns primary on hover and while open.
    --header sits bare (Inbox, Search), --toolbar on white (a list's tab row). */
-.linear-header-button {
+.buyerly-header-button {
   position: relative; display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 28px; height: 28px;
   border: 0.5px solid transparent; border-radius: 9999px; color: var(--header-button-fg); cursor: default; outline: none;
   transition: border-color 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
 }
-.linear-header-button:hover, .linear-header-button[data-active='true'], .linear-header-button--active { color: var(--text-primary); }
+.buyerly-header-button:hover, .buyerly-header-button[data-active='true'], .buyerly-header-button--active { color: var(--text-primary); }
 /* As Linear's: hover and press land at once, only leaving fades over 0.15s. */
-.linear-header-button:hover, .linear-header-button:active { transition-duration: 0s; }
-.linear-header-button:focus-visible { outline: 1px solid #8b8df8; }
-.linear-header-button--header { background-color: transparent; }
-.linear-header-button--header:hover { background-color: var(--header-button-hover-bg); }
-.linear-header-button--header[data-active='true'], .linear-header-button--header.linear-header-button--active { background-color: var(--header-button-active-bg); }
-.linear-header-button--toolbar { background-color: var(--toolbar-button-bg); }
-.linear-header-button--toolbar:hover { background-color: var(--toolbar-button-hover-bg); }
-.linear-header-button--toolbar[data-active='true'], .linear-header-button--toolbar.linear-header-button--active { background-color: var(--toolbar-button-active-bg); }
+.buyerly-header-button:hover, .buyerly-header-button:active { transition-duration: 0s; }
+.buyerly-header-button:focus-visible { outline: 1px solid #8b8df8; }
+.buyerly-header-button--header { background-color: transparent; }
+.buyerly-header-button--header:hover { background-color: var(--header-button-hover-bg); }
+.buyerly-header-button--header[data-active='true'], .buyerly-header-button--header.buyerly-header-button--active { background-color: var(--header-button-active-bg); }
+.buyerly-header-button--toolbar { background-color: var(--toolbar-button-bg); }
+.buyerly-header-button--toolbar:hover { background-color: var(--toolbar-button-hover-bg); }
+.buyerly-header-button--toolbar[data-active='true'], .buyerly-header-button--toolbar.buyerly-header-button--active { background-color: var(--toolbar-button-active-bg); }
 /* Linear draws the toolbar buttons' ring on ::after, like an inactive tab's. */
-.linear-header-button--toolbar::after {
+.buyerly-header-button--toolbar::after {
   content: ""; position: absolute; inset: 0; border-radius: 9999px; pointer-events: none;
   box-shadow: var(--toolbar-button-ring);
 }
-.linear-header-button--toolbar:hover::after { box-shadow: var(--toolbar-button-ring-hover); }
-.linear-header-button--toolbar[data-active='true']::after, .linear-header-button--toolbar.linear-header-button--active::after { box-shadow: var(--toolbar-button-ring-active); }
+.buyerly-header-button--toolbar:hover::after { box-shadow: var(--toolbar-button-ring-hover); }
+.buyerly-header-button--toolbar[data-active='true']::after, .buyerly-header-button--toolbar.buyerly-header-button--active::after { box-shadow: var(--toolbar-button-ring-active); }
 
 /* Linear's quick-filter section (DetailsFacets): one card filling the pane, 8px from its right and bottom. */
 .details-facets {
@@ -4908,13 +4908,13 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
  * Adjacent selected rows read as one block, as in Linear: the inner corners are
  * squared and the row gap between them is filled with the selection colour.
  */
-.linear-data-row[data-selected='true']:has(+ .linear-data-row[data-selected='true']) {
+.buyerly-data-row[data-selected='true']:has(+ .buyerly-data-row[data-selected='true']) {
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
   box-shadow: 0 2px 0 0 var(--row-selected-bg);
 }
 
-.linear-data-row[data-selected='true'] + .linear-data-row[data-selected='true'] {
+.buyerly-data-row[data-selected='true'] + .buyerly-data-row[data-selected='true'] {
   border-top-left-radius: 0 !important;
   border-top-right-radius: 0 !important;
 }
@@ -4941,17 +4941,17 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
 }
 
 /* A pinned Name cell paints the row's own state so it never covers the selection. */
-.linear-data-row .linear-data-sticky { background-color: var(--bg-canvas); }
-.linear-data-row:hover .linear-data-sticky { background-color: var(--data-row-hover-bg); }
-.linear-data-row[data-selected='true'] .linear-data-sticky { background-color: var(--row-selected-bg); }
-.linear-data-row[data-selected='true']:hover .linear-data-sticky { background-color: var(--row-selected-hover-bg); }
+.buyerly-data-row .buyerly-data-sticky { background-color: var(--bg-canvas); }
+.buyerly-data-row:hover .buyerly-data-sticky { background-color: var(--data-row-hover-bg); }
+.buyerly-data-row[data-selected='true'] .buyerly-data-sticky { background-color: var(--row-selected-bg); }
+.buyerly-data-row[data-selected='true']:hover .buyerly-data-sticky { background-color: var(--row-selected-hover-bg); }
 
 /* Linear's checkbox dropdown in Display options (Include in priority inbox). */
-.linear-display-check-menu {
+.buyerly-display-check-menu {
   padding: 4px 0;
 }
 
-.linear-display-check-option {
+.buyerly-display-check-option {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -4966,8 +4966,8 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
   cursor: pointer;
 }
 
-.linear-display-check-option:hover,
-.linear-display-check-option:focus-visible {
+.buyerly-display-check-option:hover,
+.buyerly-display-check-option:focus-visible {
   background: var(--display-option-hover, var(--bg-canvas));
 }
 
@@ -4976,7 +4976,7 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
   content: attr(data-initial);
 }
 
-.linear-display-checkbox {
+.buyerly-display-checkbox {
   display: inline-flex;
   flex: none;
   align-items: center;
@@ -4988,23 +4988,23 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
   color: #fff;
 }
 
-.linear-display-checkbox[data-checked] {
+.buyerly-display-checkbox[data-checked] {
   border-color: var(--filter-checkbox-selected);
   background: var(--filter-checkbox-selected);
 }
 
-.linear-display-checkbox > svg {
+.buyerly-display-checkbox > svg {
   width: 12px;
   height: 12px;
 }
 
-.linear-display-check-divider {
+.buyerly-display-check-divider {
   height: 1px;
   margin: 4px 0;
   background: var(--display-menu-border, var(--color-border-secondary));
 }
 
-.linear-display-check-icon {
+.buyerly-display-check-icon {
   display: inline-flex;
   flex: none;
   align-items: center;
@@ -5014,12 +5014,12 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
 }
 
 /* With priority inbox on, Linear widens the selects to fit "Priority & Other". */
-.linear-display-options-popover[data-wide] .linear-display-select {
+.buyerly-display-options-popover[data-wide] .buyerly-display-select {
   width: 117px;
 }
 
 /* Linear's priority inbox tabs under the Inbox header: Priority N / Other. */
-.linear-inbox-tabs {
+.buyerly-inbox-tabs {
   display: flex;
   flex: none;
   align-items: center;
@@ -5027,7 +5027,7 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
   padding: 8px 8px 7px;
 }
 
-.linear-inbox-tab {
+.buyerly-inbox-tab {
   display: inline-flex;
   align-items: center;
   height: 28px;
@@ -5042,28 +5042,28 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
   white-space: nowrap;
 }
 
-.linear-inbox-tab[aria-current='page'] {
+.buyerly-inbox-tab[aria-current='page'] {
   color: var(--text-primary);
   background: var(--inbox-tab-active-bg);
 }
 
-.linear-inbox-tab-count {
+.buyerly-inbox-tab-count {
   margin-left: 6px;
   color: var(--inbox-tab-fg);
   font-weight: 450;
 }
 
 /* Linear's Focus group header: a 28px band level with the rows, caret after the name. */
-.linear-inbox-group {
+.buyerly-inbox-group {
   padding: 0 10px;
 }
 
-.linear-inbox-group + .linear-inbox-group,
-[data-inbox-event-id] + .linear-inbox-group {
+.buyerly-inbox-group + .buyerly-inbox-group,
+[data-inbox-event-id] + .buyerly-inbox-group {
   margin-top: 2px;
 }
 
-.linear-inbox-group-header {
+.buyerly-inbox-group-header {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -5079,19 +5079,19 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
   cursor: default;
 }
 
-.linear-inbox-group-header svg {
+.buyerly-inbox-group-header svg {
   margin-left: -5px;
   color: var(--inbox-group-header-icon);
   transition: transform 150ms ease;
 }
 
-.linear-inbox-group-header[aria-expanded='true'] svg {
+.buyerly-inbox-group-header[aria-expanded='true'] svg {
   transform: rotate(90deg);
 }
 
 /* Small-screen and touch overrides come last so they win over the base rules above. */
 @media (max-width: 880px) {
-  .linear-floating-canvas,
+  .buyerly-floating-canvas,
   .preferences-main-canvas {
     min-width: 0;
     margin: 0;
@@ -5103,7 +5103,7 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
 
 /* Linear's pure-touch item height: 36px instead of 28px. */
 @media (hover: none) and (pointer: coarse) {
-  .linear-sidebar-nav-item,
+  .buyerly-sidebar-nav-item,
   .preferences-nav-item {
     height: 36px;
   }
@@ -5577,21 +5577,21 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
 }
 
 /* Popovers anchored to a header button never leave a narrow window. */
-.linear-display-options-popover {
+.buyerly-display-options-popover {
   max-width: calc(100vw - 16px);
 }
 
 /* Linear's pure-touch headers (measured at 375px): icon buttons grow from 28px
    to 32px square, view tabs to 32px tall. */
 @media (hover: none) and (pointer: coarse) {
-  .linear-header-target {
+  .buyerly-header-target {
     width: 32px;
     min-width: 32px;
     height: 32px;
   }
 
-  .linear-tab-capsule,
-  .linear-inbox-tab {
+  .buyerly-tab-capsule,
+  .buyerly-inbox-tab {
     height: 32px;
   }
 }

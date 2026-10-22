@@ -1,9 +1,9 @@
 import React from 'react';
-import { LinearCheckbox } from '@/ui/LinearCheckbox';
-import { LinearToggle } from '@/ui/LinearToggle';
-import { LinearDataMetricCell } from '@/ui/LinearDataList';
+import { BuyerlyCheckbox } from '@/ui/BuyerlyCheckbox';
+import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
+import { BuyerlyDataMetricCell } from '@/ui/BuyerlyDataList';
 import type { DeliveryControl } from '@/lib/delivery';
-import { LinearProjectIcon } from '@/icons/LinearIcons';
+import { BuyerlyProjectIcon } from '@/icons/BuyerlyIcons';
 import { findMetric, type AdsManagerMetrics } from './adsManagerMetrics';
 import { formatMetric } from './liveCampaigns';
 
@@ -37,9 +37,9 @@ export const EntityRowControls: React.FC<EntityRowControlsProps> = ({
     <>
       {/* Keep the selection slot so read-only rows retain the established Name alignment. */}
       {!selectable ? (
-        <LinearCheckbox checked={false} hidden />
+        <BuyerlyCheckbox checked={false} hidden />
       ) : (
-        <LinearCheckbox checked={selected} onChange={onToggleSelected} />
+        <BuyerlyCheckbox checked={selected} onChange={onToggleSelected} />
       )}
       {showStatus && (
         status === 'unknown' ? (
@@ -51,7 +51,7 @@ export const EntityRowControls: React.FC<EntityRowControlsProps> = ({
             —
           </span>
         ) : (
-          <LinearToggle
+          <BuyerlyToggle
             checked={delivery ? delivery.status === 'active' : status === 'active'}
             busy={delivery?.busy}
             onChange={delivery ? delivery.onChange : undefined}
@@ -88,7 +88,7 @@ const EntityTextCell: React.FC<{ text: string; muted?: boolean }> = ({ text, mut
 const EntityAccountCell: React.FC<{ name: string }> = ({ name }) => (
   <div className="flex min-w-0 items-center gap-1.5 text-[12px] font-[450] text-[var(--text-secondary)]" title={name || undefined}>
     <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center text-[var(--text-tertiary)]" aria-hidden="true">
-      <LinearProjectIcon size={12} />
+      <BuyerlyProjectIcon size={12} />
     </span>
     <span className="min-w-0 truncate whitespace-nowrap">{name || '—'}</span>
   </div>
@@ -105,5 +105,5 @@ export const EntityPropertyCell: React.FC<{ columnId: string; row: EntityPropert
   if (columnId === 'id') return <EntityTextCell text={row.identifier} muted />;
   const metric = findMetric(columnId);
   if (!metric) return <div />;
-  return <LinearDataMetricCell value={formatMetric(metric, row.metrics?.[metric.id] ?? null, row.currency ?? '')} />;
+  return <BuyerlyDataMetricCell value={formatMetric(metric, row.metrics?.[metric.id] ?? null, row.currency ?? '')} />;
 };

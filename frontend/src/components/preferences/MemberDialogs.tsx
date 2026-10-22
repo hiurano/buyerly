@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { ApiError, apiRequest } from '@/lib/api';
 import type { Workspace } from '@/lib/types';
-import { LinearCloseIcon } from '@/icons/LinearIcons';
+import { BuyerlyCloseIcon } from '@/icons/BuyerlyIcons';
 import { Button } from '@/ui/Button';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { toast } from '@/ui/toast';
@@ -81,7 +81,7 @@ export const ChoiceDialog: React.FC<ChoiceDialogProps> = ({ open, title, descrip
                 disabled={busy}
                 className="-mr-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] text-[var(--text-tertiary)] outline-none hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
               >
-                <LinearCloseIcon size={12} />
+                <BuyerlyCloseIcon size={12} />
               </Dialog.Close>
             )}
           </div>

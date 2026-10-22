@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { RuleItem, useAppStore } from '@/store/useAppStore';
 import { RuleRow } from './RuleRow';
 import { DataState } from '@/ui/DataState';
-import { LinearDataListGroup, LinearDataTable } from '@/ui/LinearDataList';
+import { BuyerlyDataListGroup, BuyerlyDataTable } from '@/ui/BuyerlyDataList';
 import { arrangeGroups, sortByColumn } from '@/ui/listView';
 import { getRulesColumns } from './tableColumns';
 import {
@@ -47,7 +47,7 @@ export const RulesListView: React.FC<RulesListViewProps> = ({ filteredRules }) =
       return filteredRules.map((rule) => <RuleRow key={rule.id} rule={rule} />);
     }
     return arrangeGroups(ruleGroupsFor(grouping, filteredRules, ruleLabels, accounts), view).map((group) => (
-      <LinearDataListGroup
+      <BuyerlyDataListGroup
         key={group.id}
         title={group.label}
         count={group.rows.length}
@@ -59,18 +59,18 @@ export const RulesListView: React.FC<RulesListViewProps> = ({ filteredRules }) =
         onAction={() => createIn(group)}
       >
         {group.rows.map((rule) => <RuleRow key={`${group.id}:${rule.id}`} rule={rule} />)}
-      </LinearDataListGroup>
+      </BuyerlyDataListGroup>
     ));
   };
 
   return (
-    <LinearDataTable
+    <BuyerlyDataTable
       columns={columns}
       sortKey={SORTABLE.has(view.ordering) ? view.ordering : undefined}
       sortDirection={view.direction}
       onSort={(columnId) => update(sortByColumn(view, columnId, naturalRuleDirection(columnId)))}
     >
       {renderRows()}
-    </LinearDataTable>
+    </BuyerlyDataTable>
   );
 };

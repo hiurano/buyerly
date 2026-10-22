@@ -126,7 +126,7 @@ class TestReactFrontendContract(unittest.TestCase):
             ROOT / "frontend" / "src" / "components" / "rules" / "RulesListView.tsx"
         ).read_text()
         cls.linear_data_list = (
-            ROOT / "frontend" / "src" / "ui" / "LinearDataList.tsx"
+            ROOT / "frontend" / "src" / "ui" / "BuyerlyDataList.tsx"
         ).read_text()
         cls.campaigns_row_sources = "\n".join(
             (ROOT / "frontend" / "src" / "components" / "campaigns" / name).read_text()
@@ -268,10 +268,10 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertIn(token, self.tokens)
 
         for component in (
-            "LinearTabs",
-            "LinearDataList",
-            "LinearCheckbox",
-            "LinearToggle",
+            "BuyerlyTabs",
+            "BuyerlyDataList",
+            "BuyerlyCheckbox",
+            "BuyerlyToggle",
             "DropdownMenu",
             "ContextMenu",
             "Tooltip",
@@ -311,8 +311,8 @@ class TestReactFrontendContract(unittest.TestCase):
             "Couldn't load campaigns",
             "Zero-activity entities are included",
             "setCampaignFilterTab",
-            "LinearFilterButton",
-            "LinearFilterMenu",
+            "BuyerlyFilterButton",
+            "BuyerlyFilterMenu",
             "ActiveFilterFormula",
             "DisplayOptionsPopover",
             "readOnly",
@@ -372,7 +372,7 @@ class TestReactFrontendContract(unittest.TestCase):
         # Delivery is a real write, so the toggle is driven by the control the
         # view hands down. All three levels share one set of leading controls,
         # and a row that cannot be selected keeps the checkbox slot for alignment.
-        self.assertIn("<LinearCheckbox checked={false} hidden />", self.entity_row_cells)
+        self.assertIn("<BuyerlyCheckbox checked={false} hidden />", self.entity_row_cells)
         self.assertIn("onChange={delivery ? delivery.onChange : undefined}", self.entity_row_cells)
         self.assertIn("disabled={!delivery}", self.entity_row_cells)
         for row in (self.campaign_row, self.adset_row, self.ad_row):
@@ -471,7 +471,7 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertNotIn(unsupported, self.rule_window)
 
     def test_rules_screen_has_one_filter_implementation(self):
-        # The live Rules screen filters through LinearFilterMenu and
+        # The live Rules screen filters through BuyerlyFilterMenu and
         # rulesFilterClauses. The earlier popover/bar pair was never wired in and
         # carried states the API does not have; nothing should bring it back.
         rules_dir = ROOT / "frontend" / "src" / "components" / "rules"
@@ -509,15 +509,15 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("node scripts/check-list-view.cjs", workflow)
 
     def test_every_switch_is_the_one_linear_toggle(self):
-        # One switch for the whole app (#263): LinearToggle in two sizes, coloured
+        # One switch for the whole app (#263): BuyerlyToggle in two sizes, coloured
         # by tokens. A hand-rolled role="switch" elsewhere would drift again.
         src = ROOT / "frontend" / "src"
-        toggle = src / "ui" / "LinearToggle.tsx"
+        toggle = src / "ui" / "BuyerlyToggle.tsx"
         for path in sorted(src.rglob("*.tsx")):
             if path == toggle:
                 continue
             self.assertNotIn('role="switch"', path.read_text(), path.relative_to(ROOT))
-        self.assertNotIn("linear-display-switch", self.styles)
+        self.assertNotIn("buyerly-display-switch", self.styles)
         # One size everywhere, as in Linear's Display options.
         self.assertNotIn("data-size", toggle.read_text())
         self.assertIn("--toggle-width: 22px;", self.styles)
@@ -672,32 +672,32 @@ class TestReactFrontendContract(unittest.TestCase):
         # Selected rows use the Linear selection colours from tokens, not a literal.
         self.assertIn("--row-selected-hover-bg", self.tokens)
         self.assertIn("--checkbox-checked-bg", self.tokens)
-        self.assertNotIn("#eab308", (ui / "LinearCheckbox.tsx").read_text())
+        self.assertNotIn("#eab308", (ui / "BuyerlyCheckbox.tsx").read_text())
 
     def test_entity_tables_share_one_table_and_cell_primitive(self):
         """Ads Manager and Rules render one table, not two."""
         for primitive in (
-            "export const LinearDataTable",
-            "export const LinearDataListGroup",
-            "export const LinearDataPrimaryCell",
-            "export const LinearDataMetricCell",
+            "export const BuyerlyDataTable",
+            "export const BuyerlyDataListGroup",
+            "export const BuyerlyDataPrimaryCell",
+            "export const BuyerlyDataMetricCell",
             "export const getLinearDataListMinWidth",
         ):
             self.assertIn(primitive, self.linear_data_list)
 
         for view in (self.campaigns_view, self.rules_list_view):
-            self.assertIn("<LinearDataTable", view)
-            self.assertNotIn("<LinearDataListColumnHeader", view)
+            self.assertIn("<BuyerlyDataTable", view)
+            self.assertNotIn("<BuyerlyDataListColumnHeader", view)
         for row in (self.campaign_row, self.adset_row, self.ad_row, self.rule_row):
-            self.assertIn("<LinearDataPrimaryCell", row)
-        self.assertIn("<LinearDataMetricCell", self.campaigns_row_sources)
+            self.assertIn("<BuyerlyDataPrimaryCell", row)
+        self.assertIn("<BuyerlyDataMetricCell", self.campaigns_row_sources)
 
         # The Name column and its leading controls line up the same everywhere.
         rules_columns = (
             ROOT / "frontend" / "src" / "components" / "rules" / "tableColumns.ts"
         ).read_text()
         for source in (self.ads_manager_columns, rules_columns):
-            self.assertIn("linearDataNameColumn(", source)
+            self.assertIn("buyerlyDataNameColumn(", source)
 
         # Minimum table width has one formula instead of a copy per screen.
         self.assertNotIn("getAdsManagerTableMinWidth", self.ads_manager_columns)
@@ -776,7 +776,7 @@ class TestReactFrontendContract(unittest.TestCase):
         ).read_text()
         self.assertIn("const title = 'Add ad accounts';", dialog)
         # Ad accounts are picked with Linear's row checkbox, not the browser's.
-        self.assertIn("<LinearCheckbox checked={checked}", dialog)
+        self.assertIn("<BuyerlyCheckbox checked={checked}", dialog)
         self.assertNotIn('type="checkbox"', dialog)
 
     def test_rule_groups_became_labels_like_linear(self):
@@ -900,7 +900,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("/api/inbox/facets", self.inbox_lib)
 
         # Linear's Inbox header has no search, status tabs or pages.
-        for removed in ("<LinearTabs", "Search workspace events", "Workspace activity", "Previous", "total_pages"):
+        for removed in ("<BuyerlyTabs", "Search workspace events", "Workspace activity", "Previous", "total_pages"):
             self.assertNotIn(removed, self.inbox_view)
         self.assertNotIn("before_state", self.inbox_view)
         self.assertNotIn("after_state", self.inbox_view)
@@ -1012,9 +1012,9 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?mobile-screens( .*)?$")
         for view in (self.campaigns_view, self.rules_view):
             self.assertIn("collapseOverflow", view)
-        tabs = (ROOT / "frontend" / "src" / "ui" / "LinearTabs.tsx").read_text()
+        tabs = (ROOT / "frontend" / "src" / "ui" / "BuyerlyTabs.tsx").read_text()
         self.assertIn("more`}", tabs)
-        self.assertIn(".linear-header-target", self.styles)
+        self.assertIn(".buyerly-header-target", self.styles)
         self.assertNotIn("Mobile is partial", self.ui_contract)
         self.assertNotIn("no screen is described as mobile-ready", self.design_system)
 
@@ -1028,7 +1028,7 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertIn(f'<DetailsPaneLayout pane="{pane_id}"', view)
             self.assertIn(f'<DetailsPaneToggle pane="{pane_id}"', view)
             self.assertIn("<DetailsFacets", view)
-        for gone in ("LinearFacetSidebar.tsx", "DetailsSheet.tsx"):
+        for gone in ("BuyerlyFacetSidebar.tsx", "DetailsSheet.tsx"):
             self.assertFalse((ui / gone).exists(), gone)
         self.assertFalse((ROOT / "frontend" / "src" / "components" / "rules" / "RuleRightSidebar.tsx").exists())
         # Linear's spring and widths; both panes start closed.
@@ -1089,7 +1089,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("/api/audit-events?page=1&page_size=5&account_id=", page)
         # Rules on the account show their own status; no switch that would pause them everywhere.
         self.assertNotIn("toggleRuleStatus", page)
-        self.assertIn("<LinearStatusCircleIcon status={on ? 'active' : 'paused'}", page)
+        self.assertIn("<BuyerlyStatusCircleIcon status={on ? 'active' : 'paused'}", page)
         # Open campaigns filters Campaigns by the account, as a Linear project opens its issues.
         self.assertIn("ads-manager/campaigns?account=", (ROOT / "frontend" / "src" / "components" / "accounts" / "accountsModel.ts").read_text())
         self.assertIn("const clause = [{ fieldId: 'account', operator: 'is', values: [accountId] }];", self.campaigns_view)

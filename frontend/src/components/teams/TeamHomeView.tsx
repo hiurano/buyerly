@@ -18,22 +18,22 @@ import { Initials, RoleStatus, shortDate } from '@/components/preferences/Member
 import { memberName, type MemberItem } from '@/components/preferences/MemberDialogs';
 import { TeamIcon } from '@/components/preferences/TeamIcon';
 import {
-  LinearBoltIcon,
-  LinearDocumentIcon,
-  LinearDotsIcon,
-  LinearLinkIcon,
-  LinearIssuesIcon,
-  LinearPlusIcon,
-  LinearProjectIcon,
-} from '@/icons/LinearIcons';
+  BuyerlyBoltIcon,
+  BuyerlyDocumentIcon,
+  BuyerlyDotsIcon,
+  BuyerlyLinkIcon,
+  BuyerlyIssuesIcon,
+  BuyerlyPlusIcon,
+  BuyerlyProjectIcon,
+} from '@/icons/BuyerlyIcons';
 import { DataState } from '@/ui/DataState';
 import { Button } from '@/ui/Button';
 import { DocumentsIllustration } from './DocumentsIllustration';
-import { LinearTabs } from '@/ui/LinearTabs';
+import { BuyerlyTabs } from '@/ui/BuyerlyTabs';
 import { Tooltip } from '@/ui/Tooltip';
 import { toast } from '@/ui/toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
-import { LinearDataListRow, LinearDataListToolbar, LinearDataTable, type LinearDataListColumn } from '@/ui/LinearDataList';
+import { BuyerlyDataListRow, BuyerlyDataListToolbar, BuyerlyDataTable, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 
 const TABS: { id: TeamHomePage; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -191,15 +191,15 @@ export const TeamHomeView: React.FC<TeamHomeViewProps> = ({ page, documentId, na
           </div>
           {team && (
             <Tooltip content="Copy team URL" side="bottom" align="end">
-              <button type="button" aria-label="Copy team URL" onClick={copyLink} className="linear-icon-btn linear-header-target">
-                <LinearLinkIcon size={14} />
+              <button type="button" aria-label="Copy team URL" onClick={copyLink} className="buyerly-icon-btn buyerly-header-target">
+                <BuyerlyLinkIcon size={14} />
               </button>
             </Tooltip>
           )}
         </div>
         {!documentId && (
-          <LinearDataListToolbar className="gap-2">
-            <LinearTabs
+          <BuyerlyDataListToolbar className="gap-2">
+            <BuyerlyTabs
               aria-label="Team pages"
               tabs={TABS}
               activeTabId={page}
@@ -214,20 +214,20 @@ export const TeamHomeView: React.FC<TeamHomeViewProps> = ({ page, documentId, na
                     useAppStore.getState().openTeamSettings(`${team.key}/members`);
                     useAppStore.getState().setActiveTab('preferences');
                   }}
-                  className="linear-header-button linear-header-button--toolbar linear-header-target"
+                  className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target"
                 >
-                  <LinearPlusIcon size={14} />
+                  <BuyerlyPlusIcon size={14} />
                 </button>
               </Tooltip>
             )}
             {page === 'documents' && canWrite && team && (
               <Tooltip content="Create document" side="bottom" align="end">
-                <button type="button" aria-label="Create document" onClick={() => void createDocument()} className="linear-header-button linear-header-button--toolbar linear-header-target">
-                  <LinearPlusIcon size={14} />
+                <button type="button" aria-label="Create document" onClick={() => void createDocument()} className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target">
+                  <BuyerlyPlusIcon size={14} />
                 </button>
               </Tooltip>
             )}
-          </LinearDataListToolbar>
+          </BuyerlyDataListToolbar>
         )}
       </header>
       <div className="flex min-h-0 min-w-0 flex-1">{renderBody()}</div>
@@ -270,9 +270,9 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
         setActiveTab('preferences');
       },
     }] : []),
-    { id: 'campaigns', label: 'Campaigns', icon: <LinearIssuesIcon size={16} />, run: () => goTo('campaigns') },
-    { id: 'accounts', label: 'Ad accounts', icon: <LinearProjectIcon size={16} />, run: () => goTo('accounts') },
-    { id: 'rules', label: 'Rules', icon: <LinearBoltIcon size={16} />, run: () => goTo('rules') },
+    { id: 'campaigns', label: 'Campaigns', icon: <BuyerlyIssuesIcon size={16} />, run: () => goTo('campaigns') },
+    { id: 'accounts', label: 'Ad accounts', icon: <BuyerlyProjectIcon size={16} />, run: () => goTo('accounts') },
+    { id: 'rules', label: 'Rules', icon: <BuyerlyBoltIcon size={16} />, run: () => goTo('rules') },
   ];
 
   return (
@@ -289,8 +289,8 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
             <h3 className="team-overview__section-title">Team resources</h3>
             {canWrite && (
               <Tooltip content="Add document" side="bottom" align="end">
-                <button type="button" aria-label="Add document" onClick={onCreateDocument} className="linear-header-button linear-header-button--toolbar linear-header-target">
-                  <LinearPlusIcon size={14} />
+                <button type="button" aria-label="Add document" onClick={onCreateDocument} className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target">
+                  <BuyerlyPlusIcon size={14} />
                 </button>
               </Tooltip>
             )}
@@ -301,7 +301,7 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
             <div className="team-overview__resource-list">
               {documents.map((document) => (
                 <button key={document.id} type="button" className="team-resource" onClick={() => onOpenTab('documents', document.id)}>
-                  <LinearDocumentIcon size={16} className="shrink-0 text-[var(--text-tertiary)]" />
+                  <BuyerlyDocumentIcon size={16} className="shrink-0 text-[var(--text-tertiary)]" />
                   <span className="truncate">{documentTitle(document)}</span>
                 </button>
               ))}
@@ -392,7 +392,7 @@ const GoToChevron: React.FC = () => (
   </svg>
 );
 
-const DOCUMENT_COLUMNS: LinearDataListColumn[] = [
+const DOCUMENT_COLUMNS: BuyerlyDataListColumn[] = [
   { id: 'name', label: 'Name', width: 'minmax(220px, 1fr)' },
   { id: 'author', label: 'Created by', width: '160px' },
   { id: 'updated', label: 'Updated', width: '100px' },
@@ -403,11 +403,11 @@ const TeamDocumentsList: React.FC<{ documents: TeamDocument[]; members: MemberIt
   members,
   onOpen,
 }) => (
-  <LinearDataTable columns={DOCUMENT_COLUMNS}>
+  <BuyerlyDataTable columns={DOCUMENT_COLUMNS}>
     {documents.map((document) => {
       const author = members.find((member) => member.user_id === document.created_by_user_id);
       return (
-        <LinearDataListRow
+        <BuyerlyDataListRow
           key={document.id}
           layout="grid"
           columns={DOCUMENT_COLUMNS}
@@ -419,7 +419,7 @@ const TeamDocumentsList: React.FC<{ documents: TeamDocument[]; members: MemberIt
           }}
         >
           <div className="flex min-w-0 items-center gap-[10px]">
-            <LinearDocumentIcon size={16} className="shrink-0 text-[var(--text-tertiary)]" />
+            <BuyerlyDocumentIcon size={16} className="shrink-0 text-[var(--text-tertiary)]" />
             <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">{documentTitle(document)}</span>
           </div>
           <div className="flex min-w-0 items-center gap-2">
@@ -427,10 +427,10 @@ const TeamDocumentsList: React.FC<{ documents: TeamDocument[]; members: MemberIt
             <span className="truncate text-[12px] font-[450] text-[var(--text-tertiary)]">{author ? memberName(author) : ''}</span>
           </div>
           <span className="text-[12px] font-[450] text-[var(--text-tertiary)]">{shortDate(document.updated_at)}</span>
-        </LinearDataListRow>
+        </BuyerlyDataListRow>
       );
     })}
-  </LinearDataTable>
+  </BuyerlyDataTable>
 );
 
 interface TeamDocumentEditorProps {
@@ -524,8 +524,8 @@ const TeamDocumentEditor: React.FC<TeamDocumentEditorProps> = ({ team, document,
           {!readOnly && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button type="button" aria-label="Document actions" className="linear-header-button linear-header-button--toolbar linear-header-target">
-                  <LinearDotsIcon size={14} />
+                <button type="button" aria-label="Document actions" className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target">
+                  <BuyerlyDotsIcon size={14} />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={4}>
@@ -571,7 +571,7 @@ const TeamDocumentEditor: React.FC<TeamDocumentEditorProps> = ({ team, document,
   );
 };
 
-const MEMBER_COLUMNS: LinearDataListColumn[] = [
+const MEMBER_COLUMNS: BuyerlyDataListColumn[] = [
   { id: 'name', label: 'Name', width: 'minmax(220px, 1fr)' },
   { id: 'email', label: 'Email', width: 'minmax(160px, 240px)' },
   { id: 'role', label: 'Role', width: '120px' },
@@ -600,9 +600,9 @@ const TeamMembersTab: React.FC<{ team: TeamItem; members: MemberItem[] | null }>
     );
   }
   return (
-    <LinearDataTable columns={MEMBER_COLUMNS}>
+    <BuyerlyDataTable columns={MEMBER_COLUMNS}>
       {people.map((member) => (
-        <LinearDataListRow key={member.id} layout="grid" columns={MEMBER_COLUMNS} height={50}>
+        <BuyerlyDataListRow key={member.id} layout="grid" columns={MEMBER_COLUMNS} height={50}>
           <div className="flex min-w-0 items-center gap-[10px]">
             <Initials label={memberName(member)} avatarUrl={member.avatar_url} size={24} />
             <div className="flex min-w-0 flex-col">
@@ -612,8 +612,8 @@ const TeamMembersTab: React.FC<{ team: TeamItem; members: MemberItem[] | null }>
           </div>
           <span className="truncate text-[13px] font-[450] text-[var(--text-secondary)]">{member.email ?? ''}</span>
           <span className="text-[12px] font-[450] text-[var(--text-tertiary)]"><RoleStatus role={member.role} /></span>
-        </LinearDataListRow>
+        </BuyerlyDataListRow>
       ))}
-    </LinearDataTable>
+    </BuyerlyDataTable>
   );
 };

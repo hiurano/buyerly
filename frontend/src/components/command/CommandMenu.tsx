@@ -23,13 +23,13 @@ import { OpenPaletteIcon, OPEN_PALETTE_LABELS, openOpenPalette } from './OpenPal
 import { SETTINGS_PAGE_KEYWORDS, settingsGroupsFor } from '@/lib/settingsPages';
 import { SettingsPageIcon } from '@/components/preferences/SettingsPageIcon';
 import { isSmallScreen } from '@/lib/useMediaQuery';
-import { LinearLabelIcon, LinearPlusIcon, LinearSearchIcon, LinearSidebarLeftToggleIcon } from '@/icons/LinearIcons';
+import { BuyerlyLabelIcon, BuyerlyPlusIcon, BuyerlySearchIcon, BuyerlySidebarLeftToggleIcon } from '@/icons/BuyerlyIcons';
 import { COMMAND_MENU_CLASSES, CommandMenuFooterKeys } from '@/ui/SelectionCommandMenu';
 import { usePageGroup, type PaletteCommand, type PaletteGroup } from './pageCommands';
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, another palette. */
 const OPEN_LAYER_SELECTOR = [
-  '[role="dialog"]:not(.linear-menu-exit)',
+  '[role="dialog"]:not(.buyerly-menu-exit)',
   '[role="alertdialog"]',
   '[role="menu"]:not([data-state="closed"])',
   '[cmdk-root]',
@@ -222,7 +222,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
         id: 'create-rule',
         label: 'Create rule…',
         keywords: ['new rule', 'automation'],
-        icon: <LinearPlusIcon size={14} />,
+        icon: <BuyerlyPlusIcon size={14} />,
         // C creates a rule on the Rules page only, so the key shows there.
         shortcut: activeTab === 'rules' ? 'C' : undefined,
         run: () => {
@@ -234,7 +234,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
         id: 'create-rule-label',
         label: 'Create new label…',
         keywords: ['new label', 'tag', 'rule labels'],
-        icon: <LinearLabelIcon size={14} />,
+        icon: <BuyerlyLabelIcon size={14} />,
         run: () => {
           useAppStore.getState().requestNewRuleLabel();
           go(pathForTab(slug, 'preferences', 'campaigns', 'rule-labels'));
@@ -244,7 +244,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
     {
       heading: 'Filter',
       commands: [
-        { id: 'search', label: 'Search workspace…', keywords: ['find', 'campaigns', 'rules'], icon: <LinearSearchIcon size={14} />, run: openSearchPage },
+        { id: 'search', label: 'Search workspace…', keywords: ['find', 'campaigns', 'rules'], icon: <BuyerlySearchIcon size={14} />, run: openSearchPage },
       ],
     },
     {
@@ -276,7 +276,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
           : [{
             id: 'toggle-sidebar',
             label: isSidebarCollapsed ? 'Expand navigation sidebar' : 'Collapse navigation sidebar',
-            icon: <LinearSidebarLeftToggleIcon size={14} isOpen={!isSidebarCollapsed} />,
+            icon: <BuyerlySidebarLeftToggleIcon size={14} isOpen={!isSidebarCollapsed} />,
             shortcut: '[',
             run: toggleSidebarCollapsed,
           }]),
@@ -364,7 +364,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
               onSelect={() => choose(advancedSearch)}
               className={COMMAND_MENU_CLASSES.item}
             >
-              <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true"><LinearSearchIcon size={14} /></span>
+              <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true"><BuyerlySearchIcon size={14} /></span>
               <span className="flex min-w-0 flex-1 items-baseline gap-2">
                 <span className="shrink-0">{results.length > 0 ? 'Search entire workspace' : 'No results found'}</span>
                 <span className="min-w-0 truncate text-[var(--text-muted)]">{results.length > 0 ? text : 'Go to advanced search'}</span>

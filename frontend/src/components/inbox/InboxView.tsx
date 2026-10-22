@@ -31,7 +31,7 @@ import {
   type InboxQuery,
   type InboxTab,
 } from '@/lib/inbox';
-import { LinearFilterButton, LinearFilterMenu, type FilterMenuMode } from '@/components/filters/LinearFilter';
+import { BuyerlyFilterButton, BuyerlyFilterMenu, type FilterMenuMode } from '@/components/filters/BuyerlyFilter';
 import { InboxFilterBar, InboxFilterFooter } from './InboxFilterBar';
 import { fromMenuClauses, inboxFilterFields, toMenuClause } from './inboxFilterFields';
 import { InboxGroupHeader, InboxItemRow } from './InboxItemRow';
@@ -41,13 +41,13 @@ import { SNOOZE_SEARCH_HINT, SnoozePalette } from './SnoozePalette';
 import { usePageCommands } from '@/components/command/pageCommands';
 import {
   BuyerlyLogoAvatar,
-  LinearClockOutlineIcon,
-  LinearDotsIcon,
-  LinearEmptyInboxIllustration,
-  LinearInboxDeleteIcon,
-  LinearInboxUnreadIcon,
-  LinearSlidersIcon,
-} from '@/icons/LinearIcons';
+  BuyerlyClockOutlineIcon,
+  BuyerlyDotsIcon,
+  BuyerlyEmptyInboxIllustration,
+  BuyerlyInboxDeleteIcon,
+  BuyerlyInboxUnreadIcon,
+  BuyerlySlidersIcon,
+} from '@/icons/BuyerlyIcons';
 import { Button } from '@/ui/Button';
 import { DataState } from '@/ui/DataState';
 import {
@@ -116,12 +116,12 @@ const MenuKey: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 const OPEN_LAYER_SELECTOR = [
   '[role="menu"]:not([data-state="closed"])',
-  '[role="dialog"]:not(.linear-menu-exit)',
-  '.linear-display-select-menu',
+  '[role="dialog"]:not(.buyerly-menu-exit)',
+  '.buyerly-display-select-menu',
 ].join(', ');
 
 const headerButtonClass = (active = false) =>
-  `linear-header-button linear-header-button--header linear-header-target${active ? ' linear-header-button--active' : ''}`;
+  `buyerly-header-button buyerly-header-button--header buyerly-header-target${active ? ' buyerly-header-button--active' : ''}`;
 
 export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onNavigate, onOpenRecord }) => {
   const {
@@ -411,8 +411,8 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
   usePageCommands({
     heading: 'Notifications',
     commands: [
-      { id: 'delete-all-notifications', label: 'Delete all notifications', icon: <LinearInboxDeleteIcon size={16} />, run: () => void deleteAll(false) },
-      { id: 'delete-read-notifications', label: 'Delete all read notifications', icon: <LinearInboxDeleteIcon size={16} />, shortcut: 'Shift ⌫', run: () => void deleteAll(true) },
+      { id: 'delete-all-notifications', label: 'Delete all notifications', icon: <BuyerlyInboxDeleteIcon size={16} />, run: () => void deleteAll(false) },
+      { id: 'delete-read-notifications', label: 'Delete all read notifications', icon: <BuyerlyInboxDeleteIcon size={16} />, shortcut: 'Shift ⌫', run: () => void deleteAll(true) },
     ],
   });
 
@@ -607,19 +607,19 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button type="button" aria-label="Notification actions" className={headerButtonClass()}>
-                <LinearDotsIcon size={14} />
+                <BuyerlyDotsIcon size={14} />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent style={{ width: '184px' }}>
               <DropdownMenuItem onSelect={() => void deleteAll(false)}>
                 <span className="flex items-center gap-2.5">
-                  <LinearInboxDeleteIcon size={16} />
+                  <BuyerlyInboxDeleteIcon size={16} />
                   Delete all
                 </span>
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => void deleteAll(true)}>
                 <span className="flex items-center gap-2.5">
-                  <LinearInboxDeleteIcon size={16} />
+                  <BuyerlyInboxDeleteIcon size={16} />
                   Delete all read
                 </span>
                 <MenuKey>⇧ ⌫</MenuKey>
@@ -633,7 +633,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                 }}
               >
                 <span className="flex items-center gap-2.5">
-                  <LinearSlidersIcon size={16} />
+                  <BuyerlySlidersIcon size={16} />
                   Go to settings
                 </span>
               </DropdownMenuItem>
@@ -648,11 +648,11 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
               onClick={() => setInboxDisplay({ unreadOnly: !inboxDisplay.unreadOnly })}
               className={headerButtonClass(inboxDisplay.unreadOnly)}
             >
-              <LinearInboxUnreadIcon size={16} />
+              <BuyerlyInboxUnreadIcon size={16} />
             </button>
           </Tooltip>
           <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(filterMenu)}>
-            <LinearFilterButton
+            <BuyerlyFilterButton
               variant="header"
               ref={filterButtonRef}
               active={filters.length > 0}
@@ -674,7 +674,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
               onClick={() => setIsDisplayOpen((current) => !current)}
               className={headerButtonClass(isDisplayOpen)}
             >
-              <LinearSlidersIcon size={14} />
+              <BuyerlySlidersIcon size={14} />
             </button>
           </Tooltip>
           <InboxDisplayOptionsPopover
@@ -685,7 +685,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
         </header>
 
         {activeTab && (
-          <nav aria-label="Priority inbox" className="linear-inbox-tabs">
+          <nav aria-label="Priority inbox" className="buyerly-inbox-tabs">
             {(['priority', 'other'] as const).map((tab) => {
               const count = tab === 'priority' ? inboxPriorityUnreadCount : inboxUnreadCount - inboxPriorityUnreadCount;
               return (
@@ -693,14 +693,14 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                   key={tab}
                   href={`${window.location.pathname.split('/inbox')[0]}/inbox/${tab}`}
                   aria-current={activeTab === tab ? 'page' : undefined}
-                  className="linear-inbox-tab"
+                  className="buyerly-inbox-tab"
                   onClick={(event) => {
                     event.preventDefault();
                     onNavigate(tab, null);
                   }}
                 >
                   {tab === 'priority' ? 'Priority' : 'Other'}
-                  {count > 0 && <span className="linear-inbox-tab-count">{count}</span>}
+                  {count > 0 && <span className="buyerly-inbox-tab-count">{count}</span>}
                 </a>
               );
             })}
@@ -713,7 +713,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
           onChange={(next) => applyFilters(fromMenuClauses(next))}
           onOpenMenu={openFilterMenu}
         />
-        <LinearFilterMenu
+        <BuyerlyFilterMenu
           isOpen={Boolean(filterMenu)}
           mode={filterMenu?.mode ?? 'root'}
           anchorElement={filterMenu?.anchor ?? null}
@@ -741,7 +741,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                 <button
                   type="button"
                   onClick={() => openItem(null)}
-                  className="linear-icon-btn linear-header-target md:hidden"
+                  className="buyerly-icon-btn buyerly-header-target md:hidden"
                   aria-label="Back to Inbox"
                 >
                   <ArrowLeft size={16} aria-hidden="true" />
@@ -758,7 +758,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                     onClick={() => setSnoozePalette('button')}
                     className={headerButtonClass(snoozePalette !== null)}
                   >
-                    <LinearClockOutlineIcon size={16} />
+                    <BuyerlyClockOutlineIcon size={16} />
                   </button>
                 </Tooltip>
                 <SnoozePalette
@@ -778,7 +778,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                     onClick={() => deleteItem(selectedItem)}
                     className={headerButtonClass()}
                   >
-                    <LinearInboxDeleteIcon size={16} />
+                    <BuyerlyInboxDeleteIcon size={16} />
                   </button>
                 </Tooltip>
               </div>
@@ -866,7 +866,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
           </>
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-6 px-6 text-center">
-            <LinearEmptyInboxIllustration />
+            <BuyerlyEmptyInboxIllustration />
             <p className="text-[13px] font-medium text-[var(--text-tertiary)]">
               {inboxUnreadCount > 0 ? unreadLabel : 'No notification selected'}
             </p>

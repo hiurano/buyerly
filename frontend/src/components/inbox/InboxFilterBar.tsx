@@ -1,6 +1,6 @@
 import React from 'react';
 import { Plus, X } from 'lucide-react';
-import { FilterOptionAvatarImage, type FilterMenuMode } from '@/components/filters/LinearFilter';
+import { FilterOptionAvatarImage, type FilterMenuMode } from '@/components/filters/BuyerlyFilter';
 import {
   filterOperatorLabel,
   getFilterValueAccessibleName,

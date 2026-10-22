@@ -2,16 +2,16 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { SidebarHeader } from './SidebarHeader';
 import { selectInboxBadgeCount, useAppStore } from '@/store/useAppStore';
 import {
-  LinearHomeIcon,
-  LinearInboxIcon,
-  LinearMembersIcon,
-  LinearMyIssuesIcon,
-  LinearIssuesIcon,
-  LinearBoltIcon,
-  LinearPlusIcon,
-  LinearTeamsIcon,
-  LinearProjectIcon,
-} from '@/icons/LinearIcons';
+  BuyerlyHomeIcon,
+  BuyerlyInboxIcon,
+  BuyerlyMembersIcon,
+  BuyerlyMyIssuesIcon,
+  BuyerlyIssuesIcon,
+  BuyerlyBoltIcon,
+  BuyerlyPlusIcon,
+  BuyerlyTeamsIcon,
+  BuyerlyProjectIcon,
+} from '@/icons/BuyerlyIcons';
 import { goToShortcut } from '@/lib/shortcuts';
 import { openAppPath, pathForTab } from '@/lib/routing';
 import { useTeams } from '@/lib/teams';
@@ -23,10 +23,10 @@ import { SidebarBackdrop, useSidebarDrawer, useSidebarPeek } from './SidebarDraw
 
 /** A team's pages, as Linear's: its Home, then Campaigns, Ad accounts and Rules (Linear's Issues and Projects). */
 const TEAM_PAGES: { tab: AppTab; label: string; icon: React.ReactNode }[] = [
-  { tab: 'team', label: 'Home', icon: <LinearHomeIcon size={14} /> },
-  { tab: 'campaigns', label: 'Campaigns', icon: <LinearIssuesIcon size={14} /> },
-  { tab: 'accounts', label: 'Ad accounts', icon: <LinearProjectIcon size={14} /> },
-  { tab: 'rules', label: 'Rules', icon: <LinearBoltIcon size={14} /> },
+  { tab: 'team', label: 'Home', icon: <BuyerlyHomeIcon size={14} /> },
+  { tab: 'campaigns', label: 'Campaigns', icon: <BuyerlyIssuesIcon size={14} /> },
+  { tab: 'accounts', label: 'Ad accounts', icon: <BuyerlyProjectIcon size={14} /> },
+  { tab: 'rules', label: 'Rules', icon: <BuyerlyBoltIcon size={14} /> },
 ];
 
 export const Sidebar: React.FC = () => {
@@ -165,14 +165,14 @@ export const Sidebar: React.FC = () => {
         {/* 2. Navigation: Inbox, then Linear's "Workspace" and "Your teams" sections */}
         <div className="flex-1 overflow-y-auto px-3 pb-4 pt-[0.5px] space-y-[1px]">
           <SidebarLink
-            icon={<LinearInboxIcon size={14} />}
+            icon={<BuyerlyInboxIcon size={14} />}
             label="Inbox"
             tooltip="Inbox"
             shortcut={goToShortcut('inbox')}
             active={activeTab === 'inbox'}
             onClick={() => openWorkspacePage('inbox')}
             trailing={inboxUnreadCount > 0 && (
-              <span className="linear-sidebar-count" aria-label={`${inboxUnreadCount} unread`}>
+              <span className="buyerly-sidebar-count" aria-label={`${inboxUnreadCount} unread`}>
                 {inboxUnreadCount}
               </span>
             )}
@@ -180,7 +180,7 @@ export const Sidebar: React.FC = () => {
 
           {/* Linear's My issues: campaigns of the ad accounts you lead. */}
           <SidebarLink
-            icon={<LinearMyIssuesIcon size={14} />}
+            icon={<BuyerlyMyIssuesIcon size={14} />}
             label="My campaigns"
             tooltip="Go to my campaigns"
             active={activeTab === 'campaigns' && myCampaigns}
@@ -195,7 +195,7 @@ export const Sidebar: React.FC = () => {
 
           <SidebarSection id="workspace" title="Workspace">
             <SidebarLink
-              icon={<LinearMembersIcon size={14} />}
+              icon={<BuyerlyMembersIcon size={14} />}
               label="Members"
               tooltip="Go to members"
               active={activeTab === 'members'}
@@ -203,7 +203,7 @@ export const Sidebar: React.FC = () => {
             />
             {/* Ad accounts, as Linear's Projects (#388) */}
             <SidebarLink
-              icon={<LinearProjectIcon size={14} />}
+              icon={<BuyerlyProjectIcon size={14} />}
               label="Ad accounts"
               tooltip="Go to ad accounts"
               shortcut={goToShortcut('accounts')}
@@ -211,7 +211,7 @@ export const Sidebar: React.FC = () => {
               onClick={() => openWorkspacePage('accounts')}
             />
             <SidebarLink
-              icon={<LinearTeamsIcon size={14} />}
+              icon={<BuyerlyTeamsIcon size={14} />}
               label="Teams"
               tooltip="Go to teams"
               active={activeTab === 'teams'}
@@ -222,7 +222,7 @@ export const Sidebar: React.FC = () => {
           <SidebarSection
             id="teams"
             title="Your teams"
-            action={{ label: 'Join a team', icon: <LinearPlusIcon size={14} />, onClick: () => openWorkspacePage('teams') }}
+            action={{ label: 'Join a team', icon: <BuyerlyPlusIcon size={14} />, onClick: () => openWorkspacePage('teams') }}
           >
             {yourTeams.map((team) => (
               <SidebarTeam key={team.id} team={team} workspaceSlug={workspace.slug} pages={TEAM_PAGES} />
@@ -234,15 +234,15 @@ export const Sidebar: React.FC = () => {
 
         {/* 3. Linear Exact 3-Layer Spotlight Resizer with Double-Click Reset */}
         {!drawer.isSmall && <div
-          className="linear-resizer-hit-target"
+          className="buyerly-resizer-hit-target"
           data-dragging={isDragging ? 'true' : 'false'}
           onMouseMove={handleMouseMove}
           onMouseDown={startResizing}
           onDoubleClick={resetSidebarWidth}
           title="Drag to resize, double-click to reset"
         >
-          <div ref={trackRef} className="linear-resizer-track" aria-hidden="true">
-            <div ref={indicatorRef} className="linear-resizer-indicator" />
+          <div ref={trackRef} className="buyerly-resizer-track" aria-hidden="true">
+            <div ref={indicatorRef} className="buyerly-resizer-indicator" />
           </div>
         </div>}
       </aside>
