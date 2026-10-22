@@ -191,18 +191,23 @@ try {
     await popover().getByText('Columns', { exact: true }).waitFor();
     await select('Columns', 'Status');
     await page.keyboard.press('Escape');
-    const column = (name) => page.locator('[data-board-column]').filter({ has: page.getByText(name, { exact: true }) });
+    const column = (name) => page.locator(`[data-board-column][aria-label="${name}"]`);
     await column('Active rules').waitFor();
     assert.deepEqual(await page.locator('[data-board-column]').evaluateAll((columns) => columns.map((element) => element.dataset.boardColumn)),
-      ['status-active', 'status-paused', 'status-needs_review'], 'Columns = Grouping');
+      ['status-active'], 'Columns = Grouping');
+    // Empty columns wait in Linear's Hidden columns, and still take a card.
+    assert.deepEqual(await page.locator('[data-board-hidden-column]').evaluateAll((rows) => rows.map((element) => element.dataset.boardHiddenColumn)),
+      ['status-paused', 'status-needs_review']);
     const drag = async (cardId, columnId) => {
       const card = page.locator(`[data-board-column] [data-row-id="${cardId}"]`).first();
       const from = await card.boundingBox();
-      const to = await page.locator(`[data-board-column="${columnId}"]`).boundingBox();
+      const target = page.locator(`[data-board-column="${columnId}"], [data-board-hidden-column="${columnId}"]`).first();
+      const to = await target.boundingBox();
+      const toY = await target.evaluate((element) => element.hasAttribute('data-board-hidden-column')) ? to.y + to.height / 2 : to.y + 120;
       await page.mouse.move(from.x + 40, from.y + 20);
       await page.mouse.down();
       await page.mouse.move(from.x + 60, from.y + 30, { steps: 4 });
-      await page.mouse.move(to.x + to.width / 2, to.y + 120, { steps: 12 });
+      await page.mouse.move(to.x + to.width / 2, toY, { steps: 12 });
       await page.mouse.up();
     };
     await drag('7', 'status-paused');
@@ -231,7 +236,7 @@ try {
     await select('Columns', 'Action');
     await page.keyboard.press('Escape');
     await column('Notify').waitFor();
-    assert.equal(await page.locator('[data-row-id="9"][data-rule-drag]').count(), 0, 'Action columns take no drops');
+    assert.equal(await page.locator('[data-board-drag]').count(), 0, 'Action columns take no drops');
     assert.deepEqual(errors, []);
     console.log('Rules view at 1440px passed');
   } catch (error) {

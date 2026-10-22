@@ -1,9 +1,16 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LinearDisplayOptions, type DisplayGroupOption } from '@/ui/LinearDisplayOptions';
-import { orderGroups } from '@/ui/listView';
+import { orderGroups, toggleHiddenGroup } from '@/ui/listView';
 import type { AdsManagerEntity } from '@/store/useAppStore';
-import { adsManagerGroupings, adsManagerOrderings, adsManagerProperties, useAdsManagerView } from './adsManagerViewModel';
+import {
+  adsManagerActiveGrouping,
+  adsManagerActiveRows,
+  adsManagerGroupings,
+  adsManagerOrderings,
+  adsManagerProperties,
+  useAdsManagerView,
+} from './adsManagerViewModel';
 
 interface DisplayOptionsPopoverProps {
   isOpen: boolean;
@@ -12,12 +19,11 @@ interface DisplayOptionsPopoverProps {
   entity: AdsManagerEntity;
   /** My campaigns' own view rather than Campaigns'. */
   mine?: boolean;
-  hasAccountGroups: boolean;
   /** Every group of the current grouping, in their natural order, for Group ordering. */
   groups: DisplayGroupOption[];
 }
 
-export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ isOpen, onClose, anchorRef, entity, mine = false, hasAccountGroups, groups }) => {
+export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ isOpen, onClose, anchorRef, entity, mine = false, groups }) => {
   const { view, update, reset, displayChanged } = useAdsManagerView(entity, mine);
   const popoverRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
@@ -51,10 +57,15 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
   // Every column the level can show (#389), in column order.
   const liveProperties = Object.fromEntries(adsManagerProperties(entity).map(({ id, label }) => [id, label]));
   const orderingOptions = adsManagerOrderings(entity, view.properties);
-  const groupingOptions = adsManagerGroupings(entity, hasAccountGroups);
+  const board = view.layout === 'board';
+  const allGroupings = adsManagerGroupings(entity);
+  // A board's Columns, as Linear's, has no "No grouping"; its Rows does.
+  const groupingOptions = board ? allGroupings.filter((option) => option.value !== 'none') : allGroupings;
   const ordering = orderingOptions.some((option) => option.value === view.ordering) ? view.ordering : 'manual';
-  const grouping = groupingOptions.some((option) => option.value === view.grouping) ? view.grouping : 'none';
-  const hidden = view.hiddenGroups[view.grouping] ?? [];
+  const grouping = adsManagerActiveGrouping(entity, view);
+  const rows = adsManagerActiveRows(entity, view);
+  const groupingView = { ...view, grouping };
+  const hidden = view.hiddenGroups[grouping] ?? [];
 
   return createPortal(
     <div ref={popoverRef} className="linear-display-options-popover" style={{ top: coords.top, right: coords.right }}>
@@ -65,29 +76,31 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
         groupingOptions={groupingOptions}
         onGroupingChange={(value) => update({ grouping: value })}
         groupOrdering={{
-          groups: orderGroups(groups, view),
+          groups: orderGroups(groups, groupingView),
           hidden,
-          onReorder: (ids) => update({ groupOrder: { ...view.groupOrder, [view.grouping]: ids } }),
-          onToggleHidden: (id) => update({
-            hiddenGroups: {
-              ...view.hiddenGroups,
-              [view.grouping]: hidden.includes(id) ? hidden.filter((entry) => entry !== id) : [...hidden, id],
-            },
-          }),
+          onReorder: (ids) => update({ groupOrder: { ...view.groupOrder, [grouping]: ids } }),
+          onToggleHidden: (id) => update(toggleHiddenGroup(groupingView, id)),
         }}
+        subGrouping={board ? rows : undefined}
+        subGroupingOptions={board ? allGroupings : undefined}
+        onSubGroupingChange={(value) => update({ subGrouping: value })}
         ordering={ordering}
         orderingOptions={orderingOptions}
         onOrderingChange={(value) => update({ ordering: value })}
         direction={view.direction}
         onDirectionChange={(direction) => update({ direction })}
-        // Delivery status is a fixed set of states; accounts, rules and groups only list what has rows.
-        showEmptyGroups={grouping === 'status' ? view.showEmptyGroups : undefined}
+        // Status is a fixed set of states; accounts and rules only list what has rows.
+        // On the board any empty column waits in Hidden columns until this shows it.
+        showEmptyGroups={board || grouping === 'status' ? view.showEmptyGroups : undefined}
         onShowEmptyGroupsChange={(showEmptyGroups) => update({ showEmptyGroups })}
+        showEmptySubGroups={board && rows !== 'none' ? view.showEmptySubGroups : undefined}
+        onShowEmptySubGroupsChange={(showEmptySubGroups) => update({ showEmptySubGroups })}
+        // The board's columns and rows already show these, as Linear greys Status on a board by Status.
+        inactiveProperties={board ? [grouping, rows] : undefined}
         properties={liveProperties}
         enabledProperties={view.properties}
         onToggleProperty={(key) => update({ properties: { ...view.properties, [key]: !view.properties[key] } })}
         onReset={displayChanged ? reset : undefined}
-        showViewModes={false}
         showGrouping
       />
     </div>,

@@ -21,6 +21,8 @@ export interface ListViewSettings {
   /** Per grouping, the groups the member hid with the eye in Group ordering. */
   hiddenGroups: Record<string, string[]>;
   showEmptyGroups: boolean;
+  /** Board's "Show empty rows": bands of Rows with no cards. */
+  showEmptySubGroups: boolean;
   properties: Record<string, boolean>;
   filters: FilterClause[];
 }
@@ -35,6 +37,7 @@ export function listViewDefaults(defaults: ListViewDefaults): ListViewSettings {
     groupOrder: {},
     hiddenGroups: {},
     showEmptyGroups: false,
+    showEmptySubGroups: false,
     filters: [],
     ...defaults,
   };
@@ -74,6 +77,7 @@ export function readListView(stored: unknown, defaults: ListViewSettings): ListV
     groupOrder: 'groupOrder' in stored ? cleanIds(stored.groupOrder) : defaults.groupOrder,
     hiddenGroups: 'hiddenGroups' in stored ? cleanIds(stored.hiddenGroups) : defaults.hiddenGroups,
     showEmptyGroups: typeof stored.showEmptyGroups === 'boolean' ? stored.showEmptyGroups : defaults.showEmptyGroups,
+    showEmptySubGroups: typeof stored.showEmptySubGroups === 'boolean' ? stored.showEmptySubGroups : defaults.showEmptySubGroups,
     properties,
     filters: 'filters' in stored ? sanitizeFilterClauses(stored.filters) : defaults.filters,
   };
@@ -137,4 +141,41 @@ export function orderGroups<G extends { id: string }>(
     .map((group, index) => ({ group, index }))
     .sort((left, right) => rank(left.group.id) - rank(right.group.id) || left.index - right.index)
     .map(({ group }) => group);
+}
+
+/**
+ * A board always has columns, as Linear's Columns offers no "No grouping":
+ * a view grouped by nothing shows its board by the page's fallback.
+ */
+export const boardGrouping = (grouping: string, fallback: string) => (grouping === 'none' ? fallback : grouping);
+
+/**
+ * Board columns in the member's order: the shown ones, and the rest for
+ * Linear's "Hidden columns" lane — hidden with "Hide column", or empty while
+ * Show empty columns is off.
+ */
+export function arrangeBoardColumns<G extends { id: string; rows: unknown[] }>(
+  groups: G[],
+  view: Pick<ListViewSettings, 'grouping' | 'groupOrder' | 'hiddenGroups' | 'showEmptyGroups'>,
+): { shown: G[]; hidden: { group: G; hiddenByMember: boolean }[] } {
+  const hiddenIds = view.hiddenGroups[view.grouping] ?? [];
+  const shown: G[] = [];
+  const hidden: { group: G; hiddenByMember: boolean }[] = [];
+  for (const group of orderGroups(groups, view)) {
+    const hiddenByMember = hiddenIds.includes(group.id);
+    if (hiddenByMember || (group.rows.length === 0 && !view.showEmptyGroups)) hidden.push({ group, hiddenByMember });
+    else shown.push(group);
+  }
+  return { shown, hidden };
+}
+
+/** Hides one group of the current grouping, or brings it back. */
+export function toggleHiddenGroup(view: Pick<ListViewSettings, 'grouping' | 'hiddenGroups'>, id: string): Partial<ListViewSettings> {
+  const hidden = view.hiddenGroups[view.grouping] ?? [];
+  return {
+    hiddenGroups: {
+      ...view.hiddenGroups,
+      [view.grouping]: hidden.includes(id) ? hidden.filter((entry) => entry !== id) : [...hidden, id],
+    },
+  };
 }

@@ -171,7 +171,7 @@ try {
       // Any figure is one switch away; the new column orders like the rest.
       await displayButton(page).click();
       await popover(page).waitFor();
-      for (const label of ['Delivery', 'Impressions', 'Reach', 'CPM', 'Link clicks', 'Link CTR', 'Link CPC', 'Landing page views', 'Registrations', 'CPReg', 'Purchases', 'CPP', 'ID']) {
+      for (const label of ['Status', 'Impressions', 'Reach', 'CPM', 'Link clicks', 'Link CTR', 'Link CPC', 'Landing page views', 'Registrations', 'CPReg', 'Purchases', 'CPP', 'ID']) {
         await property(page, label).waitFor();
       }
       assert.equal(await property(page, 'Results').count(), 0, 'no Results any more');
@@ -348,6 +348,39 @@ try {
       assert.deepEqual(await page.locator('.sticky span.truncate').allTextContents(), ['Main account']);
       await page.locator('main header').getByText('My campaigns', { exact: true }).waitFor();
       await page.screenshot({ path: `${output}/my-campaigns-1440.png` });
+
+      // Linear's Board: Ctrl/Cmd+B. A view grouped by nothing shows its board by Status,
+      // and an empty column waits in Hidden columns.
+      await page.goto(`${origin}/alpha/ads-manager/campaigns`);
+      await page.locator('[data-row-id="801"]').waitFor();
+      await page.keyboard.press('ControlOrMeta+b');
+      await page.locator('.buyerly-board').waitFor();
+      assert.deepEqual(await page.locator('.buyerly-board-column-header .buyerly-board-column-name').allTextContents(), ['Active']);
+      assert.deepEqual(await page.locator('.buyerly-board-hidden-row').allTextContents(), ['Paused']);
+      assert.equal(await page.locator('[data-board-column="active"] [data-row-id]').count(), 4);
+      await displayButton(page).click();
+      await popover(page).waitFor();
+      await popover(page).getByText('Columns', { exact: true }).waitFor();
+      await popover(page).locator('.linear-display-row', { hasText: 'Columns' }).getByRole('combobox').click();
+      assert.deepEqual(await page.locator('.linear-display-select-menu').getByRole('option').allTextContents(), ['Ad account', 'Status', 'Rules'], 'no "No grouping" on a board');
+      await page.locator('.linear-display-select-menu').getByRole('option', { name: 'Ad account', exact: true }).click();
+      assert.equal(await property(page, 'Ad account').isDisabled(), true, 'the columns already show the account');
+      await select(page, 'Rows', 'Status');
+      await popover(page).getByText('Show empty rows', { exact: true }).waitFor();
+      await page.keyboard.press('Escape');
+      assert.deepEqual(await page.locator('.buyerly-board-column-header .buyerly-board-column-name').allTextContents(), ['Euro account', 'Main account']);
+      assert.deepEqual(await page.locator('.buyerly-board-lane .buyerly-board-column-name').allTextContents(), ['Active'], 'Rows band the columns; empty bands stay out');
+      await page.screenshot({ path: `${output}/board-1440.png` });
+      // Hide column puts it in the lane; its row there brings it back.
+      await page.getByRole('button', { name: 'Euro account menu' }).click();
+      await page.getByRole('menuitem', { name: 'Hide column' }).click();
+      await page.locator('button.buyerly-board-hidden-row', { hasText: 'Euro account' }).click();
+      await page.locator('.buyerly-board-column-header', { hasText: 'Euro account' }).waitFor();
+      await settle(page);
+      assert.equal(views['ads-manager.campaigns'].layout, 'board');
+      assert.equal(views['ads-manager.campaigns'].subGrouping, 'status');
+      await page.keyboard.press('ControlOrMeta+b');
+      await page.locator('.buyerly-board').waitFor({ state: 'detached' });
       assert.deepEqual(errors, []);
       console.log('Ads Manager over every ad account passed');
     } catch (error) {

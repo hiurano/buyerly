@@ -20,6 +20,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { LinearBoardIcon, LinearListIcon } from '@/icons/LinearIcons';
 import { LinearToggle } from './LinearToggle';
 import { Tooltip } from './Tooltip';
+import { LAYOUT_SHORTCUT } from './useLayoutShortcut';
 
 export type DisplayOption = { value: string; label: string };
 
@@ -407,6 +408,14 @@ interface LinearDisplayOptionsProps {
   onToggleProperty: (value: string) => void;
   showEmptyGroups?: boolean;
   onShowEmptyGroupsChange?: (value: boolean) => void;
+  /** Board's "Show empty rows", once Rows is set. */
+  showEmptySubGroups?: boolean;
+  onShowEmptySubGroupsChange?: (value: boolean) => void;
+  /**
+   * Properties the board already shows as its columns or rows: greyed out
+   * and off, as Linear's Status chip on a board by Status.
+   */
+  inactiveProperties?: string[];
   showViewModes?: boolean;
   showGrouping?: boolean;
   /** Linear's footer once the view differs from its default: Reset brings the default back. */
@@ -433,6 +442,9 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
   onToggleProperty,
   showEmptyGroups,
   onShowEmptyGroupsChange,
+  showEmptySubGroups,
+  onShowEmptySubGroupsChange,
+  inactiveProperties = [],
   showViewModes = true,
   showGrouping = true,
   onReset,
@@ -458,6 +470,7 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
         {showViewModes && <div role="tablist" className="linear-display-tabs">
           {(['list', 'board'] as const).map((mode) => (
             <div className="linear-display-tab-slot" key={mode}>
+              <Tooltip content="Toggle layout view" shortcut={LAYOUT_SHORTCUT}>
               <button
                 type="button"
                 role="tab"
@@ -477,6 +490,7 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
                 {mode === 'list' ? <LinearListIcon size={16} /> : <LinearBoardIcon size={16} />}
                 <span>{mode === 'list' ? 'List' : 'Board'}</span>
               </button>
+              </Tooltip>
             </div>
           ))}
         </div>}
@@ -540,19 +554,33 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
             />
           </div>
         )}
+        {showEmptySubGroups !== undefined && onShowEmptySubGroupsChange && (
+          <div className="linear-display-row">
+            <span>Show empty rows</span>
+            <LinearToggle
+              label="Show empty rows"
+              checked={showEmptySubGroups}
+              onChange={onShowEmptySubGroupsChange}
+            />
+          </div>
+        )}
         <div className="linear-display-properties-label">Display properties</div>
         <div className="linear-display-properties">
-          {Object.entries(properties).map(([key, label]) => (
-            <button
-              type="button"
-              key={key}
-              aria-pressed={!!enabledProperties[key]}
-              className="linear-display-property"
-              onClick={() => onToggleProperty(key)}
-            >
-              {label}
-            </button>
-          ))}
+          {Object.entries(properties).map(([key, label]) => {
+            const inactive = inactiveProperties.includes(key);
+            return (
+              <button
+                type="button"
+                key={key}
+                aria-pressed={!inactive && !!enabledProperties[key]}
+                disabled={inactive}
+                className="linear-display-property"
+                onClick={() => onToggleProperty(key)}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
       </section>
 

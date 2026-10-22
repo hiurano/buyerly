@@ -58,12 +58,12 @@ export const RuleCard: React.FC<RuleCardProps> = ({
           }}
           data-is-active={isSelected ? 'true' : 'false'}
           style={{
-            width: '319px',
+            width: '100%',
             backgroundColor: isSelected ? 'var(--item-active-bg)' : 'var(--card-bg)',
             borderRadius: '8px',
             boxShadow: isSelected
               ? '0 0 0 1px var(--color-border-secondary), var(--canvas-shadow)'
-              : '0 0 0 1px var(--card-border), var(--canvas-shadow)',
+              : '0 0 0 0.5px var(--board-card-ring), var(--canvas-shadow)',
             padding: '8px',
             cursor: 'pointer',
             transition: 'background-color 0.1s ease',
