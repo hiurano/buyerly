@@ -145,7 +145,7 @@ try {
       const submenu = await openSwitchSubmenu('Alpha');
       await submenu.waitFor();
       assert.deepEqual(clean(await submenu.getByRole('menuitem').allInnerTexts()), [
-        'A Alpha 1', 'B Beta 2', 'G Gamma 3', 'Create or join a workspace…', 'Add an account…',
+        'AL Alpha 1', 'BE Beta 2', 'GA Gamma 3', 'Create or join a workspace…', 'Add an account…',
       ]);
       for (const email of ['sam@example.test', 'kim@example.test']) await submenu.getByText(email, { exact: true }).waitFor();
       assert.equal(await submenu.getByLabel('Current workspace').count(), 1);
@@ -204,7 +204,7 @@ try {
       assert.deepEqual(loggedIn, [1, 2, 3]);
       const three = await openSwitchSubmenu('Delta');
       assert.deepEqual(clean(await three.getByRole('menuitem').allInnerTexts()), [
-        'A Alpha 1', 'B Beta 2', 'G Gamma 3', 'D Delta 4', 'Create or join a workspace…', 'Add an account…',
+        'AL Alpha 1', 'BE Beta 2', 'GA Gamma 3', 'DE Delta 4', 'Create or join a workspace…', 'Add an account…',
       ]);
       await closeMenus();
 
