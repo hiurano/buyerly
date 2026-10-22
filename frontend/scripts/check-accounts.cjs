@@ -72,9 +72,20 @@ const byStatus = accountGroupsFor('status', accounts, teams).filter((group) => g
 assert.deepEqual(byStatus.map((group) => group.label), ['Active', 'Unsettled', 'Disabled']);
 assert.deepEqual(accountGroupsFor('none', accounts, teams), []);
 
-// Filter: Status, Team, Automation, Name or ID.
+// Grouping by Lead, as Linear's Projects: each member who leads, then "No lead".
+const leads = [{ user_id: 5, name: 'Bo Buyer' }, { user_id: 6, name: 'Ann Admin' }];
+const led = accounts.map((account, index) => ({ ...account, lead_user_id: index === 0 ? 5 : null }));
+assert.deepEqual(
+  accountGroupsFor('lead', led, teams, leads).map((group) => [group.label, ids(group.rows)]),
+  [['Bo Buyer', [led[0].id]], ['Ann Admin', []], ['No lead', led.slice(1).map((account) => account.id)]],
+);
+
+// Filter: Status, Team, Lead, Automation, Name or ID.
 const fields = createAccountFilterFields(accounts, teams);
-assert.deepEqual(fields.map((field) => field.id), ['status', 'team', 'automation', 'name']);
+assert.deepEqual(fields.map((field) => field.id), ['status', 'team', 'lead', 'automation', 'name']);
+const leadFields = createAccountFilterFields(led, teams, leads);
+assert.deepEqual(ids(applyFilterClauses(led, leadFields, [{ fieldId: 'lead', operator: 'is', values: ['5'] }])), [led[0].id]);
+assert.deepEqual(ids(applyFilterClauses(led, leadFields, [{ fieldId: 'lead', operator: 'is', values: ['none'] }])), led.slice(1).map((account) => account.id));
 const filter = (clauses) => ids(applyFilterClauses(accounts, fields, clauses));
 assert.deepEqual(filter([{ fieldId: 'status', operator: 'is', values: ['active'] }]), [1]);
 assert.deepEqual(filter([{ fieldId: 'team', operator: 'is', values: ['none'] }]), [2]);

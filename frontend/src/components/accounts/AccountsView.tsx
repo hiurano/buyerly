@@ -142,7 +142,11 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
   };
   useFiltersInAddress(view.filters, (clauses) => update({ filters: clauses }), loaded, navigationKey);
 
-  const filterFields = useMemo(() => createAccountFilterFields(accounts, teams), [accounts, teams]);
+  const leads = useMemo(
+    () => data.members.map((member) => ({ user_id: member.user_id, name: member.full_name || member.username })),
+    [data.members],
+  );
+  const filterFields = useMemo(() => createAccountFilterFields(accounts, teams, leads), [accounts, teams, leads]);
   const shown = useMemo(
     () => sortAccounts(applyFilterClauses(accounts, filterFields, view.filters), view.ordering, view.direction),
     [accounts, filterFields, view.filters, view.ordering, view.direction],
@@ -188,8 +192,8 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
     const row = (account: MetaAccount) => (
       <AccountRow key={account.account_id} account={account} columns={columns} properties={view.properties} phone={phone} actions={actions} />
     );
-    if (view.grouping !== 'status' && view.grouping !== 'team') return shown.map(row);
-    return arrangeGroups(accountGroupsFor(view.grouping, shown, teams), view).map((group) => (
+    if (view.grouping !== 'status' && view.grouping !== 'team' && view.grouping !== 'lead') return shown.map(row);
+    return arrangeGroups(accountGroupsFor(view.grouping, shown, teams, leads), view).map((group) => (
       <LinearDataListGroup
         key={group.id}
         title={group.label}
@@ -319,6 +323,7 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
               anchorRef={displayButtonRef}
               accounts={accounts}
               teams={teams}
+              leads={leads}
             />
           </div>
         </LinearDataListToolbar>
