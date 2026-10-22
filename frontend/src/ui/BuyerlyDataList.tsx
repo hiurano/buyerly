@@ -232,6 +232,11 @@ interface BuyerlyDataListGroupHeaderProps {
   className?: string;
   /** A label's color, washed into the header from the left as Linear does for label groups. */
   tint?: string;
+  /**
+   * Linear's sub-group inside a group: same row, but on the list's own
+   * background, not sticky, with a hairline running to the right edge.
+   */
+  subGroup?: boolean;
 }
 
 const GROUP_HEADER_BG = 'var(--rules-group-bg, var(--card-bg))';
@@ -248,15 +253,18 @@ export const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProp
   onAction,
   className = '',
   tint,
+  subGroup = false,
 }) => (
   <div
-    className={`sticky top-[-4px] z-[2] flex items-center ${className}`}
+    className={`${subGroup ? 'buyerly-data-subgroup-header relative' : 'sticky top-[-4px] z-[2]'} flex items-center ${className}`}
     style={{
       height: `${BUYERLY_DATA_LIST.groupHeaderHeight}px`,
       borderRadius: `${BUYERLY_DATA_LIST.radius}px`,
-      background: tint
-        ? `linear-gradient(90deg, color-mix(in srgb, ${tint} 8%, ${GROUP_HEADER_BG}) 0%, ${GROUP_HEADER_BG} 100%)`
-        : GROUP_HEADER_BG,
+      background: subGroup
+        ? undefined
+        : tint
+          ? `linear-gradient(90deg, color-mix(in srgb, ${tint} 8%, ${GROUP_HEADER_BG}) 0%, ${GROUP_HEADER_BG} 100%)`
+          : GROUP_HEADER_BG,
       isolation: 'isolate',
     }}
   >
@@ -289,9 +297,11 @@ export const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProp
       </span>
 
       <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">{title}</span>
-      <span className="shrink-0 font-mono text-[11px] text-[var(--text-muted)]">{count}</span>
+      <span className={`shrink-0 font-mono text-[11px] ${subGroup ? 'text-[var(--text-tertiary)]' : 'text-[var(--text-muted)]'}`}>{count}</span>
       {description && <span className="truncate text-[11px] text-[var(--text-muted)]">{description}</span>}
-      <span className="flex-1" />
+      {subGroup
+        ? <span className="h-[0.5px] min-w-0 flex-1 bg-[var(--list-subgroup-line)]" aria-hidden="true" />
+        : <span className="flex-1" />}
 
       {onAction && (
         <button
@@ -320,7 +330,10 @@ interface BuyerlyDataListGroupProps extends Omit<BuyerlyDataListGroupHeaderProps
 export const BuyerlyDataListGroup: React.FC<BuyerlyDataListGroupProps> = ({ children, ...header }) => (
   <div>
     <BuyerlyDataListGroupHeader {...header} />
-    {!header.isCollapsed && <BuyerlyDataListStack className="pb-2 pt-0.5">{children}</BuyerlyDataListStack>}
+    {!header.isCollapsed && (
+      // A sub-group's last row runs straight into the next sub-group, as Linear's; the group closes with the gap.
+      <BuyerlyDataListStack className={header.subGroup ? 'pt-0.5' : 'pb-2 pt-0.5'}>{children}</BuyerlyDataListStack>
+    )}
   </div>
 );
 

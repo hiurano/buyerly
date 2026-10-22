@@ -81,8 +81,9 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
           onReorder: (ids) => update({ groupOrder: { ...view.groupOrder, [grouping]: ids } }),
           onToggleHidden: (id) => update(toggleHiddenGroup(groupingView, id)),
         }}
-        subGrouping={board ? rows : undefined}
-        subGroupingOptions={board ? allGroupings : undefined}
+        // Sub-grouping splits groups, so a list grouped by nothing doesn't offer it.
+        subGrouping={grouping !== 'none' ? rows : undefined}
+        subGroupingOptions={grouping !== 'none' ? allGroupings : undefined}
         onSubGroupingChange={(value) => update({ subGrouping: value })}
         ordering={ordering}
         orderingOptions={orderingOptions}
@@ -91,7 +92,8 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
         onDirectionChange={(direction) => update({ direction })}
         // Status is a fixed set of states; accounts and rules only list what has rows.
         // On the board any empty column waits in Hidden columns until this shows it.
-        showEmptyGroups={board || grouping === 'status' ? view.showEmptyGroups : undefined}
+        // In a list it covers sub-groups too, as Linear's.
+        showEmptyGroups={board || grouping === 'status' || rows === 'status' ? view.showEmptyGroups : undefined}
         onShowEmptyGroupsChange={(showEmptyGroups) => update({ showEmptyGroups })}
         showEmptySubGroups={board && rows !== 'none' ? view.showEmptySubGroups : undefined}
         onShowEmptySubGroupsChange={(showEmptySubGroups) => update({ showEmptySubGroups })}
