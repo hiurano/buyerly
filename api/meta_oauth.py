@@ -134,32 +134,27 @@ def _oauth_client() -> MetaOAuthClient:
     )
 
 
-_WORKSPACE = r"/[a-z0-9][a-z0-9-]{0,62}"
-# The pages that open the connection dialog: Ad accounts and Campaigns, for the
-# workspace, for one team (/team/<KEY>/…) and over your own (/my-campaigns/…).
-_TEAM = r"(/team/[A-Za-z][A-Za-z0-9]{0,6})?"
-_RETURN_PATHS = (
-    rf"{_WORKSPACE}/settings",
-    rf"{_WORKSPACE}{_TEAM}/accounts",
-    rf"{_WORKSPACE}{_TEAM}/ads-manager/(campaigns|adsets|ads)",
-    rf"{_WORKSPACE}/my-campaigns/(campaigns|adsets|ads)",
-)
+# Any page of the app may start the flow, so the path is checked for shape, not
+# against a list of pages: one leading slash and only slug characters, so it
+# cannot name another host (//evil.example, /\evil.example) or carry a query.
+_RETURN_PATH = re.compile(r"/(?!/)[A-Za-z0-9_/-]{0,500}")
+# The app's own entry: it sends a signed-in user to their workspace. "/" is the
+# public landing page, outside the app.
+_FALLBACK_RETURN_PATH = "/login"
 
 
 def _safe_return_path(value: str) -> str:
     path = str(value or "").strip()
-    if path == "/connect/meta/success":
+    if path != "/" and _RETURN_PATH.fullmatch(path) and "//" not in path:
         return path
-    if any(re.fullmatch(pattern, path) for pattern in _RETURN_PATHS):
-        return path
-    return "/"
+    return _FALLBACK_RETURN_PATH
 
 
 async def _callback_return_path(state: str) -> str:
     """Recover the original internal destination for a cancelled OAuth flow."""
 
     if not state:
-        return "/"
+        return _FALLBACK_RETURN_PATH
     state_hash = hashlib.sha256(state.encode("utf-8")).hexdigest()
     async with async_session_maker() as session:
         oauth_state = (
@@ -633,7 +628,7 @@ async def oauth_callback(
             or _as_utc(oauth_state.expires_at) <= now
         ):
             return RedirectResponse(
-                _app_redirect("/", meta_status="expired_state"),
+                _app_redirect(_FALLBACK_RETURN_PATH, meta_status="expired_state"),
                 status_code=303,
             )
         claim = await session.execute(
@@ -647,7 +642,7 @@ async def oauth_callback(
         if int(claim.rowcount or 0) != 1:
             await session.rollback()
             return RedirectResponse(
-                _app_redirect("/", meta_status="expired_state"),
+                _app_redirect(_FALLBACK_RETURN_PATH, meta_status="expired_state"),
                 status_code=303,
             )
         await session.commit()

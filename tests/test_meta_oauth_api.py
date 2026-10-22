@@ -28,28 +28,33 @@ from tests.test_db_helper import create_test_engine, init_test_db
 
 
 class TestMetaOAuthReturnPath(unittest.TestCase):
-    def test_pages_with_the_connection_dialog_are_returned_to(self):
+    def test_any_page_of_the_app_is_returned_to(self):
         for path in (
             "/connect/meta/success",
             "/buyerly/settings",
             "/buyerly/accounts",
+            "/buyerly/accounts/act_123",
             "/buyerly/team/ENG/accounts",
             "/buyerly/ads-manager/adsets",
-            "/buyerly/team/ENG/ads-manager/campaigns",
             "/buyerly/my-campaigns/ads",
         ):
             self.assertEqual(meta_oauth_module._safe_return_path(path), path)
 
-    def test_other_paths_fall_back_to_root(self):
+    def test_other_hosts_and_odd_paths_fall_back_into_the_app(self):
         for path in (
             "",
+            "/",
+            "buyerly/accounts",
+            "@evil.example/accounts",
             "https://evil.example/buyerly/accounts",
             "//evil.example/accounts",
-            "/buyerly/accounts/act_1",
-            "/buyerly/team/ENG/rules",
+            "/\\evil.example/accounts",
+            "/buyerly//evil.example",
+            "/buyerly/../admin",
             "/buyerly/accounts?next=//evil.example",
+            "/buyerly/accounts%2F%2Fevil.example",
         ):
-            self.assertEqual(meta_oauth_module._safe_return_path(path), "/")
+            self.assertEqual(meta_oauth_module._safe_return_path(path), "/login")
 
 
 class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
