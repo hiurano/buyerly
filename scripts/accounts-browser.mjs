@@ -307,8 +307,8 @@ try {
       );
       await page.keyboard.press('Escape');
       await page.goto(`${origin}/alpha/accounts/act_101`);
-      await page.getByRole('heading', { name: 'NL · Lead gen', level: 1 }).waitFor();
-      await page.getByRole('textbox', { name: 'Ad account name' }).waitFor();
+      // The name is a field the guest can edit, as on a member's page.
+      assert.equal(await page.getByRole('textbox', { name: 'Ad account name' }).inputValue(), 'NL · Lead gen');
       assert.equal(await page.getByRole('button', { name: 'Reconnect' }).count(), 0);
       assert.deepEqual(errors, []);
       console.log('Ad accounts for a guest passed');
