@@ -135,15 +135,22 @@ def _oauth_client() -> MetaOAuthClient:
 
 
 _WORKSPACE = r"/[a-z0-9][a-z0-9-]{0,62}"
+# The pages that open the connection dialog: Ad accounts and Campaigns, for the
+# workspace, for one team (/team/<KEY>/…) and over your own (/my-campaigns/…).
+_TEAM = r"(/team/[A-Za-z][A-Za-z0-9]{0,6})?"
+_RETURN_PATHS = (
+    rf"{_WORKSPACE}/settings",
+    rf"{_WORKSPACE}{_TEAM}/accounts",
+    rf"{_WORKSPACE}{_TEAM}/ads-manager/(campaigns|adsets|ads)",
+    rf"{_WORKSPACE}/my-campaigns/(campaigns|adsets|ads)",
+)
 
 
 def _safe_return_path(value: str) -> str:
     path = str(value or "").strip()
     if path == "/connect/meta/success":
         return path
-    if re.fullmatch(rf"{_WORKSPACE}/settings", path):
-        return path
-    if re.fullmatch(rf"{_WORKSPACE}/ads-manager/(campaigns|adsets|ads)", path):
+    if any(re.fullmatch(pattern, path) for pattern in _RETURN_PATHS):
         return path
     return "/"
 

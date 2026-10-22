@@ -27,6 +27,31 @@ from database.models import (
 from tests.test_db_helper import create_test_engine, init_test_db
 
 
+class TestMetaOAuthReturnPath(unittest.TestCase):
+    def test_pages_with_the_connection_dialog_are_returned_to(self):
+        for path in (
+            "/connect/meta/success",
+            "/buyerly/settings",
+            "/buyerly/accounts",
+            "/buyerly/team/ENG/accounts",
+            "/buyerly/ads-manager/adsets",
+            "/buyerly/team/ENG/ads-manager/campaigns",
+            "/buyerly/my-campaigns/ads",
+        ):
+            self.assertEqual(meta_oauth_module._safe_return_path(path), path)
+
+    def test_other_paths_fall_back_to_root(self):
+        for path in (
+            "",
+            "https://evil.example/buyerly/accounts",
+            "//evil.example/accounts",
+            "/buyerly/accounts/act_1",
+            "/buyerly/team/ENG/rules",
+            "/buyerly/accounts?next=//evil.example",
+        ):
+            self.assertEqual(meta_oauth_module._safe_return_path(path), "/")
+
+
 class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.engine = create_test_engine()
