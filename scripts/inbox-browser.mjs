@@ -201,7 +201,7 @@ try {
         state.rows.forEach(row => { if (row.read) row.deleted = true; });
         return route.fulfill({ json: { success: true, ...state.counts() } });
       }
-      if (verb === 'GET' && ['/api/accounts', '/api/meta/connections', '/api/account-groups'].includes(path)) {
+      if (verb === 'GET' && ['/api/accounts', '/api/meta/connections'].includes(path)) {
         return route.fulfill({ json: [] });
       }
       if (verb === 'GET') return route.fulfill({ json: [] });

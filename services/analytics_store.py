@@ -404,10 +404,8 @@ class AnalyticsFactService:
         workspace_id: int,
         period: str,
         user_accounts: List[Account],
-        group_ids_by_account: Optional[Dict[str, List[int]]] = None,
     ) -> Dict[str, Any]:
         """Aggregate fast workspace summary directly from the Analytics Fact Store."""
-        group_map = group_ids_by_account or {}
         if not user_accounts:
             return {
                 "period": period,
@@ -517,7 +515,6 @@ class AnalyticsFactService:
                     "short_name": short_name,
                     "custom_name": acc.custom_name or "",
                     "note": acc.note or "",
-                    "group_ids": group_map.get(acc.account_id, []),
                     "timezone_name": acc.timezone_name,
                     "currency": account_currency,
                     "account_status": acc.account_status,
@@ -619,7 +616,6 @@ class AnalyticsFactService:
                 "short_name": short_name,
                 "custom_name": acc.custom_name or "",
                 "note": acc.note or "",
-                "group_ids": group_map.get(acc.account_id, []),
                 "timezone_name": acc.timezone_name,
                 "currency": account_currency,
                 "account_status": acc.account_status,

@@ -11,7 +11,6 @@ from api.auth import get_current_user
 from api.deps import (
     SUMMARY_CACHE_TTL,
     SUMMARY_VIEW_SCOPE,
-    _account_group_ids_by_account,
     _analytics_view_response,
     _cost_or_none,
     _currency_total_payload,
@@ -176,13 +175,11 @@ async def get_summary_report(
 
             # Check Analytics Fact Store before live polling
             if ws_id and accounts:
-                group_ids_by_account = await _account_group_ids_by_account(session, user, workspace_id=ws_id)
                 fact_summary = await AnalyticsFactService.get_workspace_summary_report(
                     session,
                     workspace_id=ws_id,
                     period=period,
                     user_accounts=accounts,
-                    group_ids_by_account=group_ids_by_account,
                 )
                 if fact_summary.get("data_quality", {}).get("accounts_synced", 0) > 0:
                     fact_summary = await _enrich_summary_account_metadata(
@@ -202,7 +199,6 @@ async def get_summary_report(
                         workspace_id=ws_id,
                     )
 
-        group_ids_by_account = await _account_group_ids_by_account(session, user, workspace_id=ws_id)
         if not accounts:
             empty_res = {
                 "period": period,
@@ -431,7 +427,6 @@ async def get_summary_report(
                     "short_name": short_name,
                     "custom_name": acc.custom_name or "",
                     "note": acc.note or "",
-                    "group_ids": group_ids_by_account.get(acc.account_id, []),
                     "timezone_name": acc.timezone_name,
                     "currency": account_currency,
                     "account_status": acc.account_status,
@@ -481,7 +476,6 @@ async def get_summary_report(
                     "short_name": short_name,
                     "custom_name": acc.custom_name or "",
                     "note": acc.note or "",
-                    "group_ids": group_ids_by_account.get(acc.account_id, []),
                     "timezone_name": acc.timezone_name,
                     "currency": account_currency,
                     "account_status": acc.account_status,

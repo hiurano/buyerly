@@ -892,50 +892,6 @@ class AccountHealth(Base):
         return f"<AccountHealth(account_pk={self.account_pk}, status='{self.status}', cause='{self.cause}')>"
 
 
-class AccountGroup(Base):
-    """Workspace-scoped, reusable grouping of advertising accounts."""
-
-    __tablename__ = "account_groups"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    workspace_id = Column(Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=True, index=True)
-    owner_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
-    name = Column(String, nullable=False)
-    description = Column(String, default="", nullable=False)
-    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
-
-    __table_args__ = (
-        Index(
-            "uq_account_groups_workspace_name_ci",
-            workspace_id,
-            func.lower(func.btrim(name)),
-            unique=True,
-            postgresql_where=workspace_id.is_not(None),
-        ),
-    )
-
-    def __repr__(self):
-        return f"<AccountGroup(id={self.id}, workspace_id={self.workspace_id}, name='{self.name}')>"
-
-
-class AccountGroupMember(Base):
-    """Ordered many-to-many membership between account groups and accounts."""
-
-    __tablename__ = "account_group_members"
-    __table_args__ = (
-        UniqueConstraint("group_id", "account_id", name="uq_account_group_member"),
-    )
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    group_id = Column(Integer, ForeignKey("account_groups.id", ondelete="CASCADE"), nullable=False, index=True)
-    account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
-    position = Column(Integer, default=0, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
-
-    def __repr__(self):
-        return f"<AccountGroupMember(group={self.group_id}, account={self.account_id}, position={self.position})>"
-
-
 class Team(Base):
     """A team inside a workspace, as Linear's Settings → Teams has them (#371).
 

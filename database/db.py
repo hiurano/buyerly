@@ -313,7 +313,6 @@ async def migrate_audit_undo_contract(conn) -> bool:
 STABLE_OWNER_TABLES = (
     "rule_presets",
     "rule_groups",
-    "account_groups",
     "accounts",
     "summary_snapshots",
     "analytics_view_preferences",
@@ -694,7 +693,7 @@ async def migrate_workspaces_contract(conn) -> int:
     if "active_workspace_id" not in user_columns:
         await conn.execute(text("ALTER TABLE users ADD COLUMN active_workspace_id INTEGER"))
 
-    for tbl in ("rule_presets", "rule_groups", "account_groups", "accounts", "meta_connections", "summary_snapshots", "audit_events"):
+    for tbl in ("rule_presets", "rule_groups", "accounts", "meta_connections", "summary_snapshots", "audit_events"):
         if tbl in table_names:
             cols = await conn.run_sync(
                 lambda sync_conn, name=tbl: {column["name"] for column in inspect(sync_conn).get_columns(name)}
@@ -749,7 +748,7 @@ async def migrate_workspaces_contract(conn) -> int:
             {"ws_id": has_membership, "u_id": u_id}
         )
 
-        for tbl in ("rule_presets", "rule_groups", "account_groups", "accounts", "meta_connections", "summary_snapshots", "audit_events"):
+        for tbl in ("rule_presets", "rule_groups", "accounts", "meta_connections", "summary_snapshots", "audit_events"):
             if tbl in table_names:
                 await conn.execute(
                     text(f"UPDATE {tbl} SET workspace_id = :ws_id WHERE owner_user_id = :u_id AND workspace_id IS NULL"),

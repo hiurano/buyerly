@@ -882,9 +882,6 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             presets_res = await client.get('/api/presets', headers=viewer_headers)
             self.assertEqual(presets_res.status_code, 200)
 
-            groups_res = await client.get('/api/account-groups', headers=viewer_headers)
-            self.assertEqual(groups_res.status_code, 200)
-
             # 2. Victor (viewer) is blocked from creating presets
             create_preset_res = await client.post(
                 '/api/presets',
@@ -898,15 +895,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(create_preset_res.status_code, 403)
             self.assertIn('Guests', create_preset_res.json()['detail'])
 
-            # 3. Victor is blocked from creating account groups
-            create_group_res = await client.post(
-                '/api/account-groups',
-                json={'name': 'Viewer Group', 'account_ids': []},
-                headers=viewer_headers,
-            )
-            self.assertEqual(create_group_res.status_code, 403)
-
-            # 4. Victor is blocked from batch-adding accounts
+            # 3. Victor is blocked from batch-adding accounts
             batch_add_res = await client.post(
                 '/api/accounts/batch-add',
                 json={
@@ -917,11 +906,11 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(batch_add_res.status_code, 403)
 
-            # 5. Victor, a guest on no team, doesn't see the account whose rules he'd switch
+            # 4. Victor, a guest on no team, doesn't see the account whose rules he'd switch
             toggle_res = await client.post('/api/accounts/act_111111/toggle-rules', headers=viewer_headers)
             self.assertEqual(toggle_res.status_code, 404)
 
-            # 6. Victor is blocked from deleting accounts
+            # 5. Victor is blocked from deleting accounts
             del_acc_res = await client.delete('/api/accounts/act_111111', headers=viewer_headers)
             self.assertEqual(del_acc_res.status_code, 403)
 

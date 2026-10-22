@@ -132,7 +132,7 @@ try {
         assert.equal(request.headers()['x-workspace-slug'], workspace.slug);
         return route.fulfill({ json: { items: [], page: 1, page_size: 25, total: 0, total_pages: 0, status_counts: {} } });
       }
-      if (verb === 'GET' && ['/api/accounts', '/api/meta/connections', '/api/account-groups'].includes(path)) {
+      if (verb === 'GET' && ['/api/accounts', '/api/meta/connections'].includes(path)) {
         return route.fulfill({ json: [] });
       }
       // Settings reads the workspace teams (#371) for "Your teams" and the Members Teams column.
