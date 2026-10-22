@@ -7,8 +7,9 @@ import { arrangeGroups, sortByColumn } from '@/ui/listView';
 import { getRulesColumns } from './tableColumns';
 import {
   NOT_ATTACHED_GROUP_ID,
-  RULE_GROUPINGS,
   naturalRuleDirection,
+  ruleActiveGrouping,
+  ruleActiveRows,
   ruleGroupAccounts,
   ruleGroupsFor,
   useRulesView,
@@ -28,15 +29,51 @@ export const RulesListView: React.FC<RulesListViewProps> = ({ filteredRules }) =
   const { view, update } = useRulesView();
   const columns = getRulesColumns(view.properties);
   const accounts = useMemo(() => ruleGroupAccounts(ruleAccounts), [ruleAccounts]);
-  const grouping = RULE_GROUPINGS.some((option) => option.value === view.grouping) ? view.grouping : 'none';
+  const grouping = ruleActiveGrouping(view);
+  const rowsGrouping = ruleActiveRows(view);
 
-  /** A group's "+": a rule with that label, or one that runs on that ad account (#387). */
-  const createIn = (group: RuleListGroup) => {
+  /** Whether a group's "+" starts the rule with something: its label, or its ad account (#387). */
+  const presets = (group: RuleListGroup, by: string) =>
+    Boolean(group.labelId) || (by === 'account' && group.id !== NOT_ATTACHED_GROUP_ID);
+  /** A group's "+": a rule with that label, or one that runs on that ad account. */
+  const createIn = (group: RuleListGroup, by: string) => {
     if (group.labelId) return openCreateRuleModal(group.labelId);
-    if (grouping === 'account' && group.id !== NOT_ATTACHED_GROUP_ID) {
+    if (presets(group, by)) {
       return openCreateRuleModal(undefined, { accountId: group.id.replace(/^account-/, ''), scope: { level: 'account', ids: [] } });
     }
     return openCreateRuleModal();
+  };
+  const actionLabel = (group: RuleListGroup, by: string) =>
+    group.labelId ? `Create rule labelled ${group.label}` : presets(group, by) ? `Create rule on ${group.label}` : 'Create rule in group';
+
+  /**
+   * Linear's sub-groups inside a group. Every grouping is a known set, so Show
+   * empty groups shows empty sub-groups too. A sub-group's "+" starts from the
+   * sub-group when it has a label or account to start with, else from the group.
+   */
+  const renderSubGroups = (group: RuleListGroup) => {
+    if (rowsGrouping === 'none') return group.rows.map((rule) => <RuleRow key={`${group.id}:${rule.id}`} rule={rule} />);
+    return ruleGroupsFor(rowsGrouping, group.rows, ruleLabels, accounts)
+      .filter((sub) => sub.rows.length > 0 || view.showEmptyGroups)
+      .map((sub) => {
+        const key = `${group.id}/${sub.id}`;
+        const [from, by]: [RuleListGroup, string] = presets(sub, rowsGrouping) ? [sub, rowsGrouping] : [group, grouping];
+        return (
+          <BuyerlyDataListGroup
+            key={key}
+            subGroup
+            title={sub.label}
+            count={sub.rows.length}
+            dotColor={sub.dotColor}
+            isCollapsed={rulesCollapsedGroups.includes(key)}
+            onToggleCollapse={() => toggleRulesGroupCollapse(key)}
+            actionLabel={actionLabel(from, by)}
+            onAction={() => createIn(from, by)}
+          >
+            {sub.rows.map((rule) => <RuleRow key={`${key}:${rule.id}`} rule={rule} />)}
+          </BuyerlyDataListGroup>
+        );
+      });
   };
 
   const renderRows = () => {
@@ -55,10 +92,10 @@ export const RulesListView: React.FC<RulesListViewProps> = ({ filteredRules }) =
         tint={group.tint}
         isCollapsed={rulesCollapsedGroups.includes(group.id)}
         onToggleCollapse={() => toggleRulesGroupCollapse(group.id)}
-        actionLabel={group.labelId ? `Create rule labelled ${group.label}` : grouping === 'account' ? `Create rule on ${group.label}` : 'Create rule in group'}
-        onAction={() => createIn(group)}
+        actionLabel={actionLabel(group, grouping)}
+        onAction={() => createIn(group, grouping)}
       >
-        {group.rows.map((rule) => <RuleRow key={`${group.id}:${rule.id}`} rule={rule} />)}
+        {renderSubGroups(group)}
       </BuyerlyDataListGroup>
     ));
   };

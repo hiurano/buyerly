@@ -355,6 +355,8 @@ try {
       assert.match(await bar(page).innerText(), /Ad account/);
       await page.getByRole('button', { name: 'Clear all filters' }).click();
       await page.locator('[data-row-id="801"]').waitFor();
+      // The view is saved a moment later; leaving at once would lose the cleared filter.
+      await settle(page);
 
       // My campaigns: the same list over the accounts you lead, with a view of its own.
       await page.goto(`${origin}/alpha/my-campaigns/campaigns`);
