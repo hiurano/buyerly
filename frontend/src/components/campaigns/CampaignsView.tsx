@@ -646,7 +646,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
     missing: () => ({
       title: "Couldn't open",
       message: `${revealedNoun} ${reveal?.id ?? ''}.`,
-      description: `Ads Manager has no such ${revealedNoun} in ${selectedAccount ? metaAccountLabel(selectedAccount) : 'this ad account'} ${period === 'today' ? 'today' : `for ${periodLabel.toLowerCase()}`}.`,
+      description: `There is no such ${revealedNoun} in ${selectedAccount ? metaAccountLabel(selectedAccount) : 'this ad account'} ${period === 'today' ? 'today' : `for ${periodLabel.toLowerCase()}`}.`,
     }),
   });
 
@@ -719,7 +719,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
       return <DataState title="Team not found" detail="This workspace has no team with that identifier." />;
     }
     if (activeTeam.loading) {
-      return <DataState title="Loading Ads Manager…" detail="Reading the team's ad accounts." />;
+      return <DataState title="Loading campaigns…" detail="Reading the team's ad accounts." />;
     }
     // With none in the workspace yet, the team shows the workspace's own empty state and Add account.
     if (metaAccounts.length === 0 && activeTeam.team && allMetaAccounts.length > 0) {
@@ -741,12 +741,12 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
       );
     }
     if (hierarchyState === 'loading') {
-      return <DataState title="Loading Ads Manager…" detail="Reading saved Meta campaigns, ad sets, ads, and current metrics." />;
+      return <DataState title="Loading campaigns…" detail="Reading saved Meta campaigns, ad sets, ads, and current metrics." />;
     }
     if (hierarchyState === 'error') {
       return (
         <DataState
-          title="Couldn't load Ads Manager"
+          title="Couldn't load campaigns"
           detail={hierarchyError}
           role="alert"
           actionLabel="Retry"
@@ -820,7 +820,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
         >
           <div className="flex items-center">
             <SidebarCollapsedNavigation />
-            <ViewTitle title="Ads Manager" team={activeTeam.team} />
+            <ViewTitle title="Campaigns" team={activeTeam.team} />
           </div>
           {selectedAccount ? (
             <DropdownMenuAccount
@@ -846,7 +846,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
             ]}
             activeTabId={campaignFilterTab}
             onChange={(id) => setCampaignFilterTab(id as AdsManagerEntity)}
-            aria-label="Ads Manager level"
+            aria-label="Level"
           />
 
           <div className="flex shrink-0 items-center gap-1.5">
@@ -919,7 +919,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
         countNoun={[entityLabels[campaignFilterTab].singular, entityLabels[campaignFilterTab].plural]}
       />
 
-      <DetailsPaneLayout pane="adsManager" label="Ads Manager details" details={details}>
+      <DetailsPaneLayout pane="adsManager" label="Campaigns details" details={details}>
         <div className="campaign-view-list relative">
           {renderData()}
           <SelectionDock count={selection.count} onOpenActions={() => selection.setMenuOpen(true)} onClear={selection.clear} />

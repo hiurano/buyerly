@@ -160,7 +160,7 @@ try {
       // Linear's sidebar: Inbox, the Workspace section, then each of Your teams with its own pages.
       assert.deepEqual(
         (await nav.allInnerTexts()).map((text) => text.trim()),
-        ['Inbox', 'My campaigns', 'Members', 'Ad accounts', 'Teams', 'Home', 'Ads Manager', 'Ad accounts', 'Rules'],
+        ['Inbox', 'My campaigns', 'Members', 'Ad accounts', 'Teams', 'Home', 'Campaigns', 'Ad accounts', 'Rules'],
       );
 
       // G K opens the list.
@@ -219,7 +219,7 @@ try {
       await page.locator('[data-row-id="act_102"]').hover();
       await page.getByRole('button', { name: 'Actions for DE · E-commerce' }).click();
       const items = (await page.getByRole('menuitem').allInnerTexts()).map((text) => text.trim());
-      assert.deepEqual(items, ['Open', 'Open in Ads Manager', 'Rename…', 'Turn automation on', 'Copy account ID', 'Remove from workspace…']);
+      assert.deepEqual(items, ['Open', 'Open campaigns', 'Rename…', 'Turn automation on', 'Copy account ID', 'Remove from workspace…']);
       await page.getByRole('menuitem', { name: 'Rename…' }).click();
       const renameField = page.getByRole('textbox', { name: 'Ad account name' });
       await renameField.fill('DE · Shop');
@@ -266,7 +266,7 @@ try {
       await page.waitForURL(`${origin}/alpha/accounts/act_101`);
 
       // Open in Ads Manager, then G K back to the list.
-      await page.getByRole('button', { name: 'Open in Ads Manager' }).click();
+      await page.getByRole('button', { name: 'Open campaigns' }).click();
       await page.waitForURL(`${origin}/alpha/ads-manager/campaigns?account=act_101`);
       await page.getByRole('button', { name: 'Select ad account' }).click();
       await page.getByRole('menuitem', { name: 'All ad accounts…' }).click();
@@ -303,7 +303,7 @@ try {
       await page.getByRole('button', { name: 'Actions for NL · Lead gen' }).click();
       assert.deepEqual(
         (await page.getByRole('menuitem').allInnerTexts()).map((text) => text.trim()),
-        ['Open', 'Open in Ads Manager', 'Rename…', 'Turn automation off', 'Copy account ID'],
+        ['Open', 'Open campaigns', 'Rename…', 'Turn automation off', 'Copy account ID'],
       );
       await page.keyboard.press('Escape');
       await page.goto(`${origin}/alpha/accounts/act_101`);

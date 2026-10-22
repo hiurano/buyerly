@@ -533,7 +533,7 @@ export function inheritedRuleIds(
  */
 /** The next step for a rule that runs nowhere yet: a new rule is never attached. */
 export const ATTACH_STEPS =
-  'Attach a rule to an ad account from its row menu (Run on ad accounts), or to a campaign from the Rules column in Ads Manager.';
+  'Attach a rule to an ad account from its row menu (Run on ad accounts), or to a campaign from the Rules column in Campaigns.';
 
 export function formatScope(preset: RulePresetPayload): string {
   const count = preset.attached_account_ids.length;

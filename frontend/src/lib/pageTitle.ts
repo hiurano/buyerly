@@ -65,7 +65,7 @@ export function pageTitle(input: PageTitleInput): string {
     case 'accounts':
       return inTeam('Ad accounts');
     case 'campaigns':
-      return input.myCampaigns ? 'My campaigns' : inTeam('Ads Manager');
+      return input.myCampaigns ? 'My campaigns' : inTeam('Campaigns');
     case 'rules':
       return input.rulesPage ? 'Recently deleted' : inTeam('Rules');
     case 'members':
