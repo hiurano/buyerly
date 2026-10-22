@@ -138,8 +138,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({ accountId, navigate, n
         {account && <span className="ml-1 flex shrink-0 items-center"><AccountRowMenu account={account} actions={actions} inHeader /></span>}
       </div>
       {account && account.is_active !== false && (
-        <Button size="compact" className="shrink-0" aria-label="Open in Ads Manager" onClick={() => actions.openInAdsManager(account)}>
-          <span className="max-[639px]:hidden">{'Open in '}</span>Ads Manager
+        <Button size="compact" className="shrink-0" aria-label="Open campaigns" onClick={() => actions.openInAdsManager(account)}>
+          Campaigns
         </Button>
       )}
     </div>

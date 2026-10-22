@@ -309,9 +309,9 @@ class TestReactFrontendContract(unittest.TestCase):
             "hierarchyRequest('ad')",
             "requestGenerationRef",
             "Loading ad accounts…",
-            "Loading Ads Manager…",
+            "Loading campaigns…",
             "Couldn't load ad accounts",
-            "Couldn't load Ads Manager",
+            "Couldn't load campaigns",
             "Zero-activity entities are included",
             "setCampaignFilterTab",
             "LinearFilterButton",
@@ -1042,8 +1042,8 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertLess(sidebar.index('label="Members"'), sidebar.index('label="Ad accounts"'))
         self.assertLess(sidebar.index('label="Ad accounts"'), sidebar.index('label="Teams"'))
         self.assertLess(sidebar.index('title="Workspace"'), sidebar.index('title="Your teams"'))
-        self.assertLess(sidebar.index("label: 'Home'"), sidebar.index("label: 'Ads Manager'"))
-        self.assertLess(sidebar.index("label: 'Ads Manager'"), sidebar.index("label: 'Rules'"))
+        self.assertLess(sidebar.index("label: 'Home'"), sidebar.index("label: 'Campaigns'"))
+        self.assertLess(sidebar.index("label: 'Campaigns'"), sidebar.index("label: 'Rules'"))
         self.assertIn("return `/${workspace}/accounts/${encodeURIComponent(result.id)}`", search)
         self.assertIn("<AccountsView", self.app)
         self.assertIn("<AccountPage", self.app)
@@ -1059,7 +1059,7 @@ class TestReactFrontendContract(unittest.TestCase):
         for option in ("'No grouping'", "'Status'", "'Team'", "'Spend today'", "'Added'", "'Name or ID'", "'Automation'"):
             self.assertIn(option, model)
         # The page: name, note, today, rules, events, properties; one column on a phone.
-        for words in ("Open in Ads Manager", "Attach rule", "Recent events", "Connected by", "Last sync", "Reconnect"):
+        for words in ("Open campaigns", "Attach rule", "Recent events", "Connected by", "Last sync", "Reconnect"):
             self.assertIn(words, page)
         self.assertIn("/api/audit-events?page=1&page_size=5&account_id=", page)
         # Rules on the account show their own status; no switch that would pause them everywhere.

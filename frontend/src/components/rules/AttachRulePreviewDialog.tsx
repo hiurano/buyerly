@@ -168,7 +168,7 @@ export const AttachRulePreviewDialog: React.FC<AttachRulePreviewDialogProps> = (
                         {`Lifetime here counts the days Buyerly has synced, since ${formatDay(preview.lifetime_since)}; the rule itself reads lifetime from Meta. `}
                       </span>
                     )}
-                    To run it on some campaigns or ad sets only, attach it from the Rules column in Ads Manager.
+                    To run it on some campaigns or ad sets only, attach it from the Rules column in Campaigns.
                   </p>
                 </>
               )}

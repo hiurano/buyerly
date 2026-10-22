@@ -616,7 +616,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
         </ul>
       </div>
 
-      {/* A new rule that runs on what is selected here, made without leaving Ads Manager (#387). */}
+      {/* A new rule that runs on what is selected here, made without leaving Campaigns (#387). */}
       {attachedRulesAccountId && (
         <button
           type="button"

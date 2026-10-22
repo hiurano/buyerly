@@ -388,7 +388,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
         <WorkspaceSwitcher />
         <ToastRegion />
         <ApprovalDialog />
-        {/* The rule window opens from Rules, Ctrl/Cmd+K and Ads Manager's "Apply rule…" (#387). */}
+        {/* The rule window opens from Rules, Ctrl/Cmd+K and Campaigns' "Apply rule…" (#387). */}
         <CreateRuleModal />
       </TooltipProvider>
     </WorkspaceSessionProvider>

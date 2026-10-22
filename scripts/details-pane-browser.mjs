@@ -187,7 +187,7 @@ try {
     try {
       await page.goto(`${origin}/alpha/ads-manager/campaigns?account=act_100`);
       await page.locator('[data-row-id="801"]').waitFor();
-      const pane = paneOf(page, 'Ads Manager details');
+      const pane = paneOf(page, 'Campaigns details');
       assert.equal(await pane.count(), 0, 'Ads Manager: the pane starts closed');
       const listBefore = await rect(page.locator('.details-pane-content'));
 
@@ -312,7 +312,7 @@ try {
       assert.equal(await page.locator('.details-pane-scrim').count(), 0, 'no backdrop without a touch phone');
       await page.screenshot({ path: `${output}/ads-manager-1000.png` });
       await toggle(page, 'Close details').click();
-      await paneOf(page, 'Ads Manager details').waitFor({ state: 'detached' });
+      await paneOf(page, 'Campaigns details').waitFor({ state: 'detached' });
       assert.deepEqual(errors, []);
       console.log('Details pane: over the list at 1000px passed');
     } catch (error) {

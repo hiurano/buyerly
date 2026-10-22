@@ -77,10 +77,10 @@ export const AccountRowMenu: React.FC<{
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={4} onClick={(event) => event.stopPropagation()}>
-        {/* The page itself has "Open in Ads Manager" beside this menu. */}
+        {/* The page itself has "Campaigns" beside this menu. */}
         {!inHeader && <DropdownMenuItem onSelect={() => actions.open(account)}><span>Open</span></DropdownMenuItem>}
         {!inHeader && account.is_active !== false && (
-          <DropdownMenuItem onSelect={() => actions.openInAdsManager(account)}><span>Open in Ads Manager</span></DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => actions.openInAdsManager(account)}><span>Open campaigns</span></DropdownMenuItem>
         )}
         {actions.canAct && (
           <>

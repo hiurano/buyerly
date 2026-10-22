@@ -21,10 +21,10 @@ import { SidebarLink, SidebarSection, SidebarTeam } from './SidebarSections';
 import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
 import { SidebarBackdrop, useSidebarDrawer, useSidebarPeek } from './SidebarDrawer';
 
-/** A team's pages, as Linear's: its Home, then Ads Manager, Ad accounts and Rules (Linear's Issues and Projects). */
+/** A team's pages, as Linear's: its Home, then Campaigns, Ad accounts and Rules (Linear's Issues and Projects). */
 const TEAM_PAGES: { tab: AppTab; label: string; icon: React.ReactNode }[] = [
   { tab: 'team', label: 'Home', icon: <LinearHomeIcon size={14} /> },
-  { tab: 'campaigns', label: 'Ads Manager', icon: <LinearMetaIcon size={14} /> },
+  { tab: 'campaigns', label: 'Campaigns', icon: <LinearMetaIcon size={14} /> },
   { tab: 'accounts', label: 'Ad accounts', icon: <LinearWalletIcon size={14} /> },
   { tab: 'rules', label: 'Rules', icon: <LinearBoltIcon size={14} /> },
 ];
@@ -178,7 +178,7 @@ export const Sidebar: React.FC = () => {
             )}
           />
 
-          {/* Linear's My issues: Ads Manager over the ad accounts you lead. */}
+          {/* Linear's My issues: campaigns of the ad accounts you lead. */}
           <SidebarLink
             icon={<LinearMyIssuesIcon size={14} />}
             label="My campaigns"

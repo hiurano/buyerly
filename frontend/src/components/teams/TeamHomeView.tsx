@@ -270,7 +270,7 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
         setActiveTab('preferences');
       },
     }] : []),
-    { id: 'campaigns', label: 'Ads Manager', icon: <LinearMetaIcon size={16} />, run: () => goTo('campaigns') },
+    { id: 'campaigns', label: 'Campaigns', icon: <LinearMetaIcon size={16} />, run: () => goTo('campaigns') },
     { id: 'accounts', label: 'Ad accounts', icon: <LinearWalletIcon size={16} />, run: () => goTo('accounts') },
     { id: 'rules', label: 'Rules', icon: <LinearBoltIcon size={16} />, run: () => goTo('rules') },
   ];

@@ -276,7 +276,7 @@ try {
       assert.deepEqual(wrapped, [], `figures wrap at ${width}px`);
       await shot('ads-manager');
       await assertDisplayOptions('ads manager');
-      await assertDetails('ads manager', 'Ads Manager details');
+      await assertDetails('ads manager', 'Campaigns details');
       await assertDrawer('ads manager');
 
       // Adding an ad account is called "Add account" everywhere (#382): in the account menu...

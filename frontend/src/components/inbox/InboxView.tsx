@@ -817,7 +817,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                       value={(
                         <RecordLink
                           path={selectedPaths.campaign}
-                          label={selectedItem.entity_level === 'campaign' ? auditEventTarget(selectedItem) : 'Open in Ads Manager'}
+                          label={selectedItem.entity_level === 'campaign' ? auditEventTarget(selectedItem) : 'Open campaign'}
                           onOpen={onOpenRecord}
                         />
                       )}

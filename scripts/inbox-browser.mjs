@@ -794,7 +794,7 @@ try {
       await ruleLink.waitFor();
       assert.equal(await ruleLink.getAttribute('href'), `/${workspace.slug}/rules/3`);
       assert.equal(
-        await notification.getByRole('link', { name: 'Open in Ads Manager' }).getAttribute('href'),
+        await notification.getByRole('link', { name: 'Open campaign' }).getAttribute('href'),
         `/${workspace.slug}/ads-manager/campaigns/777?account=act_1`,
       );
       assert.equal(
