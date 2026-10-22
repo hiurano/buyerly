@@ -185,7 +185,7 @@ try {
   {
     const { context, page, errors } = await openPage(1440);
     try {
-      await page.goto(`${origin}/alpha/ads-manager/campaigns?account=act_100`);
+      await page.goto(`${origin}/alpha/ads-manager/campaigns`);
       await page.locator('[data-row-id="801"]').waitFor();
       const pane = paneOf(page, 'Campaigns details');
       assert.equal(await pane.count(), 0, 'Ads Manager: the pane starts closed');
@@ -206,7 +206,7 @@ try {
 
       // Delivery is Meta's real delivery state: the rejected campaign is not "Active".
       const tabs = pane.getByRole('tab');
-      assert.deepEqual(await tabs.allTextContents(), ['Delivery', 'Rules']);
+      assert.deepEqual(await tabs.allTextContents(), ['Delivery', 'Ad account', 'Rules']);
       const row = (name) => pane.locator('.details-facets-row', { hasText: name });
       assert.equal((await row('Active').locator('.details-facets-row-count').textContent()).trim(), '1');
       assert.equal((await row('Disapproved').locator('.details-facets-row-count').textContent()).trim(), '1');
@@ -277,7 +277,7 @@ try {
       assert.equal((await ruleRow('Paused').locator('.details-facets-row-count').textContent()).trim(), '1');
 
       // Back on Ads Manager its pane is still closed: one view's toggle never opens the other's.
-      await page.goto(`${origin}/alpha/ads-manager/campaigns?account=act_100`);
+      await page.goto(`${origin}/alpha/ads-manager/campaigns`);
       await page.locator('[data-row-id="801"]').waitFor();
       await settle(page);
       assert.equal(await pane.count(), 0, 'Ads Manager stays closed when Rules opened');
@@ -296,7 +296,7 @@ try {
   {
     const { context, page, errors } = await openPage(1000);
     try {
-      await page.goto(`${origin}/alpha/ads-manager/campaigns?account=act_100`);
+      await page.goto(`${origin}/alpha/ads-manager/campaigns`);
       await page.locator('[data-row-id="801"]').waitFor();
       const listBefore = await rect(page.locator('.details-pane-content'));
       await openAndSample(page, 'Ads Manager 1000px');

@@ -252,7 +252,7 @@ try {
       await onSearchPage();
 
       // 4. With rows selected, Ctrl/Cmd+K is the selection's own actions menu.
-      await page.goto(`${origin}/alpha/ads-manager/adsets?account=act_1001`);
+      await page.goto(`${origin}/alpha/ads-manager/adsets`);
       await page.locator('[data-row-id="230001"]').waitFor();
       await page.locator('[data-row-id="230001"]').hover();
       await page.keyboard.press('x');

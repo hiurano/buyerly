@@ -31,11 +31,11 @@ function writeAddress(filters: Filters) {
  * gets the saved filters back. `navigationKey` changes on every navigation,
  * Back and Forward included.
  */
-export function useCampaignViewFilters(scope: string, navigationKey: number) {
+export function useCampaignViewFilters(scope: string, navigationKey: number, mine = false) {
   const views = {
-    campaigns: useAdsManagerView('campaigns'),
-    adsets: useAdsManagerView('adsets'),
-    ads: useAdsManagerView('ads'),
+    campaigns: useAdsManagerView('campaigns', mine),
+    adsets: useAdsManagerView('adsets', mine),
+    ads: useAdsManagerView('ads', mine),
   };
   const loaded = views.campaigns.loaded;
   const filters: Filters = {
@@ -68,7 +68,7 @@ export function useCampaignViewFilters(scope: string, navigationKey: number) {
   else {
     try {
       const saved = JSON.parse(sessionStorage.getItem(key) ?? 'null');
-      if (saved && ['status', 'group', 'rule', 'campaign'].includes(saved.fieldId) && typeof saved.value === 'string') quick = saved;
+      if (saved && ['status', 'account', 'group', 'rule', 'campaign'].includes(saved.fieldId) && typeof saved.value === 'string') quick = saved;
     } catch { /* Storage is optional. */ }
   }
   const setQuick = (selection: QuickSelection | null) => {

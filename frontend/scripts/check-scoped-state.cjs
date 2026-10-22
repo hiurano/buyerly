@@ -79,14 +79,24 @@ async function main() {
   await assert.rejects(state().deleteRule('1')); assert.equal(pending.length, 0);
 
   // Account A/B race and failed B must never leave A writable.
-  const aa = state().loadAccountRuleAttachments('A'); const aar = take('/api/accounts');
-  const ab = state().loadAccountRuleAttachments('B'); const abr = take('/api/accounts');
+  const aa = state().loadRuleAttachments(['A']); const aar = take('/api/accounts');
+  const ab = state().loadRuleAttachments(['B']); const abr = take('/api/accounts');
   abr.reply([{ account_id: 'B', active_rules: [{ preset_id: 2, scope: { level: 'campaign', ids: ['b'] } }] }]); await ab;
   aar.reply([{ account_id: 'A', active_rules: [{ preset_id: 1 }] }]); await aa;
-  assert.equal(state().attachedRulesAccountId, 'B'); assert.deepEqual(Object.keys(state().attachedRuleScopes), ['2']);
-  const bad = state().loadAccountRuleAttachments('C'); take('/api/accounts').reply({ detail: 'C unavailable' }, 500); await bad;
+  assert.deepEqual(state().attachedRulesAccountIds, ['B']); assert.deepEqual(Object.keys(state().attachedRuleScopes.B), ['2']);
+  const bad = state().loadRuleAttachments(['C']); take('/api/accounts').reply({ detail: 'C unavailable' }, 500); await bad;
   assert.deepEqual(state().attachedRuleScopes, {});
-  await state().toggleRuleForEntities('campaign', ['old'], '1'); assert.equal(pending.length, 0);
+  await state().toggleRuleForEntities('C', 'campaign', ['old'], '1'); assert.equal(pending.length, 0);
+  await state().toggleRuleForEntities('A', 'campaign', ['old'], '1'); assert.equal(pending.length, 0);
+
+  // Several accounts at once: each keeps its own scopes, the row indexes merge.
+  const both = state().loadRuleAttachments(['A', 'B']);
+  take('/api/accounts').reply([
+    { account_id: 'A', active_rules: [{ preset_id: 1, scope: { level: 'campaign', ids: ['a'] } }] },
+    { account_id: 'B', active_rules: [{ preset_id: 2, scope: { level: 'campaign', ids: ['b'] } }] },
+  ]); await both;
+  assert.deepEqual(Object.keys(state().attachedRuleScopes).sort(), ['A', 'B']);
+  assert.deepEqual(state().campaignAttachedRules, { a: ['1'], b: ['2'] });
 
   // Logout/login to the SAME user/workspace invalidates old requests (ABA).
   enter('a'); const logout = state().loadRules(); const logoutReplies = rulesReplies();
@@ -107,14 +117,14 @@ async function main() {
   await seed(); window.location.pathname = '/b/rules';
   await assert.rejects(state().deleteRule('1')); assert.equal(pending.length, 0);
 
-  enter('a'); const attach = state().loadAccountRuleAttachments('A');
+  enter('a'); const attach = state().loadRuleAttachments(['A']);
   take('/api/accounts').reply([{ account_id: 'A', active_rules: [] }]); await attach;
-  const toggle = state().toggleRuleForEntities('campaign', ['a'], '1');
+  const toggle = state().toggleRuleForEntities('A', 'campaign', ['a'], '1');
   const attachmentWrite = pending.shift(); assert.equal(attachmentWrite.workspace, 'a');
-  const switched = state().loadAccountRuleAttachments('B');
+  const switched = state().loadRuleAttachments(['B']);
   take('/api/accounts').reply([{ account_id: 'B', active_rules: [] }]); await switched;
   attachmentWrite.reply({ success: true }); await toggle;
-  assert.equal(pending.length, 0); assert.equal(state().attachedRulesAccountId, 'B');
+  assert.equal(pending.length, 0); assert.deepEqual(state().attachedRulesAccountIds, ['B']);
 
   // A deletion batch must not re-read B's same-numbered ids or reload B.
   const { runPendingDeletion, restoreFromTrash } = load(path.join(root, 'components/rules/ruleActions.ts'));
@@ -134,7 +144,7 @@ async function main() {
   // Delivery undo stops its queue after leaving the recorded workspace.
   const { deliveryHistoryEntry } = load(path.join(root, 'lib/delivery.ts'));
   let paints = 0;
-  const entry = deliveryHistoryEntry({ label: 'pause', accountId: 'A', targets: [{ level: 'campaign', entityId: '1' }],
+  const entry = deliveryHistoryEntry({ label: 'pause', targets: [{ level: 'campaign', entityId: '1', accountId: 'A' }],
     status: 'PAUSED', auditEventIds: [11, 12], onStatus: () => { paints += 1; } });
   const undo = entry.undo(); const undoWrite = pending.shift(); assert.ok(undoWrite);
   enter('b'); undoWrite.reply({}); await undo;

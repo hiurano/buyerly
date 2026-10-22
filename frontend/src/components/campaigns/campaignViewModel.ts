@@ -6,7 +6,7 @@ import { metricsFor, type AdsManagerMetrics } from './adsManagerMetrics';
 export interface AccountGroupOption { id: number; name: string; account_ids: string[] }
 export interface ViewRow {
   id: string; name: string; status: string; effectiveStatus?: string; campaignId?: string; adSetId?: string;
-  metrics?: AdsManagerMetrics;
+  accountId?: string; metrics?: AdsManagerMetrics;
 }
 type Entity = 'campaigns' | 'adsets' | 'ads';
 interface ParentOption { id: string; name?: string }
@@ -93,15 +93,37 @@ function deliveryStatusField<T extends ViewRow>(rows: T[]): FilterFieldDefinitio
 }
 export interface QuickSelection { fieldId: string; value: string }
 
+/** An ad account as Ads Manager names it: its own name, without the Meta id. */
+export const adAccountName = (account: MetaAccount) => account.custom_name?.trim() || account.name?.trim() || account.account_id;
+
+/**
+ * The ad account of each row, as Linear's Project: a filter and a grouping
+ * over every account on screen, A→Z.
+ */
+function accountField<T extends ViewRow>(accounts: MetaAccount[]): FilterFieldDefinition<T> {
+  return {
+    id: 'account', label: 'Ad account', section: 'filters', type: 'enum',
+    operators: ['is', 'is_not'], defaultOperator: 'is',
+    options: accounts
+      .map((account) => ({ value: account.account_id, label: adAccountName(account) }))
+      .sort((left, right) => left.label.localeCompare(right.label)),
+    getValue: (row) => row.accountId ?? '',
+    pluralLabel: 'ad accounts',
+  };
+}
+
 export function createLiveFields<T extends ViewRow>(
-  rows: T[], account: MetaAccount | undefined, groups: AccountGroupOption[] | null,
+  rows: T[], accounts: MetaAccount[], groups: AccountGroupOption[] | null,
   entity: Entity, adSets: { id: string; campaignId: string; name?: string }[],
   campaigns: ParentOption[] = [],
 ): FilterFieldDefinition<T>[] {
   const parents = new Map(adSets.map(row => [row.id, row.campaignId]));
   const campaignOf = (row: T) => row.campaignId || parents.get(row.adSetId ?? '') || '';
-  const rules = account?.active_rules ?? [];
-  const ruleValues = (row: T) => rules.filter(rule => {
+  const accountsById = new Map(accounts.map(account => [account.account_id, account]));
+  // Each account attaches its own rules; the filter offers every one of them once.
+  const rules = [...new Map(accounts.flatMap(account => account.active_rules ?? [])
+    .map(rule => [rule.preset_id, rule])).values()];
+  const ruleValues = (row: T) => (accountsById.get(row.accountId ?? '')?.active_rules ?? []).filter(rule => {
     const scope = rule.scope ?? { level: 'account', ids: [] };
     if (scope.level === 'account') return true;
     if (scope.level === 'campaign') {
@@ -113,6 +135,7 @@ export function createLiveFields<T extends ViewRow>(
   }).map(rule => String(rule.preset_id));
   const fields: FilterFieldDefinition<T>[] = [
     deliveryStatusField(rows),
+    accountField<T>(accounts),
     ...(entity !== 'campaigns' ? [parentField('campaign', 'Campaign', 'campaigns', campaigns, rows, campaignOf)] : []),
     ...(entity === 'ads' ? [parentField('adSet', 'Ad set', 'ad sets', adSets, rows, (row: T) => row.adSetId ?? '')] : []),
     { id: 'rule', label: 'Rules', section: 'filters', type: 'enum',
@@ -123,12 +146,12 @@ export function createLiveFields<T extends ViewRow>(
       pluralLabel: 'rules' },
   ];
   if (groups !== null) {
-    const memberships = groups.filter(group => group.account_ids.includes(account?.account_id ?? '')).map(group => String(group.id));
+    const memberships = (row: T) => groups.filter(group => group.account_ids.includes(row.accountId ?? '')).map(group => String(group.id));
     fields.push({
       id: 'group', label: 'Account groups', section: 'filters', type: 'enum',
       operators: ['includes_all', 'includes_any', 'excludes_any', 'excludes_all'], defaultOperator: 'includes_all',
       options: [...groups.map(group => ({ value: String(group.id), label: group.name })), { value: 'ungrouped', label: 'Ungrouped' }],
-      getValue: () => memberships.length ? memberships : ['ungrouped'], pluralLabel: 'groups',
+      getValue: row => { const ids = memberships(row); return ids.length ? ids : ['ungrouped']; }, pluralLabel: 'groups',
     });
   }
   fields.push({

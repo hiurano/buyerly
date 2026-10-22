@@ -10,6 +10,10 @@
 // - The period sits beside the filters, rides in the address (`?period=`),
 //   reloads every figure and survives a reload.
 // - On a phone Spend follows the name.
+// - Every ad account is on screen at once, grouped by account as Linear's
+//   team Issues groups by project; with no grouping the account is a column,
+//   an old link's `?account=` is a filter, and My campaigns shows only the
+//   accounts you lead.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -27,7 +31,7 @@ const workspace = {
   id: 1, slug: 'alpha', name: 'Alpha', role: 'owner', badge_text: 'A', badge_color: '#5E6AD2', logo_url: '', is_active: true,
 };
 const me = {
-  username: 'buyer', full_name: 'Bo Buyer', first_name: 'Bo', last_name: 'Buyer',
+  id: 1, username: 'buyer', full_name: 'Bo Buyer', first_name: 'Bo', last_name: 'Buyer',
   email: 'bo@example.test', email_verified: true, unconfirmed_email: null, avatar_url: '',
   onboarding_completed: true, onboarding_step: 'completed', active_workspace: workspace, workspaces: [workspace],
 };
@@ -47,6 +51,14 @@ const entity = (level, id, name, parent, spend, leads, extra = {}) => ({
   cost_per_lead: leads ? spend / leads : null, cost_per_registration: null, cost_per_purchase: null,
   cost_per_landing_page_view: null, cpc: 1, ctr: 1, cpc_link: 2, ctr_link: 0.5, ctr_outbound: 0, ...extra,
 });
+const euro = {
+  ...account, id: 200, account_id: 'act_200', name: 'Euro account', currency: 'EUR', lead_user_id: null,
+};
+const euroInventory = {
+  campaign: [entity('campaign', '701', 'Euro campaign', 'act_200', 40, 2, { account_id: 'act_200', currency: 'EUR' })],
+  adset: [],
+  ad: [],
+};
 const inventory = {
   campaign: [
     entity('campaign', '801', 'Alpha campaign', 'act_100', 50, 5),
@@ -74,7 +86,7 @@ try {
   const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
   browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH });
 
-  const openPage = async (width, touch = false) => {
+  const openPage = async (width, touch = false, accounts = [account]) => {
     const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: touch, isMobile: touch });
     await context.addCookies([{ name: 'buyerly_csrf', value: 'csrf-test', url: origin }]);
     const page = await context.newPage();
@@ -103,7 +115,7 @@ try {
         return route.fulfill({ status: 404, json: { detail: 'Unexpected test request' } });
       }
       if (path === '/api/me') return route.fulfill({ json: me });
-      if (path === '/api/accounts') return route.fulfill({ json: [account] });
+      if (path === '/api/accounts') return route.fulfill({ json: accounts });
       if (path === '/api/analytics/hierarchy') {
         const parent = url.searchParams.get('parent_id');
         const level = url.searchParams.get('level');
@@ -111,7 +123,8 @@ try {
         periods.push(period);
         const factor = PERIOD_FACTOR[period];
         if (!factor) return route.fulfill({ status: 422, json: { detail: 'Unknown period' } });
-        const items = parent === 'act_100' ? (inventory[level] ?? []).map((item) => scaled(item, factor)) : [];
+        const source = { act_100: inventory, act_200: euroInventory }[parent] ?? {};
+        const items = (source[level] ?? []).map((item) => scaled(item, factor));
         return route.fulfill({ json: { parent_id: parent, level, period, source: 'analytics_fact_store', data_as_of: null, total: items.length, items } });
       }
       if (path === '/api/inbox/unread-count') return route.fulfill({ json: { unread_count: 0, priority_unread_count: 0 } });
@@ -145,7 +158,7 @@ try {
   {
     const { context, page, errors, views, periods } = await openPage(1440);
     try {
-      await page.goto(`${origin}/alpha/ads-manager/campaigns?account=act_100`);
+      await page.goto(`${origin}/alpha/ads-manager/campaigns`);
       await page.locator('[data-row-id="801"]').waitFor();
       assert.deepEqual(await headers(page), ['Name', 'Budget', 'Spend', 'Leads', 'CPL', 'Rules'], 'the short daily set');
       assert.equal(await cell(page, '802', 'Leads'), '3');
@@ -195,7 +208,7 @@ try {
 
       // An old link's Results and CPA mean leads and CPL.
       const old = encodeURIComponent(JSON.stringify({ campaigns: [{ fieldId: 'results', operator: 'gt', values: [3] }], adsets: [], ads: [] }));
-      await page.goto(`${origin}/alpha/ads-manager/campaigns?account=act_100&filter=${old}`);
+      await page.goto(`${origin}/alpha/ads-manager/campaigns?filter=${old}`);
       await page.locator('[data-row-id="801"]').waitFor();
       assert.deepEqual(await rowIds(page), ['801'], 'Results > 3 is Leads > 3');
       await page.getByRole('button', { name: 'Clear all filters' }).click();
@@ -232,7 +245,7 @@ try {
       assert.equal(await cell(page, '903', 'Campaign'), 'Bravo campaign');
       await page.screenshot({ path: `${output}/adsets-by-campaign-1440.png` });
       const byCampaign = encodeURIComponent(JSON.stringify({ campaigns: [], adsets: [{ fieldId: 'campaign', operator: 'is', values: ['802'] }], ads: [] }));
-      await page.goto(`${origin}/alpha/ads-manager/adsets?account=act_100&filter=${byCampaign}`);
+      await page.goto(`${origin}/alpha/ads-manager/adsets?filter=${byCampaign}`);
       await page.locator('[data-row-id="903"]').waitFor();
       assert.deepEqual(await rowIds(page), ['903'], 'Campaign is Bravo');
       assert.match(await bar(page).innerText(), /Campaign/);
@@ -265,7 +278,7 @@ try {
   {
     const { context, page, errors } = await openPage(390, true);
     try {
-      await page.goto(`${origin}/alpha/ads-manager/campaigns?account=act_100&period=yesterday`);
+      await page.goto(`${origin}/alpha/ads-manager/campaigns?period=yesterday`);
       await page.locator('[data-row-id="801"]').waitFor();
       assert.deepEqual((await headers(page)).slice(0, 2), ['Name', 'Spend'], 'Spend follows the name on a phone');
       assert.equal(await cell(page, '801', 'Spend'), 'USD 100.00');
@@ -286,6 +299,60 @@ try {
     } catch (error) {
       console.error(error);
       await page.screenshot({ path: `${output}/failure-390.png`, fullPage: true }).catch(() => {});
+      console.error(errors);
+      throw error;
+    } finally {
+      await context.close();
+    }
+  }
+
+  // Every ad account at once, grouped by account; My campaigns, only the accounts you lead.
+  {
+    const { context, page, errors, views } = await openPage(1440, false, [{ ...account, lead_user_id: 1 }, euro]);
+    try {
+      await page.goto(`${origin}/alpha/ads-manager/campaigns`);
+      await page.locator('[data-row-id="701"]').waitFor();
+      await page.locator('[data-row-id="801"]').waitFor();
+      assert.equal(await page.getByRole('button', { name: 'Select ad account' }).count(), 0, 'no account switcher');
+      assert.deepEqual(await page.locator('.sticky span.truncate').allTextContents(), ['Euro account', 'Main account'], 'grouped by ad account, A→Z');
+      assert.deepEqual(await rowIds(page), ['701', '801', '802', '803']);
+      assert.equal(await cell(page, '701', 'Spend'), 'EUR 40.00', 'each account in its own currency');
+      assert.equal((await headers(page)).includes('Ad account'), false, 'the group names the account');
+      await page.screenshot({ path: `${output}/all-accounts-1440.png` });
+
+      // No grouping: the account is a column, as Linear shows the project on an issue.
+      await displayButton(page).click();
+      await popover(page).waitFor();
+      await select(page, 'Grouping', 'No grouping');
+      await page.keyboard.press('Escape');
+      await page.getByRole('columnheader', { name: 'Ad account' }).waitFor();
+      assert.equal(await cell(page, '701', 'Ad account'), 'Euro account');
+      assert.equal(await cell(page, '801', 'Ad account'), 'Main account');
+      await settle(page);
+      assert.equal(views['ads-manager.campaigns'].grouping, 'none');
+
+      // An old link to one account opens Campaigns filtered to it.
+      await page.goto(`${origin}/alpha/ads-manager/campaigns?account=act_200`);
+      await page.locator('[data-row-id="701"]').waitFor();
+      await page.locator('[data-row-id="801"]').waitFor({ state: 'detached' });
+      assert.doesNotMatch(page.url(), /account=act_200/);
+      assert.match(page.url(), /filter=/);
+      assert.match(await bar(page).innerText(), /Ad account/);
+      await page.getByRole('button', { name: 'Clear all filters' }).click();
+      await page.locator('[data-row-id="801"]').waitFor();
+
+      // My campaigns: the same list over the accounts you lead, with a view of its own.
+      await page.goto(`${origin}/alpha/my-campaigns/campaigns`);
+      await page.locator('[data-row-id="801"]').waitFor();
+      assert.equal(await page.locator('[data-row-id="701"]').count(), 0, 'not an account you lead');
+      assert.deepEqual(await page.locator('.sticky span.truncate').allTextContents(), ['Main account']);
+      await page.locator('main header').getByText('My campaigns', { exact: true }).waitFor();
+      await page.screenshot({ path: `${output}/my-campaigns-1440.png` });
+      assert.deepEqual(errors, []);
+      console.log('Ads Manager over every ad account passed');
+    } catch (error) {
+      console.error(error);
+      await page.screenshot({ path: `${output}/failure-accounts.png`, fullPage: true }).catch(() => {});
       console.error(errors);
       throw error;
     } finally {

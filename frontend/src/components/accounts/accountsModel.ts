@@ -272,6 +272,11 @@ export function formatAddedDate(value: string | undefined): string {
 export const accountPagePath = (workspace: string, accountId: string) =>
   `/${workspace}/accounts/${encodeURIComponent(accountId)}`;
 
-/** The account in Ads Manager, where its campaigns, ad sets and ads live. */
+/**
+ * Campaigns filtered to this account, as Linear's project opens its issues:
+ * Campaigns turns `?account=` into "Ad account is …" on every level. Not a
+ * `?filter=` of its own: Ad accounts, still on screen for the first frame,
+ * would read it as its own filter and drop it.
+ */
 export const accountAdsManagerPath = (workspace: string, accountId: string) =>
   `/${workspace}/ads-manager/campaigns?account=${encodeURIComponent(accountId)}`;

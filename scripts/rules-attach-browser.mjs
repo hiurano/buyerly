@@ -125,7 +125,7 @@ try {
 
     try {
       // 1. One campaign: "+ Rule" shows without a pointer over the row.
-      await page.goto(`${origin}/alpha/ads-manager/campaigns?account=act_100`);
+      await page.goto(`${origin}/alpha/ads-manager/campaigns`);
       await cell('801').waitFor();
       await page.mouse.move(0, 0);
       assert.equal(await cell('801').innerText(), 'Rule');
@@ -176,7 +176,7 @@ try {
       await single.waitFor({ state: 'detached' });
 
       // 2. Several ad sets at once from the selection, as Meta's "Apply rule to".
-      await page.goto(`${origin}/alpha/ads-manager/adsets?account=act_100`);
+      await page.goto(`${origin}/alpha/ads-manager/adsets`);
       await cell('903').waitFor();
       const select = async (rowId) => {
         if (phone) {

@@ -32,6 +32,8 @@ interface RuleSelectorPopoverProps {
   onClose: () => void;
   /** The control it opened from; without one it sits centred, as a menu does. */
   anchorRect: DOMRect | null;
+  /** The ad account the rows belong to: rules attach per account. */
+  accountId: string;
   level: RuleTargetLevel;
   /** One row's id, or every selected row of the level. */
   entityIds: string[];
@@ -55,6 +57,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
   isOpen,
   onClose,
   anchorRect,
+  accountId,
   level,
   entityIds,
   shortcut,
@@ -65,15 +68,16 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
     campaignAttachedRules,
     adSetAttachedRules,
     toggleRuleForEntities,
-    attachedRuleScopes,
-    attachedRuleOrder,
+    attachedRuleScopes: scopesByAccount,
+    attachedRuleOrder: orderByAccount,
     attachmentError,
     clearAttachmentError,
     rulesLoadState,
     loadRules,
-    attachedRulesAccountId,
     openCreateRuleModal,
   } = useAppStore();
+  const attachedRuleScopes = useMemo(() => scopesByAccount[accountId] ?? {}, [scopesByAccount, accountId]);
+  const attachedRuleOrder = useMemo(() => orderByAccount[accountId] ?? [], [orderByAccount, accountId]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -303,7 +307,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
   };
 
   const toggleRule = (rule: RuleItem) => {
-    void toggleRuleForEntities(level, entityIds, rule.id);
+    void toggleRuleForEntities(accountId, level, entityIds, rule.id);
     if (!coarse) window.requestAnimationFrame(() => inputRef.current?.focus());
   };
 
@@ -617,11 +621,10 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
       </div>
 
       {/* A new rule that runs on what is selected here, made without leaving Campaigns (#387). */}
-      {attachedRulesAccountId && (
+      {accountId && (
         <button
           type="button"
           onClick={() => {
-            const accountId = attachedRulesAccountId;
             onClose();
             openCreateRuleModal(undefined, { accountId, scope: { level, ids: [...entityIds] } });
           }}

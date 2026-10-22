@@ -59,6 +59,7 @@ export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, sel
       {columns.slice(1).map((column) => (column.id === 'rules' ? (
         <RuleAttachmentCell
           key={column.id}
+          accountId={adSet.accountId ?? ''}
           level="adset"
           entityId={adSet.id}
           attachedRuleIds={adSetAttachedRules[adSet.id] || []}

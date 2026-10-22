@@ -75,6 +75,7 @@ export function hierarchyCampaignToRow(item: AnalyticsHierarchyItem): CampaignIt
   return {
     id: item.entity_id,
     identifier: item.entity_id,
+    accountId: item.account_id,
     name: item.entity_name || `Campaign ${item.entity_id}`,
     platform: 'Meta',
     ...delivery,
@@ -98,6 +99,7 @@ export function hierarchyAdSetToRow(
   return {
     id: item.entity_id,
     identifier: item.entity_id,
+    accountId: item.account_id,
     name: item.entity_name || `Ad set ${item.entity_id}`,
     campaignId,
     campaignName: campaignNames.get(campaignId) || campaignId,
@@ -123,6 +125,7 @@ export function hierarchyAdToRow(
   return {
     id: item.entity_id,
     identifier: item.entity_id,
+    accountId: item.account_id,
     name: item.entity_name || `Ad ${item.entity_id}`,
     adSetId: item.parent_entity_id,
     adSetName: adSet?.name || item.parent_entity_id,

@@ -149,7 +149,7 @@ function refusal(outcome: Exclude<ApprovalOutcome, 'approved'>): ToolFailure {
 function refreshRuleViews(accountId?: string): void {
   const state = useAppStore.getState();
   if (state.rulesLoadState !== 'idle') void state.loadRules();
-  if (accountId && state.attachedRulesAccountId === accountId) void state.loadAccountRuleAttachments(accountId);
+  if (accountId && state.attachedRulesAccountIds.includes(accountId)) void state.loadRuleAttachments(state.attachedRulesAccountIds);
 }
 
 function compactAccount(account: MetaAccount) {

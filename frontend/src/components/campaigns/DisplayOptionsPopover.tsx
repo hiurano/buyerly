@@ -10,13 +10,15 @@ interface DisplayOptionsPopoverProps {
   onClose: () => void;
   anchorRef: React.RefObject<HTMLElement | null>;
   entity: AdsManagerEntity;
+  /** My campaigns' own view rather than Campaigns'. */
+  mine?: boolean;
   hasAccountGroups: boolean;
   /** Every group of the current grouping, in their natural order, for Group ordering. */
   groups: DisplayGroupOption[];
 }
 
-export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ isOpen, onClose, anchorRef, entity, hasAccountGroups, groups }) => {
-  const { view, update, reset, displayChanged } = useAdsManagerView(entity);
+export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ isOpen, onClose, anchorRef, entity, mine = false, hasAccountGroups, groups }) => {
+  const { view, update, reset, displayChanged } = useAdsManagerView(entity, mine);
   const popoverRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
 
@@ -78,7 +80,7 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
         onOrderingChange={(value) => update({ ordering: value })}
         direction={view.direction}
         onDirectionChange={(direction) => update({ direction })}
-        // Delivery status is a fixed set of states; rules and groups only list what has rows.
+        // Delivery status is a fixed set of states; accounts, rules and groups only list what has rows.
         showEmptyGroups={grouping === 'status' ? view.showEmptyGroups : undefined}
         onShowEmptyGroupsChange={(showEmptyGroups) => update({ showEmptyGroups })}
         properties={liveProperties}

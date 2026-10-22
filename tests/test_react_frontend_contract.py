@@ -303,10 +303,10 @@ class TestReactFrontendContract(unittest.TestCase):
         for contract in (
             "apiRequest<MetaAccount[]>('/api/accounts')",
             "/api/analytics/hierarchy?parent_id=",
-            "encodeURIComponent(selectedAccountId)",
-            "hierarchyRequest('campaign')",
-            "hierarchyRequest('adset')",
-            "hierarchyRequest('ad')",
+            "encodeURIComponent(account.account_id)",
+            "request('campaign')",
+            "request('adset')",
+            "request('ad')",
             "requestGenerationRef",
             "Loading ad accounts…",
             "Loading campaigns…",
@@ -328,6 +328,20 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("groupView(rows, fields, groupingField)", self.campaigns_view)
         self.assertNotIn("toggleCampaignDelivery", self.campaigns_view)
         self.assertNotIn("disabled: true", self.campaigns_view)
+
+    def test_campaigns_shows_every_ad_account_at_once(self):
+        """As Linear's team Issues lists every project's issues: no account switcher, grouped by Ad account."""
+        self.assertIn("accounts.map((account) => loadAccountHierarchy(account, period))", self.campaigns_view)
+        for dead in (r"selectedAccountId\b", "DropdownMenuAccount", "Select ad account", "HeaderCreateButton"):
+            self.assertNotRegex(self.campaigns_view, dead)
+        view_model = (ROOT / "frontend" / "src" / "components" / "campaigns" / "adsManagerViewModel.ts").read_text()
+        self.assertEqual(view_model.count("grouping: 'account',"), 3)
+        self.assertIn("{ value: 'account', label: 'Ad account' }", view_model)
+        # My campaigns is the same view over the accounts you lead, with views of its own.
+        self.assertIn("mine={myCampaigns}", self.app)
+        self.assertIn("account.lead_user_id === user.id", self.campaigns_view)
+        self.assertIn("'my-campaigns' : 'ads-manager'", view_model)
+        self.assertFalse((ROOT / "frontend" / "src" / "components" / "campaigns" / "MyCampaignsView.tsx").exists())
         self.assertNotIn("Today · read-only", self.campaigns_view)
 
         campaign_path = self.campaigns_view + self.live_campaigns
@@ -481,7 +495,7 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertNotIn(retired_state, self.app_store)
         self.assertIn("useListView('rules'", (src / "components" / "rules" / "rulesViewModel.ts").read_text())
         self.assertIn(
-            "ads-manager.${entity}",
+            "${mine ? 'my-campaigns' : 'ads-manager'}.${entity}",
             (src / "components" / "campaigns" / "adsManagerViewModel.ts").read_text(),
         )
         self.assertIn("setViewSettings('inbox'", (src / "components" / "inbox" / "InboxView.tsx").read_text())
@@ -685,7 +699,7 @@ class TestReactFrontendContract(unittest.TestCase):
     def test_campaign_rule_attachment_is_served_by_the_api(self):
         # Attaching a rule to a campaign writes a scope through the API rather
         # than flipping a local-only map.
-        self.assertIn("loadAccountRuleAttachments", self.app_store)
+        self.assertIn("loadRuleAttachments", self.app_store)
         self.assertIn("assignRuleToAccount", self.app_store)
         self.assertIn("setAttachedRuleScope", self.app_store)
         self.assertIn("detachRuleFromAccount", self.app_store)
@@ -708,6 +722,8 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertNotIn("rules: false", self.campaigns_view)
         self.assertIn("label: 'Apply rule…'", self.campaigns_view)
         self.assertIn("entityIds={selectedRowIds}", self.campaigns_view)
+        # Rules attach per ad account, so the selection's picker works on one account's rows.
+        self.assertIn("accountId={ruleAccountId}", self.campaigns_view)
         workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
         self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?rules-attach( .*)?$")
         # The Rules column is offered on both levels, never on ads.
@@ -743,10 +759,10 @@ class TestReactFrontendContract(unittest.TestCase):
         for contract in ("rounded-full", "h-[28px]", "min-[1025px]:inline", "pointer:coarse)]:h-10"):
             self.assertIn(contract, header_button)
         self.assertIn('<HeaderCreateButton\n            label="New rule"', self.rules_view)
-        self.assertIn(
-            '<HeaderCreateButton label="Add account" tooltip="Add ad account"', self.campaigns_view
-        )
+        # Campaigns has no header button: accounts are added on Ad accounts, or from the empty state.
+        self.assertNotIn("<HeaderCreateButton", self.campaigns_view)
         self.assertIn('title="No ad accounts yet"', self.campaigns_view)
+        self.assertIn('actionLabel="Add account"', self.campaigns_view)
         for dead in ("Connect Facebook", "Add Facebook account"):
             self.assertNotIn(dead, self.campaigns_view)
         dialog = (
@@ -1068,7 +1084,9 @@ class TestReactFrontendContract(unittest.TestCase):
         # Rules on the account show their own status; no switch that would pause them everywhere.
         self.assertNotIn("toggleRuleStatus", page)
         self.assertIn("<LinearStatusCircleIcon status={on ? 'active' : 'paused'}", page)
-        self.assertIn("All ad accounts…", self.campaigns_view)
+        # Open campaigns filters Campaigns by the account, as a Linear project opens its issues.
+        self.assertIn("ads-manager/campaigns?account=", (ROOT / "frontend" / "src" / "components" / "accounts" / "accountsModel.ts").read_text())
+        self.assertIn("const clause = [{ fieldId: 'account', operator: 'is', values: [accountId] }];", self.campaigns_view)
         self.assertIn("node scripts/check-accounts.cjs", workflow)
         self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?accounts( .*)?$")
 

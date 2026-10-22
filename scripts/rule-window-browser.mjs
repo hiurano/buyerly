@@ -278,7 +278,7 @@ try {
       await edit.waitFor({ state: 'detached' });
 
       // From Ads Manager: the rule picker's "New rule…" runs it on the selection.
-      await page.goto(`${origin}/alpha/ads-manager/campaigns?account=act_100`);
+      await page.goto(`${origin}/alpha/ads-manager/campaigns`);
       await page.locator('[data-row-id="801"] [data-rule-cell]').click();
       const picker = page.getByRole('dialog', { name: 'Rules for this campaign' });
       await picker.waitFor();

@@ -76,6 +76,10 @@ export type RuleFilterTab = 'active' | 'paused' | 'all';
 
 export interface CampaignItem {
   id: string;
+  /** The Meta ad account it belongs to (`act_…`). */
+  accountId?: string;
+  /** That ad account's name, for the Ad account column. */
+  accountName?: string;
   identifier: string;
   name: string;
   platform: 'Meta' | 'TikTok' | 'Google';
@@ -97,6 +101,10 @@ export interface CampaignItem {
 
 export interface AdSetItem {
   id: string;
+  /** The Meta ad account it belongs to (`act_…`). */
+  accountId?: string;
+  /** That ad account's name, for the Ad account column. */
+  accountName?: string;
   identifier: string;
   name: string;
   campaignId: string;
@@ -119,6 +127,10 @@ export interface AdSetItem {
 
 export interface AdItem {
   id: string;
+  /** The Meta ad account it belongs to (`act_…`). */
+  accountId?: string;
+  /** That ad account's name, for the Ad account column. */
+  accountName?: string;
   identifier: string;
   name: string;
   adSetId: string;
@@ -285,6 +297,17 @@ function entityRuleIndex(
   return index;
 }
 
+/** The per-entity indexes of several ad accounts in one: Meta ids never repeat across accounts. */
+function mergeRuleIndexes(
+  scopes: Record<string, RuleScope>[],
+  level: 'campaign' | 'adset',
+): Record<string, string[]> {
+  return Object.assign({}, ...scopes.map((accountScopes) => entityRuleIndex(accountScopes, level)));
+}
+
+const sameIds = (left: string[], right: string[]) =>
+  left.length === right.length && left.every((id, index) => id === right[index]);
+
 interface AppState {
   workspaceScope: string | null;
   workspaceSlug: string | null;
@@ -391,24 +414,26 @@ interface AppState {
   toggleCampaignGroup: (id: string, groupId: string) => void;
   focusedCampaignId: string;
   setFocusedCampaignId: (id: string) => void;
-  /** Ad account whose rule attachments are currently loaded. */
-  attachedRulesAccountId: string | null;
-  /** Rule id → the scope it is attached with on that account. */
-  attachedRuleScopes: Record<string, RuleScope>;
-  /** Attached rule ids in the account's stored order, which breaks ties between rules. */
-  attachedRuleOrder: string[];
-  /** Campaign id → rules aimed at that campaign, derived from the scopes. */
+  /** Ad accounts whose rule attachments are currently loaded: every one Ads Manager shows. */
+  attachedRulesAccountIds: string[];
+  /** Ad account → rule id → the scope it is attached with on that account. */
+  attachedRuleScopes: Record<string, Record<string, RuleScope>>;
+  /** Ad account → attached rule ids in its stored order, which breaks ties between rules. */
+  attachedRuleOrder: Record<string, string[]>;
+  /** Campaign id → rules aimed at that campaign, derived from the scopes; Meta ids are unique across accounts. */
   campaignAttachedRules: Record<string, string[]>;
   /** Ad set id → rules aimed at that ad set. */
   adSetAttachedRules: Record<string, string[]>;
   attachmentError: string;
   clearAttachmentError: () => void;
-  loadAccountRuleAttachments: (accountId: string | null) => Promise<void>;
+  loadRuleAttachments: (accountIds: string[]) => Promise<void>;
   /**
-   * Aims a rule at these campaigns or ad sets, or takes it off them when it
-   * already targets every one of them, as a multi-select picker does.
+   * Aims a rule at these campaigns or ad sets of one ad account, or takes it
+   * off them when it already targets every one of them, as a multi-select
+   * picker does.
    */
   toggleRuleForEntities: (
+    accountId: string,
     level: 'campaign' | 'adset',
     entityIds: string[],
     ruleId: string,
@@ -524,7 +549,7 @@ interface AppState {
 function emptyAccountState() {
   return {
     campaigns: [], adSets: [], ads: [], selectedCampaignIds: [], focusedCampaignId: '',
-    attachedRulesAccountId: null, attachedRuleScopes: {}, attachedRuleOrder: [], campaignAttachedRules: {},
+    attachedRulesAccountIds: [] as string[], attachedRuleScopes: {}, attachedRuleOrder: {}, campaignAttachedRules: {},
     adSetAttachedRules: {}, attachmentError: '', attachmentsLoadState: 'idle' as RulesLoadState,
     adsManagerQuickFilter: null, selectedFilterGroupId: null, selectedFilterRuleId: null,
     selectedFilterPlatform: null, collapsedGroups: [],
@@ -579,8 +604,8 @@ export const useAppStore = create<AppState>((set, get) => {
   let notificationChannelsSave: Promise<unknown> = Promise.resolve();
   /** A rule saved with where it runs changes the Rules column Ads Manager shows (#387). */
   const refreshAttachments = async (payload: RulePresetWriteRequest) => {
-    const accountId = get().attachedRulesAccountId;
-    if (payload.attachments !== undefined && accountId) await get().loadAccountRuleAttachments(accountId);
+    const accountIds = get().attachedRulesAccountIds;
+    if (payload.attachments !== undefined && accountIds.length > 0) await get().loadRuleAttachments(accountIds);
   };
   return ({
   workspaceScope: null,
@@ -822,64 +847,68 @@ export const useAppStore = create<AppState>((set, get) => {
     })),
   focusedCampaignId: '',
   setFocusedCampaignId: (id) => set({ focusedCampaignId: id }),
-  attachedRulesAccountId: null,
+  attachedRulesAccountIds: [],
   attachedRuleScopes: {},
-  attachedRuleOrder: [],
+  attachedRuleOrder: {},
   campaignAttachedRules: {},
   adSetAttachedRules: {},
   attachmentError: '',
   clearAttachmentError: () => set({ attachmentError: '' }),
 
-  loadAccountRuleAttachments: async (accountId) => {
+  loadRuleAttachments: async (accountIds) => {
     const inScope = get().captureScope();
     if (!inScope()) return;
     const request = ++attachmentsRequest;
     const current = () => inScope() && request === attachmentsRequest;
-    // Invalidate the old account before awaiting anything, including failed B.
-    // Reading the same account back after a change keeps the cells as they are
+    const sameAccounts = sameIds(get().attachedRulesAccountIds, accountIds);
+    // Invalidate other accounts before awaiting anything, including a failed read.
+    // Reading the same accounts back after a change keeps the cells as they are
     // until the answer comes, so they never flash back to no rules.
-    const refresh = Boolean(accountId) && get().attachedRulesAccountId === accountId &&
-      get().attachmentsLoadState === 'ready';
+    const refresh = accountIds.length > 0 && sameAccounts && get().attachmentsLoadState === 'ready';
     if (!refresh) {
-      set({ ...(get().attachedRulesAccountId !== accountId ? emptyAccountState() : {}),
-        attachedRulesAccountId: accountId, attachedRuleScopes: {}, attachedRuleOrder: [], campaignAttachedRules: {},
+      set({ ...(sameAccounts ? {} : emptyAccountState()),
+        attachedRulesAccountIds: accountIds, attachedRuleScopes: {}, attachedRuleOrder: {}, campaignAttachedRules: {},
         adSetAttachedRules: {}, attachmentError: '',
-        attachmentsLoadState: accountId ? 'loading' : 'idle' });
+        attachmentsLoadState: accountIds.length > 0 ? 'loading' : 'idle' });
     }
-    if (!accountId) return;
+    if (accountIds.length === 0) return;
     try {
       const accounts = await apiRequest<MetaAccount[]>('/api/accounts');
       if (!current()) return;
-      const account = accounts.find((item) => item.account_id === accountId);
-      if (!account) throw new Error('Account unavailable');
-      const scopes: Record<string, RuleScope> = {};
-      for (const rule of account.active_rules ?? []) {
-        scopes[String(rule.preset_id)] = attachedRuleScope(rule);
+      const scopes: Record<string, Record<string, RuleScope>> = {};
+      const order: Record<string, string[]> = {};
+      for (const accountId of accountIds) {
+        const account = accounts.find((item) => item.account_id === accountId);
+        if (!account) throw new Error('Account unavailable');
+        scopes[accountId] = Object.fromEntries(
+          (account.active_rules ?? []).map((rule) => [String(rule.preset_id), attachedRuleScope(rule)]),
+        );
+        order[accountId] = (account.active_rules ?? []).map((rule) => String(rule.preset_id));
       }
       set({
         attachedRuleScopes: scopes,
-        attachedRuleOrder: (account.active_rules ?? []).map((rule) => String(rule.preset_id)),
-        campaignAttachedRules: entityRuleIndex(scopes, 'campaign'),
-        adSetAttachedRules: entityRuleIndex(scopes, 'adset'),
+        attachedRuleOrder: order,
+        campaignAttachedRules: mergeRuleIndexes(Object.values(scopes), 'campaign'),
+        adSetAttachedRules: mergeRuleIndexes(Object.values(scopes), 'adset'),
         attachmentsLoadState: 'ready',
       });
     } catch (error) {
       if (!current()) return;
-      set({ attachedRuleScopes: {}, attachedRuleOrder: [], campaignAttachedRules: {}, adSetAttachedRules: {},
+      set({ attachedRuleScopes: {}, attachedRuleOrder: {}, campaignAttachedRules: {}, adSetAttachedRules: {},
         attachmentError: requestErrorMessage(error), attachmentsLoadState: 'error' });
     }
   },
 
-  toggleRuleForEntities: async (level, entityIds, ruleId) => {
+  toggleRuleForEntities: async (accountId, level, entityIds, ruleId) => {
     const inScope = get().captureScope();
     const request = attachmentsRequest;
     const current = () => inScope() && request === attachmentsRequest;
     if (!current() || attachmentWriting || get().attachmentsLoadState !== 'ready' || entityIds.length === 0) return;
-    const { attachedRulesAccountId, attachedRuleScopes } = get();
-    if (!attachedRulesAccountId) return;
+    const { attachedRulesAccountIds, attachedRuleScopes } = get();
+    if (!attachedRulesAccountIds.includes(accountId)) return;
 
     const presetId = Number(ruleId);
-    const scope = attachedRuleScopes[ruleId];
+    const scope = attachedRuleScopes[accountId]?.[ruleId];
 
     // A rule already aimed somewhere else has a target this control cannot
     // express. Silently rewriting it would widen or destroy what the buyer set.
@@ -899,7 +928,7 @@ export const useAppStore = create<AppState>((set, get) => {
     attachmentWriting = true;
     try {
       if (!scope) {
-        await assignRuleToAccount(attachedRulesAccountId, presetId, {
+        await assignRuleToAccount(accountId, presetId, {
           level,
           ids: entityIds,
         });
@@ -909,9 +938,9 @@ export const useAppStore = create<AppState>((set, get) => {
           : [...scope.ids, ...entityIds.filter((id) => !scope.ids.includes(id))];
         if (nextIds.length === 0) {
           // A targeted rule with nothing left to target has no work to do.
-          await detachRuleFromAccount(attachedRulesAccountId, presetId);
+          await detachRuleFromAccount(accountId, presetId);
         } else {
-          await setAttachedRuleScope(attachedRulesAccountId, presetId, {
+          await setAttachedRuleScope(accountId, presetId, {
             level,
             ids: nextIds,
           });
@@ -920,7 +949,7 @@ export const useAppStore = create<AppState>((set, get) => {
       if (!current()) return;
       // The Rules screen's per-account notes read the same attachments.
       if (get().rulesLoadState === 'ready') void get().loadRules();
-      await get().loadAccountRuleAttachments(attachedRulesAccountId);
+      await get().loadRuleAttachments(attachedRulesAccountIds);
     } catch (error) {
       if (!current()) return;
       set({ attachmentError: requestErrorMessage(error) });
