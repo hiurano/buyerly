@@ -17,6 +17,7 @@ function load(file) {
 }
 const {
   listViewDefaults, readListView, displayDiffers, sortByColumn, arrangeGroups, orderGroups,
+  boardGrouping, arrangeBoardColumns, toggleHiddenGroup,
 } = load(path.join(root, 'ui/listView.ts'));
 const {
   sanitizeFilterClauses, resolveFilterDate, filterDateLabel, matchesFilterClause, getFilterValueSummary,
@@ -107,5 +108,21 @@ assert.equal(matchesFilterClause(row, spend, { fieldId: 'spend', operator: 'gte'
 assert.equal(matchesFilterClause(row, spend, { fieldId: 'spend', operator: 'lt', values: [150.5] }), true);
 assert.equal(matchesFilterClause({ spend: null }, spend, { fieldId: 'spend', operator: 'lte', values: [5] }), false);
 assert.equal(getFilterValueSummary(spend, { fieldId: 'spend', operator: 'gt', values: [1500] }), '1,500');
+
+// The board (Linear's): Columns never "No grouping"; hidden and empty columns wait in Hidden columns.
+assert.equal(boardGrouping('none', 'status'), 'status');
+assert.equal(boardGrouping('account', 'status'), 'account');
+const columns = [{ id: 'a', rows: [1] }, { id: 'b', rows: [] }, { id: 'c', rows: [2] }];
+const boardView = { ...defaults, grouping: 'status', groupOrder: { status: ['c'] }, hiddenGroups: { status: ['a'] } };
+const board = arrangeBoardColumns(columns, boardView);
+assert.deepEqual(board.shown.map(g => g.id), ['c']);
+assert.deepEqual(board.hidden.map(h => [h.group.id, h.hiddenByMember]), [['a', true], ['b', false]]);
+assert.deepEqual(arrangeBoardColumns(columns, { ...boardView, showEmptyGroups: true }).shown.map(g => g.id), ['c', 'b']);
+assert.deepEqual(toggleHiddenGroup(boardView, 'a').hiddenGroups, { status: [] });
+assert.deepEqual(toggleHiddenGroup(boardView, 'c').hiddenGroups, { status: ['a', 'c'] });
+// Show empty rows is saved like the other switches.
+assert.equal(defaults.showEmptySubGroups, false);
+assert.equal(readListView({ showEmptySubGroups: true }, defaults).showEmptySubGroups, true);
+assert.equal(readListView({ showEmptySubGroups: 'yes' }, defaults).showEmptySubGroups, false);
 
 console.log('List view and filter model passed');

@@ -169,9 +169,6 @@ class TestReactFrontendContract(unittest.TestCase):
         cls.rule_card = (
             ROOT / "frontend" / "src" / "components" / "rules" / "RuleCard.tsx"
         ).read_text()
-        cls.rule_column = (
-            ROOT / "frontend" / "src" / "components" / "rules" / "RuleColumn.tsx"
-        ).read_text()
         cls.rule_selector_popover = (
             ROOT
             / "frontend"
@@ -381,12 +378,19 @@ class TestReactFrontendContract(unittest.TestCase):
         for row in (self.campaign_row, self.adset_row, self.ad_row):
             self.assertIn("<EntityRowControls", row)
             self.assertIn("delivery={delivery}", row)
-        self.assertIn("showViewModes={false}", self.display_options)
+        # List and Board, as Linear's: the board's Columns never offer "No grouping".
+        self.assertNotIn("showViewModes={false}", self.display_options)
         self.assertIn("showGrouping", self.display_options)
+        self.assertIn("option.value !== 'none'", self.display_options)
+        self.assertIn("<BuyerlyBoard", self.campaigns_view)
+        self.assertIn("useLayoutShortcut(toggleLayout)", self.campaigns_view)
         ads_manager_view = (
             ROOT / "frontend" / "src" / "components" / "campaigns" / "adsManagerViewModel.ts"
         ).read_text()
-        self.assertIn("Account groups", ads_manager_view)
+        # Account groups are gone: ad accounts belong to teams. Delivery reads Status.
+        self.assertNotIn("Account groups", ads_manager_view)
+        self.assertNotIn("/api/account-groups", self.campaigns_view)
+        self.assertNotIn("label: 'Delivery'", ads_manager_view)
         for source in (self.display_options, ads_manager_view):
             self.assertNotIn("Campaign groups", source)
             self.assertNotIn("'ROI'", source)
@@ -589,8 +593,10 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertIn(f"id: {field}", catalogs)
         self.assertIn("allowNever: true", catalogs)
         self.assertIn("<RuleBoard rules={filteredRules} />", self.rules_view)
-        self.assertNotIn('<RuleColumn title="All rules"', self.rules_view)
+        self.assertNotIn("RuleColumn", self.rules_view)
+        self.assertFalse((rules / "RuleColumn.tsx").exists(), "Rules draws the shared BuyerlyBoard")
         board = (rules / "RuleBoard.tsx").read_text()
+        self.assertIn("<BuyerlyBoard", board)
         self.assertIn("setRuleLabels(rule.id", board)
         self.assertIn("toggleRuleStatus(rule.id)", board)
         workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()

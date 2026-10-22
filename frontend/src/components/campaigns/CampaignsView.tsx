@@ -53,22 +53,27 @@ import {
 } from '@/components/filters/LinearFilter';
 import type { FilterMenuMode } from '@/components/filters/LinearFilter';
 import { adAccountName, createLiveFields, filterView, groupView } from './campaignViewModel';
-import type { AccountGroupOption } from './campaignViewModel';
 import { useCampaignViewFilters } from './useCampaignViewFilters';
 import {
-  adsManagerGroupings,
+  adsManagerActiveGrouping,
+  adsManagerActiveRows,
+  adsManagerGroupingField,
   adsManagerOrderings,
   naturalAdsManagerDirection,
   useAdsManagerView,
 } from './adsManagerViewModel';
-import { ADS_MANAGER_PERIODS, periodFromSearch, type AdsManagerMetrics, type AdsManagerPeriod } from './adsManagerMetrics';
+import { ADS_MANAGER_PERIODS, metricsFor, periodFromSearch, type AdsManagerMetrics, type AdsManagerPeriod } from './adsManagerMetrics';
 import { useMediaQuery } from '@/lib/useMediaQuery';
-import { arrangeGroups, sortByColumn } from '@/ui/listView';
+import { arrangeBoardColumns, arrangeGroups, sortByColumn, toggleHiddenGroup } from '@/ui/listView';
+import { BuyerlyBoard, type BoardLane } from '@/ui/BuyerlyBoard';
+import { useLayoutShortcut } from '@/ui/useLayoutShortcut';
+import { AdsManagerCard, type CardChip } from './AdsManagerCard';
 import { DisplayOptionsChangedDot } from '@/ui/LinearDisplayOptions';
 import { DetailsPaneLayout, DetailsPaneToggle } from '@/ui/DetailsPane';
 import { DetailsFacets, type DetailsFacetTab } from '@/ui/DetailsFacets';
 import type { FilterOption } from '@/components/filters/filterModel';
 import { SelectionDock } from '@/ui/SelectionDock';
+import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { SelectionCommandMenu } from '@/ui/SelectionCommandMenu';
 import { LinearBoltIcon } from '@/icons/LinearIcons';
 import { RuleSelectorPopover } from './RuleSelectorPopover';
@@ -85,6 +90,7 @@ import {
 import { getAdsManagerColumns } from './tableColumns';
 import {
   eligibleMetaAccounts,
+  formatMetric,
   hierarchyAdSetToRow,
   hierarchyAdToRow,
   hierarchyCampaignToRow,
@@ -186,8 +192,8 @@ const detailsTabs = (entity: AdsManagerEntity) => (
   entity === 'campaigns' ? ['status', 'account', 'rule'] : ['status', 'account', 'campaign', 'rule']
 );
 
-/** Fields a grouping groups by. */
-const GROUPING_FIELDS: Record<string, string> = { groups: 'group', rules: 'rule' };
+/** How this platform's tooltips and dialogs write undo. */
+const UNDO_SHORTCUT = typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘Z' : 'Ctrl+Z';
 
 /** A phone keeps the name and Spend side by side; the other figures scroll (#389). */
 const PHONE_TABLE_QUERY = '(max-width: 640px)';
@@ -212,6 +218,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
     clearCampaignSelection,
     selectedCampaignIds,
     setCampaignSelection,
+    toggleCampaignSelection,
     loadRuleAttachments,
     attachmentsLoadState,
   } = useAppStore();
@@ -227,12 +234,14 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
   const filterButtonRef = useRef<HTMLButtonElement>(null);
   const displayOptionsButtonRef = useRef<HTMLButtonElement>(null);
   const [openFilterMenu, setOpenFilterMenu] = useState<OpenFilterMenu | null>(null);
-  const [accountGroups, setAccountGroups] = useState<AccountGroupOption[] | null>(null);
-  const [groupsError, setGroupsError] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   // Each level's own view, saved per member on the server (#385).
   const { view, update: updateView, displayChanged } = useAdsManagerView(campaignFilterTab, mine);
-  const displayGrouping = view.grouping;
+  const toggleLayout = useCallback(
+    () => updateView({ layout: view.layout === 'list' ? 'board' : 'list' }),
+    [updateView, view.layout],
+  );
+  useLayoutShortcut(toggleLayout);
   const displayOrdering = view.ordering;
   const displayProperties = view.properties;
   const sortDirection = view.direction;
@@ -289,6 +298,10 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
   // snapshot, which only catches up on its next sync.
   const [deliveryActions, setDeliveryActions] = useState<Record<string, { busy: boolean; status?: 'active' | 'paused' }>>({});
   const [hierarchyReloadKey, setHierarchyReloadKey] = useState(0);
+  // A card dropped on Active or Paused, waiting for the member to confirm the write to Meta.
+  const [pendingMove, setPendingMove] = useState<{
+    level: EntityLevel; entityId: string; accountId: string; name: string; next: boolean;
+  } | null>(null);
   // The selection's "Apply rule…": one picker over every selected row.
   const [isBulkRulePickerOpen, setIsBulkRulePickerOpen] = useState(false);
   const [isMetaDialogOpen, setIsMetaDialogOpen] = useState(false);
@@ -320,14 +333,6 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
   useEffect(() => {
     void refreshMetaAccounts();
   }, [refreshMetaAccounts]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void apiRequest<AccountGroupOption[]>('/api/account-groups')
-      .then(groups => { if (!cancelled) setAccountGroups(groups); })
-      .catch(() => { if (!cancelled) setGroupsError(true); });
-    return () => { cancelled = true; };
-  }, []);
 
   // Rules attach per ad account; every account on screen has its own read.
   useEffect(() => {
@@ -419,9 +424,9 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
     openMetaDialog();
   };
 
-  const campaignFilterFields = useMemo(() => createLiveFields(campaigns, metaAccounts, accountGroups, 'campaigns', adSets), [campaigns, metaAccounts, accountGroups, adSets]);
-  const adSetFilterFields = useMemo(() => createLiveFields(adSets, metaAccounts, accountGroups, 'adsets', adSets, campaigns), [adSets, metaAccounts, accountGroups, campaigns]);
-  const adFilterFields = useMemo(() => createLiveFields(ads, metaAccounts, accountGroups, 'ads', adSets, campaigns), [ads, metaAccounts, accountGroups, adSets, campaigns]);
+  const campaignFilterFields = useMemo(() => createLiveFields(campaigns, metaAccounts, 'campaigns', adSets), [campaigns, metaAccounts, adSets]);
+  const adSetFilterFields = useMemo(() => createLiveFields(adSets, metaAccounts, 'adsets', adSets, campaigns), [adSets, metaAccounts, campaigns]);
+  const adFilterFields = useMemo(() => createLiveFields(ads, metaAccounts, 'ads', adSets, campaigns), [ads, metaAccounts, adSets, campaigns]);
   const currentFilters = adsManagerFilters[campaignFilterTab];
   const currentFilterFields = (
     campaignFilterTab === 'campaigns'
@@ -459,13 +464,16 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
   const filteredAdSets = sortRows(adSetView.visibleRows);
   const filteredAds = sortRows(adView.visibleRows);
   const clearFilters = () => { updateCurrentFilters([]); setQuick(null); };
-  const groupingField = adsManagerGroupings(campaignFilterTab, accountGroups !== null)
-    .some((option) => option.value === displayGrouping)
-    ? GROUPING_FIELDS[displayGrouping] ?? displayGrouping
-    : 'none';
-  // Delivery status is a fixed set, so only its empty groups can be shown.
+  const isBoard = view.layout === 'board';
+  // Linear's Board: the columns are the grouping, never "No grouping"; Rows bands them.
+  const activeGrouping = adsManagerActiveGrouping(campaignFilterTab, view);
+  const activeRows = adsManagerActiveRows(campaignFilterTab, view);
+  const groupingField = adsManagerGroupingField(activeGrouping);
+  const rowsField = adsManagerGroupingField(activeRows);
+  const groupingView = { ...view, grouping: activeGrouping };
+  // Status is a fixed set, so only its empty groups can be shown.
   const renderGrouped = <T,>(rows: T[], fields: FilterFieldDefinition<T>[], render: (row: T) => React.ReactNode) =>
-    arrangeGroups(groupView(rows, fields, groupingField), view, { allowEmpty: groupingField === 'status' }).map(group => (
+    arrangeGroups(groupView(rows, fields, groupingField), groupingView, { allowEmpty: groupingField === 'status' }).map(group => (
       <React.Fragment key={group.id}>
         {group.label ? (
           <LinearDataListGroup title={group.label} count={group.rows.length}
@@ -629,8 +637,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
   useRevealRow({
     id: reveal?.id,
     navigationKey,
-    ready: reveal?.entity === campaignFilterTab && accountsState === 'ready' && hierarchyState === 'ready'
-      && (accountGroups !== null || groupsError),
+    ready: reveal?.entity === campaignFilterTab && accountsState === 'ready' && hierarchyState === 'ready',
     exists: currentRows.some((row) => row.id === reveal?.id),
     show: () => {
       if (!reveal) return false;
@@ -711,6 +718,120 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
     ));
   };
 
+  /** Chips a card shows, in table order; Status is the card's switch, and the board's columns and rows are left out. */
+  const boardChipFields = [
+    { field: 'account', property: 'account' },
+    { field: 'campaign', property: 'campaign' },
+    { field: 'adSet', property: 'adSet' },
+    { field: 'rule', property: 'rules' },
+  ].filter(({ property }) => displayProperties[property] && property !== activeGrouping && property !== activeRows);
+  const boardFigures = metricsFor(campaignFilterTab).filter((metric) => displayProperties[metric.id]);
+
+  const optionIcon = <T,>(field: FilterFieldDefinition<T> | undefined, id: string) => {
+    const option = field?.options?.find((candidate) => candidate.value === id);
+    return field && option ? facetIcon(field.id, option) : undefined;
+  };
+
+  /** The level as Linear's Board: one column per group, Rows as bands, the rest in Hidden columns. */
+  const renderBoard = <T extends CampaignRowItem | AdSetRowItem | AdRowItem>(loaded: T[], fields: FilterFieldDefinition<T>[]) => {
+    // Delivery this session wrote moves the card at once, as the switch shows it; Meta's snapshot catches up on its next sync.
+    const rows = loaded.map((row) => {
+      const local = deliveryActions[row.id]?.status;
+      return local && local !== row.status
+        ? { ...row, status: local, effectiveStatus: local === 'active' ? 'ACTIVE' : 'PAUSED' }
+        : row;
+    });
+    const columnField = fields.find((field) => field.id === groupingField);
+    const { shown, hidden } = arrangeBoardColumns(groupView(rows, fields, groupingField), groupingView);
+    const laneField = fields.find((field) => field.id === rowsField);
+    const lanes: BoardLane<T>[] | undefined = laneField
+      ? groupView(rows, fields, rowsField)
+        .filter((lane) => lane.rows.length > 0 || view.showEmptySubGroups)
+        .map((lane) => ({
+          id: lane.id,
+          label: lane.label,
+          icon: optionIcon(laneField, lane.id),
+          cells: Object.fromEntries(shown.map((column) => [column.id, column.rows.filter((row) => lane.rows.includes(row))])),
+        }))
+      : undefined;
+    const chips = (row: T): CardChip[] => boardChipFields.flatMap(({ field: fieldId }) => {
+      const field = fields.find((candidate) => candidate.id === fieldId);
+      const raw = field?.getValue(row);
+      const values = (Array.isArray(raw) ? raw : [raw]).map(String).filter((value) => value && value !== 'no-rule' && value !== 'null' && value !== 'undefined');
+      return values.map((value) => ({
+        key: `${fieldId}:${value}`,
+        label: field?.options?.find((option) => option.value === value)?.label ?? value,
+        icon: optionIcon(field, value),
+      }));
+    });
+    const level = entityLevels[campaignFilterTab];
+    const card = (row: T) => (
+      <AdsManagerCard
+        id={row.id}
+        name={row.name}
+        identifier={displayProperties.id ? row.identifier : undefined}
+        noun={entityLabels[campaignFilterTab].singular}
+        status={row.status}
+        statusLabel={row.statusLabel}
+        delivery={displayProperties.status !== false && activeGrouping !== 'status' && activeRows !== 'status'
+          ? deliveryControl(level, row) ?? 'read-only'
+          : undefined}
+        chips={chips(row)}
+        figures={boardFigures.map((metric) => ({
+          key: metric.id,
+          label: metric.label,
+          value: formatMetric(metric, row.metrics?.[metric.id] ?? null, row.currency ?? ''),
+        }))}
+        selected={selectedCampaignIds.includes(row.id)}
+        busy={Boolean(deliveryActions[row.id]?.busy)}
+        onToggleSelected={() => toggleCampaignSelection(row.id)}
+      />
+    );
+    // By Status a card dropped on Active or Paused turns it on or off in Meta, once confirmed;
+    // the other states are Meta's own and take no drops.
+    const onStatusDrop = (row: T, toColumn: string) => {
+      const next = toColumn === 'active';
+      const control = deliveryControl(level, row);
+      if (!control || !row.accountId) return;
+      if ((control.status === 'active') === next) {
+        const noun = entityLabels[campaignFilterTab].singular;
+        toast.show({
+          tone: 'info',
+          title: next ? 'Already on' : 'Already off',
+          message: row.name,
+          description: next
+            ? `This ${noun} is switched on; Meta shows it as ${row.statusLabel}.`
+            : `This ${noun} is switched off; Meta shows it as ${row.statusLabel}.`,
+        });
+        return;
+      }
+      setPendingMove({ level, entityId: row.id, accountId: row.accountId, name: row.name, next });
+    };
+    return (
+      <BuyerlyBoard
+        columns={shown.map((group) => ({ id: group.id, label: group.label, icon: optionIcon(columnField, group.id), rows: group.rows }))}
+        hiddenColumns={hidden.map(({ group, hiddenByMember }) => ({
+          id: group.id,
+          label: group.label,
+          icon: optionIcon(columnField, group.id),
+          count: group.rows.length,
+          hiddenByMember,
+        }))}
+        lanes={lanes}
+        rowKey={(row) => row.id}
+        onHideColumn={(id) => updateView(toggleHiddenGroup(groupingView, id))}
+        onShowColumn={(id) => updateView(toggleHiddenGroup(groupingView, id))}
+        renderCard={card}
+        move={activeGrouping === 'status' && hierarchyState === 'ready' ? {
+          canMove: (columnId) => columnId === 'active' || columnId === 'paused',
+          canDrag: (row) => Boolean(deliveryControl(level, row)) && !deliveryActions[row.id]?.busy,
+          onMove: (row, _from, to) => onStatusDrop(row, to),
+          renderOverlay: card,
+        } : undefined}
+      />
+    );
+  };
+
   const renderData = () => {
     if (accountsState === 'loading') {
       return <DataState title="Loading ad accounts…" detail="Reading imported accounts from this workspace." />;
@@ -773,11 +894,6 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
         />
       );
     }
-    if ((currentFilters.some(clause => clause.fieldId === 'group') || quick?.fieldId === 'group') && accountGroups === null) {
-      return <DataState title={groupsError ? 'Account group filters unavailable' : 'Loading account groups…'}
-        detail={groupsError ? 'Reload to retry, or clear the group filter.' : 'Waiting for group membership.'}
-        actionLabel={groupsError ? 'Clear filters' : undefined} onAction={groupsError ? clearFilters : undefined} />;
-    }
     if (totalCurrent === 0) {
       return (
         <DataState
@@ -786,6 +902,33 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
           actionLabel="Retry"
           onAction={() => setHierarchyReloadKey((value) => value + 1)}
         />
+      );
+    }
+
+    if (isBoard) {
+      return (
+        <div className="flex min-w-0 flex-1 flex-col">
+          {failedAccounts.length > 0 && (
+            <div className="campaign-filter-summary" role="alert">
+              <span>
+                {"Couldn't load "}
+                {failedAccounts.length === 1
+                  ? `${adAccountName(failedAccounts[0].account)}: ${failedAccounts[0].error}`
+                  : `${failedAccounts.length} ad accounts: ${failedAccounts.map(({ account }) => adAccountName(account)).join(', ')}`}
+              </span>
+              <Button size="compact" onClick={() => setHierarchyReloadKey((value) => value + 1)}>Retry</Button>
+            </div>
+          )}
+          <div className="min-h-0 flex-1">
+            {(currentFilters.length > 0 || quick) && filteredCurrentCount === 0
+              ? renderRows()
+              : campaignFilterTab === 'campaigns'
+                ? renderBoard(filteredCampaigns, campaignFilterFields)
+                : campaignFilterTab === 'adsets'
+                  ? renderBoard(filteredAdSets, adSetFilterFields)
+                  : renderBoard(filteredAds, adFilterFields)}
+          </div>
+        </div>
       );
     }
 
@@ -907,7 +1050,6 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
               anchorRef={displayOptionsButtonRef}
               entity={campaignFilterTab}
               mine={mine}
-              hasAccountGroups={accountGroups !== null}
               groups={groupView(currentRows as never[], currentFilterFields as never[], groupingField)
                 .filter((group) => group.label)
                 .map((group) => ({ id: group.id, label: group.label }))}
@@ -944,6 +1086,21 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
           <SelectionDock count={selection.count} onOpenActions={() => selection.setMenuOpen(true)} onClear={selection.clear} />
         </div>
       </DetailsPaneLayout>
+
+      <ConfirmDialog
+        open={Boolean(pendingMove)}
+        title={pendingMove ? `${pendingMove.next ? 'Turn on' : 'Pause'} ${entityLabels[campaignFilterTab].singular}?` : ''}
+        description={pendingMove
+          ? `“${pendingMove.name}” ${pendingMove.next ? 'starts' : 'stops'} delivering in Meta. ${UNDO_SHORTCUT} ${pendingMove.next ? 'pauses it again' : 'turns it back on'}.`
+          : ''}
+        confirmLabel={pendingMove?.next ? 'Turn on' : 'Pause'}
+        onConfirm={() => {
+          const move = pendingMove;
+          setPendingMove(null);
+          if (move) void runDelivery(move.level, move.entityId, move.accountId, move.next);
+        }}
+        onCancel={() => setPendingMove(null)}
+      />
 
       <SelectionCommandMenu
         open={selection.menuOpen}

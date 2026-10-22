@@ -572,6 +572,17 @@ html[data-theme='light'] {
   --details-pane-scrim: rgb(0 0 0 / 0.25);
 }
 
+/* Board (BuyerlyBoard), as Linear's measured 2026-10-22: the card's 0.5px ring and the Rows band. */
+:root {
+  --board-card-ring: lch(100% 0 0 / 0.083);
+  --board-lane-bg: lch(7.32% 0.85 272 / 1);      /* #161617 */
+}
+
+html[data-theme='light'] {
+  --board-card-ring: lch(0% 0 0 / 0.088);
+  --board-lane-bg: lch(94.44% 0.5 282 / 1);      /* #efeff0 */
+}
+
 html[data-theme='dark'] {
   color-scheme: dark;
 }

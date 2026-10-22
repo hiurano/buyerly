@@ -94,6 +94,7 @@ try {
     const errors = [];
     const views = {};
     const periods = [];
+    const writes = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await context.route('**/api/**', async (route) => {
       const request = route.request();
@@ -109,6 +110,19 @@ try {
       if (key && verb === 'DELETE') {
         delete views[key];
         return route.fulfill({ status: 204, body: '' });
+      }
+      // Delivery from the board, and its undo (Ctrl+Z).
+      const delivery = path.match(/^\/api\/entities\/(campaign|adset|ad)\/([\w-]+)\/delivery$/);
+      if (delivery && verb === 'POST') {
+        const body = request.postDataJSON();
+        writes.push({ path, body });
+        return route.fulfill({ json: {
+          entity_id: delivery[2], level: delivery[1], status: body.status, changed: true, audit_event_id: 90 + writes.length, message: '',
+        } });
+      }
+      if (/^\/api\/audit-events\/\d+\/undo$/.test(path) && verb === 'POST') {
+        writes.push({ path });
+        return route.fulfill({ json: { ok: true } });
       }
       if (verb !== 'GET') {
         errors.push(`Unexpected write: ${verb} ${path}`);
@@ -133,7 +147,7 @@ try {
       }
       return route.fulfill({ json: [] });
     });
-    return { context, page, errors, views, periods };
+    return { context, page, errors, views, periods, writes };
   };
 
   const rowIds = (page) => page.locator('[data-row-id]').evaluateAll((rows) => rows.map((row) => row.dataset.rowId));
@@ -171,7 +185,7 @@ try {
       // Any figure is one switch away; the new column orders like the rest.
       await displayButton(page).click();
       await popover(page).waitFor();
-      for (const label of ['Delivery', 'Impressions', 'Reach', 'CPM', 'Link clicks', 'Link CTR', 'Link CPC', 'Landing page views', 'Registrations', 'CPReg', 'Purchases', 'CPP', 'ID']) {
+      for (const label of ['Status', 'Impressions', 'Reach', 'CPM', 'Link clicks', 'Link CTR', 'Link CPC', 'Landing page views', 'Registrations', 'CPReg', 'Purchases', 'CPP', 'ID']) {
         await property(page, label).waitFor();
       }
       assert.equal(await property(page, 'Results').count(), 0, 'no Results any more');
@@ -308,7 +322,7 @@ try {
 
   // Every ad account at once, grouped by account; My campaigns, only the accounts you lead.
   {
-    const { context, page, errors, views } = await openPage(1440, false, [{ ...account, lead_user_id: 1 }, euro]);
+    const { context, page, errors, views, writes } = await openPage(1440, false, [{ ...account, lead_user_id: 1 }, euro]);
     try {
       await page.goto(`${origin}/alpha/ads-manager/campaigns`);
       await page.locator('[data-row-id="701"]').waitFor();
@@ -348,6 +362,70 @@ try {
       assert.deepEqual(await page.locator('.sticky span.truncate').allTextContents(), ['Main account']);
       await page.locator('main header').getByText('My campaigns', { exact: true }).waitFor();
       await page.screenshot({ path: `${output}/my-campaigns-1440.png` });
+
+      // Linear's Board: Ctrl/Cmd+B. A view grouped by nothing shows its board by Status,
+      // and an empty column waits in Hidden columns.
+      await page.goto(`${origin}/alpha/ads-manager/campaigns`);
+      await page.locator('[data-row-id="801"]').waitFor();
+      await page.keyboard.press('ControlOrMeta+b');
+      await page.locator('.buyerly-board').waitFor();
+      assert.deepEqual(await page.locator('.buyerly-board-column-header .buyerly-board-column-name').allTextContents(), ['Active']);
+      assert.deepEqual(await page.locator('.buyerly-board-hidden-row').allTextContents(), ['Paused']);
+      assert.equal(await page.locator('[data-board-column="active"] [data-row-id]').count(), 4);
+      // By Status a card dropped on Paused pauses it in Meta once confirmed; Ctrl+Z turns it back on.
+      const from = await page.locator('[data-board-column="active"] [data-row-id="801"]').boundingBox();
+      const to = await page.locator('[data-board-hidden-column="paused"]').boundingBox();
+      await page.mouse.move(from.x + 40, from.y + 20);
+      await page.mouse.down();
+      await page.mouse.move(from.x + 60, from.y + 30, { steps: 4 });
+      await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
+      await page.mouse.up();
+      const dialog = page.getByRole('dialog');
+      await dialog.getByText('Pause campaign?').waitFor();
+      assert.equal(writes.length, 0, 'nothing is written before the member confirms');
+      await dialog.getByRole('button', { name: 'Pause', exact: true }).click();
+      await page.locator('[data-board-column="paused"] [data-row-id="801"]').waitFor();
+      assert.deepEqual(writes[0], { path: '/api/entities/campaign/801/delivery', body: { account_id: 'act_100', status: 'PAUSED' } });
+      await page.screenshot({ path: `${output}/board-paused-1440.png` });
+      await page.locator('body').click({ position: { x: 5, y: 5 } });
+      await page.keyboard.press('ControlOrMeta+z');
+      await page.locator('[data-board-column="active"] [data-row-id="801"]').waitFor();
+      assert.equal(writes[1].path, '/api/audit-events/91/undo');
+      assert.deepEqual(await page.locator('.buyerly-board-hidden-row').allTextContents(), ['Paused'], 'empty again, back in the lane');
+      // Cancel writes nothing and the card stays.
+      const again = await page.locator('[data-row-id="802"]').boundingBox();
+      await page.mouse.move(again.x + 40, again.y + 20);
+      await page.mouse.down();
+      await page.mouse.move(again.x + 60, again.y + 30, { steps: 4 });
+      await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
+      await page.mouse.up();
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
+      await dialog.waitFor({ state: 'detached' });
+      assert.equal(writes.length, 2);
+      await page.locator('[data-board-column="active"] [data-row-id="802"]').waitFor();
+      await displayButton(page).click();
+      await popover(page).waitFor();
+      await popover(page).getByText('Columns', { exact: true }).waitFor();
+      await popover(page).locator('.linear-display-row', { hasText: 'Columns' }).getByRole('combobox').click();
+      assert.deepEqual(await page.locator('.linear-display-select-menu').getByRole('option').allTextContents(), ['Ad account', 'Status', 'Rules'], 'no "No grouping" on a board');
+      await page.locator('.linear-display-select-menu').getByRole('option', { name: 'Ad account', exact: true }).click();
+      assert.equal(await property(page, 'Ad account').isDisabled(), true, 'the columns already show the account');
+      await select(page, 'Rows', 'Status');
+      await popover(page).getByText('Show empty rows', { exact: true }).waitFor();
+      await page.keyboard.press('Escape');
+      assert.deepEqual(await page.locator('.buyerly-board-column-header .buyerly-board-column-name').allTextContents(), ['Euro account', 'Main account']);
+      assert.deepEqual(await page.locator('.buyerly-board-lane .buyerly-board-column-name').allTextContents(), ['Active'], 'Rows band the columns; empty bands stay out');
+      await page.screenshot({ path: `${output}/board-1440.png` });
+      // Hide column puts it in the lane; its row there brings it back.
+      await page.getByRole('button', { name: 'Euro account menu' }).click();
+      await page.getByRole('menuitem', { name: 'Hide column' }).click();
+      await page.locator('button.buyerly-board-hidden-row', { hasText: 'Euro account' }).click();
+      await page.locator('.buyerly-board-column-header', { hasText: 'Euro account' }).waitFor();
+      await settle(page);
+      assert.equal(views['ads-manager.campaigns'].layout, 'board');
+      assert.equal(views['ads-manager.campaigns'].subGrouping, 'status');
+      await page.keyboard.press('ControlOrMeta+b');
+      await page.locator('.buyerly-board').waitFor({ state: 'detached' });
       assert.deepEqual(errors, []);
       console.log('Ads Manager over every ad account passed');
     } catch (error) {

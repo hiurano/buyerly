@@ -451,6 +451,15 @@ body {
   background: var(--display-control-hover, var(--bg-canvas));
 }
 
+/* The board's columns or rows already show it: off and not clickable, as Linear's. */
+.linear-display-property:disabled {
+  cursor: default;
+}
+
+.linear-display-property:disabled:hover {
+  background: var(--card-bg);
+}
+
 /* LinearToggle, the only switch: one size everywhere, as in Linear's Display
    options (22×14, knob 10, inset 2). Colours come from tokens.css. */
 .linear-toggle {
@@ -5585,4 +5594,317 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
   .linear-inbox-tab {
     height: 32px;
   }
+}
+
+/* BuyerlyBoard: Linear's Board, measured on linear.app 2026-10-22 in light and dark. */
+.buyerly-board-scroll {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+
+.buyerly-board {
+  display: flex;
+  align-items: stretch;
+  width: max-content;
+  min-width: 100%;
+  min-height: 100%;
+  padding-left: 4px;
+}
+
+.buyerly-board-grid {
+  display: grid;
+  position: relative;
+  min-height: 100%;
+}
+
+/* The column's lane: the sidebar tone fading into the canvas, 4px in from each side. */
+.buyerly-board-column-bg {
+  margin: 4px 4px 0;
+  border-radius: 5px 5px 0 0;
+  background-image: linear-gradient(var(--bg-sidebar), var(--bg-canvas));
+  pointer-events: none;
+}
+
+.buyerly-board-column-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  isolation: isolate;
+  /* Opaque, so cards scroll under it; the lane's top tone is drawn again behind the title. */
+  background-color: var(--bg-canvas);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 50px;
+  padding: 2px 12px 0 18px;
+  user-select: none;
+}
+
+.buyerly-board-column-header::before {
+  content: '';
+  position: absolute;
+  inset: 4px 4px 0;
+  z-index: -1;
+  border-radius: 5px 5px 0 0;
+  background-color: var(--bg-sidebar);
+}
+
+.buyerly-board-column-title,
+.buyerly-board-lane-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.buyerly-board-icon {
+  display: flex;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+}
+
+.buyerly-board-column-name {
+  margin-left: 2px;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 16px;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.buyerly-board-count {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 450;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+.buyerly-board-column-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.buyerly-board-icon-button {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.buyerly-board-icon-button:hover,
+.buyerly-board-icon-button[data-state='open'] {
+  background-color: var(--item-hover-bg);
+  color: var(--text-primary);
+}
+
+.buyerly-board-icon-button:focus-visible {
+  box-shadow: 0 0 0 1px var(--focus-ring-color);
+}
+
+.buyerly-board-chevron {
+  fill: currentColor;
+  transition: transform 0.15s ease;
+}
+
+/* Rows: a 35px band across every column, held under the column headers. */
+.buyerly-board-lane {
+  position: sticky;
+  top: 50px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  height: 35px;
+  margin: 0 4px;
+  padding-left: 4px;
+  border-radius: 8px;
+  background-color: var(--board-lane-bg);
+  user-select: none;
+}
+
+.buyerly-board-lane-title {
+  position: sticky;
+  left: 8px;
+}
+
+.buyerly-board-cell {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  padding: 9px 12px 8px;
+}
+
+.buyerly-board-cell[data-drop-over] {
+  border-radius: 8px;
+  background-color: var(--item-hover-bg);
+}
+
+.buyerly-board-card-slot {
+  padding: 0 1px 8px;
+  outline: none;
+}
+
+.buyerly-board-card {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  background-color: var(--card-bg);
+  box-shadow: 0 0 0 0.5px var(--board-card-ring), var(--canvas-shadow);
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+  transition: background-color 0.1s ease;
+}
+
+.buyerly-board-card:hover {
+  background-color: var(--item-hover-bg);
+}
+
+.buyerly-board-card[data-selected] {
+  background-color: var(--item-active-bg);
+  box-shadow: 0 0 0 1px var(--color-border-secondary), var(--canvas-shadow);
+}
+
+.buyerly-board-card[data-busy] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.buyerly-board-card:focus-visible {
+  box-shadow: 0 0 0 1px var(--focus-ring-color), var(--canvas-shadow);
+}
+
+.buyerly-board-overlay {
+  border-radius: 8px;
+  box-shadow: var(--dropdown-shadow);
+  transform: rotate(1.5deg);
+}
+
+/* Linear's "Hidden columns": a 350px lane on the right, one 37px row per column. */
+.buyerly-board-hidden {
+  display: flex;
+  width: 350px;
+  flex-shrink: 0;
+  flex-direction: column;
+  padding-right: 12px;
+}
+
+.buyerly-board-hidden-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  height: 50px;
+  background-color: var(--bg-canvas);
+}
+
+.buyerly-board-hidden-toggle {
+  display: inline-flex;
+  height: 24px;
+  align-items: center;
+  gap: 2px;
+  padding: 0 8px 0 6px;
+  border-radius: 9999px;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  outline: none;
+}
+
+.buyerly-board-hidden-toggle:hover {
+  background-color: var(--item-hover-bg);
+}
+
+.buyerly-board-hidden-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.buyerly-board-hidden-row {
+  display: flex;
+  width: 100%;
+  height: 37px;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background-color: var(--card-bg);
+  box-shadow: var(--canvas-shadow);
+  text-align: left;
+  user-select: none;
+}
+
+button.buyerly-board-hidden-row {
+  cursor: pointer;
+}
+
+button.buyerly-board-hidden-row:hover,
+.buyerly-board-hidden-row[data-drop-over] {
+  background-color: var(--item-hover-bg);
+}
+
+.buyerly-board-hidden-name {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A card's properties, as Linear's 24px chips. */
+.buyerly-board-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.buyerly-board-chip {
+  display: inline-flex;
+  max-width: 100%;
+  height: 24px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  border: 1px solid var(--rules-property-border);
+  border-radius: 9999px;
+  background-color: var(--rules-property-bg);
+  font-size: 12px;
+  font-weight: 450;
+  color: var(--rules-property-text);
+  white-space: nowrap;
+}
+
+.buyerly-board-chip > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.buyerly-board-chip-label {
+  color: var(--text-tertiary);
 }

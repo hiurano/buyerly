@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pause, Play, Trash2 } from 'lucide-react';
 import { useAppStore, type RuleFilterTab } from '@/store/useAppStore';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { RuleBoard } from './RuleBoard';
+import { useLayoutShortcut } from '@/ui/useLayoutShortcut';
 import { RulesListView } from './RulesListView';
 import { deletionPrompt, runBulkRulesEnabled, runPendingDeletion } from './ruleActions';
 import { RuleStatesHost } from './RuleStatesDialog';
@@ -131,6 +132,11 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
     displayChanged: rulesDisplayChanged,
   } = useRulesView();
   const rulesViewMode = rulesView.layout;
+  const toggleRulesLayout = useCallback(
+    () => updateRulesView({ layout: rulesViewMode === 'list' ? 'board' : 'list' }),
+    [rulesViewMode, updateRulesView],
+  );
+  useLayoutShortcut(toggleRulesLayout, rulesViewLoaded);
   const rulesDisplayGrouping = rulesView.grouping;
   const rulesFilterClauses = rulesView.filters;
   const setRulesFilterClauses = (clauses: FilterClause[]) => {
@@ -513,7 +519,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
           </div>
         ) : (
           /* Linear's Board: the columns are the grouping's groups (#390). */
-          <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden px-5 py-3">
+          <div className="relative min-w-0 flex-1">
             <RuleBoard rules={filteredRules} />
           </div>
         )}

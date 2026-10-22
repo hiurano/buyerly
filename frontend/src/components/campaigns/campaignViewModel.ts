@@ -3,7 +3,6 @@ import { applyFilterClauses, NUMBER_OPERATORS, TEXT_OPERATORS } from '@/componen
 import type { FilterFieldDefinition, FilterClause, FilterOption } from '@/components/filters/filterModel';
 import { metricsFor, type AdsManagerMetrics } from './adsManagerMetrics';
 
-export interface AccountGroupOption { id: number; name: string; account_ids: string[] }
 export interface ViewRow {
   id: string; name: string; status: string; effectiveStatus?: string; campaignId?: string; adSetId?: string;
   accountId?: string; metrics?: AdsManagerMetrics;
@@ -25,12 +24,14 @@ function metricFields<T extends ViewRow>(entity: Entity): FilterFieldDefinition<
 
 /**
  * Links and saved views from before #389 named leads "results" and CPL "cpa";
- * they keep meaning the same rows.
+ * they keep meaning the same rows. Account groups are gone (ad accounts belong
+ * to teams), so an old filter by them is dropped.
  */
 export function migrateAdsManagerClauses(clauses: FilterClause[]): FilterClause[] {
   const renamed: Record<string, string> = { results: 'leads', cpa: 'cpl' };
   const ids = new Set(clauses.map((clause) => clause.fieldId));
   return clauses.flatMap((clause) => {
+    if (clause.fieldId === 'group') return [];
     const fieldId = renamed[clause.fieldId];
     if (!fieldId) return [clause];
     return ids.has(fieldId) ? [] : [{ ...clause, fieldId }];
@@ -80,11 +81,11 @@ export function deliveryStatus(row: Pick<ViewRow, 'status' | 'effectiveStatus'>)
   return 'unknown';
 }
 
-/** Active and Paused always; any other delivery state only while some row is in it. */
+/** Status: Active and Paused always; any other delivery state only while some row is in it. */
 function deliveryStatusField<T extends ViewRow>(rows: T[]): FilterFieldDefinition<T> {
   const present = new Set(rows.map(deliveryStatus));
   return {
-    id: 'status', label: 'Delivery', section: 'filters', type: 'enum',
+    id: 'status', label: 'Status', section: 'filters', type: 'enum',
     operators: ['is', 'is_not'], defaultOperator: 'is',
     options: DELIVERY_STATUS_OPTIONS.filter(option => ['active', 'paused'].includes(option.value) || present.has(option.value)),
     getValue: row => deliveryStatus(row),
@@ -113,7 +114,7 @@ function accountField<T extends ViewRow>(accounts: MetaAccount[]): FilterFieldDe
 }
 
 export function createLiveFields<T extends ViewRow>(
-  rows: T[], accounts: MetaAccount[], groups: AccountGroupOption[] | null,
+  rows: T[], accounts: MetaAccount[],
   entity: Entity, adSets: { id: string; campaignId: string; name?: string }[],
   campaigns: ParentOption[] = [],
 ): FilterFieldDefinition<T>[] {
@@ -145,15 +146,6 @@ export function createLiveFields<T extends ViewRow>(
       getValue: row => { const values = ruleValues(row); return values.length ? values : ['no-rule']; },
       pluralLabel: 'rules' },
   ];
-  if (groups !== null) {
-    const memberships = (row: T) => groups.filter(group => group.account_ids.includes(row.accountId ?? '')).map(group => String(group.id));
-    fields.push({
-      id: 'group', label: 'Account groups', section: 'filters', type: 'enum',
-      operators: ['includes_all', 'includes_any', 'excludes_any', 'excludes_all'], defaultOperator: 'includes_all',
-      options: [...groups.map(group => ({ value: String(group.id), label: group.name })), { value: 'ungrouped', label: 'Ungrouped' }],
-      getValue: row => { const ids = memberships(row); return ids.length ? ids : ['ungrouped']; }, pluralLabel: 'groups',
-    });
-  }
   fields.push({
     id: 'name', label: 'Name', section: 'filters', type: 'text',
     operators: [...TEXT_OPERATORS], defaultOperator: 'contains',

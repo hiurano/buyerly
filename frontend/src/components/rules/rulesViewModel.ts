@@ -35,6 +35,9 @@ export const RULES_VIEW_DEFAULTS = listViewDefaults({
 
 export const useRulesView = () => useListView('rules', RULES_VIEW_DEFAULTS);
 
+/** A board always has columns: without a grouping, Rules' board is by Status. */
+export const RULE_BOARD_FALLBACK = 'status';
+
 /** Groupings, as Linear's: by label, state, what it does, what it acts on and where it runs. */
 export const RULE_GROUPINGS = [
   { value: 'none', label: 'No grouping' },

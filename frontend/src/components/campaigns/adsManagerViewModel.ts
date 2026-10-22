@@ -1,16 +1,16 @@
 import type { AdsManagerEntity } from '@/store/useAppStore';
-import { listViewDefaults, type ListViewSettings, type SortDirection } from '@/ui/listView';
+import { boardGrouping, listViewDefaults, type ListViewSettings, type SortDirection } from '@/ui/listView';
 import { useListView } from '@/ui/useListView';
 import { metricsFor } from './adsManagerMetrics';
 
 /**
- * Display properties of one level, in column order (#389): Delivery is the
- * switch before the name, then the parents, every figure of the level, Rules
+ * Display properties of one level, in column order (#389): Status is the
+ * delivery switch before the name, then the parents, every figure of the level, Rules
  * and the Meta ID. A property a level lacks is never offered there.
  */
 export function adsManagerProperties(entity: AdsManagerEntity): { id: string; label: string }[] {
   return [
-    { id: 'status', label: 'Delivery' },
+    { id: 'status', label: 'Status' },
     { id: 'account', label: 'Ad account' },
     ...(entity !== 'campaigns' ? [{ id: 'campaign', label: 'Campaign' }] : []),
     ...(entity === 'ads' ? [{ id: 'adSet', label: 'Ad set' }] : []),
@@ -65,17 +65,34 @@ export const useAdsManagerView = (entity: AdsManagerEntity, mine = false) =>
 export const naturalAdsManagerDirection = (ordering: string): SortDirection => (ordering === 'name' ? 'asc' : 'desc');
 
 /** Groupings each level offers; a parent level is never grouped by itself. */
-export function adsManagerGroupings(entity: AdsManagerEntity, hasAccountGroups: boolean) {
+export function adsManagerGroupings(entity: AdsManagerEntity) {
   return [
     { value: 'none', label: 'No grouping' },
     { value: 'account', label: 'Ad account' },
-    { value: 'status', label: 'Delivery' },
+    { value: 'status', label: 'Status' },
     ...(entity !== 'campaigns' ? [{ value: 'campaign', label: 'Campaign' }] : []),
     ...(entity === 'ads' ? [{ value: 'adSet', label: 'Ad set' }] : []),
     { value: 'rules', label: 'Rules' },
-    ...(hasAccountGroups ? [{ value: 'groups', label: 'Account groups' }] : []),
   ];
 }
+
+/**
+ * The grouping on screen: a saved one the level offers, else none — and on
+ * a board never none, as Linear's Columns: then the columns are Status.
+ */
+export function adsManagerActiveGrouping(entity: AdsManagerEntity, view: Pick<ListViewSettings, 'grouping' | 'layout'>): string {
+  const saved = adsManagerGroupings(entity).some((option) => option.value === view.grouping) ? view.grouping : 'none';
+  return view.layout === 'board' ? boardGrouping(saved, 'status') : saved;
+}
+
+/** The board's Rows (Linear's swimlanes); the list has none. */
+export function adsManagerActiveRows(entity: AdsManagerEntity, view: Pick<ListViewSettings, 'subGrouping' | 'layout'>): string {
+  if (view.layout !== 'board') return 'none';
+  return adsManagerGroupings(entity).some((option) => option.value === view.subGrouping) ? view.subGrouping : 'none';
+}
+
+/** The filter field a grouping groups by; its value is also the Display property it stands for. */
+export const adsManagerGroupingField = (grouping: string) => (grouping === 'rules' ? 'rule' : grouping);
 
 /** Name, then every figure the table shows, as Linear orders by any visible property. */
 export function adsManagerOrderings(entity: AdsManagerEntity, properties: Record<string, boolean>) {
