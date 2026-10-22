@@ -83,7 +83,7 @@ try {
       if (verb === 'GET' && path === `/api/invites/${inviteToken}`) {
         return route.fulfill({ json: {
           valid: true, status: 'pending', workspace_name: workspace.name,
-          workspace_slug: workspace.slug, workspace_badge_text: workspace.badge_text,
+          workspace_slug: workspace.slug, workspace_id: workspace.id, workspace_logo_url: '',
           inviter_name: 'Team Owner', role: 'member', target_email: email,
         } });
       }
@@ -164,7 +164,7 @@ try {
               page: style('.buyerly-invite-page').backgroundColor,
               card: style('.buyerly-invite-card').backgroundColor,
               cardWidth: box('.buyerly-invite-card').width,
-              mark: [box('.buyerly-invite-workspace-mark').width, box('.buyerly-invite-workspace-mark').height],
+              mark: [box('.buyerly-invite-workspace-mark > *').width, box('.buyerly-invite-workspace-mark > *').height],
               title: [style('.buyerly-invite-title').fontSize, style('.buyerly-invite-title').fontWeight],
               divider: Boolean(document.querySelector('.buyerly-invite-divider')),
               button: style('.buyerly-invite-button').backgroundColor,

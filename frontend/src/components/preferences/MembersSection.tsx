@@ -197,7 +197,7 @@ export const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onC
             className="ui-dialog pointer-events-auto w-full max-w-[456px] rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] p-4 text-left outline-none animate-scale-in shadow-[var(--dialog-elevation-shadow)]"
           >
             <div className="flex items-center gap-2">
-              <WorkspaceAvatar workspace={workspace} size={16} />
+              <WorkspaceAvatar workspace={workspace} size="tiny" />
               <Dialog.Title className="m-0 flex-1 text-[14px] font-medium text-[var(--text-primary)]">
                 Invite to your workspace
               </Dialog.Title>

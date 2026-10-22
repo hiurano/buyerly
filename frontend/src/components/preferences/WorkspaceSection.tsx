@@ -99,11 +99,13 @@ export const WorkspaceSection: React.FC<WorkspaceSectionProps> = ({ workspace, o
                 disabled={uploading}
                 onClick={() => fileRef.current?.click()}
               >
-                <WorkspaceAvatar workspace={workspace} size={32} />
+                <WorkspaceAvatar workspace={workspace} size="regular" px={32} />
                 <span className="preferences-workspace-logo-overlay" aria-hidden="true">
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M8.53 1.47a.75.75 0 0 0-1.06 0l-3.5 3.5a.75.75 0 0 0 1.06 1.06l2.22-2.22v7.44a.75.75 0 0 0 1.5 0V3.81l2.22 2.22a.75.75 0 1 0 1.06-1.06l-3.5-3.5Z" />
-                    <path d="M2.75 10.5a.75.75 0 0 1 .75.75v1.5c0 .14.11.25.25.25h8.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 12.25 14.5h-8.5A1.75 1.75 0 0 1 2 12.75v-1.5a.75.75 0 0 1 .75-.75Z" />
+                  {/* Linear's brush over the logo on hover. */}
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M10.1805 3.34195L4.14166 9.416C5.32948 9.77021 6.29238 10.6629 6.74008 11.8184L12.6877 5.8425C11.6642 5.22123 10.8043 4.36352 10.1805 3.34195Z" />
+                    <path d="M13.7391 4.71631C14.1575 4.02948 14.0727 3.11738 13.4846 2.5219C12.8908 1.92072 11.9784 1.83892 11.298 2.27649C11.8547 3.31132 12.7037 4.15999 13.7391 4.71631Z" />
+                    <path d="M3.03104 10.7502C4.30296 10.7658 5.36645 11.7423 5.49783 13.0114C4.83268 13.426 3.40197 13.7922 2.53114 13.9886C2.2001 14.0632 1.92026 13.7602 2.02075 13.4373C2.25326 12.6902 2.64592 11.5136 3.03104 10.7502Z" />
                   </svg>
                 </span>
               </button>

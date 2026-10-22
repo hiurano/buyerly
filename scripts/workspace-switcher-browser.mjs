@@ -112,7 +112,7 @@ try {
       await submenu.waitFor();
       const items = await submenu.getByRole('menuitem').allInnerTexts();
       assert.deepEqual(items.map(text => text.replace(/\s+/g, ' ').trim()), [
-        'A Alpha 1', 'B Beta 2', 'Create or join a workspace…', 'Add an account…',
+        'AL Alpha 1', 'BE Beta 2', 'Create or join a workspace…', 'Add an account…',
       ]);
       assert.equal(await submenu.getByRole('menuitem', { name: /Alpha/ }).getByLabel('Current workspace').count(), 1);
       assert.equal(await submenu.getByRole('menuitem', { name: /Beta/ }).getByLabel('Current workspace').count(), 0);
@@ -134,7 +134,7 @@ try {
       await assertNoOverflow('switch palette');
       await page.screenshot({ path: `${output}/palette-${width}.png` });
       await palette.getByRole('combobox').fill('be');
-      assert.deepEqual((await palette.getByRole('option').allInnerTexts()).map(text => text.replace(/\s+/g, ' ').trim()), ['B Beta']);
+      assert.deepEqual((await palette.getByRole('option').allInnerTexts()).map(text => text.replace(/\s+/g, ' ').trim()), ['BE Beta']);
       assert.equal(await palette.getByText('sam@example.test', { exact: true }).count(), 0);
       await palette.getByRole('combobox').fill('');
       await page.keyboard.press('2');
@@ -196,7 +196,7 @@ try {
       await page.goto(`${origin}/alpha/inbox`);
       const single = await openSwitchSubmenu('Alpha');
       assert.deepEqual((await single.getByRole('menuitem').allInnerTexts()).map(text => text.replace(/\s+/g, ' ').trim()), [
-        'A Alpha 1', 'Create or join a workspace…', 'Add an account…',
+        'AL Alpha 1', 'Create or join a workspace…', 'Add an account…',
       ]);
       assert.equal(await single.getByLabel('Current workspace').count(), 1);
       await page.screenshot({ path: `${output}/single-${width}.png` });

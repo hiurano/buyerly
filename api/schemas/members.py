@@ -59,8 +59,9 @@ class PublicInviteInfoResponse(BaseModel):
     status: str
     workspace_name: Optional[str] = None
     workspace_slug: Optional[str] = None
-    workspace_badge_text: Optional[str] = None
-    workspace_badge_color: Optional[str] = None
+    # The invitation shows the workspace's mark: its logo, or initials on a color from its id.
+    workspace_id: Optional[int] = None
+    workspace_logo_url: Optional[str] = None
     inviter_name: Optional[str] = None
     role: Optional[str] = None
     target_email: Optional[str] = None

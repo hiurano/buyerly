@@ -4596,17 +4596,10 @@ html[data-theme='dark'] .buyerly-auth-page,
   margin-bottom: 0;
 }
 
+/* Linear's huge avatar (54px, 22px initials), centered over the title. */
 .buyerly-invite-workspace-mark {
-  display: grid;
-  width: 54px;
-  height: 54px;
-  place-items: center;
-  margin: 0 auto;
-  border-radius: 8px;
-  color: #fff;
-  font-size: 22px;
-  font-weight: 400;
-  line-height: 1;
+  display: flex;
+  justify-content: center;
 }
 
 .buyerly-invite-title {
