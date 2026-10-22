@@ -249,7 +249,8 @@ try {
     assert.equal(await property('Status').isDisabled(), true, 'the columns show the status');
     assert.equal(await property('Labels').isDisabled(), true, 'the rows show the labels');
     await page.keyboard.press('Escape');
-    await column('Paused rules').waitFor();
+    // With rows each cell is named "<column>, <row>".
+    await page.locator('[data-board-column="status-paused"]').first().waitFor();
     assert.deepEqual(await page.locator('.buyerly-board-lane .buyerly-board-column-name').allTextContents(), ['NL launch', 'No label']);
     await page.screenshot({ path: `${output}/board-rows-1440.png` });
     // With rows on, the column decides: No label's card dropped on Paused is paused and keeps its labels.
