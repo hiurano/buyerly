@@ -28,6 +28,8 @@ interface AdsManagerCardProps {
   chips: CardChip[];
   figures: CardFigure[];
   selected: boolean;
+  /** A write to Meta is on its way: the card waits, dimmed, until it lands. */
+  busy?: boolean;
   onToggleSelected: () => void;
 }
 
@@ -47,6 +49,7 @@ export const AdsManagerCard: React.FC<AdsManagerCardProps> = ({
   chips,
   figures,
   selected,
+  busy = false,
   onToggleSelected,
 }) => {
   const dimmed = status === 'paused';
@@ -60,6 +63,8 @@ export const AdsManagerCard: React.FC<AdsManagerCardProps> = ({
       aria-label={name}
       data-row-id={id}
       data-selected={selected || undefined}
+      data-busy={busy || undefined}
+      aria-busy={busy || undefined}
       className="buyerly-board-card"
       onClick={onToggleSelected}
       onKeyDown={(event) => {

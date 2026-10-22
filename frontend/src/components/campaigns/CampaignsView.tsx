@@ -73,6 +73,7 @@ import { DetailsPaneLayout, DetailsPaneToggle } from '@/ui/DetailsPane';
 import { DetailsFacets, type DetailsFacetTab } from '@/ui/DetailsFacets';
 import type { FilterOption } from '@/components/filters/filterModel';
 import { SelectionDock } from '@/ui/SelectionDock';
+import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { SelectionCommandMenu } from '@/ui/SelectionCommandMenu';
 import { LinearBoltIcon } from '@/icons/LinearIcons';
 import { RuleSelectorPopover } from './RuleSelectorPopover';
@@ -191,6 +192,9 @@ const detailsTabs = (entity: AdsManagerEntity) => (
   entity === 'campaigns' ? ['status', 'account', 'rule'] : ['status', 'account', 'campaign', 'rule']
 );
 
+/** How this platform's tooltips and dialogs write undo. */
+const UNDO_SHORTCUT = typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘Z' : 'Ctrl+Z';
+
 /** A phone keeps the name and Spend side by side; the other figures scroll (#389). */
 const PHONE_TABLE_QUERY = '(max-width: 640px)';
 
@@ -294,6 +298,10 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
   // snapshot, which only catches up on its next sync.
   const [deliveryActions, setDeliveryActions] = useState<Record<string, { busy: boolean; status?: 'active' | 'paused' }>>({});
   const [hierarchyReloadKey, setHierarchyReloadKey] = useState(0);
+  // A card dropped on Active or Paused, waiting for the member to confirm the write to Meta.
+  const [pendingMove, setPendingMove] = useState<{
+    level: EntityLevel; entityId: string; accountId: string; name: string; next: boolean;
+  } | null>(null);
   // The selection's "Apply rule…": one picker over every selected row.
   const [isBulkRulePickerOpen, setIsBulkRulePickerOpen] = useState(false);
   const [isMetaDialogOpen, setIsMetaDialogOpen] = useState(false);
@@ -725,7 +733,14 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
   };
 
   /** The level as Linear's Board: one column per group, Rows as bands, the rest in Hidden columns. */
-  const renderBoard = <T extends CampaignRowItem | AdSetRowItem | AdRowItem>(rows: T[], fields: FilterFieldDefinition<T>[]) => {
+  const renderBoard = <T extends CampaignRowItem | AdSetRowItem | AdRowItem>(loaded: T[], fields: FilterFieldDefinition<T>[]) => {
+    // Delivery this session wrote moves the card at once, as the switch shows it; Meta's snapshot catches up on its next sync.
+    const rows = loaded.map((row) => {
+      const local = deliveryActions[row.id]?.status;
+      return local && local !== row.status
+        ? { ...row, status: local, effectiveStatus: local === 'active' ? 'ACTIVE' : 'PAUSED' }
+        : row;
+    });
     const columnField = fields.find((field) => field.id === groupingField);
     const { shown, hidden } = arrangeBoardColumns(groupView(rows, fields, groupingField), groupingView);
     const laneField = fields.find((field) => field.id === rowsField);
@@ -750,6 +765,48 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
       }));
     });
     const level = entityLevels[campaignFilterTab];
+    const card = (row: T) => (
+      <AdsManagerCard
+        id={row.id}
+        name={row.name}
+        identifier={displayProperties.id ? row.identifier : undefined}
+        noun={entityLabels[campaignFilterTab].singular}
+        status={row.status}
+        statusLabel={row.statusLabel}
+        delivery={displayProperties.status !== false && activeGrouping !== 'status' && activeRows !== 'status'
+          ? deliveryControl(level, row) ?? 'read-only'
+          : undefined}
+        chips={chips(row)}
+        figures={boardFigures.map((metric) => ({
+          key: metric.id,
+          label: metric.label,
+          value: formatMetric(metric, row.metrics?.[metric.id] ?? null, row.currency ?? ''),
+        }))}
+        selected={selectedCampaignIds.includes(row.id)}
+        busy={Boolean(deliveryActions[row.id]?.busy)}
+        onToggleSelected={() => toggleCampaignSelection(row.id)}
+      />
+    );
+    // By Status a card dropped on Active or Paused turns it on or off in Meta, once confirmed;
+    // the other states are Meta's own and take no drops.
+    const onStatusDrop = (row: T, toColumn: string) => {
+      const next = toColumn === 'active';
+      const control = deliveryControl(level, row);
+      if (!control || !row.accountId) return;
+      if ((control.status === 'active') === next) {
+        const noun = entityLabels[campaignFilterTab].singular;
+        toast.show({
+          tone: 'info',
+          title: next ? 'Already on' : 'Already off',
+          message: row.name,
+          description: next
+            ? `This ${noun} is switched on; Meta shows it as ${row.statusLabel}.`
+            : `This ${noun} is switched off; Meta shows it as ${row.statusLabel}.`,
+        });
+        return;
+      }
+      setPendingMove({ level, entityId: row.id, accountId: row.accountId, name: row.name, next });
+    };
     return (
       <BuyerlyBoard
         columns={shown.map((group) => ({ id: group.id, label: group.label, icon: optionIcon(columnField, group.id), rows: group.rows }))}
@@ -764,27 +821,13 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
         rowKey={(row) => row.id}
         onHideColumn={(id) => updateView(toggleHiddenGroup(groupingView, id))}
         onShowColumn={(id) => updateView(toggleHiddenGroup(groupingView, id))}
-        renderCard={(row) => (
-          <AdsManagerCard
-            id={row.id}
-            name={row.name}
-            identifier={displayProperties.id ? row.identifier : undefined}
-            noun={entityLabels[campaignFilterTab].singular}
-            status={row.status}
-            statusLabel={row.statusLabel}
-            delivery={displayProperties.status !== false && activeGrouping !== 'status' && activeRows !== 'status'
-              ? deliveryControl(level, row) ?? 'read-only'
-              : undefined}
-            chips={chips(row)}
-            figures={boardFigures.map((metric) => ({
-              key: metric.id,
-              label: metric.label,
-              value: formatMetric(metric, row.metrics?.[metric.id] ?? null, row.currency ?? ''),
-            }))}
-            selected={selectedCampaignIds.includes(row.id)}
-            onToggleSelected={() => toggleCampaignSelection(row.id)}
-          />
-        )}
+        renderCard={card}
+        move={activeGrouping === 'status' && hierarchyState === 'ready' ? {
+          canMove: (columnId) => columnId === 'active' || columnId === 'paused',
+          canDrag: (row) => Boolean(deliveryControl(level, row)) && !deliveryActions[row.id]?.busy,
+          onMove: (row, _from, to) => onStatusDrop(row, to),
+          renderOverlay: card,
+        } : undefined}
       />
     );
   };
@@ -1043,6 +1086,21 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
           <SelectionDock count={selection.count} onOpenActions={() => selection.setMenuOpen(true)} onClear={selection.clear} />
         </div>
       </DetailsPaneLayout>
+
+      <ConfirmDialog
+        open={Boolean(pendingMove)}
+        title={pendingMove ? `${pendingMove.next ? 'Turn on' : 'Pause'} ${entityLabels[campaignFilterTab].singular}?` : ''}
+        description={pendingMove
+          ? `“${pendingMove.name}” ${pendingMove.next ? 'starts' : 'stops'} delivering in Meta. ${UNDO_SHORTCUT} ${pendingMove.next ? 'pauses it again' : 'turns it back on'}.`
+          : ''}
+        confirmLabel={pendingMove?.next ? 'Turn on' : 'Pause'}
+        onConfirm={() => {
+          const move = pendingMove;
+          setPendingMove(null);
+          if (move) void runDelivery(move.level, move.entityId, move.accountId, move.next);
+        }}
+        onCancel={() => setPendingMove(null)}
+      />
 
       <SelectionCommandMenu
         open={selection.menuOpen}

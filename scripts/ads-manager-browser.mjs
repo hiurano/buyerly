@@ -94,6 +94,7 @@ try {
     const errors = [];
     const views = {};
     const periods = [];
+    const writes = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await context.route('**/api/**', async (route) => {
       const request = route.request();
@@ -109,6 +110,19 @@ try {
       if (key && verb === 'DELETE') {
         delete views[key];
         return route.fulfill({ status: 204, body: '' });
+      }
+      // Delivery from the board, and its undo (Ctrl+Z).
+      const delivery = path.match(/^\/api\/entities\/(campaign|adset|ad)\/([\w-]+)\/delivery$/);
+      if (delivery && verb === 'POST') {
+        const body = request.postDataJSON();
+        writes.push({ path, body });
+        return route.fulfill({ json: {
+          entity_id: delivery[2], level: delivery[1], status: body.status, changed: true, audit_event_id: 90 + writes.length, message: '',
+        } });
+      }
+      if (/^\/api\/audit-events\/\d+\/undo$/.test(path) && verb === 'POST') {
+        writes.push({ path });
+        return route.fulfill({ json: { ok: true } });
       }
       if (verb !== 'GET') {
         errors.push(`Unexpected write: ${verb} ${path}`);
@@ -133,7 +147,7 @@ try {
       }
       return route.fulfill({ json: [] });
     });
-    return { context, page, errors, views, periods };
+    return { context, page, errors, views, periods, writes };
   };
 
   const rowIds = (page) => page.locator('[data-row-id]').evaluateAll((rows) => rows.map((row) => row.dataset.rowId));
@@ -308,7 +322,7 @@ try {
 
   // Every ad account at once, grouped by account; My campaigns, only the accounts you lead.
   {
-    const { context, page, errors, views } = await openPage(1440, false, [{ ...account, lead_user_id: 1 }, euro]);
+    const { context, page, errors, views, writes } = await openPage(1440, false, [{ ...account, lead_user_id: 1 }, euro]);
     try {
       await page.goto(`${origin}/alpha/ads-manager/campaigns`);
       await page.locator('[data-row-id="701"]').waitFor();
@@ -358,6 +372,37 @@ try {
       assert.deepEqual(await page.locator('.buyerly-board-column-header .buyerly-board-column-name').allTextContents(), ['Active']);
       assert.deepEqual(await page.locator('.buyerly-board-hidden-row').allTextContents(), ['Paused']);
       assert.equal(await page.locator('[data-board-column="active"] [data-row-id]').count(), 4);
+      // By Status a card dropped on Paused pauses it in Meta once confirmed; Ctrl+Z turns it back on.
+      const from = await page.locator('[data-board-column="active"] [data-row-id="801"]').boundingBox();
+      const to = await page.locator('[data-board-hidden-column="paused"]').boundingBox();
+      await page.mouse.move(from.x + 40, from.y + 20);
+      await page.mouse.down();
+      await page.mouse.move(from.x + 60, from.y + 30, { steps: 4 });
+      await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
+      await page.mouse.up();
+      const dialog = page.getByRole('dialog');
+      await dialog.getByText('Pause campaign?').waitFor();
+      assert.equal(writes.length, 0, 'nothing is written before the member confirms');
+      await dialog.getByRole('button', { name: 'Pause', exact: true }).click();
+      await page.locator('[data-board-column="paused"] [data-row-id="801"]').waitFor();
+      assert.deepEqual(writes[0], { path: '/api/entities/campaign/801/delivery', body: { account_id: 'act_100', status: 'PAUSED' } });
+      await page.screenshot({ path: `${output}/board-paused-1440.png` });
+      await page.locator('body').click({ position: { x: 5, y: 5 } });
+      await page.keyboard.press('ControlOrMeta+z');
+      await page.locator('[data-board-column="active"] [data-row-id="801"]').waitFor();
+      assert.equal(writes[1].path, '/api/audit-events/91/undo');
+      assert.deepEqual(await page.locator('.buyerly-board-hidden-row').allTextContents(), ['Paused'], 'empty again, back in the lane');
+      // Cancel writes nothing and the card stays.
+      const again = await page.locator('[data-row-id="802"]').boundingBox();
+      await page.mouse.move(again.x + 40, again.y + 20);
+      await page.mouse.down();
+      await page.mouse.move(again.x + 60, again.y + 30, { steps: 4 });
+      await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
+      await page.mouse.up();
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
+      await dialog.waitFor({ state: 'detached' });
+      assert.equal(writes.length, 2);
+      await page.locator('[data-board-column="active"] [data-row-id="802"]').waitFor();
       await displayButton(page).click();
       await popover(page).waitFor();
       await popover(page).getByText('Columns', { exact: true }).waitFor();

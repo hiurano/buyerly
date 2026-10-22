@@ -5786,6 +5786,11 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
   box-shadow: 0 0 0 1px var(--color-border-secondary), var(--canvas-shadow);
 }
 
+.buyerly-board-card[data-busy] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
 .buyerly-board-card:focus-visible {
   box-shadow: 0 0 0 1px var(--focus-ring-color), var(--canvas-shadow);
 }

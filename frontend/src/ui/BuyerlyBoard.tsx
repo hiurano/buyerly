@@ -45,8 +45,10 @@ export interface BoardLane<T> {
 }
 
 export interface BoardMove<T> {
-  /** Whether cards in this column can be dragged, and dropped into it. */
+  /** Whether cards can be dropped into this column, and (without `canDrag`) dragged out of it. */
   canMove: (columnId: string) => boolean;
+  /** Whether this card can be picked up at all, e.g. only what may really change. */
+  canDrag?: (row: T, columnId: string) => boolean;
   onMove: (row: T, fromColumnId: string, toColumnId: string) => void;
   /** The card under the pointer while it is dragged. */
   renderOverlay: (row: T) => React.ReactNode;
@@ -267,8 +269,9 @@ export function BuyerlyBoard<T>({
                   >
                     {rows.map((row) => {
                       const id = dragKey(lane.id, column.id, rowKey(row));
+                      const draggable = move?.canDrag ? move.canDrag(row, column.id) : movable;
                       return move ? (
-                        <DraggableCard key={id} id={id} disabled={!movable}>{renderCard(row, column.id)}</DraggableCard>
+                        <DraggableCard key={id} id={id} disabled={!draggable}>{renderCard(row, column.id)}</DraggableCard>
                       ) : (
                         <div key={id} className="buyerly-board-card-slot">{renderCard(row, column.id)}</div>
                       );
