@@ -3,7 +3,7 @@ import { logOut } from '@/lib/sessions';
 import { accountBlocks } from '@/lib/accounts';
 import { useAppStore } from '@/store/useAppStore';
 import { Tooltip } from '@/ui/Tooltip';
-import { BuyerlyLogoAvatar, LinearCheckIcon } from '@/icons/LinearIcons';
+import { LinearCheckIcon } from '@/icons/LinearIcons';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
 import { openSearchPage } from '@/components/search/openSearchPage';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
@@ -65,8 +65,8 @@ export const SidebarHeader: React.FC = () => {
               aria-label={`${workspaceName} Workspace Menu`}
               className="linear-workspace-btn min-w-0 max-w-[calc(100%-36px)]"
             >
-              {/* 20x20 Buyerly Logo Avatar (Gold Anubis) */}
-              <BuyerlyLogoAvatar size={20} shape="rounded" />
+              {/* Linear: the workspace's own mark, its regular avatar in a 20px box. */}
+              <WorkspaceAvatar workspace={workspace} size="regular" px={20} />
 
               {/* Workspace Name (truncates when space narrows) */}
               <span

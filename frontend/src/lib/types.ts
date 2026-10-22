@@ -4,8 +4,6 @@ export interface Workspace {
   id: number;
   name: string;
   slug: string;
-  badge_text: string;
-  badge_color: string;
   logo_url: string;
   role: 'owner' | 'admin' | 'member' | 'guest';
   is_active: boolean;
@@ -44,8 +42,8 @@ export interface InviteInfo {
   status: string;
   workspace_name?: string | null;
   workspace_slug?: string | null;
-  workspace_badge_text?: string | null;
-  workspace_badge_color?: string | null;
+  workspace_id?: number | null;
+  workspace_logo_url?: string | null;
   inviter_name?: string | null;
   role?: string | null;
   target_email?: string | null;

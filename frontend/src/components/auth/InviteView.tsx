@@ -13,6 +13,7 @@ import {
 } from '@/ui/DropdownMenu';
 import { AuthFrame, AuthLoading, BuyerlyBrand } from './AuthFrame';
 import { LoginView } from './LoginView';
+import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
 
 /**
  * Linear's invitation page follows the system or the person's own theme, also
@@ -205,11 +206,15 @@ export const InviteView: React.FC<InviteViewProps> = ({
         )}
         {invite?.valid && (
           <>
-            <div
-              className="buyerly-invite-workspace-mark"
-              style={{ backgroundColor: invite.workspace_badge_color || '#F5A300' }}
-            >
-              {invite.workspace_badge_text || invite.workspace_name?.charAt(0) || 'B'}
+            <div className="buyerly-invite-workspace-mark">
+              <WorkspaceAvatar
+                workspace={{
+                  id: invite.workspace_id ?? 0,
+                  name: invite.workspace_name || '',
+                  logo_url: invite.workspace_logo_url,
+                }}
+                size="huge"
+              />
             </div>
             <h1 className="buyerly-invite-title">{invite.inviter_name} has invited you to {invite.workspace_name}</h1>
             {!user && (

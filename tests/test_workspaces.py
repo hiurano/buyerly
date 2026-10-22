@@ -594,6 +594,9 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             check_data = check_res.json()
             self.assertTrue(check_data['valid'])
             self.assertEqual(check_data['workspace_name'], 'Buyerly')
+            self.assertEqual(check_data['workspace_id'], ws_id)
+            self.assertEqual(check_data['workspace_logo_url'], '')
+            self.assertNotIn('workspace_badge_color', check_data)
             self.assertEqual(check_data['role'], 'member')
             self.assertEqual(check_data['target_email'], 'dave@buyerly.app')
 
