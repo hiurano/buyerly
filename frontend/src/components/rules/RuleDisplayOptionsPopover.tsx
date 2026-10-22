@@ -23,7 +23,7 @@ interface RuleDisplayOptionsPopoverProps {
 
 export const RuleDisplayOptionsPopover: React.FC<RuleDisplayOptionsPopoverProps> = ({ isOpen, onClose, anchorRef }) => {
   const { rules, ruleLabels, ruleAccounts } = useAppStore();
-  const { view, update, reset, displayChanged } = useRulesView();
+  const { view, update, reset, displayChanged, canSetDefault, setDefaultForEveryone } = useRulesView();
   const popoverRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
   const accounts = useMemo(() => ruleGroupAccounts(ruleAccounts), [ruleAccounts]);
@@ -102,6 +102,7 @@ export const RuleDisplayOptionsPopover: React.FC<RuleDisplayOptionsPopoverProps>
         enabledProperties={view.properties}
         onToggleProperty={(key) => update({ properties: { ...view.properties, [key]: !view.properties[key] } })}
         onReset={displayChanged ? reset : undefined}
+        onSetDefault={displayChanged && canSetDefault ? () => void setDefaultForEveryone() : undefined}
       />
     </div>,
     document.body

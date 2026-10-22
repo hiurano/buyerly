@@ -31,7 +31,7 @@ export const AccountDisplayOptionsPopover: React.FC<AccountDisplayOptionsPopover
   teams,
   leads,
 }) => {
-  const { view, update, reset, displayChanged } = useAccountsView();
+  const { view, update, reset, displayChanged, canSetDefault, setDefaultForEveryone } = useAccountsView();
   const popoverRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
 
@@ -99,6 +99,7 @@ export const AccountDisplayOptionsPopover: React.FC<AccountDisplayOptionsPopover
         enabledProperties={view.properties}
         onToggleProperty={(key) => update({ properties: { ...view.properties, [key]: !view.properties[key] } })}
         onReset={displayChanged ? reset : undefined}
+        onSetDefault={displayChanged && canSetDefault ? () => void setDefaultForEveryone() : undefined}
       />
     </div>,
     document.body,

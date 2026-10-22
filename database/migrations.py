@@ -106,6 +106,8 @@ POST_BASELINE_TABLES: set[str] = {
     "telegram_link_tokens",
     # Added by the view settings migration (0037).
     "view_settings",
+    # Added by the workspace view defaults migration (0048).
+    "workspace_view_defaults",
 }
 REQUIRED_COLUMN_TYPES = {
     ("automation_runtime_states", "payload"): "JSONB",

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { parseRoute } from '@/lib/routing';
 import type { FilterClause } from '@/components/filters/filterModel';
 import { ApiError, apiRequest } from '@/lib/api';
-import type { MetaAccount } from '@/lib/types';
+import type { MetaAccount, Workspace } from '@/lib/types';
 import { eligibleMetaAccounts } from '@/components/campaigns/liveCampaigns';
 import type { AdsManagerMetrics } from '@/components/campaigns/adsManagerMetrics';
 import {
@@ -57,6 +57,7 @@ import {
 } from '@/lib/inbox';
 import {
   deleteViewSettings,
+  saveViewDefault,
   fetchViewSettings,
   saveViewSettings,
   type StoredView,
@@ -327,6 +328,9 @@ interface AppState {
   recordActionsFor: string | null;
   setRecordActionsFor: (key: string | null) => void;
   workspaceName: string;
+  /** The member's role in the open workspace; admins and owners may set views' defaults for everyone. */
+  workspaceRole: Workspace['role'] | null;
+  setWorkspaceRole: (role: Workspace['role'] | null) => void;
   inboxUnreadCount: number;
   inboxPriorityUnreadCount: number;
   /** Takes the unread counts every Inbox answer carries. */
@@ -344,6 +348,10 @@ interface AppState {
   loadViewSettings: () => Promise<void>;
   /** Saves a page's view, or with null resets it to the page's defaults. */
   setViewSettings: (key: string, settings: StoredView | null) => void;
+  /** The workspace's default view by key (#472): what a member without their own view starts from. */
+  viewDefaults: StoredViews;
+  /** Linear's "Set default for everyone"; rejects when the server refuses. */
+  setViewDefault: (key: string, settings: StoredView) => Promise<void>;
   /** Settings → Notifications → Email (later Telegram), saved per member like Display options. */
   notificationChannels: NotificationChannels;
   notificationChannelsLoaded: boolean;
@@ -560,7 +568,7 @@ function emptyWorkspaceState() {
     ...emptyAccountState(), workspaceName: 'buyerly', inboxUnreadCount: 0, campaignGroups: [],
     inboxPriorityUnreadCount: 0,
     inboxDisplay: DEFAULT_INBOX_DISPLAY, inboxDisplayLoaded: false,
-    viewSettings: {}, viewSettingsLoaded: false,
+    viewSettings: {}, viewSettingsLoaded: false, viewDefaults: {},
     notificationChannels: DEFAULT_NOTIFICATION_CHANNELS, notificationChannelsLoaded: false,
     telegramConnection: NO_TELEGRAM_CONNECTION, telegramConnectionLoaded: false,
     rules: [], ruleLabels: [], ruleAccounts: [], rulesLoadState: 'idle' as RulesLoadState,
@@ -635,6 +643,8 @@ export const useAppStore = create<AppState>((set, get) => {
   setRecordActionsFor: (key) => set({ recordActionsFor: key }),
   workspaceName: 'buyerly',
   setWorkspaceName: (name) => set({ workspaceName: name }),
+  workspaceRole: null,
+  setWorkspaceRole: (role) => set({ workspaceRole: role }),
   inboxUnreadCount: 0,
   inboxPriorityUnreadCount: 0,
   setInboxUnread: (unread) => set({
@@ -682,12 +692,16 @@ export const useAppStore = create<AppState>((set, get) => {
     if (viewSettingsRequest) return viewSettingsRequest;
     const inScope = get().captureScope();
     viewSettingsRequest = fetchViewSettings()
-      .catch(() => ({}) as StoredViews)
-      .then((stored) => {
+      .catch(() => ({ views: {}, defaults: {} }))
+      .then(({ views, defaults }) => {
         viewSettingsRequest = null;
         if (!inScope()) return;
         // A choice made while this was loading wins over the saved one.
-        set((state) => ({ viewSettings: { ...stored, ...state.viewSettings }, viewSettingsLoaded: true }));
+        set((state) => ({
+          viewSettings: { ...views, ...state.viewSettings },
+          viewDefaults: { ...defaults, ...state.viewDefaults },
+          viewSettingsLoaded: true,
+        }));
       });
     return viewSettingsRequest;
   },
@@ -712,6 +726,16 @@ export const useAppStore = create<AppState>((set, get) => {
     };
     if (settings) viewSettingsTimers.set(key, window.setTimeout(write, 150));
     else write();
+  },
+  viewDefaults: {},
+  setViewDefault: async (key, settings) => {
+    const inScope = get().captureScope();
+    await saveViewDefault(key, settings);
+    if (!inScope()) return;
+    const viewDefaults = { ...get().viewDefaults };
+    if (Object.keys(settings).length) viewDefaults[key] = settings;
+    else delete viewDefaults[key];
+    set({ viewDefaults });
   },
   notificationChannels: DEFAULT_NOTIFICATION_CHANNELS,
   notificationChannelsLoaded: false,

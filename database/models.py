@@ -183,6 +183,28 @@ class ViewSetting(Base):
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
 
+class WorkspaceViewDefault(Base):
+    """A workspace's default view of a list page, Linear's "Set default for everyone" (#472).
+
+    Same blob as `ViewSetting`, kept once per workspace and `view_key` and set by
+    an admin or owner. A member's own saved view still wins over it, key by key.
+    """
+
+    __tablename__ = "workspace_view_defaults"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "view_key", name="uq_workspace_view_defaults_key"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    workspace_id = Column(
+        Integer, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    view_key = Column(String(64), nullable=False)
+    settings = Column(JSONB, nullable=False)
+    updated_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
+
 class WorkspaceInvite(Base):
     __tablename__ = "workspace_invites"
 
