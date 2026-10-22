@@ -12,7 +12,7 @@ import {
 } from '@dnd-kit/core';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './DropdownMenu';
 import { Tooltip } from './Tooltip';
-import { LinearDotsIcon } from '@/icons/LinearIcons';
+import { BuyerlyDotsIcon } from '@/icons/BuyerlyIcons';
 
 /**
  * Linear's Board (measured on linear.app 2026-10-22, light and dark): 348px
@@ -212,7 +212,7 @@ export function BuyerlyBoard<T>({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button type="button" className="buyerly-board-icon-button" aria-label={`${column.label} menu`}>
-                      <LinearDotsIcon size={14} />
+                      <BuyerlyDotsIcon size={14} />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">

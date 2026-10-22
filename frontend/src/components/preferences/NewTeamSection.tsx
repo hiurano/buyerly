@@ -14,7 +14,7 @@ import {
 import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/ui/Button';
 import { Input } from '@/ui/Input';
-import { LinearToggle } from '@/ui/LinearToggle';
+import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { toast } from '@/ui/toast';
 import { errorMessage } from './MemberDialogs';
 import { TeamIcon } from './TeamIcon';
@@ -131,7 +131,7 @@ export const NewTeamSection: React.FC<{ workspace: Workspace }> = ({ workspace }
               <span className="preferences-row-title">Make team private</span>
               <span className="preferences-row-desc">Only members see this team, its ad accounts and their campaigns</span>
             </div>
-            <LinearToggle checked={isPrivate} label="Make team private" disabled={busy} onChange={setIsPrivate} />
+            <BuyerlyToggle checked={isPrivate} label="Make team private" disabled={busy} onChange={setIsPrivate} />
           </div>
         </section>
         {error && <p role="alert" className="preferences-row-error">{error}</p>}

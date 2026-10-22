@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const LINEAR_DATA_LIST = {
+export const BUYERLY_DATA_LIST = {
   toolbarHeight: 43.5,
   rowHeight: 44,
   rowHeightComfortable: 56,
@@ -15,7 +15,7 @@ export const LINEAR_DATA_LIST = {
   viewportPaddingY: 4,
 } as const;
 
-export interface LinearDataListColumn {
+export interface BuyerlyDataListColumn {
   id: string;
   label: string;
   width: string;
@@ -24,7 +24,7 @@ export interface LinearDataListColumn {
   headerInset?: number;
 }
 
-export const getLinearDataListTemplate = (columns: LinearDataListColumn[]) =>
+export const getLinearDataListTemplate = (columns: BuyerlyDataListColumn[]) =>
   columns.map((column) => column.width).join(' ');
 
 /**
@@ -32,7 +32,7 @@ export const getLinearDataListTemplate = (columns: LinearDataListColumn[]) =>
  * start on the same pixel as the row title, past the selection slot and, when
  * shown, the status toggle; the sortable header pill adds 6px of its own.
  */
-export const linearDataNameColumn = ({
+export const buyerlyDataNameColumn = ({
   width,
   statusVisible = true,
   label = 'Name',
@@ -40,7 +40,7 @@ export const linearDataNameColumn = ({
   width: string;
   statusVisible?: boolean;
   label?: string;
-}): LinearDataListColumn => ({
+}): BuyerlyDataListColumn => ({
   id: 'name',
   label,
   width,
@@ -52,28 +52,28 @@ export const linearDataNameColumn = ({
  * The narrowest width at which every column keeps its declared size. A
  * `minmax(Npx, …)` column counts as N; the viewport scrolls horizontally below it.
  */
-export const getLinearDataListMinWidth = (columns: LinearDataListColumn[]) => {
+export const getLinearDataListMinWidth = (columns: BuyerlyDataListColumn[]) => {
   const columnWidth = columns.reduce((total, column) => {
     const minimum = /^minmax\((\d+)px/.exec(column.width);
     return total + (minimum ? Number(minimum[1]) : Number.parseInt(column.width, 10) || 0);
   }, 0);
   return (
     columnWidth
-    + Math.max(columns.length - 1, 0) * LINEAR_DATA_LIST.columnGap
-    + LINEAR_DATA_LIST.rowPaddingX * 2
+    + Math.max(columns.length - 1, 0) * BUYERLY_DATA_LIST.columnGap
+    + BUYERLY_DATA_LIST.rowPaddingX * 2
   );
 };
 
-export const LinearDataListToolbar: React.FC<React.PropsWithChildren<{ className?: string }>> = ({
+export const BuyerlyDataListToolbar: React.FC<React.PropsWithChildren<{ className?: string }>> = ({
   children,
   className = '',
 }) => (
   <div
     className={`flex shrink-0 items-center justify-between ${className}`}
     style={{
-      height: `${LINEAR_DATA_LIST.toolbarHeight}px`,
-      paddingLeft: `${LINEAR_DATA_LIST.toolbarPaddingLeft}px`,
-      paddingRight: `${LINEAR_DATA_LIST.toolbarPaddingRight}px`,
+      height: `${BUYERLY_DATA_LIST.toolbarHeight}px`,
+      paddingLeft: `${BUYERLY_DATA_LIST.toolbarPaddingLeft}px`,
+      paddingRight: `${BUYERLY_DATA_LIST.toolbarPaddingRight}px`,
       boxSizing: 'border-box',
     }}
   >
@@ -81,7 +81,7 @@ export const LinearDataListToolbar: React.FC<React.PropsWithChildren<{ className
   </div>
 );
 
-export const LinearDataListViewport: React.FC<
+export const BuyerlyDataListViewport: React.FC<
   React.PropsWithChildren<{
     className?: string;
     horizontal?: boolean;
@@ -90,46 +90,46 @@ export const LinearDataListViewport: React.FC<
   <div
     className={`min-w-0 flex-1 overflow-y-auto ${horizontal ? 'overflow-x-auto' : 'overflow-x-hidden'} ${className}`}
     style={{
-      padding: `${LINEAR_DATA_LIST.viewportPaddingY}px ${LINEAR_DATA_LIST.viewportPaddingX}px`,
+      padding: `${BUYERLY_DATA_LIST.viewportPaddingY}px ${BUYERLY_DATA_LIST.viewportPaddingX}px`,
     }}
   >
     {children}
   </div>
 );
 
-export const LinearDataListStack: React.FC<React.PropsWithChildren<{ className?: string }>> = ({
+export const BuyerlyDataListStack: React.FC<React.PropsWithChildren<{ className?: string }>> = ({
   children,
   className = '',
 }) => (
-  <div className={`flex flex-col ${className}`} style={{ gap: `${LINEAR_DATA_LIST.rowGap}px` }}>
+  <div className={`flex flex-col ${className}`} style={{ gap: `${BUYERLY_DATA_LIST.rowGap}px` }}>
     {children}
   </div>
 );
 
-interface LinearDataListRowProps extends React.HTMLAttributes<HTMLDivElement> {
+interface BuyerlyDataListRowProps extends React.HTMLAttributes<HTMLDivElement> {
   selected?: boolean;
   height?: number;
   layout?: 'flex' | 'grid';
-  columns?: LinearDataListColumn[];
+  columns?: BuyerlyDataListColumn[];
 }
 
-export const LinearDataListRow = React.forwardRef<HTMLDivElement, LinearDataListRowProps>(
-  ({ selected = false, height = LINEAR_DATA_LIST.rowHeight, layout = 'flex', columns, className = '', style, children, ...props }, ref) => (
+export const BuyerlyDataListRow = React.forwardRef<HTMLDivElement, BuyerlyDataListRowProps>(
+  ({ selected = false, height = BUYERLY_DATA_LIST.rowHeight, layout = 'flex', columns, className = '', style, children, ...props }, ref) => (
     <div
       ref={ref}
       role="row"
       data-selected={selected ? 'true' : 'false'}
       aria-selected={selected}
-      className={`linear-data-row group/row relative ${layout === 'grid' ? 'grid' : 'flex'} w-full select-none items-center outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--focus-ring-color)] ${
+      className={`buyerly-data-row group/row relative ${layout === 'grid' ? 'grid' : 'flex'} w-full select-none items-center outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--focus-ring-color)] ${
         selected
           ? 'bg-[var(--row-selected-bg)] hover:bg-[var(--row-selected-hover-bg)]'
           : 'bg-transparent hover:bg-[var(--data-row-hover-bg)]'
       } ${className}`}
       style={{
         minHeight: `${height}px`,
-        borderRadius: `${LINEAR_DATA_LIST.radius}px`,
-        paddingInline: `${LINEAR_DATA_LIST.rowPaddingX}px`,
-        gap: layout === 'grid' ? `${LINEAR_DATA_LIST.columnGap}px` : undefined,
+        borderRadius: `${BUYERLY_DATA_LIST.radius}px`,
+        paddingInline: `${BUYERLY_DATA_LIST.rowPaddingX}px`,
+        gap: layout === 'grid' ? `${BUYERLY_DATA_LIST.columnGap}px` : undefined,
         gridTemplateColumns: columns ? getLinearDataListTemplate(columns) : undefined,
         ...style,
       }}
@@ -139,17 +139,17 @@ export const LinearDataListRow = React.forwardRef<HTMLDivElement, LinearDataList
     </div>
   )
 );
-LinearDataListRow.displayName = 'LinearDataListRow';
+BuyerlyDataListRow.displayName = 'BuyerlyDataListRow';
 
-interface LinearDataListColumnHeaderProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'children'> {
-  columns: LinearDataListColumn[];
+interface BuyerlyDataListColumnHeaderProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'children'> {
+  columns: BuyerlyDataListColumn[];
   minWidth?: number;
   sortKey?: string;
   sortDirection?: 'asc' | 'desc';
   onSort?: (columnId: string) => void;
 }
 
-export const LinearDataListColumnHeader: React.FC<LinearDataListColumnHeaderProps> = ({
+export const BuyerlyDataListColumnHeader: React.FC<BuyerlyDataListColumnHeaderProps> = ({
   columns,
   minWidth,
   sortKey,
@@ -165,8 +165,8 @@ export const LinearDataListColumnHeader: React.FC<LinearDataListColumnHeaderProp
     style={{
       gridTemplateColumns: getLinearDataListTemplate(columns),
       minWidth: minWidth ? `${minWidth}px` : undefined,
-      gap: `${LINEAR_DATA_LIST.columnGap}px`,
-      paddingInline: `${LINEAR_DATA_LIST.rowPaddingX}px`,
+      gap: `${BUYERLY_DATA_LIST.columnGap}px`,
+      paddingInline: `${BUYERLY_DATA_LIST.rowPaddingX}px`,
       ...style,
     }}
     {...props}
@@ -218,7 +218,7 @@ export const LinearDataListColumnHeader: React.FC<LinearDataListColumnHeaderProp
   </div>
 );
 
-interface LinearDataListGroupHeaderProps {
+interface BuyerlyDataListGroupHeaderProps {
   title: string;
   count: number;
   dotColor?: string;
@@ -236,7 +236,7 @@ interface LinearDataListGroupHeaderProps {
 
 const GROUP_HEADER_BG = 'var(--rules-group-bg, var(--card-bg))';
 
-export const LinearDataListGroupHeader: React.FC<LinearDataListGroupHeaderProps> = ({
+export const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProps> = ({
   title,
   count,
   dotColor = 'rgb(148, 163, 184)',
@@ -252,8 +252,8 @@ export const LinearDataListGroupHeader: React.FC<LinearDataListGroupHeaderProps>
   <div
     className={`sticky top-[-4px] z-[2] flex items-center ${className}`}
     style={{
-      height: `${LINEAR_DATA_LIST.groupHeaderHeight}px`,
-      borderRadius: `${LINEAR_DATA_LIST.radius}px`,
+      height: `${BUYERLY_DATA_LIST.groupHeaderHeight}px`,
+      borderRadius: `${BUYERLY_DATA_LIST.radius}px`,
       background: tint
         ? `linear-gradient(90deg, color-mix(in srgb, ${tint} 8%, ${GROUP_HEADER_BG}) 0%, ${GROUP_HEADER_BG} 100%)`
         : GROUP_HEADER_BG,
@@ -312,20 +312,20 @@ export const LinearDataListGroupHeader: React.FC<LinearDataListGroupHeaderProps>
   </div>
 );
 
-interface LinearDataListGroupProps extends Omit<LinearDataListGroupHeaderProps, 'className'> {
+interface BuyerlyDataListGroupProps extends Omit<BuyerlyDataListGroupHeaderProps, 'className'> {
   children: React.ReactNode;
 }
 
 /** A group header and its rows; the rows are left out while the group is collapsed. */
-export const LinearDataListGroup: React.FC<LinearDataListGroupProps> = ({ children, ...header }) => (
+export const BuyerlyDataListGroup: React.FC<BuyerlyDataListGroupProps> = ({ children, ...header }) => (
   <div>
-    <LinearDataListGroupHeader {...header} />
-    {!header.isCollapsed && <LinearDataListStack className="pb-2 pt-0.5">{children}</LinearDataListStack>}
+    <BuyerlyDataListGroupHeader {...header} />
+    {!header.isCollapsed && <BuyerlyDataListStack className="pb-2 pt-0.5">{children}</BuyerlyDataListStack>}
   </div>
 );
 
-interface LinearDataTableProps
-  extends Pick<LinearDataListColumnHeaderProps, 'columns' | 'sortKey' | 'sortDirection' | 'onSort'> {
+interface BuyerlyDataTableProps
+  extends Pick<BuyerlyDataListColumnHeaderProps, 'columns' | 'sortKey' | 'sortDirection' | 'onSort'> {
   children: React.ReactNode;
   /** Rendered above the column header at viewport width, e.g. an action notice. */
   before?: React.ReactNode;
@@ -338,7 +338,7 @@ interface LinearDataTableProps
  * The one table surface for entity lists: a horizontally scrollable viewport,
  * a sortable column header and the row stack, all sharing one minimum width.
  */
-export const LinearDataTable: React.FC<LinearDataTableProps> = ({
+export const BuyerlyDataTable: React.FC<BuyerlyDataTableProps> = ({
   columns,
   sortKey,
   sortDirection,
@@ -350,24 +350,24 @@ export const LinearDataTable: React.FC<LinearDataTableProps> = ({
 }) => {
   const minWidth = getLinearDataListMinWidth(columns);
   return (
-    <LinearDataListViewport className={className} horizontal>
+    <BuyerlyDataListViewport className={className} horizontal>
       {before}
       <div style={{ minWidth: `${minWidth}px` }}>
-        <LinearDataListColumnHeader
+        <BuyerlyDataListColumnHeader
           columns={columns}
           minWidth={minWidth}
           sortKey={sortKey}
           sortDirection={sortDirection}
           onSort={onSort}
         />
-        <LinearDataListStack>{children}</LinearDataListStack>
+        <BuyerlyDataListStack>{children}</BuyerlyDataListStack>
         {after}
       </div>
-    </LinearDataListViewport>
+    </BuyerlyDataListViewport>
   );
 };
 
-interface LinearDataPrimaryCellProps {
+interface BuyerlyDataPrimaryCellProps {
   /** Selection checkbox and status control, in that order. */
   leading?: React.ReactNode;
   title: React.ReactNode;
@@ -382,7 +382,7 @@ interface LinearDataPrimaryCellProps {
 }
 
 /** The Name cell: leading controls, a truncating title and an optional badge. */
-export const LinearDataPrimaryCell: React.FC<LinearDataPrimaryCellProps> = ({
+export const BuyerlyDataPrimaryCell: React.FC<BuyerlyDataPrimaryCellProps> = ({
   leading,
   title,
   badge,
@@ -393,7 +393,7 @@ export const LinearDataPrimaryCell: React.FC<LinearDataPrimaryCellProps> = ({
   <div
     className={`flex min-w-0 items-center gap-3 ${
       sticky
-        ? 'linear-data-sticky sticky left-0 z-[1] transition-colors'
+        ? 'buyerly-data-sticky sticky left-0 z-[1] transition-colors'
         : ''
     }`}
   >
@@ -413,7 +413,7 @@ export const LinearDataPrimaryCell: React.FC<LinearDataPrimaryCellProps> = ({
   </div>
 );
 
-interface LinearDataMetricCellProps {
+interface BuyerlyDataMetricCellProps {
   value: React.ReactNode;
   /** Secondary figure on the same line, e.g. cost beside a result count. */
   suffix?: React.ReactNode;
@@ -426,7 +426,7 @@ interface LinearDataMetricCellProps {
 }
 
 /** A right-aligned number with tabular figures and an optional caption. */
-export const LinearDataMetricCell: React.FC<LinearDataMetricCellProps> = ({
+export const BuyerlyDataMetricCell: React.FC<BuyerlyDataMetricCellProps> = ({
   value,
   suffix,
   caption,

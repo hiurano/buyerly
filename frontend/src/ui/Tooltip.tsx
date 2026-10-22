@@ -124,7 +124,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
           side={side}
           align={align}
           sideOffset={sideOffset}
-          className="linear-tooltip-content"
+          className="buyerly-tooltip-content"
         >
           {/* Tooltip Content */}
           {typeof content === 'string' ? (

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '@/lib/api';
 import type { Workspace } from '@/lib/types';
 import { useAppStore } from '@/store/useAppStore';
-import { LinearCheckIcon } from '@/icons/LinearIcons';
+import { BuyerlyCheckIcon } from '@/icons/BuyerlyIcons';
 import {
   TEAM_FILTER_LABELS,
   notifyTeamsChanged,
@@ -121,7 +121,7 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
               {(Object.keys(TEAM_FILTER_LABELS) as TeamFilter[]).map((key) => (
                 <DropdownMenuRadioItem key={key} value={key}>
                   <span className="truncate">{TEAM_FILTER_LABELS[key]}</span>
-                  {filter === key && <LinearCheckIcon size={14} />}
+                  {filter === key && <BuyerlyCheckIcon size={14} />}
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>

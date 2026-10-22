@@ -1,7 +1,7 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { useIsSmallScreen, useIsTouchScreen } from '@/lib/useMediaQuery';
-import { LinearSidebarLeftToggleIcon } from '@/icons/LinearIcons';
+import { BuyerlySidebarLeftToggleIcon } from '@/icons/BuyerlyIcons';
 import { Tooltip } from '@/ui/Tooltip';
 
 /**
@@ -48,11 +48,11 @@ export const SidebarCollapsedNavigation: React.FC = () => {
     <button
       type="button"
       onClick={toggleSidebarOpen}
-      className="linear-icon-btn linear-sidebar-toggle linear-header-target"
+      className="buyerly-icon-btn buyerly-sidebar-toggle buyerly-header-target"
       aria-label="Menu"
       aria-expanded={isSidebarOpen}
     >
-      <LinearSidebarLeftToggleIcon size={14} isOpen={isSidebarOpen} aria-hidden="true" />
+      <BuyerlySidebarLeftToggleIcon size={14} isOpen={isSidebarOpen} aria-hidden="true" />
     </button>
   ) : (
     <Tooltip content="Open sidebar" shortcut="[" side="bottom" sideOffset={6}>
@@ -66,11 +66,11 @@ export const SidebarCollapsedNavigation: React.FC = () => {
           if (!isSidebarCollapsed || useAppStore.getState().activeTab === 'preferences') return;
           setSidebarPeekOpen(true);
         }}
-        className="linear-icon-btn linear-sidebar-toggle linear-header-target"
+        className="buyerly-icon-btn buyerly-sidebar-toggle buyerly-header-target"
         aria-label="Open sidebar"
         tabIndex={visible ? undefined : -1}
       >
-        <LinearSidebarLeftToggleIcon size={14} isOpen={false} aria-hidden="true" />
+        <BuyerlySidebarLeftToggleIcon size={14} isOpen={false} aria-hidden="true" />
       </button>
     </Tooltip>
   );

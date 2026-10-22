@@ -24,7 +24,7 @@ export const ContextMenuContent: React.FC<ContextMenuPrimitive.ContextMenuConten
         padding: '6px 0px',
         ...style,
       }}
-      className={`border rounded-[12px] shadow-[var(--dropdown-shadow)] z-[600] overflow-hidden select-none linear-menu origin-[var(--radix-context-menu-content-transform-origin)] outline-none ${className}`}
+      className={`border rounded-[12px] shadow-[var(--dropdown-shadow)] z-[600] overflow-hidden select-none buyerly-menu origin-[var(--radix-context-menu-content-transform-origin)] outline-none ${className}`}
       {...props}
     />
   </ContextMenuPrimitive.Portal>

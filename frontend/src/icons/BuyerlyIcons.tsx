@@ -5,7 +5,7 @@ interface IconProps extends React.SVGProps<SVGSVGElement> {
 }
 
 // 1. Exact Linear Search Icon (16x16)
-export const LinearSearchIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlySearchIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -26,7 +26,7 @@ export const LinearSearchIcon: React.FC<IconProps> = ({ size = 16, className = '
 );
 
 // 2. Exact Linear Inbox Tray Icon (16x16)
-export const LinearInboxIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyInboxIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -48,7 +48,7 @@ export const LinearInboxIcon: React.FC<IconProps> = ({ size = 16, className = ''
 );
 
 // 3. Exact Linear My Issues Icon (Clean Symmetric Corner Brackets + Center Dot, 16x16)
-export const LinearMyIssuesIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyMyIssuesIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -69,7 +69,7 @@ export const LinearMyIssuesIcon: React.FC<IconProps> = ({ size = 16, className =
 );
 
 // 3b. Exact Linear Views / Layers / Stack Icon (16x16)
-export const LinearLayersIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyLayersIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -95,7 +95,7 @@ export const LinearLayersIcon: React.FC<IconProps> = ({ size = 16, className = '
 );
 
 // 3c. Exact Linear Meta Brand Icon (16x16)
-export const LinearMetaIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyMetaIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -112,7 +112,7 @@ export const LinearMetaIcon: React.FC<IconProps> = ({ size = 16, className = '',
 );
 
 // 4. Exact Linear Solid Lightning Bolt / Rules Icon (16x16)
-export const LinearBoltIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyBoltIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -133,7 +133,7 @@ export const LinearBoltIcon: React.FC<IconProps> = ({ size = 16, className = '',
 );
 
 // 5. Exact Linear Command (⌘) Actions Icon (16x16)
-export const LinearCommandIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyCommandIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -150,7 +150,7 @@ export const LinearCommandIcon: React.FC<IconProps> = ({ size = 16, className = 
 );
 
 // 6. Exact Linear Close Icon (16x16)
-export const LinearCloseIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyCloseIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -167,7 +167,7 @@ export const LinearCloseIcon: React.FC<IconProps> = ({ size = 16, className = ''
 );
 
 // 6b. Pencil, used by editable settings rows (16x16)
-export const LinearPencilIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyPencilIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -185,7 +185,7 @@ export const LinearPencilIcon: React.FC<IconProps> = ({ size = 16, className = '
 );
 
 // 7. Exact Linear Notification Actions (3 dots, 16x16)
-export const LinearDotsIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyDotsIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -202,7 +202,7 @@ export const LinearDotsIcon: React.FC<IconProps> = ({ size = 16, className = '',
 );
 
 // 8. Exact Linear Add Filter Icon (Funnel lines, 16x16)
-export const LinearFilterIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyFilterIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -223,7 +223,7 @@ export const LinearFilterIcon: React.FC<IconProps> = ({ size = 16, className = '
 );
 
 // 9. Exact Linear Display Options Icon (Sliders, 16x16)
-export const LinearSlidersIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlySlidersIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -249,7 +249,7 @@ export const LinearSlidersIcon: React.FC<IconProps> = ({ size = 16, className = 
 );
 
 // 10. Exact Linear Priority Bars Icon (3 bars)
-export const LinearPriorityBarsIcon: React.FC<{ level?: 'urgent' | 'high' | 'medium' | 'low'; size?: number; className?: string }> = ({
+export const BuyerlyPriorityBarsIcon: React.FC<{ level?: 'urgent' | 'high' | 'medium' | 'low'; size?: number; className?: string }> = ({
   level = 'high',
   size = 16,
   className = '',
@@ -272,7 +272,7 @@ export const LinearPriorityBarsIcon: React.FC<{ level?: 'urgent' | 'high' | 'med
 };
 
 // 11. Exact Linear Status Circle Icon (Active, Scaling, Paused)
-export const LinearStatusCircleIcon: React.FC<{ status: 'active' | 'scaling' | 'paused'; size?: number; className?: string }> = ({
+export const BuyerlyStatusCircleIcon: React.FC<{ status: 'active' | 'scaling' | 'paused'; size?: number; className?: string }> = ({
   status,
   size = 14,
   className = '',
@@ -299,39 +299,6 @@ export const LinearStatusCircleIcon: React.FC<{ status: 'active' | 'scaling' | '
     </svg>
   );
 };
-
-// 12. Linear Logo Avatar (32x32)
-export const LinearLogoAvatar: React.FC<{ size?: number; className?: string }> = ({
-  size = 32,
-  className = '',
-}) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 256 256"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-  >
-    <rect width="256" height="256" rx="128" fill="#5e6ad2" />
-    <path
-      d="M178.679 187.153C179.558 188.032 180.969 188.086 181.887 187.247C182.788 186.425 183.674 185.578 184.545 184.707C215.818 153.433 215.818 102.729 184.545 71.4552C153.271 40.1816 102.567 40.1816 71.293 71.4552C70.4219 72.3263 69.5751 73.2124 68.7526 74.1128C67.914 75.0307 67.9678 76.4421 68.8469 77.3212L178.679 187.153Z"
-      fill="#ffffff"
-    />
-    <path
-      d="M168.167 197.336C169.48 196.572 169.678 194.777 168.604 193.702L62.2977 87.396C61.2232 86.3215 59.4282 86.5202 58.6638 87.8335C57.3596 90.0743 56.1732 92.3648 55.1047 94.6962C54.6989 95.5814 54.8997 96.6222 55.5883 97.3107L158.689 200.412C159.378 201.1 160.419 201.301 161.304 200.895C163.635 199.827 165.926 198.64 168.167 197.336Z"
-      fill="#ffffff"
-    />
-    <path
-      d="M143.33 206.674C145.139 206.321 145.76 204.106 144.456 202.803L53.1974 111.544C51.8938 110.24 49.6793 110.861 49.3262 112.67C48.7301 115.725 48.3131 118.808 48.0751 121.902C48.0228 122.581 48.2761 123.247 48.7578 123.729L132.271 207.242C132.753 207.724 133.419 207.977 134.098 207.925C137.192 207.687 140.275 207.27 143.33 206.674Z"
-      fill="#ffffff"
-    />
-    <path
-      d="M108.515 205.788C110.741 206.342 112.116 203.711 110.495 202.09L53.9103 145.505C52.289 143.884 49.6582 145.259 50.2116 147.485C53.6036 161.124 60.6307 174.045 71.293 184.707C81.9552 195.369 94.8761 202.396 108.515 205.788Z"
-      fill="#ffffff"
-    />
-  </svg>
-);
 
 // 12a. Buyerly mark (#432): monochrome, follows the theme through --site-logo
 // (Linear's #222326 in light, white in dark). Same 512 frame as /buyerly-logo.png.
@@ -380,7 +347,7 @@ export const BuyerlyLogoAvatar: React.FC<{
 );
 
 // 13. Exact Linear Empty State Inbox Illustration (97.5 x 100px)
-export const LinearEmptyInboxIllustration: React.FC<{ className?: string }> = ({
+export const BuyerlyEmptyInboxIllustration: React.FC<{ className?: string }> = ({
   className = '',
 }) => (
   <svg
@@ -404,7 +371,7 @@ export const LinearEmptyInboxIllustration: React.FC<{ className?: string }> = ({
 );
 
 // 14. Exact Linear Sidebar Panel Toggle Icon (16x16) with Morph Animation
-export const LinearSidebarToggleIcon: React.FC<IconProps & { isOpen?: boolean }> = ({
+export const BuyerlySidebarToggleIcon: React.FC<IconProps & { isOpen?: boolean }> = ({
   size = 16,
   isOpen = true,
   className = '',
@@ -444,7 +411,7 @@ export const LinearSidebarToggleIcon: React.FC<IconProps & { isOpen?: boolean }>
 );
 
 // 14b. Exact Linear Left Sidebar Panel Toggle Icon (16x16)
-export const LinearSidebarLeftToggleIcon: React.FC<IconProps & { isOpen?: boolean }> = ({
+export const BuyerlySidebarLeftToggleIcon: React.FC<IconProps & { isOpen?: boolean }> = ({
   size = 16,
   isOpen = true,
   className = '',
@@ -485,7 +452,7 @@ export const LinearSidebarLeftToggleIcon: React.FC<IconProps & { isOpen?: boolea
 );
 
 // 16. Linear Analytics / Chart Icon (16x16)
-export const LinearChartIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyChartIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -506,7 +473,7 @@ export const LinearChartIcon: React.FC<IconProps> = ({ size = 16, className = ''
 );
 
 // 17. Linear Keyboard Icon (16x16)
-export const LinearKeyboardIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyKeyboardIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -528,7 +495,7 @@ export const LinearKeyboardIcon: React.FC<IconProps> = ({ size = 16, className =
 );
 
 // 18. Exact Linear Clock / Snooze Icon (16x16)
-export const LinearClockOutlineIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyClockOutlineIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -546,7 +513,7 @@ export const LinearClockOutlineIcon: React.FC<IconProps> = ({ size = 16, classNa
 );
 
 // 19. Exact Linear Inbox Delete / Tray with X Icon (16x16)
-export const LinearInboxDeleteIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyInboxDeleteIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -572,7 +539,7 @@ export const LinearInboxDeleteIcon: React.FC<IconProps> = ({ size = 16, classNam
 );
 
 // 20. Exact Linear Rising Bar Chart / Statistics Icon (16x16)
-export const LinearBarChartIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyBarChartIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -594,7 +561,7 @@ export const LinearBarChartIcon: React.FC<IconProps> = ({ size = 16, className =
 );
 
 // 20e. Exact Linear Dashboard / Metric Cards Layout Icon (16x16)
-export const LinearDashboardIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyDashboardIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -616,7 +583,7 @@ export const LinearDashboardIcon: React.FC<IconProps> = ({ size = 16, className 
 );
 
 // 20f. Exact Linear Trending Up / Performance Statistics Icon (16x16)
-export const LinearTrendingUpIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyTrendingUpIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -640,7 +607,7 @@ export const LinearTrendingUpIcon: React.FC<IconProps> = ({ size = 16, className
 );
 
 // 20b. Exact Linear AI Sparkles / Magic Insights Icon (16x16)
-export const LinearSparklesIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlySparklesIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -661,7 +628,7 @@ export const LinearSparklesIcon: React.FC<IconProps> = ({ size = 16, className =
 );
 
 // 20c. Exact Linear Pie Chart / Diagram Icon (16x16)
-export const LinearPieChartIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyPieChartIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -682,7 +649,7 @@ export const LinearPieChartIcon: React.FC<IconProps> = ({ size = 16, className =
 );
 
 // 20d. Exact Linear Donut / Segmented Diagram Icon (16x16)
-export const LinearDonutChartIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyDonutChartIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -706,7 +673,7 @@ export const LinearDonutChartIcon: React.FC<IconProps> = ({ size = 16, className
 );
 
 // 21. Exact Linear Inbox Checkmark / Mark all as read Icon (16x16)
-export const LinearInboxCheckmarkIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyInboxCheckmarkIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -732,7 +699,7 @@ export const LinearInboxCheckmarkIcon: React.FC<IconProps> = ({ size = 16, class
 );
 
 // 22. Exact Linear Inbox Unread / Mark as unread Icon (16x16)
-export const LinearInboxUnreadIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyInboxUnreadIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -758,7 +725,7 @@ export const LinearInboxUnreadIcon: React.FC<IconProps> = ({ size = 16, classNam
 );
 
 // 23. Exact Linear Plus Icon (16x16)
-export const LinearPlusIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyPlusIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -775,7 +742,7 @@ export const LinearPlusIcon: React.FC<IconProps> = ({ size = 16, className = '',
 );
 
 /** Linear's label tag, as its Settings → Labels and Labels filter draw it (16x16). */
-export const LinearLabelIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyLabelIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -793,7 +760,7 @@ export const LinearLabelIcon: React.FC<IconProps> = ({ size = 16, className = ''
 );
 
 // 24. Linear Shield / Stop-Loss Protection Icon (16x16)
-export const LinearShieldIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyShieldIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -815,7 +782,7 @@ export const LinearShieldIcon: React.FC<IconProps> = ({ size = 16, className = '
 
 // Linear's Security & access mark in Settings: a person with a padlock (16x16)
 // Linear's Settings → Security & access: a person with a key (17.10).
-export const LinearUserLockIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyUserLockIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -834,7 +801,7 @@ export const LinearUserLockIcon: React.FC<IconProps> = ({ size = 16, className =
 );
 
 // 25. Linear Rocket / Scaling Icon (16x16)
-export const LinearRocketIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyRocketIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -857,7 +824,7 @@ export const LinearRocketIcon: React.FC<IconProps> = ({ size = 16, className = '
 );
 
 // 26. Linear Flask / Testing Icon (16x16)
-export const LinearFlaskIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyFlaskIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -879,7 +846,7 @@ export const LinearFlaskIcon: React.FC<IconProps> = ({ size = 16, className = ''
 );
 
 // 27. Exact Linear Backlog Dashed Circle Icon (16x16)
-export const LinearBacklogDashedIcon: React.FC<IconProps> = ({ size = 14, className = '', ...props }) => (
+export const BuyerlyBacklogDashedIcon: React.FC<IconProps> = ({ size = 14, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -903,7 +870,7 @@ export const LinearBacklogDashedIcon: React.FC<IconProps> = ({ size = 14, classN
 );
 
 // 28. Exact Linear Star Favorite Icon (16x16)
-export const LinearStarIcon: React.FC<IconProps> = ({ size = 14, className = '', ...props }) => (
+export const BuyerlyStarIcon: React.FC<IconProps> = ({ size = 14, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -926,7 +893,7 @@ export const LinearStarIcon: React.FC<IconProps> = ({ size = 14, className = '',
 );
 
 // 29. Exact Linear Trash Icon (16x16)
-export const LinearTrashIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyTrashIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -949,7 +916,7 @@ export const LinearTrashIcon: React.FC<IconProps> = ({ size = 16, className = ''
 );
 
 // 30. Exact Linear Checkmark Icon (16x16)
-export const LinearCheckIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyCheckIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -966,7 +933,7 @@ export const LinearCheckIcon: React.FC<IconProps> = ({ size = 16, className = ''
 );
 
 // 31. Exact Linear Half Status Icon (16x16)
-export const LinearHalfStatusIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyHalfStatusIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -983,7 +950,7 @@ export const LinearHalfStatusIcon: React.FC<IconProps> = ({ size = 16, className
 );
 
 // 32. Exact Linear List Layout Icon (16x16)
-export const LinearListIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyListIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -1000,7 +967,7 @@ export const LinearListIcon: React.FC<IconProps> = ({ size = 16, className = '',
 );
 
 // 33. Exact Linear Board / Kanban Layout Icon (16x16)
-export const LinearBoardIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyBoardIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -1017,7 +984,7 @@ export const LinearBoardIcon: React.FC<IconProps> = ({ size = 16, className = ''
 );
 
 // Exact Linear Email Icon (16x16), Settings → Notifications → Push notifications
-export const LinearEmailIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyEmailIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -1054,7 +1021,7 @@ export const TelegramIcon: React.FC<IconProps> = ({ size = 16, className = '', .
 );
 
 /** Linear's Settings → Connected accounts icon. */
-export const LinearConnectedIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyConnectedIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -1076,7 +1043,7 @@ export const LinearConnectedIcon: React.FC<IconProps> = ({ size = 16, className 
 );
 
 /** The ↗ after Linear's "Connect" and "Connected" buttons. */
-export const LinearArrowUpRightIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+export const BuyerlyArrowUpRightIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg
     width={size}
     height={size}
@@ -1112,7 +1079,7 @@ const sidebarIcon = (paths: React.ReactNode): React.FC<IconProps> => {
 };
 
 // Linear's sidebar Members: two people (16x16).
-export const LinearMembersIcon = sidebarIcon(
+export const BuyerlyMembersIcon = sidebarIcon(
   <>
     <path fillRule="evenodd" clipRule="evenodd" d="M10.9933 10.0137C12.0962 10.0789 12.8652 10.3673 13.4151 10.7998C13.8745 11.1612 14.1329 11.5958 14.2901 11.9014L14.4171 12.1572C14.4895 12.2985 14.5578 12.5105 14.6075 12.6748C14.6647 12.8638 14.725 13.0835 14.7794 13.2881C14.834 13.4937 14.8839 13.6898 14.92 13.834C14.938 13.9059 14.9528 13.9653 14.963 14.0068C14.9681 14.0276 14.972 14.0444 14.9747 14.0557C14.976 14.0611 14.9769 14.0654 14.9776 14.0684C14.978 14.0698 14.9784 14.0714 14.9786 14.0723C15.0761 14.4747 14.8292 14.8809 14.4269 14.9785C14.0243 15.0759 13.619 14.8283 13.5216 14.4258C13.5215 14.4252 13.5209 14.424 13.5206 14.4229C13.52 14.4203 13.5189 14.4162 13.5177 14.4111C13.5151 14.4007 13.5108 14.3851 13.506 14.3652C13.4962 14.3255 13.4824 14.268 13.4649 14.1982C13.4299 14.0584 13.3814 13.8694 13.3292 13.6729C13.2767 13.4754 13.221 13.2747 13.171 13.1094C13.1168 12.9304 13.0863 12.851 13.0831 12.8428L12.9532 12.5869C12.8299 12.3483 12.7123 12.1564 12.4874 11.9795C12.2386 11.7838 11.7871 11.5637 10.9054 11.5117L10.5001 11.5C9.35452 11.5 8.80921 11.7545 8.52451 11.9785C8.2188 12.2193 8.11174 12.4807 7.90342 12.8594L7.90439 12.8604C7.908 12.8543 7.87818 12.9233 7.82139 13.1104C7.77177 13.2738 7.71736 13.4731 7.66611 13.6699C7.61516 13.8656 7.56804 14.0541 7.53428 14.1934C7.51748 14.2626 7.50456 14.3199 7.49521 14.3594C7.49061 14.3788 7.48688 14.394 7.48447 14.4043C7.4833 14.4093 7.48214 14.4135 7.48154 14.416C7.48125 14.4172 7.4807 14.4184 7.48057 14.4189C7.38673 14.8224 6.98361 15.0743 6.58018 14.9805C6.17691 14.8866 5.92589 14.4834 6.01963 14.0801C6.01981 14.0793 6.02026 14.0766 6.02061 14.0752C6.02129 14.0723 6.02227 14.0679 6.02353 14.0625C6.02618 14.0512 6.03033 14.0344 6.03525 14.0137C6.04513 13.9719 6.05972 13.9122 6.07725 13.8398C6.11228 13.6953 6.16022 13.4984 6.21396 13.292C6.26738 13.0869 6.32781 12.8659 6.38584 12.6748C6.43545 12.5114 6.50614 12.2896 6.58896 12.1387C6.72536 11.8909 6.99052 11.2777 7.5958 10.8008C8.22303 10.3069 9.1325 10 10.5001 10L10.9933 10.0137Z" />
     <path fillRule="evenodd" clipRule="evenodd" d="M5.71592 6.0127C5.86516 6.02118 6.00774 6.03415 6.14365 6.05078C6.55479 6.10113 6.84732 6.47558 6.79697 6.88672C6.74639 7.29744 6.37281 7.58914 5.96201 7.53906C5.75847 7.51415 5.52088 7.50001 5.24619 7.5C4.09451 7.50011 3.64308 7.75722 3.43955 7.94336C3.32997 8.04366 3.24909 8.16093 3.17197 8.30859C3.13166 8.3858 3.09633 8.46418 3.05283 8.55859C3.01292 8.64521 2.96118 8.75425 2.90342 8.85938L2.90439 8.86035C2.908 8.85434 2.87818 8.92333 2.82139 9.11035C2.77177 9.27378 2.71736 9.47313 2.66611 9.66992C2.61516 9.86558 2.56804 10.0541 2.53428 10.1934C2.51748 10.2626 2.50456 10.3199 2.49521 10.3594C2.49061 10.3788 2.48688 10.394 2.48447 10.4043C2.4833 10.4093 2.48214 10.4135 2.48154 10.416C2.48125 10.4172 2.4807 10.4184 2.48057 10.4189C2.38673 10.8224 1.98361 11.0743 1.58018 10.9805C1.17691 10.8866 0.925892 10.4834 1.01963 10.0801C1.01981 10.0793 1.02026 10.0766 1.02061 10.0752C1.02129 10.0723 1.02227 10.0679 1.02353 10.0625C1.02618 10.0512 1.03033 10.0344 1.03525 10.0137C1.04514 9.97195 1.05972 9.91217 1.07725 9.83984C1.11228 9.69532 1.16022 9.49838 1.21396 9.29199C1.26738 9.08686 1.32781 8.86594 1.38584 8.6748C1.43545 8.5114 1.50614 8.28958 1.58896 8.13867C1.61712 8.08751 1.64705 8.02502 1.69053 7.93066C1.73061 7.84367 1.78222 7.73041 1.84287 7.61426C1.96769 7.37529 2.14427 7.09444 2.42686 6.83594C3.00841 6.30406 3.88547 6.00003 5.24717 6L5.71592 6.0127Z" />
@@ -1122,7 +1089,7 @@ export const LinearMembersIcon = sidebarIcon(
 );
 
 // Linear's sidebar Teams: a person in a rounded frame (16x16).
-export const LinearTeamsIcon = sidebarIcon(
+export const BuyerlyTeamsIcon = sidebarIcon(
   <>
     <path fillRule="evenodd" clipRule="evenodd" d="M12.5 13.5V15H3.5V13.5H12.5ZM13.5 12.5V3.5C13.5 2.94771 13.0523 2.5 12.5 2.5H3.5C2.94771 2.5 2.5 2.94772 2.5 3.5V12.5C2.5 13.0523 2.94772 13.5 3.5 13.5V15L3.24414 14.9873C2.06772 14.8677 1.13227 13.9323 1.0127 12.7559L1 12.5V3.5C1 2.20566 1.98361 1.14082 3.24414 1.0127L3.5 1H12.5L12.7559 1.0127C14.0164 1.14082 15 2.20566 15 3.5V12.5L14.9873 12.7559C14.8677 13.9323 13.9323 14.8677 12.7559 14.9873L12.5 15V13.5C13.0523 13.5 13.5 13.0523 13.5 12.5Z" />
     <path fillRule="evenodd" clipRule="evenodd" d="M10 6C10 7.10457 9.10457 8 8 8C6.89543 8 6 7.10457 6 6C6 4.89543 6.89543 4 8 4C9.10457 4 10 4.89543 10 6Z" />
@@ -1131,32 +1098,32 @@ export const LinearTeamsIcon = sidebarIcon(
 );
 
 // Linear's team Home: a house (16x16).
-export const LinearHomeIcon = sidebarIcon(
+export const BuyerlyHomeIcon = sidebarIcon(
   <path fillRule="evenodd" clipRule="evenodd" d="M6.56055 1.52061C7.39447 0.826788 8.60553 0.826788 9.43945 1.52061L14.3027 5.56651C14.7446 5.93422 15 6.47993 15 7.05479V7.57042C14.9998 8.27774 14.6006 8.90369 14 9.2169V12.7491C13.9997 13.9916 12.9925 14.9991 11.75 14.9991H4.25C3.00752 14.9991 2.00026 13.9916 2 12.7491V9.2169C1.39944 8.90369 1.00017 8.27774 1 7.57042V7.05479C1 6.47993 1.25539 5.93422 1.69727 5.56651L6.56055 1.52061ZM8.47949 2.67393C8.20152 2.44266 7.79848 2.44266 7.52051 2.67393L2.65723 6.71983C2.55789 6.80255 2.5 6.92551 2.5 7.05479V7.57042C2.50021 7.74408 2.62489 7.89249 2.7959 7.92296C3.20319 7.99553 3.49983 8.3501 3.5 8.76378V12.7491C3.50026 13.1631 3.83594 13.4991 4.25 13.4991H5V10.2491C5 9.00649 6.00736 7.99913 7.25 7.99913H8.75C9.99264 7.99913 11 9.00649 11 10.2491V13.4991H11.75C12.1641 13.4991 12.4997 13.1631 12.5 12.7491V8.76378C12.5002 8.3501 12.7968 7.99553 13.2041 7.92296C13.3751 7.89249 13.4998 7.74408 13.5 7.57042V7.05479C13.5 6.92551 13.4421 6.80255 13.3428 6.71983L8.47949 2.67393ZM7.25 9.49913C6.83579 9.49913 6.5 9.83491 6.5 10.2491V13.4991H9.5V10.2491C9.5 9.83491 9.16421 9.49913 8.75 9.49913H7.25Z" />,
 );
 
 // Linear's disclosure triangle beside sidebar sections, pointing right; turned down when open (16x16).
-export const LinearDisclosureIcon = sidebarIcon(
+export const BuyerlyDisclosureIcon = sidebarIcon(
   <path d="M6.75194 10.6239C6.41861 10.8183 6 10.5779 6 10.192V5.80802C6 5.42212 6.41861 5.18169 6.75194 5.37613L10.5096 7.56811C10.8404 7.76105 10.8404 8.23895 10.5096 8.43189L6.75194 10.6239Z" />,
 );
 
 // A document: a page with lines (16x16).
-export const LinearDocumentIcon = sidebarIcon(
+export const BuyerlyDocumentIcon = sidebarIcon(
   <path fillRule="evenodd" clipRule="evenodd" d="M4.75 1A2.75 2.75 0 0 0 2 3.75v8.5A2.75 2.75 0 0 0 4.75 15h6.5A2.75 2.75 0 0 0 14 12.25v-8.5A2.75 2.75 0 0 0 11.25 1h-6.5ZM3.5 3.75c0-.69.56-1.25 1.25-1.25h6.5c.69 0 1.25.56 1.25 1.25v8.5c0 .69-.56 1.25-1.25 1.25h-6.5c-.69 0-1.25-.56-1.25-1.25v-8.5ZM5.75 5a.75.75 0 0 0 0 1.5h4.5a.75.75 0 0 0 0-1.5h-4.5ZM5 8.25a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5h-4.5A.75.75 0 0 1 5 8.25ZM5.75 10a.75.75 0 0 0 0 1.5h2.5a.75.75 0 0 0 0-1.5h-2.5Z" />,
 );
 
 // A chain link: Copy URL (16x16).
-export const LinearLinkIcon = sidebarIcon(
+export const BuyerlyLinkIcon = sidebarIcon(
   <path fillRule="evenodd" clipRule="evenodd" d="M9.53 2.47a3.25 3.25 0 0 1 4.6 4.6l-1.5 1.5a.75.75 0 1 1-1.06-1.06l1.5-1.5a1.75 1.75 0 0 0-2.48-2.48l-2.5 2.5a1.75 1.75 0 0 0 0 2.48 .75.75 0 1 1-1.06 1.06 3.25 3.25 0 0 1 0-4.6l2.5-2.5ZM7.97 6.97a.75.75 0 0 1 1.06 0 3.25 3.25 0 0 1 0 4.6l-2.5 2.5a3.25 3.25 0 0 1-4.6-4.6l1.5-1.5a.75.75 0 0 1 1.06 1.06l-1.5 1.5a1.75 1.75 0 0 0 2.48 2.48l2.5-2.5a1.75 1.75 0 0 0 0-2.48 .75.75 0 0 1 0-1.06Z" />,
 );
 
 // A padlock: a private team (16x16).
-export const LinearLockIcon = sidebarIcon(
+export const BuyerlyLockIcon = sidebarIcon(
   <path fillRule="evenodd" clipRule="evenodd" d="M8 1.5A3.25 3.25 0 0 0 4.75 4.75V6.5h-.5A1.75 1.75 0 0 0 2.5 8.25v4.5c0 .966.784 1.75 1.75 1.75h7.5a1.75 1.75 0 0 0 1.75-1.75v-4.5A1.75 1.75 0 0 0 11.75 6.5h-.5V4.75A3.25 3.25 0 0 0 8 1.5Zm1.75 5V4.75a1.75 1.75 0 1 0-3.5 0V6.5h3.5ZM4.25 8a.25.25 0 0 0-.25.25v4.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-4.5a.25.25 0 0 0-.25-.25h-7.5Z" />,
 );
 
 // Linear's team Issues: two stacked cards, our Campaigns (16x16).
-export const LinearIssuesIcon = sidebarIcon(
+export const BuyerlyIssuesIcon = sidebarIcon(
   <>
     <path fillRule="evenodd" clipRule="evenodd" d="M13.25 5.25C14.2165 5.25 15 6.0335 15 7V11.75C15 13.5449 13.5449 15 11.75 15H6.75C5.7835 15 5 14.2165 5 13.25C5 12.8358 5.33579 12.5 5.75 12.5C6.16421 12.5 6.5 12.8358 6.5 13.25C6.5 13.3881 6.61193 13.5 6.75 13.5H11.75C12.7165 13.5 13.5 12.7165 13.5 11.75V7C13.5 6.86193 13.3881 6.75 13.25 6.75C12.8358 6.75 12.5 6.41421 12.5 6C12.5 5.58579 12.8358 5.25 13.25 5.25Z" />
     <path fillRule="evenodd" clipRule="evenodd" d="M8.1543 1.00391C9.73945 1.08421 11 2.39489 11 4V8L10.9961 8.1543C10.9184 9.68834 9.68834 10.9184 8.1543 10.9961L8 11H4L3.8457 10.9961C2.31166 10.9184 1.08163 9.68834 1.00391 8.1543L1 8V4C1 2.39489 2.26055 1.08421 3.8457 1.00391L4 1H8L8.1543 1.00391ZM4 2.5C3.17157 2.5 2.5 3.17157 2.5 4V8C2.5 8.82843 3.17157 9.5 4 9.5H8C8.82843 9.5 9.5 8.82843 9.5 8V4C9.5 3.17157 8.82843 2.5 8 2.5H4Z" />
@@ -1164,6 +1131,6 @@ export const LinearIssuesIcon = sidebarIcon(
 );
 
 // Linear's Projects: a cube, our Ad accounts (16x16).
-export const LinearProjectIcon = sidebarIcon(
+export const BuyerlyProjectIcon = sidebarIcon(
   <path fillRule="evenodd" clipRule="evenodd" d="M7.331 1.07a3.2 3.2 0 0 1 1.338 0c.498.106.967.377 1.904.917l1.354.78c.937.541 1.406.812 1.747 1.19.301.334.53.728.669 1.156.157.484.157 1.025.157 2.107v1.56l-.003.718c-.007.63-.036 1.026-.154 1.389l-.057.158a3.2 3.2 0 0 1-.612.998l-.135.138c-.33.312-.792.578-1.612 1.051l-1.354.78-.623.357c-.55.309-.907.481-1.281.56l-.166.032a3.2 3.2 0 0 1-1.006 0l-.166-.031c-.374-.08-.73-.252-1.281-.561l-.623-.356-1.354-.78c-.82-.474-1.281-.74-1.612-1.052l-.135-.138a3.2 3.2 0 0 1-.612-.998l-.057-.158c-.118-.363-.147-.758-.154-1.39L1.5 8.78V7.22c0-.946 0-1.479.105-1.921l.052-.186c.122-.374.312-.723.56-1.028l.11-.128c.255-.284.583-.507 1.126-.83l.62-.36 1.354-.78c.82-.473 1.281-.739 1.718-.869zM3 7.22v1.56c0 1.183.018 1.439.084 1.643l.064.167q.11.246.292.449l.059.06c.151.143.427.318 1.323.835l1.354.78.632.36c.188.104.33.178.442.233V8.482l-4.247-1.93zm5.75 1.262v4.826c.212-.106.533-.282 1.074-.594l1.354-.78.628-.368c.499-.297.646-.407.754-.527l.113-.14q.158-.218.243-.476l.022-.081c.035-.144.051-.351.058-.835L13 8.78V7.22l-.004-.668zM7.82 2.51l-.177.027c-.159.034-.328.106-.835.39l-.632.359-1.354.78c-.896.517-1.172.692-1.323.834l-.059.06q-.046.051-.086.104l4.645 2.112 4.645-2.112-.084-.103c-.109-.12-.255-.23-.754-.528l-.628-.367-1.354-.78c-.897-.517-1.186-.668-1.386-.728l-.08-.021a1.7 1.7 0 0 0-.538-.027" />,
 );

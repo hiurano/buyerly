@@ -11,7 +11,7 @@ import { AttachRulePreviewDialog } from '@/components/rules/AttachRulePreviewDia
 import { metaAccountLabel } from '@/components/campaigns/liveCampaigns';
 import { Button } from '@/ui/Button';
 import { DataState } from '@/ui/DataState';
-import { LinearToggle } from '@/ui/LinearToggle';
+import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { Tooltip } from '@/ui/Tooltip';
 import {
   DropdownMenu,
@@ -20,7 +20,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
-import { LinearPlusIcon, LinearProjectIcon, LinearStatusCircleIcon } from '@/icons/LinearIcons';
+import { BuyerlyPlusIcon, BuyerlyProjectIcon, BuyerlyStatusCircleIcon } from '@/icons/BuyerlyIcons';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { AccountRowMenu, type AccountRowActions } from './AccountRow';
 import { AccountStatusLabel, ConnectionProblemIcon, accountMoney } from './AccountParts';
@@ -284,7 +284,7 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
         )}
       </PropertyRow>
       <PropertyRow label="Automation">
-        <LinearToggle
+        <BuyerlyToggle
           checked={Boolean(account.rules_enabled)}
           disabled={!canAct || automationBlocked}
           label="Automation"
@@ -325,7 +325,7 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
   const main = (
     <div className="min-w-0">
       <span className="flex h-9 w-9 items-center justify-center rounded-[8px] text-[var(--text-secondary)]" aria-hidden="true">
-        <LinearProjectIcon size={22} />
+        <BuyerlyProjectIcon size={22} />
       </span>
       {canAct ? (
         <input
@@ -412,7 +412,7 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
                   type="button"
                   className="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] [@media(hover:none)_and_(pointer:coarse)]:h-9"
                 >
-                  <LinearPlusIcon size={14} aria-hidden="true" />
+                  <BuyerlyPlusIcon size={14} aria-hidden="true" />
                   Attach rule
                 </button>
               </DropdownMenuTrigger>
@@ -454,7 +454,7 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
                       {rule?.name ?? attachedRule.name}
                     </span>
                     <span className="flex w-[76px] shrink-0 items-center gap-1.5 text-[12px] text-[var(--text-secondary)]">
-                      <LinearStatusCircleIcon status={on ? 'active' : 'paused'} size={14} />
+                      <BuyerlyStatusCircleIcon status={on ? 'active' : 'paused'} size={14} />
                       {on ? 'Active' : 'Paused'}
                     </span>
                     <span className="w-[104px] shrink-0 truncate text-right text-[12px] text-[var(--text-tertiary)]">

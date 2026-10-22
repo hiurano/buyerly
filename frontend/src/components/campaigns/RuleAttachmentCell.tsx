@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { LinearBoltIcon } from '@/icons/LinearIcons';
+import { BuyerlyBoltIcon } from '@/icons/BuyerlyIcons';
 import { useIsSmallScreen } from '@/lib/useMediaQuery';
 import { inheritedRuleIds } from '@/lib/rules';
 import { useAppStore } from '@/store/useAppStore';
@@ -75,7 +75,7 @@ export const RuleAttachmentCell = forwardRef<
     // Pinned to the right edge on a narrow screen, where this column is past the scroll.
     <div
       ref={cellRef}
-      className={`flex min-w-0 items-center ${isSmall ? 'linear-data-sticky sticky right-0 z-[1] self-stretch' : ''}`}
+      className={`flex min-w-0 items-center ${isSmall ? 'buyerly-data-sticky sticky right-0 z-[1] self-stretch' : ''}`}
     >
       {attachedCount > 0 ? (
         <button
@@ -100,7 +100,7 @@ export const RuleAttachmentCell = forwardRef<
           }}
         >
           <div className="flex h-3.5 w-3.5 items-center justify-center flex-shrink-0">
-            <LinearBoltIcon size={12} className="text-[#eab308]" />
+            <BuyerlyBoltIcon size={12} className="text-[#eab308]" />
           </div>
           <span
             style={{

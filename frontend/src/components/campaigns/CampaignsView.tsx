@@ -32,7 +32,7 @@ import { MetaConnectionDialog } from './MetaConnectionDialog';
 import { DataState } from '@/ui/DataState';
 import { Button } from '@/ui/Button';
 import { Tooltip } from '@/ui/Tooltip';
-import { LinearTabs } from '@/ui/LinearTabs';
+import { BuyerlyTabs } from '@/ui/BuyerlyTabs';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,17 +41,17 @@ import {
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
 import {
-  LinearDataListGroup,
-  LinearDataListToolbar,
-  LinearDataTable,
-} from '@/ui/LinearDataList';
+  BuyerlyDataListGroup,
+  BuyerlyDataListToolbar,
+  BuyerlyDataTable,
+} from '@/ui/BuyerlyDataList';
 import {
   ActiveFilterFormula,
   FilteredEmptyState,
-  LinearFilterButton,
-  LinearFilterMenu,
-} from '@/components/filters/LinearFilter';
-import type { FilterMenuMode } from '@/components/filters/LinearFilter';
+  BuyerlyFilterButton,
+  BuyerlyFilterMenu,
+} from '@/components/filters/BuyerlyFilter';
+import type { FilterMenuMode } from '@/components/filters/BuyerlyFilter';
 import { adAccountName, createLiveFields, filterView, groupView } from './campaignViewModel';
 import { useCampaignViewFilters } from './useCampaignViewFilters';
 import {
@@ -68,14 +68,14 @@ import { arrangeBoardColumns, arrangeGroups, sortByColumn, toggleHiddenGroup } f
 import { BuyerlyBoard, type BoardLane } from '@/ui/BuyerlyBoard';
 import { useLayoutShortcut } from '@/ui/useLayoutShortcut';
 import { AdsManagerCard, type CardChip } from './AdsManagerCard';
-import { DisplayOptionsChangedDot } from '@/ui/LinearDisplayOptions';
+import { DisplayOptionsChangedDot } from '@/ui/BuyerlyDisplayOptions';
 import { DetailsPaneLayout, DetailsPaneToggle } from '@/ui/DetailsPane';
 import { DetailsFacets, type DetailsFacetTab } from '@/ui/DetailsFacets';
 import type { FilterOption } from '@/components/filters/filterModel';
 import { SelectionDock } from '@/ui/SelectionDock';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { SelectionCommandMenu } from '@/ui/SelectionCommandMenu';
-import { LinearBoltIcon } from '@/icons/LinearIcons';
+import { BuyerlyBoltIcon } from '@/icons/BuyerlyIcons';
 import { RuleSelectorPopover } from './RuleSelectorPopover';
 import { openCommandMenu } from '@/components/command/CommandMenu';
 import { takeRecordActions } from '@/components/command/OpenPalette';
@@ -83,10 +83,10 @@ import { useRowSelection, type SelectionAction } from '@/ui/useRowSelection';
 import { useRevealRow } from '@/ui/useRevealRow';
 import type { FilterClause, FilterFieldDefinition } from '@/components/filters/filterModel';
 import {
-  LinearProjectIcon,
-  LinearSlidersIcon,
-  LinearStatusCircleIcon,
-} from '@/icons/LinearIcons';
+  BuyerlyProjectIcon,
+  BuyerlySlidersIcon,
+  BuyerlyStatusCircleIcon,
+} from '@/icons/BuyerlyIcons';
 import { getAdsManagerColumns } from './tableColumns';
 import {
   eligibleMetaAccounts,
@@ -200,11 +200,11 @@ const PHONE_TABLE_QUERY = '(max-width: 640px)';
 
 function facetIcon(fieldId: string, option: FilterOption): React.ReactNode {
   if (fieldId === 'rule') {
-    return <LinearBoltIcon size={14} style={{ color: option.value === 'no-rule' ? 'var(--text-muted)' : option.color }} />;
+    return <BuyerlyBoltIcon size={14} style={{ color: option.value === 'no-rule' ? 'var(--text-muted)' : option.color }} />;
   }
-  if (fieldId === 'account') return <LinearProjectIcon size={14} className="text-[var(--text-tertiary)]" />;
+  if (fieldId === 'account') return <BuyerlyProjectIcon size={14} className="text-[var(--text-tertiary)]" />;
   if (fieldId === 'campaign') return <span className="details-facets-dot" style={{ backgroundColor: 'var(--text-tertiary)' }} />;
-  if (option.value === 'active' || option.value === 'paused') return <LinearStatusCircleIcon status={option.value} size={14} />;
+  if (option.value === 'active' || option.value === 'paused') return <BuyerlyStatusCircleIcon status={option.value} size={14} />;
   return <span className="details-facets-dot" style={{ backgroundColor: option.color }} />;
 }
 
@@ -476,13 +476,13 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
     arrangeGroups(groupView(rows, fields, groupingField), groupingView, { allowEmpty: groupingField === 'status' }).map(group => (
       <React.Fragment key={group.id}>
         {group.label ? (
-          <LinearDataListGroup title={group.label} count={group.rows.length}
+          <BuyerlyDataListGroup title={group.label} count={group.rows.length}
             dotColor="var(--text-tertiary)"
-            icon={groupingField === 'account' ? <LinearProjectIcon size={14} /> : undefined}
+            icon={groupingField === 'account' ? <BuyerlyProjectIcon size={14} /> : undefined}
             isCollapsed={Boolean(collapsedGroups[`${groupingField}:${group.id}`])}
             onToggleCollapse={() => setCollapsedGroups(state => ({ ...state, [`${groupingField}:${group.id}`]: !state[`${groupingField}:${group.id}`] }))}>
             {group.rows.map(render)}
-          </LinearDataListGroup>
+          </BuyerlyDataListGroup>
         ) : group.rows.map(render)}
       </React.Fragment>
     ));
@@ -614,7 +614,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
     { id: 'resume', label: 'Resume delivery', shortcut: 'r', icon: <Play size={14} />, run: () => void runBulkDelivery('active') },
     // Meta's "Apply rule to" the selected campaigns or ad sets; ads take no rules.
     ...(campaignFilterTab !== 'ads' && attachmentsLoadState === 'ready' && ruleAccountId
-      ? [{ id: 'rule', label: 'Apply rule…', shortcut: 'a', icon: <LinearBoltIcon size={14} />, run: () => setIsBulkRulePickerOpen(true) }]
+      ? [{ id: 'rule', label: 'Apply rule…', shortcut: 'a', icon: <BuyerlyBoltIcon size={14} />, run: () => setIsBulkRulePickerOpen(true) }]
       : []),
   ];
   const visibleRowIds = useMemo(() => (
@@ -933,7 +933,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
     }
 
     return (
-      <LinearDataTable
+      <BuyerlyDataTable
         className="campaign-list-container"
         columns={tableColumns}
         sortKey={effectiveOrdering === 'manual' ? undefined : effectiveOrdering}
@@ -958,7 +958,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
         )}
       >
         {renderRows()}
-      </LinearDataTable>
+      </BuyerlyDataTable>
     );
   };
 
@@ -996,9 +996,9 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
           </div>
         </div>
 
-        <LinearDataListToolbar className="campaign-view-toolbar">
+        <BuyerlyDataListToolbar className="campaign-view-toolbar">
           {/* When the tabs no longer fit they fold into one menu, as in Linear; the actions stay on the right. */}
-          <LinearTabs
+          <BuyerlyTabs
             collapseOverflow
             tabs={[
               { id: 'campaigns', label: 'Campaigns' },
@@ -1013,7 +1013,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
           <div className="flex shrink-0 items-center gap-1.5">
             <PeriodMenu period={period} label={periodLabel} onChange={setPeriod} />
             <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(openFilterMenu)}>
-              <LinearFilterButton
+              <BuyerlyFilterButton
                 ref={filterButtonRef}
                 active={currentFilters.length > 0}
                 open={Boolean(openFilterMenu)}
@@ -1038,9 +1038,9 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
                   setOpenFilterMenu(null);
                   toggleDisplayOptions();
                 }}
-                className="linear-header-button linear-header-button--toolbar linear-header-target group"
+                className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target group"
               >
-                <LinearSlidersIcon size={14} />
+                <BuyerlySlidersIcon size={14} />
                 <DisplayOptionsChangedDot show={displayChanged} />
               </button>
             </Tooltip>
@@ -1057,7 +1057,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
 
             <DetailsPaneToggle pane="adsManager" />
           </div>
-        </LinearDataListToolbar>
+        </BuyerlyDataListToolbar>
 
         <ActiveFilterFormula
           fields={currentFilterFields}
@@ -1067,7 +1067,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
         />
       </header>
 
-      <LinearFilterMenu
+      <BuyerlyFilterMenu
         isOpen={Boolean(openFilterMenu)}
         mode={openFilterMenu?.mode ?? 'root'}
         anchorElement={openFilterMenu?.anchor ?? null}

@@ -70,7 +70,7 @@ const InlinePopover: React.FC<React.PropsWithChildren<{
         border: '1px solid var(--color-border-secondary)',
         borderRadius: 12,
         boxShadow: 'var(--dropdown-shadow)',
-        animation: 'linearPopoverScale 120ms cubic-bezier(0.16, 1, 0.3, 1)',
+        animation: 'buyerlyPopoverScale 120ms cubic-bezier(0.16, 1, 0.3, 1)',
       }}
     >
       {children}

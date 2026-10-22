@@ -11,10 +11,10 @@ import {
   ContextMenuSeparator,
 } from '@/ui/ContextMenu';
 import {
-  LinearLabelIcon,
-  LinearTrashIcon,
-  LinearCheckIcon,
-} from '@/icons/LinearIcons';
+  BuyerlyLabelIcon,
+  BuyerlyTrashIcon,
+  BuyerlyCheckIcon,
+} from '@/icons/BuyerlyIcons';
 import { ruleActionTone } from '@/lib/rules';
 import type { RuleActionTone } from '@/lib/rules';
 import { ruleStatesTitle } from './RuleStatesDialog';
@@ -180,7 +180,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({
         <ContextMenuSub>
           <ContextMenuSubTrigger>
             <div className="flex items-center gap-2">
-              <LinearLabelIcon size={16} className="text-[var(--text-tertiary)]" />
+              <BuyerlyLabelIcon size={16} className="text-[var(--text-tertiary)]" />
               <span>Labels</span>
             </div>
             <div className="flex items-center gap-1.5 text-[var(--text-tertiary)]">
@@ -211,7 +211,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({
                       <span className="h-[9px] w-[9px] shrink-0 rounded-full" style={{ backgroundColor: label.color }} />
                       <span className="truncate">{label.name}</span>
                     </div>
-                    {on && <LinearCheckIcon size={16} className="shrink-0 text-[var(--text-secondary)]" />}
+                    {on && <BuyerlyCheckIcon size={16} className="shrink-0 text-[var(--text-secondary)]" />}
                   </ContextMenuItem>
                 );
               })
@@ -236,7 +236,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({
           className="text-[#e4e7e8] hover:text-white"
         >
           <div className="flex items-center gap-2">
-            <LinearTrashIcon size={16} className="text-[#9d9d9e] group-hover:text-white group-data-[highlighted]:text-white" />
+            <BuyerlyTrashIcon size={16} className="text-[#9d9d9e] group-hover:text-white group-data-[highlighted]:text-white" />
             <span>Delete</span>
           </div>
           <div className="flex items-center gap-1 text-[#9d9d9e]">

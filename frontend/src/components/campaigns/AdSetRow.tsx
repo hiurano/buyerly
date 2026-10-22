@@ -1,7 +1,7 @@
 import React from 'react';
 import { AdSetItem, useAppStore } from '@/store/useAppStore';
 import type { DeliveryControl } from '@/lib/delivery';
-import { LinearDataListRow, LinearDataPrimaryCell, type LinearDataListColumn } from '@/ui/LinearDataList';
+import { BuyerlyDataListRow, BuyerlyDataPrimaryCell, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 import { EntityPropertyCell, EntityRowControls } from './EntityRowCells';
 import { RuleAttachmentCell } from './RuleAttachmentCell';
 
@@ -14,7 +14,7 @@ interface AdSetRowProps {
   delivery?: DeliveryControl;
   properties: Record<string, boolean>;
   /** The table's columns, so every row lines up with the header. */
-  columns: LinearDataListColumn[];
+  columns: BuyerlyDataListColumn[];
 }
 
 export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, selectable = false, delivery, properties, columns }) => {
@@ -30,7 +30,7 @@ export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, sel
   const isDeliveryOn = adSet.status === 'active';
 
   return (
-    <LinearDataListRow
+    <BuyerlyDataListRow
       data-row-id={adSet.id}
       layout="grid"
       columns={columns}
@@ -38,7 +38,7 @@ export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, sel
       selected={isSelected}
       className={`adset-data-row ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}
     >
-      <LinearDataPrimaryCell
+      <BuyerlyDataPrimaryCell
         leading={(
           <EntityRowControls
             noun="ad set"
@@ -68,6 +68,6 @@ export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, sel
       ) : (
         <EntityPropertyCell key={column.id} columnId={column.id} row={adSet} />
       )))}
-    </LinearDataListRow>
+    </BuyerlyDataListRow>
   );
 };

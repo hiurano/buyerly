@@ -28,7 +28,7 @@ import { SecuritySection } from './SecuritySection';
 import { RuleLabelsSection } from './RuleLabelsSection';
 import { WorkspaceSecuritySection } from './WorkspaceSecuritySection';
 import { SettingsPageIcon } from './SettingsPageIcon';
-import { LinearToggle } from '@/ui/LinearToggle';
+import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { findModelContext, setWebMcpEnabled, useWebMcpEnabled } from '@/webmcp/register';
 import { SidebarBackdrop, useSidebarDrawer } from '@/components/sidebar/SidebarDrawer';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
@@ -545,7 +545,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                         : 'Not available in this browser yet. Use Chrome 149 or newer.'}
                     </span>
                   </div>
-                  <LinearToggle
+                  <BuyerlyToggle
                     size="settings"
                     checked={assistantOn}
                     onChange={setWebMcpEnabled}

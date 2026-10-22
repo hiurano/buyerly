@@ -22,7 +22,7 @@ import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { DataState } from '@/ui/DataState';
 import { DropdownMenuItem } from '@/ui/DropdownMenu';
 import { Input } from '@/ui/Input';
-import { LinearToggle } from '@/ui/LinearToggle';
+import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { toast } from '@/ui/toast';
 import { ChoiceDialog, errorMessage, memberName, type MemberItem } from './MemberDialogs';
 import { Initials, RoleStatus, RowMenu } from './MembersSection';
@@ -471,7 +471,7 @@ const TeamGeneral: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
               <span className="preferences-row-title">Private team</span>
               <span className="preferences-row-desc">Only members see this team, its ad accounts and their campaigns</span>
             </div>
-            <LinearToggle
+            <BuyerlyToggle
               checked={team.private}
               label="Private team"
               disabled={readOnly}

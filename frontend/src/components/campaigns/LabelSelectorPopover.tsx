@@ -268,7 +268,7 @@ export const LabelSelectorPopover: React.FC<LabelSelectorPopoverProps> = ({
         flexDirection: 'column',
         fontFamily:
           '"Inter Variable", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        animation: 'linearPopoverScale 120ms cubic-bezier(0.16, 1, 0.3, 1)',
+        animation: 'buyerlyPopoverScale 120ms cubic-bezier(0.16, 1, 0.3, 1)',
         transformOrigin: `${Math.min(popoverWidth - 2, Math.max(2, anchorRect.left - left + anchorRect.width / 2))}px 18px`,
       }}
       onClick={(event) => event.stopPropagation()}

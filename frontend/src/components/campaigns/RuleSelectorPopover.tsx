@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { LinearBoltIcon } from '@/icons/LinearIcons';
+import { BuyerlyBoltIcon } from '@/icons/BuyerlyIcons';
 import { useAppStore } from '@/store/useAppStore';
 import type { RuleItem } from '@/store/useAppStore';
 import type { RuleExecutionLevel, RuleScope } from '@/lib/rules';
@@ -442,7 +442,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
               justifyContent: 'center',
             }}
           >
-            <LinearBoltIcon size={13} className="text-[#eab308]" />
+            <BuyerlyBoltIcon size={13} className="text-[#eab308]" />
           </div>
           <span
             style={{
@@ -506,7 +506,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
         zIndex: 9999,
         fontFamily:
           '"Inter Variable", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        animation: 'linearPopoverScale 120ms cubic-bezier(0.16, 1, 0.3, 1)',
+        animation: 'buyerlyPopoverScale 120ms cubic-bezier(0.16, 1, 0.3, 1)',
         transformOrigin: anchorRect
           ? `${Math.min(
             popoverWidth - 2,

@@ -1,7 +1,7 @@
 import React from 'react';
 import type { MetaAccount } from '@/lib/types';
 import { Initials } from '@/components/preferences/MembersSection';
-import { LinearCheckIcon } from '@/icons/LinearIcons';
+import { BuyerlyCheckIcon } from '@/icons/BuyerlyIcons';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import { Tooltip } from '@/ui/Tooltip';
 import type { AccountMember } from './accountsData';
@@ -58,7 +58,7 @@ export const AccountLeadPicker: React.FC<AccountLeadPickerProps> = ({ account, m
             <span className="text-[var(--text-tertiary)]"><NoLeadIcon /></span>
             <span>No lead</span>
           </span>
-          {!lead && <LinearCheckIcon size={14} />}
+          {!lead && <BuyerlyCheckIcon size={14} />}
         </DropdownMenuItem>
         {members.length > 0 && <DropdownMenuSeparator />}
         {members.map((member) => (
@@ -67,7 +67,7 @@ export const AccountLeadPicker: React.FC<AccountLeadPickerProps> = ({ account, m
               <Initials label={memberLabel(member)} avatarUrl={member.avatar_url} size={16} />
               <span className="truncate">{memberLabel(member)}</span>
             </span>
-            {lead?.user_id === member.user_id && <LinearCheckIcon size={14} />}
+            {lead?.user_id === member.user_id && <BuyerlyCheckIcon size={14} />}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

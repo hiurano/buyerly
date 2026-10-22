@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import { useAppStore } from '@/store/useAppStore';
 import { useMediaQuery, useIsTouchScreen } from '@/lib/useMediaQuery';
 import { Tooltip } from '@/ui/Tooltip';
-import { LinearSidebarToggleIcon } from '@/icons/LinearIcons';
+import { BuyerlySidebarToggleIcon } from '@/icons/BuyerlyIcons';
 import {
   DETAILS_PANE_OVERLAY_QUERY,
   DETAILS_PANE_PHONE_QUERY,
@@ -359,9 +359,9 @@ export function DetailsPaneToggle({ pane }: { pane: DetailsPaneId }) {
         aria-expanded={open}
         data-active={open ? 'true' : undefined}
         onClick={() => toggleDetailsPane(pane)}
-        className="linear-header-button linear-header-button--toolbar linear-header-target"
+        className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target"
       >
-        <LinearSidebarToggleIcon isOpen={open} size={14} />
+        <BuyerlySidebarToggleIcon isOpen={open} size={14} />
       </button>
     </Tooltip>
   );

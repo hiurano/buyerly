@@ -1,5 +1,5 @@
 import React from 'react';
-import { LinearConnectedIcon, LinearLabelIcon, LinearUserLockIcon } from '@/icons/LinearIcons';
+import { BuyerlyConnectedIcon, BuyerlyLabelIcon, BuyerlyUserLockIcon } from '@/icons/BuyerlyIcons';
 import type { SettingsPage } from '@/lib/settingsPages';
 
 /**
@@ -11,9 +11,9 @@ export const SettingsPageIcon: React.FC<{ section: SettingsPage; size?: number; 
   size = 16,
   className,
 }) => {
-  if (section === 'security') return <LinearUserLockIcon size={size} className={className} />;
-  if (section === 'connected-accounts') return <LinearConnectedIcon size={size} className={className} />;
-  if (section === 'rule-labels') return <LinearLabelIcon size={size} className={className} />;
+  if (section === 'security') return <BuyerlyUserLockIcon size={size} className={className} />;
+  if (section === 'connected-accounts') return <BuyerlyConnectedIcon size={size} className={className} />;
+  if (section === 'rule-labels') return <BuyerlyLabelIcon size={size} className={className} />;
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" role="img" focusable="false" aria-hidden="true" fill="currentColor" className={className}>
       {SHAPES[section]}

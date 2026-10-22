@@ -1,11 +1,11 @@
 import React from 'react';
 import type { MetaAccount } from '@/lib/types';
 import {
-  LinearDataListRow,
-  LinearDataMetricCell,
-  type LinearDataListColumn,
-} from '@/ui/LinearDataList';
-import { LinearProjectIcon, LinearDotsIcon } from '@/icons/LinearIcons';
+  BuyerlyDataListRow,
+  BuyerlyDataMetricCell,
+  type BuyerlyDataListColumn,
+} from '@/ui/BuyerlyDataList';
+import { BuyerlyProjectIcon, BuyerlyDotsIcon } from '@/icons/BuyerlyIcons';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,9 +22,9 @@ import { AccountRulesLabel, AccountStatusLabel, ConnectionProblemIcon, accountMo
 /** At phone width the list keeps Name, Status and Spend today (#388). */
 export const PHONE_QUERY = '(max-width: 640px)';
 
-export function getAccountColumns(properties: Record<string, boolean>, phone: boolean): LinearDataListColumn[] {
+export function getAccountColumns(properties: Record<string, boolean>, phone: boolean): BuyerlyDataListColumn[] {
   // The header's label starts over the title, past the 16px icon and its 12px gap (the pill adds 6px).
-  const columns: LinearDataListColumn[] = [
+  const columns: BuyerlyDataListColumn[] = [
     { id: 'name', label: 'Name', width: phone ? 'minmax(120px, 1fr)' : 'minmax(260px, 1fr)', sortable: true, headerInset: phone ? undefined : 22 },
   ];
   if (properties.status !== false) columns.push({ id: 'status', label: 'Status', width: phone ? '84px' : '150px', sortable: true });
@@ -73,7 +73,7 @@ export const AccountRowMenu: React.FC<{
           onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); }}
           className={`flex items-center justify-center text-[var(--text-tertiary)] transition-all ${inHeader ? 'h-7 w-7 rounded-full' : 'h-6 w-6 rounded opacity-0'} hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] group-hover/row:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] [@media(hover:none)]:opacity-100 [@media(hover:none)_and_(pointer:coarse)]:h-10 [@media(hover:none)_and_(pointer:coarse)]:w-8`}
         >
-          <LinearDotsIcon size={14} />
+          <BuyerlyDotsIcon size={14} />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={4} onClick={(event) => event.stopPropagation()}>
@@ -113,7 +113,7 @@ export const AccountRowMenu: React.FC<{
 
 interface AccountRowProps {
   account: MetaAccount;
-  columns: LinearDataListColumn[];
+  columns: BuyerlyDataListColumn[];
   properties: Record<string, boolean>;
   phone: boolean;
   actions: AccountRowActions;
@@ -123,7 +123,7 @@ export const AccountRow: React.FC<AccountRowProps> = ({ account, columns, proper
   const name = accountName(account);
   const metrics = account.today_metrics;
   return (
-    <LinearDataListRow
+    <BuyerlyDataListRow
       data-row-id={account.account_id}
       layout="grid"
       columns={columns}
@@ -141,7 +141,7 @@ export const AccountRow: React.FC<AccountRowProps> = ({ account, columns, proper
         {/* A phone keeps the width for the name. */}
         {!phone && (
           <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[var(--text-tertiary)]" aria-hidden="true">
-            <LinearProjectIcon size={14} />
+            <BuyerlyProjectIcon size={14} />
           </span>
         )}
         <span className="flex min-w-0 items-center gap-1.5">
@@ -171,10 +171,10 @@ export const AccountRow: React.FC<AccountRowProps> = ({ account, columns, proper
       )}
 
       {properties.spend !== false && (
-        <LinearDataMetricCell value={accountMoney(metrics?.spend, account)} emphasis={Boolean(metrics?.spend)} />
+        <BuyerlyDataMetricCell value={accountMoney(metrics?.spend, account)} emphasis={Boolean(metrics?.spend)} />
       )}
 
-      {!phone && properties.leads !== false && <LinearDataMetricCell value={leadsText(account)} />}
+      {!phone && properties.leads !== false && <BuyerlyDataMetricCell value={leadsText(account)} />}
 
       {!phone && properties.rules !== false && (
         <div className="flex min-w-0 items-center pl-6 text-[12px] font-[450] text-[var(--text-secondary)]">
@@ -185,7 +185,7 @@ export const AccountRow: React.FC<AccountRowProps> = ({ account, columns, proper
       <div className="flex items-center justify-end" onClick={(event) => event.stopPropagation()}>
         <AccountRowMenu account={account} actions={actions} />
       </div>
-    </LinearDataListRow>
+    </BuyerlyDataListRow>
   );
 };
 

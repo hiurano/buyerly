@@ -482,7 +482,7 @@ function roundTwoThirds(value: number): number {
 }
 
 /** Linear's distance between two times as [amount, unit], or null under a minute. */
-function linearDistance(ms: number): [number, DistanceUnit] | null {
+function buyerlyDistance(ms: number): [number, DistanceUnit] | null {
   if (ms < MINUTE_MS) return null;
   if (ms < HOUR_MS) {
     const minutes = Math.round(ms / MINUTE_MS);
@@ -513,13 +513,13 @@ function linearDistance(ms: number): [number, DistanceUnit] | null {
 
 /** "Snoozed for 59min", "Snoozed for 2d", "Snoozed for 3w"; under a minute Linear says "Snoozed for now". */
 export function formatSnoozedFor(value: string, now: number = Date.now()): string {
-  const distance = linearDistance(Math.abs(Date.parse(value) - now));
+  const distance = buyerlyDistance(Math.abs(Date.parse(value) - now));
   return `Snoozed for ${distance ? `${distance[0]}${SHORT_UNITS[distance[1]]}` : 'now'}`;
 }
 
 /** "Unsnoozed just now", "Unsnoozed 2 minutes ago", "Unsnoozed 1 day ago". */
 export function formatUnsnoozedAgo(value: string, now: number = Date.now()): string {
-  const distance = linearDistance(Math.abs(now - Date.parse(value)));
+  const distance = buyerlyDistance(Math.abs(now - Date.parse(value)));
   if (!distance) return 'Unsnoozed just now';
   const [amount, unit] = distance;
   return `Unsnoozed ${amount} ${unit}${amount === 1 ? '' : 's'} ago`;

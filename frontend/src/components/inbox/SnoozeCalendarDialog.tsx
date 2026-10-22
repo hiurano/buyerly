@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { LinearClockOutlineIcon } from '@/icons/LinearIcons';
+import { BuyerlyClockOutlineIcon } from '@/icons/BuyerlyIcons';
 import { Button } from '@/ui/Button';
 
 interface SnoozeCalendarDialogProps {
@@ -141,7 +141,7 @@ export const SnoozeCalendarDialog: React.FC<SnoozeCalendarDialogProps> = ({ open
             className="pointer-events-auto max-h-[calc(100vh-32px)] max-w-full overflow-auto rounded-[12px] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] px-[32px] pb-[32px] pt-[32px] shadow-[var(--dialog-elevation-shadow)] outline-none animate-scale-in"
           >
             <Dialog.Title className="m-0 flex h-[23px] items-center gap-[8px] text-[15px] font-semibold text-[var(--text-primary)]">
-              <LinearClockOutlineIcon size={16} />
+              <BuyerlyClockOutlineIcon size={16} />
               Snooze notification until
             </Dialog.Title>
             <div className="mt-[6px] flex flex-wrap gap-[4px]">

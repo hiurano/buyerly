@@ -190,7 +190,7 @@
   --dock-bg: lch(9.232% 0.85 272 / 1);
   --dock-btn-bg: lch(13.861% 1.139 272 / 1);
   --checkbox-border-rest: lch(48.72% 1.48 272 / 1);
-  /* LinearToggle, as Linear's (off measured 2026-10-01, on and the knob 2026-10-18). */
+  /* BuyerlyToggle, as Linear's (off measured 2026-10-01, on and the knob 2026-10-18). */
   /* Members → Status: Linear's Admin badge, measured 2026-10-10. */
   --role-badge-bg: lch(48% 59.31 288.43 / 0.2);
   /* Linear's Settings → Members in dark (17.10). */
@@ -241,7 +241,7 @@
   --filter-badge-border: lch(23.5% 1.9 272 / 1);
   --filter-trigger-bg: transparent;
   --filter-trigger-active-bg: var(--tab-active-bg);
-  /* Round icon buttons by Filter / Display options / details (see .linear-header-button),
+  /* Round icon buttons by Filter / Display options / details (see .buyerly-header-button),
      as Linear's in dark (17.10): icon 61.803; bare in a header, hover 14.006, open 18.634;
      on a tab row 10.149 with a 0.137 ring and a shadow, hover 14.777 (ring 0.229), open 18.634. */
   --header-button-fg: lch(61.803% 1.2 272 / 1);

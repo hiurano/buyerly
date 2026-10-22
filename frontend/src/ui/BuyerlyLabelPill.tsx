@@ -1,6 +1,6 @@
 import React from 'react';
 
-export interface LinearLabelPillProps {
+export interface BuyerlyLabelPillProps {
   label: string;
   dotColor?: string;
   className?: string;
@@ -19,7 +19,7 @@ export interface LinearLabelPillProps {
  * - Text: 12px, font-weight 450, color #8f9095, hover #ffffff, margin-left 6px
  * - Transitions: border-color 0.15s, color 0.15s, background-color 0.15s
  */
-export const LinearLabelPill: React.FC<LinearLabelPillProps> = ({
+export const BuyerlyLabelPill: React.FC<BuyerlyLabelPillProps> = ({
   label,
   dotColor = 'rgb(148, 163, 184)',
   className = '',

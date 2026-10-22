@@ -1,7 +1,7 @@
 import React from 'react';
 import { AdItem, useAppStore } from '@/store/useAppStore';
 import type { DeliveryControl } from '@/lib/delivery';
-import { LinearDataListRow, LinearDataPrimaryCell, type LinearDataListColumn } from '@/ui/LinearDataList';
+import { BuyerlyDataListRow, BuyerlyDataPrimaryCell, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 import { EntityPropertyCell, EntityRowControls } from './EntityRowCells';
 
 interface AdRowProps {
@@ -13,7 +13,7 @@ interface AdRowProps {
   delivery?: DeliveryControl;
   properties: Record<string, boolean>;
   /** The table's columns, so every row lines up with the header. */
-  columns: LinearDataListColumn[];
+  columns: BuyerlyDataListColumn[];
 }
 
 export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, selectable = false, delivery, properties, columns }) => {
@@ -25,7 +25,7 @@ export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, selectable =
   const isDeliveryOn = ad.status === 'active';
 
   return (
-    <LinearDataListRow
+    <BuyerlyDataListRow
       data-row-id={ad.id}
       layout="grid"
       columns={columns}
@@ -33,7 +33,7 @@ export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, selectable =
       selected={isSelected}
       className={`ad-data-row ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}
     >
-      <LinearDataPrimaryCell
+      <BuyerlyDataPrimaryCell
         leading={(
           <EntityRowControls
             noun="ad"
@@ -54,6 +54,6 @@ export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, selectable =
       {columns.slice(1).map((column) => (
         <EntityPropertyCell key={column.id} columnId={column.id} row={ad} />
       ))}
-    </LinearDataListRow>
+    </BuyerlyDataListRow>
   );
 };

@@ -6,7 +6,7 @@ import { plural, useTeams } from '@/lib/teams';
 import type { Workspace } from '@/lib/types';
 import { Button } from '@/ui/Button';
 import { DataState } from '@/ui/DataState';
-import { LinearCheckIcon, LinearCloseIcon } from '@/icons/LinearIcons';
+import { BuyerlyCheckIcon, BuyerlyCloseIcon } from '@/icons/BuyerlyIcons';
 import { toast } from '@/ui/toast';
 import { SortHeader, sortedBy, useListSort } from './SettingsListSort';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
@@ -206,7 +206,7 @@ export const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onC
                 disabled={busy}
                 className="flex h-6 w-6 items-center justify-center rounded-[4px] text-[var(--text-tertiary)] outline-none hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
               >
-                <LinearCloseIcon size={12} />
+                <BuyerlyCloseIcon size={12} />
               </Dialog.Close>
             </div>
             <Dialog.Description className="sr-only">
@@ -239,7 +239,7 @@ export const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onC
                           <span className="block truncate">{option.label}</span>
                           <span className="block truncate text-[12px] text-[var(--text-tertiary)]">{option.description}</span>
                         </span>
-                        {role === option.value && <LinearCheckIcon size={14} />}
+                        {role === option.value && <BuyerlyCheckIcon size={14} />}
                       </DropdownMenuRadioItem>
                     ))}
                   </DropdownMenuRadioGroup>
@@ -461,7 +461,7 @@ export const MembersSection: React.FC<{
                 {(Object.keys(FILTER_LABELS) as MemberFilter[]).map((key) => (
                   <DropdownMenuRadioItem key={key} value={key}>
                     <span className="truncate">{FILTER_LABELS[key]}</span>
-                    {filter === key && <LinearCheckIcon size={14} />}
+                    {filter === key && <BuyerlyCheckIcon size={14} />}
                   </DropdownMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>

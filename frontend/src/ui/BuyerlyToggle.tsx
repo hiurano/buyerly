@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tooltip } from './Tooltip';
 
-interface LinearToggleProps {
+interface BuyerlyToggleProps {
   checked: boolean;
   onChange?: (checked: boolean) => void;
   /** Accessible name; falls back to the tooltip text. */
@@ -16,7 +16,7 @@ interface LinearToggleProps {
 }
 
 /** The only switch in Buyerly, in Linear's two sizes (Display options, settings); colours in tokens.css. */
-export const LinearToggle: React.FC<LinearToggleProps> = ({
+export const BuyerlyToggle: React.FC<BuyerlyToggleProps> = ({
   checked,
   onChange,
   label,
@@ -40,7 +40,7 @@ export const LinearToggle: React.FC<LinearToggleProps> = ({
       aria-busy={busy || undefined}
       aria-label={label ?? tooltipContent}
       tabIndex={interactive ? 0 : -1}
-      className={`linear-toggle ${size === 'settings' ? 'linear-toggle--settings ' : ''}${className}`.trim()}
+      className={`buyerly-toggle ${size === 'settings' ? 'buyerly-toggle--settings ' : ''}${className}`.trim()}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();

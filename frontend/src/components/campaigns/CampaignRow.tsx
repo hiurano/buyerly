@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { CampaignItem, useAppStore } from '@/store/useAppStore';
 import type { DeliveryControl } from '@/lib/delivery';
-import { LinearDataListRow, LinearDataPrimaryCell, type LinearDataListColumn } from '@/ui/LinearDataList';
+import { BuyerlyDataListRow, BuyerlyDataPrimaryCell, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 import { EntityPropertyCell, EntityRowControls } from './EntityRowCells';
 import { LabelSelectorPopover } from './LabelSelectorPopover';
 import { RuleAttachmentCell } from './RuleAttachmentCell';
@@ -16,7 +16,7 @@ interface CampaignRowProps {
   delivery?: DeliveryControl;
   properties: Record<string, boolean>;
   /** The table's columns, so every row lines up with the header. */
-  columns: LinearDataListColumn[];
+  columns: BuyerlyDataListColumn[];
 }
 
 export const CampaignRow: React.FC<CampaignRowProps> = ({
@@ -51,7 +51,7 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
 
   return (
     <>
-      <LinearDataListRow
+      <BuyerlyDataListRow
         data-row-id={campaign.id}
         layout="grid"
         columns={columns}
@@ -72,7 +72,7 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
         selected={isSelected}
         className={`campaign-data-row ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}
       >
-        <LinearDataPrimaryCell
+        <BuyerlyDataPrimaryCell
           leading={(
             <EntityRowControls
               noun="campaign"
@@ -103,7 +103,7 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
         ) : (
           <EntityPropertyCell key={column.id} columnId={column.id} row={campaign} />
         )))}
-      </LinearDataListRow>
+      </BuyerlyDataListRow>
 
       <LabelSelectorPopover
         isOpen={isLabelSelectorOpen}

@@ -13,11 +13,11 @@ import {
 import { parseSnoozeQuery } from '@/lib/snoozeQuery';
 import {
   BuyerlyLogoAvatar,
-  LinearClockOutlineIcon,
-  LinearInboxDeleteIcon,
-  LinearInboxUnreadIcon,
-  LinearTrashIcon,
-} from '@/icons/LinearIcons';
+  BuyerlyClockOutlineIcon,
+  BuyerlyInboxDeleteIcon,
+  BuyerlyInboxUnreadIcon,
+  BuyerlyTrashIcon,
+} from '@/icons/BuyerlyIcons';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -53,7 +53,7 @@ const SnoozeRow: React.FC<{
   hint?: string;
   icon?: React.ReactNode;
   onSelect: () => void;
-}> = ({ label, hint, icon = <LinearClockOutlineIcon size={16} />, onSelect }) => (
+}> = ({ label, hint, icon = <BuyerlyClockOutlineIcon size={16} />, onSelect }) => (
   <ContextMenuItem onSelect={onSelect}>
     <span className="flex items-center gap-2.5">
       {icon}
@@ -81,7 +81,7 @@ const SnoozeSubmenu: React.FC<{
     <SnoozeRow
       label={UNSNOOZE_LABEL}
       hint={formatSnoozedFor(item.snoozed_until)}
-      icon={<LinearTrashIcon size={16} />}
+      icon={<BuyerlyTrashIcon size={16} />}
       onSelect={() => onUnsnooze(item)}
     />
   );
@@ -236,14 +236,14 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
       <ContextMenuContent style={{ width: '190px' }}>
         <ContextMenuItem onSelect={() => onToggleRead(item)}>
           <span className="flex items-center gap-2.5">
-            <LinearInboxUnreadIcon size={16} />
+            <BuyerlyInboxUnreadIcon size={16} />
             {unread ? 'Mark as read' : 'Mark as unread'}
           </span>
           <MenuKey>U</MenuKey>
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => onDelete(item)}>
           <span className="flex items-center gap-2.5">
-            <LinearInboxDeleteIcon size={16} />
+            <BuyerlyInboxDeleteIcon size={16} />
             Delete notification
           </span>
           <MenuKey>⌫</MenuKey>
@@ -251,7 +251,7 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
         <ContextMenuSub>
           <ContextMenuSubTrigger>
             <span className="flex items-center gap-2.5">
-              <LinearClockOutlineIcon size={16} />
+              <BuyerlyClockOutlineIcon size={16} />
               Snooze
             </span>
             <span className="flex items-center gap-2">
@@ -272,11 +272,11 @@ export const InboxGroupHeader: React.FC<{ label: string; expanded: boolean; onTo
   expanded,
   onToggle,
 }) => (
-  <div className="linear-inbox-group">
+  <div className="buyerly-inbox-group">
     <button
       type="button"
       aria-expanded={expanded}
-      className="linear-inbox-group-header"
+      className="buyerly-inbox-group-header"
       onClick={onToggle}
     >
       <span>{label}</span>

@@ -16,13 +16,13 @@ import {
 } from 'lucide-react';
 import {
   BuyerlyLogoAvatar,
-  LinearBacklogDashedIcon,
-  LinearBoltIcon,
-  LinearFilterIcon,
-  LinearInboxUnreadIcon,
-  LinearLabelIcon,
-  LinearProjectIcon,
-} from '@/icons/LinearIcons';
+  BuyerlyBacklogDashedIcon,
+  BuyerlyBoltIcon,
+  BuyerlyFilterIcon,
+  BuyerlyInboxUnreadIcon,
+  BuyerlyLabelIcon,
+  BuyerlyProjectIcon,
+} from '@/icons/BuyerlyIcons';
 import {
   DATE_PRESETS,
   NEVER_DATE,
@@ -172,17 +172,17 @@ const FilterFieldIcon: React.FC<{ fieldId: string; type: FilterFieldDefinition<u
   type,
 }) => {
   const props = { size: 15, strokeWidth: 1.8, 'aria-hidden': true } as const;
-  if (fieldId === 'notificationType') return <LinearInboxUnreadIcon size={14} />;
+  if (fieldId === 'notificationType') return <BuyerlyInboxUnreadIcon size={14} />;
   if (fieldId === 'from') return <UserRound {...props} />;
-  if (fieldId === 'adAccount') return <LinearProjectIcon size={14} />;
+  if (fieldId === 'adAccount') return <BuyerlyProjectIcon size={14} />;
   if (fieldId === 'eventStatus') return <Circle {...props} />;
-  if (fieldId === 'status') return <LinearBacklogDashedIcon size={14} />;
-  if (fieldId === 'label') return <LinearLabelIcon size={14} />;
+  if (fieldId === 'status') return <BuyerlyBacklogDashedIcon size={14} />;
+  if (fieldId === 'label') return <BuyerlyLabelIcon size={14} />;
   if (fieldId.includes('group') || fieldId.includes('campaign') || fieldId.includes('adSet')) {
     return <Layers3 {...props} />;
   }
   if (fieldId === 'team') return <UsersRound {...props} />;
-  if (fieldId.includes('rule') || fieldId.includes('action') || fieldId === 'automation') return <LinearBoltIcon size={14} />;
+  if (fieldId.includes('rule') || fieldId.includes('action') || fieldId === 'automation') return <BuyerlyBoltIcon size={14} />;
   if (type === 'number') return <Gauge {...props} />;
   if (type === 'date') return <CalendarDays {...props} />;
   if (type === 'text') return <Type {...props} />;
@@ -207,7 +207,7 @@ const MenuSurface = React.forwardRef<
     ref={ref}
     role="dialog"
     aria-label={label}
-    className={motion === 'enter' ? 'linear-menu-enter' : motion === 'exit' ? 'linear-menu-exit' : undefined}
+    className={motion === 'enter' ? 'buyerly-menu-enter' : motion === 'exit' ? 'buyerly-menu-exit' : undefined}
     style={{
       position: 'fixed',
       left: position.left,
@@ -332,7 +332,7 @@ export const FilterOptionAvatarImage: React.FC<{ avatar: FilterOptionAvatar; lab
   if (avatar.kind === 'rule') {
     return (
       <span data-filter-avatar="rule" aria-hidden="true" style={{ ...box, backgroundColor: MENU_TEXT, color: MENU_SURFACE }}>
-        <LinearBoltIcon size={Math.round(size * 0.625)} />
+        <BuyerlyBoltIcon size={Math.round(size * 0.625)} />
       </span>
     );
   }
@@ -767,7 +767,7 @@ const DateValueEditor = <T,>({
   );
 };
 
-export const LinearFilterMenu = <T,>({
+export const BuyerlyFilterMenu = <T,>({
   isOpen,
   mode,
   anchorElement,
@@ -1513,7 +1513,7 @@ interface FilterButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonEl
 }
 
 /** Spreads the rest so a wrapping Tooltip trigger gets its pointer and focus handlers. */
-export const LinearFilterButton = React.forwardRef<HTMLButtonElement, FilterButtonProps>(
+export const BuyerlyFilterButton = React.forwardRef<HTMLButtonElement, FilterButtonProps>(
   ({ active, open, variant = 'toolbar', ...rest }, ref) => (
     <button
       {...rest}
@@ -1523,13 +1523,13 @@ export const LinearFilterButton = React.forwardRef<HTMLButtonElement, FilterButt
       aria-haspopup="dialog"
       aria-expanded={open}
       data-active={open || active ? 'true' : undefined}
-      className={`linear-header-button linear-header-button--${variant} linear-header-target`}
+      className={`buyerly-header-button buyerly-header-button--${variant} buyerly-header-target`}
     >
-      <LinearFilterIcon size={14} />
+      <BuyerlyFilterIcon size={14} />
     </button>
   )
 );
-LinearFilterButton.displayName = 'LinearFilterButton';
+BuyerlyFilterButton.displayName = 'BuyerlyFilterButton';
 
 interface ActiveFilterFormulaProps<T> {
   fields: FilterFieldDefinition<T>[];

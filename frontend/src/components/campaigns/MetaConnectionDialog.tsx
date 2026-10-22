@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { apiRequest } from '@/lib/api';
 import type { MetaAssetsResponse, MetaConnectionAsset, MetaInviteCreated } from '@/lib/types';
-import { LinearCloseIcon, LinearMetaIcon } from '@/icons/LinearIcons';
-import { LinearCheckbox } from '@/ui/LinearCheckbox';
+import { BuyerlyCloseIcon, BuyerlyMetaIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyCheckbox } from '@/ui/BuyerlyCheckbox';
 
 type FlowStep = 'choice' | 'creating_invite' | 'invite_ready' | 'discovering' | 'selecting' | 'importing' | 'done';
 
@@ -158,12 +158,12 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
           <Dialog.Content className="ui-dialog pointer-events-auto w-full max-w-[560px] rounded-[20px] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] text-left outline-none animate-scale-in shadow-[0_1px_2px_rgba(0,0,0,0.04),0_6px_24px_rgba(0,0,0,0.12),0_12px_48px_rgba(0,0,0,0.18)]">
             <header className="flex items-center justify-between px-6 pt-6 pb-2">
               <div className="flex items-center gap-2.5">
-                <LinearMetaIcon size={16} className="text-[var(--text-secondary)]" />
+                <BuyerlyMetaIcon size={16} className="text-[var(--text-secondary)]" />
                 <Dialog.Title className="text-[15px] font-semibold text-[var(--text-primary)]">{title}</Dialog.Title>
               </div>
               <Dialog.Close asChild>
                 <button className="ui-icon-button flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] transition-colors duration-150 cursor-default" type="button" aria-label="Close">
-                  <LinearCloseIcon size={14} />
+                  <BuyerlyCloseIcon size={14} />
                 </button>
               </Dialog.Close>
             </header>
@@ -220,7 +220,7 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
                               className={`flex min-h-10 cursor-default select-none items-center gap-2 border-b border-[var(--color-border-primary)] px-3 last:border-b-0 transition-colors focus-visible:outline-none focus-visible:bg-[var(--item-hover-bg)] ${imported ? '' : 'hover:bg-[var(--item-hover-bg)]'}`}
                             >
                               {/* An added account keeps the slot, like a row that cannot be selected. */}
-                              <LinearCheckbox checked={checked} onChange={() => toggleAsset(asset)} hidden={imported} alwaysVisible decorative />
+                              <BuyerlyCheckbox checked={checked} onChange={() => toggleAsset(asset)} hidden={imported} alwaysVisible decorative />
                               <span className="min-w-0 flex-1 text-[13px] text-[var(--text-primary)]">{accountLabel(asset)}</span>
                               <span className="text-[12px] text-[var(--text-tertiary)]">{imported ? 'Added' : asset.currency}</span>
                             </div>

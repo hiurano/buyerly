@@ -230,7 +230,7 @@ try {
       await page.waitForFunction(() => document.title === 'Inbox (2)');
       if (!phone) {
         await page.getByText('2 unread notifications', { exact: true }).waitFor();
-        assert.equal(await page.locator('.linear-sidebar-count').innerText(), '2');
+        assert.equal(await page.locator('.buyerly-sidebar-count').innerText(), '2');
       }
       for (const removed of ['Workspace activity', 'Search workspace events', 'Previous']) {
         assert.equal(await page.getByText(removed).count(), 0, `${removed} is gone`);
@@ -241,7 +241,7 @@ try {
       // Filter, as in Linear: F opens "Add Filter…", Notification type lists the types with counts.
       await page.keyboard.press('f');
       const addFilter = page.getByRole('dialog', { name: 'Add filter' });
-      assert.equal(await addFilter.getAttribute('class'), 'linear-menu-enter');
+      assert.equal(await addFilter.getAttribute('class'), 'buyerly-menu-enter');
       const typeRow = addFilter.getByRole('option', { name: /Notification type/ });
       const typeValues = page.getByRole('dialog', { name: 'Notification type values' });
       const fromValues = page.getByRole('dialog', { name: 'From values' });
@@ -281,7 +281,7 @@ try {
       // Escape closes the whole menu, as in Linear: the submenu goes at once, the menu fades out.
       await page.keyboard.press('Escape');
       assert.equal(await typeValues.count(), 0);
-      assert.equal(await addFilter.getAttribute('class'), 'linear-menu-exit');
+      assert.equal(await addFilter.getAttribute('class'), 'buyerly-menu-exit');
       await addFilter.waitFor({ state: 'detached' });
       await waitForRows(1);
       const bar = page.locator('[aria-label="Active filters"]');
@@ -530,9 +530,9 @@ try {
       await options.getByRole('combobox').filter({ hasText: 'No grouping' }).click();
       await page.getByRole('option', { name: 'Focus' }).click();
       await page.keyboard.press('Escape');
-      const headers = page.locator('.linear-inbox-group-header');
+      const headers = page.locator('.buyerly-inbox-group-header');
       // A lone System notification is too small for Other, so the group takes its name, as in Linear.
-      await page.waitForFunction(() => document.querySelectorAll('.linear-inbox-group-header').length === 4);
+      await page.waitForFunction(() => document.querySelectorAll('.buyerly-inbox-group-header').length === 4);
       assert.deepEqual(await headers.allInnerTexts(), ['Urgent', 'Rule alerts', 'System', 'Read']);
       assert.equal(savedDisplay.grouping, 'focus');
       const order = () => page.locator('[data-inbox-event-id]').evaluateAll(

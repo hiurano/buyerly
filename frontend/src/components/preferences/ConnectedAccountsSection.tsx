@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { TriangleAlert } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { createTelegramLink, disconnectTelegram, telegramAccountName } from '@/lib/telegram';
-import { LinearArrowUpRightIcon, TelegramIcon } from '@/icons/LinearIcons';
+import { BuyerlyArrowUpRightIcon, TelegramIcon } from '@/icons/BuyerlyIcons';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import { Tooltip } from '@/ui/Tooltip';
@@ -87,7 +87,7 @@ export const ConnectedAccountsSection: React.FC = () => {
   const button = (label: string, props: React.ButtonHTMLAttributes<HTMLButtonElement> = {}) => (
     <button type="button" className="preferences-connect-button" {...props}>
       {label}
-      <LinearArrowUpRightIcon size={16} />
+      <BuyerlyArrowUpRightIcon size={16} />
     </button>
   );
 

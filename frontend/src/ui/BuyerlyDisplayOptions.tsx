@@ -17,14 +17,14 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { LinearBoardIcon, LinearListIcon } from '@/icons/LinearIcons';
-import { LinearToggle } from './LinearToggle';
+import { BuyerlyBoardIcon, BuyerlyListIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyToggle } from './BuyerlyToggle';
 import { Tooltip } from './Tooltip';
 import { LAYOUT_SHORTCUT } from './useLayoutShortcut';
 
 export type DisplayOption = { value: string; label: string };
 
-interface LinearSelectProps {
+interface BuyerlySelectProps {
   value: string;
   options: DisplayOption[];
   onChange: (value: string) => void;
@@ -43,7 +43,7 @@ const Check = () => (
   </svg>
 );
 
-export const LinearSelect: React.FC<LinearSelectProps> = ({ value, options, onChange, onOpenChange }) => {
+export const BuyerlySelect: React.FC<BuyerlySelectProps> = ({ value, options, onChange, onOpenChange }) => {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -85,7 +85,7 @@ export const LinearSelect: React.FC<LinearSelectProps> = ({ value, options, onCh
         role="combobox"
         aria-expanded={open}
         aria-haspopup="listbox"
-        className="linear-display-select"
+        className="buyerly-display-select"
         data-open={open || undefined}
         onClick={() => setOpen((current) => !current)}
       >
@@ -96,7 +96,7 @@ export const LinearSelect: React.FC<LinearSelectProps> = ({ value, options, onCh
         <div
           ref={menuRef}
           role="listbox"
-          className="linear-display-select-menu"
+          className="buyerly-display-select-menu"
           style={{ top: coords.top, right: coords.right }}
         >
           {options.map((option) => {
@@ -107,7 +107,7 @@ export const LinearSelect: React.FC<LinearSelectProps> = ({ value, options, onCh
                 role="option"
                 aria-selected={isSelected}
                 key={option.value}
-                className="linear-display-select-option"
+                className="buyerly-display-select-option"
                 onClick={() => {
                   onChange(option.value);
                   close();
@@ -126,7 +126,7 @@ export const LinearSelect: React.FC<LinearSelectProps> = ({ value, options, onCh
 };
 
 
-interface LinearMultiSelectProps {
+interface BuyerlyMultiSelectProps {
   values: string[];
   options: DisplayOption[];
   onChange: (values: string[]) => void;
@@ -140,7 +140,7 @@ interface LinearMultiSelectProps {
  * "All" when everything is ticked, "N selected" otherwise, and the menu stays
  * open while boxes are ticked.
  */
-export const LinearMultiSelect: React.FC<LinearMultiSelectProps> = ({ values, options, onChange, ariaLabel, footer }) => {
+export const BuyerlyMultiSelect: React.FC<BuyerlyMultiSelectProps> = ({ values, options, onChange, ariaLabel, footer }) => {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -180,7 +180,7 @@ export const LinearMultiSelect: React.FC<LinearMultiSelectProps> = ({ values, op
         aria-label={ariaLabel}
         aria-expanded={open}
         aria-haspopup="listbox"
-        className="linear-display-select"
+        className="buyerly-display-select"
         data-open={open || undefined}
         onClick={() => setOpen((current) => !current)}
       >
@@ -193,7 +193,7 @@ export const LinearMultiSelect: React.FC<LinearMultiSelectProps> = ({ values, op
           role="listbox"
           aria-multiselectable="true"
           aria-label={ariaLabel}
-          className="linear-display-select-menu linear-display-check-menu"
+          className="buyerly-display-select-menu buyerly-display-check-menu"
           style={{ top: coords.top, right: coords.right }}
         >
           {options.map((option) => {
@@ -204,14 +204,14 @@ export const LinearMultiSelect: React.FC<LinearMultiSelectProps> = ({ values, op
                 role="option"
                 aria-selected={isSelected}
                 key={option.value}
-                className="linear-display-check-option"
+                className="buyerly-display-check-option"
                 onClick={() => onChange(
                   isSelected
                     ? values.filter((value) => value !== option.value)
                     : options.map((entry) => entry.value).filter((value) => value === option.value || values.includes(value)),
                 )}
               >
-                <span className="linear-display-checkbox" data-checked={isSelected || undefined} aria-hidden="true">
+                <span className="buyerly-display-checkbox" data-checked={isSelected || undefined} aria-hidden="true">
                   {isSelected && <Check />}
                 </span>
                 <span>{option.label}</span>
@@ -220,18 +220,18 @@ export const LinearMultiSelect: React.FC<LinearMultiSelectProps> = ({ values, op
           })}
           {footer && (
             <>
-              <div role="separator" className="linear-display-check-divider" />
+              <div role="separator" className="buyerly-display-check-divider" />
               <button
                 type="button"
                 role="option"
                 aria-selected={false}
-                className="linear-display-check-option"
+                className="buyerly-display-check-option"
                 onClick={() => {
                   setOpen(false);
                   footer.onSelect();
                 }}
               >
-                <span className="linear-display-check-icon" aria-hidden="true">{footer.icon}</span>
+                <span className="buyerly-display-check-icon" aria-hidden="true">{footer.icon}</span>
                 <span>{footer.label}</span>
               </button>
             </>
@@ -318,20 +318,20 @@ const SortableGroupRow: React.FC<{ group: DisplayGroupOption; hidden: boolean; o
   return (
     <div
       ref={setNodeRef}
-      className="linear-display-group-row"
+      className="buyerly-display-group-row"
       data-dragging={isDragging || undefined}
       style={{ transform: CSS.Translate.toString(transform), transition }}
     >
-      <div className="linear-display-group-handle" aria-label={`Move ${group.label}`} {...attributes} {...listeners}>
+      <div className="buyerly-display-group-handle" aria-label={`Move ${group.label}`} {...attributes} {...listeners}>
         <DragHandleIcon />
       </div>
-      <div className="linear-display-group-label" data-hidden={hidden || undefined}>
-        {group.icon && <span className="linear-display-group-icon" aria-hidden="true">{group.icon}</span>}
+      <div className="buyerly-display-group-label" data-hidden={hidden || undefined}>
+        {group.icon && <span className="buyerly-display-group-icon" aria-hidden="true">{group.icon}</span>}
         <span>{group.label}</span>
       </div>
       <button
         type="button"
-        className="linear-display-order-button"
+        className="buyerly-display-order-button"
         aria-label={hidden ? 'Show group' : 'Hide group'}
         aria-pressed={hidden}
         onClick={onToggleHidden}
@@ -361,13 +361,13 @@ const GroupOrderingPanel: React.FC<GroupOrderingProps & { onBack: () => void }> 
   };
   return (
     <>
-      <section className="linear-display-group-header">
-        <button type="button" className="linear-display-order-button" aria-label="Back" onClick={onBack}>
+      <section className="buyerly-display-group-header">
+        <button type="button" className="buyerly-display-order-button" aria-label="Back" onClick={onBack}>
           <BackIcon />
         </button>
         <span>Group ordering</span>
       </section>
-      <section className="linear-display-group-list" aria-label="Group ordering">
+      <section className="buyerly-display-group-list" aria-label="Group ordering">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={ids} strategy={verticalListSortingStrategy}>
             {groups.map((group) => (
@@ -386,7 +386,7 @@ const GroupOrderingPanel: React.FC<GroupOrderingProps & { onBack: () => void }> 
 };
 
 
-interface LinearDisplayOptionsProps {
+interface BuyerlyDisplayOptionsProps {
   viewMode: 'list' | 'board';
   onViewModeChange: (mode: 'list' | 'board') => void;
   grouping: string;
@@ -422,7 +422,7 @@ interface LinearDisplayOptionsProps {
   onReset?: () => void;
 }
 
-export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
+export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
   viewMode,
   onViewModeChange,
   grouping,
@@ -466,10 +466,10 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
 
   return (
     <>
-      <section className="linear-display-main-section">
-        {showViewModes && <div role="tablist" className="linear-display-tabs">
+      <section className="buyerly-display-main-section">
+        {showViewModes && <div role="tablist" className="buyerly-display-tabs">
           {(['list', 'board'] as const).map((mode) => (
-            <div className="linear-display-tab-slot" key={mode}>
+            <div className="buyerly-display-tab-slot" key={mode}>
               <Tooltip content="Toggle layout view" shortcut={LAYOUT_SHORTCUT}>
               <button
                 type="button"
@@ -478,7 +478,7 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
                 aria-label={mode === 'list' ? 'List' : 'Board'}
                 data-state={viewMode === mode ? 'active' : 'inactive'}
                 tabIndex={viewMode === mode ? 0 : -1}
-                className="linear-display-tab"
+                className="buyerly-display-tab"
                 onClick={() => onViewModeChange(mode)}
                 onKeyDown={(event) => {
                   if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
@@ -487,7 +487,7 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
                   }
                 }}
               >
-                {mode === 'list' ? <LinearListIcon size={16} /> : <LinearBoardIcon size={16} />}
+                {mode === 'list' ? <BuyerlyListIcon size={16} /> : <BuyerlyBoardIcon size={16} />}
                 <span>{mode === 'list' ? 'List' : 'Board'}</span>
               </button>
               </Tooltip>
@@ -495,15 +495,15 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
           ))}
         </div>}
 
-        {showGrouping && <div className="linear-display-row">
+        {showGrouping && <div className="buyerly-display-row">
           <span>{groupingLabel}</span>
-          <div className="linear-display-row-controls">
-            <LinearSelect value={grouping} options={groupingOptions} onChange={onGroupingChange} />
+          <div className="buyerly-display-row-controls">
+            <BuyerlySelect value={grouping} options={groupingOptions} onChange={onGroupingChange} />
             {canOrderGroups && (
               <Tooltip content="Group ordering">
                 <button
                   type="button"
-                  className="linear-display-order-button"
+                  className="buyerly-display-order-button"
                   aria-label="Group ordering"
                   onClick={() => setPanel('groups')}
                 >
@@ -515,21 +515,21 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
         </div>}
 
         {showGrouping && subGrouping !== undefined && subGroupingOptions && onSubGroupingChange && (
-          <div className="linear-display-row">
+          <div className="buyerly-display-row">
             <span>{subGroupingLabel}</span>
-            <LinearSelect value={subGrouping} options={subGroupingOptions} onChange={onSubGroupingChange} />
+            <BuyerlySelect value={subGrouping} options={subGroupingOptions} onChange={onSubGroupingChange} />
           </div>
         )}
 
-        <div className="linear-display-row">
+        <div className="buyerly-display-row">
           <span>Ordering</span>
-          <div className="linear-display-row-controls">
-            <LinearSelect value={ordering} options={orderingOptions} onChange={onOrderingChange} />
+          <div className="buyerly-display-row-controls">
+            <BuyerlySelect value={ordering} options={orderingOptions} onChange={onOrderingChange} />
             {direction && onDirectionChange && ordering !== 'manual' && (
               <Tooltip content={direction === 'asc' ? 'Ascending' : 'Descending'}>
                 <button
                   type="button"
-                  className="linear-display-order-button"
+                  className="buyerly-display-order-button"
                   aria-label="Direction"
                   data-direction={direction}
                   onClick={() => onDirectionChange(direction === 'asc' ? 'desc' : 'asc')}
@@ -542,12 +542,12 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
         </div>
       </section>
 
-      <section className="linear-display-options-section">
-        <div className="linear-display-section-title">{optionsLabel}</div>
+      <section className="buyerly-display-options-section">
+        <div className="buyerly-display-section-title">{optionsLabel}</div>
         {showEmptyGroups !== undefined && onShowEmptyGroupsChange && (
-          <div className="linear-display-row">
+          <div className="buyerly-display-row">
             <span>{showEmptyLabel}</span>
-            <LinearToggle
+            <BuyerlyToggle
               label={showEmptyLabel}
               checked={showEmptyGroups}
               onChange={onShowEmptyGroupsChange}
@@ -555,17 +555,17 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
           </div>
         )}
         {showEmptySubGroups !== undefined && onShowEmptySubGroupsChange && (
-          <div className="linear-display-row">
+          <div className="buyerly-display-row">
             <span>Show empty rows</span>
-            <LinearToggle
+            <BuyerlyToggle
               label="Show empty rows"
               checked={showEmptySubGroups}
               onChange={onShowEmptySubGroupsChange}
             />
           </div>
         )}
-        <div className="linear-display-properties-label">Display properties</div>
-        <div className="linear-display-properties">
+        <div className="buyerly-display-properties-label">Display properties</div>
+        <div className="buyerly-display-properties">
           {Object.entries(properties).map(([key, label]) => {
             const inactive = inactiveProperties.includes(key);
             return (
@@ -574,7 +574,7 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
                 key={key}
                 aria-pressed={!inactive && !!enabledProperties[key]}
                 disabled={inactive}
-                className="linear-display-property"
+                className="buyerly-display-property"
                 onClick={() => onToggleProperty(key)}
               >
                 {label}
@@ -585,8 +585,8 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
       </section>
 
       {onReset && (
-        <section className="linear-display-footer">
-          <button type="button" className="linear-display-footer-button" aria-label="Reset to default" onClick={onReset}>
+        <section className="buyerly-display-footer">
+          <button type="button" className="buyerly-display-footer-button" aria-label="Reset to default" onClick={onReset}>
             Reset
           </button>
         </section>
@@ -600,4 +600,4 @@ export const LinearDisplayOptions: React.FC<LinearDisplayOptionsProps> = ({
  * its default: a 7px accent dot at the icon's top right.
  */
 export const DisplayOptionsChangedDot: React.FC<{ show: boolean }> = ({ show }) =>
-  show ? <span className="linear-display-changed-dot" data-display-changed="true" aria-hidden="true" /> : null;
+  show ? <span className="buyerly-display-changed-dot" data-display-changed="true" aria-hidden="true" /> : null;

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Command } from 'cmdk';
-import { LinearClockOutlineIcon, LinearTrashIcon } from '@/icons/LinearIcons';
+import { BuyerlyClockOutlineIcon, BuyerlyTrashIcon } from '@/icons/BuyerlyIcons';
 import { formatSnoozedFor, formatSnoozeTime, matchesTyped, snoozeOptions } from '@/lib/inbox';
 import { parseSnoozeQuery } from '@/lib/snoozeQuery';
 
@@ -62,7 +62,7 @@ export const SnoozePalette: React.FC<SnoozePaletteProps> = ({
         id: 'unsnooze',
         label: 'Unsnooze notification',
         hint: formatSnoozedFor(snoozedUntil),
-        icon: <LinearTrashIcon size={16} />,
+        icon: <BuyerlyTrashIcon size={16} />,
         onSelect: () => {
           onOpenChange(false);
           onUnsnooze();
@@ -132,7 +132,7 @@ export const SnoozePalette: React.FC<SnoozePaletteProps> = ({
                 >
                   <span className="pointer-events-none absolute inset-x-[7px] inset-y-[2px] rounded-[8px] group-data-[selected=true]:bg-[var(--item-hover-bg)]" />
                   <span className="relative z-10 flex min-w-0 flex-1 items-center gap-[12px]">
-                    <span className="text-[var(--text-tertiary)]">{row.icon ?? <LinearClockOutlineIcon size={16} />}</span>
+                    <span className="text-[var(--text-tertiary)]">{row.icon ?? <BuyerlyClockOutlineIcon size={16} />}</span>
                     <span className="truncate">{row.label}</span>
                   </span>
                   {row.hint && (

@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
 import { Button } from '@/ui/Button';
-import { LinearToggle } from '@/ui/LinearToggle';
+import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { Tooltip } from '@/ui/Tooltip';
 import { useMediaQuery, TOUCH_HEIGHT_CLASS as TOUCH_HEIGHT } from '@/lib/useMediaQuery';
 import {
@@ -21,7 +21,7 @@ import {
   fetchRuleDraftPreview,
   type RuleAccountPreview,
 } from '@/lib/rules';
-import { LinearBoltIcon, LinearClockOutlineIcon, LinearLabelIcon, LinearPlusIcon } from '@/icons/LinearIcons';
+import { BuyerlyBoltIcon, BuyerlyClockOutlineIcon, BuyerlyLabelIcon, BuyerlyPlusIcon } from '@/icons/BuyerlyIcons';
 import { RuleLabelPicker } from './RuleLabelPicker';
 import { CHIP_CLASS, ConditionChip, RunOnPicker } from './RuleWindowParts';
 import {
@@ -423,14 +423,14 @@ export const CreateRuleModal: React.FC = () => {
                       className={`${CHIP_CLASS} border-dashed`}
                       onClick={() => update({ conditions: [...draft.conditions, { ...DEFAULT_CONDITION, metric: 'leads', operator: 'eq' }] })}
                     >
-                      <LinearPlusIcon size={12} />
+                      <BuyerlyPlusIcon size={12} />
                       Condition
                     </button>
                   )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button type="button" className={CHIP_CLASS} aria-label={`Window: ${RULE_TIME_WINDOW_MENU_LABELS[draft.timeWindow]}`}>
-                        <LinearClockOutlineIcon size={12} />
+                        <BuyerlyClockOutlineIcon size={12} />
                         {RULE_TIME_WINDOW_MENU_LABELS[draft.timeWindow]}
                       </button>
                     </DropdownMenuTrigger>
@@ -516,7 +516,7 @@ export const CreateRuleModal: React.FC = () => {
                       data-popover-trigger="Run on"
                       onClick={() => setPopover((current) => (current === 'runOn' ? null : 'runOn'))}
                     >
-                      <LinearBoltIcon size={12} />
+                      <BuyerlyBoltIcon size={12} />
                       <span className={runOnEntries.length ? 'text-[var(--text-primary)]' : ''}>{runOnText}</span>
                     </button>
                     {popover === 'runOn' && (
@@ -542,7 +542,7 @@ export const CreateRuleModal: React.FC = () => {
                     >
                       {chosenLabels.length === 0 ? (
                         <>
-                          <LinearLabelIcon size={12} />
+                          <BuyerlyLabelIcon size={12} />
                           <span>Labels</span>
                         </>
                       ) : (
@@ -586,7 +586,7 @@ export const CreateRuleModal: React.FC = () => {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button type="button" className={CHIP_CLASS} aria-label={`Check: ${formatCheckInterval(draft.checkInterval)}`}>
-                        <LinearClockOutlineIcon size={12} />
+                        <BuyerlyClockOutlineIcon size={12} />
                         {formatCheckInterval(draft.checkInterval)}
                       </button>
                     </DropdownMenuTrigger>
@@ -648,7 +648,7 @@ export const CreateRuleModal: React.FC = () => {
                 <div className="flex items-center gap-3">
                   {!isEditing && (
                     <label className="flex items-center gap-2 text-[12px] text-[var(--text-secondary)]">
-                      <LinearToggle checked={createMore} onChange={setCreateMore} label="Create more" />
+                      <BuyerlyToggle checked={createMore} onChange={setCreateMore} label="Create more" />
                       <span aria-hidden="true">Create more</span>
                     </label>
                   )}

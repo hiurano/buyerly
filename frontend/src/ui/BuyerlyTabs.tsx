@@ -1,15 +1,15 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './DropdownMenu';
 
-export interface LinearTabItem {
+export interface BuyerlyTabItem {
   id: string;
   label: string;
   count?: number;
   disabled?: boolean;
 }
 
-interface LinearTabsProps {
-  tabs: LinearTabItem[];
+interface BuyerlyTabsProps {
+  tabs: BuyerlyTabItem[];
   activeTabId: string;
   onChange: (id: string) => void;
   className?: string;
@@ -37,7 +37,7 @@ const TabCount: React.FC<{ count?: number; active: boolean }> = ({ count, active
     </span>
   ) : null;
 
-export const LinearTabs: React.FC<LinearTabsProps> = ({
+export const BuyerlyTabs: React.FC<BuyerlyTabsProps> = ({
   tabs,
   activeTabId,
   onChange,
@@ -124,7 +124,7 @@ export const LinearTabs: React.FC<LinearTabsProps> = ({
             disabled={tab.disabled}
             onClick={() => onChange(tab.id)}
             onKeyDown={(e) => handleKeyDown(e, index)}
-            className="linear-tab-capsule"
+            className="buyerly-tab-capsule"
           >
             <span className="block truncate whitespace-nowrap">{tab.label}</span>
             <TabCount count={tab.count} active={isActive} />
@@ -148,7 +148,7 @@ export const LinearTabs: React.FC<LinearTabsProps> = ({
               type="button"
               data-active="true"
               aria-label={`${tabs.length - 1} more`}
-              className="linear-tab-capsule shrink-0"
+              className="buyerly-tab-capsule shrink-0"
             >
               <span className="block truncate whitespace-nowrap">{activeTab.label}</span>
               <TabCount count={activeTab.count} active />

@@ -3,7 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { apiRequest } from '@/lib/api';
 import { Button } from '@/ui/Button';
 import { Input } from '@/ui/Input';
-import { LinearCloseIcon } from '@/icons/LinearIcons';
+import { BuyerlyCloseIcon } from '@/icons/BuyerlyIcons';
 
 type Step = 'address' | 'code';
 
@@ -96,7 +96,7 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
                   type="button"
                   aria-label="Close"
                 >
-                  <LinearCloseIcon size={14} />
+                  <BuyerlyCloseIcon size={14} />
                 </button>
               </Dialog.Close>
             </header>

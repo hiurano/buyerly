@@ -3,7 +3,7 @@ import { logOut } from '@/lib/sessions';
 import { accountBlocks } from '@/lib/accounts';
 import { useAppStore } from '@/store/useAppStore';
 import { Tooltip } from '@/ui/Tooltip';
-import { LinearCheckIcon } from '@/icons/LinearIcons';
+import { BuyerlyCheckIcon } from '@/icons/BuyerlyIcons';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
 import { openSearchPage } from '@/components/search/openSearchPage';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
@@ -63,7 +63,7 @@ export const SidebarHeader: React.FC = () => {
               aria-haspopup="menu"
               aria-expanded="false"
               aria-label={`${workspaceName} Workspace Menu`}
-              className="linear-workspace-btn min-w-0 max-w-[calc(100%-36px)]"
+              className="buyerly-workspace-btn min-w-0 max-w-[calc(100%-36px)]"
             >
               {/* Linear: the workspace's own mark, its regular avatar in a 20px box. */}
               <WorkspaceAvatar workspace={workspace} size="regular" px={20} />
@@ -198,7 +198,7 @@ export const SidebarHeader: React.FC = () => {
                         <span className="flex shrink-0 items-center gap-[6px]">
                           {item.id === workspace.id && isOpenAccount(block.accountId) && (
                             <span className="text-[var(--text-primary)]" aria-label="Current workspace">
-                              <LinearCheckIcon size={16} />
+                              <BuyerlyCheckIcon size={16} />
                             </span>
                           )}
                           {number <= 9 && (
@@ -255,7 +255,7 @@ export const SidebarHeader: React.FC = () => {
               type="button"
               onClick={openSearchPage}
               aria-label="Search workspace"
-              className="linear-icon-btn linear-sidebar-icon-btn"
+              className="buyerly-icon-btn buyerly-sidebar-icon-btn"
             >
               <span className="flex h-[14px] w-[14px] items-center justify-center">
                 <svg
