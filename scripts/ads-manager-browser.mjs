@@ -445,7 +445,9 @@ try {
       assert.deepEqual(await subGroups.allTextContents(), ['Active', 'Paused', 'Active', 'Paused']);
       await page.screenshot({ path: `${output}/list-sub-groups-1440.png` });
       await settle(page);
-      assert.equal(views['ads-manager.campaigns'].layout, 'list');
+      // Only what differs from the defaults is saved: the list is the default layout.
+      assert.equal(views['ads-manager.campaigns'].layout, undefined);
+      assert.equal(views['ads-manager.campaigns'].subGrouping, 'status');
       assert.equal(views['ads-manager.campaigns'].showEmptyGroups, true);
       assert.deepEqual(errors, []);
       console.log('Ads Manager over every ad account passed');
