@@ -22,9 +22,9 @@ import {
   LinearDocumentIcon,
   LinearDotsIcon,
   LinearLinkIcon,
-  LinearMetaIcon,
+  LinearIssuesIcon,
   LinearPlusIcon,
-  LinearWalletIcon,
+  LinearProjectIcon,
 } from '@/icons/LinearIcons';
 import { DataState } from '@/ui/DataState';
 import { Button } from '@/ui/Button';
@@ -270,8 +270,8 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
         setActiveTab('preferences');
       },
     }] : []),
-    { id: 'campaigns', label: 'Campaigns', icon: <LinearMetaIcon size={16} />, run: () => goTo('campaigns') },
-    { id: 'accounts', label: 'Ad accounts', icon: <LinearWalletIcon size={16} />, run: () => goTo('accounts') },
+    { id: 'campaigns', label: 'Campaigns', icon: <LinearIssuesIcon size={16} />, run: () => goTo('campaigns') },
+    { id: 'accounts', label: 'Ad accounts', icon: <LinearProjectIcon size={16} />, run: () => goTo('accounts') },
     { id: 'rules', label: 'Rules', icon: <LinearBoltIcon size={16} />, run: () => goTo('rules') },
   ];
 
