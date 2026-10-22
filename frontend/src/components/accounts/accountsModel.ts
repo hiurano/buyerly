@@ -41,7 +41,17 @@ export const ACCOUNT_GROUPING_OPTIONS = [
   { value: 'none', label: 'No grouping' },
   { value: 'status', label: 'Status' },
   { value: 'team', label: 'Team' },
+  // Linear's Projects group by Lead: who runs which accounts, for the head of the group.
+  { value: 'lead', label: 'Lead' },
 ];
+
+/** A member who may lead an account, by the name the lists show. */
+export interface AccountLeadOption {
+  user_id: number;
+  name: string;
+}
+
+const leadValue = (account: MetaAccount) => (account.lead_user_id == null ? 'none' : String(account.lead_user_id));
 
 export const ACCOUNT_ORDERING_OPTIONS = [
   { value: 'name', label: 'Name' },
@@ -141,7 +151,28 @@ export interface AccountListGroup {
 }
 
 /** Every group the grouping has, empty ones included: Group ordering and Show empty groups pick from these. */
-export function accountGroupsFor(grouping: string, accounts: MetaAccount[], teams: AccountTeam[]): AccountListGroup[] {
+export function accountGroupsFor(
+  grouping: string,
+  accounts: MetaAccount[],
+  teams: AccountTeam[],
+  leads: AccountLeadOption[] = [],
+): AccountListGroup[] {
+  if (grouping === 'lead') {
+    return [
+      ...leads.map((lead) => ({
+        id: `lead-${lead.user_id}`,
+        label: lead.name,
+        dotColor: 'rgb(148, 163, 184)',
+        rows: accounts.filter((account) => account.lead_user_id === lead.user_id),
+      })),
+      {
+        id: 'lead-none',
+        label: 'No lead',
+        dotColor: 'rgb(115, 118, 124)',
+        rows: accounts.filter((account) => account.lead_user_id == null || !leads.some((lead) => lead.user_id === account.lead_user_id)),
+      },
+    ];
+  }
   if (grouping === 'status') {
     return ACCOUNT_STATUSES.map((status) => ({
       id: `status-${status.key}`,
@@ -180,7 +211,11 @@ const teamValues = (account: MetaAccount, teams: AccountTeam[]) => {
 };
 
 /** Filter: Status, Team, Automation on/off, Name or ID. */
-export function createAccountFilterFields(accounts: MetaAccount[], teams: AccountTeam[]): FilterFieldDefinition<MetaAccount>[] {
+export function createAccountFilterFields(
+  accounts: MetaAccount[],
+  teams: AccountTeam[],
+  leads: AccountLeadOption[] = [],
+): FilterFieldDefinition<MetaAccount>[] {
   const statuses = ACCOUNT_STATUSES.filter((status) => accounts.some((account) => accountStatus(account).key === status.key));
   return [
     {
@@ -197,6 +232,15 @@ export function createAccountFilterFields(accounts: MetaAccount[], teams: Accoun
         { value: 'none', label: 'No team' },
       ], accounts, (account) => teamValues(account, teams)),
       getValue: (account) => teamValues(account, teams),
+    },
+    {
+      id: 'lead', label: 'Lead', section: 'filters', type: 'enum',
+      operators: [...enumOperators], defaultOperator: 'is', pluralLabel: 'leads',
+      options: counted([
+        ...leads.map((lead) => ({ value: String(lead.user_id), label: lead.name })),
+        { value: 'none', label: 'No lead' },
+      ], accounts, (account) => [leadValue(account)]),
+      getValue: (account) => leadValue(account),
     },
     {
       id: 'automation', label: 'Automation', section: 'filters', type: 'enum',

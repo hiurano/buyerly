@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { Sidebar } from '@/components/sidebar/Sidebar';
 import { InboxView } from '@/components/inbox/InboxView';
 import { CampaignsView } from '@/components/campaigns/CampaignsView';
+import { MyCampaignsView } from '@/components/campaigns/MyCampaignsView';
 import { RulesView } from '@/components/rules/RulesView';
 import { AccountsView } from '@/components/accounts/AccountsView';
 import { AccountPage } from '@/components/accounts/AccountPage';
@@ -349,7 +350,8 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
                 ) : (
                   <AccountsView navigate={navigate} navigationKey={navigationKey} />
                 ))}
-                {activeTab === 'campaigns' && (
+                {activeTab === 'campaigns' && myCampaigns && <MyCampaignsView navigate={navigate} />}
+                {activeTab === 'campaigns' && !myCampaigns && (
                   <CampaignsView
                     reveal={route.tab === 'campaigns' && route.entity && route.recordId
                       ? { entity: route.entity, id: route.recordId }

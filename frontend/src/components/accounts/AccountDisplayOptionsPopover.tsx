@@ -8,6 +8,7 @@ import {
   ACCOUNT_ORDERING_OPTIONS,
   ACCOUNT_PROPERTY_LABELS,
   accountGroupsFor,
+  type AccountLeadOption,
   type AccountTeam,
 } from './accountsModel';
 import { useAccountsView } from './accountsData';
@@ -18,6 +19,7 @@ interface AccountDisplayOptionsPopoverProps {
   anchorRef: React.RefObject<HTMLElement | null>;
   accounts: MetaAccount[];
   teams: AccountTeam[];
+  leads: AccountLeadOption[];
 }
 
 /** Display options of the Ad accounts list: the shared mechanics of #385, with only what a buyer needs. */
@@ -27,6 +29,7 @@ export const AccountDisplayOptionsPopover: React.FC<AccountDisplayOptionsPopover
   anchorRef,
   accounts,
   teams,
+  leads,
 }) => {
   const { view, update, reset, displayChanged } = useAccountsView();
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -58,7 +61,7 @@ export const AccountDisplayOptionsPopover: React.FC<AccountDisplayOptionsPopover
 
   if (!isOpen) return null;
 
-  const groups = orderGroups(accountGroupsFor(view.grouping, accounts, teams), view);
+  const groups = orderGroups(accountGroupsFor(view.grouping, accounts, teams, leads), view);
   const hidden = view.hiddenGroups[view.grouping] ?? [];
 
   return createPortal(

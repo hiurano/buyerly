@@ -179,16 +179,13 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
   const sortDirection = view.direction;
   const [allMetaAccounts, setAllMetaAccounts] = useState<MetaAccount[]>([]);
   // A team's Ads Manager, as Linear's team Issues: only the team's ad accounts.
-  const { workspace, user } = useWorkspaceSession();
+  const { workspace } = useWorkspaceSession();
   const activeTeam = useActiveTeam(workspace.id);
-  // My campaigns, as Linear's My issues: the ad accounts you lead.
-  const mine = useAppStore((state) => state.myCampaigns);
   const metaAccounts = useMemo(() => {
-    if (mine) return allMetaAccounts.filter((account) => account.lead_user_id != null && account.lead_user_id === user.id);
     if (!activeTeam.key) return allMetaAccounts;
     const team = activeTeam.team;
     return team ? allMetaAccounts.filter((account) => account.id !== undefined && team.account_ids.includes(account.id)) : [];
-  }, [activeTeam.key, activeTeam.team, allMetaAccounts, mine, user.id]);
+  }, [activeTeam.key, activeTeam.team, allMetaAccounts]);
   const [metaConnections, setMetaConnections] = useState<MetaConnection[]>([]);
   const [accountsState, setAccountsState] = useState<LoadState>('loading');
   const [accountsError, setAccountsError] = useState('');
@@ -718,14 +715,6 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
         />
       );
     }
-    if (mine && metaAccounts.length === 0 && allMetaAccounts.length > 0) {
-      return (
-        <DataState
-          title="No ad accounts you lead"
-          detail="Campaigns of the ad accounts you lead show here. Set yourself as Lead on an ad account's page or in the Ad accounts list."
-        />
-      );
-    }
     if (activeTeam.missing) {
       return <DataState title="Team not found" detail="This workspace has no team with that identifier." />;
     }
@@ -831,7 +820,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ reveal, navigation
         >
           <div className="flex items-center">
             <SidebarCollapsedNavigation />
-            <ViewTitle title={mine ? 'My campaigns' : 'Campaigns'} team={mine ? null : activeTeam.team} />
+            <ViewTitle title="Campaigns" team={activeTeam.team} />
           </div>
           {selectedAccount ? (
             <DropdownMenuAccount
