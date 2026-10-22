@@ -21,7 +21,7 @@ const scenarios = [
   { width: 1440, role: 'owner' },
   { width: 390, role: 'owner' },
   { width: 1440, role: 'admin' },
-  { width: 390, role: 'buyer' },
+  { width: 390, role: 'member' },
 ];
 // A 1×1 PNG for the logo upload.
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
@@ -114,7 +114,7 @@ try {
     const nav = page.getByRole('complementary', { name: 'Settings navigation' });
     const label = `${role} at ${width}px`;
     try {
-      if (role === 'buyer') {
+      if (role === 'member') {
         // No Administration for a buyer: the address opens Preferences, the menu has no Members.
         await page.goto(`${origin}/alpha/settings/workspace`);
         await page.getByRole('heading', { name: 'Preferences', exact: true }).waitFor();

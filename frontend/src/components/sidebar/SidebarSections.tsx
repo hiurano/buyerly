@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { toast } from '@/ui/toast';
 import { openAppPath, pathForTab } from '@/lib/routing';
 import type { TeamItem } from '@/lib/teams';
+import { useWorkspaceSession } from '@/lib/workspaceSession';
 
 const COLLAPSED_KEY = 'buyerly-sidebar-collapsed';
 
@@ -129,6 +130,7 @@ export const SidebarTeam: React.FC<SidebarTeamProps> = ({ team, workspaceSlug, p
   const setActiveTab = useAppStore((state) => state.setActiveTab);
   const setActiveTeamKey = useAppStore((state) => state.setActiveTeamKey);
   const openTeamSettings = useAppStore((state) => state.openTeamSettings);
+  const { workspace } = useWorkspaceSession();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const open = (tab: AppTab) => {
@@ -160,14 +162,16 @@ export const SidebarTeam: React.FC<SidebarTeamProps> = ({ team, workspaceSlug, p
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" sideOffset={4}>
-              <DropdownMenuItem
-                onSelect={() => {
-                  openTeamSettings(team.key);
-                  setActiveTab('preferences');
-                }}
-              >
-                Team settings
-              </DropdownMenuItem>
+              {workspace.role !== 'guest' && (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    openTeamSettings(team.key);
+                    setActiveTab('preferences');
+                  }}
+                >
+                  Team settings
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 onSelect={() => {
                   navigator.clipboard.writeText(teamLink).then(

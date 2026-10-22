@@ -23,8 +23,10 @@ export interface MemberItem {
 export const ROLE_LABELS: Record<string, string> = {
   owner: 'Owner',
   admin: 'Admin',
-  buyer: 'Buyer',
-  viewer: 'Viewer',
+  member: 'Member',
+  guest: 'Guest',
+  /** A role on one team, beside the workspace roles. */
+  'team-owner': 'Team owner',
 };
 
 export const roleLabel = (role: string) => ROLE_LABELS[role] || role;
@@ -42,11 +44,11 @@ export function errorMessage(error: unknown, fallback: string): string {
  */
 export const ASSIGNABLE_ROLES: Array<{ value: string; label: string; description: string }> = [
   { value: 'admin', label: 'Workspace admin', description: 'Manages members, invites and workspace settings' },
-  { value: 'buyer', label: 'Buyer', description: 'Works with accounts, campaigns and rules' },
-  { value: 'viewer', label: 'Viewer', description: 'Sees the workspace without changing it' },
+  { value: 'member', label: 'Member', description: 'Works with ad accounts, campaigns and rules, and creates teams' },
+  { value: 'guest', label: 'Guest', description: 'Sees only the teams they are added to; reads for now' },
 ];
 
-/** "an admin", "a buyer": the wording of Linear's "Role has been changed to a member". */
+/** "an admin", "a member": the wording of Linear's "Role has been changed to a member". */
 const withArticle = (role: string) => `${/^[aeiou]/i.test(role) ? 'an' : 'a'} ${role}`;
 
 interface ChoiceDialogProps {

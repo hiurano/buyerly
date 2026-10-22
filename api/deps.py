@@ -421,13 +421,17 @@ def ensure_workspace_write_access(
     member: Optional[WorkspaceMember],
     action_description: str = "changing data",
 ) -> None:
-    """Ensure user has write access to workspace (owner, admin, buyer). Viewers and non-members are blocked."""
+    """Ensure user has write access to workspace (owner, admin, member).
+
+    Guests and non-members are blocked. Linear's guests act inside the teams they
+    are added to; until Buyerly scopes data by team, a guest only reads.
+    """
     if not member:
         raise HTTPException(status_code=403, detail=f"You do not have access to this workspace for {action_description}")
-    if member.role == "viewer":
+    if member.role == "guest":
         raise HTTPException(
             status_code=403,
-            detail=f"The Viewer role is read-only and cannot perform {action_description}",
+            detail=f"Guests can't perform {action_description}",
         )
 
 

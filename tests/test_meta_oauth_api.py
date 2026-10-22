@@ -252,7 +252,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
                 WorkspaceMember(
                     workspace_id=self.workspace_id,
                     user_id=viewer.id,
-                    role="viewer",
+                    role="guest",
                 )
             )
             second_workspace = Workspace(
@@ -614,7 +614,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
                 WorkspaceMember(
                     workspace_id=self.workspace_id,
                     user_id=viewer.id,
-                    role="viewer",
+                    role="guest",
                 )
             )
             await session.commit()
@@ -646,7 +646,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
                         )
                     )
                 ).scalar_one()
-                member.role = "viewer"
+                member.role = "guest"
                 await session.commit()
 
             fake_oauth = AsyncMock()

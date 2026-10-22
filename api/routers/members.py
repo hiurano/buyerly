@@ -79,7 +79,7 @@ async def list_workspace_members(
                     case(
                         (WorkspaceMember.role == "owner", 1),
                         (WorkspaceMember.role == "admin", 2),
-                        (WorkspaceMember.role == "buyer", 3),
+                        (WorkspaceMember.role == "member", 3),
                         else_=4,
                     ),
                     WorkspaceMember.joined_at.asc(),
@@ -282,7 +282,7 @@ async def remove_workspace_member(
                 session.add(new_member)
                 await session.flush()
                 await create_default_team(session, new_ws.id, new_ws.name, target_user.id)
-                await join_default_team(session, new_ws.id, member_id=new_member.id)
+                await join_default_team(session, new_ws.id, member_id=new_member.id, as_owner=True)
                 target_user.active_workspace_id = new_ws.id
 
         await session.commit()
@@ -357,7 +357,7 @@ async def leave_workspace(
                 session.add(new_member)
                 await session.flush()
                 await create_default_team(session, new_ws.id, new_ws.name, user.id)
-                await join_default_team(session, new_ws.id, member_id=new_member.id)
+                await join_default_team(session, new_ws.id, member_id=new_member.id, as_owner=True)
                 db_user.active_workspace_id = new_ws.id
                 next_ws_id = new_ws.id
 
@@ -698,7 +698,7 @@ async def _create_invite_link(session, workspace_id: int, user: User, event_type
         workspace_id=workspace_id,
         token=f"inv_{secrets.token_urlsafe(24)}",
         email=None,
-        role="buyer",
+        role="member",
         inviter_user_id=user.id,
         status="pending",
         max_uses=0,

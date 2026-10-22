@@ -78,13 +78,13 @@ function installModelContextStandIn() {
 /* ------------------------------------------------------- synthetic API -- */
 
 const workspaces = [
-  ['alpha', 'owner'], ['beta', 'owner'], ['stale', 'buyer'], ['watch', 'viewer'],
+  ['alpha', 'owner'], ['beta', 'owner'], ['stale', 'member'], ['watch', 'guest'],
 ].map(([slug, role], index) => ({
   id: index + 1, slug, name: slug, role, badge_text: slug[0], badge_color: '', logo_url: '', is_active: index === 0,
 }));
 // The server's view of the roles. "stale" tells the client buyer but the
-// server has since made them a viewer: its 403 is what must stop the agent.
-const serverRoles = { alpha: 'owner', beta: 'owner', stale: 'viewer', watch: 'viewer' };
+// server has since made them a guest: its 403 is what must stop the agent.
+const serverRoles = { alpha: 'owner', beta: 'owner', stale: 'guest', watch: 'guest' };
 const user = {
   username: 'agent-test', full_name: 'Agent Test', first_name: 'Agent', last_name: 'Test',
   email: 'agent@example.test', email_verified: true, unconfirmed_email: null, avatar_url: '',
@@ -168,8 +168,8 @@ function apiHandler(state) {
     if (method !== 'GET') {
       const body = request.postDataJSON();
       state.writes.push({ method, path, workspace, body, csrf: request.headers()['x-csrf-token'] });
-      if (serverRoles[workspace] === 'viewer') {
-        return route.fulfill({ status: 403, json: { detail: 'The Viewer role is read-only and cannot perform creating rules' } });
+      if (serverRoles[workspace] === 'guest') {
+        return route.fulfill({ status: 403, json: { detail: "Guests can't perform creating rules" } });
       }
       if (path === '/api/presets') {
         if (body.name.includes('contradiction')) {
@@ -609,20 +609,20 @@ try {
   assert.equal(state.reads.at(-1).workspace, 'beta');
   assert.equal(state.writes.length, writesBeforeSwitch);
 
-  // A viewer's agent is refused: by the server when the page still thinks
+  // A guest's agent is refused: by the server when the page still thinks
   // otherwise, and before asking anyone when the page knows.
   await openWorkspace(page, '/stale/rules');
   await waitForTools(page);
   const staleCall = await startTool(page, 'create_rule', { name: 'Stale role', conditions: spendAndNoLeads });
   await approve(page, 'Create rule');
   assert.deepEqual(await finishTool(page, staleCall), {
-    error: 'The Viewer role is read-only and cannot perform creating rules', status: 403,
+    error: "Guests can't perform creating rules", status: 403,
   });
   await openWorkspace(page, '/watch/rules');
   await waitForTools(page);
   const viewerWrites = state.writes.length;
   assert.deepEqual(await callTool(page, 'attach_rule', { rule_id: 40, account_id: 'act_400' }), {
-    error: 'The Viewer role is read-only in this workspace and cannot attach rules to ad accounts.', status: 403,
+    error: "Guests can't attach rules to ad accounts in this workspace.", status: 403,
   });
   assert.equal(await dialog.count(), 0);
   assert.equal(state.writes.length, viewerWrites);

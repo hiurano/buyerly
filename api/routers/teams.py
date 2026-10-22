@@ -25,6 +25,7 @@ from api.schemas import (
     TeamDocumentItem,
     TeamItem,
     TeamMembersRequest,
+    TeamOwnerRequest,
     UpdateTeamRequest,
 )
 from database.db import async_session_maker
@@ -67,9 +68,23 @@ async def _workspace_role(session, user: User, workspace_id: int) -> WorkspaceMe
     return member
 
 
-def _require_admin(member: WorkspaceMember) -> None:
-    if member.role not in ("owner", "admin"):
-        raise HTTPException(status_code=403, detail="Only workspace owners and admins can manage teams")
+async def _require_team_manager(session, member: WorkspaceMember, team: Team) -> None:
+    """Linear's team owners run their team; workspace owners and admins run every team."""
+    if member.role in ("owner", "admin"):
+        return
+    if member.id is not None:
+        owns = (
+            await session.execute(
+                select(TeamMember.id).where(
+                    TeamMember.team_id == team.id,
+                    TeamMember.member_id == member.id,
+                    TeamMember.is_owner.is_(True),
+                )
+            )
+        ).first()
+        if owns:
+            return
+    raise HTTPException(status_code=403, detail="Only team owners and workspace admins can manage this team")
 
 
 async def _purge_expired(session, workspace_id: int) -> None:
@@ -112,18 +127,21 @@ async def _ensure_unique(session, workspace_id: int, name: str, key: str, exclud
 async def _team_items(session, teams: List[Team], user: User) -> List[TeamItem]:
     ids = [team.id for team in teams]
     members: dict[int, List[int]] = {team_id: [] for team_id in ids}
+    owners: dict[int, List[int]] = {team_id: [] for team_id in ids}
     accounts: dict[int, List[int]] = {team_id: [] for team_id in ids}
     if ids:
         member_rows = (
             await session.execute(
-                select(TeamMember.team_id, WorkspaceMember.user_id)
+                select(TeamMember.team_id, WorkspaceMember.user_id, TeamMember.is_owner)
                 .join(WorkspaceMember, WorkspaceMember.id == TeamMember.member_id)
                 .where(TeamMember.team_id.in_(ids))
                 .order_by(TeamMember.joined_at.asc(), TeamMember.id.asc())
             )
         ).all()
-        for team_id, user_id in member_rows:
+        for team_id, user_id, is_owner in member_rows:
             members[team_id].append(user_id)
+            if is_owner:
+                owners[team_id].append(user_id)
         account_rows = (
             await session.execute(
                 select(TeamAccount.team_id, TeamAccount.account_id)
@@ -146,6 +164,7 @@ async def _team_items(session, teams: List[Team], user: User) -> List[TeamItem]:
                 _utc_iso(team.deleted_at + timedelta(days=TEAM_RESTORE_DAYS)) if team.deleted_at else None
             ),
             member_user_ids=members[team.id],
+            owner_user_ids=owners[team.id],
             account_ids=accounts[team.id],
             is_member=user.id in members[team.id],
         )
@@ -197,10 +216,11 @@ async def create_team(
     req: CreateTeamRequest,
     user: User = Depends(get_current_user),
 ):
-    """Linear's Create team: name and identifier; whoever creates it joins it."""
+    """Linear's Create team: name and identifier; any member may, and becomes its owner."""
     async with async_session_maker() as session:
         member = await _workspace_role(session, user, workspace_id)
-        _require_admin(member)
+        if member.role == "guest":
+            raise HTTPException(status_code=403, detail="Guests can't create teams")
         name = _clean_name(req.name)
         key = _clean_key(req.key)
         await _ensure_unique(session, workspace_id, name, key)
@@ -215,7 +235,7 @@ async def create_team(
         await session.flush()
         # A support session's member is not a real row: it creates the team without joining it.
         if member.id is not None:
-            session.add(TeamMember(team_id=team.id, member_id=member.id))
+            session.add(TeamMember(team_id=team.id, member_id=member.id, is_owner=True))
         await _commit_unique(session)
         return await _team_item(session, team, user)
 
@@ -230,8 +250,8 @@ async def update_team(
     """General: name, identifier and description, each saved on its own."""
     async with async_session_maker() as session:
         member = await _workspace_role(session, user, workspace_id)
-        _require_admin(member)
         team = await _load_team(session, workspace_id, team_id)
+        await _require_team_manager(session, member, team)
         name = _clean_name(req.name) if req.name is not None else team.name
         key = _clean_key(req.key) if req.key is not None else team.key
         await _ensure_unique(session, workspace_id, name, key, exclude_id=team.id)
@@ -247,8 +267,9 @@ async def update_team(
 @router.post("/workspaces/{workspace_id}/teams/{team_id}/retire", response_model=TeamItem)
 async def retire_team(workspace_id: int, team_id: int, user: User = Depends(get_current_user)):
     async with async_session_maker() as session:
-        _require_admin(await _workspace_role(session, user, workspace_id))
+        member = await _workspace_role(session, user, workspace_id)
         team = await _load_team(session, workspace_id, team_id)
+        await _require_team_manager(session, member, team)
         if team.retired_at is None:
             team.retired_at = _now()
             await session.commit()
@@ -259,7 +280,7 @@ async def retire_team(workspace_id: int, team_id: int, user: User = Depends(get_
 async def restore_team(workspace_id: int, team_id: int, user: User = Depends(get_current_user)):
     """Linear's Restore team: a retired team becomes active, a deleted one comes back as it was."""
     async with async_session_maker() as session:
-        _require_admin(await _workspace_role(session, user, workspace_id))
+        member = await _workspace_role(session, user, workspace_id)
         await _purge_expired(session, workspace_id)
         team = (
             await session.execute(
@@ -268,6 +289,7 @@ async def restore_team(workspace_id: int, team_id: int, user: User = Depends(get
         ).scalar_one_or_none()
         if not team:
             raise HTTPException(status_code=404, detail="Team not found")
+        await _require_team_manager(session, member, team)
         if team.deleted_at is not None:
             await _ensure_unique(session, workspace_id, team.name, team.key.upper(), exclude_id=team.id)
             team.deleted_at = None
@@ -280,8 +302,9 @@ async def restore_team(workspace_id: int, team_id: int, user: User = Depends(get
 @router.delete("/workspaces/{workspace_id}/teams/{team_id}")
 async def delete_team(workspace_id: int, team_id: int, user: User = Depends(get_current_user)):
     async with async_session_maker() as session:
-        _require_admin(await _workspace_role(session, user, workspace_id))
+        member = await _workspace_role(session, user, workspace_id)
         team = await _load_team(session, workspace_id, team_id)
+        await _require_team_manager(session, member, team)
         team.deleted_at = _now()
         await session.commit()
         return {
@@ -299,14 +322,15 @@ async def add_team_members(
 ):
     """Linear's "Add members to <team>": workspace members only; those already on it are skipped.
 
-    Anyone may add themselves, as Linear's "Join a team"; adding others takes the owner or an admin.
+    Any member may add themselves, as Linear's "Join a team"; adding others takes a team owner or an
+    admin. Guests join only when someone who runs the team adds them.
     """
     async with async_session_maker() as session:
         member = await _workspace_role(session, user, workspace_id)
         wanted = set(req.user_ids)
-        if wanted != {user.id}:
-            _require_admin(member)
         team = await _load_team(session, workspace_id, team_id)
+        if wanted != {user.id} or member.role == "guest":
+            await _require_team_manager(session, member, team)
         rows = (
             await session.execute(
                 select(WorkspaceMember).where(
@@ -349,9 +373,9 @@ async def remove_team_member(
     """Remove from team; anyone may take themselves off a team (Linear's Leave team…)."""
     async with async_session_maker() as session:
         member = await _workspace_role(session, user, workspace_id)
-        if member_user_id != user.id:
-            _require_admin(member)
         team = await _load_team(session, workspace_id, team_id)
+        if member_user_id != user.id:
+            await _require_team_manager(session, member, team)
         target = (
             await session.execute(
                 select(WorkspaceMember.id).where(
@@ -371,6 +395,36 @@ async def remove_team_member(
         return await _team_item(session, team, user)
 
 
+@router.patch("/workspaces/{workspace_id}/teams/{team_id}/members/{member_user_id}", response_model=TeamItem)
+async def set_team_owner(
+    workspace_id: int,
+    team_id: int,
+    member_user_id: int,
+    req: TeamOwnerRequest,
+    user: User = Depends(get_current_user),
+):
+    """Linear's "Make team owner" / "Remove team owner": a team owner or an admin promotes a member of the team."""
+    async with async_session_maker() as session:
+        member = await _workspace_role(session, user, workspace_id)
+        team = await _load_team(session, workspace_id, team_id)
+        await _require_team_manager(session, member, team)
+        row = (
+            await session.execute(
+                select(TeamMember, WorkspaceMember.role)
+                .join(WorkspaceMember, WorkspaceMember.id == TeamMember.member_id)
+                .where(TeamMember.team_id == team.id, WorkspaceMember.user_id == member_user_id)
+            )
+        ).first()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Not a member of this team")
+        team_member, role = row
+        if req.is_owner and role == "guest":
+            raise HTTPException(status_code=400, detail="Guests can't be team owners")
+        team_member.is_owner = req.is_owner
+        await session.commit()
+        return await _team_item(session, team, user)
+
+
 @router.post("/workspaces/{workspace_id}/teams/{team_id}/accounts", response_model=TeamItem)
 async def add_team_accounts(
     workspace_id: int,
@@ -380,8 +434,9 @@ async def add_team_accounts(
 ):
     """Ad accounts the team works on: only this workspace's own; those already on it are skipped."""
     async with async_session_maker() as session:
-        _require_admin(await _workspace_role(session, user, workspace_id))
+        member = await _workspace_role(session, user, workspace_id)
         team = await _load_team(session, workspace_id, team_id)
+        await _require_team_manager(session, member, team)
         wanted = set(req.account_ids)
         found = set(
             (
@@ -420,8 +475,9 @@ async def remove_team_account(
     user: User = Depends(get_current_user),
 ):
     async with async_session_maker() as session:
-        _require_admin(await _workspace_role(session, user, workspace_id))
+        member = await _workspace_role(session, user, workspace_id)
         team = await _load_team(session, workspace_id, team_id)
+        await _require_team_manager(session, member, team)
         result = await session.execute(
             delete(TeamAccount).where(TeamAccount.team_id == team.id, TeamAccount.account_id == account_pk)
         )
@@ -435,9 +491,9 @@ async def remove_team_account(
 
 
 def _require_writer(member: WorkspaceMember) -> None:
-    """Everyone but a viewer writes the team's documents, as anyone in Linear edits a team's docs."""
-    if member.role == "viewer":
-        raise HTTPException(status_code=403, detail="Viewers can't change documents")
+    """Everyone but a guest writes the team's documents for now, as anyone in Linear edits a team's docs."""
+    if member.role == "guest":
+        raise HTTPException(status_code=403, detail="Guests can't change documents")
 
 
 def _document_item(document: TeamDocument) -> TeamDocumentItem:

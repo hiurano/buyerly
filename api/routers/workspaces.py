@@ -79,7 +79,7 @@ async def create_workspace(req: CreateWorkspaceRequest, user: User = Depends(get
         await session.flush()
         # Linear's workspace starts with a team named after it.
         await create_default_team(session, ws.id, ws.name, user.id)
-        await join_default_team(session, ws.id, member_id=member.id)
+        await join_default_team(session, ws.id, member_id=member.id, as_owner=True)
 
         db_user = (await session.execute(select(User).where(User.id == user.id))).scalar_one()
         db_user.active_workspace_id = ws.id

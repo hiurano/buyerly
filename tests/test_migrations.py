@@ -1535,6 +1535,61 @@ class TestAlembicMigrations(unittest.IsolatedAsyncioTestCase):
             await init_test_db(engine)
             await engine.dispose()
 
+    async def test_roles_become_linears_and_team_creators_own_their_teams(self):
+        from alembic.config import Config
+        from alembic import command
+        import os
+
+        engine = create_test_engine()
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text("DROP SCHEMA public CASCADE"))
+                await conn.execute(text("CREATE SCHEMA public"))
+
+            root = os.path.dirname(os.path.dirname(__file__))
+            alembic_cfg = Config(os.path.join(root, "alembic.ini"))
+            alembic_cfg.set_main_option("script_location", os.path.join(root, "alembic"))
+
+            command.upgrade(alembic_cfg, "0044_account_lead")
+            async with engine.begin() as conn:
+                ids = {}
+                for name in ("creator", "watcher"):
+                    ids[name] = (await conn.execute(text(
+                        "INSERT INTO users (username, full_name, first_name, last_name, avatar_url, "
+                        "onboarding_step, onboarding_completed, role, is_approved, created_at) "
+                        f"VALUES ('{name}', '', '', '', '', 'completed', true, 'buyer', true, NOW()) RETURNING id"
+                    ))).scalar_one()
+                workspace_id = (await conn.execute(text(
+                    "INSERT INTO workspaces (name, slug, badge_text, badge_color, logo_url, owner_user_id, "
+                    f"created_at, updated_at) VALUES ('Roles', 'roles', 'R', '#F5A300', '', {ids['creator']}, "
+                    "NOW(), NOW()) RETURNING id"
+                ))).scalar_one()
+                members = {}
+                for name, role in (("creator", "buyer"), ("watcher", "viewer")):
+                    members[name] = (await conn.execute(text(
+                        "INSERT INTO workspace_members (workspace_id, user_id, role, joined_at, inbox_read_before) "
+                        f"VALUES ({workspace_id}, {ids[name]}, '{role}', NOW(), NOW()) RETURNING id"
+                    ))).scalar_one()
+                team_id = (await conn.execute(text(
+                    "INSERT INTO teams (workspace_id, name, key, description, created_by_user_id, created_at, updated_at) "
+                    f"VALUES ({workspace_id}, 'Media', 'MED', '', {ids['creator']}, NOW(), NOW()) RETURNING id"
+                ))).scalar_one()
+                for name in ("creator", "watcher"):
+                    await conn.execute(text(
+                        f"INSERT INTO team_members (team_id, member_id, joined_at) VALUES ({team_id}, {members[name]}, NOW())"
+                    ))
+
+            command.upgrade(alembic_cfg, "0045_linear_roles")
+            async with engine.connect() as conn:
+                rows = (await conn.execute(text(
+                    "SELECT u.username, m.role, t.is_owner FROM workspace_members m "
+                    "JOIN users u ON u.id = m.user_id JOIN team_members t ON t.member_id = m.id ORDER BY u.username"
+                ))).all()
+            self.assertEqual([tuple(row) for row in rows], [("creator", "member", True), ("watcher", "guest", False)])
+        finally:
+            await init_test_db(engine)
+            await engine.dispose()
+
     async def test_alembic_upgrade_head_applies_successfully(self):
         from alembic.config import Config
         from alembic import command

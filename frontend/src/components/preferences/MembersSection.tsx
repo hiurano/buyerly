@@ -50,7 +50,7 @@ const FILTER_LABELS: Record<MemberFilter, string> = {
 
 type MemberSort = 'name' | 'email' | 'status' | 'joined';
 /** Status sorts as the roles rank, owner first. */
-const ROLE_ORDER = ['owner', 'admin', 'buyer', 'viewer'];
+const ROLE_ORDER = ['owner', 'admin', 'member', 'guest'];
 
 const csvCell = (value: string) => (/[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
 
@@ -78,7 +78,7 @@ function downloadMembersCsv(workspace: Workspace, members: MemberItem[], invites
 
 /** Linear marks only the roles above a member with a tinted badge. */
 export const RoleStatus: React.FC<{ role: string }> = ({ role }) => (
-  role === 'owner' || role === 'admin' ? (
+  role === 'owner' || role === 'admin' || role === 'team-owner' ? (
     <span className="inline-flex h-[19px] items-center rounded-[3px] bg-[var(--role-badge-bg)] px-1.5 text-[12px] font-[450] text-[var(--role-badge-fg)]">
       {roleLabel(role)}
     </span>
@@ -132,7 +132,7 @@ interface InviteDialogProps {
 export const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onClose, onSent }) => {
   const [text, setText] = useState('');
   const [blurred, setBlurred] = useState(false);
-  const [role, setRole] = useState('buyer');
+  const [role, setRole] = useState('member');
   const [busy, setBusy] = useState(false);
   const fieldRef = useRef<HTMLTextAreaElement>(null);
 
@@ -140,7 +140,7 @@ export const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onC
     if (open) {
       setText('');
       setBlurred(false);
-      setRole('buyer');
+      setRole('member');
     }
   }, [open]);
 

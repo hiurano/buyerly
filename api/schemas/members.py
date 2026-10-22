@@ -17,7 +17,7 @@ class WorkspaceMemberItem(BaseModel):
 
 
 class UpdateMemberRoleRequest(BaseModel):
-    role: str = Field(..., pattern="^(admin|buyer|viewer)$")
+    role: str = Field(..., pattern="^(admin|member|guest)$")
 
 
 class TransferOwnershipRequest(BaseModel):
@@ -26,7 +26,7 @@ class TransferOwnershipRequest(BaseModel):
 
 class CreateWorkspaceInviteRequest(BaseModel):
     email: Optional[str] = Field(None, max_length=255)
-    role: str = Field(default="buyer", pattern="^(admin|buyer|viewer)$")
+    role: str = Field(default="member", pattern="^(admin|member|guest)$")
     expires_in_days: int = Field(default=7, ge=1, le=365)
     max_uses: int = Field(default=1, ge=0, le=1000)
 

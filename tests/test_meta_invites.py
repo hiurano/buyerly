@@ -90,7 +90,7 @@ class TestMetaInvites(unittest.IsolatedAsyncioTestCase):
             )
             session.add(viewer)
             await session.flush()
-            session.add(WorkspaceMember(workspace_id=ws.id, user_id=viewer.id, role="viewer"))
+            session.add(WorkspaceMember(workspace_id=ws.id, user_id=viewer.id, role="guest"))
             viewer.active_workspace_id = ws.id
 
             # Buyer user

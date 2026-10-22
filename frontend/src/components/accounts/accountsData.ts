@@ -32,7 +32,7 @@ function errorText(error: unknown): string {
  */
 export function useWorkspaceAccounts() {
   const { workspace } = useWorkspaceSession();
-  const canEdit = workspace.role !== 'viewer';
+  const canEdit = workspace.role !== 'guest';
   const [accounts, setAccounts] = useState<MetaAccount[]>([]);
   const [teams, setTeams] = useState<AccountTeam[]>([]);
   const [members, setMembers] = useState<AccountMember[]>([]);

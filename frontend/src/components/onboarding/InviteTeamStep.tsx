@@ -42,7 +42,7 @@ export const InviteTeamStep: React.FC<InviteTeamStepProps> = ({ workspace, busy,
   const [copied, setCopied] = useState(false);
   const [text, setText] = useState('');
   const [blurred, setBlurred] = useState(false);
-  const [role, setRole] = useState('buyer');
+  const [role, setRole] = useState('member');
   const copiedTimer = useRef<number>();
   // One request per workspace, even when the effect runs twice, so the link is turned on once.
   const linkRequest = useRef<{ workspaceId: number; promise: Promise<InviteLinkResponse> } | null>(null);
@@ -136,7 +136,7 @@ export const InviteTeamStep: React.FC<InviteTeamStepProps> = ({ workspace, busy,
               </button>
             </div>
             <p className="buyerly-auth-hint">
-              Anyone with the link joins as a Buyer. You can turn it off in Settings → Security.
+              Anyone with the link joins as a Member. You can turn it off in Settings → Security.
             </p>
           </>
         )}

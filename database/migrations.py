@@ -62,6 +62,10 @@ POST_BASELINE_COLUMNS = {
     },
     # Added by the Inbox read-state migration (0028), the Inbox Display
     # options migration (0029) and the notification channels migration (0030).
+    # Added by the Linear roles migration (0045).
+    "team_members": {
+        "is_owner",
+    },
     "workspace_members": {
         "inbox_read_before",
         "inbox_deleted_before",

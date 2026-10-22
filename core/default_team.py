@@ -55,8 +55,12 @@ async def join_default_team(
     *,
     member_id: Optional[int] = None,
     account_id: Optional[int] = None,
+    as_owner: bool = False,
 ) -> None:
-    """Puts a new workspace member or ad account on the default team; rows must be flushed."""
+    """Puts a new workspace member or ad account on the default team; rows must be flushed.
+
+    `as_owner`: the workspace's creator, who owns the team made with it, as in Linear.
+    """
     if workspace_id is None:
         return
     team = await default_team(session, workspace_id)
@@ -70,7 +74,7 @@ async def join_default_team(
             )
         ).scalar_one()
         if not exists:
-            session.add(TeamMember(team_id=team.id, member_id=member_id))
+            session.add(TeamMember(team_id=team.id, member_id=member_id, is_owner=as_owner))
     if account_id is not None:
         exists = (
             await session.execute(

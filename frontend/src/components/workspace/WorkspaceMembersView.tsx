@@ -14,7 +14,7 @@ import { LinearDataListRow, LinearDataListToolbar, LinearDataTable, type LinearD
 import { ListSearchField } from './ListSearchField';
 
 type MemberSort = 'name' | 'status' | 'joined';
-const ROLE_ORDER = ['owner', 'admin', 'buyer', 'viewer'];
+const ROLE_ORDER = ['owner', 'admin', 'member', 'guest'];
 
 const COLUMNS: LinearDataListColumn[] = [
   { id: 'name', label: 'Name', width: 'minmax(220px, 1fr)', sortable: true },

@@ -96,7 +96,7 @@ export function useWebMcpTools(workspace: Pick<Workspace, 'slug' | 'role'>): voi
     const controller = new AbortController();
     const tools = workspaceTools({
       workspace: slug,
-      canWrite: role !== 'viewer',
+      canWrite: role !== 'guest',
       inScope: useAppStore.getState().captureScope(),
       signal: controller.signal,
     });

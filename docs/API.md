@@ -79,14 +79,14 @@ Slug нормализуется в ASCII и ограничивается 60 си
 | Метод и путь | Тело | Назначение |
 |---|---|---|
 | `GET /api/workspaces/{id}/members` | — | список участников воркспейса, их ролей, аватаров и даты вступления |
-| `PATCH /api/workspaces/{id}/members/{user_id}` | `role` (`admin`, `buyer`, `viewer`) | изменение роли участника (доступно `owner` и `admin`) |
+| `PATCH /api/workspaces/{id}/members/{user_id}` | `role` (`admin`, `member`, `guest`) | изменение роли участника (доступно `owner` и `admin`) |
 | `DELETE /api/workspaces/{id}/members/{user_id}` | — | исключение участника из воркспейса (доступно `owner` и `admin`) |
 | `POST /api/workspaces/{id}/leave` | — | добровольный выход текущего пользователя из воркспейса |
 | `POST /api/workspaces/{id}/transfer-ownership` | `new_owner_user_id` | передача прав владельца воркспейса другому участнику (только `owner`) |
 
 ## Команды (Teams)
 
-Settings → Administration → Teams, как в Linear (#371). Команда объединяет участников воркспейса и рекламные кабинеты, с которыми они работают; доступ она не меняет. Читают команды все участники воркспейса, создают, меняют, архивируют, удаляют и восстанавливают — `owner` и `admin`. Имя (до 48 символов) и идентификатор (1–7 латинских букв и цифр, с буквы, хранится заглавными) уникальны среди неудалённых команд без учёта регистра: повтор — 409 «A team with this name already exists» / «… identifier …». Ответ — `TeamItem`: `id`, `name`, `key`, `description`, `created_at`, `retired_at`, `deleted_at`, `restorable_until`, `member_user_ids`, `account_ids`, `is_member`.
+Settings → Administration → Teams, как в Linear (#371). Команда объединяет участников воркспейса и рекламные кабинеты, с которыми они работают; доступ она не меняет. Роли воркспейса — как в Linear: `owner`, `admin`, `member`, `guest` (гость пока только читает). Читают команды все участники воркспейса; создать команду может любой, кроме гостя, и создатель становится её владельцем (team owner). Меняют, архивируют, удаляют и восстанавливают команду, управляют её участниками и кабинетами её владельцы, а также `owner` и `admin` воркспейса. Имя (до 48 символов) и идентификатор (1–7 латинских букв и цифр, с буквы, хранится заглавными) уникальны среди неудалённых команд без учёта регистра: повтор — 409 «A team with this name already exists» / «… identifier …». Ответ — `TeamItem`: `id`, `name`, `key`, `description`, `created_at`, `retired_at`, `deleted_at`, `restorable_until`, `member_user_ids`, `owner_user_ids` (владельцы команды), `account_ids`, `is_member`.
 
 | Метод и путь | Тело | Назначение |
 |---|---|---|
@@ -96,12 +96,13 @@ Settings → Administration → Teams, как в Linear (#371). Команда �
 | `POST /api/workspaces/{workspace_id}/teams/{team_id}/retire` | — | Retire: команда уходит из Active в Retired, участники и кабинеты сохраняются |
 | `POST /api/workspaces/{workspace_id}/teams/{team_id}/restore` | — | вернуть архивную в Active или удалённую — как была; 409, если её имя или идентификатор уже заняты |
 | `DELETE /api/workspaces/{workspace_id}/teams/{team_id}` | — | удалить; 30 дней её можно восстановить, ответ — `restorable_until` |
-| `POST /api/workspaces/{workspace_id}/teams/{team_id}/members` | `user_ids` | добавить участников воркспейса (уже состоящих пропускает; чужих — 400); себя добавить может любой участник (Join a team), других — `owner` и `admin` |
+| `POST /api/workspaces/{workspace_id}/teams/{team_id}/members` | `user_ids` | добавить участников воркспейса (уже состоящих пропускает; чужих — 400); себя добавить может любой участник, кроме гостя (Join a team), других — владелец команды, `owner` и `admin` |
 | `DELETE /api/workspaces/{workspace_id}/teams/{team_id}/members/{member_user_id}` | — | убрать из команды; себя может убрать любой участник команды (Leave team) |
+| `PATCH /api/workspaces/{workspace_id}/teams/{team_id}/members/{member_user_id}` | `is_owner` | Make team owner / Remove team owner: владелец команды или админ делает участника команды владельцем; гость владельцем быть не может (400), не участник команды — 404 |
 | `POST /api/workspaces/{workspace_id}/teams/{team_id}/accounts` | `account_ids` | добавить кабинеты этого воркспейса (`accounts.id`; чужие — 400) |
 | `DELETE /api/workspaces/{workspace_id}/teams/{team_id}/accounts/{account_pk}` | — | убрать кабинет из команды |
 | `GET /api/workspaces/{workspace_id}/teams/{team_id}/documents` | — | документы команды (Documents на её Home), последние изменённые первыми; `TeamDocumentItem`: `id`, `team_id`, `title`, `content` (Markdown), `created_by_user_id`, `updated_by_user_id`, `created_at`, `updated_at` |
-| `POST /api/workspaces/{workspace_id}/teams/{team_id}/documents` | `title?`, `content?` | создать документ (201); пишут все, кроме `viewer` |
+| `POST /api/workspaces/{workspace_id}/teams/{team_id}/documents` | `title?`, `content?` | создать документ (201); пишут все, кроме `guest` |
 | `PATCH /api/workspaces/{workspace_id}/teams/{team_id}/documents/{document_id}` | `title?`, `content?` | изменить документ; документ другой команды — 404 |
 | `DELETE /api/workspaces/{workspace_id}/teams/{team_id}/documents/{document_id}` | — | удалить документ |
 
@@ -115,7 +116,7 @@ Settings → Administration → Teams, как в Linear (#371). Команда �
 | `GET /api/workspaces/{id}/invites` | — | список активных и истекших приглашений воркспейса |
 | `DELETE /api/workspaces/{id}/invites/{invite_id}` | — | атомарный отзыв активного приглашения относительно конкурентного принятия |
 | `POST /api/workspaces/{id}/invites/{invite_id}/resend` | — | owner/admin: заново отправляет письмо по ждущему персональному приглашению (в т. ч. истёкшему) с той же ссылкой и новым сроком 7 дней; отозванное, принятое и публичную ссылку — 400, сбой письма — 502 |
-| `GET /api/workspaces/{id}/invite-link` | — | owner/admin: Settings → Security → Invite links — `{"invite_url": "…/invite/inv_…"}`, пока ссылки включены, иначе `{"invite_url": null, "turned_off": …}` (`turned_off: true` — ссылку выключили в Security, `false` — её ещё не было: онбординг тогда включает её сам, как в Linear); ссылка — публичное приглашение без почты, без лимита и срока, вступают по ней как buyer |
+| `GET /api/workspaces/{id}/invite-link` | — | owner/admin: Settings → Security → Invite links — `{"invite_url": "…/invite/inv_…"}`, пока ссылки включены, иначе `{"invite_url": null, "turned_off": …}` (`turned_off: true` — ссылку выключили в Security, `false` — её ещё не было: онбординг тогда включает её сам, как в Linear); ссылка — публичное приглашение без почты, без лимита и срока, вступают по ней как member |
 | `POST /api/workspaces/{id}/invite-link` | — | owner/admin: включает ссылку (уже включённая не меняется), отдаёт `invite_url`; этой же ссылкой делится онбординг |
 | `POST /api/workspaces/{id}/invite-link/reset` | — | owner/admin: «Reset invite link», как у Linear — старая ссылка перестаёт работать, отдаётся новая |
 | `DELETE /api/workspaces/{id}/invite-link` | — | owner/admin: выключает ссылку, вступить по ней больше нельзя; `{"invite_url": null}` |
@@ -192,7 +193,7 @@ Settings → Administration → Teams, как в Linear (#371). Команда �
 
 Импорт кабинета никогда не включает автоматику и не назначает правила автоматически. Валюта и часовой пояс берутся из Meta. Если Meta не вернула валюту, сохраняется `UNKNOWN`, а денежные действия блокируются до успешного уточнения.
 
-Ручные действия над сущностями (`/api/entities/...`) — единственный путь записи в Meta из веб-приложения. Роль viewer их не выполняет. Кабинет проверяется на принадлежность воркспейсу так же, как в остальных эндпоинтах: чужой отвечает `404` и пишет security-событие. Состояние до записи читается из Meta, а не берётся из запроса, и проверяется принадлежность сущности выбранному кабинету. Перед отправкой сохраняется PENDING-событие; без доступной истории запись блокируется. После ответа Meta событие становится SUCCESS или ERROR. При неизвестном результате нужно проверить состояние в Meta перед повтором. Записанное событие получает тип, который уже понимает контракт отмены (`MANUAL_PAUSE`, `MANUAL_REACTIVATE`, `INCREASE_BUDGET`, `DECREASE_BUDGET`), и отменяется через существующий `POST /api/audit-events/{event_id}/undo` в течение 24 часов.
+Ручные действия над сущностями (`/api/entities/...`) — единственный путь записи в Meta из веб-приложения. Гость (`guest`) их не выполняет. Кабинет проверяется на принадлежность воркспейсу так же, как в остальных эндпоинтах: чужой отвечает `404` и пишет security-событие. Состояние до записи читается из Meta, а не берётся из запроса, и проверяется принадлежность сущности выбранному кабинету. Перед отправкой сохраняется PENDING-событие; без доступной истории запись блокируется. После ответа Meta событие становится SUCCESS или ERROR. При неизвестном результате нужно проверить состояние в Meta перед повтором. Записанное событие получает тип, который уже понимает контракт отмены (`MANUAL_PAUSE`, `MANUAL_REACTIVATE`, `INCREASE_BUDGET`, `DECREASE_BUDGET`), и отменяется через существующий `POST /api/audit-events/{event_id}/undo` в течение 24 часов.
 
 `compare=previous` измеряет период против окна **той же длины, идущего непосредственно перед ним**: `yesterday` сравнивается с позавчера, `last_3d` — с предыдущими тремя днями, `last_7d` — с предыдущими семью. Окна не пересекаются. Для `today` сравнение недоступно: фактовое хранилище держит суточные итоги, поэтому незакрытый день нельзя сопоставить с равной частью прошлого дня — ответ возвращает `comparison.available=false` и причину в `comparison.reason`, а не заведомо заниженную дельту. Объект `comparison` содержит `requested`, `available`, `dates`, `reason` и `current_includes_open_day` — последнее равно `true`, когда отчётное окно включает сегодняшний день и его итоги ещё растут. Строки приходят с полем `previous` той же формы, что и метрики периода; `null` означает, что сущности в базовом окне не существовало, и это не то же самое, что ноль. Сущности, которые были только в базовом окне, строками не становятся.
 

@@ -26,7 +26,7 @@ Vite собирает `frontend/dist`, и FastAPI сам отдаёт эти ф�
 
 [database/models.py](../database/models.py) определяет пользователей, workspace, членство и приглашения; Meta connections и assets; рекламные кабинеты; правила и группы; analytics facts, snapshots, аудит и состояние выполнения.
 
-`workspace_id` ограничивает доступ к бизнес-данным. Членство задаёт роль `owner`, `admin`, `buyer` или `viewer`; backend проверяет права при чтении и изменениях. `owner_user_id` не заменяет workspace-проверку.
+`workspace_id` ограничивает доступ к бизнес-данным. Членство задаёт роль `owner`, `admin`, `member` или `guest` (как в Linear); backend проверяет права при чтении и изменениях. `owner_user_id` не заменяет workspace-проверку.
 
 Основной web-вход использует email-ссылку или OTP и создаёт серверную сессию. В БД хранится хэш секрета, browser cookie защищена HttpOnly, изменения через cookie требуют CSRF. В [api/auth.py](../api/auth.py) также остаётся переходная обработка legacy bearer token; её наличие не означает сохранение старого интерфейса.
 

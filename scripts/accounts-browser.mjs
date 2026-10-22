@@ -8,7 +8,7 @@
 // - The account's page at /accounts/{act_id}: the name is edited in place,
 //   automation is switched, properties sit in a panel on the right, and
 //   "Open in Ads Manager" opens the account there.
-// - A viewer sees no Add account, Rename or Remove.
+// - A guest sees no Add account, Rename or Remove.
 // - 390px: Name, Status and Spend today only; the page is one column.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -54,7 +54,7 @@ const freshAccounts = () => [
     health: { ...healthy, status: 'critical', cause: 'user', last_error_message: 'The access token has expired.' },
   }),
 ];
-const teams = [{ id: 10, name: 'Media', key: 'MED', description: '', created_at: '', retired_at: null, deleted_at: null, restorable_until: null, member_user_ids: [5], account_ids: [101, 103], is_member: true }];
+const teams = [{ id: 10, name: 'Media', key: 'MED', description: '', created_at: '', retired_at: null, deleted_at: null, restorable_until: null, member_user_ids: [5], owner_user_ids: [5], account_ids: [101, 103], is_member: true }];
 const members = [{ id: 1, user_id: 5, username: 'bo', full_name: 'Bo Buyer', email: null, avatar_url: '', role: 'owner', joined_at: '', is_current_user: true }];
 const preset = (id, name) => ({
   id, name, action: 'turn_off', level: 'adset', enabled: true,
@@ -292,9 +292,9 @@ try {
     }
   }
 
-  // A viewer only looks.
+  // A guest only looks.
   {
-    const { context, page, errors } = await openPage(1440, { role: 'viewer' });
+    const { context, page, errors } = await openPage(1440, { role: 'guest' });
     try {
       await page.goto(`${origin}/alpha/accounts`);
       await page.locator('[data-row-id="act_101"]').waitFor();
@@ -308,10 +308,10 @@ try {
       assert.equal(await page.getByRole('textbox', { name: 'Ad account name' }).count(), 0);
       assert.equal(await page.getByRole('button', { name: 'Attach rule' }).count(), 0);
       assert.deepEqual(errors, []);
-      console.log('Ad accounts for a viewer passed');
+      console.log('Ad accounts for a guest passed');
     } catch (error) {
       console.error(error);
-      await page.screenshot({ path: `${output}/failure-viewer.png`, fullPage: true }).catch(() => {});
+      await page.screenshot({ path: `${output}/failure-guest.png`, fullPage: true }).catch(() => {});
       throw error;
     } finally {
       await context.close();

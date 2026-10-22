@@ -2,7 +2,7 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useAppStore, type InterfaceTheme } from '@/store/useAppStore';
 import {
   ADMINISTRATION_PAGES,
-  ADMINISTRATION_SECTIONS,
+  canOpenSettingsSection,
   SETTINGS_PAGE_GROUPS,
   SETTINGS_PAGE_KEYWORDS,
   canAdministerWorkspace,
@@ -78,7 +78,9 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
   const canAdminister = canAdministerWorkspace(workspace);
   const { teams } = useTeams(workspace.id, 'active');
   // Linear's "Your teams" under Administration: the active teams you are on.
-  const yourTeams = canAdminister ? (teams || []).filter((team) => team.is_member) : [];
+  // Linear lists your teams in Settings for everyone but guests.
+  const canOpenTeams = workspace.role !== 'guest';
+  const yourTeams = canOpenTeams ? (teams || []).filter((team) => team.is_member) : [];
   const openTeamKey = section === 'team' ? teamPath.split('/')[0].toUpperCase() : '';
   const visibleSections = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -90,9 +92,9 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
     .filter((page) => visibleSections.includes(page.section));
 
   useEffect(() => {
-    // A buyer or viewer has no Administration pages; their addresses open Preferences.
-    if (!canAdminister && ADMINISTRATION_SECTIONS.includes(section)) setSection('preferences');
-  }, [canAdminister, section, setSection]);
+    // A member or guest has no Administration pages; their addresses open Preferences.
+    if (!canOpenSettingsSection(workspace, section)) setSection('preferences');
+  }, [section, setSection, workspace]);
 
   useEffect(() => {
     // Linear's "Back to app": Ctrl+Esc leaves Settings for the page it came from.
@@ -304,7 +306,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
             </div>
           )}
 
-          {canAdminister && !searchQuery.trim() && (
+          {canOpenTeams && !searchQuery.trim() && (
             <div className="preferences-nav-group">
               <h2 className="preferences-nav-heading">Your teams</h2>
               {yourTeams.map((team) => (
@@ -410,9 +412,9 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
 
             {canAdminister && section === 'teams' && <TeamsSection workspace={workspace} />}
 
-            {canAdminister && section === 'new-team' && <NewTeamSection workspace={workspace} />}
+            {canOpenTeams && section === 'new-team' && <NewTeamSection workspace={workspace} />}
 
-            {canAdminister && section === 'team' && (
+            {canOpenTeams && section === 'team' && (
               <TeamSettingsSection key={teamPath.split('/')[0]} workspace={workspace} path={teamPath} />
             )}
 

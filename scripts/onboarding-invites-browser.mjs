@@ -150,11 +150,11 @@ try {
       assert.equal(await field.getAttribute('aria-invalid'), 'false');
       assert.equal(await send.innerText(), 'Send 2 invites');
 
-      // Role: Buyer by default, Admin or Viewer on request, as in Settings → Members.
-      const role = page.getByRole('button', { name: 'Role: Buyer', exact: true });
+      // Role: Member by default, Admin or Guest on request, as in Settings → Members.
+      const role = page.getByRole('button', { name: 'Role: Member', exact: true });
       await role.click();
-      await page.getByRole('menuitemradio', { name: /^Viewer/ }).click();
-      await page.getByRole('button', { name: 'Role: Viewer', exact: true }).waitFor();
+      await page.getByRole('menuitemradio', { name: /^Guest/ }).click();
+      await page.getByRole('button', { name: 'Role: Guest', exact: true }).waitFor();
       await page.screenshot({ path: `${output}/${label}-ready.png`, fullPage: true });
 
       if (width === 390 && link === 'new') {
@@ -167,7 +167,7 @@ try {
         await page.waitForURL(`**/${workspace.slug}/inbox`);
         assert.deepEqual(writes.filter(write => write.path.startsWith('/api/onboarding/')), [{
           verb: 'POST', path: '/api/onboarding/invites',
-          body: { invites: [{ email: 'ann@acme.test', role: 'viewer' }, { email: 'bob@acme.test', role: 'viewer' }] },
+          body: { invites: [{ email: 'ann@acme.test', role: 'guest' }, { email: 'bob@acme.test', role: 'guest' }] },
         }]);
       }
       assert.deepEqual(errors, []);

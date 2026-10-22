@@ -17,7 +17,7 @@
 ## Модель доступа
 
 - `User` хранит профиль и активный workspace.
-- `WorkspaceMember` связывает пользователя с workspace и ролью `owner`, `admin`, `buyer` или `viewer`.
+- `WorkspaceMember` связывает пользователя с workspace и ролью `owner`, `admin`, `member` или `guest` (роли Linear; гость пока только читает).
 - `WorkspaceInvite` хранит приглашение в команду и ограничения его использования.
 - `WebSession` хранит хэш browser secret, срок действия и отзыв.
 - `WorkspaceSupportGrant` задаёт отдельный механизм доступа поддержки.

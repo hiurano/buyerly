@@ -368,7 +368,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 workspace_id=ws.id,
                 token="inv_test_token_12345",
                 email="colleague@agency.com",
-                role="buyer",
+                role="member",
                 inviter_user_id=artem.id,
                 status="pending",
                 max_uses=1,
@@ -382,7 +382,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(invite.workspace_id, ws.id)
             self.assertEqual(invite.token, "inv_test_token_12345")
             self.assertEqual(invite.email, "colleague@agency.com")
-            self.assertEqual(invite.role, "buyer")
+            self.assertEqual(invite.role, "member")
             self.assertEqual(invite.inviter_user_id, artem.id)
             self.assertEqual(invite.status, "pending")
             self.assertEqual(invite.max_uses, 1)
@@ -394,7 +394,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             public_link = WorkspaceInvite(
                 workspace_id=ws.id,
                 token="inv_public_link_67890",
-                role="viewer",
+                role="guest",
                 inviter_user_id=artem.id,
                 status="pending",
                 max_uses=0,
@@ -406,7 +406,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
 
             self.assertIsNotNone(public_link.id)
             self.assertIsNone(public_link.email)
-            self.assertEqual(public_link.role, "viewer")
+            self.assertEqual(public_link.role, "guest")
             self.assertEqual(public_link.max_uses, 0)
 
     async def test_workspace_members_api_lifecycle(self):
@@ -436,7 +436,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
 
                 ws = (await session.execute(select(Workspace).where(Workspace.slug == 'buyerly'))).scalar_one()
                 session.add(WorkspaceMember(workspace_id=ws.id, user_id=bob.id, role='buyer'))
-                session.add(WorkspaceMember(workspace_id=ws.id, user_id=charlie.id, role='viewer'))
+                session.add(WorkspaceMember(workspace_id=ws.id, user_id=charlie.id, role='guest'))
                 bob.active_workspace_id = ws.id
                 charlie.active_workspace_id = ws.id
                 await session.commit()
@@ -466,7 +466,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             artem_id = members[0]['user_id']
             patch_self = await client.patch(
                 f'/api/workspaces/{ws_id}/members/{artem_id}',
-                json={'role': 'buyer'},
+                json={'role': 'member'},
                 headers=artem_headers,
             )
             self.assertEqual(patch_self.status_code, 400)
@@ -552,7 +552,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 f'/api/workspaces/{ws_id}/invites',
                 json={
                     'email': 'dave@buyerly.app',
-                    'role': 'buyer',
+                    'role': 'member',
                     'expires_in_days': 7,
                     'max_uses': 1,
                 },
@@ -561,7 +561,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(create_res.status_code, 200)
             invite_data = create_res.json()
             self.assertEqual(invite_data['email'], 'dave@buyerly.app')
-            self.assertEqual(invite_data['role'], 'buyer')
+            self.assertEqual(invite_data['role'], 'member')
             self.assertEqual(invite_data['status'], 'pending')
             self.assertTrue(invite_data['token'].startswith('inv_'))
             self.assertIn(invite_data['token'], invite_data['invite_url'])
@@ -572,7 +572,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             public_create_res = await client.post(
                 f'/api/workspaces/{ws_id}/invites',
                 json={
-                    'role': 'viewer',
+                    'role': 'guest',
                     'expires_in_days': 30,
                     'max_uses': 0,
                 },
@@ -594,7 +594,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             check_data = check_res.json()
             self.assertTrue(check_data['valid'])
             self.assertEqual(check_data['workspace_name'], 'Buyerly')
-            self.assertEqual(check_data['role'], 'buyer')
+            self.assertEqual(check_data['role'], 'member')
             self.assertEqual(check_data['target_email'], 'dave@buyerly.app')
 
             # Check invalid token
@@ -621,7 +621,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             accept_res = await client.post(f'/api/invites/{public_token}/accept', headers=dave_headers)
             self.assertEqual(accept_res.status_code, 200)
             self.assertEqual(accept_res.json()['status'], 'ok')
-            self.assertEqual(accept_res.json()['role'], 'viewer')
+            self.assertEqual(accept_res.json()['role'], 'guest')
             self.assertEqual(accept_res.json()['workspace_id'], ws_id)
 
             # 7. Dave accepts same link again (already member) -> 200 OK
@@ -634,7 +634,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 dave_db = (await session.execute(select(User).where(User.username == 'dave'))).scalar_one()
                 self.assertEqual(dave_db.active_workspace_id, ws_id)
                 dave_member = (await session.execute(select(WorkspaceMember).where(WorkspaceMember.workspace_id == ws_id, WorkspaceMember.user_id == dave_db.id))).scalar_one()
-                self.assertEqual(dave_member.role, 'viewer')
+                self.assertEqual(dave_member.role, 'guest')
 
     async def test_invite_link_from_security_settings(self):
         """Settings → Security → Invite links: enable, copy, reset, disable; admins only."""
@@ -671,7 +671,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             # Anyone with the link joins as a buyer, and it keeps working.
             joined = await client.post(f'/api/invites/{token_of(first_url)}/accept', headers=dana_headers)
             self.assertEqual(joined.status_code, 200)
-            self.assertEqual(joined.json()['role'], 'buyer')
+            self.assertEqual(joined.json()['role'], 'member')
             # A buyer can't see or change the link.
             self.assertEqual((await client.get(url, headers=dana_headers)).status_code, 403)
             self.assertEqual((await client.post(f'{url}/reset', headers=dana_headers)).status_code, 403)
@@ -706,7 +706,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             viewer = User(telegram_id='777000555', username='vera', full_name='Vera Viewer', role='buyer', is_approved=True)
             session.add(viewer)
             await session.flush()
-            session.add(WorkspaceMember(workspace_id=ws_id, user_id=viewer.id, role='viewer'))
+            session.add(WorkspaceMember(workspace_id=ws_id, user_id=viewer.id, role='guest'))
             await session.commit()
         viewer_headers = await session_headers(self.test_session_maker, {'id': 777000555, 'first_name': 'Vera', 'username': 'vera'})
 
@@ -715,12 +715,12 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             with patch('api.routers.members.send_workspace_invitation_email', new_callable=AsyncMock, return_value=True) as send:
                 personal = (await client.post(
                     f'/api/workspaces/{ws_id}/invites',
-                    json={'email': 'Late@Buyerly.app', 'role': 'buyer'},
+                    json={'email': 'Late@Buyerly.app', 'role': 'member'},
                     headers=artem_headers,
                 )).json()
                 public = (await client.post(
                     f'/api/workspaces/{ws_id}/invites',
-                    json={'role': 'viewer', 'max_uses': 0},
+                    json={'role': 'guest', 'max_uses': 0},
                     headers=artem_headers,
                 )).json()
                 send.reset_mock()
@@ -803,7 +803,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
             created = await client.post(
                 f'/api/workspaces/{ws_id}/invites',
-                json={'role': 'buyer', 'expires_in_days': 7, 'max_uses': 1},
+                json={'role': 'member', 'expires_in_days': 7, 'max_uses': 1},
                 headers=artem_headers,
             )
             self.assertEqual(created.status_code, 200)
@@ -866,7 +866,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 )
                 session.add(victor)
                 ws = (await session.execute(select(Workspace).where(Workspace.slug == 'buyerly'))).scalar_one()
-                session.add(WorkspaceMember(workspace_id=ws.id, user_id=victor.id, role='viewer'))
+                session.add(WorkspaceMember(workspace_id=ws.id, user_id=victor.id, role='guest'))
                 victor.active_workspace_id = ws.id
                 await session.commit()
                 ws_id = ws.id
@@ -893,7 +893,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 headers=viewer_headers,
             )
             self.assertEqual(create_preset_res.status_code, 403)
-            self.assertIn('Viewer', create_preset_res.json()['detail'])
+            self.assertIn('Guests', create_preset_res.json()['detail'])
 
             # 3. Victor is blocked from creating account groups
             create_group_res = await client.post(
@@ -942,7 +942,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
         info = {"name": "Updated", "account_status": 1, "timezone_name": "UTC", "currency": "USD"}
         with patch.object(self.app.state.meta_client, "get_account_info", new=AsyncMock(return_value=info)):
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
-                for role, owns_account, allowed in (("buyer", False, False), ("buyer", True, True), ("admin", False, True), ("owner", False, True)):
+                for role, owns_account, allowed in (("member", False, False), ("member", True, True), ("admin", False, True), ("owner", False, True)):
                     with self.subTest(role=role, owns_account=owns_account):
                         async with self.test_session_maker() as session:
                             member = await session.get(WorkspaceMember, member_id)
@@ -1127,7 +1127,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 f'/api/workspaces/{ws_id}/invites',
                 json={
                     'email': 'legit@company.com',
-                    'role': 'buyer',
+                    'role': 'member',
                     'expires_in_days': 7,
                     'max_uses': 1,
                 },
@@ -1188,7 +1188,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 f'/api/workspaces/{ws_id}/invites',
                 json={
                     'email': 'partner@agency.com',
-                    'role': 'buyer',
+                    'role': 'member',
                     'expires_in_days': 7,
                     'max_uses': 1,
                 },
@@ -1237,7 +1237,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 f'/api/workspaces/{ws_id}/invites',
                 json={
                     'email': 'audit_test@example.com',
-                    'role': 'buyer',
+                    'role': 'member',
                     'expires_in_days': 7,
                     'max_uses': 1,
                 },

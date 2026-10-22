@@ -41,7 +41,7 @@ import { useWebMcpTools } from '@/webmcp/register';
 import { WorkspaceSessionProvider, type WorkspaceSession } from '@/lib/workspaceSession';
 import { isSmallScreen } from '@/lib/useMediaQuery';
 import { GO_TO_SETTINGS_SECTION, goToTargetFor } from '@/lib/shortcuts';
-import { ADMINISTRATION_SECTIONS, canAdministerWorkspace } from '@/lib/settingsPages';
+import { canOpenSettingsSection } from '@/lib/settingsPages';
 import { logOut } from '@/lib/sessions';
 import {
   chooseAccount,
@@ -156,9 +156,8 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   }, []);
 
   useEffect(() => {
-    // A buyer or viewer has no Administration pages: their addresses open Settings itself.
-    if (route.settingsSection && !canAdministerWorkspace({ role: workspace.role })
-      && ADMINISTRATION_SECTIONS.includes(route.settingsSection)) {
+    // A member or guest has no Administration pages: their addresses open Settings itself.
+    if (route.settingsSection && !canOpenSettingsSection({ role: workspace.role }, route.settingsSection)) {
       navigate(`/${workspace.slug}/settings`, true);
       return;
     }
