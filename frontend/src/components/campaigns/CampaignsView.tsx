@@ -471,6 +471,22 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
   const groupingField = adsManagerGroupingField(activeGrouping);
   const rowsField = adsManagerGroupingField(activeRows);
   const groupingView = { ...view, grouping: activeGrouping };
+  const groupKey = (group: { id: string }) => `${groupingField}:${group.id}`;
+  const subGroupKey = (group: { id: string }, sub: { id: string }) => `${groupKey(group)}/${rowsField}:${sub.id}`;
+  const toggleCollapsed = (key: string) => setCollapsedGroups(state => ({ ...state, [key]: !state[key] }));
+  // Linear's sub-groups inside a group; as with groups, Status is a fixed set, so only its empty ones can be shown.
+  const renderSubGroups = <T,>(group: { id: string; rows: T[] }, fields: FilterFieldDefinition<T>[], render: (row: T) => React.ReactNode) =>
+    groupView(group.rows, fields, rowsField)
+      .filter(sub => sub.rows.length > 0 || (view.showEmptyGroups && rowsField === 'status'))
+      .map(sub => sub.label ? (
+        <BuyerlyDataListGroup key={sub.id} subGroup title={sub.label} count={sub.rows.length}
+          dotColor="var(--text-tertiary)"
+          icon={rowsField === 'account' ? <BuyerlyProjectIcon size={14} /> : optionIcon(fields.find(field => field.id === rowsField), sub.id)}
+          isCollapsed={Boolean(collapsedGroups[subGroupKey(group, sub)])}
+          onToggleCollapse={() => toggleCollapsed(subGroupKey(group, sub))}>
+          {sub.rows.map(render)}
+        </BuyerlyDataListGroup>
+      ) : <React.Fragment key={sub.id}>{sub.rows.map(render)}</React.Fragment>);
   // Status is a fixed set, so only its empty groups can be shown.
   const renderGrouped = <T,>(rows: T[], fields: FilterFieldDefinition<T>[], render: (row: T) => React.ReactNode) =>
     arrangeGroups(groupView(rows, fields, groupingField), groupingView, { allowEmpty: groupingField === 'status' }).map(group => (
@@ -479,9 +495,9 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
           <BuyerlyDataListGroup title={group.label} count={group.rows.length}
             dotColor="var(--text-tertiary)"
             icon={groupingField === 'account' ? <BuyerlyProjectIcon size={14} /> : undefined}
-            isCollapsed={Boolean(collapsedGroups[`${groupingField}:${group.id}`])}
-            onToggleCollapse={() => setCollapsedGroups(state => ({ ...state, [`${groupingField}:${group.id}`]: !state[`${groupingField}:${group.id}`] }))}>
-            {group.rows.map(render)}
+            isCollapsed={Boolean(collapsedGroups[groupKey(group)])}
+            onToggleCollapse={() => toggleCollapsed(groupKey(group))}>
+            {renderSubGroups(group, fields, render)}
           </BuyerlyDataListGroup>
         ) : group.rows.map(render)}
       </React.Fragment>
@@ -494,9 +510,9 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
   const tableColumns = useMemo(
     () => getAdsManagerColumns(campaignFilterTab, displayProperties, {
       spendFirst: isPhoneTable,
-      groupedByAccount: groupingField === 'account',
+      groupedByAccount: groupingField === 'account' || rowsField === 'account',
     }),
-    [campaignFilterTab, displayProperties, isPhoneTable, groupingField],
+    [campaignFilterTab, displayProperties, isPhoneTable, groupingField, rowsField],
   );
 
   /** Shows delivery this session wrote on the given rows. */
@@ -643,14 +659,17 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
       if (!reveal) return false;
       const filteredOut = !visibleRowIds.includes(reveal.id);
       if (filteredOut) clearFilters();
-      const groups: { id: string; label: string; rows: { id: string }[] }[] = campaignFilterTab === 'campaigns'
-        ? groupView(campaigns, campaignFilterFields, groupingField)
-        : campaignFilterTab === 'adsets'
-          ? groupView(adSets, adSetFilterFields, groupingField)
-          : groupView(ads, adFilterFields, groupingField);
-      const collapsed = groups
-        .filter((group) => group.label && group.rows.some((row) => row.id === reveal.id))
-        .map((group) => `${groupingField}:${group.id}`)
+      const fields = (campaignFilterTab === 'campaigns'
+        ? campaignFilterFields
+        : campaignFilterTab === 'adsets' ? adSetFilterFields : adFilterFields) as FilterFieldDefinition<{ id: string }>[];
+      const holds = (group: { label: string; rows: { id: string }[] }) => Boolean(group.label) && group.rows.some((row) => row.id === reveal.id);
+      // The row's group and its sub-group, wherever either is collapsed.
+      const collapsed = groupView(currentRows as { id: string }[], fields, groupingField)
+        .filter(holds)
+        .flatMap((group) => [
+          groupKey(group),
+          ...groupView(group.rows, fields, rowsField).filter(holds).map((sub) => subGroupKey(group, sub)),
+        ])
         .filter((key) => collapsedGroups[key]);
       if (collapsed.length > 0) {
         setCollapsedGroups((state) => ({ ...state, ...Object.fromEntries(collapsed.map((key) => [key, false])) }));

@@ -426,6 +426,26 @@ try {
       assert.equal(views['ads-manager.campaigns'].subGrouping, 'status');
       await page.keyboard.press('ControlOrMeta+b');
       await page.locator('.buyerly-board').waitFor({ state: 'detached' });
+      // Back in the list the board's Rows are its Sub-grouping (#470), as Linear's: each account
+      // split by Status, a sub-group folds on its own, empty ones only with Show empty groups.
+      const subGroups = page.locator('.buyerly-data-subgroup-header span.truncate');
+      await page.locator('[data-row-id="701"]').waitFor();
+      assert.deepEqual(await subGroups.allTextContents(), ['Active', 'Active']);
+      await page.locator('.buyerly-data-subgroup-header').first().getByRole('button', { name: 'Collapse group' }).click();
+      await page.locator('[data-row-id="701"]').waitFor({ state: 'detached' });
+      await page.locator('[data-row-id="801"]').waitFor();
+      await page.locator('.buyerly-data-subgroup-header').first().getByRole('button', { name: 'Expand group' }).click();
+      await page.locator('[data-row-id="701"]').waitFor();
+      await displayButton(page).click();
+      await popover(page).waitFor();
+      assert.match(await popover(page).locator('.buyerly-display-row', { hasText: 'Sub-grouping' }).getByRole('combobox').innerText(), /Status/);
+      await popover(page).getByRole('switch', { name: 'Show empty groups' }).click();
+      await page.keyboard.press('Escape');
+      assert.deepEqual(await subGroups.allTextContents(), ['Active', 'Paused', 'Active', 'Paused']);
+      await page.screenshot({ path: `${output}/list-sub-groups-1440.png` });
+      await settle(page);
+      assert.equal(views['ads-manager.campaigns'].layout, 'list');
+      assert.equal(views['ads-manager.campaigns'].showEmptyGroups, true);
       assert.deepEqual(errors, []);
       console.log('Ads Manager over every ad account passed');
     } catch (error) {

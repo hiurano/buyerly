@@ -85,9 +85,15 @@ export function adsManagerActiveGrouping(entity: AdsManagerEntity, view: Pick<Li
   return view.layout === 'board' ? boardGrouping(saved, 'status') : saved;
 }
 
-/** The board's Rows (Linear's swimlanes); the list has none. */
-export function adsManagerActiveRows(entity: AdsManagerEntity, view: Pick<ListViewSettings, 'subGrouping' | 'layout'>): string {
-  if (view.layout !== 'board') return 'none';
+/**
+ * Sub-grouping, the board's Rows (Linear's swimlanes): one setting for both
+ * layouts, so Ctrl/Cmd+B keeps it. A list grouped by nothing has no sub-groups.
+ */
+export function adsManagerActiveRows(
+  entity: AdsManagerEntity,
+  view: Pick<ListViewSettings, 'grouping' | 'subGrouping' | 'layout'>,
+): string {
+  if (adsManagerActiveGrouping(entity, view) === 'none') return 'none';
   return adsManagerGroupings(entity).some((option) => option.value === view.subGrouping) ? view.subGrouping : 'none';
 }
 
