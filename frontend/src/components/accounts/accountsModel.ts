@@ -274,10 +274,9 @@ export const accountPagePath = (workspace: string, accountId: string) =>
 
 /**
  * Campaigns filtered to this account, as Linear's project opens its issues:
- * every level filters by Ad account, and the filter is one click to clear.
+ * Campaigns turns `?account=` into "Ad account is …" on every level. Not a
+ * `?filter=` of its own: Ad accounts, still on screen for the first frame,
+ * would read it as its own filter and drop it.
  */
-export const accountAdsManagerPath = (workspace: string, accountId: string) => {
-  const clause = [{ fieldId: 'account', operator: 'is', values: [accountId] }];
-  const filter = encodeURIComponent(JSON.stringify({ campaigns: clause, adsets: clause, ads: clause }));
-  return `/${workspace}/ads-manager/campaigns?filter=${filter}`;
-};
+export const accountAdsManagerPath = (workspace: string, accountId: string) =>
+  `/${workspace}/ads-manager/campaigns?account=${encodeURIComponent(accountId)}`;

@@ -1085,7 +1085,8 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertNotIn("toggleRuleStatus", page)
         self.assertIn("<LinearStatusCircleIcon status={on ? 'active' : 'paused'}", page)
         # Open campaigns filters Campaigns by the account, as a Linear project opens its issues.
-        self.assertIn("fieldId: 'account', operator: 'is'", (ROOT / "frontend" / "src" / "components" / "accounts" / "accountsModel.ts").read_text())
+        self.assertIn("ads-manager/campaigns?account=", (ROOT / "frontend" / "src" / "components" / "accounts" / "accountsModel.ts").read_text())
+        self.assertIn("const clause = [{ fieldId: 'account', operator: 'is', values: [accountId] }];", self.campaigns_view)
         self.assertIn("node scripts/check-accounts.cjs", workflow)
         self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?accounts( .*)?$")
 
