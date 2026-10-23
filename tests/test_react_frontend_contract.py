@@ -299,11 +299,11 @@ class TestReactFrontendContract(unittest.TestCase):
     def test_ads_manager_uses_workspace_api_without_production_fixtures(self):
         for contract in (
             "apiRequest<MetaAccount[]>('/api/accounts')",
-            "/api/analytics/hierarchy?parent_id=",
-            "encodeURIComponent(account.account_id)",
-            "request('campaign')",
-            "request('adset')",
-            "request('ad')",
+            "/api/analytics/hierarchy/accounts?account_ids=",
+            "loadAccountHierarchies(accounts, period)",
+            "rows.campaigns",
+            "rows.adsets",
+            "rows.ads",
             "requestGenerationRef",
             "Loading ad accounts…",
             "Loading campaigns…",
@@ -328,7 +328,7 @@ class TestReactFrontendContract(unittest.TestCase):
 
     def test_campaigns_shows_every_ad_account_at_once(self):
         """As Linear's team Issues lists every project's issues: no account switcher, grouped by Ad account."""
-        self.assertIn("accounts.map((account) => loadAccountHierarchy(account, period))", self.campaigns_view)
+        self.assertIn("loadAccountHierarchies(accounts, period)", self.campaigns_view)
         for dead in (r"selectedAccountId\b", "DropdownMenuAccount", "Select ad account", "HeaderCreateButton"):
             self.assertNotRegex(self.campaigns_view, dead)
         view_model = (ROOT / "frontend" / "src" / "components" / "campaigns" / "adsManagerViewModel.ts").read_text()

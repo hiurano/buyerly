@@ -14,7 +14,7 @@ import { pushHistory } from '@/lib/undoHistory';
 import { toast } from '@/ui/toast';
 import { ApiError, apiRequest } from '@/lib/api';
 import type {
-  AnalyticsHierarchyResponse,
+  AnalyticsAccountsHierarchyResponse,
   MetaAccount,
   MetaConnection,
 } from '@/lib/types';
@@ -121,28 +121,33 @@ function requestErrorMessage(error: unknown): string {
   return 'Something went wrong. Please try again.';
 }
 
-/** Reads one account; a failure stays with that account and never hides the others. */
-async function loadAccountHierarchy(account: MetaAccount, period: AdsManagerPeriod): Promise<AccountHierarchy> {
-  const request = (level: 'campaign' | 'adset' | 'ad') =>
-    apiRequest<AnalyticsHierarchyResponse>(
-      `/api/analytics/hierarchy?parent_id=${encodeURIComponent(account.account_id)}&level=${level}&period=${period}`,
-    );
+/**
+ * Reads every account in one request; an account the server leaves out stays
+ * with its own error and never hides the others.
+ */
+async function loadAccountHierarchies(accounts: MetaAccount[], period: AdsManagerPeriod): Promise<AccountHierarchy[]> {
+  let rowsOf: Map<string, AnalyticsAccountsHierarchyResponse['accounts'][number]>;
   try {
-    const [campaignResponse, adSetResponse, adResponse] = await Promise.all([
-      request('campaign'),
-      request('adset'),
-      request('ad'),
-    ]);
+    const ids = accounts.map((account) => account.account_id).join(',');
+    const response = await apiRequest<AnalyticsAccountsHierarchyResponse>(
+      `/api/analytics/hierarchy/accounts?account_ids=${encodeURIComponent(ids)}&period=${period}`,
+    );
+    rowsOf = new Map(response.accounts.map((rows) => [rows.account_id, rows]));
+  } catch (error) {
+    const message = requestErrorMessage(error);
+    return accounts.map((account) => ({ account, campaigns: [], adSets: [], ads: [], error: message }));
+  }
+  return accounts.map((account) => {
+    const rows = rowsOf.get(account.account_id);
+    if (!rows) return { account, campaigns: [], adSets: [], ads: [], error: 'This ad account is not available to you.' };
     const accountName = adAccountName(account);
     const named = <T,>(row: T) => ({ ...row, accountId: account.account_id, accountName });
-    const campaigns = campaignResponse.items.map((item) => named(hierarchyCampaignToRow(item)));
+    const campaigns = rows.campaigns.map((item) => named(hierarchyCampaignToRow(item)));
     const campaignNames = new Map(campaigns.map((campaign) => [campaign.id, campaign.name]));
-    const adSets = adSetResponse.items.map((item) => named(hierarchyAdSetToRow(item, campaignNames)));
+    const adSets = rows.adsets.map((item) => named(hierarchyAdSetToRow(item, campaignNames)));
     const adSetsById = new Map(adSets.map((adSet) => [adSet.id, adSet]));
-    return { account, campaigns, adSets, ads: adResponse.items.map((item) => named(hierarchyAdToRow(item, adSetsById))) };
-  } catch (error) {
-    return { account, campaigns: [], adSets: [], ads: [], error: requestErrorMessage(error) };
-  }
+    return { account, campaigns, adSets, ads: rows.ads.map((item) => named(hierarchyAdToRow(item, adSetsById))) };
+  });
 }
 
 /**
@@ -356,7 +361,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
     }
 
     setHierarchyState('loading');
-    void Promise.all(accounts.map((account) => loadAccountHierarchy(account, period))).then((results) => {
+    void loadAccountHierarchies(accounts, period).then((results) => {
       if (generation !== requestGenerationRef.current) return;
       const loaded = results.filter((result) => !result.error);
       if (loaded.length === 0) {

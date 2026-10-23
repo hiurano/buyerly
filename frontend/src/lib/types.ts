@@ -203,6 +203,20 @@ export interface AnalyticsHierarchyResponse {
   items: AnalyticsHierarchyItem[];
 }
 
+/** `GET /api/analytics/hierarchy/accounts`: every level of several ad accounts at once. */
+export interface AnalyticsAccountsHierarchyResponse {
+  period: AnalyticsHierarchyResponse['period'];
+  source: 'analytics_fact_store';
+  accounts: {
+    account_id: string;
+    campaigns: AnalyticsHierarchyItem[];
+    adsets: AnalyticsHierarchyItem[];
+    ads: AnalyticsHierarchyItem[];
+  }[];
+  /** Requested accounts this member cannot see or this workspace does not hold. */
+  missing: string[];
+}
+
 export interface PublicMetaInviteInfo {
   valid: boolean;
   status: string;

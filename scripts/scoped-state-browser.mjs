@@ -57,6 +57,12 @@ try {
         { account_id: 'A', name: 'Account A', is_active: true, active_rules: [] },
         { account_id: 'B', name: 'Account B', is_active: true, active_rules: [] },
       ] });
+      if (url.pathname === '/api/analytics/hierarchy/accounts') {
+        const ids = url.searchParams.get('account_ids').split(',');
+        const rows = (id, level) => [];
+        const accounts = ids.map((id) => ({ account_id: id, campaigns: rows(id, 'campaign'), adsets: rows(id, 'adset'), ads: rows(id, 'ad') }));
+        return route.fulfill({ json: { period: url.searchParams.get('period'), source: 'analytics_fact_store', accounts, missing: [] } });
+      }
       if (url.pathname === '/api/analytics/hierarchy') return route.fulfill({ json: { items: [] } });
       return route.fulfill({ json: [] });
     });

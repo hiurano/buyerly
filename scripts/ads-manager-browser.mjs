@@ -130,6 +130,23 @@ try {
       }
       if (path === '/api/me') return route.fulfill({ json: me });
       if (path === '/api/accounts') return route.fulfill({ json: accounts });
+      if (path === '/api/analytics/hierarchy/accounts') {
+        const period = url.searchParams.get('period');
+        periods.push(period);
+        const factor = PERIOD_FACTOR[period];
+        if (!factor) return route.fulfill({ status: 422, json: { detail: 'Unknown period' } });
+        const sources = { act_100: inventory, act_200: euroInventory };
+        const ids = url.searchParams.get('account_ids').split(',');
+        const rows = (source, level) => (source[level] ?? []).map((item) => scaled(item, factor));
+        return route.fulfill({ json: {
+          period,
+          source: 'analytics_fact_store',
+          accounts: ids.filter((id) => sources[id]).map((id) => ({
+            account_id: id, campaigns: rows(sources[id], 'campaign'), adsets: rows(sources[id], 'adset'), ads: rows(sources[id], 'ad'),
+          })),
+          missing: ids.filter((id) => !sources[id]),
+        } });
+      }
       if (path === '/api/analytics/hierarchy') {
         const parent = url.searchParams.get('parent_id');
         const level = url.searchParams.get('level');

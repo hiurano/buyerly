@@ -119,6 +119,12 @@ try {
       if (path === '/api/me') return route.fulfill({ json: me });
       if (path === '/api/accounts') return route.fulfill({ json: [account] });
       if (path === '/api/presets') return route.fulfill({ json: presets });
+      if (path === '/api/analytics/hierarchy/accounts') {
+        const ids = url.searchParams.get('account_ids').split(',');
+        const rows = (id, level) => id === 'act_100' ? inventory[level] ?? [] : [];
+        const accounts = ids.map((id) => ({ account_id: id, campaigns: rows(id, 'campaign'), adsets: rows(id, 'adset'), ads: rows(id, 'ad') }));
+        return route.fulfill({ json: { period: url.searchParams.get('period'), source: 'analytics_fact_store', accounts, missing: [] } });
+      }
       if (path === '/api/analytics/hierarchy') {
         const parent = url.searchParams.get('parent_id');
         const level = url.searchParams.get('level');
