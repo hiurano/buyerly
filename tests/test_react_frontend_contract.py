@@ -328,7 +328,7 @@ class TestReactFrontendContract(unittest.TestCase):
 
     def test_campaigns_shows_every_ad_account_at_once(self):
         """As Linear's team Issues lists every project's issues: no account switcher, grouped by Ad account."""
-        self.assertIn("accounts.map((account) => loadAccountHierarchy(account, period))", self.campaigns_view)
+        self.assertIn("loadAccountHierarchies(accounts, period)", self.campaigns_view)
         for dead in (r"selectedAccountId\b", "DropdownMenuAccount", "Select ad account", "HeaderCreateButton"):
             self.assertNotRegex(self.campaigns_view, dead)
         view_model = (ROOT / "frontend" / "src" / "components" / "campaigns" / "adsManagerViewModel.ts").read_text()
