@@ -126,17 +126,17 @@ function requestErrorMessage(error: unknown): string {
  * with its own error and never hides the others.
  */
 async function loadAccountHierarchies(accounts: MetaAccount[], period: AdsManagerPeriod): Promise<AccountHierarchy[]> {
-  let response: AnalyticsAccountsHierarchyResponse;
+  let rowsOf: Map<string, AnalyticsAccountsHierarchyResponse['accounts'][number]>;
   try {
     const ids = accounts.map((account) => account.account_id).join(',');
-    response = await apiRequest<AnalyticsAccountsHierarchyResponse>(
+    const response = await apiRequest<AnalyticsAccountsHierarchyResponse>(
       `/api/analytics/hierarchy/accounts?account_ids=${encodeURIComponent(ids)}&period=${period}`,
     );
+    rowsOf = new Map(response.accounts.map((rows) => [rows.account_id, rows]));
   } catch (error) {
     const message = requestErrorMessage(error);
     return accounts.map((account) => ({ account, campaigns: [], adSets: [], ads: [], error: message }));
   }
-  const rowsOf = new Map(response.accounts.map((rows) => [rows.account_id, rows]));
   return accounts.map((account) => {
     const rows = rowsOf.get(account.account_id);
     if (!rows) return { account, campaigns: [], adSets: [], ads: [], error: 'This ad account is not available to you.' };
