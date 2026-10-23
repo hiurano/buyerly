@@ -165,6 +165,60 @@ def _utc_iso(value: datetime) -> str:
     return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+HIERARCHY_LEVELS = ("campaign", "adset", "ad")
+
+
+def _hierarchy_items(
+    rows: List[AnalyticsEntityFact],
+    entity_level: str,
+    dates: List[str],
+    previous_dates: List[str],
+    comparison: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    """One drill-down row per entity of `rows`, ordered by entity then date, highest spend first."""
+    current_window = set(dates)
+    previous_window = set(previous_dates)
+    grouped: Dict[str, List[AnalyticsEntityFact]] = {}
+    previous_grouped: Dict[str, List[AnalyticsEntityFact]] = {}
+    for r in rows:
+        if r.date in current_window:
+            grouped.setdefault(r.entity_id, []).append(r)
+        elif r.date in previous_window:
+            previous_grouped.setdefault(r.entity_id, []).append(r)
+
+    results = []
+    for entity_id, entity_facts in grouped.items():
+        first_fact = entity_facts[-1]  # Latest snapshot for status/budget
+        fetched_at_values = [fact.fetched_at for fact in entity_facts if fact.fetched_at]
+        data_as_of = _utc_iso(max(fetched_at_values)) if fetched_at_values else None
+
+        item = {
+            "entity_id": entity_id,
+            "entity_name": first_fact.entity_name or f"{entity_level.capitalize()} {entity_id}",
+            "entity_level": entity_level,
+            # The stored parent, not the query parent: an account-wide query
+            # spans adsets of many campaigns and ads of many adsets.
+            "parent_entity_id": first_fact.parent_entity_id,
+            "account_id": first_fact.account_id,
+            "currency": first_fact.currency,
+            "status": first_fact.status,
+            "effective_status": first_fact.effective_status,
+            "daily_budget": first_fact.daily_budget,
+            "data_as_of": data_as_of,
+        }
+        item.update(_period_metrics(entity_facts))
+        if comparison["available"]:
+            # An entity that did not exist in the baseline window has no
+            # previous value, which is reported as absent rather than zero.
+            baseline_facts = previous_grouped.get(entity_id)
+            item["previous"] = _period_metrics(baseline_facts) if baseline_facts else None
+        results.append(item)
+
+    # Sort by spend descending
+    results.sort(key=lambda x: x["spend"], reverse=True)
+    return results
+
+
 class HierarchyParentNotFound(LookupError):
     """The parent is neither an ad account of the workspace nor stored under one."""
 
@@ -893,50 +947,59 @@ class AnalyticsFactService:
             .order_by(AnalyticsEntityFact.entity_id.asc(), AnalyticsEntityFact.date.asc())
         )
         rows = (await session.execute(stmt)).scalars().all()
-        if not rows:
-            return [], comparison
+        return _hierarchy_items(rows, entity_level, dates, previous_dates, comparison), comparison
 
-        current_window = set(dates)
-        previous_window = set(previous_dates)
-        grouped: Dict[str, List[AnalyticsEntityFact]] = {}
-        previous_grouped: Dict[str, List[AnalyticsEntityFact]] = {}
-        for r in rows:
-            if r.date in current_window:
-                grouped.setdefault(r.entity_id, []).append(r)
-            elif r.date in previous_window:
-                previous_grouped.setdefault(r.entity_id, []).append(r)
+    @staticmethod
+    async def get_accounts_hierarchy(
+        session,
+        workspace_id: int,
+        accounts: List[Account],
+        period: str = "today",
+        now_utc: Optional[datetime] = None,
+    ) -> Dict[str, Dict[str, List[Dict[str, Any]]]]:
+        """Every campaign, ad set and ad of `accounts`, as Campaigns shows them all at once.
 
-        results = []
-        for entity_id, entity_facts in grouped.items():
-            first_fact = entity_facts[-1]  # Latest snapshot for status/budget
-            fetched_at_values = [fact.fetched_at for fact in entity_facts if fact.fetched_at]
-            data_as_of = _utc_iso(max(fetched_at_values)) if fetched_at_values else None
+        The rows are the ones `get_hierarchy_breakdown` returns for an account
+        parent at each level, keyed by account and level; one query reads them
+        all, each account in its own local dates. The caller passes only
+        accounts the member may see.
+        """
+        now = now_utc or datetime.now(timezone.utc)
+        dates_of = {
+            account.account_id: resolve_account_period_dates(account.timezone_name, period, now)
+            for account in accounts
+        }
+        result: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
+            account_id: {level: [] for level in HIERARCHY_LEVELS} for account_id in dates_of
+        }
+        if not dates_of:
+            return result
 
-            item = {
-                "entity_id": entity_id,
-                "entity_name": first_fact.entity_name or f"{entity_level.capitalize()} {entity_id}",
-                "entity_level": entity_level,
-                # The stored parent, not the query parent: an account-wide query
-                # spans adsets of many campaigns and ads of many adsets.
-                "parent_entity_id": first_fact.parent_entity_id,
-                "account_id": first_fact.account_id,
-                "currency": first_fact.currency,
-                "status": first_fact.status,
-                "effective_status": first_fact.effective_status,
-                "daily_budget": first_fact.daily_budget,
-                "data_as_of": data_as_of,
-            }
-            item.update(_period_metrics(entity_facts))
-            if comparison["available"]:
-                # An entity that did not exist in the baseline window has no
-                # previous value, which is reported as absent rather than zero.
-                baseline_facts = previous_grouped.get(entity_id)
-                item["previous"] = _period_metrics(baseline_facts) if baseline_facts else None
-            results.append(item)
+        stmt = (
+            select(AnalyticsEntityFact)
+            .where(
+                AnalyticsEntityFact.workspace_id == workspace_id,
+                AnalyticsEntityFact.entity_level.in_(HIERARCHY_LEVELS),
+                or_(
+                    *(
+                        and_(AnalyticsEntityFact.account_id == account_id, AnalyticsEntityFact.date.in_(dates))
+                        for account_id, dates in dates_of.items()
+                    )
+                ),
+            )
+            .order_by(AnalyticsEntityFact.entity_id.asc(), AnalyticsEntityFact.date.asc())
+        )
+        rows_of: Dict[Tuple[str, str], List[AnalyticsEntityFact]] = {}
+        for row in (await session.execute(stmt)).scalars().all():
+            rows_of.setdefault((row.account_id, row.entity_level), []).append(row)
 
-        # Sort by spend descending
-        results.sort(key=lambda x: x["spend"], reverse=True)
-        return results, comparison
+        no_comparison = _comparison_meta(False, [], period)
+        for account_id, dates in dates_of.items():
+            for level in HIERARCHY_LEVELS:
+                result[account_id][level] = _hierarchy_items(
+                    rows_of.get((account_id, level), []), level, dates, [], no_comparison
+                )
+        return result
 
     @staticmethod
     async def cleanup_expired_facts(

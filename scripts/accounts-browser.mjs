@@ -128,6 +128,12 @@ try {
         const items = url.searchParams.get('account_id') === 'act_101' ? events : [];
         return route.fulfill({ json: { items, page: 1, page_size: 5, total: items.length, total_pages: 1, status_counts: {} } });
       }
+      if (path === '/api/analytics/hierarchy/accounts') {
+        const ids = url.searchParams.get('account_ids').split(',');
+        const rows = (id, level) => [];
+        const accounts = ids.map((id) => ({ account_id: id, campaigns: rows(id, 'campaign'), adsets: rows(id, 'adset'), ads: rows(id, 'ad') }));
+        return route.fulfill({ json: { period: url.searchParams.get('period'), source: 'analytics_fact_store', accounts, missing: [] } });
+      }
       if (path === '/api/analytics/hierarchy') {
         return route.fulfill({ json: { parent_id: url.searchParams.get('parent_id'), level: 'campaign', period: 'today', source: 'analytics_fact_store', data_as_of: null, total: 0, items: [] } });
       }

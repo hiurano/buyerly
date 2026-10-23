@@ -299,11 +299,11 @@ class TestReactFrontendContract(unittest.TestCase):
     def test_ads_manager_uses_workspace_api_without_production_fixtures(self):
         for contract in (
             "apiRequest<MetaAccount[]>('/api/accounts')",
-            "/api/analytics/hierarchy?parent_id=",
-            "encodeURIComponent(account.account_id)",
-            "request('campaign')",
-            "request('adset')",
-            "request('ad')",
+            "/api/analytics/hierarchy/accounts?account_ids=",
+            "loadAccountHierarchies(accounts, period)",
+            "rows.campaigns",
+            "rows.adsets",
+            "rows.ads",
             "requestGenerationRef",
             "Loading ad accounts…",
             "Loading campaigns…",

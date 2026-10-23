@@ -18,6 +18,9 @@ from services.analytics_store import AnalyticsFactService, HierarchyParentNotFou
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analytics", tags=["Analytics Fact Store"])
 
+# Campaigns asks for every account it lists in one request; a workspace holds far fewer.
+MAX_HIERARCHY_ACCOUNTS = 500
+
 
 def _hierarchy_response(
     parent_id: str,
@@ -109,3 +112,52 @@ async def get_analytics_hierarchy(
             raise _parent_not_found() from None
 
         return _hierarchy_response(parent_id, level, period, items, comparison)
+
+
+@router.get("/hierarchy/accounts")
+async def get_accounts_hierarchy(
+    account_ids: str = Query(
+        ..., max_length=20_000, description="Comma-separated Meta account IDs (act_…) whose rows to read"
+    ),
+    period: str = Query("today", pattern="^(today|yesterday|last_3d|last_7d)$", description="Reporting period"),
+    user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """Campaigns, ad sets and ads of several ad accounts in one request, as Campaigns lists them all at once.
+
+    Each account's rows are what `/hierarchy` returns for that account at each
+    level. An account the member cannot see, or that this workspace does not
+    hold, comes back under `missing` and never hides the others.
+    """
+    wanted = list(dict.fromkeys(part.strip() for part in account_ids.split(",") if part.strip()))
+    if len(wanted) > MAX_HIERARCHY_ACCOUNTS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"At most {MAX_HIERARCHY_ACCOUNTS} ad accounts per request",
+        )
+    async with async_session_maker() as session:
+        ws = await get_user_workspace(session, user)
+        ws_id = ws.id if ws else getattr(user, "active_workspace_id", None)
+        visible = (
+            {account.account_id: account for account in await get_user_accounts(session, user, workspace_id=ws_id)}
+            if ws_id
+            else {}
+        )
+        accounts = [visible[account_id] for account_id in wanted if account_id in visible]
+        rows = await AnalyticsFactService.get_accounts_hierarchy(
+            session, workspace_id=ws_id, accounts=accounts, period=period
+        )
+
+    return {
+        "period": period,
+        "source": "analytics_fact_store",
+        "accounts": [
+            {
+                "account_id": account.account_id,
+                "campaigns": rows[account.account_id]["campaign"],
+                "adsets": rows[account.account_id]["adset"],
+                "ads": rows[account.account_id]["ad"],
+            }
+            for account in accounts
+        ],
+        "missing": [account_id for account_id in wanted if account_id not in visible],
+    }

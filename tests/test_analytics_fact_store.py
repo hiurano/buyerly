@@ -913,6 +913,130 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(unknown.status_code, 404)
 
+    async def test_accounts_hierarchy_reads_every_account_in_one_request(self):
+        async with self.test_session_maker() as session:
+            acc1_today = resolve_account_period_dates(self.acc1.timezone_name, "today")[0]
+            acc2_today = resolve_account_period_dates(self.acc2.timezone_name, "today")[0]
+            acc2_yesterday = resolve_account_period_dates(self.acc2.timezone_name, "yesterday")[0]
+            await AnalyticsFactService.upsert_entity_facts(
+                session,
+                workspace_id=self.ws1.id,
+                account_id=self.acc1.account_id,
+                facts=[
+                    {
+                        "entity_level": "campaign",
+                        "entity_id": "cmp_many_1",
+                        "entity_name": "Alpha Campaign",
+                        "parent_entity_id": self.acc1.account_id,
+                        "date": acc1_today,
+                        "currency": "USD",
+                        "spend": 40.0,
+                        "impressions": 2000,
+                    },
+                    {
+                        "entity_level": "adset",
+                        "entity_id": "adset_many_1",
+                        "entity_name": "Alpha Ad Set",
+                        "parent_entity_id": "cmp_many_1",
+                        "date": acc1_today,
+                        "currency": "USD",
+                        "spend": 40.0,
+                    },
+                    {
+                        "entity_level": "ad",
+                        "entity_id": "ad_many_1",
+                        "entity_name": "Alpha Ad",
+                        "parent_entity_id": "adset_many_1",
+                        "date": acc1_today,
+                        "currency": "USD",
+                        "spend": 40.0,
+                    },
+                ],
+            )
+            await AnalyticsFactService.upsert_entity_facts(
+                session,
+                workspace_id=self.ws1.id,
+                account_id=self.acc2.account_id,
+                facts=[
+                    {
+                        "entity_level": "campaign",
+                        "entity_id": "cmp_many_2",
+                        "entity_name": "Euro Campaign",
+                        "parent_entity_id": self.acc2.account_id,
+                        "date": acc2_today,
+                        "currency": "EUR",
+                        "spend": 12.5,
+                    },
+                    # Yesterday in Berlin is outside "today" for this account.
+                    {
+                        "entity_level": "campaign",
+                        "entity_id": "cmp_many_old",
+                        "entity_name": "Yesterday's Campaign",
+                        "parent_entity_id": self.acc2.account_id,
+                        "date": acc2_yesterday,
+                        "currency": "EUR",
+                        "spend": 99.0,
+                    },
+                ],
+            )
+            await AnalyticsFactService.upsert_entity_facts(
+                session,
+                workspace_id=self.ws2.id,
+                account_id=self.acc3.account_id,
+                facts=[
+                    {
+                        "entity_level": "campaign",
+                        "entity_id": "cmp_alien",
+                        "entity_name": "Beta Campaign",
+                        "parent_entity_id": self.acc3.account_id,
+                        "date": resolve_account_period_dates(self.acc3.timezone_name, "today")[0],
+                        "currency": "USD",
+                        "spend": 5.0,
+                    },
+                ],
+            )
+            await session.commit()
+
+        transport = httpx.ASGITransport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
+            headers = await session_headers(self.test_session_maker, {"id": 11111111, "first_name": "Buyer One", "username": "buyer1"})
+            ids = ",".join([self.acc1.account_id, self.acc2.account_id, self.acc3.account_id, "act_9999"])
+            res = await ac.get(f"/api/analytics/hierarchy/accounts?account_ids={ids}&period=today", headers=headers)
+            self.assertEqual(res.status_code, 200)
+            data = res.json()
+            self.assertEqual(data["period"], "today")
+            self.assertEqual(data["missing"], [self.acc3.account_id, "act_9999"])
+            by_account = {account["account_id"]: account for account in data["accounts"]}
+            self.assertEqual(list(by_account), [self.acc1.account_id, self.acc2.account_id])
+
+            alpha = by_account[self.acc1.account_id]
+            self.assertEqual([row["entity_id"] for row in alpha["campaigns"]], ["cmp_many_1"])
+            self.assertEqual([row["entity_id"] for row in alpha["adsets"]], ["adset_many_1"])
+            self.assertEqual([row["entity_id"] for row in alpha["ads"]], ["ad_many_1"])
+            self.assertEqual(alpha["adsets"][0]["parent_entity_id"], "cmp_many_1")
+
+            euro = by_account[self.acc2.account_id]
+            self.assertEqual([row["entity_id"] for row in euro["campaigns"]], ["cmp_many_2"])
+            self.assertEqual(euro["campaigns"][0]["spend"], 12.5)
+            self.assertEqual(euro["adsets"], [])
+            self.assertEqual(euro["ads"], [])
+
+            # Each account's rows are exactly what the one-account drill-down returns.
+            for account_id, key, level in (
+                (self.acc1.account_id, "campaigns", "campaign"),
+                (self.acc1.account_id, "ads", "ad"),
+                (self.acc2.account_id, "campaigns", "campaign"),
+            ):
+                single = await ac.get(
+                    f"/api/analytics/hierarchy?parent_id={account_id}&level={level}&period=today",
+                    headers=headers,
+                )
+                self.assertEqual(by_account[account_id][key], single.json()["items"])
+
+            too_many = ",".join(f"act_{n}" for n in range(501))
+            res_limit = await ac.get(f"/api/analytics/hierarchy/accounts?account_ids={too_many}", headers=headers)
+            self.assertEqual(res_limit.status_code, 422)
+
     async def test_analytics_hierarchy_compares_against_the_preceding_window(self):
         """The baseline is the equal-length window immediately before the reported one."""
         timezone_name = self.acc1.timezone_name
