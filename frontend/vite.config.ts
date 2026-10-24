@@ -149,6 +149,12 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(process.env.APP_VERSION || 'local'),
   },
+  // Compiled components import the compiler's runtime, which the dependency
+  // scan of the sources cannot see: found on the first page instead, it
+  // re-bundled React mid-load and left the page with two copies (#492).
+  optimizeDeps: {
+    include: ['react/compiler-runtime'],
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

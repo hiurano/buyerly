@@ -11,7 +11,8 @@ function load(file) {
   const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText;
-  const requireSource = name => load(path.resolve(name.startsWith('@/') ? root : path.dirname(file), name.replace(/^@\//, '') + '.ts'));
+  // A package (react since #492) comes from node_modules; the app's own modules are compiled here.
+  const requireSource = name => (/^(\.|@\/)/.test(name) ? load(path.resolve(name.startsWith('@/') ? root : path.dirname(file), name.replace(/^@\//, '') + '.ts')) : require(name));
   new Function('require', 'module', 'exports', code)(requireSource, module, module.exports);
   return module.exports;
 }
