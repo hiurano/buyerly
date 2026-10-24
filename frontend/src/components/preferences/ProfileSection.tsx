@@ -140,9 +140,8 @@ const ProfileAvatar: React.FC<{ user: SessionUser; onUserChanged: () => void | P
       await onUserChanged();
     } catch (error) {
       showSaveError(error);
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   const remove = async () => {
@@ -152,9 +151,8 @@ const ProfileAvatar: React.FC<{ user: SessionUser; onUserChanged: () => void | P
       await onUserChanged();
     } catch (error) {
       showSaveError(error);
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   const face = (

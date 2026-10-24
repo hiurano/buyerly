@@ -59,6 +59,17 @@ export const OpenPaletteIcon: React.FC<{ kind: OpenPaletteKind; size?: number }>
 /** What had focus when a palette opened; it gets focus back unless a choice moves it on. */
 let returnFocusTo: HTMLElement | null = null;
 
+/**
+ * Hands over where focus goes back to, once. A function, as the React Compiler
+ * takes a module variable for a constant inside a component and would read it
+ * after clearing it (#492).
+ */
+function takeReturnFocus(): HTMLElement | null {
+  const target = returnFocusTo;
+  returnFocusTo = null;
+  return target;
+}
+
 /** Opens an "Open …" palette, from O then a letter or from the command menu. */
 export function openOpenPalette(kind: OpenPaletteKind): void {
   const active = document.activeElement;
@@ -97,8 +108,8 @@ export const OpenPalette: React.FC<OpenPaletteProps> = ({ workspace, navigate })
   const setOpenPalette = useAppStore((state) => state.setOpenPalette);
   const choiceMade = useRef(false);
   // The closing palette keeps its kind through the animation.
-  const shownKind = useRef<OpenPaletteKind>('campaign');
-  if (kind) shownKind.current = kind;
+  const [shownKind, setShownKind] = useState<OpenPaletteKind>('campaign');
+  if (kind && kind !== shownKind) setShownKind(kind);
 
   useEffect(() => {
     let oPressed = false;
@@ -147,8 +158,7 @@ export const OpenPalette: React.FC<OpenPaletteProps> = ({ workspace, navigate })
           aria-describedby={undefined}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
-            const target = returnFocusTo;
-            returnFocusTo = null;
+            const target = takeReturnFocus();
             if (choiceMade.current) {
               choiceMade.current = false;
               return;
@@ -157,7 +167,7 @@ export const OpenPalette: React.FC<OpenPaletteProps> = ({ workspace, navigate })
           }}
           className={`fixed inset-x-4 top-[13vh] z-[var(--layer-command-menu)] mx-auto flex max-h-[min(487px,84vh)] max-w-[720px] flex-col outline-none ${COMMAND_MENU_CLASSES.surface}`}
         >
-          <Dialog.Title className="sr-only">{OPEN_PALETTE_LABELS[shownKind.current].replace('…', '')}</Dialog.Title>
+          <Dialog.Title className="sr-only">{OPEN_PALETTE_LABELS[shownKind].replace('…', '')}</Dialog.Title>
           {kind && (
             <PaletteBody key={kind} kind={kind} workspace={workspace} navigate={navigate} choose={choose} />
           )}

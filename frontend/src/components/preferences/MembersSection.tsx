@@ -324,6 +324,9 @@ export const RowMenu: React.FC<{ label: string; children: React.ReactNode; visib
  * menu resends or revokes the invitation; your own row's menu leaves the
  * workspace, and an owner or admin changes another member's role or removes them.
  */
+/** Linear lists only invitations still waiting for someone; public links have no email. */
+const isWaitingInvite = (invite: InviteItem) => Boolean(invite.email) && (invite.status === 'pending' || invite.status === 'expired');
+
 export const MembersSection: React.FC<{
   workspace: Workspace;
   /** Reloads the account after leaving, so the app opens the next workspace. */
@@ -354,16 +357,16 @@ export const MembersSection: React.FC<{
     && member.role !== 'owner' && (member.role !== 'admin' || workspace.role === 'owner');
 
   const refresh = useCallback(async () => {
+    const invitesRead = canManage
+      ? apiRequest<InviteItem[]>(`/api/workspaces/${workspace.id}/invites`)
+      : Promise.resolve([] as InviteItem[]);
     try {
       const [nextMembers, nextInvites] = await Promise.all([
         apiRequest<MemberItem[]>(`/api/workspaces/${workspace.id}/members`),
-        canManage
-          ? apiRequest<InviteItem[]>(`/api/workspaces/${workspace.id}/invites`)
-          : Promise.resolve([] as InviteItem[]),
+        invitesRead,
       ]);
       setMembers(nextMembers);
-      // Linear lists only invitations still waiting for someone; public links have no email.
-      setInvites(nextInvites.filter((invite) => invite.email && (invite.status === 'pending' || invite.status === 'expired')));
+      setInvites(nextInvites.filter(isWaitingInvite));
       setState('ready');
     } catch (error) {
       setLoadError(errorMessage(error, 'Please try again.'));

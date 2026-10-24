@@ -31,6 +31,15 @@ function writeAddress(filters: Filters) {
  * gets the saved filters back. `navigationKey` changes on every navigation,
  * Back and Forward included.
  */
+/** The quick filter this tab last had, if storage holds a valid one. */
+function readQuick(key: string): QuickSelection | null {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(key) ?? 'null');
+    if (saved && ['status', 'account', 'group', 'rule', 'campaign'].includes(saved.fieldId) && typeof saved.value === 'string') return saved;
+  } catch { /* Storage is optional. */ }
+  return null;
+}
+
 export function useCampaignViewFilters(scope: string, navigationKey: number, mine = false) {
   const views = {
     campaigns: useAdsManagerView('campaigns', mine),
@@ -58,19 +67,11 @@ export function useCampaignViewFilters(scope: string, navigationKey: number, min
       writeAddress(filters);
     }
     // Only arrival and navigation read the address; later changes write it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, navigationKey]);
 
   const [quickState, setQuickState] = useState<{ scope: string; selection: QuickSelection | null } | null>(null);
   const key = `buyerly:quick-filter:${scope}`;
-  let quick: QuickSelection | null = null;
-  if (quickState?.scope === scope) quick = quickState.selection;
-  else {
-    try {
-      const saved = JSON.parse(sessionStorage.getItem(key) ?? 'null');
-      if (saved && ['status', 'account', 'group', 'rule', 'campaign'].includes(saved.fieldId) && typeof saved.value === 'string') quick = saved;
-    } catch { /* Storage is optional. */ }
-  }
+  const quick = quickState?.scope === scope ? quickState.selection : readQuick(key);
   const setQuick = (selection: QuickSelection | null) => {
     setQuickState({ scope, selection });
     try { sessionStorage.setItem(key, JSON.stringify(selection)); } catch { /* Storage is optional. */ }

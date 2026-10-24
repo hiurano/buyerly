@@ -75,12 +75,12 @@ export function useTeams(workspaceId: number, filter: TeamFilter | 'all' = 'all'
   const [error, setError] = useState('');
 
   const refresh = useCallback(async () => {
+    // Active and retired are the API's own filters of `all`, in the same order, so they share its read.
+    const read = readTeams(workspaceId, filter === 'deleted' ? 'deleted' : 'all').then((teams) => teams.filter((team) => (
+      filter === 'active' ? !team.retired_at : filter === 'retired' ? Boolean(team.retired_at) : true
+    )));
     try {
-      // Active and retired are the API's own filters of `all`, in the same order, so they share its read.
-      const read = await readTeams(workspaceId, filter === 'deleted' ? 'deleted' : 'all');
-      const next = filter === 'active' ? read.filter((team) => !team.retired_at)
-        : filter === 'retired' ? read.filter((team) => team.retired_at) : read;
-      setTeams(next);
+      setTeams(await read);
       setError('');
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Please try again.');

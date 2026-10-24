@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { apiRequest } from '@/lib/api';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { canAdministerWorkspace } from '@/lib/settingsPages';
@@ -481,9 +481,8 @@ const TeamDocumentEditor: React.FC<TeamDocumentEditorProps> = ({ team, document,
   };
 
   // Whatever is still unsaved goes when the document closes.
-  const flushRef = useRef(flush);
-  flushRef.current = flush;
-  useEffect(() => () => void flushRef.current(), []);
+  const flushOnClose = useEffectEvent(() => void flush());
+  useEffect(() => () => flushOnClose(), []);
 
   // The tab is named after the document, as Linear's.
   useEffect(() => {

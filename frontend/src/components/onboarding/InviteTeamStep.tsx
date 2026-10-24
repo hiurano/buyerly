@@ -43,7 +43,7 @@ export const InviteTeamStep: React.FC<InviteTeamStepProps> = ({ workspace, busy,
   const [text, setText] = useState('');
   const [blurred, setBlurred] = useState(false);
   const [role, setRole] = useState('member');
-  const copiedTimer = useRef<number>();
+  const copiedTimer = useRef<number | undefined>(undefined);
   // One request per workspace, even when the effect runs twice, so the link is turned on once.
   const linkRequest = useRef<{ workspaceId: number; promise: Promise<InviteLinkResponse> } | null>(null);
 

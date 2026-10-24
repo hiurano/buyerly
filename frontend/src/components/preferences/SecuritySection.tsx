@@ -21,6 +21,7 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } 
 import { DataState } from '@/ui/DataState';
 import { Tooltip } from '@/ui/Tooltip';
 import { toast } from '@/ui/toast';
+import { useLastPresent } from '@/ui/useLastPresent';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -221,9 +222,7 @@ export const SecuritySection: React.FC = () => {
   const [busy, setBusy] = useState<Busy>(null);
   const [showAll, setShowAll] = useState(false);
   // The closing confirmation keeps its words through the animation.
-  const lastConfirmation = useRef<Confirmation | null>(null);
-  if (confirmation) lastConfirmation.current = confirmation;
-  const asked = confirmation ?? lastConfirmation.current;
+  const asked = useLastPresent(confirmation);
 
   const refresh = useCallback(async () => {
     try {
@@ -257,9 +256,8 @@ export const SecuritySection: React.FC = () => {
         'Session could not be revoked',
         `We encountered an error when logging out the session. ${ERROR_HINT}`,
       );
-    } finally {
-      setBusy(null);
     }
+    setBusy(null);
   };
 
   const revokeAll = async () => {
@@ -278,9 +276,8 @@ export const SecuritySection: React.FC = () => {
         'Sessions could not be logged out',
         `We encountered an error when logging out other sessions. ${ERROR_HINT}`,
       );
-    } finally {
-      setBusy(null);
     }
+    setBusy(null);
   };
 
   const leave = async (session: WebSession) => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
 import type { MetaAccount, Workspace } from '@/lib/types';
@@ -27,6 +27,7 @@ import { toast } from '@/ui/toast';
 import { ChoiceDialog, errorMessage, memberName, type MemberItem } from './MemberDialogs';
 import { Initials, RoleStatus, RowMenu } from './MembersSection';
 import { TeamIcon } from './TeamIcon';
+import { useLastPresent } from '@/ui/useLastPresent';
 
 type TeamPage = 'overview' | 'general' | 'members' | 'accounts';
 
@@ -269,9 +270,7 @@ export const RestoreTeamDialog: React.FC<{
   onClose: () => void;
   onConfirm: (team: TeamItem) => Promise<unknown> | void;
 }> = ({ team, onClose, onConfirm }) => {
-  const last = useRef<TeamItem | null>(null);
-  if (team) last.current = team;
-  const shown = team || last.current;
+  const shown = useLastPresent(team);
   return (
     <ConfirmDialog
       open={Boolean(team)}
@@ -400,13 +399,14 @@ const TeamGeneral: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
   };
 
   const savePrivate = async (next: boolean) => {
+    const title = next ? `${team.name} is now private` : `${team.name} is now public`;
     try {
       await apiRequest<TeamItem>(teamsPath(workspace.id, `/${team.id}`), {
         method: 'PATCH',
         body: JSON.stringify({ private: next }),
       });
       notifyTeamsChanged();
-      toast.show({ tone: 'success', title: next ? `${team.name} is now private` : `${team.name} is now public` });
+      toast.show({ tone: 'success', title });
     } catch (saveError) {
       toast.error('Unable to update team', errorMessage(saveError, 'Please try again.'));
     }
@@ -655,12 +655,10 @@ const TeamMembers: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
   const candidates = (members || []).filter((member) => !team.member_user_ids.includes(member.user_id));
 
   const remove = async (member: MemberItem) => {
+    const title = member.is_current_user ? `You left ${team.name}` : `${memberName(member)} was removed from ${team.name}`;
     try {
       await apiRequest(teamsPath(workspace.id, `/${team.id}/members/${member.user_id}`), { method: 'DELETE' });
-      toast.show({
-        tone: 'success',
-        title: member.is_current_user ? `You left ${team.name}` : `${memberName(member)} was removed from ${team.name}`,
-      });
+      toast.show({ tone: 'success', title });
       notifyTeamsChanged();
     } catch (removeError) {
       toast.error("Couldn't remove from team", errorMessage(removeError, 'Please try again.'));
@@ -669,15 +667,13 @@ const TeamMembers: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
 
   /** Linear's "Make team owner" / "Remove team owner". */
   const setOwner = async (member: MemberItem, isOwner: boolean) => {
+    const title = isOwner ? `${memberName(member)} is now a team owner` : `${memberName(member)} is no longer a team owner`;
     try {
       await apiRequest(teamsPath(workspace.id, `/${team.id}/members/${member.user_id}`), {
         method: 'PATCH',
         body: JSON.stringify({ is_owner: isOwner }),
       });
-      toast.show({
-        tone: 'success',
-        title: isOwner ? `${memberName(member)} is now a team owner` : `${memberName(member)} is no longer a team owner`,
-      });
+      toast.show({ tone: 'success', title });
       notifyTeamsChanged();
     } catch (ownerError) {
       toast.error("Couldn't change the team owner", errorMessage(ownerError, 'Please try again.'));
@@ -765,12 +761,13 @@ const TeamMembers: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
         }))}
         onClose={() => setAddOpen(false)}
         onConfirm={async (ids) => {
+          const title = ids.length === 1 ? 'Member added' : `${ids.length} members added`;
           try {
             await apiRequest(teamsPath(workspace.id, `/${team.id}/members`), {
               method: 'POST',
               body: JSON.stringify({ user_ids: ids }),
             });
-            toast.show({ tone: 'success', title: ids.length === 1 ? 'Member added' : `${ids.length} members added` });
+            toast.show({ tone: 'success', title });
             notifyTeamsChanged();
           } catch (addError) {
             toast.error("Couldn't add members", errorMessage(addError, 'Please try again.'));
@@ -881,12 +878,13 @@ const TeamAccounts: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
         }))}
         onClose={() => setAddOpen(false)}
         onConfirm={async (ids) => {
+          const title = ids.length === 1 ? 'Ad account added' : `${ids.length} ad accounts added`;
           try {
             await apiRequest(teamsPath(workspace.id, `/${team.id}/accounts`), {
               method: 'POST',
               body: JSON.stringify({ account_ids: ids }),
             });
-            toast.show({ tone: 'success', title: ids.length === 1 ? 'Ad account added' : `${ids.length} ad accounts added` });
+            toast.show({ tone: 'success', title });
             notifyTeamsChanged();
           } catch (addError) {
             toast.error("Couldn't add ad accounts", errorMessage(addError, 'Please try again.'));

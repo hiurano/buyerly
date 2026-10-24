@@ -23,7 +23,7 @@ import { BuyerlySlidersIcon } from '@/icons/BuyerlyIcons';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { useActiveTeam } from '@/lib/teams';
 import { favoritePath } from '@/lib/favorites';
-import { pathForTab } from '@/lib/routing';
+import { pathForTab, useAddress } from '@/lib/routing';
 import { ViewTitle } from '@/components/teams/ViewTitle';
 import { AccountDisplayOptionsPopover } from './AccountDisplayOptionsPopover';
 import { AccountRow, getAccountColumns, usePhoneWidth, type AccountRowActions } from './AccountRow';
@@ -47,6 +47,7 @@ interface OpenFilterMenu {
 
 /** What the list and the account page share: the Add account dialog, Rename and Remove. */
 export function useAccountDialogs(data: WorkspaceAccounts, onRemoved?: () => void) {
+  const { pathname } = useAddress();
   const [addOpen, setAddOpen] = useState(false);
   const [returnedConnectionId, setReturnedConnectionId] = useState<number | null>(
     Number(new URLSearchParams(window.location.search).get('meta_connection')) || null,
@@ -67,7 +68,7 @@ export function useAccountDialogs(data: WorkspaceAccounts, onRemoved?: () => voi
       <MetaConnectionDialog
         open={addOpen || returnedConnectionId !== null}
         connectionId={returnedConnectionId}
-        returnPath={window.location.pathname}
+        returnPath={pathname}
         onOpenChange={(open) => {
           if (!open) {
             setAddOpen(false);

@@ -43,6 +43,7 @@ import {
 } from './filterModel';
 import { useMenuExit } from '@/ui/useMenuExit';
 import { SubmenuArrow } from '@/ui/SubmenuArrow';
+import { setRef } from '@/ui/setRef';
 
 const MENU_SURFACE = 'var(--card-bg)';
 const MENU_BORDER = 'var(--filter-menu-border)';
@@ -63,6 +64,8 @@ const LIST_PADDING = 6;
 // Opened from the keyboard (F), Linear highlights the first row; opened with the
 // mouse, nothing is highlighted until the pointer or an arrow key picks a row.
 let lastInputWasKeyboard = false;
+/** A function: the React Compiler takes a module variable read in a component for a constant (#492). */
+const inputWasKeyboard = () => lastInputWasKeyboard;
 if (typeof window !== 'undefined') {
   window.addEventListener('keydown', () => { lastInputWasKeyboard = true; }, true);
   window.addEventListener('pointerdown', () => { lastInputWasKeyboard = false; }, true);
@@ -594,9 +597,8 @@ const NumberValueEditor = <T,>({ field, clause, onApply, onBack, onClose, autoFo
       </div>
       <input
         ref={(element) => {
-          (localRef as React.MutableRefObject<HTMLInputElement | null>).current = element;
-          if (typeof inputRef === 'function') inputRef(element);
-          else if (inputRef) (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = element;
+          setRef(localRef, element);
+          setRef(inputRef, element);
         }}
         aria-label={field.label}
         inputMode="decimal"
@@ -627,9 +629,8 @@ const TextValueEditor = <T,>({ field, clause, onApply, onBack, onClose, autoFocu
     <div style={{ width: CHILD_WIDTH, padding: 10 }}>
       <input
         ref={(element) => {
-          (localRef as React.MutableRefObject<HTMLInputElement | null>).current = element;
-          if (typeof inputRef === 'function') inputRef(element);
-          else if (inputRef) (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = element;
+          setRef(localRef, element);
+          setRef(inputRef, element);
         }}
         aria-label={field.label}
         value={value}
@@ -722,9 +723,8 @@ const DateValueEditor = <T,>({
     <>
       <SearchRow
         ref={(element) => {
-          (searchRef as React.MutableRefObject<HTMLInputElement | null>).current = element;
-          if (typeof inputRef === 'function') inputRef(element);
-          else if (inputRef) (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = element;
+          setRef(searchRef, element);
+          setRef(inputRef, element);
         }}
         label={searchLabel}
         value={search}
@@ -821,9 +821,8 @@ export const BuyerlyFilterMenu = <T,>({
   const [childHighlightedIndex, setChildHighlightedIndex] = useState(0);
   // Stays mounted after the parent closes the menu, for Linear's closing fade.
   const { isMounted, isClosing } = useMenuExit(isOpen);
-  const shownModeRef = useRef(mode);
-  if (isOpen) shownModeRef.current = mode;
-  const shownMode = shownModeRef.current;
+  const [shownMode, setShownMode] = useState(mode);
+  if (isOpen && mode !== shownMode) setShownMode(mode);
 
   const activeField =
     fields.find((field) => field.id === activeFieldId)
@@ -850,7 +849,7 @@ export const BuyerlyFilterMenu = <T,>({
     updatePosition();
     setRootSearch('');
     setChildSearch('');
-    setHighlightedIndex(mode === 'root' && !lastInputWasKeyboard ? -1 : 0);
+    setHighlightedIndex(mode === 'root' && !inputWasKeyboard() ? -1 : 0);
     setChildHighlightedIndex(0);
     setActiveFieldId(fieldId ?? null);
     setActiveDateFieldId(null);

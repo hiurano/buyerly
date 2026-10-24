@@ -74,15 +74,13 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const sendCode = async (address: string, turnstileToken?: string) => {
     setBusy(true);
     setError('');
+    const body = JSON.stringify({
+      email: address,
+      ...(inviteToken ? { invite_token: inviteToken } : {}),
+      ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
+    });
     try {
-      await apiRequest('/api/auth/request-temporary-password', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: address,
-          ...(inviteToken ? { invite_token: inviteToken } : {}),
-          ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
-        }),
-      });
+      await apiRequest('/api/auth/request-temporary-password', { method: 'POST', body });
       setCode('');
       setStage('check');
     } catch (requestError) {
@@ -90,12 +88,12 @@ export const LoginView: React.FC<LoginViewProps> = ({
         && requestError.message === HUMAN_CHECK_FAILED) {
         // A new address on login: the server wants the same check as sign-up.
         goTo('verify');
+        setBusy(false);
         return;
       }
       setError(requestError instanceof Error ? requestError.message : 'Could not send the email');
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   const requestLogin = async (event?: FormEvent) => {
@@ -133,9 +131,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
       await onAuthenticated(result);
     } catch (verifyError) {
       setError(verifyError instanceof Error ? verifyError.message : 'Please enter a valid verification code.');
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   return (

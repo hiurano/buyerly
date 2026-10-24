@@ -18,6 +18,14 @@ const LINK_LIFETIME_MS = 10 * 60 * 1000;
  * and once connected "Connected ↗" with a menu to disconnect. Telegram stands
  * where Linear has Slack.
  */
+/** A Connect / Connected button; takes a trigger's ref and props through (React 19's ref prop). */
+const ConnectButton = ({ label, ...props }: { label: string } & React.ComponentProps<'button'>) => (
+  <button type="button" className="preferences-connect-button" {...props}>
+    {label}
+    <BuyerlyArrowUpRightIcon size={16} />
+  </button>
+);
+
 export const ConnectedAccountsSection: React.FC = () => {
   const connection = useTelegramConnection();
   const { loadTelegramConnection, setTelegramConnection, loadNotificationChannels } = useAppStore();
@@ -78,18 +86,11 @@ export const ConnectedAccountsSection: React.FC = () => {
       });
     } catch (error) {
       toast.error("Couldn't disconnect Telegram", error instanceof Error ? error.message : undefined);
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   const account = connection.connected ? telegramAccountName(connection) : null;
-  const button = (label: string, props: React.ButtonHTMLAttributes<HTMLButtonElement> = {}) => (
-    <button type="button" className="preferences-connect-button" {...props}>
-      {label}
-      <BuyerlyArrowUpRightIcon size={16} />
-    </button>
-  );
 
   return (
     <>
@@ -126,7 +127,7 @@ export const ConnectedAccountsSection: React.FC = () => {
             </span>
             {connection.connected ? (
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>{button('Connected')}</DropdownMenuTrigger>
+                <DropdownMenuTrigger asChild><ConnectButton label="Connected" /></DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onSelect={() => setConfirmOpen(true)}>
                     Disconnect personal Telegram account
@@ -134,10 +135,10 @@ export const ConnectedAccountsSection: React.FC = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : connection.available ? (
-              button('Connect', { onClick: () => void connect() })
+              <ConnectButton label="Connect" onClick={() => void connect()} />
             ) : (
               <Tooltip content="Telegram is not set up on this server yet" side="top">
-                <span>{button('Connect', { disabled: true })}</span>
+                <span><ConnectButton label="Connect" disabled /></span>
               </Tooltip>
             )}
           </div>

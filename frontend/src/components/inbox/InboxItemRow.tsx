@@ -53,10 +53,10 @@ const SnoozeRow: React.FC<{
   hint?: string;
   icon?: React.ReactNode;
   onSelect: () => void;
-}> = ({ label, hint, icon = <BuyerlyClockOutlineIcon size={16} />, onSelect }) => (
+}> = ({ label, hint, icon, onSelect }) => (
   <ContextMenuItem onSelect={onSelect}>
     <span className="flex items-center gap-2.5">
-      {icon}
+      {icon ?? <BuyerlyClockOutlineIcon size={16} />}
       {label}
     </span>
     {hint && <span className="text-[12px] text-[var(--text-tertiary)]">{hint}</span>}

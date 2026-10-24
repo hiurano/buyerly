@@ -74,12 +74,42 @@ function publicWebsite(): Plugin {
   };
 }
 
+// Every component and hook goes through the React Compiler, as Linear's does
+// (#492). A function it would have to leave as written fails the build, with
+// the line and the reason.
+type Loc = { start?: { line: number } };
+type CompilerDetail = { reason?: string; loc?: Loc | null; details?: { loc?: Loc | null }[]; options?: CompilerDetail };
+const compilerSkips: string[] = [];
+const reactCompiler = ['babel-plugin-react-compiler', {
+  logger: {
+    logEvent(filename: string | null, event: { kind: string; detail?: unknown; fnLoc?: Loc | null }) {
+      if (event.kind !== 'CompileError' && event.kind !== 'PipelineError') return;
+      const detail = (event.detail ?? {}) as CompilerDetail;
+      const options = detail.options ?? detail;
+      const loc = options.loc ?? options.details?.find((item) => item.loc)?.loc ?? event.fnLoc;
+      const where = `${path.relative(__dirname, filename ?? '?')}:${loc?.start?.line ?? '?'}`;
+      compilerSkips.push(`${where} ${options.reason ?? String(event.detail)}`);
+    },
+  },
+}];
+
+function reactCompilerReport(): Plugin {
+  return {
+    name: 'buyerly-react-compiler-report',
+    apply: 'build',
+    buildEnd() {
+      if (compilerSkips.length === 0) return;
+      this.error(`React Compiler left ${compilerSkips.length} function(s) as written:\n${compilerSkips.join('\n')}`);
+    },
+  };
+}
+
 // Where the dev server forwards API calls; compose.dev.yaml points it at its api service.
 const apiOrigin = process.env.VITE_API_ORIGIN || 'http://127.0.0.1:8080';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [publicWebsite(), react()],
+  plugins: [publicWebsite(), react({ babel: { plugins: [reactCompiler] } }), reactCompilerReport()],
   // The release this bundle belongs to; an open tab compares it with /health/live (#303).
   define: {
     __APP_VERSION__: JSON.stringify(process.env.APP_VERSION || 'local'),

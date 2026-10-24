@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useEffectEvent, useRef } from 'react';
 
 /**
  * Cloudflare Turnstile, as on linear.app/signup: the script loads when the
@@ -57,8 +57,9 @@ export const TurnstileWidget: React.FC<{
   onError: () => void;
 }> = ({ onToken, onError }) => {
   const container = useRef<HTMLDivElement>(null);
-  const handlers = useRef({ onToken, onError });
-  handlers.current = { onToken, onError };
+  // The widget's callbacks reach the latest props, without rendering it again when they change.
+  const tokenReceived = useEffectEvent((token: string) => onToken(token));
+  const failed = useEffectEvent(() => onError());
 
   useEffect(() => {
     let cancelled = false;
@@ -69,13 +70,13 @@ export const TurnstileWidget: React.FC<{
         widgetId = turnstile.render(container.current, {
           sitekey: window.location.hostname === 'buyerly.app' ? SITE_KEY : TEST_SITE_KEY,
           theme: document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light',
-          callback: (token) => handlers.current.onToken(token),
-          'error-callback': () => handlers.current.onError(),
-          'expired-callback': () => handlers.current.onError(),
+          callback: (token) => tokenReceived(token),
+          'error-callback': () => failed(),
+          'expired-callback': () => failed(),
         });
       })
       .catch(() => {
-        if (!cancelled) handlers.current.onError();
+        if (!cancelled) failed();
       });
     return () => {
       cancelled = true;

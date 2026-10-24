@@ -26,9 +26,10 @@ export function useSidebarCollapsed(id: string): [boolean, () => void] {
   const toggle = useCallback(() => {
     setCollapsed((current) => {
       const next = !current;
+      const others = readCollapsed().filter((item) => item !== id);
+      const folded = next ? [...others, id] : others;
       try {
-        const others = readCollapsed().filter((item) => item !== id);
-        window.localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next ? [...others, id] : others));
+        window.localStorage.setItem(COLLAPSED_KEY, JSON.stringify(folded));
       } catch { /* Storage is optional: the section still folds for this visit. */ }
       return next;
     });

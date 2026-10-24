@@ -11,7 +11,7 @@ const SWIPE_TIME = 300;
  * is a drawer over the content. Navigation, a tap on the backdrop and a swipe
  * to the left close it; leaving the small width resets it to closed.
  */
-export function useSidebarDrawer(surfaceRef: React.RefObject<HTMLElement>) {
+export function useSidebarDrawer(surfaceRef: React.RefObject<HTMLElement | null>) {
   const isSmall = useIsSmallScreen();
   const isOpen = useAppStore((state) => state.isSidebarOpen);
   const setSidebarOpen = useAppStore((state) => state.setSidebarOpen);
@@ -70,12 +70,12 @@ export const PEEK_WINDOW_LEAVE_DELAY = 500;
  * backdrop or the content, the cursor leaving the window, a press on the
  * backdrop and navigation close it. Dragging the resizer expands the column.
  */
-export function useSidebarPeek(surfaceRef: React.RefObject<HTMLElement>, enabled: boolean, isDragging: boolean) {
+export function useSidebarPeek(surfaceRef: React.RefObject<HTMLElement | null>, enabled: boolean, isDragging: boolean) {
   const peekOpen = useAppStore((state) => state.isSidebarPeekOpen);
   const setPeekOpen = useAppStore((state) => state.setSidebarPeekOpen);
   const isOpen = enabled && peekOpen;
-  const openTimer = useRef<number>();
-  const closeTimer = useRef<number>();
+  const openTimer = useRef<number | undefined>(undefined);
+  const closeTimer = useRef<number | undefined>(undefined);
 
   const close = useCallback(() => {
     window.clearTimeout(closeTimer.current);
