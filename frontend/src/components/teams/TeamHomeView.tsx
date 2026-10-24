@@ -1,5 +1,9 @@
 import React, { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import { observer } from 'mobx-react-lite';
 import { apiRequest } from '@/lib/api';
+import { pool } from '@/models/pool';
+import { membersQuery, teamDocumentsQuery } from '@/models/queries';
+import { usePoolQuery } from '@/models/usePool';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { canAdministerWorkspace } from '@/lib/settingsPages';
 import { teamHomePath, type TeamHomePage } from '@/lib/routing';
@@ -49,38 +53,21 @@ interface TeamHomeViewProps {
 }
 
 /** Linear's team Home: Overview, Documents and Members of one team. */
-export const TeamHomeView: React.FC<TeamHomeViewProps> = ({ page, documentId, navigate }) => {
+const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, navigate }) => {
   const { workspace } = useWorkspaceSession();
   const { team, loading, missing } = useActiveTeam(workspace.id);
-  const [members, setMembers] = useState<MemberItem[] | null>(null);
-  const [documents, setDocuments] = useState<TeamDocument[] | null>(null);
-  const [documentsError, setDocumentsError] = useState('');
+  // From the pool: a team Home already visited draws its members and documents at once (#488).
+  const membersRead = usePoolQuery(membersQuery(workspace.id));
+  const members: MemberItem[] | null = membersRead.data ?? (membersRead.error ? [] : null);
+  const teamId = team?.id;
+  const documentsRead = usePoolQuery(teamId === undefined ? null : teamDocumentsQuery(workspace.id, teamId));
+  const documents = documentsRead.data ?? null;
+  const documentsError = documentsRead.error;
   // Guests write in the teams they're on, which are the only ones they see, as in Linear.
   const canWrite = true;
-
-  useEffect(() => {
-    let active = true;
-    apiRequest<MemberItem[]>(`/api/workspaces/${workspace.id}/members`)
-      .then((items) => { if (active) setMembers(items); })
-      .catch(() => { if (active) setMembers([]); });
-    return () => { active = false; };
-  }, [workspace.id]);
-
-  const teamId = team?.id;
-  const loadDocuments = useCallback(async () => {
-    if (teamId === undefined) return;
-    try {
-      setDocuments(await apiRequest<TeamDocument[]>(teamDocumentsPath(workspace.id, teamId)));
-      setDocumentsError('');
-    } catch (error) {
-      setDocumentsError(error instanceof Error ? error.message : 'Please try again.');
-    }
-  }, [teamId, workspace.id]);
-
-  useEffect(() => {
-    setDocuments(null);
-    void loadDocuments();
-  }, [loadDocuments]);
+  const loadDocuments = () => {
+    if (teamId !== undefined) void pool.fetch(teamDocumentsQuery(workspace.id, teamId), { afterWrite: true });
+  };
 
   const open = (next: TeamHomePage, id?: number) => {
     if (team) navigate(teamHomePath(workspace.slug, team.key, next, id));
@@ -93,7 +80,7 @@ export const TeamHomeView: React.FC<TeamHomeViewProps> = ({ page, documentId, na
         method: 'POST',
         body: JSON.stringify({ title: '', content: '' }),
       });
-      setDocuments((current) => [created, ...(current ?? [])]);
+      pool.append(teamDocumentsQuery(workspace.id, team.id), created, { first: true });
       open('documents', created.id);
     } catch (error) {
       toast.error("Couldn't create the document", error instanceof Error ? error.message : undefined);
@@ -128,9 +115,9 @@ export const TeamHomeView: React.FC<TeamHomeViewProps> = ({ page, documentId, na
             team={team}
             document={openDocument}
             readOnly={!canWrite}
-            onSaved={(saved) => setDocuments((current) => (current ?? []).map((item) => (item.id === saved.id ? saved : item)))}
+            onSaved={(saved) => pool.upsert('teamDocument', saved, saved.id)}
             onDeleted={() => {
-              setDocuments((current) => (current ?? []).filter((item) => item.id !== openDocument.id));
+              pool.remove('teamDocument', openDocument.id);
               open('documents');
             }}
           />
@@ -616,3 +603,6 @@ const TeamMembersTab: React.FC<{ team: TeamItem; members: MemberItem[] | null }>
     </BuyerlyDataTable>
   );
 };
+
+/** Draws the pool's models as they change (#488). */
+export const TeamHomeView = observer(TeamHomeViewContent);

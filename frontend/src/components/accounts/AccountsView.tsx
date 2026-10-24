@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { observer } from 'mobx-react-lite';
 import type { MetaAccount } from '@/lib/types';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import {
@@ -75,7 +76,7 @@ export function useAccountDialogs(data: WorkspaceAccounts, onRemoved?: () => voi
             clearMetaCallback();
           }
         }}
-        onImported={() => void data.refresh(true)}
+        onImported={() => void data.refresh()}
       />
       <RenameAccountDialog
         account={renaming}
@@ -120,7 +121,7 @@ interface AccountsViewProps {
 }
 
 /** Linear's Projects for ad accounts: every account of the workspace with today's numbers (#388). */
-export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigationKey }) => {
+const AccountsViewContent: React.FC<AccountsViewProps> = ({ navigate, navigationKey }) => {
   const { workspace } = useWorkspaceSession();
   const data = useWorkspaceAccounts();
   const { teams, state, error, canEdit } = data;
@@ -367,3 +368,6 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
     </div>
   );
 };
+
+/** Draws the pool's models as they change (#488). */
+export const AccountsView = observer(AccountsViewContent);

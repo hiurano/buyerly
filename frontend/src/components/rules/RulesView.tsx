@@ -146,13 +146,14 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
   };
   useFiltersInAddress(rulesFilterClauses, (clauses) => updateRulesView({ filters: clauses }), rulesViewLoaded, navigationKey);
 
-  // Rules are read again on arrival and whenever an address names one, so a
-  // rule created since the list was loaded is found as well.
+  // Rules are read again whenever an address names one, so a rule created
+  // since the list was loaded is found as well.
   const revealKey = revealId ? navigationKey : null;
   const [loadedFor, setLoadedFor] = useState<number | null | undefined>(undefined);
   useEffect(() => {
     let active = true;
-    void loadRules().finally(() => {
+    // A plain visit draws the rules held and reads them again only once stale (#488).
+    void loadRules({ ifStale: revealKey === null }).finally(() => {
       if (active) setLoadedFor(revealKey);
     });
     return () => {

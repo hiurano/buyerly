@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { observer } from 'mobx-react-lite';
 import { ChevronRight, Copy } from 'lucide-react';
 import type { MetaAccount } from '@/lib/types';
 import { apiRequest } from '@/lib/api';
@@ -72,7 +73,7 @@ const Figure: React.FC<{ label: string; value: string; caption?: string }> = ({ 
 );
 
 /** One ad account's page, as Linear's project page: name, note, today's numbers, rules, recent events, properties. */
-export const AccountPage: React.FC<AccountPageProps> = ({ accountId, navigate, navigationKey }) => {
+const AccountPageContent: React.FC<AccountPageProps> = ({ accountId, navigate, navigationKey }) => {
   const { workspace } = useWorkspaceSession();
   const data = useWorkspaceAccounts();
   const { accounts, teams, members, state, error, canEdit } = data;
@@ -83,7 +84,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ accountId, navigate, n
 
   const { rules, loadRules, toggleRuleOnAccount } = useAppStore();
   useEffect(() => {
-    void loadRules();
+    void loadRules({ ifStale: true });
   }, [loadRules]);
 
   // The last events of this account: rule actions, manual changes, sync errors.
@@ -196,7 +197,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ accountId, navigate, n
         onOpenRule={(id) => navigate(`/${workspace.slug}/rules/${id}`)}
         onAttachRule={async (ruleId) => {
           await toggleRuleOnAccount(ruleId, account.account_id);
-          await data.refresh(true);
+          await data.refresh();
         }}
       />
     );
@@ -549,3 +550,6 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
     </div>
   );
 };
+
+/** Draws the pool's models as they change (#488). */
+export const AccountPage = observer(AccountPageContent);

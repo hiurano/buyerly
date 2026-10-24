@@ -239,7 +239,7 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
   const scope = useAppStore((state) => state.workspaceScope);
   const scopeGeneration = useAppStore((state) => state.scopeGeneration);
   useEffect(() => {
-    if (scope) void loadRules();
+    if (scope) void loadRules({ ifStale: true });
   }, [loadRules, scope, scopeGeneration]);
 
   // Ctrl/Cmd+K's "Create new label…" lands here with the new row open, once.
