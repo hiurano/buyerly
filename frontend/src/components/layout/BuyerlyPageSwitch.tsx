@@ -16,29 +16,37 @@ export interface BuyerlyShownPage<P> {
  * Linear's page switch (#490): the sidebar and the address move at once, but
  * `main` keeps the page on screen until the next one has its data, then swaps
  * it in one commit. The swap is a transition that BuyerlyPageGate holds while
- * the data is read into the pool; a page whose data the pool holds swaps in on
- * the next frame. Rapid switches replace the transition, so only the last page
- * shows. After PAGE_HOLD_MS the swap goes ahead with the skeleton.
+ * the data is read into the pool; a page whose data the pool holds swaps in at
+ * once, in the frame the address changes. Each switch is queued after the one
+ * before, so rapid switches land on the last page only. After PAGE_HOLD_MS the
+ * swap goes ahead with the skeleton.
  *
  * `page` is the page as the store and the address have it now; `key` names it.
  */
-export function useHeldPage<P extends PageToOpen>(page: P, key: string, workspaceId: number): BuyerlyShownPage<P> {
+export function useHeldPage<P extends PageToOpen & { route: { tab: string } }>(page: P, key: string, workspaceId: number): BuyerlyShownPage<P> {
   const [shown, setShown] = useState<BuyerlyShownPage<P>>(() => ({ page, key, ready: null }));
   const switchPage = useEffectEvent(() => {
     if (key === shown.key) {
       // Back to the page on screen before the next one came: drop that switch.
-      startTransition(() => setShown(shown));
+      setShown(shown);
       return undefined;
     }
-    // Settings has a layout of its own; going there and coming back are not held.
-    if (page.tab === 'preferences' || shown.page.tab === 'preferences') {
+    // Settings has a layout of its own; going there and coming back are not held. Nor is a
+    // page the address never named (the store's first tab, before the address is read):
+    // held, it would act on an address that is not its own.
+    if (page.tab === 'preferences' || shown.page.tab === 'preferences' || shown.page.route.tab !== shown.page.tab) {
       setShown({ page, key, ready: null });
       return undefined;
     }
     const next = { page, key, ready: preloadPage(page, workspaceId) };
-    startTransition(() => setShown(next));
     const ready = next.ready;
-    if (!ready) return undefined;
+    // The pool holds it all: swapped in before the frame is painted, as the address changes.
+    // An update queued after a held switch, so that one never lands over it.
+    if (!ready) {
+      setShown(next);
+      return undefined;
+    }
+    startTransition(() => setShown(next));
     // Still reading after PAGE_HOLD_MS: an urgent update shows the skeleton in its place.
     const timer = window.setTimeout(() => setShown(next), PAGE_HOLD_MS);
     void ready.then(() => window.clearTimeout(timer));
