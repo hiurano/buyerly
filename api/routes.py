@@ -73,6 +73,7 @@ from api.routers import (
     analytics_router,
     views_router,
     favorites_router,
+    account_notifications_router,
 )
 from api.schemas import (
     AccountItem,
@@ -145,6 +146,7 @@ router.include_router(health_router)
 router.include_router(analytics_router)
 router.include_router(views_router)
 router.include_router(favorites_router)
+router.include_router(account_notifications_router)
 
 class _RoutesModule(sys.modules[__name__].__class__):
     """Custom module class to propagate dynamically patched attributes (e.g. in tests) to submodules."""
@@ -154,6 +156,7 @@ class _RoutesModule(sys.modules[__name__].__class__):
         if name == "async_session_maker":
             import api.deps
             import api.meta_oauth
+            import api.routers.account_notifications
             import api.routers.accounts
             import api.routers.admin_support
             import api.routers.adsets
@@ -177,6 +180,7 @@ class _RoutesModule(sys.modules[__name__].__class__):
             database.db.async_session_maker = value
             api.deps.async_session_maker = value
             api.meta_oauth.async_session_maker = value
+            api.routers.account_notifications.async_session_maker = value
             api.routers.accounts.async_session_maker = value
             api.routers.admin_support.async_session_maker = value
             api.routers.adsets.async_session_maker = value

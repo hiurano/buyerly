@@ -29,6 +29,7 @@ import { AccountLeadPicker } from './AccountLeadPicker';
 import { useAccountDialogs } from './AccountsView';
 import { favoritePath } from '@/lib/favorites';
 import { BuyerlyFavoriteButton } from '@/ui/BuyerlyFavoriteButton';
+import { BuyerlyAccountBell } from './BuyerlyAccountBell';
 import {
   accountAdsManagerPath,
   accountName,
@@ -147,10 +148,16 @@ export const AccountPage: React.FC<AccountPageProps> = ({ accountId, navigate, n
           </span>
         )}
       </div>
-      {account && account.is_active !== false && (
-        <Button size="compact" className="shrink-0" aria-label="Open campaigns" onClick={() => actions.openInAdsManager(account)}>
-          Campaigns
-        </Button>
+      {account && (
+        <div className="flex shrink-0 items-center gap-2">
+          {account.is_active !== false && (
+            <Button size="compact" className="shrink-0" aria-label="Open campaigns" onClick={() => actions.openInAdsManager(account)}>
+              Campaigns
+            </Button>
+          )}
+          {/* Linear's bell ends a project's header. */}
+          <BuyerlyAccountBell accountId={account.account_id} accountName={accountName(account)} />
+        </div>
       )}
     </div>
   );

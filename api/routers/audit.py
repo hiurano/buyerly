@@ -27,7 +27,15 @@ from core.action_undo import (
     undo_audit_action,
 )
 from database.db import async_session_maker
-from database.models import Account, AuditEvent, InboxNotificationState, RulePreset, User, WorkspaceMember
+from database.models import (
+    Account,
+    AccountNotificationSetting,
+    AuditEvent,
+    InboxNotificationState,
+    RulePreset,
+    User,
+    WorkspaceMember,
+)
 from meta_api.client import MetaClient
 from api.meta_dependencies import get_meta_client
 
@@ -381,12 +389,26 @@ def _visible_events(access: AccountAccess, guest: bool):
     return on_visible if guest else or_(on_visible, AuditEvent.account_id == "")
 
 
+def _account_settings(user_id: Optional[int]):
+    """This member's bell choices for the event's ad account (AccountNotificationSetting)."""
+    return (
+        select(AccountNotificationSetting.id)
+        .join(WorkspaceMember, WorkspaceMember.id == AccountNotificationSetting.member_id)
+        .where(
+            WorkspaceMember.user_id == user_id,
+            WorkspaceMember.workspace_id == AuditEvent.workspace_id,
+            AccountNotificationSetting.account_id == AuditEvent.account_id,
+        )
+    )
+
+
 def _in_inbox(user_id: Optional[int], access: AccountAccess = EVERYTHING, guest: bool = False):
     """Audit events that are this member's Inbox notifications.
 
     As Linear notifies you about your own work, an event on an ad account that
     somebody else leads is theirs; events on no account, or on an account
-    nobody leads, reach everyone.
+    nobody leads, reach everyone. Once a member picks kinds in an account's
+    bell, as in Linear's project notifications, those kinds decide for them.
     """
     led_by_someone_else = select(Account.id).where(
         Account.workspace_id == AuditEvent.workspace_id,
@@ -394,9 +416,14 @@ def _in_inbox(user_id: Optional[int], access: AccountAccess = EVERYTHING, guest:
         Account.lead_user_id.is_not(None),
         Account.lead_user_id != user_id,
     )
+    chosen = _account_settings(user_id)
+    wanted = chosen.where(
+        AccountNotificationSetting.kind == _inbox_kind(),
+        AccountNotificationSetting.enabled.is_(True),
+    )
     return and_(
         AuditEvent.event_type.not_in(INBOX_HIDDEN_EVENT_TYPES),
-        ~led_by_someone_else.exists(),
+        or_(and_(~chosen.exists(), ~led_by_someone_else.exists()), wanted.exists()),
         _visible_events(access, guest),
     )
 
