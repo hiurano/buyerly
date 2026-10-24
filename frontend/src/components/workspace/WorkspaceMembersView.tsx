@@ -1,5 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { apiRequest } from '@/lib/api';
+import React, { useMemo, useState } from 'react';
+import { observer } from 'mobx-react-lite';
+import { pool } from '@/models/pool';
+import { membersQuery } from '@/models/queries';
+import { usePoolQuery } from '@/models/usePool';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { useTeams } from '@/lib/teams';
 import { canAdministerWorkspace } from '@/lib/settingsPages';
@@ -24,31 +27,19 @@ const COLUMNS: BuyerlyDataListColumn[] = [
 ];
 
 /** Linear's workspace Members page: who is in the workspace, their role and their teams. */
-export const WorkspaceMembersView: React.FC = () => {
+const WorkspaceMembersViewContent: React.FC = () => {
   const { workspace } = useWorkspaceSession();
   const { teams } = useTeams(workspace.id, 'active');
   const setActiveTab = useAppStore((state) => state.setActiveTab);
   const setActiveTeamKey = useAppStore((state) => state.setActiveTeamKey);
-  const [members, setMembers] = useState<MemberItem[] | null>(null);
-  const [error, setError] = useState('');
+  // From the pool: a page already visited draws its members at once (#488).
+  const { data: members, error } = usePoolQuery(membersQuery(workspace.id));
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<{ key: MemberSort; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
   const [inviting, setInviting] = useState(false);
   const canInvite = canAdministerWorkspace({ role: workspace.role });
 
-  const load = useCallback(async () => {
-    try {
-      setMembers(await apiRequest<MemberItem[]>(`/api/workspaces/${workspace.id}/members`));
-      setError('');
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Please try again.');
-    }
-  }, [workspace.id]);
-
-  useEffect(() => {
-    setMembers(null);
-    void load();
-  }, [load]);
+  const load = () => pool.fetch(membersQuery(workspace.id), { afterWrite: true });
 
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -149,3 +140,6 @@ export const WorkspaceMembersView: React.FC = () => {
     </div>
   );
 };
+
+/** Draws the pool's models as they change (#488). */
+export const WorkspaceMembersView = observer(WorkspaceMembersViewContent);

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { observer } from 'mobx-react-lite';
 import { Pause, Play } from 'lucide-react';
 import { BuyerlyRowContextMenu, type RowMenuEntry } from '@/ui/BuyerlyRowMenu';
 import {
@@ -13,13 +14,15 @@ import {
 } from '@/lib/delivery';
 import { pushHistory } from '@/lib/undoHistory';
 import { toast } from '@/ui/toast';
-import { ApiError, apiRequest } from '@/lib/api';
 import type {
   AnalyticsAccountsHierarchyResponse,
   MetaAccount,
   MetaConnection,
 } from '@/lib/types';
 import { useAppStore } from '@/store/useAppStore';
+import { pool } from '@/models/pool';
+import { adAccountsQuery, connectionsQuery, hierarchyQuery, withDelivery, type AccountHierarchyRows } from '@/models/queries';
+import { usePoolQuery } from '@/models/usePool';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { ViewTitle } from '@/components/teams/ViewTitle';
 import { favoritePath } from '@/lib/favorites';
@@ -100,6 +103,8 @@ import {
 } from './liveCampaigns';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
+
+const NO_CONNECTIONS: MetaConnection[] = [];
 type CampaignRowItem = ReturnType<typeof hierarchyCampaignToRow>;
 type AdSetRowItem = ReturnType<typeof hierarchyAdSetToRow>;
 type AdRowItem = ReturnType<typeof hierarchyAdToRow>;
@@ -119,25 +124,7 @@ interface OpenFilterMenu {
   fieldId?: string;
 }
 
-function requestErrorMessage(error: unknown): string {
-  if (error instanceof ApiError || error instanceof Error) return error.message;
-  return 'Something went wrong. Please try again.';
-}
-
 type HierarchyRows = Map<string, AnalyticsAccountsHierarchyResponse['accounts'][number]>;
-
-/**
- * Every ad account you can see in one request, started with `/api/accounts`
- * rather than after it, so the page waits for the slower of the two (#489).
- */
-async function fetchHierarchyRows(period: AdsManagerPeriod): Promise<HierarchyRows | { error: string }> {
-  try {
-    const response = await apiRequest<AnalyticsAccountsHierarchyResponse>(`/api/analytics/hierarchy/accounts?period=${period}`);
-    return new Map(response.accounts.map((rows) => [rows.account_id, rows]));
-  } catch (error) {
-    return { error: requestErrorMessage(error) };
-  }
-}
 
 /** The accounts on screen from those rows; one the server left out keeps its own error and never hides the others. */
 function accountHierarchies(accounts: MetaAccount[], rowsOf: HierarchyRows): AccountHierarchy[] {
@@ -217,7 +204,7 @@ function facetIcon(fieldId: string, option: FilterOption): React.ReactNode {
   return <span className="details-facets-dot" style={{ backgroundColor: option.color }} />;
 }
 
-export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reveal, navigationKey }) => {
+const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reveal, navigationKey }) => {
   const {
     campaignFilterTab,
     setCampaignFilterTab,
@@ -256,7 +243,14 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
   const displayOrdering = view.ordering;
   const displayProperties = view.properties;
   const sortDirection = view.direction;
-  const [allMetaAccounts, setAllMetaAccounts] = useState<MetaAccount[]>([]);
+  // The ad accounts, their connections and their rows come from the pool: a page
+  // already visited draws them in its first frame and reads them again behind it (#488).
+  const accountsRead = usePoolQuery(adAccountsQuery);
+  const connectionsRead = usePoolQuery(connectionsQuery);
+  const allMetaAccounts = useMemo(() => eligibleMetaAccounts(accountsRead.data ?? []), [accountsRead.data]);
+  const metaConnections = connectionsRead.data ?? NO_CONNECTIONS;
+  const accountsState: LoadState = accountsRead.data !== undefined ? 'ready' : accountsRead.error ? 'error' : 'loading';
+  const accountsError = accountsRead.data === undefined ? accountsRead.error : '';
   // Every ad account at once, as Linear's team Issues lists every project's issues:
   // a team's only its own, My campaigns only those you lead.
   const { workspace, user } = useWorkspaceSession();
@@ -270,9 +264,6 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
   }, [mine, user.id, activeTeam.key, activeTeam.team, allMetaAccounts]);
   const accountIds = useMemo(() => metaAccounts.map((account) => account.account_id), [metaAccounts]);
   const accountIdsKey = accountIds.join(',');
-  const [metaConnections, setMetaConnections] = useState<MetaConnection[]>([]);
-  const [accountsState, setAccountsState] = useState<LoadState>('loading');
-  const [accountsError, setAccountsError] = useState('');
   // The reporting window, in the address (`?period=`) so a link and a reload keep it (#389).
   const [period, setPeriodState] = useState<AdsManagerPeriod>(() => periodFromSearch(window.location.search));
   useEffect(() => {
@@ -280,8 +271,6 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
   }, [navigationKey]);
   const setPeriod = (next: AdsManagerPeriod) => {
     if (next === period) return;
-    requestGenerationRef.current += 1;
-    setHierarchyState('loading');
     setPeriodState(next);
     const url = new URL(window.location.href);
     if (next === 'today') url.searchParams.delete('period');
@@ -296,17 +285,9 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
   );
   // Only a quick filter the pane can show applies, so none is ever left on unseen.
   const quick = savedQuick && detailsTabs(campaignFilterTab).includes(savedQuick.fieldId) ? savedQuick : null;
-  const [campaigns, setCampaigns] = useState<CampaignRowItem[]>([]);
-  const [adSets, setAdSets] = useState<AdSetRowItem[]>([]);
-  const [ads, setAds] = useState<AdRowItem[]>([]);
-  const [hierarchyState, setHierarchyState] = useState<LoadState>('loading');
-  const [hierarchyError, setHierarchyError] = useState('');
-  // Accounts that could not be read while the others could: named above the list.
-  const [failedAccounts, setFailedAccounts] = useState<{ account: MetaAccount; error: string }[]>([]);
   // Delivery this session wrote to Meta, shown on the row over the stored
   // snapshot, which only catches up on its next sync.
   const [deliveryActions, setDeliveryActions] = useState<Record<string, { busy: boolean; status?: 'active' | 'paused' }>>({});
-  const [hierarchyReloadKey, setHierarchyReloadKey] = useState(0);
   // A card dropped on Active or Paused, waiting for the member to confirm the write to Meta.
   const [pendingMove, setPendingMove] = useState<{
     level: EntityLevel; entityId: string; accountId: string; name: string; next: boolean;
@@ -319,30 +300,10 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
     Number(new URLSearchParams(window.location.search).get('meta_connection')) || null,
   );
 
+  /** Reads the ad accounts and their connections again, behind what is on screen. */
   const refreshMetaAccounts = useCallback(async () => {
-    const inScope = useAppStore.getState().captureScope();
-    setAccountsState('loading');
-    setAccountsError('');
-    try {
-      const [accounts, connections] = await Promise.all([
-        apiRequest<MetaAccount[]>('/api/accounts'),
-        apiRequest<MetaConnection[]>('/api/meta/connections').catch(() => []),
-      ]);
-      if (!inScope()) return;
-      const eligibleAccounts = eligibleMetaAccounts(accounts);
-      setAllMetaAccounts(eligibleAccounts);
-      setMetaConnections(connections);
-      setAccountsState('ready');
-    } catch (error) {
-      if (!inScope()) return;
-      setAccountsError(requestErrorMessage(error));
-      setAccountsState('error');
-    }
+    await Promise.all([pool.fetch(adAccountsQuery, { afterWrite: true }), pool.fetch(connectionsQuery, { afterWrite: true })]);
   }, []);
-
-  useEffect(() => {
-    void refreshMetaAccounts();
-  }, [refreshMetaAccounts]);
 
   // Rules attach per ad account, read from the accounts just loaded rather than a second `/api/accounts`.
   useEffect(() => {
@@ -350,55 +311,45 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
     void loadRuleAttachments(ids, allMetaAccounts);
   }, [loadRuleAttachments, accountsState, accountIdsKey]);
 
-  // The rows of every account, read beside the accounts, again for a new period or a retry.
-  const [hierarchyRows, setHierarchyRows] = useState<HierarchyRows | { error: string } | null>(null);
-  useEffect(() => {
-    const generation = ++requestGenerationRef.current;
-    setHierarchyRows(null);
-    void fetchHierarchyRows(period).then((rows) => {
-      if (generation === requestGenerationRef.current) setHierarchyRows(rows);
-    });
-    return () => {
-      requestGenerationRef.current += 1;
-    };
-  }, [hierarchyReloadKey, period]);
+  // The rows of every account for the period, read beside the accounts (#489).
+  const hierarchyRead = usePoolQuery(hierarchyQuery(period));
+  const reloadHierarchy = () => void pool.fetch(hierarchyQuery(period), { afterWrite: true });
+  const hierarchyRows = useMemo<HierarchyRows | null>(
+    () => (hierarchyRead.data ? new Map(hierarchyRead.data.map((rows) => [rows.account_id, rows])) : null),
+    [hierarchyRead.data],
+  );
 
+  // Another period or other accounts are another list: its selection and the delivery shown on its rows go.
   useEffect(() => {
+    requestGenerationRef.current += 1;
     clearCampaignSelection();
     setDeliveryActions({});
-    setCampaigns([]);
-    setAdSets([]);
-    setAds([]);
-    setFailedAccounts([]);
-    setHierarchyError('');
-    if (accountsState !== 'ready') return;
-    const accounts = metaAccounts;
-    if (accounts.length === 0) {
-      setHierarchyState('idle');
-      return;
-    }
+  }, [period, accountIdsKey, clearCampaignSelection]);
+
+  // Derived as the page draws, so held rows are on screen in its first frame.
+  const hierarchy = useMemo(() => {
+    const none = { campaigns: [] as CampaignRowItem[], adSets: [] as AdSetRowItem[], ads: [] as AdRowItem[], failed: [] as { account: MetaAccount; error: string }[] };
+    if (accountsState !== 'ready') return { ...none, state: 'loading' as LoadState, error: '' };
+    if (metaAccounts.length === 0) return { ...none, state: 'idle' as LoadState, error: '' };
     if (!hierarchyRows) {
-      setHierarchyState('loading');
-      return;
+      return hierarchyRead.error
+        ? { ...none, state: 'error' as LoadState, error: hierarchyRead.error }
+        : { ...none, state: 'loading' as LoadState, error: '' };
     }
-    if (!(hierarchyRows instanceof Map)) {
-      setHierarchyError(hierarchyRows.error);
-      setHierarchyState('error');
-      return;
-    }
-    const results = accountHierarchies(accounts, hierarchyRows);
+    const results = accountHierarchies(metaAccounts, hierarchyRows);
     const loaded = results.filter((result) => !result.error);
-    if (loaded.length === 0) {
-      setHierarchyError(results[0]?.error ?? '');
-      setHierarchyState('error');
-      return;
-    }
-    setCampaigns(loaded.flatMap((result) => result.campaigns));
-    setAdSets(loaded.flatMap((result) => result.adSets));
-    setAds(loaded.flatMap((result) => result.ads));
-    setFailedAccounts(results.flatMap((result) => (result.error ? [{ account: result.account, error: result.error }] : [])));
-    setHierarchyState('ready');
-  }, [hierarchyRows, clearCampaignSelection, accountsState, accountIdsKey]);
+    if (loaded.length === 0) return { ...none, state: 'error' as LoadState, error: results[0]?.error ?? '' };
+    return {
+      campaigns: loaded.flatMap((result) => result.campaigns),
+      adSets: loaded.flatMap((result) => result.adSets),
+      ads: loaded.flatMap((result) => result.ads),
+      // Accounts that could not be read while the others could: named above the list.
+      failed: results.flatMap((result) => (result.error ? [{ account: result.account, error: result.error }] : [])),
+      state: 'ready' as LoadState,
+      error: '',
+    };
+  }, [accountsState, metaAccounts, hierarchyRows, hierarchyRead.error]);
+  const { campaigns, adSets, ads, failed: failedAccounts, state: hierarchyState, error: hierarchyError } = hierarchy;
 
   useEffect(() => {
     setOpenFilterMenu(null);
@@ -539,6 +490,8 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
   /** Shows delivery this session wrote on the given rows. */
   const showDelivery = useCallback((entityIds: string[], status: DeliveryStatus) => {
     const local = status === 'ACTIVE' ? 'active' : 'paused';
+    const written = new Set(entityIds);
+    pool.updateEach<AccountHierarchyRows>('accountHierarchy', (rows) => withDelivery(rows, written, status));
     setDeliveryActions((current) => ({
       ...current,
       ...Object.fromEntries(entityIds.map((id) => [id, { busy: false, status: local }])),
@@ -996,7 +949,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
           detail={hierarchyError}
           role="alert"
           actionLabel="Retry"
-          onAction={() => setHierarchyReloadKey((value) => value + 1)}
+          onAction={() => reloadHierarchy()}
         />
       );
     }
@@ -1006,7 +959,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
           title={`No ${entityLabels[campaignFilterTab].plural} in ${metaAccounts.length === 1 ? 'this ad account' : 'these ad accounts'}`}
           detail={`Meta returned no ${entityLabels[campaignFilterTab].singular} inventory for ${metaAccounts.length === 1 ? 'this imported account' : 'the imported accounts'}. Zero-activity entities are included when they exist.`}
           actionLabel="Retry"
-          onAction={() => setHierarchyReloadKey((value) => value + 1)}
+          onAction={() => reloadHierarchy()}
         />
       );
     }
@@ -1022,7 +975,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
                   ? `${adAccountName(failedAccounts[0].account)}: ${failedAccounts[0].error}`
                   : `${failedAccounts.length} ad accounts: ${failedAccounts.map(({ account }) => adAccountName(account)).join(', ')}`}
               </span>
-              <Button size="compact" onClick={() => setHierarchyReloadKey((value) => value + 1)}>Retry</Button>
+              <Button size="compact" onClick={() => reloadHierarchy()}>Retry</Button>
             </div>
           )}
           <div className="min-h-0 flex-1">
@@ -1053,7 +1006,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
                 ? `${adAccountName(failedAccounts[0].account)}: ${failedAccounts[0].error}`
                 : `${failedAccounts.length} ad accounts: ${failedAccounts.map(({ account }) => adAccountName(account)).join(', ')}`}
             </span>
-            <Button size="compact" onClick={() => setHierarchyReloadKey((value) => value + 1)}>Retry</Button>
+            <Button size="compact" onClick={() => reloadHierarchy()}>Retry</Button>
           </div>
         )}
         after={filteredCurrentCount > 0 && filteredCurrentCount < totalCurrent && (
@@ -1252,7 +1205,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
           }
         }}
         onImported={() => {
-          void refreshMetaAccounts().then(() => setHierarchyReloadKey((value) => value + 1));
+          void refreshMetaAccounts().then(reloadHierarchy);
         }}
       />
     </div>
@@ -1294,3 +1247,6 @@ const PeriodMenu: React.FC<PeriodMenuProps> = ({ period, label, onChange }) => (
     </DropdownMenuContent>
   </DropdownMenu>
 );
+
+/** Draws the pool's models as they change (#488). */
+export const CampaignsView = observer(CampaignsViewContent);

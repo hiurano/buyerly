@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
-import { apiRequest } from './api';
+import { useCallback, useEffect, useMemo } from 'react';
+import { pool } from '@/models/pool';
+import { teamsQuery } from '@/models/queries';
+import { usePoolQuery } from '@/models/usePool';
 import { useAppStore } from '@/store/useAppStore';
 
 /** One team as GET /api/workspaces/{id}/teams returns it (#371). */
@@ -51,51 +53,40 @@ const CHANGED_EVENT = 'buyerly:teams-changed';
 
 /** Tells every open list of teams (the Teams page, "Your teams") to read them again. */
 export function notifyTeamsChanged(): void {
+  pool.invalidate('teams:');
   window.dispatchEvent(new Event(CHANGED_EVENT));
 }
 
-const teamReads = new Map<string, Promise<TeamItem[]>>();
-
 /**
- * One read of a workspace's teams shared by everyone asking at once: the
- * sidebar, the page title and the page itself all ask on a page switch (#489).
+ * A workspace's teams from the pool: one read shared by everyone asking at
+ * once (the sidebar, the page title and the page itself, #489), and none at
+ * all while the held teams are current (#488).
  */
 export function readTeams(workspaceId: number, status: 'all' | 'deleted' = 'all'): Promise<TeamItem[]> {
-  const path = teamsPath(workspaceId, `?status=${status}`);
-  let read = teamReads.get(path);
-  if (!read) {
-    read = apiRequest<TeamItem[]>(path).finally(() => teamReads.delete(path));
-    teamReads.set(path, read);
-  }
-  return read;
+  return pool.read(teamsQuery(workspaceId, status));
 }
 
+const keepTeam = (filter: TeamFilter | 'all') => (team: TeamItem) => (
+  filter === 'active' ? !team.retired_at : filter === 'retired' ? Boolean(team.retired_at) : true
+);
+
 export function useTeams(workspaceId: number, filter: TeamFilter | 'all' = 'all') {
-  const [teams, setTeams] = useState<TeamItem[] | null>(null);
-  const [error, setError] = useState('');
+  // Active and retired are the API's own filters of `all`, in the same order, so they share its read.
+  const query = teamsQuery(workspaceId, filter === 'deleted' ? 'deleted' : 'all');
+  const { data, error } = usePoolQuery(query);
+  const teams = useMemo(() => (data ? data.filter(keepTeam(filter)) : null), [data, filter]);
 
   const refresh = useCallback(async () => {
-    // Active and retired are the API's own filters of `all`, in the same order, so they share its read.
-    const read = readTeams(workspaceId, filter === 'deleted' ? 'deleted' : 'all').then((teams) => teams.filter((team) => (
-      filter === 'active' ? !team.retired_at : filter === 'retired' ? Boolean(team.retired_at) : true
-    )));
-    try {
-      setTeams(await read);
-      setError('');
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Please try again.');
-    }
+    await pool.fetch(teamsQuery(workspaceId, filter === 'deleted' ? 'deleted' : 'all'));
   }, [filter, workspaceId]);
 
   useEffect(() => {
-    setTeams(null);
-    void refresh();
     const onChanged = () => void refresh();
     window.addEventListener(CHANGED_EVENT, onChanged);
     return () => window.removeEventListener(CHANGED_EVENT, onChanged);
   }, [refresh]);
 
-  return { teams, error, refresh };
+  return { teams, error: teams ? '' : error, refresh };
 }
 
 /** "1 member", "3 members"; "1 ad account", "2 ad accounts". */

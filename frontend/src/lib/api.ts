@@ -1,5 +1,6 @@
 import { parseRoute } from './routing';
 import { requestAccount } from './accounts';
+import { pool } from '@/models/pool';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -65,5 +66,8 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     }
     throw new ApiError(response.status, detail);
   }
+  // Whatever a write changed, the pool reads again behind the next page that shows it (#488);
+  // the writes that know their record also change it in the pool at once.
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) pool.invalidate('');
   return payload as T;
 }

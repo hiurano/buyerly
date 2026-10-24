@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { observer } from 'mobx-react-lite';
 import { SidebarHeader } from './SidebarHeader';
 import { selectInboxBadgeCount, useAppStore } from '@/store/useAppStore';
 import {
@@ -31,7 +32,7 @@ const TEAM_PAGES: { tab: AppTab; label: string; icon: React.ReactNode }[] = [
   { tab: 'rules', label: 'Rules', icon: <BuyerlyBoltIcon size={14} /> },
 ];
 
-export const Sidebar: React.FC = () => {
+const SidebarContent: React.FC = () => {
   const {
     sidebarWidth,
     setSidebarWidth,
@@ -267,3 +268,6 @@ export const Sidebar: React.FC = () => {
     </div>
   );
 };
+
+/** Draws the pool's models as they change (#488). */
+export const Sidebar = observer(SidebarContent);

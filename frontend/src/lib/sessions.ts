@@ -1,4 +1,5 @@
 import { toast } from '@/ui/toast';
+import { pool } from '@/models/pool';
 import { apiRequest } from './api';
 import { chooseAccount, getKnownAccounts, homeWorkspace, setCurrentAccountId, setKnownAccounts, type BrowserAccount } from './accounts';
 
@@ -53,6 +54,8 @@ export async function logOut(): Promise<boolean> {
   } catch {
     // The logout itself succeeded; the login screen is a safe place to land.
   }
+  // Nothing of this account is drawn again, even before the reload lands (#488).
+  pool.reset(null);
   window.location.assign(destination);
   return true;
 }

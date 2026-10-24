@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { observer } from 'mobx-react-lite';
 import { ArrowLeft } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import {
@@ -61,6 +62,8 @@ import { Tooltip } from '@/ui/Tooltip';
 import { BuyerlySplitResizer, useSplitListWidth } from '@/ui/BuyerlySplitResizer';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useAppStore } from '@/store/useAppStore';
+import { afterPaint, pool } from '@/models/pool';
+import { usePoolValue } from '@/models/usePool';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { useAddress } from '@/lib/routing';
 
@@ -131,9 +134,16 @@ const headerButtonClass = (active = false) =>
   `buyerly-header-button buyerly-header-button--header buyerly-header-target${active ? ' buyerly-header-button--active' : ''}`;
 
 /** Notifications the filters hide; an older API leaves the count out. */
+/** One Inbox list as the pool holds it. */
+interface InboxPage {
+  items: InboxItem[];
+  hasMore: boolean;
+  hiddenByFilters: number;
+}
+
 const hiddenByFiltersOf = (response: { hidden_by_filters?: number | null }) => response.hidden_by_filters ?? 0;
 
-export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onNavigate, onOpenRecord }) => {
+const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onNavigate, onOpenRecord }) => {
   const {
     workspaceSlug,
     setActiveTab,
@@ -202,6 +212,24 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
   // Only what changes the list reloads it; Badge count, for one, does not.
   const listQuery = useMemo(() => JSON.parse(queryKey) as Omit<InboxQuery, 'offset'>, [queryKey]);
 
+  // The list as last shown for these options and filters, held in the pool (#488): an Inbox
+  // already visited draws it in its first frame, set here while rendering, before anything is painted.
+  const pageKey = `inbox:${queryKey}:${JSON.stringify(filters)}`;
+  const held = usePoolValue<InboxPage>(pageKey);
+  const [itemsKey, setItemsKey] = useState<string | null>(null);
+  if (itemsKey !== pageKey && held) {
+    setItemsKey(pageKey);
+    setItems(held.items);
+    setHasMore(held.hasMore);
+    setHiddenByFilters(held.hiddenByFilters);
+    setLoadError('');
+    setLoadState('ready');
+  }
+  // Every change to the list on screen, a read or a mark, goes back to the pool.
+  useEffect(() => {
+    if (itemsKey === pageKey && loadState === 'ready') pool.setValue({ key: pageKey }, { items, hasMore, hiddenByFilters });
+  }, [hasMore, hiddenByFilters, items, itemsKey, loadState, pageKey]);
+
   // Wider than md the list and the notification sit side by side, the list resizable as in Linear.
   // Destructured: the React Compiler takes a whole object holding a ref for one (#492).
   const {
@@ -237,6 +265,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
   const load = useCallback(async (quiet: boolean) => {
     // The list waits for the member's saved Display options and filters, so it is not drawn twice.
     if (!inboxDisplayLoaded || !filtersSettled) return;
+    const key = pageKey;
     const generation = ++requestGenerationRef.current;
     if (!quiet) setLoadState('loading');
     try {
@@ -250,6 +279,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
       if (generation !== requestGenerationRef.current) return;
       if (!quiet) setReadOnFirstSeen(new Map());
       setItems(response.items);
+      setItemsKey(key);
       setHasMore(response.has_more);
       setHiddenByFilters(hiddenByFiltersOf(response));
       setInboxUnread(response);
@@ -260,9 +290,20 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
       setLoadError(requestErrorMessage(error));
       setLoadState('error');
     }
-  }, [filters, filtersSettled, inboxDisplayLoaded, listQuery, setInboxUnread]);
+  }, [filters, filtersSettled, inboxDisplayLoaded, listQuery, pageKey, setInboxUnread]);
 
   useEffect(() => {
+    // Held: already drawn, read again behind it once it is painted.
+    if (pool.has(pageKey)) {
+      let active = true;
+      afterPaint(() => {
+        if (active) void load(true);
+      });
+      return () => {
+        active = false;
+        requestGenerationRef.current += 1;
+      };
+    }
     itemsRef.current = [];
     void load(false);
     return () => {
@@ -922,3 +963,6 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
     </div>
   );
 };
+
+/** Draws the pool's models as they change (#488). */
+export const InboxView = observer(InboxViewContent);

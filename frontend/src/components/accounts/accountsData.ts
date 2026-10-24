@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { apiRequest } from '@/lib/api';
 import type { MetaAccount, MetaConnection } from '@/lib/types';
-import { readTeams, type TeamItem } from '@/lib/teams';
-import { useAppStore } from '@/store/useAppStore';
+import { pool } from '@/models/pool';
+import { adAccountsQuery, connectionsQuery, membersQuery, teamsQuery } from '@/models/queries';
+import { usePoolQuery } from '@/models/usePool';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { useListView } from '@/ui/useListView';
 import { toast } from '@/ui/toast';
@@ -20,6 +21,10 @@ export interface AccountMember {
 
 export type AccountsLoadState = 'loading' | 'ready' | 'error';
 
+const NO_ACCOUNTS: MetaAccount[] = [];
+const NO_MEMBERS: AccountMember[] = [];
+const NO_CONNECTIONS: MetaConnection[] = [];
+
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
 }
@@ -36,44 +41,39 @@ export function useWorkspaceAccounts() {
   // of their teams, which are all they see, as Linear's guests act inside their teams.
   const canEdit = workspace.role !== 'guest';
   const canAct = true;
-  const [accounts, setAccounts] = useState<MetaAccount[]>([]);
-  const [teams, setTeams] = useState<AccountTeam[]>([]);
-  const [members, setMembers] = useState<AccountMember[]>([]);
-  const [connections, setConnections] = useState<MetaConnection[]>([]);
-  const [state, setState] = useState<AccountsLoadState>('loading');
-  const [error, setError] = useState('');
+  // Each from the pool: a page already visited draws them at once (#488). The page still
+  // opens without teams, members or connections: no team column values, no "Connected by".
+  const accountsRead = usePoolQuery(adAccountsQuery);
+  const teamsRead = usePoolQuery(teamsQuery(workspace.id));
+  const membersRead = usePoolQuery(membersQuery(workspace.id));
+  const connectionsRead = usePoolQuery(connectionsQuery);
+  const accounts = accountsRead.data ?? NO_ACCOUNTS;
+  const teams = useMemo(
+    () => (teamsRead.data ?? []).map((team): AccountTeam => ({ id: team.id, name: team.name, account_ids: team.account_ids })),
+    [teamsRead.data],
+  );
+  const members: AccountMember[] = membersRead.data ?? NO_MEMBERS;
+  const connections = connectionsRead.data ?? NO_CONNECTIONS;
+  const waiting = (read: { data: unknown; error: string }) => read.data === undefined && !read.error;
+  const state: AccountsLoadState = accountsRead.data === undefined && accountsRead.error
+    ? 'error'
+    : accountsRead.data === undefined || waiting(teamsRead) || waiting(membersRead) || waiting(connectionsRead)
+      ? 'loading'
+      : 'ready';
+  const error = accountsRead.data === undefined ? accountsRead.error : '';
 
-  const refresh = useCallback(async (quiet = false) => {
-    const inScope = useAppStore.getState().captureScope();
-    if (!quiet) setState('loading');
-    try {
-      const [nextAccounts, nextTeams, nextMembers, nextConnections] = await Promise.all([
-        apiRequest<MetaAccount[]>('/api/accounts'),
-        // The page still opens without them: no team column values, no "Connected by".
-        readTeams(workspace.id).catch(() => [] as TeamItem[]),
-        apiRequest<AccountMember[]>(`/api/workspaces/${workspace.id}/members`).catch(() => [] as AccountMember[]),
-        apiRequest<MetaConnection[]>('/api/meta/connections').catch(() => [] as MetaConnection[]),
-      ]);
-      if (!inScope()) return;
-      setAccounts(nextAccounts);
-      setTeams(nextTeams.map((team) => ({ id: team.id, name: team.name, account_ids: team.account_ids })));
-      setMembers(nextMembers);
-      setConnections(nextConnections);
-      setError('');
-      setState('ready');
-    } catch (loadError) {
-      if (!inScope()) return;
-      setError(errorText(loadError));
-      setState('error');
-    }
+  /** Reads them again now, behind what is on screen. */
+  const refresh = useCallback(async () => {
+    await Promise.all([
+      pool.fetch(adAccountsQuery),
+      pool.fetch(teamsQuery(workspace.id)),
+      pool.fetch(membersQuery(workspace.id)),
+      pool.fetch(connectionsQuery),
+    ]);
   }, [workspace.id]);
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  const patch = (accountId: string, change: Partial<MetaAccount>) =>
-    setAccounts((current) => current.map((account) => (account.account_id === accountId ? { ...account, ...change } : account)));
+  /** Shown at once on every page holding this account, then written. */
+  const patch = (accountId: string, change: Partial<MetaAccount>) => pool.patch<MetaAccount>('adAccount', accountId, change);
 
   const saveProfile = async (account: MetaAccount, change: { custom_name?: string; note?: string }) => {
     const next = {
@@ -126,7 +126,7 @@ export function useWorkspaceAccounts() {
   const remove = async (account: MetaAccount): Promise<boolean> => {
     try {
       await apiRequest(`/api/accounts/${encodeURIComponent(account.account_id)}`, { method: 'DELETE' });
-      setAccounts((current) => current.filter((item) => item.account_id !== account.account_id));
+      pool.remove('adAccount', account.account_id);
       toast.show({ tone: 'success', title: 'Removed', message: `${accountName(account)} from the workspace.` });
       return true;
     } catch (removeError) {

@@ -16,8 +16,6 @@ import {
   createRulePreset,
   deleteRuleLabel as deleteRuleLabelRequest,
   deleteRulePreset,
-  fetchRuleLabels,
-  fetchRulePresets,
   formatAction,
   formatCondition,
   formatRelativeTime,
@@ -46,6 +44,12 @@ import {
   type DetailsPaneState,
 } from '@/ui/detailsPaneModel';
 import { pushHistory } from '@/lib/undoHistory';
+import { reaction } from 'mobx';
+import { pool, type Query } from '@/models/pool';
+import { adAccountsQuery, presetsQuery, ruleLabelsQuery } from '@/models/queries';
+
+/** What Rules shows, read through the pool. */
+const RULE_QUERIES: readonly Query<any>[] = [presetsQuery, ruleLabelsQuery, adAccountsQuery];
 import {
   DEFAULT_INBOX_DISPLAY,
   fetchInboxDisplay,
@@ -486,7 +490,11 @@ interface AppState {
   /** Last failed write, surfaced next to the list without discarding it. */
   rulesMutationError: string;
   clearRulesMutationError: () => void;
-  loadRules: () => Promise<void>;
+  /**
+   * Reads the rules, their labels and ad accounts again. `ifStale`, for a page
+   * visit: what the pool holds shows at once and is read again only when stale (#488).
+   */
+  loadRules: (options?: { ifStale?: boolean }) => Promise<void>;
   /** Recently deleted is a page of its own (/rules/recently-deleted), not a tab. */
   ruleFilterTab: RuleFilterTab;
   setRuleFilterTab: (tab: RuleFilterTab) => void;
@@ -619,6 +627,33 @@ export const useAppStore = create<AppState>((set, get) => {
     const accountIds = get().attachedRulesAccountIds;
     if (payload.attachments !== undefined && accountIds.length > 0) await get().loadRuleAttachments(accountIds);
   };
+  /** The pool's rules as the store shows them; false while the pool holds none yet. */
+  let shownFrom: unknown[] = [];
+  const showPooledRules = () => {
+    const presets = pool.result<RulePresetPayload[]>(presetsQuery.key).data;
+    const labels = pool.result<RuleLabelPayload[]>(ruleLabelsQuery.key).data;
+    if (!presets || !labels) return false;
+    const accounts = pool.result<MetaAccount[]>(adAccountsQuery.key).data;
+    const from = [presets, labels, accounts];
+    if (get().rulesLoadState === 'ready' && from.every((value, index) => value === shownFrom[index])) return true;
+    shownFrom = from;
+    const ruleAccounts = eligibleMetaAccounts(accounts ?? []);
+    set({
+      rules: presets.map((preset) => presetToRuleItem(preset, ruleAccounts)),
+      ruleLabels: labels.map(toRuleLabel),
+      ruleAccounts,
+      rulesLoadState: 'ready',
+      rulesError: '',
+    });
+    return true;
+  };
+  // A change in the pool (a write elsewhere, a read behind a page) reaches the rules already shown.
+  reaction(
+    () => RULE_QUERIES.map((query) => pool.result(query.key).data),
+    () => {
+      if (get().rulesLoadState === 'ready') showPooledRules();
+    },
+  );
   return ({
   workspaceScope: null,
   workspaceSlug: null,
@@ -627,6 +662,8 @@ export const useAppStore = create<AppState>((set, get) => {
     if (get().workspaceScope === scope && get().workspaceSlug === (slug ?? null)) return;
     rulesRequest += 1;
     attachmentsRequest += 1;
+    // The pool holds one workspace's data: another workspace, account or none never sees it (#488).
+    pool.reset(scope === null ? null : `${scope}:${slug ?? ''}`);
     set({ ...emptyWorkspaceState(), workspaceScope: scope, workspaceSlug: slug ?? null, scopeGeneration: get().scopeGeneration + 1 });
   },
   captureScope: () => {
@@ -1039,33 +1076,25 @@ export const useAppStore = create<AppState>((set, get) => {
   rulesMutationError: '',
   clearRulesMutationError: () => set({ rulesMutationError: '' }),
 
-  loadRules: async () => {
+  loadRules: async ({ ifStale = false } = {}) => {
     const inScope = get().captureScope();
     if (!inScope()) return;
     const request = ++rulesRequest;
     const current = () => inScope() && request === rulesRequest;
+    if (ifStale && showPooledRules()) {
+      // Held: drawn already; read again behind the page only once stale, and shown by the reaction below.
+      for (const query of RULE_QUERIES) pool.ensure(query);
+      return;
+    }
     // A refresh after a mutation keeps the loaded list on screen; only the
     // first load of a workspace shows the loading state.
     if (get().rulesLoadState !== 'ready') set({ rulesLoadState: 'loading', rulesError: '' });
-    try {
-      const [presets, labels, accounts] = await Promise.all([
-        fetchRulePresets(),
-        fetchRuleLabels(),
-        // Needed to offer "run on this ad account"; a failure here must not
-        // hide the rules themselves.
-        apiRequest<MetaAccount[]>('/api/accounts').catch(() => []),
-      ]);
-      if (!current()) return;
-      const ruleAccounts = eligibleMetaAccounts(accounts);
-      set({
-        rules: presets.map((preset) => presetToRuleItem(preset, ruleAccounts)),
-        ruleLabels: labels.map(toRuleLabel),
-        ruleAccounts,
-        rulesLoadState: 'ready',
-      });
-    } catch (error) {
-      if (!current()) return;
-      set({ rulesError: requestErrorMessage(error), rulesLoadState: 'error' });
+    // Ad accounts are needed to offer "run on this ad account"; a failure there must not hide the rules.
+    await Promise.all(RULE_QUERIES.map((query) => pool.fetch(query, { afterWrite: true })));
+    if (!current()) return;
+    if (!showPooledRules()) {
+      const error = pool.result(presetsQuery.key).error || pool.result(ruleLabelsQuery.key).error;
+      set({ rulesError: error || 'Something went wrong. Please try again.', rulesLoadState: 'error' });
     }
   },
 
