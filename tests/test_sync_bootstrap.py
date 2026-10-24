@@ -278,7 +278,7 @@ class TestSyncBootstrap(unittest.IsolatedAsyncioTestCase):
 
             res = await self.client.get('/api/favorites', headers=self.headers[who])
             self.assertEqual(res.status_code, 200, res.text)
-            self.assertEqual(ids(payload, 'Favorite'), {row['id'] for row in res.json()}, who)
+            self.assertEqual(ids(payload, 'Favorite'), {row['id'] for row in res.json()['favorites']}, who)
 
     # The sync id
 
@@ -414,9 +414,11 @@ class TestSyncBootstrap(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(res.status_code, 200, res.text)
         payload = res.json()
         rows = sum(len(models) for models in payload['models'].values())
-        size = len(json.dumps(payload).encode())
+        # httpx has already unzipped the body; the wire size is what gzip makes of it.
+        self.assertEqual(res.headers.get('content-encoding'), 'gzip')
+        size, wire = len(res.content), len(gzip.compress(res.content, compresslevel=6))
         print(f'\nbootstrap of a 500-account, 5000-event workspace for a member: {rows} rows, '
-              f'{size / 1024:.0f} KB of JSON, {len(res.content) / 1024:.0f} KB gzipped, {elapsed * 1000:.0f} ms')
+              f'{size / 1024:.0f} KB of JSON, {wire / 1024:.0f} KB gzipped, {elapsed * 1000:.0f} ms')
         self.assertGreater(len(payload['models']['InboxEvent']), 3000)
         self.assertLess(elapsed, 10)
 
