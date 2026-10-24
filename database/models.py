@@ -230,6 +230,30 @@ class Favorite(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
+class AccountNotificationSetting(Base):
+    """Which kinds of an ad account's events reach one member's Inbox, Linear's bell on a project.
+
+    Without rows for a member and account, Inbox keeps its own rule: the
+    account's lead gets its events, everyone does when nobody leads it. Once
+    the member picks in the bell, a row per kind says yes or no for them.
+    """
+
+    __tablename__ = "account_notification_settings"
+    __table_args__ = (
+        UniqueConstraint("member_id", "account_id", "kind", name="uq_account_notification_settings_member_kind"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    member_id = Column(
+        Integer, ForeignKey("workspace_members.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # The ad account's Meta id ("act_1001"), as audit events name it.
+    account_id = Column(String(64), nullable=False)
+    kind = Column(String(32), nullable=False)
+    enabled = Column(Boolean, nullable=False, default=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
 class WorkspaceInvite(Base):
     __tablename__ = "workspace_invites"
 

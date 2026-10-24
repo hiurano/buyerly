@@ -18,6 +18,7 @@ from api.routers.health import router as health_router
 from api.routers.analytics import router as analytics_router
 from api.routers.views import router as views_router
 from api.routers.favorites import router as favorites_router
+from api.routers.account_notifications import router as account_notifications_router
 
 __all__ = [
     "accounts_router",
@@ -27,6 +28,7 @@ __all__ = [
     "analytics_router",
     "views_router",
     "favorites_router",
+    "account_notifications_router",
     "audit_router",
     "auth_router",
     "members_router",

@@ -108,6 +108,8 @@ POST_BASELINE_TABLES: set[str] = {
     "view_settings",
     # Added by the favorites migration (0049).
     "favorites",
+    # Added by the account notification settings migration (0050).
+    "account_notification_settings",
     # Added by the workspace view defaults migration (0048).
     "workspace_view_defaults",
 }
