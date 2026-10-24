@@ -318,6 +318,9 @@ interface AppState {
   attachmentsLoadState: RulesLoadState;
   isCommandMenuOpen: boolean;
   setCommandMenuOpen: (open: boolean) => void;
+  /** Linear's keyboard shortcuts panel (Cmd/Ctrl+/). */
+  isShortcutsOpen: boolean;
+  setShortcutsOpen: (open: boolean) => void;
   /** The "Open …" palette on screen (O then a letter), if any. */
   openPalette: OpenPaletteKind | null;
   setOpenPalette: (kind: OpenPaletteKind | null) => void;
@@ -577,7 +580,7 @@ function emptyWorkspaceState() {
     createRuleTargetLabelId: undefined, createRulePrefill: undefined, ruleLabelPicker: null,
     rulesCollapsedGroups: [], pendingDeletion: null,
     adsManagerFilters: { campaigns: [], adsets: [], ads: [] },
-    isCommandMenuOpen: false, openPalette: null, recordActionsFor: null, isDisplayOptionsOpen: false, isRulesDisplayOptionsOpen: false,
+    isCommandMenuOpen: false, isShortcutsOpen: false, openPalette: null, recordActionsFor: null, isDisplayOptionsOpen: false, isRulesDisplayOptionsOpen: false,
   };
 }
 
@@ -637,6 +640,8 @@ export const useAppStore = create<AppState>((set, get) => {
   attachmentsLoadState: 'idle',
   isCommandMenuOpen: false,
   setCommandMenuOpen: (open) => set({ isCommandMenuOpen: open }),
+  isShortcutsOpen: false,
+  setShortcutsOpen: (open) => set({ isShortcutsOpen: open }),
   openPalette: null,
   setOpenPalette: (kind) => set({ openPalette: kind }),
   recordActionsFor: null,
