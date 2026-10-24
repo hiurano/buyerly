@@ -5,14 +5,9 @@ import {
   BuyerlyDataMetricCell,
   type BuyerlyDataListColumn,
 } from '@/ui/BuyerlyDataList';
-import { BuyerlyProjectIcon, BuyerlyDotsIcon } from '@/icons/BuyerlyIcons';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/ui/DropdownMenu';
+import { BuyerlyProjectIcon, BuyerlyDotsIcon, BuyerlyCopyIdIcon } from '@/icons/BuyerlyIcons';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/ui/DropdownMenu';
+import { BuyerlyRowContextMenu, DropdownEntries, type RowMenuEntry } from '@/ui/BuyerlyRowMenu';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { accountName } from './accountsModel';
 import { AccountLeadPicker } from './AccountLeadPicker';
@@ -56,60 +51,52 @@ export interface AccountRowActions {
 }
 
 /** The row's menu, as Linear's project menu: open, rename, automation, copy ID, remove. */
+export function accountMenuEntries(account: MetaAccount, actions: AccountRowActions, inHeader = false): RowMenuEntry[] {
+  const automationBlocked = !account.rules_enabled && (account.active_rules?.length ?? 0) === 0;
+  return [
+    // The page itself has "Campaigns" beside this menu.
+    ...(!inHeader ? [{ label: 'Open', onSelect: () => actions.open(account) }] : []),
+    ...(!inHeader && account.is_active !== false ? [{ label: 'Open campaigns', onSelect: () => actions.openInAdsManager(account) }] : []),
+    'separator',
+    ...(actions.canAct
+      ? [
+        { label: 'Rename…', onSelect: () => actions.rename(account) },
+        {
+          label: account.rules_enabled ? 'Turn automation off' : 'Turn automation on',
+          disabled: automationBlocked,
+          onSelect: () => actions.toggleAutomation(account),
+        },
+      ]
+      : []),
+    'separator',
+    { label: 'Copy account ID', icon: <BuyerlyCopyIdIcon size={16} />, onSelect: () => actions.copyId(account) },
+    ...(actions.canEdit ? ['separator' as const, { label: 'Remove from workspace…', onSelect: () => actions.remove(account) }] : []),
+  ];
+}
+
 export const AccountRowMenu: React.FC<{
   account: MetaAccount;
   actions: AccountRowActions;
   /** On the account's own page: always shown, and without "Open". */
   inHeader?: boolean;
-}> = ({ account, actions, inHeader = false }) => {
-  const automationBlocked = !account.rules_enabled && (account.active_rules?.length ?? 0) === 0;
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          aria-label={`Actions for ${accountName(account)}`}
-          onClick={(event) => event.stopPropagation()}
-          onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); }}
-          className={`flex items-center justify-center text-[var(--text-tertiary)] transition-all ${inHeader ? 'h-7 w-7 rounded-full' : 'h-6 w-6 rounded opacity-0'} hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] group-hover/row:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] [@media(hover:none)]:opacity-100 [@media(hover:none)_and_(pointer:coarse)]:h-10 [@media(hover:none)_and_(pointer:coarse)]:w-8`}
-        >
-          <BuyerlyDotsIcon size={14} />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={4} onClick={(event) => event.stopPropagation()}>
-        {/* The page itself has "Campaigns" beside this menu. */}
-        {!inHeader && <DropdownMenuItem onSelect={() => actions.open(account)}><span>Open</span></DropdownMenuItem>}
-        {!inHeader && account.is_active !== false && (
-          <DropdownMenuItem onSelect={() => actions.openInAdsManager(account)}><span>Open campaigns</span></DropdownMenuItem>
-        )}
-        {actions.canAct && (
-          <>
-            {!inHeader && <DropdownMenuSeparator />}
-            <DropdownMenuItem onSelect={() => actions.rename(account)}><span>Rename…</span></DropdownMenuItem>
-            <DropdownMenuItem
-              disabled={automationBlocked}
-              onSelect={() => actions.toggleAutomation(account)}
-              title={automationBlocked ? 'Attach a rule to the account first' : undefined}
-              className={automationBlocked ? 'opacity-50' : ''}
-            >
-              <span>{account.rules_enabled ? 'Turn automation off' : 'Turn automation on'}</span>
-            </DropdownMenuItem>
-          </>
-        )}
-        {(!inHeader || actions.canAct) && <DropdownMenuSeparator />}
-        <DropdownMenuItem onSelect={() => actions.copyId(account)}><span>Copy account ID</span></DropdownMenuItem>
-        {actions.canEdit && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => actions.remove(account)}>
-              <span style={{ color: 'var(--rules-action-stop-text)' }}>Remove from workspace…</span>
-            </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-};
+}> = ({ account, actions, inHeader = false }) => (
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <button
+        type="button"
+        aria-label={`Actions for ${accountName(account)}`}
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); }}
+        className={`flex items-center justify-center text-[var(--text-tertiary)] transition-all ${inHeader ? 'h-7 w-7 rounded-full' : 'h-6 w-6 rounded opacity-0'} hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] group-hover/row:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] [@media(hover:none)]:opacity-100 [@media(hover:none)_and_(pointer:coarse)]:h-10 [@media(hover:none)_and_(pointer:coarse)]:w-8`}
+      >
+        <BuyerlyDotsIcon size={14} />
+      </button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="end" sideOffset={4} onClick={(event) => event.stopPropagation()}>
+      <DropdownEntries entries={accountMenuEntries(account, actions, inHeader)} />
+    </DropdownMenuContent>
+  </DropdownMenu>
+);
 
 interface AccountRowProps {
   account: MetaAccount;
@@ -123,6 +110,7 @@ export const AccountRow: React.FC<AccountRowProps> = ({ account, columns, proper
   const name = accountName(account);
   const metrics = account.today_metrics;
   return (
+    <BuyerlyRowContextMenu entries={accountMenuEntries(account, actions)}>
     <BuyerlyDataListRow
       data-row-id={account.account_id}
       layout="grid"
@@ -186,6 +174,7 @@ export const AccountRow: React.FC<AccountRowProps> = ({ account, columns, proper
         <AccountRowMenu account={account} actions={actions} />
       </div>
     </BuyerlyDataListRow>
+    </BuyerlyRowContextMenu>
   );
 };
 

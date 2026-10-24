@@ -4825,8 +4825,8 @@ body.buyerly-split-resizing, body.buyerly-split-resizing * { cursor: col-resize 
 }
 .buyerly-help-button:focus-visible { outline: 1px solid var(--focus-ring-color); outline-offset: -1px; }
 
-/* Its menu: Linear's 0.5px edge and the help list's own text, pill and grey. */
-.buyerly-help-menu {
+/* Its menu, and Linear's right-click menus on rows: Linear's 0.5px edge, the menu's own text, pill and grey. */
+.buyerly-help-menu, .buyerly-row-menu {
   --card-bg: var(--help-menu-bg); --color-border-secondary: var(--help-menu-border); --menu-item-highlight: var(--help-menu-highlight);
   --text-secondary: var(--help-menu-fg); --text-primary: var(--help-menu-fg-highlighted);
   border-width: 0.5px;
@@ -4838,6 +4838,17 @@ body.buyerly-split-resizing, body.buyerly-split-resizing * { cursor: col-resize 
 .buyerly-help-group { padding: 8px 14px; font-size: 12px; line-height: 14px; font-weight: 500; color: var(--help-menu-secondary); }
 .buyerly-help-shortcut { display: flex; align-items: center; gap: 3px; font-size: 11px; line-height: 12.1px; font-weight: 450; color: var(--help-menu-secondary); }
 .buyerly-help-shortcut kbd { font-family: inherit; font-weight: 500; }
+
+/* A row's right-click menu (Linear's issue menu, 2026-10-24): 16px icon and 8px gap, keys 3px apart,
+   a 6px ▶ 6px after them, 12px dividers drawn as a 0.5px line. */
+.buyerly-row-menu-main { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.buyerly-row-menu-icon { display: flex; flex-shrink: 0; width: 16px; height: 16px; align-items: center; justify-content: center; color: var(--help-menu-secondary); }
+.buyerly-row-menu-trail { display: flex; flex-shrink: 0; align-items: center; gap: 6px; margin-left: 12px; }
+.buyerly-row-menu-keys { display: flex; align-items: center; gap: 3px; font-size: 11px; line-height: 12.1px; font-weight: 500; color: var(--help-menu-secondary); }
+.buyerly-row-menu-keys kbd { font-family: inherit; }
+.buyerly-row-menu-chevron { width: 16px; font-size: 6px; text-align: center; color: var(--row-menu-chevron); }
+.buyerly-row-menu .buyerly-row-menu-separator { height: 12px; padding: 6px 0; }
+.buyerly-row-menu .buyerly-row-menu-separator > div { height: 0.5px; border-bottom: 0.5px solid var(--row-menu-separator); }
 
 /* Linear's keyboard shortcuts panel (2026-10-24): a 360px sheet 12px in from the right, top and
    bottom over the page dimmed as under a modal; it slides 20px in from the right as it fades in. */

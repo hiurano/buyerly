@@ -727,9 +727,11 @@ class TestReactFrontendContract(unittest.TestCase):
         # every selected row, as Meta's "Apply rule to" (#320).
         self.assertNotIn("rules: false", self.campaigns_view)
         self.assertIn("label: 'Apply rule…'", self.campaigns_view)
-        self.assertIn("entityIds={selectedRowIds}", self.campaigns_view)
-        # Rules attach per ad account, so the selection's picker works on one account's rows.
-        self.assertIn("accountId={ruleAccountId}", self.campaigns_view)
+        # The picker works on the selection, or on the rows a right-click menu names.
+        self.assertIn("const ruleTargetIds = ruleMenuTargets ?? selectedRowIds;", self.campaigns_view)
+        self.assertIn("entityIds={ruleTargetIds}", self.campaigns_view)
+        # Rules attach per ad account, so the picker works on one account's rows.
+        self.assertIn("accountId={pickerAccountId}", self.campaigns_view)
         workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
         self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?rules-attach( .*)?$")
         # The Rules column is offered on both levels, never on ads.

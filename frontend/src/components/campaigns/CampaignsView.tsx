@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pause, Play } from 'lucide-react';
+import { BuyerlyRowContextMenu, type RowMenuEntry } from '@/ui/BuyerlyRowMenu';
 import {
   deliveryHistoryEntry,
   describeEntities,
@@ -75,7 +76,7 @@ import type { FilterOption } from '@/components/filters/filterModel';
 import { SelectionDock } from '@/ui/SelectionDock';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { SelectionCommandMenu } from '@/ui/SelectionCommandMenu';
-import { BuyerlyBoltIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyBoltIcon, BuyerlyClipboardIcon, BuyerlyCopyIdIcon, BuyerlyCopyTitleIcon, BuyerlyCopyUrlIcon } from '@/icons/BuyerlyIcons';
 import { RuleSelectorPopover } from './RuleSelectorPopover';
 import { openCommandMenu } from '@/components/command/CommandMenu';
 import { takeRecordActions } from '@/components/command/OpenPalette';
@@ -309,6 +310,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
   } | null>(null);
   // The selection's "Apply rule…": one picker over every selected row.
   const [isBulkRulePickerOpen, setIsBulkRulePickerOpen] = useState(false);
+  const [ruleMenuTargets, setRuleMenuTargets] = useState<string[] | null>(null);
   const [isMetaDialogOpen, setIsMetaDialogOpen] = useState(false);
   const [returnedConnectionId, setReturnedConnectionId] = useState<number | null>(
     Number(new URLSearchParams(window.location.search).get('meta_connection')) || null,
@@ -579,13 +581,13 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
 
   const currentRows = campaignFilterTab === 'campaigns' ? campaigns : campaignFilterTab === 'adsets' ? adSets : ads;
 
-  /** Pauses or resumes every selected row of the current level, reporting each outcome. */
-  const runBulkDelivery = async (next: 'active' | 'paused') => {
+  /** Pauses or resumes every selected row of the current level (or the rows a right-click names), reporting each outcome. */
+  const runBulkDelivery = async (next: 'active' | 'paused', ids: string[] = selectedCampaignIds) => {
     if (hierarchyState !== 'ready') return;
     const inWorkspace = useAppStore.getState().captureScope();
     const onAccount = captureListScope();
     const level = entityLevels[campaignFilterTab];
-    const rows = currentRows.filter((row) => selectedCampaignIds.includes(row.id));
+    const rows = currentRows.filter((row) => ids.includes(row.id));
     const eligible = rows.filter((row) => row.status !== 'unknown' && row.accountId);
     const status: DeliveryStatus = next === 'active' ? 'ACTIVE' : 'PAUSED';
     // Each row's own ad account: a selection may span several.
@@ -648,10 +650,67 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
     actions: selectionActions,
     enabled: accountsState === 'ready' && hierarchyState === 'ready',
   });
+  // "Apply rule…" from a row's right-click menu works on the rows it names, the selection otherwise.
+  const ruleTargetIds = ruleMenuTargets ?? selectedRowIds;
+  const ruleTargetAccounts = [...new Set(currentRows.filter((row) => ruleTargetIds.includes(row.id)).map((row) => row.accountId ?? ''))];
+  const pickerAccountId = ruleTargetAccounts.length === 1 ? ruleTargetAccounts[0] : '';
   // A picker left over a selection that is gone, or now spans accounts, must not reopen on the next one.
   useEffect(() => {
-    if (!ruleAccountId) setIsBulkRulePickerOpen(false);
-  }, [ruleAccountId]);
+    if (!pickerAccountId) setIsBulkRulePickerOpen(false);
+  }, [pickerAccountId]);
+
+  /**
+   * Linear's right-click menu on a row or card: it acts on the selection when
+   * the row is in it, else on that row alone. Buyerly's actions on delivery
+   * and rules, then Copy.
+   */
+  const rowMenu = (row: { id: string; name: string; status: 'active' | 'paused' | 'unknown'; accountId?: string; identifier?: string }): RowMenuEntry[] => {
+    const ids = selectedCampaignIds.includes(row.id) ? selectedCampaignIds : [row.id];
+    const targets = currentRows.filter((candidate) => ids.includes(candidate.id));
+    const statusOf = (target: typeof targets[number]) => deliveryActions[target.id]?.status ?? target.status;
+    const controllable = hierarchyState === 'ready' && targets.some((target) => target.status !== 'unknown' && target.accountId);
+    const accounts = new Set(targets.map((target) => target.accountId ?? ''));
+    const noun = entityLabels[campaignFilterTab].singular;
+    const copy = async (text: string, what: string) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        toast.show({ tone: 'success', title: `${what} copied to clipboard` });
+      } catch {
+        toast.error(`Couldn't copy the ${what.toLowerCase()}`, text);
+      }
+    };
+    const entityPath = window.location.pathname.replace(/\/(campaigns|adsets|ads)(\/[^/]+)?\/?$/, '');
+    const link = `${window.location.origin}${entityPath}/${campaignFilterTab}/${encodeURIComponent(row.id)}`;
+    return [
+      ...(controllable && targets.some((target) => statusOf(target) === 'active')
+        ? [{ label: 'Pause delivery', icon: <Pause size={16} strokeWidth={1.75} />, shortcut: ['P'], onSelect: () => void runBulkDelivery('paused', ids) }]
+        : []),
+      ...(controllable && targets.some((target) => statusOf(target) === 'paused')
+        ? [{ label: 'Resume delivery', icon: <Play size={16} strokeWidth={1.75} />, shortcut: ['R'], onSelect: () => void runBulkDelivery('active', ids) }]
+        : []),
+      ...(campaignFilterTab !== 'ads' && attachmentsLoadState === 'ready' && accounts.size === 1 && !accounts.has('')
+        ? [{
+          label: 'Apply rule…',
+          icon: <BuyerlyBoltIcon size={16} />,
+          shortcut: ['A'],
+          onSelect: () => {
+            setRuleMenuTargets(ids);
+            setIsBulkRulePickerOpen(true);
+          },
+        }]
+        : []),
+      'separator',
+      {
+        label: 'Copy',
+        icon: <BuyerlyClipboardIcon size={16} />,
+        items: [
+          { label: 'Copy ID', icon: <BuyerlyCopyIdIcon size={16} />, onSelect: () => void copy(row.identifier || row.id, `${noun[0].toUpperCase()}${noun.slice(1)} ID`) },
+          { label: 'Copy URL', icon: <BuyerlyCopyUrlIcon size={16} />, onSelect: () => void copy(link, 'URL') },
+          { label: 'Copy name', icon: <BuyerlyCopyTitleIcon size={16} />, onSelect: () => void copy(row.name, 'Name') },
+        ],
+      },
+    ];
+  };
 
   // The entity an address names opens on its row once its level is on screen.
   const revealedNoun = reveal ? entityLabels[reveal.entity].singular : '';
@@ -721,24 +780,29 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
     }
     if (campaignFilterTab === 'adsets') {
       return renderGrouped(filteredAdSets, adSetFilterFields, (adSet) => (
-        <AdSetRow key={adSet.id} adSet={adSet} properties={supportedProperties} columns={tableColumns} readOnly selectable delivery={deliveryControl('adset', adSet)} />
+        <BuyerlyRowContextMenu key={adSet.id} entries={rowMenu(adSet)}>
+          <AdSetRow adSet={adSet} properties={supportedProperties} columns={tableColumns} readOnly selectable delivery={deliveryControl('adset', adSet)} />
+        </BuyerlyRowContextMenu>
       ));
     }
     if (campaignFilterTab === 'ads') {
       return renderGrouped(filteredAds, adFilterFields, (ad) => (
-        <AdRow key={ad.id} ad={ad} properties={supportedProperties} columns={tableColumns} readOnly selectable delivery={deliveryControl('ad', ad)} />
+        <BuyerlyRowContextMenu key={ad.id} entries={rowMenu(ad)}>
+          <AdRow ad={ad} properties={supportedProperties} columns={tableColumns} readOnly selectable delivery={deliveryControl('ad', ad)} />
+        </BuyerlyRowContextMenu>
       ));
     }
     return renderGrouped(filteredCampaigns, campaignFilterFields, (campaign) => (
-      <CampaignRow
-        key={campaign.id}
-        campaign={campaign}
-        properties={supportedProperties}
-        columns={tableColumns}
-        readOnly
-        selectable
-        delivery={deliveryControl('campaign', campaign)}
-      />
+      <BuyerlyRowContextMenu key={campaign.id} entries={rowMenu(campaign)}>
+        <CampaignRow
+          campaign={campaign}
+          properties={supportedProperties}
+          columns={tableColumns}
+          readOnly
+          selectable
+          delivery={deliveryControl('campaign', campaign)}
+        />
+      </BuyerlyRowContextMenu>
     ));
   };
 
@@ -790,6 +854,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
     });
     const level = entityLevels[campaignFilterTab];
     const card = (row: T) => (
+      <BuyerlyRowContextMenu entries={rowMenu(row)}>
       <AdsManagerCard
         id={row.id}
         name={row.name}
@@ -810,6 +875,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
         busy={Boolean(deliveryActions[row.id]?.busy)}
         onToggleSelected={() => toggleCampaignSelection(row.id)}
       />
+      </BuyerlyRowContextMenu>
     );
     // By Status a card dropped on Active or Paused turns it on or off in Meta, once confirmed;
     // the other states are Meta's own and take no drops.
@@ -1136,14 +1202,17 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
         onClearScope={openCommandMenu}
       />
 
-      {campaignFilterTab !== 'ads' && ruleAccountId && (
+      {campaignFilterTab !== 'ads' && pickerAccountId && (
         <RuleSelectorPopover
           isOpen={isBulkRulePickerOpen}
-          onClose={() => setIsBulkRulePickerOpen(false)}
+          onClose={() => {
+            setIsBulkRulePickerOpen(false);
+            setRuleMenuTargets(null);
+          }}
           anchorRect={null}
-          accountId={ruleAccountId}
+          accountId={pickerAccountId}
           level={campaignFilterTab === 'campaigns' ? 'campaign' : 'adset'}
-          entityIds={selectedRowIds}
+          entityIds={ruleTargetIds}
           shortcut="A"
         />
       )}
