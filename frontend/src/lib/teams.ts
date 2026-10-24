@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { pool } from '@/models/pool';
 import { teamsQuery } from '@/models/queries';
 import { usePoolQuery } from '@/models/usePool';
-import { useAppStore } from '@/store/useAppStore';
+import { usePageTeamKey } from '@/lib/pageScope';
 
 /** One team as GET /api/workspaces/{id}/teams returns it (#371). */
 export interface TeamItem {
@@ -98,7 +98,8 @@ export const plural = (count: number, noun: string) => `${count} ${noun}${count 
  * address names no team of this workspace.
  */
 export function useActiveTeam(workspaceId: number) {
-  const key = useAppStore((state) => state.activeTeamKey);
+  // The page's own team: the one it was opened for, while the next page gets ready (#490).
+  const key = usePageTeamKey();
   const { teams, error } = useTeams(workspaceId, 'all');
   const team = key && teams ? teams.find((item) => item.key === key) ?? null : null;
   return {

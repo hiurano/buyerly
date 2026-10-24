@@ -21,7 +21,9 @@ import {
   fetchInboxFacets,
   formatSnoozeTime,
   groupInboxItems,
-  inboxTabQuery,
+  inboxListKey,
+  inboxPageKey,
+  inboxTabShown,
   markInboxRead,
   sanitizeInboxFilters,
   snoozeInboxNotification,
@@ -29,6 +31,7 @@ import {
   type InboxFacets,
   type InboxFilterClause,
   type InboxItem,
+  type InboxPage,
   type InboxQuery,
   type InboxTab,
 } from '@/lib/inbox';
@@ -65,7 +68,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { afterPaint, pool } from '@/models/pool';
 import { usePoolValue } from '@/models/usePool';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
-import { useAddress } from '@/lib/routing';
+import { usePagePathname } from '@/lib/pageScope';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type ActionState = 'idle' | 'loading';
@@ -134,13 +137,6 @@ const headerButtonClass = (active = false) =>
   `buyerly-header-button buyerly-header-button--header buyerly-header-target${active ? ' buyerly-header-button--active' : ''}`;
 
 /** Notifications the filters hide; an older API leaves the count out. */
-/** One Inbox list as the pool holds it. */
-interface InboxPage {
-  items: InboxItem[];
-  hasMore: boolean;
-  hiddenByFilters: number;
-}
-
 const hiddenByFiltersOf = (response: { hidden_by_filters?: number | null }) => response.hidden_by_filters ?? 0;
 
 const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onNavigate, onOpenRecord }) => {
@@ -177,7 +173,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
   const listRef = useRef<HTMLDivElement>(null);
   const displayButtonRef = useRef<HTMLButtonElement>(null);
   const filterButtonRef = useRef<HTMLButtonElement>(null);
-  const { pathname } = useAddress();
+  const pathname = usePagePathname();
   useLayoutEffect(() => {
     itemsRef.current = items;
   });
@@ -196,25 +192,18 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
   if (unseen.length > 0) setReadOnFirstSeen(new Map([...readOnFirstSeen, ...unseen.map((item) => [item.id, item.is_read] as const)]));
 
   // With priority inbox on, Linear always shows one of its two tabs.
-  const activeTab: InboxTab | null = inboxDisplay.priorityInbox ? inboxTab ?? 'priority' : null;
+  const activeTab = inboxTabShown(inboxDisplay, inboxTab);
   const tabRef = useRef(activeTab);
   useLayoutEffect(() => {
     tabRef.current = activeTab;
   });
-  const queryKey = JSON.stringify({
-    ordering: inboxDisplay.ordering,
-    unreadOnly: inboxDisplay.unreadOnly,
-    showSnoozed: inboxDisplay.showSnoozed,
-    // Focus puts unread groups above Read, so the server pages unread first.
-    unreadFirst: inboxDisplay.unreadFirst || inboxDisplay.grouping === 'focus',
-    ...inboxTabQuery(inboxDisplay, activeTab),
-  });
   // Only what changes the list reloads it; Badge count, for one, does not.
+  const queryKey = inboxListKey(inboxDisplay, activeTab);
   const listQuery = useMemo(() => JSON.parse(queryKey) as Omit<InboxQuery, 'offset'>, [queryKey]);
 
   // The list as last shown for these options and filters, held in the pool (#488): an Inbox
   // already visited draws it in its first frame, set here while rendering, before anything is painted.
-  const pageKey = `inbox:${queryKey}:${JSON.stringify(filters)}`;
+  const pageKey = inboxPageKey(queryKey, filters);
   const held = usePoolValue<InboxPage>(pageKey);
   const [itemsKey, setItemsKey] = useState<string | null>(null);
   if (itemsKey !== pageKey && held) {

@@ -339,7 +339,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertEqual(view_model.count("grouping: 'account',"), 3)
         self.assertIn("{ value: 'account', label: 'Ad account' }", view_model)
         # My campaigns is the same view over the accounts you lead, with views of its own.
-        self.assertIn("mine={myCampaigns}", self.app)
+        self.assertIn("mine={page.mine}", self.app)
         self.assertIn("account.lead_user_id === user.id", self.campaigns_view)
         self.assertIn("'my-campaigns' : 'ads-manager'", view_model)
         self.assertFalse((ROOT / "frontend" / "src" / "components" / "campaigns" / "MyCampaignsView.tsx").exists())

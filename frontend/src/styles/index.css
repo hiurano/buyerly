@@ -6028,3 +6028,58 @@ button.buyerly-board-hidden-row:hover,
 .buyerly-board-chip-label {
   color: var(--text-tertiary);
 }
+
+/*
+ * A page still reading its data after the shell held the previous one for a
+ * second (#490): the header and a few rows, in the canvas's own colours, so
+ * it reads the same in light and dark. It fades in, never blinks.
+ */
+.buyerly-page-skeleton {
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  min-height: 0;
+  animation: buyerlyPageSkeletonIn var(--speed-regularTransition) var(--ease-out-quad);
+}
+
+.buyerly-page-skeleton-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  min-height: var(--header-height);
+  padding: 0 24px;
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.buyerly-page-skeleton-rows {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+}
+
+.buyerly-page-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: var(--facet-row-height);
+  padding: 0 24px;
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.buyerly-page-skeleton-bar {
+  display: block;
+  height: 10px;
+  max-width: 480px;
+  border-radius: 4px;
+  background-color: var(--item-active-bg);
+}
+
+.buyerly-page-skeleton-bar--icon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+@keyframes buyerlyPageSkeletonIn { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .buyerly-page-skeleton { animation: none; } }

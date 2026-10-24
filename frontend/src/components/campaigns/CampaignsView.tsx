@@ -26,7 +26,8 @@ import { usePoolQuery } from '@/models/usePool';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { ViewTitle } from '@/components/teams/ViewTitle';
 import { favoritePath } from '@/lib/favorites';
-import { pathForTab, useAddress } from '@/lib/routing';
+import { pathForTab } from '@/lib/routing';
+import { usePageEntity, usePagePathname } from '@/lib/pageScope';
 import { useActiveTeam } from '@/lib/teams';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import type { AdsManagerEntity } from '@/store/useAppStore';
@@ -205,8 +206,9 @@ function facetIcon(fieldId: string, option: FilterOption): React.ReactNode {
 }
 
 const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reveal, navigationKey }) => {
+  // The level this page was opened on, while the next page gets ready (#490).
+  const campaignFilterTab = usePageEntity();
   const {
-    campaignFilterTab,
     setCampaignFilterTab,
     isDisplayOptionsOpen,
     toggleDisplayOptions,
@@ -228,7 +230,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
   }
 
   const requestGenerationRef = useRef(0);
-  const { pathname } = useAddress();
+  const pathname = usePagePathname();
   const filterButtonRef = useRef<HTMLButtonElement>(null);
   const displayOptionsButtonRef = useRef<HTMLButtonElement>(null);
   const [openFilterMenu, setOpenFilterMenu] = useState<OpenFilterMenu | null>(null);
