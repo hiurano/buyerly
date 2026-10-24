@@ -392,6 +392,8 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("openssl enc -d -aes-256-cbc", self.restore_script)
         self.assertIn("ON_ERROR_STOP=1", self.restore_script)
         self.assertIn("--single-transaction", self.restore_script)
+        # A dump from pg_dump 17 still restores into PostgreSQL 16.
+        self.assertIn("/^SET transaction_timeout = 0;$/d", self.restore_script)
         self.assertIn("-- PostgreSQL database dump complete", self.restore_script)
         # The archive is decoded and checked before psql runs, never streamed into it.
         self.assertNotRegex(self.restore_script, r"gzip -dc[^\n]*\\\n\s*\|\s*docker exec")
