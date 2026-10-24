@@ -116,8 +116,10 @@ async def get_analytics_hierarchy(
 
 @router.get("/hierarchy/accounts")
 async def get_accounts_hierarchy(
-    account_ids: str = Query(
-        ..., max_length=20_000, description="Comma-separated Meta account IDs (act_…) whose rows to read"
+    account_ids: Optional[str] = Query(
+        None,
+        max_length=20_000,
+        description="Comma-separated Meta account IDs (act_…) whose rows to read; every account you can see when left out",
     ),
     period: str = Query("today", pattern="^(today|yesterday|last_3d|last_7d)$", description="Reporting period"),
     user: User = Depends(get_current_user),
@@ -126,10 +128,16 @@ async def get_accounts_hierarchy(
 
     Each account's rows are what `/hierarchy` returns for that account at each
     level. An account the member cannot see, or that this workspace does not
-    hold, comes back under `missing` and never hides the others.
+    hold, comes back under `missing` and never hides the others. Without
+    `account_ids` it reads every account the member can see, so Campaigns can
+    ask for its rows at the same time as for the accounts themselves (#489).
     """
-    wanted = list(dict.fromkeys(part.strip() for part in account_ids.split(",") if part.strip()))
-    if len(wanted) > MAX_HIERARCHY_ACCOUNTS:
+    wanted = (
+        list(dict.fromkeys(part.strip() for part in account_ids.split(",") if part.strip()))
+        if account_ids is not None
+        else None
+    )
+    if wanted is not None and len(wanted) > MAX_HIERARCHY_ACCOUNTS:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"At most {MAX_HIERARCHY_ACCOUNTS} ad accounts per request",
@@ -142,6 +150,8 @@ async def get_accounts_hierarchy(
             if ws_id
             else {}
         )
+        if wanted is None:
+            wanted = list(visible)[:MAX_HIERARCHY_ACCOUNTS]
         accounts = [visible[account_id] for account_id in wanted if account_id in visible]
         rows = await AnalyticsFactService.get_accounts_hierarchy(
             session, workspace_id=ws_id, accounts=accounts, period=period

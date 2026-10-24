@@ -107,7 +107,7 @@ try {
         }] });
       }
       if (path === '/api/analytics/hierarchy/accounts') {
-        const ids = url.searchParams.get('account_ids').split(',');
+        const ids = url.searchParams.get('account_ids')?.split(',') ?? ['act_100'];
         const rows = (id, level) => id === 'act_100' && level === 'campaign' ? campaigns : [];
         const accounts = ids.map((id) => ({ account_id: id, campaigns: rows(id, 'campaign'), adsets: rows(id, 'adset'), ads: rows(id, 'ad') }));
         return route.fulfill({ json: { period: url.searchParams.get('period'), source: 'analytics_fact_store', accounts, missing: [] } });

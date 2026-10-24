@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiRequest } from '@/lib/api';
 import type { MetaAccount, MetaConnection } from '@/lib/types';
-import { teamsPath, type TeamItem } from '@/lib/teams';
+import { readTeams, type TeamItem } from '@/lib/teams';
 import { useAppStore } from '@/store/useAppStore';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { useListView } from '@/ui/useListView';
@@ -50,7 +50,7 @@ export function useWorkspaceAccounts() {
       const [nextAccounts, nextTeams, nextMembers, nextConnections] = await Promise.all([
         apiRequest<MetaAccount[]>('/api/accounts'),
         // The page still opens without them: no team column values, no "Connected by".
-        apiRequest<TeamItem[]>(teamsPath(workspace.id, '?status=all')).catch(() => [] as TeamItem[]),
+        readTeams(workspace.id).catch(() => [] as TeamItem[]),
         apiRequest<AccountMember[]>(`/api/workspaces/${workspace.id}/members`).catch(() => [] as AccountMember[]),
         apiRequest<MetaConnection[]>('/api/meta/connections').catch(() => [] as MetaConnection[]),
       ]);

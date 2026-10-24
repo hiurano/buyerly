@@ -129,7 +129,7 @@ try {
         return route.fulfill({ json: { items, page: 1, page_size: 5, total: items.length, total_pages: 1, status_counts: {} } });
       }
       if (path === '/api/analytics/hierarchy/accounts') {
-        const ids = url.searchParams.get('account_ids').split(',');
+        const ids = url.searchParams.get('account_ids')?.split(',') ?? list.map((item) => item.account_id);
         const rows = (id, level) => [];
         const accounts = ids.map((id) => ({ account_id: id, campaigns: rows(id, 'campaign'), adsets: rows(id, 'adset'), ads: rows(id, 'ad') }));
         return route.fulfill({ json: { period: url.searchParams.get('period'), source: 'analytics_fact_store', accounts, missing: [] } });

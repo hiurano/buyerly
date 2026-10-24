@@ -437,7 +437,8 @@ interface AppState {
   adSetAttachedRules: Record<string, string[]>;
   attachmentError: string;
   clearAttachmentError: () => void;
-  loadRuleAttachments: (accountIds: string[]) => Promise<void>;
+  /** `accounts`: ones just read from `/api/accounts`, so their `active_rules` need no second read. */
+  loadRuleAttachments: (accountIds: string[], accounts?: MetaAccount[]) => Promise<void>;
   /**
    * Aims a rule at these campaigns or ad sets of one ad account, or takes it
    * off them when it already targets every one of them, as a multi-select
@@ -884,7 +885,7 @@ export const useAppStore = create<AppState>((set, get) => {
   attachmentError: '',
   clearAttachmentError: () => set({ attachmentError: '' }),
 
-  loadRuleAttachments: async (accountIds) => {
+  loadRuleAttachments: async (accountIds, loadedAccounts) => {
     const inScope = get().captureScope();
     if (!inScope()) return;
     const request = ++attachmentsRequest;
@@ -902,7 +903,7 @@ export const useAppStore = create<AppState>((set, get) => {
     }
     if (accountIds.length === 0) return;
     try {
-      const accounts = await apiRequest<MetaAccount[]>('/api/accounts');
+      const accounts = loadedAccounts ?? await apiRequest<MetaAccount[]>('/api/accounts');
       if (!current()) return;
       const scopes: Record<string, Record<string, RuleScope>> = {};
       const order: Record<string, string[]> = {};

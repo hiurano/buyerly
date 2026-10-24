@@ -54,13 +54,32 @@ export function notifyTeamsChanged(): void {
   window.dispatchEvent(new Event(CHANGED_EVENT));
 }
 
+const teamReads = new Map<string, Promise<TeamItem[]>>();
+
+/**
+ * One read of a workspace's teams shared by everyone asking at once: the
+ * sidebar, the page title and the page itself all ask on a page switch (#489).
+ */
+export function readTeams(workspaceId: number, status: 'all' | 'deleted' = 'all'): Promise<TeamItem[]> {
+  const path = teamsPath(workspaceId, `?status=${status}`);
+  let read = teamReads.get(path);
+  if (!read) {
+    read = apiRequest<TeamItem[]>(path).finally(() => teamReads.delete(path));
+    teamReads.set(path, read);
+  }
+  return read;
+}
+
 export function useTeams(workspaceId: number, filter: TeamFilter | 'all' = 'all') {
   const [teams, setTeams] = useState<TeamItem[] | null>(null);
   const [error, setError] = useState('');
 
   const refresh = useCallback(async () => {
     try {
-      const next = await apiRequest<TeamItem[]>(teamsPath(workspaceId, `?status=${filter}`));
+      // Active and retired are the API's own filters of `all`, in the same order, so they share its read.
+      const read = await readTeams(workspaceId, filter === 'deleted' ? 'deleted' : 'all');
+      const next = filter === 'active' ? read.filter((team) => !team.retired_at)
+        : filter === 'retired' ? read.filter((team) => team.retired_at) : read;
       setTeams(next);
       setError('');
     } catch (loadError) {
