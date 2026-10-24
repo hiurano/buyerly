@@ -150,6 +150,27 @@ export function orderGroups<G extends { id: string }>(
 export const boardGrouping = (grouping: string, fallback: string) => (grouping === 'none' ? fallback : grouping);
 
 /**
+ * Grouping and Sub-grouping (a board's Columns and Rows) never show the same
+ * property, as Linear's: picking in one what the other shows hands the other
+ * this one's old value. Rows taken from columns that had no rows to swap with
+ * leave the columns on the first other option, as columns never go ungrouped.
+ */
+export function groupingChange(
+  which: 'grouping' | 'subGrouping',
+  value: string,
+  current: Pick<ListViewSettings, 'grouping' | 'subGrouping'>,
+  options: { value: string }[],
+): Partial<ListViewSettings> {
+  const other = which === 'grouping' ? 'subGrouping' : 'grouping';
+  if (value === 'none' || value !== current[other]) return { [which]: value };
+  const previous = current[which];
+  const handed = previous !== 'none' || which === 'grouping'
+    ? previous
+    : options.find((option) => option.value !== 'none' && option.value !== value)?.value ?? 'none';
+  return { [which]: value, [other]: handed };
+}
+
+/**
  * Board columns in the member's order: the shown ones, and the rest for
  * Linear's "Hidden columns" lane — hidden with "Hide column", or empty while
  * Show empty columns is off.

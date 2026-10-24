@@ -59,7 +59,9 @@ export function ruleActiveGrouping(view: Pick<ListViewSettings, 'grouping' | 'la
  * layouts, so Ctrl/Cmd+B keeps it. A list grouped by nothing has no sub-groups.
  */
 export function ruleActiveRows(view: Pick<ListViewSettings, 'grouping' | 'subGrouping' | 'layout'>): string {
-  if (ruleActiveGrouping(view) === 'none') return 'none';
+  const grouping = ruleActiveGrouping(view);
+  // Rows by the columns' own property (saved before Linear's swap) band nothing.
+  if (grouping === 'none' || view.subGrouping === grouping) return 'none';
   return RULE_GROUPINGS.some((option) => option.value === view.subGrouping) ? view.subGrouping : 'none';
 }
 
