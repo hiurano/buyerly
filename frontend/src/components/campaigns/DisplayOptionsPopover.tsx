@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BuyerlyDisplayOptions, type DisplayGroupOption } from '@/ui/BuyerlyDisplayOptions';
-import { orderGroups, toggleHiddenGroup } from '@/ui/listView';
+import { groupingChange, orderGroups, toggleHiddenGroup } from '@/ui/listView';
 import type { AdsManagerEntity } from '@/store/useAppStore';
 import {
   adsManagerActiveGrouping,
@@ -65,6 +65,9 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
   const grouping = adsManagerActiveGrouping(entity, view);
   const rows = adsManagerActiveRows(entity, view);
   const groupingView = { ...view, grouping };
+  // Columns and Rows swap rather than show one property twice, as Linear's.
+  const pick = (which: 'grouping' | 'subGrouping', value: string) =>
+    update(groupingChange(which, value, { grouping, subGrouping: rows }, allGroupings));
   const hidden = view.hiddenGroups[grouping] ?? [];
 
   return createPortal(
@@ -74,7 +77,7 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
         onViewModeChange={(layout) => update({ layout })}
         grouping={grouping}
         groupingOptions={groupingOptions}
-        onGroupingChange={(value) => update({ grouping: value })}
+        onGroupingChange={(value) => pick('grouping', value)}
         groupOrdering={{
           groups: orderGroups(groups, groupingView),
           hidden,
@@ -84,7 +87,7 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
         // Sub-grouping splits groups, so a list grouped by nothing doesn't offer it.
         subGrouping={grouping !== 'none' ? rows : undefined}
         subGroupingOptions={grouping !== 'none' ? allGroupings : undefined}
-        onSubGroupingChange={(value) => update({ subGrouping: value })}
+        onSubGroupingChange={(value) => pick('subGrouping', value)}
         ordering={ordering}
         orderingOptions={orderingOptions}
         onOrderingChange={(value) => update({ ordering: value })}

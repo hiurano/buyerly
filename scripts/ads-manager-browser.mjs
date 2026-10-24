@@ -430,6 +430,13 @@ try {
       assert.deepEqual(await page.locator('.buyerly-display-select-menu').getByRole('option').allTextContents(), ['Ad account', 'Status', 'Rules'], 'no "No grouping" on a board');
       await page.locator('.buyerly-display-select-menu').getByRole('option', { name: 'Ad account', exact: true }).click();
       assert.equal(await property(page, 'Ad account').isDisabled(), true, 'the columns already show the account');
+      // Rows by the columns' own Ad account, as Linear's: the columns move to the first other option.
+      const combo = (row) => popover(page).locator('.buyerly-display-row', { has: page.getByText(row, { exact: true }) }).getByRole('combobox');
+      await select(page, 'Rows', 'Ad account');
+      assert.match(await combo('Columns').innerText(), /Status/, 'never one property in columns and rows');
+      // Columns by the rows' Ad account swaps them back.
+      await select(page, 'Columns', 'Ad account');
+      assert.match(await combo('Rows').innerText(), /Status/, 'the rows take the columns\' Status');
       await select(page, 'Rows', 'Status');
       await popover(page).getByText('Show empty rows', { exact: true }).waitFor();
       await page.keyboard.press('Escape');

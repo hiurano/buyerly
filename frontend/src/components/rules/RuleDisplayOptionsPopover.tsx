@@ -2,7 +2,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import { createPortal } from 'react-dom';
 import { useAppStore } from '@/store/useAppStore';
 import { BuyerlyDisplayOptions } from '@/ui/BuyerlyDisplayOptions';
-import { orderGroups, toggleHiddenGroup } from '@/ui/listView';
+import { groupingChange, orderGroups, toggleHiddenGroup } from '@/ui/listView';
 import {
   RULE_GROUPINGS,
   RULE_GROUPING_PROPERTY,
@@ -59,6 +59,9 @@ export const RuleDisplayOptionsPopover: React.FC<RuleDisplayOptionsPopoverProps>
   const grouping = ruleActiveGrouping(view);
   const rows = ruleActiveRows(view);
   const groupingView = { ...view, grouping };
+  // Columns and Rows swap rather than show one property twice, as Linear's.
+  const pick = (which: 'grouping' | 'subGrouping', next: string) =>
+    update(groupingChange(which, next, { grouping, subGrouping: rows }, RULE_GROUPINGS));
   // Every grouping is a known set, so its empty groups can be shown and ordered.
   const groups = orderGroups(ruleGroupsFor(grouping, rules, ruleLabels, accounts), groupingView);
   const hidden = view.hiddenGroups[grouping] ?? [];
@@ -71,7 +74,7 @@ export const RuleDisplayOptionsPopover: React.FC<RuleDisplayOptionsPopoverProps>
         onViewModeChange={(layout) => update({ layout })}
         grouping={grouping}
         groupingOptions={board ? RULE_GROUPINGS.filter((option) => option.value !== 'none') : RULE_GROUPINGS}
-        onGroupingChange={(next) => update({ grouping: next })}
+        onGroupingChange={(next) => pick('grouping', next)}
         groupOrdering={{
           groups: groups.map((group) => ({
             id: group.id,
@@ -85,7 +88,7 @@ export const RuleDisplayOptionsPopover: React.FC<RuleDisplayOptionsPopoverProps>
         // Sub-grouping splits groups, so a list grouped by nothing doesn't offer it.
         subGrouping={grouping !== 'none' ? rows : undefined}
         subGroupingOptions={grouping !== 'none' ? RULE_GROUPINGS : undefined}
-        onSubGroupingChange={(next) => update({ subGrouping: next })}
+        onSubGroupingChange={(next) => pick('subGrouping', next)}
         ordering={ordering}
         orderingOptions={RULE_ORDERINGS}
         onOrderingChange={(next) => update({ ordering: next })}

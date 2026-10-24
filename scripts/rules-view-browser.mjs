@@ -246,6 +246,12 @@ try {
     await select('Columns', 'Status');
     await select('Rows', 'Label');
     await popover().getByText('Show empty rows', { exact: true }).waitFor();
+    // Columns and Rows never show one property, as Linear's: picking the other's swaps them, both ways.
+    const combo = (row) => popover().locator('.buyerly-display-row', { has: page.getByText(row, { exact: true }) }).getByRole('combobox');
+    await select('Columns', 'Label');
+    assert.match(await combo('Rows').innerText(), /Status/, 'Columns by the rows\' Label hands the rows Status');
+    await select('Rows', 'Label');
+    assert.match(await combo('Columns').innerText(), /Status/, 'and back');
     assert.equal(await property('Status').isDisabled(), true, 'the columns show the status');
     assert.equal(await property('Labels').isDisabled(), true, 'the rows show the labels');
     await page.keyboard.press('Escape');

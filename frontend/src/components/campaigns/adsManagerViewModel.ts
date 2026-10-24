@@ -93,7 +93,9 @@ export function adsManagerActiveRows(
   entity: AdsManagerEntity,
   view: Pick<ListViewSettings, 'grouping' | 'subGrouping' | 'layout'>,
 ): string {
-  if (adsManagerActiveGrouping(entity, view) === 'none') return 'none';
+  const grouping = adsManagerActiveGrouping(entity, view);
+  // Rows by the columns' own property (saved before Linear's swap) band nothing.
+  if (grouping === 'none' || view.subGrouping === grouping) return 'none';
   return adsManagerGroupings(entity).some((option) => option.value === view.subGrouping) ? view.subGrouping : 'none';
 }
 
