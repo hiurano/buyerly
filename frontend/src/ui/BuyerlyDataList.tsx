@@ -311,9 +311,10 @@ export const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProp
             event.stopPropagation();
             onAction();
           }}
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[var(--text-tertiary)] opacity-0 transition-all hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] group-hover/header:opacity-100"
+          // Linear's group "+": always shown, a 24px round button with a 14px icon, 8px from the edge (2026-10-24).
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-[0.5px] border-transparent text-[var(--sidebar-item-fg)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
             <path d="M8.75 4C8.75 3.58579 8.41421 3.25 8 3.25C7.58579 3.25 7.25 3.58579 7.25 4V7.25H4C3.58579 7.25 3.25 7.58579 3.25 8C3.25 8.41421 3.58579 8.75 4 8.75H7.25V12C7.25 12.4142 7.58579 12.75 8 12.75C8.41421 12.75 8.75 12.4142 8.75 12V8.75H12C12.4142 8.75 12.75 8.41421 12.75 8C12.75 7.58579 12.4142 7.25 12 7.25H8.75V4Z" />
           </svg>
         </button>

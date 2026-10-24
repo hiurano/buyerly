@@ -185,14 +185,17 @@ fi
 # schema, lock conflict) rolls everything back, so the target keeps its old
 # data instead of being left half-dropped. Query results (setval and the
 # like) are discarded; errors still reach stderr.
+# pg_dump 17 opens with "SET transaction_timeout = 0;", which a PostgreSQL 16
+# server rejects; the setting only disables a timeout, so a dump taken with a
+# newer client still restores into the 16 we run.
 echo "[INFO] Applying dump in a single transaction..."
-if ! docker exec -i "${POSTGRES_CONTAINER}" psql \
+if ! sed '/^SET transaction_timeout = 0;$/d' "${dump_file}" | docker exec -i "${POSTGRES_CONTAINER}" psql \
         --username="${POSTGRES_USER}" \
         --dbname="${POSTGRES_DB}" \
         --no-psqlrc \
         --set=ON_ERROR_STOP=1 \
         --single-transaction \
-        --quiet < "${dump_file}" >/dev/null; then
+        --quiet >/dev/null; then
     echo "[ERROR] Restore failed and was rolled back. Target database '${POSTGRES_DB}' keeps its previous data."
     exit 1
 fi

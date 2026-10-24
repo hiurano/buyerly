@@ -14,10 +14,12 @@ concurrency:
   group: buyerly-${{ github.ref }}
   cancel-in-progress: true
 
+# Runners are pinned to Ubuntu 24.04: ubuntu-latest moved to 26.04 on 2026-10-24,
+# where Playwright has no Chromium build and pg_dump is 17 against our PostgreSQL 16.
 jobs:
   frontend:
     name: Build React Frontend
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout Code
@@ -67,7 +69,7 @@ jobs:
   # so none of them needs the built frontend.
   browser:
     name: Browser checks (${{ matrix.group }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     strategy:
       fail-fast: false
@@ -139,7 +141,7 @@ jobs:
 
   test:
     name: Run Unit & Integration Tests (shard ${{ matrix.shard }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: frontend
 
     # The shards run in parallel, each against its own Postgres, so
@@ -213,7 +215,7 @@ jobs:
   # would mean editing the protection rule every time their number changes.
   ci:
     name: CI
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [frontend, browser, test]
     if: always()
 
@@ -233,7 +235,7 @@ jobs:
     name: Deploy to Production VPS
     needs: [frontend, browser, test]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: production
 
