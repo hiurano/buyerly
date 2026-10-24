@@ -29,6 +29,8 @@ interface FavoritesState {
   workspace: string | null;
   favorites: Favorite[];
   loaded: boolean;
+  /** The open page's star, which the command menu offers as "Favorite page". */
+  here: FavoriteInput | null;
   load: (workspace: string) => Promise<void>;
   add: (input: FavoriteInput) => Promise<void>;
   remove: (path: string) => Promise<void>;
@@ -41,10 +43,17 @@ export function favoritePath(appPath: string, workspace: string): string {
   return inside.replace(/\/$/, '');
 }
 
+/** The page with a star is the one open; the command menu adds or removes it. */
+export function toggleFavorite(input: FavoriteInput): Promise<void> {
+  const state = useFavorites.getState();
+  return state.favorites.some((favorite) => favorite.path === input.path) ? state.remove(input.path) : state.add(input);
+}
+
 export const useFavorites = create<FavoritesState>((set, get) => ({
   workspace: null,
   favorites: [],
   loaded: false,
+  here: null,
 
   load: async (workspace) => {
     if (get().workspace !== workspace) set({ workspace, favorites: [], loaded: false });

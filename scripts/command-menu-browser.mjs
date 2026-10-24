@@ -173,7 +173,7 @@ try {
     const onSearchPage = () => page.waitForURL(`${origin}/alpha/search`);
     const openCommands = [
       'Open campaign… · O then C', 'Open ad set… · O then A', 'Open ad… · O then D',
-      'Open rule… · O then R', 'Open ad account… · O then K', 'Open settings… · O then S',
+      'Open rule… · O then R', 'Open ad account… · O then K', 'Open settings… · O then S', 'Open favorite… · O then F',
     ];
     const blur = () => page.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined));
 
@@ -319,7 +319,8 @@ try {
       // 6. A quick result opens its record; Ctrl+/ and the footer open the search page with the words.
       await page.keyboard.press('Control+K');
       await commandField.waitFor();
-      assert.deepEqual((await commandTexts()).slice(0, 1), ['Create rule… · C'], 'C creates a rule on the Rules page');
+      // The page's star comes first, as Linear's "Favorite team"; C creates a rule here.
+      assert.deepEqual((await commandTexts()).slice(0, 2), ['Favorite page · Alt F', 'Create rule… · C'], 'C creates a rule on the Rules page');
       await commandField.fill('test');
       const testCampaign = commands.getByRole('option', { name: 'Campaign Test Campaign, Leads account' });
       await testCampaign.waitFor();

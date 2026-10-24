@@ -12,7 +12,7 @@ import { openAppPath } from '@/lib/routing';
 import { SidebarLink, SidebarSection } from './SidebarSections';
 
 /** The sidebar icon of what a favorite opens: the page's own, or the record's kind. */
-function favoriteIcon(favorite: Favorite): React.ReactNode {
+export function favoriteIcon(favorite: Favorite): React.ReactNode {
   if (favorite.kind === 'account') return <BuyerlyProjectIcon size={14} />;
   if (favorite.kind === 'rule') return <BuyerlyBoltIcon size={14} />;
   if (favorite.kind !== 'page') return <BuyerlyMetaIcon size={14} />;
@@ -26,9 +26,14 @@ function favoriteIcon(favorite: Favorite): React.ReactNode {
 /**
  * Linear's Favorites section, measured on 2026-10-24: between Workspace and
  * Your teams, shown once something is starred; each row is a sidebar item
- * with the page's icon, and a 10px × to unstar shows under the cursor.
+ * with the page's icon, and a 10px × to unstar shows under the cursor. A
+ * favorite lights for its page only where no other sidebar row does.
  */
-export const SidebarFavorites: React.FC<{ workspaceSlug: string }> = ({ workspaceSlug }) => {
+export const SidebarFavorites: React.FC<{
+  workspaceSlug: string;
+  /** False while one of the sidebar's own rows shows the page: Linear lights that row alone. */
+  lit: boolean;
+}> = ({ workspaceSlug, lit }) => {
   const favorites = useFavorites((state) => state.favorites);
   const remove = useFavorites((state) => state.remove);
   if (favorites.length === 0) return null;
@@ -41,7 +46,7 @@ export const SidebarFavorites: React.FC<{ workspaceSlug: string }> = ({ workspac
           key={favorite.path}
           icon={favoriteIcon(favorite)}
           label={favorite.title}
-          active={here === favorite.path}
+          active={lit && here === favorite.path}
           onClick={() => openAppPath(`/${workspaceSlug}/${favorite.path}`)}
           trailing={(
             <span

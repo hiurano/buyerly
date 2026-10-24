@@ -23,7 +23,8 @@ import { OpenPaletteIcon, OPEN_PALETTE_LABELS, openOpenPalette } from './OpenPal
 import { SETTINGS_PAGE_KEYWORDS, settingsGroupsFor } from '@/lib/settingsPages';
 import { SettingsPageIcon } from '@/components/preferences/SettingsPageIcon';
 import { isSmallScreen } from '@/lib/useMediaQuery';
-import { BuyerlyLabelIcon, BuyerlyPlusIcon, BuyerlySearchIcon, BuyerlySidebarLeftToggleIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyLabelIcon, BuyerlyPlusIcon, BuyerlySearchIcon, BuyerlySidebarLeftToggleIcon, BuyerlyStarOutlineIcon } from '@/icons/BuyerlyIcons';
+import { toggleFavorite, useFavorites } from '@/lib/favorites';
 import { COMMAND_MENU_CLASSES, CommandMenuFooterKeys } from '@/ui/SelectionCommandMenu';
 import { usePageGroup, type PaletteCommand, type PaletteGroup } from './pageCommands';
 
@@ -175,6 +176,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
   const setActiveTab = useAppStore((state) => state.setActiveTab);
   const lastAppTab = useAppStore((state) => state.lastAppTab);
   const pageGroup = usePageGroup();
+  const favoriteHere = useFavorites((state) => state.here);
+  const starred = useFavorites((state) => state.favorites.some((favorite) => favorite.path === state.here?.path));
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState('');
   const text = query.trim();
@@ -213,7 +216,21 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
     }))
     : [];
 
+  // Linear's menu opens with the page's star, ahead of any heading: "Favorite team  ⌥ F".
+  const favoriteGroup: PaletteGroup | null = favoriteHere ? {
+    heading: '',
+    commands: [{
+      id: 'favorite-page',
+      label: starred ? 'Unfavorite page' : 'Favorite page',
+      keywords: ['star', 'favorites'],
+      icon: <BuyerlyStarOutlineIcon size={14} />,
+      shortcut: 'Alt F',
+      run: () => void toggleFavorite(favoriteHere),
+    }],
+  } : null;
+
   const groups: PaletteGroup[] = [
+    ...(favoriteGroup ? [favoriteGroup] : []),
     ...settingsGroups,
     ...(pageGroup ? [pageGroup] : []),
     {

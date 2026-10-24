@@ -235,7 +235,7 @@ export type SettingsSection =
   /** Settings → Rules → Labels, at /settings/rule-labels (#383). */
   | 'rule-labels';
 /** Linear's "Open issue…" family: what each O-then-letter palette opens. */
-export type OpenPaletteKind = 'campaign' | 'adset' | 'ad' | 'rule' | 'account' | 'settings';
+export type OpenPaletteKind = 'campaign' | 'adset' | 'ad' | 'rule' | 'account' | 'settings' | 'favorite';
 export type InterfaceTheme = 'system' | 'light' | 'dark';
 export type { InboxDisplay };
 
