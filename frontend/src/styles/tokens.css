@@ -317,6 +317,9 @@
   --details-pane-backdrop: var(--bg-canvas);
   --details-pane-resizer-track: lch(100% 0 272 / 0.15);
   --details-pane-resizer-indicator: var(--resizer-line-color);
+  /* Linear's split view edge (Inbox list), measured in dark on 2026-10-24. */
+  --split-resizer-track: lch(27.12% 1.48 272 / 1);
+  --split-resizer-indicator: lch(100% 0 0 / 0.15);
   --details-pane-card-bg: var(--card-bg);
   --details-pane-card-border: var(--card-border);
   --details-pane-card-shadow: 0px 0.5px 1px 1px lch(0% 0 0 / 0.3);
@@ -563,6 +566,8 @@ html[data-theme='light'] {
 
   --details-pane-resizer-track: lch(0% 0 0 / 0.15);
   --details-pane-resizer-indicator: lch(0% 0 0 / 0.5);
+  --split-resizer-track: lch(84.44% 0 282 / 1);
+  --split-resizer-indicator: lch(0% 0 0 / 0.95);
   --details-pane-card-shadow: 0 0 0 1px lch(0% 0 0 / 0.04), 0 1px 2px lch(0% 0 0 / 0.04);
   --details-tab-bg: var(--sidebar-tab-inactive-bg);
   --details-tab-hover-bg: var(--sidebar-tab-hover-bg);

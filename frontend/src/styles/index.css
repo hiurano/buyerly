@@ -4821,6 +4821,36 @@ html[data-theme='dark'] .buyerly-auth-page,
 .details-pane-resizer-tooltip strong { color: var(--text-primary); font-weight: 500; }
 body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !important; user-select: none !important; }
 
+/* The edge between a split view's list and its pane (Linear's resize handle, Inbox, 2026-10-24):
+   a 0.5px solid track that fades in 100ms after hover, with a spot twice the track's height that
+   follows the pointer. */
+.buyerly-split-resizer { position: absolute; top: 0; bottom: 0; width: 7px; z-index: 91; cursor: col-resize; }
+.buyerly-split-resizer-track {
+  position: absolute; top: 0; bottom: 0; left: calc(50% - 0.5px); width: 0.5px; overflow: hidden; pointer-events: none;
+  background-color: var(--split-resizer-track); opacity: 0; transition: opacity 0.25s 0s;
+  mask-image: linear-gradient(rgba(0, 0, 0, 0), rgb(0, 0, 0) 10%, rgb(0, 0, 0) 90%, rgba(0, 0, 0, 0));
+}
+@media (any-hover: hover) and (any-pointer: fine) {
+  .buyerly-split-resizer:hover .buyerly-split-resizer-track { opacity: 1; transition-delay: 0.1s; }
+}
+.buyerly-split-resizer:active .buyerly-split-resizer-track,
+.buyerly-split-resizer[data-dragging='true'] .buyerly-split-resizer-track { opacity: 1; }
+.buyerly-split-resizer:active .buyerly-split-resizer-track { transition-delay: 0.1s; }
+.buyerly-split-resizer-indicator {
+  position: absolute; top: -50%; left: 0; right: 0; height: 200%; background-color: var(--split-resizer-indicator);
+  mask-image: linear-gradient(rgba(0, 0, 0, 0) 5%, rgba(0, 0, 0, 0.1) 11.4125%, rgba(0, 0, 0, 0.2) 17.15%, rgba(0, 0, 0, 0.3) 22.2125%,
+    rgba(0, 0, 0, 0.4) 26.6%, rgba(0, 0, 0, 0.5) 30.3125%, rgba(0, 0, 0, 0.6) 33.35%, rgba(0, 0, 0, 0.7) 35.7125%, rgba(0, 0, 0, 0.8) 37.4%,
+    rgba(0, 0, 0, 0.9) 38.4125%, rgb(0, 0, 0) 38.75%, rgb(0, 0, 0) 61.25%, rgba(0, 0, 0, 0.9) 61.5875%, rgba(0, 0, 0, 0.8) 62.6%,
+    rgba(0, 0, 0, 0.7) 64.2875%, rgba(0, 0, 0, 0.6) 66.65%, rgba(0, 0, 0, 0.5) 69.6875%, rgba(0, 0, 0, 0.4) 73.4%, rgba(0, 0, 0, 0.3) 77.7875%,
+    rgba(0, 0, 0, 0.2) 82.85%, rgba(0, 0, 0, 0.1) 88.5875%, rgba(0, 0, 0, 0) 95%);
+}
+body.buyerly-split-resizing, body.buyerly-split-resizing * { cursor: col-resize !important; user-select: none !important; }
+.buyerly-split-resizer-overlay { position: fixed; inset: 0; z-index: 2147483000; cursor: col-resize; }
+/* Linear's Inbox list beside the notification: its own width, a 0.5px edge in the canvas border's colour. */
+@media (min-width: 768px) {
+  .inbox-list { width: var(--inbox-list-width); max-width: var(--inbox-list-width); flex-shrink: 0; border-right: var(--canvas-border); }
+}
+
 /* The header's details button: lit while the pane is open. */
 /* Linear's round 28px icon buttons in a view header (Filter, Display options, details), measured
    17.10: 0.5px clear border, 14px icon in tertiary that turns primary on hover and while open.
