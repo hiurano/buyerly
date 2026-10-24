@@ -355,6 +355,9 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     pathname,
     route,
     navigationKey,
+    // Whether the store has caught up with the address yet (the sync above runs after the first paint).
+    addressed: route.tab === activeTab
+      && (route.tab === 'preferences' || route.tab === 'search' || (Boolean(route.mine) === myCampaigns && (route.mine || (route.teamKey ?? null) === activeTeamKey))),
   }, `${activeTab}:${activeTeamKey ?? ''}:${myCampaigns}:${campaignFilterTab}:${navigationKey}`, workspace.id);
   const page = shown.page;
   const pageRoute = page.route;

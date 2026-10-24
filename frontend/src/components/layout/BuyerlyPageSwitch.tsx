@@ -23,7 +23,7 @@ export interface BuyerlyShownPage<P> {
  *
  * `page` is the page as the store and the address have it now; `key` names it.
  */
-export function useHeldPage<P extends PageToOpen & { route: { tab: string } }>(page: P, key: string, workspaceId: number): BuyerlyShownPage<P> {
+export function useHeldPage<P extends PageToOpen & { addressed: boolean }>(page: P, key: string, workspaceId: number): BuyerlyShownPage<P> {
   const [shown, setShown] = useState<BuyerlyShownPage<P>>(() => ({ page, key, ready: null }));
   const switchPage = useEffectEvent(() => {
     if (key === shown.key) {
@@ -32,9 +32,9 @@ export function useHeldPage<P extends PageToOpen & { route: { tab: string } }>(p
       return undefined;
     }
     // Settings has a layout of its own; going there and coming back are not held. Nor is a
-    // page the address never named (the store's first tab, before the address is read):
-    // held, it would act on an address that is not its own.
-    if (page.tab === 'preferences' || shown.page.tab === 'preferences' || shown.page.route.tab !== shown.page.tab) {
+    // page the address never named (the store's state before it reads the address, as
+    // Campaigns before /my-campaigns): held, it would act on an address not its own.
+    if (page.tab === 'preferences' || shown.page.tab === 'preferences' || !shown.page.addressed) {
       setShown({ page, key, ready: null });
       return undefined;
     }
