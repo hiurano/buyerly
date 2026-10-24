@@ -647,11 +647,13 @@ export const useAppStore = create<AppState>((set, get) => {
     });
     return true;
   };
+  /** Rules reads under way: their three answers are shown together once all are in, never one by one. */
+  let rulesReading = 0;
   // A change in the pool (a write elsewhere, a read behind a page) reaches the rules already shown.
   reaction(
     () => RULE_QUERIES.map((query) => pool.result(query.key).data),
     () => {
-      if (get().rulesLoadState === 'ready') showPooledRules();
+      if (rulesReading === 0 && get().rulesLoadState === 'ready') showPooledRules();
     },
   );
   return ({
@@ -1090,7 +1092,9 @@ export const useAppStore = create<AppState>((set, get) => {
     // first load of a workspace shows the loading state.
     if (get().rulesLoadState !== 'ready') set({ rulesLoadState: 'loading', rulesError: '' });
     // Ad accounts are needed to offer "run on this ad account"; a failure there must not hide the rules.
+    rulesReading += 1;
     await Promise.all(RULE_QUERIES.map((query) => pool.fetch(query, { afterWrite: true })));
+    rulesReading -= 1;
     if (!current()) return;
     if (!showPooledRules()) {
       const error = pool.result(presetsQuery.key).error || pool.result(ruleLabelsQuery.key).error;

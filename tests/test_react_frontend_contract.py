@@ -297,10 +297,14 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("retired authenticated interface has been removed", self.design_system)
 
     def test_ads_manager_uses_workspace_api_without_production_fixtures(self):
+        # The ad accounts and their rows come from the workspace's model pool (#488).
+        queries = (ROOT / "frontend" / "src" / "models" / "queries.ts").read_text()
+        self.assertIn("apiRequest<MetaAccount[]>('/api/accounts')", queries)
+        self.assertIn("/api/analytics/hierarchy/accounts?period=", queries)
         for contract in (
-            "apiRequest<MetaAccount[]>('/api/accounts')",
-            "/api/analytics/hierarchy/accounts?period=",
-            "accountHierarchies(accounts, hierarchyRows)",
+            "usePoolQuery(adAccountsQuery)",
+            "usePoolQuery(hierarchyQuery(period))",
+            "accountHierarchies(metaAccounts, hierarchyRows)",
             "rows.campaigns",
             "rows.adsets",
             "rows.ads",
@@ -328,7 +332,7 @@ class TestReactFrontendContract(unittest.TestCase):
 
     def test_campaigns_shows_every_ad_account_at_once(self):
         """As Linear's team Issues lists every project's issues: no account switcher, grouped by Ad account."""
-        self.assertIn("accountHierarchies(accounts, hierarchyRows)", self.campaigns_view)
+        self.assertIn("accountHierarchies(metaAccounts, hierarchyRows)", self.campaigns_view)
         for dead in (r"selectedAccountId\b", "DropdownMenuAccount", "Select ad account", "HeaderCreateButton"):
             self.assertNotRegex(self.campaigns_view, dead)
         view_model = (ROOT / "frontend" / "src" / "components" / "campaigns" / "adsManagerViewModel.ts").read_text()
@@ -408,7 +412,9 @@ class TestReactFrontendContract(unittest.TestCase):
         for source in (self.ads_manager_columns, self.campaigns_row_sources, self.display_options):
             self.assertNotIn("Results / CPA", source)
             self.assertNotIn("ResultsCpaCell", source)
-        self.assertIn("?period=${period}", self.campaigns_view)
+        # The period's rows are a query of the model pool, keyed by the period (#488).
+        self.assertIn("?period=${period}", (ROOT / "frontend" / "src" / "models" / "queries.ts").read_text())
+        self.assertIn("hierarchyQuery(period)", self.campaigns_view)
         self.assertNotIn("period=today", self.campaigns_view)
         self.assertIn("periodFromSearch(window.location.search)", self.campaigns_view)
         self.assertIn("migrateAdsManagerClauses", (campaigns / "useCampaignViewFilters.ts").read_text())
