@@ -39,7 +39,7 @@ export const ApprovalDialog: React.FC = () => {
               event.preventDefault();
               declineRef.current?.focus();
             }}
-            className="ui-dialog pointer-events-auto w-full max-w-[480px] rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] p-6 text-left outline-none animate-scale-in shadow-[var(--dialog-elevation-shadow)]"
+            className="ui-dialog pointer-events-auto w-full max-w-[480px] rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] p-6 text-left outline-none animate-scale-in [box-shadow:var(--dialog-elevation-shadow)]"
           >
             <p className="m-0 text-[12px] font-medium text-[var(--text-tertiary)]">Your AI assistant asks</p>
             <Dialog.Title className="m-0 mt-1 text-[15px] font-semibold text-[var(--text-primary)] [overflow-wrap:anywhere]">

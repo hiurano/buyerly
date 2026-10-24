@@ -71,7 +71,7 @@ export const ChoiceDialog: React.FC<ChoiceDialogProps> = ({ open, title, descrip
       <Dialog.Overlay className="fixed inset-0 z-[500] bg-black/50 animate-fade-in" />
       <div className="pointer-events-none fixed inset-0 z-[501] flex items-center justify-center p-4">
         <Dialog.Content
-          className={`ui-dialog pointer-events-auto w-full ${wide ? 'max-w-[540px]' : 'max-w-[480px]'} rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] p-6 text-left outline-none animate-scale-in shadow-[var(--dialog-elevation-shadow)]`}
+          className={`ui-dialog pointer-events-auto w-full ${wide ? 'max-w-[540px]' : 'max-w-[480px]'} rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] p-6 text-left outline-none animate-scale-in [box-shadow:var(--dialog-elevation-shadow)]`}
         >
           <div className="flex items-start gap-2">
             <Dialog.Title className="m-0 min-w-0 flex-1 text-[15px] font-semibold text-[var(--text-primary)]">{title}</Dialog.Title>

@@ -50,7 +50,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               event.preventDefault();
               confirmRef.current?.focus();
             }}
-            className="ui-dialog pointer-events-auto w-full max-w-[480px] rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] p-6 text-left outline-none animate-scale-in shadow-[var(--dialog-elevation-shadow)]"
+            className="ui-dialog pointer-events-auto w-full max-w-[480px] rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] p-6 text-left outline-none animate-scale-in [box-shadow:var(--dialog-elevation-shadow)]"
           >
             <Dialog.Title className="m-0 text-[15px] font-semibold text-[var(--text-primary)]">
               {title}

@@ -156,7 +156,7 @@ const SessionDetailsDialog: React.FC<SessionDetailsDialogProps> = ({ session, bu
               event.preventDefault();
               actionRef.current?.focus();
             }}
-            className="ui-dialog preferences-session-dialog pointer-events-auto relative w-full max-w-[572px] rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] text-left outline-none animate-scale-in shadow-[var(--dialog-elevation-shadow)]"
+            className="ui-dialog preferences-session-dialog pointer-events-auto relative w-full max-w-[572px] rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] text-left outline-none animate-scale-in [box-shadow:var(--dialog-elevation-shadow)]"
           >
             <Dialog.Close asChild>
               <button

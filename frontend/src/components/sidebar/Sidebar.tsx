@@ -19,6 +19,7 @@ import { useWorkspaceSession } from '@/lib/workspaceSession';
 import type { AppTab } from '@/store/useAppStore';
 import { SidebarLink, SidebarSection, SidebarTeam } from './SidebarSections';
 import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
+import { BuyerlyHelpMenu } from '@/components/sidebar/BuyerlyHelpMenu';
 import { SidebarBackdrop, useSidebarDrawer, useSidebarPeek } from './SidebarDrawer';
 
 /** A team's pages, as Linear's: its Home, then Campaigns, Ad accounts and Rules (Linear's Issues and Projects). */
@@ -230,7 +231,9 @@ export const Sidebar: React.FC = () => {
           </SidebarSection>
         </div>
 
-        <SidebarUtilityFooter />
+        <SidebarUtilityFooter>
+          <BuyerlyHelpMenu />
+        </SidebarUtilityFooter>
 
         {/* 3. Linear Exact 3-Layer Spotlight Resizer with Double-Click Reset */}
         {!drawer.isSmall && <div

@@ -41,7 +41,7 @@ const ToastCard: React.FC<{ item: ToastItem }> = ({ item }) => {
       onMouseLeave={() => setHeld(false)}
       onFocus={() => setHeld(true)}
       onBlur={() => setHeld(false)}
-      className="toast-enter pointer-events-auto flex items-start gap-2 rounded-[var(--canvas-border-radius)] bg-[var(--toast-bg)] p-[var(--toast-padding)] text-[13px] leading-[19.5px] shadow-[var(--toast-shadow)]"
+      className="toast-enter pointer-events-auto flex items-start gap-2 rounded-[var(--canvas-border-radius)] bg-[var(--toast-bg)] p-[var(--toast-padding)] text-[13px] leading-[19.5px] [box-shadow:var(--toast-shadow)]"
     >
       <span className="flex h-[19.5px] w-4 shrink-0 items-center justify-center" aria-hidden="true">
         {TONE_ICON[item.tone]}

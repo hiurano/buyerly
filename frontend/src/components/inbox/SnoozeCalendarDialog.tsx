@@ -138,7 +138,7 @@ export const SnoozeCalendarDialog: React.FC<SnoozeCalendarDialogProps> = ({ open
           <Dialog.Content
             aria-describedby={undefined}
             onCloseAutoFocus={(event) => event.preventDefault()}
-            className="pointer-events-auto max-h-[calc(100vh-32px)] max-w-full overflow-auto rounded-[12px] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] px-[32px] pb-[32px] pt-[32px] shadow-[var(--dialog-elevation-shadow)] outline-none animate-scale-in"
+            className="pointer-events-auto max-h-[calc(100vh-32px)] max-w-full overflow-auto rounded-[12px] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] px-[32px] pb-[32px] pt-[32px] [box-shadow:var(--dialog-elevation-shadow)] outline-none animate-scale-in"
           >
             <Dialog.Title className="m-0 flex h-[23px] items-center gap-[8px] text-[15px] font-semibold text-[var(--text-primary)]">
               <BuyerlyClockOutlineIcon size={16} />
@@ -178,14 +178,14 @@ export const SnoozeCalendarDialog: React.FC<SnoozeCalendarDialogProps> = ({ open
             <div className="mt-[20px] flex justify-end gap-[10px]">
               <Button
                 onClick={() => onOpenChange(false)}
-                className="!border-transparent !bg-[var(--calendar-cancel-bg)] !text-[13px] !text-[var(--calendar-cancel-fg)] shadow-[var(--calendar-cancel-shadow)]"
+                className="!border-transparent !bg-[var(--calendar-cancel-bg)] !text-[13px] !text-[var(--calendar-cancel-fg)] [box-shadow:var(--calendar-cancel-shadow)]"
               >
                 Cancel
               </Button>
               <Button
                 variant="primary"
                 onClick={apply}
-                className="!bg-[var(--calendar-apply-bg)] !text-[13px] !text-[var(--calendar-apply-fg)] shadow-[var(--calendar-apply-shadow)] hover:brightness-110"
+                className="!bg-[var(--calendar-apply-bg)] !text-[13px] !text-[var(--calendar-apply-fg)] [box-shadow:var(--calendar-apply-shadow)] hover:brightness-110"
               >
                 Apply
               </Button>

@@ -102,7 +102,7 @@ export const SnoozePalette: React.FC<SnoozePaletteProps> = ({
         <Dialog.Content
           aria-describedby={undefined}
           onCloseAutoFocus={(event) => event.preventDefault()}
-          className="fixed inset-x-0 top-[13vh] z-[700] mx-auto w-[720px] max-w-[calc(100vw-32px)] overflow-hidden rounded-[12px] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] shadow-[var(--dropdown-shadow)] outline-none animate-scale-in"
+          className="fixed inset-x-0 top-[13vh] z-[700] mx-auto w-[720px] max-w-[calc(100vw-32px)] overflow-hidden rounded-[12px] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] [box-shadow:var(--dropdown-shadow)] outline-none animate-scale-in"
         >
           <Dialog.Title className="sr-only">Snooze notification</Dialog.Title>
           <Command label="Snooze notification" shouldFilter={false} loop value={active} onValueChange={setActive}>

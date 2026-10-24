@@ -65,7 +65,7 @@ const ColorDot: React.FC<{ color: string; label: string; disabled?: boolean; onP
         <span
           role="listbox"
           aria-label="Label color"
-          className="absolute left-0 top-[calc(100%+4px)] z-20 flex gap-1 rounded-[8px] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] p-1.5 shadow-[var(--dropdown-shadow)]"
+          className="absolute left-0 top-[calc(100%+4px)] z-20 flex gap-1 rounded-[8px] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] p-1.5 [box-shadow:var(--dropdown-shadow)]"
         >
           {LABEL_COLORS.map((swatch) => (
             <button

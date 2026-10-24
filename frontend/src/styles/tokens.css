@@ -93,7 +93,8 @@
   --tooltip-kbd-border: lch(20.28% 1.93 272 / 1);
   --tooltip-shadow: lch(0% 0 0 / 0.3) 0 0.5px 1px 1px;
   --dropdown-shadow: 0px 3px 8px 0px rgba(0, 0, 0, 0.125), 0px 2px 5px 0px rgba(0, 0, 0, 0.125), 0px 1px 1px 0px rgba(0, 0, 0, 0.125);
-  --dialog-elevation-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 24px rgba(0, 0, 0, 0.12), 0 12px 48px rgba(0, 0, 0, 0.18);
+  /* Linear's modal (New issue), measured in dark on 2026-10-24. */
+  --dialog-elevation-shadow: 0 4px 40px lch(0% 0 0 / 0.1), 0 3px 20px lch(0% 0 0 / 0.125), 0 3px 12px lch(0% 0 0 / 0.125), 0 2px 8px lch(0% 0 0 / 0.125), 0 1px 1px lch(0% 0 0 / 0.125);
 
   /* Scrollbars */
   --scrollbar-width: 10px;
@@ -320,6 +321,17 @@
   /* Linear's split view edge (Inbox list), measured in dark on 2026-10-24. */
   --split-resizer-track: lch(27.12% 1.48 272 / 1);
   --split-resizer-indicator: lch(100% 0 0 / 0.15);
+  /* Linear's Help button and menu at the sidebar's foot, measured in dark on 2026-10-24. */
+  --help-button-fg: lch(60.621% 1.2 272 / 1);
+  --help-button-hover-bg: lch(10.149% 0.689 272 / 1);
+  --help-button-hover-fg: lch(100% 0 272 / 1);
+  --help-menu-bg: lch(12.72% 0.85 272 / 1);
+  --help-menu-border: lch(25.68% 1.93 272 / 1);
+  --help-menu-fg: lch(91.178% 1.425 272 / 1);
+  --help-menu-fg-highlighted: lch(100% 0 272 / 1);
+  --help-menu-highlight: lch(20.82% 1.3 272 / 1);
+  --help-menu-secondary: lch(64.714% 1.425 272 / 1);
+  --help-menu-timeline: lch(21.36% 1.93 272 / 1);
   --details-pane-card-bg: var(--card-bg);
   --details-pane-card-border: var(--card-border);
   --details-pane-card-shadow: 0px 0.5px 1px 1px lch(0% 0 0 / 0.3);
@@ -568,6 +580,17 @@ html[data-theme='light'] {
   --details-pane-resizer-indicator: lch(0% 0 0 / 0.5);
   --split-resizer-track: lch(84.44% 0 282 / 1);
   --split-resizer-indicator: lch(0% 0 0 / 0.95);
+  --dialog-elevation-shadow: 0 9px 48px lch(0% 0 0 / 0.08), 0 6px 24px lch(0% 0 0 / 0.1), 0 1px 1px lch(0% 0 0 / 0.04);
+  --help-button-fg: lch(37.776% 1.25 282 / 1);
+  --help-button-hover-bg: lch(0% 0 0 / 0.06);
+  --help-button-hover-fg: lch(9.444% 0 282 / 1);
+  --help-menu-bg: lch(100% 0 282 / 1);
+  --help-menu-border: lch(91.9% 0 282 / 1);
+  --help-menu-fg: lch(20% 1 282 / 1);
+  --help-menu-fg-highlighted: lch(10% 0 282 / 1);
+  --help-menu-highlight: lch(95% 0 282 / 1);
+  --help-menu-secondary: lch(40% 1 282 / 1);
+  --help-menu-timeline: lch(90.55% 0 282 / 1);
   --details-pane-card-shadow: 0 0 0 1px lch(0% 0 0 / 0.04), 0 1px 2px lch(0% 0 0 / 0.04);
   --details-tab-bg: var(--sidebar-tab-inactive-bg);
   --details-tab-hover-bg: var(--sidebar-tab-hover-bg);

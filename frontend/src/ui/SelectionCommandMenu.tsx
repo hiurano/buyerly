@@ -10,7 +10,7 @@ import type { SelectionAction } from '@/ui/useRowSelection';
  */
 export const COMMAND_MENU_CLASSES = {
   /** The floating panel; each menu says where it sits and how wide it is. */
-  surface: 'animate-scale-in overflow-hidden rounded-[12px] border border-[var(--command-menu-border)] bg-[var(--command-menu-bg)] shadow-[var(--command-menu-shadow)]',
+  surface: 'animate-scale-in overflow-hidden rounded-[12px] border border-[var(--command-menu-border)] bg-[var(--command-menu-bg)] [box-shadow:var(--command-menu-shadow)]',
   /** Around the field: Linear's 6px inset, with no rule under it. */
   field: 'shrink-0 px-1.5 pt-1.5',
   input: 'h-10 w-full bg-transparent px-3 text-[13px] text-[var(--text-secondary)] placeholder-[var(--text-muted)] outline-none',
