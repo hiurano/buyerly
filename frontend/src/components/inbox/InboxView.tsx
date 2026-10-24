@@ -58,6 +58,8 @@ import {
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
 import { Tooltip } from '@/ui/Tooltip';
+import { BuyerlySplitResizer, useSplitListWidth } from '@/ui/BuyerlySplitResizer';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useAppStore } from '@/store/useAppStore';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 
@@ -73,6 +75,10 @@ interface InboxViewProps {
   /** Opens a record address elsewhere in the app: a rule, a campaign, an ad set. */
   onOpenRecord: (path: string) => void;
 }
+
+/** Linear's Inbox list: 300px at least, at most half the canvas, 400px until dragged. */
+const INBOX_LIST_MIN_WIDTH = 300;
+const INBOX_SPLIT_QUERY = '(min-width: 768px)';
 
 function requestErrorMessage(error: unknown): string {
   if (error instanceof ApiError || error instanceof Error) return error.message;
@@ -184,6 +190,10 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
   });
   // Only what changes the list reloads it; Badge count, for one, does not.
   const listQuery = useMemo(() => JSON.parse(queryKey) as Omit<InboxQuery, 'offset'>, [queryKey]);
+
+  // Wider than md the list and the notification sit side by side, the list resizable as in Linear.
+  const split = useSplitListWidth('buyerly-inbox-list-width', INBOX_LIST_MIN_WIDTH);
+  const splitShown = useMediaQuery(INBOX_SPLIT_QUERY);
 
   const selectedId = openEventId && /^\d+$/.test(openEventId) ? Number(openEventId) : null;
   const selectedItem = useMemo(
@@ -596,10 +606,11 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
   const unreadLabel = inboxUnreadCount === 1 ? '1 unread notification' : `${inboxUnreadCount} unread notifications`;
 
   return (
-    <div className="flex h-full min-w-0 overflow-hidden bg-transparent">
+    <div ref={split.containerRef} className="relative flex h-full min-w-0 overflow-hidden bg-transparent">
       <section
         aria-label="Inbox"
-        className={`${selectedItem ? 'hidden md:flex' : 'flex'} h-full min-w-0 w-full flex-col border-[var(--color-border-primary)] md:w-[34%] md:min-w-[240px] md:max-w-[400px] md:shrink-0 md:border-r`}
+        className={`${selectedItem ? 'hidden md:flex' : 'flex'} inbox-list h-full min-w-0 w-full flex-col`}
+        style={{ '--inbox-list-width': `${split.width}px` } as React.CSSProperties}
       >
         <header className="flex h-[44px] shrink-0 items-center gap-1 border-b border-[var(--color-border-primary)] px-2.5">
           <SidebarCollapsedNavigation />
@@ -729,6 +740,16 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
 
         {renderList()}
       </section>
+
+      {splitShown && (
+        <BuyerlySplitResizer
+          width={split.width}
+          minWidth={split.minWidth}
+          maxWidth={split.maxWidth}
+          onResize={split.setWidth}
+          onResizeEnd={split.saveWidth}
+        />
+      )}
 
       <section
         aria-label="Notification"
