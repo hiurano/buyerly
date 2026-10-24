@@ -50,8 +50,9 @@ class TestAccountNotifications(unittest.IsolatedAsyncioTestCase):
             await session.flush()
             buyer_member = WorkspaceMember(workspace_id=ws.id, user_id=buyer.id, role="buyer")
             session.add_all([WorkspaceMember(workspace_id=ws.id, user_id=owner.id, role="owner"), buyer_member])
-            owner.active_workspace_id = ws.id
-            buyer.active_workspace_id = ws.id
+            for user in (owner, buyer):
+                user.active_workspace_id = ws.id
+                user.is_approved = True
             # The owner leads act_1, so by Inbox's own rule its events are theirs alone.
             session.add(Account(account_id="act_1", name="Nutra US", workspace_id=ws.id,
                                 owner_user_id=owner.id, lead_user_id=owner.id))
