@@ -158,6 +158,7 @@ try {
       // List views, filters included, are kept for the member on the server (#385).
       const viewKey = path.match(/^\/api\/view-settings\/([\w.-]+)$/)?.[1];
       if (path === '/api/view-settings') return route.fulfill({ json: { views: savedViews } });
+      if (path === '/api/favorites') return route.fulfill({ json: { favorites: [] } });
       if (viewKey && verb === 'PUT') {
         savedViews[viewKey] = body.settings;
         return route.fulfill({ json: { view_key: viewKey, settings: body.settings } });

@@ -19,7 +19,7 @@ export function BuyerlyFavoriteButton({ favorite }: { favorite: FavoriteInput })
         // Linear marks it a switch; here a pressed button, since the switch role is BuyerlyToggle's alone.
         aria-pressed={starred}
         aria-label={label}
-        className="buyerly-header-button buyerly-header-button--header buyerly-favorite-button"
+        className="buyerly-header-button buyerly-header-button--header buyerly-header-target buyerly-favorite-button"
         onClick={() => void (starred ? remove(favorite.path) : add(favorite))}
       >
         {starred

@@ -66,6 +66,7 @@ try {
       if (verb === 'GET' && path === '/api/inbox/unread-count') return route.fulfill({ json: { unread_count: 0 } });
       if (verb === 'GET' && path === '/api/inbox/display') return route.fulfill({ json: {} });
       if (verb === 'GET' && path === '/api/view-settings') return route.fulfill({ json: { views: {} } });
+      if (path === '/api/favorites') return route.fulfill({ json: { favorites: [] } });
       if (verb === 'GET' && path === '/api/auth/sessions') return route.fulfill({ json: [] });
       // One account in this browser; several are checked by multi-account-browser.mjs (#231).
       if (verb === 'GET' && path === '/api/auth/accounts') return route.fulfill({ json: [] });
