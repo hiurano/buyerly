@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { keepFaviconAcrossRoutes } from './lib/favicon';
+import 'virtual:buyerly-tokens.css';
 import './styles/index.css';
 
 keepFaviconAcrossRoutes();

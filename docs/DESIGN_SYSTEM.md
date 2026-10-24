@@ -19,7 +19,7 @@ Owner: Product / Frontend
 ## Production architecture
 
 - `frontend/` is the authenticated production React/Vite application;
-- `frontend/src/styles/tokens.css` owns semantic visual values and light/dark theme values;
+- `frontend/src/styles/tokens.stylex.ts` owns semantic visual values and light/dark theme values;
 - `frontend/src/ui/` owns shared React primitives and their interaction/accessibility behavior;
 - `frontend/src/styles/index.css` composes shared and domain styles while consuming semantic tokens;
 - `frontend/src/components/` owns product surfaces and page-specific composition;
@@ -29,7 +29,7 @@ Owner: Product / Frontend
 
 ## Tokens
 
-The live token vocabulary is defined in `frontend/src/styles/tokens.css`. Its current groups include:
+The live token vocabulary is defined in `frontend/src/styles/tokens.stylex.ts`. Its current groups include:
 
 | Group | Examples | Use |
 |---|---|---|
@@ -215,4 +215,4 @@ account has the same groups. See the responsive contract for the pane itself.
 
 ## Public website
 
-`/` is a static landing page laid out like linear.app's homepage (#434): a fixed header (Product, Changelog, Contact, Log in, Sign up), a hero with the Ads Manager mockup, a manifesto with three isometric figures, four feature sections (Ads Manager, Rules, Inbox, Your team) with mockups in the product's tokens and Tech specs panels, a changelog and a closing call to action. Public pages share that header and a six-column footer with the operator identity, Contact and Legal (Privacy, Terms). Legal articles use a 624px reading column, linked contents and plain effective dates. Light and dark palettes and `--site-*` tokens come from `tokens.css`; the public scale is larger than the product UI. `/data-deletion` remains reachable through Privacy and by its existing URL.
+`/` is a static landing page laid out like linear.app's homepage (#434): a fixed header (Product, Changelog, Contact, Log in, Sign up), a hero with the Ads Manager mockup, a manifesto with three isometric figures, four feature sections (Ads Manager, Rules, Inbox, Your team) with mockups in the product's tokens and Tech specs panels, a changelog and a closing call to action. Public pages share that header and a six-column footer with the operator identity, Contact and Legal (Privacy, Terms). Legal articles use a 624px reading column, linked contents and plain effective dates. Light and dark palettes and `--site-*` tokens come from `tokens.stylex.ts`; the public scale is larger than the product UI. `/data-deletion` remains reachable through Privacy and by its existing URL.
