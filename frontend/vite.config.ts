@@ -40,7 +40,7 @@ async function compileTokens(): Promise<Tokens> {
     const selector = ltr.startsWith(':root') ? ':root' : themes.get(className);
     if (!selector) throw new Error(`tokens.stylex.ts: unexpected rule ${ltr.slice(0, 80)}`);
     const declarations = ltr.slice(ltr.indexOf('{') + 1, ltr.lastIndexOf('}')).split(';').filter(Boolean);
-    return `${selector} {\n${declarations.map((item) => `  ${item};`).join('\n')}\n}\n`;
+    return `${selector} {\n${declarations.map((item) => `  ${item.replace(':', ': ')};`).join('\n')}\n}\n`;
   }).join('\n');
   return { code, map: result?.map ?? null, css };
 }
