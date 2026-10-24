@@ -1,6 +1,6 @@
 import React from 'react';
-import type { RuleLabel } from '@/store/useAppStore';
 import { BuyerlyLabelPill } from '@/ui/BuyerlyLabelPill';
+import { type RuleLabel } from '@/models/rulesStore';
 
 /**
  * A rule's labels as Linear's pills: one or two side by side, more folded

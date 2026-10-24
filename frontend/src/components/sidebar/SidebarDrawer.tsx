@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { useAppStore } from '@/store/useAppStore';
 import { useIsSmallScreen } from '@/lib/useMediaQuery';
+import { shellStore, useShellStore } from '@/models/shellStore';
 
 /** Linear's swipe: 50px within 300ms, abandoned once the finger drifts 50px vertically. */
 const SWIPE_DISTANCE = 50;
@@ -13,8 +13,8 @@ const SWIPE_TIME = 300;
  */
 export function useSidebarDrawer(surfaceRef: React.RefObject<HTMLElement | null>) {
   const isSmall = useIsSmallScreen();
-  const isOpen = useAppStore((state) => state.isSidebarOpen);
-  const setSidebarOpen = useAppStore((state) => state.setSidebarOpen);
+  const isOpen = useShellStore((state) => state.isSidebarOpen);
+  const setSidebarOpen = useShellStore((state) => state.setSidebarOpen);
 
   const close = useCallback(() => {
     setSidebarOpen(false);
@@ -71,8 +71,8 @@ export const PEEK_WINDOW_LEAVE_DELAY = 500;
  * backdrop and navigation close it. Dragging the resizer expands the column.
  */
 export function useSidebarPeek(surfaceRef: React.RefObject<HTMLElement | null>, enabled: boolean, isDragging: boolean) {
-  const peekOpen = useAppStore((state) => state.isSidebarPeekOpen);
-  const setPeekOpen = useAppStore((state) => state.setSidebarPeekOpen);
+  const peekOpen = useShellStore((state) => state.isSidebarPeekOpen);
+  const setPeekOpen = useShellStore((state) => state.setSidebarPeekOpen);
   const isOpen = enabled && peekOpen;
   const openTimer = useRef<number | undefined>(undefined);
   const closeTimer = useRef<number | undefined>(undefined);
@@ -124,11 +124,11 @@ export function useSidebarPeek(surfaceRef: React.RefObject<HTMLElement | null>, 
       // The surface ends at its width once it has slid in; the resizer sticks out 3.5px.
       if (event.clientX <= surface.offsetWidth + 4) {
         // Visiting the sidebar turns a ⌘\ peek into a hover one, as in Linear.
-        if (useAppStore.getState().sidebarPeekSource === 'keyboard') setPeekOpen(true, 'hover');
+        if (shellStore.sidebarPeekSource === 'keyboard') setPeekOpen(true, 'hover');
         return;
       }
       // Opened by ⌘\, only a press on the backdrop closes it until then.
-      if (useAppStore.getState().sidebarPeekSource === 'keyboard') return;
+      if (shellStore.sidebarPeekSource === 'keyboard') return;
       // Menus opened from the sidebar live in portals over the content.
       const target = event.target as Element | null;
       if (target?.closest?.('[data-radix-popper-content-wrapper], [role="menu"], [role="dialog"]')) return;

@@ -1,5 +1,4 @@
 import React, { useCallback, useState } from 'react';
-import { useAppStore, type AppTab } from '@/store/useAppStore';
 import { BuyerlyDisclosureIcon, BuyerlyDotsIcon, BuyerlyLockIcon } from '@/icons/BuyerlyIcons';
 import { TeamIcon } from '@/components/preferences/TeamIcon';
 import { Tooltip } from '@/ui/Tooltip';
@@ -8,6 +7,7 @@ import { toast } from '@/ui/toast';
 import { openAppPath, pathForTab } from '@/lib/routing';
 import type { TeamItem } from '@/lib/teams';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
+import { useShellStore, type AppTab } from '@/models/shellStore';
 
 const COLLAPSED_KEY = 'buyerly-sidebar-collapsed';
 
@@ -126,11 +126,11 @@ interface SidebarTeamProps {
 /** One of "Your teams": the team folds open on its pages, as in Linear. */
 export const SidebarTeam: React.FC<SidebarTeamProps> = ({ team, workspaceSlug, pages }) => {
   const [collapsed, toggle] = useSidebarCollapsed(`team:${team.id}`);
-  const activeTab = useAppStore((state) => state.activeTab);
-  const activeTeamKey = useAppStore((state) => state.activeTeamKey);
-  const setActiveTab = useAppStore((state) => state.setActiveTab);
-  const setActiveTeamKey = useAppStore((state) => state.setActiveTeamKey);
-  const openTeamSettings = useAppStore((state) => state.openTeamSettings);
+  const activeTab = useShellStore((state) => state.activeTab);
+  const activeTeamKey = useShellStore((state) => state.activeTeamKey);
+  const setActiveTab = useShellStore((state) => state.setActiveTab);
+  const setActiveTeamKey = useShellStore((state) => state.setActiveTeamKey);
+  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
   const { workspace } = useWorkspaceSession();
   const [menuOpen, setMenuOpen] = useState(false);
 

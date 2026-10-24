@@ -1,11 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { CampaignItem, useAppStore } from '@/store/useAppStore';
 import type { DeliveryControl } from '@/lib/delivery';
 import { BuyerlyDataListRow, BuyerlyDataPrimaryCell, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 import { EntityPropertyCell, EntityRowControls } from './EntityRowCells';
 import { LabelSelectorPopover } from './LabelSelectorPopover';
 import { RuleAttachmentCell } from './RuleAttachmentCell';
 import type { RuleAttachmentCellHandle } from './RuleAttachmentCell';
+import { useRulesStore, CampaignItem } from '@/models/rulesStore';
+import { useSelectionStore } from '@/models/selectionStore';
 
 interface CampaignRowProps {
   campaign: CampaignItem;
@@ -27,12 +28,10 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
   properties,
   columns,
 }) => {
-  const {
-    selectedCampaignIds,
-    toggleCampaignSelection,
-    campaignAttachedRules,
-    setFocusedCampaignId,
-  } = useAppStore();
+  const selectedCampaignIds = useSelectionStore((state) => state.selectedCampaignIds);
+  const toggleCampaignSelection = useSelectionStore((state) => state.toggleCampaignSelection);
+  const campaignAttachedRules = useRulesStore((state) => state.campaignAttachedRules);
+  const setFocusedCampaignId = useSelectionStore((state) => state.setFocusedCampaignId);
 
   const [isLabelSelectorOpen, setIsLabelSelectorOpen] = useState(false);
   const ruleCellRef = useRef<RuleAttachmentCellHandle>(null);

@@ -1,5 +1,4 @@
 import React from 'react';
-import { RuleItem, useAppStore } from '@/store/useAppStore';
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -20,6 +19,8 @@ import type { RuleActionTone } from '@/lib/rules';
 import { ruleStatesTitle } from './RuleStatesDialog';
 import { labelsOf } from './rulesViewModel';
 import { RuleLabelPills } from './RuleLabelPills';
+import { useDialogStore, dialogStore } from '@/models/dialogStore';
+import { useRulesStore, RuleItem } from '@/models/rulesStore';
 
 const ACTION_DOT_COLORS: Record<RuleActionTone, string> = {
   stop: 'var(--rules-action-stop-text)',
@@ -38,7 +39,10 @@ export const RuleCard: React.FC<RuleCardProps> = ({
   isSelected,
   onSelect,
 }) => {
-  const { ruleLabels, setRuleLabels, requestDeletion, openEditRuleModal } = useAppStore();
+  const ruleLabels = useRulesStore((state) => state.ruleLabels);
+  const setRuleLabels = useRulesStore((state) => state.setRuleLabels);
+  const requestDeletion = useDialogStore((state) => state.requestDeletion);
+  const openEditRuleModal = useDialogStore((state) => state.openEditRuleModal);
   const cardLabels = labelsOf(rule, ruleLabels);
 
   return (
@@ -222,7 +226,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({
         <ContextMenuSeparator />
 
         {/* Where the rule stands on each campaign it checks (#322). */}
-        <ContextMenuItem onClick={() => useAppStore.getState().openRuleStates(rule.id)}>
+        <ContextMenuItem onClick={() => dialogStore.openRuleStates(rule.id)}>
           <div className="flex items-center gap-2">
             <span>{ruleStatesTitle(rule)}</span>
           </div>

@@ -1,7 +1,7 @@
 import { apiRequest } from '@/lib/api';
 import type { HistoryEntry } from '@/lib/undoHistory';
 import { toast } from '@/ui/toast';
-import { useAppStore } from '@/store/useAppStore';
+import { scopeStore } from '@/models/scopeStore';
 
 export type EntityLevel = 'campaign' | 'adset' | 'ad';
 
@@ -173,7 +173,7 @@ export function deliveryHistoryEntry({
   /** Shows the given delivery on those rows. */
   onStatus: (entityIds: string[], status: DeliveryStatus) => void;
 }): HistoryEntry {
-  const inScope = useAppStore.getState().captureScope();
+  const inScope = scopeStore.captureScope();
   let reversible = auditEventIds;
   const previous: DeliveryStatus = status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
   return {

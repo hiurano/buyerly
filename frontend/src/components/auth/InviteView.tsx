@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, ChevronLeft } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
 import type { InviteInfo, LoginResult, SessionUser } from '@/lib/types';
-import { useAppStore } from '@/store/useAppStore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +13,7 @@ import {
 import { AuthFrame, AuthLoading, BuyerlyBrand } from './AuthFrame';
 import { LoginView } from './LoginView';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
+import { useShellStore } from '@/models/shellStore';
 
 /**
  * Linear's invitation page follows the system or the person's own theme, also
@@ -21,7 +21,7 @@ import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
  * resolves the theme itself and marks <html> for the account menu's portal.
  */
 const useInviteDarkTheme = () => {
-  const interfaceTheme = useAppStore((state) => state.interfaceTheme);
+  const interfaceTheme = useShellStore((state) => state.interfaceTheme);
   const [systemDark, setSystemDark] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches,
   );

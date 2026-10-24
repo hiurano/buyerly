@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Command } from 'cmdk';
 import { ArrowRight, Maximize2 } from 'lucide-react';
-import { useAppStore } from '@/store/useAppStore';
 import { pathForTab, recentlyDeletedRulesPath } from '@/lib/routing';
 import type { Workspace } from '@/lib/types';
 import { openSearchPage } from '@/components/search/openSearchPage';
@@ -18,7 +17,6 @@ import {
 } from '@/lib/search';
 import { bestCommandScore } from '@/lib/commandFilter';
 import { goToShortcut, openShortcut, OPEN_KEYS } from '@/lib/shortcuts';
-import type { OpenPaletteKind } from '@/store/useAppStore';
 import { OpenPaletteIcon, OPEN_PALETTE_LABELS, openOpenPalette } from './OpenPalette';
 import { SETTINGS_PAGE_KEYWORDS, settingsGroupsFor } from '@/lib/settingsPages';
 import { SettingsPageIcon } from '@/components/preferences/SettingsPageIcon';
@@ -27,6 +25,11 @@ import { BuyerlyLabelIcon, BuyerlyPlusIcon, BuyerlySearchIcon, BuyerlySidebarLef
 import { toggleFavorite, useFavorites } from '@/lib/favorites';
 import { COMMAND_MENU_CLASSES, CommandMenuFooterKeys } from '@/ui/SelectionCommandMenu';
 import { usePageGroup, type PaletteCommand, type PaletteGroup } from './pageCommands';
+import { commandMenuStore, useCommandMenuStore, type OpenPaletteKind } from '@/models/commandMenuStore';
+import { useDialogStore } from '@/models/dialogStore';
+import { useScopeStore } from '@/models/scopeStore';
+import { shellStore, useShellStore } from '@/models/shellStore';
+import { useViewStore } from '@/models/viewStore';
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, another palette. */
 const OPEN_LAYER_SELECTOR = [
@@ -66,11 +69,10 @@ function takeReturnFocus(): HTMLElement | null {
 
 /** Opens the command menu (Ctrl/Cmd+K), remembering where focus goes back to. */
 export function openCommandMenu(): void {
-  const store = useAppStore.getState();
-  if (store.isCommandMenuOpen) return;
+  if (commandMenuStore.isCommandMenuOpen) return;
   const active = document.activeElement;
   returnFocusTo = active instanceof HTMLElement && active !== document.body ? active : null;
-  store.setCommandMenuOpen(true);
+  commandMenuStore.setCommandMenuOpen(true);
 }
 
 interface CommandMenuProps {
@@ -86,8 +88,8 @@ interface CommandMenuProps {
  * to what had it. It also owns `/` outside a text field, which opens the search page.
  */
 export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate }) => {
-  const open = useAppStore((state) => state.isCommandMenuOpen);
-  const setCommandMenuOpen = useAppStore((state) => state.setCommandMenuOpen);
+  const open = useCommandMenuStore((state) => state.isCommandMenuOpen);
+  const setCommandMenuOpen = useCommandMenuStore((state) => state.setCommandMenuOpen);
   // A choice moves focus to its destination; only a dismissal gives it back.
   const choiceMade = useRef(false);
 
@@ -95,7 +97,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
     const onKeyDown = (event: KeyboardEvent) => {
       // A row selection runs Ctrl/Cmd+K for its own actions first and stops it.
       if (event.defaultPrevented || event.isComposing) return;
-      const isOpen = useAppStore.getState().isCommandMenuOpen;
+      const isOpen = commandMenuStore.isCommandMenuOpen;
       const modified = event.ctrlKey || event.metaKey;
       if (modified && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'k') {
         // From a text field too, as in Linear; pressed again, it closes the menu.
@@ -112,7 +114,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
       if (isTypingTarget(event.target) || document.querySelector(OPEN_LAYER_SELECTOR)) return;
       event.preventDefault();
       // In Settings `/` searches the settings, as Linear's "Search settings /".
-      if (useAppStore.getState().activeTab === 'preferences') {
+      if (shellStore.activeTab === 'preferences') {
         document.querySelector<HTMLInputElement>(SETTINGS_SEARCH_SELECTOR)?.focus();
         return;
       }
@@ -176,15 +178,15 @@ interface CommandPaletteProps {
 
 /** The menu's content, mounted on every open so it starts empty. */
 const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, choose }) => {
-  const activeTab = useAppStore((state) => state.activeTab);
-  const campaignFilterTab = useAppStore((state) => state.campaignFilterTab);
-  const openCreateRuleModal = useAppStore((state) => state.openCreateRuleModal);
-  const isSidebarCollapsed = useAppStore((state) => state.isSidebarCollapsed);
-  const toggleSidebarCollapsed = useAppStore((state) => state.toggleSidebarCollapsed);
-  const scope = useAppStore((state) => state.workspaceScope);
-  const setSettingsSection = useAppStore((state) => state.setSettingsSection);
-  const setActiveTab = useAppStore((state) => state.setActiveTab);
-  const lastAppTab = useAppStore((state) => state.lastAppTab);
+  const activeTab = useShellStore((state) => state.activeTab);
+  const campaignFilterTab = useViewStore((state) => state.campaignFilterTab);
+  const openCreateRuleModal = useDialogStore((state) => state.openCreateRuleModal);
+  const isSidebarCollapsed = useShellStore((state) => state.isSidebarCollapsed);
+  const toggleSidebarCollapsed = useShellStore((state) => state.toggleSidebarCollapsed);
+  const scope = useScopeStore((state) => state.workspaceScope);
+  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
+  const setActiveTab = useShellStore((state) => state.setActiveTab);
+  const lastAppTab = useShellStore((state) => state.lastAppTab);
   const pageGroup = usePageGroup();
   const favoriteHere = useFavorites((state) => state.here);
   const starred = useFavorites((state) => state.favorites.some((favorite) => favorite.path === state.here?.path));
@@ -202,7 +204,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
       openSearchPage();
       return;
     }
-    if (useAppStore.getState().activeTab !== 'search') {
+    if (shellStore.activeTab !== 'search') {
       rememberSearchReturnPath(`${window.location.pathname}${window.location.search}`);
     }
     go(searchPagePath(slug, { query: text, tab: 'all', statuses: [], accounts: [], order: 'relevance', includeDeleted: false }));
@@ -263,7 +265,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
         keywords: ['new label', 'tag', 'rule labels'],
         icon: <BuyerlyLabelIcon size={14} />,
         run: () => {
-          useAppStore.getState().requestNewRuleLabel();
+          shellStore.requestNewRuleLabel();
           go(pathForTab(slug, 'preferences', 'campaigns', 'rule-labels'));
         },
       }],

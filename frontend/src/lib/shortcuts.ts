@@ -1,4 +1,5 @@
-import type { OpenPaletteKind, SettingsSection } from '@/store/useAppStore';
+import { type OpenPaletteKind } from '@/models/commandMenuStore';
+import { type SettingsSection } from '@/models/shellStore';
 
 /** The pages G then a letter opens; Settings opens on its first section. */
 export type GoToTarget = 'inbox' | 'accounts' | 'campaigns' | 'rules' | 'preferences';

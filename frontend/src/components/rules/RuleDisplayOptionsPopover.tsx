@@ -1,6 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useAppStore } from '@/store/useAppStore';
 import { BuyerlyDisplayOptions } from '@/ui/BuyerlyDisplayOptions';
 import { groupingChange, orderGroups, toggleHiddenGroup } from '@/ui/listView';
 import {
@@ -14,6 +13,7 @@ import {
   ruleGroupsFor,
   useRulesView,
 } from './rulesViewModel';
+import { useRulesStore } from '@/models/rulesStore';
 
 interface RuleDisplayOptionsPopoverProps {
   isOpen: boolean;
@@ -22,7 +22,9 @@ interface RuleDisplayOptionsPopoverProps {
 }
 
 export const RuleDisplayOptionsPopover: React.FC<RuleDisplayOptionsPopoverProps> = ({ isOpen, onClose, anchorRef }) => {
-  const { rules, ruleLabels, ruleAccounts } = useAppStore();
+  const rules = useRulesStore((state) => state.rules);
+  const ruleLabels = useRulesStore((state) => state.ruleLabels);
+  const ruleAccounts = useRulesStore((state) => state.ruleAccounts);
   const { view, update, reset, displayChanged, canSetDefault, setDefaultForEveryone } = useRulesView();
   const popoverRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState({ top: 0, right: 0 });

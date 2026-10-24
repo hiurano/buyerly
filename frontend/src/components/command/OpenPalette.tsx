@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Command } from 'cmdk';
 import { Settings } from 'lucide-react';
-import { useAppStore, type OpenPaletteKind } from '@/store/useAppStore';
 import type { Workspace } from '@/lib/types';
 import {
   readOpenedRecords,
@@ -21,6 +20,9 @@ import { favoriteIcon } from '@/components/sidebar/SidebarFavorites';
 import { COMMAND_MENU_CLASSES, CommandMenuFooterKeys } from '@/ui/SelectionCommandMenu';
 import { SearchResultFacts, StatusMark, formatAge, statusLabel } from '@/components/search/SearchView';
 import { SettingsPageIcon } from '@/components/preferences/SettingsPageIcon';
+import { commandMenuStore, useCommandMenuStore, type OpenPaletteKind } from '@/models/commandMenuStore';
+import { useScopeStore } from '@/models/scopeStore';
+import { useShellStore } from '@/models/shellStore';
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, another palette. */
 const OPEN_LAYER_SELECTOR = [
@@ -74,7 +76,7 @@ function takeReturnFocus(): HTMLElement | null {
 export function openOpenPalette(kind: OpenPaletteKind): void {
   const active = document.activeElement;
   returnFocusTo = active instanceof HTMLElement && active !== document.body ? active : null;
-  useAppStore.getState().setOpenPalette(kind);
+  commandMenuStore.setOpenPalette(kind);
 }
 
 /**
@@ -82,10 +84,10 @@ export function openOpenPalette(kind: OpenPaletteKind): void {
  * page then selects with its actions menu open; any other record clears the ask.
  */
 export function takeRecordActions(key: string): boolean {
-  const store = useAppStore.getState();
-  if (store.recordActionsFor === null) return false;
-  store.setRecordActionsFor(null);
-  return store.recordActionsFor === key;
+  const wanted = commandMenuStore.recordActionsFor;
+  if (wanted === null) return false;
+  commandMenuStore.setRecordActionsFor(null);
+  return wanted === key;
 }
 
 interface OpenPaletteProps {
@@ -104,8 +106,8 @@ interface OpenPaletteProps {
  * lists the favorites under "Navigation", each with the number that opens it.
  */
 export const OpenPalette: React.FC<OpenPaletteProps> = ({ workspace, navigate }) => {
-  const kind = useAppStore((state) => state.openPalette);
-  const setOpenPalette = useAppStore((state) => state.setOpenPalette);
+  const kind = useCommandMenuStore((state) => state.openPalette);
+  const setOpenPalette = useCommandMenuStore((state) => state.setOpenPalette);
   const choiceMade = useRef(false);
   // The closing palette keeps its kind through the animation.
   const [shownKind, setShownKind] = useState<OpenPaletteKind>('campaign');
@@ -193,10 +195,10 @@ interface PaletteBodyProps {
 
 /** The palette's content, mounted per open so it starts empty. */
 const PaletteBody: React.FC<PaletteBodyProps> = ({ kind, workspace, navigate, choose }) => {
-  const scope = useAppStore((state) => state.workspaceScope);
-  const setSettingsSection = useAppStore((state) => state.setSettingsSection);
-  const setActiveTab = useAppStore((state) => state.setActiveTab);
-  const setRecordActionsFor = useAppStore((state) => state.setRecordActionsFor);
+  const scope = useScopeStore((state) => state.workspaceScope);
+  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
+  const setActiveTab = useShellStore((state) => state.setActiveTab);
+  const setRecordActionsFor = useCommandMenuStore((state) => state.setRecordActionsFor);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState('');
   const [quickLook, setQuickLook] = useState(false);

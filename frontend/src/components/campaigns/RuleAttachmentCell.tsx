@@ -2,9 +2,9 @@ import React, { forwardRef, useImperativeHandle, useMemo, useRef, useState } fro
 import { BuyerlyBoltIcon } from '@/icons/BuyerlyIcons';
 import { useIsSmallScreen } from '@/lib/useMediaQuery';
 import { inheritedRuleIds } from '@/lib/rules';
-import { useAppStore } from '@/store/useAppStore';
 import { RuleSelectorPopover } from './RuleSelectorPopover';
 import type { RuleTargetLevel } from './RuleSelectorPopover';
+import { useRulesStore } from '@/models/rulesStore';
 
 interface RuleAttachmentCellProps {
   /** The row's ad account, where its rules are attached. */
@@ -40,9 +40,9 @@ export const RuleAttachmentCell = forwardRef<
 
   // Rules on the whole ad account (or an ad set's campaign) check this row as
   // well (#300): counted, so "+ Rule" never claims a checked row has none.
-  const scopes = useAppStore((state) => state.attachedRuleScopes[accountId]);
-  const order = useAppStore((state) => state.attachedRuleOrder[accountId]);
-  const rules = useAppStore((state) => state.rules);
+  const scopes = useRulesStore((state) => state.attachedRuleScopes[accountId]);
+  const order = useRulesStore((state) => state.attachedRuleOrder[accountId]);
+  const rules = useRulesStore((state) => state.rules);
   const inheritedCount = useMemo(() => {
     const ruleLevels = Object.fromEntries(rules.map((rule) => [rule.id, rule.preset.level]));
     return inheritedRuleIds(scopes ?? {}, order ?? [], ruleLevels, level, campaignId)

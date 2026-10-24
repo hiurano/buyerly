@@ -16,7 +16,6 @@ import {
 } from '@/lib/teams';
 import { TOUCH_HEIGHT_CLASS } from '@/lib/useMediaQuery';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
-import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/ui/Button';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { DataState } from '@/ui/DataState';
@@ -28,6 +27,7 @@ import { ChoiceDialog, errorMessage, memberName, type MemberItem } from './Membe
 import { Initials, RoleStatus, RowMenu } from './MembersSection';
 import { TeamIcon } from './TeamIcon';
 import { useLastPresent } from '@/ui/useLastPresent';
+import { useShellStore } from '@/models/shellStore';
 
 type TeamPage = 'overview' | 'general' | 'members' | 'accounts';
 
@@ -40,7 +40,7 @@ const accountName = (account: MetaAccount) => account.custom_name || account.nam
  * the team by its identifier, so renaming the identifier moves the address.
  */
 export const TeamSettingsSection: React.FC<{ workspace: Workspace; path: string }> = ({ workspace, path }) => {
-  const { setSettingsSection } = useAppStore();
+  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
   const { teams, error, refresh } = useTeams(workspace.id, 'all');
   const [teamKey, sub = ''] = path.split('/');
   const page: TeamPage = sub === 'general' || sub === 'members' || sub === 'accounts' ? sub : 'overview';
@@ -68,7 +68,8 @@ export const TeamSettingsSection: React.FC<{ workspace: Workspace; path: string 
 
 /** Linear's way back from a team's page: the team's icon and name, or "Teams" from its overview. */
 const TeamBreadcrumb: React.FC<{ team?: TeamItem }> = ({ team }) => {
-  const { setSettingsSection, openTeamSettings } = useAppStore();
+  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
+  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
   return (
     <button
       type="button"
@@ -117,7 +118,8 @@ const DangerRow: React.FC<{ title: string; description: string; action: string; 
 );
 
 const TeamOverview: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ workspace, team }) => {
-  const { setSettingsSection, openTeamSettings } = useAppStore();
+  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
+  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
   const { user } = useWorkspaceSession();
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [retireOpen, setRetireOpen] = useState(false);
@@ -363,7 +365,7 @@ const DeleteTeamDialog: React.FC<{
  * loses focus or on Enter; Escape puts the saved value back.
  */
 const TeamGeneral: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ workspace, team }) => {
-  const { openTeamSettings } = useAppStore();
+  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
   const { user } = useWorkspaceSession();
   // Only those who run the team change it; everyone else reads it.
   const readOnly = !canManageTeam(team, workspace.role, user.id);

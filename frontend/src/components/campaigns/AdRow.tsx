@@ -1,8 +1,9 @@
 import React from 'react';
-import { AdItem, useAppStore } from '@/store/useAppStore';
 import type { DeliveryControl } from '@/lib/delivery';
 import { BuyerlyDataListRow, BuyerlyDataPrimaryCell, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 import { EntityPropertyCell, EntityRowControls } from './EntityRowCells';
+import { AdItem } from '@/models/rulesStore';
+import { useSelectionStore } from '@/models/selectionStore';
 
 interface AdRowProps {
   ad: AdItem;
@@ -17,7 +18,8 @@ interface AdRowProps {
 }
 
 export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, selectable = false, delivery, properties, columns }) => {
-  const { selectedCampaignIds, toggleCampaignSelection } = useAppStore();
+  const selectedCampaignIds = useSelectionStore((state) => state.selectedCampaignIds);
+  const toggleCampaignSelection = useSelectionStore((state) => state.toggleCampaignSelection);
 
   const displayProperties = properties;
   const isSelected = selectable && selectedCampaignIds.includes(ad.id);

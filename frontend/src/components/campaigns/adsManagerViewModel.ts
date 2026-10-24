@@ -1,7 +1,7 @@
-import type { AdsManagerEntity } from '@/store/useAppStore';
 import { boardGrouping, listViewDefaults, type ListViewSettings, type SortDirection } from '@/ui/listView';
 import { useListView } from '@/ui/useListView';
 import { metricsFor } from './adsManagerMetrics';
+import { type AdsManagerEntity } from '@/models/viewStore';
 
 /**
  * Display properties of one level, in column order (#389): Status is the

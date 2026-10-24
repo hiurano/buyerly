@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { logOut } from '@/lib/sessions';
 import { accountBlocks } from '@/lib/accounts';
-import { useAppStore } from '@/store/useAppStore';
 import { Tooltip } from '@/ui/Tooltip';
 import { BuyerlyCheckIcon } from '@/icons/BuyerlyIcons';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
@@ -20,9 +19,13 @@ import {
   DropdownMenuSubContent,
   DropdownMenuLabel,
 } from '@/ui/DropdownMenu';
+import { useScopeStore } from '@/models/scopeStore';
+import { useShellStore } from '@/models/shellStore';
 
 export const SidebarHeader: React.FC = () => {
-  const { workspaceName, setActiveTab, setSettingsSection } = useAppStore();
+  const workspaceName = useScopeStore((state) => state.workspaceName);
+  const setActiveTab = useShellStore((state) => state.setActiveTab);
+  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
   const { user, workspace, accounts, switchWorkspace, openCreateWorkspace, openAddAccount } = useWorkspaceSession();
   const blocks = accountBlocks(accounts, user);
   const isOpenAccount = (accountId?: number) => accountId === undefined || user.id == null || accountId === user.id;

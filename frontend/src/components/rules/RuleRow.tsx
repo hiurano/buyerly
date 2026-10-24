@@ -1,5 +1,4 @@
 import React from 'react';
-import { RuleItem, useAppStore } from '@/store/useAppStore';
 import { BuyerlyCheckbox } from '@/ui/BuyerlyCheckbox';
 import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 
@@ -13,6 +12,9 @@ import { useIsSmallScreen } from '@/lib/useMediaQuery';
 import { labelsOf, useRulesView } from './rulesViewModel';
 import { RuleLabelPills } from './RuleLabelPills';
 import { formatCheckInterval, formatRepeat } from './ruleDraft';
+import { useRulesStore, RuleItem } from '@/models/rulesStore';
+import { useSelectionStore } from '@/models/selectionStore';
+import { dialogStore } from '@/models/dialogStore';
 
 const MUTED_CELL = 'font-[450] text-[var(--text-tertiary)]';
 
@@ -48,14 +50,12 @@ interface RuleRowProps {
 }
 
 export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
-  const {
-    selectedRuleIds,
-    toggleRuleSelection,
-    toggleRuleStatus,
-    setFocusedRuleId,
-  } = useAppStore();
+  const selectedRuleIds = useSelectionStore((state) => state.selectedRuleIds);
+  const toggleRuleSelection = useSelectionStore((state) => state.toggleRuleSelection);
+  const toggleRuleStatus = useRulesStore((state) => state.toggleRuleStatus);
+  const setFocusedRuleId = useSelectionStore((state) => state.setFocusedRuleId);
   const rulesDisplayProperties = useRulesView().view.properties;
-  const ruleLabels = useAppStore((state) => state.ruleLabels);
+  const ruleLabels = useRulesStore((state) => state.ruleLabels);
   const rowLabels = labelsOf(rule, ruleLabels);
 
   const isSelected = selectedRuleIds.includes(rule.id);
@@ -133,12 +133,11 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
           className="flex h-full min-w-0 cursor-pointer items-center overflow-hidden"
           onClick={(event) => {
             event.stopPropagation();
-            const state = useAppStore.getState();
-            const open = state.ruleLabelPicker;
+            const open = dialogStore.ruleLabelPicker;
             if (open && open.ruleIds.length === 1 && open.ruleIds[0] === rule.id) {
-              state.closeRuleLabelPicker();
+              dialogStore.closeRuleLabelPicker();
             } else {
-              state.openRuleLabelPicker([rule.id], event.currentTarget.getBoundingClientRect());
+              dialogStore.openRuleLabelPicker([rule.id], event.currentTarget.getBoundingClientRect());
             }
           }}
         >

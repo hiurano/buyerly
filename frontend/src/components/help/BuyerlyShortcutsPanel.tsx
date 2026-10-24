@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { useAppStore } from '@/store/useAppStore';
 import { BuyerlyCloseIcon, BuyerlySearchIcon } from '@/icons/BuyerlyIcons';
 import { filterShortcutGroups, keyCap, type ShortcutEntry } from '@/lib/shortcutCatalog';
+import { commandMenuStore, useCommandMenuStore } from '@/models/commandMenuStore';
 
 function ShortcutKeys({ entry }: { entry: ShortcutEntry }) {
   const spoken = [...entry.keys.map(keyCap), ...(entry.then ? ['then', entry.then] : [])].join(' ');
@@ -27,8 +27,8 @@ function ShortcutKeys({ entry }: { entry: ShortcutEntry }) {
  * it from anywhere except the command menu, where it means advanced search.
  */
 export function BuyerlyShortcutsPanel() {
-  const open = useAppStore((state) => state.isShortcutsOpen);
-  const setOpen = useAppStore((state) => state.setShortcutsOpen);
+  const open = useCommandMenuStore((state) => state.isShortcutsOpen);
+  const setOpen = useCommandMenuStore((state) => state.setShortcutsOpen);
   const [query, setQuery] = useState('');
   const groups = useMemo(() => filterShortcutGroups(query), [query]);
 
@@ -36,10 +36,9 @@ export function BuyerlyShortcutsPanel() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.altKey || event.shiftKey || !(event.metaKey || event.ctrlKey)) return;
       if (event.key !== '/' && event.code !== 'Slash') return;
-      const state = useAppStore.getState();
-      if (state.isCommandMenuOpen) return;
+      if (commandMenuStore.isCommandMenuOpen) return;
       event.preventDefault();
-      state.setShortcutsOpen(!state.isShortcutsOpen);
+      commandMenuStore.setShortcutsOpen(!commandMenuStore.isShortcutsOpen);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);

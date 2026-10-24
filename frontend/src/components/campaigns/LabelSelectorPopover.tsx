@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useAppStore } from '@/store/useAppStore';
-import type { CampaignGroup } from '@/store/useAppStore';
+import { useRulesStore, type CampaignGroup } from '@/models/rulesStore';
 
 interface LabelSelectorPopoverProps {
   isOpen: boolean;
@@ -23,7 +22,8 @@ export const LabelSelectorPopover: React.FC<LabelSelectorPopoverProps> = ({
   campaignId,
   selectedGroupIds,
 }) => {
-  const { campaignGroups, toggleCampaignGroup } = useAppStore();
+  const campaignGroups = useRulesStore((state) => state.campaignGroups);
+  const toggleCampaignGroup = useRulesStore((state) => state.toggleCampaignGroup);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);

@@ -1,9 +1,10 @@
 import React from 'react';
-import { AdSetItem, useAppStore } from '@/store/useAppStore';
 import type { DeliveryControl } from '@/lib/delivery';
 import { BuyerlyDataListRow, BuyerlyDataPrimaryCell, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 import { EntityPropertyCell, EntityRowControls } from './EntityRowCells';
 import { RuleAttachmentCell } from './RuleAttachmentCell';
+import { useRulesStore, AdSetItem } from '@/models/rulesStore';
+import { useSelectionStore } from '@/models/selectionStore';
 
 interface AdSetRowProps {
   adSet: AdSetItem;
@@ -18,11 +19,9 @@ interface AdSetRowProps {
 }
 
 export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, selectable = false, delivery, properties, columns }) => {
-  const {
-    selectedCampaignIds,
-    toggleCampaignSelection,
-    adSetAttachedRules,
-  } = useAppStore();
+  const selectedCampaignIds = useSelectionStore((state) => state.selectedCampaignIds);
+  const toggleCampaignSelection = useSelectionStore((state) => state.toggleCampaignSelection);
+  const adSetAttachedRules = useRulesStore((state) => state.adSetAttachedRules);
 
   const displayProperties = properties;
   const isSelected = selectable && selectedCampaignIds.includes(adSet.id);

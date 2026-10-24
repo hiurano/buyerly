@@ -24,7 +24,6 @@ import { TooltipProvider } from '@/ui/Tooltip';
 import { ToastRegion } from '@/ui/ToastRegion';
 import { useUndoShortcuts } from '@/lib/undoHistory';
 import { useNewVersionNotice } from '@/lib/appVersion';
-import { selectInboxBadgeCount, useAppStore } from '@/store/useAppStore';
 import { apiRequest } from '@/lib/api';
 import type { LoginResult, SessionUser, Workspace } from '@/lib/types';
 import { TEAM_HOME_PAGES, isRoutedSettingsSection, isWorkspaceReturnRoute, notifyLocationChanged, openAppPath, pathForTab, teamHomePath, useAddress, useLocationVersion, useRoute, type Route } from '@/lib/routing';
@@ -56,6 +55,11 @@ import {
   setKnownAccounts,
   type BrowserAccount,
 } from '@/lib/accounts';
+import { useInboxStore } from '@/models/inboxStore';
+import { useScopeStore, scopeStore } from '@/models/scopeStore';
+import { shellStore, useShellStore } from '@/models/shellStore';
+import { useDetailsPaneStore } from '@/models/detailsPaneStore';
+import { useViewStore } from '@/models/viewStore';
 
 const RETURN_ROUTE_KEY = 'buyerly-return-route';
 
@@ -86,29 +90,27 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   refreshUser,
   switchAccount,
 }) => {
-  const {
-    activeTab,
-    setActiveTab,
-    campaignFilterTab,
-    setCampaignFilterTab,
-    settingsSection,
-    setSettingsSection,
-    settingsTeamPath,
-    openTeamSettings,
-    activeTeamKey,
-    setActiveTeamKey,
-    myCampaigns,
-    setMyCampaigns,
-    setWorkspaceName,
-    toggleDetailsPane,
-    toggleSidebarCollapsed,
-    toggleSidebarOpen,
-    setSidebarOpen,
-    setSidebarPeekOpen,
-    interfaceTheme,
-    refreshInboxUnreadCount,
-  } = useAppStore();
-  const inboxBadge = useAppStore(selectInboxBadgeCount);
+  const activeTab = useShellStore((state) => state.activeTab);
+  const setActiveTab = useShellStore((state) => state.setActiveTab);
+  const campaignFilterTab = useViewStore((state) => state.campaignFilterTab);
+  const setCampaignFilterTab = useViewStore((state) => state.setCampaignFilterTab);
+  const settingsSection = useShellStore((state) => state.settingsSection);
+  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
+  const settingsTeamPath = useShellStore((state) => state.settingsTeamPath);
+  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
+  const activeTeamKey = useShellStore((state) => state.activeTeamKey);
+  const setActiveTeamKey = useShellStore((state) => state.setActiveTeamKey);
+  const myCampaigns = useShellStore((state) => state.myCampaigns);
+  const setMyCampaigns = useShellStore((state) => state.setMyCampaigns);
+  const setWorkspaceName = useScopeStore((state) => state.setWorkspaceName);
+  const toggleDetailsPane = useDetailsPaneStore((state) => state.toggleDetailsPane);
+  const toggleSidebarCollapsed = useShellStore((state) => state.toggleSidebarCollapsed);
+  const toggleSidebarOpen = useShellStore((state) => state.toggleSidebarOpen);
+  const setSidebarOpen = useShellStore((state) => state.setSidebarOpen);
+  const setSidebarPeekOpen = useShellStore((state) => state.setSidebarPeekOpen);
+  const interfaceTheme = useShellStore((state) => state.interfaceTheme);
+  const refreshInboxUnreadCount = useInboxStore((state) => state.refreshInboxUnreadCount);
+  const inboxBadge = useInboxStore((store) => store.badgeCount);
   useUndoShortcuts();
   useNewVersionNotice();
   useWebMcpTools(workspace);
@@ -119,7 +121,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   }, [workspace.slug]);
   // Admins and owners see "Set default for everyone" in Display options (#472).
   useEffect(() => {
-    useAppStore.getState().setWorkspaceRole(workspace.role);
+    scopeStore.setWorkspaceRole(workspace.role);
   }, [workspace.role]);
   const session = useMemo<WorkspaceSession>(() => ({
     user,
@@ -183,7 +185,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     setActiveTab(route.tab);
     if (route.entity) setCampaignFilterTab(route.entity);
     if (route.tab === 'preferences') {
-      const { settingsSection: current } = useAppStore.getState();
+      const { settingsSection: current } = shellStore;
       // Plain /settings keeps any open section that has no address of its own.
       if (route.settingsSection === 'team') openTeamSettings(route.teamPath ?? '');
       else if (route.settingsSection) setSettingsSection(route.settingsSection);
@@ -272,7 +274,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
       }
       // Linear's "Open/Close navigation sidebar": shows the collapsed sidebar over the content.
       if ((event.ctrlKey || event.metaKey) && !event.altKey && (event.key === '\\' || event.code === 'Backslash')) {
-        const { isSidebarCollapsed, isSidebarPeekOpen, activeTab: tab } = useAppStore.getState();
+        const { isSidebarCollapsed, isSidebarPeekOpen, activeTab: tab } = shellStore;
         if (isSmallScreen() || !isSidebarCollapsed || tab === 'preferences') return;
         event.preventDefault();
         setSidebarPeekOpen(!isSidebarPeekOpen, 'keyboard');
@@ -282,7 +284,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
       const detailsKey = ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.code === 'KeyI')
         || (!event.ctrlKey && !event.altKey && !event.metaKey && event.key === ']');
       if (detailsKey) {
-        const { activeTab: tab } = useAppStore.getState();
+        const { activeTab: tab } = shellStore;
         const pane = tab === 'campaigns' ? 'adsManager' : tab === 'rules' ? 'rules' : null;
         if (!pane) return;
         event.preventDefault();
@@ -303,7 +305,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
             if (target === 'preferences') setSettingsSection(GO_TO_SETTINGS_SECTION);
             // G R from Recently deleted goes back to the list: the tab itself does not change.
             // G K from an account's page goes back to the Ad accounts list the same way.
-            if ((target === 'rules' || target === 'accounts') && useAppStore.getState().activeTab === target) {
+            if ((target === 'rules' || target === 'accounts') && shellStore.activeTab === target) {
               openAppPath(pathForTab(workspace.slug, target));
             }
             setActiveTab(target);
@@ -466,9 +468,9 @@ export const App: React.FC = () => {
     ? user.workspaces.find(item => item.slug === route.workspace) : null;
   const desiredScope = resolvedWorkspace && user?.onboarding_completed && userIsCurrentAccount
     ? `${user.username}:${resolvedWorkspace.id}` : null;
-  const workspaceScope = useAppStore(state => state.workspaceScope);
+  const workspaceScope = useScopeStore((state) => state.workspaceScope);
   useLayoutEffect(() => {
-    useAppStore.getState().setWorkspaceScope(desiredScope, resolvedWorkspace?.slug);
+    scopeStore.setWorkspaceScope(desiredScope, resolvedWorkspace?.slug);
   }, [desiredScope, resolvedWorkspace?.slug]);
   // The reload splash goes once a screen other than the boot loader is on the page (#433).
   useLayoutEffect(() => {
@@ -513,7 +515,7 @@ export const App: React.FC = () => {
         const list = await loadAccounts().catch(() => [] as BrowserAccount[]);
         const next = chooseAccount(list);
         setCurrentAccountId(next ? next.id : null);
-        useAppStore.getState().setWorkspaceScope(null);
+        scopeStore.setWorkspaceScope(null);
         if (!next) {
           setUser(null);
           return;
@@ -528,7 +530,7 @@ export const App: React.FC = () => {
   const switchAccount = useCallback((accountId: number, slug: string) => {
     setCurrentAccountId(accountId);
     // Drop the old account's data at once; its late answers are discarded by scope.
-    useAppStore.getState().setWorkspaceScope(null);
+    scopeStore.setWorkspaceScope(null);
     navigate(`/${slug}/inbox`);
     // Remembered for that account, as a switch within one account is.
     apiRequest('/api/workspaces/switch', { method: 'POST', body: JSON.stringify({ slug }) }).catch(() => {});
@@ -538,7 +540,7 @@ export const App: React.FC = () => {
   const adoptLogin = useCallback(async (result: LoginResult) => {
     await loadAccounts().catch(() => {});
     if (result.account_id) setCurrentAccountId(result.account_id);
-    useAppStore.getState().setWorkspaceScope(null);
+    scopeStore.setWorkspaceScope(null);
   }, [loadAccounts]);
 
   const enterUserDestination = useCallback((nextUser: SessionUser, explicitPath?: string | null) => {
@@ -605,7 +607,7 @@ export const App: React.FC = () => {
       const owner = accounts.find((account) => account.workspaces.some((item) => item.slug === route.workspace));
       if (owner && owner.id !== user.id) {
         setCurrentAccountId(owner.id);
-        useAppStore.getState().setWorkspaceScope(null);
+        scopeStore.setWorkspaceScope(null);
         syncAccount();
         return;
       }
@@ -672,7 +674,7 @@ export const App: React.FC = () => {
           // Only the open account logged out. Going on to log in as the invited
           // email shows the login; otherwise another account still logged in
           // here takes over the page, else it shows the logged-out invitation.
-          useAppStore.getState().setWorkspaceScope(null);
+          scopeStore.setWorkspaceScope(null);
           const list = await loadAccounts().catch(() => [] as BrowserAccount[]);
           const next = thenLogIn ? null : chooseAccount(list);
           setCurrentAccountId(next ? next.id : null);

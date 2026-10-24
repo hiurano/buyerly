@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '@/lib/api';
 import type { Workspace } from '@/lib/types';
-import { useAppStore } from '@/store/useAppStore';
 import { BuyerlyCheckIcon } from '@/icons/BuyerlyIcons';
 import {
   TEAM_FILTER_LABELS,
@@ -32,6 +31,7 @@ import { RowMenu, shortDate } from './MembersSection';
 import { SortHeader, sortedBy, useListSort } from './SettingsListSort';
 import { TeamIcon } from './TeamIcon';
 import { RestoreTeamDialog } from './TeamSettingsSection';
+import { useShellStore } from '@/models/shellStore';
 
 /**
  * Linear's Teams table: Name, Visibility, Members, Issues, Created; Buyerly
@@ -52,7 +52,8 @@ const TEAM_SETTINGS_PAGES: Array<{ path: string; label: string }> = [
  * restores a retired or deleted team. The member count lists the members on hover.
  */
 export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) => {
-  const { setSettingsSection, openTeamSettings } = useAppStore();
+  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
+  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<TeamFilter>('active');
   const { teams, error, refresh } = useTeams(workspace.id, filter);

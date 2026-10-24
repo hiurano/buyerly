@@ -1,14 +1,14 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BuyerlyBoltIcon } from '@/icons/BuyerlyIcons';
-import { useAppStore } from '@/store/useAppStore';
-import type { RuleItem } from '@/store/useAppStore';
 import type { RuleExecutionLevel, RuleScope } from '@/lib/rules';
 import { explainRulePrecedence } from '@/lib/rulePrecedence';
 import type { PrecedenceLine } from '@/lib/rulePrecedence';
 import { fetchEntityRuleStates, inheritedRuleIds, RULE_LEVELS_UNDER } from '@/lib/rules';
 import type { RuleEntityStatePayload } from '@/lib/rules';
 import { RuleStateLine } from '@/components/rules/RuleStateLine';
+import { rulesStore, useRulesStore, type RuleItem } from '@/models/rulesStore';
+import { useDialogStore } from '@/models/dialogStore';
 
 /** The level this picker attaches rules to. */
 export type RuleTargetLevel = 'campaign' | 'adset';
@@ -63,19 +63,17 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
   shortcut,
   campaignId,
 }) => {
-  const {
-    rules,
-    campaignAttachedRules,
-    adSetAttachedRules,
-    toggleRuleForEntities,
-    attachedRuleScopes: scopesByAccount,
-    attachedRuleOrder: orderByAccount,
-    attachmentError,
-    clearAttachmentError,
-    rulesLoadState,
-    loadRules,
-    openCreateRuleModal,
-  } = useAppStore();
+  const rules = useRulesStore((state) => state.rules);
+  const campaignAttachedRules = useRulesStore((state) => state.campaignAttachedRules);
+  const adSetAttachedRules = useRulesStore((state) => state.adSetAttachedRules);
+  const toggleRuleForEntities = useRulesStore((state) => state.toggleRuleForEntities);
+  const scopesByAccount = useRulesStore((state) => state.attachedRuleScopes);
+  const orderByAccount = useRulesStore((state) => state.attachedRuleOrder);
+  const attachmentError = useRulesStore((state) => state.attachmentError);
+  const clearAttachmentError = useRulesStore((state) => state.clearAttachmentError);
+  const rulesLoadState = useRulesStore((state) => state.rulesLoadState);
+  const loadRules = useRulesStore((state) => state.loadRules);
+  const openCreateRuleModal = useDialogStore((state) => state.openCreateRuleModal);
   const attachedRuleScopes = useMemo(() => scopesByAccount[accountId] ?? {}, [scopesByAccount, accountId]);
   const attachedRuleOrder = useMemo(() => orderByAccount[accountId] ?? [], [orderByAccount, accountId]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -216,7 +214,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
   // read when a picker first needs it, not on every visit.
   useEffect(() => {
     if (!isOpen) return;
-    const { rulesLoadState: state } = useAppStore.getState();
+    const { rulesLoadState: state } = rulesStore;
     if (state === 'idle' || state === 'error') void loadRules();
   }, [isOpen, loadRules]);
 

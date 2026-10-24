@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Maximize2, Minimize2, Repeat } from 'lucide-react';
-import { useAppStore } from '@/store/useAppStore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,6 +52,9 @@ import {
   type RuleDraft,
   type RunOnAccount,
 } from './ruleDraft';
+import { useScopeStore, scopeStore } from '@/models/scopeStore';
+import { useDialogStore } from '@/models/dialogStore';
+import { useRulesStore } from '@/models/rulesStore';
 
 const LEVEL_HINTS = {
   adset: 'Each ad set on its own',
@@ -76,22 +78,20 @@ type Popover = 'labels' | 'runOn' | null;
  * and keeps an unsaved new rule as a draft for next time.
  */
 export const CreateRuleModal: React.FC = () => {
-  const {
-    isCreateRuleModalOpen,
-    createRuleTargetLabelId,
-    createRulePrefill,
-    editingRuleId,
-    closeCreateRuleModal,
-    addRule,
-    updateRule,
-    rules,
-    ruleLabels,
-    ruleAccounts,
-    rulesLoadState,
-    loadRules,
-    createRuleLabel,
-    workspaceSlug,
-  } = useAppStore();
+  const isCreateRuleModalOpen = useDialogStore((state) => state.isCreateRuleModalOpen);
+  const createRuleTargetLabelId = useDialogStore((state) => state.createRuleTargetLabelId);
+  const createRulePrefill = useDialogStore((state) => state.createRulePrefill);
+  const editingRuleId = useDialogStore((state) => state.editingRuleId);
+  const closeCreateRuleModal = useDialogStore((state) => state.closeCreateRuleModal);
+  const addRule = useRulesStore((state) => state.addRule);
+  const updateRule = useRulesStore((state) => state.updateRule);
+  const rules = useRulesStore((state) => state.rules);
+  const ruleLabels = useRulesStore((state) => state.ruleLabels);
+  const ruleAccounts = useRulesStore((state) => state.ruleAccounts);
+  const rulesLoadState = useRulesStore((state) => state.rulesLoadState);
+  const loadRules = useRulesStore((state) => state.loadRules);
+  const createRuleLabel = useRulesStore((state) => state.createRuleLabel);
+  const workspaceSlug = useScopeStore((state) => state.workspaceSlug);
 
   const editedRule = editingRuleId ? rules.find((rule) => rule.id === editingRuleId) : undefined;
   const isEditing = Boolean(editedRule);
@@ -226,7 +226,7 @@ export const CreateRuleModal: React.FC = () => {
   const submit = async () => {
     setTouched(true);
     if (!canSubmit || !payload) return;
-    const current = useAppStore.getState().captureScope();
+    const current = scopeStore.captureScope();
     if (!current()) return;
     setIsSubmitting(true);
     setSubmitError('');
