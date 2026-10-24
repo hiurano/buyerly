@@ -124,22 +124,23 @@ function requestErrorMessage(error: unknown): string {
   return 'Something went wrong. Please try again.';
 }
 
+type HierarchyRows = Map<string, AnalyticsAccountsHierarchyResponse['accounts'][number]>;
+
 /**
- * Reads every account in one request; an account the server leaves out stays
- * with its own error and never hides the others.
+ * Every ad account you can see in one request, started with `/api/accounts`
+ * rather than after it, so the page waits for the slower of the two (#489).
  */
-async function loadAccountHierarchies(accounts: MetaAccount[], period: AdsManagerPeriod): Promise<AccountHierarchy[]> {
-  let rowsOf: Map<string, AnalyticsAccountsHierarchyResponse['accounts'][number]>;
+async function fetchHierarchyRows(period: AdsManagerPeriod): Promise<HierarchyRows | { error: string }> {
   try {
-    const ids = accounts.map((account) => account.account_id).join(',');
-    const response = await apiRequest<AnalyticsAccountsHierarchyResponse>(
-      `/api/analytics/hierarchy/accounts?account_ids=${encodeURIComponent(ids)}&period=${period}`,
-    );
-    rowsOf = new Map(response.accounts.map((rows) => [rows.account_id, rows]));
+    const response = await apiRequest<AnalyticsAccountsHierarchyResponse>(`/api/analytics/hierarchy/accounts?period=${period}`);
+    return new Map(response.accounts.map((rows) => [rows.account_id, rows]));
   } catch (error) {
-    const message = requestErrorMessage(error);
-    return accounts.map((account) => ({ account, campaigns: [], adSets: [], ads: [], error: message }));
+    return { error: requestErrorMessage(error) };
   }
+}
+
+/** The accounts on screen from those rows; one the server left out keeps its own error and never hides the others. */
+function accountHierarchies(accounts: MetaAccount[], rowsOf: HierarchyRows): AccountHierarchy[] {
   return accounts.map((account) => {
     const rows = rowsOf.get(account.account_id);
     if (!rows) return { account, campaigns: [], adSets: [], ads: [], error: 'This ad account is not available to you.' };
@@ -269,6 +270,8 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
   const accountIdsKey = accountIds.join(',');
   const metaAccountsRef = useRef(metaAccounts);
   metaAccountsRef.current = metaAccounts;
+  const allMetaAccountsRef = useRef(allMetaAccounts);
+  allMetaAccountsRef.current = allMetaAccounts;
   const [metaConnections, setMetaConnections] = useState<MetaConnection[]>([]);
   const [accountsState, setAccountsState] = useState<LoadState>('loading');
   const [accountsError, setAccountsError] = useState('');
@@ -343,13 +346,26 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
     void refreshMetaAccounts();
   }, [refreshMetaAccounts]);
 
-  // Rules attach per ad account; every account on screen has its own read.
+  // Rules attach per ad account, read from the accounts just loaded rather than a second `/api/accounts`.
   useEffect(() => {
-    void loadRuleAttachments(accountsState === 'ready' && accountIdsKey ? accountIdsKey.split(',') : []);
+    const ids = accountsState === 'ready' && accountIdsKey ? accountIdsKey.split(',') : [];
+    void loadRuleAttachments(ids, allMetaAccountsRef.current);
   }, [loadRuleAttachments, accountsState, accountIdsKey]);
 
+  // The rows of every account, read beside the accounts, again for a new period or a retry.
+  const [hierarchyRows, setHierarchyRows] = useState<HierarchyRows | { error: string } | null>(null);
   useEffect(() => {
     const generation = ++requestGenerationRef.current;
+    setHierarchyRows(null);
+    void fetchHierarchyRows(period).then((rows) => {
+      if (generation === requestGenerationRef.current) setHierarchyRows(rows);
+    });
+    return () => {
+      requestGenerationRef.current += 1;
+    };
+  }, [hierarchyReloadKey, period]);
+
+  useEffect(() => {
     clearCampaignSelection();
     setDeliveryActions({});
     setCampaigns([]);
@@ -357,33 +373,34 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
     setAds([]);
     setFailedAccounts([]);
     setHierarchyError('');
-    if (accountsState !== 'ready') return undefined;
+    if (accountsState !== 'ready') return;
     const accounts = metaAccountsRef.current;
     if (accounts.length === 0) {
       setHierarchyState('idle');
-      return undefined;
+      return;
     }
-
-    setHierarchyState('loading');
-    void loadAccountHierarchies(accounts, period).then((results) => {
-      if (generation !== requestGenerationRef.current) return;
-      const loaded = results.filter((result) => !result.error);
-      if (loaded.length === 0) {
-        setHierarchyError(results[0]?.error ?? '');
-        setHierarchyState('error');
-        return;
-      }
-      setCampaigns(loaded.flatMap((result) => result.campaigns));
-      setAdSets(loaded.flatMap((result) => result.adSets));
-      setAds(loaded.flatMap((result) => result.ads));
-      setFailedAccounts(results.flatMap((result) => (result.error ? [{ account: result.account, error: result.error }] : [])));
-      setHierarchyState('ready');
-    });
-
-    return () => {
-      requestGenerationRef.current += 1;
-    };
-  }, [hierarchyReloadKey, clearCampaignSelection, accountsState, accountIdsKey, period]);
+    if (!hierarchyRows) {
+      setHierarchyState('loading');
+      return;
+    }
+    if (!(hierarchyRows instanceof Map)) {
+      setHierarchyError(hierarchyRows.error);
+      setHierarchyState('error');
+      return;
+    }
+    const results = accountHierarchies(accounts, hierarchyRows);
+    const loaded = results.filter((result) => !result.error);
+    if (loaded.length === 0) {
+      setHierarchyError(results[0]?.error ?? '');
+      setHierarchyState('error');
+      return;
+    }
+    setCampaigns(loaded.flatMap((result) => result.campaigns));
+    setAdSets(loaded.flatMap((result) => result.adSets));
+    setAds(loaded.flatMap((result) => result.ads));
+    setFailedAccounts(results.flatMap((result) => (result.error ? [{ account: result.account, error: result.error }] : [])));
+    setHierarchyState('ready');
+  }, [hierarchyRows, clearCampaignSelection, accountsState, accountIdsKey]);
 
   useEffect(() => {
     setOpenFilterMenu(null);

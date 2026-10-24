@@ -1033,6 +1033,14 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
                 )
                 self.assertEqual(by_account[account_id][key], single.json()["items"])
 
+            # Without account_ids: every account the member can see, nothing missing (#489).
+            res_all = await ac.get("/api/analytics/hierarchy/accounts?period=today", headers=headers)
+            self.assertEqual(res_all.status_code, 200)
+            everything = {account["account_id"]: account for account in res_all.json()["accounts"]}
+            self.assertEqual(set(everything), {self.acc1.account_id, self.acc2.account_id})
+            self.assertEqual(res_all.json()["missing"], [])
+            self.assertEqual(everything[self.acc1.account_id], alpha)
+
             too_many = ",".join(f"act_{n}" for n in range(501))
             res_limit = await ac.get(f"/api/analytics/hierarchy/accounts?account_ids={too_many}", headers=headers)
             self.assertEqual(res_limit.status_code, 422)

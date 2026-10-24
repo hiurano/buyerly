@@ -203,7 +203,7 @@ function apiHandler(state) {
     if (path === '/api/accounts') return route.fulfill({ json: state.accounts[workspace] ?? [] });
     if (path === '/api/presets') return route.fulfill({ json: attachments(state, workspace) ?? [] });
     if (path === '/api/analytics/hierarchy/accounts') {
-      const ids = url.searchParams.get('account_ids').split(',');
+      const ids = url.searchParams.get('account_ids')?.split(',') ?? (state.accounts[workspace] ?? []).map((item) => item.account_id);
       const rows = (id, level) => workspace === 'alpha' && ['act_100', '801'].includes(id) ? hierarchy[level] ?? [] : [];
       const accounts = ids.map((id) => ({ account_id: id, campaigns: rows(id, 'campaign'), adsets: rows(id, 'adset'), ads: rows(id, 'ad') }));
       return route.fulfill({ json: { period: url.searchParams.get('period'), source: 'analytics_fact_store', accounts, missing: [] } });

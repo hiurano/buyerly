@@ -150,6 +150,10 @@ try {
       if (verb === 'GET' && ['/api/accounts', '/api/meta/connections', '/api/auth/accounts'].includes(path)) {
         return route.fulfill({ json: [] });
       }
+      // Ads Manager asks for its rows beside the accounts (#489).
+      if (verb === 'GET' && path === '/api/analytics/hierarchy/accounts') {
+        return route.fulfill({ json: { period: new URL(request.url()).searchParams.get('period'), source: 'analytics_fact_store', accounts: [], missing: [] } });
+      }
       // Settings reads the workspace teams (#371) for "Your teams" and the Members Teams column.
       if (verb === 'GET' && path.startsWith('/api/workspaces/') && path.endsWith('/teams')) return route.fulfill({ json: [] });
       errors.push(`Unexpected API request: ${verb} ${path}`);

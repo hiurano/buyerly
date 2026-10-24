@@ -299,8 +299,8 @@ class TestReactFrontendContract(unittest.TestCase):
     def test_ads_manager_uses_workspace_api_without_production_fixtures(self):
         for contract in (
             "apiRequest<MetaAccount[]>('/api/accounts')",
-            "/api/analytics/hierarchy/accounts?account_ids=",
-            "loadAccountHierarchies(accounts, period)",
+            "/api/analytics/hierarchy/accounts?period=",
+            "accountHierarchies(accounts, hierarchyRows)",
             "rows.campaigns",
             "rows.adsets",
             "rows.ads",
@@ -328,7 +328,7 @@ class TestReactFrontendContract(unittest.TestCase):
 
     def test_campaigns_shows_every_ad_account_at_once(self):
         """As Linear's team Issues lists every project's issues: no account switcher, grouped by Ad account."""
-        self.assertIn("loadAccountHierarchies(accounts, period)", self.campaigns_view)
+        self.assertIn("accountHierarchies(accounts, hierarchyRows)", self.campaigns_view)
         for dead in (r"selectedAccountId\b", "DropdownMenuAccount", "Select ad account", "HeaderCreateButton"):
             self.assertNotRegex(self.campaigns_view, dead)
         view_model = (ROOT / "frontend" / "src" / "components" / "campaigns" / "adsManagerViewModel.ts").read_text()
@@ -408,7 +408,7 @@ class TestReactFrontendContract(unittest.TestCase):
         for source in (self.ads_manager_columns, self.campaigns_row_sources, self.display_options):
             self.assertNotIn("Results / CPA", source)
             self.assertNotIn("ResultsCpaCell", source)
-        self.assertIn("&period=${period}", self.campaigns_view)
+        self.assertIn("?period=${period}", self.campaigns_view)
         self.assertNotIn("period=today", self.campaigns_view)
         self.assertIn("periodFromSearch(window.location.search)", self.campaigns_view)
         self.assertIn("migrateAdsManagerClauses", (campaigns / "useCampaignViewFilters.ts").read_text())

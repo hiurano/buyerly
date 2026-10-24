@@ -95,6 +95,15 @@ try {
     const views = {};
     const periods = [];
     const writes = [];
+    // Every request in the order the page sent it; `answered` marks each `/api/accounts` answer (#489).
+    const reads = [];
+    page.on('request', (request) => {
+      const { pathname } = new URL(request.url());
+      if (pathname.startsWith('/api/')) reads.push(pathname);
+    });
+    page.on('requestfinished', (request) => {
+      if (new URL(request.url()).pathname === '/api/accounts') reads.push('answered');
+    });
     page.on('pageerror', (error) => errors.push(error.message));
     await context.route('**/api/**', async (route) => {
       const request = route.request();
@@ -129,14 +138,19 @@ try {
         return route.fulfill({ status: 404, json: { detail: 'Unexpected test request' } });
       }
       if (path === '/api/me') return route.fulfill({ json: me });
-      if (path === '/api/accounts') return route.fulfill({ json: accounts });
+      if (path === '/api/accounts') {
+        // Slow enough that a read waiting for it would only start afterwards.
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        reads.push('answered');
+        return route.fulfill({ json: accounts });
+      }
       if (path === '/api/analytics/hierarchy/accounts') {
         const period = url.searchParams.get('period');
         periods.push(period);
         const factor = PERIOD_FACTOR[period];
         if (!factor) return route.fulfill({ status: 422, json: { detail: 'Unknown period' } });
         const sources = { act_100: inventory, act_200: euroInventory };
-        const ids = url.searchParams.get('account_ids').split(',');
+        const ids = url.searchParams.get('account_ids')?.split(',') ?? accounts.map((item) => item.account_id);
         const rows = (source, level) => (source[level] ?? []).map((item) => scaled(item, factor));
         return route.fulfill({ json: {
           period,
@@ -164,7 +178,7 @@ try {
       }
       return route.fulfill({ json: [] });
     });
-    return { context, page, errors, views, periods, writes };
+    return { context, page, errors, views, periods, writes, reads };
   };
 
   const rowIds = (page) => page.locator('[data-row-id]').evaluateAll((rows) => rows.map((row) => row.dataset.rowId));
@@ -340,11 +354,18 @@ try {
 
   // Every ad account at once, grouped by account; My campaigns, only the accounts you lead.
   {
-    const { context, page, errors, views, writes } = await openPage(1440, false, [{ ...account, lead_user_id: 1 }, euro]);
+    const { context, page, errors, views, writes, reads } = await openPage(1440, false, [{ ...account, lead_user_id: 1 }, euro]);
     try {
       await page.goto(`${origin}/alpha/ads-manager/campaigns`);
       await page.locator('[data-row-id="701"]').waitFor();
       await page.locator('[data-row-id="801"]').waitFor();
+      // The rows are asked for beside the accounts, not after them, and rule
+      // attachments come from the accounts already read (#489). Dev's StrictMode
+      // sends each page read twice, so the count is against its pair.
+      const opening = reads.slice(0, reads.indexOf('answered'));
+      assert.ok(opening.includes('/api/analytics/hierarchy/accounts'), `rows read while the accounts load: ${reads.join(', ')}`);
+      const count = (path) => reads.filter((item) => item === path).length;
+      assert.equal(count('/api/accounts'), count('/api/meta/connections'), `no second /api/accounts for rules: ${reads.join(', ')}`);
       assert.equal(await page.getByRole('button', { name: 'Select ad account' }).count(), 0, 'no account switcher');
       assert.deepEqual(await page.locator('.sticky span.truncate').allTextContents(), ['Euro account', 'Main account'], 'grouped by ad account, A→Z');
       assert.deepEqual(await rowIds(page), ['701', '801', '802', '803']);
