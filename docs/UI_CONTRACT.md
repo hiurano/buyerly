@@ -8,13 +8,13 @@ Applies to: the production React application, authenticated pages, auth/onboardi
 
 This file is the operational contract for building Buyerly UI. Product principles and screen-level decisions live in [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md).
 
-Buyerly follows the Linear design language. That decision is already encoded in [`frontend/src/styles/tokens.css`](../frontend/src/styles/tokens.css): Linear's `Inter Variable` type, their easing curves and their radii. The purpose of this contract is to keep every new screen inside that language — it does not introduce a design language of its own.
+Buyerly follows the Linear design language. That decision is already encoded in [`frontend/src/styles/tokens.stylex.ts`](../frontend/src/styles/tokens.stylex.ts): Linear's `Inter Variable` type, their easing curves and their radii. The purpose of this contract is to keep every new screen inside that language — it does not introduce a design language of its own.
 
 ## One source of truth
 
 | Concern | Canonical source | Rule |
 |---|---|---|
-| Color, type, spacing, radius, control height, shadow, layer and motion values | [`frontend/src/styles/tokens.css`](../frontend/src/styles/tokens.css) | Change or add a semantic token; do not copy a reusable literal into a page component. |
+| Color, type, spacing, radius, control height, shadow, layer and motion values | [`frontend/src/styles/tokens.stylex.ts`](../frontend/src/styles/tokens.stylex.ts) | Change or add a semantic token; do not copy a reusable literal into a page component. |
 | Shared component behavior, markup and accessibility | [`frontend/src/ui/`](../frontend/src/ui/) | Reuse the React primitive where one exists. Add a shared primitive before introducing a repeated control family. |
 | Shared and domain style composition | [`frontend/src/styles/index.css`](../frontend/src/styles/index.css) | May consume tokens and compose layouts, but must not become a second token source. |
 | Product hierarchy, surfaces and accessibility principles | [`docs/DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) | A new screen follows the same information model and state language. |
@@ -48,11 +48,11 @@ Use the existing primitives from `frontend/src/ui/`:
 | Label/status | `BuyerlyLabelPill` | Semantic text or icon accompanies color. |
 | Display controls | `BuyerlyDisplayOptions` | Changes real view state and exposes the current selection. |
 
-Tailwind utilities may be used for composition. Repeated arbitrary values for color, geometry, shadow, z-index or motion must be promoted to `tokens.css` or a shared primitive. External brand colors, user-configured colors and runtime-calculated dimensions are allowed as local, explained exceptions.
+Tailwind utilities may be used for composition. Repeated arbitrary values for color, geometry, shadow, z-index or motion must be promoted to `tokens.stylex.ts` or a shared primitive. External brand colors, user-configured colors and runtime-calculated dimensions are allowed as local, explained exceptions.
 
 ## Density and geometry
 
-These are the values the production application actually uses. Match them; do not introduce a new step without promoting it to `tokens.css`.
+These are the values the production application actually uses. Match them; do not introduce a new step without promoting it to `tokens.stylex.ts`.
 
 - **Interface text is 12–13px.** That is the Linear scale and the measured majority of the codebase. 14–15px is for emphasis and section titles, 18–24px for page titles, 11px only for dense metadata badges. Nothing below 11px.
 - **Controls are 28–32px tall.** Compact icon buttons may be 24px when they sit in a row with real spacing around them.
@@ -68,14 +68,14 @@ A shared primitive owns its own geometry. If a page needs a different height for
 4. Primary action, warning and destructive action remain visually and textually distinct.
 5. No fake metrics, fake progress, decorative controls or controls without handlers. A control whose backend cannot support it is not shipped disabled-and-silent; it is left out and recorded in the backlog.
 6. Loading, empty, partial, error, permission, success and disabled states must be understandable without color.
-7. Unknown duration uses indeterminate progress. Motion uses the tokens in `tokens.css`.
+7. Unknown duration uses indeterminate progress. Motion uses the tokens in `tokens.stylex.ts`.
 8. Buyerly is desktop-first. The production layout targets 1024px and wider. At Linear's small width (880px and below) the app sidebar and the Settings navigation become a drawer over full-width content, opened by the header's Menu button or `[`; Settings rows with a field or select stack at 640px and below. A change must not create document-level horizontal overflow and must not hard-code a width that blocks a later mobile pass.
 9. Server data and local UI state are visibly distinct: cached, stale, unavailable and demo data may never be presented as current Meta data.
 10. Entity inventory and period metrics retain separate provenance: an entity with no activity stays visible, while unavailable fields render as unavailable rather than an invented value.
 
 ## Forbidden patterns
 
-- new reusable literal colors or geometry outside `frontend/src/styles/tokens.css`;
+- new reusable literal colors or geometry outside `frontend/src/styles/tokens.stylex.ts`;
 - a new page-local button, input, select or status family when a shared React primitive exists or the pattern repeats;
 - presentation-specific inline styles, except values that are genuinely computed at runtime;
 - changing a shared token to fix one screen without checking all consumers;
@@ -112,7 +112,7 @@ Every UI pull request must:
 
 1. Read this contract and the relevant part of `DESIGN_SYSTEM.md` before editing.
 2. Reuse an existing primitive from `frontend/src/ui/`. If none fits and the pattern will repeat, add and document a shared React primitive first.
-3. Change semantic values in `frontend/src/styles/tokens.css`; consume them from components or `frontend/src/styles/index.css`.
+3. Change semantic values in `frontend/src/styles/tokens.stylex.ts`; consume them from components or `frontend/src/styles/index.css`.
 4. Preserve ids, handlers, API payloads, workspace isolation and security boundaries unless explicitly in scope.
 5. Update `tests/test_react_frontend_contract.py` when the production UI contract changes. Legal route and asset coverage lives in `tests/test_legal_pages.py`.
 6. Pass GitHub Actions, and check keyboard focus, disabled/busy/error states and overflow.

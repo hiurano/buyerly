@@ -5,6 +5,68 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 import { transformAsync } from '@babel/core';
+import stylexBabel from '@stylexjs/babel-plugin';
+import stylex from '@stylexjs/unplugin';
+
+// The design tokens are StyleX variables in src/styles/tokens.stylex.ts (#512).
+// Their keys keep their CSS names, so Tailwind classes, index.css and the
+// public website read the same var(--…) as before. This compiles that file into
+// their CSS: the defaults on :root, and each theme on the data-theme that the
+// boot script in index.html sets from Settings or the system, as before.
+const tokensModule = path.resolve(__dirname, 'src/styles/tokens.stylex.ts');
+const themeSelectors: Record<string, string> = { lightColors: "html[data-theme='light']" };
+type StylexRule = [string, { ltr: string }, number];
+
+interface Tokens { code: string; map: unknown; css: string }
+
+async function compileTokens(): Promise<Tokens> {
+  const result = await transformAsync(fs.readFileSync(tokensModule, 'utf8'), {
+    filename: tokensModule,
+    babelrc: false,
+    configFile: false,
+    sourceMaps: true,
+    parserOpts: { plugins: ['typescript'] },
+    plugins: [[stylexBabel, { dev: false, unstable_moduleResolution: { type: 'commonJS', rootDir: __dirname } }]],
+  });
+  const code = result?.code ?? '';
+  // A compiled theme reads `export const lightColors = { <vars>: "<theme> <vars>", ...`.
+  const themes = new Map<string, string>();
+  for (const [, name, className] of code.matchAll(/export const (\w+) = \{\s*\w+: "(\w+) \w+"/g)) {
+    if (!themeSelectors[name]) throw new Error(`tokens.stylex.ts: no data-theme for the theme ${name}`);
+    themes.set(className, themeSelectors[name]);
+  }
+  const rules = ((result?.metadata ?? {}) as { stylex?: StylexRule[] }).stylex ?? [];
+  const css = rules.map(([className, { ltr }]) => {
+    const selector = ltr.startsWith(':root') ? ':root' : themes.get(className);
+    if (!selector) throw new Error(`tokens.stylex.ts: unexpected rule ${ltr.slice(0, 80)}`);
+    const declarations = ltr.slice(ltr.indexOf('{') + 1, ltr.lastIndexOf('}')).split(';').filter(Boolean);
+    return `${selector} {\n${declarations.map((item) => `  ${item.replace(':', ': ')};`).join('\n')}\n}\n`;
+  }).join('\n');
+  return { code, map: result?.map ?? null, css };
+}
+
+// The app imports the token CSS as virtual:buyerly-tokens.css, ahead of index.css.
+// The tokens module itself is compiled here, before StyleX's plugin sees it, so
+// StyleX does not add a second copy of every variable to its own CSS.
+function buyerlyTokens(): Plugin {
+  const id = 'virtual:buyerly-tokens.css';
+  const resolved = `\0${id}`;
+  return {
+    name: 'buyerly-tokens',
+    enforce: 'pre',
+    resolveId: (source) => (source === id ? resolved : null),
+    async load(source) {
+      if (source !== resolved) return null;
+      this.addWatchFile(tokensModule);
+      return (await compileTokens()).css;
+    },
+    async transform(_code, source) {
+      if (source.split('?')[0] !== tokensModule) return null;
+      const { code, map } = await compileTokens();
+      return { code, map: map as never };
+    },
+  };
+}
 
 // Public HTML works without React, a session or client-side JavaScript.
 // Keep source documents in public/ and fingerprint their shared CSS at build time.
@@ -25,17 +87,18 @@ function publicWebsite(): Plugin {
   }
   const tokensPath = path.resolve(__dirname, 'src/styles/tokens.css');
   const cssPath = path.join(publicDir, stylesheet.slice(1));
-  const css = () => `${fs.readFileSync(tokensPath, 'utf8')}\n${fs.readFileSync(cssPath, 'utf8')}`;
+  const css = async () =>
+    `${fs.readFileSync(tokensPath, 'utf8')}\n${(await compileTokens()).css}\n${fs.readFileSync(cssPath, 'utf8')}`;
   const filenameFor = (url: string) => routes[url.split('?')[0].replace(/\/$/, '') || '/'];
   return {
     name: 'buyerly-public-website',
     configureServer(server) {
-      server.middlewares.use((req, res, next) => {
+      server.middlewares.use(async (req, res, next) => {
         const url = req.url || '/';
         const filename = filenameFor(url);
         if (url.split('?')[0] === stylesheet) {
           res.setHeader('Content-Type', 'text/css');
-          res.end(css());
+          res.end(await css());
         } else if (filename) {
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
           res.end(fs.readFileSync(path.join(publicDir, filename), 'utf8'));
@@ -51,12 +114,13 @@ function publicWebsite(): Plugin {
     },
     buildStart() {
       this.addWatchFile(tokensPath);
+      this.addWatchFile(tokensModule);
       this.addWatchFile(cssPath);
     },
-    generateBundle() {
+    async generateBundle() {
       // Fonts are emitted with the stylesheet so FastAPI and nginx use the same
       // immutable asset URLs, without reserving another workspace root segment.
-      const builtCss = css().replace(/\/fonts\/([\w-]+\.woff2)/g, (_match, name: string) => {
+      const builtCss = (await css()).replace(/\/fonts\/([\w-]+\.woff2)/g, (_match, name: string) => {
         const fontPath = path.join(publicDir, 'fonts', name);
         this.addWatchFile(fontPath);
         const reference = this.emitFile({ type: 'asset', name, source: fs.readFileSync(fontPath) });
@@ -144,7 +208,21 @@ const apiOrigin = process.env.VITE_API_ORIGIN || 'http://127.0.0.1:8080';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [publicWebsite(), reactCompiler(), react()],
+  // StyleX compiles a component's styles before the React Compiler sees it, and
+  // its CSS joins index.css's in the build; dev serves it at /virtual:stylex.css.
+  plugins: [
+    publicWebsite(),
+    buyerlyTokens(),
+    stylex.vite({
+      aliases: { '@/*': [path.resolve(__dirname, 'src/*')] },
+      unstable_moduleResolution: { type: 'commonJS', rootDir: __dirname },
+      // Vite's default build target, so StyleX's CSS keeps lch() as index.css does
+      // instead of lowering it to hex and lab() for older browsers.
+      lightningcssOptions: { targets: { chrome: 111 << 16, edge: 111 << 16, firefox: 114 << 16, safari: (16 << 16) | (4 << 8) } },
+    }),
+    reactCompiler(),
+    react(),
+  ],
   // The release this bundle belongs to; an open tab compares it with /health/live (#303).
   define: {
     __APP_VERSION__: JSON.stringify(process.env.APP_VERSION || 'local'),

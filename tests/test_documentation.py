@@ -80,7 +80,7 @@ class TestDocumentationContract(unittest.TestCase):
             "Skeleton",
             "### Ads Manager",
             "### Rules",
-            "frontend/src/styles/tokens.css",
+            "frontend/src/styles/tokens.stylex.ts",
             "frontend/src/ui/",
         ):
             self.assertIn(contract, design_system)

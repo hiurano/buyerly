@@ -466,7 +466,7 @@ body {
 }
 
 /* BuyerlyToggle, the only switch: one size everywhere, as in Linear's Display
-   options (22×14, knob 10, inset 2). Colours come from tokens.css. */
+   options (22×14, knob 10, inset 2). Colours come from tokens.stylex.ts. */
 .buyerly-toggle {
   --toggle-width: 22px;
   --toggle-height: 14px;

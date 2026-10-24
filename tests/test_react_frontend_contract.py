@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 import unittest
 
@@ -47,9 +48,12 @@ class TestReactFrontendContract(unittest.TestCase):
         cls.styles = (
             ROOT / "frontend" / "src" / "styles" / "index.css"
         ).read_text()
-        cls.tokens = (
-            ROOT / "frontend" / "src" / "styles" / "tokens.css"
-        ).read_text()
+        # The tokens are StyleX variables (#512), read here as the CSS they compile to.
+        cls.tokens = re.sub(
+            r"'(--[\w-]+)': '(.*)',",
+            r"\1: \2;",
+            (ROOT / "frontend" / "src" / "styles" / "tokens.stylex.ts").read_text(),
+        )
         cls.ui_sources = "\n".join(
             path.read_text()
             for path in sorted((ROOT / "frontend" / "src" / "ui").glob("*.tsx"))
@@ -256,7 +260,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("FROM node:22-alpine AS frontend", self.dockerfile)
         self.assertIn("COPY frontend/src ./src", self.dockerfile)
         self.assertIn("COPY --from=frontend /frontend/dist ./frontend/dist", self.dockerfile)
-        self.assertIn("import './styles/index.css'", self.main)
+        self.assertIn("import 'virtual:buyerly-tokens.css';\nimport './styles/index.css'", self.main)
         self.assertTrue(self.styles.startswith("@import './tokens.css';"))
 
         for token in (
@@ -281,7 +285,7 @@ class TestReactFrontendContract(unittest.TestCase):
 
         self.assertIn("UI_CONTRACT.md", self.copilot)
         self.assertIn("DESIGN_SYSTEM.md", self.copilot)
-        self.assertIn("frontend/src/styles/tokens.css", self.copilot)
+        self.assertIn("frontend/src/styles/tokens.stylex.ts", self.copilot)
         self.assertIn("frontend/src/ui/", self.copilot)
         self.assertNotIn("webapp/css/ui-system.css", self.copilot)
 
@@ -290,7 +294,7 @@ class TestReactFrontendContract(unittest.TestCase):
             self.design_system,
             self.pull_request_template,
         ):
-            self.assertIn("frontend/src/styles/tokens.css", contract)
+            self.assertIn("frontend/src/styles/tokens.stylex.ts", contract)
             self.assertIn("frontend/src/ui/", contract)
 
         self.assertIn("frontend/public/", self.ui_contract)
