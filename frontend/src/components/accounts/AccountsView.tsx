@@ -24,7 +24,8 @@ import { BuyerlySlidersIcon } from '@/icons/BuyerlyIcons';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { useActiveTeam } from '@/lib/teams';
 import { favoritePath } from '@/lib/favorites';
-import { pathForTab, useAddress } from '@/lib/routing';
+import { pathForTab } from '@/lib/routing';
+import { usePagePathname } from '@/lib/pageScope';
 import { ViewTitle } from '@/components/teams/ViewTitle';
 import { AccountDisplayOptionsPopover } from './AccountDisplayOptionsPopover';
 import { AccountRow, getAccountColumns, usePhoneWidth, type AccountRowActions } from './AccountRow';
@@ -48,7 +49,7 @@ interface OpenFilterMenu {
 
 /** What the list and the account page share: the Add account dialog, Rename and Remove. */
 export function useAccountDialogs(data: WorkspaceAccounts, onRemoved?: () => void) {
-  const { pathname } = useAddress();
+  const pathname = usePagePathname();
   const [addOpen, setAddOpen] = useState(false);
   const [returnedConnectionId, setReturnedConnectionId] = useState<number | null>(
     Number(new URLSearchParams(window.location.search).get('meta_connection')) || null,

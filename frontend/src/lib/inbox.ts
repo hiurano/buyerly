@@ -181,6 +181,33 @@ export function inboxTabQuery(
   return { tab, priority: { kinds: display.priorityKinds, rules: display.priorityRules } };
 }
 
+/** With priority inbox on, Linear always shows one of its two tabs. */
+export const inboxTabShown = (display: InboxDisplay, tab: InboxTab | null): InboxTab | null => (
+  display.priorityInbox ? tab ?? 'priority' : null
+);
+
+/** What the list is read for; only what changes the list is in it (Badge count, for one, is not). */
+export function inboxListKey(display: InboxDisplay, tab: InboxTab | null): string {
+  return JSON.stringify({
+    ordering: display.ordering,
+    unreadOnly: display.unreadOnly,
+    showSnoozed: display.showSnoozed,
+    // Focus puts unread groups above Read, so the server pages unread first.
+    unreadFirst: display.unreadFirst || display.grouping === 'focus',
+    ...inboxTabQuery(display, tab),
+  });
+}
+
+/** One Inbox list as the pool holds it (#488). */
+export interface InboxPage {
+  items: InboxItem[];
+  hasMore: boolean;
+  hiddenByFilters: number;
+}
+
+/** The pool's key for one Inbox list: its options and its filters. */
+export const inboxPageKey = (listKey: string, filters: InboxFilterClause[]) => `inbox:${listKey}:${JSON.stringify(filters)}`;
+
 export interface InboxQuery {
   offset: number;
   limit?: number;

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Sidebar } from '@/components/sidebar/Sidebar';
 import { InboxView } from '@/components/inbox/InboxView';
 import { CampaignsView } from '@/components/campaigns/CampaignsView';
@@ -27,7 +27,9 @@ import { useNewVersionNotice } from '@/lib/appVersion';
 import { selectInboxBadgeCount, useAppStore } from '@/store/useAppStore';
 import { apiRequest } from '@/lib/api';
 import type { LoginResult, SessionUser, Workspace } from '@/lib/types';
-import { TEAM_HOME_PAGES, isRoutedSettingsSection, isWorkspaceReturnRoute, notifyLocationChanged, openAppPath, pathForTab, teamHomePath, useLocationVersion, useRoute, type Route } from '@/lib/routing';
+import { TEAM_HOME_PAGES, isRoutedSettingsSection, isWorkspaceReturnRoute, notifyLocationChanged, openAppPath, pathForTab, teamHomePath, useAddress, useLocationVersion, useRoute, type Route } from '@/lib/routing';
+import { BuyerlyPageGate, BuyerlyPageSkeleton, useHeldPage } from '@/components/layout/BuyerlyPageSwitch';
+import { BuyerlyPageScopeContext } from '@/lib/pageScope';
 import { AuthLoading } from '@/components/auth/AuthFrame';
 import { finishSplash } from '@/lib/splash';
 import { LoginView } from '@/components/auth/LoginView';
@@ -340,6 +342,27 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     return () => systemTheme.removeEventListener('change', applyTheme);
   }, [interfaceTheme]);
 
+  // The page in `main` follows the store and the address once it has its data (#490);
+  // until then the previous page stays, as of its own navigation.
+  const { pathname, search } = useAddress();
+  const shown = useHeldPage({
+    tab: activeTab,
+    teamKey: activeTeamKey,
+    mine: myCampaigns,
+    entity: campaignFilterTab,
+    inboxTab: route.tab === 'inbox' ? route.inboxTab ?? null : null,
+    search,
+    pathname,
+    route,
+    navigationKey,
+  }, `${activeTab}:${activeTeamKey ?? ''}:${myCampaigns}:${campaignFilterTab}:${navigationKey}`, workspace.id);
+  const page = shown.page;
+  const pageRoute = page.route;
+  const pageScope = useMemo(
+    () => ({ teamKey: page.teamKey, entity: page.entity, pathname: page.pathname }),
+    [page.teamKey, page.entity, page.pathname],
+  );
+
   return (
     <WorkspaceSessionProvider value={session}>
       <TooltipProvider>
@@ -350,57 +373,63 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
             <>
               <Sidebar />
               <main className="buyerly-floating-canvas">
-                {activeTab === 'inbox' && (
-                  <InboxView
-                    openEventId={route.tab === 'inbox' ? route.recordId : undefined}
-                    inboxTab={route.tab === 'inbox' ? route.inboxTab ?? null : null}
-                    // The query keeps Inbox filters while notifications open and close.
-                    onNavigate={(tab, eventId) => navigate(
-                      `/${workspace.slug}/inbox${tab ? `/${tab}` : ''}${eventId === null ? '' : `/${eventId}`}`
-                        + window.location.search,
-                    )}
-                    onOpenRecord={(path) => navigate(path)}
-                  />
-                )}
-                {activeTab === 'accounts' && (route.tab === 'accounts' && route.recordId ? (
-                  <AccountPage
-                    accountId={route.recordId}
-                    navigate={navigate}
-                    navigationKey={navigationKey}
-                  />
-                ) : (
-                  <AccountsView navigate={navigate} navigationKey={navigationKey} />
-                ))}
-                {activeTab === 'campaigns' && (
-                  <CampaignsView
-                    key={myCampaigns ? 'mine' : 'all'}
-                    mine={myCampaigns}
-                    reveal={route.tab === 'campaigns' && route.entity && route.recordId
-                      ? { entity: route.entity, id: route.recordId }
-                      : undefined}
-                    navigationKey={navigationKey}
-                  />
-                )}
-                {activeTab === 'rules' && route.tab === 'rules' && route.rulesPage === 'recently-deleted' && (
-                  <RecentlyDeletedRulesPage
-                    rulesPath={pathForTab(workspace.slug, 'rules')}
-                    onOpenRules={() => navigate(pathForTab(workspace.slug, 'rules'))}
-                  />
-                )}
-                {activeTab === 'rules' && !route.rulesPage && (
-                  <RulesView
-                    revealId={route.tab === 'rules' ? route.recordId : undefined}
-                    navigationKey={navigationKey}
-                  />
-                )}
-                {activeTab === 'team' && route.tab === 'team' && (
-                  <TeamHomeView page={route.teamPage ?? 'overview'} documentId={route.recordId} navigate={navigate} />
-                )}
-                {activeTab === 'members' && <WorkspaceMembersView />}
-                {activeTab === 'teams' && <WorkspaceTeamsView />}
-                {activeTab === 'search' && (
-                  <SearchView workspace={workspace} navigate={navigate} navigationKey={navigationKey} />
-                )}
+                <BuyerlyPageScopeContext value={pageScope}>
+                  <Suspense fallback={<BuyerlyPageSkeleton />}>
+                    <BuyerlyPageGate ready={shown.ready}>
+                      {page.tab === 'inbox' && (
+                        <InboxView
+                          openEventId={pageRoute.tab === 'inbox' ? pageRoute.recordId : undefined}
+                          inboxTab={pageRoute.tab === 'inbox' ? pageRoute.inboxTab ?? null : null}
+                          // The query keeps Inbox filters while notifications open and close.
+                          onNavigate={(tab, eventId) => navigate(
+                            `/${workspace.slug}/inbox${tab ? `/${tab}` : ''}${eventId === null ? '' : `/${eventId}`}`
+                              + window.location.search,
+                          )}
+                          onOpenRecord={(path) => navigate(path)}
+                        />
+                      )}
+                      {page.tab === 'accounts' && (pageRoute.tab === 'accounts' && pageRoute.recordId ? (
+                        <AccountPage
+                          accountId={pageRoute.recordId}
+                          navigate={navigate}
+                          navigationKey={page.navigationKey}
+                        />
+                      ) : (
+                        <AccountsView navigate={navigate} navigationKey={page.navigationKey} />
+                      ))}
+                      {page.tab === 'campaigns' && (
+                        <CampaignsView
+                          key={page.mine ? 'mine' : 'all'}
+                          mine={page.mine}
+                          reveal={pageRoute.tab === 'campaigns' && pageRoute.entity && pageRoute.recordId
+                            ? { entity: pageRoute.entity, id: pageRoute.recordId }
+                            : undefined}
+                          navigationKey={page.navigationKey}
+                        />
+                      )}
+                      {page.tab === 'rules' && pageRoute.tab === 'rules' && pageRoute.rulesPage === 'recently-deleted' && (
+                        <RecentlyDeletedRulesPage
+                          rulesPath={pathForTab(workspace.slug, 'rules')}
+                          onOpenRules={() => navigate(pathForTab(workspace.slug, 'rules'))}
+                        />
+                      )}
+                      {page.tab === 'rules' && !pageRoute.rulesPage && (
+                        <RulesView
+                          revealId={pageRoute.tab === 'rules' ? pageRoute.recordId : undefined}
+                          navigationKey={page.navigationKey}
+                        />
+                      )}
+                      {page.tab === 'team' && pageRoute.tab === 'team' && (
+                        <TeamHomeView page={pageRoute.teamPage ?? 'overview'} documentId={pageRoute.recordId} navigate={navigate} />
+                      )}
+                      {page.tab === 'members' && <WorkspaceMembersView />}
+                      {page.tab === 'teams' && <WorkspaceTeamsView />}
+                      {page.tab === 'search' && (
+                        <SearchView workspace={workspace} navigate={navigate} navigationKey={page.navigationKey} />
+                      )}
+                    </BuyerlyPageGate>
+                  </Suspense>
+                </BuyerlyPageScopeContext>
               </main>
             </>
           )}
