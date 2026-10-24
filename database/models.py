@@ -14,8 +14,10 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import event
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from database.db import Base
+from database.sync_log import install_statements
 
 
 def utcnow():
@@ -1482,3 +1484,35 @@ class AnalyticsEntityFact(Base):
             f"<AnalyticsEntityFact(ws={self.workspace_id}, acc='{self.account_id}', "
             f"level='{self.entity_level}', id='{self.entity_id}', date='{self.date}', spend={self.spend})>"
         )
+
+
+class SyncAction(Base):
+    """One change to a synced model, as Linear's sync actions (#504); written by triggers, see database/sync_log.py.
+
+    `id` is the order rows were written in; `sync_id` is the order they were
+    committed in, set at commit, and what clients catch up from.
+    """
+
+    __tablename__ = "sync_actions"
+    __table_args__ = (
+        Index("ix_sync_actions_sync_groups", "sync_groups", postgresql_using="gin"),
+    )
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    sync_id = Column(BigInteger, nullable=True, unique=True, doc="Set when the write commits; NULL until then")
+    model = Column(String(64), nullable=False, doc="Model name the client knows it by ('Team', 'Account', ...)")
+    model_id = Column(String(64), nullable=False)
+    action = Column(String(16), nullable=False, doc="'insert', 'update', 'archive' or 'delete'")
+    data = Column(JSONB, nullable=False, doc="The new row on insert, the changed fields on update or archive")
+    sync_groups = Column(ARRAY(Text), nullable=False, doc="Who receives it: workspace:<id>[:members], team:<id>, member:<id>")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+    def __repr__(self):
+        return f"<SyncAction(sync_id={self.sync_id}, {self.action} {self.model} {self.model_id})>"
+
+
+@event.listens_for(Base.metadata, "after_create")
+def _install_sync_log(target, connection, **kw):
+    """create_all (tests, a fresh database) gets the same triggers as migration 0051."""
+    for statement in install_statements():
+        connection.exec_driver_sql(statement)
