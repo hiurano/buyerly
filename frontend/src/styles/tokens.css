@@ -332,6 +332,13 @@
   --help-menu-highlight: lch(20.82% 1.3 272 / 1);
   --help-menu-secondary: lch(64.714% 1.425 272 / 1);
   --help-menu-timeline: lch(21.36% 1.93 272 / 1);
+  /* Linear's keyboard shortcuts panel, measured in dark on 2026-10-24. */
+  --shortcuts-panel-bg: lch(9.232% 0.85 272 / 1);
+  --shortcuts-panel-border: lch(13.553% 1.93 272 / 1);
+  --shortcuts-title: lch(100% 0 272 / 1);
+  --shortcuts-label: lch(63.304% 1.425 272 / 1);
+  --shortcuts-key-border: lch(16.793% 1.93 272 / 1);
+  --shortcuts-input-border: lch(30.833% 1.93 272 / 1);
   --details-pane-card-bg: var(--card-bg);
   --details-pane-card-border: var(--card-border);
   --details-pane-card-shadow: 0px 0.5px 1px 1px lch(0% 0 0 / 0.3);
@@ -591,6 +598,12 @@ html[data-theme='light'] {
   --help-menu-highlight: lch(95% 0 282 / 1);
   --help-menu-secondary: lch(40% 1 282 / 1);
   --help-menu-timeline: lch(90.55% 0 282 / 1);
+  --shortcuts-panel-bg: lch(100% 0 282 / 1);
+  --shortcuts-panel-border: lch(97.3% 0 282 / 1);
+  --shortcuts-title: lch(10% 0 282 / 1);
+  --shortcuts-label: lch(40% 1 282 / 1);
+  --shortcuts-key-border: lch(91.9% 0 282 / 1);
+  --shortcuts-input-border: lch(86.5% 0 282 / 1);
   --details-pane-card-shadow: 0 0 0 1px lch(0% 0 0 / 0.04), 0 1px 2px lch(0% 0 0 / 0.04);
   --details-tab-bg: var(--sidebar-tab-inactive-bg);
   --details-tab-hover-bg: var(--sidebar-tab-hover-bg);

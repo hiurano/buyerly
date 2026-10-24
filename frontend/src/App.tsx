@@ -7,6 +7,7 @@ import { AccountsView } from '@/components/accounts/AccountsView';
 import { AccountPage } from '@/components/accounts/AccountPage';
 import { RecentlyDeletedRulesPage } from '@/components/rules/RecentlyDeletedRulesPage';
 import { CommandMenu } from '@/components/command/CommandMenu';
+import { BuyerlyShortcutsPanel } from '@/components/help/BuyerlyShortcutsPanel';
 import { OpenPalette } from '@/components/command/OpenPalette';
 import { SearchView } from '@/components/search/SearchView';
 import { WorkspaceMembersView } from '@/components/workspace/WorkspaceMembersView';
@@ -394,6 +395,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
         {/* Over Settings too, as in Linear: Security & access adds "Revoke all other sessions". */}
         <CommandMenu workspace={workspace} navigate={navigate} />
         <OpenPalette workspace={workspace} navigate={navigate} />
+        <BuyerlyShortcutsPanel />
         <WorkspaceSwitcher />
         <ToastRegion />
         <ApprovalDialog />

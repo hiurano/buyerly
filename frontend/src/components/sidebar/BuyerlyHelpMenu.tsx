@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { GO_TO_KEYS } from '@/lib/shortcuts';
 import { Tooltip } from '@/ui/Tooltip';
-import { BuyerlyChatIcon, BuyerlyGearIcon, BuyerlyQuestionMarkIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyChatIcon, BuyerlyGearIcon, BuyerlyKeyboardIcon, BuyerlyQuestionMarkIcon } from '@/icons/BuyerlyIcons';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import changelogLatest from '@/lib/changelogLatest.json';
 
@@ -30,22 +30,45 @@ function HelpItem({ icon, label, children }: { icon: React.ReactNode; label: str
   );
 }
 
+const IS_MAC = typeof navigator !== 'undefined' && navigator.platform.includes('Mac');
+
+/** Something else holds the keyboard: a dialog, a menu, a palette. */
+const OPEN_LAYER_SELECTOR = '[role="dialog"], [role="alertdialog"], [role="menu"]:not([data-state="closed"]), [cmdk-root]';
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement;
+}
+
 /**
  * The Help button at the sidebar's foot and its menu, measured in Linear on
- * 2026-10-24: a round 24px button, a 270px menu 4px above it. Of Linear's
- * items Buyerly has Contact us, Settings and What's new (the two newest
- * releases of the public changelog, then Full changelog); Docs, Send flare,
- * Keyboard shortcuts, Linear status, Download apps and Slack community have
- * no counterpart yet.
+ * 2026-10-24: a round 24px button, a 270px menu 4px above it; ? opens it.
+ * Of Linear's items Buyerly has Contact us, Keyboard shortcuts, Settings and
+ * What's new (the two newest releases of the public changelog, then Full
+ * changelog); Docs, Send flare, Linear status, Download apps and Slack
+ * community have no counterpart yet.
  */
 export function BuyerlyHelpMenu() {
   const setActiveTab = useAppStore((state) => state.setActiveTab);
   const setSettingsSection = useAppStore((state) => state.setSettingsSection);
+  const setShortcutsOpen = useAppStore((state) => state.setShortcutsOpen);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== '?' || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (isTypingTarget(event.target) || document.querySelector(OPEN_LAYER_SELECTOR)) return;
+      event.preventDefault();
+      setOpen(true);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
   const openLink = (href: string) => window.open(href, '_blank', 'noopener,noreferrer');
   const releases = changelogLatest.length;
 
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
       <Tooltip content="Help">
         <DropdownMenuTrigger asChild>
           <button type="button" aria-label="Open Help menu" className="buyerly-help-button">
@@ -56,6 +79,14 @@ export function BuyerlyHelpMenu() {
       <DropdownMenuContent side="top" align="start" sideOffset={4} alignOffset={2} className="buyerly-help-menu" style={{ width: 270 }}>
         <DropdownMenuItem onSelect={() => { window.location.href = 'mailto:contact@buyerly.app'; }}>
           <HelpItem icon={<BuyerlyChatIcon size={16} />} label="Contact us" />
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => setShortcutsOpen(true)}>
+          <HelpItem icon={<BuyerlyKeyboardIcon size={16} />} label="Keyboard shortcuts">
+            <span className="buyerly-help-shortcut" aria-label={IS_MAC ? 'Command /' : 'Control /'}>
+              <kbd>{IS_MAC ? '⌘' : 'Ctrl'}</kbd>
+              <kbd>/</kbd>
+            </span>
+          </HelpItem>
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => {
