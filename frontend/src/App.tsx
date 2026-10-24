@@ -8,6 +8,7 @@ import { AccountPage } from '@/components/accounts/AccountPage';
 import { RecentlyDeletedRulesPage } from '@/components/rules/RecentlyDeletedRulesPage';
 import { CommandMenu } from '@/components/command/CommandMenu';
 import { BuyerlyShortcutsPanel } from '@/components/help/BuyerlyShortcutsPanel';
+import { useFavorites } from '@/lib/favorites';
 import { OpenPalette } from '@/components/command/OpenPalette';
 import { SearchView } from '@/components/search/SearchView';
 import { WorkspaceMembersView } from '@/components/workspace/WorkspaceMembersView';
@@ -311,6 +312,11 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [setActiveTab, setSettingsSection, toggleDetailsPane, setSidebarPeekOpen, toggleSidebarCollapsed, toggleSidebarOpen, workspace.slug]);
+
+  // The member's favorites of this workspace, for the sidebar and every star.
+  useEffect(() => {
+    void useFavorites.getState().load(workspace.slug);
+  }, [workspace.slug]);
 
   // index.html marks signed-out pages for their plain backdrop, as Linear's html.logged-out; signing in
   // without a reload must lift it, or the window behind the app stays that colour.

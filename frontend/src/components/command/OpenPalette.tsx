@@ -15,7 +15,9 @@ import {
 } from '@/lib/search';
 import { filterSettingsGroups, settingsGroupsFor, type SettingsPage } from '@/lib/settingsPages';
 import { openPaletteFor } from '@/lib/shortcuts';
-import { BuyerlyBoltIcon, BuyerlyIssuesIcon, BuyerlyProjectIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyBoltIcon, BuyerlyIssuesIcon, BuyerlyProjectIcon, BuyerlyStarOutlineIcon } from '@/icons/BuyerlyIcons';
+import { useFavorites, type Favorite } from '@/lib/favorites';
+import { favoriteIcon } from '@/components/sidebar/SidebarFavorites';
 import { COMMAND_MENU_CLASSES, CommandMenuFooterKeys } from '@/ui/SelectionCommandMenu';
 import { SearchResultFacts, StatusMark, formatAge, statusLabel } from '@/components/search/SearchView';
 import { SettingsPageIcon } from '@/components/preferences/SettingsPageIcon';
@@ -42,11 +44,13 @@ export const OPEN_PALETTE_LABELS: Record<OpenPaletteKind, string> = {
   rule: 'Open rule…',
   account: 'Open ad account…',
   settings: 'Open settings…',
+  favorite: 'Open favorite…',
 };
 
 /** The mark in the field and on each command: the sidebar's page icons. */
 export const OpenPaletteIcon: React.FC<{ kind: OpenPaletteKind; size?: number }> = ({ kind, size = 16 }) => {
   if (kind === 'settings') return <Settings size={size} strokeWidth={1.75} />;
+  if (kind === 'favorite') return <BuyerlyStarOutlineIcon size={size} />;
   if (kind === 'account') return <BuyerlyProjectIcon size={size} />;
   if (kind === 'rule') return <BuyerlyBoltIcon size={size} />;
   return <BuyerlyIssuesIcon size={size} />;
@@ -85,7 +89,8 @@ interface OpenPaletteProps {
  * lists the records of that kind opened last; typing searches at once under
  * "Quick results for …". Nothing to show leaves the field alone. ↵ opens the
  * record on its row, Alt+↵ opens it with its actions menu ("More actions"),
- * → shows it on the right ("Quick look") and ← hides it; Esc closes.
+ * → shows it on the right ("Quick look") and ← hides it; Esc closes. O F
+ * lists the favorites under "Navigation", each with the number that opens it.
  */
 export const OpenPalette: React.FC<OpenPaletteProps> = ({ workspace, navigate }) => {
   const kind = useAppStore((state) => state.openPalette);
@@ -186,7 +191,7 @@ const PaletteBody: React.FC<PaletteBodyProps> = ({ kind, workspace, navigate, ch
   const [selected, setSelected] = useState('');
   const [quickLook, setQuickLook] = useState(false);
   const text = query.trim();
-  const recordKind = kind === 'settings' ? null : kind;
+  const recordKind = kind === 'settings' || kind === 'favorite' ? null : kind;
   const quick = useKindResults(recordKind, text);
   const [recent] = useState(() => (recordKind ? readOpenedRecords(scope, recordKind) : []));
   const slug = workspace.slug;
@@ -206,10 +211,18 @@ const PaletteBody: React.FC<PaletteBodyProps> = ({ kind, workspace, navigate, ch
 
   const records: SearchResult[] = recordKind ? (text ? (quick ?? []).slice(0, QUICK_RESULTS_LIMIT) : recent) : [];
   const settingsGroups = kind === 'settings' ? filterSettingsGroups(text, settingsGroupsFor(workspace)) : [];
+  const favorites = useFavorites((state) => state.favorites);
+  // Each favorite keeps its place in the sidebar, the number that opens it.
+  const shownFavorites = kind === 'favorite'
+    ? favorites.map((favorite, index) => ({ favorite, number: index + 1 }))
+      .filter(({ favorite }) => favorite.title.toLowerCase().includes(text.toLowerCase()))
+    : [];
+  const openFavorite = (favorite: Favorite) => choose(() => go(`/${slug}/${favorite.path}`));
   // cmdk keeps a choice whose row is gone when results arrive; the first row takes over, as in Linear.
   const shownValues = [
     ...records.map(recordValue),
     ...settingsGroups.flatMap((group) => group.pages.map((page) => `settings:${page.section}`)),
+    ...shownFavorites.map(({ favorite }) => favoriteValue(favorite)),
   ];
   const current = shownValues.includes(selected) ? selected : shownValues[0] ?? '';
   const currentRecord = records.find((record) => recordValue(record) === current) ?? null;
@@ -228,7 +241,14 @@ const PaletteBody: React.FC<PaletteBodyProps> = ({ kind, workspace, navigate, ch
       onKeyDown={(event) => {
         const input = event.target instanceof HTMLInputElement ? event.target : null;
         const atEnd = !input || (input.selectionStart === input.value.length && input.selectionEnd === input.value.length);
-        if (event.key === 'Enter' && event.altKey) {
+        const numbered = kind === 'favorite' && !text && /^[1-9]$/.test(event.key) && !event.ctrlKey && !event.metaKey && !event.altKey
+          ? favorites[Number(event.key) - 1]
+          : undefined;
+        if (numbered) {
+          // Linear's O F: with nothing typed, a favorite's number opens it.
+          event.preventDefault();
+          openFavorite(numbered);
+        } else if (event.key === 'Enter' && event.altKey) {
           event.preventDefault();
           if (currentRecord && hasActions) openRecord(currentRecord, true);
         } else if (event.key === 'ArrowRight' && !looked && currentRecord && atEnd) {
@@ -299,6 +319,23 @@ const PaletteBody: React.FC<PaletteBodyProps> = ({ kind, workspace, navigate, ch
                 ))}
               </Command.Group>
             ))}
+            {shownFavorites.length > 0 && (
+              <Command.Group heading="Navigation" className={COMMAND_MENU_CLASSES.group}>
+                {shownFavorites.map(({ favorite, number }) => (
+                  <Command.Item
+                    key={favorite.path}
+                    value={favoriteValue(favorite)}
+                    aria-label={favorite.title}
+                    onSelect={() => openFavorite(favorite)}
+                    className={COMMAND_MENU_CLASSES.item}
+                  >
+                    <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true">{favoriteIcon(favorite)}</span>
+                    <span className="min-w-0 flex-1 truncate">{favorite.title}</span>
+                    {number <= 9 && <kbd className="buyerly-favorite-number" aria-hidden="true">{number}</kbd>}
+                  </Command.Item>
+                ))}
+              </Command.Group>
+            )}
           </Command.List>
           {looked && <QuickLook record={looked} />}
         </div>
@@ -360,6 +397,7 @@ const PaletteBody: React.FC<PaletteBodyProps> = ({ kind, workspace, navigate, ch
 };
 
 const recordValue = (record: SearchResult) => `record:${record.kind}:${record.id}`;
+const favoriteValue = (favorite: Favorite) => `favorite:${favorite.path}`;
 
 /** A rule's identifier, as the Rules list writes it (RUL-07); Meta's records have none. */
 function recordIdentifier(record: SearchResult): string {

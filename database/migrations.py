@@ -106,6 +106,8 @@ POST_BASELINE_TABLES: set[str] = {
     "telegram_link_tokens",
     # Added by the view settings migration (0037).
     "view_settings",
+    # Added by the favorites migration (0049).
+    "favorites",
     # Added by the workspace view defaults migration (0048).
     "workspace_view_defaults",
 }

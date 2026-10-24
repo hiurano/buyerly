@@ -126,6 +126,7 @@ try {
       if (verb === 'GET' && path === '/api/inbox/unread-count') return route.fulfill({ json: { unread_count: 0 } });
       if (verb === 'GET' && path === '/api/inbox/display') return route.fulfill({ json: {} });
       if (verb === 'GET' && path === '/api/view-settings') return route.fulfill({ json: { views: {} } });
+      if (path === '/api/favorites') return route.fulfill({ json: { favorites: [] } });
       if (verb === 'GET' && path === '/api/audit-events') {
         return route.fulfill({ json: { items: [], page: 1, page_size: 25, total: 0, total_pages: 0, status_counts: {} } });
       }

@@ -4850,6 +4850,22 @@ body.buyerly-split-resizing, body.buyerly-split-resizing * { cursor: col-resize 
 .buyerly-row-menu .buyerly-row-menu-separator { height: 12px; padding: 6px 0; }
 .buyerly-row-menu .buyerly-row-menu-separator > div { height: 0.5px; border-bottom: 0.5px solid var(--row-menu-separator); }
 
+/* Linear's favorites (2026-10-24): the header star fills yellow once starred; a favorite's row in
+   the sidebar shows a 10px x to unstar under the cursor, with a 20px target around it. */
+.buyerly-favorite-star { color: var(--favorite-star); }
+.buyerly-favorite-remove {
+  display: flex; flex-shrink: 0; align-items: center; justify-content: center; margin: -5px; padding: 5px;
+  color: var(--sidebar-item-fg); opacity: 0;
+}
+.buyerly-sidebar-nav-item:hover .buyerly-favorite-remove, .buyerly-sidebar-nav-item:focus-visible .buyerly-favorite-remove { opacity: 1; }
+.buyerly-favorite-remove:hover { color: var(--text-primary); }
+/* O F's numbers (Linear, 2026-10-24): 20px key caps, 11px, a 0.5px rule 12px from the row's end. */
+.buyerly-favorite-number {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 21px; padding: 4px;
+  border: 0.5px solid var(--favorite-number-border); border-radius: 3px;
+  font-family: inherit; font-size: 11px; font-weight: 450; line-height: 12.1px; color: var(--text-tertiary);
+}
+
 /* Linear's keyboard shortcuts panel (2026-10-24): a 360px sheet 12px in from the right, top and
    bottom over the page dimmed as under a modal; it slides 20px in from the right as it fades in. */
 .buyerly-shortcuts-backdrop { position: fixed; inset: 0; z-index: 698; background-color: var(--modal-overlay-bg); animation: buyerlyShortcutsFade 150ms ease; }

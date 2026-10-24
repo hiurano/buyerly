@@ -39,6 +39,7 @@ export const OPEN_KEYS: Record<OpenPaletteKind, string> = {
   rule: 'R',
   account: 'K',
   settings: 'S',
+  favorite: 'F',
 };
 
 /** The hint as Tooltip and the menus spell it: "O C". */

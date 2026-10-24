@@ -13,11 +13,12 @@ import {
   BuyerlyProjectIcon,
 } from '@/icons/BuyerlyIcons';
 import { goToShortcut } from '@/lib/shortcuts';
-import { openAppPath, pathForTab } from '@/lib/routing';
+import { openAppPath, parseRoute, pathForTab } from '@/lib/routing';
 import { useTeams } from '@/lib/teams';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import type { AppTab } from '@/store/useAppStore';
 import { SidebarLink, SidebarSection, SidebarTeam } from './SidebarSections';
+import { SidebarFavorites } from './SidebarFavorites';
 import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
 import { BuyerlyHelpMenu } from '@/components/sidebar/BuyerlyHelpMenu';
 import { SidebarBackdrop, useSidebarDrawer, useSidebarPeek } from './SidebarDrawer';
@@ -49,6 +50,17 @@ export const Sidebar: React.FC = () => {
   const { workspace } = useWorkspaceSession();
   const { teams } = useTeams(workspace.id, 'active');
   const yourTeams = (teams ?? []).filter((team) => team.is_member);
+  // Linear lights one row: an ad account's own page leaves Ad accounts dark, as a project's leaves
+  // Projects, and a favorite lights only when no row of the sidebar's own shows the page.
+  const route = parseRoute();
+  const onAccountPage = route.kind === 'workspace' && route.tab === 'accounts' && Boolean(route.recordId);
+  const accountsActive = activeTab === 'accounts' && !activeTeamKey && !onAccountPage;
+  const sidebarShowsPage = activeTab === 'inbox'
+    || (activeTab === 'campaigns' && myCampaigns)
+    || activeTab === 'members'
+    || accountsActive
+    || activeTab === 'teams'
+    || (yourTeams.some((team) => team.key === activeTeamKey) && TEAM_PAGES.some((page) => page.tab === activeTab));
 
   /** A page of the workspace itself; from an account's page, Ad accounts goes back to the list. */
   const openWorkspacePage = (tab: AppTab) => {
@@ -208,7 +220,7 @@ export const Sidebar: React.FC = () => {
               label="Ad accounts"
               tooltip="Go to ad accounts"
               shortcut={goToShortcut('accounts')}
-              active={activeTab === 'accounts' && !activeTeamKey}
+              active={accountsActive}
               onClick={() => openWorkspacePage('accounts')}
             />
             <SidebarLink
@@ -219,6 +231,9 @@ export const Sidebar: React.FC = () => {
               onClick={() => openWorkspacePage('teams')}
             />
           </SidebarSection>
+
+          {/* Linear's Favorites, between Workspace and Your teams, once something is starred. */}
+          <SidebarFavorites workspaceSlug={workspace.slug} lit={!sidebarShowsPage} />
 
           <SidebarSection
             id="teams"

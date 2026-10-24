@@ -27,9 +27,12 @@ import { AccountStatusLabel, ConnectionProblemIcon, accountMoney } from './Accou
 import { copyAccountId, useWorkspaceAccounts, type AccountMember } from './accountsData';
 import { AccountLeadPicker } from './AccountLeadPicker';
 import { useAccountDialogs } from './AccountsView';
+import { favoritePath } from '@/lib/favorites';
+import { BuyerlyFavoriteButton } from '@/ui/BuyerlyFavoriteButton';
 import {
   accountAdsManagerPath,
   accountName,
+  accountPagePath,
   connectionProblem,
   formatAddedDate,
   teamsOf,
@@ -135,7 +138,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ accountId, navigate, n
             {account ? accountName(account) : accountId}
           </h2>
         </nav>
-        {account && <span className="ml-1 flex shrink-0 items-center"><AccountRowMenu account={account} actions={actions} inHeader /></span>}
+        {account && (
+          <span className="ml-2 flex shrink-0 items-center gap-1">
+            <BuyerlyFavoriteButton
+              favorite={{ kind: 'account', path: favoritePath(accountPagePath(workspace.slug, account.account_id), workspace.slug), title: accountName(account) }}
+            />
+            <AccountRowMenu account={account} actions={actions} inHeader />
+          </span>
+        )}
       </div>
       {account && account.is_active !== false && (
         <Button size="compact" className="shrink-0" aria-label="Open campaigns" onClick={() => actions.openInAdsManager(account)}>

@@ -48,7 +48,8 @@ import { openCommandMenu } from '@/components/command/CommandMenu';
 import { takeRecordActions } from '@/components/command/OpenPalette';
 import { useRowSelection, type SelectionAction } from '@/ui/useRowSelection';
 import { useRevealRow } from '@/ui/useRevealRow';
-import { openRecentlyDeletedRules } from '@/lib/routing';
+import { openRecentlyDeletedRules, pathForTab } from '@/lib/routing';
+import { favoritePath } from '@/lib/favorites';
 import { teamAccountIds, useActiveTeam } from '@/lib/teams';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { ViewTitle } from '@/components/teams/ViewTitle';
@@ -394,7 +395,15 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
           {/* Left: Clean Title */}
           <div className="flex items-center">
             <SidebarCollapsedNavigation />
-            <ViewTitle title="Rules" team={activeTeam.team} />
+            <ViewTitle
+              title="Rules"
+              team={activeTeam.team}
+              favorite={{
+                kind: 'page',
+                path: favoritePath(pathForTab(workspace.slug, 'rules', 'campaigns', 'preferences', '', undefined, activeTeam.key), workspace.slug),
+                title: activeTeam.team ? `${activeTeam.team.name} › Rules` : 'Rules',
+              }}
+            />
           </div>
 
           {/* Always shown, at every width: the "+" on group headers needs a pointer over them.
