@@ -54,7 +54,7 @@ export const WorkspaceSwitcher: React.FC = () => {
       <Dialog.Portal>
         <Dialog.Content
           aria-describedby={undefined}
-          className="fixed inset-x-0 top-[13vh] z-[700] mx-auto w-[720px] max-w-[calc(100vw-32px)] overflow-hidden rounded-[12px] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] shadow-[var(--dropdown-shadow)] outline-none animate-scale-in"
+          className="fixed inset-x-0 top-[13vh] z-[700] mx-auto w-[720px] max-w-[calc(100vw-32px)] overflow-hidden rounded-[12px] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] [box-shadow:var(--dropdown-shadow)] outline-none animate-scale-in"
         >
           <Dialog.Title className="sr-only">Switch workspace</Dialog.Title>
           <Command label="Switch workspace" loop>

@@ -194,7 +194,7 @@ export const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onC
               event.preventDefault();
               fieldRef.current?.focus();
             }}
-            className="ui-dialog pointer-events-auto w-full max-w-[456px] rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] p-4 text-left outline-none animate-scale-in shadow-[var(--dialog-elevation-shadow)]"
+            className="ui-dialog pointer-events-auto w-full max-w-[456px] rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] p-4 text-left outline-none animate-scale-in [box-shadow:var(--dialog-elevation-shadow)]"
           >
             <div className="flex items-center gap-2">
               <WorkspaceAvatar workspace={workspace} size="tiny" />

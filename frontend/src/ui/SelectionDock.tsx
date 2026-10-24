@@ -21,7 +21,7 @@ export const SelectionDock: React.FC<SelectionDockProps> = ({ count, onOpenActio
       <div
         role="toolbar"
         aria-label={`${count} selected`}
-        className="selection-dock-enter pointer-events-auto flex h-11 items-center gap-2 rounded-full border border-[var(--dock-border)] bg-[var(--dock-bg)] p-2 shadow-[var(--dropdown-shadow)]"
+        className="selection-dock-enter pointer-events-auto flex h-11 items-center gap-2 rounded-full border border-[var(--dock-border)] bg-[var(--dock-bg)] p-2 [box-shadow:var(--dropdown-shadow)]"
       >
         <span className="pl-3 pr-0.5 text-[12px] leading-[18px] text-[var(--text-primary)] tabular-nums" aria-live="polite">
           {count}&nbsp;selected

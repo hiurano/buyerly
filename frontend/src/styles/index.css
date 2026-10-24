@@ -4846,6 +4846,33 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
 }
 body.buyerly-split-resizing, body.buyerly-split-resizing * { cursor: col-resize !important; user-select: none !important; }
 .buyerly-split-resizer-overlay { position: fixed; inset: 0; z-index: 2147483000; cursor: col-resize; }
+
+/* Linear's Help button at the sidebar's foot (2026-10-24): 24px round, a 16px icon, filled while
+   hovered or open; colours change at once on hover and fade back in 0.15s. */
+.buyerly-help-button {
+  display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; flex-shrink: 0;
+  border: 0.5px solid transparent; border-radius: 50%; background-color: transparent; color: var(--help-button-fg);
+  cursor: default; outline: none; transition: border 0.15s, background-color 0.15s, color 0.15s;
+}
+.buyerly-help-button[data-state='open'] { background-color: var(--help-button-hover-bg); color: var(--help-button-hover-fg); }
+@media (any-hover: hover) and (any-pointer: fine) {
+  .buyerly-help-button:hover { background-color: var(--help-button-hover-bg); color: var(--help-button-hover-fg); transition-duration: 0s; }
+}
+.buyerly-help-button:focus-visible { outline: 1px solid var(--focus-ring-color); outline-offset: -1px; }
+
+/* Its menu: Linear's 0.5px edge and the help list's own text, pill and grey. */
+.buyerly-help-menu {
+  --card-bg: var(--help-menu-bg); --color-border-secondary: var(--help-menu-border); --menu-item-highlight: var(--help-menu-highlight);
+  --text-secondary: var(--help-menu-fg); --text-primary: var(--help-menu-fg-highlighted);
+  border-width: 0.5px;
+}
+.buyerly-help-icon { display: flex; flex-shrink: 0; width: 16px; height: 16px; color: var(--help-menu-secondary); }
+.buyerly-help-timeline { width: 16px; height: 32px; margin: -8px 0; overflow: visible; }
+.buyerly-help-timeline line { stroke: var(--help-menu-timeline); }
+.buyerly-help-timeline circle { fill: var(--help-menu-secondary); }
+.buyerly-help-group { padding: 8px 14px; font-size: 12px; line-height: 14px; font-weight: 500; color: var(--help-menu-secondary); }
+.buyerly-help-shortcut { display: flex; align-items: center; gap: 3px; font-size: 11px; line-height: 12.1px; font-weight: 450; color: var(--help-menu-secondary); }
+.buyerly-help-shortcut kbd { font-family: inherit; font-weight: 500; }
 /* Linear's Inbox list beside the notification: its own width, a 0.5px edge in the canvas border's colour. */
 @media (min-width: 768px) {
   .inbox-list { width: var(--inbox-list-width); max-width: var(--inbox-list-width); flex-shrink: 0; border-right: var(--canvas-border); }

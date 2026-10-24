@@ -95,7 +95,7 @@ export const RuleStatesDialog: React.FC<RuleStatesDialogProps> = ({ rule, open, 
         <div className="pointer-events-none fixed inset-0 z-[501] flex items-start justify-center p-4 pt-[12vh]">
           <Dialog.Content
             data-rule-states-dialog="true"
-            className="ui-dialog pointer-events-auto flex max-h-[76vh] w-full max-w-[560px] flex-col rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] text-left outline-none animate-scale-in shadow-[var(--dialog-elevation-shadow)]"
+            className="ui-dialog pointer-events-auto flex max-h-[76vh] w-full max-w-[560px] flex-col rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] text-left outline-none animate-scale-in [box-shadow:var(--dialog-elevation-shadow)]"
           >
             <div className="border-b border-[var(--color-border-secondary)] px-5 pb-3 pt-4">
               <Dialog.Title className="m-0 text-[15px] font-semibold text-[var(--text-primary)]">

@@ -38,7 +38,7 @@ export const DropdownMenuContent: React.FC<DropdownMenuPrimitive.DropdownMenuCon
         padding: '6px 0px',
         ...style,
       }}
-      className={`border rounded-[12px] shadow-[var(--dropdown-shadow)] z-[600] overflow-hidden select-none buyerly-menu origin-[var(--radix-dropdown-menu-content-transform-origin)] outline-none ${className}`}
+      className={`border rounded-[12px] [box-shadow:var(--dropdown-shadow)] z-[600] overflow-hidden select-none buyerly-menu origin-[var(--radix-dropdown-menu-content-transform-origin)] outline-none ${className}`}
       {...props}
     />
   </DropdownMenuPrimitive.Portal>
@@ -92,7 +92,7 @@ export const DropdownMenuSubContent: React.FC<DropdownMenuPrimitive.DropdownMenu
         padding: '6px 0px',
         ...style,
       }}
-      className={`z-[610] overflow-hidden rounded-[12px] border shadow-[var(--dropdown-shadow)] outline-none ${className}`}
+      className={`z-[610] overflow-hidden rounded-[12px] border [box-shadow:var(--dropdown-shadow)] outline-none ${className}`}
       {...props}
     />
   </DropdownMenuPrimitive.Portal>

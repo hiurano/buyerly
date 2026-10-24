@@ -92,7 +92,7 @@ export const AttachRulePreviewDialog: React.FC<AttachRulePreviewDialogProps> = (
               event.preventDefault();
               confirmRef.current?.focus();
             }}
-            className="ui-dialog pointer-events-auto flex max-h-[76vh] w-full max-w-[520px] flex-col rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] text-left outline-none animate-scale-in shadow-[var(--dialog-elevation-shadow)]"
+            className="ui-dialog pointer-events-auto flex max-h-[76vh] w-full max-w-[520px] flex-col rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] text-left outline-none animate-scale-in [box-shadow:var(--dialog-elevation-shadow)]"
           >
             <div className="px-5 pb-3 pt-4">
               <Dialog.Title className="m-0 text-[15px] font-semibold text-[var(--text-primary)]">

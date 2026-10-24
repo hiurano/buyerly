@@ -7,7 +7,9 @@ linear.app/changelog does. The script writes:
 
 - frontend/public/changelog.html — every release, newest first;
 - frontend/public/changelog/<slug>.html — one page per release;
-- the four Changelog cards on frontend/public/landing.html.
+- the four Changelog cards on frontend/public/landing.html;
+- frontend/src/lib/changelogLatest.json — the two newest releases, for the
+  Help menu's "What's new" in the app, as Linear's.
 
 The header, footer and <head> come from landing.html, so every public page
 shares them. `--check` fails when a built file is out of date (CI runs it
@@ -21,6 +23,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import html
+import json
 import re
 import sys
 from dataclasses import dataclass, field
@@ -31,6 +34,8 @@ ENTRIES_DIR = ROOT / "changelog"
 PUBLIC_DIR = ROOT / "frontend" / "public"
 LANDING = PUBLIC_DIR / "landing.html"
 LANDING_CARDS = 4
+APP_LATEST = ROOT / "frontend" / "src" / "lib" / "changelogLatest.json"
+APP_LATEST_COUNT = 2
 COLLAPSIBLE = ("Improvements", "Fixes")
 CARDS_START = "<!-- changelog:cards -->"
 CARDS_END = "<!-- /changelog:cards -->"
@@ -228,6 +233,8 @@ def outputs() -> dict[Path, str]:
     for entry in entries:
         files[PUBLIC_DIR / "changelog" / f"{entry.slug}.html"] = build_release(entry, head, header, footer)
     files[LANDING] = landing_cards(entries, LANDING.read_text(encoding="utf-8"))
+    latest = [{"title": entry.title, "url": entry.url} for entry in entries[:APP_LATEST_COUNT]]
+    files[APP_LATEST] = json.dumps(latest, ensure_ascii=False, indent=2) + "\n"
     return files
 
 
