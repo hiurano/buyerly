@@ -80,7 +80,7 @@ jobs:
           - group: sidebar, command menu, rules
             scripts: mobile-sidebar command-menu rule-states rules-phone rule-labels rule-window rules-view favorites account-bell
           - group: workspace state, new version, WebMCP
-            scripts: scoped-state new-version webmcp view-options accounts
+            scripts: scoped-state new-version webmcp view-options accounts navigation
           - group: members, search, settings
             scripts: members search-page workspace-switcher security profile
           - group: auth, details pane, Ads Manager rules
