@@ -2,6 +2,9 @@ import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
+import { createRequire } from 'node:module';
+import { transformAsync } from '@babel/core';
 
 // Public HTML works without React, a session or client-side JavaScript.
 // Keep source documents in public/ and fingerprint their shared CSS at build time.
@@ -76,30 +79,62 @@ function publicWebsite(): Plugin {
 
 // Every component and hook goes through the React Compiler, as Linear's does
 // (#492). A function it would have to leave as written fails the build, with
-// the line and the reason.
+// the line and the reason. Babel is slow: a cold dev page took ~4x longer, and
+// each browser check starts its own server, so the output is cached on disk by
+// file contents and compiler version and only a changed file is compiled again.
 type Loc = { start?: { line: number } };
 type CompilerDetail = { reason?: string; loc?: Loc | null; details?: { loc?: Loc | null }[]; options?: CompilerDetail };
-const compilerSkips: string[] = [];
-const reactCompiler = ['babel-plugin-react-compiler', {
-  logger: {
-    logEvent(filename: string | null, event: { kind: string; detail?: unknown; fnLoc?: Loc | null }) {
-      if (event.kind !== 'CompileError' && event.kind !== 'PipelineError') return;
-      const detail = (event.detail ?? {}) as CompilerDetail;
-      const options = detail.options ?? detail;
-      const loc = options.loc ?? options.details?.find((item) => item.loc)?.loc ?? event.fnLoc;
-      const where = `${path.relative(__dirname, filename ?? '?')}:${loc?.start?.line ?? '?'}`;
-      compilerSkips.push(`${where} ${options.reason ?? String(event.detail)}`);
-    },
-  },
-}];
+interface Compiled { code: string; map: unknown; skips: string[] }
 
-function reactCompilerReport(): Plugin {
+function reactCompiler(): Plugin {
+  const require = createRequire(import.meta.url);
+  const version = (require('babel-plugin-react-compiler/package.json') as { version: string }).version;
+  const cacheDir = path.resolve(__dirname, 'node_modules/.cache/buyerly-react-compiler');
+  const skips = new Map<string, string[]>();
+  const compile = async (code: string, id: string): Promise<Compiled> => {
+    const found: string[] = [];
+    const result = await transformAsync(code, {
+      filename: id,
+      babelrc: false,
+      configFile: false,
+      sourceMaps: true,
+      parserOpts: { plugins: ['jsx', 'typescript'] },
+      plugins: [['babel-plugin-react-compiler', {
+        logger: {
+          logEvent(_filename: string | null, event: { kind: string; detail?: unknown; fnLoc?: Loc | null }) {
+            if (event.kind !== 'CompileError' && event.kind !== 'PipelineError') return;
+            const detail = (event.detail ?? {}) as CompilerDetail;
+            const options = detail.options ?? detail;
+            const loc = options.loc ?? options.details?.find((item) => item.loc)?.loc ?? event.fnLoc;
+            found.push(`${path.relative(__dirname, id)}:${loc?.start?.line ?? '?'} ${options.reason ?? String(event.detail)}`);
+          },
+        },
+      }]],
+    });
+    return { code: result?.code ?? code, map: result?.map ?? null, skips: found };
+  };
   return {
-    name: 'buyerly-react-compiler-report',
-    apply: 'build',
+    name: 'buyerly-react-compiler',
+    enforce: 'pre',
+    async transform(code, id) {
+      if (!/\.[jt]sx?$/.test(id) || !id.startsWith(path.resolve(__dirname, 'src') + path.sep)) return null;
+      const key = crypto.createHash('sha256').update(`${version}\0${id}\0${code}`).digest('hex');
+      const file = path.join(cacheDir, `${key}.json`);
+      let compiled: Compiled;
+      try {
+        compiled = JSON.parse(fs.readFileSync(file, 'utf8')) as Compiled;
+      } catch {
+        compiled = await compile(code, id);
+        fs.mkdirSync(cacheDir, { recursive: true });
+        fs.writeFileSync(file, JSON.stringify(compiled));
+      }
+      skips.set(id, compiled.skips);
+      return { code: compiled.code, map: compiled.map as never };
+    },
     buildEnd() {
-      if (compilerSkips.length === 0) return;
-      this.error(`React Compiler left ${compilerSkips.length} function(s) as written:\n${compilerSkips.join('\n')}`);
+      const all = [...skips.values()].flat();
+      if (this.meta.watchMode || all.length === 0) return;
+      this.error(`React Compiler left ${all.length} function(s) as written:\n${all.join('\n')}`);
     },
   };
 }
@@ -109,7 +144,7 @@ const apiOrigin = process.env.VITE_API_ORIGIN || 'http://127.0.0.1:8080';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [publicWebsite(), react({ babel: { plugins: [reactCompiler] } }), reactCompilerReport()],
+  plugins: [publicWebsite(), reactCompiler(), react()],
   // The release this bundle belongs to; an open tab compares it with /health/live (#303).
   define: {
     __APP_VERSION__: JSON.stringify(process.env.APP_VERSION || 'local'),
