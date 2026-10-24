@@ -101,7 +101,9 @@ function DetailsPaneResizeHandle({ width, windowWidth, onResize, onResizeEnd, on
     const handle = handleRef.current;
     const indicator = indicatorRef.current;
     if (!handle || !indicator) return;
-    indicator.style.transform = `translateY(${clientY - handle.getBoundingClientRect().top}px)`;
+    // The spot is twice the track's height and centred on it: shift it so its middle meets the pointer.
+    const { top, height } = handle.getBoundingClientRect();
+    indicator.style.transform = `translate3d(0, ${Math.min(Math.max(clientY - top, 0), height) - height / 2}px, 0)`;
   };
 
   useEffect(() => () => window.clearTimeout(tooltipTimer.current), []);

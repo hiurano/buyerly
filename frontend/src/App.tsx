@@ -312,6 +312,13 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [setActiveTab, setSettingsSection, toggleDetailsPane, setSidebarPeekOpen, toggleSidebarCollapsed, toggleSidebarOpen, workspace.slug]);
 
+  // index.html marks signed-out pages for their plain backdrop, as Linear's html.logged-out; signing in
+  // without a reload must lift it, or the window behind the app stays that colour.
+  useEffect(() => {
+    document.documentElement.classList.remove('logged-out');
+    return () => document.documentElement.classList.add('logged-out');
+  }, []);
+
   useEffect(() => {
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
     const applyTheme = () => {

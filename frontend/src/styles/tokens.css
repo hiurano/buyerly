@@ -72,7 +72,9 @@
   --color-border-tertiary: lch(16.32% 1.48 272 / 1);
 
   /* Resizer Highlights */
-  --resizer-line-color: lch(100% 0 272 / 0.72);
+  /* Linear's resize spot and the sidebar edge's track, re-measured in dark on 2026-10-24. */
+  --resizer-line-color: lch(100% 0 0 / 0.15);
+  --sidebar-resizer-track: lch(24.195% 1.48 272 / 1);
 
   /* Typography Colors */
   --text-primary: lch(100% 0 272 / 1);
@@ -316,8 +318,8 @@
 
   /* A view's details pane and its quick filters, measured in dark Linear on 2026-10-09 (#367). */
   --details-pane-backdrop: var(--bg-canvas);
-  --details-pane-resizer-track: lch(100% 0 272 / 0.15);
-  --details-pane-resizer-indicator: var(--resizer-line-color);
+  --details-pane-resizer-track: var(--split-resizer-track);
+  --details-pane-resizer-indicator: var(--split-resizer-indicator);
   /* Linear's split view edge (Inbox list), measured in dark on 2026-10-24. */
   --split-resizer-track: lch(27.12% 1.48 272 / 1);
   --split-resizer-indicator: lch(100% 0 0 / 0.15);
@@ -373,7 +375,8 @@ html[data-theme='light'] {
   --color-border-tertiary: lch(84.44% 0 282 / 1); /* #d3d3d3 */
 
   /* Resizer Highlights */
-  --resizer-line-color: lch(0% 0 0 / 0.15);
+  --resizer-line-color: lch(0% 0 0 / 0.95);
+  --sidebar-resizer-track: lch(80.94% 0 282 / 1);
 
   /* Typography Colors */
   --text-primary: lch(9.794% 0 282 / 1);          /* #1a1b1a */
@@ -583,8 +586,6 @@ html[data-theme='light'] {
   --preferences-aa-system-fg: #2f2f31;
   --modal-overlay-bg: rgb(0 0 0 / 0.25);
 
-  --details-pane-resizer-track: lch(0% 0 0 / 0.15);
-  --details-pane-resizer-indicator: lch(0% 0 0 / 0.5);
   --split-resizer-track: lch(84.44% 0 282 / 1);
   --split-resizer-indicator: lch(0% 0 0 / 0.95);
   --dialog-elevation-shadow: 0 9px 48px lch(0% 0 0 / 0.08), 0 6px 24px lch(0% 0 0 / 0.1), 0 1px 1px lch(0% 0 0 / 0.04);
