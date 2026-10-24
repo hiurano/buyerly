@@ -205,6 +205,31 @@ class WorkspaceViewDefault(Base):
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
 
+class Favorite(Base):
+    """A page or record one member pinned to the sidebar's Favorites, as Linear's favorites.
+
+    `path` is the app address inside the workspace, without its slug
+    ("team/TES/ads-manager/campaigns", "accounts/act_1001"), so a renamed
+    workspace keeps its favorites; `kind` picks the sidebar icon and `title`
+    is the name it had when starred, shown until the app knows a newer one.
+    """
+
+    __tablename__ = "favorites"
+    __table_args__ = (
+        UniqueConstraint("member_id", "path", name="uq_favorites_member_path"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    member_id = Column(
+        Integer, ForeignKey("workspace_members.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    kind = Column(String(16), nullable=False)
+    path = Column(String(300), nullable=False)
+    title = Column(String(200), nullable=False)
+    position = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
 class WorkspaceInvite(Base):
     __tablename__ = "workspace_invites"
 

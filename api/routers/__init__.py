@@ -17,6 +17,7 @@ from api.routers.workspaces import router as workspaces_router
 from api.routers.health import router as health_router
 from api.routers.analytics import router as analytics_router
 from api.routers.views import router as views_router
+from api.routers.favorites import router as favorites_router
 
 __all__ = [
     "accounts_router",
@@ -25,6 +26,7 @@ __all__ = [
     "delivery_router",
     "analytics_router",
     "views_router",
+    "favorites_router",
     "audit_router",
     "auth_router",
     "members_router",

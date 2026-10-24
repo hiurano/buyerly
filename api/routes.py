@@ -72,6 +72,7 @@ from api.routers import (
     health_router,
     analytics_router,
     views_router,
+    favorites_router,
 )
 from api.schemas import (
     AccountItem,
@@ -143,6 +144,7 @@ router.include_router(delivery_router)
 router.include_router(health_router)
 router.include_router(analytics_router)
 router.include_router(views_router)
+router.include_router(favorites_router)
 
 class _RoutesModule(sys.modules[__name__].__class__):
     """Custom module class to propagate dynamically patched attributes (e.g. in tests) to submodules."""

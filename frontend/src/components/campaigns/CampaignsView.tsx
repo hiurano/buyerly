@@ -22,6 +22,8 @@ import type {
 import { useAppStore } from '@/store/useAppStore';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { ViewTitle } from '@/components/teams/ViewTitle';
+import { favoritePath } from '@/lib/favorites';
+import { pathForTab } from '@/lib/routing';
 import { useActiveTeam } from '@/lib/teams';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import type { AdsManagerEntity } from '@/store/useAppStore';
@@ -1082,7 +1084,15 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
           {/* Every ad account is on screen; one is connected on Ad accounts, as a Linear project is made under Projects. */}
           <div className="flex items-center">
             <SidebarCollapsedNavigation />
-            <ViewTitle title={mine ? 'My campaigns' : 'Campaigns'} team={activeTeam.team} />
+            <ViewTitle
+              title={mine ? 'My campaigns' : 'Campaigns'}
+              team={activeTeam.team}
+              favorite={{
+                kind: 'page',
+                path: favoritePath(pathForTab(workspace.slug, 'campaigns', 'campaigns', 'preferences', '', undefined, activeTeam.key, mine), workspace.slug),
+                title: mine ? 'My campaigns' : activeTeam.team ? `${activeTeam.team.name} › Campaigns` : 'Campaigns',
+              }}
+            />
           </div>
         </div>
 

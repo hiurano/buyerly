@@ -18,6 +18,7 @@ import { useTeams } from '@/lib/teams';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import type { AppTab } from '@/store/useAppStore';
 import { SidebarLink, SidebarSection, SidebarTeam } from './SidebarSections';
+import { SidebarFavorites } from './SidebarFavorites';
 import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
 import { BuyerlyHelpMenu } from '@/components/sidebar/BuyerlyHelpMenu';
 import { SidebarBackdrop, useSidebarDrawer, useSidebarPeek } from './SidebarDrawer';
@@ -219,6 +220,9 @@ export const Sidebar: React.FC = () => {
               onClick={() => openWorkspacePage('teams')}
             />
           </SidebarSection>
+
+          {/* Linear's Favorites, between Workspace and Your teams, once something is starred. */}
+          <SidebarFavorites workspaceSlug={workspace.slug} />
 
           <SidebarSection
             id="teams"

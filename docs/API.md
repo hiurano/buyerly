@@ -325,6 +325,9 @@ Meta возвращает браузер на служебный callback `/api/
 | `PUT /api/view-settings/{view_key}` | `{"settings": {...}}` | сохранить вид страницы целиком (объект до 16 КБ, не больше 100 ключей на участника); поддержке без членства — `403` |
 | `PUT /api/view-settings/{view_key}/default` | `{"settings": {...}}` | Set default for everyone (#472): вид становится видом по умолчанию для всех участников workspace; только `owner` и `admin`, остальным и поддержке — `403`; пустой объект снимает вид по умолчанию; не больше 100 ключей на workspace |
 | `DELETE /api/view-settings/{view_key}` | — | Reset: страница возвращается к виду по умолчанию (виду workspace, если он задан); `204`, даже если ничего не было |
+| `GET /api/favorites` | — | `{"favorites": [{id, kind, path, title, position}]}` — избранное участника в активном workspace в порядке сайдбара (Linear's Favorites); `path` — адрес страницы внутри workspace без slug, `kind` — `page`, `account`, `campaign`, `adset`, `ad` или `rule`. Поддержке без членства — пустой список |
+| `POST /api/favorites` | `{"kind": "page", "path": "team/TES/rules", "title": "Rules"}` | добавить в избранное (звёздочка); `201` и новое избранное в конце раздела, `200` и прежнее, если адрес уже в избранном; не больше 100 на участника; поддержке без членства — `403` |
+| `DELETE /api/favorites/{favorite_id}` | — | убрать своё избранное; `204`, даже если его уже нет; чужое не трогается |
 
 Ключ — строчные буквы, цифры и дефис, при необходимости с одним уточнением через точку: `rules`, `inbox`, `ads-manager.campaigns`, `ads-manager.adsets`, `ads-manager.ads`; новая страница (например, Ad accounts) просто берёт свой ключ. Неверный ключ — `404`. Виды удаляются вместе с членством в workspace.
 

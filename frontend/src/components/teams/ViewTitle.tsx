@@ -2,18 +2,24 @@ import React from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { TeamIcon } from '@/components/preferences/TeamIcon';
 import type { TeamItem } from '@/lib/teams';
+import type { FavoriteInput } from '@/lib/favorites';
+import { BuyerlyFavoriteButton } from '@/ui/BuyerlyFavoriteButton';
 
 /**
  * A view's title in its header. On a team's page it reads as Linear's
- * "Team › Issues": the team's icon and name, which open the team, then the page.
+ * "Team › Issues": the team's icon and name, which open the team, then the page,
+ * and Linear's star 8px after it when the page can be a favorite.
  */
-export const ViewTitle: React.FC<{ title: string; team?: TeamItem | null }> = ({ title, team }) => {
+export const ViewTitle: React.FC<{ title: string; team?: TeamItem | null; favorite?: FavoriteInput }> = ({ title, team, favorite }) => {
   const setActiveTeamKey = useAppStore((state) => state.setActiveTeamKey);
   const setActiveTab = useAppStore((state) => state.setActiveTab);
   const heading = (
     <h2 className="overflow-hidden whitespace-nowrap text-[13px] font-medium text-[var(--text-secondary)]">{title}</h2>
   );
-  if (!team) return heading;
+  const star = favorite && <span className="ml-2 flex shrink-0 items-center"><BuyerlyFavoriteButton favorite={favorite} /></span>;
+  if (!team) {
+    return star ? <div className="flex min-w-0 items-center">{heading}{star}</div> : heading;
+  }
   return (
     <div className="flex min-w-0 items-center">
       <button
@@ -29,6 +35,7 @@ export const ViewTitle: React.FC<{ title: string; team?: TeamItem | null }> = ({
       </button>
       <span className="team-breadcrumb-separator" aria-hidden="true">›</span>
       {heading}
+      {star}
     </div>
   );
 };

@@ -22,6 +22,9 @@ import { useFiltersInAddress, writeFilterParam } from '@/ui/useListView';
 import { BuyerlySlidersIcon } from '@/icons/BuyerlyIcons';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { useActiveTeam } from '@/lib/teams';
+import { favoritePath } from '@/lib/favorites';
+import { pathForTab } from '@/lib/routing';
+import { ViewTitle } from '@/components/teams/ViewTitle';
 import { AccountDisplayOptionsPopover } from './AccountDisplayOptionsPopover';
 import { AccountRow, getAccountColumns, usePhoneWidth, type AccountRowActions } from './AccountRow';
 import { RenameAccountDialog } from './AccountParts';
@@ -274,7 +277,15 @@ export const AccountsView: React.FC<AccountsViewProps> = ({ navigate, navigation
         >
           <div className="flex items-center">
             <SidebarCollapsedNavigation />
-            <h2 className="overflow-hidden whitespace-nowrap text-[13px] font-medium text-[var(--text-secondary)]">Ad accounts</h2>
+            <ViewTitle
+              title="Ad accounts"
+              team={team}
+              favorite={{
+                kind: 'page',
+                path: favoritePath(pathForTab(workspace.slug, 'accounts', 'campaigns', 'preferences', '', undefined, activeTeam.key), workspace.slug),
+                title: team ? `${team.name} › Ad accounts` : 'Ad accounts',
+              }}
+            />
           </div>
           {canEdit && <HeaderCreateButton label="Add account" tooltip="Add ad account" onClick={dialogs.openAdd} />}
         </div>
