@@ -46,9 +46,8 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
       }
     } catch (profileError) {
       setError(profileError instanceof Error ? profileError.message : 'Could not save your profile');
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   /** Sends the invites, or with null skips the step ("I'll do this later"). */
@@ -64,9 +63,8 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
       onCompleted();
     } catch (inviteError) {
       setError(inviteError instanceof Error ? inviteError.message : 'Could not finish onboarding');
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   return (

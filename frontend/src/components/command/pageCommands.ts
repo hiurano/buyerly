@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
 
 /** One row of the command menu. */
 export interface PaletteCommand {
@@ -24,6 +24,7 @@ export interface PaletteGroup {
  * Inbox). The open page registers it here while it is mounted.
  */
 let pageGroup: PaletteGroup | null = null;
+const getPageGroup = () => pageGroup;
 const listeners = new Set<() => void>();
 
 function subscribe(listener: () => void) {
@@ -32,13 +33,31 @@ function subscribe(listener: () => void) {
 }
 
 export function usePageGroup(): PaletteGroup | null {
-  return useSyncExternalStore(subscribe, () => pageGroup);
+  return useSyncExternalStore(subscribe, getPageGroup);
+}
+
+/**
+ * Puts a page's group in the palette until the returned function takes it
+ * out. Outside the hook, as the React Compiler takes the module's `pageGroup`
+ * for a constant inside one (#492).
+ */
+function registerPageGroup(registered: PaletteGroup): () => void {
+  pageGroup = registered;
+  listeners.forEach((listener) => listener());
+  return () => {
+    if (pageGroup !== registered) return;
+    pageGroup = null;
+    listeners.forEach((listener) => listener());
+  };
 }
 
 /** Registers the page's group; `run` always calls the latest render's handlers. */
 export function usePageCommands(group: PaletteGroup | null): void {
   const latest = useRef(group);
-  latest.current = group;
+  // After each render and before the registration below, never during render (#492).
+  useLayoutEffect(() => {
+    latest.current = group;
+  });
   const shape = group ? `${group.heading}|${group.commands.map((command) => `${command.id}:${command.label}:${command.shortcut ?? ''}`).join(',')}` : '';
 
   useEffect(() => {
@@ -51,12 +70,6 @@ export function usePageCommands(group: PaletteGroup | null): void {
         run: () => latest.current?.commands.find((next) => next.id === command.id)?.run(),
       })),
     };
-    pageGroup = registered;
-    listeners.forEach((listener) => listener());
-    return () => {
-      if (pageGroup !== registered) return;
-      pageGroup = null;
-      listeners.forEach((listener) => listener());
-    };
+    return registerPageGroup(registered);
   }, [shape]);
 }

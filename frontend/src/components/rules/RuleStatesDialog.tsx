@@ -25,6 +25,10 @@ const STATE_ORDER: Record<RuleEntityStateName, number> = {
   unchecked: 13,
 };
 
+/** In STATE_ORDER, then by name within a state. */
+const byStateThenName = (a: { state: RuleEntityStateName; entity_name: string }, b: { state: RuleEntityStateName; entity_name: string }) =>
+  (STATE_ORDER[a.state] ?? 99) - (STATE_ORDER[b.state] ?? 99) || a.entity_name.localeCompare(b.entity_name);
+
 const PLURAL_LEVELS: Record<RuleItem['preset']['level'], string> = {
   campaign: 'campaigns',
   adset: 'ad sets',
@@ -79,11 +83,7 @@ export const RuleStatesDialog: React.FC<RuleStatesDialogProps> = ({ rule, open, 
 
   const rows =
     load.kind === 'ready'
-      ? [...load.rows].sort(
-          (a, b) =>
-            (STATE_ORDER[a.state] ?? 99) - (STATE_ORDER[b.state] ?? 99) ||
-            a.entity_name.localeCompare(b.entity_name),
-        )
+      ? [...load.rows].sort(byStateThenName)
       : [];
   const accountCount = new Set(rows.map((row) => row.account_id)).size;
   const levelNoun = RULE_LEVEL_LABELS[rule.preset.level]?.toLowerCase() ?? 'campaign';

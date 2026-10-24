@@ -127,6 +127,5 @@ export function useFiltersInAddress(
       writeFilterParam(filters);
     }
     // Only arrival and navigation read the address; later changes write it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, navigationKey]);
 }

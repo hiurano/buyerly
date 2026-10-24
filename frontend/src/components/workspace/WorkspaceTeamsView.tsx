@@ -60,19 +60,19 @@ export const WorkspaceTeamsView: React.FC = () => {
   const setMembership = async (team: TeamItem, join: boolean) => {
     if (user.id == null) return;
     setBusyTeam(team.id);
+    const request = join
+      ? apiRequest(teamsPath(workspace.id, `/${team.id}/members`), { method: 'POST', body: JSON.stringify({ user_ids: [user.id] }) })
+      : apiRequest(teamsPath(workspace.id, `/${team.id}/members/${user.id}`), { method: 'DELETE' });
+    const title = join ? `You joined ${team.name}` : `You left ${team.name}`;
     try {
-      await apiRequest(
-        join ? teamsPath(workspace.id, `/${team.id}/members`) : teamsPath(workspace.id, `/${team.id}/members/${user.id}`),
-        join ? { method: 'POST', body: JSON.stringify({ user_ids: [user.id] }) } : { method: 'DELETE' },
-      );
+      await request;
       // Every list of teams reads them again: this page, the sidebar's Your teams.
       notifyTeamsChanged();
-      toast.show({ tone: 'success', title: join ? `You joined ${team.name}` : `You left ${team.name}` });
+      toast.show({ tone: 'success', title });
     } catch (saveError) {
       toast.error(join ? "Couldn't join the team" : "Couldn't leave the team", saveError instanceof Error ? saveError.message : undefined);
-    } finally {
-      setBusyTeam(null);
     }
+    setBusyTeam(null);
   };
 
   const faces = (team: TeamItem) => team.member_user_ids

@@ -58,8 +58,9 @@ export const CreateWorkspaceView: React.FC<CreateWorkspaceViewProps> = ({
     if (availability !== 'available') return;
     setBusy(true);
     setMessage('');
+    const createPath = onBack ? '/api/workspaces' : '/api/onboarding/workspace';
     try {
-      const workspace = await apiRequest<Workspace>(onBack ? '/api/workspaces' : '/api/onboarding/workspace', {
+      const workspace = await apiRequest<Workspace>(createPath, {
         method: 'POST',
         body: JSON.stringify({ name: name.trim() }),
       });
@@ -73,9 +74,8 @@ export const CreateWorkspaceView: React.FC<CreateWorkspaceViewProps> = ({
             ? createError.message
             : 'Could not create this workspace',
       );
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   return (

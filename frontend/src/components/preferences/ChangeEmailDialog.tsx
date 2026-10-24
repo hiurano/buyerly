@@ -56,9 +56,8 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
       setStep('code');
     } catch (requestError) {
       setError(errorMessage(requestError));
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   const confirmCode = async () => {
@@ -75,9 +74,8 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
       onOpenChange(false);
     } catch (confirmError) {
       setError(errorMessage(confirmError));
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   return (

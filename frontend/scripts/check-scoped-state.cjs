@@ -17,7 +17,7 @@ function load(file) {
   new Function('require', 'module', 'exports', code)(requireSource, module, module.exports);
   return module.exports;
 }
-global.window = { location: { pathname: '/a/rules', search: '' }, localStorage: { getItem: () => null } };
+global.window = { location: { pathname: '/a/rules', search: '' }, localStorage: { getItem: () => null }, addEventListener: () => {} };
 global.document = { cookie: '' };
 const pending = [];
 global.fetch = (url, init) => new Promise(resolve => pending.push({

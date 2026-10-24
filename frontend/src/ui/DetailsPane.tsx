@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { useMediaQuery, useIsTouchScreen } from '@/lib/useMediaQuery';
 import { Tooltip } from '@/ui/Tooltip';
@@ -38,17 +38,16 @@ function useSpringValue(
 ) {
   const value = useRef<SpringValue>({ position: target, velocity: 0 });
   const frame = useRef(0);
-  const applyRef = useRef(apply);
-  const restRef = useRef(onRest);
-  applyRef.current = apply;
-  restRef.current = onRest;
+  // The frames call the latest render's callbacks.
+  const applyAt = useEffectEvent((position: number) => apply(position));
+  const rest = useEffectEvent((position: number) => onRest?.(position));
 
   useLayoutEffect(() => {
     cancelAnimationFrame(frame.current);
     if (immediate) {
       value.current = { position: target, velocity: 0 };
-      applyRef.current(target);
-      restRef.current?.(target);
+      applyAt(target);
+      rest(target);
       return undefined;
     }
     let last = performance.now();
@@ -56,11 +55,11 @@ function useSpringValue(
       const next = stepSpring(value.current, target, now - last);
       last = now;
       value.current = next;
-      applyRef.current(next.position);
-      if (next.done) restRef.current?.(target);
+      applyAt(next.position);
+      if (next.done) rest(target);
       else frame.current = requestAnimationFrame(tick);
     };
-    applyRef.current(value.current.position);
+    applyAt(value.current.position);
     frame.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame.current);
   }, [target, immediate]);
@@ -249,8 +248,6 @@ export function DetailsPaneLayout({ pane, label, details, children }: DetailsPan
   const swipeStart = useRef<{ x: number; y: number; at: number } | null>(null);
 
   const open = state.open && details !== null;
-  const openRef = useRef(open);
-  openRef.current = open;
   const width = detailsPaneWidth(liveWidth ?? state.width, windowWidth, overlay);
   const [mounted, setMounted] = useState(open);
   if (open && !mounted) setMounted(true);
@@ -280,7 +277,7 @@ export function DetailsPaneLayout({ pane, label, details, children }: DetailsPan
       paint();
     },
     (value) => {
-      if (value !== 0 && !openRef.current) setMounted(false);
+      if (value !== 0 && !open) setMounted(false);
     },
   );
   useSpringValue(width, reducedMotion || resizing || !mounted, (value) => {

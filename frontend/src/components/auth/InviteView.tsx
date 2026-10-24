@@ -110,9 +110,8 @@ export const InviteView: React.FC<InviteViewProps> = ({
       onAccepted(result.workspace_slug, result.onboarding_completed);
     } catch (acceptError) {
       setError(acceptError instanceof Error ? acceptError.message : 'Could not join this workspace');
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   }, [onAccepted, token]);
 
   const targetEmail = invite?.target_email || null;
@@ -138,9 +137,8 @@ export const InviteView: React.FC<InviteViewProps> = ({
       await onSignedOut(thenLogIn);
     } catch (logoutError) {
       setError(logoutError instanceof Error ? logoutError.message : 'Could not log out');
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   const logInAsInvitedEmail = () => {

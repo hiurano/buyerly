@@ -68,10 +68,9 @@ export const WorkspaceSection: React.FC<WorkspaceSectionProps> = ({ workspace, o
     } catch (error) {
       // Linear: an error toast titled "File upload" with the reason.
       toast.show({ tone: 'error', title: 'File upload', description: errorMessage(error, 'Please try again.') });
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = '';
     }
+    setUploading(false);
+    if (fileRef.current) fileRef.current.value = '';
   };
 
   const isOwner = workspace.role === 'owner';
@@ -255,9 +254,8 @@ const ChangeWorkspaceUrlDialog: React.FC<{
       toast.show({ tone: 'success', title: 'Workspace URL updated' });
     } catch (submitError) {
       setError(errorMessage(submitError, 'Please try again.'));
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   return (
@@ -345,9 +343,8 @@ const DeleteWorkspaceDialog: React.FC<{
       await onDeleted();
     } catch (deleteError) {
       setError(errorMessage(deleteError, 'Please try again.'));
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   return (

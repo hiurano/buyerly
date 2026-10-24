@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { ArrowLeft, X } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { apiRequest } from '@/lib/api';
-import { pathForTab } from '@/lib/routing';
+import { pathForTab, searchAt } from '@/lib/routing';
 import {
   clearRecentSearches,
   parseSearchParams,
@@ -270,8 +270,7 @@ interface SearchViewProps {
  */
 export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, navigationKey }) => {
   const slug = workspace.slug;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const params = useMemo(() => parseSearchParams(window.location.search), [navigationKey]);
+  const params = useMemo(() => parseSearchParams(searchAt(navigationKey)), [navigationKey]);
   const offered = searchFiltersFor(params.tab);
   // A filter the tab does not offer never reaches the server, as Linear's Projects tab drops issue filters.
   const applied = useMemo<SearchParams>(() => ({
@@ -330,7 +329,6 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
       });
     return () => controller.abort();
     // `requestKey` stands for `applied`.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestKey, attempt]);
 
   const current = !applied.query ? null : search?.key === requestKey ? search : { status: 'loading' as const, key: requestKey };

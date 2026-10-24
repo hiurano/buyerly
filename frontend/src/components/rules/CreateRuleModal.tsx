@@ -143,7 +143,6 @@ export const CreateRuleModal: React.FC = () => {
     setDraft(start);
     setInitialRunOn({});
     setRestored(Boolean(stored));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCreateRuleModalOpen, editingRuleId, createRuleTargetLabelId, createRulePrefill]);
 
   const accounts: RunOnAccount[] = useMemo(() => ruleAccounts.map((account) => ({
@@ -171,7 +170,6 @@ export const CreateRuleModal: React.FC = () => {
         .catch((error) => { if (!cancelled) setServerProblem(error instanceof Error ? error.message : 'This rule cannot be saved as set.'); });
     }, 350);
     return () => { cancelled = true; window.clearTimeout(timer); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCreateRuleModalOpen, payloadKey]);
 
   // What the rule would check on each whole account it runs on, and what matches now.
@@ -190,7 +188,6 @@ export const CreateRuleModal: React.FC = () => {
       }
     }, 450);
     return () => { cancelled = true; window.clearTimeout(timer); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCreateRuleModalOpen, payloadKey, wholeKey]);
 
   const previewLine = (() => {
@@ -234,14 +231,18 @@ export const CreateRuleModal: React.FC = () => {
     setIsSubmitting(true);
     setSubmitError('');
     const runOnChanged = !sameRunOn(initialRunOn, draft.runOn);
+    // Editing keeps the rule's own on/off state.
+    const edit = editedRule ? {
+      id: editedRule.id,
+      rule: {
+        ...payload,
+        enabled: editedRule.preset.enabled,
+        ...(runOnChanged ? { attachments: draftAttachments(draft) } : {}),
+      },
+    } : null;
     try {
-      if (editedRule) {
-        await updateRule(editedRule.id, {
-          ...payload,
-          // Editing keeps the rule's own on/off state.
-          enabled: editedRule.preset.enabled,
-          ...(runOnChanged ? { attachments: draftAttachments(draft) } : {}),
-        });
+      if (edit) {
+        await updateRule(edit.id, edit.rule);
         if (!current()) return;
         closeCreateRuleModal();
       } else {
@@ -253,7 +254,7 @@ export const CreateRuleModal: React.FC = () => {
           // The next rule starts where this one runs, as Linear keeps the team.
           setDraft({ ...emptyDraft(), runOn: draft.runOn, labelIds: draft.labelIds });
           setTouched(false);
-          nameRef.current?.focus();
+          if (nameRef.current) nameRef.current.focus();
         } else {
           closeCreateRuleModal();
         }
@@ -261,9 +262,9 @@ export const CreateRuleModal: React.FC = () => {
     } catch (error) {
       if (!current()) return;
       setSubmitError(error instanceof Error ? error.message : (isEditing ? 'Could not save the rule.' : 'Could not create the rule.'));
-    } finally {
-      if (current()) setIsSubmitting(false);
     }
+    // Every early return above is out of scope, where this does nothing either.
+    if (current()) setIsSubmitting(false);
   };
 
   const setCondition = (index: number, patch: Partial<ConditionDraft>) =>

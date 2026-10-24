@@ -244,6 +244,11 @@ try {
         await fingerSized(accountItem, 'the ad account item');
       } else {
         await menu.getByRole('menuitem', { name: /Run on ad accounts/ }).hover();
+        // Into the submenu the way a hand moves, through Radix's pointer grace
+        // area: one jump leaves the trigger and React 19 closes the submenu at once.
+        await accountItem.waitFor();
+        const box = await accountItem.boundingBox();
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 12 });
       }
       await press(accountItem);
       // #200: the whole account is previewed before anything is written.

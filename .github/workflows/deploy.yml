@@ -107,6 +107,13 @@ jobs:
           npm ci
           npx --no-install playwright install --with-deps chromium
 
+      # Fills the React Compiler's cache once (#492); each script then starts
+      # its own dev server without compiling every file again, which pushed a
+      # cold first page past the scripts' 10 s timeout.
+      - name: Warm the React Compiler cache
+        working-directory: frontend
+        run: npx vite build --outDir /tmp/buyerly-warm-build
+
       # Every script in the group runs even after one fails, so a single run
       # reports all broken screens. The runner's Google Chrome has WebMCP
       # behind a flag; Playwright's Chromium does not, and webmcp-browser.mjs

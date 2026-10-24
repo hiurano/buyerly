@@ -58,9 +58,8 @@ export const NewTeamSection: React.FC<{ workspace: Workspace }> = ({ workspace }
       const message = errorMessage(createError, 'Please try again.');
       setError(message);
       toast.error("Couldn't create the team", message);
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   return (

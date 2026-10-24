@@ -23,7 +23,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { ViewTitle } from '@/components/teams/ViewTitle';
 import { favoritePath } from '@/lib/favorites';
-import { pathForTab } from '@/lib/routing';
+import { pathForTab, useAddress } from '@/lib/routing';
 import { useActiveTeam } from '@/lib/teams';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import type { AdsManagerEntity } from '@/store/useAppStore';
@@ -232,14 +232,16 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
     attachmentsLoadState,
   } = useAppStore();
 
-  // Before the filters read the address on this navigation.
-  const accountLinkRead = useRef<number | null>(null);
-  if (accountLinkRead.current !== navigationKey) {
-    accountLinkRead.current = navigationKey;
+  // Before the filters read the address on this navigation: React renders
+  // again at once with the address rewritten.
+  const [accountLinkRead, setAccountLinkRead] = useState<number | null>(null);
+  if (accountLinkRead !== navigationKey) {
+    setAccountLinkRead(navigationKey);
     if (!reveal) accountLinkToFilter();
   }
 
   const requestGenerationRef = useRef(0);
+  const { pathname } = useAddress();
   const filterButtonRef = useRef<HTMLButtonElement>(null);
   const displayOptionsButtonRef = useRef<HTMLButtonElement>(null);
   const [openFilterMenu, setOpenFilterMenu] = useState<OpenFilterMenu | null>(null);
@@ -268,10 +270,6 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
   }, [mine, user.id, activeTeam.key, activeTeam.team, allMetaAccounts]);
   const accountIds = useMemo(() => metaAccounts.map((account) => account.account_id), [metaAccounts]);
   const accountIdsKey = accountIds.join(',');
-  const metaAccountsRef = useRef(metaAccounts);
-  metaAccountsRef.current = metaAccounts;
-  const allMetaAccountsRef = useRef(allMetaAccounts);
-  allMetaAccountsRef.current = allMetaAccounts;
   const [metaConnections, setMetaConnections] = useState<MetaConnection[]>([]);
   const [accountsState, setAccountsState] = useState<LoadState>('loading');
   const [accountsError, setAccountsError] = useState('');
@@ -292,7 +290,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
   };
   const periodLabel = ADS_MANAGER_PERIODS.find((option) => option.value === period)?.label ?? 'Today';
   const { filters: adsManagerFilters, updateFilters: setAdsManagerFilters, quick: savedQuick, setQuick } = useCampaignViewFilters(
-    `${window.location.pathname}:${campaignFilterTab}`,
+    `${pathname}:${campaignFilterTab}`,
     navigationKey,
     mine,
   );
@@ -349,7 +347,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
   // Rules attach per ad account, read from the accounts just loaded rather than a second `/api/accounts`.
   useEffect(() => {
     const ids = accountsState === 'ready' && accountIdsKey ? accountIdsKey.split(',') : [];
-    void loadRuleAttachments(ids, allMetaAccountsRef.current);
+    void loadRuleAttachments(ids, allMetaAccounts);
   }, [loadRuleAttachments, accountsState, accountIdsKey]);
 
   // The rows of every account, read beside the accounts, again for a new period or a retry.
@@ -374,7 +372,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
     setFailedAccounts([]);
     setHierarchyError('');
     if (accountsState !== 'ready') return;
-    const accounts = metaAccountsRef.current;
+    const accounts = metaAccounts;
     if (accounts.length === 0) {
       setHierarchyState('idle');
       return;
@@ -533,13 +531,10 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
 
   const isPhoneTable = useMediaQuery(PHONE_TABLE_QUERY);
   const supportedProperties = displayProperties;
-  const tableColumns = useMemo(
-    () => getAdsManagerColumns(campaignFilterTab, displayProperties, {
-      spendFirst: isPhoneTable,
-      groupedByAccount: groupingField === 'account' || rowsField === 'account',
-    }),
-    [campaignFilterTab, displayProperties, isPhoneTable, groupingField, rowsField],
-  );
+  const tableColumns = getAdsManagerColumns(campaignFilterTab, displayProperties, {
+    spendFirst: isPhoneTable,
+    groupedByAccount: groupingField === 'account' || rowsField === 'account',
+  });
 
   /** Shows delivery this session wrote on the given rows. */
   const showDelivery = useCallback((entityIds: string[], status: DeliveryStatus) => {
@@ -571,19 +566,9 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
     const status: DeliveryStatus = next ? 'ACTIVE' : 'PAUSED';
     const name = rowName(entityId);
     setDeliveryActions((current) => ({ ...current, [entityId]: { ...current[entityId], busy: true } }));
+    let result: Awaited<ReturnType<typeof setEntityDelivery>>;
     try {
-      const result = await setEntityDelivery(level, entityId, accountId, status);
-      if (!inWorkspace()) return;
-      if (onAccount()) showDelivery([entityId], result.status);
-      if (result.changed && result.audit_event_id) {
-        pushHistory(deliveryHistoryEntry({
-          label: `${next ? 'resume' : 'pause'} ${name}`,
-          targets: [{ level, entityId, accountId }],
-          status,
-          auditEventIds: [result.audit_event_id],
-          onStatus: (ids, status) => { if (onAccount()) showDelivery(ids, status); },
-        }));
-      }
+      result = await setEntityDelivery(level, entityId, accountId, status);
     } catch (error) {
       if (!inWorkspace()) return;
       if (onAccount()) {
@@ -595,6 +580,18 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
         message: name,
         description: error instanceof Error ? error.message : 'The change could not be confirmed. Check Meta before retrying.',
       });
+      return;
+    }
+    if (!inWorkspace()) return;
+    if (onAccount()) showDelivery([entityId], result.status);
+    if (result.changed && result.audit_event_id) {
+      pushHistory(deliveryHistoryEntry({
+        label: `${next ? 'resume' : 'pause'} ${name}`,
+        targets: [{ level, entityId, accountId }],
+        status,
+        auditEventIds: [result.audit_event_id],
+        onStatus: (ids, status) => { if (onAccount()) showDelivery(ids, status); },
+      }));
     }
   };
 
@@ -659,9 +656,9 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
       ? [{ id: 'rule', label: 'Apply rule…', shortcut: 'a', icon: <BuyerlyBoltIcon size={14} />, run: () => setIsBulkRulePickerOpen(true) }]
       : []),
   ];
-  const visibleRowIds = useMemo(() => (
+  const visibleRowIds = (
     campaignFilterTab === 'campaigns' ? filteredCampaigns : campaignFilterTab === 'adsets' ? filteredAdSets : filteredAds
-  ).map((row) => row.id), [campaignFilterTab, filteredAds, filteredAdSets, filteredCampaigns]);
+  ).map((row) => row.id);
   const selection = useRowSelection({
     selectedIds: selectedCampaignIds,
     visibleIds: visibleRowIds,
@@ -1247,7 +1244,7 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({ mine = false, reve
       <MetaConnectionDialog
         open={isMetaDialogOpen || returnedConnectionId !== null}
         connectionId={returnedConnectionId}
-        returnPath={window.location.pathname}
+        returnPath={pathname}
         onOpenChange={(open) => {
           if (!open) {
             setIsMetaDialogOpen(false);

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { ApiError, apiRequest } from '@/lib/api';
 import type { Workspace } from '@/lib/types';
@@ -7,6 +7,7 @@ import { Button } from '@/ui/Button';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { toast } from '@/ui/toast';
 import { TOUCH_HEIGHT_CLASS } from '@/lib/useMediaQuery';
+import { useLastPresent } from '@/ui/useLastPresent';
 
 export interface MemberItem {
   id: number;
@@ -199,9 +200,8 @@ export const LeaveWorkspaceDialog: React.FC<LeaveWorkspaceDialogProps> = ({ open
       setError(errorMessage(leaveError, 'Please try again.'));
       // A transfer that went through already made someone else the owner.
       if (isOwner) await onLeft();
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   // Linear: `Leave "<workspace>"?`, "You can always rejoin the workspace from the
@@ -283,9 +283,7 @@ interface ChangeRoleDialogProps {
 export const ChangeRoleDialog: React.FC<ChangeRoleDialogProps> = ({ member, workspace, onClose, onChanged }) => {
   const [role, setRole] = useState('');
   const [busy, setBusy] = useState(false);
-  const lastMember = useRef<MemberItem | null>(null);
-  if (member) lastMember.current = member;
-  const shown = member || lastMember.current;
+  const shown = useLastPresent(member);
 
   useEffect(() => {
     if (member) setRole(member.role);
@@ -311,10 +309,9 @@ export const ChangeRoleDialog: React.FC<ChangeRoleDialogProps> = ({ member, work
       });
     } catch (saveError) {
       toast.error('Unable to change role', errorMessage(saveError, 'Something unexpected went wrong when changing the role.'));
-    } finally {
-      setBusy(false);
-      onClose();
     }
+    setBusy(false);
+    onClose();
   };
 
   return (
@@ -364,9 +361,7 @@ interface RemoveMemberDialogProps {
  */
 export const RemoveMemberDialog: React.FC<RemoveMemberDialogProps> = ({ member, workspace, onClose, onRemoved }) => {
   const [busy, setBusy] = useState(false);
-  const lastMember = useRef<MemberItem | null>(null);
-  if (member) lastMember.current = member;
-  const shown = member || lastMember.current;
+  const shown = useLastPresent(member);
 
   const remove = async () => {
     if (!member) return;
@@ -377,9 +372,8 @@ export const RemoveMemberDialog: React.FC<RemoveMemberDialogProps> = ({ member, 
       onClose();
     } catch (removeError) {
       toast.error(`Couldn't remove ${memberName(member)}`, errorMessage(removeError, 'Please try again.'));
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   return (

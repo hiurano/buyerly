@@ -13,7 +13,7 @@ import {
   BuyerlyProjectIcon,
 } from '@/icons/BuyerlyIcons';
 import { goToShortcut } from '@/lib/shortcuts';
-import { openAppPath, parseRoute, pathForTab } from '@/lib/routing';
+import { openAppPath, pathForTab, useRoute } from '@/lib/routing';
 import { useTeams } from '@/lib/teams';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import type { AppTab } from '@/store/useAppStore';
@@ -52,7 +52,7 @@ export const Sidebar: React.FC = () => {
   const yourTeams = (teams ?? []).filter((team) => team.is_member);
   // Linear lights one row: an ad account's own page leaves Ad accounts dark, as a project's leaves
   // Projects, and a favorite lights only when no row of the sidebar's own shows the page.
-  const route = parseRoute();
+  const route = useRoute();
   const onAccountPage = route.kind === 'workspace' && route.tab === 'accounts' && Boolean(route.recordId);
   const accountsActive = activeTab === 'accounts' && !activeTeamKey && !onAccountPage;
   const sidebarShowsPage = activeTab === 'inbox'

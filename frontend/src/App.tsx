@@ -27,7 +27,7 @@ import { useNewVersionNotice } from '@/lib/appVersion';
 import { selectInboxBadgeCount, useAppStore } from '@/store/useAppStore';
 import { apiRequest } from '@/lib/api';
 import type { LoginResult, SessionUser, Workspace } from '@/lib/types';
-import { TEAM_HOME_PAGES, isRoutedSettingsSection, isWorkspaceReturnRoute, openAppPath, parseRoute, pathForTab, teamHomePath, type Route } from '@/lib/routing';
+import { TEAM_HOME_PAGES, isRoutedSettingsSection, isWorkspaceReturnRoute, notifyLocationChanged, openAppPath, pathForTab, teamHomePath, useLocationVersion, useRoute, type Route } from '@/lib/routing';
 import { AuthLoading } from '@/components/auth/AuthFrame';
 import { finishSplash } from '@/lib/splash';
 import { LoginView } from '@/components/auth/LoginView';
@@ -48,6 +48,7 @@ import { logOut } from '@/lib/sessions';
 import {
   chooseAccount,
   getCurrentAccountId,
+  useCurrentAccountId,
   getKnownAccounts,
   setCurrentAccountId,
   setKnownAccounts,
@@ -420,14 +421,14 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
 };
 
 export const App: React.FC = () => {
-  const [locationVersion, setLocationVersion] = useState(0);
+  const locationVersion = useLocationVersion();
   const [user, setUser] = useState<SessionUser | null | undefined>(undefined);
   const [accounts, setAccounts] = useState<BrowserAccount[]>([]);
-  const route = useMemo(() => parseRoute(), [locationVersion]);
+  const route = useRoute();
 
   // While the tab moves to another account, the old account's profile must not
   // scope a screen: requests already name the new account.
-  const currentAccountId = getCurrentAccountId();
+  const currentAccountId = useCurrentAccountId();
   const userIsCurrentAccount = !user || currentAccountId === null || user.id == null || user.id === currentAccountId;
   const resolvedWorkspace = user && route.kind === 'workspace'
     ? user.workspaces.find(item => item.slug === route.workspace) : null;
@@ -445,7 +446,7 @@ export const App: React.FC = () => {
   const navigate = useCallback((path: string, replace = false) => {
     const method = replace ? 'replaceState' : 'pushState';
     window.history[method]({}, '', path);
-    setLocationVersion((version) => version + 1);
+    notifyLocationChanged();
   }, []);
 
   const loadAccounts = useCallback(async () => {
@@ -533,11 +534,6 @@ export const App: React.FC = () => {
     enterUserDestination(nextUser, result.redirect_url);
   }, [adoptLogin, enterUserDestination, refreshUser]);
 
-  useEffect(() => {
-    const onPopState = () => setLocationVersion((version) => version + 1);
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, []);
 
   useEffect(() => {
     if (route.kind === 'verify-email-link') return;
@@ -551,7 +547,6 @@ export const App: React.FC = () => {
       await refreshUser();
     })().catch(() => setUser(null));
     // Session bootstrap runs once; explicit auth mutations refresh it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

@@ -109,13 +109,18 @@ export const RuleLabelPicker: React.FC<RuleLabelPickerProps> = ({
       return;
     }
     setCreating(true);
+    const settle = () => {
+      setCreating(false);
+      window.requestAnimationFrame(() => inputRef.current?.focus());
+    };
     try {
       await onCreate(entry.name);
       setQuery('');
-    } finally {
-      setCreating(false);
-      window.requestAnimationFrame(() => inputRef.current?.focus());
+    } catch (error) {
+      settle();
+      throw error;
     }
+    settle();
   };
 
   const onInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {

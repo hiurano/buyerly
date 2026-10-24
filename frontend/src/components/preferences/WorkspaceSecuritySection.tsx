@@ -55,13 +55,12 @@ export const WorkspaceSecuritySection: React.FC<{ workspace: Workspace }> = ({ w
     try {
       const result = await request();
       setInviteUrl(result.invite_url);
-      done?.();
+      if (done) done();
     } catch (error) {
       // Linear keeps the previous state and says what went wrong.
       toast.error(errorMessage(error, 'Something went wrong, please try again.'));
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   };
 
   const toggle = (enabled: boolean) => run(() => apiRequest<InviteLinkResponse>(endpoint, {

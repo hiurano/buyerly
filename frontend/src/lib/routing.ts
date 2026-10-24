@@ -1,3 +1,4 @@
+import { useMemo, useSyncExternalStore } from 'react';
 import type { ActiveTab, AdsManagerEntity, SettingsSection } from '@/store/useAppStore';
 
 export type Route =
@@ -61,6 +62,57 @@ const SYSTEM_ROOTS = new Set([
   'terms',
   'uploads',
 ]);
+
+/*
+ * Which navigation the tab is on: a number that changes on every pushState
+ * the app makes and on Back and Forward. Components read the address through
+ * it, never straight from window.location while rendering, which the React
+ * Compiler takes for a constant (#492).
+ */
+let locationVersion = 0;
+const getLocationVersion = () => locationVersion;
+const locationListeners = new Set<() => void>();
+
+/** Call after changing the address with the History API. */
+export function notifyLocationChanged(): void {
+  locationVersion += 1;
+  locationListeners.forEach((listener) => listener());
+}
+
+if (typeof window !== 'undefined') window.addEventListener('popstate', notifyLocationChanged);
+
+function subscribeLocation(listener: () => void) {
+  locationListeners.add(listener);
+  return () => locationListeners.delete(listener);
+}
+
+export function useLocationVersion(): number {
+  return useSyncExternalStore(subscribeLocation, getLocationVersion);
+}
+
+/** The route of the address on screen, read again on every navigation. */
+export function useRoute(): Route {
+  const version = useLocationVersion();
+  return useMemo(() => routeAt(version), [version]);
+}
+
+/** The path and query on screen, read again on every navigation. */
+export function useAddress(): { pathname: string; search: string } {
+  const version = useLocationVersion();
+  return useMemo(() => addressAt(version), [version]);
+}
+
+const addressAt = (_version: number) => ({ pathname: window.location.pathname, search: window.location.search });
+
+/** The route as of a navigation; `version` makes that the read's input. */
+export const routeAt = (_version: number) => parseRoute();
+
+/**
+ * The address's query as of a navigation. `navigationKey` changes on every
+ * one, Back and Forward included; passing it makes that the read's input, so
+ * the React Compiler reads the address again then rather than once (#492).
+ */
+export const searchAt = (_navigationKey: number) => window.location.search;
 
 export function parseRoute(location: Location = window.location): Route {
   const parts = location.pathname.split('/').filter(Boolean);
@@ -254,7 +306,7 @@ export function recentlyDeletedRulesPath(workspace: string): string {
 export function openAppPath(path: string): void {
   if (`${window.location.pathname}${window.location.search}` === path) return;
   window.history.pushState({}, '', path);
-  window.dispatchEvent(new PopStateEvent('popstate'));
+  notifyLocationChanged();
 }
 
 /** Recently deleted of the workspace on screen: the "View recently deleted" of a toast. */

@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react';
 import type { SessionUser, Workspace } from './types';
 
 /**
@@ -61,8 +62,19 @@ export function getCurrentAccountId(): number | null {
   return currentAccountId;
 }
 
+const currentAccountListeners = new Set<() => void>();
+
+/** The current account for a component: it renders again when the tab moves to another (#492). */
+export function useCurrentAccountId(): number | null {
+  return useSyncExternalStore((listener) => {
+    currentAccountListeners.add(listener);
+    return () => currentAccountListeners.delete(listener);
+  }, getCurrentAccountId);
+}
+
 export function setCurrentAccountId(id: number | null): void {
   currentAccountId = id;
+  currentAccountListeners.forEach((listener) => listener());
   store(() => window.sessionStorage, TAB_ACCOUNT_KEY, id);
   if (id !== null) store(() => window.localStorage, LAST_ACCOUNT_KEY, id);
 }

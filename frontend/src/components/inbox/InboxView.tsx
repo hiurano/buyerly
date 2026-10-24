@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import {
@@ -62,6 +62,7 @@ import { BuyerlySplitResizer, useSplitListWidth } from '@/ui/BuyerlySplitResizer
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useAppStore } from '@/store/useAppStore';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
+import { useAddress } from '@/lib/routing';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type ActionState = 'idle' | 'loading';
@@ -129,6 +130,9 @@ const OPEN_LAYER_SELECTOR = [
 const headerButtonClass = (active = false) =>
   `buyerly-header-button buyerly-header-button--header buyerly-header-target${active ? ' buyerly-header-button--active' : ''}`;
 
+/** Notifications the filters hide; an older API leaves the count out. */
+const hiddenByFiltersOf = (response: { hidden_by_filters?: number | null }) => response.hidden_by_filters ?? 0;
+
 export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onNavigate, onOpenRecord }) => {
   const {
     workspaceSlug,
@@ -163,23 +167,30 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
   const listRef = useRef<HTMLDivElement>(null);
   const displayButtonRef = useRef<HTMLButtonElement>(null);
   const filterButtonRef = useRef<HTMLButtonElement>(null);
-  itemsRef.current = items;
+  const { pathname } = useAddress();
+  useLayoutEffect(() => {
+    itemsRef.current = items;
+  });
   // Filters live in the address, as in Linear, so a filtered Inbox survives reloads and links.
   const [filters, setFilters] = useState<InboxFilterClause[]>(
     () => decodeInboxFilter(new URLSearchParams(window.location.search).get('filter')),
   );
   const [hiddenByFilters, setHiddenByFilters] = useState(0);
   const [facets, setFacets] = useState<InboxFacets | null>(null);
-  const [filterMenu, setFilterMenu] = useState<{ mode: FilterMenuMode; anchor: HTMLElement; fieldId?: string } | null>(null);
+  const [filterMenu, setFilterMenu] = useState<{ mode: FilterMenuMode; anchor: HTMLElement; fieldId?: string; fromFilterButton: boolean } | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(() => new Set());
   // Read state as each notification was first seen, so Focus groups hold still
   // while notifications are read, as in Linear.
-  const readOnFirstSeenRef = useRef(new Map<number, boolean>());
+  const [readOnFirstSeen, setReadOnFirstSeen] = useState<ReadonlyMap<number, boolean>>(() => new Map());
+  const unseen = items.filter((item) => !readOnFirstSeen.has(item.id));
+  if (unseen.length > 0) setReadOnFirstSeen(new Map([...readOnFirstSeen, ...unseen.map((item) => [item.id, item.is_read] as const)]));
 
   // With priority inbox on, Linear always shows one of its two tabs.
   const activeTab: InboxTab | null = inboxDisplay.priorityInbox ? inboxTab ?? 'priority' : null;
   const tabRef = useRef(activeTab);
-  tabRef.current = activeTab;
+  useLayoutEffect(() => {
+    tabRef.current = activeTab;
+  });
   const queryKey = JSON.stringify({
     ordering: inboxDisplay.ordering,
     unreadOnly: inboxDisplay.unreadOnly,
@@ -192,7 +203,11 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
   const listQuery = useMemo(() => JSON.parse(queryKey) as Omit<InboxQuery, 'offset'>, [queryKey]);
 
   // Wider than md the list and the notification sit side by side, the list resizable as in Linear.
-  const split = useSplitListWidth('buyerly-inbox-list-width', INBOX_LIST_MIN_WIDTH);
+  // Destructured: the React Compiler takes a whole object holding a ref for one (#492).
+  const {
+    containerRef: splitContainerRef, width: splitWidth, minWidth: splitMinWidth, maxWidth: splitMaxWidth,
+    setWidth: setSplitWidth, saveWidth: saveSplitWidth,
+  } = useSplitListWidth('buyerly-inbox-list-width', INBOX_LIST_MIN_WIDTH);
   const splitShown = useMediaQuery(INBOX_SPLIT_QUERY);
 
   const selectedId = openEventId && /^\d+$/.test(openEventId) ? Number(openEventId) : null;
@@ -218,20 +233,6 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
     if (!viewSettingsLoaded) void loadViewSettings();
   }, [loadViewSettings, viewSettingsLoaded]);
   const [filtersSettled, setFiltersSettled] = useState(false);
-  useEffect(() => {
-    if (!viewSettingsLoaded || filtersSettled) return;
-    setFiltersSettled(true);
-    const saved = sanitizeInboxFilters(useAppStore.getState().viewSettings.inbox?.filters);
-    if (new URLSearchParams(window.location.search).get('filter') !== null) {
-      if (JSON.stringify(saved) !== JSON.stringify(filters)) {
-        setViewSettings('inbox', filters.length ? { filters } : null);
-      }
-    } else if (saved.length) {
-      applyFilters(saved);
-    }
-    // Settled once per arrival; later changes save as they happen.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewSettingsLoaded]);
 
   const load = useCallback(async (quiet: boolean) => {
     // The list waits for the member's saved Display options and filters, so it is not drawn twice.
@@ -247,10 +248,10 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
         filters,
       });
       if (generation !== requestGenerationRef.current) return;
-      if (!quiet) readOnFirstSeenRef.current.clear();
+      if (!quiet) setReadOnFirstSeen(new Map());
       setItems(response.items);
       setHasMore(response.has_more);
-      setHiddenByFilters(response.hidden_by_filters ?? 0);
+      setHiddenByFilters(hiddenByFiltersOf(response));
       setInboxUnread(response);
       setLoadError('');
       setLoadState('ready');
@@ -280,18 +281,18 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
     setIsLoadingMore(true);
     try {
       const response = await fetchInbox({ offset: itemsRef.current.length, ...listQuery, filters });
-      if (generation !== requestGenerationRef.current) return;
-      setItems((current) => {
-        const known = new Set(current.map((item) => item.id));
-        return [...current, ...response.items.filter((item) => !known.has(item.id))];
-      });
-      setHasMore(response.has_more);
-      setInboxUnread(response);
+      if (generation === requestGenerationRef.current) {
+        setItems((current) => {
+          const known = new Set(current.map((item) => item.id));
+          return [...current, ...response.items.filter((item) => !known.has(item.id))];
+        });
+        setHasMore(response.has_more);
+        setInboxUnread(response);
+      }
     } catch {
       // Scrolling again retries.
-    } finally {
-      setIsLoadingMore(false);
     }
+    setIsLoadingMore(false);
   }, [filters, hasMore, isLoadingMore, listQuery, loadState, setInboxUnread]);
 
   const applyFilters = useCallback((next: InboxFilterClause[]) => {
@@ -304,9 +305,24 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
     window.history.replaceState(window.history.state, '', `${window.location.pathname}${search ? `?${search}` : ''}`);
   }, [setViewSettings]);
 
+  // Once the saved filters are in: below applyFilters, which it calls.
+  useEffect(() => {
+    if (!viewSettingsLoaded || filtersSettled) return;
+    setFiltersSettled(true);
+    const saved = sanitizeInboxFilters(useAppStore.getState().viewSettings.inbox?.filters);
+    if (new URLSearchParams(window.location.search).get('filter') !== null) {
+      if (JSON.stringify(saved) !== JSON.stringify(filters)) {
+        setViewSettings('inbox', filters.length ? { filters } : null);
+      }
+    } else if (saved.length) {
+      applyFilters(saved);
+    }
+    // Settled once per arrival; later changes save as they happen.
+  }, [viewSettingsLoaded]);
+
   const openFilterMenu = useCallback((mode: FilterMenuMode, anchor: HTMLElement, fieldId?: string) => {
     setIsDisplayOpen(false);
-    setFilterMenu({ mode, anchor, fieldId });
+    setFilterMenu({ mode, anchor, fieldId, fromFilterButton: anchor === filterButtonRef.current });
     // Counts are read fresh each time, like Linear's "2 notifications" next to each value.
     fetchInboxFacets(listQuery.unreadOnly, listQuery.showSnoozed, listQuery).then(setFacets).catch(() => {});
   }, [listQuery]);
@@ -322,18 +338,19 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
     [setInboxUnread],
   );
 
-  const groups = useMemo(() => {
-    const firstSeen = readOnFirstSeenRef.current;
-    for (const item of items) if (!firstSeen.has(item.id)) firstSeen.set(item.id, item.is_read);
-    return groupInboxItems(items, inboxDisplay.grouping, (item) => firstSeen.get(item.id) ?? item.is_read);
-  }, [inboxDisplay.grouping, items]);
+  const groups = useMemo(
+    () => groupInboxItems(items, inboxDisplay.grouping, (item) => readOnFirstSeen.get(item.id) ?? item.is_read),
+    [inboxDisplay.grouping, items, readOnFirstSeen],
+  );
   // The order J/K and "open the next one" follow: groups top to bottom, collapsed ones skipped.
   const visibleItems = useMemo(
     () => (groups ? groups.flatMap((group) => (collapsedGroups.has(group.id) ? [] : group.items)) : items),
     [collapsedGroups, groups, items],
   );
   const visibleRef = useRef(visibleItems);
-  visibleRef.current = visibleItems;
+  useLayoutEffect(() => {
+    visibleRef.current = visibleItems;
+  });
   const toggleGroup = useCallback((id: string) => {
     setCollapsedGroups((current) => {
       const next = new Set(current);
@@ -510,9 +527,8 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
       void load(true);
     } catch (error) {
       reportError(error);
-    } finally {
-      setActionState('idle');
     }
+    setActionState('idle');
   };
 
   const renderList = () => {
@@ -606,11 +622,11 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
   const unreadLabel = inboxUnreadCount === 1 ? '1 unread notification' : `${inboxUnreadCount} unread notifications`;
 
   return (
-    <div ref={split.containerRef} className="relative flex h-full min-w-0 overflow-hidden bg-transparent">
+    <div ref={splitContainerRef} className="relative flex h-full min-w-0 overflow-hidden bg-transparent">
       <section
         aria-label="Inbox"
         className={`${selectedItem ? 'hidden md:flex' : 'flex'} inbox-list h-full min-w-0 w-full flex-col`}
-        style={{ '--inbox-list-width': `${split.width}px` } as React.CSSProperties}
+        style={{ '--inbox-list-width': `${splitWidth}px` } as React.CSSProperties}
       >
         <header className="flex h-[44px] shrink-0 items-center gap-1 border-b border-[var(--color-border-primary)] px-2.5">
           <SidebarCollapsedNavigation />
@@ -702,7 +718,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
               return (
                 <a
                   key={tab}
-                  href={`${window.location.pathname.split('/inbox')[0]}/inbox/${tab}`}
+                  href={`${pathname.split('/inbox')[0]}/inbox/${tab}`}
                   aria-current={activeTab === tab ? 'page' : undefined}
                   className="buyerly-inbox-tab"
                   onClick={(event) => {
@@ -735,7 +751,7 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
           onClose={() => setFilterMenu(null)}
           countNoun={['notification', 'notifications']}
           childWidth={311}
-          rootPlaceholder={filterMenu?.anchor === filterButtonRef.current ? 'Add Filter…' : 'Filter notifications by…'}
+          rootPlaceholder={filterMenu?.fromFilterButton ? 'Add Filter…' : 'Filter notifications by…'}
         />
 
         {renderList()}
@@ -743,11 +759,11 @@ export const InboxView: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
 
       {splitShown && (
         <BuyerlySplitResizer
-          width={split.width}
-          minWidth={split.minWidth}
-          maxWidth={split.maxWidth}
-          onResize={split.setWidth}
-          onResizeEnd={split.saveWidth}
+          width={splitWidth}
+          minWidth={splitMinWidth}
+          maxWidth={splitMaxWidth}
+          onResize={setSplitWidth}
+          onResizeEnd={saveSplitWidth}
         />
       )}
 

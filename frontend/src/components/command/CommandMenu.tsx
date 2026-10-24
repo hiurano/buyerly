@@ -53,6 +53,17 @@ function isTypingTarget(target: EventTarget | null): boolean {
 /** What had focus when the menu opened; it gets focus back unless a choice moves it on. */
 let returnFocusTo: HTMLElement | null = null;
 
+/**
+ * Hands over where focus goes back to, once. A function, as the React Compiler
+ * takes a module variable for a constant inside a component and would read it
+ * after clearing it (#492).
+ */
+function takeReturnFocus(): HTMLElement | null {
+  const target = returnFocusTo;
+  returnFocusTo = null;
+  return target;
+}
+
 /** Opens the command menu (Ctrl/Cmd+K), remembering where focus goes back to. */
 export function openCommandMenu(): void {
   const store = useAppStore.getState();
@@ -129,8 +140,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
           onCloseAutoFocus={(event) => {
             // Radix would focus a trigger this menu does not have.
             event.preventDefault();
-            const target = returnFocusTo;
-            returnFocusTo = null;
+            const target = takeReturnFocus();
             if (choiceMade.current) {
               choiceMade.current = false;
               return;
