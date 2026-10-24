@@ -6,7 +6,6 @@ import { apiRequest } from '@/lib/api';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { auditEventSummary, auditEventTitle, formatAuditRelativeTime, formatAuditTimestamp, type AuditEventListResponse, type AuditEventItem } from '@/lib/audit';
 import { attachedRuleScope, formatAccountScope, formatRelativeTime } from '@/lib/rules';
-import { useAppStore } from '@/store/useAppStore';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { AttachRulePreviewDialog } from '@/components/rules/AttachRulePreviewDialog';
 import { metaAccountLabel } from '@/components/campaigns/liveCampaigns';
@@ -39,6 +38,7 @@ import {
   formatAddedDate,
   teamsOf,
 } from './accountsModel';
+import { type RuleItem, useRulesStore } from '@/models/rulesStore';
 
 /** Below this width the properties move under the title, in one column (#388). */
 const ONE_COLUMN_QUERY = '(max-width: 1199px)';
@@ -82,7 +82,11 @@ const AccountPageContent: React.FC<AccountPageProps> = ({ accountId, navigate, n
   const oneColumn = useMediaQuery(ONE_COLUMN_QUERY);
   const account = accounts.find((item) => item.account_id === accountId);
 
-  const { rules, loadRules, toggleRuleOnAccount } = useAppStore();
+  const rules = useRulesStore((state) => state.rules);
+
+  const loadRules = useRulesStore((state) => state.loadRules);
+
+  const toggleRuleOnAccount = useRulesStore((state) => state.toggleRuleOnAccount);
   useEffect(() => {
     void loadRules({ ifStale: true });
   }, [loadRules]);
@@ -222,7 +226,7 @@ interface AccountPageBodyProps {
   connectedBy?: { full_name: string; username: string };
   members: AccountMember[];
   onSetLead: (leadUserId: number | null) => void;
-  rules: ReturnType<typeof useAppStore.getState>['rules'];
+  rules: RuleItem[];
   events: AuditEventItem[] | null;
   onSaveProfile: (change: { custom_name?: string; note?: string }) => void;
   onToggleAutomation: () => void;

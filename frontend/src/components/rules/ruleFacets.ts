@@ -1,5 +1,5 @@
-import type { RuleItem, RuleLabel } from '@/store/useAppStore';
 import { RULE_ACTION_NAMES, RULE_STATUS_NAMES, ruleState } from './ruleNames';
+import { type RuleItem, type RuleLabel } from '@/models/rulesStore';
 
 export { ruleState };
 

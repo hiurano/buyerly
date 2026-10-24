@@ -16,7 +16,6 @@ import {
   type TeamDocument,
   type TeamItem,
 } from '@/lib/teams';
-import { useAppStore, type AppTab } from '@/store/useAppStore';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { Initials, RoleStatus, shortDate } from '@/components/preferences/MembersSection';
 import { memberName, type MemberItem } from '@/components/preferences/MemberDialogs';
@@ -38,6 +37,7 @@ import { Tooltip } from '@/ui/Tooltip';
 import { toast } from '@/ui/toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import { BuyerlyDataListRow, BuyerlyDataListToolbar, BuyerlyDataTable, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
+import { shellStore, useShellStore, type AppTab } from '@/models/shellStore';
 
 const TABS: { id: TeamHomePage; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -198,8 +198,8 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
                   type="button"
                   aria-label="Add members"
                   onClick={() => {
-                    useAppStore.getState().openTeamSettings(`${team.key}/members`);
-                    useAppStore.getState().setActiveTab('preferences');
+                    shellStore.openTeamSettings(`${team.key}/members`);
+                    shellStore.setActiveTab('preferences');
                   }}
                   className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target"
                 >
@@ -235,9 +235,9 @@ interface TeamOverviewProps {
 /** Linear's team Overview: icon and name, the description, Team resources; Members and Go to beside them. */
 const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, canEdit, canWrite, onOpenTab, onCreateDocument }) => {
   const { workspace } = useWorkspaceSession();
-  const setActiveTab = useAppStore((state) => state.setActiveTab);
-  const setActiveTeamKey = useAppStore((state) => state.setActiveTeamKey);
-  const openTeamSettings = useAppStore((state) => state.openTeamSettings);
+  const setActiveTab = useShellStore((state) => state.setActiveTab);
+  const setActiveTeamKey = useShellStore((state) => state.setActiveTeamKey);
+  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
   const people = team.member_user_ids
     .map((id) => members.find((member) => member.user_id === id))
     .filter((member): member is MemberItem => Boolean(member));
@@ -565,8 +565,8 @@ const MEMBER_COLUMNS: BuyerlyDataListColumn[] = [
 
 /** Linear's team Members tab: who is on the team; owners and admins change it in the team's settings. */
 const TeamMembersTab: React.FC<{ team: TeamItem; members: MemberItem[] | null }> = ({ team, members }) => {
-  const openTeamSettings = useAppStore((state) => state.openTeamSettings);
-  const setActiveTab = useAppStore((state) => state.setActiveTab);
+  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
+  const setActiveTab = useShellStore((state) => state.setActiveTab);
   const { workspace } = useWorkspaceSession();
   if (!members) return <DataState title="Loading members…" detail="Reading the members of this team." />;
   const people = members.filter((member) => team.member_user_ids.includes(member.user_id));

@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { Workspace } from '@/lib/types';
-import { useAppStore, type RuleLabel } from '@/store/useAppStore';
 import { ApiError } from '@/lib/api';
 import { LABEL_COLORS, formatRelativeTime, randomLabelColor } from '@/lib/rules';
 import { openAppPath, pathForTab } from '@/lib/routing';
@@ -11,6 +10,10 @@ import { toast } from '@/ui/toast';
 import { deletionPrompt, runPendingDeletion } from '@/components/rules/ruleActions';
 import { RowMenu, shortDate } from './MembersSection';
 import { SortHeader, sortedBy, useListSort } from './SettingsListSort';
+import { useDialogStore } from '@/models/dialogStore';
+import { useRulesStore, type RuleLabel } from '@/models/rulesStore';
+import { useScopeStore } from '@/models/scopeStore';
+import { shellStore, useShellStore } from '@/models/shellStore';
 
 /**
  * Linear's Issue labels table: Name, Description, Last applied, Created; Buyerly
@@ -151,7 +154,7 @@ const InlineText: React.FC<{
 
 /** Linear's "New label" row: a random color, the name, the description; Enter saves, Esc gives up. */
 const NewLabelRow: React.FC<{ onDone: () => void }> = ({ onDone }) => {
-  const createRuleLabel = useAppStore((state) => state.createRuleLabel);
+  const createRuleLabel = useRulesStore((state) => state.createRuleLabel);
   const [color, setColor] = useState(randomLabelColor);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -221,23 +224,23 @@ const NewLabelRow: React.FC<{ onDone: () => void }> = ({ onDone }) => {
  * off its rules, which stay, and keeps it in Recently deleted.
  */
 export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) => {
-  const labels = useAppStore((state) => state.ruleLabels);
-  const loadState = useAppStore((state) => state.rulesLoadState);
-  const loadError = useAppStore((state) => state.rulesError);
-  const loadRules = useAppStore((state) => state.loadRules);
-  const updateRuleLabel = useAppStore((state) => state.updateRuleLabel);
-  const newLabelRequest = useAppStore((state) => state.newRuleLabelRequest);
-  const pendingDeletion = useAppStore((state) => state.pendingDeletion);
-  const requestDeletion = useAppStore((state) => state.requestDeletion);
-  const cancelDeletion = useAppStore((state) => state.cancelDeletion);
+  const labels = useRulesStore((state) => state.ruleLabels);
+  const loadState = useRulesStore((state) => state.rulesLoadState);
+  const loadError = useRulesStore((state) => state.rulesError);
+  const loadRules = useRulesStore((state) => state.loadRules);
+  const updateRuleLabel = useRulesStore((state) => state.updateRuleLabel);
+  const newLabelRequest = useShellStore((state) => state.newRuleLabelRequest);
+  const pendingDeletion = useDialogStore((state) => state.pendingDeletion);
+  const requestDeletion = useDialogStore((state) => state.requestDeletion);
+  const cancelDeletion = useDialogStore((state) => state.cancelDeletion);
   const [query, setQuery] = useState('');
   const [adding, setAdding] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
   const canEdit = workspace.role !== 'guest';
 
   // Read again once the workspace is known: a direct address opens before it is.
-  const scope = useAppStore((state) => state.workspaceScope);
-  const scopeGeneration = useAppStore((state) => state.scopeGeneration);
+  const scope = useScopeStore((state) => state.workspaceScope);
+  const scopeGeneration = useScopeStore((state) => state.scopeGeneration);
   useEffect(() => {
     if (scope) void loadRules({ ifStale: true });
   }, [loadRules, scope, scopeGeneration]);
@@ -246,7 +249,7 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
   useEffect(() => {
     if (newLabelRequest === 0) return;
     if (canEdit) setAdding(true);
-    useAppStore.setState({ newRuleLabelRequest: 0 });
+    shellStore.takeNewRuleLabelRequest();
   }, [canEdit, newLabelRequest]);
 
   const save = async (label: RuleLabel, patch: { name?: string; color?: string; description?: string }) => {

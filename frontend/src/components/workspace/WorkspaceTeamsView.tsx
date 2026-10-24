@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '@/lib/api';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { notifyTeamsChanged, teamsPath, useTeams, type TeamItem } from '@/lib/teams';
-import { useAppStore } from '@/store/useAppStore';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { Initials } from '@/components/preferences/MembersSection';
 import { memberName, type MemberItem } from '@/components/preferences/MemberDialogs';
@@ -13,6 +12,7 @@ import { HeaderCreateButton } from '@/ui/HeaderCreateButton';
 import { BuyerlyDataListRow, BuyerlyDataListToolbar, BuyerlyDataTable, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 import { toast } from '@/ui/toast';
 import { ListSearchField } from './ListSearchField';
+import { useShellStore } from '@/models/shellStore';
 
 const COLUMNS: BuyerlyDataListColumn[] = [
   { id: 'name', label: 'Name', width: 'minmax(220px, 1fr)', sortable: true },
@@ -26,9 +26,9 @@ const MAX_FACES = 5;
 export const WorkspaceTeamsView: React.FC = () => {
   const { workspace, user } = useWorkspaceSession();
   const { teams, error, refresh } = useTeams(workspace.id, 'active');
-  const setActiveTab = useAppStore((state) => state.setActiveTab);
-  const setActiveTeamKey = useAppStore((state) => state.setActiveTeamKey);
-  const setSettingsSection = useAppStore((state) => state.setSettingsSection);
+  const setActiveTab = useShellStore((state) => state.setActiveTab);
+  const setActiveTeamKey = useShellStore((state) => state.setActiveTeamKey);
+  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
   const [members, setMembers] = useState<MemberItem[]>([]);
   const [query, setQuery] = useState('');
   const [direction, setDirection] = useState<'asc' | 'desc'>('asc');

@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react';
-import { useAppStore } from '@/store/useAppStore';
 import { useMediaQuery, useIsTouchScreen } from '@/lib/useMediaQuery';
 import { Tooltip } from '@/ui/Tooltip';
 import { BuyerlySidebarToggleIcon } from '@/icons/BuyerlyIcons';
@@ -13,6 +12,7 @@ import {
   type DetailsPaneId,
   type SpringValue,
 } from './detailsPaneModel';
+import { detailsPaneStore, useDetailsPaneStore } from '@/models/detailsPaneStore';
 
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
@@ -234,9 +234,9 @@ interface DetailsPaneLayoutProps {
  * Whether it is open, and its width, are kept per view on this device.
  */
 export function DetailsPaneLayout({ pane, label, details, children }: DetailsPaneLayoutProps) {
-  const state = useAppStore((store) => store.detailsPanes[pane]);
-  const toggleDetailsPane = useAppStore((store) => store.toggleDetailsPane);
-  const setDetailsPaneWidth = useAppStore((store) => store.setDetailsPaneWidth);
+  const state = useDetailsPaneStore((store) => store.detailsPanes[pane]);
+  const toggleDetailsPane = useDetailsPaneStore((store) => store.toggleDetailsPane);
+  const setDetailsPaneWidth = useDetailsPaneStore((store) => store.setDetailsPaneWidth);
   const overlay = useMediaQuery(DETAILS_PANE_OVERLAY_QUERY);
   const phone = useMediaQuery(DETAILS_PANE_PHONE_QUERY);
   const touch = useIsTouchScreen();
@@ -256,7 +256,7 @@ export function DetailsPaneLayout({ pane, label, details, children }: DetailsPan
 
   // A phone opens on its list: a pane left open on a wider window starts closed there.
   useEffect(() => {
-    if (phone && useAppStore.getState().detailsPanes[pane].open) toggleDetailsPane(pane, false);
+    if (phone && detailsPaneStore.detailsPanes[pane].open) toggleDetailsPane(pane, false);
   }, [pane, phone, toggleDetailsPane]);
 
   const marginRef = useRef(open ? 0 : -width);
@@ -347,8 +347,8 @@ export function DetailsPaneLayout({ pane, label, details, children }: DetailsPan
 
 /** The view header's "Open details" / "Close details" button (Ctrl I or ], as in Linear). */
 export function DetailsPaneToggle({ pane }: { pane: DetailsPaneId }) {
-  const open = useAppStore((store) => store.detailsPanes[pane].open);
-  const toggleDetailsPane = useAppStore((store) => store.toggleDetailsPane);
+  const open = useDetailsPaneStore((store) => store.detailsPanes[pane].open);
+  const toggleDetailsPane = useDetailsPaneStore((store) => store.toggleDetailsPane);
   const label = open ? 'Close details' : 'Open details';
   return (
     <Tooltip content={label} shortcut={navigator.platform.includes('Mac') ? '⌘I' : 'Ctrl+I'} align="end">

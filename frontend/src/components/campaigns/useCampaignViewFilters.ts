@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import type { AdsManagerEntity } from '@/store/useAppStore';
 import { sanitizeFilterClauses, type FilterClause } from '@/components/filters/filterModel';
 import { readFilterParam, writeFilterParam } from '@/ui/useListView';
 import { migrateAdsManagerClauses, type QuickSelection } from './campaignViewModel';
 import { useAdsManagerView } from './adsManagerViewModel';
+import { type AdsManagerEntity } from '@/models/viewStore';
 
 type Filters = Record<AdsManagerEntity, FilterClause[]>;
 const ENTITIES: AdsManagerEntity[] = ['campaigns', 'adsets', 'ads'];

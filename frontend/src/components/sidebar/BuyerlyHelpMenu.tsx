@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useAppStore } from '@/store/useAppStore';
 import { GO_TO_KEYS } from '@/lib/shortcuts';
 import { Tooltip } from '@/ui/Tooltip';
 import { BuyerlyChatIcon, BuyerlyGearIcon, BuyerlyKeyboardIcon, BuyerlyQuestionMarkIcon } from '@/icons/BuyerlyIcons';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import changelogLatest from '@/lib/changelogLatest.json';
+import { useCommandMenuStore } from '@/models/commandMenuStore';
+import { useShellStore } from '@/models/shellStore';
 
 /**
  * Linear's "What's new" timeline: a dot on a dashed line that starts at the
@@ -49,9 +50,9 @@ function isTypingTarget(target: EventTarget | null): boolean {
  * community have no counterpart yet.
  */
 export function BuyerlyHelpMenu() {
-  const setActiveTab = useAppStore((state) => state.setActiveTab);
-  const setSettingsSection = useAppStore((state) => state.setSettingsSection);
-  const setShortcutsOpen = useAppStore((state) => state.setShortcutsOpen);
+  const setActiveTab = useShellStore((state) => state.setActiveTab);
+  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
+  const setShortcutsOpen = useCommandMenuStore((state) => state.setShortcutsOpen);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {

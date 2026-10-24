@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { TriangleAlert } from 'lucide-react';
-import { useAppStore } from '@/store/useAppStore';
 import { createTelegramLink, disconnectTelegram, telegramAccountName } from '@/lib/telegram';
 import { BuyerlyArrowUpRightIcon, TelegramIcon } from '@/icons/BuyerlyIcons';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
@@ -8,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tooltip } from '@/ui/Tooltip';
 import { toast } from '@/ui/toast';
 import { useTelegramConnection } from './NotificationsSection';
+import { useNotificationSettingsStore } from '@/models/notificationSettingsStore';
 
 /** How often the page asks whether Start was pressed, and for how long (the link's life). */
 const LINK_POLL_MS = 2000;
@@ -28,7 +28,9 @@ const ConnectButton = ({ label, ...props }: { label: string } & React.ComponentP
 
 export const ConnectedAccountsSection: React.FC = () => {
   const connection = useTelegramConnection();
-  const { loadTelegramConnection, setTelegramConnection, loadNotificationChannels } = useAppStore();
+  const loadTelegramConnection = useNotificationSettingsStore((state) => state.loadTelegramConnection);
+  const setTelegramConnection = useNotificationSettingsStore((state) => state.setTelegramConnection);
+  const loadNotificationChannels = useNotificationSettingsStore((state) => state.loadNotificationChannels);
   const [waitingSince, setWaitingSince] = useState<number | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);

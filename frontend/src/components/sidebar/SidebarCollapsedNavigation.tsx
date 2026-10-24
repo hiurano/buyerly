@@ -1,8 +1,8 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
-import { useAppStore } from '@/store/useAppStore';
 import { useIsSmallScreen, useIsTouchScreen } from '@/lib/useMediaQuery';
 import { BuyerlySidebarLeftToggleIcon } from '@/icons/BuyerlyIcons';
 import { Tooltip } from '@/ui/Tooltip';
+import { shellStore, useShellStore } from '@/models/shellStore';
 
 /**
  * Linear's SidebarCollapsedNavigation: the sidebar button at the start of a
@@ -10,11 +10,11 @@ import { Tooltip } from '@/ui/Tooltip';
  * always: there it is "Menu" and opens or closes the sidebar drawer.
  */
 export const SidebarCollapsedNavigation: React.FC = () => {
-  const isSidebarCollapsed = useAppStore((state) => state.isSidebarCollapsed);
-  const toggleSidebarCollapsed = useAppStore((state) => state.toggleSidebarCollapsed);
-  const isSidebarOpen = useAppStore((state) => state.isSidebarOpen);
-  const toggleSidebarOpen = useAppStore((state) => state.toggleSidebarOpen);
-  const setSidebarPeekOpen = useAppStore((state) => state.setSidebarPeekOpen);
+  const isSidebarCollapsed = useShellStore((state) => state.isSidebarCollapsed);
+  const toggleSidebarCollapsed = useShellStore((state) => state.toggleSidebarCollapsed);
+  const isSidebarOpen = useShellStore((state) => state.isSidebarOpen);
+  const toggleSidebarOpen = useShellStore((state) => state.toggleSidebarOpen);
+  const setSidebarPeekOpen = useShellStore((state) => state.setSidebarPeekOpen);
   const isSmall = useIsSmallScreen();
   // Linear's pure-touch header: a 32px button (28px with a mouse).
   const isTouch = useIsTouchScreen();
@@ -63,7 +63,7 @@ export const SidebarCollapsedNavigation: React.FC = () => {
         // Linear's onMouseEnter does (no delay, unlike the window's left edge).
         onMouseEnter={() => {
           // Settings has its own sidebar, which never collapses.
-          if (!isSidebarCollapsed || useAppStore.getState().activeTab === 'preferences') return;
+          if (!isSidebarCollapsed || shellStore.activeTab === 'preferences') return;
           setSidebarPeekOpen(true);
         }}
         className="buyerly-icon-btn buyerly-sidebar-toggle buyerly-header-target"

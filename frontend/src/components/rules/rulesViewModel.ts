@@ -1,10 +1,10 @@
-import type { RuleItem, RuleLabel } from '@/store/useAppStore';
 import { RULE_LEVEL_LABELS, type RuleAction, type RuleExecutionLevel } from '@/lib/rules';
 import { RULE_ACTION_NAMES, RULE_STATUS_NAMES, ruleState } from './ruleNames';
 
 export { RULE_ACTION_NAMES, RULE_STATUS_NAMES, ruleState };
 import { boardGrouping, listViewDefaults, type ListViewSettings, type SortDirection } from '@/ui/listView';
 import { useListView } from '@/ui/useListView';
+import { type RuleItem, type RuleLabel } from '@/models/rulesStore';
 
 /**
  * Display properties of the Rules list, in column order (#390). ID, Applies

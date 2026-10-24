@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo } from 'react';
-import { useAppStore } from '@/store/useAppStore';
 import type { StoredView } from '@/lib/viewSettings';
 import { sanitizeFilterClauses, type FilterClause } from '@/components/filters/filterModel';
 import { displayDiffers, readListView, type ListViewSettings } from './listView';
 import { toast } from './toast';
+import { useScopeStore } from '@/models/scopeStore';
+import { viewStore, useViewStore } from '@/models/viewStore';
 
 /** Only what differs from the page's defaults is kept, so a later default still reaches untouched views. */
 function sparse(view: ListViewSettings, defaults: ListViewSettings): StoredView {
@@ -30,13 +31,13 @@ function sparse(view: ListViewSettings, defaults: ListViewSettings): StoredView 
  *   the workspace's default; `canSetDefault` says whether this member may.
  */
 export function useListView(key: string, defaults: ListViewSettings) {
-  const stored = useAppStore((state) => state.viewSettings[key]);
-  const workspaceDefault = useAppStore((state) => state.viewDefaults[key]);
-  const loaded = useAppStore((state) => state.viewSettingsLoaded);
-  const canSetDefault = useAppStore((state) => state.workspaceRole === 'owner' || state.workspaceRole === 'admin');
-  const loadViewSettings = useAppStore((state) => state.loadViewSettings);
-  const setViewSettings = useAppStore((state) => state.setViewSettings);
-  const setViewDefault = useAppStore((state) => state.setViewDefault);
+  const stored = useViewStore((state) => state.viewSettings[key]);
+  const workspaceDefault = useViewStore((state) => state.viewDefaults[key]);
+  const loaded = useViewStore((state) => state.viewSettingsLoaded);
+  const canSetDefault = useScopeStore((state) => state.workspaceRole === 'owner' || state.workspaceRole === 'admin');
+  const loadViewSettings = useViewStore((state) => state.loadViewSettings);
+  const setViewSettings = useViewStore((state) => state.setViewSettings);
+  const setViewDefault = useViewStore((state) => state.setViewDefault);
 
   useEffect(() => {
     if (!loaded) void loadViewSettings();
@@ -51,17 +52,17 @@ export function useListView(key: string, defaults: ListViewSettings) {
   }, [key, setViewSettings]);
 
   const update = useCallback((patch: Partial<ListViewSettings>) => {
-    const current = readListView(useAppStore.getState().viewSettings[key], base);
+    const current = readListView(viewStore.viewSettings[key], base);
     saveOver(readListView({ ...current, ...patch }, base), base);
   }, [base, key, saveOver]);
 
   const reset = useCallback(() => {
-    const current = readListView(useAppStore.getState().viewSettings[key], base);
+    const current = readListView(viewStore.viewSettings[key], base);
     saveOver({ ...base, filters: current.filters }, base);
   }, [base, key, saveOver]);
 
   const setDefaultForEveryone = useCallback(async () => {
-    const current = readListView(useAppStore.getState().viewSettings[key], base);
+    const current = readListView(viewStore.viewSettings[key], base);
     // Display options only: as Linear's dot and Reset, filters stay each member's own.
     const display = sparse({ ...current, filters: defaults.filters }, defaults);
     try {

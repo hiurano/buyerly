@@ -1,8 +1,8 @@
 import { useEffect, useSyncExternalStore } from 'react';
-import { useAppStore } from '@/store/useAppStore';
 import type { Workspace } from '@/lib/types';
 import { workspaceTools } from './tools';
 import type { ModelContext, WebMcpTool } from './types';
+import { scopeStore } from '@/models/scopeStore';
 
 /** Opts one browser in while the build keeps WebMCP off: Settings → Preferences, or `localStorage.setItem('buyerly-webmcp', 'on')`. */
 const OPT_IN_KEY = 'buyerly-webmcp';
@@ -97,7 +97,7 @@ export function useWebMcpTools(workspace: Pick<Workspace, 'slug' | 'role'>): voi
     const tools = workspaceTools({
       workspace: slug,
       canWrite: role !== 'guest',
-      inScope: useAppStore.getState().captureScope(),
+      inScope: scopeStore.captureScope(),
       signal: controller.signal,
     });
     registerTools(modelContext, tools, controller.signal);

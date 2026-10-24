@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useAppStore, type RuleLabel } from '@/store/useAppStore';
+import { useRulesStore, type RuleLabel } from '@/models/rulesStore';
 
 interface RuleLabelPickerProps {
   /** Labels every rule being changed carries. */
@@ -44,7 +44,7 @@ export const RuleLabelPicker: React.FC<RuleLabelPickerProps> = ({
   inline = false,
   placeholder = 'Change or add labels…',
 }) => {
-  const labels = useAppStore((state) => state.ruleLabels);
+  const labels = useRulesStore((state) => state.ruleLabels);
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(-1);
   const [creating, setCreating] = useState(false);

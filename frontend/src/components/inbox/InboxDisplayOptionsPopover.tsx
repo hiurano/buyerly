@@ -8,11 +8,12 @@ import {
   type InboxKind,
   type InboxOrdering,
 } from '@/lib/inbox';
-import { useAppStore } from '@/store/useAppStore';
 import { BuyerlyPlusIcon } from '@/icons/BuyerlyIcons';
 import { BuyerlyMultiSelect, BuyerlySelect } from '@/ui/BuyerlyDisplayOptions';
 import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { useMenuExit } from '@/ui/useMenuExit';
+import { useInboxStore } from '@/models/inboxStore';
+import { useShellStore } from '@/models/shellStore';
 
 interface InboxDisplayOptionsPopoverProps {
   isOpen: boolean;
@@ -40,7 +41,10 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
   onClose,
   anchorRef,
 }) => {
-  const { inboxDisplay, setInboxDisplay, setActiveTab, setSettingsSection } = useAppStore();
+  const inboxDisplay = useInboxStore((state) => state.inboxDisplay);
+  const setInboxDisplay = useInboxStore((state) => state.setInboxDisplay);
+  const setActiveTab = useShellStore((state) => state.setActiveTab);
+  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
   const customFilters = inboxDisplay.priorityRules.length;
   const popoverRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState({ top: 0, left: 0 });

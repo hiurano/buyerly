@@ -1,5 +1,5 @@
-import type { ActiveTab, SettingsSection } from '@/store/useAppStore';
 import type { TeamHomePage } from '@/lib/routing';
+import { type ActiveTab, type SettingsSection } from '@/models/shellStore';
 
 /** Settings pages by their names in Linear's tab titles ("Preferences", "Members", …). */
 const SETTINGS_TITLES: Record<Exclude<SettingsSection, 'team'>, string> = {

@@ -1,9 +1,9 @@
 import React from 'react';
-import { useAppStore } from '@/store/useAppStore';
 import { TeamIcon } from '@/components/preferences/TeamIcon';
 import type { TeamItem } from '@/lib/teams';
 import type { FavoriteInput } from '@/lib/favorites';
 import { BuyerlyFavoriteButton } from '@/ui/BuyerlyFavoriteButton';
+import { useShellStore } from '@/models/shellStore';
 
 /**
  * A view's title in its header. On a team's page it reads as Linear's
@@ -11,8 +11,8 @@ import { BuyerlyFavoriteButton } from '@/ui/BuyerlyFavoriteButton';
  * and Linear's star 8px after it when the page can be a favorite.
  */
 export const ViewTitle: React.FC<{ title: string; team?: TeamItem | null; favorite?: FavoriteInput }> = ({ title, team, favorite }) => {
-  const setActiveTeamKey = useAppStore((state) => state.setActiveTeamKey);
-  const setActiveTab = useAppStore((state) => state.setActiveTab);
+  const setActiveTeamKey = useShellStore((state) => state.setActiveTeamKey);
+  const setActiveTab = useShellStore((state) => state.setActiveTab);
   const heading = (
     <h2 className="overflow-hidden whitespace-nowrap text-[13px] font-medium text-[var(--text-secondary)]">{title}</h2>
   );

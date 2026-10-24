@@ -13,7 +13,6 @@ import {
 } from '@/lib/inbox';
 import { channelStatus, type NotificationChannel } from '@/lib/notificationChannels';
 import { telegramAccountName } from '@/lib/telegram';
-import { useAppStore } from '@/store/useAppStore';
 import { BuyerlyFilterMenu, type FilterMenuMode } from '@/components/filters/BuyerlyFilter';
 import type { FilterClause } from '@/components/filters/filterModel';
 import { InboxFilterChip } from '@/components/inbox/InboxFilterBar';
@@ -36,6 +35,8 @@ import {
 } from '@/ui/DropdownMenu';
 import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { Tooltip } from '@/ui/Tooltip';
+import { useInboxStore } from '@/models/inboxStore';
+import { useNotificationSettingsStore } from '@/models/notificationSettingsStore';
 
 /** What each kind holds, in place of Linear's descriptions of its notification types. */
 const KIND_DESCRIPTIONS: Record<InboxKind, string> = {
@@ -56,7 +57,10 @@ function plural(count: number, noun: string): string {
 }
 
 function useInboxDisplay() {
-  const { inboxDisplay, inboxDisplayLoaded, loadInboxDisplay, setInboxDisplay } = useAppStore();
+  const inboxDisplay = useInboxStore((state) => state.inboxDisplay);
+  const inboxDisplayLoaded = useInboxStore((state) => state.inboxDisplayLoaded);
+  const loadInboxDisplay = useInboxStore((state) => state.loadInboxDisplay);
+  const setInboxDisplay = useInboxStore((state) => state.setInboxDisplay);
   useEffect(() => {
     if (!inboxDisplayLoaded) void loadInboxDisplay();
   }, [inboxDisplayLoaded, loadInboxDisplay]);
@@ -64,10 +68,11 @@ function useInboxDisplay() {
 }
 
 function useNotificationChannels() {
-  const {
-    notificationChannels, notificationChannelsLoaded, loadNotificationChannels, setChannelNotifications,
-    setNotificationChannels,
-  } = useAppStore();
+  const notificationChannels = useNotificationSettingsStore((state) => state.notificationChannels);
+  const notificationChannelsLoaded = useNotificationSettingsStore((state) => state.notificationChannelsLoaded);
+  const loadNotificationChannels = useNotificationSettingsStore((state) => state.loadNotificationChannels);
+  const setChannelNotifications = useNotificationSettingsStore((state) => state.setChannelNotifications);
+  const setNotificationChannels = useNotificationSettingsStore((state) => state.setNotificationChannels);
   useEffect(() => {
     if (!notificationChannelsLoaded) void loadNotificationChannels();
   }, [notificationChannelsLoaded, loadNotificationChannels]);
@@ -76,7 +81,9 @@ function useNotificationChannels() {
 
 /** The member's personal Telegram account, loaded once per workspace. */
 export function useTelegramConnection() {
-  const { telegramConnection, telegramConnectionLoaded, loadTelegramConnection } = useAppStore();
+  const telegramConnection = useNotificationSettingsStore((state) => state.telegramConnection);
+  const telegramConnectionLoaded = useNotificationSettingsStore((state) => state.telegramConnectionLoaded);
+  const loadTelegramConnection = useNotificationSettingsStore((state) => state.loadTelegramConnection);
   useEffect(() => {
     if (!telegramConnectionLoaded) void loadTelegramConnection().catch(() => {});
   }, [telegramConnectionLoaded, loadTelegramConnection]);

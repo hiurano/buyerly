@@ -1,14 +1,7 @@
-import type {
-  AdItem,
-  AdSetItem,
-  CampaignGroup,
-  CampaignItem,
-  RuleItem,
-  RuleLabel,
-} from '@/store/useAppStore';
 import { DATE_OPERATORS, type FilterFieldDefinition, type FilterOption } from './filterModel';
 import { RULE_LEVEL_LABELS, RULE_METRIC_LABELS, RULE_TIME_WINDOW_MENU_LABELS } from '@/lib/rules';
 import { RULE_ACTION_NAMES, ruleState } from '@/components/rules/ruleNames';
+import { type AdItem, type AdSetItem, type CampaignGroup, type CampaignItem, type RuleItem, type RuleLabel } from '@/models/rulesStore';
 
 const enumOperators = ['is', 'is_not'] as const;
 

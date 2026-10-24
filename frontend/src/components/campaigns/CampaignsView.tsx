@@ -19,7 +19,6 @@ import type {
   MetaAccount,
   MetaConnection,
 } from '@/lib/types';
-import { useAppStore } from '@/store/useAppStore';
 import { pool } from '@/models/pool';
 import { adAccountsQuery, connectionsQuery, hierarchyQuery, withDelivery, type AccountHierarchyRows } from '@/models/queries';
 import { usePoolQuery } from '@/models/usePool';
@@ -30,7 +29,6 @@ import { pathForTab } from '@/lib/routing';
 import { usePageEntity, usePagePathname } from '@/lib/pageScope';
 import { useActiveTeam } from '@/lib/teams';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
-import type { AdsManagerEntity } from '@/store/useAppStore';
 import { CampaignRow } from './CampaignRow';
 import { AdSetRow } from './AdSetRow';
 import { AdRow } from './AdRow';
@@ -102,6 +100,10 @@ import {
   hierarchyAdToRow,
   hierarchyCampaignToRow,
 } from './liveCampaigns';
+import { scopeStore } from '@/models/scopeStore';
+import { useViewStore, type AdsManagerEntity } from '@/models/viewStore';
+import { useRulesStore } from '@/models/rulesStore';
+import { useSelectionStore } from '@/models/selectionStore';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -208,18 +210,16 @@ function facetIcon(fieldId: string, option: FilterOption): React.ReactNode {
 const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reveal, navigationKey }) => {
   // The level this page was opened on, while the next page gets ready (#490).
   const campaignFilterTab = usePageEntity();
-  const {
-    setCampaignFilterTab,
-    isDisplayOptionsOpen,
-    toggleDisplayOptions,
-    setIsDisplayOptionsOpen,
-    clearCampaignSelection,
-    selectedCampaignIds,
-    setCampaignSelection,
-    toggleCampaignSelection,
-    loadRuleAttachments,
-    attachmentsLoadState,
-  } = useAppStore();
+  const setCampaignFilterTab = useViewStore((state) => state.setCampaignFilterTab);
+  const isDisplayOptionsOpen = useViewStore((state) => state.isDisplayOptionsOpen);
+  const toggleDisplayOptions = useViewStore((state) => state.toggleDisplayOptions);
+  const setIsDisplayOptionsOpen = useViewStore((state) => state.setIsDisplayOptionsOpen);
+  const clearCampaignSelection = useSelectionStore((state) => state.clearCampaignSelection);
+  const selectedCampaignIds = useSelectionStore((state) => state.selectedCampaignIds);
+  const setCampaignSelection = useSelectionStore((state) => state.setCampaignSelection);
+  const toggleCampaignSelection = useSelectionStore((state) => state.toggleCampaignSelection);
+  const loadRuleAttachments = useRulesStore((state) => state.loadRuleAttachments);
+  const attachmentsLoadState = useRulesStore((state) => state.attachmentsLoadState);
 
   // Before the filters read the address on this navigation: React renders
   // again at once with the address rewritten.
@@ -508,7 +508,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
   // history and toasts; one that finishes after the list reloaded (another
   // period, another team) still records its undo, but no longer paints rows.
   const captureListScope = () => {
-    const inScope = useAppStore.getState().captureScope();
+    const inScope = scopeStore.captureScope();
     const generation = requestGenerationRef.current;
     return () => inScope() && generation === requestGenerationRef.current;
   };
@@ -516,7 +516,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
   /** One row's toggle: the row shows the result, Ctrl+Z takes it back, only a failure speaks. */
   const runDelivery = async (level: EntityLevel, entityId: string, accountId: string, next: boolean) => {
     if (hierarchyState !== 'ready') return;
-    const inWorkspace = useAppStore.getState().captureScope();
+    const inWorkspace = scopeStore.captureScope();
     const onAccount = captureListScope();
     const status: DeliveryStatus = next ? 'ACTIVE' : 'PAUSED';
     const name = rowName(entityId);
@@ -555,7 +555,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
   /** Pauses or resumes every selected row of the current level (or the rows a right-click names), reporting each outcome. */
   const runBulkDelivery = async (next: 'active' | 'paused', ids: string[] = selectedCampaignIds) => {
     if (hierarchyState !== 'ready') return;
-    const inWorkspace = useAppStore.getState().captureScope();
+    const inWorkspace = scopeStore.captureScope();
     const onAccount = captureListScope();
     const level = entityLevels[campaignFilterTab];
     const rows = currentRows.filter((row) => ids.includes(row.id));

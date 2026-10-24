@@ -64,11 +64,14 @@ import {
 import { Tooltip } from '@/ui/Tooltip';
 import { BuyerlySplitResizer, useSplitListWidth } from '@/ui/BuyerlySplitResizer';
 import { useMediaQuery } from '@/lib/useMediaQuery';
-import { useAppStore } from '@/store/useAppStore';
 import { afterPaint, pool } from '@/models/pool';
 import { usePoolValue } from '@/models/usePool';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { usePagePathname } from '@/lib/pageScope';
+import { useViewStore, viewStore } from '@/models/viewStore';
+import { useInboxStore } from '@/models/inboxStore';
+import { useScopeStore } from '@/models/scopeStore';
+import { useShellStore } from '@/models/shellStore';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type ActionState = 'idle' | 'loading';
@@ -140,21 +143,19 @@ const headerButtonClass = (active = false) =>
 const hiddenByFiltersOf = (response: { hidden_by_filters?: number | null }) => response.hidden_by_filters ?? 0;
 
 const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onNavigate, onOpenRecord }) => {
-  const {
-    workspaceSlug,
-    setActiveTab,
-    setSettingsSection,
-    inboxUnreadCount,
-    inboxPriorityUnreadCount,
-    setInboxUnread,
-    inboxDisplay,
-    inboxDisplayLoaded,
-    loadInboxDisplay,
-    setInboxDisplay,
-    viewSettingsLoaded,
-    loadViewSettings,
-    setViewSettings,
-  } = useAppStore();
+  const workspaceSlug = useScopeStore((state) => state.workspaceSlug);
+  const setActiveTab = useShellStore((state) => state.setActiveTab);
+  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
+  const inboxUnreadCount = useInboxStore((state) => state.inboxUnreadCount);
+  const inboxPriorityUnreadCount = useInboxStore((state) => state.inboxPriorityUnreadCount);
+  const setInboxUnread = useInboxStore((state) => state.setInboxUnread);
+  const inboxDisplay = useInboxStore((state) => state.inboxDisplay);
+  const inboxDisplayLoaded = useInboxStore((state) => state.inboxDisplayLoaded);
+  const loadInboxDisplay = useInboxStore((state) => state.loadInboxDisplay);
+  const setInboxDisplay = useInboxStore((state) => state.setInboxDisplay);
+  const viewSettingsLoaded = useViewStore((state) => state.viewSettingsLoaded);
+  const loadViewSettings = useViewStore((state) => state.loadViewSettings);
+  const setViewSettings = useViewStore((state) => state.setViewSettings);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [items, setItems] = useState<InboxItem[]>([]);
   const [hasMore, setHasMore] = useState(false);
@@ -339,7 +340,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
   useEffect(() => {
     if (!viewSettingsLoaded || filtersSettled) return;
     setFiltersSettled(true);
-    const saved = sanitizeInboxFilters(useAppStore.getState().viewSettings.inbox?.filters);
+    const saved = sanitizeInboxFilters(viewStore.viewSettings.inbox?.filters);
     if (new URLSearchParams(window.location.search).get('filter') !== null) {
       if (JSON.stringify(saved) !== JSON.stringify(filters)) {
         setViewSettings('inbox', filters.length ? { filters } : null);

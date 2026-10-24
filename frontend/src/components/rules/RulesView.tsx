@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pause, Play, Trash2 } from 'lucide-react';
-import { useAppStore, type RuleFilterTab } from '@/store/useAppStore';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { RuleBoard } from './RuleBoard';
 import { useLayoutShortcut } from '@/ui/useLayoutShortcut';
@@ -53,6 +52,10 @@ import { favoritePath } from '@/lib/favorites';
 import { teamAccountIds, useActiveTeam } from '@/lib/teams';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { ViewTitle } from '@/components/teams/ViewTitle';
+import { useDialogStore, dialogStore } from '@/models/dialogStore';
+import { useViewStore, type RuleFilterTab } from '@/models/viewStore';
+import { useRulesStore } from '@/models/rulesStore';
+import { useSelectionStore } from '@/models/selectionStore';
 
 interface OpenFilterMenu {
   mode: FilterMenuMode;
@@ -88,29 +91,27 @@ interface RulesViewProps {
 }
 
 export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey }) => {
-  const {
-    rules: workspaceRules,
-    ruleLabels,
-    ruleAccounts,
-    ruleFilterTab,
-    setRuleFilterTab,
-    openCreateRuleModal,
-    isRulesDisplayOptionsOpen,
-    toggleRulesDisplayOptions,
-    setIsRulesDisplayOptionsOpen,
-    rulesLoadState,
-    rulesError,
-    rulesMutationError,
-    clearRulesMutationError,
-    loadRules,
-    selectedRuleIds,
-    setRuleSelection,
-    pendingDeletion,
-    requestDeletion,
-    cancelDeletion,
-    rulesCollapsedGroups,
-    toggleRulesGroupCollapse,
-  } = useAppStore();
+  const workspaceRules = useRulesStore((state) => state.rules);
+  const ruleLabels = useRulesStore((state) => state.ruleLabels);
+  const ruleAccounts = useRulesStore((state) => state.ruleAccounts);
+  const ruleFilterTab = useViewStore((state) => state.ruleFilterTab);
+  const setRuleFilterTab = useViewStore((state) => state.setRuleFilterTab);
+  const openCreateRuleModal = useDialogStore((state) => state.openCreateRuleModal);
+  const isRulesDisplayOptionsOpen = useViewStore((state) => state.isRulesDisplayOptionsOpen);
+  const toggleRulesDisplayOptions = useViewStore((state) => state.toggleRulesDisplayOptions);
+  const setIsRulesDisplayOptionsOpen = useViewStore((state) => state.setIsRulesDisplayOptionsOpen);
+  const rulesLoadState = useRulesStore((state) => state.rulesLoadState);
+  const rulesError = useRulesStore((state) => state.rulesError);
+  const rulesMutationError = useRulesStore((state) => state.rulesMutationError);
+  const clearRulesMutationError = useRulesStore((state) => state.clearRulesMutationError);
+  const loadRules = useRulesStore((state) => state.loadRules);
+  const selectedRuleIds = useSelectionStore((state) => state.selectedRuleIds);
+  const setRuleSelection = useSelectionStore((state) => state.setRuleSelection);
+  const pendingDeletion = useDialogStore((state) => state.pendingDeletion);
+  const requestDeletion = useDialogStore((state) => state.requestDeletion);
+  const cancelDeletion = useDialogStore((state) => state.cancelDeletion);
+  const rulesCollapsedGroups = useViewStore((state) => state.rulesCollapsedGroups);
+  const toggleRulesGroupCollapse = useViewStore((state) => state.toggleRulesGroupCollapse);
 
   // A team's Rules: the rules on the team's ad accounts, and those on none yet, so a new rule shows.
   const { workspace } = useWorkspaceSession();
@@ -216,7 +217,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
       label: 'Labels…',
       shortcut: 'l',
       icon: <BuyerlyLabelIcon size={14} />,
-      run: () => useAppStore.getState().openRuleLabelPicker(liveSelection(), null),
+      run: () => dialogStore.openRuleLabelPicker(liveSelection(), null),
     },
     {
       id: 'delete',
@@ -328,7 +329,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
         e.preventDefault();
         const cell = row.querySelector<HTMLElement>('[data-rule-labels]') ?? row;
         const rect = cell.getBoundingClientRect();
-        useAppStore.getState().openRuleLabelPicker([id], cell === row ? new DOMRect(rect.left + 40, rect.top, 0, rect.height) : rect);
+        dialogStore.openRuleLabelPicker([id], cell === row ? new DOMRect(rect.left + 40, rect.top, 0, rect.height) : rect);
         return;
       }
 

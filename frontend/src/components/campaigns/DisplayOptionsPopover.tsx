@@ -2,7 +2,6 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BuyerlyDisplayOptions, type DisplayGroupOption } from '@/ui/BuyerlyDisplayOptions';
 import { groupingChange, orderGroups, toggleHiddenGroup } from '@/ui/listView';
-import type { AdsManagerEntity } from '@/store/useAppStore';
 import {
   adsManagerActiveGrouping,
   adsManagerActiveRows,
@@ -11,6 +10,7 @@ import {
   adsManagerProperties,
   useAdsManagerView,
 } from './adsManagerViewModel';
+import { type AdsManagerEntity } from '@/models/viewStore';
 
 interface DisplayOptionsPopoverProps {
   isOpen: boolean;

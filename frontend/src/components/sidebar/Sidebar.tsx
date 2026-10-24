@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { observer } from 'mobx-react-lite';
 import { SidebarHeader } from './SidebarHeader';
-import { selectInboxBadgeCount, useAppStore } from '@/store/useAppStore';
 import {
   BuyerlyHomeIcon,
   BuyerlyInboxIcon,
@@ -17,12 +16,14 @@ import { goToShortcut } from '@/lib/shortcuts';
 import { openAppPath, pathForTab, useRoute } from '@/lib/routing';
 import { useTeams } from '@/lib/teams';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
-import type { AppTab } from '@/store/useAppStore';
 import { SidebarLink, SidebarSection, SidebarTeam } from './SidebarSections';
 import { SidebarFavorites } from './SidebarFavorites';
 import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
 import { BuyerlyHelpMenu } from '@/components/sidebar/BuyerlyHelpMenu';
 import { SidebarBackdrop, useSidebarDrawer, useSidebarPeek } from './SidebarDrawer';
+import { useInboxStore } from '@/models/inboxStore';
+import { useShellStore, type AppTab } from '@/models/shellStore';
+import { useScopeStore } from '@/models/scopeStore';
 
 /** A team's pages, as Linear's: its Home, then Campaigns, Ad accounts and Rules (Linear's Issues and Projects). */
 const TEAM_PAGES: { tab: AppTab; label: string; icon: React.ReactNode }[] = [
@@ -33,21 +34,19 @@ const TEAM_PAGES: { tab: AppTab; label: string; icon: React.ReactNode }[] = [
 ];
 
 const SidebarContent: React.FC = () => {
-  const {
-    sidebarWidth,
-    setSidebarWidth,
-    isSidebarCollapsed,
-    setSidebarCollapsed,
-    resetSidebarWidth,
-    activeTab,
-    setActiveTab,
-    workspaceSlug,
-  } = useAppStore();
-  const inboxUnreadCount = useAppStore(selectInboxBadgeCount);
-  const activeTeamKey = useAppStore((state) => state.activeTeamKey);
-  const setActiveTeamKey = useAppStore((state) => state.setActiveTeamKey);
-  const myCampaigns = useAppStore((state) => state.myCampaigns);
-  const setMyCampaigns = useAppStore((state) => state.setMyCampaigns);
+  const sidebarWidth = useShellStore((state) => state.sidebarWidth);
+  const setSidebarWidth = useShellStore((state) => state.setSidebarWidth);
+  const isSidebarCollapsed = useShellStore((state) => state.isSidebarCollapsed);
+  const setSidebarCollapsed = useShellStore((state) => state.setSidebarCollapsed);
+  const resetSidebarWidth = useShellStore((state) => state.resetSidebarWidth);
+  const activeTab = useShellStore((state) => state.activeTab);
+  const setActiveTab = useShellStore((state) => state.setActiveTab);
+  const workspaceSlug = useScopeStore((state) => state.workspaceSlug);
+  const inboxUnreadCount = useInboxStore((store) => store.badgeCount);
+  const activeTeamKey = useShellStore((state) => state.activeTeamKey);
+  const setActiveTeamKey = useShellStore((state) => state.setActiveTeamKey);
+  const myCampaigns = useShellStore((state) => state.myCampaigns);
+  const setMyCampaigns = useShellStore((state) => state.setMyCampaigns);
   const { workspace } = useWorkspaceSession();
   const { teams } = useTeams(workspace.id, 'active');
   const yourTeams = (teams ?? []).filter((team) => team.is_member);

@@ -1,5 +1,5 @@
-import type { AdsManagerEntity } from '@/store/useAppStore';
 import type { AnalyticsHierarchyItem } from '@/lib/types';
+import { type AdsManagerEntity } from '@/models/viewStore';
 
 /**
  * Every figure Ads Manager can show, sort and filter by (#389), in column

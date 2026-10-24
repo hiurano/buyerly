@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { RuleItem, useAppStore } from '@/store/useAppStore';
 import { RuleRow } from './RuleRow';
 import { DataState } from '@/ui/DataState';
 import { BuyerlyDataListGroup, BuyerlyDataTable } from '@/ui/BuyerlyDataList';
@@ -15,6 +14,9 @@ import {
   useRulesView,
   type RuleListGroup,
 } from './rulesViewModel';
+import { useRulesStore, RuleItem } from '@/models/rulesStore';
+import { useDialogStore } from '@/models/dialogStore';
+import { useViewStore } from '@/models/viewStore';
 
 interface RulesListViewProps {
   /** Filtered and already in the view's ordering and direction. */
@@ -25,7 +27,11 @@ interface RulesListViewProps {
 const SORTABLE = new Set(['name', 'lastRun', 'lastCheck', 'created']);
 
 export const RulesListView: React.FC<RulesListViewProps> = ({ filteredRules }) => {
-  const { ruleLabels, ruleAccounts, rulesCollapsedGroups, toggleRulesGroupCollapse, openCreateRuleModal } = useAppStore();
+  const ruleLabels = useRulesStore((state) => state.ruleLabels);
+  const ruleAccounts = useRulesStore((state) => state.ruleAccounts);
+  const rulesCollapsedGroups = useViewStore((state) => state.rulesCollapsedGroups);
+  const toggleRulesGroupCollapse = useViewStore((state) => state.toggleRulesGroupCollapse);
+  const openCreateRuleModal = useDialogStore((state) => state.openCreateRuleModal);
   const { view, update } = useRulesView();
   const columns = getRulesColumns(view.properties);
   const accounts = useMemo(() => ruleGroupAccounts(ruleAccounts), [ruleAccounts]);

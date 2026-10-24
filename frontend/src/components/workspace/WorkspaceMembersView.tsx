@@ -6,7 +6,6 @@ import { usePoolQuery } from '@/models/usePool';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { useTeams } from '@/lib/teams';
 import { canAdministerWorkspace } from '@/lib/settingsPages';
-import { useAppStore } from '@/store/useAppStore';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { InviteDialog, Initials, RoleStatus, shortDate } from '@/components/preferences/MembersSection';
 import { memberName, type MemberItem } from '@/components/preferences/MemberDialogs';
@@ -15,6 +14,7 @@ import { DataState } from '@/ui/DataState';
 import { HeaderCreateButton } from '@/ui/HeaderCreateButton';
 import { BuyerlyDataListRow, BuyerlyDataListToolbar, BuyerlyDataTable, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 import { ListSearchField } from './ListSearchField';
+import { useShellStore } from '@/models/shellStore';
 
 type MemberSort = 'name' | 'status' | 'joined';
 const ROLE_ORDER = ['owner', 'admin', 'member', 'guest'];
@@ -30,8 +30,8 @@ const COLUMNS: BuyerlyDataListColumn[] = [
 const WorkspaceMembersViewContent: React.FC = () => {
   const { workspace } = useWorkspaceSession();
   const { teams } = useTeams(workspace.id, 'active');
-  const setActiveTab = useAppStore((state) => state.setActiveTab);
-  const setActiveTeamKey = useAppStore((state) => state.setActiveTeamKey);
+  const setActiveTab = useShellStore((state) => state.setActiveTab);
+  const setActiveTeamKey = useShellStore((state) => state.setActiveTeamKey);
   // From the pool: a page already visited draws its members at once (#488).
   const { data: members, error } = usePoolQuery(membersQuery(workspace.id));
   const [query, setQuery] = useState('');
