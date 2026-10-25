@@ -1,4 +1,7 @@
 import React, { useEffect } from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
 import { logOut } from '@/lib/sessions';
 import { accountBlocks } from '@/lib/accounts';
 import { Tooltip } from '@/ui/Tooltip';
@@ -22,6 +25,125 @@ import {
 import { useScopeStore } from '@/models/scopeStore';
 import { useShellStore } from '@/models/shellStore';
 
+/** Tailwind's font-sans, as tailwind.config.js sets it. */
+const SANS = '"Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+const styles = stylex.create({
+  header: {
+    width: '100%',
+    userSelect: 'none',
+    minWidth: 0,
+  },
+  /** Linear's header row: the workspace, then Search at the end. */
+  row: {
+    display: 'flex',
+    alignItems: 'center',
+    width: '100%',
+    minWidth: 0,
+  },
+  /** Fluid, and leaves Search its 36px. */
+  workspace: {
+    minWidth: 0,
+    maxWidth: 'calc(100% - 36px)',
+  },
+  truncate: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  shrinkable: {
+    minWidth: 0,
+  },
+  fixed: {
+    flexShrink: 0,
+  },
+  nowrap: {
+    whiteSpace: 'nowrap',
+  },
+  /** The menu's 6px above its first item and below its last. */
+  menuEdge: {
+    height: 6,
+    width: '100%',
+  },
+  keys: {
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 3,
+  },
+  sequence: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 3,
+  },
+  subKeys: {
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 6,
+  },
+  /** A key as Linear's menus write it: plain text, no box. */
+  key: {
+    fontFamily: SANS,
+    fontSize: 12,
+    fontWeight: 500,
+    lineHeight: '13.2px',
+    color: '#9d9d9e',
+    backgroundColor: 'transparent',
+    borderStyle: 'none',
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    marginTop: 0,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+  },
+  then: {
+    fontSize: 12,
+    fontWeight: 450,
+    color: '#9d9d9e',
+    marginLeft: 1,
+    marginRight: 1,
+  },
+  arrow: {
+    fontSize: 7,
+    color: '#636364',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    width: 12,
+  },
+  workspaceItem: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 8,
+  },
+  current: {
+    color: colors['--text-primary'],
+  },
+  spacer: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    minWidth: 4,
+  },
+  search: {
+    display: 'flex',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  searchIcon: {
+    display: 'flex',
+    height: 14,
+    width: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
+
 export const SidebarHeader: React.FC = () => {
   const workspaceName = useScopeStore((state) => state.workspaceName);
   const setActiveTab = useShellStore((state) => state.setActiveTab);
@@ -44,7 +166,7 @@ export const SidebarHeader: React.FC = () => {
 
   return (
     <div
-      className="w-full select-none min-w-0"
+      {...stylex.props(styles.header)}
       style={{
         paddingTop: '16px',
         paddingLeft: '12px',
@@ -55,7 +177,7 @@ export const SidebarHeader: React.FC = () => {
     >
       {/* Linear Header Row: Height 28px */}
       <div
-        className="flex items-center w-full min-w-0"
+        {...stylex.props(styles.row)}
         style={{ height: '28px' }}
       >
         {/* Exact Workspace Button (Fluid, shrinkable with ellipsis) */}
@@ -66,7 +188,7 @@ export const SidebarHeader: React.FC = () => {
               aria-haspopup="menu"
               aria-expanded="false"
               aria-label={`${workspaceName} Workspace Menu`}
-              className="buyerly-workspace-btn min-w-0 max-w-[calc(100%-36px)]"
+              {...withClassName(stylex.props(styles.workspace), 'buyerly-workspace-btn')}
             >
               {/* Linear: the workspace's own mark, its regular avatar in a 20px box. */}
               <WorkspaceAvatar workspace={workspace} size="regular" px={20} />
@@ -80,7 +202,7 @@ export const SidebarHeader: React.FC = () => {
                   letterSpacing: '-0.1px',
                   color: 'var(--sidebar-workspace-fg)',
                 }}
-                className="truncate min-w-0"
+                {...stylex.props(styles.truncate, styles.shrinkable)}
               >
                 {workspaceName}
               </span>
@@ -94,7 +216,7 @@ export const SidebarHeader: React.FC = () => {
                 focusable="false"
                 aria-hidden="true"
                 xmlns="http://www.w3.org/2000/svg"
-                className="chevron shrink-0"
+                {...withClassName(stylex.props(styles.fixed), 'chevron')}
               >
                 <path
                   d="M10.1611 0.314094L5.99463 4.48054L1.82819 0.314094C1.4094 -0.104698 0.732886 -0.104698 0.314094 0.314094C-0.104698 0.732886 -0.104698 1.4094 0.314094 1.82819L5.24295 6.75705C5.66175 7.17584 6.33825 7.17584 6.75705 6.75705L11.6859 1.82819C12.1047 1.4094 12.1047 0.732886 11.6859 0.314094C11.2671 -0.0939598 10.5799 -0.104698 10.1611 0.314094Z"
@@ -106,7 +228,7 @@ export const SidebarHeader: React.FC = () => {
 
           {/* Exact Linear Workspace Menu Popover */}
           <DropdownMenuContent align="start" sideOffset={4} style={{ width: 228 }}>
-            <div className="h-[6px] w-full" />
+            <div {...stylex.props(styles.menuEdge)} />
 
             {/* 1. Settings */}
             <DropdownMenuItem
@@ -115,15 +237,15 @@ export const SidebarHeader: React.FC = () => {
                 setActiveTab('preferences');
               }}
             >
-              <span className="truncate">Settings</span>
-              <div className="flex shrink-0 items-center gap-[3px]">
-                <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
+              <span {...stylex.props(styles.truncate)}>Settings</span>
+              <div {...stylex.props(styles.keys)}>
+                <kbd {...stylex.props(styles.key)}>
                   G
                 </kbd>
-                <span className="text-[12px] font-[450] text-[#9d9d9e] mx-[1px]">
+                <span {...stylex.props(styles.then)}>
                   then
                 </span>
-                <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
+                <kbd {...stylex.props(styles.key)}>
                   {GO_TO_KEYS.preferences}
                 </kbd>
               </div>
@@ -137,7 +259,7 @@ export const SidebarHeader: React.FC = () => {
                   setActiveTab('preferences');
                 }}
               >
-                <span className="truncate">Invite and manage members</span>
+                <span {...stylex.props(styles.truncate)}>Invite and manage members</span>
               </DropdownMenuItem>
             )}
 
@@ -146,20 +268,20 @@ export const SidebarHeader: React.FC = () => {
             {/* 3. Switch workspace: this account's workspaces, numbered, then Account actions (Linear) */}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
-                <span className="whitespace-nowrap">Switch workspace</span>
-                <div className="flex shrink-0 items-center gap-[6px]">
-                  <div className="flex items-center gap-[3px]">
-                    <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
+                <span {...stylex.props(styles.nowrap)}>Switch workspace</span>
+                <div {...stylex.props(styles.subKeys)}>
+                  <div {...stylex.props(styles.sequence)}>
+                    <kbd {...stylex.props(styles.key)}>
                       O
                     </kbd>
-                    <span className="text-[12px] font-[450] text-[#9d9d9e] mx-[1px]">
+                    <span {...stylex.props(styles.then)}>
                       then
                     </span>
-                    <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
+                    <kbd {...stylex.props(styles.key)}>
                       W
                     </kbd>
                   </div>
-                  <span className="text-[7px] text-[#636364] flex items-center justify-end w-[12px]">
+                  <span {...stylex.props(styles.arrow)}>
                     ▶
                   </span>
                 </div>
@@ -184,7 +306,7 @@ export const SidebarHeader: React.FC = () => {
                 {blocks.map((block) => (
                   <React.Fragment key={block.accountId ?? 'account'}>
                     <DropdownMenuLabel
-                      className="truncate"
+                      xstyle={styles.truncate}
                       style={{ height: 30, padding: '4px 12px 0 14px', fontSize: 13, fontWeight: 450, lineHeight: '26px' }}
                     >
                       {block.label}
@@ -194,18 +316,18 @@ export const SidebarHeader: React.FC = () => {
                         key={`${block.accountId ?? 'account'}:${item.id}`}
                         onSelect={() => switchWorkspace(item.slug, block.accountId)}
                       >
-                        <span className="flex min-w-0 items-center gap-[8px]">
+                        <span {...stylex.props(styles.workspaceItem)}>
                           <WorkspaceAvatar workspace={item} />
-                          <span className="truncate">{item.name}</span>
+                          <span {...stylex.props(styles.truncate)}>{item.name}</span>
                         </span>
-                        <span className="flex shrink-0 items-center gap-[6px]">
+                        <span {...stylex.props(styles.subKeys)}>
                           {item.id === workspace.id && isOpenAccount(block.accountId) && (
-                            <span className="text-[var(--text-primary)]" aria-label="Current workspace">
+                            <span {...stylex.props(styles.current)} aria-label="Current workspace">
                               <BuyerlyCheckIcon size={16} />
                             </span>
                           )}
                           {number <= 9 && (
-                            <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
+                            <kbd {...stylex.props(styles.key)}>
                               {number}
                             </kbd>
                           )}
@@ -220,39 +342,39 @@ export const SidebarHeader: React.FC = () => {
                   Account
                 </DropdownMenuLabel>
                 <DropdownMenuItem onSelect={openCreateWorkspace}>
-                  <span className="truncate">Create or join a workspace…</span>
+                  <span {...stylex.props(styles.truncate)}>Create or join a workspace…</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={openAddAccount}>
-                  <span className="truncate">Add an account…</span>
+                  <span {...stylex.props(styles.truncate)}>Add an account…</span>
                 </DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
 
             {/* 4. Log out */}
             <DropdownMenuItem onSelect={() => void logOut()}>
-              <span className="truncate">Log out</span>
-              <div className="flex shrink-0 items-center gap-[3px]">
-                <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
+              <span {...stylex.props(styles.truncate)}>Log out</span>
+              <div {...stylex.props(styles.keys)}>
+                <kbd {...stylex.props(styles.key)}>
                   Alt
                 </kbd>
-                <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
+                <kbd {...stylex.props(styles.key)}>
                   ⇧
                 </kbd>
-                <kbd className="font-sans text-[12px] font-[500] leading-[13.2px] text-[#9d9d9e] bg-transparent border-none p-0 m-0">
+                <kbd {...stylex.props(styles.key)}>
                   Q
                 </kbd>
               </div>
             </DropdownMenuItem>
 
-            <div className="h-[6px] w-full" />
+            <div {...stylex.props(styles.menuEdge)} />
           </DropdownMenuContent>
         </DropdownMenu>
 
         {/* Linear Middle Flex Spacer */}
-        <div className="flex-1 min-w-[4px]" />
+        <div {...stylex.props(styles.spacer)} />
 
         {/* Search Action */}
-        <div className="flex items-center shrink-0">
+        <div {...stylex.props(styles.search)}>
           <Tooltip content="Search workspace" shortcut="/">
             <button
               type="button"
@@ -260,7 +382,7 @@ export const SidebarHeader: React.FC = () => {
               aria-label="Search workspace"
               className="buyerly-icon-btn buyerly-sidebar-icon-btn"
             >
-              <span className="flex h-[14px] w-[14px] items-center justify-center">
+              <span {...stylex.props(styles.searchIcon)}>
                 <svg
                   width="14"
                   height="14"

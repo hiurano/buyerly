@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { GO_TO_KEYS } from '@/lib/shortcuts';
 import { Tooltip } from '@/ui/Tooltip';
 import { BuyerlyChatIcon, BuyerlyGearIcon, BuyerlyKeyboardIcon, BuyerlyQuestionMarkIcon } from '@/icons/BuyerlyIcons';
@@ -6,6 +7,24 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import changelogLatest from '@/lib/changelogLatest.json';
 import { useCommandMenuStore } from '@/models/commandMenuStore';
 import { useShellStore } from '@/models/shellStore';
+
+const styles = stylex.create({
+  item: {
+    display: 'flex',
+    width: '100%',
+    alignItems: 'center',
+    gap: 8,
+  },
+  label: {
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+});
 
 /**
  * Linear's "What's new" timeline: a dot on a dashed line that starts at the
@@ -23,9 +42,9 @@ function TimelineMark({ part }: { part: 'first' | 'middle' | 'last' }) {
 
 function HelpItem({ icon, label, children }: { icon: React.ReactNode; label: string; children?: React.ReactNode }) {
   return (
-    <span className="flex w-full items-center gap-2">
+    <span {...stylex.props(styles.item)}>
       <span className="buyerly-help-icon">{icon}</span>
-      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <span {...stylex.props(styles.label)}>{label}</span>
       {children}
     </span>
   );

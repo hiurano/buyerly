@@ -3,6 +3,15 @@ import { useIsSmallScreen, useIsTouchScreen } from '@/lib/useMediaQuery';
 import { BuyerlySidebarLeftToggleIcon } from '@/icons/BuyerlyIcons';
 import { Tooltip } from '@/ui/Tooltip';
 import { shellStore, useShellStore } from '@/models/shellStore';
+import * as stylex from '@stylexjs/stylex';
+
+const styles = stylex.create({
+  slot: {
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+  },
+});
 
 /**
  * Linear's SidebarCollapsedNavigation: the sidebar button at the start of a
@@ -96,7 +105,7 @@ export const SidebarCollapsedNavigation: React.FC = () => {
             ].join(', ')
           : 'none',
       }}
-      className="flex shrink-0 items-center"
+      {...stylex.props(styles.slot)}
     >
       {button}
     </div>

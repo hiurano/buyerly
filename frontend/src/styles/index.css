@@ -6087,3 +6087,34 @@ button.buyerly-board-hidden-row:hover,
 
 @keyframes buyerlyPageSkeletonIn { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .buyerly-page-skeleton { animation: none; } }
+
+/*
+ * The headings of the command menus' groups: cmdk draws them itself, so the
+ * menus' StyleX (components/command) cannot reach them.
+ */
+.buyerly-command-group [cmdk-group-heading] {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 14px;
+  color: var(--text-tertiary);
+}
+
+/* Switch workspace (O then W): an account's email over its workspaces. */
+.buyerly-workspace-switcher-group [cmdk-group-heading] {
+  display: flex;
+  height: 30px;
+  align-items: center;
+  padding-left: 27px;
+  padding-right: 12px;
+  padding-top: 4px;
+  font-size: 13px;
+  font-weight: 450;
+  color: var(--text-tertiary);
+}
+
+/* The sidebar's rows and sections, 1px apart: StyleX cannot style an element's children. */
+.buyerly-sidebar-navigation > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 1px;
+  margin-bottom: 0;
+}

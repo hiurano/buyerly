@@ -11,3 +11,6 @@ export const rowMarker = stylex.defineMarker();
 
 /** A menu row (ContextMenuItem, DropdownMenuItem and their kin). */
 export const menuItemMarker = stylex.defineMarker();
+
+/** A command menu row (cmdk's Command.Item), for a part that follows its selection. */
+export const commandItemMarker = stylex.defineMarker();

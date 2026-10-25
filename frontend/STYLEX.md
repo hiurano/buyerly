@@ -74,6 +74,14 @@ not class by class.
 - A style that follows an ancestor's state (Tailwind's `group-hover:`) uses a
   marker from `src/ui/markers.stylex.ts`, set on the ancestor with
   `stylex.props(..., rowMarker)`.
+- Styles that several components share can come from one module's exported
+  `stylex.create` (`components/command/commandMenuStyles.ts`). A plain
+  constant used inside `stylex.create` must be declared in the same file:
+  imported from anywhere but a `.stylex.ts` file, it fails the build.
+- StyleX styles only the element it is applied to. What Tailwind reached
+  through a child selector (cmdk's group headings, `space-y-*`) keeps the
+  same selector in index.css under a semantic class (`.buyerly-command-group`,
+  `.buyerly-sidebar-navigation`).
 - Browser checks find elements by semantic class (`buyerly-data-group-title`)
   or role, never by a Tailwind class.
 

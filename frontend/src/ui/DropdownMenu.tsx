@@ -149,12 +149,13 @@ const styles = stylex.create({
   },
 });
 
-export const DropdownMenuLabel: React.FC<DropdownMenuPrimitive.DropdownMenuLabelProps> = ({
+export const DropdownMenuLabel: React.FC<DropdownMenuPrimitive.DropdownMenuLabelProps & { xstyle?: stylex.StyleXStyles }> = ({
   className = '',
+  xstyle,
   ...props
 }) => (
   <DropdownMenuPrimitive.Label
-    {...withClassName(stylex.props(styles.label), className)}
+    {...withClassName(stylex.props(styles.label, xstyle), className)}
     {...props}
   />
 );

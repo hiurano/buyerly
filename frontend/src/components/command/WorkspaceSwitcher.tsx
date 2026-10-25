@@ -1,10 +1,144 @@
 import React, { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Command } from 'cmdk';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
+import { commandItemMarker } from '@/ui/markers.stylex';
+import { withClassName } from '@/ui/withClassName';
+import { commandMenuStyles } from './commandMenuStyles';
+
+/** Tailwind's font-sans, as tailwind.config.js sets it. */
+const SANS = '"Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 import { BuyerlyCheckIcon } from '@/icons/BuyerlyIcons';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { accountBlocks } from '@/lib/accounts';
+
+const styles = stylex.create({
+  surface: {
+    position: 'fixed',
+    left: 0,
+    right: 0,
+    top: '13vh',
+    zIndex: 700,
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    width: 720,
+    maxWidth: 'calc(100vw - 32px)',
+    overflow: 'hidden',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    backgroundColor: colors['--card-bg'],
+    boxShadow: colors['--dropdown-shadow'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+  },
+  field: {
+    paddingLeft: 6,
+    paddingRight: 6,
+    paddingTop: 6,
+  },
+  input: {
+    height: 40,
+    width: '100%',
+    borderRadius: 12,
+    backgroundColor: 'transparent',
+    paddingLeft: 12,
+    paddingRight: 12,
+    paddingTop: 11,
+    paddingBottom: 11,
+    fontSize: 13,
+    color: colors['--text-primary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    '::placeholder': {
+      color: colors['--text-muted'],
+    },
+  },
+  list: {
+    maxHeight: 'min(360px, 60vh)',
+    overflowY: 'auto',
+    paddingBottom: 5,
+    paddingTop: 6,
+    userSelect: 'none',
+  },
+  item: {
+    position: 'relative',
+    display: 'flex',
+    height: 46,
+    cursor: 'pointer',
+    alignItems: 'center',
+    paddingLeft: 19,
+    paddingRight: 21,
+    fontSize: 13,
+    fontWeight: 450,
+    color: colors['--text-primary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+  },
+  /** The selected row's fill, inset 7px from the sides and 2px from the top and bottom. */
+  pill: {
+    pointerEvents: 'none',
+    position: 'absolute',
+    left: 7,
+    right: 7,
+    top: 2,
+    bottom: 2,
+    borderRadius: 8,
+    backgroundColor: {
+      default: null,
+      [stylex.when.ancestor('[data-selected="true"]', commandItemMarker)]: colors['--item-hover-bg'],
+    },
+  },
+  name: {
+    position: 'relative',
+    zIndex: 10,
+    display: 'flex',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    alignItems: 'center',
+    gap: 8,
+  },
+  truncate: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  trailing: {
+    position: 'relative',
+    zIndex: 10,
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 6,
+    color: colors['--text-tertiary'],
+  },
+  current: {
+    color: colors['--text-primary'],
+  },
+  kbd: {
+    display: 'flex',
+    height: 23,
+    minWidth: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 3,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+    backgroundColor: 'transparent',
+    paddingLeft: 4,
+    paddingRight: 4,
+    fontFamily: SANS,
+    fontSize: 12,
+    fontWeight: 450,
+    lineHeight: 1,
+  },
+});
 
 function isTyping(): boolean {
   const element = document.activeElement as HTMLElement | null;
@@ -54,11 +188,11 @@ export const WorkspaceSwitcher: React.FC = () => {
       <Dialog.Portal>
         <Dialog.Content
           aria-describedby={undefined}
-          className="fixed inset-x-0 top-[13vh] z-[700] mx-auto w-[720px] max-w-[calc(100vw-32px)] overflow-hidden rounded-[12px] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] [box-shadow:var(--dropdown-shadow)] outline-none animate-scale-in"
+          {...withClassName(stylex.props(styles.surface), 'animate-scale-in')}
         >
-          <Dialog.Title className="sr-only">Switch workspace</Dialog.Title>
+          <Dialog.Title {...stylex.props(commandMenuStyles.srOnly)}>Switch workspace</Dialog.Title>
           <Command label="Switch workspace" loop>
-            <div className="px-[6px] pt-[6px]">
+            <div {...stylex.props(styles.field)}>
               <Command.Input
                 autoFocus
                 value={query}
@@ -75,37 +209,37 @@ export const WorkspaceSwitcher: React.FC = () => {
                     return;
                   }
                 }}
-                className="h-[40px] w-full rounded-[12px] bg-transparent px-[12px] py-[11px] text-[13px] text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none"
+                {...stylex.props(styles.input)}
               />
             </div>
-            <Command.List className="max-h-[min(360px,60vh)] overflow-y-auto pb-[5px] pt-[6px] select-none">
+            <Command.List {...stylex.props(styles.list)}>
               {/* Linear: the same blocks as the menu, one per logged-in account. */}
               {blocks.map((block) => (
               <Command.Group
                 key={block.accountId ?? 'account'}
                 heading={query ? undefined : block.label}
-                className="[&_[cmdk-group-heading]]:flex [&_[cmdk-group-heading]]:h-[30px] [&_[cmdk-group-heading]]:items-center [&_[cmdk-group-heading]]:pl-[27px] [&_[cmdk-group-heading]]:pr-[12px] [&_[cmdk-group-heading]]:pt-[4px] [&_[cmdk-group-heading]]:text-[13px] [&_[cmdk-group-heading]]:font-[450] [&_[cmdk-group-heading]]:text-[var(--text-tertiary)]"
+                className="buyerly-workspace-switcher-group"
               >
                 {block.workspaces.map(({ workspace: item, number }) => (
                   <Command.Item
                     key={`${block.accountId ?? 'account'}:${item.id}`}
                     value={`${item.name} ${item.slug} ${block.accountId ?? ''}`.trim()}
                     onSelect={() => choose(item.slug, block.accountId)}
-                    className="group relative flex h-[46px] cursor-pointer items-center pl-[19px] pr-[21px] text-[13px] font-[450] text-[var(--text-primary)] outline-none"
+                    {...stylex.props(styles.item, commandItemMarker)}
                   >
-                    <span className="pointer-events-none absolute inset-x-[7px] inset-y-[2px] rounded-[8px] group-data-[selected=true]:bg-[var(--item-hover-bg)]" />
-                    <span className="relative z-10 flex min-w-0 flex-1 items-center gap-[8px]">
+                    <span {...stylex.props(styles.pill)} />
+                    <span {...stylex.props(styles.name)}>
                       <WorkspaceAvatar workspace={item} />
-                      <span className="truncate">{item.name}</span>
+                      <span {...stylex.props(styles.truncate)}>{item.name}</span>
                     </span>
-                    <span className="relative z-10 flex shrink-0 items-center gap-[6px] text-[var(--text-tertiary)]">
+                    <span {...stylex.props(styles.trailing)}>
                       {item.id === workspace.id && isOpenAccount(block.accountId) && (
-                        <span className="text-[var(--text-primary)]" aria-label="Current workspace">
+                        <span {...stylex.props(styles.current)} aria-label="Current workspace">
                           <BuyerlyCheckIcon size={16} />
                         </span>
                       )}
                       {!query && number <= 9 && (
-                        <kbd className="flex h-[23px] min-w-[20px] items-center justify-center rounded-[3px] border border-[var(--color-border-primary)] bg-transparent px-[4px] font-sans text-[12px] font-[450] leading-none">
+                        <kbd {...stylex.props(styles.kbd)}>
                           {number}
                         </kbd>
                       )}

@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { BuyerlyDisclosureIcon, BuyerlyDotsIcon, BuyerlyLockIcon } from '@/icons/BuyerlyIcons';
 import { TeamIcon } from '@/components/preferences/TeamIcon';
 import { Tooltip } from '@/ui/Tooltip';
@@ -8,6 +9,30 @@ import { openAppPath, pathForTab } from '@/lib/routing';
 import type { TeamItem } from '@/lib/teams';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { useShellStore, type AppTab } from '@/models/shellStore';
+
+const styles = stylex.create({
+  linkBody: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+  },
+  linkIcon: {
+    marginRight: 6,
+    display: 'flex',
+    height: 14,
+    width: 14,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  linkLabel: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 13,
+    fontWeight: 500,
+  },
+});
 
 const COLLAPSED_KEY = 'buyerly-sidebar-collapsed';
 
@@ -59,9 +84,9 @@ export const SidebarLink: React.FC<SidebarLinkProps> = ({ icon, label, active, o
       aria-current={active ? 'page' : undefined}
       className={`buyerly-sidebar-nav-item${nested ? ' buyerly-sidebar-nav-item--nested' : ''}`}
     >
-      <div className="flex min-w-0 items-center">
-        <span className="mr-[6px] flex h-[14px] w-[14px] shrink-0 items-center justify-center">{icon}</span>
-        <span className="truncate text-[13px] font-medium">{label}</span>
+      <div {...stylex.props(styles.linkBody)}>
+        <span {...stylex.props(styles.linkIcon)}>{icon}</span>
+        <span {...stylex.props(styles.linkLabel)}>{label}</span>
       </div>
       {trailing}
     </button>

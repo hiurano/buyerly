@@ -1,5 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { observer } from 'mobx-react-lite';
+import * as stylex from '@stylexjs/stylex';
+import { withClassName } from '@/ui/withClassName';
 import { SidebarHeader } from './SidebarHeader';
 import {
   BuyerlyHomeIcon,
@@ -24,6 +26,20 @@ import { SidebarBackdrop, useSidebarDrawer, useSidebarPeek } from './SidebarDraw
 import { useInboxStore } from '@/models/inboxStore';
 import { useShellStore, type AppTab } from '@/models/shellStore';
 import { useScopeStore } from '@/models/scopeStore';
+
+const styles = stylex.create({
+  /** Inbox, then the sections; `.buyerly-sidebar-navigation` sets each row 1px below the one before. */
+  navigation: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    overflowY: 'auto',
+    paddingLeft: 12,
+    paddingRight: 12,
+    paddingBottom: 16,
+    paddingTop: 0.5,
+  },
+});
 
 /** A team's pages, as Linear's: its Home, then Campaigns, Ad accounts and Rules (Linear's Issues and Projects). */
 const TEAM_PAGES: { tab: AppTab; label: string; icon: React.ReactNode }[] = [
@@ -176,7 +192,7 @@ const SidebarContent: React.FC = () => {
         <SidebarHeader />
 
         {/* 2. Navigation: Inbox, then Linear's "Workspace" and "Your teams" sections */}
-        <div className="flex-1 overflow-y-auto px-3 pb-4 pt-[0.5px] space-y-[1px]">
+        <div {...withClassName(stylex.props(styles.navigation), 'buyerly-sidebar-navigation')}>
           <SidebarLink
             icon={<BuyerlyInboxIcon size={14} />}
             label="Inbox"

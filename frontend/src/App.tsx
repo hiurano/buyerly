@@ -61,8 +61,20 @@ import { useSyncStatus } from '@/models/sync';
 import { shellStore, useShellStore } from '@/models/shellStore';
 import { useDetailsPaneStore } from '@/models/detailsPaneStore';
 import { useViewStore } from '@/models/viewStore';
+import * as stylex from '@stylexjs/stylex';
+import { withClassName } from '@/ui/withClassName';
 
 const RETURN_ROUTE_KEY = 'buyerly-return-route';
+
+const styles = stylex.create({
+  /** The window: the sidebar and the floating canvas side by side. */
+  shell: {
+    display: 'flex',
+    height: '100vh',
+    width: '100vw',
+    overflow: 'hidden',
+  },
+});
 
 function activeWorkspace(user: SessionUser): Workspace | null {
   return user.active_workspace || user.workspaces.find((workspace) => workspace.is_active) || user.workspaces[0] || null;
@@ -372,7 +384,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   return (
     <WorkspaceSessionProvider value={session}>
       <TooltipProvider>
-        <div className="app-shell flex h-screen w-screen overflow-hidden">
+        <div {...withClassName(stylex.props(styles.shell), 'app-shell')}>
           {activeTab === 'preferences' ? (
             <PreferencesView user={user} workspace={workspace} onUserChanged={refreshUser} />
           ) : (
