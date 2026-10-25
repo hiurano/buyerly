@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { useAppStore, type InterfaceTheme } from '@/store/useAppStore';
 import {
   ADMINISTRATION_PAGES,
   canOpenSettingsSection,
@@ -32,6 +31,7 @@ import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { findModelContext, setWebMcpEnabled, useWebMcpEnabled } from '@/webmcp/register';
 import { SidebarBackdrop, useSidebarDrawer } from '@/components/sidebar/SidebarDrawer';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
+import { useShellStore, type InterfaceTheme } from '@/models/shellStore';
 
 const themeOptions: Array<{
   value: InterfaceTheme;
@@ -51,16 +51,14 @@ interface PreferencesViewProps {
 }
 
 export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspace, onUserChanged }) => {
-  const {
-    interfaceTheme,
-    setInterfaceTheme,
-    lastAppTab,
-    setActiveTab,
-    settingsSection: section,
-    setSettingsSection: setSection,
-    settingsTeamPath: teamPath,
-    openTeamSettings,
-  } = useAppStore();
+  const interfaceTheme = useShellStore((state) => state.interfaceTheme);
+  const setInterfaceTheme = useShellStore((state) => state.setInterfaceTheme);
+  const lastAppTab = useShellStore((state) => state.lastAppTab);
+  const setActiveTab = useShellStore((state) => state.setActiveTab);
+  const section = useShellStore((state) => state.settingsSection);
+  const setSection = useShellStore((state) => state.setSettingsSection);
+  const teamPath = useShellStore((state) => state.settingsTeamPath);
+  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
   const [searchQuery, setSearchQuery] = useState('');
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);

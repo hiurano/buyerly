@@ -1,9 +1,12 @@
 import { decodeInboxFilter, fetchInbox, inboxListKey, inboxPageKey, inboxTabShown, INBOX_PAGE_SIZE, type InboxQuery, type InboxTab } from '@/lib/inbox';
 import { periodFromSearch } from '@/components/campaigns/adsManagerMetrics';
-import { useAppStore, type ActiveTab } from '@/store/useAppStore';
 import type { TeamItem } from '@/lib/teams';
 import { pool, type Query } from './pool';
 import { adAccountsQuery, connectionsQuery, hierarchyQuery, membersQuery, teamDocumentsQuery, teamsQuery } from './queries';
+import { inboxStore } from '@/models/inboxStore';
+import { type ActiveTab } from '@/models/shellStore';
+import { viewStore } from '@/models/viewStore';
+import { rulesStore } from '@/models/rulesStore';
 
 /** A page as the shell opens it: enough to know what it draws. */
 export interface PageToOpen {
@@ -32,9 +35,8 @@ export function preloadPage(page: PageToOpen, workspaceId: number): Readiness | 
   const need = (query: Query<any>) => {
     if (!pool.has(query.key)) waits.push(pool.fetch(query));
   };
-  const store = useAppStore.getState();
   const needViews = () => {
-    if (!store.viewSettingsLoaded) waits.push(store.loadViewSettings());
+    if (!viewStore.viewSettingsLoaded) waits.push(viewStore.loadViewSettings());
   };
   const needTeams = () => {
     if (page.teamKey) need(teamsQuery(workspaceId));
@@ -58,7 +60,7 @@ export function preloadPage(page: PageToOpen, workspaceId: number): Readiness | 
   } else if (page.tab === 'rules') {
     needViews();
     needTeams();
-    if (store.rulesLoadState !== 'ready') waits.push(store.loadRules({ ifStale: true }));
+    if (rulesStore.rulesLoadState !== 'ready') waits.push(rulesStore.loadRules({ ifStale: true }));
   } else if (page.tab === 'team') {
     need(membersQuery(workspaceId));
     const teams = teamsQuery(workspaceId);
@@ -93,25 +95,24 @@ export function preloadPage(page: PageToOpen, workspaceId: number): Readiness | 
 
 /** Inbox's Display options, the saved filters and the list the address asks for. */
 function preloadInbox(page: PageToOpen): Promise<void> | null {
-  const store = useAppStore.getState();
   // Inbox draws the list the address's filters ask for first, as it does on any visit.
   const filters = decodeInboxFilter(new URLSearchParams(page.search).get('filter'));
   const key = () => {
-    const { inboxDisplay } = useAppStore.getState();
+    const { inboxDisplay } = inboxStore;
     return inboxPageKey(inboxListKey(inboxDisplay, inboxTabShown(inboxDisplay, page.inboxTab)), filters);
   };
-  if (store.inboxDisplayLoaded && store.viewSettingsLoaded && pool.has(key())) return null;
+  if (inboxStore.inboxDisplayLoaded && viewStore.viewSettingsLoaded && pool.has(key())) return null;
   const scope = pool.scope;
   return (async () => {
-    await Promise.all([store.inboxDisplayLoaded ? null : store.loadInboxDisplay(), store.loadViewSettings()]);
+    await Promise.all([inboxStore.inboxDisplayLoaded ? null : inboxStore.loadInboxDisplay(), viewStore.loadViewSettings()]);
     const pageKey = key();
     if (pool.has(pageKey)) return;
-    const { inboxDisplay } = useAppStore.getState();
+    const { inboxDisplay } = inboxStore;
     const listQuery = JSON.parse(inboxListKey(inboxDisplay, inboxTabShown(inboxDisplay, page.inboxTab))) as Omit<InboxQuery, 'offset'>;
     const response = await fetchInbox({ offset: 0, limit: INBOX_PAGE_SIZE, ...listQuery, filters });
     // Another workspace opened meanwhile, or Inbox read the list itself.
     if (pool.scope !== scope || pool.has(pageKey)) return;
     pool.setValue({ key: pageKey }, { items: response.items, hasMore: response.has_more, hiddenByFilters: response.hidden_by_filters ?? 0 });
-    useAppStore.getState().setInboxUnread(response);
+    inboxStore.setInboxUnread(response);
   })();
 }

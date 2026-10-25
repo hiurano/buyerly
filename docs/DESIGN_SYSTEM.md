@@ -147,7 +147,7 @@ Two menus, as in Linear.
 ## Data integrity and state
 
 - API data is workspace-scoped and remains the source of truth for accounts, connections, rules and metrics.
-- Zustand or other client stores may hold navigation, view preferences, dialog state and optimistic state, but may not manufacture domain records.
+- MobX UI stores (`frontend/src/models/*Store.ts`) may hold navigation, view preferences, dialog state and optimistic state, but may not manufacture domain records.
 - Cached data exposes its freshness. Partial responses preserve successful sections and identify unavailable ones.
 - Account health, account activation and automation enablement are separate concepts and must have separate labels and controls.
 - OAuth success means a connection exists; it does not imply that every discovered account was imported or that rules were enabled.

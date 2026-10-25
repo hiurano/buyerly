@@ -11,13 +11,13 @@ import {
   teamsPath,
   type TeamItem,
 } from '@/lib/teams';
-import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/ui/Button';
 import { Input } from '@/ui/Input';
 import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { toast } from '@/ui/toast';
 import { errorMessage } from './MemberDialogs';
 import { TeamIcon } from './TeamIcon';
+import { useShellStore } from '@/models/shellStore';
 
 /**
  * Linear's "Create a new team" at /settings/new-team: Icon & Name and
@@ -27,7 +27,8 @@ import { TeamIcon } from './TeamIcon';
  * counterpart, so they are left out. A created team opens on its own page.
  */
 export const NewTeamSection: React.FC<{ workspace: Workspace }> = ({ workspace }) => {
-  const { setSettingsSection, openTeamSettings } = useAppStore();
+  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
+  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
   const [name, setName] = useState('');
   const [key, setKey] = useState('');
   const [keyEdited, setKeyEdited] = useState(false);

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { toast } from '@/ui/toast';
-import { useAppStore } from '@/store/useAppStore';
+import { scopeStore } from '@/models/scopeStore';
 
 /**
  * One change this session made, with the way back and the way forward again.
@@ -44,7 +44,7 @@ async function step(direction: 'undo' | 'redo'): Promise<void> {
   const entry = source.pop();
   if (!entry) return;
   const started = generation;
-  const inScope = useAppStore.getState().captureScope();
+  const inScope = scopeStore.captureScope();
   if (!inScope()) return;
   running = true;
   try {

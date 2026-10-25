@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useAppStore } from '@/store/useAppStore';
 import { ApiError } from '@/lib/api';
 import { fetchDeletedItems, TRASH_RETENTION_DAYS, type DeletedItem } from '@/lib/trash';
 import { DataState } from '@/ui/DataState';
@@ -12,6 +11,7 @@ import {
   type BuyerlyDataListColumn,
 } from '@/ui/BuyerlyDataList';
 import { restoreFromTrash } from './ruleActions';
+import { useRulesStore } from '@/models/rulesStore';
 
 const COLUMNS: BuyerlyDataListColumn[] = [
   buyerlyDataNameColumn({ width: 'minmax(240px, 1fr)', statusVisible: false }),
@@ -42,8 +42,8 @@ function daysLeft(purgeAt: string): string {
  * permanent delete, the retention window does that.
  */
 export const RecentlyDeletedView: React.FC<{ onCountChange?: (count: number | null) => void }> = ({ onCountChange }) => {
-  const rules = useAppStore((state) => state.rules);
-  const ruleLabels = useAppStore((state) => state.ruleLabels);
+  const rules = useRulesStore((state) => state.rules);
+  const ruleLabels = useRulesStore((state) => state.ruleLabels);
   const [items, setItems] = useState<DeletedItem[]>([]);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadError, setLoadError] = useState('');

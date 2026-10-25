@@ -16,11 +16,11 @@ import {
   type RuleTimeWindow,
 } from '@/lib/rules';
 import type { AnalyticsHierarchyItem, AnalyticsHierarchyResponse, MetaAccount } from '@/lib/types';
-import { useAppStore } from '@/store/useAppStore';
 import { requestApproval, type ApprovalOutcome } from './approval';
 import { readToolInput, ToolInputError } from './input';
 import { describeRuleCadence, describeRuleEffect, describeScope, LEVEL_NOUNS } from './ruleText';
 import type { JsonSchema, ToolExecuteOptions, WebMcpTool } from './types';
+import { rulesStore } from '@/models/rulesStore';
 
 /**
  * The tools one open workspace offers the browser's AI agent. Each calls the
@@ -147,9 +147,8 @@ function refusal(outcome: Exclude<ApprovalOutcome, 'approved'>): ToolFailure {
 
 /** Views that already show rules pick up the change, as after an edit in the interface. */
 function refreshRuleViews(accountId?: string): void {
-  const state = useAppStore.getState();
-  if (state.rulesLoadState !== 'idle') void state.loadRules();
-  if (accountId && state.attachedRulesAccountIds.includes(accountId)) void state.loadRuleAttachments(state.attachedRulesAccountIds);
+  if (rulesStore.rulesLoadState !== 'idle') void rulesStore.loadRules();
+  if (accountId && rulesStore.attachedRulesAccountIds.includes(accountId)) void rulesStore.loadRuleAttachments(rulesStore.attachedRulesAccountIds);
 }
 
 function compactAccount(account: MetaAccount) {

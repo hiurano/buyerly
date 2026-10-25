@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
-import { useAppStore, type AdsManagerEntity } from '@/store/useAppStore';
 import { useAddress } from '@/lib/routing';
+import { useShellStore } from '@/models/shellStore';
+import { useViewStore, type AdsManagerEntity } from '@/models/viewStore';
 
 /**
  * What the page on screen was opened for: its team, its Ads Manager level and
@@ -19,14 +20,14 @@ export const BuyerlyPageScopeContext = createContext<BuyerlyPageScope | null>(nu
 /** The team whose page is on screen; outside the page (the sidebar), the store's. */
 export function usePageTeamKey(): string | null {
   const scope = useContext(BuyerlyPageScopeContext);
-  const current = useAppStore((state) => state.activeTeamKey);
+  const current = useShellStore((state) => state.activeTeamKey);
   return scope ? scope.teamKey : current;
 }
 
 /** Ads Manager's level on screen. */
 export function usePageEntity(): AdsManagerEntity {
   const scope = useContext(BuyerlyPageScopeContext);
-  const current = useAppStore((state) => state.campaignFilterTab);
+  const current = useViewStore((state) => state.campaignFilterTab);
   return scope ? scope.entity : current;
 }
 

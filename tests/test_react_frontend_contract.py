@@ -103,9 +103,11 @@ class TestReactFrontendContract(unittest.TestCase):
             / "DisplayOptionsPopover.tsx"
         ).read_text()
         cls.button = (ROOT / "frontend" / "src" / "ui" / "Button.tsx").read_text()
-        cls.app_store = (
-            ROOT / "frontend" / "src" / "store" / "useAppStore.ts"
-        ).read_text()
+        # UI state and the rules' data live in MobX stores next to the model pool (#510).
+        cls.app_store = "\n".join(
+            path.read_text()
+            for path in sorted((ROOT / "frontend" / "src" / "models").glob("*Store.ts"))
+        )
         cls.rules_view = (
             ROOT / "frontend" / "src" / "components" / "rules" / "RulesView.tsx"
         ).read_text()
@@ -362,7 +364,7 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertNotIn(fixture, campaign_path)
 
         self.assertIn(
-            "campaigns: [],\n  campaignGroups: [],\n  adSets: [],\n  ads: [],",
+            "campaigns: CampaignItem[] = [];\n  campaignGroups: CampaignGroup[] = [];\n  adSets: AdSetItem[] = [];\n  ads: AdItem[] = [];",
             self.app_store,
         )
         self.assertIn("campaignAttachedRules: {},", self.app_store)
@@ -431,7 +433,8 @@ class TestReactFrontendContract(unittest.TestCase):
 
     def test_rules_surface_uses_workspace_api_without_production_fixtures(self):
         # The rules store is seeded by the API, never by shipped example rows.
-        self.assertIn("rules: [],\n  ruleLabels: [],", self.app_store)
+        self.assertIn("rules: RuleItem[] = [];", self.app_store)
+        self.assertIn("rules: [], ruleLabels: [],", self.app_store)
         for fixture in (
             "Auto-Stop High CPA",
             "Scale Winner Budget",
@@ -455,7 +458,7 @@ class TestReactFrontendContract(unittest.TestCase):
 
         # Refreshing after a mutation must not swap the list for "Loading rules…".
         self.assertIn(
-            "if (get().rulesLoadState !== 'ready') set({ rulesLoadState: 'loading'",
+            "if (this.rulesLoadState !== 'ready') this.set({ rulesLoadState: 'loading'",
             self.app_store,
         )
 
@@ -671,7 +674,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("pushHistory(deliveryHistoryEntry(", self.campaigns_view)
         self.assertIn("reportBulkDelivery(", self.campaigns_view)
         # Rules held for review are never switched on in bulk either.
-        self.assertIn("setRulesEnabled: async (ids, enabled)", self.app_store)
+        self.assertIn("async setRulesEnabled(ids: string[], enabled: boolean)", self.app_store)
         self.assertIn("if (enabled && rule.needsReview)", self.app_store)
         self.assertIn("setRulesEnabled(", self.rule_actions)
         self.assertIn("runBulkRulesEnabled(", rules_view)

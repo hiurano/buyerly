@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, X } from 'lucide-react';
-import { useAppStore } from '@/store/useAppStore';
 import { apiRequest } from '@/lib/api';
 import { pathForTab, searchAt } from '@/lib/routing';
 import {
@@ -38,6 +37,9 @@ import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { BuyerlyTabs } from '@/ui/BuyerlyTabs';
 import { Tooltip } from '@/ui/Tooltip';
 import { useMenuExit } from '@/ui/useMenuExit';
+import { scopeStore, useScopeStore } from '@/models/scopeStore';
+import { useShellStore } from '@/models/shellStore';
+import { useViewStore } from '@/models/viewStore';
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, a select. */
 const OPEN_LAYER_SELECTOR = [
@@ -279,9 +281,9 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
     accounts: offered.account ? params.accounts : [],
   }), [offered.account, offered.status, params]);
   const requestKey = JSON.stringify(applied);
-  const scope = useAppStore((state) => state.workspaceScope);
-  const lastAppTab = useAppStore((state) => state.lastAppTab);
-  const campaignFilterTab = useAppStore((state) => state.campaignFilterTab);
+  const scope = useScopeStore((state) => state.workspaceScope);
+  const lastAppTab = useShellStore((state) => state.lastAppTab);
+  const campaignFilterTab = useViewStore((state) => state.campaignFilterTab);
 
   const [draft, setDraft] = useState(params.query);
   const [recent, setRecent] = useState<string[]>(() => readRecentSearches(scope));
@@ -302,7 +304,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
   useEffect(() => setRecent(readRecentSearches(scope)), [scope]);
 
   useEffect(() => {
-    const inScope = useAppStore.getState().captureScope();
+    const inScope = scopeStore.captureScope();
     apiRequest<MetaAccount[]>('/api/accounts')
       .then((items) => { if (inScope()) setAccounts(eligibleMetaAccounts(items)); })
       .catch(() => {});
@@ -317,7 +319,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
     }
     setSearch({ status: 'loading', key: requestKey });
     const controller = new AbortController();
-    const inScope = useAppStore.getState().captureScope();
+    const inScope = scopeStore.captureScope();
     searchWorkspace(applied, controller.signal)
       .then((response) => {
         if (!controller.signal.aborted && inScope()) setSearch({ status: 'ready', key: requestKey, response });

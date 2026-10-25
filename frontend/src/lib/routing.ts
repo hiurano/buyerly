@@ -1,5 +1,6 @@
 import { useMemo, useSyncExternalStore } from 'react';
-import type { ActiveTab, AdsManagerEntity, SettingsSection } from '@/store/useAppStore';
+import { type ActiveTab, type SettingsSection } from '@/models/shellStore';
+import { type AdsManagerEntity } from '@/models/viewStore';
 
 export type Route =
   | { kind: 'root' }

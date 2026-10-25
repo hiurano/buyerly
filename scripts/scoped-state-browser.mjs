@@ -1,4 +1,4 @@
-// Real App + Zustand, synthetic API only. No production server or ad actions.
+// Real App + MobX stores, synthetic API only. No production server or ad actions.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -71,7 +71,11 @@ try {
     }, path);
     await page.goto('http://127.0.0.1:5174/alpha/rules');
     await page.evaluate(async () => {
-      window.testStore = (await import('/src/store/useAppStore.ts')).useAppStore;
+      // The UI state's MobX stores (#510), read as one: each name is found on the store that has it.
+      const names = ['scope', 'shell', 'commandMenu', 'inbox', 'notificationSettings', 'view', 'detailsPane', 'selection', 'dialog', 'rules'];
+      const stores = await Promise.all(names.map(async name => (await import(`/src/models/${name}Store.ts`))[`${name}Store`]));
+      const all = new Proxy({}, { get: (_, key) => stores.find(store => key in store)?.[key] });
+      window.testStore = { getState: () => all };
     });
     await page.waitForFunction(() => window.testStore.getState().rulesLoadState === 'ready');
     await page.getByText('alpha rule', { exact: true }).first().waitFor();

@@ -1,5 +1,5 @@
-import type { RuleItem } from '@/store/useAppStore';
 import type { RuleAction } from '@/lib/rules';
+import { type RuleItem } from '@/models/rulesStore';
 
 /** What a rule does, in a word, the same in filters, groups and the details pane. */
 export const RULE_ACTION_NAMES: Record<RuleAction, string> = {

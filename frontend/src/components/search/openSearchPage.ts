@@ -1,5 +1,5 @@
-import { useAppStore } from '@/store/useAppStore';
 import { rememberSearchReturnPath } from '@/lib/search';
+import { shellStore } from '@/models/shellStore';
 
 /** The search page's field, which `/` focuses when the page is already open. */
 export const SEARCH_INPUT_SELECTOR = '[data-search-page-input]';
@@ -10,11 +10,10 @@ export const SEARCH_INPUT_SELECTOR = '[data-search-page-input]';
  * where search was opened from.
  */
 export function openSearchPage(): void {
-  const store = useAppStore.getState();
-  if (store.activeTab === 'search') {
+  if (shellStore.activeTab === 'search') {
     document.querySelector<HTMLInputElement>(SEARCH_INPUT_SELECTOR)?.focus();
     return;
   }
   rememberSearchReturnPath(`${window.location.pathname}${window.location.search}`);
-  store.setActiveTab('search');
+  shellStore.setActiveTab('search');
 }

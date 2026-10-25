@@ -1,6 +1,6 @@
-import type { SettingsSection } from '@/store/useAppStore';
 import type { Workspace } from './types';
 import { bestCommandScore } from './commandFilter';
+import { type SettingsSection } from '@/models/shellStore';
 
 /** The settings pages in the sidebar; the notification channels open from Notifications, team pages from Teams. */
 export type SettingsPage = Exclude<

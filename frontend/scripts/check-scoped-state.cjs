@@ -1,4 +1,4 @@
-// Execute the production store and API client with controlled, delayed HTTP responses.
+// Execute the production stores and API client with controlled, delayed HTTP responses.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -24,8 +24,11 @@ global.fetch = (url, init) => new Promise(resolve => pending.push({
   url, method: init.method, workspace: init.headers.get('X-Workspace-Slug'),
   reply: (body, status = 200) => resolve({ ok: status < 400, status, json: async () => body }),
 }));
-const { useAppStore: store } = load(path.join(root, 'store/useAppStore.ts'));
-const state = () => store.getState();
+// The UI state's MobX stores (#510), read as one: each name is found on the store that has it.
+const stores = ['scope', 'shell', 'commandMenu', 'inbox', 'notificationSettings', 'view', 'detailsPane', 'selection', 'dialog', 'rules']
+  .map(name => load(path.join(root, `models/${name}Store.ts`))[`${name}Store`]);
+const all = new Proxy({}, { get: (_, key) => stores.find(store => key in store)?.[key] });
+const state = () => all;
 function enter(slug) {
   window.location.pathname = slug ? `/${slug}/rules` : '/login';
   state().setWorkspaceScope(slug ? `user:${slug}` : null, slug || undefined);

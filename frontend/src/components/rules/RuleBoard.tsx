@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { RuleItem, useAppStore } from '@/store/useAppStore';
 import { arrangeBoardColumns, toggleHiddenGroup } from '@/ui/listView';
 import { BuyerlyBoard, type BoardLane } from '@/ui/BuyerlyBoard';
 import { toast } from '@/ui/toast';
@@ -12,6 +11,9 @@ import {
   useRulesView,
   type RuleListGroup,
 } from './rulesViewModel';
+import { useRulesStore, RuleItem } from '@/models/rulesStore';
+import { useDialogStore } from '@/models/dialogStore';
+import { useSelectionStore } from '@/models/selectionStore';
 
 const Dot: React.FC<{ color: string }> = ({ color }) => (
   <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
@@ -26,7 +28,13 @@ const Dot: React.FC<{ color: string }> = ({ color }) => (
  * Rows band the columns; only the column a card lands in decides what changes.
  */
 export const RuleBoard: React.FC<{ rules: RuleItem[] }> = ({ rules }) => {
-  const { ruleLabels, ruleAccounts, selectedRuleId, setSelectedRuleId, setRuleLabels, toggleRuleStatus, openCreateRuleModal } = useAppStore();
+  const ruleLabels = useRulesStore((state) => state.ruleLabels);
+  const ruleAccounts = useRulesStore((state) => state.ruleAccounts);
+  const selectedRuleId = useSelectionStore((state) => state.selectedRuleId);
+  const setSelectedRuleId = useSelectionStore((state) => state.setSelectedRuleId);
+  const setRuleLabels = useRulesStore((state) => state.setRuleLabels);
+  const toggleRuleStatus = useRulesStore((state) => state.toggleRuleStatus);
+  const openCreateRuleModal = useDialogStore((state) => state.openCreateRuleModal);
   const { view, update } = useRulesView();
   const accounts = useMemo(() => ruleGroupAccounts(ruleAccounts), [ruleAccounts]);
   const boardView = { ...view, grouping: ruleActiveGrouping(view) };

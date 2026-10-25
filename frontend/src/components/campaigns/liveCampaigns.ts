@@ -1,6 +1,6 @@
-import type { AdItem, AdSetItem, CampaignItem } from '@/store/useAppStore';
 import type { AnalyticsHierarchyItem, MetaAccount } from '@/lib/types';
 import { readMetrics, type AdsManagerMetric } from './adsManagerMetrics';
+import { type AdItem, type AdSetItem, type CampaignItem } from '@/models/rulesStore';
 
 const KNOWN_CURRENCY = /^[A-Z]{3}$/;
 

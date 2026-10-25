@@ -3,9 +3,9 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from '@/ui/Button';
 import { fetchRuleStates, formatRelativeTime, RULE_LEVEL_LABELS } from '@/lib/rules';
 import type { RuleEntityStatePayload, RuleEntityStateName } from '@/lib/rules';
-import { useAppStore } from '@/store/useAppStore';
-import type { RuleItem } from '@/store/useAppStore';
 import { RuleStateLine } from './RuleStateLine';
+import { useRulesStore, type RuleItem } from '@/models/rulesStore';
+import { useDialogStore } from '@/models/dialogStore';
 
 /** What needs the buyer's eye first: actions and holds, then quiet checks. */
 const STATE_ORDER: Record<RuleEntityStateName, number> = {
@@ -193,7 +193,9 @@ export const RuleStatesDialog: React.FC<RuleStatesDialogProps> = ({ rule, open, 
 
 /** The status dialog of whichever rule the store has open, if any. */
 export const RuleStatesHost: React.FC = () => {
-  const { rules, ruleStatesRuleId, openRuleStates } = useAppStore();
+  const rules = useRulesStore((state) => state.rules);
+  const ruleStatesRuleId = useDialogStore((state) => state.ruleStatesRuleId);
+  const openRuleStates = useDialogStore((state) => state.openRuleStates);
   const rule = rules.find((item) => item.id === ruleStatesRuleId);
   if (!rule) return null;
   return <RuleStatesDialog rule={rule} open onClose={() => openRuleStates(null)} />;

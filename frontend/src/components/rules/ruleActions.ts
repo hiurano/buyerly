@@ -1,4 +1,3 @@
-import { applyRulesEnabled, useAppStore } from '@/store/useAppStore';
 import { ApiError } from '@/lib/api';
 import {
   describeRestoreGaps,
@@ -10,6 +9,10 @@ import {
 import { pushHistory } from '@/lib/undoHistory';
 import { openRecentlyDeletedRules } from '@/lib/routing';
 import { toast } from '@/ui/toast';
+import { dialogStore } from '@/models/dialogStore';
+import { rulesStore, applyRulesEnabled } from '@/models/rulesStore';
+import { scopeStore } from '@/models/scopeStore';
+import { selectionStore } from '@/models/selectionStore';
 
 /*
  * Rule actions follow Linear: a change shows on the row and says nothing, a
@@ -32,8 +35,7 @@ function countOf(kind: DeletedKind, count: number): string {
 }
 
 function nameOf(kind: DeletedKind, id: string): string {
-  const state = useAppStore.getState();
-  const source = kind === 'rule' ? state.rules : state.ruleLabels;
+  const source = kind === 'rule' ? rulesStore.rules : rulesStore.ruleLabels;
   return source.find((item) => item.id === id)?.name ?? NOUNS[kind].singular;
 }
 
@@ -52,13 +54,12 @@ export function deletionPrompt(kind: DeletedKind, ids: string[]): { title: strin
 }
 
 async function deleteOne(kind: DeletedKind, id: string): Promise<number> {
-  const state = useAppStore.getState();
-  return kind === 'rule' ? state.deleteRule(id) : state.deleteRuleLabel(id);
+  return kind === 'rule' ? rulesStore.deleteRule(id) : rulesStore.deleteRuleLabel(id);
 }
 
 /** Deletes each item; reports which went to Recently deleted and which failed. */
 async function deleteMany(kind: DeletedKind, ids: string[]) {
-  const inScope = useAppStore.getState().captureScope();
+  const inScope = scopeStore.captureScope();
   const deleted: { id: string; itemId: number }[] = [];
   const failed: { id: string; error: string }[] = [];
   for (const id of ids) {
@@ -69,12 +70,12 @@ async function deleteMany(kind: DeletedKind, ids: string[]) {
       failed.push({ id, error: errorMessage(error) });
     }
   }
-  if (inScope()) await useAppStore.getState().loadRules();
+  if (inScope()) await rulesStore.loadRules();
   return { deleted, failed };
 }
 
 async function restoreMany(itemIds: number[]): Promise<void> {
-  const inScope = useAppStore.getState().captureScope();
+  const inScope = scopeStore.captureScope();
   let failure = '';
   for (const itemId of itemIds) {
     if (!inScope()) return;
@@ -85,7 +86,7 @@ async function restoreMany(itemIds: number[]): Promise<void> {
     }
   }
   if (!inScope()) return;
-  await useAppStore.getState().loadRules();
+  await rulesStore.loadRules();
   if (failure) throw new Error(failure);
 }
 
@@ -95,15 +96,15 @@ async function restoreMany(itemIds: number[]): Promise<void> {
  * as Linear does.
  */
 export async function runPendingDeletion(): Promise<void> {
-  const pending = useAppStore.getState().pendingDeletion;
+  const pending = dialogStore.pendingDeletion;
   if (!pending) return;
   const { kind, ids } = pending;
   const label = ids.length === 1 ? `delete ${nameOf(kind, ids[0])}` : `delete ${countOf(kind, ids.length)}`;
   const deletedName = ids.length === 1 ? nameOf(kind, ids[0]) : '';
 
-  useAppStore.getState().cancelDeletion();
-  if (kind === 'rule') useAppStore.getState().setRuleSelection([]);
-  const inScope = useAppStore.getState().captureScope();
+  dialogStore.cancelDeletion();
+  if (kind === 'rule') selectionStore.setRuleSelection([]);
+  const inScope = scopeStore.captureScope();
   const { deleted, failed } = await deleteMany(kind, ids);
   // Finished after the workspace was left: its history and toasts went with it.
   if (!inScope()) return;
@@ -149,8 +150,8 @@ export async function runPendingDeletion(): Promise<void> {
  * back together; anything that did not is the only thing reported.
  */
 export async function runBulkRulesEnabled(ids: string[], enabled: boolean): Promise<void> {
-  const inScope = useAppStore.getState().captureScope();
-  const outcome = await useAppStore.getState().setRulesEnabled(ids, enabled);
+  const inScope = scopeStore.captureScope();
+  const outcome = await rulesStore.setRulesEnabled(ids, enabled);
   if (!inScope()) return;
   if (outcome.changed.length > 0) {
     const changed = outcome.changed;
@@ -179,11 +180,11 @@ export async function runBulkRulesEnabled(ids: string[], enabled: boolean): Prom
  * appears only when part of it could not come back.
  */
 export async function restoreFromTrash(item: DeletedItem): Promise<boolean> {
-  const inScope = useAppStore.getState().captureScope();
+  const inScope = scopeStore.captureScope();
   try {
     const result = await restoreDeletedItem(item.id);
     if (!inScope()) return true;
-    await useAppStore.getState().loadRules();
+    await rulesStore.loadRules();
     if (!inScope()) return true;
     const kind = item.kind;
     const entityId = String(result.entity_id);
@@ -191,9 +192,9 @@ export async function restoreFromTrash(item: DeletedItem): Promise<boolean> {
     pushHistory({
       label: `restore ${item.name}`,
       undo: async () => {
-        const current = useAppStore.getState().captureScope();
+        const current = scopeStore.captureScope();
         itemId = await deleteOne(kind, entityId);
-        if (current()) await useAppStore.getState().loadRules();
+        if (current()) await rulesStore.loadRules();
       },
       redo: () => restoreMany([itemId]),
     });

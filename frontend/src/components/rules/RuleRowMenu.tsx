@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { RuleItem, useAppStore } from '@/store/useAppStore';
 import { ruleStatesTitle } from './RuleStatesDialog';
 import { AttachRulePreviewDialog } from './AttachRulePreviewDialog';
 import {
@@ -17,6 +16,8 @@ import { BuyerlyCheckIcon, BuyerlyDotsIcon } from '@/icons/BuyerlyIcons';
 import { metaAccountLabel } from '@/components/campaigns/liveCampaigns';
 import { useIsTouchScreen } from '@/lib/useMediaQuery';
 import { formatAccountScope } from '@/lib/rules';
+import { useDialogStore, dialogStore } from '@/models/dialogStore';
+import { useRulesStore, RuleItem } from '@/models/rulesStore';
 
 interface RuleRowMenuProps {
   rule: RuleItem;
@@ -27,8 +28,10 @@ interface RuleRowMenuProps {
  * delete it. Built from the shared menu primitives rather than a new popover.
  */
 export const RuleRowMenu: React.FC<RuleRowMenuProps> = ({ rule }) => {
-  const { openEditRuleModal, toggleRuleOnAccount, requestDeletion, ruleAccounts } =
-    useAppStore();
+  const openEditRuleModal = useDialogStore((state) => state.openEditRuleModal);
+  const requestDeletion = useDialogStore((state) => state.requestDeletion);
+  const toggleRuleOnAccount = useRulesStore((state) => state.toggleRuleOnAccount);
+  const ruleAccounts = useRulesStore((state) => state.ruleAccounts);
 
   const touch = useIsTouchScreen();
   const attachedIds = new Set(rule.preset.attached_account_ids);
@@ -123,7 +126,7 @@ export const RuleRowMenu: React.FC<RuleRowMenuProps> = ({ rule }) => {
         <DropdownMenuSeparator />
 
         {/* Where the rule stands on each campaign it checks (#322). */}
-        <DropdownMenuItem onClick={() => useAppStore.getState().openRuleStates(rule.id)}>
+        <DropdownMenuItem onClick={() => dialogStore.openRuleStates(rule.id)}>
           <span>{ruleStatesTitle(rule)}</span>
         </DropdownMenuItem>
 
