@@ -164,7 +164,8 @@ try {
       // The first page waits for Vite to prepare the app.
       await page.goto(`${origin}/alpha/rules`, { timeout: 120_000 });
       const nav = page.locator('.buyerly-sidebar-nav-item');
-      await nav.first().waitFor();
+      // Your teams come with the teams list, after bootstrap answers it holds none (#507).
+      await page.locator('.sidebar-team .buyerly-sidebar-nav-item').first().waitFor();
       // Linear's sidebar: Inbox, the Workspace section, then each of Your teams with its own pages.
       assert.deepEqual(
         (await nav.allInnerTexts()).map((text) => text.trim()),
