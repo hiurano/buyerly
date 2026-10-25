@@ -16,6 +16,8 @@ interface BuyerlyTabsProps {
   activeTabId: string;
   onChange: (id: string) => void;
   className?: string;
+  /** StyleX overrides for the tab strip. */
+  xstyle?: stylex.StyleXStyles;
   'aria-label'?: string;
   /**
    * A view's tabs, as in Linear's header: when they no longer fit their strip,
@@ -108,6 +110,7 @@ export const BuyerlyTabs: React.FC<BuyerlyTabsProps> = ({
   activeTabId,
   onChange,
   className = '',
+  xstyle,
   'aria-label': ariaLabel = 'Views',
   collapseOverflow = false,
 }) => {
@@ -159,7 +162,7 @@ export const BuyerlyTabs: React.FC<BuyerlyTabsProps> = ({
       role="tablist"
       aria-label={ariaLabel}
       aria-hidden={folded ? true : undefined}
-      {...withClassName(stylex.props(styles.list, collapseOverflow && styles.listMeasured, folded && styles.listFolded), className)}
+      {...withClassName(stylex.props(styles.list, collapseOverflow && styles.listMeasured, folded && styles.listFolded, xstyle), className)}
     >
       {tabs.map((tab, index) => {
         const isActive = tab.id === activeTabId;

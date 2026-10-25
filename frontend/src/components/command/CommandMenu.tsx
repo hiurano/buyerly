@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Command } from 'cmdk';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
 import { ArrowRight, Maximize2 } from 'lucide-react';
 import { pathForTab, recentlyDeletedRulesPath } from '@/lib/routing';
 import type { Workspace } from '@/lib/types';
@@ -24,7 +27,7 @@ import { isSmallScreen } from '@/lib/useMediaQuery';
 import { BuyerlyLabelIcon, BuyerlyPlusIcon, BuyerlySearchIcon, BuyerlySidebarLeftToggleIcon, BuyerlyStarOutlineIcon } from '@/icons/BuyerlyIcons';
 import { toggleFavorite, useFavorites } from '@/lib/favorites';
 import { CommandMenuFooterKeys } from '@/ui/SelectionCommandMenu';
-import { COMMAND_MENU_CLASSES } from './commandMenuClasses';
+import { commandMenuStyles as menu } from './commandMenuStyles';
 import { usePageGroup, type PaletteCommand, type PaletteGroup } from './pageCommands';
 import { commandMenuStore, useCommandMenuStore, type OpenPaletteKind } from '@/models/commandMenuStore';
 import { useDialogStore } from '@/models/dialogStore';
@@ -150,9 +153,9 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
             }
             if (target?.isConnected) target.focus({ preventScroll: true });
           }}
-          className={`fixed inset-x-4 top-[13vh] z-[var(--layer-command-menu)] mx-auto flex max-h-[min(450px,84vh)] max-w-[720px] flex-col outline-none ${COMMAND_MENU_CLASSES.surface}`}
+          {...withClassName(stylex.props(menu.dialog, styles.dialog, menu.surface), 'animate-scale-in')}
         >
-          <Dialog.Title className="sr-only">Command menu</Dialog.Title>
+          <Dialog.Title {...stylex.props(menu.srOnly)}>Command menu</Dialog.Title>
           <CommandPalette workspace={workspace} navigate={navigate} choose={choose} />
         </Dialog.Content>
       </Dialog.Portal>
@@ -165,7 +168,114 @@ const QUICK_RESULTS_MIN_LENGTH = 2;
 const QUICK_RESULTS_LIMIT = 8;
 const QUICK_RESULTS_DELAY_MS = 120;
 
-const FOOTER_HINT_CLASS = 'flex h-6 items-center gap-1.5 px-2 text-[12px] font-medium text-[var(--text-secondary)]';
+
+const styles = stylex.create({
+  dialog: {
+    maxHeight: 'min(450px, 84vh)',
+  },
+  palette: {
+    display: 'flex',
+    minHeight: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    flexDirection: 'column',
+  },
+  list: {
+    minHeight: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+  },
+  /** "Search entire workspace", then what is typed, muted. */
+  searchAll: {
+    position: 'relative',
+    display: 'flex',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    alignItems: 'baseline',
+    gap: 8,
+  },
+  quickLabel: {
+    position: 'relative',
+    display: 'flex',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    alignItems: 'center',
+    gap: 6,
+  },
+  fixed: {
+    flexShrink: 0,
+  },
+  truncate: {
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  /** Where a result lives gives way first, before its name. */
+  where: {
+    flexShrink: 200000,
+  },
+  secondary: {
+    color: colors['--text-secondary'],
+  },
+  tertiary: {
+    color: colors['--text-tertiary'],
+  },
+  muted: {
+    color: colors['--text-muted'],
+  },
+  /** Linear's footer: 35px under a rule, each hint a small button with its keys boxed. */
+  footer: {
+    display: 'flex',
+    height: 35,
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 6,
+    borderTopWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--command-menu-border'],
+    paddingLeft: 4,
+    paddingRight: 4,
+  },
+  hint: {
+    display: 'flex',
+    height: 24,
+    alignItems: 'center',
+    gap: 6,
+    paddingLeft: 8,
+    paddingRight: 8,
+    fontSize: 12,
+    fontWeight: 500,
+    color: colors['--text-secondary'],
+  },
+  hintButton: {
+    borderRadius: 6,
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--command-menu-row-selected-bg'],
+    },
+  },
+  keys: {
+    position: 'relative',
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 3,
+  },
+  then: {
+    paddingLeft: 1,
+    paddingRight: 1,
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--text-tertiary'],
+  },
+});
 
 const arrowIcon = <ArrowRight size={14} strokeWidth={1.75} />;
 
@@ -335,7 +445,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
       value={selected}
       // cmdk clears the choice when the list empties; undefined would break the footer.
       onValueChange={(next) => setSelected(next ?? '')}
-      className="flex min-h-0 flex-1 flex-col"
+      {...stylex.props(styles.palette)}
       onKeyDown={(event) => {
         if ((event.ctrlKey || event.metaKey) && event.key === '/') {
           event.preventDefault();
@@ -343,36 +453,36 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
         }
       }}
     >
-      <div className={COMMAND_MENU_CLASSES.field}>
+      <div {...stylex.props(menu.field)}>
         <Command.Input
           autoFocus
           value={query}
           onValueChange={setQuery}
           placeholder="Type a command or search…"
-          className={COMMAND_MENU_CLASSES.input}
+          {...stylex.props(menu.input)}
         />
       </div>
-      <p role="status" className="sr-only">{text ? `Showing ${shownCount} items` : 'Showing all items'}</p>
-      <Command.List className={`min-h-0 flex-1 ${COMMAND_MENU_CLASSES.list}`}>
+      <p role="status" {...stylex.props(menu.srOnly)}>{text ? `Showing ${shownCount} items` : 'Showing all items'}</p>
+      <Command.List {...stylex.props(menu.list, styles.list)}>
         {shownGroups.map((group, groupIndex) => (
-          <Command.Group key={`${groupIndex}:${group.heading}`} heading={group.heading || undefined} className={COMMAND_MENU_CLASSES.group}>
+          <Command.Group key={`${groupIndex}:${group.heading}`} heading={group.heading || undefined} className="buyerly-command-group">
             {group.commands.map((command) => (
               <Command.Item
                 key={command.id}
                 value={`command:${command.id}`}
                 aria-label={command.label}
                 onSelect={() => choose(command.run)}
-                className={COMMAND_MENU_CLASSES.item}
+                {...stylex.props(menu.item)}
               >
-                <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true">{command.icon}</span>
-                <span className="min-w-0 flex-1 truncate">{command.label}</span>
+                <span {...stylex.props(menu.icon)} aria-hidden="true">{command.icon}</span>
+                <span {...stylex.props(menu.label)}>{command.label}</span>
                 {command.shortcut && <ShortcutKeys shortcut={command.shortcut} />}
               </Command.Item>
             ))}
           </Command.Group>
         ))}
         {showQuick && (
-          <Command.Group heading={`Quick results for "${text}"`} className={COMMAND_MENU_CLASSES.group}>
+          <Command.Group heading={`Quick results for "${text}"`} className="buyerly-command-group">
             {results.map((result) => (
               <Command.Item
                 key={`${result.kind}:${result.id}`}
@@ -382,9 +492,9 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
                   rememberOpenedRecord(scope, result);
                   go(searchResultPath(slug, result));
                 })}
-                className={COMMAND_MENU_CLASSES.item}
+                {...stylex.props(menu.item)}
               >
-                <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true"><StatusMark result={result} /></span>
+                <span {...stylex.props(menu.icon)} aria-hidden="true"><StatusMark result={result} /></span>
                 <QuickResultLabel result={result} />
               </Command.Item>
             ))}
@@ -392,12 +502,12 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
               value="search-entire-workspace"
               aria-label={results.length > 0 ? `Search entire workspace ${text}` : 'No results found, go to advanced search'}
               onSelect={() => choose(advancedSearch)}
-              className={COMMAND_MENU_CLASSES.item}
+              {...stylex.props(menu.item)}
             >
-              <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true"><BuyerlySearchIcon size={14} /></span>
-              <span className="flex min-w-0 flex-1 items-baseline gap-2">
-                <span className="shrink-0">{results.length > 0 ? 'Search entire workspace' : 'No results found'}</span>
-                <span className="min-w-0 truncate text-[var(--text-muted)]">{results.length > 0 ? text : 'Go to advanced search'}</span>
+              <span {...stylex.props(menu.icon)} aria-hidden="true"><BuyerlySearchIcon size={14} /></span>
+              <span {...stylex.props(styles.searchAll)}>
+                <span {...stylex.props(styles.fixed)}>{results.length > 0 ? 'Search entire workspace' : 'No results found'}</span>
+                <span {...stylex.props(styles.truncate, styles.muted)}>{results.length > 0 ? text : 'Go to advanced search'}</span>
               </span>
             </Command.Item>
           </Command.Group>
@@ -405,14 +515,14 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
       </Command.List>
       {showQuick && (
         // Linear's footer: 35px under a rule, each hint a small button with its keys boxed.
-        <div className="flex h-[35px] shrink-0 items-center gap-1.5 border-t border-[var(--command-menu-border)] px-1">
-          <span className={FOOTER_HINT_CLASS}>
+        <div {...stylex.props(styles.footer)}>
+          <span {...stylex.props(styles.hint)}>
             <CommandMenuFooterKeys keys={['↵']} />
             <span>{onRecord ? 'Open' : 'Select'}</span>
           </span>
           <button
             type="button"
-            className={`${FOOTER_HINT_CLASS} rounded-[6px] hover:bg-[var(--command-menu-row-selected-bg)]`}
+            {...stylex.props(styles.hint, styles.hintButton)}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => choose(advancedSearch)}
           >
@@ -450,11 +560,11 @@ function quickResultName(result: SearchResult): string {
 const QuickResultLabel: React.FC<{ result: SearchResult }> = ({ result }) => {
   const where = quickResultWhere(result);
   return (
-    <span className="flex min-w-0 flex-1 items-center gap-1.5">
-      <span className="shrink-0 text-[var(--text-tertiary)]">{SEARCH_KIND_LABELS[result.kind]}</span>
-      <span className="shrink-0 text-[var(--text-muted)]" aria-hidden="true">›</span>
-      <span className="min-w-0 truncate text-[var(--text-secondary)]">{result.name}</span>
-      {where && <span className="min-w-0 shrink-[200000] truncate text-[var(--text-muted)]">{where}</span>}
+    <span {...stylex.props(styles.quickLabel)}>
+      <span {...stylex.props(styles.fixed, styles.tertiary)}>{SEARCH_KIND_LABELS[result.kind]}</span>
+      <span {...stylex.props(styles.fixed, styles.muted)} aria-hidden="true">›</span>
+      <span {...stylex.props(styles.truncate, styles.secondary)}>{result.name}</span>
+      {where && <span {...stylex.props(styles.truncate, styles.where, styles.muted)}>{where}</span>}
     </span>
   );
 };
@@ -500,13 +610,13 @@ const ShortcutKeys: React.FC<{ shortcut: string }> = ({ shortcut }) => {
   const parts = shortcut.split(' ').map((part) => KEY_NAMES[part] ?? part);
   const sequence = parts.length === 2 && SEQUENCE_PREFIXES.has(parts[0]) && /^[A-Z]$/.test(parts[1]);
   return (
-    <span className="flex shrink-0 items-center gap-[3px]" aria-label={sequence ? `${parts[0]} then ${parts[1]}` : parts.join(' ')}>
+    <span {...stylex.props(styles.keys)} aria-label={sequence ? `${parts[0]} then ${parts[1]}` : parts.join(' ')}>
       {parts.map((part, index) => (
         <React.Fragment key={index}>
-          {sequence && index === 1 && <span className="px-px text-[12px] font-[450] text-[var(--text-tertiary)]" aria-hidden="true">then</span>}
+          {sequence && index === 1 && <span {...stylex.props(styles.then)} aria-hidden="true">then</span>}
           <kbd
             aria-hidden="true"
-            className={COMMAND_MENU_CLASSES.kbd}
+            {...stylex.props(menu.kbd)}
           >
             {part}
           </kbd>

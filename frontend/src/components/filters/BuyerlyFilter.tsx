@@ -1,5 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
 import {
   CalendarDays,
   Check,
@@ -1617,7 +1619,6 @@ export const ActiveFilterFormula = <T,>({
           aria-label="Add another filter"
           onClick={(event) => onOpenMenu('root', event.currentTarget)}
           style={{ display: 'inline-flex', width: 24, height: 24, flexShrink: 0, alignItems: 'center', justifyContent: 'center', border: 0, borderRadius: 9999, background: 'transparent', color: MENU_MUTED, cursor: 'pointer' }}
-          className="hover:bg-[var(--item-active-bg)] hover:text-[var(--text-primary)]"
         >
           <Plus size={13} strokeWidth={1.8} aria-hidden="true" />
         </button>
@@ -1627,7 +1628,6 @@ export const ActiveFilterFormula = <T,>({
         aria-label="Clear all filters"
         onClick={() => onChange([])}
         style={{ height: 24, flexShrink: 0, padding: '0 8px', border: '1px solid transparent', borderRadius: 9999, background: 'transparent', color: 'var(--text-primary)', fontSize: 12, cursor: 'pointer' }}
-        className="hover:bg-[var(--item-active-bg)]"
       >
         Clear
       </button>
@@ -1635,19 +1635,55 @@ export const ActiveFilterFormula = <T,>({
   );
 };
 
+const styles = stylex.create({
+  empty: {
+    display: 'flex',
+    minHeight: 180,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    textAlign: 'center',
+  },
+  emptyIcon: {
+    color: colors['--text-tertiary'],
+  },
+  emptyTitle: {
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  emptyNote: {
+    fontSize: 12,
+    color: colors['--text-tertiary'],
+  },
+  emptyClear: {
+    height: 28,
+    borderRadius: 9999,
+    paddingLeft: 12,
+    paddingRight: 12,
+    fontSize: 12,
+    color: colors['--text-primary'],
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+  },
+});
+
 export const FilteredEmptyState: React.FC<{
   noun: string;
   hiddenCount: number;
   onClear: () => void;
 }> = ({ noun, hiddenCount, onClear }) => (
-  <div className="flex min-h-[180px] flex-col items-center justify-center gap-3 text-center">
-    <CircleDashed size={22} strokeWidth={1.5} className="text-[var(--text-tertiary)]" aria-hidden="true" />
-    <div className="text-[13px] font-medium text-[var(--text-primary)]">No {noun} matching the filters</div>
-    <div className="text-[12px] text-[var(--text-tertiary)]">{hiddenCount} hidden by filters</div>
+  <div {...stylex.props(styles.empty)}>
+    <CircleDashed size={22} strokeWidth={1.5} {...stylex.props(styles.emptyIcon)} aria-hidden="true" />
+    <div {...stylex.props(styles.emptyTitle)}>No {noun} matching the filters</div>
+    <div {...stylex.props(styles.emptyNote)}>{hiddenCount} hidden by filters</div>
     <button
       type="button"
       onClick={onClear}
-      className="h-7 rounded-full px-3 text-[12px] text-[var(--text-primary)] hover:bg-[var(--item-hover-bg)]"
+      {...stylex.props(styles.emptyClear)}
     >
       Clear Filters
     </button>

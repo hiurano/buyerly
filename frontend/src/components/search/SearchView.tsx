@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, X } from 'lucide-react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
 import { apiRequest } from '@/lib/api';
 import { pathForTab, searchAt } from '@/lib/routing';
 import {
@@ -40,6 +43,473 @@ import { useMenuExit } from '@/ui/useMenuExit';
 import { scopeStore, useScopeStore } from '@/models/scopeStore';
 import { useShellStore } from '@/models/shellStore';
 import { useViewStore } from '@/models/viewStore';
+
+const styles = stylex.create({
+  match: {
+    fontWeight: 700,
+    color: colors['--text-primary'],
+  },
+  primary: {
+    color: colors['--text-primary'],
+  },
+  tertiary: {
+    color: colors['--text-tertiary'],
+  },
+  fixed: {
+    flexShrink: 0,
+  },
+  grow: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+  },
+  truncate: {
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  /** Read by screen readers only, as Tailwind's sr-only. */
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    borderWidth: 0,
+  },
+  facts: {
+    borderTopWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+    fontSize: 13,
+  },
+  fact: {
+    display: 'flex',
+    gap: 16,
+    borderBottomWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+    paddingTop: 10,
+    paddingBottom: 10,
+  },
+  factLabel: {
+    flexShrink: 0,
+    color: colors['--text-tertiary'],
+  },
+  factValue: {
+    minWidth: 0,
+    userSelect: 'text',
+    overflowWrap: 'break-word',
+    color: colors['--text-secondary'],
+  },
+  recent: {
+    paddingLeft: 8,
+    paddingRight: 8,
+    paddingTop: 12,
+    paddingBottom: 12,
+  },
+  recentHeader: {
+    display: 'flex',
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 12,
+    paddingRight: 12,
+  },
+  recentTitle: {
+    fontSize: 12,
+    fontWeight: 500,
+    color: colors['--text-tertiary'],
+  },
+  clearHistory: {
+    borderRadius: 6,
+    paddingLeft: 6,
+    paddingRight: 6,
+    paddingTop: 2,
+    paddingBottom: 2,
+    fontSize: 12,
+    fontWeight: 500,
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+  },
+  recentRow: {
+    display: 'flex',
+    height: 36,
+    width: '100%',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 6,
+    paddingLeft: 12,
+    paddingRight: 12,
+    textAlign: 'left',
+    fontSize: 13,
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    color: {
+      default: colors['--text-secondary'],
+      ':hover': colors['--text-primary'],
+    },
+  },
+  /** The page's empty state and errors, centred a little above the middle. */
+  empty: {
+    display: 'flex',
+    height: '100%',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingLeft: 24,
+    paddingRight: 24,
+    paddingBottom: 64,
+    textAlign: 'center',
+  },
+  emptyTitle: {
+    marginTop: 8,
+    fontSize: 15,
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  note: {
+    fontSize: 13,
+    color: colors['--text-tertiary'],
+  },
+  alert: {
+    fontSize: 13,
+    color: colors['--text-secondary'],
+  },
+  retry: {
+    height: 28,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    paddingLeft: 12,
+    paddingRight: 12,
+    fontSize: 12,
+    fontWeight: 500,
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    color: {
+      default: colors['--text-secondary'],
+      ':hover': colors['--text-primary'],
+    },
+  },
+  noResults: {
+    display: 'flex',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingLeft: 24,
+    paddingRight: 24,
+    paddingBottom: 64,
+    textAlign: 'center',
+  },
+  results: {
+    paddingTop: 4,
+    paddingBottom: 4,
+  },
+  result: {
+    marginLeft: 8,
+    marginRight: 8,
+    display: 'flex',
+    height: 40,
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 6,
+    paddingLeft: 12,
+    paddingRight: 12,
+    fontSize: 13,
+    color: colors['--text-secondary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+      ':focus-visible': colors['--item-hover-bg'],
+    },
+  },
+  /** The row ↑/↓ reached, under the cursor or not. */
+  resultActive: {
+    backgroundColor: colors['--item-active-bg'],
+  },
+  kind: {
+    width: 72,
+    flexShrink: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 12,
+    color: colors['--text-tertiary'],
+  },
+  mark: {
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+  },
+  parent: {
+    marginLeft: 8,
+    display: {
+      default: 'none',
+      '@media (min-width: 640px)': 'inline',
+    },
+    fontSize: 12,
+    color: colors['--text-tertiary'],
+  },
+  account: {
+    display: {
+      default: 'none',
+      '@media (min-width: 768px)': 'inline',
+    },
+    maxWidth: 180,
+    flexShrink: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 12,
+    color: colors['--text-tertiary'],
+  },
+  age: {
+    width: 40,
+    flexShrink: 0,
+    textAlign: 'right',
+    fontSize: 12,
+    fontVariantNumeric: 'tabular-nums',
+    color: colors['--text-tertiary'],
+  },
+  page: {
+    display: 'flex',
+    height: '100%',
+    minWidth: 0,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  search: {
+    height: '100%',
+    minWidth: 0,
+    flexDirection: 'column',
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+  },
+  searchFull: {
+    display: 'flex',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+  },
+  /** Beside the preview the results keep 400px; on a phone the preview takes the page. */
+  searchBeside: {
+    display: {
+      default: 'none',
+      '@media (min-width: 768px)': 'flex',
+    },
+    width: {
+      default: null,
+      '@media (min-width: 768px)': 400,
+    },
+    flexShrink: {
+      default: null,
+      '@media (min-width: 768px)': 0,
+    },
+    borderRightWidth: {
+      default: null,
+      '@media (min-width: 768px)': 1,
+    },
+  },
+  header: {
+    display: 'flex',
+    height: 52,
+    flexShrink: 0,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+  },
+  searchHeader: {
+    gap: 4,
+    paddingLeft: 10,
+    paddingRight: 10,
+  },
+  form: {
+    display: 'flex',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    alignItems: 'center',
+    gap: 8,
+    paddingLeft: 8,
+  },
+  input: {
+    height: 36,
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    backgroundColor: 'transparent',
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-primary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    '::placeholder': {
+      color: colors['--text-muted'],
+    },
+  },
+  toolbar: {
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 8,
+    paddingLeft: 12,
+    paddingRight: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  tabs: {
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    overflowX: 'auto',
+    scrollbarWidth: 'none',
+  },
+  /** As wide as its tabs: on a phone they scroll sideways instead of shrinking to "Ca…". */
+  tabStrip: {
+    width: 'max-content',
+  },
+  list: {
+    minHeight: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    overflowY: 'auto',
+  },
+  preview: {
+    display: 'flex',
+    height: '100%',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    flexDirection: 'column',
+    overflow: 'hidden',
+  },
+  previewHeader: {
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingLeft: {
+      default: 10,
+      '@media (min-width: 640px)': 16,
+    },
+    paddingRight: {
+      default: 10,
+      '@media (min-width: 640px)': 16,
+    },
+  },
+  previewTitle: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 8,
+  },
+  /** Back to the results, on a phone, where the preview takes the page. */
+  back: {
+    display: {
+      default: null,
+      '@media (min-width: 768px)': 'none',
+    },
+  },
+  previewName: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-secondary'],
+  },
+  previewActions: {
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 4,
+  },
+  goTo: {
+    height: 28,
+    whiteSpace: 'nowrap',
+    borderRadius: 9999,
+    paddingLeft: 10,
+    paddingRight: 10,
+    fontSize: 12,
+    fontWeight: 500,
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    color: {
+      default: colors['--text-secondary'],
+      ':hover': colors['--text-primary'],
+    },
+  },
+  previewBody: {
+    minHeight: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    overflowY: 'auto',
+    paddingLeft: {
+      default: 16,
+      '@media (min-width: 640px)': 32,
+    },
+    paddingRight: {
+      default: 16,
+      '@media (min-width: 640px)': 32,
+    },
+    paddingTop: {
+      default: 24,
+      '@media (min-width: 640px)': 32,
+    },
+    paddingBottom: {
+      default: 24,
+      '@media (min-width: 640px)': 32,
+    },
+  },
+  article: {
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    maxWidth: 720,
+  },
+  articleKind: {
+    fontSize: 12,
+    color: colors['--text-tertiary'],
+  },
+  articleTitle: {
+    marginTop: 4,
+    overflowWrap: 'break-word',
+    fontSize: 22,
+    fontWeight: 500,
+    lineHeight: '28px',
+    letterSpacing: '-0.015em',
+    color: colors['--text-primary'],
+  },
+  articleFacts: {
+    marginTop: 28,
+  },
+});
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, a select. */
 const OPEN_LAYER_SELECTOR = [
@@ -121,7 +591,7 @@ function highlight(name: string, query: string): React.ReactNode {
   let position = 0;
   for (let found = haystack.indexOf(needle); found >= 0; found = haystack.indexOf(needle, position)) {
     if (found > position) parts.push(name.slice(position, found));
-    parts.push(<strong key={found} className="font-bold text-[var(--text-primary)]">{name.slice(found, found + needle.length)}</strong>);
+    parts.push(<strong key={found} {...stylex.props(styles.match)}>{name.slice(found, found + needle.length)}</strong>);
     position = found + needle.length;
   }
   parts.push(name.slice(position));
@@ -130,7 +600,7 @@ function highlight(name: string, query: string): React.ReactNode {
 
 /** A result's mark: its delivery or run state, or a cube for an ad account. */
 export const StatusMark: React.FC<{ result: SearchResult }> = ({ result }) => {
-  if (result.kind === 'account') return <BuyerlyProjectIcon size={14} className="text-[var(--text-tertiary)]" />;
+  if (result.kind === 'account') return <BuyerlyProjectIcon size={14} {...stylex.props(styles.tertiary)} />;
   const status = searchStatusOf(result);
   if (status === 'active' || status === 'paused') return <BuyerlyStatusCircleIcon status={status} size={14} />;
   return (
@@ -142,12 +612,12 @@ export const StatusMark: React.FC<{ result: SearchResult }> = ({ result }) => {
 };
 
 /** A record's facts under its name: the search page's preview and the "Open …" palettes' Quick look. */
-export const SearchResultFacts: React.FC<{ result: SearchResult; className?: string; labelWidth?: number }> = ({
+export const SearchResultFacts: React.FC<{ result: SearchResult; xstyle?: stylex.StyleXStyles; labelWidth?: number }> = ({
   result,
-  className = '',
+  xstyle,
   labelWidth = 120,
 }) => (
-  <dl className={`border-t border-[var(--color-border-primary)] text-[13px] ${className}`}>
+  <dl {...stylex.props(styles.facts, xstyle)}>
     {[
       ['Status', statusLabel(result)],
       [result.kind === 'ad' ? 'Ad set' : 'Campaign', result.parent_name],
@@ -155,9 +625,9 @@ export const SearchResultFacts: React.FC<{ result: SearchResult; className?: str
       [result.kind === 'rule' ? 'Rule ID' : 'Meta ID', result.id],
       [isDayOnly(result) ? 'First synced' : result.kind === 'rule' ? 'Updated' : 'Added', formatAgeTitle(result).replace(/^.* on /, '')],
     ].filter(([, value]) => value).map(([label, value]) => (
-      <div key={label} className="flex gap-4 border-b border-[var(--color-border-primary)] py-2.5">
-        <dt className="shrink-0 text-[var(--text-tertiary)]" style={{ width: labelWidth }}>{label}</dt>
-        <dd className="min-w-0 select-text break-words text-[var(--text-secondary)]">{value}</dd>
+      <div key={label} {...stylex.props(styles.fact)}>
+        <dt {...stylex.props(styles.factLabel)} style={{ width: labelWidth }}>{label}</dt>
+        <dd {...stylex.props(styles.factValue)}>{value}</dd>
       </div>
     ))}
   </dl>
@@ -466,16 +936,16 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
     if (!current) {
       if (recent.length > 0) {
         return (
-          <div className="px-2 py-3">
-            <div className="flex h-8 items-center justify-between px-3">
-              <h2 className="text-[12px] font-medium text-[var(--text-tertiary)]">Recent searches</h2>
+          <div {...stylex.props(styles.recent)}>
+            <div {...stylex.props(styles.recentHeader)}>
+              <h2 {...stylex.props(styles.recentTitle)}>Recent searches</h2>
               <button
                 type="button"
                 onClick={() => {
                   clearRecentSearches(scope);
                   setRecent([]);
                 }}
-                className="rounded-[6px] px-1.5 py-0.5 text-[12px] font-medium text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
+                {...stylex.props(styles.clearHistory)}
               >
                 Clear History
               </button>
@@ -486,10 +956,10 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
                   <button
                     type="button"
                     onClick={() => runSearch(query)}
-                    className="flex h-9 w-full items-center gap-2.5 rounded-[6px] px-3 text-left text-[13px] text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
+                    {...stylex.props(styles.recentRow)}
                   >
-                    <span className="shrink-0 text-[var(--text-tertiary)]" aria-hidden="true"><BuyerlySearchIcon size={14} /></span>
-                    <span className="min-w-0 truncate">{query}</span>
+                    <span {...stylex.props(styles.fixed, styles.tertiary)} aria-hidden="true"><BuyerlySearchIcon size={14} /></span>
+                    <span {...stylex.props(styles.truncate)}>{query}</span>
                   </button>
                 </li>
               ))}
@@ -498,24 +968,24 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
         );
       }
       return (
-        <div className="flex h-full flex-col items-center justify-center gap-3 px-6 pb-16 text-center">
+        <div {...stylex.props(styles.empty)}>
           <SearchIllustration />
-          <h2 className="mt-2 text-[15px] font-medium text-[var(--text-primary)]">Search</h2>
-          <p className="text-[13px] text-[var(--text-tertiary)]">Find campaigns, ad sets, ads, rules and ad accounts.</p>
+          <h2 {...stylex.props(styles.emptyTitle)}>Search</h2>
+          <p {...stylex.props(styles.note)}>Find campaigns, ad sets, ads, rules and ad accounts.</p>
         </div>
       );
     }
     if (current.status === 'loading') {
-      return <p role="status" className="sr-only">{`Searching ${workspace.name}…`}</p>;
+      return <p role="status" {...stylex.props(styles.srOnly)}>{`Searching ${workspace.name}…`}</p>;
     }
     if (current.status === 'error') {
       return (
-        <div className="flex h-full flex-col items-center justify-center gap-3 px-6 pb-16 text-center">
-          <p role="alert" className="text-[13px] text-[var(--text-secondary)]">{`Couldn't search ${workspace.name}. ${current.message}`}</p>
+        <div {...stylex.props(styles.empty)}>
+          <p role="alert" {...stylex.props(styles.alert)}>{`Couldn't search ${workspace.name}. ${current.message}`}</p>
           <button
             type="button"
             onClick={() => setAttempt((value) => value + 1)}
-            className="h-7 rounded-full border border-[var(--color-border-secondary)] px-3 text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
+            {...stylex.props(styles.retry)}
           >
             Retry search
           </button>
@@ -524,15 +994,15 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
     }
     if (results.length === 0) {
       return (
-        <div className="flex h-full items-center justify-center px-6 pb-16 text-center">
-          <p role="status" className="text-[13px] text-[var(--text-tertiary)]">{`No results found for "${current.response.query}"`}</p>
+        <div {...stylex.props(styles.noResults)}>
+          <p role="status" {...stylex.props(styles.note)}>{`No results found for "${current.response.query}"`}</p>
         </div>
       );
     }
     return (
       <>
-        <p role="status" className="sr-only">{`${results.length} ${results.length === 1 ? 'result' : 'results'} in ${workspace.name}.`}</p>
-        <ul aria-label="Search results" className="py-1">
+        <p role="status" {...stylex.props(styles.srOnly)}>{`${results.length} ${results.length === 1 ? 'result' : 'results'} in ${workspace.name}.`}</p>
+        <ul aria-label="Search results" {...stylex.props(styles.results)}>
           {results.map((result) => {
             const key = resultKey(result);
             const status = statusLabel(result);
@@ -549,25 +1019,25 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
                     goTo(result);
                   }}
                   onFocus={() => setActiveKey(key)}
-                  className="mx-2 flex h-10 min-w-0 items-center gap-2.5 rounded-[6px] px-3 text-[13px] text-[var(--text-secondary)] outline-none hover:bg-[var(--item-hover-bg)] focus-visible:bg-[var(--item-hover-bg)] data-[active=true]:bg-[var(--item-active-bg)]"
+                  {...stylex.props(styles.result, key === activeKey && styles.resultActive)}
                 >
-                  <span data-search-kind="" className="w-[72px] shrink-0 truncate text-[12px] text-[var(--text-tertiary)]">{SEARCH_KIND_LABELS[result.kind]}</span>
-                  <span className="flex shrink-0 items-center" aria-hidden="true"><StatusMark result={result} /></span>
-                  <span className="min-w-0 flex-1 truncate">
-                    <span data-search-name="" className="text-[var(--text-primary)]">{highlight(result.name, params.query)}</span>
+                  <span data-search-kind="" {...stylex.props(styles.kind)}>{SEARCH_KIND_LABELS[result.kind]}</span>
+                  <span {...stylex.props(styles.mark)} aria-hidden="true"><StatusMark result={result} /></span>
+                  <span {...stylex.props(styles.truncate, styles.grow)}>
+                    <span data-search-name="" {...stylex.props(styles.primary)}>{highlight(result.name, params.query)}</span>
                     {result.parent_name && (
-                      <span className="ml-2 hidden text-[12px] text-[var(--text-tertiary)] sm:inline">{result.parent_name}</span>
+                      <span {...stylex.props(styles.parent)}>{result.parent_name}</span>
                     )}
-                    {status && <span className="sr-only">{`, ${status}`}</span>}
+                    {status && <span {...stylex.props(styles.srOnly)}>{`, ${status}`}</span>}
                   </span>
                   {showAccount && result.account_name && (
-                    <span className="hidden max-w-[180px] shrink-0 truncate text-[12px] text-[var(--text-tertiary)] md:inline">
+                    <span {...stylex.props(styles.account)}>
                       {result.account_name}
                     </span>
                   )}
                   {age && (
                     <Tooltip content={formatAgeTitle(result)}>
-                      <span className="w-[40px] shrink-0 text-right text-[12px] tabular-nums text-[var(--text-tertiary)]">{age}</span>
+                      <span {...stylex.props(styles.age)}>{age}</span>
                     </Tooltip>
                   )}
                 </a>
@@ -580,22 +1050,22 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
   };
 
   return (
-    <div className="flex h-full min-w-0 overflow-hidden bg-transparent">
+    <div {...stylex.props(styles.page)}>
       <section
         aria-label="Search"
-        className={`${preview ? 'hidden md:flex md:w-[400px] md:shrink-0 md:border-r' : 'flex flex-1'} h-full min-w-0 flex-col border-[var(--color-border-primary)]`}
+        {...stylex.props(styles.search, preview ? styles.searchBeside : styles.searchFull)}
       >
-        <header className="flex h-[52px] shrink-0 items-center gap-1 border-b border-[var(--color-border-primary)] px-2.5">
+        <header {...stylex.props(styles.header, styles.searchHeader)}>
           <SidebarCollapsedNavigation />
           <form
             role="search"
-            className="flex min-w-0 flex-1 items-center gap-2 pl-2"
+            {...stylex.props(styles.form)}
             onSubmit={(event) => {
               event.preventDefault();
               runSearch(draft);
             }}
           >
-            <span className="shrink-0 text-[var(--text-tertiary)]" aria-hidden="true"><BuyerlySearchIcon size={16} /></span>
+            <span {...stylex.props(styles.fixed, styles.tertiary)} aria-hidden="true"><BuyerlySearchIcon size={16} /></span>
             <input
               ref={inputRef}
               data-search-page-input=""
@@ -614,7 +1084,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
                 }
               }}
               placeholder={tab.placeholder}
-              className="h-9 min-w-0 flex-1 bg-transparent text-[13px] font-medium text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none"
+              {...stylex.props(styles.input)}
             />
             {draft && (
               <button
@@ -633,12 +1103,12 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
           </form>
         </header>
 
-        <div className="flex shrink-0 items-center gap-2 px-3 py-2">
-          <div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none]">
+        <div {...stylex.props(styles.toolbar)}>
+          <div {...stylex.props(styles.tabs)}>
             <BuyerlyTabs
               aria-label="Search in"
               // As wide as its tabs: on a phone they scroll sideways instead of shrinking to "Ca…".
-              className="w-max"
+              xstyle={styles.tabStrip}
               tabs={SEARCH_TABS.map(({ id, label }) => ({ id, label }))}
               activeTabId={params.tab}
               onChange={(id) => {
@@ -707,27 +1177,27 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
         <div
           ref={listRef}
           aria-busy={current?.status === 'loading'}
-          className="min-h-0 flex-1 overflow-y-auto"
+          {...stylex.props(styles.list)}
         >
           {renderBody()}
         </div>
       </section>
 
       {preview && (
-        <section aria-label="Preview" className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-          <header className="flex h-[52px] shrink-0 items-center justify-between gap-3 border-b border-[var(--color-border-primary)] px-2.5 sm:px-4">
-            <div className="flex min-w-0 items-center gap-2">
-              <button type="button" onClick={() => setPreviewOpen(false)} className="buyerly-icon-btn md:hidden" aria-label="Back to results">
+        <section aria-label="Preview" {...stylex.props(styles.preview)}>
+          <header {...stylex.props(styles.header, styles.previewHeader)}>
+            <div {...stylex.props(styles.previewTitle)}>
+              <button type="button" onClick={() => setPreviewOpen(false)} {...withClassName(stylex.props(styles.back), 'buyerly-icon-btn')} aria-label="Back to results">
                 <ArrowLeft size={16} aria-hidden="true" />
               </button>
-              <span className="flex shrink-0 items-center" aria-hidden="true"><StatusMark result={preview} /></span>
-              <span className="truncate text-[13px] font-medium text-[var(--text-secondary)]">{preview.name}</span>
+              <span {...stylex.props(styles.mark)} aria-hidden="true"><StatusMark result={preview} /></span>
+              <span {...stylex.props(styles.previewName)}>{preview.name}</span>
             </div>
-            <div className="flex shrink-0 items-center gap-1">
+            <div {...stylex.props(styles.previewActions)}>
               <button
                 type="button"
                 onClick={() => goTo(preview)}
-                className="h-7 whitespace-nowrap rounded-full px-2.5 text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
+                {...stylex.props(styles.goTo)}
               >
                 {`Go to ${SEARCH_KIND_LABELS[preview.kind].toLowerCase()}`}
               </button>
@@ -738,13 +1208,13 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
               </Tooltip>
             </div>
           </header>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8">
-            <article className="mx-auto max-w-[720px]">
-              <p className="text-[12px] text-[var(--text-tertiary)]">{SEARCH_KIND_LABELS[preview.kind]}</p>
-              <h2 className="mt-1 break-words text-[22px] font-medium leading-7 tracking-[-0.015em] text-[var(--text-primary)]">
+          <div {...stylex.props(styles.previewBody)}>
+            <article {...stylex.props(styles.article)}>
+              <p {...stylex.props(styles.articleKind)}>{SEARCH_KIND_LABELS[preview.kind]}</p>
+              <h2 {...stylex.props(styles.articleTitle)}>
                 {preview.name}
               </h2>
-              <SearchResultFacts result={preview} className="mt-7" />
+              <SearchResultFacts result={preview} xstyle={styles.articleFacts} />
             </article>
           </div>
         </section>

@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Command } from 'cmdk';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
 import { Settings } from 'lucide-react';
 import type { Workspace } from '@/lib/types';
 import {
@@ -18,7 +21,7 @@ import { BuyerlyBoltIcon, BuyerlyIssuesIcon, BuyerlyProjectIcon, BuyerlyStarOutl
 import { useFavorites, type Favorite } from '@/lib/favorites';
 import { favoriteIcon } from '@/components/sidebar/SidebarFavorites';
 import { CommandMenuFooterKeys } from '@/ui/SelectionCommandMenu';
-import { COMMAND_MENU_CLASSES } from './commandMenuClasses';
+import { commandMenuStyles as menu } from './commandMenuStyles';
 import { SearchResultFacts, StatusMark, formatAge, statusLabel } from '@/components/search/SearchView';
 import { SettingsPageIcon } from '@/components/preferences/SettingsPageIcon';
 import { commandMenuStore, useCommandMenuStore, type OpenPaletteKind } from '@/models/commandMenuStore';
@@ -168,9 +171,9 @@ export const OpenPalette: React.FC<OpenPaletteProps> = ({ workspace, navigate })
             }
             if (target?.isConnected) target.focus({ preventScroll: true });
           }}
-          className={`fixed inset-x-4 top-[13vh] z-[var(--layer-command-menu)] mx-auto flex max-h-[min(487px,84vh)] max-w-[720px] flex-col outline-none ${COMMAND_MENU_CLASSES.surface}`}
+          {...withClassName(stylex.props(menu.dialog, styles.dialog, menu.surface), 'animate-scale-in')}
         >
-          <Dialog.Title className="sr-only">{OPEN_PALETTE_LABELS[shownKind].replace('…', '')}</Dialog.Title>
+          <Dialog.Title {...stylex.props(menu.srOnly)}>{OPEN_PALETTE_LABELS[shownKind].replace('…', '')}</Dialog.Title>
           {kind && (
             <PaletteBody key={kind} kind={kind} workspace={workspace} navigate={navigate} choose={choose} />
           )}
@@ -184,8 +187,178 @@ export const OpenPalette: React.FC<OpenPaletteProps> = ({ workspace, navigate })
 const QUICK_RESULTS_DELAY_MS = 120;
 const QUICK_RESULTS_LIMIT = 8;
 
-/** Linear's footer hints are pill buttons: 24px, keys boxed beside the words. */
-const FOOTER_HINT_CLASS = 'flex h-6 shrink-0 items-center gap-1.5 rounded-full border border-transparent px-2 text-[12px] font-medium text-[var(--command-menu-text)] hover:bg-[var(--command-menu-row-selected-bg)] disabled:opacity-50 disabled:hover:bg-transparent';
+
+const styles = stylex.create({
+  dialog: {
+    maxHeight: 'min(487px, 84vh)',
+  },
+  palette: {
+    display: 'flex',
+    minHeight: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    flexDirection: 'column',
+  },
+  /** Quick look takes the palette's full height. */
+  paletteLooked: {
+    height: 'min(487px, 84vh)',
+  },
+  field: {
+    position: 'relative',
+  },
+  fieldLooked: {
+    borderBottomWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--command-menu-border'],
+  },
+  /** Linear's field: its icon 12px in, the text from 36px. */
+  fieldIcon: {
+    pointerEvents: 'none',
+    position: 'absolute',
+    left: 18,
+    top: 6,
+    display: 'flex',
+    height: 40,
+    alignItems: 'center',
+    color: colors['--command-menu-text'],
+  },
+  input: {
+    paddingLeft: 36,
+  },
+  body: {
+    display: 'flex',
+    minHeight: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+  },
+  list: {
+    minHeight: 0,
+  },
+  listFull: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+  },
+  /** Beside Quick look the list keeps 304px, and on a phone gives the room to it. */
+  listLooked: {
+    display: {
+      default: 'none',
+      '@media (min-width: 640px)': 'block',
+    },
+    maxHeight: 'none',
+    width: 304,
+    flexShrink: 0,
+    paddingTop: 6,
+  },
+  /** Linear's footer: 35px under a rule, ↵ Open on the left, the record's other ways on the right. */
+  footer: {
+    display: 'flex',
+    height: 35,
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 4,
+    borderTopWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--command-menu-border'],
+    paddingLeft: 4,
+    paddingRight: 4,
+  },
+  footerGap: {
+    marginLeft: 'auto',
+  },
+  /** Linear's footer hints are pill buttons: 24px, keys boxed beside the words. */
+  hint: {
+    display: 'flex',
+    height: 24,
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    paddingLeft: 8,
+    paddingRight: 8,
+    fontSize: 12,
+    fontWeight: 500,
+    color: colors['--command-menu-text'],
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--command-menu-row-selected-bg'],
+      ':disabled:hover': 'transparent',
+    },
+    opacity: {
+      default: null,
+      ':disabled': 0.5,
+    },
+  },
+  recordLabel: {
+    position: 'relative',
+    display: 'flex',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    alignItems: 'center',
+    gap: 8,
+  },
+  identifier: {
+    flexShrink: 0,
+    color: colors['--text-tertiary'],
+  },
+  truncate: {
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  /** Where a record lives gives way first, before its name. */
+  where: {
+    flexShrink: 200000,
+    color: colors['--text-muted'],
+  },
+  quickLook: {
+    minHeight: 0,
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    overflowY: 'auto',
+    paddingLeft: 24,
+    paddingRight: 24,
+    paddingBottom: 24,
+    paddingTop: 16,
+  },
+  lookKind: {
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-tertiary'],
+  },
+  lookTitle: {
+    marginTop: 6,
+    userSelect: 'text',
+    overflowWrap: 'break-word',
+    fontSize: 18,
+    fontWeight: 500,
+    lineHeight: '21px',
+    color: colors['--text-primary'],
+  },
+  lookStatus: {
+    marginTop: 16,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    fontSize: 13,
+    fontWeight: 450,
+    lineHeight: '18px',
+    color: colors['--text-tertiary'],
+  },
+  lookFacts: {
+    marginTop: 16,
+  },
+});
 
 interface PaletteBodyProps {
   kind: OpenPaletteKind;
@@ -250,7 +423,7 @@ const PaletteBody: React.FC<PaletteBodyProps> = ({ kind, workspace, navigate, ch
       vimBindings={false}
       value={current}
       onValueChange={(next) => setSelected(next ?? '')}
-      className={`flex min-h-0 flex-1 flex-col ${looked ? 'h-[min(487px,84vh)]' : ''}`}
+      {...stylex.props(styles.palette, looked && styles.paletteLooked)}
       onKeyDown={(event) => {
         const input = event.target instanceof HTMLInputElement ? event.target : null;
         const atEnd = !input || (input.selectionStart === input.value.length && input.selectionEnd === input.value.length);
@@ -274,9 +447,9 @@ const PaletteBody: React.FC<PaletteBodyProps> = ({ kind, workspace, navigate, ch
         }
       }}
     >
-      <div className={`relative ${COMMAND_MENU_CLASSES.field} ${looked ? 'border-b border-[var(--command-menu-border)]' : ''}`}>
+      <div {...stylex.props(menu.field, styles.field, looked && styles.fieldLooked)}>
         {/* Linear's field: its icon 12px in, the text from 36px. */}
-        <span className="pointer-events-none absolute left-[18px] top-1.5 flex h-10 items-center text-[var(--command-menu-text)]" aria-hidden="true">
+        <span {...stylex.props(styles.fieldIcon)} aria-hidden="true">
           <OpenPaletteIcon kind={kind} />
         </span>
         <Command.Input
@@ -287,64 +460,64 @@ const PaletteBody: React.FC<PaletteBodyProps> = ({ kind, workspace, navigate, ch
             setQuickLook(false);
           }}
           placeholder={OPEN_PALETTE_LABELS[kind]}
-          className={`${COMMAND_MENU_CLASSES.input} pl-9`}
+          {...stylex.props(menu.input, styles.input)}
         />
       </div>
-      <p role="status" className="sr-only">
+      <p role="status" {...stylex.props(menu.srOnly)}>
         {searching ? 'Searching…' : shownValues.length === 0 ? 'No results found' : `Showing ${shownValues.length} items`}
       </p>
       {/* Linear shows nothing under the field until there is something to open. */}
       {shownValues.length > 0 && (
-        <div className="flex min-h-0 flex-1">
+        <div {...stylex.props(styles.body)}>
           <Command.List
-            className={`min-h-0 ${COMMAND_MENU_CLASSES.list} ${looked ? 'hidden max-h-none w-[304px] shrink-0 pt-1.5 sm:block' : 'flex-1'}`}
+            {...stylex.props(menu.list, styles.list, looked ? styles.listLooked : styles.listFull)}
           >
             {records.length > 0 && (
               // Recently opened records come with no heading, as in Linear.
-              <Command.Group heading={text ? `Quick results for "${text}"` : undefined} className={COMMAND_MENU_CLASSES.group}>
+              <Command.Group heading={text ? `Quick results for "${text}"` : undefined} className="buyerly-command-group">
                 {records.map((record) => (
                   <Command.Item
                     key={recordValue(record)}
                     value={recordValue(record)}
                     aria-label={recordName(record)}
                     onSelect={() => openRecord(record)}
-                    className={COMMAND_MENU_CLASSES.item}
+                    {...stylex.props(menu.item)}
                   >
-                    <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true"><StatusMark result={record} /></span>
+                    <span {...stylex.props(menu.icon)} aria-hidden="true"><StatusMark result={record} /></span>
                     <RecordLabel record={record} />
                   </Command.Item>
                 ))}
               </Command.Group>
             )}
             {settingsGroups.map((group) => (
-              <Command.Group key={group.heading || 'account'} heading={group.heading || undefined} className={COMMAND_MENU_CLASSES.group}>
+              <Command.Group key={group.heading || 'account'} heading={group.heading || undefined} className="buyerly-command-group">
                 {group.pages.map((page) => (
                   <Command.Item
                     key={page.section}
                     value={`settings:${page.section}`}
                     aria-label={page.label}
                     onSelect={() => openSettings(page.section)}
-                    className={COMMAND_MENU_CLASSES.item}
+                    {...stylex.props(menu.item)}
                   >
-                    <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true"><SettingsPageIcon section={page.section} /></span>
-                    <span className="min-w-0 flex-1 truncate">{page.label}</span>
+                    <span {...stylex.props(menu.icon)} aria-hidden="true"><SettingsPageIcon section={page.section} /></span>
+                    <span {...stylex.props(menu.label)}>{page.label}</span>
                   </Command.Item>
                 ))}
               </Command.Group>
             ))}
             {shownFavorites.length > 0 && (
-              <Command.Group heading="Navigation" className={COMMAND_MENU_CLASSES.group}>
+              <Command.Group heading="Navigation" className="buyerly-command-group">
                 {shownFavorites.map(({ favorite, number }) => (
                   <Command.Item
                     key={favorite.path}
                     value={favoriteValue(favorite)}
                     aria-label={favorite.title}
                     onSelect={() => openFavorite(favorite)}
-                    className={COMMAND_MENU_CLASSES.item}
+                    {...stylex.props(menu.item)}
                   >
-                    <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true">{favoriteIcon(favorite)}</span>
-                    <span className="min-w-0 flex-1 truncate">{favorite.title}</span>
-                    {number <= 9 && <kbd className="buyerly-favorite-number" aria-hidden="true">{number}</kbd>}
+                    <span {...stylex.props(menu.icon)} aria-hidden="true">{favoriteIcon(favorite)}</span>
+                    <span {...stylex.props(menu.label)}>{favorite.title}</span>
+                    {number <= 9 && <kbd {...withClassName(stylex.props(menu.part), 'buyerly-favorite-number')} aria-hidden="true">{number}</kbd>}
                   </Command.Item>
                 ))}
               </Command.Group>
@@ -355,26 +528,26 @@ const PaletteBody: React.FC<PaletteBodyProps> = ({ kind, workspace, navigate, ch
       )}
       {records.length > 0 && (
         // Linear's footer: 35px under a rule, ↵ Open on the left, the record's other ways on the right.
-        <div className="flex h-[35px] shrink-0 items-center gap-1 border-t border-[var(--command-menu-border)] px-1">
+        <div {...stylex.props(styles.footer)}>
           <button
             type="button"
-            className={FOOTER_HINT_CLASS}
+            {...stylex.props(styles.hint)}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => currentRecord && openRecord(currentRecord)}
           >
-            <span className="sr-only">Enter</span>
+            <span {...stylex.props(menu.srOnly)}>Enter</span>
             <CommandMenuFooterKeys keys={['↵']} />
             <span>Open</span>
           </button>
-          <span className="ml-auto" />
+          <span {...stylex.props(styles.footerGap)} />
           {hasActions && (
             <button
               type="button"
-              className={FOOTER_HINT_CLASS}
+              {...stylex.props(styles.hint)}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => currentRecord && openRecord(currentRecord, true)}
             >
-              <span className="sr-only">Alt Enter</span>
+              <span {...stylex.props(menu.srOnly)}>Alt Enter</span>
               <CommandMenuFooterKeys keys={['Alt', '↵']} />
               <span>More actions</span>
             </button>
@@ -382,11 +555,11 @@ const PaletteBody: React.FC<PaletteBodyProps> = ({ kind, workspace, navigate, ch
           {looked ? (
             <button
               type="button"
-              className={FOOTER_HINT_CLASS}
+              {...stylex.props(styles.hint)}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => setQuickLook(false)}
             >
-              <span className="sr-only">Arrow Left</span>
+              <span {...stylex.props(menu.srOnly)}>Arrow Left</span>
               <CommandMenuFooterKeys keys={['←']} />
               <span>Close</span>
             </button>
@@ -394,12 +567,12 @@ const PaletteBody: React.FC<PaletteBodyProps> = ({ kind, workspace, navigate, ch
             <button
               type="button"
               disabled={!currentRecord}
-              className={FOOTER_HINT_CLASS}
+              {...stylex.props(styles.hint)}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => setQuickLook(true)}
             >
               <span>Quick look</span>
-              <span className="sr-only">Arrow Right</span>
+              <span {...stylex.props(menu.srOnly)}>Arrow Right</span>
               <CommandMenuFooterKeys keys={['→']} />
             </button>
           )}
@@ -434,10 +607,10 @@ const RecordLabel: React.FC<{ record: SearchResult }> = ({ record }) => {
   const identifier = recordIdentifier(record);
   const where = recordWhere(record);
   return (
-    <span className="flex min-w-0 flex-1 items-center gap-2">
-      {identifier && <span className="shrink-0 text-[var(--text-tertiary)]">{identifier}</span>}
-      <span className="min-w-0 truncate">{record.name}</span>
-      {where && <span className="min-w-0 shrink-[200000] truncate text-[var(--text-muted)]">{where}</span>}
+    <span {...stylex.props(styles.recordLabel)}>
+      {identifier && <span {...stylex.props(styles.identifier)}>{identifier}</span>}
+      <span {...stylex.props(styles.truncate)}>{record.name}</span>
+      {where && <span {...stylex.props(styles.truncate, styles.where)}>{where}</span>}
     </span>
   );
 };
@@ -450,16 +623,16 @@ const QuickLook: React.FC<{ record: SearchResult }> = ({ record }) => {
   const status = statusLabel(record);
   const age = formatAge(record);
   return (
-    <section aria-label="Quick look" className="min-h-0 min-w-0 flex-1 overflow-y-auto px-6 pb-6 pt-4">
-      <p className="text-[13px] font-medium text-[var(--text-tertiary)]">{recordIdentifier(record) || SEARCH_KIND_LABELS[record.kind]}</p>
-      <h2 className="mt-1.5 select-text break-words text-[18px] font-medium leading-[21px] text-[var(--text-primary)]">{record.name}</h2>
+    <section aria-label="Quick look" {...stylex.props(styles.quickLook)}>
+      <p {...stylex.props(styles.lookKind)}>{recordIdentifier(record) || SEARCH_KIND_LABELS[record.kind]}</p>
+      <h2 {...stylex.props(styles.lookTitle)}>{record.name}</h2>
       {(status || age) && (
-        <p className="mt-4 flex items-center gap-1.5 text-[13px] font-[450] leading-[18px] text-[var(--text-tertiary)]">
+        <p {...stylex.props(styles.lookStatus)}>
           <StatusMark result={record} />
           {[status, age].filter(Boolean).join(' · ')}
         </p>
       )}
-      <SearchResultFacts result={record} className="mt-4" labelWidth={96} />
+      <SearchResultFacts result={record} xstyle={styles.lookFacts} labelWidth={96} />
     </section>
   );
 };
