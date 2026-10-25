@@ -1,5 +1,52 @@
 import React from 'react';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
+
+const styles = stylex.create({
+  keys: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: -1,
+  },
+  kbd: {
+    fontFamily: 'inherit',
+    fontSize: 11,
+    fontWeight: 400,
+    lineHeight: '1.1',
+    textAlign: 'center',
+    color: colors['--text-tertiary'],
+    backgroundColor: 'transparent',
+    borderColor: colors['--tooltip-kbd-border'],
+    borderWidth: 0.5,
+    borderStyle: 'solid',
+    borderRadius: 4,
+    padding: 2,
+    minWidth: 18,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxSizing: 'border-box',
+  },
+  then: {
+    fontSize: 10,
+    fontWeight: 450,
+    lineHeight: '1',
+    color: colors['--text-muted'],
+    paddingTop: 0,
+    paddingRight: 1,
+    paddingBottom: 0,
+    paddingLeft: 1,
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: 450,
+    lineHeight: '16.5px',
+    color: colors['--tooltip-fg'],
+    whiteSpace: 'nowrap',
+  },
+});
 
 export const TooltipProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <TooltipPrimitive.Provider delayDuration={500} skipDelayDuration={300}>
@@ -61,44 +108,16 @@ export const Tooltip: React.FC<TooltipProps> = ({
       keys = [shortcut];
     }
 
-    const kbdStyle: React.CSSProperties = {
-      fontFamily: 'inherit',
-      fontSize: '11px',
-      fontWeight: 400,
-      lineHeight: '1.1',
-      textAlign: 'center',
-      color: 'var(--text-tertiary)',
-      backgroundColor: 'transparent',
-      borderColor: 'var(--tooltip-kbd-border)',
-      borderWidth: '0.5px',
-      borderStyle: 'solid',
-      borderRadius: '4px',
-      padding: '2px',
-      minWidth: '18px',
-      display: 'inline-flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      boxSizing: 'border-box',
-    };
-
     if (isSequence) {
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', marginTop: '-1px' }}>
-          <kbd aria-hidden="true" style={kbdStyle}>
+        <span {...stylex.props(styles.keys)}>
+          <kbd aria-hidden="true" {...stylex.props(styles.kbd)}>
             {keys[0]}
           </kbd>
-          <span
-            style={{
-              fontSize: '10px',
-              fontWeight: 450,
-              lineHeight: '1',
-              color: 'var(--text-muted)',
-              padding: '0 1px',
-            }}
-          >
+          <span {...stylex.props(styles.then)}>
             then
           </span>
-          <kbd aria-hidden="true" style={kbdStyle}>
+          <kbd aria-hidden="true" {...stylex.props(styles.kbd)}>
             {keys[1]}
           </kbd>
         </span>
@@ -106,9 +125,9 @@ export const Tooltip: React.FC<TooltipProps> = ({
     }
 
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', marginTop: '-1px' }}>
+      <span {...stylex.props(styles.keys)}>
         {keys.map((key, i) => (
-          <kbd key={i} aria-hidden="true" style={kbdStyle}>
+          <kbd key={i} aria-hidden="true" {...stylex.props(styles.kbd)}>
             {key}
           </kbd>
         ))}
@@ -128,15 +147,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
         >
           {/* Tooltip Content */}
           {typeof content === 'string' ? (
-            <span
-              style={{
-                fontSize: '11px',
-                fontWeight: 450,
-                lineHeight: '16.5px',
-                color: 'var(--tooltip-fg)',
-                whiteSpace: 'nowrap',
-              }}
-            >
+            <span {...stylex.props(styles.label)}>
               {content}
             </span>
           ) : (

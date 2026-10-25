@@ -1,4 +1,5 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { Tooltip } from './Tooltip';
 
 interface BuyerlyToggleProps {
@@ -14,6 +15,14 @@ interface BuyerlyToggleProps {
   /** "settings": Linear's larger settings switch (30x20); otherwise its Display options one (22x14). */
   size?: 'default' | 'settings';
 }
+
+const styles = stylex.create({
+  tooltipTarget: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
 
 /** The only switch in Buyerly, in Linear's two sizes (Display options, settings); colours in tokens.css. */
 export const BuyerlyToggle: React.FC<BuyerlyToggleProps> = ({
@@ -58,7 +67,7 @@ export const BuyerlyToggle: React.FC<BuyerlyToggleProps> = ({
   if (tooltipContent) {
     return (
       <Tooltip content={tooltipContent} side="top" sideOffset={6}>
-        <div className="inline-flex items-center justify-center">
+        <div {...stylex.props(styles.tooltipTarget)}>
           {toggleElement}
         </div>
       </Tooltip>

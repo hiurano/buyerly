@@ -1,4 +1,5 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -10,6 +11,20 @@ import {
   ContextMenuTrigger,
 } from '@/ui/ContextMenu';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/ui/DropdownMenu';
+
+const styles = stylex.create({
+  trigger: {
+    display: 'contents',
+  },
+  label: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  disabled: {
+    opacity: 0.5,
+  },
+});
 
 /** One line of a row's menu; `'separator'` draws Linear's 12px divider. */
 export type RowMenuEntry =
@@ -37,7 +52,7 @@ function EntryBody({ entry, submenu = false }: { entry: Exclude<RowMenuEntry, 's
     <>
       <span className="buyerly-row-menu-main">
         {entry.icon && <span className="buyerly-row-menu-icon">{entry.icon}</span>}
-        <span className="truncate">{entry.label}</span>
+        <span {...stylex.props(styles.label)}>{entry.label}</span>
       </span>
       {(entry.shortcut || submenu) && (
         <span className="buyerly-row-menu-trail">
@@ -75,7 +90,7 @@ function ContextEntries({ entries }: { entries: RowMenuEntry[] }) {
             key={entry.label}
             disabled={entry.disabled}
             onSelect={entry.onSelect}
-            className={entry.disabled ? 'opacity-50' : ''}
+            xstyle={entry.disabled && styles.disabled}
           >
             <EntryBody entry={entry} />
           </ContextMenuItem>
@@ -95,7 +110,7 @@ export function BuyerlyRowContextMenu({ entries, children }: { entries: RowMenuE
   if (entries.length === 0) return <>{children}</>;
   return (
     <ContextMenu modal={false}>
-      <ContextMenuTrigger className="contents">{children}</ContextMenuTrigger>
+      <ContextMenuTrigger {...stylex.props(styles.trigger)}>{children}</ContextMenuTrigger>
       <ContextMenuContent className="buyerly-row-menu" style={{ width: 'max-content', minWidth: 0, marginLeft: 2 }}>
         <ContextEntries entries={entries} />
       </ContextMenuContent>
@@ -115,7 +130,7 @@ export function DropdownEntries({ entries }: { entries: RowMenuEntry[] }) {
               key={entry.label}
               disabled={entry.disabled}
               onSelect={entry.onSelect}
-              className={entry.disabled ? 'opacity-50' : ''}
+              xstyle={entry.disabled && styles.disabled}
             >
               <EntryBody entry={entry} />
             </DropdownMenuItem>

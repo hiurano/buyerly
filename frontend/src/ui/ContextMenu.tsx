@@ -1,5 +1,9 @@
 import React from 'react';
 import * as ContextMenuPrimitive from '@radix-ui/react-context-menu';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
+import { menuItemMarker } from '@/ui/markers.stylex';
+import { withClassName } from '@/ui/withClassName';
 
 export const ContextMenu = ContextMenuPrimitive.Root;
 export const ContextMenuTrigger = ContextMenuPrimitive.Trigger;
@@ -8,23 +12,131 @@ export const ContextMenuPortal = ContextMenuPrimitive.Portal;
 export const ContextMenuSub = ContextMenuPrimitive.Sub;
 export const ContextMenuRadioGroup = ContextMenuPrimitive.RadioGroup;
 
+const styles = stylex.create({
+  content: {
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    borderRadius: 12,
+    backgroundColor: colors['--card-bg'],
+    boxShadow: colors['--dropdown-shadow'],
+    zIndex: 600,
+    overflow: 'hidden',
+    userSelect: 'none',
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    maxWidth: 500,
+  },
+  menu: {
+    width: 181,
+    minWidth: 179,
+    paddingTop: 6,
+    paddingRight: 0,
+    paddingBottom: 6,
+    paddingLeft: 0,
+    transformOrigin: 'var(--radix-context-menu-content-transform-origin)',
+  },
+  submenu: {
+    width: 230,
+    minWidth: 228,
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+  },
+  item: {
+    position: 'relative',
+    display: 'flex',
+    height: 32,
+    cursor: 'pointer',
+    userSelect: 'none',
+    alignItems: 'center',
+    paddingLeft: 14,
+    paddingRight: 18,
+    fontSize: 13,
+    fontWeight: 450,
+    color: {
+      default: colors['--text-secondary'],
+      ':is([data-highlighted])': colors['--text-primary'],
+    },
+    whiteSpace: 'nowrap',
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+  },
+  subTriggerOpen: {
+    color: {
+      default: colors['--text-secondary'],
+      ':is([data-highlighted])': colors['--text-primary'],
+      ':is([data-state="open"])': colors['--text-primary'],
+    },
+  },
+  // The rounded fill inside the row, under its content.
+  pill: {
+    pointerEvents: 'none',
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 6,
+    right: 6,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: {
+      default: 'transparent',
+      [stylex.when.ancestor(':hover', menuItemMarker)]: colors['--menu-item-highlight'],
+      [stylex.when.ancestor(':focus', menuItemMarker)]: colors['--menu-item-highlight'],
+      [stylex.when.ancestor('[data-highlighted]', menuItemMarker)]: colors['--menu-item-highlight'],
+    },
+    transitionDuration: {
+      default: null,
+      [stylex.when.ancestor(':hover', menuItemMarker)]: '0s',
+    },
+  },
+  pillOpen: {
+    backgroundColor: {
+      default: 'transparent',
+      [stylex.when.ancestor(':hover', menuItemMarker)]: colors['--menu-item-highlight'],
+      [stylex.when.ancestor(':focus', menuItemMarker)]: colors['--menu-item-highlight'],
+      [stylex.when.ancestor('[data-highlighted]', menuItemMarker)]: colors['--menu-item-highlight'],
+      [stylex.when.ancestor('[data-state="open"]', menuItemMarker)]: colors['--menu-item-highlight'],
+    },
+  },
+  body: {
+    position: 'relative',
+    zIndex: 10,
+    display: 'flex',
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    color: {
+      default: null,
+      [stylex.when.ancestor(':hover', menuItemMarker)]: colors['--text-primary'],
+      [stylex.when.ancestor('[data-highlighted]', menuItemMarker)]: colors['--text-primary'],
+    },
+    whiteSpace: 'nowrap',
+  },
+  separator: {
+    height: 12,
+    paddingTop: 5,
+    paddingBottom: 5,
+    boxSizing: 'border-box',
+  },
+  separatorLine: {
+    height: 1,
+    width: '100%',
+    borderBottomWidth: 1,
+    borderBottomStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+  },
+});
+
 export const ContextMenuContent: React.FC<ContextMenuPrimitive.ContextMenuContentProps> = ({
   className = '',
-  style,
   ...props
 }) => (
   <ContextMenuPrimitive.Portal>
     <ContextMenuPrimitive.Content
-      style={{
-        width: '181px',
-        minWidth: '179px',
-        maxWidth: '500px',
-        backgroundColor: 'var(--card-bg)',
-        borderColor: 'var(--color-border-secondary)',
-        padding: '6px 0px',
-        ...style,
-      }}
-      className={`border rounded-[12px] [box-shadow:var(--dropdown-shadow)] z-[600] overflow-hidden select-none buyerly-menu origin-[var(--radix-context-menu-content-transform-origin)] outline-none ${className}`}
+      {...withClassName(stylex.props(styles.content, styles.menu), `buyerly-menu ${className}`.trim())}
       {...props}
     />
   </ContextMenuPrimitive.Portal>
@@ -34,40 +146,33 @@ export const ContextMenuSubContent: React.FC<ContextMenuPrimitive.ContextMenuSub
   className = '',
   sideOffset = -2,
   alignOffset = -5,
-  style,
   ...props
 }) => (
   <ContextMenuPrimitive.Portal>
     <ContextMenuPrimitive.SubContent
       sideOffset={sideOffset}
       alignOffset={alignOffset}
-      style={{
-        width: '230px',
-        minWidth: '228px',
-        maxWidth: '500px',
-        backgroundColor: 'var(--card-bg)',
-        borderColor: 'var(--color-border-secondary)',
-        padding: '0px',
-        ...style,
-      }}
-      className={`border rounded-[12px] [box-shadow:var(--dropdown-shadow)] z-[600] overflow-hidden select-none outline-none ${className}`}
+      {...withClassName(stylex.props(styles.content, styles.submenu), className)}
       {...props}
     />
   </ContextMenuPrimitive.Portal>
 );
 
+type ItemStyle = { xstyle?: stylex.StyleXStyles };
+
 export const ContextMenuItem: React.FC<
-  ContextMenuPrimitive.ContextMenuItemProps
-> = ({ className = '', children, ...props }) => (
+  ContextMenuPrimitive.ContextMenuItemProps & ItemStyle
+> = ({ className = '', xstyle, children, ...props }) => (
+  // `group` stays for callers' Tailwind (`group-hover:`) until their pages move to StyleX.
   <ContextMenuPrimitive.Item
-    className={`group relative flex h-[32px] cursor-pointer select-none items-center pl-[14px] pr-[18px] text-[13px] font-[450] text-[var(--text-secondary)] whitespace-nowrap outline-none data-[highlighted]:text-[var(--text-primary)] ${className}`}
+    {...withClassName(stylex.props(styles.item, menuItemMarker, xstyle), `group ${className}`.trim())}
     {...props}
   >
     {/* Inner Hover/Focus/Highlighted Pill */}
-    <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] h-[32px] rounded-[8px] bg-transparent group-hover:bg-[var(--menu-item-highlight)] group-focus:bg-[var(--menu-item-highlight)] group-data-[highlighted]:bg-[var(--menu-item-highlight)] group-hover:duration-0" />
+    <div {...stylex.props(styles.pill)} />
 
     {/* Item Content Layer */}
-    <div className="relative z-10 flex w-full items-center justify-between gap-2.5 group-hover:text-[var(--text-primary)] group-data-[highlighted]:text-[var(--text-primary)] whitespace-nowrap">
+    <div {...stylex.props(styles.body)}>
       {children}
     </div>
   </ContextMenuPrimitive.Item>
@@ -77,14 +182,14 @@ export const ContextMenuSubTrigger: React.FC<
   ContextMenuPrimitive.ContextMenuSubTriggerProps
 > = ({ className = '', children, ...props }) => (
   <ContextMenuPrimitive.SubTrigger
-    className={`group relative flex h-[32px] cursor-pointer select-none items-center pl-[14px] pr-[18px] text-[13px] font-[450] text-[var(--text-secondary)] whitespace-nowrap outline-none data-[highlighted]:text-[var(--text-primary)] data-[state=open]:text-[var(--text-primary)] ${className}`}
+    {...withClassName(stylex.props(styles.item, styles.subTriggerOpen, menuItemMarker), `group ${className}`.trim())}
     {...props}
   >
     {/* Inner Hover Pill */}
-    <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] h-[32px] rounded-[8px] bg-transparent group-hover:bg-[var(--menu-item-highlight)] group-focus:bg-[var(--menu-item-highlight)] group-data-[highlighted]:bg-[var(--menu-item-highlight)] group-data-[state=open]:bg-[var(--menu-item-highlight)] group-hover:duration-0" />
+    <div {...stylex.props(styles.pill, styles.pillOpen)} />
 
     {/* Item Content Layer */}
-    <div className="relative z-10 flex w-full items-center justify-between gap-2.5 group-hover:text-[var(--text-primary)] group-data-[highlighted]:text-[var(--text-primary)] whitespace-nowrap">
+    <div {...stylex.props(styles.body)}>
       {children}
     </div>
   </ContextMenuPrimitive.SubTrigger>
@@ -95,9 +200,9 @@ export const ContextMenuSeparator: React.FC<ContextMenuPrimitive.ContextMenuSepa
   ...props
 }) => (
   <ContextMenuPrimitive.Separator
-    className={`h-[12px] py-[5px] box-border ${className}`}
+    {...withClassName(stylex.props(styles.separator), className)}
     {...props}
   >
-    <div className="h-[1px] w-full border-b border-[var(--color-border-primary)]" />
+    <div {...stylex.props(styles.separatorLine)} />
   </ContextMenuPrimitive.Separator>
 );

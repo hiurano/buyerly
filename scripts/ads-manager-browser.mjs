@@ -285,7 +285,7 @@ try {
       await select(page, 'Grouping', 'Campaign');
       await property(page, 'Campaign').click();
       await page.keyboard.press('Escape');
-      const groups = await page.locator('.sticky span.truncate').allTextContents();
+      const groups = await page.locator('.buyerly-data-group-header:not(.buyerly-data-subgroup-header) .buyerly-data-group-title').allTextContents();
       assert.deepEqual(groups, ['Alpha campaign', 'Bravo campaign'], 'ad sets under their campaigns');
       assert.deepEqual(await rowIds(page), ['901', '902', '903']);
       assert.equal(await cell(page, '903', 'Campaign'), 'Bravo campaign');
@@ -367,7 +367,7 @@ try {
       const count = (path) => reads.filter((item) => item === path).length;
       assert.equal(count('/api/accounts'), count('/api/meta/connections'), `no second /api/accounts for rules: ${reads.join(', ')}`);
       assert.equal(await page.getByRole('button', { name: 'Select ad account' }).count(), 0, 'no account switcher');
-      assert.deepEqual(await page.locator('.sticky span.truncate').allTextContents(), ['Euro account', 'Main account'], 'grouped by ad account, A→Z');
+      assert.deepEqual(await page.locator('.buyerly-data-group-header:not(.buyerly-data-subgroup-header) .buyerly-data-group-title').allTextContents(), ['Euro account', 'Main account'], 'grouped by ad account, A→Z');
       assert.deepEqual(await rowIds(page), ['701', '801', '802', '803']);
       assert.equal(await cell(page, '701', 'Spend'), 'EUR 40.00', 'each account in its own currency');
       assert.equal((await headers(page)).includes('Ad account'), false, 'the group names the account');
@@ -400,7 +400,7 @@ try {
       await page.goto(`${origin}/alpha/my-campaigns/campaigns`);
       await page.locator('[data-row-id="801"]').waitFor();
       assert.equal(await page.locator('[data-row-id="701"]').count(), 0, 'not an account you lead');
-      assert.deepEqual(await page.locator('.sticky span.truncate').allTextContents(), ['Main account']);
+      assert.deepEqual(await page.locator('.buyerly-data-group-header:not(.buyerly-data-subgroup-header) .buyerly-data-group-title').allTextContents(), ['Main account']);
       await page.locator('main header').getByText('My campaigns', { exact: true }).waitFor();
       await page.screenshot({ path: `${output}/my-campaigns-1440.png` });
 
@@ -476,7 +476,7 @@ try {
       await page.locator('.buyerly-board').waitFor({ state: 'detached' });
       // Back in the list the board's Rows are its Sub-grouping (#470), as Linear's: each account
       // split by Status, a sub-group folds on its own, empty ones only with Show empty groups.
-      const subGroups = page.locator('.buyerly-data-subgroup-header span.truncate');
+      const subGroups = page.locator('.buyerly-data-subgroup-header .buyerly-data-group-title');
       await page.locator('[data-row-id="701"]').waitFor();
       assert.deepEqual(await subGroups.allTextContents(), ['Active', 'Active']);
       await page.locator('.buyerly-data-subgroup-header').first().getByRole('button', { name: 'Collapse group' }).click();

@@ -1,4 +1,7 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
 
 export interface BuyerlyLabelPillProps {
   label: string;
@@ -6,6 +9,70 @@ export interface BuyerlyLabelPillProps {
   className?: string;
   onClick?: (e: React.MouseEvent) => void;
 }
+
+const styles = stylex.create({
+  root: {
+    display: 'inline-flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 24,
+    maxWidth: 224,
+    paddingTop: 0,
+    paddingRight: 8,
+    paddingBottom: 0,
+    paddingLeft: 8,
+    borderRadius: 48,
+    backgroundColor: colors['--item-hover-bg'],
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    cursor: 'default',
+    overflow: 'hidden',
+    boxSizing: 'border-box',
+    flexShrink: 0,
+    opacity: {
+      default: null,
+      ':hover': 0.9,
+    },
+    transitionProperty: 'border-color, color, background-color',
+    transitionDuration: '0.15s',
+    transitionTimingFunction: 'ease',
+  },
+  clickable: {
+    cursor: 'pointer',
+  },
+  dotFrame: {
+    width: 14,
+    height: 14,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  dot: {
+    width: 9,
+    height: 9,
+    borderRadius: '50%',
+    flexShrink: 0,
+  },
+  label: {
+    marginTop: 0,
+    marginRight: 1,
+    marginBottom: 0,
+    marginLeft: 6,
+    fontSize: 12,
+    fontWeight: 450,
+    lineHeight: 'normal',
+    // Its old hover colour never showed: the inline colour beat it.
+    color: colors['--text-secondary'],
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
+    overflow: 'hidden',
+    transitionProperty: 'color',
+    transitionDuration: '0.15s',
+    transitionTimingFunction: 'ease',
+  },
+});
 
 /**
  * Linear-style Label / Group Pill Badge.
@@ -29,63 +96,16 @@ export const BuyerlyLabelPill: React.FC<BuyerlyLabelPillProps> = ({
     <div
       data-disabled="false"
       onClick={onClick}
-      style={{
-        display: 'inline-flex',
-        flexDirection: 'row',
-        alignItems: 'center',
-        height: '24px',
-        maxWidth: '224px',
-        padding: '0 8px',
-        borderRadius: '48px',
-        backgroundColor: 'var(--item-hover-bg)',
-        border: '1px solid var(--color-border-secondary)',
-        cursor: onClick ? 'pointer' : 'default',
-        overflow: 'hidden',
-        boxSizing: 'border-box',
-        flexShrink: 0,
-        transition: 'border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease',
-      }}
-      className={`group/label-pill hover:opacity-90 ${className}`}
+      {...withClassName(stylex.props(styles.root, onClick && styles.clickable), className)}
     >
       {/* 1. Left Indicator Dot Wrapper (14×14px flex centered) */}
-      <div
-        style={{
-          width: '14px',
-          height: '14px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-        }}
-      >
+      <div {...stylex.props(styles.dotFrame)}>
         {/* 2. Inner Dot (9×9px circle) */}
-        <div
-          aria-hidden="true"
-          style={{
-            width: '9px',
-            height: '9px',
-            borderRadius: '50%',
-            backgroundColor: dotColor,
-            flexShrink: 0,
-          }}
-        />
+        <div aria-hidden="true" {...stylex.props(styles.dot)} style={{ backgroundColor: dotColor }} />
       </div>
 
       {/* 3. Label Text */}
-      <span
-        style={{
-          margin: '0 1px 0 6px',
-          fontSize: '12px',
-          fontWeight: 450,
-          lineHeight: 'normal',
-          color: 'var(--text-secondary)',
-          whiteSpace: 'nowrap',
-          textOverflow: 'ellipsis',
-          overflow: 'hidden',
-          transition: 'color 0.15s ease',
-        }}
-        className="group-hover/label-pill:text-[var(--text-primary)]"
-      >
+      <span {...stylex.props(styles.label)}>
         {label}
       </span>
     </div>

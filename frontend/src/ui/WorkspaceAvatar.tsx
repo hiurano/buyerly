@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { AVATAR_PX, avatarColor, avatarInitials, initialsFontSize, type AvatarSize } from '@/lib/avatar';
 
 export interface WorkspaceMark {
@@ -6,6 +7,23 @@ export interface WorkspaceMark {
   name: string;
   logo_url?: string | null;
 }
+
+const styles = stylex.create({
+  logo: {
+    flexShrink: 0,
+    objectFit: 'cover',
+  },
+  initials: {
+    display: 'flex',
+    flexShrink: 0,
+    userSelect: 'none',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 400,
+    lineHeight: 1,
+    color: '#fff',
+  },
+});
 
 /**
  * A workspace's own mark, as Linear's: its logo, or initials of its name on a color from its id.
@@ -32,7 +50,7 @@ export const WorkspaceAvatar: React.FC<{ workspace: WorkspaceMark; size?: Avatar
         alt=""
         aria-hidden="true"
         draggable={false}
-        className="shrink-0 object-cover"
+        {...stylex.props(styles.logo)}
         style={{ width: box, height: box, borderRadius: 8 }}
         onError={() => setFailedLogo(workspace.logo_url ?? null)}
       />
@@ -41,7 +59,7 @@ export const WorkspaceAvatar: React.FC<{ workspace: WorkspaceMark; size?: Avatar
   return (
     <span
       aria-hidden="true"
-      className="flex shrink-0 select-none items-center justify-center font-normal leading-none text-white"
+      {...stylex.props(styles.initials)}
       style={{
         width: box,
         height: box,

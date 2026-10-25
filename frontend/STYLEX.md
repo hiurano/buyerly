@@ -58,4 +58,24 @@ not class by class.
 - Its lightningcss targets are Vite's default build targets, so `lch()` values
   stay as they are written, as in `index.css`.
 
-`src/ui/SubmenuArrow.tsx` is the first component written this way.
+## Next to Tailwind and index.css
+
+- StyleX raises each rule's specificity with `:not(#\#)`, so its rules beat
+  any Tailwind class and any index.css rule on the same element, whatever the
+  order. A class from a caller only adds properties the component leaves
+  unset; an index.css rule that must restyle a StyleX component needs
+  `!important` until its page moves to StyleX.
+- The lowest group of rules (now the `margin` and `padding` shorthands) gets
+  no `:not(#\#)`. Dev serves StyleX's CSS before index.css and the build puts
+  it after, so keep those shorthands off elements that index.css also styles.
+- `stylex.when.ancestor(...)` and other `stylex.*` calls only compile inside
+  `stylex.create`. Pulled into a module constant they reach the browser and
+  throw, and the build does not catch it.
+- A style that follows an ancestor's state (Tailwind's `group-hover:`) uses a
+  marker from `src/ui/markers.stylex.ts`, set on the ancestor with
+  `stylex.props(..., rowMarker)`.
+- Browser checks find elements by semantic class (`buyerly-data-group-title`)
+  or role, never by a Tailwind class.
+
+`src/ui/SubmenuArrow.tsx` is the first component written this way; the rest
+of `src/ui` followed in #513.

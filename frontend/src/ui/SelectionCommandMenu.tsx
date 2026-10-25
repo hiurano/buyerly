@@ -1,38 +1,236 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Command } from 'cmdk';
+import * as stylex from '@stylexjs/stylex';
+import { colors, layout } from '@/styles/tokens.stylex';
 import type { SelectionAction } from '@/ui/useRowSelection';
+import { withClassName } from '@/ui/withClassName';
+
+/** Tailwind's font-sans, as tailwind.config.js sets it. */
+const SANS = '"Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+const kbd = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderWidth: 1,
+  borderStyle: 'solid',
+  borderColor: colors['--command-menu-kbd-border'],
+  fontSize: 12,
+  color: colors['--text-tertiary'],
+} as const;
 
 /**
  * Linear's command menu, shared by Ctrl/Cmd+K and the selection's actions so
- * the two read as one control: panel, field, groups, rows, keys and the note
- * that stands in for an empty list. Measured on Linear in both themes (#311).
+ * the two read as one control: panel, field, rows, keys and the note that
+ * stands in for an empty list. Measured on Linear in both themes (#311).
  */
-export const COMMAND_MENU_CLASSES = {
-  /** The floating panel; each menu says where it sits and how wide it is. */
-  surface: 'animate-scale-in overflow-hidden rounded-[12px] border border-[var(--command-menu-border)] bg-[var(--command-menu-bg)] [box-shadow:var(--command-menu-shadow)]',
+const styles = stylex.create({
+  backdrop: {
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: layout['--layer-command-menu'],
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    paddingLeft: 16,
+    paddingRight: 16,
+    paddingTop: '13vh',
+  },
+  /** The floating panel. */
+  surface: {
+    width: '100%',
+    maxWidth: 720,
+    overflow: 'hidden',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--command-menu-border'],
+    backgroundColor: colors['--command-menu-bg'],
+    boxShadow: colors['--command-menu-shadow'],
+  },
   /** Around the field: Linear's 6px inset, with no rule under it. */
-  field: 'shrink-0 px-1.5 pt-1.5',
-  input: 'h-10 w-full bg-transparent px-3 text-[13px] text-[var(--text-secondary)] placeholder-[var(--text-muted)] outline-none',
-  list: 'max-h-[min(404px,60vh)] overflow-y-auto px-1.5 pb-1.5',
-  group: '[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[12px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:leading-[14px] [&_[cmdk-group-heading]]:text-[var(--text-tertiary)]',
+  field: {
+    flexShrink: 0,
+    paddingLeft: 6,
+    paddingRight: 6,
+    paddingTop: 6,
+  },
+  input: {
+    height: 40,
+    width: '100%',
+    backgroundColor: 'transparent',
+    paddingLeft: 12,
+    paddingRight: 12,
+    fontSize: 13,
+    color: colors['--text-secondary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    '::placeholder': {
+      color: colors['--text-muted'],
+    },
+  },
+  list: {
+    maxHeight: 'min(404px, 60vh)',
+    overflowY: 'auto',
+    paddingLeft: 6,
+    paddingRight: 6,
+    paddingBottom: 6,
+  },
   /** 46px rows; the selected one gets a rounded fill inset 2px top and bottom. */
-  item: 'relative mx-0 flex h-[46px] cursor-default select-none items-center gap-3 px-3 text-[13px] font-[450] text-[var(--command-menu-text)] outline-none before:pointer-events-none before:absolute before:inset-x-0 before:inset-y-[2px] before:rounded-[8px] data-[selected=true]:before:bg-[var(--command-menu-row-selected-bg)] [&>*]:relative',
+  item: {
+    position: 'relative',
+    marginLeft: 0,
+    marginRight: 0,
+    display: 'flex',
+    height: 46,
+    cursor: 'default',
+    userSelect: 'none',
+    alignItems: 'center',
+    gap: 12,
+    paddingLeft: 12,
+    paddingRight: 12,
+    fontSize: 13,
+    fontWeight: 450,
+    color: colors['--command-menu-text'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    '::before': {
+      content: "''",
+      pointerEvents: 'none',
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: 2,
+      bottom: 2,
+      borderRadius: 8,
+      backgroundColor: {
+        default: null,
+        ':is([data-selected=true])': colors['--command-menu-row-selected-bg'],
+      },
+    },
+  },
   /** Linear draws a row's icon in the row's own text color. */
-  icon: 'flex h-4 w-4 shrink-0 items-center justify-center',
+  icon: {
+    position: 'relative',
+    display: 'flex',
+    height: 16,
+    width: 16,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: {
+    position: 'relative',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  keys: {
+    position: 'relative',
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 3,
+  },
   /** A row's keys on the right. */
-  kbd: 'inline-flex h-[23px] min-w-[20px] items-center justify-center rounded-[3px] border border-[var(--command-menu-kbd-border)] px-1 font-sans text-[12px] font-[450] leading-[13px] text-[var(--text-tertiary)]',
-  note: 'px-3 py-6 text-center text-[12px] text-[var(--text-muted)]',
-} as const;
+  kbd: {
+    ...kbd,
+    height: 23,
+    minWidth: 20,
+    borderRadius: 3,
+    paddingLeft: 4,
+    paddingRight: 4,
+    fontFamily: SANS,
+    fontWeight: 450,
+    lineHeight: '13px',
+  },
+  note: {
+    paddingLeft: 12,
+    paddingRight: 12,
+    paddingTop: 24,
+    paddingBottom: 24,
+    textAlign: 'center',
+    fontSize: 12,
+    color: colors['--text-muted'],
+  },
+  footerKeys: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 3,
+  },
+  /** The footer's smaller boxed keys: 19px high, 2px inside. */
+  footerKbd: {
+    ...kbd,
+    height: 19,
+    minWidth: 18,
+    borderRadius: 4,
+    padding: 2,
+    fontFamily: SANS,
+    fontWeight: 500,
+    lineHeight: 1,
+  },
+  scope: {
+    display: 'flex',
+    flexShrink: 0,
+    paddingLeft: 14,
+    paddingRight: 14,
+    paddingTop: 12,
+  },
+  scopeChip: {
+    display: 'flex',
+    height: 22,
+    minWidth: 0,
+    maxWidth: '100%',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 10,
+    backgroundColor: colors['--command-menu-chip-bg'],
+    paddingLeft: 6,
+    paddingRight: 6,
+    fontSize: 12,
+    color: colors['--command-menu-text'],
+  },
+  scopePrefix: {
+    flexShrink: 0,
+    fontWeight: 500,
+  },
+  scopeLabel: {
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  scopeClear: {
+    marginLeft: 2,
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+  },
+  scopeClearKey: {
+    fontFamily: SANS,
+    fontSize: 12,
+    fontWeight: 500,
+    lineHeight: 1,
+  },
+});
 
 /** The footer's smaller boxed keys: 19px high, 2px inside. */
 export const CommandMenuFooterKeys: React.FC<{ keys: string[] }> = ({ keys }) => (
-  <span className="flex items-center gap-[3px]" aria-hidden="true">
+  <span {...stylex.props(styles.footerKeys)} aria-hidden="true">
     {keys.map((key) => (
-      <kbd
-        key={key}
-        className="inline-flex h-[19px] min-w-[18px] items-center justify-center rounded-[4px] border border-[var(--command-menu-kbd-border)] p-0.5 font-sans text-[12px] font-medium leading-none text-[var(--text-tertiary)]"
-      >
+      <kbd key={key} {...stylex.props(styles.footerKbd)}>
         {key}
       </kbd>
     ))}
@@ -51,18 +249,18 @@ export interface CommandMenuScope {
  * in a 22px pill with ⌫ that drops the scope.
  */
 export const CommandMenuScopeChip: React.FC<{ scope: CommandMenuScope; onClear: () => void }> = ({ scope, onClear }) => (
-  <div className="flex shrink-0 px-[14px] pt-3">
-    <span className="flex h-[22px] min-w-0 max-w-full items-center gap-1 rounded-[10px] bg-[var(--command-menu-chip-bg)] px-1.5 text-[12px] text-[var(--command-menu-text)]">
-      {scope.prefix && <span className="shrink-0 font-medium">{`${scope.prefix} ⋅`}</span>}
-      <span className="min-w-0 truncate">{scope.label}</span>
+  <div {...stylex.props(styles.scope)}>
+    <span {...stylex.props(styles.scopeChip)}>
+      {scope.prefix && <span {...stylex.props(styles.scopePrefix)}>{`${scope.prefix} ⋅`}</span>}
+      <span {...stylex.props(styles.scopeLabel)}>{scope.label}</span>
       <button
         type="button"
         aria-label="Remove scope"
         onMouseDown={(event) => event.preventDefault()}
         onClick={onClear}
-        className="ml-0.5 flex shrink-0 items-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+        {...stylex.props(styles.scopeClear)}
       >
-        <kbd className="font-sans text-[12px] font-medium leading-none" aria-hidden="true">⌫</kbd>
+        <kbd {...stylex.props(styles.scopeClearKey)} aria-hidden="true">⌫</kbd>
       </button>
     </span>
   </div>
@@ -105,11 +303,11 @@ export const SelectionCommandMenu: React.FC<SelectionCommandMenuProps> = ({
   // Portalled: the list's own stacking context must not let the app sidebar paint over it.
   return createPortal(
     <div
-      className="fixed inset-0 z-[var(--layer-command-menu)] flex items-start justify-center px-4 pt-[13vh]"
+      {...stylex.props(styles.backdrop)}
       onMouseDown={() => onOpenChange(false)}
     >
       <div
-        className={`w-full max-w-[720px] ${COMMAND_MENU_CLASSES.surface}`}
+        {...withClassName(stylex.props(styles.surface), 'animate-scale-in')}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <Command
@@ -127,17 +325,17 @@ export const SelectionCommandMenu: React.FC<SelectionCommandMenuProps> = ({
           }}
         >
           <CommandMenuScopeChip scope={scope} onClear={clearScope} />
-          <div className={COMMAND_MENU_CLASSES.field}>
+          <div {...stylex.props(styles.field)}>
             <Command.Input
               autoFocus
               value={query}
               onValueChange={setQuery}
               placeholder="Type a command or search…"
-              className={COMMAND_MENU_CLASSES.input}
+              {...stylex.props(styles.input)}
             />
           </div>
-          <Command.List className={COMMAND_MENU_CLASSES.list}>
-            <Command.Empty className={COMMAND_MENU_CLASSES.note}>
+          <Command.List {...stylex.props(styles.list)}>
+            <Command.Empty {...stylex.props(styles.note)}>
               No matching actions.
             </Command.Empty>
             {actions.map((action) => (
@@ -148,15 +346,15 @@ export const SelectionCommandMenu: React.FC<SelectionCommandMenuProps> = ({
                   onOpenChange(false);
                   action.run();
                 }}
-                className={COMMAND_MENU_CLASSES.item}
+                {...stylex.props(styles.item)}
               >
-                <span className={COMMAND_MENU_CLASSES.icon} aria-hidden="true">
+                <span {...stylex.props(styles.icon)} aria-hidden="true">
                   {action.icon}
                 </span>
-                <span className="min-w-0 flex-1 truncate">{action.label}</span>
-                <span className="flex shrink-0 items-center gap-[3px]">
-                  {action.withModifier && <kbd className={COMMAND_MENU_CLASSES.kbd}>Ctrl</kbd>}
-                  <kbd className={COMMAND_MENU_CLASSES.kbd}>
+                <span {...stylex.props(styles.label)}>{action.label}</span>
+                <span {...stylex.props(styles.keys)}>
+                  {action.withModifier && <kbd {...stylex.props(styles.kbd)}>Ctrl</kbd>}
+                  <kbd {...stylex.props(styles.kbd)}>
                     {action.shortcut.length === 1 ? action.shortcut.toUpperCase() : action.shortcut}
                   </kbd>
                 </span>

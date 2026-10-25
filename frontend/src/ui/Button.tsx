@@ -1,27 +1,132 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
+import { TOUCH_HEIGHT_CLASS } from '@/lib/useMediaQuery';
+import { withClassName } from '@/ui/withClassName';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /** `danger` is only for the confirming button of a destructive action. */
   variant?: 'primary' | 'secondary' | 'danger';
   size?: 'compact' | 'default';
+  /** 40px tall on a touch screen, for a button a finger taps. */
+  touchHeight?: boolean;
+  /** Styles from the parent, applied last. */
+  xstyle?: stylex.StyleXStyles;
 }
 
-const VARIANT_CLASSES: Record<NonNullable<ButtonProps['variant']>, string> = {
-  primary: 'border-transparent bg-[var(--button-primary-bg)] text-[var(--button-primary-text)] hover:bg-[var(--button-primary-hover-bg)]',
-  secondary: 'border-[var(--color-border-secondary)] bg-transparent text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]',
-  danger: 'border-transparent bg-[var(--action-danger)] text-[var(--action-danger-text)] hover:bg-[var(--action-danger-hover)]',
-};
+const styles = stylex.create({
+  root: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    fontSize: 12,
+    fontWeight: 500,
+    transitionProperty: 'color, background-color, border-color, text-decoration-color, fill, stroke',
+    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    transitionDuration: '150ms',
+    outline: {
+      default: null,
+      ':focus-visible': '2px solid transparent',
+    },
+    outlineOffset: {
+      default: null,
+      ':focus-visible': 2,
+    },
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+    cursor: {
+      default: null,
+      ':disabled': 'not-allowed',
+    },
+    opacity: {
+      default: null,
+      ':disabled': 0.5,
+    },
+  },
+  primary: {
+    borderColor: 'transparent',
+    backgroundColor: {
+      default: colors['--button-primary-bg'],
+      ':hover': colors['--button-primary-hover-bg'],
+    },
+    color: colors['--button-primary-text'],
+  },
+  secondary: {
+    borderColor: colors['--color-border-secondary'],
+    backgroundColor: {
+      default: 'transparent',
+      ':hover': colors['--item-hover-bg'],
+    },
+    color: {
+      default: colors['--text-secondary'],
+      ':hover': colors['--text-primary'],
+    },
+  },
+  danger: {
+    borderColor: 'transparent',
+    backgroundColor: {
+      default: colors['--action-danger'],
+      ':hover': colors['--action-danger-hover'],
+    },
+    color: colors['--action-danger-text'],
+  },
+  compact: {
+    height: 28,
+    paddingLeft: 12,
+    paddingRight: 12,
+  },
+  regular: {
+    height: 32,
+    paddingLeft: 14,
+    paddingRight: 14,
+  },
+  // 40px under a finger, for the callers that ask for it.
+  compactTouch: {
+    height: {
+      default: 28,
+      '@media (hover: none) and (pointer: coarse)': 40,
+    },
+  },
+  regularTouch: {
+    height: {
+      default: 32,
+      '@media (hover: none) and (pointer: coarse)': 40,
+    },
+  },
+  // A caller's own text size, which won over the button's under Tailwind.
+  callerFontSize: {
+    fontSize: null,
+  },
+});
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = 'secondary', size = 'default', className = '', type = 'button', ...props }, ref) => {
-    const variantClass = VARIANT_CLASSES[variant];
-    const sizeClass = size === 'compact' ? 'h-7 px-3 text-[12px]' : 'h-8 px-3.5 text-[12px]';
+  ({ variant = 'secondary', size = 'default', touchHeight = false, xstyle, className = '', type = 'button', ...props }, ref) => {
+    // Callers still pass Tailwind's touch height until their pages move to StyleX (#514–#518).
+    const touchClass = className.includes(TOUCH_HEIGHT_CLASS);
+    const touch = touchHeight || touchClass;
+    const callerClasses = touchClass ? className.replace(TOUCH_HEIGHT_CLASS, '').trim() : className;
+    const ownFontSize = /(^|\s)!?text-\[\d+px\]/.test(callerClasses);
 
     return (
       <button
         ref={ref}
         type={type}
-        className={`inline-flex items-center justify-center rounded-full border font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] disabled:cursor-not-allowed disabled:opacity-50 ${variantClass} ${sizeClass} ${className}`}
+        {...withClassName(
+          stylex.props(
+            styles.root,
+            styles[variant],
+            size === 'compact' ? styles.compact : styles.regular,
+            touch && (size === 'compact' ? styles.compactTouch : styles.regularTouch),
+            ownFontSize && styles.callerFontSize,
+            xstyle,
+          ),
+          callerClasses,
+        )}
         {...props}
       />
     );
