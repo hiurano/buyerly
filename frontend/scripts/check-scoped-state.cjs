@@ -137,12 +137,12 @@ async function main() {
   assert.equal(pending.length, 0);
 
   // Scope changes during the follow-up read also suppress history/toasts.
-  const { useToastStore } = load(path.join(root, 'ui/toast.ts'));
+  const { toastStore } = load(path.join(root, 'ui/toast.ts'));
   const restoration = restoreFromTrash({ id: 11, kind: 'rule', name: 'Old rule' });
   take('/api/deleted-items/11/restore', 'POST').reply({ entity_id: 1, skipped_account_ids: ['A'], missing_rule_ids: [] });
   await new Promise(resolve => setImmediate(resolve));
   const restoreReads = rulesReplies(); enter('a'); replyRules(restoreReads, [preset(1)]); await restoration;
-  assert.deepEqual(useToastStore.getState().toasts, []);
+  assert.deepEqual(toastStore.toasts, []);
 
   // Delivery undo stops its queue after leaving the recorded workspace.
   const { deliveryHistoryEntry } = load(path.join(root, 'lib/delivery.ts'));
