@@ -131,8 +131,8 @@ try {
     await page.keyboard.press('Control+Shift+z');
     assert.equal(await page.evaluate(() => Boolean(window.staleRedo)), false);
     assert.equal(await page.evaluate(async () => {
-      const { useToastStore } = await import('/src/ui/toast.ts');
-      return useToastStore.getState().toasts.length;
+      const { toastStore } = await import('/src/ui/toast.ts');
+      return toastStore.toasts.length;
     }), 0);
     assert.equal(await page.getByText('alpha rule', { exact: true }).count(), 0);
     await page.evaluate(() => window.testStore.getState().deleteRule('1').catch(() => {}));
