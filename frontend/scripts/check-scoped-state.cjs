@@ -19,6 +19,9 @@ function load(file) {
 }
 global.window = { location: { pathname: '/a/rules', search: '' }, localStorage: { getItem: () => null }, addEventListener: () => {} };
 global.document = { cookie: '' };
+// No WebSocket, no sync engine: this checks scoped state over the REST API, which then serves every list.
+// The sync engine's client is checked in the browser (scripts/sync-browser.mjs).
+global.WebSocket = undefined;
 const pending = [];
 global.fetch = (url, init) => new Promise(resolve => pending.push({
   url, method: init.method, workspace: init.headers.get('X-Workspace-Slug'),

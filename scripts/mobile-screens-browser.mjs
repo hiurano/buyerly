@@ -10,6 +10,7 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { mockSync } from './sync-mock.mjs';
 
 const require = createRequire(new URL('../frontend/package.json', import.meta.url));
 const { chromium } = require('playwright');
@@ -85,6 +86,7 @@ try {
     const context = await browser.newContext({ viewport: { width, height: 844 }, hasTouch: touch, isMobile: touch });
     await context.addCookies([{ name: 'buyerly_csrf', value: 'csrf-test', url: origin }]);
     const page = await context.newPage();
+    await mockSync(page);
     page.setDefaultTimeout(10_000);
     const errors = [];
     let noAccounts = false;

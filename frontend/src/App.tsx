@@ -57,6 +57,7 @@ import {
 } from '@/lib/accounts';
 import { useInboxStore } from '@/models/inboxStore';
 import { useScopeStore, scopeStore } from '@/models/scopeStore';
+import { useSyncStatus } from '@/models/sync';
 import { shellStore, useShellStore } from '@/models/shellStore';
 import { useDetailsPaneStore } from '@/models/detailsPaneStore';
 import { useViewStore } from '@/models/viewStore';
@@ -472,6 +473,11 @@ export const App: React.FC = () => {
   useLayoutEffect(() => {
     scopeStore.setWorkspaceScope(desiredScope, resolvedWorkspace?.slug);
   }, [desiredScope, resolvedWorkspace?.slug]);
+  // Where the sync engine stands (#507), on <html> for the browser checks and anyone inspecting the page.
+  const syncStatus = useSyncStatus();
+  useEffect(() => {
+    document.documentElement.dataset.sync = syncStatus;
+  }, [syncStatus]);
   // The reload splash goes once a screen other than the boot loader is on the page (#433).
   useLayoutEffect(() => {
     if (!document.querySelector('[data-boot-loading]')) finishSplash();

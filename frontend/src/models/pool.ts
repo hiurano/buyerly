@@ -13,7 +13,9 @@ import { action, computed, makeObservable, observable, observableRef, reaction, 
  * identity, so a record mutated in place would leave a compiled component
  * showing the old value even though MobX re-rendered it.
  *
- * #496 persists this pool in IndexedDB and #497 feeds it from the sync engine.
+ * A list the sync engine holds (#507) is read from its models instead: no
+ * request at all, and every delta it applies redraws the lists it touches.
+ * #496 persists this pool in IndexedDB.
  */
 
 /** How long a query's answer counts as current; older ones are read again after the page is drawn. */
@@ -40,6 +42,11 @@ export interface ListQuery<T> {
   id: (record: T) => string | number;
   /** Defaults to STALE_AFTER_MS; 0 reads again behind every visit. */
   staleAfter?: number;
+  /**
+   * The list as the sync engine's models give it (#507), read instead of the
+   * server; undefined when they don't hold it, and then the server is asked.
+   */
+  local?: () => T[] | undefined;
 }
 
 /** One answer kept whole (counts, a page of results): replaced only when it changes. */
@@ -105,12 +112,23 @@ export function afterPaint(run: () => void) {
   else setTimeout(run, 0);
 }
 
+/** What the sync engine (#507) tells the pool about itself. */
+export interface PoolSync {
+  /** Settles once the workspace's bootstrap is in, or failed; null when none is on its way. */
+  booting: Promise<void> | null;
+  /** Its socket is open and caught up: a write's change will come over it, no read needed. */
+  live: boolean;
+}
+
 export class BuyerlyPool {
   /** The workspace this pool holds ("<user>:<workspace id>"); null when none is open. */
   scope: string | null = null;
+  readonly sync: PoolSync = { booting: null, live: false };
   private generation = 0;
   private readonly records = observable.map<string, unknown>({}, { deep: false });
   private readonly entries = observable.map<string, Entry>({}, { deep: false });
+  /** The lists read from the sync engine's models, read again after every change it applies. */
+  private readonly synced = new Map<string, ListQuery<unknown>>();
 
   constructor() {
     makeObservable(this, {
@@ -123,6 +141,7 @@ export class BuyerlyPool {
       updateEach: action,
       setValue: action,
       invalidate: action,
+      syncChanged: action,
     });
   }
 
@@ -136,6 +155,7 @@ export class BuyerlyPool {
     this.generation += 1;
     this.records.clear();
     this.entries.clear();
+    this.synced.clear();
   }
 
   record<T>(type: RecordType, id: string | number): T | undefined {
@@ -162,6 +182,7 @@ export class BuyerlyPool {
    * after the next paint when what is held is stale, not at all when it is current.
    */
   ensure<T>(query: Query<T>): void {
+    if (this.waitForSync(query, () => this.ensure(query)) || this.fromSync(query)) return;
     const entry = this.entry(query);
     if (entry.promise) return;
     if (!entry.held) {
@@ -181,6 +202,10 @@ export class BuyerlyPool {
    * one on its way may have left before the write; the newest answer wins.
    */
   fetch<T>(query: Query<T>, { afterWrite = false }: { afterWrite?: boolean } = {}): Promise<void> {
+    const booting = this.waitForSync(query, () => this.fetch(query, { afterWrite }));
+    if (booting) return booting;
+    // After a write the change comes over the socket; with the socket down the server is asked.
+    if ((!afterWrite || this.sync.live) && this.fromSync(query)) return Promise.resolve();
     const entry = this.entry(query);
     if (entry.promise && !afterWrite) return entry.promise;
     const generation = this.generation;
@@ -216,8 +241,12 @@ export class BuyerlyPool {
 
   /** The held answer, or a read for it when there is none or it is stale; for code outside React. */
   async read<Q extends Query<any>>(query: Q): Promise<QueryData<Q>> {
+    if (query.kind === 'list' && query.local && this.sync.booting) await this.sync.booting;
     const entry = this.entry(query);
-    if (!entry.held || Date.now() - entry.fetchedAt >= (query.staleAfter ?? STALE_AFTER_MS)) await this.fetch(query);
+    // A list held from the sync engine's models is current by definition.
+    if (!this.fromSync(query) && (!entry.held || Date.now() - entry.fetchedAt >= (query.staleAfter ?? STALE_AFTER_MS))) {
+      await this.fetch(query);
+    }
     const { data, error } = this.result<QueryData<Q>>(query.key);
     if (data === undefined) throw new Error(error || 'Something went wrong. Please try again.');
     return data;
@@ -280,6 +309,49 @@ export class BuyerlyPool {
     for (const [key, entry] of this.entries) {
       if (key.startsWith(prefix)) entry.fetchedAt = 0;
     }
+  }
+
+  /**
+   * The sync engine applied changes: every list read from its models is read
+   * from them again, and one they no longer hold reads the server on its next visit.
+   */
+  syncChanged() {
+    for (const [key, query] of [...this.synced]) {
+      if (this.fromSync(query)) continue;
+      this.synced.delete(key);
+      const entry = this.entries.get(key);
+      if (entry) entry.fetchedAt = 0;
+    }
+  }
+
+  /** While the workspace's bootstrap is on its way, a list it will hold waits for it, as Linear opens on its models. */
+  private waitForSync<T>(query: Query<T>, then: () => void | Promise<void>): Promise<void> | null {
+    const { booting } = this.sync;
+    if (query.kind !== 'list' || !query.local || !booting) return null;
+    const generation = this.generation;
+    return booting.then(() => {
+      if (generation === this.generation) return then();
+    });
+  }
+
+  /** Holds a list from the sync engine's models when they have it; false when the server has to be asked. */
+  private fromSync<T>(query: Query<T>): boolean {
+    if (query.kind !== 'list' || !query.local) return false;
+    const list = query.local();
+    if (!list) return false;
+    const entry = this.entry(query);
+    runInAction(() => {
+      for (const record of list) this.upsert(query.type, record, query.id(record));
+      const ids = list.map((record) => String(query.id(record)));
+      if (!entry.ids || !same(entry.ids, ids)) entry.ids = ids;
+      entry.fetchedAt = Date.now();
+      entry.held = true;
+      entry.error = '';
+      // A server read still on its way is older than this.
+      entry.request += 1;
+    });
+    this.synced.set(query.key, query as ListQuery<unknown>);
+    return true;
   }
 
   private entry(query: { key: string; kind?: Query<unknown>['kind']; type?: RecordType }): Entry {

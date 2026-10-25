@@ -8,6 +8,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { mockSync } from './sync-mock.mjs';
 
 const require = createRequire(new URL('../frontend/package.json', import.meta.url));
 const { chromium } = require('playwright');
@@ -41,6 +42,7 @@ try {
     const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: scheme });
     await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin });
     const page = await context.newPage();
+    await mockSync(page);
     page.setDefaultTimeout(10_000);
     const label = `${link}-${scheme}-${width}`;
     const errors = [];

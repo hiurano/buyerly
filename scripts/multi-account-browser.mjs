@@ -7,6 +7,7 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { mockSync } from './sync-mock.mjs';
 
 const require = createRequire(new URL('../frontend/package.json', import.meta.url));
 const { chromium } = require('playwright');
@@ -36,6 +37,7 @@ try {
   for (const width of [1440, 390]) {
     const context = await browser.newContext({ viewport: { width, height: 900 } });
     const page = await context.newPage();
+    await mockSync(page);
     page.setDefaultTimeout(10_000);
     // Every loading state looks like the reload splash (#433): the old yellow spinner card never shows.
     const oldLoaders = [];

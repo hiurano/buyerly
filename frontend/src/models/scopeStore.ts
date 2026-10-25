@@ -1,6 +1,7 @@
 import { parseRoute } from '@/lib/routing';
 import type { Workspace } from '@/lib/types';
 import { pool } from './pool';
+import { sync } from './sync';
 import { makeStore, useStore } from './store';
 
 /** The open workspace: which one, its name and the member's role in it. */
@@ -25,7 +26,10 @@ export class ScopeStore {
   setWorkspaceScope(scope: string | null, slug?: string) {
     if (this.workspaceScope === scope && this.workspaceSlug === (slug ?? null)) return;
     // The pool holds one workspace's data: another workspace, account or none never sees it (#488).
-    pool.reset(scope === null ? null : `${scope}:${slug ?? ''}`);
+    const poolScope = scope === null ? null : `${scope}:${slug ?? ''}`;
+    pool.reset(poolScope);
+    // Its synced models fill the pool and keep it current (#507).
+    sync.open(poolScope, slug ?? null);
     for (const reset of this.#resets) reset();
     this.workspaceName = 'buyerly';
     this.workspaceScope = scope;
