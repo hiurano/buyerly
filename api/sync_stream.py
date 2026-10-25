@@ -261,10 +261,16 @@ class SocketSession:
 
     async def _deliver(self, changes: list[Change]) -> None:
         pending = []
+        removed = False
         for change in changes:
             if change.sync_id <= self.through:
                 continue
             self.through = change.sync_id
+            if removed:
+                # The database already has them out; of what follows they get only the row that removes them.
+                if self._is_own_removal(change):
+                    pending.append(change.message)
+                continue
             visible = bool(change.groups & self.groups)
             if visible:
                 pending.append(change.message)
@@ -272,11 +278,20 @@ class SocketSession:
                 # Rows before the change go out under the old groups, rows after it under the new ones.
                 await self._flush(pending)
                 pending = []
-                await self._regroup()
-                if not visible and change.groups & self.groups:
+                if not await self._regroup():
+                    removed = True
+                elif not visible and change.groups & self.groups:
                     # The new public team itself opens its group.
                     pending.append(change.message)
         await self._flush(pending)
+        if removed:
+            raise _Closed(CLOSE_FORBIDDEN, "removed")
+
+    def _is_own_removal(self, change: Change) -> bool:
+        message = change.message
+        return (message["model"], message["model_id"], message["action"]) == (
+            "WorkspaceMember", str(self.member.id), "delete"
+        )
 
     def _may_regroup(self, change: Change) -> bool:
         if change.model == "Team":
@@ -291,19 +306,21 @@ class SocketSession:
         if actions:
             await self.send({"type": "delta", "actions": actions, "last_sync_id": self.through})
 
-    async def _regroup(self) -> None:
+    async def _regroup(self) -> bool:
+        """Recompute the member's groups from the database; False when they are no longer in the workspace."""
         from api.deps import get_user_workspace_member
 
         async with self.sessions() as session:
             _ws, member = await get_user_workspace_member(session, self.user, workspace_id=self.member.workspace_id)
             if member is None:
-                raise _Closed(CLOSE_FORBIDDEN, "removed")
+                return False
             groups = set(await bootstrap_sync_groups(session, member))
         self.member = member
         if groups != self.groups:
             added, removed = sorted(groups - self.groups), sorted(self.groups - groups)
             self.groups = groups
             await self.send({"type": "sync_groups", "sync_groups": sorted(groups), "added": added, "removed": removed})
+        return True
 
     async def _check_session(self) -> None:
         """A signed-out browser session ends its sockets at the next heartbeat."""

@@ -384,6 +384,24 @@ class TestSyncStream(unittest.IsolatedAsyncioTestCase):
                       {(a["model"], a["model_id"], a["action"]) for a in actions})
         self.assertNotIn("After you left", [a["data"].get("name") for a in actions])
 
+    async def test_a_removal_in_one_transaction_with_other_changes_leaks_none_of_them(self):
+        buyer = await self.open("buyer")
+        await buyer.receive_type("caught_up")
+        async with self.sessions() as session:
+            await session.execute(delete(TeamMember).where(TeamMember.member_id == self.members["buyer"]))
+            await session.execute(delete(WorkspaceMember).where(WorkspaceMember.id == self.members["buyer"]))
+            await session.execute(update(Team).where(Team.id == self.public_id).values(name="Same commit"))
+            session.add(RulePreset(workspace_id=self.ws_id, owner_user_id=self.owner_id, name="Same commit"))
+            await session.commit()
+        actions = []
+        with self.assertRaises(Closed) as closed:
+            while True:
+                message = await buyer.receive()
+                if message["type"] == "delta":
+                    actions += message["actions"]
+        self.assertEqual(closed.exception.code, sync_stream.CLOSE_FORBIDDEN)
+        self.assertNotIn("Same commit", [a["data"].get("name") for a in actions])
+
     async def test_joining_a_private_team_opens_its_group_on_the_open_socket(self):
         buyer = await self.open("buyer")
         await buyer.receive_type("caught_up")
