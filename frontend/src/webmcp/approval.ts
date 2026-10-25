@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { makeStore, useStore } from '@/models/store';
 
 export type ApprovalOutcome = 'approved' | 'declined' | 'withdrawn';
 
@@ -18,7 +18,26 @@ export interface PendingApproval extends ApprovalRequest {
   settle: (outcome: ApprovalOutcome) => void;
 }
 
-export const useApprovalQueue = create<{ queue: PendingApproval[] }>(() => ({ queue: [] }));
+/** Changes agents asked for, in arrival order; the first one is on screen. */
+export class ApprovalStore {
+  queue: PendingApproval[] = [];
+
+  constructor() {
+    makeStore(this);
+  }
+
+  enqueue(approval: PendingApproval) {
+    this.queue = [...this.queue, approval];
+  }
+
+  remove(id: number) {
+    this.queue = this.queue.filter((item) => item.id !== id);
+  }
+}
+
+export const approvalStore = new ApprovalStore();
+
+export const useApprovalQueue = <T,>(select: (store: ApprovalStore) => T): T => useStore(approvalStore, select);
 
 let nextApprovalId = 1;
 
@@ -42,10 +61,10 @@ export function requestApproval(
       if (settled) return;
       settled = true;
       for (const signal of live) signal.removeEventListener('abort', withdraw);
-      useApprovalQueue.setState((state) => ({ queue: state.queue.filter((item) => item.id !== id) }));
+      approvalStore.remove(id);
       resolve(outcome);
     }
     for (const signal of live) signal.addEventListener('abort', withdraw, { once: true });
-    useApprovalQueue.setState((state) => ({ queue: [...state.queue, { ...request, id, settle }] }));
+    approvalStore.enqueue({ ...request, id, settle });
   });
 }

@@ -8,7 +8,7 @@ import { AccountPage } from '@/components/accounts/AccountPage';
 import { RecentlyDeletedRulesPage } from '@/components/rules/RecentlyDeletedRulesPage';
 import { CommandMenu } from '@/components/command/CommandMenu';
 import { BuyerlyShortcutsPanel } from '@/components/help/BuyerlyShortcutsPanel';
-import { useFavorites } from '@/lib/favorites';
+import { favoritesStore } from '@/lib/favorites';
 import { OpenPalette } from '@/components/command/OpenPalette';
 import { SearchView } from '@/components/search/SearchView';
 import { WorkspaceMembersView } from '@/components/workspace/WorkspaceMembersView';
@@ -320,7 +320,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
 
   // The member's favorites of this workspace, for the sidebar and every star.
   useEffect(() => {
-    void useFavorites.getState().load(workspace.slug);
+    void favoritesStore.load(workspace.slug);
   }, [workspace.slug]);
 
   // index.html marks signed-out pages for their plain backdrop, as Linear's html.logged-out; signing in

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { BuyerlyStarFilledIcon, BuyerlyStarOutlineIcon } from '@/icons/BuyerlyIcons';
-import { toggleFavorite, useFavorites, type FavoriteInput } from '@/lib/favorites';
+import { favoritesStore, toggleFavorite, useFavorites, type FavoriteInput } from '@/lib/favorites';
 import { Tooltip } from '@/ui/Tooltip';
 
 function isTyping(): boolean {
@@ -23,9 +23,9 @@ export function BuyerlyFavoriteButton({ favorite }: { favorite: FavoriteInput })
   // While the star is on screen, the command menu offers it too.
   useEffect(() => {
     const here = { kind: favorite.kind, path: favorite.path, title: favorite.title };
-    useFavorites.setState({ here });
+    favoritesStore.setHere(here);
     return () => {
-      if (useFavorites.getState().here === here) useFavorites.setState({ here: null });
+      if (favoritesStore.here === here) favoritesStore.setHere(null);
     };
   }, [favorite.kind, favorite.path, favorite.title]);
 

@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { makeStore, useStore } from '@/models/store';
 
 /**
  * What a toast reports. Linear never reports a plain success: a change shows
@@ -34,29 +34,38 @@ export const TOAST_DURATION_MS = 8000;
 /** Older toasts are dropped once this many are on screen. */
 const MAX_VISIBLE = 3;
 
-interface ToastState {
-  toasts: ToastItem[];
-  show: (options: ToastOptions) => number;
-  dismiss: (id: number) => void;
-  clear: () => void;
-}
-
 let nextId = 1;
 
-export const useToastStore = create<ToastState>((set) => ({
-  toasts: [],
-  show: (options) => {
+/** The toasts on screen, oldest first. */
+export class ToastStore {
+  toasts: ToastItem[] = [];
+
+  constructor() {
+    makeStore(this);
+  }
+
+  show(options: ToastOptions): number {
     const id = nextId++;
-    set((state) => ({ toasts: [...state.toasts, { ...options, id }].slice(-MAX_VISIBLE) }));
+    this.toasts = [...this.toasts, { ...options, id }].slice(-MAX_VISIBLE);
     return id;
-  },
-  dismiss: (id) => set((state) => ({ toasts: state.toasts.filter((item) => item.id !== id) })),
-  clear: () => set({ toasts: [] }),
-}));
+  }
+
+  dismiss(id: number) {
+    this.toasts = this.toasts.filter((item) => item.id !== id);
+  }
+
+  clear() {
+    this.toasts = [];
+  }
+}
+
+export const toastStore = new ToastStore();
+
+export const useToastStore = <T,>(select: (store: ToastStore) => T): T => useStore(toastStore, select);
 
 /** Imperative entry point, usable from event handlers and stores alike. */
 export const toast = {
-  show: (options: ToastOptions) => useToastStore.getState().show(options),
-  error: (title: string, description?: string) => useToastStore.getState().show({ tone: 'error', title, description }),
-  dismiss: (id: number) => useToastStore.getState().dismiss(id),
+  show: (options: ToastOptions) => toastStore.show(options),
+  error: (title: string, description?: string) => toastStore.show({ tone: 'error', title, description }),
+  dismiss: (id: number) => toastStore.dismiss(id),
 };

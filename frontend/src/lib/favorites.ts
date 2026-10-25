@@ -1,6 +1,6 @@
-import { create } from 'zustand';
 import { apiRequest } from './api';
 import { toast } from '@/ui/toast';
+import { makeStore, useStore } from '@/models/store';
 
 /**
  * Each member's favorites, Linear's star and the sidebar's Favorites section,
@@ -24,18 +24,6 @@ export interface FavoriteInput {
   title: string;
 }
 
-interface FavoritesState {
-  /** The workspace the list belongs to; another one starts empty. */
-  workspace: string | null;
-  favorites: Favorite[];
-  loaded: boolean;
-  /** The open page's star, which the command menu offers as "Favorite page". */
-  here: FavoriteInput | null;
-  load: (workspace: string) => Promise<void>;
-  add: (input: FavoriteInput) => Promise<void>;
-  remove: (path: string) => Promise<void>;
-}
-
 /** The address inside the workspace that an app path names: "/ws/team/TES/rules" → "team/TES/rules". */
 export function favoritePath(appPath: string, workspace: string): string {
   const prefix = `/${workspace}/`;
@@ -45,56 +33,75 @@ export function favoritePath(appPath: string, workspace: string): string {
 
 /** The page with a star is the one open; the command menu adds or removes it. */
 export function toggleFavorite(input: FavoriteInput): Promise<void> {
-  const state = useFavorites.getState();
-  return state.favorites.some((favorite) => favorite.path === input.path) ? state.remove(input.path) : state.add(input);
+  return favoritesStore.favorites.some((favorite) => favorite.path === input.path)
+    ? favoritesStore.remove(input.path)
+    : favoritesStore.add(input);
 }
 
-export const useFavorites = create<FavoritesState>((set, get) => ({
-  workspace: null,
-  favorites: [],
-  loaded: false,
-  here: null,
+export class FavoritesStore {
+  /** The workspace the list belongs to; another one starts empty. */
+  workspace: string | null = null;
+  favorites: Favorite[] = [];
+  loaded = false;
+  /** The open page's star, which the command menu offers as "Favorite page". */
+  here: FavoriteInput | null = null;
 
-  load: async (workspace) => {
-    if (get().workspace !== workspace) set({ workspace, favorites: [], loaded: false });
+  constructor() {
+    makeStore(this);
+  }
+
+  setHere(here: FavoriteInput | null) {
+    this.here = here;
+  }
+
+  async load(workspace: string) {
+    if (this.workspace !== workspace) this.set({ workspace, favorites: [], loaded: false });
     try {
       const payload = await apiRequest<{ favorites?: Favorite[] }>('/api/favorites');
-      if (get().workspace !== workspace) return;
-      set({ favorites: Array.isArray(payload.favorites) ? payload.favorites : [], loaded: true });
+      if (this.workspace !== workspace) return;
+      this.set({ favorites: Array.isArray(payload.favorites) ? payload.favorites : [], loaded: true });
     } catch {
       // The section stays hidden; starring still works once the server answers.
-      if (get().workspace === workspace) set({ loaded: true });
+      if (this.workspace === workspace) this.set({ loaded: true });
     }
-  },
+  }
 
-  add: async (input) => {
-    const { workspace, favorites } = get();
+  async add(input: FavoriteInput) {
+    const { workspace, favorites } = this;
     if (favorites.some((favorite) => favorite.path === input.path)) return;
     // Shown at once at the end of the section, as Linear's; the server's id replaces this one.
     const pending: Favorite = { ...input, id: -Date.now(), position: (favorites[favorites.length - 1]?.position ?? 0) + 1 };
-    set({ favorites: [...favorites, pending] });
+    this.set({ favorites: [...favorites, pending] });
     try {
       const saved = await apiRequest<Favorite>('/api/favorites', { method: 'POST', body: JSON.stringify(input) });
-      if (get().workspace !== workspace) return;
-      set((state) => ({ favorites: state.favorites.map((favorite) => (favorite.id === pending.id ? saved : favorite)) }));
+      if (this.workspace !== workspace) return;
+      this.set({ favorites: this.favorites.map((favorite) => (favorite.id === pending.id ? saved : favorite)) });
     } catch (error) {
-      if (get().workspace !== workspace) return;
-      set((state) => ({ favorites: state.favorites.filter((favorite) => favorite.id !== pending.id) }));
+      if (this.workspace !== workspace) return;
+      this.set({ favorites: this.favorites.filter((favorite) => favorite.id !== pending.id) });
       toast.error("Couldn't add to favorites", error instanceof Error ? error.message : undefined);
     }
-  },
+  }
 
-  remove: async (path) => {
-    const { workspace, favorites } = get();
+  async remove(path: string) {
+    const { workspace, favorites } = this;
     const target = favorites.find((favorite) => favorite.path === path);
     if (!target) return;
-    set({ favorites: favorites.filter((favorite) => favorite.path !== path) });
+    this.set({ favorites: favorites.filter((favorite) => favorite.path !== path) });
     try {
       if (target.id > 0) await apiRequest(`/api/favorites/${target.id}`, { method: 'DELETE' });
     } catch (error) {
-      if (get().workspace !== workspace) return;
-      set((state) => ({ favorites: [...state.favorites, target].sort((a, b) => a.position - b.position) }));
+      if (this.workspace !== workspace) return;
+      this.set({ favorites: [...this.favorites, target].sort((a, b) => a.position - b.position) });
       toast.error("Couldn't remove from favorites", error instanceof Error ? error.message : undefined);
     }
-  },
-}));
+  }
+
+  private set(patch: Partial<FavoritesStore>) {
+    Object.assign(this, patch);
+  }
+}
+
+export const favoritesStore = new FavoritesStore();
+
+export const useFavorites = <T,>(select: (store: FavoritesStore) => T): T => useStore(favoritesStore, select);
