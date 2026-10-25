@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
 import { ApiError } from '@/lib/api';
 import { fetchDeletedItems, TRASH_RETENTION_DAYS, type DeletedItem } from '@/lib/trash';
 import { DataState } from '@/ui/DataState';
@@ -21,6 +23,27 @@ const COLUMNS: BuyerlyDataListColumn[] = [
   { id: 'purge', label: 'Removed in', width: '104px', align: 'right' },
   { id: 'restore', label: '', width: '88px', align: 'right' },
 ];
+
+const styles = stylex.create({
+  cell: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 12,
+    color: colors['--text-secondary'],
+  },
+  number: {
+    fontVariantNumeric: 'tabular-nums',
+  },
+  purge: {
+    textAlign: 'right',
+    color: colors['--text-tertiary'],
+  },
+  restore: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+  },
+});
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -134,22 +157,22 @@ export const RecentlyDeletedView: React.FC<{ onCountChange?: (count: number | nu
           tabIndex={0}
         >
           <BuyerlyDataPrimaryCell title={item.name} dimmed hint={item.name} />
-          <span className="truncate text-[12px] text-[var(--text-secondary)]">
+          <span {...stylex.props(styles.cell)}>
             {item.kind === 'rule' ? 'Rule' : 'Label'}
           </span>
-          <span className="truncate text-[12px] tabular-nums text-[var(--text-secondary)]">
+          <span {...stylex.props(styles.cell, styles.number)}>
             {shortDate(item.deleted_at)}
           </span>
-          <span className="truncate text-[12px] text-[var(--text-secondary)]">
+          <span {...stylex.props(styles.cell)}>
             {item.deleted_by || '—'}
           </span>
           <span
-            className="truncate text-right text-[12px] tabular-nums text-[var(--text-tertiary)]"
+            {...stylex.props(styles.cell, styles.number, styles.purge)}
             title={`Permanently deleted on ${shortDate(item.purge_at)}`}
           >
             {daysLeft(item.purge_at)}
           </span>
-          <span className="flex justify-end">
+          <span {...stylex.props(styles.restore)}>
             <Button
               size="compact"
               disabled={restoringId !== null}

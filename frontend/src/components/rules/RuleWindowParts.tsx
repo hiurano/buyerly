@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
 import { apiRequest } from '@/lib/api';
 import type { AnalyticsHierarchyResponse } from '@/lib/types';
 import {
@@ -8,7 +10,6 @@ import {
   type RuleOperator,
   type RuleScope,
 } from '@/lib/rules';
-import { TOUCH_HEIGHT_CLASS as TOUCH_HEIGHT } from '@/lib/useMediaQuery';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,9 +26,339 @@ import {
   type RunOnAccount,
 } from './ruleDraft';
 
+/** On a touch screen a control a finger taps is at least 40px tall. */
+const TOUCH = '@media (hover: none) and (pointer: coarse)';
+
+const truncate = {
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+} as const;
+
+const colorTransition = {
+  transitionProperty: 'color, background-color, border-color, text-decoration-color, fill, stroke',
+  transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+  transitionDuration: '150ms',
+} as const;
+
+const styles = stylex.create({
+  chip: {
+    ...colorTransition,
+    display: 'inline-flex',
+    height: {
+      default: 24,
+      [TOUCH]: 40,
+    },
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    backgroundColor: {
+      default: 'transparent',
+      ':hover': colors['--item-hover-bg'],
+      ':is([aria-expanded="true"])': colors['--item-hover-bg'],
+    },
+    paddingLeft: 8,
+    paddingRight: 8,
+    fontSize: 12,
+    fontWeight: 500,
+    color: {
+      default: colors['--text-secondary'],
+      ':hover': colors['--text-primary'],
+    },
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    cursor: 'pointer',
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+  },
+  chipDashed: {
+    borderStyle: 'dashed',
+  },
+  popover: {
+    position: 'absolute',
+    zIndex: 30,
+    display: 'flex',
+    flexDirection: 'column',
+    top: 'calc(100% + 6px)',
+    backgroundColor: colors['--card-bg'],
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    borderRadius: 12,
+    boxShadow: colors['--dropdown-shadow'],
+    animationName: 'buyerlyPopoverScale',
+    animationDuration: '120ms',
+    animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+  },
+  search: {
+    display: 'flex',
+    height: 40,
+    flexShrink: 0,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+    paddingLeft: 12,
+    paddingRight: 12,
+  },
+  searchInput: {
+    height: 32,
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    fontSize: 13,
+    color: colors['--text-primary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    '::placeholder': {
+      color: colors['--text-tertiary'],
+    },
+  },
+  option: {
+    position: 'relative',
+    marginLeft: 6,
+    marginRight: 6,
+    display: 'flex',
+    height: {
+      default: 32,
+      [TOUCH]: 40,
+    },
+    cursor: 'pointer',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 8,
+    paddingLeft: 8,
+    paddingRight: 8,
+    fontSize: 13,
+    color: colors['--text-primary'],
+  },
+  optionActive: {
+    backgroundColor: colors['--item-hover-bg'],
+  },
+  listbox: {
+    overflowY: 'auto',
+    paddingTop: 4,
+    paddingBottom: 4,
+  },
+  metricList: {
+    maxHeight: 300,
+  },
+  accountList: {
+    maxHeight: 320,
+  },
+  sectionLabel: {
+    paddingTop: 6,
+    paddingRight: 14,
+    paddingBottom: 2,
+    paddingLeft: 14,
+    fontSize: 11,
+    fontWeight: 500,
+    color: colors['--text-tertiary'],
+  },
+  optionLabel: {
+    ...truncate,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+  },
+  empty: {
+    paddingTop: 12,
+    paddingRight: 14,
+    paddingBottom: 12,
+    paddingLeft: 14,
+    textAlign: 'center',
+    fontSize: 12,
+    color: colors['--text-muted'],
+  },
+  checkMark: {
+    flexShrink: 0,
+    color: colors['--text-secondary'],
+  },
+  condition: {
+    position: 'relative',
+  },
+  conditionBox: {
+    display: 'inline-flex',
+    height: {
+      default: 28,
+      [TOUCH]: 40,
+    },
+    alignItems: 'stretch',
+    overflow: 'hidden',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    color: colors['--text-primary'],
+  },
+  conditionBoxInvalid: {
+    borderColor: colors['--rules-action-stop-text'],
+  },
+  segment: {
+    ...colorTransition,
+    display: 'inline-flex',
+    height: {
+      default: '100%',
+      [TOUCH]: 40,
+    },
+    alignItems: 'center',
+    paddingLeft: 8,
+    paddingRight: 8,
+    fontSize: 12,
+    fontWeight: 500,
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+      ':focus-visible': colors['--item-hover-bg'],
+    },
+  },
+  operator: {
+    minWidth: 28,
+    justifyContent: 'center',
+    color: colors['--text-secondary'],
+  },
+  valueSegment: {
+    cursor: 'text',
+    gap: 4,
+    backgroundColor: {
+      default: null,
+      ':hover': 'transparent',
+      ':focus-visible': colors['--item-hover-bg'],
+    },
+  },
+  remove: {
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+  },
+  divider: {
+    width: 1,
+    alignSelf: 'stretch',
+    backgroundColor: colors['--color-border-secondary'],
+  },
+  operatorSymbol: {
+    width: 16,
+    textAlign: 'center',
+  },
+  secondary: {
+    color: colors['--text-secondary'],
+  },
+  unit: {
+    fontSize: 11,
+    color: colors['--text-tertiary'],
+  },
+  valueInput: {
+    width: 56,
+    minWidth: 0,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    fontSize: 12,
+    fontWeight: 500,
+    fontVariantNumeric: 'tabular-nums',
+    color: colors['--text-primary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    '::placeholder': {
+      color: colors['--text-muted'],
+    },
+  },
+  accountRow: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  accountOption: {
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    marginRight: 0,
+  },
+  accountText: {
+    display: 'flex',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    flexDirection: 'column',
+    lineHeight: '16px',
+  },
+  accountName: truncate,
+  accountScope: {
+    ...truncate,
+    fontSize: 11,
+    color: colors['--text-tertiary'],
+  },
+  campaignsButton: {
+    marginRight: 6,
+    height: {
+      default: 28,
+      [TOUCH]: 40,
+    },
+    flexShrink: 0,
+    borderRadius: 6,
+    paddingLeft: 8,
+    paddingRight: 8,
+    fontSize: 12,
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+  },
+  campaigns: {
+    paddingBottom: 4,
+    paddingLeft: 24,
+  },
+  campaignsNote: {
+    paddingTop: 6,
+    paddingRight: 12,
+    paddingBottom: 6,
+    paddingLeft: 12,
+    fontSize: 12,
+    color: colors['--text-muted'],
+  },
+  box: {
+    display: 'flex',
+    height: 14,
+    width: 14,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 3,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--checkbox-border-rest'],
+    backgroundColor: 'transparent',
+    color: '#fff',
+  },
+  boxOn: {
+    borderColor: colors['--checkbox-checked-bg'],
+    backgroundColor: colors['--checkbox-checked-bg'],
+  },
+});
+
 /** A chip of the rule window: Linear's 24px property pill. */
-export const CHIP_CLASS =
-  `inline-flex h-[24px] ${TOUCH_HEIGHT} items-center gap-1.5 rounded-full border border-[var(--color-border-secondary)] bg-transparent px-2 text-[12px] font-medium text-[var(--text-secondary)] transition-colors outline-none cursor-pointer hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] aria-expanded:bg-[var(--item-hover-bg)]`;
+export const BuyerlyRuleChip = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  /** "+ Condition": a chip that adds rather than sets. */
+  dashed?: boolean;
+}>(({ dashed = false, type = 'button', ...props }, ref) => (
+  <button ref={ref} type={type} {...props} {...stylex.props(styles.chip, dashed && styles.chipDashed)} />
+));
+BuyerlyRuleChip.displayName = 'BuyerlyRuleChip';
 
 const CHECK_PATH =
   'M3.46975 5.70757L1.88358 4.1225C1.65832 3.8974 1.29423 3.8974 1.06897 4.1225C0.843675 4.34765 0.843675 4.7116 1.06897 4.93674L3.0648 6.93117C3.29006 7.15628 3.65414 7.15628 3.8794 6.93117L8.93103 1.88306C9.15633 1.65792 9.15633 1.29397 8.93103 1.06883C8.70578 0.843736 8.34172 0.843724 8.11646 1.06879L3.46975 5.70757Z';
@@ -61,16 +392,10 @@ const InlinePopover: React.FC<React.PropsWithChildren<{
       aria-label={label}
       data-rule-window-popover=""
       onClick={(event) => event.stopPropagation()}
-      className="absolute z-[30] flex flex-col"
+      {...stylex.props(styles.popover)}
       style={{
-        top: 'calc(100% + 6px)',
         [align]: 0,
         width: `min(${width}px, calc(100vw - 24px))`,
-        backgroundColor: 'var(--card-bg)',
-        border: '1px solid var(--color-border-secondary)',
-        borderRadius: 12,
-        boxShadow: 'var(--dropdown-shadow)',
-        animation: 'buyerlyPopoverScale 120ms cubic-bezier(0.16, 1, 0.3, 1)',
       }}
     >
       {children}
@@ -86,7 +411,7 @@ const SearchField = React.forwardRef<HTMLInputElement, {
   activeId?: string;
   listId: string;
 }>(({ value, placeholder, onChange, onKeyDown, activeId, listId }, ref) => (
-  <div className="flex h-[40px] shrink-0 items-center border-b border-[var(--color-border-primary)] px-3">
+  <div {...stylex.props(styles.search)}>
     <input
       ref={ref}
       type="text"
@@ -98,14 +423,11 @@ const SearchField = React.forwardRef<HTMLInputElement, {
       spellCheck={false}
       onChange={(event) => onChange(event.target.value)}
       onKeyDown={onKeyDown}
-      className="h-8 min-w-0 flex-1 border-0 bg-transparent text-[13px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
+      {...stylex.props(styles.searchInput)}
     />
   </div>
 ));
 SearchField.displayName = 'SearchField';
-
-const optionClass = (active: boolean) =>
-  `relative mx-1.5 flex h-8 ${TOUCH_HEIGHT} cursor-pointer items-center gap-2 rounded-[8px] px-2 text-[13px] text-[var(--text-primary)] ${active ? 'bg-[var(--item-hover-bg)]' : ''}`;
 
 /** Metric: search and sections — money, counts, rates (#387). */
 export const MetricMenu: React.FC<{
@@ -155,10 +477,10 @@ export const MetricMenu: React.FC<{
           }
         }}
       />
-      <div id="rule-metric-options" role="listbox" aria-label="Metrics" className="max-h-[300px] overflow-y-auto py-1">
+      <div id="rule-metric-options" role="listbox" aria-label="Metrics" {...stylex.props(styles.listbox, styles.metricList)}>
         {sections.map((section) => (
           <div key={section.label} role="group" aria-label={section.label}>
-            <div className="px-3.5 pb-0.5 pt-1.5 text-[11px] font-medium text-[var(--text-tertiary)]">{section.label}</div>
+            <div {...stylex.props(styles.sectionLabel)}>{section.label}</div>
             {section.metrics.map((metric) => {
               const index = flat.indexOf(metric);
               return (
@@ -170,23 +492,23 @@ export const MetricMenu: React.FC<{
                   onMouseEnter={() => setActive(index)}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => pick(metric)}
-                  className={optionClass(index === active)}
+                  {...stylex.props(styles.option, index === active && styles.optionActive)}
                 >
-                  <span className="flex-1 truncate">{RULE_METRIC_LABELS[metric]}</span>
+                  <span {...stylex.props(styles.optionLabel)}>{RULE_METRIC_LABELS[metric]}</span>
                   {metric === value && <CheckMark />}
                 </div>
               );
             })}
           </div>
         ))}
-        {flat.length === 0 && <div className="px-3.5 py-3 text-center text-[12px] text-[var(--text-muted)]">No metrics found</div>}
+        {flat.length === 0 && <div {...stylex.props(styles.empty)}>No metrics found</div>}
       </div>
     </InlinePopover>
   );
 };
 
 const CheckMark = () => (
-  <svg width="12" height="10" viewBox="0 0 10 8" fill="currentColor" aria-hidden="true" className="shrink-0 text-[var(--text-secondary)]">
+  <svg width="12" height="10" viewBox="0 0 10 8" fill="currentColor" aria-hidden="true" {...stylex.props(styles.checkMark)}>
     <path d={CHECK_PATH} />
   </svg>
 );
@@ -210,13 +532,12 @@ export const ConditionChip: React.FC<{
   const problem = showProblem ? conditionProblem(condition) : null;
   const unit = metricUnit(condition.metric);
   const popoverLabel = `Metric for condition ${index + 1}`;
-  const segment = `inline-flex h-full ${TOUCH_HEIGHT} items-center px-2 text-[12px] font-medium outline-none transition-colors hover:bg-[var(--item-hover-bg)] focus-visible:bg-[var(--item-hover-bg)]`;
   return (
-    <div className="relative" data-condition-chip={index}>
+    <div {...stylex.props(styles.condition)} data-condition-chip={index}>
       <div
         title={problem ?? undefined}
         data-invalid={problem ? 'true' : undefined}
-        className={`inline-flex h-[28px] ${TOUCH_HEIGHT} items-stretch overflow-hidden rounded-[8px] border text-[var(--text-primary)] ${problem ? 'border-[var(--rules-action-stop-text)]' : 'border-[var(--color-border-secondary)]'}`}
+        {...stylex.props(styles.conditionBox, Boolean(problem) && styles.conditionBoxInvalid)}
       >
         <button
           type="button"
@@ -224,17 +545,17 @@ export const ConditionChip: React.FC<{
           aria-expanded={metricOpen}
           data-popover-trigger={popoverLabel}
           onClick={() => setMetricOpen((open) => !open)}
-          className={segment}
+          {...stylex.props(styles.segment)}
         >
           {label}
         </button>
-        <span aria-hidden="true" className="w-px self-stretch bg-[var(--color-border-secondary)]" />
+        <span aria-hidden="true" {...stylex.props(styles.divider)} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
               aria-label={`Operator: ${RULE_OPERATORS.find((option) => option.value === condition.operator)?.words}`}
-              className={`${segment} min-w-[28px] justify-center text-[var(--text-secondary)]`}
+              {...stylex.props(styles.segment, styles.operator)}
             >
               {operatorSymbol(condition.operator)}
             </button>
@@ -242,15 +563,15 @@ export const ConditionChip: React.FC<{
           <DropdownMenuContent align="start" sideOffset={4}>
             {RULE_OPERATORS.map((option) => (
               <DropdownMenuItem key={option.value} onClick={() => onChange({ operator: option.value as RuleOperator })}>
-                <span className="w-4 text-center">{option.symbol}</span>
-                <span className="text-[var(--text-secondary)]">{option.words}</span>
+                <span {...stylex.props(styles.operatorSymbol)}>{option.symbol}</span>
+                <span {...stylex.props(styles.secondary)}>{option.words}</span>
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <span aria-hidden="true" className="w-px self-stretch bg-[var(--color-border-secondary)]" />
-        <label className={`${segment} cursor-text gap-1 hover:bg-transparent`}>
-          {unit === 'money' && currency && <span className="text-[11px] text-[var(--text-tertiary)]">{currency}</span>}
+        <span aria-hidden="true" {...stylex.props(styles.divider)} />
+        <label {...stylex.props(styles.segment, styles.valueSegment)}>
+          {unit === 'money' && currency && <span {...stylex.props(styles.unit)}>{currency}</span>}
           <input
             type="text"
             inputMode="decimal"
@@ -259,19 +580,19 @@ export const ConditionChip: React.FC<{
             aria-label={`${label} value`}
             aria-invalid={problem ? true : undefined}
             onChange={(event) => onChange({ value: event.target.value.replace(',', '.') })}
-            className="w-[56px] min-w-0 border-0 bg-transparent text-[12px] font-medium tabular-nums text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
+            {...stylex.props(styles.valueInput)}
             style={{ width: `${Math.max(3, condition.value.length + 1)}ch` }}
           />
-          {unit === 'percent' && <span className="text-[11px] text-[var(--text-tertiary)]">%</span>}
+          {unit === 'percent' && <span {...stylex.props(styles.unit)}>%</span>}
         </label>
         {removable && (
           <>
-            <span aria-hidden="true" className="w-px self-stretch bg-[var(--color-border-secondary)]" />
+            <span aria-hidden="true" {...stylex.props(styles.divider)} />
             <button
               type="button"
               aria-label={`Remove condition ${index + 1}`}
               onClick={onRemove}
-              className={`${segment} px-1.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]`}
+              {...stylex.props(styles.segment, styles.remove)}
             >
               <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                 <path d="M2.97 2.97a.75.75 0 0 1 1.06 0L8 6.94l3.97-3.97a.75.75 0 1 1 1.06 1.06L9.06 8l3.97 3.97a.75.75 0 1 1-1.06 1.06L8 9.06l-3.97 3.97a.75.75 0 0 1-1.06-1.06L6.94 8 2.97 4.03a.75.75 0 0 1 0-1.06Z" />
@@ -390,13 +711,13 @@ export const RunOnPicker: React.FC<{
           }
         }}
       />
-      <div id="rule-run-on-options" role="listbox" aria-label="Ad accounts" aria-multiselectable="true" className="max-h-[320px] overflow-y-auto py-1">
+      <div id="rule-run-on-options" role="listbox" aria-label="Ad accounts" aria-multiselectable="true" {...stylex.props(styles.listbox, styles.accountList)}>
         {listed.map((account, index) => {
           const scope = runOn[account.account_id];
           const list = campaigns[account.account_id];
           return (
             <div key={account.account_id}>
-              <div className="flex items-center">
+              <div {...stylex.props(styles.accountRow)}>
                 <div
                   id={`rule-run-on-${account.account_id}`}
                   role="option"
@@ -404,13 +725,13 @@ export const RunOnPicker: React.FC<{
                   onMouseEnter={() => setActive(index)}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => toggle(account.account_id)}
-                  className={`${optionClass(index === active)} min-w-0 flex-1 !mr-0`}
+                  {...stylex.props(styles.option, index === active && styles.optionActive, styles.accountOption)}
                 >
                   <Box on={Boolean(scope)} />
-                  <span className="flex min-w-0 flex-1 flex-col leading-4">
-                    <span className="truncate">{account.name}</span>
+                  <span {...stylex.props(styles.accountText)}>
+                    <span {...stylex.props(styles.accountName)}>{account.name}</span>
                     {scope && (
-                      <span className="truncate text-[11px] text-[var(--text-tertiary)]">
+                      <span {...stylex.props(styles.accountScope)}>
                         {[scopeText(scope), previewText(account.account_id)].filter(Boolean).join(' · ')}
                       </span>
                     )}
@@ -422,18 +743,18 @@ export const RunOnPicker: React.FC<{
                     aria-expanded={openAccount === account.account_id}
                     aria-label={`Choose campaigns in ${account.name}`}
                     onClick={() => loadCampaigns(account.account_id)}
-                    className={`mr-1.5 h-7 ${TOUCH_HEIGHT} shrink-0 rounded-[6px] px-2 text-[12px] text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]`}
+                    {...stylex.props(styles.campaignsButton)}
                   >
                     Campaigns…
                   </button>
                 )}
               </div>
               {openAccount === account.account_id && (
-                <div role="group" aria-label={`Campaigns in ${account.name}`} className="pb-1 pl-6">
-                  {list === 'loading' && <div className="px-3 py-1.5 text-[12px] text-[var(--text-muted)]">Loading campaigns…</div>}
-                  {list === 'error' && <div className="px-3 py-1.5 text-[12px] text-[var(--text-muted)]">Couldn't load campaigns.</div>}
+                <div role="group" aria-label={`Campaigns in ${account.name}`} {...stylex.props(styles.campaigns)}>
+                  {list === 'loading' && <div {...stylex.props(styles.campaignsNote)}>Loading campaigns…</div>}
+                  {list === 'error' && <div {...stylex.props(styles.campaignsNote)}>Couldn't load campaigns.</div>}
                   {Array.isArray(list) && list.length === 0 && (
-                    <div className="px-3 py-1.5 text-[12px] text-[var(--text-muted)]">No campaigns in this ad account.</div>
+                    <div {...stylex.props(styles.campaignsNote)}>No campaigns in this ad account.</div>
                   )}
                   {Array.isArray(list) && list.map((campaign) => {
                     const on = scope?.level === 'campaign' && scope.ids.includes(campaign.id);
@@ -444,10 +765,10 @@ export const RunOnPicker: React.FC<{
                         aria-selected={on}
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => toggleCampaign(account.account_id, campaign.id)}
-                        className={optionClass(false)}
+                        {...stylex.props(styles.option)}
                       >
                         <Box on={on} />
-                        <span className="truncate">{campaign.name}</span>
+                        <span {...stylex.props(styles.accountName)}>{campaign.name}</span>
                       </div>
                     );
                   })}
@@ -457,7 +778,7 @@ export const RunOnPicker: React.FC<{
           );
         })}
         {listed.length === 0 && (
-          <div className="px-3.5 py-3 text-center text-[12px] text-[var(--text-muted)]">
+          <div {...stylex.props(styles.empty)}>
             {accounts.length === 0 ? 'No ad accounts in this workspace yet' : 'No ad accounts found'}
           </div>
         )}
@@ -469,12 +790,7 @@ export const RunOnPicker: React.FC<{
 const Box: React.FC<{ on: boolean }> = ({ on }) => (
   <span
     aria-hidden="true"
-    className="flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-[3px] border"
-    style={{
-      borderColor: on ? 'var(--checkbox-checked-bg)' : 'var(--checkbox-border-rest)',
-      backgroundColor: on ? 'var(--checkbox-checked-bg)' : 'transparent',
-      color: '#fff',
-    }}
+    {...stylex.props(styles.box, on && styles.boxOn)}
   >
     {on && <svg width="10" height="9" viewBox="0 0 10 8" fill="currentColor"><path d={CHECK_PATH} /></svg>}
   </span>

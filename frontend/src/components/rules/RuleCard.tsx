@@ -1,4 +1,7 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
+import { menuItemMarker } from '@/ui/markers.stylex';
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -27,6 +30,173 @@ const ACTION_DOT_COLORS: Record<RuleActionTone, string> = {
   positive: 'var(--rules-action-positive-text)',
   default: 'var(--rules-action-default-text)',
 };
+
+const truncate = {
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+} as const;
+
+/** Tailwind's font-sans, as tailwind.config.js sets it. */
+const SANS = '"Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+const styles = stylex.create({
+  card: {
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    width: '100%',
+    backgroundColor: colors['--card-bg'],
+    borderRadius: 8,
+    boxShadow: `0 0 0 0.5px ${colors['--board-card-ring']}, ${colors['--canvas-shadow']}`,
+    paddingTop: 8,
+    paddingRight: 8,
+    paddingBottom: 8,
+    paddingLeft: 8,
+    cursor: 'pointer',
+    transitionProperty: 'background-color',
+    transitionDuration: '0.1s',
+    transitionTimingFunction: 'ease',
+    userSelect: 'none',
+    textAlign: 'left',
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+  },
+  cardSelected: {
+    backgroundColor: colors['--item-active-bg'],
+    boxShadow: `0 0 0 1px ${colors['--color-border-secondary']}, ${colors['--canvas-shadow']}`,
+  },
+  topRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  identifier: {
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--text-tertiary'],
+    letterSpacing: '-0.24px',
+  },
+  titleRow: {
+    marginTop: 4,
+  },
+  title: {
+    display: 'block',
+    overflow: 'hidden',
+    WebkitBoxOrient: 'vertical',
+    WebkitLineClamp: 2,
+    fontSize: 13,
+    fontWeight: 500,
+    lineHeight: '16px',
+    color: colors['--text-primary'],
+  },
+  badges: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 10,
+    overflow: 'hidden',
+  },
+  badge: {
+    height: 24,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--rules-property-border'],
+    paddingTop: 0,
+    paddingRight: 8,
+    paddingBottom: 0,
+    paddingLeft: 8,
+    backgroundColor: colors['--rules-property-bg'],
+    display: 'inline-flex',
+    alignItems: 'center',
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--rules-property-text'],
+  },
+  condition: {
+    ...truncate,
+    maxWidth: 180,
+  },
+  action: {
+    gap: 5,
+    flexShrink: 0,
+  },
+  actionDot: {
+    width: 6,
+    height: 6,
+    borderRadius: '50%',
+  },
+  labels: {
+    marginTop: 6,
+  },
+  meta: {
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--text-tertiary'],
+  },
+  menuLine: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  menuLabel: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 8,
+  },
+  menuIcon: {
+    color: colors['--text-tertiary'],
+  },
+  menuHint: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    color: colors['--text-tertiary'],
+  },
+  kbd: {
+    fontSize: 12,
+    fontWeight: 500,
+    fontFamily: SANS,
+  },
+  arrow: {
+    fontSize: 10,
+  },
+  empty: {
+    paddingTop: 8,
+    paddingRight: 14,
+    paddingBottom: 8,
+    paddingLeft: 14,
+    fontSize: 12,
+    color: colors['--text-muted'],
+  },
+  labelDot: {
+    height: 9,
+    width: 9,
+    flexShrink: 0,
+    borderRadius: 9999,
+  },
+  labelName: truncate,
+  check: {
+    flexShrink: 0,
+    color: colors['--text-secondary'],
+  },
+  deleteIcon: {
+    color: {
+      default: '#9d9d9e',
+      [stylex.when.ancestor(':hover', menuItemMarker)]: '#fff',
+      [stylex.when.ancestor('[data-highlighted]', menuItemMarker)]: '#fff',
+    },
+  },
+  deleteKeys: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    color: '#9d9d9e',
+  },
+});
 
 interface RuleCardProps {
   rule: RuleItem;
@@ -61,110 +231,43 @@ export const RuleCard: React.FC<RuleCardProps> = ({
             }
           }}
           data-is-active={isSelected ? 'true' : 'false'}
-          style={{
-            width: '100%',
-            backgroundColor: isSelected ? 'var(--item-active-bg)' : 'var(--card-bg)',
-            borderRadius: '8px',
-            boxShadow: isSelected
-              ? '0 0 0 1px var(--color-border-secondary), var(--canvas-shadow)'
-              : '0 0 0 0.5px var(--board-card-ring), var(--canvas-shadow)',
-            padding: '8px',
-            cursor: 'pointer',
-            transition: 'background-color 0.1s ease',
-          }}
-          className="flex flex-col justify-center select-none text-left outline-none hover:bg-[var(--item-hover-bg)] group"
+          {...stylex.props(styles.card, isSelected && styles.cardSelected)}
         >
           {/* 1. Top Row: Issue ID */}
-          <div className="flex items-center justify-between">
-            <span
-              style={{
-                fontSize: '12px',
-                fontWeight: 450,
-                color: 'var(--text-tertiary)',
-                letterSpacing: '-0.24px',
-              }}
-            >
+          <div {...stylex.props(styles.topRow)}>
+            <span {...stylex.props(styles.identifier)}>
               {rule.identifier}
             </span>
           </div>
 
           {/* 2. Title Row (Clean Title without icon) */}
-          <div className="mt-1">
-            <span
-              style={{
-                fontSize: '13px',
-                fontWeight: 500,
-                lineHeight: '16px',
-                color: 'var(--text-primary)',
-              }}
-              className="line-clamp-2 block"
-            >
+          <div {...stylex.props(styles.titleRow)}>
+            <span {...stylex.props(styles.title)}>
               {rule.name}
             </span>
           </div>
 
           {/* 3. Badge / Tag Pills Row (24px height, 48px/pill radius, 1px #2f3132 border) */}
-          <div className="flex items-center gap-1 mt-2.5 overflow-hidden">
+          <div {...stylex.props(styles.badges)}>
             {/* Condition Badge */}
-            <div
-              style={{
-                height: '24px',
-                borderRadius: '9999px',
-                border: '1px solid var(--rules-property-border)',
-                padding: '0 8px',
-                backgroundColor: 'var(--rules-property-bg)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                fontSize: '12px',
-                fontWeight: 450,
-                color: 'var(--rules-property-text)',
-              }}
-              className="truncate max-w-[180px]"
-              title={rule.condition}
-            >
+            <div {...stylex.props(styles.badge, styles.condition)} title={rule.condition}>
               {rule.condition}
             </div>
 
             {/* Action Badge */}
-            <div
-              style={{
-                height: '24px',
-                borderRadius: '9999px',
-                border: '1px solid var(--rules-property-border)',
-                padding: '0 8px',
-                backgroundColor: 'var(--rules-property-bg)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                fontSize: '12px',
-                fontWeight: 450,
-                color: 'var(--rules-property-text)',
-              }}
-              className="shrink-0"
-            >
+            <div {...stylex.props(styles.badge, styles.action)}>
               <div
-                style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  backgroundColor: ACTION_DOT_COLORS[ruleActionTone(rule.actionKind)],
-                }}
+                {...stylex.props(styles.actionDot)}
+                style={{ backgroundColor: ACTION_DOT_COLORS[ruleActionTone(rule.actionKind)] }}
               />
               <span>{rule.action}</span>
             </div>
           </div>
 
-          {cardLabels.length > 0 && <RuleLabelPills labels={cardLabels} className="mt-1.5" />}
+          {cardLabels.length > 0 && <RuleLabelPills labels={cardLabels} xstyle={styles.labels} />}
 
           {/* 4. Bottom Metadata Row (Last check / Last action) */}
-          <div
-            style={{
-              marginTop: '6px',
-              fontSize: '12px',
-              fontWeight: 450,
-              color: 'var(--text-tertiary)',
-            }}
-          >
+          <div {...stylex.props(styles.meta)}>
             Last check {rule.lastCheck} · Last action {rule.lastRun}
           </div>
         </div>
@@ -173,7 +276,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({
       {/* Linear Card Context Menu Popup */}
       <ContextMenuContent>
         <ContextMenuItem onClick={() => openEditRuleModal(rule.id)}>
-          <div className="flex items-center gap-2">
+          <div {...stylex.props(styles.menuLine)}>
             <span>Edit rule</span>
           </div>
         </ContextMenuItem>
@@ -183,19 +286,19 @@ export const RuleCard: React.FC<RuleCardProps> = ({
         {/* Labels, as Linear's card menu: each one on or off, the menu stays open. */}
         <ContextMenuSub>
           <ContextMenuSubTrigger>
-            <div className="flex items-center gap-2">
-              <BuyerlyLabelIcon size={16} className="text-[var(--text-tertiary)]" />
+            <div {...stylex.props(styles.menuLine)}>
+              <BuyerlyLabelIcon size={16} {...stylex.props(styles.menuIcon)} />
               <span>Labels</span>
             </div>
-            <div className="flex items-center gap-1.5 text-[var(--text-tertiary)]">
-              <kbd className="text-[12px] font-[500] font-sans">L</kbd>
-              <span className="text-[10px]">▶</span>
+            <div {...stylex.props(styles.menuHint)}>
+              <kbd {...stylex.props(styles.kbd)}>L</kbd>
+              <span {...stylex.props(styles.arrow)}>▶</span>
             </div>
           </ContextMenuSubTrigger>
 
           <ContextMenuSubContent>
             {ruleLabels.length === 0 ? (
-              <div className="px-3.5 py-2 text-[12px] text-[var(--text-muted)]">
+              <div {...stylex.props(styles.empty)}>
                 No labels yet. Create one in Settings → Rules → Labels.
               </div>
             ) : (
@@ -211,11 +314,11 @@ export const RuleCard: React.FC<RuleCardProps> = ({
                       void setRuleLabels(rule.id, on ? rule.labelIds.filter((id) => id !== label.id) : [...rule.labelIds, label.id]);
                     }}
                   >
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="h-[9px] w-[9px] shrink-0 rounded-full" style={{ backgroundColor: label.color }} />
-                      <span className="truncate">{label.name}</span>
+                    <div {...stylex.props(styles.menuLabel)}>
+                      <span {...stylex.props(styles.labelDot)} style={{ backgroundColor: label.color }} />
+                      <span {...stylex.props(styles.labelName)}>{label.name}</span>
                     </div>
-                    {on && <BuyerlyCheckIcon size={16} className="shrink-0 text-[var(--text-secondary)]" />}
+                    {on && <BuyerlyCheckIcon size={16} {...stylex.props(styles.check)} />}
                   </ContextMenuItem>
                 );
               })
@@ -227,7 +330,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({
 
         {/* Where the rule stands on each campaign it checks (#322). */}
         <ContextMenuItem onClick={() => dialogStore.openRuleStates(rule.id)}>
-          <div className="flex items-center gap-2">
+          <div {...stylex.props(styles.menuLine)}>
             <span>{ruleStatesTitle(rule)}</span>
           </div>
         </ContextMenuItem>
@@ -237,15 +340,14 @@ export const RuleCard: React.FC<RuleCardProps> = ({
         {/* Delete Item */}
         <ContextMenuItem
           onClick={() => requestDeletion('rule', [rule.id])}
-          className="text-[#e4e7e8] hover:text-white"
         >
-          <div className="flex items-center gap-2">
-            <BuyerlyTrashIcon size={16} className="text-[#9d9d9e] group-hover:text-white group-data-[highlighted]:text-white" />
+          <div {...stylex.props(styles.menuLine)}>
+            <BuyerlyTrashIcon size={16} {...stylex.props(styles.deleteIcon)} />
             <span>Delete</span>
           </div>
-          <div className="flex items-center gap-1 text-[#9d9d9e]">
-            <kbd className="text-[12px] font-[500] font-sans">Ctrl</kbd>
-            <kbd className="text-[12px] font-[500] font-sans">Delete</kbd>
+          <div {...stylex.props(styles.deleteKeys)}>
+            <kbd {...stylex.props(styles.kbd)}>Ctrl</kbd>
+            <kbd {...stylex.props(styles.kbd)}>Delete</kbd>
           </div>
         </ContextMenuItem>
       </ContextMenuContent>
