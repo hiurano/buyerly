@@ -4,7 +4,8 @@ Every write to a synced model leaves one row in `sync_actions`: the model, its
 id, the action (insert / update / archive / delete), the fields it changed with
 their new values, and the sync groups that may see it. A client that holds sync
 id N catches up with the rows after N in its member's groups (`changes_since`);
-#505 bootstraps from scratch and #506 pushes the same rows over a WebSocket.
+#505 bootstraps from scratch and #506 pushes the same rows over a WebSocket,
+woken by the NOTIFY each committing transaction sends on `NOTIFY_CHANNEL`.
 
 The rows are written by PostgreSQL triggers on the synced tables, so ORM
 writes, bulk `update()` / `delete()` statements and foreign-key cascades are
@@ -45,6 +46,8 @@ SYNC_LOG_RETENTION_DAYS = 30
 STATE_KEY = "sync_log"
 # pg_advisory_xact_lock key that orders sync ids by commit; any constant unused elsewhere.
 COMMIT_ORDER_LOCK = 504_000_504
+# NOTIFY channel a committed write wakes the API's WebSocket hubs on (#506), one notification per transaction.
+NOTIFY_CHANNEL = "sync_actions"
 
 ACTIONS = ("insert", "update", "archive", "delete")
 
@@ -220,10 +223,12 @@ LANGUAGE plpgsql AS $$
 BEGIN
     PERFORM pg_advisory_xact_lock(%(lock)d);
     UPDATE sync_actions SET sync_id = nextval('sync_actions_sync_id_seq') WHERE id = NEW.id;
+    -- Delivered at commit, after the rows are visible; equal payloads in one transaction fold into one.
+    PERFORM pg_notify('%(channel)s', '');
     RETURN NULL;
 END
 $$
-""" % {"lock": COMMIT_ORDER_LOCK}
+""" % {"lock": COMMIT_ORDER_LOCK, "channel": NOTIFY_CHANNEL}
 
 
 def _array(values: tuple) -> str:

@@ -56,6 +56,11 @@ async def lifespan(app: FastAPI):
         yield
         webhook.cancel()
     finally:
+        # Open sync sockets end with the hub's LISTEN connection; clients reconnect and catch up.
+        hub = getattr(app.state, "sync_hub", None)
+        if hub is not None:
+            await hub.stop()
+            app.state.sync_hub = None
         watchdog.cancel()
         with suppress(asyncio.CancelledError):
             await watchdog
