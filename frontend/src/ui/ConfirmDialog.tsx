@@ -1,7 +1,9 @@
 import React, { useRef } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import * as stylex from '@stylexjs/stylex';
+import { colors, radii } from '@/styles/tokens.stylex';
 import { Button } from '@/ui/Button';
-import { TOUCH_HEIGHT_CLASS } from '@/lib/useMediaQuery';
+import { withClassName } from '@/ui/withClassName';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -17,6 +19,88 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
 }
+
+const styles = stylex.create({
+  overlay: {
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 500,
+    backgroundColor: 'rgb(0 0 0 / 0.5)',
+  },
+  frame: {
+    pointerEvents: 'none',
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 501,
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 16,
+    paddingRight: 16,
+    paddingBottom: 16,
+    paddingLeft: 16,
+  },
+  frameTop: {
+    alignItems: 'flex-start',
+    paddingTop: '27vh',
+  },
+  content: {
+    pointerEvents: 'auto',
+    width: '100%',
+    maxWidth: 480,
+    borderRadius: radii['--canvas-border-radius'],
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    backgroundColor: colors['--card-bg'],
+    paddingTop: 24,
+    paddingRight: 24,
+    paddingBottom: 24,
+    paddingLeft: 24,
+    textAlign: 'left',
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    boxShadow: colors['--dialog-elevation-shadow'],
+  },
+  title: {
+    margin: 0,
+    fontSize: 15,
+    fontWeight: 600,
+    color: colors['--text-primary'],
+  },
+  description: {
+    marginTop: 8,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+    fontSize: 13,
+    lineHeight: '20px',
+    color: colors['--text-secondary'],
+  },
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    borderWidth: 0,
+  },
+  actions: {
+    marginTop: 20,
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+});
 
 /**
  * Linear's confirmation: a small modal with the question, its consequence, and
@@ -39,32 +123,28 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   return (
     <Dialog.Root open={open} onOpenChange={(next) => { if (!next && !busy) onCancel(); }}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[500] bg-black/50 animate-fade-in" />
-        <div
-          className={`pointer-events-none fixed inset-0 z-[501] flex justify-center p-4 ${
-            placement === 'top' ? 'items-start pt-[27vh]' : 'items-center'
-          }`}
-        >
+        <Dialog.Overlay {...stylex.props(styles.overlay)} />
+        <div {...stylex.props(styles.frame, placement === 'top' && styles.frameTop)}>
           <Dialog.Content
             onOpenAutoFocus={(event) => {
               event.preventDefault();
               confirmRef.current?.focus();
             }}
-            className="ui-dialog pointer-events-auto w-full max-w-[480px] rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] p-6 text-left outline-none animate-scale-in [box-shadow:var(--dialog-elevation-shadow)]"
+            {...withClassName(stylex.props(styles.content), 'ui-dialog animate-scale-in')}
           >
-            <Dialog.Title className="m-0 text-[15px] font-semibold text-[var(--text-primary)]">
+            <Dialog.Title {...stylex.props(styles.title)}>
               {title}
             </Dialog.Title>
             {description ? (
-              <Dialog.Description className="m-0 mt-2 text-[13px] leading-[20px] text-[var(--text-secondary)]">
+              <Dialog.Description {...stylex.props(styles.description)}>
                 {description}
               </Dialog.Description>
             ) : (
-              <Dialog.Description className="sr-only">{title}</Dialog.Description>
+              <Dialog.Description {...stylex.props(styles.srOnly)}>{title}</Dialog.Description>
             )}
-            <div className="mt-5 flex justify-end gap-2">
-              <Button className={TOUCH_HEIGHT_CLASS} onClick={onCancel} disabled={busy}>Cancel</Button>
-              <Button ref={confirmRef} className={TOUCH_HEIGHT_CLASS} variant={tone} onClick={onConfirm} disabled={busy}>
+            <div {...stylex.props(styles.actions)}>
+              <Button touchHeight onClick={onCancel} disabled={busy}>Cancel</Button>
+              <Button ref={confirmRef} touchHeight variant={tone} onClick={onConfirm} disabled={busy}>
                 {confirmLabel}
               </Button>
             </div>

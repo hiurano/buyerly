@@ -1,4 +1,7 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
 
 export interface FormCheckboxProps {
   checked: boolean;
@@ -9,6 +12,55 @@ export interface FormCheckboxProps {
   disabled?: boolean;
   className?: string;
 }
+
+const styles = stylex.create({
+  root: {
+    display: 'flex',
+    cursor: 'pointer',
+    userSelect: 'none',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  disabled: {
+    cursor: 'not-allowed',
+    opacity: 0.5,
+  },
+  input: {
+    marginTop: 1,
+    height: 14,
+    width: 14,
+    flexShrink: 0,
+    cursor: 'pointer',
+    borderRadius: 4,
+    borderColor: colors['--color-border-secondary'],
+    backgroundColor: 'transparent',
+    accentColor: colors['--action-primary'],
+    outline: {
+      default: null,
+      ':focus-visible': '2px solid transparent',
+    },
+    outlineOffset: {
+      default: null,
+      ':focus-visible': 2,
+    },
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+  },
+  text: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  label: {
+    fontSize: 12,
+    color: colors['--text-secondary'],
+  },
+  hint: {
+    fontSize: 11,
+    color: colors['--text-tertiary'],
+  },
+});
 
 /**
  * Labelled checkbox for forms and dialogs.
@@ -26,21 +78,17 @@ export const FormCheckbox: React.FC<FormCheckboxProps> = ({
   disabled = false,
   className = '',
 }) => (
-  <label
-    className={`flex cursor-pointer select-none items-start gap-2 ${
-      disabled ? 'cursor-not-allowed opacity-50' : ''
-    } ${className}`}
-  >
+  <label {...withClassName(stylex.props(styles.root, disabled && styles.disabled), className)}>
     <input
       type="checkbox"
       checked={checked}
       disabled={disabled}
       onChange={(event) => onChange(event.target.checked)}
-      className="mt-[1px] h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-[var(--color-border-secondary)] bg-transparent accent-[var(--action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
+      {...stylex.props(styles.input)}
     />
-    <span className="flex flex-col">
-      <span className="text-[12px] text-[var(--text-secondary)]">{label}</span>
-      {hint && <span className="text-[11px] text-[var(--text-tertiary)]">{hint}</span>}
+    <span {...stylex.props(styles.text)}>
+      <span {...stylex.props(styles.label)}>{label}</span>
+      {hint && <span {...stylex.props(styles.hint)}>{hint}</span>}
     </span>
   </label>
 );

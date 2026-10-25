@@ -429,7 +429,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("--action-primary:", self.tokens)
         self.assertIn("--action-primary-hover:", self.tokens)
         self.assertIn("export const Button", self.button)
-        self.assertIn("disabled:cursor-not-allowed", self.button)
+        self.assertIn("':disabled': 'not-allowed'", self.button)
 
     def test_rules_surface_uses_workspace_api_without_production_fixtures(self):
         # The rules store is seeded by the API, never by shipped example rows.
@@ -777,7 +777,14 @@ class TestReactFrontendContract(unittest.TestCase):
     def test_header_create_button_is_shared_and_add_account_has_one_name(self):
         """Rules and Ads Manager share the "+ New rule" header button; adding an ad account has one name (#382)."""
         header_button = (ROOT / "frontend" / "src" / "ui" / "HeaderCreateButton.tsx").read_text()
-        for contract in ("rounded-full", "h-[28px]", "min-[1025px]:inline", "pointer:coarse)]:h-10"):
+        # Round and 28px, its label from 1025px, 40px under a finger (StyleX, #513).
+        for contract in (
+            "borderRadius: 9999",
+            "default: 28,\n      [TOUCH]: 40",
+            "'@media (min-width: 1025px)'",
+            "[WIDE]: 'inline'",
+            "'@media (hover: none) and (pointer: coarse)'",
+        ):
             self.assertIn(contract, header_button)
         self.assertIn('<HeaderCreateButton\n            label="New rule"', self.rules_view)
         # Campaigns has no header button: accounts are added on Ad accounts, or from the empty state.
@@ -1012,7 +1019,7 @@ class TestReactFrontendContract(unittest.TestCase):
 
         # One command menu control; record addresses open their rows.
         self.assertIn("COMMAND_MENU_CLASSES", menu)
-        self.assertIn("export const COMMAND_MENU_CLASSES", (src / "ui" / "SelectionCommandMenu.tsx").read_text())
+        self.assertIn("export const COMMAND_MENU_CLASSES", (src / "components" / "command" / "commandMenuClasses.ts").read_text())
         self.assertIn("[data-row-id=", reveal)
         for view in (self.campaigns_view, self.rules_view):
             self.assertIn("useRevealRow({", view)

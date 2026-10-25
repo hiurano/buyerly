@@ -1,4 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './DropdownMenu';
 
 export interface DetailsFacetOption {
@@ -29,6 +31,17 @@ interface DetailsFacetsProps {
   /** The listed things, plural: a row's hover link reads "See {noun}". */
   noun: string;
 }
+
+const styles = stylex.create({
+  selectLabel: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  current: {
+    color: colors['--text-primary'],
+  },
+});
 
 function readTab(key: string): string | null {
   try {
@@ -136,7 +149,7 @@ export function DetailsFacets({ tabs, selection, onSelect, storageKey, noun }: D
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button type="button" className="details-facets-select">
-              <span className="truncate">{current.label}</span>
+              <span {...stylex.props(styles.selectLabel)}>{current.label}</span>
               <svg width="8" height="8" viewBox="0 0 12 8" fill="currentColor" aria-hidden="true">
                 <path d="M10.16.31 6 4.48 1.83.31A1.07 1.07 0 0 0 .31 1.83l4.93 4.93c.42.42 1.1.42 1.52 0l4.93-4.93A1.07 1.07 0 0 0 10.16.31Z" />
               </svg>
@@ -145,7 +158,7 @@ export function DetailsFacets({ tabs, selection, onSelect, storageKey, noun }: D
           <DropdownMenuContent align="start" aria-label="Quick filter categories">
             {tabs.map((tab) => (
               <DropdownMenuItem key={tab.id} onSelect={() => changeTab(tab.id)}>
-                <span className={tab.id === current.id ? 'text-[var(--text-primary)]' : undefined}>{tab.label}</span>
+                <span {...stylex.props(tab.id === current.id && styles.current)}>{tab.label}</span>
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

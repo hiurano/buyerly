@@ -1,17 +1,129 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CircleAlert, CircleCheck, Info, Redo2, TriangleAlert, Undo2 } from 'lucide-react';
+import * as stylex from '@stylexjs/stylex';
 import { BuyerlyCloseIcon } from '@/icons/BuyerlyIcons';
+import { colors, layout, radii, space } from '@/styles/tokens.stylex';
 import { Button } from '@/ui/Button';
+import { withClassName } from '@/ui/withClassName';
 import { TOAST_DURATION_MS, useToastStore, type ToastItem, type ToastTone } from '@/ui/toast';
 
+const styles = stylex.create({
+  region: {
+    pointerEvents: 'none',
+    position: 'fixed',
+    bottom: space['--toast-offset-bottom'],
+    right: space['--toast-offset-right'],
+    zIndex: layout['--layer-toast'],
+    display: 'flex',
+    width: layout['--toast-width'],
+    maxWidth: 'calc(100vw - 32px)',
+    flexDirection: 'column',
+    gap: space['--toast-gap'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+  },
+  card: {
+    pointerEvents: 'auto',
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 8,
+    borderRadius: radii['--canvas-border-radius'],
+    backgroundColor: colors['--toast-bg'],
+    padding: space['--toast-padding'],
+    fontSize: 13,
+    lineHeight: '19.5px',
+    boxShadow: colors['--toast-shadow'],
+  },
+  iconSlot: {
+    display: 'flex',
+    height: 19.5,
+    width: 16,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  success: { color: colors['--toast-success-icon'] },
+  error: { color: colors['--toast-error-icon'] },
+  neutral: { color: colors['--text-secondary'] },
+  warning: { color: colors['--toast-warning-icon'] },
+  text: {
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+  },
+  message: {
+    margin: 0,
+    color: colors['--text-tertiary'],
+  },
+  title: {
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  description: {
+    marginTop: 2,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+    color: colors['--text-secondary'],
+  },
+  actionButton: {
+    marginTop: 6,
+  },
+  actionLink: {
+    marginTop: 6,
+    borderRadius: 4,
+    padding: 0,
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--action-primary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    textDecorationLine: {
+      default: null,
+      ':hover': 'underline',
+    },
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+  },
+  dismiss: {
+    display: 'flex',
+    height: 20,
+    width: 20,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 4,
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+    transitionProperty: 'color, background-color, border-color, text-decoration-color, fill, stroke',
+    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    transitionDuration: '150ms',
+  },
+});
+
 const TONE_ICON: Record<ToastTone, React.ReactNode> = {
-  success: <CircleCheck size={16} className="text-[var(--toast-success-icon)]" />,
-  error: <CircleAlert size={16} className="text-[var(--toast-error-icon)]" />,
-  undo: <Undo2 size={16} className="text-[var(--text-secondary)]" />,
-  redo: <Redo2 size={16} className="text-[var(--text-secondary)]" />,
-  info: <Info size={16} className="text-[var(--text-secondary)]" />,
-  warning: <TriangleAlert size={16} className="text-[var(--toast-warning-icon)]" />,
+  success: <CircleCheck size={16} {...stylex.props(styles.success)} />,
+  error: <CircleAlert size={16} {...stylex.props(styles.error)} />,
+  undo: <Undo2 size={16} {...stylex.props(styles.neutral)} />,
+  redo: <Redo2 size={16} {...stylex.props(styles.neutral)} />,
+  info: <Info size={16} {...stylex.props(styles.neutral)} />,
+  warning: <TriangleAlert size={16} {...stylex.props(styles.warning)} />,
 };
 
 /**
@@ -41,18 +153,18 @@ const ToastCard: React.FC<{ item: ToastItem }> = ({ item }) => {
       onMouseLeave={() => setHeld(false)}
       onFocus={() => setHeld(true)}
       onBlur={() => setHeld(false)}
-      className="toast-enter pointer-events-auto flex items-start gap-2 rounded-[var(--canvas-border-radius)] bg-[var(--toast-bg)] p-[var(--toast-padding)] text-[13px] leading-[19.5px] [box-shadow:var(--toast-shadow)]"
+      {...withClassName(stylex.props(styles.card), 'toast-enter')}
     >
-      <span className="flex h-[19.5px] w-4 shrink-0 items-center justify-center" aria-hidden="true">
+      <span {...stylex.props(styles.iconSlot)} aria-hidden="true">
         {TONE_ICON[item.tone]}
       </span>
-      <div className="min-w-0 flex-1">
-        <p className="m-0 text-[var(--text-tertiary)]">
-          <span className="font-medium text-[var(--text-primary)]">{item.title}</span>
+      <div {...stylex.props(styles.text)}>
+        <p {...stylex.props(styles.message)}>
+          <span {...stylex.props(styles.title)}>{item.title}</span>
           {item.message && <> {item.message}</>}
         </p>
         {item.description && (
-          <p className="m-0 mt-0.5 text-[var(--text-secondary)]">{item.description}</p>
+          <p {...stylex.props(styles.description)}>{item.description}</p>
         )}
         {item.action?.button && (
           <Button
@@ -61,7 +173,7 @@ const ToastCard: React.FC<{ item: ToastItem }> = ({ item }) => {
               item.action?.onClick();
               dismiss(item.id);
             }}
-            className="mt-1.5"
+            xstyle={styles.actionButton}
           >
             {item.action.label}
           </Button>
@@ -73,7 +185,7 @@ const ToastCard: React.FC<{ item: ToastItem }> = ({ item }) => {
               item.action?.onClick();
               dismiss(item.id);
             }}
-            className="mt-1.5 rounded-[4px] p-0 text-[13px] font-medium text-[var(--action-primary)] outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
+            {...stylex.props(styles.actionLink)}
           >
             {item.action.label}
           </button>
@@ -83,7 +195,7 @@ const ToastCard: React.FC<{ item: ToastItem }> = ({ item }) => {
         type="button"
         aria-label="Dismiss notification"
         onClick={() => dismiss(item.id)}
-        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] text-[var(--text-tertiary)] outline-none transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
+        {...stylex.props(styles.dismiss)}
       >
         <BuyerlyCloseIcon size={12} />
       </button>
@@ -119,7 +231,7 @@ export const ToastRegion: React.FC = () => {
       aria-live="polite"
       aria-relevant="additions text"
       tabIndex={-1}
-      className="pointer-events-none fixed bottom-[var(--toast-offset-bottom)] right-[var(--toast-offset-right)] z-[var(--layer-toast)] flex w-[var(--toast-width)] max-w-[calc(100vw-32px)] flex-col gap-[var(--toast-gap)] outline-none"
+      {...stylex.props(styles.region)}
     >
       {toasts.map((item) => <ToastCard key={item.id} item={item} />)}
     </section>,

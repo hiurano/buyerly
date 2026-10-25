@@ -277,7 +277,7 @@ try {
       }));
       assert.equal(table.overflowX, 'auto');
       if (width === 390) assert.ok(table.scrolls, 'the table scrolls sideways on a phone');
-      const wrapped = await page.locator('[data-row-id="801"] .tabular-nums').evaluateAll((cells) => cells
+      const wrapped = await page.locator('[data-row-id="801"] .buyerly-data-metric-value').evaluateAll((cells) => cells
         .filter((cell) => cell.offsetHeight > 24).map((cell) => cell.textContent));
       assert.deepEqual(wrapped, [], `figures wrap at ${width}px`);
       await shot('ads-manager');

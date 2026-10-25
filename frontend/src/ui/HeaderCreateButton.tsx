@@ -1,4 +1,6 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
 import { BuyerlyPlusIcon } from '@/icons/BuyerlyIcons';
 import { Tooltip } from '@/ui/Tooltip';
 
@@ -12,6 +14,72 @@ export interface HeaderCreateButtonProps {
   onClick: () => void;
 }
 
+const WIDE = '@media (min-width: 1025px)';
+const TOUCH = '@media (hover: none) and (pointer: coarse)';
+
+const styles = stylex.create({
+  button: {
+    display: 'flex',
+    height: {
+      default: 28,
+      [TOUCH]: 40,
+    },
+    width: {
+      default: 28,
+      [WIDE]: 'auto',
+    },
+    minWidth: {
+      default: null,
+      [TOUCH]: 40,
+    },
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: {
+      default: null,
+      [WIDE]: 6,
+    },
+    paddingLeft: {
+      default: null,
+      [WIDE]: 8,
+    },
+    paddingRight: {
+      default: null,
+      [WIDE]: 10,
+    },
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+    transitionProperty: 'all',
+    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    transitionDuration: '150ms',
+  },
+  label: {
+    display: {
+      default: 'none',
+      [WIDE]: 'inline',
+    },
+    whiteSpace: 'nowrap',
+    fontSize: 12,
+    fontWeight: 500,
+  },
+});
+
 /**
  * The page header's create action, like Linear's "New project": a round,
  * borderless 28px "+" that shows its label above 1024px and grows to a
@@ -23,10 +91,10 @@ export const HeaderCreateButton: React.FC<HeaderCreateButtonProps> = ({ label, t
       type="button"
       aria-label={label}
       onClick={onClick}
-      className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-full border border-transparent text-[var(--text-tertiary)] outline-none transition-all hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] min-[1025px]:w-auto min-[1025px]:gap-[6px] min-[1025px]:pl-[8px] min-[1025px]:pr-[10px] [@media(hover:none)_and_(pointer:coarse)]:h-10 [@media(hover:none)_and_(pointer:coarse)]:min-w-10"
+      {...stylex.props(styles.button)}
     >
       <BuyerlyPlusIcon size={14} />
-      <span aria-hidden="true" className="hidden whitespace-nowrap text-[12px] font-medium min-[1025px]:inline">
+      <span aria-hidden="true" {...stylex.props(styles.label)}>
         {label}
       </span>
     </button>

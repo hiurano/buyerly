@@ -1,4 +1,6 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
 import { Button } from './Button';
 
 export interface DataStateProps {
@@ -11,6 +13,43 @@ export interface DataStateProps {
   secondaryLabel?: string;
   onSecondary?: () => void;
 }
+
+const styles = stylex.create({
+  root: {
+    display: 'flex',
+    minHeight: 208,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingLeft: 24,
+    paddingRight: 24,
+    textAlign: 'center',
+  },
+  body: {
+    maxWidth: 448,
+  },
+  title: {
+    fontSize: 14,
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  detail: {
+    marginTop: 6,
+    fontSize: 13,
+    lineHeight: '1.625',
+    color: colors['--text-tertiary'],
+  },
+  actions: {
+    marginTop: 16,
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+});
 
 /**
  * The loading, empty and error state of a data surface. Every state carries a
@@ -25,12 +64,12 @@ export const DataState: React.FC<DataStateProps> = ({
   secondaryLabel,
   onSecondary,
 }) => (
-  <section className="flex min-h-52 flex-1 items-center justify-center px-6 text-center" role={role}>
-    <div className="max-w-md">
-      <h3 className="text-[14px] font-medium text-[var(--text-primary)]">{title}</h3>
-      <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--text-tertiary)]">{detail}</p>
+  <section {...stylex.props(styles.root)} role={role}>
+    <div {...stylex.props(styles.body)}>
+      <h3 {...stylex.props(styles.title)}>{title}</h3>
+      <p {...stylex.props(styles.detail)}>{detail}</p>
       {(actionLabel || secondaryLabel) && (
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+        <div {...stylex.props(styles.actions)}>
           {actionLabel && onAction && (
             <Button variant="primary" onClick={onAction}>{actionLabel}</Button>
           )}

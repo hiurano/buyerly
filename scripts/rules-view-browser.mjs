@@ -120,7 +120,7 @@ try {
   });
 
   const rowIds = () => page.locator('[data-row-id]').evaluateAll((rows) => rows.map((row) => row.dataset.rowId));
-  const groupTitles = () => page.locator('.sticky span.truncate.text-\\[13px\\]').allTextContents();
+  const groupTitles = () => page.locator('.buyerly-data-group-header:not(.buyerly-data-subgroup-header) .buyerly-data-group-title').allTextContents();
   const headers = async () => (await page.locator('[role="columnheader"]').allTextContents()).map((text) => text.trim()).filter(Boolean);
   const popover = () => page.locator('.buyerly-display-options-popover');
   const displayButton = () => page.locator('main header').getByRole('button', { name: 'Display options' });
@@ -277,7 +277,7 @@ try {
     await page.keyboard.press('ControlOrMeta+b');
     await page.locator('[data-row-id="7"]').first().waitFor();
     assert.deepEqual(await groupTitles(), ['Active rules', 'Paused rules']);
-    assert.deepEqual(await page.locator('.buyerly-data-subgroup-header span.truncate').allTextContents(), ['NL launch', 'NL launch', 'No label']);
+    assert.deepEqual(await page.locator('.buyerly-data-subgroup-header .buyerly-data-group-title').allTextContents(), ['NL launch', 'NL launch', 'No label']);
     await page.locator('.buyerly-data-subgroup-header').last().getByRole('button', { name: 'Collapse group' }).click();
     await page.locator('[data-row-id="8"]').waitFor({ state: 'detached' });
     await page.screenshot({ path: `${output}/list-sub-groups-1440.png` });

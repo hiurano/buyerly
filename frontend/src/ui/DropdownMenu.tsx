@@ -1,5 +1,9 @@
 import React from 'react';
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
+import { menuItemMarker } from '@/ui/markers.stylex';
+import { withClassName } from '@/ui/withClassName';
 
 export const DropdownMenu = DropdownMenuPrimitive.Root;
 export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
@@ -8,12 +12,149 @@ export const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
 export const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 export const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 
+const TOUCH = '@media (hover: none) and (pointer: coarse)';
+
+const styles = stylex.create({
+  label: {
+    paddingLeft: 14,
+    paddingRight: 14,
+    paddingBottom: 4,
+    paddingTop: 6,
+    fontSize: 11,
+    fontWeight: 500,
+    color: colors['--text-muted'],
+  },
+  content: {
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    borderRadius: 12,
+    backgroundColor: colors['--card-bg'],
+    boxShadow: colors['--dropdown-shadow'],
+    overflow: 'hidden',
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    paddingTop: 6,
+    paddingRight: 0,
+    paddingBottom: 6,
+    paddingLeft: 0,
+  },
+  menu: {
+    width: 180,
+    minWidth: 175,
+    maxWidth: 500,
+    zIndex: 600,
+    userSelect: 'none',
+    transformOrigin: 'var(--radix-dropdown-menu-content-transform-origin)',
+  },
+  submenu: {
+    width: 210,
+    minWidth: 190,
+    zIndex: 610,
+  },
+  item: {
+    position: 'relative',
+    display: 'flex',
+    height: {
+      default: 32,
+      [TOUCH]: 40,
+    },
+    cursor: 'pointer',
+    userSelect: 'none',
+    alignItems: 'center',
+    paddingLeft: 14,
+    paddingRight: 14,
+    fontSize: 13,
+    fontWeight: 450,
+    color: {
+      default: colors['--text-secondary'],
+      ':is([data-highlighted])': colors['--text-primary'],
+    },
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+  },
+  plainItem: {
+    paddingRight: 18,
+    whiteSpace: 'nowrap',
+  },
+  subTriggerOpen: {
+    color: {
+      default: colors['--text-secondary'],
+      ':is([data-highlighted])': colors['--text-primary'],
+      ':is([data-state="open"])': colors['--text-primary'],
+    },
+  },
+  // The rounded fill inside the row, under its content.
+  pill: {
+    pointerEvents: 'none',
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 6,
+    right: 6,
+    borderRadius: 8,
+    backgroundColor: {
+      default: 'transparent',
+      [stylex.when.ancestor('[data-highlighted]', menuItemMarker)]: colors['--menu-item-highlight'],
+    },
+  },
+  plainItemPill: {
+    backgroundColor: {
+      default: 'transparent',
+      [stylex.when.ancestor(':hover', menuItemMarker)]: colors['--menu-item-highlight'],
+      [stylex.when.ancestor(':focus', menuItemMarker)]: colors['--menu-item-highlight'],
+      [stylex.when.ancestor('[data-highlighted]', menuItemMarker)]: colors['--menu-item-highlight'],
+    },
+    transitionDuration: {
+      default: null,
+      [stylex.when.ancestor(':hover', menuItemMarker)]: '0s',
+    },
+  },
+  subTriggerPill: {
+    backgroundColor: {
+      default: 'transparent',
+      [stylex.when.ancestor('[data-highlighted]', menuItemMarker)]: colors['--menu-item-highlight'],
+      [stylex.when.ancestor('[data-state="open"]', menuItemMarker)]: colors['--menu-item-highlight'],
+    },
+  },
+  body: {
+    position: 'relative',
+    zIndex: 10,
+    display: 'flex',
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  plainItemBody: {
+    color: {
+      default: null,
+      [stylex.when.ancestor(':hover', menuItemMarker)]: colors['--text-primary'],
+      [stylex.when.ancestor('[data-highlighted]', menuItemMarker)]: colors['--text-primary'],
+    },
+    whiteSpace: 'nowrap',
+  },
+  separator: {
+    height: 9,
+    paddingTop: 4,
+    paddingBottom: 4,
+    boxSizing: 'border-box',
+  },
+  separatorLine: {
+    height: 1,
+    width: '100%',
+    borderBottomWidth: 1,
+    borderBottomStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+  },
+});
+
 export const DropdownMenuLabel: React.FC<DropdownMenuPrimitive.DropdownMenuLabelProps> = ({
   className = '',
   ...props
 }) => (
   <DropdownMenuPrimitive.Label
-    className={`px-[14px] pb-1 pt-1.5 text-[11px] font-medium text-[var(--text-muted)] ${className}`}
+    {...withClassName(stylex.props(styles.label), className)}
     {...props}
   />
 );
@@ -22,40 +163,31 @@ export const DropdownMenuContent: React.FC<DropdownMenuPrimitive.DropdownMenuCon
   className = '',
   sideOffset = 4,
   align = 'start',
-  style,
   ...props
 }) => (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
       sideOffset={sideOffset}
       align={align}
-      style={{
-        width: '180px',
-        minWidth: '175px',
-        maxWidth: '500px',
-        backgroundColor: 'var(--card-bg)',
-        borderColor: 'var(--color-border-secondary)',
-        padding: '6px 0px',
-        ...style,
-      }}
-      className={`border rounded-[12px] [box-shadow:var(--dropdown-shadow)] z-[600] overflow-hidden select-none buyerly-menu origin-[var(--radix-dropdown-menu-content-transform-origin)] outline-none ${className}`}
+      {...withClassName(stylex.props(styles.content, styles.menu), `buyerly-menu ${className}`.trim())}
       {...props}
     />
   </DropdownMenuPrimitive.Portal>
 );
 
 export const DropdownMenuItem: React.FC<
-  DropdownMenuPrimitive.DropdownMenuItemProps
-> = ({ className = '', children, ...props }) => (
+  DropdownMenuPrimitive.DropdownMenuItemProps & { xstyle?: stylex.StyleXStyles }
+> = ({ className = '', xstyle, children, ...props }) => (
+  // `group` stays for callers' Tailwind (`group-hover:`) until their pages move to StyleX.
   <DropdownMenuPrimitive.Item
-    className={`group relative flex h-[32px] cursor-pointer select-none items-center [@media(hover:none)_and_(pointer:coarse)]:h-10 pl-[14px] pr-[18px] text-[13px] font-[450] text-[var(--text-secondary)] whitespace-nowrap outline-none data-[highlighted]:text-[var(--text-primary)] ${className}`}
+    {...withClassName(stylex.props(styles.item, styles.plainItem, menuItemMarker, xstyle), `group ${className}`.trim())}
     {...props}
   >
     {/* Inner Hover/Focus/Highlighted Pill */}
-    <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] rounded-[8px] bg-transparent group-hover:bg-[var(--menu-item-highlight)] group-focus:bg-[var(--menu-item-highlight)] group-data-[highlighted]:bg-[var(--menu-item-highlight)] group-hover:duration-0" />
+    <div {...stylex.props(styles.pill, styles.plainItemPill)} />
 
     {/* Item Content Layer */}
-    <div className="relative z-10 flex w-full items-center justify-between gap-3 group-hover:text-[var(--text-primary)] group-data-[highlighted]:text-[var(--text-primary)] whitespace-nowrap">
+    <div {...stylex.props(styles.body, styles.plainItemBody)}>
       {children}
     </div>
   </DropdownMenuPrimitive.Item>
@@ -67,32 +199,23 @@ export const DropdownMenuSubTrigger: React.FC<DropdownMenuPrimitive.DropdownMenu
   ...props
 }) => (
   <DropdownMenuPrimitive.SubTrigger
-    className={`group relative flex h-[32px] cursor-pointer select-none items-center [@media(hover:none)_and_(pointer:coarse)]:h-10 px-[14px] text-[13px] font-[450] text-[var(--text-secondary)] outline-none data-[highlighted]:text-[var(--text-primary)] data-[state=open]:text-[var(--text-primary)] ${className}`}
+    {...withClassName(stylex.props(styles.item, styles.subTriggerOpen, menuItemMarker), `group ${className}`.trim())}
     {...props}
   >
-    <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] rounded-[8px] bg-transparent group-data-[highlighted]:bg-[var(--menu-item-highlight)] group-data-[state=open]:bg-[var(--menu-item-highlight)]" />
-    <div className="relative z-10 flex w-full items-center justify-between gap-3">{children}</div>
+    <div {...stylex.props(styles.pill, styles.subTriggerPill)} />
+    <div {...stylex.props(styles.body)}>{children}</div>
   </DropdownMenuPrimitive.SubTrigger>
 );
 
 export const DropdownMenuSubContent: React.FC<DropdownMenuPrimitive.DropdownMenuSubContentProps> = ({
   className = '',
   sideOffset = 4,
-  style,
   ...props
 }) => (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.SubContent
       sideOffset={sideOffset}
-      style={{
-        width: '210px',
-        minWidth: '190px',
-        backgroundColor: 'var(--card-bg)',
-        borderColor: 'var(--color-border-secondary)',
-        padding: '6px 0px',
-        ...style,
-      }}
-      className={`z-[610] overflow-hidden rounded-[12px] border [box-shadow:var(--dropdown-shadow)] outline-none ${className}`}
+      {...withClassName(stylex.props(styles.content, styles.submenu), className)}
       {...props}
     />
   </DropdownMenuPrimitive.Portal>
@@ -104,11 +227,11 @@ export const DropdownMenuRadioItem: React.FC<DropdownMenuPrimitive.DropdownMenuR
   ...props
 }) => (
   <DropdownMenuPrimitive.RadioItem
-    className={`group relative flex h-[32px] cursor-pointer select-none items-center [@media(hover:none)_and_(pointer:coarse)]:h-10 px-[14px] text-[13px] font-[450] text-[var(--text-secondary)] outline-none data-[highlighted]:text-[var(--text-primary)] ${className}`}
+    {...withClassName(stylex.props(styles.item, menuItemMarker), `group ${className}`.trim())}
     {...props}
   >
-    <div className="pointer-events-none absolute inset-y-0 left-[6px] right-[6px] rounded-[8px] bg-transparent group-data-[highlighted]:bg-[var(--menu-item-highlight)]" />
-    <div className="relative z-10 flex w-full items-center justify-between gap-3">{children}</div>
+    <div {...stylex.props(styles.pill)} />
+    <div {...stylex.props(styles.body)}>{children}</div>
   </DropdownMenuPrimitive.RadioItem>
 );
 
@@ -117,9 +240,9 @@ export const DropdownMenuSeparator: React.FC<DropdownMenuPrimitive.DropdownMenuS
   ...props
 }) => (
   <DropdownMenuPrimitive.Separator
-    className={`h-[9px] py-[4px] box-border ${className}`}
+    {...withClassName(stylex.props(styles.separator), className)}
     {...props}
   >
-    <div className="h-[1px] w-full border-b border-[var(--color-border-primary)]" />
+    <div {...stylex.props(styles.separatorLine)} />
   </DropdownMenuPrimitive.Separator>
 );

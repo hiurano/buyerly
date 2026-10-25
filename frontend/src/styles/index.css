@@ -1478,7 +1478,8 @@ html[data-theme='light'] .buyerly-display-property[aria-pressed='true'] {
 
 .documents-empty__action {
   margin-top: 16px;
-  padding: 0 10px;
+  /* !important: beats the Button primitive's StyleX padding. */
+  padding: 0 10px !important;
 }
 
 .documents-illustration__paper { fill: var(--bg-canvas); }
@@ -2991,12 +2992,13 @@ input.settings-list-inline:focus {
   box-shadow: 0 0 0 2px var(--focus-ring-color);
 }
 
-/* Three classes on the field, so it beats the plain row field's 192×30 further down. */
+/* Three classes on the field, so it beats the plain row field's 192×30 further down;
+   !important to beat the Input primitive's StyleX, as below. */
 .preferences-row-item .preferences-row-input.preferences-row-input--wide,
 .preferences-row-item .preferences-url-field.preferences-row-input--wide {
   width: 256px;
-  height: 32px;
-  font-size: 13px;
+  height: 32px !important;
+  font-size: 13px !important;
 }
 
 /* Linear's URL field: the address prefix in faint text inside the field, a pencil at its end. */
@@ -3140,35 +3142,36 @@ input.settings-list-inline:focus {
   box-shadow: 0 0 0 2px var(--focus-ring-color);
 }
 
-/* Two-class selector deliberately: it must beat the h-9 utility that the
-   shared Input primitive carries, and utility order is not guaranteed. */
+/* The settings fields restyle the shared Input primitive. Its StyleX rules
+   outrank any class here, so what they change is !important until the
+   settings pages move to StyleX (#501). */
 .preferences-row-item .preferences-row-input {
   width: 192px;
-  height: 30px;
+  height: 30px !important;
   flex-shrink: 0;
-  border-width: 0.5px;
-  border-color: var(--preferences-input-border);
-  background: var(--preferences-card-bg);
-  transition: border-color 0.15s;
+  border-width: 0.5px !important;
+  border-color: var(--preferences-input-border) !important;
+  background: var(--preferences-card-bg) !important;
+  transition: border-color 0.15s !important;
 }
 
 .preferences-row-item .preferences-row-input::placeholder {
-  color: var(--preferences-row-link-fg);
+  color: var(--preferences-row-link-fg) !important;
 }
 
 .preferences-row-item .preferences-row-input:focus {
-  border-color: var(--focus-ring-color);
+  border-color: var(--focus-ring-color) !important;
 }
 
 /* Linear's Profile fields (2026-10-09): 180×32, 13px text, 12px side padding,
    the card's own background. */
 .preferences-row-item .preferences-row-input.preferences-profile-input {
   width: 180px;
-  height: 32px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: var(--preferences-card-bg);
-  font-size: 13px;
+  height: 32px !important;
+  padding: 6px 12px !important;
+  border-radius: 8px !important;
+  background: var(--preferences-card-bg) !important;
+  font-size: 13px !important;
 }
 
 /* A row that already carries a control beside the field gets the shorter one. */
@@ -4825,11 +4828,12 @@ body.buyerly-split-resizing, body.buyerly-split-resizing * { cursor: col-resize 
 }
 .buyerly-help-button:focus-visible { outline: 1px solid var(--focus-ring-color); outline-offset: -1px; }
 
-/* Its menu, and Linear's right-click menus on rows: Linear's 0.5px edge, the menu's own text, pill and grey. */
+/* Its menu, and Linear's right-click menus on rows: Linear's 0.5px edge, the menu's own text, pill and grey.
+   The edge is !important to beat the menu primitive's StyleX. */
 .buyerly-help-menu, .buyerly-row-menu {
   --card-bg: var(--help-menu-bg); --color-border-secondary: var(--help-menu-border); --menu-item-highlight: var(--help-menu-highlight);
   --text-secondary: var(--help-menu-fg); --text-primary: var(--help-menu-fg-highlighted);
-  border-width: 0.5px;
+  border-width: 0.5px !important;
 }
 .buyerly-help-icon { display: flex; flex-shrink: 0; width: 16px; height: 16px; color: var(--help-menu-secondary); }
 .buyerly-help-timeline { width: 16px; height: 32px; margin: -8px 0; overflow: visible; }
@@ -4847,8 +4851,8 @@ body.buyerly-split-resizing, body.buyerly-split-resizing * { cursor: col-resize 
 .buyerly-row-menu-keys { display: flex; align-items: center; gap: 3px; font-size: 11px; line-height: 12.1px; font-weight: 500; color: var(--help-menu-secondary); }
 .buyerly-row-menu-keys kbd { font-family: inherit; }
 .buyerly-row-menu-chevron { width: 16px; font-size: 6px; text-align: center; color: var(--row-menu-chevron); }
-.buyerly-row-menu .buyerly-row-menu-separator { height: 12px; padding: 6px 0; }
-.buyerly-row-menu .buyerly-row-menu-separator > div { height: 0.5px; border-bottom: 0.5px solid var(--row-menu-separator); }
+.buyerly-row-menu .buyerly-row-menu-separator { height: 12px; padding: 6px 0 !important; }
+.buyerly-row-menu .buyerly-row-menu-separator > div { height: 0.5px !important; border-bottom: 0.5px solid var(--row-menu-separator) !important; }
 
 /* Linear's favorites (2026-10-24): the header star fills yellow once starred; a favorite's row in
    the sidebar shows a 10px x to unstar under the cursor, with a 20px target around it. */

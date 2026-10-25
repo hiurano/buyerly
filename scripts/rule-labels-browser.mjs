@@ -117,7 +117,7 @@ try {
     return { context, page, errors, state };
   };
 
-  const groupTitles = (page) => page.locator('main .sticky .truncate.text-\\[13px\\]').allTextContents();
+  const groupTitles = (page) => page.locator('main .buyerly-data-group-header:not(.buyerly-data-subgroup-header) .buyerly-data-group-title').allTextContents();
   const rowCount = (page, id) => page.locator(`[data-row-id="${id}"]`).count();
   const picker = (page) => page.locator('[data-rule-label-picker]');
   const assertInside = async (locator, where) => {
@@ -147,7 +147,7 @@ try {
       await page.screenshot({ path: `${output}/picker-create-1440.png` });
       await page.keyboard.press('Enter');
       await page.waitForFunction(() => document.querySelectorAll('[data-row-id="9"]').length === 1
-        && [...document.querySelectorAll('main .sticky')].some((header) => header.textContent?.includes('Tests')));
+        && [...document.querySelectorAll('main .buyerly-data-group-header:not(.buyerly-data-subgroup-header)')].some((header) => header.textContent?.includes('Tests')));
       assert.ok(state.writes.includes('POST /api/rule-labels'), 'the label was created');
       assert.ok(state.writes.includes('PUT /api/presets/9/labels'), 'and put on the rule in one write');
       assert.deepEqual(state.presets.find((item) => item.id === 9).label_ids, [3]);

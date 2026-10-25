@@ -1,4 +1,7 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './DropdownMenu';
 
 export interface BuyerlyTabItem {
@@ -22,17 +25,80 @@ interface BuyerlyTabsProps {
   collapseOverflow?: boolean;
 }
 
+const styles = stylex.create({
+  list: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 28,
+    gap: 8,
+    padding: 0,
+    margin: 0,
+    position: 'relative',
+    userSelect: 'none',
+  },
+  // A view's tabs keep their natural width, so the strip can tell when they no longer fit.
+  listMeasured: {
+    width: 'max-content',
+    flexShrink: 0,
+  },
+  // Folded: laid out for measuring, out of sight.
+  listFolded: {
+    position: 'absolute',
+    left: 0,
+    visibility: 'hidden',
+  },
+  label: {
+    display: 'block',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  count: {
+    fontSize: 11,
+    fontWeight: 500,
+    marginLeft: 4,
+    opacity: 0.65,
+    fontVariantNumeric: 'tabular-nums',
+  },
+  countActive: {
+    opacity: 1,
+  },
+  // Full toolbar height and 2px either side, so the capsules' ring and shadow are not clipped.
+  frame: {
+    position: 'relative',
+    marginLeft: -2,
+    marginRight: -2,
+    display: 'flex',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    overflow: 'hidden',
+    paddingLeft: 2,
+    paddingRight: 2,
+  },
+  more: {
+    flexShrink: 0,
+  },
+  chevron: {
+    marginLeft: 6,
+    flexShrink: 0,
+  },
+  menuActive: {
+    color: colors['--text-primary'],
+  },
+  menuCount: {
+    fontVariantNumeric: 'tabular-nums',
+    color: colors['--text-tertiary'],
+  },
+});
+
 const TabCount: React.FC<{ count?: number; active: boolean }> = ({ count, active }) =>
   typeof count === 'number' ? (
-    <span
-      style={{
-        fontSize: '11px',
-        fontWeight: 500,
-        marginLeft: '4px',
-        opacity: active ? 1 : 0.65,
-        fontVariantNumeric: 'tabular-nums',
-      }}
-    >
+    <span {...stylex.props(styles.count, active && styles.countActive)}>
       {count}
     </span>
   ) : null;
@@ -93,19 +159,7 @@ export const BuyerlyTabs: React.FC<BuyerlyTabsProps> = ({
       role="tablist"
       aria-label={ariaLabel}
       aria-hidden={folded ? true : undefined}
-      style={{
-        display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'center',
-        minHeight: '28px',
-        gap: '8px',
-        padding: '0px',
-        margin: '0px',
-        userSelect: 'none',
-        ...(collapseOverflow ? { width: 'max-content', flexShrink: 0 } : null),
-        ...(folded ? { position: 'absolute' as const, left: 0, visibility: 'hidden' as const } : null),
-      }}
-      className={`${folded ? '' : 'relative '}select-none ${className}`}
+      {...withClassName(stylex.props(styles.list, collapseOverflow && styles.listMeasured, folded && styles.listFolded), className)}
     >
       {tabs.map((tab, index) => {
         const isActive = tab.id === activeTabId;
@@ -126,7 +180,7 @@ export const BuyerlyTabs: React.FC<BuyerlyTabsProps> = ({
             onKeyDown={(e) => handleKeyDown(e, index)}
             className="buyerly-tab-capsule"
           >
-            <span className="block truncate whitespace-nowrap">{tab.label}</span>
+            <span {...stylex.props(styles.label)}>{tab.label}</span>
             <TabCount count={tab.count} active={isActive} />
           </button>
         );
@@ -139,7 +193,7 @@ export const BuyerlyTabs: React.FC<BuyerlyTabsProps> = ({
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0];
   return (
     // Full toolbar height and 2px either side, so the capsules' ring and shadow are not clipped.
-    <div ref={frameRef} className="relative -mx-0.5 flex min-w-0 flex-1 items-center self-stretch overflow-hidden px-0.5">
+    <div ref={frameRef} {...stylex.props(styles.frame)}>
       {list}
       {collapsed && activeTab && (
         <DropdownMenu>
@@ -148,11 +202,11 @@ export const BuyerlyTabs: React.FC<BuyerlyTabsProps> = ({
               type="button"
               data-active="true"
               aria-label={`${tabs.length - 1} more`}
-              className="buyerly-tab-capsule shrink-0"
+              {...withClassName(stylex.props(styles.more), 'buyerly-tab-capsule')}
             >
-              <span className="block truncate whitespace-nowrap">{activeTab.label}</span>
+              <span {...stylex.props(styles.label)}>{activeTab.label}</span>
               <TabCount count={activeTab.count} active />
-              <svg width="8" height="8" viewBox="0 0 12 8" fill="currentColor" aria-hidden="true" style={{ marginLeft: '6px', flexShrink: 0 }}>
+              <svg width="8" height="8" viewBox="0 0 12 8" fill="currentColor" aria-hidden="true" {...stylex.props(styles.chevron)}>
                 <path d="M10.16.31 6 4.48 1.83.31A1.07 1.07 0 0 0 .31 1.83l4.93 4.93c.42.42 1.1.42 1.52 0l4.93-4.93A1.07 1.07 0 0 0 10.16.31Z" />
               </svg>
             </button>
@@ -160,8 +214,8 @@ export const BuyerlyTabs: React.FC<BuyerlyTabsProps> = ({
           <DropdownMenuContent aria-label={ariaLabel}>
             {tabs.map((tab) => (
               <DropdownMenuItem key={tab.id} disabled={tab.disabled} onSelect={() => onChange(tab.id)}>
-                <span className={tab.id === activeTabId ? 'text-[var(--text-primary)]' : undefined}>{tab.label}</span>
-                {typeof tab.count === 'number' && <span className="tabular-nums text-[var(--text-tertiary)]">{tab.count}</span>}
+                <span {...stylex.props(tab.id === activeTabId && styles.menuActive)}>{tab.label}</span>
+                {typeof tab.count === 'number' && <span {...stylex.props(styles.menuCount)}>{tab.count}</span>}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

@@ -1,4 +1,8 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
+import { rowMarker } from '@/ui/markers.stylex';
+import { withClassName } from '@/ui/withClassName';
 
 export const BUYERLY_DATA_LIST = {
   toolbarHeight: 43.5,
@@ -64,19 +68,351 @@ export const getLinearDataListMinWidth = (columns: BuyerlyDataListColumn[]) => {
   );
 };
 
+/** Tailwind's font-mono, as tailwind.config.js sets it. */
+const MONO = '"Berkeley Mono", "JetBrains Mono", monospace';
+
+const truncate = {
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+} as const;
+
+const colorTransition = {
+  transitionProperty: 'color, background-color, border-color, text-decoration-color, fill, stroke',
+  transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+  transitionDuration: '150ms',
+} as const;
+
+const styles = stylex.create({
+  toolbar: {
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: BUYERLY_DATA_LIST.toolbarHeight,
+    paddingLeft: BUYERLY_DATA_LIST.toolbarPaddingLeft,
+    paddingRight: BUYERLY_DATA_LIST.toolbarPaddingRight,
+    boxSizing: 'border-box',
+  },
+  viewport: {
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    paddingTop: BUYERLY_DATA_LIST.viewportPaddingY,
+    paddingBottom: BUYERLY_DATA_LIST.viewportPaddingY,
+    paddingLeft: BUYERLY_DATA_LIST.viewportPaddingX,
+    paddingRight: BUYERLY_DATA_LIST.viewportPaddingX,
+  },
+  viewportHorizontal: {
+    overflowX: 'auto',
+  },
+  stack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: BUYERLY_DATA_LIST.rowGap,
+  },
+  groupRows: {
+    paddingTop: 2,
+    paddingBottom: 8,
+  },
+  // A sub-group's last row runs straight into the next sub-group, as Linear's; the group closes with the gap.
+  subGroupRows: {
+    paddingTop: 2,
+  },
+  row: {
+    position: 'relative',
+    display: 'flex',
+    width: '100%',
+    userSelect: 'none',
+    alignItems: 'center',
+    borderRadius: BUYERLY_DATA_LIST.radius,
+    paddingLeft: BUYERLY_DATA_LIST.rowPaddingX,
+    paddingRight: BUYERLY_DATA_LIST.rowPaddingX,
+    backgroundColor: {
+      default: 'transparent',
+      ':hover': colors['--data-row-hover-bg'],
+    },
+    outlineStyle: {
+      default: 'solid',
+      ':focus-visible': 'solid',
+    },
+    outlineWidth: {
+      default: 2,
+      ':focus-visible': 1,
+    },
+    outlineColor: {
+      default: 'transparent',
+      ':focus-visible': colors['--focus-ring-color'],
+    },
+    outlineOffset: 2,
+  },
+  rowGrid: {
+    display: 'grid',
+    gap: BUYERLY_DATA_LIST.columnGap,
+  },
+  rowSelected: {
+    backgroundColor: {
+      default: colors['--row-selected-bg'],
+      ':hover': colors['--row-selected-hover-bg'],
+    },
+  },
+  columnHeader: {
+    display: 'grid',
+    height: 32,
+    alignItems: 'center',
+    fontSize: 12,
+    fontWeight: 400,
+    color: colors['--text-muted'],
+    gap: BUYERLY_DATA_LIST.columnGap,
+    paddingLeft: BUYERLY_DATA_LIST.rowPaddingX,
+    paddingRight: BUYERLY_DATA_LIST.rowPaddingX,
+  },
+  columnCell: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    textAlign: 'left',
+  },
+  columnCellRight: {
+    justifyContent: 'flex-end',
+    textAlign: 'right',
+  },
+  sortButton: {
+    display: 'inline-flex',
+    height: 24,
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 9999,
+    paddingLeft: 6,
+    paddingRight: 6,
+    fontSize: 12,
+    fontWeight: 450,
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-secondary'],
+    },
+    ...colorTransition,
+  },
+  sortButtonActive: {
+    color: colors['--text-secondary'],
+  },
+  sortAscending: {
+    transform: 'rotate(180deg)',
+  },
+  truncate,
+  columnLabel: {
+    ...truncate,
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--text-tertiary'],
+  },
+  groupHeader: {
+    position: 'sticky',
+    top: -4,
+    zIndex: 2,
+    display: 'flex',
+    alignItems: 'center',
+    height: BUYERLY_DATA_LIST.groupHeaderHeight,
+    borderRadius: BUYERLY_DATA_LIST.radius,
+    isolation: 'isolate',
+  },
+  subGroupHeader: {
+    position: 'relative',
+    top: null,
+    zIndex: null,
+  },
+  groupHeaderBody: {
+    display: 'flex',
+    height: '100%',
+    minWidth: 0,
+    width: '100%',
+    alignItems: 'center',
+    gap: 8,
+    paddingRight: 8,
+  },
+  toggleSlot: {
+    display: 'flex',
+    height: 28,
+    width: 28,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toggle: {
+    display: 'flex',
+    height: 20,
+    width: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9999,
+    color: colors['--text-tertiary'],
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    ...colorTransition,
+  },
+  toggleIcon: {
+    fill: 'currentColor',
+    transform: 'rotate(90deg)',
+    transitionProperty: 'transform',
+    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    transitionDuration: '150ms',
+  },
+  toggleIconCollapsed: {
+    transform: 'rotate(0deg)',
+  },
+  groupIcon: {
+    display: 'flex',
+    height: 16,
+    width: 16,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: colors['--text-tertiary'],
+  },
+  groupDot: {
+    height: 8,
+    width: 8,
+    borderRadius: 9999,
+  },
+  groupTitle: {
+    ...truncate,
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  groupCount: {
+    flexShrink: 0,
+    fontFamily: MONO,
+    fontSize: 11,
+    color: colors['--text-muted'],
+  },
+  subGroupCount: {
+    color: colors['--text-tertiary'],
+  },
+  groupDescription: {
+    ...truncate,
+    fontSize: 11,
+    color: colors['--text-muted'],
+  },
+  spacer: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+  },
+  subGroupLine: {
+    height: 0.5,
+    minWidth: 0,
+    backgroundColor: colors['--list-subgroup-line'],
+  },
+  // Linear's group "+": always shown, a 24px round button with a 14px icon, 8px from the edge (2026-10-24).
+  groupAction: {
+    display: 'flex',
+    height: 24,
+    width: 24,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9999,
+    borderWidth: 0.5,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    color: {
+      default: colors['--sidebar-item-fg'],
+      ':hover': colors['--text-primary'],
+    },
+    ...colorTransition,
+  },
+  primaryCell: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 12,
+  },
+  primaryCellSticky: {
+    position: 'sticky',
+    left: 0,
+    zIndex: 1,
+    ...colorTransition,
+  },
+  primaryText: {
+    display: 'flex',
+    minWidth: 0,
+    flexDirection: 'column',
+  },
+  primaryLine: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 8,
+  },
+  primaryTitle: {
+    ...truncate,
+    minWidth: 0,
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  primaryTitleDimmed: {
+    color: colors['--text-tertiary'],
+  },
+  metric: {
+    minWidth: 0,
+    textAlign: 'right',
+  },
+  metricValue: {
+    ...truncate,
+    fontSize: 12,
+    fontVariantNumeric: 'tabular-nums',
+    fontWeight: 450,
+    color: colors['--text-secondary'],
+  },
+  metricValueEmphasis: {
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  // The caller's valueClassName sets the weight and colour.
+  metricValueCustom: {
+    fontWeight: null,
+    color: null,
+  },
+  metricSuffix: {
+    marginLeft: 4,
+    color: colors['--text-muted'],
+  },
+  metricCaption: {
+    marginTop: 2,
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 6,
+    fontSize: 11,
+    lineHeight: '16px',
+    color: colors['--text-muted'],
+    fontVariantNumeric: 'tabular-nums',
+  },
+});
+
 export const BuyerlyDataListToolbar: React.FC<React.PropsWithChildren<{ className?: string }>> = ({
   children,
   className = '',
 }) => (
-  <div
-    className={`flex shrink-0 items-center justify-between ${className}`}
-    style={{
-      height: `${BUYERLY_DATA_LIST.toolbarHeight}px`,
-      paddingLeft: `${BUYERLY_DATA_LIST.toolbarPaddingLeft}px`,
-      paddingRight: `${BUYERLY_DATA_LIST.toolbarPaddingRight}px`,
-      boxSizing: 'border-box',
-    }}
-  >
+  <div {...withClassName(stylex.props(styles.toolbar), className)}>
     {children}
   </div>
 );
@@ -87,21 +423,17 @@ export const BuyerlyDataListViewport: React.FC<
     horizontal?: boolean;
   }>
 > = ({ children, className = '', horizontal = false }) => (
-  <div
-    className={`min-w-0 flex-1 overflow-y-auto ${horizontal ? 'overflow-x-auto' : 'overflow-x-hidden'} ${className}`}
-    style={{
-      padding: `${BUYERLY_DATA_LIST.viewportPaddingY}px ${BUYERLY_DATA_LIST.viewportPaddingX}px`,
-    }}
-  >
+  <div {...withClassName(stylex.props(styles.viewport, horizontal && styles.viewportHorizontal), className)}>
     {children}
   </div>
 );
 
-export const BuyerlyDataListStack: React.FC<React.PropsWithChildren<{ className?: string }>> = ({
+export const BuyerlyDataListStack: React.FC<React.PropsWithChildren<{ className?: string; xstyle?: stylex.StyleXStyles }>> = ({
   children,
   className = '',
+  xstyle,
 }) => (
-  <div className={`flex flex-col ${className}`} style={{ gap: `${BUYERLY_DATA_LIST.rowGap}px` }}>
+  <div {...withClassName(stylex.props(styles.stack, xstyle), className)}>
     {children}
   </div>
 );
@@ -120,16 +452,13 @@ export const BuyerlyDataListRow = React.forwardRef<HTMLDivElement, BuyerlyDataLi
       role="row"
       data-selected={selected ? 'true' : 'false'}
       aria-selected={selected}
-      className={`buyerly-data-row group/row relative ${layout === 'grid' ? 'grid' : 'flex'} w-full select-none items-center outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--focus-ring-color)] ${
-        selected
-          ? 'bg-[var(--row-selected-bg)] hover:bg-[var(--row-selected-hover-bg)]'
-          : 'bg-transparent hover:bg-[var(--data-row-hover-bg)]'
-      } ${className}`}
+      // `group/row` stays for callers' Tailwind (`group-hover/row:`) until their pages move to StyleX.
+      {...withClassName(
+        stylex.props(styles.row, layout === 'grid' && styles.rowGrid, selected && styles.rowSelected, rowMarker),
+        `buyerly-data-row group/row ${className}`.trim(),
+      )}
       style={{
         minHeight: `${height}px`,
-        borderRadius: `${BUYERLY_DATA_LIST.radius}px`,
-        paddingInline: `${BUYERLY_DATA_LIST.rowPaddingX}px`,
-        gap: layout === 'grid' ? `${BUYERLY_DATA_LIST.columnGap}px` : undefined,
         gridTemplateColumns: columns ? getLinearDataListTemplate(columns) : undefined,
         ...style,
       }}
@@ -161,25 +490,22 @@ export const BuyerlyDataListColumnHeader: React.FC<BuyerlyDataListColumnHeaderPr
 }) => (
   <div
     role="row"
-    className={`grid h-8 items-center text-[12px] font-normal text-[var(--text-muted)] ${className}`}
+    {...withClassName(stylex.props(styles.columnHeader), className)}
     style={{
       gridTemplateColumns: getLinearDataListTemplate(columns),
       minWidth: minWidth ? `${minWidth}px` : undefined,
-      gap: `${BUYERLY_DATA_LIST.columnGap}px`,
-      paddingInline: `${BUYERLY_DATA_LIST.rowPaddingX}px`,
       ...style,
     }}
     {...props}
   >
     {columns.map((column) => {
       const isActive = sortKey === column.id;
-      const justify = column.align === 'right' ? 'justify-end text-right' : 'justify-start text-left';
       return (
         <div
           key={column.id}
           role="columnheader"
           aria-sort={isActive ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined}
-          className={`flex min-w-0 items-center ${justify}`}
+          {...stylex.props(styles.columnCell, column.align === 'right' && styles.columnCellRight)}
           style={{ paddingLeft: column.headerInset ? `${column.headerInset}px` : undefined }}
         >
           {column.sortable && onSort ? (
@@ -187,11 +513,9 @@ export const BuyerlyDataListColumnHeader: React.FC<BuyerlyDataListColumnHeaderPr
               type="button"
               aria-label={`Order by ${column.label}`}
               onClick={() => onSort(column.id)}
-              className={`inline-flex h-6 min-w-0 items-center gap-1 rounded-full px-1.5 text-[12px] font-[450] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-secondary)] ${
-                isActive ? 'text-[var(--text-secondary)]' : 'text-[var(--text-tertiary)]'
-              }`}
+              {...stylex.props(styles.sortButton, isActive && styles.sortButtonActive)}
             >
-              <span className="truncate">{column.label}</span>
+              <span {...stylex.props(styles.truncate)}>{column.label}</span>
               {isActive && (
                 <svg
                   width="10"
@@ -203,14 +527,14 @@ export const BuyerlyDataListColumnHeader: React.FC<BuyerlyDataListColumnHeaderPr
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   aria-hidden="true"
-                  className={sortDirection === 'asc' ? 'rotate-180' : ''}
+                  {...stylex.props(sortDirection === 'asc' && styles.sortAscending)}
                 >
                   <path d="M2.5 3.75 5 6.25l2.5-2.5" />
                 </svg>
               )}
             </button>
           ) : (
-            <span className="truncate text-[12px] font-[450] text-[var(--text-tertiary)]">{column.label}</span>
+            <span {...stylex.props(styles.columnLabel)}>{column.label}</span>
           )}
         </div>
       );
@@ -256,35 +580,34 @@ export const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProp
   subGroup = false,
 }) => (
   <div
-    className={`${subGroup ? 'buyerly-data-subgroup-header relative' : 'sticky top-[-4px] z-[2]'} flex items-center ${className}`}
+    {...withClassName(
+      stylex.props(styles.groupHeader, subGroup && styles.subGroupHeader),
+      `buyerly-data-group-header${subGroup ? ' buyerly-data-subgroup-header' : ''} ${className}`.trim(),
+    )}
     style={{
-      height: `${BUYERLY_DATA_LIST.groupHeaderHeight}px`,
-      borderRadius: `${BUYERLY_DATA_LIST.radius}px`,
       background: subGroup
         ? undefined
         : tint
           ? `linear-gradient(90deg, color-mix(in srgb, ${tint} 8%, ${GROUP_HEADER_BG}) 0%, ${GROUP_HEADER_BG} 100%)`
           : GROUP_HEADER_BG,
-      isolation: 'isolate',
     }}
   >
-    <div className="group/header flex h-full min-w-0 w-full items-center gap-2 pr-2">
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center">
+    <div {...stylex.props(styles.groupHeaderBody)}>
+      <div {...stylex.props(styles.toggleSlot)}>
         {onToggleCollapse && (
           <button
             type="button"
             aria-label={isCollapsed ? 'Expand group' : 'Collapse group'}
             aria-expanded={!isCollapsed}
             onClick={onToggleCollapse}
-            className="flex h-5 w-5 items-center justify-center rounded-full text-[var(--text-tertiary)] transition-colors hover:bg-[var(--item-hover-bg)]"
+            {...stylex.props(styles.toggle)}
           >
             <svg
               width="16"
               height="16"
               viewBox="0 0 16 16"
               aria-hidden="true"
-              className="fill-current transition-transform duration-150"
-              style={{ transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)' }}
+              {...stylex.props(styles.toggleIcon, isCollapsed && styles.toggleIconCollapsed)}
             >
               <path d="M7.00194 10.6239C6.66861 10.8183 6.25 10.5779 6.25 10.192V5.80802C6.25 5.42212 6.66861 5.18169 7.00194 5.37613L10.7596 7.56811C11.0904 7.76105 11.0904 8.23895 10.7596 8.43189L7.00194 10.6239Z" />
             </svg>
@@ -292,16 +615,16 @@ export const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProp
         )}
       </div>
 
-      <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[var(--text-tertiary)]" aria-hidden="true">
-        {icon ?? <span className="h-2 w-2 rounded-full" style={{ backgroundColor: dotColor }} />}
+      <span {...stylex.props(styles.groupIcon)} aria-hidden="true">
+        {icon ?? <span {...stylex.props(styles.groupDot)} style={{ backgroundColor: dotColor }} />}
       </span>
 
-      <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">{title}</span>
-      <span className={`shrink-0 font-mono text-[11px] ${subGroup ? 'text-[var(--text-tertiary)]' : 'text-[var(--text-muted)]'}`}>{count}</span>
-      {description && <span className="truncate text-[11px] text-[var(--text-muted)]">{description}</span>}
+      <span {...withClassName(stylex.props(styles.groupTitle), 'buyerly-data-group-title')}>{title}</span>
+      <span {...stylex.props(styles.groupCount, subGroup && styles.subGroupCount)}>{count}</span>
+      {description && <span {...stylex.props(styles.groupDescription)}>{description}</span>}
       {subGroup
-        ? <span className="h-[0.5px] min-w-0 flex-1 bg-[var(--list-subgroup-line)]" aria-hidden="true" />
-        : <span className="flex-1" />}
+        ? <span {...stylex.props(styles.spacer, styles.subGroupLine)} aria-hidden="true" />
+        : <span {...stylex.props(styles.spacer)} />}
 
       {onAction && (
         <button
@@ -311,8 +634,7 @@ export const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProp
             event.stopPropagation();
             onAction();
           }}
-          // Linear's group "+": always shown, a 24px round button with a 14px icon, 8px from the edge (2026-10-24).
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-[0.5px] border-transparent text-[var(--sidebar-item-fg)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
+          {...stylex.props(styles.groupAction)}
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
             <path d="M8.75 4C8.75 3.58579 8.41421 3.25 8 3.25C7.58579 3.25 7.25 3.58579 7.25 4V7.25H4C3.58579 7.25 3.25 7.58579 3.25 8C3.25 8.41421 3.58579 8.75 4 8.75H7.25V12C7.25 12.4142 7.58579 12.75 8 12.75C8.41421 12.75 8.75 12.4142 8.75 12V8.75H12C12.4142 8.75 12.75 8.41421 12.75 8C12.75 7.58579 12.4142 7.25 12 7.25H8.75V4Z" />
@@ -332,8 +654,7 @@ export const BuyerlyDataListGroup: React.FC<BuyerlyDataListGroupProps> = ({ chil
   <div>
     <BuyerlyDataListGroupHeader {...header} />
     {!header.isCollapsed && (
-      // A sub-group's last row runs straight into the next sub-group, as Linear's; the group closes with the gap.
-      <BuyerlyDataListStack className={header.subGroup ? 'pt-0.5' : 'pb-2 pt-0.5'}>{children}</BuyerlyDataListStack>
+      <BuyerlyDataListStack xstyle={header.subGroup ? styles.subGroupRows : styles.groupRows}>{children}</BuyerlyDataListStack>
     )}
   </div>
 );
@@ -404,21 +725,11 @@ export const BuyerlyDataPrimaryCell: React.FC<BuyerlyDataPrimaryCellProps> = ({
   hint,
   sticky = false,
 }) => (
-  <div
-    className={`flex min-w-0 items-center gap-3 ${
-      sticky
-        ? 'buyerly-data-sticky sticky left-0 z-[1] transition-colors'
-        : ''
-    }`}
-  >
+  <div {...withClassName(stylex.props(styles.primaryCell, sticky && styles.primaryCellSticky), sticky ? 'buyerly-data-sticky' : undefined)}>
     {leading}
-    <div className="flex min-w-0 flex-col" title={hint}>
-      <div className="flex min-w-0 items-center gap-2">
-        <span
-          className={`min-w-0 truncate text-[13px] font-medium ${
-            dimmed ? 'text-[var(--text-tertiary)]' : 'text-[var(--text-primary)]'
-          }`}
-        >
+    <div {...stylex.props(styles.primaryText)} title={hint}>
+      <div {...stylex.props(styles.primaryLine)}>
+        <span {...stylex.props(styles.primaryTitle, dimmed && styles.primaryTitleDimmed)}>
           {title}
         </span>
         {badge}
@@ -447,19 +758,22 @@ export const BuyerlyDataMetricCell: React.FC<BuyerlyDataMetricCellProps> = ({
   emphasis = false,
   valueClassName,
 }) => (
-  <div className="min-w-0 text-right">
+  <div {...stylex.props(styles.metric)}>
     <div
-      className={`truncate whitespace-nowrap text-[12px] tabular-nums ${
-        valueClassName ?? (emphasis
-          ? 'font-medium text-[var(--text-primary)]'
-          : 'font-[450] text-[var(--text-secondary)]')
-      }`}
+      {...withClassName(
+        stylex.props(
+          styles.metricValue,
+          emphasis && styles.metricValueEmphasis,
+          valueClassName !== undefined && styles.metricValueCustom,
+        ),
+        `buyerly-data-metric-value ${valueClassName ?? ''}`.trim(),
+      )}
     >
       {value}
-      {suffix && <span className="ml-1 text-[var(--text-muted)]">{suffix}</span>}
+      {suffix && <span {...stylex.props(styles.metricSuffix)}>{suffix}</span>}
     </div>
     {caption && (
-      <div className="mt-0.5 flex min-w-0 items-center justify-end gap-1.5 text-[11px] leading-4 text-[var(--text-muted)] tabular-nums">
+      <div {...stylex.props(styles.metricCaption)}>
         {caption}
       </div>
     )}
