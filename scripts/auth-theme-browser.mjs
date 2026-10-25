@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { mockSync } from './sync-mock.mjs';
 
 const require = createRequire(new URL('../frontend/package.json', import.meta.url));
 const { chromium } = require('playwright');
@@ -136,6 +137,7 @@ try {
         const label = `${target.name} ${width}px system=${theme.system} saved=${theme.saved ?? 'none'}`;
         const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: theme.system });
         const page = await context.newPage();
+        await mockSync(page);
         page.setDefaultTimeout(10_000);
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));

@@ -31,9 +31,15 @@ type Readiness = Promise<void> & { status?: 'pending' | 'fulfilled'; value?: voi
  * says so itself.
  */
 export function preloadPage(page: PageToOpen, workspaceId: number): Readiness | null {
+  // The workspace's synced models are on their way: the page opens on them.
+  const { booting } = pool.sync;
+  if (booting) return readiness([booting.then(() => preloadPage(page, workspaceId) ?? undefined)]);
   const waits: Promise<unknown>[] = [];
   const need = (query: Query<any>) => {
-    if (!pool.has(query.key)) waits.push(pool.fetch(query));
+    if (pool.has(query.key)) return;
+    const read = pool.fetch(query);
+    // One the sync engine's models hold is in the pool already.
+    if (!pool.has(query.key)) waits.push(read);
   };
   const needViews = () => {
     if (!viewStore.viewSettingsLoaded) waits.push(viewStore.loadViewSettings());
@@ -83,7 +89,10 @@ export function preloadPage(page: PageToOpen, workspaceId: number): Readiness | 
     need(teamsQuery(workspaceId));
   }
 
-  if (waits.length === 0) return null;
+  return waits.length === 0 ? null : readiness(waits);
+}
+
+function readiness(waits: Promise<unknown>[]): Readiness {
   const ready: Readiness = Promise.all(waits).then(() => undefined, () => undefined);
   ready.status = 'pending';
   void ready.then(() => {

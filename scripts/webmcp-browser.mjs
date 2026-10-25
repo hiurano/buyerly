@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { mockSync } from './sync-mock.mjs';
 
 const require = createRequire(new URL('../frontend/package.json', import.meta.url));
 const { chromium } = require('playwright');
@@ -253,6 +254,7 @@ async function openPage(state, { optIn = true, withoutModelContext = false, widt
   if (optIn) await context.addInitScript(() => window.localStorage.setItem('buyerly-webmcp', 'on'));
   await context.route('**/api/**', apiHandler(state));
   const page = await context.newPage();
+  await mockSync(page);
   page.setDefaultTimeout(10_000);
   const problems = [];
   page.on('pageerror', (error) => problems.push(`pageerror: ${error.message}`));

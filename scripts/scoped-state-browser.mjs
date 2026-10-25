@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { mockSync } from './sync-mock.mjs';
 const require = createRequire(new URL('../frontend/package.json', import.meta.url));
 const { chromium } = require('playwright');
 const { createServer } = await import(require.resolve('vite'));
@@ -66,6 +67,7 @@ try {
       if (url.pathname === '/api/analytics/hierarchy') return route.fulfill({ json: { items: [] } });
       return route.fulfill({ json: [] });
     });
+    await mockSync(page);
     const navigate = path => page.evaluate(path => {
       history.pushState({}, '', path); dispatchEvent(new PopStateEvent('popstate'));
     }, path);
