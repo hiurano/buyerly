@@ -1018,8 +1018,8 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("event.defaultPrevented", menu)
 
         # One command menu control; record addresses open their rows.
-        self.assertIn("COMMAND_MENU_CLASSES", menu)
-        self.assertIn("export const COMMAND_MENU_CLASSES", (src / "components" / "command" / "commandMenuClasses.ts").read_text())
+        self.assertIn("commandMenuStyles as menu", menu)
+        self.assertIn("export const commandMenuStyles = stylex.create(", (src / "components" / "command" / "commandMenuStyles.ts").read_text())
         self.assertIn("[data-row-id=", reveal)
         for view in (self.campaigns_view, self.rules_view):
             self.assertIn("useRevealRow({", view)
