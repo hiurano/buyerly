@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
 import { Maximize2, Minimize2, Repeat } from 'lucide-react';
 import {
   DropdownMenu,
@@ -11,7 +13,8 @@ import {
 import { Button } from '@/ui/Button';
 import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { Tooltip } from '@/ui/Tooltip';
-import { useMediaQuery, TOUCH_HEIGHT_CLASS as TOUCH_HEIGHT } from '@/lib/useMediaQuery';
+import { useMediaQuery } from '@/lib/useMediaQuery';
+import { withClassName } from '@/ui/withClassName';
 import {
   RULE_LEVEL_LABELS,
   RULE_TIME_WINDOW_HINTS,
@@ -22,7 +25,7 @@ import {
 } from '@/lib/rules';
 import { BuyerlyBoltIcon, BuyerlyClockOutlineIcon, BuyerlyLabelIcon, BuyerlyPlusIcon } from '@/icons/BuyerlyIcons';
 import { RuleLabelPicker } from './RuleLabelPicker';
-import { CHIP_CLASS, ConditionChip, RunOnPicker } from './RuleWindowParts';
+import { BuyerlyRuleChip, ConditionChip, RunOnPicker } from './RuleWindowParts';
 import {
   BUDGET_ACTIONS,
   CHECK_INTERVALS,
@@ -62,10 +65,354 @@ const LEVEL_HINTS = {
   ad: 'A single ad, leaving its ad set running',
 } as const;
 
-const FIELD_CLASS =
-  `h-[24px] ${TOUCH_HEIGHT} w-[64px] rounded-[6px] border border-[var(--color-border-secondary)] bg-transparent px-2 text-[12px] font-medium tabular-nums text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--action-primary)]`;
+/** On a touch screen a control a finger taps is at least 40px tall. */
+const TOUCH = '@media (hover: none) and (pointer: coarse)';
 
-const LINE_LABEL = 'w-[44px] shrink-0 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--text-tertiary)]';
+const colorTransition = {
+  transitionProperty: 'color, background-color, border-color, text-decoration-color, fill, stroke',
+  transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+  transitionDuration: '150ms',
+} as const;
+
+const styles = stylex.create({
+  overlay: {
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 500,
+    backgroundColor: 'rgb(0 0 0 / 0.4)',
+  },
+  frame: {
+    pointerEvents: 'none',
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 501,
+    display: 'flex',
+    justifyContent: 'center',
+    overflowY: 'auto',
+    alignItems: 'flex-start',
+    paddingTop: '13vh',
+    paddingRight: 12,
+    paddingBottom: 12,
+    paddingLeft: 12,
+  },
+  framePhone: {
+    alignItems: 'stretch',
+    paddingTop: null,
+    paddingRight: null,
+    paddingBottom: null,
+    paddingLeft: null,
+  },
+  content: {
+    pointerEvents: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    textAlign: 'left',
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    width: '100%',
+    maxWidth: 750,
+    backgroundColor: colors['--card-bg'],
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    borderRadius: 21,
+    boxShadow:
+      '0px 4px 40px 0px rgba(0,0,0,0.1), 0px 3px 20px 0px rgba(0,0,0,0.125), 0px 3px 12px 0px rgba(0,0,0,0.125), 0px 2px 8px 0px rgba(0,0,0,0.125), 0px 1px 1px 0px rgba(0,0,0,0.125)',
+  },
+  contentExpanded: {
+    maxWidth: 1040,
+    minHeight: '70vh',
+  },
+  contentPhone: {
+    maxWidth: null,
+    minHeight: '100dvh',
+    borderWidth: null,
+    borderStyle: null,
+    borderColor: null,
+    borderRadius: null,
+    boxShadow: null,
+  },
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    marginTop: -1,
+    marginRight: -1,
+    marginBottom: -1,
+    marginLeft: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    borderWidth: 0,
+  },
+  form: {
+    display: 'flex',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    flexDirection: 'column',
+  },
+  body: {
+    display: 'flex',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    flexDirection: 'column',
+    paddingLeft: 20,
+    paddingRight: 20,
+    paddingTop: 16,
+  },
+  bodyPhone: {
+    paddingLeft: 16,
+    paddingRight: 16,
+    paddingTop: 12,
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+  },
+  crumbs: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  crumbTeam: {
+    display: 'inline-flex',
+    height: 24,
+    alignItems: 'center',
+    borderRadius: 9999,
+    backgroundColor: colors['--item-hover-bg'],
+    paddingLeft: 10,
+    paddingRight: 10,
+    fontSize: 12,
+    fontWeight: 500,
+    color: colors['--text-tertiary'],
+  },
+  crumbSeparator: {
+    fontSize: 13,
+    color: colors['--text-muted'],
+  },
+  crumbTitle: {
+    fontSize: 13,
+    fontWeight: 450,
+    color: colors['--text-primary'],
+  },
+  windowButtons: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 2,
+  },
+  windowButton: {
+    ...colorTransition,
+    display: 'inline-flex',
+    height: 28,
+    width: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9999,
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+  },
+  closeButton: {
+    height: {
+      default: 28,
+      [TOUCH]: 40,
+    },
+    width: {
+      default: 28,
+      [TOUCH]: 40,
+    },
+  },
+  name: {
+    marginBottom: 12,
+    width: '100%',
+    backgroundColor: 'transparent',
+    fontSize: 18,
+    fontWeight: 600,
+    color: colors['--text-primary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    '::placeholder': {
+      fontWeight: 600,
+      color: colors['--text-muted'],
+    },
+  },
+  line: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+  },
+  whenLine: {
+    paddingBottom: 8,
+  },
+  thenLine: {
+    paddingBottom: 12,
+  },
+  settingsLine: {
+    borderTopWidth: 1,
+    borderTopStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+    paddingTop: 12,
+  },
+  lineLabel: {
+    width: 44,
+    flexShrink: 0,
+    fontSize: 11,
+    fontWeight: 600,
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+    color: colors['--text-tertiary'],
+  },
+  word: {
+    fontSize: 12,
+    color: colors['--text-tertiary'],
+  },
+  currency: {
+    fontSize: 11,
+    color: colors['--text-tertiary'],
+  },
+  hintedItem: {
+    height: 'auto',
+    paddingTop: 5,
+    paddingBottom: 5,
+  },
+  hintedText: {
+    display: 'flex',
+    flexDirection: 'column',
+    lineHeight: '17px',
+  },
+  field: {
+    height: {
+      default: 24,
+      [TOUCH]: 40,
+    },
+    width: 64,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: {
+      default: colors['--color-border-secondary'],
+      ':focus': colors['--action-primary'],
+    },
+    backgroundColor: 'transparent',
+    paddingLeft: 8,
+    paddingRight: 8,
+    fontSize: 12,
+    fontWeight: 500,
+    fontVariantNumeric: 'tabular-nums',
+    color: colors['--text-primary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    '::placeholder': {
+      color: colors['--text-muted'],
+    },
+  },
+  fieldWide: {
+    width: 80,
+  },
+  anchor: {
+    position: 'relative',
+  },
+  chosen: {
+    color: colors['--text-primary'],
+  },
+  dots: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  dot: {
+    display: 'block',
+    height: 9,
+    width: 9,
+    borderRadius: 9999,
+  },
+  summary: {
+    paddingTop: 12,
+    fontSize: 12,
+    lineHeight: '18px',
+    color: colors['--text-tertiary'],
+  },
+  problem: {
+    paddingTop: 8,
+    fontSize: 12,
+    color: colors['--rules-action-stop-text'],
+  },
+  footer: {
+    marginTop: 16,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+    paddingTop: 12,
+    paddingRight: 20,
+    paddingBottom: 12,
+    paddingLeft: 20,
+  },
+  footerPhone: {
+    position: 'sticky',
+    bottom: 0,
+    backgroundColor: colors['--card-bg'],
+    paddingRight: 16,
+    paddingLeft: 16,
+  },
+  discard: {
+    height: {
+      default: 28,
+      [TOUCH]: 40,
+    },
+    borderRadius: 6,
+    paddingLeft: 8,
+    paddingRight: 8,
+    fontSize: 12,
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+  },
+  submitRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+  },
+  createMore: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    fontSize: 12,
+    color: colors['--text-secondary'],
+  },
+  submitAnchor: {
+    display: 'inline-flex',
+  },
+});
 
 type Popover = 'labels' | 'runOn' | null;
 
@@ -284,8 +631,8 @@ export const CreateRuleModal: React.FC = () => {
   return (
     <Dialog.Root open={isCreateRuleModalOpen} onOpenChange={(open) => !open && closeWindow()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[500] bg-black/40 animate-fade-in" />
-        <div className={`pointer-events-none fixed inset-0 z-[501] flex justify-center overflow-y-auto ${phone ? 'items-stretch' : 'items-start p-3 pt-[13vh]'}`}>
+        <Dialog.Overlay {...stylex.props(styles.overlay)} />
+        <div {...stylex.props(styles.frame, phone && styles.framePhone)}>
           <Dialog.Content
             aria-describedby={undefined}
             onEscapeKeyDown={(event) => {
@@ -301,46 +648,35 @@ export const CreateRuleModal: React.FC = () => {
                 void submit();
               }
             }}
-            style={phone ? {
-              width: '100%',
-              minHeight: '100dvh',
-              backgroundColor: 'var(--card-bg)',
-            } : {
-              width: '100%',
-              maxWidth: expanded ? '1040px' : '750px',
-              minHeight: expanded ? '70vh' : undefined,
-              backgroundColor: 'var(--card-bg)',
-              borderColor: 'var(--color-border-secondary)',
-              borderRadius: '21px',
-              boxShadow:
-                '0px 4px 40px 0px rgba(0,0,0,0.1), 0px 3px 20px 0px rgba(0,0,0,0.125), 0px 3px 12px 0px rgba(0,0,0,0.125), 0px 2px 8px 0px rgba(0,0,0,0.125), 0px 1px 1px 0px rgba(0,0,0,0.125)',
-            }}
-            className={`pointer-events-auto flex flex-col text-left outline-none ${phone ? '' : 'border animate-scale-in'}`}
+            {...withClassName(
+              stylex.props(styles.content, expanded && styles.contentExpanded, phone && styles.contentPhone),
+              phone ? undefined : 'animate-scale-in',
+            )}
           >
-            <Dialog.Title className="sr-only">{title}</Dialog.Title>
+            <Dialog.Title {...stylex.props(styles.srOnly)}>{title}</Dialog.Title>
             <form
               onSubmit={(event) => { event.preventDefault(); void submit(); }}
-              className="flex flex-1 flex-col"
+              {...stylex.props(styles.form)}
             >
-              <div className={`flex flex-1 flex-col ${phone ? 'px-4 pt-3' : 'px-5 pt-4'}`}>
+              <div {...stylex.props(styles.body, phone && styles.bodyPhone)}>
                 {/* Header: "Rules › New rule", ⤢ and ×. */}
-                <div className="flex items-center justify-between pb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex h-[24px] items-center rounded-full bg-[var(--item-hover-bg)] px-2.5 text-[12px] font-medium text-[var(--text-tertiary)]">Rules</span>
-                    <span className="text-[13px] text-[var(--text-muted)]">›</span>
-                    <span className="text-[13px] font-[450] text-[var(--text-primary)]">{title}</span>
+                <div {...stylex.props(styles.header)}>
+                  <div {...stylex.props(styles.crumbs)}>
+                    <span {...stylex.props(styles.crumbTeam)}>Rules</span>
+                    <span {...stylex.props(styles.crumbSeparator)}>›</span>
+                    <span {...stylex.props(styles.crumbTitle)}>{title}</span>
                     {restored && (
-                      <span className="text-[12px] text-[var(--text-tertiary)]">· Draft</span>
+                      <span {...stylex.props(styles.word)}>· Draft</span>
                     )}
                   </div>
-                  <div className="flex items-center gap-0.5">
+                  <div {...stylex.props(styles.windowButtons)}>
                     {!phone && (
                       <Tooltip content={expanded ? 'Collapse' : 'Expand'}>
                         <button
                           type="button"
                           aria-label={expanded ? 'Collapse window' : 'Expand window'}
                           onClick={() => setExpanded((value) => !value)}
-                          className="inline-flex h-[28px] w-[28px] items-center justify-center rounded-full text-[var(--text-tertiary)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] outline-none"
+                          {...stylex.props(styles.windowButton)}
                         >
                           {expanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                         </button>
@@ -350,7 +686,7 @@ export const CreateRuleModal: React.FC = () => {
                       type="button"
                       aria-label="Close"
                       onClick={closeWindow}
-                      className="inline-flex h-[28px] w-[28px] [@media(hover:none)_and_(pointer:coarse)]:h-10 [@media(hover:none)_and_(pointer:coarse)]:w-10 items-center justify-center rounded-full text-[var(--text-tertiary)] transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] outline-none"
+                      {...stylex.props(styles.windowButton, styles.closeButton)}
                     >
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                         <path d="M2.97 2.97a.75.75 0 0 1 1.06 0L8 6.94l3.97-3.97a.75.75 0 1 1 1.06 1.06L9.06 8l3.97 3.97a.75.75 0 1 1-1.06 1.06L8 9.06l-3.97 3.97a.75.75 0 0 1-1.06-1.06L6.94 8 2.97 4.03a.75.75 0 0 1 0-1.06Z" />
@@ -369,42 +705,42 @@ export const CreateRuleModal: React.FC = () => {
                   onChange={(event) => update({ name: event.target.value })}
                   placeholder={autoRuleName(draft)}
                   aria-label="Rule name"
-                  className="mb-3 w-full bg-transparent text-[18px] font-semibold text-[var(--text-primary)] outline-none placeholder:font-semibold placeholder:text-[var(--text-muted)]"
+                  {...stylex.props(styles.name)}
                 />
 
                 {/* WHEN [level] has [all] of [conditions] [+ Condition] [window] */}
-                <div className="flex flex-wrap items-center gap-1.5 pb-2" role="group" aria-label="When">
-                  <span className={LINE_LABEL}>When</span>
+                <div {...stylex.props(styles.line, styles.whenLine)} role="group" aria-label="When">
+                  <span {...stylex.props(styles.lineLabel)}>When</span>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button type="button" className={CHIP_CLASS} aria-label={`Level: ${RULE_LEVEL_LABELS[draft.level]}`}>
+                      <BuyerlyRuleChip aria-label={`Level: ${RULE_LEVEL_LABELS[draft.level]}`}>
                         {RULE_LEVEL_LABELS[draft.level]}
-                      </button>
+                      </BuyerlyRuleChip>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" sideOffset={4}>
                       {RULE_LEVELS.map((level) => (
-                        <DropdownMenuItem key={level} className="!h-auto py-[5px]" onClick={() => setDraft((current) => withLevel(current, level))}>
-                          <span className="flex flex-col leading-[17px]">
+                        <DropdownMenuItem key={level} xstyle={styles.hintedItem} onClick={() => setDraft((current) => withLevel(current, level))}>
+                          <span {...stylex.props(styles.hintedText)}>
                             <span>{RULE_LEVEL_LABELS[level]}</span>
-                            <span className="text-[12px] text-[var(--text-tertiary)]">{LEVEL_HINTS[level]}</span>
+                            <span {...stylex.props(styles.word)}>{LEVEL_HINTS[level]}</span>
                           </span>
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <span className="text-[12px] text-[var(--text-tertiary)]">has</span>
+                  <span {...stylex.props(styles.word)}>has</span>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button type="button" className={CHIP_CLASS} aria-label={`Match: ${draft.logic === 'and' ? 'all' : 'any'}`}>
+                      <BuyerlyRuleChip aria-label={`Match: ${draft.logic === 'and' ? 'all' : 'any'}`}>
                         {draft.logic === 'and' ? 'all' : 'any'}
-                      </button>
+                      </BuyerlyRuleChip>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" sideOffset={4}>
                       <DropdownMenuItem onClick={() => update({ logic: 'and' })}><span>all — every condition must match</span></DropdownMenuItem>
                       <DropdownMenuItem onClick={() => update({ logic: 'or' })}><span>any — one condition is enough</span></DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <span className="text-[12px] text-[var(--text-tertiary)]">of</span>
+                  <span {...stylex.props(styles.word)}>of</span>
                   {draft.conditions.map((condition, index) => (
                     <ConditionChip
                       // eslint-disable-next-line react/no-array-index-key
@@ -419,21 +755,20 @@ export const CreateRuleModal: React.FC = () => {
                     />
                   ))}
                   {draft.conditions.length < MAX_CONDITIONS && (
-                    <button
-                      type="button"
-                      className={`${CHIP_CLASS} border-dashed`}
+                    <BuyerlyRuleChip
+                      dashed
                       onClick={() => update({ conditions: [...draft.conditions, { ...DEFAULT_CONDITION, metric: 'leads', operator: 'eq' }] })}
                     >
                       <BuyerlyPlusIcon size={12} />
                       Condition
-                    </button>
+                    </BuyerlyRuleChip>
                   )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button type="button" className={CHIP_CLASS} aria-label={`Window: ${RULE_TIME_WINDOW_MENU_LABELS[draft.timeWindow]}`}>
+                      <BuyerlyRuleChip aria-label={`Window: ${RULE_TIME_WINDOW_MENU_LABELS[draft.timeWindow]}`}>
                         <BuyerlyClockOutlineIcon size={12} />
                         {RULE_TIME_WINDOW_MENU_LABELS[draft.timeWindow]}
-                      </button>
+                      </BuyerlyRuleChip>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" sideOffset={4}>
                       <DropdownMenuLabel>Period the conditions read</DropdownMenuLabel>
@@ -443,12 +778,12 @@ export const CreateRuleModal: React.FC = () => {
                           <DropdownMenuItem
                             key={value}
                             data-testid={`rule-window-${value}`}
-                            className={hint ? '!h-auto py-[5px]' : ''}
+                            xstyle={hint ? styles.hintedItem : undefined}
                             onClick={() => update({ timeWindow: value })}
                           >
-                            <span className="flex flex-col leading-[17px]">
+                            <span {...stylex.props(styles.hintedText)}>
                               <span>{RULE_TIME_WINDOW_MENU_LABELS[value]}</span>
-                              {hint && <span className="text-[12px] text-[var(--text-tertiary)]">{hint}</span>}
+                              {hint && <span {...stylex.props(styles.word)}>{hint}</span>}
                             </span>
                           </DropdownMenuItem>
                         );
@@ -458,13 +793,13 @@ export const CreateRuleModal: React.FC = () => {
                 </div>
 
                 {/* THEN [action] (by [20]% · up to [300] a day) */}
-                <div className="flex flex-wrap items-center gap-1.5 pb-3" role="group" aria-label="Then">
-                  <span className={LINE_LABEL}>Then</span>
+                <div {...stylex.props(styles.line, styles.thenLine)} role="group" aria-label="Then">
+                  <span {...stylex.props(styles.lineLabel)}>Then</span>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button type="button" className={CHIP_CLASS} aria-label={`Action: ${actionLabel(draft.action, draft.level)}`}>
+                      <BuyerlyRuleChip aria-label={`Action: ${actionLabel(draft.action, draft.level)}`}>
                         {actionLabel(draft.action, draft.level)}
-                      </button>
+                      </BuyerlyRuleChip>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" sideOffset={4}>
                       {availableActions(draft.level).map((action) => (
@@ -476,20 +811,20 @@ export const CreateRuleModal: React.FC = () => {
                   </DropdownMenu>
                   {isBudget && (
                     <>
-                      <span className="text-[12px] text-[var(--text-tertiary)]">by</span>
+                      <span {...stylex.props(styles.word)}>by</span>
                       <input
                         type="text"
                         inputMode="decimal"
                         value={draft.budgetPercent}
                         aria-label="Change by, percent"
                         onChange={(event) => update({ budgetPercent: event.target.value })}
-                        className={FIELD_CLASS}
+                        {...stylex.props(styles.field)}
                       />
-                      <span className="text-[12px] text-[var(--text-tertiary)]">%</span>
+                      <span {...stylex.props(styles.word)}>%</span>
                       {draft.action === 'increase_budget' && (
                         <>
-                          <span className="text-[12px] text-[var(--text-tertiary)]">· up to</span>
-                          {currency && <span className="text-[11px] text-[var(--text-tertiary)]">{currency}</span>}
+                          <span {...stylex.props(styles.word)}>· up to</span>
+                          {currency && <span {...stylex.props(styles.currency)}>{currency}</span>}
                           <input
                             type="text"
                             inputMode="decimal"
@@ -497,9 +832,9 @@ export const CreateRuleModal: React.FC = () => {
                             placeholder="ceiling"
                             aria-label="Daily ceiling"
                             onChange={(event) => update({ budgetMax: event.target.value })}
-                            className={`${FIELD_CLASS} w-[80px]`}
+                            {...stylex.props(styles.field, styles.fieldWide)}
                           />
-                          <span className="text-[12px] text-[var(--text-tertiary)]">a day</span>
+                          <span {...stylex.props(styles.word)}>a day</span>
                         </>
                       )}
                     </>
@@ -507,19 +842,17 @@ export const CreateRuleModal: React.FC = () => {
                 </div>
 
                 {/* Run on · Labels · Check · Repeat */}
-                <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--color-border-primary)] pt-3">
-                  <div className="relative">
-                    <button
-                      type="button"
-                      className={CHIP_CLASS}
+                <div {...stylex.props(styles.line, styles.settingsLine)}>
+                  <div {...stylex.props(styles.anchor)}>
+                    <BuyerlyRuleChip
                       aria-expanded={popover === 'runOn'}
                       aria-label={`Run on: ${runOnEntries.length ? runOnText : 'nowhere yet'}`}
                       data-popover-trigger="Run on"
                       onClick={() => setPopover((current) => (current === 'runOn' ? null : 'runOn'))}
                     >
                       <BuyerlyBoltIcon size={12} />
-                      <span className={runOnEntries.length ? 'text-[var(--text-primary)]' : ''}>{runOnText}</span>
-                    </button>
+                      <span {...stylex.props(runOnEntries.length > 0 && styles.chosen)}>{runOnText}</span>
+                    </BuyerlyRuleChip>
                     {popover === 'runOn' && (
                       <RunOnPicker
                         accounts={accounts}
@@ -533,10 +866,8 @@ export const CreateRuleModal: React.FC = () => {
                   </div>
 
                   {/* Linear's Labels chip: several at once, a new one made in place (#383). */}
-                  <div className="relative">
-                    <button
-                      type="button"
-                      className={CHIP_CLASS}
+                  <div {...stylex.props(styles.anchor)}>
+                    <BuyerlyRuleChip
                       data-label-picker-trigger=""
                       aria-expanded={popover === 'labels'}
                       onClick={() => setPopover((current) => (current === 'labels' ? null : 'labels'))}
@@ -548,21 +879,21 @@ export const CreateRuleModal: React.FC = () => {
                         </>
                       ) : (
                         <>
-                          <span className="flex items-center" aria-hidden="true">
+                          <span {...stylex.props(styles.dots)} aria-hidden="true">
                             {chosenLabels.slice(0, 4).map((label, index) => (
                               <span
                                 key={label.id}
-                                className="block h-[9px] w-[9px] rounded-full"
+                                {...stylex.props(styles.dot)}
                                 style={{ backgroundColor: label.color, marginLeft: index === 0 ? 0 : -3, boxShadow: '0 0 0 1.5px var(--card-bg)' }}
                               />
                             ))}
                           </span>
-                          <span className="text-[var(--text-primary)]">
+                          <span {...stylex.props(styles.chosen)}>
                             {chosenLabels.length === 1 ? chosenLabels[0].name : `${chosenLabels.length} labels`}
                           </span>
                         </>
                       )}
-                    </button>
+                    </BuyerlyRuleChip>
                     {popover === 'labels' && (
                       <RuleLabelPicker
                         inline
@@ -586,10 +917,10 @@ export const CreateRuleModal: React.FC = () => {
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button type="button" className={CHIP_CLASS} aria-label={`Check: ${formatCheckInterval(draft.checkInterval)}`}>
+                      <BuyerlyRuleChip aria-label={`Check: ${formatCheckInterval(draft.checkInterval)}`}>
                         <BuyerlyClockOutlineIcon size={12} />
                         {formatCheckInterval(draft.checkInterval)}
-                      </button>
+                      </BuyerlyRuleChip>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" sideOffset={4}>
                       <DropdownMenuLabel>How often the rule reads the metrics</DropdownMenuLabel>
@@ -603,10 +934,10 @@ export const CreateRuleModal: React.FC = () => {
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button type="button" className={CHIP_CLASS} aria-label={`Repeat: ${formatRepeat(draft.repeatMinutes)}`}>
+                      <BuyerlyRuleChip aria-label={`Repeat: ${formatRepeat(draft.repeatMinutes)}`}>
                         <Repeat size={12} />
                         {formatRepeat(draft.repeatMinutes)}
-                      </button>
+                      </BuyerlyRuleChip>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" sideOffset={4}>
                       <DropdownMenuLabel>How often it may act on the same {noun}</DropdownMenuLabel>
@@ -620,46 +951,44 @@ export const CreateRuleModal: React.FC = () => {
                 </div>
 
                 {/* What the rule will do, how often, when and where — in one sentence. */}
-                <p data-testid="rule-summary" className="pt-3 text-[12px] leading-[18px] text-[var(--text-tertiary)]">
+                <p data-testid="rule-summary" {...stylex.props(styles.summary)}>
                   {describeDraft(draft, accounts)}
                   {previewLine && <> {previewLine}</>}
                 </p>
                 {(serverProblem || submitError) && (
-                  <p role="alert" className="pt-2 text-[12px]" style={{ color: 'var(--rules-action-stop-text)' }}>
+                  <p role="alert" {...stylex.props(styles.problem)}>
                     {submitError || serverProblem}
                   </p>
                 )}
               </div>
 
               {/* Footer: Discard draft · Create more · Create rule. */}
-              <div
-                className={`mt-4 flex items-center justify-between gap-3 border-t border-[var(--color-border-primary)] ${phone ? 'sticky bottom-0 bg-[var(--card-bg)] px-4 py-3' : 'px-5 py-3'}`}
-              >
+              <div {...stylex.props(styles.footer, phone && styles.footerPhone)}>
                 <div>
                   {restored && !isEditing && (
                     <button
                       type="button"
                       onClick={discardDraft}
-                      className={`h-[28px] ${TOUCH_HEIGHT} rounded-[6px] px-2 text-[12px] text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]`}
+                      {...stylex.props(styles.discard)}
                     >
                       Discard draft
                     </button>
                   )}
                 </div>
-                <div className="flex items-center gap-3">
+                <div {...stylex.props(styles.submitRow)}>
                   {!isEditing && (
-                    <label className="flex items-center gap-2 text-[12px] text-[var(--text-secondary)]">
+                    <label {...stylex.props(styles.createMore)}>
                       <BuyerlyToggle checked={createMore} onChange={setCreateMore} label="Create more" />
                       <span aria-hidden="true">Create more</span>
                     </label>
                   )}
                   <Tooltip content={canSubmit ? (navigator.platform.includes('Mac') ? '⌘ Enter' : 'Ctrl Enter') : (blockers[0] ?? '')}>
-                    <span className="inline-flex">
+                    <span {...stylex.props(styles.submitAnchor)}>
                       <Button
                         type="submit"
                         variant="primary"
                         size="compact"
-                        className={TOUCH_HEIGHT}
+                        touchHeight
                         disabled={!canSubmit}
                         aria-describedby={canSubmit ? undefined : 'rule-window-blockers'}
                       >
@@ -668,7 +997,7 @@ export const CreateRuleModal: React.FC = () => {
                     </span>
                   </Tooltip>
                   {!canSubmit && blockers.length > 0 && (
-                    <span id="rule-window-blockers" className="sr-only">{blockers.join('. ')}</span>
+                    <span id="rule-window-blockers" {...stylex.props(styles.srOnly)}>{blockers.join('. ')}</span>
                   )}
                 </div>
               </div>

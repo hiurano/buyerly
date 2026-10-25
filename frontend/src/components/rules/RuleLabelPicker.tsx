@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
 import { useRulesStore, type RuleLabel } from '@/models/rulesStore';
 
 interface RuleLabelPickerProps {
@@ -26,6 +28,249 @@ type Entry = { kind: 'label'; label: RuleLabel } | { kind: 'create'; name: strin
 
 const CHECK_PATH =
   'M3.46975 5.70757L1.88358 4.1225C1.65832 3.8974 1.29423 3.8974 1.06897 4.1225C0.843675 4.34765 0.843675 4.7116 1.06897 4.93674L3.0648 6.93117C3.29006 7.15628 3.65414 7.15628 3.8794 6.93117L8.93103 1.88306C9.15633 1.65792 9.15633 1.29397 8.93103 1.06883C8.70578 0.843736 8.34172 0.843724 8.11646 1.06879L3.46975 5.70757Z';
+
+const truncate = {
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+} as const;
+
+const styles = stylex.create({
+  root: {
+    zIndex: 9999,
+    display: 'flex',
+    flexDirection: 'column',
+    width: WIDTH,
+    backgroundColor: colors['--card-bg'],
+    color: colors['--text-primary'],
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    borderRadius: 12,
+    boxShadow: colors['--dropdown-shadow'],
+    animationName: 'buyerlyPopoverScale',
+    animationDuration: '120ms',
+    animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+  },
+  header: {
+    display: 'flex',
+    height: 43,
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+    paddingLeft: 14,
+    paddingRight: 12,
+  },
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    marginTop: -1,
+    marginRight: -1,
+    marginBottom: -1,
+    marginLeft: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    borderWidth: 0,
+  },
+  input: {
+    height: 36,
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    fontSize: 13,
+    color: colors['--text-primary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    '::placeholder': {
+      color: colors['--text-tertiary'],
+    },
+  },
+  kbd: {
+    display: 'inline-flex',
+    height: 19,
+    minWidth: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    backgroundColor: colors['--item-hover-bg'],
+    paddingLeft: 4,
+    paddingRight: 4,
+    fontSize: 11,
+    fontWeight: 500,
+    color: colors['--text-tertiary'],
+  },
+  listbox: {
+    maxHeight: 340,
+    overflowY: 'auto',
+    paddingTop: 2,
+    paddingBottom: 2,
+  },
+  list: {
+    marginTop: 0,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+    listStyleType: 'none',
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+  },
+  separator: {
+    boxSizing: 'border-box',
+    height: 12,
+    paddingTop: 6,
+    paddingBottom: 6,
+  },
+  separatorLine: {
+    height: 1,
+    borderBottomWidth: 1,
+    borderBottomStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+  },
+  empty: {
+    paddingTop: 16,
+    paddingRight: 14,
+    paddingBottom: 16,
+    paddingLeft: 14,
+    textAlign: 'center',
+    fontSize: 12,
+    lineHeight: '16px',
+    color: colors['--text-muted'],
+  },
+  option: {
+    position: 'relative',
+    display: 'flex',
+    cursor: 'pointer',
+    alignItems: 'center',
+    height: ROW_HEIGHT,
+    paddingTop: 0,
+    paddingRight: 18,
+    paddingBottom: 0,
+    paddingLeft: 14,
+  },
+  highlight: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 6,
+    right: 6,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+    transitionProperty: 'color, background-color, border-color, text-decoration-color, fill, stroke',
+    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    transitionDuration: '75ms',
+  },
+  highlightActive: {
+    backgroundColor: colors['--item-hover-bg'],
+  },
+  boxFrame: {
+    position: 'relative',
+    zIndex: 1,
+    display: 'flex',
+    height: 14,
+    width: 16,
+    flexShrink: 0,
+    alignItems: 'center',
+  },
+  box: {
+    display: 'flex',
+    height: 14,
+    width: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 3,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--checkbox-border-rest'],
+    backgroundColor: 'transparent',
+    color: '#fff',
+  },
+  boxOn: {
+    borderColor: colors['--checkbox-checked-bg'],
+    backgroundColor: colors['--checkbox-checked-bg'],
+  },
+  dash: {
+    display: 'block',
+    height: 1.5,
+    width: 8,
+    borderRadius: 9999,
+    backgroundColor: 'currentColor',
+  },
+  label: {
+    position: 'relative',
+    zIndex: 1,
+    display: 'flex',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    alignItems: 'center',
+    paddingLeft: 6,
+  },
+  dotFrame: {
+    display: 'flex',
+    height: 9,
+    width: 16,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dot: {
+    display: 'block',
+    height: 9,
+    width: 9,
+    borderRadius: 9999,
+  },
+  name: {
+    ...truncate,
+    marginLeft: 5,
+    minWidth: 0,
+    fontSize: 13,
+    lineHeight: '20px',
+    color: colors['--text-primary'],
+  },
+  create: {
+    position: 'relative',
+    zIndex: 1,
+    display: 'flex',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    alignItems: 'center',
+    gap: 8,
+    fontSize: 13,
+    lineHeight: '20px',
+    color: colors['--text-primary'],
+  },
+  createIcon: {
+    flexShrink: 0,
+    color: colors['--text-tertiary'],
+  },
+  createText: {
+    ...truncate,
+    minWidth: 0,
+  },
+  createName: {
+    color: colors['--text-secondary'],
+  },
+});
 
 /**
  * Linear's label picker (#383): search, several labels at once without
@@ -172,45 +417,33 @@ export const RuleLabelPicker: React.FC<RuleLabelPickerProps> = ({
         onMouseEnter={() => setActive(index)}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => void choose(entry)}
-        className="relative flex cursor-pointer items-center"
-        style={{ height: ROW_HEIGHT, padding: '0 18px 0 14px' }}
+        {...stylex.props(styles.option)}
       >
-        <div
-          aria-hidden="true"
-          className="absolute inset-y-0 left-1.5 right-1.5 rounded-[8px] transition-colors duration-75"
-          style={{ backgroundColor: isActive ? 'var(--item-hover-bg)' : 'transparent' }}
-        />
+        <div aria-hidden="true" {...stylex.props(styles.highlight, isActive && styles.highlightActive)} />
         {entry.kind === 'label' ? (
           <>
-            <span className="relative z-[1] flex h-[14px] w-4 shrink-0 items-center">
-              <span
-                className="flex h-[14px] w-[14px] items-center justify-center rounded-[3px] border"
-                style={{
-                  borderColor: on || dash ? 'var(--checkbox-checked-bg)' : 'var(--checkbox-border-rest)',
-                  backgroundColor: on || dash ? 'var(--checkbox-checked-bg)' : 'transparent',
-                  color: '#fff',
-                }}
-              >
+            <span {...stylex.props(styles.boxFrame)}>
+              <span {...stylex.props(styles.box, (on || dash) && styles.boxOn)}>
                 {on && (
                   <svg width="10" height="9" viewBox="0 0 10 8" fill="currentColor" aria-hidden="true"><path d={CHECK_PATH} /></svg>
                 )}
-                {dash && <span className="block h-[1.5px] w-[8px] rounded-full bg-current" />}
+                {dash && <span {...stylex.props(styles.dash)} />}
               </span>
             </span>
-            <span className="relative z-[1] flex min-w-0 flex-1 items-center pl-1.5">
-              <span className="flex h-[9px] w-4 shrink-0 items-center justify-center">
-                <span className="block h-[9px] w-[9px] rounded-full" style={{ backgroundColor: entry.label.color }} />
+            <span {...stylex.props(styles.label)}>
+              <span {...stylex.props(styles.dotFrame)}>
+                <span {...stylex.props(styles.dot)} style={{ backgroundColor: entry.label.color }} />
               </span>
-              <span className="ml-[5px] min-w-0 truncate text-[13px] leading-5 text-[var(--text-primary)]">{entry.label.name}</span>
+              <span {...stylex.props(styles.name)}>{entry.label.name}</span>
             </span>
           </>
         ) : (
-          <span className="relative z-[1] flex min-w-0 flex-1 items-center gap-2 text-[13px] leading-5 text-[var(--text-primary)]">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className="shrink-0 text-[var(--text-tertiary)]">
+          <span {...stylex.props(styles.create)}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" {...stylex.props(styles.createIcon)}>
               <path d="M8.75 4a.75.75 0 0 0-1.5 0v3.25H4a.75.75 0 0 0 0 1.5h3.25V12a.75.75 0 0 0 1.5 0V8.75H12a.75.75 0 0 0 0-1.5H8.75V4Z" />
             </svg>
-            <span className="min-w-0 truncate">
-              Create new label: <span className="text-[var(--text-secondary)]">"{entry.name}"</span>
+            <span {...stylex.props(styles.createText)}>
+              Create new label: <span {...stylex.props(styles.createName)}>"{entry.name}"</span>
             </span>
           </span>
         )}
@@ -225,22 +458,11 @@ export const RuleLabelPicker: React.FC<RuleLabelPickerProps> = ({
       aria-label="Labels"
       data-rule-label-picker="true"
       onClick={(event) => event.stopPropagation()}
-      className="z-[9999] flex flex-col"
-      style={{
-        ...style,
-        width: WIDTH,
-        backgroundColor: 'var(--card-bg)',
-        color: 'var(--text-primary)',
-        border: '1px solid var(--color-border-secondary)',
-        borderRadius: 12,
-        boxShadow: 'var(--dropdown-shadow)',
-        animation: 'buyerlyPopoverScale 120ms cubic-bezier(0.16, 1, 0.3, 1)',
-      }}
+      {...stylex.props(styles.root)}
+      style={style}
     >
-      <div
-        className="flex h-[43px] shrink-0 items-center gap-2 border-b border-[var(--color-border-primary)] pl-[14px] pr-3"
-      >
-        <span className="sr-only" role="status" aria-live="polite">
+      <div {...stylex.props(styles.header)}>
+        <span {...stylex.props(styles.srOnly)} role="status" aria-live="polite">
           {text ? `${entries.length} matching` : 'Showing all labels'}
         </span>
         <input
@@ -258,26 +480,26 @@ export const RuleLabelPicker: React.FC<RuleLabelPickerProps> = ({
           disabled={creating}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={onInputKeyDown}
-          className="h-9 min-w-0 flex-1 border-0 bg-transparent text-[13px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
+          {...stylex.props(styles.input)}
         />
-        <kbd className="inline-flex h-[19px] min-w-[18px] items-center justify-center rounded-[4px] border border-[var(--color-border-secondary)] bg-[var(--item-hover-bg)] px-1 text-[11px] font-medium text-[var(--text-tertiary)]">
+        <kbd {...stylex.props(styles.kbd)}>
           L
         </kbd>
       </div>
-      <div id="rule-label-options" role="listbox" aria-multiselectable="true" className="max-h-[340px] overflow-y-auto py-0.5">
-        <ul role="presentation" className="m-0 list-none p-0">
+      <div id="rule-label-options" role="listbox" aria-multiselectable="true" {...stylex.props(styles.listbox)}>
+        <ul role="presentation" {...stylex.props(styles.list)}>
           {entries.map((entry, index) => (
             <React.Fragment key={entry.kind === 'label' ? entry.label.id : 'create'}>
               {index === splitAt && index > 0 && (
-                <li role="separator" className="box-border h-3 py-1.5">
-                  <div className="h-px border-b border-[var(--color-border-primary)]" />
+                <li role="separator" {...stylex.props(styles.separator)}>
+                  <div {...stylex.props(styles.separatorLine)} />
                 </li>
               )}
               {renderEntry(entry, index)}
             </React.Fragment>
           ))}
           {entries.length === 0 && (
-            <li className="px-[14px] py-4 text-center text-xs text-[var(--text-muted)]">
+            <li {...stylex.props(styles.empty)}>
               {labels.length === 0 ? 'Type a name to create the first label' : 'No labels found'}
             </li>
           )}

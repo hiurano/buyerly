@@ -1,4 +1,6 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors, type as typeTokens } from '@/styles/tokens.stylex';
 import { BuyerlyCheckbox } from '@/ui/BuyerlyCheckbox';
 import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 
@@ -15,8 +17,7 @@ import { formatCheckInterval, formatRepeat } from './ruleDraft';
 import { useRulesStore, RuleItem } from '@/models/rulesStore';
 import { useSelectionStore } from '@/models/selectionStore';
 import { dialogStore } from '@/models/dialogStore';
-
-const MUTED_CELL = 'font-[450] text-[var(--text-tertiary)]';
+import { withClassName } from '@/ui/withClassName';
 
 /** A day as Linear's Created column shows it: Oct 14. */
 const createdDay = (iso: string) => {
@@ -24,25 +25,105 @@ const createdDay = (iso: string) => {
   return Number.isFinite(time) ? new Date(time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
 };
 
-const ACTION_BADGE_STYLES: Record<
-  RuleActionTone,
-  { bg: string; border: string; text: string }
-> = {
+const truncate = {
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+} as const;
+
+const styles = stylex.create({
+  row: {
+    cursor: 'pointer',
+  },
+  text: {
+    ...truncate,
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--text-secondary'],
+  },
+  identifier: {
+    fontVariantNumeric: 'tabular-nums',
+    color: colors['--text-tertiary'],
+  },
+  muted: {
+    fontWeight: 450,
+    color: colors['--text-tertiary'],
+  },
+  labels: {
+    display: 'flex',
+    height: '100%',
+    minWidth: 0,
+    cursor: 'pointer',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  cell: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  chip: {
+    ...truncate,
+    fontSize: 11,
+    fontWeight: 500,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderRadius: 4,
+    paddingTop: 2,
+    paddingRight: 7,
+    paddingBottom: 2,
+    paddingLeft: 7,
+    letterSpacing: '-0.01em',
+  },
+  condition: {
+    backgroundColor: colors['--rules-property-bg'],
+    borderColor: colors['--rules-property-border'],
+    color: colors['--rules-property-text'],
+    fontFamily: typeTokens['--font-monospace'],
+    userSelect: 'text',
+  },
   stop: {
-    bg: 'var(--rules-action-stop-bg)',
-    border: 'var(--rules-action-stop-border)',
-    text: 'var(--rules-action-stop-text)',
+    backgroundColor: colors['--rules-action-stop-bg'],
+    borderColor: colors['--rules-action-stop-border'],
+    color: colors['--rules-action-stop-text'],
   },
   positive: {
-    bg: 'var(--rules-action-positive-bg)',
-    border: 'var(--rules-action-positive-border)',
-    text: 'var(--rules-action-positive-text)',
+    backgroundColor: colors['--rules-action-positive-bg'],
+    borderColor: colors['--rules-action-positive-border'],
+    color: colors['--rules-action-positive-text'],
   },
   default: {
-    bg: 'var(--rules-action-default-bg)',
-    border: 'var(--rules-action-default-border)',
-    text: 'var(--rules-action-default-text)',
+    backgroundColor: colors['--rules-action-default-bg'],
+    borderColor: colors['--rules-action-default-border'],
+    color: colors['--rules-action-default-text'],
   },
+  scope: {
+    fontWeight: 450,
+    paddingRight: 6,
+    paddingLeft: 6,
+    letterSpacing: null,
+    backgroundColor: colors['--rules-scope-bg'],
+    borderColor: colors['--rules-property-border'],
+    color: colors['--rules-scope-text'],
+  },
+  menu: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  // Pinned to the right edge on a narrow screen, where this column is past the scroll.
+  menuSticky: {
+    position: 'sticky',
+    right: 0,
+    zIndex: 1,
+  },
+});
+
+const ACTION_BADGE_STYLES: Record<RuleActionTone, stylex.StyleXStyles> = {
+  stop: styles.stop,
+  positive: styles.positive,
+  default: styles.default,
 };
 
 interface RuleRowProps {
@@ -83,7 +164,7 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
         }
       }}
       selected={isSelected}
-      className="cursor-pointer"
+      xstyle={styles.row}
     >
       <BuyerlyDataPrimaryCell
         leading={(
@@ -112,7 +193,6 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
           <BuyerlyLabelPill
             label="Needs review"
             dotColor="var(--rules-action-stop-text)"
-            className="shrink-0"
           />
         )}
         dimmed={!isDeliveryOn}
@@ -120,7 +200,7 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
       />
 
       {rulesDisplayProperties.id && (
-        <span className="truncate text-[12px] font-[450] tabular-nums text-[var(--text-tertiary)]">{rule.identifier}</span>
+        <span {...stylex.props(styles.text, styles.identifier)}>{rule.identifier}</span>
       )}
 
       {rulesDisplayProperties.labels !== false && (
@@ -130,7 +210,7 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
           aria-label={`Labels of ${rule.name}`}
           data-label-picker-trigger=""
           data-rule-labels={rule.id}
-          className="flex h-full min-w-0 cursor-pointer items-center overflow-hidden"
+          {...stylex.props(styles.labels)}
           onClick={(event) => {
             event.stopPropagation();
             const open = dialogStore.ruleLabelPicker;
@@ -146,65 +226,30 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
       )}
 
       {rulesDisplayProperties.condition !== false && (
-          <div className="flex min-w-0 items-center overflow-hidden">
-            <span
-              style={{
-                fontSize: '11px',
-                fontWeight: 500,
-                backgroundColor: 'var(--rules-property-bg)',
-                border: '1px solid var(--rules-property-border)',
-                color: 'var(--rules-property-text)',
-                borderRadius: '4px',
-                padding: '2px 7px',
-                fontFamily: 'var(--font-monospace, monospace)',
-                letterSpacing: '-0.01em',
-              }}
-              className="truncate whitespace-nowrap select-text"
-              title={rule.condition}
-            >
+          <div {...stylex.props(styles.cell)}>
+            <span {...stylex.props(styles.chip, styles.condition)} title={rule.condition}>
               {rule.condition}
             </span>
           </div>
       )}
 
       {rulesDisplayProperties.action !== false && (
-          <div className="flex min-w-0 items-center overflow-hidden">
-            <span
-              style={{
-                fontSize: '11px',
-                fontWeight: 500,
-                backgroundColor: actionStyle.bg,
-                border: `1px solid ${actionStyle.border}`,
-                color: actionStyle.text,
-                borderRadius: '4px',
-                padding: '2px 7px',
-                letterSpacing: '-0.01em',
-              }}
-              className="truncate whitespace-nowrap"
-            >
+          <div {...stylex.props(styles.cell)}>
+            <span {...stylex.props(styles.chip, actionStyle)}>
               {rule.action}
             </span>
           </div>
       )}
 
       {rulesDisplayProperties.level && (
-        <span className="truncate text-[12px] font-[450] text-[var(--text-secondary)]">{RULE_LEVEL_LABELS[rule.preset.level ?? 'adset']}</span>
+        <span {...stylex.props(styles.text)}>{RULE_LEVEL_LABELS[rule.preset.level ?? 'adset']}</span>
       )}
 
       {rulesDisplayProperties.scope !== false && (
-          <div className="flex min-w-0 items-center overflow-hidden">
+          <div {...stylex.props(styles.cell)}>
             {rule.scope && (
             <span
-              style={{
-                fontSize: '11px',
-                fontWeight: 450,
-                backgroundColor: 'var(--rules-scope-bg)',
-                border: '1px solid var(--rules-property-border)',
-                color: 'var(--rules-scope-text)',
-                borderRadius: '4px',
-                padding: '2px 6px',
-              }}
-              className="truncate whitespace-nowrap"
+              {...stylex.props(styles.chip, styles.scope)}
               title={rule.preset.attached_account_ids.length === 0 ? ATTACH_STEPS : undefined}
             >
               {rule.scope}
@@ -214,28 +259,27 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
       )}
 
       {rulesDisplayProperties.check && (
-        <span className="truncate text-[12px] font-[450] text-[var(--text-secondary)]">{formatCheckInterval(rule.preset.check_interval_minutes)}</span>
+        <span {...stylex.props(styles.text)}>{formatCheckInterval(rule.preset.check_interval_minutes)}</span>
       )}
 
       {rulesDisplayProperties.repeat && (
-        <span className="truncate text-[12px] font-[450] text-[var(--text-secondary)]">{formatRepeat(rule.preset.cooldown_minutes)}</span>
+        <span {...stylex.props(styles.text)}>{formatRepeat(rule.preset.cooldown_minutes)}</span>
       )}
 
       {rulesDisplayProperties.lastCheck !== false && (
-        <BuyerlyDataMetricCell value={rule.lastCheck} valueClassName="font-[450] text-[var(--text-tertiary)]" />
+        <BuyerlyDataMetricCell value={rule.lastCheck} valueXstyle={styles.muted} />
       )}
 
       {rulesDisplayProperties.lastRun !== false && (
-        <BuyerlyDataMetricCell value={rule.lastRun} valueClassName={MUTED_CELL} />
+        <BuyerlyDataMetricCell value={rule.lastRun} valueXstyle={styles.muted} />
       )}
 
       {rulesDisplayProperties.created && (
-        <BuyerlyDataMetricCell value={createdDay(rule.preset.created_at)} valueClassName={MUTED_CELL} />
+        <BuyerlyDataMetricCell value={createdDay(rule.preset.created_at)} valueXstyle={styles.muted} />
       )}
 
-      {/* Pinned to the right edge on a narrow screen, where this column is past the scroll. */}
       <div
-        className={`flex items-center justify-end ${isSmall ? 'buyerly-data-sticky sticky right-0 z-[1]' : ''}`}
+        {...withClassName(stylex.props(styles.menu, isSmall && styles.menuSticky), isSmall ? 'buyerly-data-sticky' : undefined)}
         onClick={(e) => e.stopPropagation()}
       >
         <RuleRowMenu rule={rule} />

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pause, Play, Trash2 } from 'lucide-react';
+import * as stylex from '@stylexjs/stylex';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { RuleBoard } from './RuleBoard';
 import { useLayoutShortcut } from '@/ui/useLayoutShortcut';
@@ -56,6 +57,75 @@ import { useDialogStore, dialogStore } from '@/models/dialogStore';
 import { useViewStore, type RuleFilterTab } from '@/models/viewStore';
 import { useRulesStore } from '@/models/rulesStore';
 import { useSelectionStore } from '@/models/selectionStore';
+
+const styles = stylex.create({
+  root: {
+    display: 'flex',
+    height: '100%',
+    width: '100%',
+    userSelect: 'none',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  // Linear's 2-tier header stack (87px in all).
+  header: {
+    display: 'flex',
+    flexShrink: 0,
+    flexDirection: 'column',
+    width: '100%',
+    backgroundColor: 'transparent',
+  },
+  // Tier 1: the 44px title bar over a hairline.
+  titleBar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 44,
+    boxSizing: 'border-box',
+    paddingLeft: 18,
+    paddingRight: 11,
+  },
+  title: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  // Tier 2: the view tabs and the action buttons, 43px, no line under it.
+  toolbar: {
+    gap: 8,
+  },
+  actions: {
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 6,
+  },
+  anchor: {
+    position: 'relative',
+  },
+  scroll: {
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    overflowY: 'auto',
+  },
+  list: {
+    position: 'relative',
+    display: 'flex',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+  },
+  board: {
+    position: 'relative',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+  },
+});
 
 interface OpenFilterMenu {
   mode: FilterMenuMode;
@@ -380,22 +450,11 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
   ) : null;
 
   return (
-    <div className="flex h-full w-full select-none flex-col overflow-hidden bg-transparent">
-      {/* 1. Exact Linear 2-Tier Header Stack (87px total) */}
-      <header className="flex shrink-0 flex-col w-full bg-transparent">
-        {/* Tier 1: Title Bar (Height: 44px, Border-Bottom: 1px solid var(--color-border-primary)) */}
-        <div
-          style={{
-            height: '44px',
-            borderBottom: 'var(--canvas-border)',
-            boxSizing: 'border-box',
-            paddingLeft: '18px',
-            paddingRight: '11px',
-          }}
-          className="flex items-center justify-between"
-        >
-          {/* Left: Clean Title */}
-          <div className="flex items-center">
+    <div {...stylex.props(styles.root)}>
+      <header {...stylex.props(styles.header)}>
+        {/* --canvas-border is a whole border; StyleX would split the shorthand and lose it. */}
+        <div {...stylex.props(styles.titleBar)} style={{ borderBottom: 'var(--canvas-border)' }}>
+          <div {...stylex.props(styles.title)}>
             <SidebarCollapsedNavigation />
             <ViewTitle
               title="Rules"
@@ -418,8 +477,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
           />
         </div>
 
-        {/* Tier 2: View Filter Tabs & Action Buttons (Height: 43px, NO border bottom) */}
-        <BuyerlyDataListToolbar className="gap-2">
+        <BuyerlyDataListToolbar xstyle={styles.toolbar}>
           {/* Left: Capsule Tabs; when they no longer fit they fold into one menu, as in Linear. */}
           <BuyerlyTabs
             collapseOverflow
@@ -429,9 +487,9 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
           />
 
           {/* Right: Add filter + Display options + Toggle Sidebar */}
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div {...stylex.props(styles.actions)}>
             {/* Add Filter Button with Popover */}
-            <div className="relative">
+            <div {...stylex.props(styles.anchor)}>
               <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(openFilterMenu)}>
                 <BuyerlyFilterButton
                   ref={filterButtonRef}
@@ -450,7 +508,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
             </div>
 
             {/* Display Options Button with Popover */}
-            <div className="relative">
+            <div {...stylex.props(styles.anchor)}>
               <Tooltip content="Show display options" shortcut="Shift V" align="end" disabled={isRulesDisplayOptionsOpen}>
                 <button
                   ref={displayOptionsButtonRef}
@@ -462,7 +520,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
                     setOpenFilterMenu(null);
                     toggleRulesDisplayOptions();
                   }}
-                  className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target group"
+                  className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target"
                 >
                   <BuyerlySlidersIcon size={14} />
                   <DisplayOptionsChangedDot show={rulesDisplayChanged} />
@@ -524,17 +582,17 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
             onAction={() => openCreateRuleModal()}
           />
         ) : hasFilters && filteredRules.length === 0 ? (
-          <div className="min-w-0 flex-1 overflow-y-auto">
+          <div {...stylex.props(styles.scroll)}>
             <FilteredEmptyState noun="rules" hiddenCount={hiddenCount} onClear={clearFilters} />
           </div>
         ) : rulesViewMode === 'list' ? (
-          <div className="relative flex min-w-0 flex-1">
+          <div {...stylex.props(styles.list)}>
             <RulesListView filteredRules={filteredRules} />
             <SelectionDock count={selection.count} onOpenActions={() => selection.setMenuOpen(true)} onClear={selection.clear} />
           </div>
         ) : (
           /* Linear's Board: the columns are the grouping's groups (#390). */
-          <div className="relative min-w-0 flex-1">
+          <div {...stylex.props(styles.board)}>
             <RuleBoard rules={filteredRules} />
           </div>
         )}

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { arrangeBoardColumns, toggleHiddenGroup } from '@/ui/listView';
 import { BuyerlyBoard, type BoardLane } from '@/ui/BuyerlyBoard';
 import { toast } from '@/ui/toast';
@@ -15,8 +16,16 @@ import { useRulesStore, RuleItem } from '@/models/rulesStore';
 import { useDialogStore } from '@/models/dialogStore';
 import { useSelectionStore } from '@/models/selectionStore';
 
+const styles = stylex.create({
+  dot: {
+    height: 8,
+    width: 8,
+    borderRadius: 9999,
+  },
+});
+
 const Dot: React.FC<{ color: string }> = ({ color }) => (
-  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+  <span {...stylex.props(styles.dot)} style={{ backgroundColor: color }} />
 );
 
 /**
