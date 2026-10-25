@@ -408,11 +408,12 @@ const styles = stylex.create({
   },
 });
 
-export const BuyerlyDataListToolbar: React.FC<React.PropsWithChildren<{ className?: string }>> = ({
+export const BuyerlyDataListToolbar: React.FC<React.PropsWithChildren<{ className?: string; xstyle?: stylex.StyleXStyles }>> = ({
   children,
   className = '',
+  xstyle,
 }) => (
-  <div {...withClassName(stylex.props(styles.toolbar), className)}>
+  <div {...withClassName(stylex.props(styles.toolbar, xstyle), className)}>
     {children}
   </div>
 );
@@ -443,10 +444,12 @@ interface BuyerlyDataListRowProps extends React.HTMLAttributes<HTMLDivElement> {
   height?: number;
   layout?: 'flex' | 'grid';
   columns?: BuyerlyDataListColumn[];
+  /** Styles from the parent, applied last. */
+  xstyle?: stylex.StyleXStyles;
 }
 
 export const BuyerlyDataListRow = React.forwardRef<HTMLDivElement, BuyerlyDataListRowProps>(
-  ({ selected = false, height = BUYERLY_DATA_LIST.rowHeight, layout = 'flex', columns, className = '', style, children, ...props }, ref) => (
+  ({ selected = false, height = BUYERLY_DATA_LIST.rowHeight, layout = 'flex', columns, className = '', xstyle, style, children, ...props }, ref) => (
     <div
       ref={ref}
       role="row"
@@ -454,7 +457,7 @@ export const BuyerlyDataListRow = React.forwardRef<HTMLDivElement, BuyerlyDataLi
       aria-selected={selected}
       // `group/row` stays for callers' Tailwind (`group-hover/row:`) until their pages move to StyleX.
       {...withClassName(
-        stylex.props(styles.row, layout === 'grid' && styles.rowGrid, selected && styles.rowSelected, rowMarker),
+        stylex.props(styles.row, layout === 'grid' && styles.rowGrid, selected && styles.rowSelected, rowMarker, xstyle),
         `buyerly-data-row group/row ${className}`.trim(),
       )}
       style={{
@@ -748,6 +751,8 @@ interface BuyerlyDataMetricCellProps {
   emphasis?: boolean;
   /** Overrides the value color for a semantic tone. */
   valueClassName?: string;
+  /** The same in StyleX, applied last. */
+  valueXstyle?: stylex.StyleXStyles;
 }
 
 /** A right-aligned number with tabular figures and an optional caption. */
@@ -757,6 +762,7 @@ export const BuyerlyDataMetricCell: React.FC<BuyerlyDataMetricCellProps> = ({
   caption,
   emphasis = false,
   valueClassName,
+  valueXstyle,
 }) => (
   <div {...stylex.props(styles.metric)}>
     <div
@@ -765,6 +771,7 @@ export const BuyerlyDataMetricCell: React.FC<BuyerlyDataMetricCellProps> = ({
           styles.metricValue,
           emphasis && styles.metricValueEmphasis,
           valueClassName !== undefined && styles.metricValueCustom,
+          valueXstyle,
         ),
         `buyerly-data-metric-value ${valueClassName ?? ''}`.trim(),
       )}

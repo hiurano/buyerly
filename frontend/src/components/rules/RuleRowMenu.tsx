@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
+import { rowMarker } from '@/ui/markers.stylex';
 import { ruleStatesTitle } from './RuleStatesDialog';
 import { AttachRulePreviewDialog } from './AttachRulePreviewDialog';
 import {
@@ -18,6 +21,89 @@ import { useIsTouchScreen } from '@/lib/useMediaQuery';
 import { formatAccountScope } from '@/lib/rules';
 import { useDialogStore, dialogStore } from '@/models/dialogStore';
 import { useRulesStore, RuleItem } from '@/models/rulesStore';
+
+const TOUCH = '@media (hover: none) and (pointer: coarse)';
+
+const styles = stylex.create({
+  empty: {
+    paddingTop: 8,
+    paddingRight: 14,
+    paddingBottom: 8,
+    paddingLeft: 14,
+    fontSize: 12,
+    color: colors['--text-muted'],
+  },
+  accountName: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  accountEnd: {
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 8,
+  },
+  note: {
+    fontSize: 11,
+    color: colors['--text-tertiary'],
+  },
+  check: {
+    color: colors['--text-secondary'],
+  },
+  // Shows while its row is hovered, its menu open or it has focus; always on a touch screen.
+  trigger: {
+    display: 'flex',
+    height: {
+      default: 24,
+      [TOUCH]: 40,
+    },
+    width: {
+      default: 24,
+      [TOUCH]: 32,
+    },
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 4,
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    opacity: {
+      default: 0,
+      [stylex.when.ancestor(':hover', rowMarker)]: 1,
+      ':is([data-state="open"])': 1,
+      ':focus-visible': 1,
+      '@media (hover: none)': 1,
+    },
+    transitionProperty: 'all',
+    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    transitionDuration: '150ms',
+    outline: {
+      default: null,
+      ':focus-visible': '2px solid transparent',
+    },
+    outlineOffset: {
+      default: null,
+      ':focus-visible': 2,
+    },
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+  },
+  arrow: {
+    fontSize: 10,
+    color: colors['--text-tertiary'],
+  },
+  danger: {
+    color: colors['--rules-action-stop-text'],
+  },
+});
 
 interface RuleRowMenuProps {
   rule: RuleItem;
@@ -48,7 +134,7 @@ export const RuleRowMenu: React.FC<RuleRowMenuProps> = ({ rule }) => {
 
   const accountItems =
     ruleAccounts.length === 0 ? (
-      <div className="px-3.5 py-2 text-[12px] text-[var(--text-muted)]">
+      <div {...stylex.props(styles.empty)}>
         No ad accounts imported yet
       </div>
     ) : (
@@ -72,15 +158,15 @@ export const RuleRowMenu: React.FC<RuleRowMenuProps> = ({ rule }) => {
               void toggleRuleOnAccount(rule.id, account.account_id);
             }}
           >
-            <span className="truncate">{metaAccountLabel(account)}</span>
-            <span className="flex shrink-0 items-center gap-2">
+            <span {...stylex.props(styles.accountName)}>{metaAccountLabel(account)}</span>
+            <span {...stylex.props(styles.accountEnd)}>
               {note && (
-                <span className="text-[11px] text-[var(--text-tertiary)]">
+                <span {...stylex.props(styles.note)}>
                   {note}
                 </span>
               )}
               {isAttached && (
-                <BuyerlyCheckIcon size={16} className="text-[var(--text-secondary)]" />
+                <BuyerlyCheckIcon size={16} {...stylex.props(styles.check)} />
               )}
             </span>
           </DropdownMenuItem>
@@ -95,7 +181,7 @@ export const RuleRowMenu: React.FC<RuleRowMenuProps> = ({ rule }) => {
         <button
           type="button"
           aria-label={`Actions for ${rule.name}`}
-          className="flex h-6 w-6 items-center justify-center rounded text-[var(--text-tertiary)] opacity-0 transition-all hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] group-hover/row:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] [@media(hover:none)]:opacity-100 [@media(hover:none)_and_(pointer:coarse)]:h-10 [@media(hover:none)_and_(pointer:coarse)]:w-8"
+          {...stylex.props(styles.trigger)}
         >
           <BuyerlyDotsIcon size={14} />
         </button>
@@ -117,7 +203,7 @@ export const RuleRowMenu: React.FC<RuleRowMenuProps> = ({ rule }) => {
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <span>Run on ad accounts</span>
-              <span className="text-[10px] text-[var(--text-tertiary)]">▶</span>
+              <span {...stylex.props(styles.arrow)}>▶</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>{accountItems}</DropdownMenuSubContent>
           </DropdownMenuSub>
@@ -133,7 +219,7 @@ export const RuleRowMenu: React.FC<RuleRowMenuProps> = ({ rule }) => {
         <DropdownMenuSeparator />
 
         <DropdownMenuItem onClick={() => requestDeletion('rule', [rule.id])}>
-          <span style={{ color: 'var(--rules-action-stop-text)' }}>Delete rule</span>
+          <span {...stylex.props(styles.danger)}>Delete rule</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

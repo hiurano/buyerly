@@ -1,4 +1,6 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
 import { describeRuleState } from '@/lib/rules';
 import type { RuleEntityStatePayload, RuleStateTone } from '@/lib/rules';
 
@@ -9,6 +11,42 @@ const TONE_COLORS: Record<RuleStateTone, string> = {
   quiet: 'var(--text-tertiary)',
   error: 'var(--rules-action-stop-text)',
 };
+
+const styles = stylex.create({
+  root: {
+    display: 'flex',
+    minWidth: 0,
+    flexDirection: 'column',
+    gap: 2,
+  },
+  status: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 6,
+    fontSize: 12,
+    fontWeight: 500,
+    lineHeight: '16px',
+  },
+  dot: {
+    height: 6,
+    width: 6,
+    flexShrink: 0,
+    borderRadius: 9999,
+  },
+  label: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  note: {
+    paddingLeft: 12,
+    fontSize: 12,
+    lineHeight: '16px',
+    color: colors['--text-tertiary'],
+    overflowWrap: 'anywhere',
+  },
+});
 
 interface RuleStateLineProps {
   row: RuleEntityStatePayload;
@@ -24,27 +62,21 @@ export const RuleStateLine: React.FC<RuleStateLineProps> = ({ row }) => {
   const view = describeRuleState(row);
   const color = TONE_COLORS[view.tone];
   return (
-    <div className="flex min-w-0 flex-col gap-[2px]" data-rule-state={row.state}>
-      <span
-        className="flex min-w-0 items-center gap-1.5 text-[12px] font-medium leading-4"
-        style={{ color }}
-      >
+    <div {...stylex.props(styles.root)} data-rule-state={row.state}>
+      <span {...stylex.props(styles.status)} style={{ color }}>
         <span
           aria-hidden="true"
-          className="h-1.5 w-1.5 shrink-0 rounded-full"
+          {...stylex.props(styles.dot)}
           style={
             view.tone === 'blocked' || view.tone === 'quiet'
               ? { border: `1px solid ${color}` }
               : { backgroundColor: color }
           }
         />
-        <span className="truncate">{view.label}</span>
+        <span {...stylex.props(styles.label)}>{view.label}</span>
       </span>
       {view.note && (
-        <span
-          className="pl-3 text-[12px] leading-4 text-[var(--text-tertiary)] [overflow-wrap:anywhere]"
-          title={view.note}
-        >
+        <span {...stylex.props(styles.note)} title={view.note}>
           {view.note}
         </span>
       )}

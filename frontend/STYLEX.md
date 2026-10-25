@@ -82,6 +82,11 @@ not class by class.
   through a child selector (cmdk's group headings, `space-y-*`) keeps the
   same selector in index.css under a semantic class (`.buyerly-command-group`,
   `.buyerly-sidebar-navigation`).
+- A token that holds a whole border (`--canvas-border`) can't go in
+  `borderBottom`: StyleX splits the shorthand and the line is lost. Such
+  an element keeps `style={{ borderBottom: 'var(--canvas-border)' }}`.
+- Tailwind's `border-b border-[color]` coloured all four sides; write
+  `borderColor`, not `borderBottomColor`, to keep the computed style the same.
 - Browser checks find elements by semantic class (`buyerly-data-group-title`)
   or role, never by a Tailwind class.
 

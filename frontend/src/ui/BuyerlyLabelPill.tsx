@@ -7,6 +7,8 @@ export interface BuyerlyLabelPillProps {
   label: string;
   dotColor?: string;
   className?: string;
+  /** Styles from the parent, applied last. */
+  xstyle?: stylex.StyleXStyles;
   onClick?: (e: React.MouseEvent) => void;
 }
 
@@ -90,13 +92,14 @@ export const BuyerlyLabelPill: React.FC<BuyerlyLabelPillProps> = ({
   label,
   dotColor = 'rgb(148, 163, 184)',
   className = '',
+  xstyle,
   onClick,
 }) => {
   return (
     <div
       data-disabled="false"
       onClick={onClick}
-      {...withClassName(stylex.props(styles.root, onClick && styles.clickable), className)}
+      {...withClassName(stylex.props(styles.root, onClick && styles.clickable, xstyle), className)}
     >
       {/* 1. Left Indicator Dot Wrapper (14×14px flex centered) */}
       <div {...stylex.props(styles.dotFrame)}>
