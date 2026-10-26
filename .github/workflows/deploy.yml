@@ -115,8 +115,9 @@ jobs:
         working-directory: frontend
         run: npx vite build --outDir /tmp/buyerly-warm-build
 
-      # Bundles the dependencies for the dev server once, so the first script
-      # of a group does not pay for it inside its first page's 10 s timeout.
+      # StyleX compiles a file differently in dev, so the build above leaves
+      # the StyleX files uncached for the dev server; loading the app once
+      # through it fills them, so no first page outruns a 10 s timeout.
       - name: Warm the dev server
         working-directory: frontend
         run: node ../scripts/warm-dev-server.mjs
