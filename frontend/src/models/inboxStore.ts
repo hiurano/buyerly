@@ -29,6 +29,8 @@ export class InboxStore {
   inboxDisplay: InboxDisplay = DEFAULT_INBOX_DISPLAY;
   /** False until this workspace's saved Display options arrive (or the member changes one). */
   inboxDisplayLoaded = false;
+  /** True while the options shown are the local database's copy, until the server's arrive (#496). */
+  inboxDisplayKept = false;
   #displaySave: Promise<unknown> = Promise.resolve();
 
   constructor() {
@@ -38,6 +40,7 @@ export class InboxStore {
       this.inboxPriorityUnreadCount = 0;
       this.inboxDisplay = DEFAULT_INBOX_DISPLAY;
       this.inboxDisplayLoaded = false;
+      this.inboxDisplayKept = false;
     });
     // Kept between visits, so a reload draws Inbox with the member's options and badge at once (#496).
     localDatabase.keep('inbox', (value) => this.hydrate(value as StoredInbox));
@@ -46,7 +49,7 @@ export class InboxStore {
         ? { display: this.inboxDisplay, unread: this.inboxUnreadCount, priorityUnread: this.inboxPriorityUnreadCount }
         : null),
       (stored) => {
-        if (stored) localDatabase.saveLater('inbox', () => stored);
+        if (stored) localDatabase.save('inbox', stored);
       },
     );
   }
@@ -57,13 +60,16 @@ export class InboxStore {
     this.inboxUnreadCount = stored.unread;
     this.inboxPriorityUnreadCount = stored.priorityUnread;
     this.showDisplay({ ...DEFAULT_INBOX_DISPLAY, ...stored.display });
+    this.inboxDisplayKept = true;
     const kept = this.inboxDisplay;
     const inScope = scopeStore.captureScope();
     afterPaint(() => {
       fetchInboxDisplay().then((display) => {
         // A choice made since wins over the saved one.
         if (inScope() && this.inboxDisplay === kept) this.showDisplay(display);
-      }, () => {});
+      }, () => {}).finally(() => {
+        if (inScope()) this.settleKeptDisplay();
+      });
     });
   }
 
@@ -116,6 +122,11 @@ export class InboxStore {
   private showDisplay(display: InboxDisplay) {
     this.inboxDisplay = display;
     this.inboxDisplayLoaded = true;
+    this.inboxDisplayKept = false;
+  }
+
+  private settleKeptDisplay() {
+    this.inboxDisplayKept = false;
   }
 }
 

@@ -73,7 +73,7 @@ export class ViewStore {
     reaction(
       () => (this.viewSettingsLoaded ? { views: this.viewSettings, defaults: this.viewDefaults } : null),
       (stored) => {
-        if (stored) localDatabase.saveLater('views', () => stored);
+        if (stored) localDatabase.save('views', stored);
       },
     );
   }

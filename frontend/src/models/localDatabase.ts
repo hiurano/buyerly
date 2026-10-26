@@ -257,6 +257,15 @@ export class LocalDatabase {
     if (this.#timer === null) this.#timer = setTimeout(() => this.flush(), POOL_SAVE_MS);
   }
 
+  /** Keeps a value under a key now: a choice the member made is written before a reload can lose it. */
+  save(key: string, value: unknown) {
+    if (this.#scope === null) return;
+    this.#pending.delete(key);
+    void this.#write([VALUES], (transaction) => {
+      transaction.objectStore(VALUES).put(value, key);
+    });
+  }
+
   /** Writes every value still waiting. */
   flush() {
     if (this.#timer !== null) clearTimeout(this.#timer);

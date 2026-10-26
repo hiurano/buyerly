@@ -240,9 +240,21 @@ try {
   const kinds = (frames) => [...new Set(frames.map((frame) => frame.kind))];
   const failures = [];
   const report = [];
-  /** Inbox again on a reloaded app, so the pool holds nothing of the other pages. */
+  /**
+   * Inbox again on a reloaded app, so the pool holds nothing of the other pages:
+   * the local database (#496) that would draw them at once is deleted first.
+   */
   const freshInbox = async () => {
     delay = 0;
+    await page.evaluate(async () => {
+      for (const { name } of await indexedDB.databases()) {
+        if (!name.startsWith('buyerly_')) continue;
+        await new Promise((resolve) => {
+          const deleting = indexedDB.deleteDatabase(name);
+          deleting.onsuccess = deleting.onerror = resolve;
+        });
+      }
+    });
     await page.goto(`${origin}/${workspace.slug}/inbox`);
     await page.locator('main').getByText(inboxItem.message).first().waitFor();
     await page.waitForTimeout(500);

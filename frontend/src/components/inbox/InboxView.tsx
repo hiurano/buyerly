@@ -151,6 +151,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
   const setInboxUnread = useInboxStore((state) => state.setInboxUnread);
   const inboxDisplay = useInboxStore((state) => state.inboxDisplay);
   const inboxDisplayLoaded = useInboxStore((state) => state.inboxDisplayLoaded);
+  const inboxDisplayKept = useInboxStore((state) => state.inboxDisplayKept);
   const loadInboxDisplay = useInboxStore((state) => state.loadInboxDisplay);
   const setInboxDisplay = useInboxStore((state) => state.setInboxDisplay);
   const viewSettingsLoaded = useViewStore((state) => state.viewSettingsLoaded);
@@ -239,12 +240,13 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
     if (!inboxDisplayLoaded) void loadInboxDisplay();
   }, [inboxDisplayLoaded, loadInboxDisplay]);
 
-  // Turning priority inbox on opens /inbox/priority, turning it off /inbox, as in Linear.
+  // Turning priority inbox on opens /inbox/priority, turning it off /inbox, as in Linear;
+  // never on the local database's copy of the options, which may be older than the address (#496).
   useEffect(() => {
-    if (!inboxDisplayLoaded) return;
+    if (!inboxDisplayLoaded || inboxDisplayKept) return;
     if (inboxDisplay.priorityInbox && !inboxTab) onNavigate('priority', selectedId);
     else if (!inboxDisplay.priorityInbox && inboxTab) onNavigate(null, selectedId);
-  }, [inboxDisplay.priorityInbox, inboxDisplayLoaded, inboxTab, onNavigate, selectedId]);
+  }, [inboxDisplay.priorityInbox, inboxDisplayKept, inboxDisplayLoaded, inboxTab, onNavigate, selectedId]);
 
   // The saved filters (#385): an address without `?filter=` gets them back, a link with one replaces them.
   useEffect(() => {
