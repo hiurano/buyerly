@@ -15,7 +15,9 @@ import { action, computed, makeObservable, observable, observableRef, reaction, 
  *
  * A list the sync engine holds (#507) is read from its models instead: no
  * request at all, and every delta it applies redraws the lists it touches.
- * #496 persists this pool in IndexedDB.
+ * The lists read from the server are kept in IndexedDB between visits (#496,
+ * `snapshot` and `hydrate`): after a reload they are drawn at once, as stale,
+ * and read again behind the page.
  */
 
 /** How long a query's answer counts as current; older ones are read again after the page is drawn. */
@@ -112,6 +114,20 @@ export function afterPaint(run: () => void) {
   else setTimeout(run, 0);
 }
 
+/** A query's answer as kept between visits (#496). */
+export interface StoredEntry {
+  key: string;
+  type: RecordType | null;
+  ids: string[] | null;
+  value: unknown;
+}
+
+/** The pool's server-read lists as kept between visits: their entries and the records they show. */
+export interface PoolSnapshot {
+  entries: StoredEntry[];
+  records: [string, unknown][];
+}
+
 /** What the sync engine (#507) tells the pool about itself. */
 export interface PoolSync {
   /** Settles once the workspace's bootstrap is in, or failed; null when none is on its way. */
@@ -124,6 +140,8 @@ export class BuyerlyPool {
   /** The workspace this pool holds ("<user>:<workspace id>"); null when none is open. */
   scope: string | null = null;
   readonly sync: PoolSync = { booting: null, live: false };
+  /** Called after an answer or a write changes what the pool holds; the local database keeps it (#496). */
+  onChange: (() => void) | null = null;
   private generation = 0;
   private readonly records = observable.map<string, unknown>({}, { deep: false });
   private readonly entries = observable.map<string, Entry>({}, { deep: false });
@@ -142,6 +160,7 @@ export class BuyerlyPool {
       setValue: action,
       invalidate: action,
       syncChanged: action,
+      hydrate: action,
     });
   }
 
@@ -227,6 +246,7 @@ export class BuyerlyPool {
           entry.held = true;
           entry.error = '';
         });
+        this.onChange?.();
       },
       (error: unknown) => {
         if (!current()) return;
@@ -255,7 +275,9 @@ export class BuyerlyPool {
   /** Puts a record in the pool, or replaces the one held for its id when it differs. */
   upsert<T>(type: RecordType, record: T, id: string | number) {
     const key = `${type}:${id}`;
-    if (!same(this.records.get(key), record)) this.records.set(key, record);
+    if (same(this.records.get(key), record)) return;
+    this.records.set(key, record);
+    this.onChange?.();
   }
 
   /** Changes some fields of a held record: a new object, so every list showing it redraws. */
@@ -272,6 +294,7 @@ export class BuyerlyPool {
       const next = change(record as T);
       if (next !== record) this.records.set(key, next);
     }
+    this.onChange?.();
   }
 
   /** Takes a record out of the pool and out of every list that held it. */
@@ -281,6 +304,7 @@ export class BuyerlyPool {
     for (const entry of this.entries.values()) {
       if (entry.type === type && entry.ids?.includes(key)) entry.ids = entry.ids.filter((item) => item !== key);
     }
+    this.onChange?.();
   }
 
   /** Adds a new record to a list query, at its end or with `first` at its start, as a create does. */
@@ -289,6 +313,7 @@ export class BuyerlyPool {
     const id = String(query.id(record));
     this.upsert(query.type, record, id);
     if (entry.ids && !entry.ids.includes(id)) entry.ids = first ? [id, ...entry.ids] : [...entry.ids, id];
+    this.onChange?.();
   }
 
   /**
@@ -301,6 +326,48 @@ export class BuyerlyPool {
     if (!entry.held) {
       entry.held = true;
       entry.fetchedAt = Date.now();
+    }
+    this.onChange?.();
+  }
+
+  /**
+   * The answers read from the server, with the records their lists show, to
+   * keep between visits (#496). Lists the sync engine holds are left out: its
+   * models are kept themselves.
+   */
+  snapshot(): PoolSnapshot {
+    const entries: StoredEntry[] = [];
+    const keys = new Set<string>();
+    for (const [key, entry] of this.entries) {
+      if (!entry.held || this.synced.has(key)) continue;
+      entries.push({ key, type: entry.type, ids: entry.ids, value: entry.value });
+      if (entry.type) for (const id of entry.ids ?? []) keys.add(`${entry.type}:${id}`);
+    }
+    const records: [string, unknown][] = [];
+    for (const key of keys) {
+      const record = this.records.get(key);
+      if (record !== undefined) records.push([key, record]);
+    }
+    return { entries, records };
+  }
+
+  /**
+   * Holds what a snapshot of this scope kept: a page draws it at once and,
+   * since it counts as stale however recent, reads the server again behind it.
+   * An answer already held is newer and stays.
+   */
+  hydrate(scope: string, snapshot: PoolSnapshot) {
+    if (scope !== this.scope) return;
+    for (const [key, record] of snapshot.records) {
+      if (!this.records.has(key)) this.records.set(key, record);
+    }
+    for (const stored of snapshot.entries) {
+      const entry = this.entry({ key: stored.key, kind: stored.type ? 'list' : 'value', type: stored.type ?? undefined });
+      if (entry.held) continue;
+      entry.ids = stored.ids;
+      entry.value = stored.value;
+      entry.fetchedAt = 0;
+      entry.held = true;
     }
   }
 

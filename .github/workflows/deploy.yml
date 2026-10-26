@@ -83,7 +83,7 @@ jobs:
           - group: workspace state, new version, WebMCP
             scripts: scoped-state new-version webmcp view-options accounts navigation page-switch
           - group: members, search, settings
-            scripts: members search-page workspace-switcher security profile sync
+            scripts: members search-page workspace-switcher security profile sync local-database
           - group: auth, details pane, Ads Manager rules
             scripts: details-pane invite-auth onboarding-invites auth-theme workspace-settings multi-account rules-attach ads-manager
 

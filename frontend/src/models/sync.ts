@@ -1,7 +1,8 @@
 import { apiRequest, ApiError } from '@/lib/api';
 import { requestAccount } from '@/lib/accounts';
 import { runInAction } from 'mobx';
-import { pool } from './pool';
+import { localDatabase, type LocalData, type StoredChange } from './localDatabase';
+import { pool, type PoolSnapshot } from './pool';
 import { makeStore, useStore } from './store';
 
 /**
@@ -15,8 +16,10 @@ import { makeStore, useStore } from './store';
  * lists are derived from them (syncedLists.ts) into the pool, which is told
  * after every change applied; the pool redraws only what changed.
  *
- * #496 keeps the rows in IndexedDB between visits, #498 shares one socket
- * between tabs, #508 sends writes as transactions.
+ * The rows and the sync id are kept in IndexedDB between visits (#496): a
+ * reload opens on them with no bootstrap, and the socket asks only for what
+ * changed since. #498 shares one socket between tabs, #508 sends writes as
+ * transactions.
  */
 
 /** A row of a synced model, as bootstrap and the change log give it. */
@@ -70,6 +73,7 @@ export class SyncClient {
   #slug = '';
   #models = new Map<string, Map<number, SyncRow>>();
   #userId: number | null = null;
+  #syncGroups: string[] = [];
   #socket: WebSocket | null = null;
   #retry: ReturnType<typeof setTimeout> | null = null;
   #attempt = 0;
@@ -89,16 +93,18 @@ export class SyncClient {
     this.#slug = slug ?? '';
     this.#models = new Map();
     this.#userId = null;
+    this.#syncGroups = [];
     this.lastSyncId = 0;
     pool.sync.live = false;
-    // Without a socket the models couldn't be kept current: the pages read the server.
-    if (scope === null || typeof WebSocket === 'undefined') {
+    const local = localDatabase.open(scope);
+    // Nothing kept and no socket to keep it current: the pages read the server, as before.
+    if (scope === null || (typeof WebSocket === 'undefined' && !localDatabase.available)) {
       this.#setStatus('off');
       pool.sync.booting = null;
       return;
     }
-    this.#setStatus('connecting');
-    void this.#bootstrap();
+    this.#setStatus(typeof WebSocket === 'undefined' ? 'off' : 'connecting');
+    void this.#start(scope, local);
   }
 
   /** A model's rows, or undefined when bootstrap didn't give that model (no sync engine for it here). */
@@ -120,18 +126,28 @@ export class SyncClient {
   /** Applies changes from the log in order, skipping any already held; then the pool reads its lists again. */
   apply(actions: SyncAction[], lastSyncId: number) {
     const applied: SyncAction[] = [];
+    const stored: StoredChange[] = [];
+    const held = this.lastSyncId;
     for (const change of actions) {
       if (change.sync_id <= this.lastSyncId) continue;
       applied.push(change);
       const rows = this.#models.get(change.model);
       if (rows) {
         const id = Number(change.model_id);
-        if (change.action === 'delete') rows.delete(id);
-        else rows.set(id, { ...rows.get(id), ...change.data, id } as SyncRow);
+        if (change.action === 'delete') {
+          rows.delete(id);
+          stored.push({ model: change.model, id, row: null });
+        } else {
+          const row = { ...rows.get(id), ...change.data, id } as SyncRow;
+          rows.set(id, row);
+          stored.push({ model: change.model, id, row });
+        }
       }
       this.lastSyncId = change.sync_id;
     }
     this.lastSyncId = Math.max(this.lastSyncId, lastSyncId);
+    // The rows and the sync id they reach are kept together: a reload catches up from exactly there.
+    if (this.lastSyncId > held) localDatabase.applyChanges(stored, { lastSyncId: this.lastSyncId, syncGroups: this.#syncGroups });
     pool.syncChanged();
     if (applied.length > 0) for (const listener of this.#listeners) listener(applied);
   }
@@ -148,6 +164,44 @@ export class SyncClient {
 
   #current(generation: number) {
     return generation === this.#generation;
+  }
+
+  /**
+   * Opens on what the local database kept, as Linear does: the pool holds it
+   * before any page is drawn, and the socket asks only for what changed since
+   * its sync id. With nothing kept the workspace is bootstrapped.
+   */
+  async #start(scope: string, reading: Promise<LocalData | null>) {
+    const generation = this.#generation;
+    let settle = () => {};
+    const booting = new Promise<void>((resolve) => { settle = resolve; });
+    pool.sync.booting = booting;
+    const local = await reading;
+    if (!this.#current(generation)) {
+      settle();
+      return;
+    }
+    if (local) {
+      const snapshot = local.values.get('pool') as PoolSnapshot | undefined;
+      if (snapshot) pool.hydrate(scope, snapshot);
+      localDatabase.hydrate(local);
+    }
+    if (typeof WebSocket === 'undefined') {
+      // Without a socket the models couldn't be kept current: the pages read the server.
+      if (pool.sync.booting === booting) pool.sync.booting = null;
+      settle();
+      return;
+    }
+    if (local?.sync && local.models.size > 0) {
+      this.#hold(local.models, local.sync.lastSyncId, local.sync.syncGroups);
+      if (pool.sync.booting === booting) pool.sync.booting = null;
+      settle();
+      this.#connect();
+      return;
+    }
+    // A bootstrap of its own takes over before this settles, so the pages waiting go on waiting for it.
+    void this.#bootstrap();
+    settle();
   }
 
   async #bootstrap() {
@@ -190,9 +244,16 @@ export class SyncClient {
     for (const [model, rows] of Object.entries(bootstrap.models)) {
       models.set(model, new Map(rows.map((row) => [row.id, row])));
     }
+    this.#hold(models, bootstrap.last_sync_id, bootstrap.sync_groups);
+    localDatabase.replaceModels(models, { lastSyncId: bootstrap.last_sync_id, syncGroups: bootstrap.sync_groups });
+  }
+
+  /** Holds a whole set of models, from bootstrap or as the local database kept them. */
+  #hold(models: Map<string, Map<number, SyncRow>>, lastSyncId: number, syncGroups: string[]) {
     this.#models = models;
-    runInAction(() => { this.lastSyncId = bootstrap.last_sync_id; });
-    const memberGroup = bootstrap.sync_groups.find((group) => group.startsWith('member:'));
+    this.#syncGroups = syncGroups;
+    runInAction(() => { this.lastSyncId = lastSyncId; });
+    const memberGroup = syncGroups.find((group) => group.startsWith('member:'));
     const member = memberGroup ? models.get('WorkspaceMember')?.get(Number(memberGroup.slice('member:'.length))) : undefined;
     this.#userId = member ? Number(member.user_id) : null;
     pool.syncChanged();
@@ -226,6 +287,7 @@ export class SyncClient {
       this.#setStatus('synced');
       pool.sync.live = true;
     } else if (message.type === 'sync_groups' && (message.added.length > 0 || message.removed.length > 0)) {
+      this.#syncGroups = message.sync_groups;
       // There's no bootstrap of one group yet: the member's data is read whole again.
       this.#rebootstrap();
     }
@@ -268,5 +330,11 @@ export class SyncClient {
 }
 
 export const sync = new SyncClient();
+
+// The pool's server-read lists are kept too, a moment after they change; never into another workspace's database.
+pool.onChange = () => {
+  const scope = pool.scope;
+  localDatabase.saveLater('pool', () => (pool.scope === scope && scope !== null ? pool.snapshot() : undefined));
+};
 
 export const useSyncStatus = (): SyncStatus => useStore(sync, (store) => store.status);
