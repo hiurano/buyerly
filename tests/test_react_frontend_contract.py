@@ -911,7 +911,9 @@ class TestReactFrontendContract(unittest.TestCase):
             'aria-label="Snooze notification"',
             'aria-label="Delete notification"',
             "undoAuditEvent",
-            "md:hidden",
+            # The back arrow shows only while the list and the notification are not side by side.
+            'aria-label="Back to Inbox"',
+            "const SPLIT = '@media (min-width: 768px)'",
         ):
             self.assertIn(contract, self.inbox_view)
         for contract in ("Mark as read", "Mark as unread", "Delete notification", "Snooze", "--inbox-unread-dot"):
