@@ -1,4 +1,14 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
+
+const styles = stylex.create({
+  root: {
+    flexShrink: 0,
+    color: colors['--action-primary'],
+  },
+});
 
 /**
  * Linear's default team icon: a person in a rounded frame, in the accent
@@ -11,7 +21,7 @@ export const TeamIcon: React.FC<{ size?: number; className?: string }> = ({ size
     viewBox="0 0 16 16"
     aria-hidden="true"
     fill="currentColor"
-    className={`shrink-0 text-[var(--action-primary)] ${className}`}
+    {...withClassName(stylex.props(styles.root), className)}
   >
     <path
       fillRule="evenodd"

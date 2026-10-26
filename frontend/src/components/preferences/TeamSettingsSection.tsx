@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
 import type { MetaAccount, Workspace } from '@/lib/types';
@@ -14,7 +15,6 @@ import {
   useTeams,
   type TeamItem,
 } from '@/lib/teams';
-import { TOUCH_HEIGHT_CLASS } from '@/lib/useMediaQuery';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { Button } from '@/ui/Button';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
@@ -28,6 +28,276 @@ import { Initials, RoleStatus, RowMenu } from './MembersSection';
 import { TeamIcon } from './TeamIcon';
 import { useLastPresent } from '@/ui/useLastPresent';
 import { useShellStore } from '@/models/shellStore';
+import { rowMarker } from '@/ui/markers.stylex';
+import { colors } from '@/styles/tokens.stylex';
+
+const SM = '@media (min-width: 640px)';
+
+const styles = stylex.create({
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    borderWidth: 0,
+  },
+  truncate: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  block: {
+    display: 'block',
+  },
+  minWidth0: {
+    minWidth: 0,
+  },
+  deleteNote: {
+    margin: 0,
+    marginTop: 8,
+    fontSize: 13,
+    lineHeight: '20px',
+    color: colors['--text-secondary'],
+  },
+  strong: {
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  deleteLabel: {
+    marginBottom: 8,
+    marginTop: 16,
+    display: 'block',
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  deleteName: {
+    fontWeight: 600,
+  },
+  fullWidth: {
+    width: '100%',
+  },
+  searchSpaced: {
+    marginTop: 16,
+    width: '100%',
+  },
+  nameField: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  nameIcon: {
+    display: 'flex',
+    height: 32,
+    width: 32,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    backgroundColor: colors['--item-hover-bg'],
+  },
+  description: {
+    display: 'block',
+    minHeight: 120,
+    width: '100%',
+    resize: 'none',
+    borderRadius: 10,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    paddingTop: 16,
+    paddingRight: 16,
+    paddingBottom: 16,
+    paddingLeft: 16,
+    fontSize: 13,
+    lineHeight: '20px',
+    color: colors['--text-primary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    '::placeholder': {
+      color: colors['--text-tertiary'],
+    },
+  },
+  search: {
+    position: 'relative',
+    display: 'flex',
+    height: 32,
+    width: 244,
+    minWidth: 0,
+    maxWidth: '100%',
+    flexGrow: {
+      default: 1,
+      [SM]: 0,
+    },
+    flexShrink: {
+      default: 1,
+      [SM]: 0,
+    },
+    flexBasis: {
+      default: '0%',
+      [SM]: 'auto',
+    },
+    alignItems: 'center',
+  },
+  searchIcon: {
+    pointerEvents: 'none',
+    position: 'absolute',
+    left: 10,
+    fill: colors['--text-tertiary'],
+  },
+  searchInput: {
+    height: 32,
+    width: '100%',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: {
+      default: colors['--color-border-secondary'],
+      ':focus': colors['--action-primary'],
+    },
+    backgroundColor: 'transparent',
+    paddingLeft: 32,
+    paddingRight: 8,
+    fontSize: 13,
+    color: colors['--text-primary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    '::placeholder': {
+      color: colors['--text-tertiary'],
+    },
+  },
+  pickList: {
+    marginTop: 8,
+    display: 'flex',
+    maxHeight: 264,
+    flexDirection: 'column',
+    gap: 2,
+    overflowY: 'auto',
+  },
+  pickEmpty: {
+    margin: 0,
+    paddingLeft: 8,
+    paddingRight: 8,
+    paddingTop: 12,
+    paddingBottom: 12,
+    fontSize: 13,
+    color: colors['--text-tertiary'],
+  },
+  pickOption: {
+    display: 'flex',
+    minWidth: 0,
+    cursor: 'pointer',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 6,
+    paddingLeft: 8,
+    paddingRight: 8,
+    paddingTop: 6,
+    paddingBottom: 6,
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+  },
+  checkbox: {
+    accentColor: colors['--action-primary'],
+  },
+  primaryText: {
+    display: 'block',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 13,
+    color: colors['--text-primary'],
+  },
+  detailText: {
+    display: 'block',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 12,
+    color: colors['--text-tertiary'],
+  },
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  spacer: {
+    flex: '1 1 0%',
+  },
+  noShrink: {
+    flexShrink: 0,
+  },
+  table: {
+    marginTop: 24,
+    fontSize: 13,
+  },
+  grid: {
+    display: 'grid',
+    alignItems: 'center',
+    gap: 12,
+  },
+  memberGrid: {
+    gridTemplateColumns: {
+      default: 'minmax(0,1fr) minmax(0,1fr) 28px',
+      [SM]: 'minmax(0,2.2fr) minmax(0,2fr) minmax(96px,1fr) 28px',
+    },
+  },
+  accountGrid: {
+    gridTemplateColumns: {
+      default: 'minmax(0,1fr) 28px',
+      [SM]: 'minmax(0,2.2fr) minmax(0,1.4fr) minmax(96px,1fr) 28px',
+    },
+  },
+  headerRow: {
+    height: 32,
+    paddingLeft: 8,
+    paddingRight: 8,
+    fontSize: 12,
+    fontWeight: 500,
+    color: colors['--text-secondary'],
+  },
+  row: {
+    height: 44,
+    paddingLeft: 8,
+    paddingRight: 8,
+  },
+  wideOnly: {
+    display: {
+      default: 'none',
+      [SM]: 'block',
+    },
+  },
+  person: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 10,
+  },
+  name: {
+    display: 'block',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  nameInline: {
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  secondary: {
+    color: colors['--text-secondary'],
+  },
+  actions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+  },
+});
 
 type TeamPage = 'overview' | 'general' | 'members' | 'accounts';
 
@@ -323,17 +593,17 @@ const DeleteTeamDialog: React.FC<{
       onClose={onClose}
       footer={(
         <>
-          <Button className={TOUCH_HEIGHT_CLASS} onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button className={TOUCH_HEIGHT_CLASS} variant="danger" disabled={busy || !matches} onClick={() => void remove()}>
+          <Button touchHeight onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button touchHeight variant="danger" disabled={busy || !matches} onClick={() => void remove()}>
             Delete team
           </Button>
         </>
       )}
     >
-      <p className="m-0 mt-2 text-[13px] leading-[20px] text-[var(--text-secondary)]">
+      <p {...stylex.props(styles.deleteNote)}>
         This team will be deleted. For the next 30 days you’ll be able to restore it from{' '}
-        <strong className="font-medium text-[var(--text-primary)]">Settings</strong> ›{' '}
-        <strong className="font-medium text-[var(--text-primary)]">Teams</strong>. Its ad accounts and the people on it stay in the workspace.
+        <strong {...stylex.props(styles.strong)}>Settings</strong> ›{' '}
+        <strong {...stylex.props(styles.strong)}>Teams</strong>. Its ad accounts and the people on it stay in the workspace.
       </p>
       <form
         onSubmit={(event) => {
@@ -341,14 +611,14 @@ const DeleteTeamDialog: React.FC<{
           void remove();
         }}
       >
-        <label htmlFor="team-delete-name" className="mb-2 mt-4 block text-[13px] font-medium text-[var(--text-primary)]">
-          Type <strong className="font-semibold">{team.name}</strong> to confirm
+        <label htmlFor="team-delete-name" {...stylex.props(styles.deleteLabel)}>
+          Type <strong {...stylex.props(styles.deleteName)}>{team.name}</strong> to confirm
         </label>
         <Input
           id="team-delete-name"
           autoFocus
           autoComplete="off"
-          className="w-full"
+          {...stylex.props(styles.fullWidth)}
           placeholder={team.name}
           value={typed}
           disabled={busy}
@@ -432,8 +702,8 @@ const TeamGeneral: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
             <div className="preferences-row-copy">
               <label htmlFor="team-name" className="preferences-row-title">Name</label>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[var(--item-hover-bg)]">
+            <div {...stylex.props(styles.nameField)}>
+              <span {...stylex.props(styles.nameIcon)}>
                 <TeamIcon size={16} />
               </span>
               <Input
@@ -502,7 +772,7 @@ const TeamGeneral: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
             onKeyDown={(event) => {
               if (event.key === 'Escape') setDescription(team.description);
             }}
-            className="block min-h-[120px] w-full resize-none rounded-[10px] border-0 bg-transparent p-4 text-[13px] leading-[20px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)]"
+            {...stylex.props(styles.description)}
           />
         </section>
       </div>
@@ -515,9 +785,9 @@ const SearchField: React.FC<{ value: string; placeholder: string; onChange: (val
   placeholder,
   onChange,
 }) => (
-  <label className="relative flex h-8 w-[244px] min-w-0 max-w-full flex-1 items-center sm:flex-none">
-    <span className="sr-only">{placeholder}</span>
-    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" className="pointer-events-none absolute left-2.5 fill-[var(--text-tertiary)]">
+  <label {...stylex.props(styles.search)}>
+    <span {...stylex.props(styles.srOnly)}>{placeholder}</span>
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" {...stylex.props(styles.searchIcon)}>
       <path d="M7 1.5a5.5 5.5 0 0 1 4.38 8.82l3.15 3.15a.75.75 0 1 1-1.06 1.06l-3.15-3.15A5.5 5.5 0 1 1 7 1.5Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
     </svg>
     <input
@@ -525,7 +795,7 @@ const SearchField: React.FC<{ value: string; placeholder: string; onChange: (val
       value={value}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
-      className="h-8 w-full rounded-[6px] border border-[var(--color-border-secondary)] bg-transparent pl-8 pr-2 text-[13px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)] focus:border-[var(--action-primary)]"
+      {...stylex.props(styles.searchInput)}
     />
   </label>
 );
@@ -581,8 +851,8 @@ const PickDialog: React.FC<{
       onClose={onClose}
       footer={(
         <>
-          <Button className={TOUCH_HEIGHT_CLASS} onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button className={TOUCH_HEIGHT_CLASS} variant="primary" disabled={busy || picked.length === 0} onClick={() => void confirm()}>
+          <Button touchHeight onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button touchHeight variant="primary" disabled={busy || picked.length === 0} onClick={() => void confirm()}>
             {confirmLabel}
           </Button>
         </>
@@ -592,20 +862,20 @@ const PickDialog: React.FC<{
         aria-label={searchPlaceholder}
         autoFocus
         autoComplete="off"
-        className="mt-4 w-full"
+        {...stylex.props(styles.searchSpaced)}
         placeholder={searchPlaceholder}
         value={query}
         disabled={busy}
         onChange={(event) => setQuery(event.target.value)}
       />
-      <div role="group" aria-label={title} className="mt-2 flex max-h-[264px] flex-col gap-0.5 overflow-y-auto">
+      <div role="group" aria-label={title} {...stylex.props(styles.pickList)}>
         {shown.length === 0 && (
-          <p className="m-0 px-2 py-3 text-[13px] text-[var(--text-tertiary)]">{options.length ? 'No matches' : emptyText}</p>
+          <p {...stylex.props(styles.pickEmpty)}>{options.length ? 'No matches' : emptyText}</p>
         )}
         {shown.map((option) => (
           <label
             key={option.id}
-            className="flex min-w-0 cursor-pointer items-center gap-2.5 rounded-[6px] px-2 py-1.5 hover:bg-[var(--item-hover-bg)]"
+            {...stylex.props(styles.pickOption)}
           >
             <input
               type="checkbox"
@@ -615,11 +885,11 @@ const PickDialog: React.FC<{
               onChange={(event) => setPicked((current) => (
                 event.target.checked ? [...current, option.id] : current.filter((id) => id !== option.id)
               ))}
-              className="accent-[var(--action-primary)]"
+              {...stylex.props(styles.checkbox)}
             />
-            <span className="min-w-0">
-              <span className="block truncate text-[13px] text-[var(--text-primary)]">{option.label}</span>
-              <span className="block truncate text-[12px] text-[var(--text-tertiary)]">{option.detail}</span>
+            <span {...stylex.props(styles.minWidth0)}>
+              <span {...stylex.props(styles.primaryText)}>{option.label}</span>
+              <span {...stylex.props(styles.detailText)}>{option.detail}</span>
             </span>
           </label>
         ))}
@@ -627,8 +897,6 @@ const PickDialog: React.FC<{
     </ChoiceDialog>
   );
 };
-
-const MEMBER_GRID = 'grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_28px] sm:grid-cols-[minmax(0,2.2fr)_minmax(0,2fr)_minmax(96px,1fr)_28px] items-center gap-3';
 
 /**
  * Linear's "Team members": search by name or email, Add a member, and Name /
@@ -688,52 +956,52 @@ const TeamMembers: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
       <div className="preferences-title-container">
         <h1 className="preferences-page-title">Team members</h1>
       </div>
-      <div className="flex items-center gap-2">
+      <div {...stylex.props(styles.toolbar)}>
         <SearchField value={query} onChange={setQuery} placeholder="Search by name or email" />
-        <div className="flex-1" />
-        {canManage && <Button variant="primary" className="shrink-0" onClick={() => setAddOpen(true)}>Add a member</Button>}
+        <div {...stylex.props(styles.spacer)} />
+        {canManage && <Button variant="primary" xstyle={styles.noShrink} onClick={() => setAddOpen(true)}>Add a member</Button>}
       </div>
 
       {members === null ? (
         <DataState title="Loading members…" detail="Reading the people on this team." />
       ) : (
-        <div className="mt-6 text-[13px]" role="table" aria-label="Team members">
-          <div role="row" className={`${MEMBER_GRID} h-8 px-2 text-[12px] font-medium text-[var(--text-secondary)]`}>
+        <div {...stylex.props(styles.table)} role="table" aria-label="Team members">
+          <div role="row" {...stylex.props(styles.grid, styles.memberGrid, styles.headerRow)}>
             <span role="columnheader">Name</span>
             <span role="columnheader">Email</span>
-            <span role="columnheader" className="hidden sm:block">Role</span>
-            <span role="columnheader" className="sr-only">Actions</span>
+            <span role="columnheader" {...stylex.props(styles.wideOnly)}>Role</span>
+            <span role="columnheader" {...stylex.props(styles.srOnly)}>Actions</span>
           </div>
           {visible.map((member) => (
-            <div key={member.user_id} role="row" className={`${MEMBER_GRID} group h-11 px-2`}>
-              <span role="cell" className="flex min-w-0 items-center gap-2.5">
+            <div key={member.user_id} role="row" {...stylex.props(styles.grid, styles.memberGrid, styles.row, rowMarker)}>
+              <span role="cell" {...stylex.props(styles.person)}>
                 <Initials label={memberName(member)} avatarUrl={member.avatar_url} />
-                <span className="min-w-0">
-                  <span className="block truncate font-medium text-[var(--text-primary)]">{memberName(member)}</span>
-                  <span className="block truncate text-[12px] text-[var(--text-tertiary)]">{member.username}</span>
+                <span {...stylex.props(styles.minWidth0)}>
+                  <span {...stylex.props(styles.name)}>{memberName(member)}</span>
+                  <span {...stylex.props(styles.detailText)}>{member.username}</span>
                 </span>
               </span>
-              <span role="cell" className="truncate text-[var(--text-secondary)]">{member.email || ''}</span>
-              <span role="cell" className="hidden text-[var(--text-secondary)] sm:block">
+              <span role="cell" {...stylex.props(styles.truncate, styles.secondary)}>{member.email || ''}</span>
+              <span role="cell" {...stylex.props(styles.wideOnly, styles.secondary)}>
                 {team.owner_user_ids.includes(member.user_id) ? <RoleStatus role="team-owner" /> : <RoleStatus role={member.role} />}
               </span>
-              <span role="cell" className="flex justify-end">
+              <span role="cell" {...stylex.props(styles.actions)}>
                 {(canManage || member.is_current_user) && (
                   <RowMenu label={`Member actions for ${memberName(member)}`}>
                     {canManage && member.role !== 'guest' && (
                       team.owner_user_ids.includes(member.user_id) ? (
                         <DropdownMenuItem onSelect={() => void setOwner(member, false)}>
-                          <span className="truncate">Remove team owner</span>
+                          <span {...stylex.props(styles.truncate)}>Remove team owner</span>
                         </DropdownMenuItem>
                       ) : (
                         <DropdownMenuItem onSelect={() => void setOwner(member, true)}>
-                          <span className="truncate">Make team owner</span>
+                          <span {...stylex.props(styles.truncate)}>Make team owner</span>
                         </DropdownMenuItem>
                       )
                     )}
                     {(canManage || member.is_current_user) && (
                       <DropdownMenuItem onSelect={() => void remove(member)}>
-                        <span className="truncate">{member.is_current_user ? 'Leave team' : 'Remove from team'}</span>
+                        <span {...stylex.props(styles.truncate)}>{member.is_current_user ? 'Leave team' : 'Remove from team'}</span>
                       </DropdownMenuItem>
                     )}
                   </RowMenu>
@@ -780,8 +1048,6 @@ const TeamMembers: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
   );
 };
 
-const ACCOUNT_GRID = 'grid grid-cols-[minmax(0,1fr)_28px] sm:grid-cols-[minmax(0,2.2fr)_minmax(0,1.4fr)_minmax(96px,1fr)_28px] items-center gap-3';
-
 /**
  * The team's ad accounts, Buyerly's counterpart of Linear's team issues:
  * search, Add ad accounts, and Name / Account ID / Status rows that each
@@ -824,34 +1090,34 @@ const TeamAccounts: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
       <div className="preferences-title-container">
         <h1 className="preferences-page-title">Ad accounts</h1>
       </div>
-      <div className="flex items-center gap-2">
+      <div {...stylex.props(styles.toolbar)}>
         <SearchField value={query} onChange={setQuery} placeholder="Search by name or ID" />
-        <div className="flex-1" />
-        {canManage && <Button variant="primary" className="shrink-0" onClick={() => setAddOpen(true)}>Add ad accounts</Button>}
+        <div {...stylex.props(styles.spacer)} />
+        {canManage && <Button variant="primary" xstyle={styles.noShrink} onClick={() => setAddOpen(true)}>Add ad accounts</Button>}
       </div>
 
       {accounts === null ? (
         <DataState title="Loading ad accounts…" detail="Reading the ad accounts of this team." />
       ) : (
-        <div className="mt-6 text-[13px]" role="table" aria-label="Team ad accounts">
-          <div role="row" className={`${ACCOUNT_GRID} h-8 px-2 text-[12px] font-medium text-[var(--text-secondary)]`}>
+        <div {...stylex.props(styles.table)} role="table" aria-label="Team ad accounts">
+          <div role="row" {...stylex.props(styles.grid, styles.accountGrid, styles.headerRow)}>
             <span role="columnheader">Name</span>
-            <span role="columnheader" className="hidden sm:block">Account ID</span>
-            <span role="columnheader" className="hidden sm:block">Status</span>
-            <span role="columnheader" className="sr-only">Actions</span>
+            <span role="columnheader" {...stylex.props(styles.wideOnly)}>Account ID</span>
+            <span role="columnheader" {...stylex.props(styles.wideOnly)}>Status</span>
+            <span role="columnheader" {...stylex.props(styles.srOnly)}>Actions</span>
           </div>
           {visible.map((account) => (
-            <div key={account.id} role="row" className={`${ACCOUNT_GRID} group h-11 px-2`}>
-              <span role="cell" className="truncate font-medium text-[var(--text-primary)]">{accountName(account)}</span>
-              <span role="cell" className="hidden truncate text-[var(--text-secondary)] sm:block">{account.account_id}</span>
-              <span role="cell" className="hidden truncate text-[var(--text-secondary)] sm:block">
+            <div key={account.id} role="row" {...stylex.props(styles.grid, styles.accountGrid, styles.row, rowMarker)}>
+              <span role="cell" {...stylex.props(styles.truncate, styles.nameInline)}>{accountName(account)}</span>
+              <span role="cell" {...stylex.props(styles.wideOnly, styles.truncate, styles.secondary)}>{account.account_id}</span>
+              <span role="cell" {...stylex.props(styles.wideOnly, styles.truncate, styles.secondary)}>
                 {account.is_active === false ? 'Off in Buyerly' : (account.status_label || '').replace(/\s*\(.*\)$/, '') || 'Active'}
               </span>
-              <span role="cell" className="flex justify-end">
+              <span role="cell" {...stylex.props(styles.actions)}>
                 {canManage && (
                   <RowMenu label={`Ad account actions for ${accountName(account)}`}>
                     <DropdownMenuItem onSelect={() => void remove(account)}>
-                      <span className="truncate">Remove from team</span>
+                      <span {...stylex.props(styles.truncate)}>Remove from team</span>
                     </DropdownMenuItem>
                   </RowMenu>
                 )}

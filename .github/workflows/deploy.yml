@@ -115,6 +115,13 @@ jobs:
         working-directory: frontend
         run: npx vite build --outDir /tmp/buyerly-warm-build
 
+      # StyleX compiles a file differently in dev, so the build above leaves
+      # the StyleX files uncached for the dev server; loading the app once
+      # through it fills them, so no first page outruns a 10 s timeout.
+      - name: Warm the dev server
+        working-directory: frontend
+        run: node ../scripts/warm-dev-server.mjs
+
       # Every script in the group runs even after one fails, so a single run
       # reports all broken screens. The runner's Google Chrome has WebMCP
       # behind a flag; Playwright's Chromium does not, and webmcp-browser.mjs

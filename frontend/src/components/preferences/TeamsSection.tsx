@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { apiRequest } from '@/lib/api';
 import type { Workspace } from '@/lib/types';
 import { BuyerlyCheckIcon } from '@/icons/BuyerlyIcons';
@@ -13,6 +14,7 @@ import {
 import { DataState } from '@/ui/DataState';
 import { SubmenuArrow } from '@/ui/SubmenuArrow';
 import { Tooltip } from '@/ui/Tooltip';
+import { withClassName } from '@/ui/withClassName';
 import { toast } from '@/ui/toast';
 import {
   DropdownMenu,
@@ -32,6 +34,53 @@ import { SortHeader, sortedBy, useListSort } from './SettingsListSort';
 import { TeamIcon } from './TeamIcon';
 import { RestoreTeamDialog } from './TeamSettingsSection';
 import { useShellStore } from '@/models/shellStore';
+import { colors } from '@/styles/tokens.stylex';
+
+const styles = stylex.create({
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    borderWidth: 0,
+  },
+  menuGap: {
+    height: 6,
+    width: '100%',
+  },
+  truncate: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  spacer: {
+    flex: '1 1 0%',
+  },
+  teamLink: {
+    textDecorationLine: {
+      default: null,
+      ':focus-visible': 'underline',
+    },
+  },
+  medium: {
+    fontWeight: 500,
+  },
+  actions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+  },
+  note: {
+    marginTop: 12,
+    paddingLeft: 8,
+    paddingRight: 8,
+    fontSize: 12,
+    color: colors['--text-tertiary'],
+  },
+});
 
 /**
  * Linear's Teams table: Name, Visibility, Members, Issues, Created; Buyerly
@@ -95,7 +144,7 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
 
       <div className="settings-list-toolbar">
         <label className="settings-list-search">
-          <span className="sr-only">Filter by name…</span>
+          <span {...stylex.props(styles.srOnly)}>Filter by name…</span>
           <svg viewBox="0 0 16 16" aria-hidden="true" className="settings-list-search-icon">
             <path d="M7 1.5a5.5 5.5 0 0 1 4.38 8.82l3.15 3.15a.75.75 0 1 1-1.06 1.06l-3.15-3.15A5.5 5.5 0 1 1 7 1.5Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
           </svg>
@@ -117,19 +166,19 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" sideOffset={4}>
-            <div className="h-[6px] w-full" />
+            <div {...stylex.props(styles.menuGap)} />
             <DropdownMenuRadioGroup value={filter} onValueChange={(value) => setFilter(value as TeamFilter)}>
               {(Object.keys(TEAM_FILTER_LABELS) as TeamFilter[]).map((key) => (
                 <DropdownMenuRadioItem key={key} value={key}>
-                  <span className="truncate">{TEAM_FILTER_LABELS[key]}</span>
+                  <span {...stylex.props(styles.truncate)}>{TEAM_FILTER_LABELS[key]}</span>
                   {filter === key && <BuyerlyCheckIcon size={14} />}
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>
-            <div className="h-[6px] w-full" />
+            <div {...stylex.props(styles.menuGap)} />
           </DropdownMenuContent>
         </DropdownMenu>
-        <div className="flex-1" />
+        <div {...stylex.props(styles.spacer)} />
         <button type="button" className="settings-list-button settings-list-button--primary" onClick={() => setSettingsSection('new-team')}>
           Create team
         </button>
@@ -155,7 +204,7 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
                 onSort={toggleSort}
                 className="settings-list-col-wide"
               />
-              <span role="columnheader" className="sr-only">Actions</span>
+              <span role="columnheader" {...stylex.props(styles.srOnly)}>Actions</span>
             </div>
             {visible.length > 0 && (
               <div className="settings-list-group">
@@ -181,7 +230,7 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
                     {openable ? (
                       <a
                         href={`#team-${team.key}`}
-                        className="settings-list-team-name focus-visible:underline"
+                        {...withClassName(stylex.props(styles.teamLink), 'settings-list-team-name')}
                         onClick={(event) => {
                           event.preventDefault();
                           event.stopPropagation();
@@ -195,24 +244,24 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
                     )}
                     <span className="settings-list-team-key">{team.key}</span>
                   </span>
-                  <span role="cell" className="settings-list-cell settings-list-col-wide font-medium">Workspace</span>
-                  <span role="cell" className="settings-list-cell font-medium">
+                  <span role="cell" {...withClassName(stylex.props(styles.medium), 'settings-list-cell settings-list-col-wide')}>Workspace</span>
+                  <span role="cell" {...withClassName(stylex.props(styles.medium), 'settings-list-cell')}>
                     {names.length > 0 ? (
                       <Tooltip content={names.join(', ')} side="top">
                         <span>{team.member_user_ids.length}</span>
                       </Tooltip>
                     ) : team.member_user_ids.length}
                   </span>
-                  <span role="cell" className="settings-list-cell settings-list-col-wide font-medium">{team.account_ids.length}</span>
+                  <span role="cell" {...withClassName(stylex.props(styles.medium), 'settings-list-cell settings-list-col-wide')}>{team.account_ids.length}</span>
                   <span role="cell" className="settings-list-cell settings-list-col-wide">
                     {shortDate(filter === 'deleted' && team.deleted_at ? team.deleted_at : team.created_at)}
                   </span>
-                  <span role="cell" className="flex justify-end" onClick={(event) => event.stopPropagation()}>
+                  <span role="cell" {...stylex.props(styles.actions)} onClick={(event) => event.stopPropagation()}>
                     <RowMenu label={`Team actions for ${team.name}`} visible>
                       {openable && (
                         <DropdownMenuSub>
                           <DropdownMenuSubTrigger>
-                            <span className="truncate">Settings</span>
+                            <span {...stylex.props(styles.truncate)}>Settings</span>
                             <SubmenuArrow />
                           </DropdownMenuSubTrigger>
                           <DropdownMenuSubContent>
@@ -221,7 +270,7 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
                                 key={page.label}
                                 onSelect={() => openTeamSettings(page.path ? `${team.key}/${page.path}` : team.key)}
                               >
-                                <span className="truncate">{page.label}</span>
+                                <span {...stylex.props(styles.truncate)}>{page.label}</span>
                               </DropdownMenuItem>
                             ))}
                           </DropdownMenuSubContent>
@@ -230,7 +279,7 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
                       {openable && team.retired_at && <DropdownMenuSeparator />}
                       {(filter === 'deleted' || team.retired_at) && (
                         <DropdownMenuItem onSelect={() => setRestoreTarget(team)}>
-                          <span className="truncate">Restore team…</span>
+                          <span {...stylex.props(styles.truncate)}>Restore team…</span>
                         </DropdownMenuItem>
                       )}
                     </RowMenu>
@@ -254,7 +303,7 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
             />
           )}
           {filter === 'deleted' && visible.length > 0 && (
-            <p className="mt-3 px-2 text-[12px] text-[var(--text-tertiary)]">
+            <p {...stylex.props(styles.note)}>
               Deleted teams can be restored for 30 days, then they are gone for good.
             </p>
           )}
