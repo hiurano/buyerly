@@ -1,4 +1,4 @@
-import { apiRequest } from './api';
+import { graphql } from './graphql';
 import { INBOX_KINDS, INBOX_KIND_LABELS, type InboxKind } from './inbox';
 
 /** One push channel's page in Settings → Notifications (Email, Telegram), as in Linear. */
@@ -59,7 +59,7 @@ function channelPayload(channel: ChannelNotifications): ChannelPayload {
 }
 
 export async function fetchNotificationChannels(): Promise<NotificationChannels> {
-  return channelsFromPayload(await apiRequest<NotificationChannelsPayload>('/api/notifications/channels'));
+  return channelsFromPayload(await graphql<NotificationChannelsPayload>('query NotificationChannels { notificationChannels }'));
 }
 
 export async function saveNotificationChannels(channels: NotificationChannels): Promise<NotificationChannels> {
@@ -68,10 +68,13 @@ export async function saveNotificationChannels(channels: NotificationChannels): 
     telegram: channelPayload(channels.telegram),
     invite_accepted: channels.inviteAccepted,
   };
-  return channelsFromPayload(await apiRequest<NotificationChannelsPayload>('/api/notifications/channels', {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  }));
+  const saved = await graphql<{ notificationChannels: NotificationChannelsPayload }>(
+    `mutation NotificationChannelsUpdate($input: JSON!) {
+      notificationChannelsUpdate(input: $input) { success lastSyncId notificationChannels }
+    }`,
+    { input: payload },
+  );
+  return channelsFromPayload(saved.notificationChannels);
 }
 
 /**

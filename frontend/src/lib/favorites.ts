@@ -1,4 +1,4 @@
-import { apiRequest } from './api';
+import { graphql } from './graphql';
 import { toast } from '@/ui/toast';
 import { makeStore, useStore } from '@/models/store';
 
@@ -57,7 +57,7 @@ export class FavoritesStore {
   async load(workspace: string) {
     if (this.workspace !== workspace) this.set({ workspace, favorites: [], loaded: false });
     try {
-      const payload = await apiRequest<{ favorites?: Favorite[] }>('/api/favorites');
+      const payload = await graphql<{ favorites?: Favorite[] }>('query Favorites { favorites }');
       if (this.workspace !== workspace) return;
       this.set({ favorites: Array.isArray(payload.favorites) ? payload.favorites : [], loaded: true });
     } catch {
@@ -73,7 +73,10 @@ export class FavoritesStore {
     const pending: Favorite = { ...input, id: -Date.now(), position: (favorites[favorites.length - 1]?.position ?? 0) + 1 };
     this.set({ favorites: [...favorites, pending] });
     try {
-      const saved = await apiRequest<Favorite>('/api/favorites', { method: 'POST', body: JSON.stringify(input) });
+      const { favorite: saved } = await graphql<{ favorite: Favorite }>(
+        'mutation FavoriteCreate($input: JSON!) { favoriteCreate(input: $input) { success lastSyncId favorite } }',
+        { input },
+      );
       if (this.workspace !== workspace) return;
       this.set({ favorites: this.favorites.map((favorite) => (favorite.id === pending.id ? saved : favorite)) });
     } catch (error) {
@@ -89,7 +92,9 @@ export class FavoritesStore {
     if (!target) return;
     this.set({ favorites: favorites.filter((favorite) => favorite.path !== path) });
     try {
-      if (target.id > 0) await apiRequest(`/api/favorites/${target.id}`, { method: 'DELETE' });
+      if (target.id > 0) {
+        await graphql('mutation FavoriteDelete($id: Int!) { favoriteDelete(id: $id) { success lastSyncId } }', { id: target.id });
+      }
     } catch (error) {
       if (this.workspace !== workspace) return;
       this.set({ favorites: [...this.favorites, target].sort((a, b) => a.position - b.position) });

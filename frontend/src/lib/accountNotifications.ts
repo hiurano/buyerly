@@ -1,4 +1,4 @@
-import { apiRequest } from './api';
+import { graphql } from './graphql';
 import type { InboxKind } from './inbox';
 
 /** Inbox kinds an ad account's events can be; Team belongs to no account. */
@@ -33,15 +33,18 @@ export interface AccountNotifications {
   custom: boolean;
 }
 
-const notificationsPath = (accountId: string) => `/api/accounts/${encodeURIComponent(accountId)}/notifications`;
-
 export function loadAccountNotifications(accountId: string): Promise<AccountNotifications> {
-  return apiRequest<AccountNotifications>(notificationsPath(accountId));
+  return graphql<AccountNotifications>(
+    'query AccountNotificationSetting($accountId: String!) { accountNotificationSetting(accountId: $accountId) }',
+    { accountId },
+  );
 }
 
 export function saveAccountNotifications(accountId: string, kinds: AccountNotificationKind[]): Promise<AccountNotifications> {
-  return apiRequest<AccountNotifications>(notificationsPath(accountId), {
-    method: 'PUT',
-    body: JSON.stringify({ kinds }),
-  });
+  return graphql<{ accountNotificationSetting: AccountNotifications }>(
+    `mutation AccountNotificationSettingUpdate($accountId: String!, $input: JSON!) {
+      accountNotificationSettingUpdate(accountId: $accountId, input: $input) { success lastSyncId accountNotificationSetting }
+    }`,
+    { accountId, input: { kinds } },
+  ).then((payload) => payload.accountNotificationSetting);
 }

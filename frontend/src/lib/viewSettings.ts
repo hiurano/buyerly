@@ -1,4 +1,4 @@
-import { apiRequest } from './api';
+import { graphql } from './graphql';
 
 /**
  * Each member's list views, kept on the server per workspace as Linear does
@@ -18,7 +18,7 @@ const viewsIn = (value: unknown): StoredViews =>
 
 /** The member's own views, and the workspace's defaults under them (#472). */
 export async function fetchViewSettings(): Promise<{ views: StoredViews; defaults: StoredViews }> {
-  const payload = await apiRequest<{ views?: unknown; defaults?: unknown }>('/api/view-settings');
+  const payload = await graphql<{ views?: unknown; defaults?: unknown }>('query ViewSettings { viewSettings }');
   return {
     views: viewsIn(isObject(payload) ? payload.views : null),
     defaults: viewsIn(isObject(payload) ? payload.defaults : null),
@@ -26,21 +26,21 @@ export async function fetchViewSettings(): Promise<{ views: StoredViews; default
 }
 
 export async function saveViewSettings(key: string, settings: StoredView): Promise<void> {
-  await apiRequest(`/api/view-settings/${encodeURIComponent(key)}`, {
-    method: 'PUT',
-    body: JSON.stringify({ settings }),
-  });
+  await graphql(
+    'mutation ViewSettingUpdate($key: String!, $input: JSON!) { viewSettingUpdate(key: $key, input: $input) { success lastSyncId } }',
+    { key, input: { settings } },
+  );
 }
 
 /** Linear's "Set default for everyone" (#472), for admins and owners; an empty view clears it. */
 export async function saveViewDefault(key: string, settings: StoredView): Promise<void> {
-  await apiRequest(`/api/view-settings/${encodeURIComponent(key)}/default`, {
-    method: 'PUT',
-    body: JSON.stringify({ settings }),
-  });
+  await graphql(
+    'mutation WorkspaceViewDefaultUpdate($key: String!, $input: JSON!) { workspaceViewDefaultUpdate(key: $key, input: $input) { success lastSyncId } }',
+    { key, input: { settings } },
+  );
 }
 
 /** Linear's "Reset": the page goes back to its defaults. */
 export async function deleteViewSettings(key: string): Promise<void> {
-  await apiRequest(`/api/view-settings/${encodeURIComponent(key)}`, { method: 'DELETE' });
+  await graphql('mutation ViewSettingReset($key: String!) { viewSettingReset(key: $key) { success lastSyncId } }', { key });
 }

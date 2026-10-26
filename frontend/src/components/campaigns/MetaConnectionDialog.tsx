@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as stylex from '@stylexjs/stylex';
-import { apiRequest } from '@/lib/api';
+import { graphql } from '@/lib/graphql';
 import type { MetaAssetsResponse, MetaConnectionAsset, MetaInviteCreated } from '@/lib/types';
 import { BuyerlyCloseIcon, BuyerlyMetaIcon } from '@/icons/BuyerlyIcons';
 import { BuyerlyCheckbox } from '@/ui/BuyerlyCheckbox';
@@ -336,10 +336,12 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
     let active = true;
     const discover = async () => {
       try {
-        const result = await apiRequest<MetaAssetsResponse>(`/api/meta/connections/${connectionId}/discover`, {
-          method: 'POST',
-          body: JSON.stringify({}),
-        });
+        const { metaConnection: result } = await graphql<{ metaConnection: MetaAssetsResponse }>(
+          `mutation MetaConnectionDiscover($connectionId: Int!) {
+            metaConnectionDiscover(connectionId: $connectionId) { success lastSyncId metaConnection }
+          }`,
+          { connectionId },
+        );
         if (!active) return;
         setAssets(result.accounts);
         setStep('selecting');
@@ -358,10 +360,10 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
     let active = true;
     const createInvite = async () => {
       try {
-        const result = await apiRequest<MetaInviteCreated>('/api/meta/invites', {
-          method: 'POST',
-          body: JSON.stringify({}),
-        });
+        const { metaInvite: result } = await graphql<{ metaInvite: MetaInviteCreated }>(
+          'mutation MetaInviteCreate($input: JSON!) { metaInviteCreate(input: $input) { success lastSyncId metaInvite } }',
+          { input: {} },
+        );
         if (!active) return;
         setInvite(result);
         setStep('invite_ready');
@@ -378,10 +380,10 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
   const continueWithFacebook = async () => {
     setError('');
     try {
-      const result = await apiRequest<{ authorization_url: string }>('/api/meta/oauth/start?return_path=' + encodeURIComponent(returnPath), {
-        method: 'POST',
-        body: JSON.stringify({}),
-      });
+      const { authorization: result } = await graphql<{ authorization: { authorization_url: string } }>(
+        'mutation MetaOAuthStart($returnPath: String) { metaOauthStart(returnPath: $returnPath) { success lastSyncId authorization } }',
+        { returnPath },
+      );
       window.location.assign(result.authorization_url);
     } catch (oauthError) {
       setError(errorMessage(oauthError));
@@ -403,10 +405,12 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
     setStep('importing');
     setError('');
     try {
-      await apiRequest(`/api/meta/connections/${connectionId}/import`, {
-        method: 'POST',
-        body: JSON.stringify({ account_ids: [...selectedIds] }),
-      });
+      await graphql(
+        `mutation MetaConnectionImport($connectionId: Int!, $input: JSON!) {
+          metaConnectionImport(connectionId: $connectionId, input: $input) { success lastSyncId }
+        }`,
+        { connectionId, input: { account_ids: [...selectedIds] } },
+      );
       onImported();
       setStep('done');
     } catch (importError) {

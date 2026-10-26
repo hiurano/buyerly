@@ -21,7 +21,18 @@ function readCookie(name: string): string {
   return entry ? decodeURIComponent(entry.slice(prefix.length)) : '';
 }
 
+/** A REST request: sync, sign-in and uploads; everything else is `graphql` (lib/graphql.ts). */
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const method = (init.method || 'GET').toUpperCase();
+  const payload = await send(path, init);
+  // Whatever a write changed, the pool reads again behind the next page that shows it (#488);
+  // the writes that know their record also change it in the pool at once.
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) pool.invalidate('');
+  return payload as T;
+}
+
+/** Sends a request as this tab's account and workspace; a refusal is an `ApiError`. */
+export async function send(path: string, init: RequestInit = {}): Promise<any> {
   const method = (init.method || 'GET').toUpperCase();
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
@@ -52,7 +63,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     if (typeof payload.detail === 'string') {
       detail = payload.detail;
     } else if (payload.detail?.code === 'meta_oauth_not_configured') {
-      detail = 'Facebook login is not configured: META_APP_ID / META_APP_SECRET are missing from .env. Use “Generate link” instead.';
+      detail = META_OAUTH_NOT_CONFIGURED;
     } else if (typeof payload.detail?.message === 'string') {
       detail = payload.detail.message;
     } else if (Array.isArray(payload.detail) && payload.detail.some((item: any) => typeof item?.msg === 'string')) {
@@ -66,8 +77,8 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     }
     throw new ApiError(response.status, detail);
   }
-  // Whatever a write changed, the pool reads again behind the next page that shows it (#488);
-  // the writes that know their record also change it in the pool at once.
-  if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) pool.invalidate('');
-  return payload as T;
+  return payload;
 }
+
+export const META_OAUTH_NOT_CONFIGURED =
+  'Facebook login is not configured: META_APP_ID / META_APP_SECRET are missing from .env. Use “Generate link” instead.';

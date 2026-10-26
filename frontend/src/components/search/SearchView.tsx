@@ -4,7 +4,7 @@ import { ArrowLeft, X } from 'lucide-react';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
-import { apiRequest } from '@/lib/api';
+import { fetchAccounts } from '@/models/queries';
 import { pathForTab, searchAt } from '@/lib/routing';
 import {
   clearRecentSearches,
@@ -736,7 +736,7 @@ interface SearchViewProps {
 /**
  * Linear's search page at /<workspace>/search: a field over the whole panel,
  * tabs by kind, Filter and Display options. It searches on Enter, lists what
- * GET /api/search found in one flat list, previews the row ↑/↓ reach and
+ * the `search` query found in one flat list, previews the row ↑/↓ reach and
  * opens a result on its own row in Ads Manager or Rules. The first Esc closes
  * the preview, the second goes back to where search was opened from.
  */
@@ -775,7 +775,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
 
   useEffect(() => {
     const inScope = scopeStore.captureScope();
-    apiRequest<MetaAccount[]>('/api/accounts')
+    fetchAccounts()
       .then((items) => { if (inScope()) setAccounts(eligibleMetaAccounts(items)); })
       .catch(() => {});
   }, [slug]);

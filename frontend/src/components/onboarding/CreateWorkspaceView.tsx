@@ -1,5 +1,6 @@
 import React, { FormEvent, useEffect, useState } from 'react';
-import { ApiError, apiRequest } from '@/lib/api';
+import { ApiError } from '@/lib/api';
+import { graphql } from '@/lib/graphql';
 import type { SessionUser, Workspace } from '@/lib/types';
 import { AuthFrame, BuyerlyBrand } from '@/components/auth/AuthFrame';
 
@@ -33,8 +34,9 @@ export const CreateWorkspaceView: React.FC<CreateWorkspaceViewProps> = ({
     setAvailability('checking');
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
-      apiRequest<{ available: boolean; message: string }>(
-        `/api/onboarding/check-slug?slug=${encodeURIComponent(cleanName)}`,
+      graphql<{ available: boolean; message: string }>(
+        'query WorkspaceSlugCheck($slug: String!) { workspaceSlugCheck(slug: $slug) }',
+        { slug: cleanName },
         { signal: controller.signal },
       )
         .then((result) => {
@@ -58,12 +60,15 @@ export const CreateWorkspaceView: React.FC<CreateWorkspaceViewProps> = ({
     if (availability !== 'available') return;
     setBusy(true);
     setMessage('');
-    const createPath = onBack ? '/api/workspaces' : '/api/onboarding/workspace';
+    // Another workspace, or the first one, which also moves onboarding on.
+    const field = onBack ? 'workspaceCreate' : 'onboardingWorkspaceCreate';
+    const entity = onBack ? 'workspace' : 'onboarding';
     try {
-      const workspace = await apiRequest<Workspace>(createPath, {
-        method: 'POST',
-        body: JSON.stringify({ name: name.trim() }),
-      });
+      const created = await graphql<Record<string, Workspace>>(
+        `mutation ${field[0].toUpperCase()}${field.slice(1)}($input: JSON!) { ${field}(input: $input) { success lastSyncId ${entity} } }`,
+        { input: { name: name.trim() } },
+      );
+      const workspace = created[entity];
       onCreated(workspace);
     } catch (createError) {
       setAvailability('unavailable');

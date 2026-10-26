@@ -1,8 +1,8 @@
 import * as stylex from '@stylexjs/stylex';
 import React, { useEffect, useMemo, useState } from 'react';
-import { apiRequest } from '@/lib/api';
+import { fetchWorkspaceMembers } from '@/models/queries';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
-import { notifyTeamsChanged, teamsPath, useTeams, type TeamItem } from '@/lib/teams';
+import { addTeamMembers, notifyTeamsChanged, removeTeamMember, useTeams, type TeamItem } from '@/lib/teams';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { Initials } from '@/components/preferences/MembersSection';
 import { memberName, type MemberItem } from '@/components/preferences/MemberDialogs';
@@ -124,7 +124,7 @@ export const WorkspaceTeamsView: React.FC = () => {
 
   useEffect(() => {
     let active = true;
-    apiRequest<MemberItem[]>(`/api/workspaces/${workspace.id}/members`)
+    fetchWorkspaceMembers(workspace.id)
       .then((items) => { if (active) setMembers(items); })
       .catch(() => {});
     return () => { active = false; };
@@ -147,8 +147,8 @@ export const WorkspaceTeamsView: React.FC = () => {
     if (user.id == null) return;
     setBusyTeam(team.id);
     const request = join
-      ? apiRequest(teamsPath(workspace.id, `/${team.id}/members`), { method: 'POST', body: JSON.stringify({ user_ids: [user.id] }) })
-      : apiRequest(teamsPath(workspace.id, `/${team.id}/members/${user.id}`), { method: 'DELETE' });
+      ? addTeamMembers(workspace.id, team.id, [user.id])
+      : removeTeamMember(workspace.id, team.id, user.id);
     const title = join ? `You joined ${team.name}` : `You left ${team.name}`;
     try {
       await request;

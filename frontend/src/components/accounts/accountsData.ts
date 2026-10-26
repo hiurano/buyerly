@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { apiRequest } from '@/lib/api';
+import { graphql } from '@/lib/graphql';
 import type { MetaAccount, MetaConnection } from '@/lib/types';
 import { pool } from '@/models/pool';
 import { adAccountsQuery, connectionsQuery, membersQuery, teamsQuery } from '@/models/queries';
@@ -83,10 +83,10 @@ export function useWorkspaceAccounts() {
     if (next.custom_name === (account.custom_name ?? '') && next.note === (account.note ?? '')) return;
     patch(account.account_id, next);
     try {
-      await apiRequest(`/api/accounts/${encodeURIComponent(account.account_id)}/profile`, {
-        method: 'PATCH',
-        body: JSON.stringify(next),
-      });
+      await graphql(
+        'mutation AccountUpdate($accountId: String!, $input: JSON!) { accountUpdate(accountId: $accountId, input: $input) { success lastSyncId } }',
+        { accountId: account.account_id, input: next },
+      );
     } catch (saveError) {
       patch(account.account_id, { custom_name: account.custom_name, note: account.note });
       toast.error("Couldn't save the change", errorText(saveError));
@@ -98,10 +98,10 @@ export function useWorkspaceAccounts() {
     if ((account.lead_user_id ?? null) === leadUserId) return;
     patch(account.account_id, { lead_user_id: leadUserId });
     try {
-      await apiRequest(`/api/accounts/${encodeURIComponent(account.account_id)}/lead`, {
-        method: 'PATCH',
-        body: JSON.stringify({ lead_user_id: leadUserId }),
-      });
+      await graphql(
+        'mutation AccountLeadUpdate($accountId: String!, $input: JSON!) { accountLeadUpdate(accountId: $accountId, input: $input) { success lastSyncId } }',
+        { accountId: account.account_id, input: { lead_user_id: leadUserId } },
+      );
     } catch (saveError) {
       patch(account.account_id, { lead_user_id: account.lead_user_id ?? null });
       toast.error("Couldn't change the lead", errorText(saveError));
@@ -112,9 +112,9 @@ export function useWorkspaceAccounts() {
     const enabled = !account.rules_enabled;
     patch(account.account_id, { rules_enabled: enabled });
     try {
-      const result = await apiRequest<{ rules_enabled: boolean }>(
-        `/api/accounts/${encodeURIComponent(account.account_id)}/toggle-rules`,
-        { method: 'POST' },
+      const { account: result } = await graphql<{ account: { rules_enabled: boolean } }>(
+        'mutation AccountRulesToggle($accountId: String!) { accountRulesToggle(accountId: $accountId) { success lastSyncId account } }',
+        { accountId: account.account_id },
       );
       patch(account.account_id, { rules_enabled: result.rules_enabled });
     } catch (toggleError) {
@@ -125,7 +125,10 @@ export function useWorkspaceAccounts() {
 
   const remove = async (account: MetaAccount): Promise<boolean> => {
     try {
-      await apiRequest(`/api/accounts/${encodeURIComponent(account.account_id)}`, { method: 'DELETE' });
+      await graphql(
+        'mutation AccountDelete($accountId: String!) { accountDelete(accountId: $accountId) { success lastSyncId } }',
+        { accountId: account.account_id },
+      );
       pool.remove('adAccount', account.account_id);
       toast.show({ tone: 'success', title: 'Removed', message: `${accountName(account)} from the workspace.` });
       return true;

@@ -14,6 +14,30 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("key={desiredScope}", self.app)
         self.assertIn("workspaceScope !== desiredScope", self.app)
 
+    def test_the_client_talks_graphql_and_rest_only_for_sync_sign_in_and_uploads(self):
+        """#509: as Linear's client, every read sync does not carry and every write is /api/graphql."""
+        rest_prefixes = (
+            "/api/graphql",
+            "/api/sync/",
+            "/api/auth/",
+            "/api/me",
+            # Uploads are multipart, as Linear's go to its file storage rather than GraphQL.
+            "/api/onboarding/avatar",
+            "/api/onboarding/workspace/logo",
+            # Facebook login through someone's invite, opened signed out.
+            "/api/meta/invites/public/",
+            "/api/meta/oauth/invite/",
+        )
+        # An invite as a signed-out visitor sees it; accepting it is GraphQL.
+        rest_addresses = ("/api/invites/${encodeURIComponent(token)}",)
+        for path in (ROOT / "frontend" / "src").rglob("*.ts*"):
+            for match in re.finditer(r"""['`"](/api/[^'`"?]*)""", path.read_text()):
+                address = match.group(1)
+                self.assertTrue(
+                    address in rest_addresses or address.startswith(rest_prefixes),
+                    f"{path.relative_to(ROOT)} calls {address}: make it a GraphQL field (api/client_api/schema.py)",
+                )
+
     def test_public_typography_is_scoped_to_public_composition(self):
         public_styles = (ROOT / "frontend/public/static/css/legal.css").read_text()
         self.assertIn("var(--site-heading-size)", public_styles)
@@ -305,8 +329,8 @@ class TestReactFrontendContract(unittest.TestCase):
     def test_ads_manager_uses_workspace_api_without_production_fixtures(self):
         # The ad accounts and their rows come from the workspace's model pool (#488).
         queries = (ROOT / "frontend" / "src" / "models" / "queries.ts").read_text()
-        self.assertIn("apiRequest<MetaAccount[]>('/api/accounts')", queries)
-        self.assertIn("/api/analytics/hierarchy/accounts?period=", queries)
+        self.assertIn("graphql<MetaAccount[]>('query Accounts { accounts }')", queries)
+        self.assertIn("analyticsAccountsHierarchy(period: $period)", queries)
         for contract in (
             "usePoolQuery(adAccountsQuery)",
             "usePoolQuery(hierarchyQuery(period))",
@@ -407,7 +431,7 @@ class TestReactFrontendContract(unittest.TestCase):
 
     def test_ads_manager_shows_any_api_metric_for_a_chosen_period(self):
         # Columns, ordering and metric filters come from one catalog of what
-        # /api/analytics/hierarchy returns, read for the period in the address (#389).
+        # the analytics hierarchy returns, read for the period in the address (#389).
         campaigns = ROOT / "frontend" / "src" / "components" / "campaigns"
         metrics = (campaigns / "adsManagerMetrics.ts").read_text()
         for field in ("cost_per_lead", "cost_per_registration", "cost_per_purchase", "landing_page_views", "ctr_link", "cpc_link"):
@@ -419,7 +443,7 @@ class TestReactFrontendContract(unittest.TestCase):
             self.assertNotIn("Results / CPA", source)
             self.assertNotIn("ResultsCpaCell", source)
         # The period's rows are a query of the model pool, keyed by the period (#488).
-        self.assertIn("?period=${period}", (ROOT / "frontend" / "src" / "models" / "queries.ts").read_text())
+        self.assertIn("{ period },", (ROOT / "frontend" / "src" / "models" / "queries.ts").read_text())
         self.assertIn("hierarchyQuery(period)", self.campaigns_view)
         self.assertNotIn("period=today", self.campaigns_view)
         self.assertIn("periodFromSearch(window.location.search)", self.campaigns_view)
@@ -445,7 +469,7 @@ class TestReactFrontendContract(unittest.TestCase):
         ):
             self.assertNotIn(fixture, self.app_store)
 
-        for endpoint in ("'/api/presets'", "'/api/rule-labels'"):
+        for endpoint in ("rules }'", "ruleLabels }'"):
             self.assertIn(endpoint, self.rules_lib)
 
         for contract in (
@@ -507,7 +531,8 @@ class TestReactFrontendContract(unittest.TestCase):
         # one generic API keyed by view, not per-page state in the store.
         src = ROOT / "frontend" / "src"
         view_settings = (src / "lib" / "viewSettings.ts").read_text()
-        self.assertIn("/api/view-settings", view_settings)
+        for field in ("viewSettings }", "viewSettingUpdate(", "workspaceViewDefaultUpdate(", "viewSettingReset("):
+            self.assertIn(field, view_settings)
         for retired_state in ("rulesViewMode", "rulesDisplayGrouping", "displayOrdering", "campaignsViewMode"):
             self.assertNotIn(retired_state, self.app_store)
         self.assertIn("useListView('rules'", (src / "components" / "rules" / "rulesViewModel.ts").read_text())
@@ -637,7 +662,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertNotIn("<CreateRuleModal />", self.rules_view)
         self.assertIn("New rule…", self.rule_selector_popover)
         self.assertIn("openCreateRuleModal(undefined, { accountId, scope", self.rule_selector_popover)
-        for endpoint in ("'/api/presets/check'", "/rules/preview`"):
+        for endpoint in ("ruleDraftCheck(input: $input)", "ruleDraftPreview(accountId: $accountId"):
             self.assertIn(endpoint, self.rules_lib)
         workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
         self.assertIn("node scripts/check-rule-draft.cjs", workflow)
@@ -722,7 +747,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("assignRuleToAccount", self.app_store)
         self.assertIn("setAttachedRuleScope", self.app_store)
         self.assertIn("detachRuleFromAccount", self.app_store)
-        self.assertIn("/scope", self.rules_lib)
+        self.assertIn("accountRuleScopeUpdate(", self.rules_lib)
 
         # A rule aimed at another level cannot be silently re-aimed from here.
         self.assertIn("attachedRuleScopes", self.rule_selector_popover)
@@ -756,10 +781,9 @@ class TestReactFrontendContract(unittest.TestCase):
         """A control that looks like it stops spending must really stop it."""
         # One client, aimed at the real endpoint.
         for contract in (
-            "/api/entities/${level}/${encodeURIComponent(entityId)}/delivery",
-            "method: 'POST'",
+            "entityDeliveryUpdate(level: $level, entityId: $entityId, input: $input)",
             # Undo reuses the audit history rather than a parallel mechanism.
-            "/api/audit-events/${auditEventId}/undo",
+            "return undoAuditEvent(auditEventId);",
         ):
             self.assertIn(contract, self.delivery_lib)
 
@@ -807,7 +831,7 @@ class TestReactFrontendContract(unittest.TestCase):
         picker = (src / "components" / "rules" / "RuleLabelPicker.tsx").read_text()
         self.assertIn("Create new label:", picker)
         self.assertIn("aria-multiselectable", picker)
-        for contract in ("'/api/rule-labels'", "/api/presets/${presetId}/labels", "'/api/presets/labels'"):
+        for contract in ("ruleLabels }'", "ruleLabelsSet(id: $id, input: $input)", "rulesLabelsChange(input: $input)"):
             self.assertIn(contract, self.rules_lib)
         view_model = (src / "components" / "rules" / "rulesViewModel.ts").read_text()
         self.assertIn("grouping: 'labels'", view_model)
@@ -867,7 +891,7 @@ class TestReactFrontendContract(unittest.TestCase):
 
         # Recently deleted is a page of its own over the server's thirty-day trash,
         # /rules/recently-deleted, like Linear's team archive, not a tab of the list (#381).
-        for contract in ("'/api/deleted-items'", "/api/deleted-items/${itemId}/restore", "TRASH_RETENTION_DAYS = 30"):
+        for contract in ("deletedItems }'", "deletedItemRestore(id: $id)", "TRASH_RETENTION_DAYS = 30"):
             self.assertIn(contract, self.trash_lib)
         self.assertNotIn("label: 'Recently deleted'", self.rules_view)
         self.assertNotIn("RecentlyDeletedView", self.rules_view)
@@ -889,12 +913,12 @@ class TestReactFrontendContract(unittest.TestCase):
         # Linear's Inbox: per-person read, delete and snooze over the shared
         # audit events, with Undo still coming from the audit API.
         for contract in (
-            "/api/inbox?${params.toString()}",
-            "/api/inbox/${eventId}/read",
-            "/api/inbox/${eventId}/delete",
-            "/api/inbox/${eventId}/snooze",
-            "/api/inbox/delete-all-read",
-            "/api/inbox/unread-count",
+            "inbox(offset: $offset",
+            "inboxNotificationRead(id: $id, input: $input)",
+            "inboxNotificationDelete(id: $id)",
+            "inboxNotificationSnooze(id: $id, input: $input)",
+            "inboxDeleteAllRead {",
+            "inboxUnreadCount }",
         ):
             self.assertIn(contract, self.inbox_lib)
         for contract in (
@@ -921,7 +945,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("inboxUnreadCount", self.sidebar)
         for contract in ("fetchInboxFacets", "InboxFilterBar", "encodeInboxFilter", "Filter notifications by…"):
             self.assertIn(contract, self.inbox_view)
-        self.assertIn("/api/inbox/facets", self.inbox_lib)
+        self.assertIn("inboxFacets(unreadOnly: $unreadOnly", self.inbox_lib)
 
         # Linear's Inbox header has no search, status tabs or pages.
         for removed in ("<BuyerlyTabs", "Search workspace events", "Workspace activity", "Previous", "total_pages"):
@@ -965,7 +989,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("<SearchView workspace={workspace}", self.app)
 
         # A real source scoped by the address, asked on Enter, with its states in words.
-        self.assertIn("/api/search?", search)
+        self.assertIn("search(q: $q", search)
         self.assertIn("searchWorkspace(applied, controller.signal)", page)
         self.assertIn("onSubmit={(event) => {", page)
         for state in (
@@ -1110,7 +1134,7 @@ class TestReactFrontendContract(unittest.TestCase):
         # The page: name, note, today, rules, events, properties; one column on a phone.
         for words in ("Open campaigns", "Attach rule", "Recent events", "Connected by", "Last sync", "Reconnect"):
             self.assertIn(words, page)
-        self.assertIn("/api/audit-events?page=1&page_size=5&account_id=", page)
+        self.assertIn("fetchAuditEvents({ page: 1, pageSize: 5, accountId })", page)
         # Rules on the account show their own status; no switch that would pause them everywhere.
         self.assertNotIn("toggleRuleStatus", page)
         self.assertIn("<BuyerlyStatusCircleIcon status={on ? 'active' : 'paused'}", page)

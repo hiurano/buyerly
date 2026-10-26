@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, ChevronLeft } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
+import { acceptInvite } from '@/lib/workspaces';
 import type { InviteInfo, LoginResult, SessionUser } from '@/lib/types';
 import {
   DropdownMenu,
@@ -103,10 +104,7 @@ export const InviteView: React.FC<InviteViewProps> = ({
     setBusy(true);
     setError('');
     try {
-      const result = await apiRequest<AcceptInviteResult>(
-        `/api/invites/${encodeURIComponent(token)}/accept`,
-        { method: 'POST', body: JSON.stringify({}) },
-      );
+      const result = await acceptInvite<AcceptInviteResult>(token);
       onAccepted(result.workspace_slug, result.onboarding_completed);
     } catch (acceptError) {
       setError(acceptError instanceof Error ? acceptError.message : 'Could not join this workspace');

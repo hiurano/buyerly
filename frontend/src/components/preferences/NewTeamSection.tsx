@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { ChevronLeft } from 'lucide-react';
 import { colors } from '@/styles/tokens.stylex';
-import { apiRequest } from '@/lib/api';
 import type { Workspace } from '@/lib/types';
 import {
   TEAM_KEY_MAX,
@@ -10,8 +9,7 @@ import {
   cleanTeamKey,
   notifyTeamsChanged,
   suggestTeamKey,
-  teamsPath,
-  type TeamItem,
+  createTeam,
 } from '@/lib/teams';
 import { Button } from '@/ui/Button';
 import { Input } from '@/ui/Input';
@@ -78,10 +76,7 @@ export const NewTeamSection: React.FC<{ workspace: Workspace }> = ({ workspace }
     setBusy(true);
     setError('');
     try {
-      const team = await apiRequest<TeamItem>(teamsPath(workspace.id), {
-        method: 'POST',
-        body: JSON.stringify({ name: name.trim(), key, private: isPrivate }),
-      });
+      const team = await createTeam(workspace.id, { name: name.trim(), key, private: isPrivate });
       notifyTeamsChanged();
       openTeamSettings(team.key);
     } catch (createError) {

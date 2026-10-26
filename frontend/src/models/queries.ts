@@ -1,9 +1,17 @@
-import { apiRequest } from '@/lib/api';
+import { graphql } from '@/lib/graphql';
 import type { AnalyticsAccountsHierarchyResponse, MetaAccount, MetaConnection } from '@/lib/types';
 import type { MemberItem } from '@/components/preferences/MemberDialogs';
 import { fetchRuleLabels, fetchRulePresets, type RuleLabelPayload, type RulePresetPayload } from '@/lib/rules';
 import type { TeamDocument, TeamItem } from '@/lib/teams';
 import { pool, type ListQuery } from './pool';
+
+/** The workspace's ad accounts the member may see, with their latest metrics. */
+export const fetchAccounts = () => graphql<MetaAccount[]>('query Accounts { accounts }');
+
+export const fetchWorkspaceMembers = (workspaceId: number) => graphql<MemberItem[]>(
+  'query WorkspaceMembers($workspaceId: Int!) { workspaceMembers(workspaceId: $workspaceId) }',
+  { workspaceId },
+);
 import { sync } from './sync';
 import { syncedMembers, syncedRuleLabels, syncedTeamDocuments, syncedTeams } from './syncedLists';
 
@@ -17,7 +25,10 @@ export const teamsQuery = (workspaceId: number, status: 'all' | 'deleted' = 'all
   kind: 'list',
   key: `teams:${workspaceId}:${status}`,
   type: 'team',
-  load: () => apiRequest<TeamItem[]>(`/api/workspaces/${workspaceId}/teams?status=${status}`),
+  load: () => graphql<TeamItem[]>(
+    'query Teams($workspaceId: Int!, $status: String) { teams(workspaceId: $workspaceId, status: $status) }',
+    { workspaceId, status },
+  ),
   id: (team) => team.id,
   // Deleted teams aren't in bootstrap: Recently deleted reads the server.
   local: status === 'all' ? () => syncedTeams(workspaceId) : undefined,
@@ -27,7 +38,7 @@ export const membersQuery = (workspaceId: number): ListQuery<MemberItem> => ({
   kind: 'list',
   key: `members:${workspaceId}`,
   type: 'member',
-  load: () => apiRequest<MemberItem[]>(`/api/workspaces/${workspaceId}/members`),
+  load: () => fetchWorkspaceMembers(workspaceId),
   id: (member) => member.user_id,
   local: () => syncedMembers(workspaceId),
 });
@@ -36,7 +47,7 @@ export const adAccountsQuery: ListQuery<MetaAccount> = {
   kind: 'list',
   key: 'adAccounts',
   type: 'adAccount',
-  load: () => apiRequest<MetaAccount[]>('/api/accounts'),
+  load: fetchAccounts,
   id: (account) => account.account_id,
 };
 
@@ -45,7 +56,7 @@ export const connectionsQuery: ListQuery<MetaConnection> = {
   kind: 'list',
   key: 'connections',
   type: 'connection',
-  load: () => apiRequest<MetaConnection[]>('/api/meta/connections').catch(() => []),
+  load: () => graphql<MetaConnection[]>('query MetaConnections { metaConnections }').catch(() => []),
   id: (connection) => connection.id,
 };
 
@@ -70,7 +81,10 @@ export const teamDocumentsQuery = (workspaceId: number, teamId: number): ListQue
   kind: 'list',
   key: `teamDocuments:${workspaceId}:${teamId}`,
   type: 'teamDocument',
-  load: () => apiRequest<TeamDocument[]>(`/api/workspaces/${workspaceId}/teams/${teamId}/documents`),
+  load: () => graphql<TeamDocument[]>(
+    'query TeamDocuments($workspaceId: Int!, $teamId: Int!) { teamDocuments(workspaceId: $workspaceId, teamId: $teamId) }',
+    { workspaceId, teamId },
+  ),
   id: (document) => document.id,
   local: () => syncedTeamDocuments(teamId),
 });
@@ -84,7 +98,10 @@ export const hierarchyQuery = (period: string): ListQuery<AccountHierarchyRows> 
   key: `hierarchy:${period}`,
   type: 'accountHierarchy',
   load: async () => {
-    const response = await apiRequest<AnalyticsAccountsHierarchyResponse>(`/api/analytics/hierarchy/accounts?period=${period}`);
+    const response = await graphql<AnalyticsAccountsHierarchyResponse>(
+      'query AnalyticsAccountsHierarchy($period: String) { analyticsAccountsHierarchy(period: $period) }',
+      { period },
+    );
     return response.accounts.map((rows) => ({ ...rows, period }));
   },
   id: (rows) => `${rows.account_id}:${rows.period}`,

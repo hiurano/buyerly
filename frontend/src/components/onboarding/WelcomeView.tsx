@@ -1,5 +1,5 @@
 import React, { FormEvent, useState } from 'react';
-import { apiRequest } from '@/lib/api';
+import { graphql } from '@/lib/graphql';
 import type { OnboardingStatus, SessionUser, Workspace } from '@/lib/types';
 import { AuthFrame, BuyerlyBrand } from '@/components/auth/AuthFrame';
 import { InviteTeamStep } from './InviteTeamStep';
@@ -34,10 +34,12 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
     setBusy(true);
     setError('');
     try {
-      const result = await apiRequest<OnboardingStatus>('/api/onboarding/personal-details', {
-        method: 'POST',
-        body: JSON.stringify({ first_name: firstName, last_name: rest.join(' ') }),
-      });
+      const { onboarding: result } = await graphql<{ onboarding: OnboardingStatus }>(
+        `mutation OnboardingPersonalDetailsUpdate($input: JSON!) {
+          onboardingPersonalDetailsUpdate(input: $input) { success lastSyncId onboarding }
+        }`,
+        { input: { first_name: firstName, last_name: rest.join(' ') } },
+      );
       onUserChanged(result.user);
       if (result.onboarding_step === 'invites') {
         setStep('invites');
@@ -56,9 +58,12 @@ export const WelcomeView: React.FC<WelcomeViewProps> = ({
     setError('');
     try {
       if (invites === null) {
-        await apiRequest('/api/onboarding/skip', { method: 'POST', body: JSON.stringify({}) });
+        await graphql('mutation OnboardingSkip { onboardingSkip { success lastSyncId } }');
       } else {
-        await apiRequest('/api/onboarding/invites', { method: 'POST', body: JSON.stringify({ invites }) });
+        await graphql(
+          'mutation OnboardingInvitesSend($input: JSON!) { onboardingInvitesSend(input: $input) { success lastSyncId } }',
+          { input: { invites } },
+        );
       }
       onCompleted();
     } catch (inviteError) {

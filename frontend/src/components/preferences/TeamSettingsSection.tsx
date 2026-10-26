@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { apiRequest } from '@/lib/api';
+import { fetchAccounts, fetchWorkspaceMembers } from '@/models/queries';
 import type { MetaAccount, Workspace } from '@/lib/types';
 import {
   TEAM_DESCRIPTION_MAX,
@@ -11,7 +11,15 @@ import {
   cleanTeamKey,
   notifyTeamsChanged,
   plural,
-  teamsPath,
+  addTeamAccounts,
+  addTeamMembers,
+  deleteTeam,
+  removeTeamAccount,
+  removeTeamMember,
+  restoreTeam,
+  retireTeam,
+  setTeamOwner,
+  updateTeam,
   useTeams,
   type TeamItem,
 } from '@/lib/teams';
@@ -490,7 +498,7 @@ const TeamOverview: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
         onConfirm={() => {
           setLeaveOpen(false);
           void run(
-            () => apiRequest(teamsPath(workspace.id, `/${team.id}/members/${user.id}`), { method: 'DELETE' }),
+            () => removeTeamMember(workspace.id, team.id, user.id!),
             `You left ${team.name}`,
             "Couldn't leave the team",
           );
@@ -505,7 +513,7 @@ const TeamOverview: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
         onConfirm={() => {
           setRetireOpen(false);
           void run(
-            () => apiRequest(teamsPath(workspace.id, `/${team.id}/retire`), { method: 'POST' }),
+            () => retireTeam(workspace.id, team.id),
             `${team.name} was retired`,
             "Couldn't retire the team",
           );
@@ -515,7 +523,7 @@ const TeamOverview: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
         team={restoreOpen ? team : null}
         onClose={() => setRestoreOpen(false)}
         onConfirm={() => run(
-          () => apiRequest(teamsPath(workspace.id, `/${team.id}/restore`), { method: 'POST' }),
+          () => restoreTeam(workspace.id, team.id),
           `${team.name} was successfully restored.`,
           "Couldn't restore the team",
         )}
@@ -526,7 +534,7 @@ const TeamOverview: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
         onClose={() => setDeleteOpen(false)}
         onDelete={async () => {
           if (await run(
-            () => apiRequest(teamsPath(workspace.id, `/${team.id}`), { method: 'DELETE' }),
+            () => deleteTeam(workspace.id, team.id),
             `${team.name} was deleted`,
             "Couldn't delete the team",
           )) setSettingsSection('teams');
@@ -656,10 +664,7 @@ const TeamGeneral: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
       return;
     }
     try {
-      const updated = await apiRequest<TeamItem>(teamsPath(workspace.id, `/${team.id}`), {
-        method: 'PATCH',
-        body: JSON.stringify({ [field]: next }),
-      });
+      const updated = await updateTeam(workspace.id, team.id, { [field]: next });
       notifyTeamsChanged();
       // The address names the team by its identifier: follow it to the new one.
       if (field === 'key') openTeamSettings(`${updated.key}/general`);
@@ -673,10 +678,7 @@ const TeamGeneral: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
   const savePrivate = async (next: boolean) => {
     const title = next ? `${team.name} is now private` : `${team.name} is now public`;
     try {
-      await apiRequest<TeamItem>(teamsPath(workspace.id, `/${team.id}`), {
-        method: 'PATCH',
-        body: JSON.stringify({ private: next }),
-      });
+      await updateTeam(workspace.id, team.id, { private: next });
       notifyTeamsChanged();
       toast.show({ tone: 'success', title });
     } catch (saveError) {
@@ -911,7 +913,7 @@ const TeamMembers: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
   const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
-    apiRequest<MemberItem[]>(`/api/workspaces/${workspace.id}/members`).then(setMembers).catch(() => setMembers([]));
+    fetchWorkspaceMembers(workspace.id).then(setMembers).catch(() => setMembers([]));
   }, [workspace.id]);
 
   const onTeam = useMemo(() => {
@@ -927,7 +929,7 @@ const TeamMembers: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
   const remove = async (member: MemberItem) => {
     const title = member.is_current_user ? `You left ${team.name}` : `${memberName(member)} was removed from ${team.name}`;
     try {
-      await apiRequest(teamsPath(workspace.id, `/${team.id}/members/${member.user_id}`), { method: 'DELETE' });
+      await removeTeamMember(workspace.id, team.id, member.user_id);
       toast.show({ tone: 'success', title });
       notifyTeamsChanged();
     } catch (removeError) {
@@ -939,10 +941,7 @@ const TeamMembers: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
   const setOwner = async (member: MemberItem, isOwner: boolean) => {
     const title = isOwner ? `${memberName(member)} is now a team owner` : `${memberName(member)} is no longer a team owner`;
     try {
-      await apiRequest(teamsPath(workspace.id, `/${team.id}/members/${member.user_id}`), {
-        method: 'PATCH',
-        body: JSON.stringify({ is_owner: isOwner }),
-      });
+      await setTeamOwner(workspace.id, team.id, member.user_id, isOwner);
       toast.show({ tone: 'success', title });
       notifyTeamsChanged();
     } catch (ownerError) {
@@ -1033,10 +1032,7 @@ const TeamMembers: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ works
         onConfirm={async (ids) => {
           const title = ids.length === 1 ? 'Member added' : `${ids.length} members added`;
           try {
-            await apiRequest(teamsPath(workspace.id, `/${team.id}/members`), {
-              method: 'POST',
-              body: JSON.stringify({ user_ids: ids }),
-            });
+            await addTeamMembers(workspace.id, team.id, ids);
             toast.show({ tone: 'success', title });
             notifyTeamsChanged();
           } catch (addError) {
@@ -1061,7 +1057,7 @@ const TeamAccounts: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
   const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
-    apiRequest<MetaAccount[]>('/api/accounts').then(setAccounts).catch(() => setAccounts([]));
+    fetchAccounts().then(setAccounts).catch(() => setAccounts([]));
   }, [workspace.id]);
 
   const onTeam = useMemo(() => {
@@ -1076,7 +1072,7 @@ const TeamAccounts: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
 
   const remove = async (account: MetaAccount) => {
     try {
-      await apiRequest(teamsPath(workspace.id, `/${team.id}/accounts/${account.id}`), { method: 'DELETE' });
+      await removeTeamAccount(workspace.id, team.id, account.id!);
       toast.show({ tone: 'success', title: `${accountName(account)} was removed from ${team.name}` });
       notifyTeamsChanged();
     } catch (removeError) {
@@ -1148,10 +1144,7 @@ const TeamAccounts: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
         onConfirm={async (ids) => {
           const title = ids.length === 1 ? 'Ad account added' : `${ids.length} ad accounts added`;
           try {
-            await apiRequest(teamsPath(workspace.id, `/${team.id}/accounts`), {
-              method: 'POST',
-              body: JSON.stringify({ account_ids: ids }),
-            });
+            await addTeamAccounts(workspace.id, team.id, ids);
             toast.show({ tone: 'success', title });
             notifyTeamsChanged();
           } catch (addError) {

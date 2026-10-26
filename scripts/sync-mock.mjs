@@ -8,6 +8,9 @@
 // then commits changes: `push` sends them over the open socket, `commit` only
 // logs them, as when the socket is down; `drop` closes the socket, and the
 // client's next socket gets what it missed from the log before `caught_up`.
+//
+// It also answers the client API (/api/graphql, #509) with the check's REST mocks; see graphql-mock.mjs.
+import { mockGraphqlAsRest } from './graphql-mock.mjs';
 
 /** Routes the sync endpoints on a page; returns what a check drives them with. */
 export async function mockSync(page, { models = {}, lastSyncId = 0, syncGroups = [] } = {}) {
@@ -19,6 +22,7 @@ export async function mockSync(page, { models = {}, lastSyncId = 0, syncGroups =
     log: [],
     lastSyncId,
   };
+  await mockGraphqlAsRest(page);
   const delta = (actions) => JSON.stringify({ type: 'delta', actions, last_sync_id: actions[actions.length - 1].sync_id });
   await page.route('**/api/sync/bootstrap', (route) => {
     state.bootstraps += 1;

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { apiRequest } from '@/lib/api';
+import { changeInviteLink, fetchInviteLink, type InviteLink } from '@/lib/workspaces';
 import { finishedEmails, isEmail, parseEmails } from '@/lib/emails';
 import type { Workspace } from '@/lib/types';
 import { BuyerlyCheckIcon } from '@/icons/BuyerlyIcons';
@@ -12,11 +12,6 @@ import {
 } from '@/ui/DropdownMenu';
 import { ASSIGNABLE_ROLES, roleLabel } from '@/components/preferences/MemberDialogs';
 
-interface InviteLinkResponse {
-  invite_url: string | null;
-  /** An admin turned links off in Settings → Security, as opposed to never having one. */
-  turned_off?: boolean;
-}
 
 type LinkState =
   | { kind: 'loading' }
@@ -45,19 +40,18 @@ export const InviteTeamStep: React.FC<InviteTeamStepProps> = ({ workspace, busy,
   const [role, setRole] = useState('member');
   const copiedTimer = useRef<number | undefined>(undefined);
   // One request per workspace, even when the effect runs twice, so the link is turned on once.
-  const linkRequest = useRef<{ workspaceId: number; promise: Promise<InviteLinkResponse> } | null>(null);
+  const linkRequest = useRef<{ workspaceId: number; promise: Promise<InviteLink> } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    const endpoint = `/api/workspaces/${workspace.id}/invite-link`;
     if (linkRequest.current?.workspaceId !== workspace.id) {
       linkRequest.current = {
         workspaceId: workspace.id,
-        promise: apiRequest<InviteLinkResponse>(endpoint).then((result) => (
+        promise: fetchInviteLink(workspace.id).then((result) => (
           // Linear's invite links are on in a new workspace; one an admin turned off stays off.
           result.invite_url || result.turned_off
             ? result
-            : apiRequest<InviteLinkResponse>(endpoint, { method: 'POST', body: JSON.stringify({}) })
+            : changeInviteLink(workspace.id, 'enable')
         )),
       };
     }

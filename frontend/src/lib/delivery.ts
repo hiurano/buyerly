@@ -1,4 +1,5 @@
-import { apiRequest } from '@/lib/api';
+import { graphql } from '@/lib/graphql';
+import { undoAuditEvent } from '@/lib/audit';
 import type { HistoryEntry } from '@/lib/undoHistory';
 import { toast } from '@/ui/toast';
 import { scopeStore } from '@/models/scopeStore';
@@ -33,15 +34,17 @@ export function setEntityDelivery(
   accountId: string,
   status: DeliveryStatus,
 ): Promise<DeliveryResult> {
-  return apiRequest<DeliveryResult>(
-    `/api/entities/${level}/${encodeURIComponent(entityId)}/delivery`,
-    { method: 'POST', body: JSON.stringify({ account_id: accountId, status }) },
-  );
+  return graphql<{ entity: DeliveryResult }>(
+    `mutation EntityDeliveryUpdate($level: String!, $entityId: String!, $input: JSON!) {
+      entityDeliveryUpdate(level: $level, entityId: $entityId, input: $input) { success lastSyncId entity }
+    }`,
+    { level, entityId, input: { account_id: accountId, status } },
+  ).then((payload) => payload.entity);
 }
 
 /** Reverses one recorded action through the audit history that already owns undo. */
 export function undoAction(auditEventId: number): Promise<unknown> {
-  return apiRequest(`/api/audit-events/${auditEventId}/undo`, { method: 'POST' });
+  return undoAuditEvent(auditEventId);
 }
 
 export interface BulkDeliveryTarget {

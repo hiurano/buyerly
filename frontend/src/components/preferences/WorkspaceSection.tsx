@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
 import { apiRequest } from '@/lib/api';
+import { deleteWorkspace, updateWorkspace } from '@/lib/workspaces';
 import type { Workspace } from '@/lib/types';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { BuyerlyPencilIcon } from '@/icons/BuyerlyIcons';
@@ -104,7 +105,7 @@ export const WorkspaceSection: React.FC<WorkspaceSectionProps> = ({ workspace, o
     }
     if (next === workspace.name) return;
     try {
-      await apiRequest(`/api/workspaces/${workspace.id}`, { method: 'PATCH', body: JSON.stringify({ name: next }) });
+      await updateWorkspace(workspace.id, { name: next });
       await onUserChanged();
       toast.show({ tone: 'success', title: 'Workspace name updated' });
     } catch (error) {
@@ -122,7 +123,7 @@ export const WorkspaceSection: React.FC<WorkspaceSectionProps> = ({ workspace, o
         method: 'POST',
         body: form,
       });
-      await apiRequest(`/api/workspaces/${workspace.id}`, { method: 'PATCH', body: JSON.stringify({ logo_url: logoUrl }) });
+      await updateWorkspace(workspace.id, { logo_url: logoUrl });
       await onUserChanged();
     } catch (error) {
       // Linear: an error toast titled "File upload" with the reason.
@@ -304,10 +305,7 @@ const ChangeWorkspaceUrlDialog: React.FC<{
     setBusy(true);
     setError('');
     try {
-      const updated = await apiRequest<Workspace>(`/api/workspaces/${workspace.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ slug: next }),
-      });
+      const updated = await updateWorkspace(workspace.id, { slug: next });
       onClose();
       await onMoved(updated.slug);
       toast.show({ tone: 'success', title: 'Workspace URL updated' });
@@ -396,7 +394,7 @@ const DeleteWorkspaceDialog: React.FC<{
     setBusy(true);
     setError('');
     try {
-      await apiRequest(`/api/workspaces/${workspace.id}`, { method: 'DELETE' });
+      await deleteWorkspace(workspace.id);
       onClose();
       toast.show({ tone: 'info', title: 'Workspace deleted', description: `${workspace.name} and all its data were deleted.` });
       await onDeleted();

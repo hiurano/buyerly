@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
 import { apiRequest } from '@/lib/api';
+import { graphql } from '@/lib/graphql';
+import { fetchWorkspaceMembers } from '@/models/queries';
 import type { SessionUser, Workspace } from '@/lib/types';
 import { Input } from '@/ui/Input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
@@ -264,7 +266,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, workspace,
     setCannotLeave(false);
     if (workspace.role !== 'owner') return undefined;
     let cancelled = false;
-    apiRequest<{ is_current_user: boolean }[]>(`/api/workspaces/${workspace.id}/members`)
+    fetchWorkspaceMembers(workspace.id)
       .then((members) => {
         if (!cancelled) setCannotLeave(!members.some((member) => !member.is_current_user));
       })
@@ -275,9 +277,8 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, workspace,
   }, [workspace.id, workspace.role]);
 
   const saveField = (field: 'full_name' | 'title' | 'username') => async (next: string) => {
-    await apiRequest('/api/auth/update-profile', {
-      method: 'POST',
-      body: JSON.stringify({ [field]: next }),
+    await graphql('mutation UserUpdate($input: JSON!) { userUpdate(input: $input) { success lastSyncId } }', {
+      input: { [field]: next },
     });
     await onUserChanged();
   };

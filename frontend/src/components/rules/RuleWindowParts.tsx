@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
-import { apiRequest } from '@/lib/api';
+import { graphql } from '@/lib/graphql';
 import type { AnalyticsHierarchyResponse } from '@/lib/types';
 import {
   RULE_METRIC_LABELS,
@@ -651,8 +651,11 @@ export const RunOnPicker: React.FC<{
     setOpenAccount((current) => (current === accountId ? null : accountId));
     if (campaigns[accountId] && campaigns[accountId] !== 'error') return;
     setCampaigns((current) => ({ ...current, [accountId]: 'loading' }));
-    void apiRequest<AnalyticsHierarchyResponse>(
-      `/api/analytics/hierarchy?parent_id=${encodeURIComponent(accountId)}&level=campaign&period=today`,
+    void graphql<AnalyticsHierarchyResponse>(
+      `query AnalyticsHierarchy($parentId: String!, $level: String, $period: String) {
+        analyticsHierarchy(parentId: $parentId, level: $level, period: $period)
+      }`,
+      { parentId: accountId, level: 'campaign', period: 'today' },
     )
       .then((response) => setCampaigns((current) => ({
         ...current,
