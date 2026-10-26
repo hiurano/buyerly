@@ -1,7 +1,8 @@
 import { toast } from '@/ui/toast';
 import { pool } from '@/models/pool';
+import { localDatabase } from '@/models/localDatabase';
 import { apiRequest } from './api';
-import { chooseAccount, getKnownAccounts, homeWorkspace, setCurrentAccountId, setKnownAccounts, type BrowserAccount } from './accounts';
+import { chooseAccount, getCurrentAccountId, getKnownAccounts, homeWorkspace, setCurrentAccountId, setKnownAccounts, type BrowserAccount } from './accounts';
 
 /** One signed-in browser, as `GET /api/auth/sessions` returns it. */
 export interface WebSession {
@@ -36,6 +37,9 @@ export async function revokeOtherSessions(): Promise<void> {
  * Resolves false when the server refused.
  */
 export async function logOut(): Promise<boolean> {
+  // Whose data this browser keeps goes with the sign-out (#496): the open account's, by its username.
+  const leaving = getKnownAccounts().find((account) => account.id === getCurrentAccountId())?.username
+    ?? pool.scope?.split(':')[0] ?? null;
   try {
     await apiRequest('/api/auth/logout', { method: 'POST', body: JSON.stringify({}) });
   } catch (error) {
@@ -43,10 +47,12 @@ export async function logOut(): Promise<boolean> {
     return false;
   }
   let destination = '/login';
+  let stillSignedIn = false;
   try {
     setKnownAccounts(await apiRequest<BrowserAccount[]>('/api/auth/accounts'));
     const next = chooseAccount(getKnownAccounts());
     if (next) {
+      stillSignedIn = true;
       setCurrentAccountId(next.id);
       const workspace = homeWorkspace(next);
       destination = workspace ? `/${workspace.slug}/inbox` : '/';
@@ -54,8 +60,10 @@ export async function logOut(): Promise<boolean> {
   } catch {
     // The logout itself succeeded; the login screen is a safe place to land.
   }
-  // Nothing of this account is drawn again, even before the reload lands (#488).
+  // Nothing of this account is drawn again, even before the reload lands (#488),
+  // nor after it: its local databases are deleted, every one when no account is left (#496).
   pool.reset(null);
+  await localDatabase.wipe(stillSignedIn ? leaving : null);
   window.location.assign(destination);
   return true;
 }

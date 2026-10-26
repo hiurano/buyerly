@@ -24,9 +24,9 @@ import { TooltipProvider } from '@/ui/Tooltip';
 import { ToastRegion } from '@/ui/ToastRegion';
 import { useUndoShortcuts } from '@/lib/undoHistory';
 import { useNewVersionNotice } from '@/lib/appVersion';
-import { apiRequest } from '@/lib/api';
+import { ApiError, apiRequest } from '@/lib/api';
 import type { LoginResult, SessionUser, Workspace } from '@/lib/types';
-import { TEAM_HOME_PAGES, isRoutedSettingsSection, isWorkspaceReturnRoute, notifyLocationChanged, openAppPath, pathForTab, teamHomePath, useAddress, useLocationVersion, useRoute, type Route } from '@/lib/routing';
+import { TEAM_HOME_PAGES, isRoutedSettingsSection, isWorkspaceReturnRoute, notifyLocationChanged, openAppPath, parseRoute, pathForTab, teamHomePath, useAddress, useLocationVersion, useRoute, type Route } from '@/lib/routing';
 import { BuyerlyPageGate, BuyerlyPageSkeleton, useHeldPage } from '@/components/layout/BuyerlyPageSwitch';
 import { BuyerlyPageScopeContext } from '@/lib/pageScope';
 import { AuthLoading } from '@/components/auth/AuthFrame';
@@ -46,6 +46,7 @@ import { isSmallScreen } from '@/lib/useMediaQuery';
 import { GO_TO_SETTINGS_SECTION, goToTargetFor } from '@/lib/shortcuts';
 import { canOpenSettingsSection } from '@/lib/settingsPages';
 import { logOut } from '@/lib/sessions';
+import { localDatabase, rememberSession, rememberedSession } from '@/models/localDatabase';
 import {
   chooseAccount,
   getCurrentAccountId,
@@ -75,6 +76,31 @@ const styles = stylex.create({
     overflow: 'hidden',
   },
 });
+
+/**
+ * The profile this tab's account had when last seen, for an address of one of
+ * its workspaces: the app opens on it, with the workspace's local database,
+ * before the server answers, as Linear opens (#496). The server's profile
+ * replaces it as soon as it comes; a session it no longer knows signs out.
+ */
+function rememberedStart(): { user: SessionUser; accounts: BrowserAccount[] } | null {
+  const route = parseRoute();
+  if (route.kind !== 'workspace') return null;
+  const held = rememberedSession();
+  if (!held) return null;
+  const account = chooseAccount(held.accounts, route.workspace);
+  const users = Object.values(held.users);
+  const user = account ? held.users[String(account.id)] : (users.length === 1 ? users[0] : undefined);
+  if (!user?.onboarding_completed || !user.workspaces.some((workspace) => workspace.slug === route.workspace)) return null;
+  if (account) {
+    setKnownAccounts(held.accounts);
+    setCurrentAccountId(account.id);
+  }
+  return { user, accounts: held.accounts };
+}
+
+/** Read once, when the app loads. */
+const remembered = rememberedStart();
 
 function activeWorkspace(user: SessionUser): Workspace | null {
   return user.active_workspace || user.workspaces.find((workspace) => workspace.is_active) || user.workspaces[0] || null;
@@ -469,8 +495,8 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
 
 export const App: React.FC = () => {
   const locationVersion = useLocationVersion();
-  const [user, setUser] = useState<SessionUser | null | undefined>(undefined);
-  const [accounts, setAccounts] = useState<BrowserAccount[]>([]);
+  const [user, setUser] = useState<SessionUser | null | undefined>(remembered ? remembered.user : undefined);
+  const [accounts, setAccounts] = useState<BrowserAccount[]>(remembered ? remembered.accounts : []);
   const route = useRoute();
 
   // While the tab moves to another account, the old account's profile must not
@@ -490,6 +516,11 @@ export const App: React.FC = () => {
   useEffect(() => {
     document.documentElement.dataset.sync = syncStatus;
   }, [syncStatus]);
+  // The profile is kept for the next start; with no account signed in, nothing this browser kept stays (#496).
+  useEffect(() => {
+    if (user) rememberSession(user, accounts);
+    else if (user === null) void localDatabase.wipe(null);
+  }, [accounts, user]);
   // The reload splash goes once a screen other than the boot loader is on the page (#433).
   useLayoutEffect(() => {
     if (!document.querySelector('[data-boot-loading]')) finishSplash();
@@ -597,7 +628,11 @@ export const App: React.FC = () => {
       const account = chooseAccount(list, slug);
       setCurrentAccountId(account ? account.id : null);
       await refreshUser();
-    })().catch(() => setUser(null));
+    })().catch((error: unknown) => {
+      // Offline, the profile last seen stays; a session the server refuses signs out.
+      if (remembered && !(error instanceof ApiError)) return;
+      setUser(null);
+    });
     // Session bootstrap runs once; explicit auth mutations refresh it.
   }, []);
 

@@ -7,6 +7,9 @@ import {
   type StoredView,
   type StoredViews,
 } from '@/lib/viewSettings';
+import { reaction } from 'mobx';
+import { localDatabase } from './localDatabase';
+import { afterPaint } from './pool';
 import { scopeStore } from './scopeStore';
 import { makeStore, useStore } from './store';
 
@@ -64,6 +67,30 @@ export class ViewStore {
       this.adsManagerFilters = NO_FILTERS;
       this.isDisplayOptionsOpen = false;
       this.isRulesDisplayOptionsOpen = false;
+    });
+    // Kept between visits, so a reload draws each list in its saved view at once (#496).
+    localDatabase.keep('views', (value) => this.hydrateViews(value as { views: StoredViews; defaults: StoredViews }));
+    reaction(
+      () => (this.viewSettingsLoaded ? { views: this.viewSettings, defaults: this.viewDefaults } : null),
+      (stored) => {
+        if (stored) localDatabase.save('views', stored);
+      },
+    );
+  }
+
+  /** Takes the views the local database kept, then reads them again behind the page. */
+  hydrateViews(stored: { views: StoredViews; defaults: StoredViews }) {
+    // A read already on its way merges its answer under what is shown: it comes instead.
+    if (this.viewSettingsLoaded || this.#viewSettingsRequest || !stored?.views) return;
+    this.viewSettings = stored.views;
+    this.viewDefaults = stored.defaults ?? {};
+    this.viewSettingsLoaded = true;
+    const kept = { views: this.viewSettings, defaults: this.viewDefaults };
+    const inScope = scopeStore.captureScope();
+    afterPaint(() => {
+      fetchViewSettings().then(({ views, defaults }) => {
+        if (inScope()) this.showRefreshedViews(kept, views, defaults);
+      }, () => {});
     });
   }
 
@@ -198,6 +225,12 @@ export class ViewStore {
     this.viewSettings = { ...views, ...this.viewSettings };
     this.viewDefaults = { ...defaults, ...this.viewDefaults };
     this.viewSettingsLoaded = true;
+  }
+
+  /** The server's views over the kept ones; a choice made since they were drawn wins. */
+  private showRefreshedViews(kept: { views: StoredViews; defaults: StoredViews }, views: StoredViews, defaults: StoredViews) {
+    this.viewSettings = this.viewSettings === kept.views ? views : { ...views, ...this.viewSettings };
+    this.viewDefaults = this.viewDefaults === kept.defaults ? defaults : { ...defaults, ...this.viewDefaults };
   }
 
   private showViewDefault(key: string, settings: StoredView) {

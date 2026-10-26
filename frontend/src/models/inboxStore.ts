@@ -7,10 +7,20 @@ import {
   type InboxDisplay,
   type InboxUnread,
 } from '@/lib/inbox';
+import { reaction } from 'mobx';
+import { localDatabase } from './localDatabase';
+import { afterPaint } from './pool';
 import { scopeStore } from './scopeStore';
 import { makeStore, useStore } from './store';
 
 export type { InboxDisplay };
+
+/** What Inbox keeps in the local database (#496): its Display options and the badge's counts. */
+interface StoredInbox {
+  display: InboxDisplay;
+  unread: number;
+  priorityUnread: number;
+}
 
 /** Inbox's unread counts and its Display options, kept per member on the server. */
 export class InboxStore {
@@ -19,6 +29,8 @@ export class InboxStore {
   inboxDisplay: InboxDisplay = DEFAULT_INBOX_DISPLAY;
   /** False until this workspace's saved Display options arrive (or the member changes one). */
   inboxDisplayLoaded = false;
+  /** True while the options shown are the local database's copy, until the server's arrive (#496). */
+  inboxDisplayKept = false;
   #displaySave: Promise<unknown> = Promise.resolve();
 
   constructor() {
@@ -28,6 +40,36 @@ export class InboxStore {
       this.inboxPriorityUnreadCount = 0;
       this.inboxDisplay = DEFAULT_INBOX_DISPLAY;
       this.inboxDisplayLoaded = false;
+      this.inboxDisplayKept = false;
+    });
+    // Kept between visits, so a reload draws Inbox with the member's options and badge at once (#496).
+    localDatabase.keep('inbox', (value) => this.hydrate(value as StoredInbox));
+    reaction(
+      () => (this.inboxDisplayLoaded
+        ? { display: this.inboxDisplay, unread: this.inboxUnreadCount, priorityUnread: this.inboxPriorityUnreadCount }
+        : null),
+      (stored) => {
+        if (stored) localDatabase.save('inbox', stored);
+      },
+    );
+  }
+
+  /** Takes what the local database kept, then reads the saved options again behind the page. */
+  hydrate(stored: StoredInbox) {
+    if (this.inboxDisplayLoaded || !stored?.display) return;
+    this.inboxUnreadCount = stored.unread;
+    this.inboxPriorityUnreadCount = stored.priorityUnread;
+    this.showDisplay({ ...DEFAULT_INBOX_DISPLAY, ...stored.display });
+    this.inboxDisplayKept = true;
+    const kept = this.inboxDisplay;
+    const inScope = scopeStore.captureScope();
+    afterPaint(() => {
+      fetchInboxDisplay().then((display) => {
+        // A choice made since wins over the saved one.
+        if (inScope() && this.inboxDisplay === kept) this.showDisplay(display);
+      }, () => {}).finally(() => {
+        if (inScope()) this.settleKeptDisplay();
+      });
     });
   }
 
@@ -80,6 +122,11 @@ export class InboxStore {
   private showDisplay(display: InboxDisplay) {
     this.inboxDisplay = display;
     this.inboxDisplayLoaded = true;
+    this.inboxDisplayKept = false;
+  }
+
+  private settleKeptDisplay() {
+    this.inboxDisplayKept = false;
   }
 }
 
