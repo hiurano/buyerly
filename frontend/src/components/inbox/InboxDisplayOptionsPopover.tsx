@@ -13,7 +13,7 @@ import { BuyerlyMultiSelect, BuyerlySelect } from '@/ui/BuyerlyDisplayOptions';
 import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { useMenuExit } from '@/ui/useMenuExit';
 import { useInboxStore } from '@/models/inboxStore';
-import { useShellStore } from '@/models/shellStore';
+import { openSettings } from '@/lib/routing';
 
 interface InboxDisplayOptionsPopoverProps {
   isOpen: boolean;
@@ -43,8 +43,6 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
 }) => {
   const inboxDisplay = useInboxStore((state) => state.inboxDisplay);
   const setInboxDisplay = useInboxStore((state) => state.setInboxDisplay);
-  const setActiveTab = useShellStore((state) => state.setActiveTab);
-  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
   const customFilters = inboxDisplay.priorityRules.length;
   const popoverRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
@@ -111,8 +109,7 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
                   // Linear opens Settings → Notifications → Priority notifications.
                   onSelect: () => {
                     onClose();
-                    setSettingsSection('priority-notifications');
-                    setActiveTab('preferences');
+                    openSettings('priority-notifications');
                   },
                 }}
               />

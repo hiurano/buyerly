@@ -1,6 +1,7 @@
-import { useMemo, useSyncExternalStore } from 'react';
-import { type ActiveTab, type SettingsSection } from '@/models/shellStore';
-import { type AdsManagerEntity } from '@/models/viewStore';
+import { useCallback, useMemo } from 'react';
+import { matchRoutes, useLocation, useMatches, useNavigate, type Params, type RouteObject } from 'react-router';
+import type { ActiveTab, SettingsSection } from '@/models/shellStore';
+import type { AdsManagerEntity } from '@/models/viewStore';
 
 export type Route =
   | { kind: 'root' }
@@ -38,6 +39,8 @@ export type Route =
     }
   | { kind: 'unknown' };
 
+export type WorkspaceRoute = Extract<Route, { kind: 'workspace' }>;
+
 /** Rules pages beside the list: deleted rules and groups live at /rules/recently-deleted. */
 export const RECENTLY_DELETED_RULES = 'recently-deleted';
 export type RulesPage = typeof RECENTLY_DELETED_RULES;
@@ -64,169 +67,6 @@ const SYSTEM_ROOTS = new Set([
   'uploads',
 ]);
 
-/*
- * Which navigation the tab is on: a number that changes on every pushState
- * the app makes and on Back and Forward. Components read the address through
- * it, never straight from window.location while rendering, which the React
- * Compiler takes for a constant (#492).
- */
-let locationVersion = 0;
-const getLocationVersion = () => locationVersion;
-const locationListeners = new Set<() => void>();
-
-/** Call after changing the address with the History API. */
-export function notifyLocationChanged(): void {
-  locationVersion += 1;
-  locationListeners.forEach((listener) => listener());
-}
-
-if (typeof window !== 'undefined') window.addEventListener('popstate', notifyLocationChanged);
-
-function subscribeLocation(listener: () => void) {
-  locationListeners.add(listener);
-  return () => locationListeners.delete(listener);
-}
-
-export function useLocationVersion(): number {
-  return useSyncExternalStore(subscribeLocation, getLocationVersion);
-}
-
-/** The route of the address on screen, read again on every navigation. */
-export function useRoute(): Route {
-  const version = useLocationVersion();
-  return useMemo(() => routeAt(version), [version]);
-}
-
-/** The path and query on screen, read again on every navigation. */
-export function useAddress(): { pathname: string; search: string } {
-  const version = useLocationVersion();
-  return useMemo(() => addressAt(version), [version]);
-}
-
-const addressAt = (_version: number) => ({ pathname: window.location.pathname, search: window.location.search });
-
-/** The route as of a navigation; `version` makes that the read's input. */
-export const routeAt = (_version: number) => parseRoute();
-
-/**
- * The address's query as of a navigation. `navigationKey` changes on every
- * one, Back and Forward included; passing it makes that the read's input, so
- * the React Compiler reads the address again then rather than once (#492).
- */
-export const searchAt = (_navigationKey: number) => window.location.search;
-
-export function parseRoute(location: Location = window.location): Route {
-  const parts = location.pathname.split('/').filter(Boolean);
-  if (parts.length === 0) return { kind: 'root' };
-  if (parts.length === 1 && parts[0] === 'login') return { kind: 'login' };
-  if (parts.length === 1 && parts[0] === 'signup') return { kind: 'signup' };
-  if (parts.length === 1 && parts[0] === 'create-workspace') return { kind: 'create-workspace' };
-  if (parts.length === 3 && parts[0] === 'auth' && parts[1] === 'email' && parts[2] === 'verify') {
-    return { kind: 'verify-email-link', token: new URLSearchParams(location.search).get('token') || '' };
-  }
-  if (parts.length === 2 && parts[0] === 'auth' && parts[1] === 'add-account') {
-    return { kind: 'add-account', inviteToken: new URLSearchParams(location.search).get('invite') || null };
-  }
-  if (parts[0] === 'invite' && parts.length === 2) {
-    return { kind: 'invite', token: parts[1] };
-  }
-  if (parts[0] === 'connect' && parts[1] === 'meta' && parts.length === 3 && parts[2] === 'success') {
-    return { kind: 'meta-connect-success' };
-  }
-  if (parts[0] === 'connect' && parts[1] === 'meta' && parts.length === 3) {
-    return { kind: 'meta-connect-invite', token: parts[2] };
-  }
-  if (SYSTEM_ROOTS.has(parts[0])) return { kind: 'unknown' };
-
-  const workspace = parts[0];
-  if (parts[1] === 'team' && parts.length >= 3) {
-    const teamKey = parts[2].toUpperCase();
-    // The team's Home, as Linear's: Overview, Documents (and one document), Members.
-    if (parts.length === 3) return { kind: 'workspace', workspace, tab: 'team', teamKey, teamPage: 'overview' };
-    const homePage = TEAM_HOME_PAGES.find((page) => page === parts[3]);
-    if (homePage && (parts.length === 4 || (homePage === 'documents' && parts.length === 5))) {
-      return { kind: 'workspace', workspace, tab: 'team', teamKey, teamPage: homePage, recordId: parts[4] };
-    }
-    // /<workspace>/team/<KEY>/<page>: the workspace page of that name, for the team.
-    if (!TEAM_SCOPED_ROOTS.includes(parts[3])) return { kind: 'unknown' };
-    const inner = parseRoute({ pathname: `/${[workspace, ...parts.slice(3)].join('/')}`, search: location.search } as Location);
-    return inner.kind === 'workspace' ? { ...inner, teamKey } : inner;
-  }
-  if (parts[1] === 'my-campaigns' && parts.length <= 4) {
-    // Ads Manager's levels and records, over the ad accounts you lead.
-    const inner = parseRoute({
-      pathname: `/${[workspace, 'ads-manager', ...(parts.length > 2 ? parts.slice(2) : ['campaigns'])].join('/')}`,
-      search: location.search,
-    } as Location);
-    return inner.kind === 'workspace' ? { ...inner, mine: true } : inner;
-  }
-  if (parts.length === 1) {
-    return { kind: 'workspace', workspace, tab: 'inbox' };
-  }
-  if (parts[1] === 'welcome' && parts.length === 2) {
-    return { kind: 'welcome', workspace };
-  }
-  if (parts[1] === 'inbox' && (parts[2] === 'priority' || parts[2] === 'other') && parts.length <= 4) {
-    return { kind: 'workspace', workspace, tab: 'inbox', inboxTab: parts[2], recordId: parts[3] };
-  }
-  if (parts[1] === 'inbox' && parts.length <= 3) {
-    return { kind: 'workspace', workspace, tab: 'inbox', recordId: parts[2] };
-  }
-  if (
-    parts[1] === 'ads-manager'
-    && parts.length >= 3
-    && parts.length <= 4
-    && ['campaigns', 'adsets', 'ads'].includes(parts[2])
-  ) {
-    return {
-      kind: 'workspace',
-      workspace,
-      tab: 'campaigns',
-      entity: parts[2] as AdsManagerEntity,
-      recordId: parts[3],
-    };
-  }
-  if (parts[1] === 'accounts' && parts.length <= 3) {
-    // The Ad accounts list, and one account's page at /accounts/{act_id} (#388).
-    let recordId = parts[2];
-    try {
-      recordId = recordId ? decodeURIComponent(recordId) : recordId;
-    } catch { /* A broken escape stays as typed and finds no account. */ }
-    return { kind: 'workspace', workspace, tab: 'accounts', recordId };
-  }
-  if (parts[1] === 'rules' && parts[2] === RECENTLY_DELETED_RULES && parts.length === 3) {
-    return { kind: 'workspace', workspace, tab: 'rules', rulesPage: RECENTLY_DELETED_RULES };
-  }
-  if (parts[1] === 'rules' && parts.length <= 3) {
-    return { kind: 'workspace', workspace, tab: 'rules', recordId: parts[2] };
-  }
-  if ((parts[1] === 'members' || parts[1] === 'teams') && parts.length === 2) {
-    // Linear's workspace Members and Teams pages, beside their Settings pages.
-    return { kind: 'workspace', workspace, tab: parts[1] === 'members' ? 'members' : 'teams' };
-  }
-  if (parts[1] === 'search' && parts.length === 2) {
-    // Linear's search page; the query, tab and filters live in `?q=…&type=…`.
-    return { kind: 'workspace', workspace, tab: 'search' };
-  }
-  if (parts[1] === 'settings' && parts.length === 2) {
-    return { kind: 'workspace', workspace, tab: 'preferences' };
-  }
-  if (
-    parts[1] === 'settings'
-    && parts[2] === 'teams'
-    && (parts.length === 4 || (parts.length === 5 && (TEAM_PAGES as readonly string[]).includes(parts[4])))
-  ) {
-    return { kind: 'workspace', workspace, tab: 'preferences', settingsSection: 'team', teamPath: parts.slice(3).join('/') };
-  }
-  if (parts[1] === 'settings') {
-    const subpath = parts.slice(2).join('/');
-    const section = (Object.keys(SETTINGS_PATHS) as Array<keyof typeof SETTINGS_PATHS>)
-      .find((key) => SETTINGS_PATHS[key] === subpath);
-    if (section) return { kind: 'workspace', workspace, tab: 'preferences', settingsSection: section };
-  }
-  return { kind: 'unknown' };
-}
-
 /** Settings pages with their own address, at Linear's paths. */
 export const SETTINGS_PATHS = {
   workspace: 'workspace',
@@ -248,23 +88,230 @@ export const SETTINGS_PATHS = {
 export const TEAM_HOME_PAGES = ['overview', 'documents', 'members'] as const;
 export type TeamHomePage = typeof TEAM_HOME_PAGES[number];
 
+/** A team's pages under /settings/teams/<KEY>/, after its overview. */
+export const TEAM_PAGES = ['general', 'members', 'accounts'] as const;
+
+const ADS_MANAGER_LEVELS: AdsManagerEntity[] = ['campaigns', 'adsets', 'ads'];
+
+/*
+ * The app's routes, as Linear's React Router tree: workspace → (team) page →
+ * record, Settings → its sections. Each route's `handle` says what it opens;
+ * src/routes.tsx gives the routes their components. Kept apart from them so
+ * code outside React (the API client, a toast's action) reads the address
+ * through the same tree.
+ */
+
+/** What a route opens: a screen outside the workspace, or a page of it. */
+export type BuyerlyRouteHandle =
+  | { kind: Exclude<Route['kind'], 'workspace' | 'unknown'> }
+  | {
+      page: ActiveTab;
+      entity?: AdsManagerEntity;
+      inboxTab?: 'priority' | 'other';
+      rulesPage?: RulesPage;
+      teamPage?: TeamHomePage;
+      settingsSection?: SettingsSection;
+      /** With settingsSection 'team': the team's page after its overview. */
+      teamSettingsPage?: typeof TEAM_PAGES[number];
+      mine?: boolean;
+    };
+
+const handle = (value: BuyerlyRouteHandle) => value;
+
+/**
+ * Ads Manager, Ad accounts and Rules, at `prefix`: the workspace's own, a team's
+ * copy (team/:teamKey/), as Linear's team Issues, and My campaigns. They sit
+ * side by side under one layout, so a page keeps its state from one to another.
+ */
+function scopedPages(prefix: '' | 'team/:teamKey/' | 'my-campaigns'): RouteObject[] {
+  const mine = prefix === 'my-campaigns';
+  return [
+    ...ADS_MANAGER_LEVELS.map((entity) => ({
+      path: `${mine ? 'my-campaigns' : `${prefix}ads-manager`}/${entity}/:recordId?`,
+      handle: handle({ page: 'campaigns', entity, mine }),
+    })),
+    ...(mine ? [] : [
+      // The Ad accounts list, and one account's page at /accounts/{act_id} (#388).
+      { path: `${prefix}accounts/:recordId?`, handle: handle({ page: 'accounts' }) },
+      { path: `${prefix}rules/${RECENTLY_DELETED_RULES}`, handle: handle({ page: 'rules', rulesPage: RECENTLY_DELETED_RULES }) },
+      { path: `${prefix}rules/:recordId?`, handle: handle({ page: 'rules' }) },
+    ]),
+  ];
+}
+
+const settingsRoutes: RouteObject[] = [
+  { index: true, handle: handle({ page: 'preferences', settingsSection: 'preferences' }) },
+  ...(Object.keys(SETTINGS_PATHS) as Array<keyof typeof SETTINGS_PATHS>).map((section) => ({
+    path: SETTINGS_PATHS[section],
+    handle: handle({ page: 'preferences', settingsSection: section }),
+  })),
+  { path: 'teams/:settingsTeam', handle: handle({ page: 'preferences', settingsSection: 'team' }) },
+  ...TEAM_PAGES.map((page) => ({
+    path: `teams/:settingsTeam/${page}`,
+    handle: handle({ page: 'preferences', settingsSection: 'team', teamSettingsPage: page }),
+  })),
+];
+
+const workspacePageRoutes: RouteObject[] = [
+  { index: true, handle: handle({ page: 'inbox' }) },
+  { path: 'inbox/priority/:recordId?', handle: handle({ page: 'inbox', inboxTab: 'priority' }) },
+  { path: 'inbox/other/:recordId?', handle: handle({ page: 'inbox', inboxTab: 'other' }) },
+  { path: 'inbox/:recordId?', handle: handle({ page: 'inbox' }) },
+  ...scopedPages(''),
+  // Ads Manager's levels and records, over the ad accounts you lead.
+  { path: 'my-campaigns', handle: handle({ page: 'campaigns', entity: 'campaigns', mine: true }) },
+  ...scopedPages('my-campaigns'),
+  // Linear's workspace Members and Teams pages, beside their Settings pages.
+  { path: 'members', handle: handle({ page: 'members' }) },
+  { path: 'teams', handle: handle({ page: 'teams' }) },
+  // Linear's search page; the query, tab and filters live in `?q=…&type=…`.
+  { path: 'search', handle: handle({ page: 'search' }) },
+  // The team's Home, as Linear's: Overview, Documents (and one document), Members.
+  { path: 'team/:teamKey', handle: handle({ page: 'team', teamPage: 'overview' }) },
+  { path: 'team/:teamKey/overview', handle: handle({ page: 'team', teamPage: 'overview' }) },
+  { path: 'team/:teamKey/documents/:recordId?', handle: handle({ page: 'team', teamPage: 'documents' }) },
+  { path: 'team/:teamKey/members', handle: handle({ page: 'team', teamPage: 'members' }) },
+  ...scopedPages('team/:teamKey/'),
+];
+
+/** The route tree without components; src/routes.tsx renders it. */
+export const buyerlyRouteTree: RouteObject[] = [
+  {
+    id: 'root',
+    children: [
+      { index: true, handle: handle({ kind: 'root' }) },
+      { path: 'login', handle: handle({ kind: 'login' }) },
+      { path: 'signup', handle: handle({ kind: 'signup' }) },
+      { path: 'create-workspace', handle: handle({ kind: 'create-workspace' }) },
+      { path: 'auth/email/verify', handle: handle({ kind: 'verify-email-link' }) },
+      { path: 'auth/add-account', handle: handle({ kind: 'add-account' }) },
+      { path: 'invite/:token', handle: handle({ kind: 'invite' }) },
+      { path: 'connect/meta/success', handle: handle({ kind: 'meta-connect-success' }) },
+      { path: 'connect/meta/:token', handle: handle({ kind: 'meta-connect-invite' }) },
+      { path: ':workspace/welcome', handle: handle({ kind: 'welcome' }) },
+      {
+        id: 'workspace',
+        path: ':workspace',
+        children: [
+          { id: 'settings', path: 'settings', children: settingsRoutes },
+          { id: 'pages', children: workspacePageRoutes },
+        ],
+      },
+      { path: '*' },
+    ],
+  },
+];
+
+interface MatchLike {
+  params: Params;
+  handle?: unknown;
+}
+
+/** The route the matched branch of the tree opens. */
+export function routeFromMatches(matches: readonly MatchLike[] | null, search: string): Route {
+  const last = matches?.[matches.length - 1];
+  const opened = last?.handle as BuyerlyRouteHandle | undefined;
+  if (!last || !opened) return { kind: 'unknown' };
+  const { params } = last;
+  if ('kind' in opened) {
+    switch (opened.kind) {
+      case 'verify-email-link':
+        return { kind: 'verify-email-link', token: new URLSearchParams(search).get('token') || '' };
+      case 'add-account':
+        return { kind: 'add-account', inviteToken: new URLSearchParams(search).get('invite') || null };
+      case 'invite':
+        return { kind: 'invite', token: params.token ?? '' };
+      case 'meta-connect-invite':
+        return { kind: 'meta-connect-invite', token: params.token ?? '' };
+      case 'welcome':
+        return SYSTEM_ROOTS.has(params.workspace ?? '') ? { kind: 'unknown' } : { kind: 'welcome', workspace: params.workspace ?? '' };
+      default:
+        return { kind: opened.kind };
+    }
+  }
+  const workspace = params.workspace ?? '';
+  if (SYSTEM_ROOTS.has(workspace)) return { kind: 'unknown' };
+  const route: WorkspaceRoute = { kind: 'workspace', workspace, tab: opened.page };
+  if (opened.entity) route.entity = opened.entity;
+  if (opened.mine) route.mine = true;
+  if (opened.inboxTab) route.inboxTab = opened.inboxTab;
+  if (opened.rulesPage) route.rulesPage = opened.rulesPage;
+  if (opened.teamPage) route.teamPage = opened.teamPage;
+  if (params.teamKey) route.teamKey = params.teamKey.toUpperCase();
+  if (params.recordId) route.recordId = params.recordId;
+  if (opened.settingsSection && opened.settingsSection !== 'preferences') route.settingsSection = opened.settingsSection;
+  if (opened.settingsSection === 'team') {
+    route.teamPath = opened.teamSettingsPage ? `${params.settingsTeam}/${opened.teamSettingsPage}` : params.settingsTeam;
+  }
+  return route;
+}
+
+/** The route of an address, outside React (the API client, a check made later). */
+export function routeAt(location: { pathname: string; search: string }): Route {
+  const matches = matchRoutes(buyerlyRouteTree, location.pathname);
+  return routeFromMatches(matches?.map((match) => ({ params: match.params, handle: match.route.handle })) ?? null, location.search);
+}
+
+/** The route of the address on screen now; for event handlers and code outside React, never while rendering. */
+export function currentRoute(): Route {
+  return routeAt(window.location);
+}
+
+/** The route of the address on screen, read again on every navigation. */
+export function useRoute(): Route {
+  const matches = useMatches();
+  const { search } = useLocation();
+  return useMemo(() => routeFromMatches(matches, search), [matches, search]);
+}
+
+const navigationNumbers = new WeakMap<object, number>();
+let lastNavigationNumber = 0;
+
+/** A number of its own for each location the router moves to, Back and Forward included. */
+function navigationNumber(location: object): number {
+  let number = navigationNumbers.get(location);
+  if (number === undefined) {
+    lastNavigationNumber += 1;
+    number = lastNavigationNumber;
+    navigationNumbers.set(location, number);
+  }
+  return number;
+}
+
+/**
+ * Changes on every navigation, Back and Forward included: pages read the
+ * address's query again then (#492).
+ */
+export function useNavigationKey(): number {
+  return navigationNumber(useLocation());
+}
+
+/** The path and query on screen, read again on every navigation. */
+export function useAddress(): { pathname: string; search: string } {
+  const { pathname, search } = useLocation();
+  return useMemo(() => ({ pathname, search }), [pathname, search]);
+}
+
+/** The Settings page on screen: its section, and with 'team' which team page. */
+export function useSettingsPage(): { section: SettingsSection; teamPath: string } {
+  const route = useRoute();
+  const section = route.kind === 'workspace' ? route.settingsSection ?? 'preferences' : 'preferences';
+  const teamPath = route.kind === 'workspace' ? route.teamPath ?? '' : '';
+  return useMemo(() => ({ section, teamPath }), [section, teamPath]);
+}
+
+/** The tab on screen; for event handlers. */
+export function currentTab(): ActiveTab | null {
+  const route = currentRoute();
+  return route.kind === 'workspace' ? route.tab : null;
+}
+
 /** A team's Home tab, or one of its documents. */
 export const teamHomePath = (workspace: string, teamKey: string, page: TeamHomePage = 'overview', documentId?: number | string) =>
   `/${workspace}/team/${teamKey}/${page}${documentId !== undefined ? `/${documentId}` : ''}`;
 
-/** Workspace pages a team has its own copy of, as Linear's team Issues and Projects. */
-const TEAM_SCOPED_ROOTS = ['ads-manager', 'accounts', 'rules'];
-
-/** A team's pages under /settings/teams/<KEY>/, after its overview. */
-export const TEAM_PAGES = ['general', 'members', 'accounts'] as const;
-
 function hasSettingsPath(section: SettingsSection): section is keyof typeof SETTINGS_PATHS {
   return section in SETTINGS_PATHS;
-}
-
-/** Settings sections whose address the app keeps in the URL. */
-export function isRoutedSettingsSection(section: SettingsSection): boolean {
-  return hasSettingsPath(section) || section === 'team';
 }
 
 export function pathForTab(
@@ -284,15 +331,16 @@ export function pathForTab(
   }
   if (tab === 'campaigns') return `/${workspace}/ads-manager/${entity}`;
   if (tab === 'rules' && rulesPage) return `/${workspace}/rules/${rulesPage}`;
-  if (tab === 'preferences') {
-    if (settingsSection === 'team') {
-      return teamPath ? `/${workspace}/settings/teams/${teamPath}` : `/${workspace}/settings/teams`;
-    }
-    return hasSettingsPath(settingsSection)
-      ? `/${workspace}/settings/${SETTINGS_PATHS[settingsSection]}`
-      : `/${workspace}/settings`;
-  }
+  if (tab === 'preferences') return settingsPath(workspace, settingsSection, teamPath);
   return `/${workspace}/${tab}`;
+}
+
+/** A Settings page's address; a team's pages take "<KEY>" or "<KEY>/<page>". */
+export function settingsPath(workspace: string, section: SettingsSection = 'preferences', teamPath = ''): string {
+  if (section === 'team') {
+    return teamPath ? `/${workspace}/settings/teams/${teamPath}` : `/${workspace}/settings/teams`;
+  }
+  return hasSettingsPath(section) ? `/${workspace}/settings/${SETTINGS_PATHS[section]}` : `/${workspace}/settings`;
 }
 
 /** Rules' Recently deleted page, as Linear's "Go to recently deleted issues". */
@@ -300,19 +348,43 @@ export function recentlyDeletedRulesPath(workspace: string): string {
   return pathForTab(workspace, 'rules', 'campaigns', 'preferences', '', RECENTLY_DELETED_RULES);
 }
 
+/** The data router the app runs in; src/routes.tsx sets it once. */
+export const appRouter: { current: { navigate: (to: string, options?: { replace?: boolean }) => Promise<void> } | null } = {
+  current: null,
+};
+
 /**
- * Opens an address of this app from outside a component (a toast's action):
- * the App follows the history the same way it follows Back and Forward.
+ * Opens an address of this app from outside a component (a toast's action, a
+ * shortcut): the router moves to it, as a link would.
  */
-export function openAppPath(path: string): void {
+export function openAppPath(path: string, replace = false): void {
   if (`${window.location.pathname}${window.location.search}` === path) return;
-  window.history.pushState({}, '', path);
-  notifyLocationChanged();
+  void appRouter.current?.navigate(path, { replace });
+}
+
+/** The app's navigation, for components: a push, or with `replace` a replacement of this entry. */
+export function useAppNavigate(): (path: string, replace?: boolean) => void {
+  const navigate = useNavigate();
+  return useCallback((path: string, replace = false) => {
+    void navigate(path, { replace });
+  }, [navigate]);
+}
+
+/** Opens a page of Settings; a team's pages take "<KEY>" or "<KEY>/<page>". */
+export function openSettings(section: SettingsSection = 'preferences', teamPath = ''): void {
+  const route = currentRoute();
+  if (route.kind !== 'workspace') return;
+  openAppPath(settingsPath(route.workspace, section, teamPath));
+}
+
+/** A team's settings page: "MED", "MED/general", "MED/members" or "MED/accounts". */
+export function openTeamSettings(teamPath: string): void {
+  openSettings('team', teamPath);
 }
 
 /** Recently deleted of the workspace on screen: the "View recently deleted" of a toast. */
 export function openRecentlyDeletedRules(): void {
-  const route = parseRoute();
+  const route = currentRoute();
   if (route.kind === 'workspace') openAppPath(recentlyDeletedRulesPath(route.workspace));
 }
 

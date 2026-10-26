@@ -71,10 +71,10 @@ import { usePagePathname } from '@/lib/pageScope';
 import { useViewStore, viewStore } from '@/models/viewStore';
 import { useInboxStore } from '@/models/inboxStore';
 import { useScopeStore } from '@/models/scopeStore';
-import { useShellStore } from '@/models/shellStore';
 import * as stylex from '@stylexjs/stylex';
 import { colors, radii } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
+import { openSettings } from '@/lib/routing';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type ActionState = 'idle' | 'loading';
@@ -468,8 +468,6 @@ const hiddenByFiltersOf = (response: { hidden_by_filters?: number | null }) => r
 
 const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onNavigate, onOpenRecord }) => {
   const workspaceSlug = useScopeStore((state) => state.workspaceSlug);
-  const setActiveTab = useShellStore((state) => state.setActiveTab);
-  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
   const inboxUnreadCount = useInboxStore((state) => state.inboxUnreadCount);
   const inboxPriorityUnreadCount = useInboxStore((state) => state.inboxPriorityUnreadCount);
   const setInboxUnread = useInboxStore((state) => state.setInboxUnread);
@@ -1012,8 +1010,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
               {/* Linear's Inbox settings link opens the notification settings, not Preferences. */}
               <DropdownMenuItem
                 onSelect={() => {
-                  setSettingsSection('notifications');
-                  setActiveTab('preferences');
+                  openSettings('notifications');
                 }}
               >
                 <span {...stylex.props(styles.menuLabel)}>

@@ -2,7 +2,8 @@ import React, { useLayoutEffect, useRef, useState } from 'react';
 import { useIsSmallScreen, useIsTouchScreen } from '@/lib/useMediaQuery';
 import { BuyerlySidebarLeftToggleIcon } from '@/icons/BuyerlyIcons';
 import { Tooltip } from '@/ui/Tooltip';
-import { shellStore, useShellStore } from '@/models/shellStore';
+import { useShellStore } from '@/models/shellStore';
+import { currentTab } from '@/lib/routing';
 import * as stylex from '@stylexjs/stylex';
 
 const styles = stylex.create({
@@ -72,7 +73,7 @@ export const SidebarCollapsedNavigation: React.FC = () => {
         // Linear's onMouseEnter does (no delay, unlike the window's left edge).
         onMouseEnter={() => {
           // Settings has its own sidebar, which never collapses.
-          if (!isSidebarCollapsed || shellStore.activeTab === 'preferences') return;
+          if (!isSidebarCollapsed || currentTab() === 'preferences') return;
           setSidebarPeekOpen(true);
         }}
         className="buyerly-icon-btn buyerly-sidebar-toggle buyerly-header-target"

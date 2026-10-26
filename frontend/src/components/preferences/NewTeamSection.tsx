@@ -19,7 +19,7 @@ import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { toast } from '@/ui/toast';
 import { errorMessage } from './MemberDialogs';
 import { TeamIcon } from './TeamIcon';
-import { useShellStore } from '@/models/shellStore';
+import { openSettings, openTeamSettings } from '@/lib/routing';
 
 const styles = stylex.create({
   nameField: {
@@ -56,8 +56,6 @@ const styles = stylex.create({
  * counterpart, so they are left out. A created team opens on its own page.
  */
 export const NewTeamSection: React.FC<{ workspace: Workspace }> = ({ workspace }) => {
-  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
-  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
   const [name, setName] = useState('');
   const [key, setKey] = useState('');
   const [keyEdited, setKeyEdited] = useState(false);
@@ -94,7 +92,7 @@ export const NewTeamSection: React.FC<{ workspace: Workspace }> = ({ workspace }
 
   return (
     <>
-      <button type="button" className="preferences-breadcrumb" onClick={() => setSettingsSection('teams')}>
+      <button type="button" className="preferences-breadcrumb" onClick={() => openSettings('teams')}>
         <ChevronLeft size={14} aria-hidden="true" />
         Back
       </button>

@@ -6,7 +6,7 @@ import { BuyerlyChatIcon, BuyerlyGearIcon, BuyerlyKeyboardIcon, BuyerlyQuestionM
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import changelogLatest from '@/lib/changelogLatest.json';
 import { useCommandMenuStore } from '@/models/commandMenuStore';
-import { useShellStore } from '@/models/shellStore';
+import { openSettings } from '@/lib/routing';
 
 const styles = stylex.create({
   item: {
@@ -69,8 +69,6 @@ function isTypingTarget(target: EventTarget | null): boolean {
  * community have no counterpart yet.
  */
 export function BuyerlyHelpMenu() {
-  const setActiveTab = useShellStore((state) => state.setActiveTab);
-  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
   const setShortcutsOpen = useCommandMenuStore((state) => state.setShortcutsOpen);
   const [open, setOpen] = useState(false);
 
@@ -110,8 +108,7 @@ export function BuyerlyHelpMenu() {
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => {
-            setSettingsSection('preferences');
-            setActiveTab('preferences');
+            openSettings('preferences');
           }}
         >
           <HelpItem icon={<BuyerlyGearIcon size={16} />} label="Settings">

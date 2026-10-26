@@ -21,7 +21,7 @@ const {
   createAccountFilterFields, naturalAccountDirection, formatAddedDate, accountPagePath, accountAdsManagerPath,
 } = load(path.join(root, 'components/accounts/accountsModel.ts'));
 const { applyFilterClauses } = load(path.join(root, 'components/filters/filterModel.ts'));
-const { parseRoute, pathForTab } = load(path.join(root, 'lib/routing.ts'));
+const { routeAt, pathForTab } = load(path.join(root, 'lib/routing.ts'));
 
 const account = (id, fields = {}) => ({
   id, account_id: `act_${id}`, name: `Meta ${id}`, custom_name: '', note: '', connection_type: 'facebook_login',
@@ -103,8 +103,8 @@ assert.equal(formatAddedDate(''), '—');
 assert.equal(accountPagePath('alpha', 'act_1'), '/alpha/accounts/act_1');
 assert.equal(accountAdsManagerPath('alpha', 'act_1'), '/alpha/ads-manager/campaigns?account=act_1');
 assert.equal(pathForTab('alpha', 'accounts'), '/alpha/accounts');
-const at = (pathname) => parseRoute({ pathname, search: '' });
-assert.deepEqual(at('/alpha/accounts'), { kind: 'workspace', workspace: 'alpha', tab: 'accounts', recordId: undefined });
+const at = (pathname) => routeAt({ pathname, search: '' });
+assert.deepEqual(at('/alpha/accounts'), { kind: 'workspace', workspace: 'alpha', tab: 'accounts' });
 assert.deepEqual(at('/alpha/accounts/act_1'), { kind: 'workspace', workspace: 'alpha', tab: 'accounts', recordId: 'act_1' });
 assert.equal(at('/alpha/accounts/act_1/x').kind, 'unknown');
 
