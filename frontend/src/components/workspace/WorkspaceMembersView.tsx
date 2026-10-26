@@ -1,3 +1,4 @@
+import * as stylex from '@stylexjs/stylex';
 import React, { useMemo, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { pool } from '@/models/pool';
@@ -15,6 +16,97 @@ import { HeaderCreateButton } from '@/ui/HeaderCreateButton';
 import { BuyerlyDataListRow, BuyerlyDataListToolbar, BuyerlyDataTable, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 import { ListSearchField } from './ListSearchField';
 import { useShellStore } from '@/models/shellStore';
+import { colors } from '@/styles/tokens.stylex';
+
+const styles = stylex.create({
+  root: {
+    display: 'flex',
+    height: '100%',
+    width: '100%',
+    userSelect: 'none',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  header: {
+    display: 'flex',
+    flexShrink: 0,
+    flexDirection: 'column',
+  },
+  // The 44px title bar over a hairline.
+  titleBar: {
+    display: 'flex',
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 18,
+    paddingRight: 11,
+  },
+  title: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  heading: {
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-secondary'],
+  },
+  toolbar: {
+    gap: 8,
+  },
+  body: {
+    display: 'flex',
+    minHeight: 0,
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+  },
+  person: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 10,
+  },
+  names: {
+    display: 'flex',
+    minWidth: 0,
+    flexDirection: 'column',
+  },
+  name: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-secondary'],
+  },
+  username: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 12,
+    fontWeight: 500,
+    color: colors['--text-tertiary'],
+  },
+  cell: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--text-tertiary'],
+  },
+  teams: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 4,
+    overflow: 'hidden',
+  },
+});
 
 type MemberSort = 'name' | 'status' | 'joined';
 const ROLE_ORDER = ['owner', 'admin', 'member', 'guest'];
@@ -76,18 +168,18 @@ const WorkspaceMembersViewContent: React.FC = () => {
       >
         {shown.map((member) => (
           <BuyerlyDataListRow key={member.id} layout="grid" columns={COLUMNS} height={50}>
-            <div className="flex min-w-0 items-center gap-[10px]">
+            <div {...stylex.props(styles.person)}>
               <Initials label={memberName(member)} avatarUrl={member.avatar_url} size={24} />
-              <div className="flex min-w-0 flex-col">
-                <span className="truncate text-[13px] font-medium text-[var(--text-secondary)]">{memberName(member)}</span>
+              <div {...stylex.props(styles.names)}>
+                <span {...stylex.props(styles.name)}>{memberName(member)}</span>
                 {member.username && (
-                  <span className="truncate text-[12px] font-medium text-[var(--text-tertiary)]">{member.username}</span>
+                  <span {...stylex.props(styles.username)}>{member.username}</span>
                 )}
               </div>
             </div>
-            <span className="truncate text-[12px] font-[450] text-[var(--text-tertiary)]"><RoleStatus role={member.role} /></span>
-            <span className="truncate text-[12px] font-[450] text-[var(--text-tertiary)]">{shortDate(member.joined_at)}</span>
-            <div className="flex min-w-0 items-center gap-1 overflow-hidden">
+            <span {...stylex.props(styles.cell)}><RoleStatus role={member.role} /></span>
+            <span {...stylex.props(styles.cell)}>{shortDate(member.joined_at)}</span>
+            <div {...stylex.props(styles.teams)}>
               {teamsOf(member).map((team) => (
                 <button
                   key={team.id}
@@ -111,23 +203,21 @@ const WorkspaceMembersViewContent: React.FC = () => {
   };
 
   return (
-    <div className="flex h-full w-full select-none flex-col overflow-hidden bg-transparent">
-      <header className="flex shrink-0 flex-col">
-        <div
-          style={{ borderBottom: 'var(--canvas-border)', paddingLeft: '18px', paddingRight: '11px' }}
-          className="flex h-[44px] items-center justify-between"
-        >
-          <div className="flex items-center">
+    <div {...stylex.props(styles.root)}>
+      <header {...stylex.props(styles.header)}>
+        {/* --canvas-border is a whole border; StyleX would split the shorthand and lose it. */}
+        <div {...stylex.props(styles.titleBar)} style={{ borderBottom: 'var(--canvas-border)' }}>
+          <div {...stylex.props(styles.title)}>
             <SidebarCollapsedNavigation />
-            <h2 className="overflow-hidden whitespace-nowrap text-[13px] font-medium text-[var(--text-secondary)]">Members</h2>
+            <h2 {...stylex.props(styles.heading)}>Members</h2>
           </div>
           {canInvite && <HeaderCreateButton label="Invite members" tooltip="Invite members" onClick={() => setInviting(true)} />}
         </div>
-        <BuyerlyDataListToolbar className="gap-2">
+        <BuyerlyDataListToolbar xstyle={styles.toolbar}>
           <ListSearchField value={query} onChange={setQuery} placeholder="Find members…" />
         </BuyerlyDataListToolbar>
       </header>
-      <div className="flex min-h-0 min-w-0 flex-1">{renderBody()}</div>
+      <div {...stylex.props(styles.body)}>{renderBody()}</div>
       <InviteDialog
         open={inviting}
         workspace={workspace}

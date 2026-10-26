@@ -1,5 +1,6 @@
 import React from 'react';
 import { Plus, X } from 'lucide-react';
+import * as stylex from '@stylexjs/stylex';
 import { FilterOptionAvatarImage, type FilterMenuMode } from '@/components/filters/BuyerlyFilter';
 import {
   filterOperatorLabel,
@@ -9,6 +10,7 @@ import {
   type FilterClause,
   type FilterFieldDefinition,
 } from '@/components/filters/filterModel';
+import { colors } from '@/styles/tokens.stylex';
 
 interface InboxFilterBarProps {
   fields: FilterFieldDefinition<unknown>[];
@@ -17,7 +19,156 @@ interface InboxFilterBarProps {
   onOpenMenu: (mode: FilterMenuMode, anchor: HTMLElement, fieldId?: string) => void;
 }
 
-const segment = 'flex h-[22px] items-center px-1.5 bg-[var(--inbox-filter-chip-bg)] outline-none';
+const truncate = {
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+} as const;
+
+const styles = stylex.create({
+  avatar: {
+    marginRight: 4,
+    display: 'inline-flex',
+    flexShrink: 0,
+  },
+  // Segments 1px apart on the border colour, as Linear's chip.
+  chip: {
+    display: 'flex',
+    height: 24,
+    maxWidth: '100%',
+    alignItems: 'center',
+    gap: 1,
+    overflow: 'hidden',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-tertiary'],
+    backgroundColor: colors['--color-border-tertiary'],
+    fontSize: 12,
+    lineHeight: '18px',
+  },
+  segment: {
+    display: 'flex',
+    height: 22,
+    alignItems: 'center',
+    paddingLeft: 6,
+    paddingRight: 6,
+    backgroundColor: colors['--inbox-filter-chip-bg'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+  },
+  // The property and the values give way first.
+  segmentText: {
+    minWidth: 0,
+    flexShrink: 1,
+    ...truncate,
+    color: colors['--text-secondary'],
+  },
+  segmentFixed: {
+    flexShrink: 0,
+  },
+  operator: {
+    color: colors['--text-tertiary'],
+  },
+  operatorButton: {
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+  },
+  valueButton: {
+    color: {
+      default: colors['--text-secondary'],
+      ':hover': colors['--text-primary'],
+    },
+  },
+  remove: {
+    width: 24,
+    justifyContent: 'center',
+    color: {
+      default: colors['--text-secondary'],
+      ':hover': colors['--text-primary'],
+    },
+  },
+  truncate,
+  bar: {
+    marginLeft: 8,
+    marginRight: 8,
+    marginTop: 8,
+    display: 'flex',
+    flexShrink: 0,
+    flexDirection: 'column',
+    gap: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+    backgroundColor: colors['--inbox-filter-bg'],
+    paddingTop: 10,
+    paddingRight: 10,
+    paddingBottom: 10,
+    paddingLeft: 10,
+  },
+  chips: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  add: {
+    display: 'flex',
+    height: 24,
+    width: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9999,
+    color: {
+      default: colors['--text-secondary'],
+      ':hover': colors['--text-primary'],
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+  },
+  footer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 8,
+    paddingTop: 20,
+    paddingRight: 24,
+    paddingBottom: 16,
+    paddingLeft: 24,
+    textAlign: 'center',
+    fontSize: 12,
+  },
+  hidden: {
+    color: colors['--text-tertiary'],
+  },
+  hiddenCount: {
+    fontWeight: 500,
+    color: colors['--text-secondary'],
+  },
+  clear: {
+    display: 'flex',
+    height: 24,
+    alignItems: 'center',
+    gap: 6,
+    whiteSpace: 'nowrap',
+    borderRadius: 9999,
+    paddingLeft: 8,
+    paddingRight: 8,
+    fontWeight: 500,
+    color: {
+      default: colors['--text-secondary'],
+      ':hover': colors['--text-primary'],
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+  },
+});
 
 interface InboxFilterChipProps {
   field: FilterFieldDefinition<unknown>;
@@ -32,7 +183,7 @@ function valueAvatar(field: FilterFieldDefinition<unknown>, clause: FilterClause
   if (clause.values.length !== 1) return null;
   const option = field.options?.find((entry) => entry.value === String(clause.values[0]));
   return option?.avatar ? (
-    <span className="mr-1 inline-flex shrink-0">
+    <span {...stylex.props(styles.avatar)}>
       <FilterOptionAvatarImage avatar={option.avatar} label={option.label} size={14} />
     </span>
   ) : null;
@@ -40,14 +191,14 @@ function valueAvatar(field: FilterFieldDefinition<unknown>, clause: FilterClause
 
 /** One Linear filter chip: property, operator, values and remove. */
 export const InboxFilterChip: React.FC<InboxFilterChipProps> = ({ field, clause, onOpenMenu, onRemove }) => (
-  <div className="flex h-6 max-w-full items-center gap-px overflow-hidden rounded-[8px] border border-[var(--color-border-tertiary)] bg-[var(--color-border-tertiary)] text-[12px] leading-[18px]">
-    <span className={`${segment} min-w-0 shrink truncate text-[var(--text-secondary)]`}>{field.label}</span>
+  <div {...stylex.props(styles.chip)}>
+    <span {...stylex.props(styles.segment, styles.segmentText)}>{field.label}</span>
     {onOpenMenu ? (
       <>
         <button
           type="button"
           onClick={(event) => onOpenMenu('operator', event.currentTarget, field.id)}
-          className={`${segment} shrink-0 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]`}
+          {...stylex.props(styles.segment, styles.segmentFixed, styles.operatorButton)}
         >
           {filterOperatorLabel(clause.operator, clause.values.length)}
         </button>
@@ -55,20 +206,20 @@ export const InboxFilterChip: React.FC<InboxFilterChipProps> = ({ field, clause,
           type="button"
           aria-label={getFilterValueAccessibleName(field, clause)}
           onClick={(event) => onOpenMenu('value', event.currentTarget, field.id)}
-          className={`${segment} min-w-0 shrink truncate text-[var(--text-secondary)] hover:text-[var(--text-primary)]`}
+          {...stylex.props(styles.segment, styles.segmentText, styles.valueButton)}
         >
           {valueAvatar(field, clause)}
-          <span className="truncate">{getFilterValueSummary(field, clause)}</span>
+          <span {...stylex.props(styles.truncate)}>{getFilterValueSummary(field, clause)}</span>
         </button>
       </>
     ) : (
       <>
-        <span className={`${segment} shrink-0 text-[var(--text-tertiary)]`}>
+        <span {...stylex.props(styles.segment, styles.segmentFixed, styles.operator)}>
           {filterOperatorLabel(clause.operator, clause.values.length)}
         </span>
-        <span className={`${segment} min-w-0 shrink truncate text-[var(--text-secondary)]`}>
+        <span {...stylex.props(styles.segment, styles.segmentText)}>
           {valueAvatar(field, clause)}
-          <span className="truncate">{getFilterValueSummary(field, clause)}</span>
+          <span {...stylex.props(styles.truncate)}>{getFilterValueSummary(field, clause)}</span>
         </span>
       </>
     )}
@@ -77,7 +228,7 @@ export const InboxFilterChip: React.FC<InboxFilterChipProps> = ({ field, clause,
         type="button"
         aria-label="Remove filter"
         onClick={onRemove}
-        className={`${segment} w-6 shrink-0 justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)]`}
+        {...stylex.props(styles.segment, styles.segmentFixed, styles.remove)}
       >
         <X size={12} strokeWidth={1.8} aria-hidden="true" />
       </button>
@@ -95,9 +246,9 @@ export const InboxFilterBar: React.FC<InboxFilterBarProps> = ({ fields, clauses,
   return (
     <div
       aria-label="Active filters"
-      className="mx-2 mt-2 flex shrink-0 flex-col gap-1 rounded-[8px] border border-[var(--color-border-primary)] bg-[var(--inbox-filter-bg)] p-2.5"
+      {...stylex.props(styles.bar)}
     >
-      <div className="flex flex-wrap gap-1">
+      <div {...stylex.props(styles.chips)}>
         {clauses.map((clause) => {
           const field = fieldsById.get(clause.fieldId);
           if (!field) return null;
@@ -116,7 +267,7 @@ export const InboxFilterBar: React.FC<InboxFilterBarProps> = ({ fields, clauses,
         type="button"
         aria-label="Add another filter"
         onClick={(event) => onOpenMenu('root', event.currentTarget)}
-        className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
+        {...stylex.props(styles.add)}
       >
         <Plus size={14} strokeWidth={1.8} aria-hidden="true" />
       </button>
@@ -126,10 +277,10 @@ export const InboxFilterBar: React.FC<InboxFilterBarProps> = ({ fields, clauses,
 
 /** Under the list, as in Linear: how many the filters hide, and a way out. */
 export const InboxFilterFooter: React.FC<{ hiddenCount: number; onClear: () => void }> = ({ hiddenCount, onClear }) => (
-  <div className="flex flex-col items-center gap-2 px-6 pb-4 pt-5 text-center text-[12px]">
+  <div {...stylex.props(styles.footer)}>
     {hiddenCount > 0 && (
-      <p className="text-[var(--text-tertiary)]">
-        <span className="font-medium text-[var(--text-secondary)]">
+      <p {...stylex.props(styles.hidden)}>
+        <span {...stylex.props(styles.hiddenCount)}>
           {hiddenCount} {hiddenCount === 1 ? 'notification' : 'notifications'}
         </span>{' '}
         hidden by filters
@@ -138,7 +289,7 @@ export const InboxFilterFooter: React.FC<{ hiddenCount: number; onClear: () => v
     <button
       type="button"
       onClick={onClear}
-      className="flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full px-2 font-medium text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
+      {...stylex.props(styles.clear)}
     >
       Clear Filters
       <X size={12} strokeWidth={1.8} aria-hidden="true" />

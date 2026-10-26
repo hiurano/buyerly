@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { auditEventSummary, auditEventTarget, auditEventTitle } from '@/lib/audit';
 import {
   formatInboxAge,
@@ -29,6 +30,171 @@ import {
   ContextMenuTrigger,
 } from '@/ui/ContextMenu';
 import { SubmenuArrow } from '@/ui/SubmenuArrow';
+import { colors } from '@/styles/tokens.stylex';
+
+const truncate = {
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+} as const;
+
+const styles = stylex.create({
+  menuKey: {
+    fontFamily: '"Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    fontSize: 12,
+    fontWeight: 500,
+    color: colors['--text-muted'],
+  },
+  menuLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+  },
+  menuKeys: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  menuHint: {
+    fontSize: 12,
+    color: colors['--text-tertiary'],
+  },
+  snoozeSearch: {
+    borderBottomWidth: 1,
+    borderBottomStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+    paddingLeft: 14,
+    paddingRight: 14,
+  },
+  snoozeInput: {
+    height: 36,
+    width: '100%',
+    backgroundColor: 'transparent',
+    paddingBottom: 9,
+    paddingTop: 10,
+    fontSize: 13,
+    color: colors['--text-primary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    '::placeholder': {
+      color: colors['--text-muted'],
+    },
+  },
+  snoozeRows: {
+    paddingTop: 6,
+    paddingBottom: 6,
+  },
+  row: {
+    display: 'block',
+    cursor: 'default',
+    paddingLeft: 10,
+    paddingRight: 10,
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+  },
+  rowBody: {
+    display: 'flex',
+    minHeight: 55,
+    alignItems: 'flex-start',
+    gap: 12,
+    borderRadius: 8,
+    paddingLeft: 8,
+    paddingRight: 8,
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+  },
+  // Its right-click menu is open.
+  rowBodyMenuOpen: {
+    backgroundColor: colors['--item-hover-bg'],
+  },
+  rowBodySelected: {
+    backgroundColor: colors['--item-active-bg'],
+  },
+  // The avatar stays level with the first two lines when a third one is added.
+  avatar: {
+    display: 'flex',
+    height: 55,
+    flexShrink: 0,
+    alignItems: 'center',
+  },
+  lines: {
+    display: 'flex',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    flexDirection: 'column',
+    gap: 2,
+    paddingTop: 11,
+    paddingBottom: 11,
+  },
+  line: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 6,
+    color: colors['--text-tertiary'],
+  },
+  lineStrong: {
+    color: colors['--text-secondary'],
+  },
+  unreadDot: {
+    height: 8,
+    width: 8,
+    flexShrink: 0,
+    borderRadius: 9999,
+    backgroundColor: colors['--inbox-unread-dot'],
+  },
+  title: {
+    ...truncate,
+    fontSize: 13,
+    fontWeight: 500,
+    lineHeight: '16px',
+  },
+  summaryLine: {
+    fontSize: 12,
+    fontWeight: 450,
+    lineHeight: '15px',
+  },
+  summary: {
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    ...truncate,
+  },
+  error: {
+    display: 'flex',
+    height: 14,
+    width: 14,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 3,
+    backgroundColor: colors['--inbox-error-bg'],
+    fontSize: 10,
+    fontWeight: 700,
+    lineHeight: 1,
+    color: '#fff',
+  },
+  age: {
+    flexShrink: 0,
+  },
+  snoozeLine: {
+    display: 'flex',
+    height: 22,
+    alignItems: 'flex-end',
+  },
+  snoozeText: {
+    ...truncate,
+    fontSize: 12,
+    fontWeight: 450,
+    lineHeight: '15px',
+    color: colors['--text-tertiary'],
+  },
+});
 
 export interface InboxItemActions {
   onToggleRead: (item: InboxItem) => void;
@@ -45,7 +211,7 @@ interface InboxItemRowProps extends InboxItemActions {
 }
 
 const MenuKey: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <kbd className="font-sans text-[12px] font-[500] text-[var(--text-muted)]">{children}</kbd>
+  <kbd {...stylex.props(styles.menuKey)}>{children}</kbd>
 );
 
 const SnoozeRow: React.FC<{
@@ -55,11 +221,11 @@ const SnoozeRow: React.FC<{
   onSelect: () => void;
 }> = ({ label, hint, icon, onSelect }) => (
   <ContextMenuItem onSelect={onSelect}>
-    <span className="flex items-center gap-2.5">
+    <span {...stylex.props(styles.menuLabel)}>
       {icon ?? <BuyerlyClockOutlineIcon size={16} />}
       {label}
     </span>
-    {hint && <span className="text-[12px] text-[var(--text-tertiary)]">{hint}</span>}
+    {hint && <span {...stylex.props(styles.menuHint)}>{hint}</span>}
   </ContextMenuItem>
 );
 
@@ -95,7 +261,7 @@ const SnoozeSubmenu: React.FC<{
       alignOffset={-44}
       style={{ width: 'max-content', minWidth: '300px' }}
     >
-      <div className="border-b border-[var(--color-border-primary)] px-[14px]">
+      <div {...stylex.props(styles.snoozeSearch)}>
         <input
           autoFocus
           value={query}
@@ -111,10 +277,10 @@ const SnoozeSubmenu: React.FC<{
           }}
           placeholder="Try: 4 pm, 2 days, in 5 weeks…"
           aria-label="Snooze until"
-          className="h-[36px] w-full bg-transparent pb-[9px] pt-[10px] text-[13px] text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none"
+          {...stylex.props(styles.snoozeInput)}
         />
       </div>
-      <div ref={rowsRef} className="py-[6px]">
+      <div ref={rowsRef} {...stylex.props(styles.snoozeRows)}>
         {typed
           ? (
             <>
@@ -169,9 +335,9 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
     : item.unsnoozed_at
       ? { text: formatUnsnoozedAgo(item.unsnoozed_at), at: item.unsnoozed_at }
       : null;
-  const titleColor = isSelected || unread ? 'text-[var(--text-secondary)]' : 'text-[var(--text-tertiary)]';
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
-    <ContextMenu>
+    <ContextMenu onOpenChange={setMenuOpen}>
       <ContextMenuTrigger asChild>
         <div
           role="option"
@@ -180,50 +346,43 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
           data-inbox-event-id={item.id}
           onClick={onSelect}
           aria-label={`${unread ? 'Unread: ' : ''}${auditEventTitle(item)} for ${auditEventTarget(item)}`}
-          className="group block cursor-default px-2.5 outline-none"
+          {...stylex.props(styles.row)}
         >
           <div
-            className={`flex min-h-[55px] items-start gap-3 rounded-[8px] px-2 ${
-              isSelected
-                ? 'bg-[var(--item-active-bg)]'
-                : 'hover:bg-[var(--item-hover-bg)] group-data-[state=open]:bg-[var(--item-hover-bg)]'
-            }`}
+            {...stylex.props(styles.rowBody, menuOpen && styles.rowBodyMenuOpen, isSelected && styles.rowBodySelected)}
           >
-            {/* The avatar stays level with the first two lines when a third one is added. */}
-            <span className="flex h-[55px] shrink-0 items-center">
+            <span {...stylex.props(styles.avatar)}>
               <BuyerlyLogoAvatar size={32} shape="circle" />
             </span>
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-[11px]">
-              <div className={`flex min-w-0 items-center gap-1.5 ${titleColor}`}>
+            <div {...stylex.props(styles.lines)}>
+              <div {...stylex.props(styles.line, (isSelected || unread) && styles.lineStrong)}>
                 {unread && (
                   <span
                     aria-hidden="true"
-                    className="h-2 w-2 shrink-0 rounded-full bg-[var(--inbox-unread-dot)]"
+                    {...stylex.props(styles.unreadDot)}
                   />
                 )}
-                <span className="truncate text-[13px] font-medium leading-4">
+                <span {...stylex.props(styles.title)}>
                   {auditEventTitle(item)}
                 </span>
               </div>
-              <div className={`flex min-w-0 items-center gap-1.5 text-[12px] font-[450] leading-[15px] ${
-                isSelected ? 'text-[var(--text-secondary)]' : 'text-[var(--text-tertiary)]'
-              }`}>
-                <span className="min-w-0 flex-1 truncate">{auditEventSummary(item)}</span>
+              <div {...stylex.props(styles.line, styles.summaryLine, isSelected && styles.lineStrong)}>
+                <span {...stylex.props(styles.summary)}>{auditEventSummary(item)}</span>
                 {item.status === 'ERROR' && (
                   <span
                     aria-label="Error"
-                    className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] bg-[var(--inbox-error-bg)] text-[10px] font-bold leading-none text-white"
+                    {...stylex.props(styles.error)}
                   >
                     !
                   </span>
                 )}
-                <span className="shrink-0">{formatInboxAge(item.created_at)}</span>
+                <span {...stylex.props(styles.age)}>{formatInboxAge(item.created_at)}</span>
               </div>
               {snoozeLine && (
-                <div className="flex h-[22px] items-end">
+                <div {...stylex.props(styles.snoozeLine)}>
                   <span
                     title={formatInboxMoment(snoozeLine.at)}
-                    className="truncate text-[12px] font-[450] leading-[15px] text-[var(--text-tertiary)]"
+                    {...stylex.props(styles.snoozeText)}
                   >
                     {snoozeLine.text}
                   </span>
@@ -235,14 +394,14 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
       </ContextMenuTrigger>
       <ContextMenuContent style={{ width: '190px' }}>
         <ContextMenuItem onSelect={() => onToggleRead(item)}>
-          <span className="flex items-center gap-2.5">
+          <span {...stylex.props(styles.menuLabel)}>
             <BuyerlyInboxUnreadIcon size={16} />
             {unread ? 'Mark as read' : 'Mark as unread'}
           </span>
           <MenuKey>U</MenuKey>
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => onDelete(item)}>
-          <span className="flex items-center gap-2.5">
+          <span {...stylex.props(styles.menuLabel)}>
             <BuyerlyInboxDeleteIcon size={16} />
             Delete notification
           </span>
@@ -250,11 +409,11 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
         </ContextMenuItem>
         <ContextMenuSub>
           <ContextMenuSubTrigger>
-            <span className="flex items-center gap-2.5">
+            <span {...stylex.props(styles.menuLabel)}>
               <BuyerlyClockOutlineIcon size={16} />
               Snooze
             </span>
-            <span className="flex items-center gap-2">
+            <span {...stylex.props(styles.menuKeys)}>
               <MenuKey>H</MenuKey>
               <SubmenuArrow />
             </span>

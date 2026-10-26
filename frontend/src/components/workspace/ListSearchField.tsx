@@ -1,5 +1,21 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { BuyerlySearchIcon } from '@/icons/BuyerlyIcons';
+
+const styles = stylex.create({
+  /** Read by screen readers only, as Tailwind's sr-only. */
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    borderWidth: 0,
+  },
+});
 
 /** Linear's "Find members…" above a workspace list: a borderless 300px pill with the search icon. */
 export const ListSearchField: React.FC<{ value: string; placeholder: string; onChange: (value: string) => void }> = ({
@@ -8,7 +24,7 @@ export const ListSearchField: React.FC<{ value: string; placeholder: string; onC
   onChange,
 }) => (
   <label className="list-search-field">
-    <span className="sr-only">{placeholder}</span>
+    <span {...stylex.props(styles.srOnly)}>{placeholder}</span>
     <BuyerlySearchIcon size={14} aria-hidden="true" className="list-search-field__icon" />
     <input
       type="search"

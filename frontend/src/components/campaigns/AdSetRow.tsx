@@ -1,10 +1,20 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
 import type { DeliveryControl } from '@/lib/delivery';
 import { BuyerlyDataListRow, BuyerlyDataPrimaryCell, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 import { EntityPropertyCell, EntityRowControls } from './EntityRowCells';
 import { RuleAttachmentCell } from './RuleAttachmentCell';
 import { useRulesStore, AdSetItem } from '@/models/rulesStore';
 import { useSelectionStore } from '@/models/selectionStore';
+
+const styles = stylex.create({
+  row: {
+    cursor: 'pointer',
+  },
+  readOnly: {
+    cursor: 'default',
+  },
+});
 
 interface AdSetRowProps {
   adSet: AdSetItem;
@@ -35,7 +45,8 @@ export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, sel
       columns={columns}
       tabIndex={readOnly ? undefined : 0}
       selected={isSelected}
-      className={`adset-data-row ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}
+      className="adset-data-row"
+      xstyle={readOnly ? styles.readOnly : styles.row}
     >
       <BuyerlyDataPrimaryCell
         leading={(

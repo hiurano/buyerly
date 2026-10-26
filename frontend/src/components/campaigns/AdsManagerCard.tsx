@@ -1,6 +1,49 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
 import type { DeliveryControl } from '@/lib/delivery';
 import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
+import { colors } from '@/styles/tokens.stylex';
+
+const styles = stylex.create({
+  // The ID and the Status switch, as Linear's issue ID and assignee.
+  top: {
+    display: 'flex',
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  identifier: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 12,
+    fontWeight: 450,
+    letterSpacing: '-0.24px',
+    color: colors['--text-tertiary'],
+  },
+  name: {
+    display: 'block',
+    overflow: 'hidden',
+    WebkitBoxOrient: 'vertical',
+    WebkitLineClamp: 2,
+    fontSize: 13,
+    fontWeight: 500,
+    lineHeight: '16px',
+    color: colors['--text-primary'],
+  },
+  nameDimmed: {
+    color: colors['--text-tertiary'],
+  },
+  chipIcon: {
+    display: 'flex',
+    height: 14,
+    width: 14,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
 
 export interface CardChip {
   key: string;
@@ -76,8 +119,8 @@ export const AdsManagerCard: React.FC<AdsManagerCardProps> = ({
       }}
     >
       {(identifier || showSwitch) && (
-        <div className="flex h-5 items-center justify-between gap-2">
-          <span className="truncate text-[12px] font-[450] tracking-[-0.24px] text-[var(--text-tertiary)]">{identifier}</span>
+        <div {...stylex.props(styles.top)}>
+          <span {...stylex.props(styles.identifier)}>{identifier}</span>
           {showSwitch && (
             // The switch acts on Meta; it never selects the card.
             <span onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
@@ -95,8 +138,7 @@ export const AdsManagerCard: React.FC<AdsManagerCardProps> = ({
         </div>
       )}
       <span
-        className="line-clamp-2 block text-[13px] font-medium leading-4"
-        style={{ color: dimmed ? 'var(--text-tertiary)' : 'var(--text-primary)' }}
+        {...stylex.props(styles.name, dimmed && styles.nameDimmed)}
         title={name}
       >
         {name}
@@ -105,7 +147,7 @@ export const AdsManagerCard: React.FC<AdsManagerCardProps> = ({
         <div className="buyerly-board-chips">
           {chips.map((chip) => (
             <span key={chip.key} className="buyerly-board-chip" title={chip.label}>
-              {chip.icon && <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center" aria-hidden="true">{chip.icon}</span>}
+              {chip.icon && <span {...stylex.props(styles.chipIcon)} aria-hidden="true">{chip.icon}</span>}
               <span>{chip.label}</span>
             </span>
           ))}

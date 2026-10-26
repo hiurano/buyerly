@@ -1,4 +1,5 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
 import type { MetaAccount } from '@/lib/types';
 import {
   BuyerlyDataListRow,
@@ -13,6 +14,133 @@ import { accountName } from './accountsModel';
 import { AccountLeadPicker } from './AccountLeadPicker';
 import type { AccountMember } from './accountsData';
 import { AccountRulesLabel, AccountStatusLabel, ConnectionProblemIcon, accountMoney, leadsText } from './AccountParts';
+import { colors } from '@/styles/tokens.stylex';
+import { rowMarker } from '@/ui/markers.stylex';
+
+const TOUCH = '@media (hover: none) and (pointer: coarse)';
+
+const styles = stylex.create({
+  // Shows while its row is hovered, its menu open or it has focus; always on a touch screen.
+  menuTrigger: {
+    display: 'flex',
+    height: {
+      default: 24,
+      [TOUCH]: 40,
+    },
+    width: {
+      default: 24,
+      [TOUCH]: 32,
+    },
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 4,
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    opacity: {
+      default: 0,
+      [stylex.when.ancestor(':hover', rowMarker)]: 1,
+      ':is([data-state="open"])': 1,
+      ':focus-visible': 1,
+      '@media (hover: none)': 1,
+    },
+    transitionProperty: 'all',
+    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    transitionDuration: '150ms',
+    outline: {
+      default: null,
+      ':focus-visible': '2px solid transparent',
+    },
+    outlineOffset: {
+      default: null,
+      ':focus-visible': 2,
+    },
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+  },
+  // On the account's own page: a round 28px button, always shown.
+  menuTriggerHeader: {
+    height: {
+      default: 28,
+      [TOUCH]: 40,
+    },
+    width: {
+      default: 28,
+      [TOUCH]: 32,
+    },
+    borderRadius: 9999,
+    opacity: null,
+  },
+  row: {
+    cursor: 'pointer',
+  },
+  name: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 12,
+  },
+  icon: {
+    display: 'flex',
+    height: 16,
+    width: 16,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: colors['--text-tertiary'],
+  },
+  nameLine: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 6,
+  },
+  nameText: {
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  nameInactive: {
+    color: colors['--text-tertiary'],
+  },
+  status: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--text-secondary'],
+  },
+  lead: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  rules: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    paddingLeft: 24,
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--text-secondary'],
+  },
+  actions: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+});
 
 /** At phone width the list keeps Name, Status and Spend today (#388). */
 export const PHONE_QUERY = '(max-width: 640px)';
@@ -87,7 +215,7 @@ export const AccountRowMenu: React.FC<{
         aria-label={`Actions for ${accountName(account)}`}
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); }}
-        className={`flex items-center justify-center text-[var(--text-tertiary)] transition-all ${inHeader ? 'h-7 w-7 rounded-full' : 'h-6 w-6 rounded opacity-0'} hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] group-hover/row:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] [@media(hover:none)]:opacity-100 [@media(hover:none)_and_(pointer:coarse)]:h-10 [@media(hover:none)_and_(pointer:coarse)]:w-8`}
+        {...stylex.props(styles.menuTrigger, inHeader && styles.menuTriggerHeader)}
       >
         <BuyerlyDotsIcon size={14} />
       </button>
@@ -123,17 +251,17 @@ export const AccountRow: React.FC<AccountRowProps> = ({ account, columns, proper
           actions.open(account);
         }
       }}
-      className="cursor-pointer"
+      xstyle={styles.row}
     >
-      <div className="flex min-w-0 items-center gap-3" title={`${name} · ${account.account_id}`}>
+      <div {...stylex.props(styles.name)} title={`${name} · ${account.account_id}`}>
         {/* A phone keeps the width for the name. */}
         {!phone && (
-          <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[var(--text-tertiary)]" aria-hidden="true">
+          <span {...stylex.props(styles.icon)} aria-hidden="true">
             <BuyerlyProjectIcon size={14} />
           </span>
         )}
-        <span className="flex min-w-0 items-center gap-1.5">
-          <span className={`min-w-0 truncate text-[13px] font-medium ${account.is_active === false ? 'text-[var(--text-tertiary)]' : 'text-[var(--text-primary)]'}`}>
+        <span {...stylex.props(styles.nameLine)}>
+          <span {...stylex.props(styles.nameText, account.is_active === false && styles.nameInactive)}>
             {name}
           </span>
           <ConnectionProblemIcon account={account} onReconnect={actions.canEdit ? actions.reconnect : undefined} />
@@ -141,13 +269,13 @@ export const AccountRow: React.FC<AccountRowProps> = ({ account, columns, proper
       </div>
 
       {properties.status !== false && (
-        <div className="flex min-w-0 items-center text-[12px] font-[450] text-[var(--text-secondary)]">
+        <div {...stylex.props(styles.status)}>
           <AccountStatusLabel account={account} />
         </div>
       )}
 
       {!phone && properties.lead !== false && (
-        <div className="flex items-center" onClick={(event) => event.stopPropagation()}>
+        <div {...stylex.props(styles.lead)} onClick={(event) => event.stopPropagation()}>
           <AccountLeadPicker
             account={account}
             members={actions.members}
@@ -165,12 +293,12 @@ export const AccountRow: React.FC<AccountRowProps> = ({ account, columns, proper
       {!phone && properties.leads !== false && <BuyerlyDataMetricCell value={leadsText(account)} />}
 
       {!phone && properties.rules !== false && (
-        <div className="flex min-w-0 items-center pl-6 text-[12px] font-[450] text-[var(--text-secondary)]">
+        <div {...stylex.props(styles.rules)}>
           <AccountRulesLabel account={account} />
         </div>
       )}
 
-      <div className="flex items-center justify-end" onClick={(event) => event.stopPropagation()}>
+      <div {...stylex.props(styles.actions)} onClick={(event) => event.stopPropagation()}>
         <AccountRowMenu account={account} actions={actions} />
       </div>
     </BuyerlyDataListRow>

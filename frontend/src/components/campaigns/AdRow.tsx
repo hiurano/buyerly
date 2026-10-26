@@ -1,9 +1,19 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
 import type { DeliveryControl } from '@/lib/delivery';
 import { BuyerlyDataListRow, BuyerlyDataPrimaryCell, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 import { EntityPropertyCell, EntityRowControls } from './EntityRowCells';
 import { AdItem } from '@/models/rulesStore';
 import { useSelectionStore } from '@/models/selectionStore';
+
+const styles = stylex.create({
+  row: {
+    cursor: 'pointer',
+  },
+  readOnly: {
+    cursor: 'default',
+  },
+});
 
 interface AdRowProps {
   ad: AdItem;
@@ -33,7 +43,8 @@ export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, selectable =
       columns={columns}
       tabIndex={readOnly ? undefined : 0}
       selected={isSelected}
-      className={`ad-data-row ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}
+      className="ad-data-row"
+      xstyle={readOnly ? styles.readOnly : styles.row}
     >
       <BuyerlyDataPrimaryCell
         leading={(

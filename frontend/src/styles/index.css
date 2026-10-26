@@ -4935,9 +4935,10 @@ body.buyerly-split-resizing, body.buyerly-split-resizing * { cursor: col-resize 
   min-width: 20px; padding: 4px; border: 0.5px solid var(--shortcuts-key-border); border-radius: 3px;
   font-family: inherit; font-size: 11px; line-height: 12.1px; font-weight: 450; text-align: center;
 }
-/* Linear's Inbox list beside the notification: its own width, a 0.5px edge in the canvas border's colour. */
+/* Linear's Inbox list beside the notification: a 0.5px edge in the canvas border's colour. Its width is
+   in InboxView's StyleX; --canvas-border is a whole border, which StyleX would split. */
 @media (min-width: 768px) {
-  .inbox-list { width: var(--inbox-list-width); max-width: var(--inbox-list-width); flex-shrink: 0; border-right: var(--canvas-border); }
+  .inbox-list { border-right: var(--canvas-border); }
 }
 
 /* The header's details button: lit while the pane is open. */

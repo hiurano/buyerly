@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import type { DeliveryControl } from '@/lib/delivery';
 import { BuyerlyDataListRow, BuyerlyDataPrimaryCell, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 import { EntityPropertyCell, EntityRowControls } from './EntityRowCells';
@@ -7,6 +8,15 @@ import { RuleAttachmentCell } from './RuleAttachmentCell';
 import type { RuleAttachmentCellHandle } from './RuleAttachmentCell';
 import { useRulesStore, CampaignItem } from '@/models/rulesStore';
 import { useSelectionStore } from '@/models/selectionStore';
+
+const styles = stylex.create({
+  row: {
+    cursor: 'pointer',
+  },
+  readOnly: {
+    cursor: 'default',
+  },
+});
 
 interface CampaignRowProps {
   campaign: CampaignItem;
@@ -69,7 +79,8 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
           }
         }}
         selected={isSelected}
-        className={`campaign-data-row ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}
+        className="campaign-data-row"
+        xstyle={readOnly ? styles.readOnly : styles.row}
       >
         <BuyerlyDataPrimaryCell
           leading={(

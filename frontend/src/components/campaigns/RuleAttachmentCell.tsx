@@ -1,10 +1,13 @@
 import React, { forwardRef, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { BuyerlyBoltIcon } from '@/icons/BuyerlyIcons';
 import { useIsSmallScreen } from '@/lib/useMediaQuery';
+import { withClassName } from '@/ui/withClassName';
 import { inheritedRuleIds } from '@/lib/rules';
 import { RuleSelectorPopover } from './RuleSelectorPopover';
 import type { RuleTargetLevel } from './RuleSelectorPopover';
 import { useRulesStore } from '@/models/rulesStore';
+import { colors } from '@/styles/tokens.stylex';
 
 interface RuleAttachmentCellProps {
   /** The row's ad account, where its rules are attached. */
@@ -24,6 +27,93 @@ export interface RuleAttachmentCellHandle {
 }
 
 const LABEL_FONT = '"Inter Variable", "SF Pro Display", -apple-system, sans-serif';
+
+const styles = stylex.create({
+  cell: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+  },
+  // Pinned to the right edge on a narrow screen, where this column is past the scroll.
+  cellSticky: {
+    position: 'sticky',
+    right: 0,
+    zIndex: 1,
+    alignSelf: 'stretch',
+  },
+  pill: {
+    position: 'relative',
+    display: 'inline-flex',
+    height: 22,
+    alignItems: 'center',
+    paddingTop: 0,
+    paddingRight: 8,
+    paddingBottom: 0,
+    paddingLeft: 8,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    cursor: 'pointer',
+    outline: 'none',
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+    // A 6px wider hit area around the pill.
+    '::after': {
+      content: '""',
+      position: 'absolute',
+      top: -6,
+      right: -6,
+      bottom: -6,
+      left: -6,
+    },
+  },
+  attached: {
+    gap: 5,
+    backgroundColor: colors['--item-hover-bg'],
+    transitionProperty: 'border-color, background-color',
+    transitionDuration: '0.15s',
+  },
+  // "+ Rule": dashed, and only its text lights up on hover.
+  add: {
+    gap: 4,
+    borderStyle: 'dashed',
+    backgroundColor: 'transparent',
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+    transitionProperty: 'opacity, border-color, background-color, color',
+    transitionDuration: '0.15s',
+  },
+  boltSlot: {
+    display: 'flex',
+    height: 14,
+    width: 14,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bolt: {
+    color: '#eab308',
+  },
+  label: {
+    fontFamily: LABEL_FONT,
+    fontSize: 12,
+    fontWeight: 500,
+    lineHeight: 1,
+    whiteSpace: 'nowrap',
+  },
+  // Only inherited rules: the row has none of its own.
+  labelInherited: {
+    color: colors['--text-secondary'],
+  },
+  labelOwn: {
+    color: colors['--text-primary'],
+  },
+});
 
 /**
  * The Rules cell of a campaign or ad set row: how many rules are aimed at this
@@ -72,10 +162,9 @@ export const RuleAttachmentCell = forwardRef<
   useImperativeHandle(ref, () => ({ open: () => open() }), []);
 
   return (
-    // Pinned to the right edge on a narrow screen, where this column is past the scroll.
     <div
       ref={cellRef}
-      className={`flex min-w-0 items-center ${isSmall ? 'buyerly-data-sticky sticky right-0 z-[1] self-stretch' : ''}`}
+      {...withClassName(stylex.props(styles.cell, isSmall && styles.cellSticky), isSmall ? 'buyerly-data-sticky' : undefined)}
     >
       {attachedCount > 0 ? (
         <button
@@ -84,35 +173,12 @@ export const RuleAttachmentCell = forwardRef<
           data-rule-cell="true"
           data-inherited-rules={inheritedCount || undefined}
           title={reachTitle}
-          className="relative after:absolute after:-inset-[6px] after:content-[''] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
-          style={{
-            height: '22px',
-            padding: '0 8px',
-            borderRadius: '9999px',
-            backgroundColor: 'var(--item-hover-bg)',
-            border: '1px solid var(--color-border-secondary)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '5px',
-            cursor: 'pointer',
-            outline: 'none',
-            transition: 'border-color 0.15s, background-color 0.15s',
-          }}
+          {...stylex.props(styles.pill, styles.attached)}
         >
-          <div className="flex h-3.5 w-3.5 items-center justify-center flex-shrink-0">
-            <BuyerlyBoltIcon size={12} className="text-[#eab308]" />
+          <div {...stylex.props(styles.boltSlot)}>
+            <BuyerlyBoltIcon size={12} className={stylex.props(styles.bolt).className} />
           </div>
-          <span
-            style={{
-              fontFamily: LABEL_FONT,
-              fontSize: '12px',
-              fontWeight: 500,
-              // Only inherited rules: the row has none of its own.
-              color: ownCount > 0 ? 'var(--text-primary)' : 'var(--text-secondary)',
-              lineHeight: 1,
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <span {...stylex.props(styles.label, ownCount > 0 ? styles.labelOwn : styles.labelInherited)}>
             {attachedCount} {attachedCount === 1 ? 'rule' : 'rules'}
           </span>
         </button>
@@ -121,20 +187,7 @@ export const RuleAttachmentCell = forwardRef<
           type="button"
           onClick={open}
           data-rule-cell="true"
-          style={{
-            height: '22px',
-            padding: '0 8px',
-            borderRadius: '9999px',
-            backgroundColor: 'transparent',
-            border: '1px dashed var(--color-border-secondary)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '4px',
-            cursor: 'pointer',
-            outline: 'none',
-            transition: 'opacity 0.15s, border-color 0.15s, background-color 0.15s, color 0.15s',
-          }}
-          className="relative after:absolute after:-inset-[6px] after:content-[''] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--color-border-secondary)] hover:bg-[var(--item-hover-bg)]"
+          {...stylex.props(styles.pill, styles.add)}
           title="Add rule"
         >
           <svg
@@ -149,15 +202,7 @@ export const RuleAttachmentCell = forwardRef<
             <line x1="5" y1="2" x2="5" y2="8" />
             <line x1="2" y1="5" x2="8" y2="5" />
           </svg>
-          <span
-            style={{
-              fontFamily: LABEL_FONT,
-              fontSize: '12px',
-              fontWeight: 500,
-              lineHeight: 1,
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <span {...stylex.props(styles.label)}>
             Rule
           </span>
         </button>

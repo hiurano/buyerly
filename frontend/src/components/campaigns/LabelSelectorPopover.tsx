@@ -1,6 +1,28 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import * as stylex from '@stylexjs/stylex';
 import { useRulesStore, type CampaignGroup } from '@/models/rulesStore';
+import { pickerStyles } from './pickerStyles';
+
+const styles = stylex.create({
+  dotSlot: {
+    display: 'flex',
+    width: 16,
+    height: 9,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dot: {
+    display: 'block',
+    width: 9,
+    height: 9,
+    borderRadius: '50%',
+  },
+  emptyText: {
+    lineHeight: '16px',
+  },
+});
 
 interface LabelSelectorPopoverProps {
   isOpen: boolean;
@@ -137,53 +159,12 @@ export const LabelSelectorPopover: React.FC<LabelSelectorPopoverProps> = ({
         aria-checked={isSelected}
         onMouseEnter={() => setActiveIndex(index)}
         onClick={() => toggleGroup(group)}
-        style={{
-          position: 'relative',
-          display: 'flex',
-          height: 32,
-          alignItems: 'center',
-          padding: '0 18px 0 14px',
-          cursor: 'pointer',
-        }}
+        {...stylex.props(pickerStyles.option)}
       >
-        <div
-          aria-hidden="true"
-          style={{
-            position: 'absolute',
-            inset: '0 6px',
-            borderRadius: 8,
-            backgroundColor: isActive ? 'var(--item-hover-bg)' : 'transparent',
-            transition: 'background-color 80ms ease',
-          }}
-        />
+        <div aria-hidden="true" {...stylex.props(pickerStyles.highlight, isActive && pickerStyles.highlightActive)} />
 
-        <div
-          style={{
-            position: 'relative',
-            zIndex: 1,
-            display: 'flex',
-            width: 16,
-            height: 14,
-            flexShrink: 0,
-            alignItems: 'center',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              width: 14,
-              height: 14,
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxSizing: 'border-box',
-              borderRadius: 3,
-              backgroundColor: isSelected ? '#eab308' : 'transparent',
-              border: isSelected
-                ? '1px solid #eab308'
-                : '1px solid var(--checkbox-border-rest)',
-              color: '#09090a',
-            }}
-          >
+        <div {...stylex.props(pickerStyles.checkSlot)}>
+          <div {...stylex.props(pickerStyles.check, isSelected && pickerStyles.checkSelected)}>
             {isSelected && (
               <svg width="10" height="9" viewBox="0 0 10 8" fill="currentColor" aria-hidden="true">
                 <path d="M3.46975 5.70757L1.88358 4.1225C1.65832 3.8974 1.29423 3.8974 1.06897 4.1225C0.843675 4.34765 0.843675 4.7116 1.06897 4.93674L3.0648 6.93117C3.29006 7.15628 3.65414 7.15628 3.8794 6.93117L8.93103 1.88306C9.15633 1.65792 9.15633 1.29397 8.93103 1.06883C8.70578 0.843736 8.34172 0.843724 8.11646 1.06879L3.46975 5.70757Z" />
@@ -192,50 +173,11 @@ export const LabelSelectorPopover: React.FC<LabelSelectorPopoverProps> = ({
           </div>
         </div>
 
-        <div
-          style={{
-            position: 'relative',
-            zIndex: 1,
-            display: 'flex',
-            minWidth: 0,
-            flex: 1,
-            alignItems: 'center',
-            paddingLeft: 6,
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              width: 16,
-              height: 9,
-              flexShrink: 0,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <span
-              style={{
-                display: 'block',
-                width: 9,
-                height: 9,
-                borderRadius: '50%',
-                backgroundColor: group.color,
-              }}
-            />
+        <div {...stylex.props(pickerStyles.label)}>
+          <div {...stylex.props(styles.dotSlot)}>
+            <span {...stylex.props(styles.dot)} style={{ backgroundColor: group.color }} />
           </div>
-          <span
-            style={{
-              minWidth: 0,
-              marginLeft: 5,
-              overflow: 'hidden',
-              color: 'var(--text-primary)',
-              fontSize: 13,
-              fontWeight: 400,
-              lineHeight: '20px',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <span {...stylex.props(pickerStyles.name)}>
             {group.name}
           </span>
         </div>
@@ -250,25 +192,10 @@ export const LabelSelectorPopover: React.FC<LabelSelectorPopoverProps> = ({
       tabIndex={-1}
       data-animated-popover-container="true"
       data-menu-active="true"
+      {...stylex.props(pickerStyles.popover)}
       style={{
-        position: 'fixed',
         left,
         top,
-        width: popoverWidth,
-        minWidth: 277,
-        maxWidth: 500,
-        backgroundColor: 'var(--card-bg)',
-        color: 'var(--text-primary)',
-        border: '1px solid var(--color-border-secondary)',
-        borderRadius: 12,
-        boxShadow: 'var(--dropdown-shadow)',
-        zIndex: 9999,
-        overflow: 'visible',
-        display: 'flex',
-        flexDirection: 'column',
-        fontFamily:
-          '"Inter Variable", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        animation: 'buyerlyPopoverScale 120ms cubic-bezier(0.16, 1, 0.3, 1)',
         transformOrigin: `${Math.min(popoverWidth - 2, Math.max(2, anchorRect.left - left + anchorRect.width / 2))}px 18px`,
       }}
       onClick={(event) => event.stopPropagation()}
@@ -276,17 +203,9 @@ export const LabelSelectorPopover: React.FC<LabelSelectorPopoverProps> = ({
       <form
         autoComplete="off"
         onSubmit={(event) => event.preventDefault()}
-        style={{
-          display: 'flex',
-          height: 43,
-          flexShrink: 0,
-          alignItems: 'center',
-          gap: 8,
-          padding: '0 12px 0 14px',
-          borderBottom: '1px solid var(--color-border-primary)',
-        }}
+        {...stylex.props(pickerStyles.search)}
       >
-        <span className="sr-only" role="status" aria-live="polite">
+        <span {...stylex.props(pickerStyles.srOnly)} role="status" aria-live="polite">
           {searchQuery ? `${orderedGroups.length} matching labels` : 'Showing all labels'}
         </span>
         <input
@@ -307,37 +226,9 @@ export const LabelSelectorPopover: React.FC<LabelSelectorPopoverProps> = ({
             setActiveIndex(-1);
           }}
           onKeyDown={handleInputKeyDown}
-          style={{
-            width: 219,
-            minWidth: 0,
-            height: 36,
-            flex: 1,
-            padding: '10px 0 9px',
-            border: 0,
-            outline: 0,
-            background: 'transparent',
-            color: 'var(--text-primary)',
-            caretColor: 'var(--text-primary)',
-            font: '400 13px/17px inherit',
-          }}
+          {...stylex.props(pickerStyles.input)}
         />
-        <kbd
-          style={{
-            display: 'inline-flex',
-            minWidth: 18,
-            height: 19,
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '0 4px',
-            border: '1px solid var(--color-border-secondary)',
-            borderRadius: 4,
-            backgroundColor: 'var(--item-hover-bg)',
-            color: 'var(--text-tertiary)',
-            fontSize: 11,
-            fontWeight: 500,
-            lineHeight: '13px',
-          }}
-        >
+        <kbd {...stylex.props(pickerStyles.shortcut)}>
           L
         </kbd>
       </form>
@@ -346,14 +237,14 @@ export const LabelSelectorPopover: React.FC<LabelSelectorPopoverProps> = ({
         id={`campaign-label-list-${campaignId}`}
         role="listbox"
         aria-multiselectable="true"
-        style={{ maxHeight: 340, overflowY: 'auto', padding: '2px 0' }}
+        {...stylex.props(pickerStyles.listbox)}
       >
-        <ul role="presentation" className="m-0 list-none p-0">
+        <ul role="presentation" {...stylex.props(pickerStyles.list)}>
           {selectedGroups.map((group, index) => renderOption(group, index))}
 
           {selectedGroups.length > 0 && unselectedGroups.length > 0 && (
-            <li role="separator" style={{ height: 12, padding: '6px 0', boxSizing: 'border-box' }}>
-              <div style={{ height: 1, borderBottom: '1px solid var(--color-border-primary)' }} />
+            <li role="separator" {...stylex.props(pickerStyles.separator)}>
+              <div {...stylex.props(pickerStyles.separatorLine)} />
             </li>
           )}
 
@@ -362,7 +253,7 @@ export const LabelSelectorPopover: React.FC<LabelSelectorPopoverProps> = ({
           )}
 
           {orderedGroups.length === 0 && (
-            <li className="px-[14px] py-4 text-center text-xs text-[var(--text-muted)]">
+            <li {...stylex.props(pickerStyles.empty, styles.emptyText)}>
               No labels found
             </li>
           )}

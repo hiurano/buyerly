@@ -1,10 +1,29 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
 import type { MetaAccount } from '@/lib/types';
 import { Initials } from '@/components/preferences/MembersSection';
 import { BuyerlyCheckIcon } from '@/icons/BuyerlyIcons';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import { Tooltip } from '@/ui/Tooltip';
 import type { AccountMember } from './accountsData';
+import { colors } from '@/styles/tokens.stylex';
+
+const styles = stylex.create({
+  noLead: {
+    color: colors['--text-tertiary'],
+  },
+  name: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  item: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 8,
+  },
+});
 
 const memberLabel = (member: AccountMember) => member.full_name || member.username;
 
@@ -29,7 +48,7 @@ export const AccountLeadPicker: React.FC<AccountLeadPickerProps> = ({ account, m
   const lead = members.find((member) => member.user_id === account.lead_user_id) ?? null;
   const avatar = lead
     ? <Initials label={memberLabel(lead)} avatarUrl={lead.avatar_url} size={16} />
-    : <span className="text-[var(--text-tertiary)]"><NoLeadIcon /></span>;
+    : <span {...stylex.props(styles.noLead)}><NoLeadIcon /></span>;
   const trigger = (
     <button
       type="button"
@@ -40,7 +59,7 @@ export const AccountLeadPicker: React.FC<AccountLeadPickerProps> = ({ account, m
     >
       {avatar}
       {variant === 'property' && (
-        <span className={lead ? 'truncate' : 'truncate text-[var(--text-tertiary)]'}>{lead ? memberLabel(lead) : 'No lead'}</span>
+        <span {...stylex.props(styles.name, !lead && styles.noLead)}>{lead ? memberLabel(lead) : 'No lead'}</span>
       )}
     </button>
   );
@@ -54,8 +73,8 @@ export const AccountLeadPicker: React.FC<AccountLeadPickerProps> = ({ account, m
       </Tooltip>
       <DropdownMenuContent align="start" sideOffset={4} style={{ width: 220 }} onClick={(event) => event.stopPropagation()}>
         <DropdownMenuItem onSelect={() => onChange(null)}>
-          <span className="flex min-w-0 items-center gap-2">
-            <span className="text-[var(--text-tertiary)]"><NoLeadIcon /></span>
+          <span {...stylex.props(styles.item)}>
+            <span {...stylex.props(styles.noLead)}><NoLeadIcon /></span>
             <span>No lead</span>
           </span>
           {!lead && <BuyerlyCheckIcon size={14} />}
@@ -63,9 +82,9 @@ export const AccountLeadPicker: React.FC<AccountLeadPickerProps> = ({ account, m
         {members.length > 0 && <DropdownMenuSeparator />}
         {members.map((member) => (
           <DropdownMenuItem key={member.user_id} onSelect={() => onChange(member.user_id)}>
-            <span className="flex min-w-0 items-center gap-2">
+            <span {...stylex.props(styles.item)}>
               <Initials label={memberLabel(member)} avatarUrl={member.avatar_url} size={16} />
-              <span className="truncate">{memberLabel(member)}</span>
+              <span {...stylex.props(styles.name)}>{memberLabel(member)}</span>
             </span>
             {lead?.user_id === member.user_id && <BuyerlyCheckIcon size={14} />}
           </DropdownMenuItem>

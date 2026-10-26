@@ -1,9 +1,160 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Command } from 'cmdk';
+import * as stylex from '@stylexjs/stylex';
 import { BuyerlyClockOutlineIcon, BuyerlyTrashIcon } from '@/icons/BuyerlyIcons';
 import { formatSnoozedFor, formatSnoozeTime, matchesTyped, snoozeOptions } from '@/lib/inbox';
 import { parseSnoozeQuery } from '@/lib/snoozeQuery';
+import { colors } from '@/styles/tokens.stylex';
+import { commandItemMarker } from '@/ui/markers.stylex';
+import { withClassName } from '@/ui/withClassName';
+
+const truncate = {
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+} as const;
+
+const styles = stylex.create({
+  dialog: {
+    position: 'fixed',
+    left: 0,
+    right: 0,
+    top: '13vh',
+    zIndex: 700,
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    width: 720,
+    maxWidth: 'calc(100vw - 32px)',
+    overflow: 'hidden',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    backgroundColor: colors['--card-bg'],
+    boxShadow: colors['--dropdown-shadow'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+  },
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    marginTop: -1,
+    marginRight: -1,
+    marginBottom: -1,
+    marginLeft: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    borderWidth: 0,
+  },
+  scope: {
+    paddingLeft: 14,
+    paddingRight: 14,
+    paddingTop: 12,
+  },
+  // "Notification · …", the chip above the search.
+  chip: {
+    display: 'inline-flex',
+    height: 22,
+    maxWidth: '100%',
+    alignItems: 'center',
+    gap: 4,
+    ...truncate,
+    borderRadius: 6,
+    backgroundColor: colors['--color-border-secondary'],
+    paddingLeft: 6,
+    paddingRight: 6,
+    fontSize: 12,
+    color: colors['--text-secondary'],
+  },
+  chipLabel: {
+    color: colors['--text-tertiary'],
+  },
+  truncate,
+  search: {
+    paddingLeft: 6,
+    paddingRight: 6,
+  },
+  input: {
+    height: 40,
+    width: '100%',
+    backgroundColor: 'transparent',
+    paddingLeft: 12,
+    paddingRight: 12,
+    paddingTop: 11,
+    paddingBottom: 11,
+    fontSize: 13,
+    color: colors['--text-primary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    '::placeholder': {
+      color: colors['--text-muted'],
+    },
+  },
+  list: {
+    maxHeight: 'min(360px, 60vh)',
+    overflowY: 'auto',
+    paddingBottom: 5,
+    paddingTop: 6,
+    userSelect: 'none',
+  },
+  item: {
+    position: 'relative',
+    display: 'flex',
+    height: 46,
+    cursor: 'pointer',
+    alignItems: 'center',
+    paddingLeft: 19,
+    paddingRight: 21,
+    fontSize: 13,
+    fontWeight: 450,
+    color: colors['--text-primary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+  },
+  // The selected row's rounded highlight, 7px in from the sides.
+  highlight: {
+    pointerEvents: 'none',
+    position: 'absolute',
+    left: 7,
+    right: 7,
+    top: 2,
+    bottom: 2,
+    borderRadius: 8,
+    backgroundColor: {
+      default: null,
+      [stylex.when.ancestor('[data-selected="true"]', commandItemMarker)]: colors['--item-hover-bg'],
+    },
+  },
+  label: {
+    position: 'relative',
+    zIndex: 10,
+    display: 'flex',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    alignItems: 'center',
+    gap: 12,
+  },
+  icon: {
+    color: colors['--text-tertiary'],
+  },
+  hint: {
+    position: 'relative',
+    zIndex: 10,
+    flexShrink: 0,
+    paddingLeft: 12,
+    fontSize: 13,
+    color: colors['--text-tertiary'],
+  },
+});
 
 interface SnoozePaletteProps {
   open: boolean;
@@ -102,41 +253,41 @@ export const SnoozePalette: React.FC<SnoozePaletteProps> = ({
         <Dialog.Content
           aria-describedby={undefined}
           onCloseAutoFocus={(event) => event.preventDefault()}
-          className="fixed inset-x-0 top-[13vh] z-[700] mx-auto w-[720px] max-w-[calc(100vw-32px)] overflow-hidden rounded-[12px] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] [box-shadow:var(--dropdown-shadow)] outline-none animate-scale-in"
+          {...withClassName(stylex.props(styles.dialog), 'animate-scale-in')}
         >
-          <Dialog.Title className="sr-only">Snooze notification</Dialog.Title>
+          <Dialog.Title {...stylex.props(styles.srOnly)}>Snooze notification</Dialog.Title>
           <Command label="Snooze notification" shouldFilter={false} loop value={active} onValueChange={setActive}>
-            <div className="px-[14px] pt-[12px]">
-              <span className="inline-flex h-[22px] max-w-full items-center gap-[4px] truncate rounded-[6px] bg-[var(--color-border-secondary)] px-[6px] text-[12px] text-[var(--text-secondary)]">
-                <span className="text-[var(--text-tertiary)]">Notification</span>
-                <span className="text-[var(--text-tertiary)]">·</span>
-                <span className="truncate">{notificationLabel}</span>
+            <div {...stylex.props(styles.scope)}>
+              <span {...stylex.props(styles.chip)}>
+                <span {...stylex.props(styles.chipLabel)}>Notification</span>
+                <span {...stylex.props(styles.chipLabel)}>·</span>
+                <span {...stylex.props(styles.truncate)}>{notificationLabel}</span>
               </span>
             </div>
-            <div className="px-[6px]">
+            <div {...stylex.props(styles.search)}>
               <Command.Input
                 autoFocus
                 value={query}
                 onValueChange={setQuery}
                 placeholder={placeholder}
-                className="h-[40px] w-full bg-transparent px-[12px] py-[11px] text-[13px] text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none"
+                {...stylex.props(styles.input)}
               />
             </div>
-            <Command.List className="max-h-[min(360px,60vh)] overflow-y-auto pb-[5px] pt-[6px] select-none">
+            <Command.List {...stylex.props(styles.list)}>
               {rows.map((row) => (
                 <Command.Item
                   key={row.id}
                   value={row.id}
                   onSelect={row.onSelect}
-                  className="group relative flex h-[46px] cursor-pointer items-center pl-[19px] pr-[21px] text-[13px] font-[450] text-[var(--text-primary)] outline-none"
+                  {...stylex.props(styles.item, commandItemMarker)}
                 >
-                  <span className="pointer-events-none absolute inset-x-[7px] inset-y-[2px] rounded-[8px] group-data-[selected=true]:bg-[var(--item-hover-bg)]" />
-                  <span className="relative z-10 flex min-w-0 flex-1 items-center gap-[12px]">
-                    <span className="text-[var(--text-tertiary)]">{row.icon ?? <BuyerlyClockOutlineIcon size={16} />}</span>
-                    <span className="truncate">{row.label}</span>
+                  <span {...stylex.props(styles.highlight)} />
+                  <span {...stylex.props(styles.label)}>
+                    <span {...stylex.props(styles.icon)}>{row.icon ?? <BuyerlyClockOutlineIcon size={16} />}</span>
+                    <span {...stylex.props(styles.truncate)}>{row.label}</span>
                   </span>
                   {row.hint && (
-                    <span className="relative z-10 shrink-0 pl-[12px] text-[13px] text-[var(--text-tertiary)]">{row.hint}</span>
+                    <span {...stylex.props(styles.hint)}>{row.hint}</span>
                   )}
                 </Command.Item>
               ))}
