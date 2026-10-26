@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { ChevronLeft } from 'lucide-react';
+import { colors } from '@/styles/tokens.stylex';
 import { apiRequest } from '@/lib/api';
 import type { Workspace } from '@/lib/types';
 import {
@@ -18,6 +20,33 @@ import { toast } from '@/ui/toast';
 import { errorMessage } from './MemberDialogs';
 import { TeamIcon } from './TeamIcon';
 import { useShellStore } from '@/models/shellStore';
+
+const styles = stylex.create({
+  nameField: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  icon: {
+    display: 'flex',
+    height: 32,
+    width: 32,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+  },
+  actions: {
+    marginTop: 24,
+    display: 'flex',
+    width: '100%',
+    maxWidth: 640,
+    justifyContent: 'flex-end',
+  },
+});
 
 /**
  * Linear's "Create a new team" at /settings/new-team: Icon & Name and
@@ -86,8 +115,8 @@ export const NewTeamSection: React.FC<{ workspace: Workspace }> = ({ workspace }
             <div className="preferences-row-copy">
               <label htmlFor="new-team-name" className="preferences-row-title">Icon &amp; Name</label>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] border border-[var(--color-border-secondary)]">
+            <div {...stylex.props(styles.nameField)}>
+              <span {...stylex.props(styles.icon)}>
                 <TeamIcon size={16} />
               </span>
               <Input
@@ -135,7 +164,7 @@ export const NewTeamSection: React.FC<{ workspace: Workspace }> = ({ workspace }
           </div>
         </section>
         {error && <p role="alert" className="preferences-row-error">{error}</p>}
-        <div className="mt-6 flex w-full max-w-[640px] justify-end">
+        <div {...stylex.props(styles.actions)}>
           <Button type="submit" variant="primary" disabled={busy}>
             {busy ? 'Creating…' : 'Create team'}
           </Button>

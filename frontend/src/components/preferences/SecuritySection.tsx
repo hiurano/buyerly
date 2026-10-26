@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import * as stylex from '@stylexjs/stylex';
 import { Info, LogOut } from 'lucide-react';
 import { BrowserIcon } from '@/icons/BrowserIcons';
 import { BuyerlyCloseIcon } from '@/icons/BuyerlyIcons';
@@ -22,8 +23,102 @@ import { DataState } from '@/ui/DataState';
 import { Tooltip } from '@/ui/Tooltip';
 import { toast } from '@/ui/toast';
 import { useLastPresent } from '@/ui/useLastPresent';
+import { withClassName } from '@/ui/withClassName';
+import { colors, radii } from '@/styles/tokens.stylex';
 
 type LoadState = 'loading' | 'ready' | 'error';
+
+const styles = stylex.create({
+  menuItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  overlay: {
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 500,
+    backgroundColor: 'rgb(0 0 0 / 0.4)',
+  },
+  frame: {
+    pointerEvents: 'none',
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 501,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 16,
+    paddingRight: 16,
+    paddingBottom: 16,
+    paddingLeft: 16,
+  },
+  content: {
+    pointerEvents: 'auto',
+    position: 'relative',
+    width: '100%',
+    maxWidth: 572,
+    borderRadius: radii['--canvas-border-radius'],
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    backgroundColor: colors['--card-bg'],
+    textAlign: 'left',
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    boxShadow: colors['--dialog-elevation-shadow'],
+  },
+  close: {
+    position: 'absolute',
+    right: 16,
+    top: 16,
+    display: 'flex',
+    height: 28,
+    width: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9999,
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    transitionProperty: 'color, background-color, border-color, text-decoration-color, fill, stroke',
+    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    transitionDuration: '150ms',
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+  },
+  title: {
+    margin: 0,
+    fontSize: 15,
+    fontWeight: 600,
+    color: colors['--text-primary'],
+  },
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    borderWidth: 0,
+  },
+});
 
 /** Linear lists five other sessions, then "Show all". */
 const OTHERS_SHOWN = 5;
@@ -103,13 +198,13 @@ const SessionRow: React.FC<SessionRowProps> = ({ session, busy, onOpen, onAction
       </ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuItem onSelect={onOpen}>
-          <span className="flex items-center gap-2">
+          <span {...stylex.props(styles.menuItem)}>
             <Info size={14} strokeWidth={1.75} aria-hidden="true" />
             View details
           </span>
         </ContextMenuItem>
         <ContextMenuItem onSelect={onAction} disabled={busy}>
-          <span className="flex items-center gap-2">
+          <span {...stylex.props(styles.menuItem)}>
             <LogOut size={14} strokeWidth={1.75} aria-hidden="true" />
             {actionLabel}
           </span>
@@ -150,31 +245,31 @@ const SessionDetailsDialog: React.FC<SessionDetailsDialogProps> = ({ session, bu
   return (
     <Dialog.Root open={session !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[500] bg-black/40 animate-fade-in" />
-        <div className="pointer-events-none fixed inset-0 z-[501] flex items-center justify-center p-4">
+        <Dialog.Overlay {...stylex.props(styles.overlay)} />
+        <div {...stylex.props(styles.frame)}>
           <Dialog.Content
             onOpenAutoFocus={(event) => {
               event.preventDefault();
               actionRef.current?.focus();
             }}
-            className="ui-dialog preferences-session-dialog pointer-events-auto relative w-full max-w-[572px] rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] text-left outline-none animate-scale-in [box-shadow:var(--dialog-elevation-shadow)]"
+            {...withClassName(stylex.props(styles.content), 'ui-dialog preferences-session-dialog animate-scale-in')}
           >
             <Dialog.Close asChild>
               <button
                 type="button"
                 aria-label="Close dialog"
-                className="ui-icon-button absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-tertiary)] transition-colors duration-150 hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
+                {...withClassName(stylex.props(styles.close), 'ui-icon-button')}
               >
                 <BuyerlyCloseIcon size={14} />
               </button>
             </Dialog.Close>
-            <header className="flex items-center gap-2.5">
+            <header {...stylex.props(styles.header)}>
               <span className="preferences-session-icon preferences-session-icon--outlined">
                 <BrowserIcon browser={browserOf(shown.user_agent)} />
               </span>
-              <Dialog.Title className="m-0 text-[15px] font-semibold text-[var(--text-primary)]">{name}</Dialog.Title>
+              <Dialog.Title {...stylex.props(styles.title)}>{name}</Dialog.Title>
             </header>
-            <Dialog.Description className="sr-only">Details of this session</Dialog.Description>
+            <Dialog.Description {...stylex.props(styles.srOnly)}>Details of this session</Dialog.Description>
             <dl className="preferences-session-facts">
               {facts.map(([label, value]) => (
                 <div key={label}>
