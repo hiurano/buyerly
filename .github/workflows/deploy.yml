@@ -115,6 +115,12 @@ jobs:
         working-directory: frontend
         run: npx vite build --outDir /tmp/buyerly-warm-build
 
+      # Bundles the dependencies for the dev server once, so the first script
+      # of a group does not pay for it inside its first page's 10 s timeout.
+      - name: Warm the dev server
+        working-directory: frontend
+        run: node ../scripts/warm-dev-server.mjs
+
       # Every script in the group runs even after one fails, so a single run
       # reports all broken screens. The runner's Google Chrome has WebMCP
       # behind a flag; Playwright's Chromium does not, and webmcp-browser.mjs
