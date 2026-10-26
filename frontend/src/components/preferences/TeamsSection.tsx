@@ -33,8 +33,8 @@ import { RowMenu, shortDate } from './MembersSection';
 import { SortHeader, sortedBy, useListSort } from './SettingsListSort';
 import { TeamIcon } from './TeamIcon';
 import { RestoreTeamDialog } from './TeamSettingsSection';
-import { useShellStore } from '@/models/shellStore';
 import { colors } from '@/styles/tokens.stylex';
+import { openSettings, openTeamSettings } from '@/lib/routing';
 
 const styles = stylex.create({
   srOnly: {
@@ -101,8 +101,6 @@ const TEAM_SETTINGS_PAGES: Array<{ path: string; label: string }> = [
  * restores a retired or deleted team. The member count lists the members on hover.
  */
 export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) => {
-  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
-  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<TeamFilter>('active');
   const { teams, error, refresh } = useTeams(workspace.id, filter);
@@ -179,7 +177,7 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
           </DropdownMenuContent>
         </DropdownMenu>
         <div {...stylex.props(styles.spacer)} />
-        <button type="button" className="settings-list-button settings-list-button--primary" onClick={() => setSettingsSection('new-team')}>
+        <button type="button" className="settings-list-button settings-list-button--primary" onClick={() => openSettings('new-team')}>
           Create team
         </button>
       </div>
@@ -299,7 +297,7 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
                     ? 'Retired teams keep their members and ad accounts and can be restored at any time.'
                     : 'Deleted teams stay here for 30 days and can be restored.'}
               actionLabel={!needle && filter === 'active' ? 'Create team' : undefined}
-              onAction={!needle && filter === 'active' ? () => setSettingsSection('new-team') : undefined}
+              onAction={!needle && filter === 'active' ? () => openSettings('new-team') : undefined}
             />
           )}
           {filter === 'deleted' && visible.length > 0 && (

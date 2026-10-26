@@ -5,7 +5,7 @@ import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
 import { fetchAccounts } from '@/models/queries';
-import { pathForTab, searchAt } from '@/lib/routing';
+import { pathForTab } from '@/lib/routing';
 import {
   clearRecentSearches,
   parseSearchParams,
@@ -727,6 +727,8 @@ const SearchDisplayOptions: React.FC<SearchDisplayOptionsProps> = ({
 
 interface SearchViewProps {
   workspace: Workspace;
+  /** The address's query as of the page's navigation: `?q=…&type=…`. */
+  query: string;
   /** Opens an address in the app; `replace` keeps history from repeating it. */
   navigate: (path: string, replace?: boolean) => void;
   /** Changes on every navigation, so the page rereads its address. */
@@ -740,9 +742,10 @@ interface SearchViewProps {
  * opens a result on its own row in Ads Manager or Rules. The first Esc closes
  * the preview, the second goes back to where search was opened from.
  */
-export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, navigationKey }) => {
+export const SearchView: React.FC<SearchViewProps> = ({ workspace, query: addressQuery, navigate, navigationKey }) => {
   const slug = workspace.slug;
-  const params = useMemo(() => parseSearchParams(searchAt(navigationKey)), [navigationKey]);
+  // Read again on every navigation, Back and Forward included, even to the same query.
+  const params = useMemo(() => parseSearchParams(addressQuery), [addressQuery, navigationKey]);
   const offered = searchFiltersFor(params.tab);
   // A filter the tab does not offer never reaches the server, as Linear's Projects tab drops issue filters.
   const applied = useMemo<SearchParams>(() => ({
@@ -752,7 +755,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, navigate, nav
   }), [offered.account, offered.status, params]);
   const requestKey = JSON.stringify(applied);
   const scope = useScopeStore((state) => state.workspaceScope);
-  const lastAppTab = useShellStore((state) => state.lastAppTab);
+  const lastAppTab = useShellStore((state) => state.lastAppPlace.tab);
   const campaignFilterTab = useViewStore((state) => state.campaignFilterTab);
 
   const [draft, setDraft] = useState(params.query);

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { Check, ChevronLeft } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
 import { acceptInvite } from '@/lib/workspaces';
@@ -15,6 +16,23 @@ import { AuthFrame, AuthLoading, BuyerlyBrand } from './AuthFrame';
 import { LoginView } from './LoginView';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
 import { useShellStore } from '@/models/shellStore';
+
+const styles = stylex.create({
+  accountLabel: {
+    paddingTop: 8,
+    paddingRight: 14,
+    paddingBottom: 8,
+    paddingLeft: 14,
+    fontSize: 12,
+    fontWeight: 500,
+  },
+  truncate: {
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+});
 
 /**
  * Linear's invitation page follows the system or the person's own theme, also
@@ -177,11 +195,11 @@ export const InviteView: React.FC<InviteViewProps> = ({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent side="left" align="start" sideOffset={4} style={{ width: '193px', minWidth: '193px' }}>
-              <DropdownMenuLabel style={{ padding: '8px 14px', fontSize: '12px', fontWeight: 500 }}>
+              <DropdownMenuLabel xstyle={styles.accountLabel}>
                 Accounts
               </DropdownMenuLabel>
               <DropdownMenuItem>
-                <span className="min-w-0 truncate">{user.email || user.username}</span>
+                <span {...stylex.props(styles.truncate)}>{user.email || user.username}</span>
                 <Check size={14} strokeWidth={2} aria-hidden="true" />
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={onAddAccount}>Add an account</DropdownMenuItem>

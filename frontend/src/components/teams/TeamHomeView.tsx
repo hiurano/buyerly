@@ -6,7 +6,8 @@ import { membersQuery, teamDocumentsQuery } from '@/models/queries';
 import { usePoolQuery } from '@/models/usePool';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { canAdministerWorkspace } from '@/lib/settingsPages';
-import { teamHomePath, type TeamHomePage } from '@/lib/routing';
+import { openTeamSettings, type TeamHomePage, teamHomePath } from '@/lib/routing';
+import { openTab } from '@/lib/navigation';
 import {
   documentTitle,
   notifyTeamsChanged,
@@ -39,7 +40,7 @@ import { Tooltip } from '@/ui/Tooltip';
 import { toast } from '@/ui/toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import { BuyerlyDataListRow, BuyerlyDataListToolbar, BuyerlyDataTable, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
-import { shellStore, useShellStore, type AppTab } from '@/models/shellStore';
+import type { AppTab } from '@/models/shellStore';
 import { colors } from '@/styles/tokens.stylex';
 
 const truncate = {
@@ -323,8 +324,7 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
                   type="button"
                   aria-label="Add members"
                   onClick={() => {
-                    shellStore.openTeamSettings(`${team.key}/members`);
-                    shellStore.setActiveTab('preferences');
+                    openTeamSettings(`${team.key}/members`);
                   }}
                   className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target"
                 >
@@ -360,16 +360,12 @@ interface TeamOverviewProps {
 /** Linear's team Overview: icon and name, the description, Team resources; Members and Go to beside them. */
 const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, canEdit, canWrite, onOpenTab, onCreateDocument }) => {
   const { workspace } = useWorkspaceSession();
-  const setActiveTab = useShellStore((state) => state.setActiveTab);
-  const setActiveTeamKey = useShellStore((state) => state.setActiveTeamKey);
-  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
   const people = team.member_user_ids
     .map((id) => members.find((member) => member.user_id === id))
     .filter((member): member is MemberItem => Boolean(member));
 
   const goTo = (tab: AppTab) => {
-    setActiveTeamKey(team.key);
-    setActiveTab(tab);
+    openTab(tab, { teamKey: team.key });
   };
   const links: { id: string; label: string; icon: React.ReactNode; run: () => void }[] = [
     // Guests don't open settings, as in Linear.
@@ -379,7 +375,6 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
       icon: <TeamSettingsIcon />,
       run: () => {
         openTeamSettings(team.key);
-        setActiveTab('preferences');
       },
     }] : []),
     { id: 'campaigns', label: 'Campaigns', icon: <BuyerlyIssuesIcon size={16} />, run: () => goTo('campaigns') },
@@ -687,15 +682,12 @@ const MEMBER_COLUMNS: BuyerlyDataListColumn[] = [
 
 /** Linear's team Members tab: who is on the team; owners and admins change it in the team's settings. */
 const TeamMembersTab: React.FC<{ team: TeamItem; members: MemberItem[] | null }> = ({ team, members }) => {
-  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
-  const setActiveTab = useShellStore((state) => state.setActiveTab);
   const { workspace } = useWorkspaceSession();
   if (!members) return <DataState title="Loading members…" detail="Reading the members of this team." />;
   const people = members.filter((member) => team.member_user_ids.includes(member.user_id));
   const canEdit = canAdministerWorkspace({ role: workspace.role });
   const manage = () => {
     openTeamSettings(`${team.key}/members`);
-    setActiveTab('preferences');
   };
   if (people.length === 0) {
     return (

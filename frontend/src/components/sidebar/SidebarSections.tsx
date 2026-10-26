@@ -5,10 +5,11 @@ import { TeamIcon } from '@/components/preferences/TeamIcon';
 import { Tooltip } from '@/ui/Tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import { toast } from '@/ui/toast';
-import { openAppPath, pathForTab } from '@/lib/routing';
+import { openAppPath, openTeamSettings, pathForTab } from '@/lib/routing';
+import { openTab, useCurrentPage } from '@/lib/navigation';
 import type { TeamItem } from '@/lib/teams';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
-import { useShellStore, type AppTab } from '@/models/shellStore';
+import type { AppTab } from '@/models/shellStore';
 
 const styles = stylex.create({
   linkBody: {
@@ -151,11 +152,7 @@ interface SidebarTeamProps {
 /** One of "Your teams": the team folds open on its pages, as in Linear. */
 export const SidebarTeam: React.FC<SidebarTeamProps> = ({ team, workspaceSlug, pages }) => {
   const [collapsed, toggle] = useSidebarCollapsed(`team:${team.id}`);
-  const activeTab = useShellStore((state) => state.activeTab);
-  const activeTeamKey = useShellStore((state) => state.activeTeamKey);
-  const setActiveTab = useShellStore((state) => state.setActiveTab);
-  const setActiveTeamKey = useShellStore((state) => state.setActiveTeamKey);
-  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
+  const { tab: activeTab, teamKey: activeTeamKey } = useCurrentPage();
   const { workspace } = useWorkspaceSession();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -163,9 +160,7 @@ export const SidebarTeam: React.FC<SidebarTeamProps> = ({ team, workspaceSlug, p
     // The team's page itself, from a record under it: the tab and team do not change.
     if (activeTab === tab && activeTeamKey === team.key) {
       openAppPath(pathForTab(workspaceSlug, tab, 'campaigns', 'preferences', '', undefined, team.key));
-    }
-    setActiveTeamKey(team.key);
-    setActiveTab(tab);
+    } else openTab(tab, { teamKey: team.key });
   };
 
   const teamLink = `${window.location.origin}${pathForTab(workspaceSlug, pages[0]?.tab ?? 'campaigns', 'campaigns', 'preferences', '', undefined, team.key)}`;
@@ -191,10 +186,7 @@ export const SidebarTeam: React.FC<SidebarTeamProps> = ({ team, workspaceSlug, p
             <DropdownMenuContent align="start" sideOffset={4}>
               {workspace.role !== 'guest' && (
                 <DropdownMenuItem
-                  onSelect={() => {
-                    openTeamSettings(team.key);
-                    setActiveTab('preferences');
-                  }}
+                  onSelect={() => openTeamSettings(team.key)}
                 >
                   Team settings
                 </DropdownMenuItem>

@@ -1,24 +1,13 @@
-import React, { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Sidebar } from '@/components/sidebar/Sidebar';
-import { InboxView } from '@/components/inbox/InboxView';
-import { CampaignsView } from '@/components/campaigns/CampaignsView';
-import { RulesView } from '@/components/rules/RulesView';
-import { AccountsView } from '@/components/accounts/AccountsView';
-import { AccountPage } from '@/components/accounts/AccountPage';
-import { RecentlyDeletedRulesPage } from '@/components/rules/RecentlyDeletedRulesPage';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Outlet, useLocation, useOutletContext } from 'react-router';
 import { CommandMenu } from '@/components/command/CommandMenu';
 import { BuyerlyShortcutsPanel } from '@/components/help/BuyerlyShortcutsPanel';
 import { favoritesStore } from '@/lib/favorites';
 import { OpenPalette } from '@/components/command/OpenPalette';
-import { SearchView } from '@/components/search/SearchView';
-import { WorkspaceMembersView } from '@/components/workspace/WorkspaceMembersView';
-import { WorkspaceTeamsView } from '@/components/workspace/WorkspaceTeamsView';
-import { TeamHomeView } from '@/components/teams/TeamHomeView';
 import { searchPageTitle } from '@/lib/search';
 import { pageTitle } from '@/lib/pageTitle';
 import { useTeams } from '@/lib/teams';
 import { WorkspaceSwitcher } from '@/components/command/WorkspaceSwitcher';
-import { PreferencesView } from '@/components/preferences/PreferencesView';
 import { AppUtilityBar } from '@/components/layout/AppUtilityBar';
 import { TooltipProvider } from '@/ui/Tooltip';
 import { ToastRegion } from '@/ui/ToastRegion';
@@ -27,9 +16,19 @@ import { useNewVersionNotice } from '@/lib/appVersion';
 import { ApiError, apiRequest } from '@/lib/api';
 import { graphql } from '@/lib/graphql';
 import type { LoginResult, SessionUser, Workspace } from '@/lib/types';
-import { TEAM_HOME_PAGES, isRoutedSettingsSection, isWorkspaceReturnRoute, notifyLocationChanged, openAppPath, parseRoute, pathForTab, teamHomePath, useAddress, useLocationVersion, useRoute, type Route } from '@/lib/routing';
-import { BuyerlyPageGate, BuyerlyPageSkeleton, useHeldPage } from '@/components/layout/BuyerlyPageSwitch';
-import { BuyerlyPageScopeContext } from '@/lib/pageScope';
+import {
+  currentRoute,
+  currentTab,
+  isWorkspaceReturnRoute,
+  openAppPath,
+  openSettings,
+  pathForTab,
+  useAppNavigate,
+  useRoute,
+  type WorkspaceRoute,
+} from '@/lib/routing';
+import { appPlaceOf, openTab, useCurrentPage } from '@/lib/navigation';
+import type { BuyerlyWorkspaceOutlet } from '@/components/layout/BuyerlyAppPages';
 import { AuthLoading } from '@/components/auth/AuthFrame';
 import { finishSplash } from '@/lib/splash';
 import { LoginView } from '@/components/auth/LoginView';
@@ -85,7 +84,7 @@ const styles = stylex.create({
  * replaces it as soon as it comes; a session it no longer knows signs out.
  */
 function rememberedStart(): { user: SessionUser; accounts: BrowserAccount[] } | null {
-  const route = parseRoute();
+  const route = currentRoute();
   if (route.kind !== 'workspace') return null;
   const held = rememberedSession();
   if (!held) return null;
@@ -115,41 +114,26 @@ function switchWorkspace(slug: string): Promise<unknown> {
   );
 }
 
-interface WorkspaceApplicationProps {
-  route: Extract<Route, { kind: 'workspace' }>;
-  /** Changes on every navigation, Back and Forward included. */
-  navigationKey: number;
+/** What the App hands the workspace's routes once its profile and scope are ready. */
+interface WorkspaceOutlet extends BuyerlyWorkspaceOutlet {
   workspace: Workspace;
   user: SessionUser;
   accounts: BrowserAccount[];
-  navigate: (path: string, replace?: boolean) => void;
-  refreshUser: () => Promise<SessionUser>;
   /** Opens a workspace of another account logged in to this browser. */
   switchAccount: (accountId: number, slug: string) => void;
 }
 
-const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
-  route,
-  navigationKey,
-  workspace,
-  user,
-  accounts,
-  navigate,
-  refreshUser,
-  switchAccount,
-}) => {
-  const activeTab = useShellStore((state) => state.activeTab);
-  const setActiveTab = useShellStore((state) => state.setActiveTab);
-  const campaignFilterTab = useViewStore((state) => state.campaignFilterTab);
+/** The workspace's layout route: its session, shortcuts and menus around Settings or the app's pages. */
+export const WorkspaceApplication: React.FC = () => {
+  const outlet = useOutletContext<WorkspaceOutlet>();
+  const { workspace, user, accounts, refreshUser, switchAccount } = outlet;
+  const navigate = useAppNavigate();
+  const routeNow = useRoute();
+  const route: WorkspaceRoute = routeNow.kind === 'workspace' ? routeNow : { kind: 'workspace', workspace: workspace.slug, tab: 'inbox' };
+  const { pathname, search } = useLocation();
+  const { teamKey: activeTeamKey, mine: myCampaigns } = useCurrentPage();
   const setCampaignFilterTab = useViewStore((state) => state.setCampaignFilterTab);
-  const settingsSection = useShellStore((state) => state.settingsSection);
-  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
-  const settingsTeamPath = useShellStore((state) => state.settingsTeamPath);
-  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
-  const activeTeamKey = useShellStore((state) => state.activeTeamKey);
-  const setActiveTeamKey = useShellStore((state) => state.setActiveTeamKey);
-  const myCampaigns = useShellStore((state) => state.myCampaigns);
-  const setMyCampaigns = useShellStore((state) => state.setMyCampaigns);
+  const rememberAppPlace = useShellStore((state) => state.rememberAppPlace);
   const setWorkspaceName = useScopeStore((state) => state.setWorkspaceName);
   const toggleDetailsPane = useDetailsPaneStore((state) => state.toggleDetailsPane);
   const toggleSidebarCollapsed = useShellStore((state) => state.toggleSidebarCollapsed);
@@ -171,6 +155,9 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   useEffect(() => {
     scopeStore.setWorkspaceRole(workspace.role);
   }, [workspace.role]);
+  useEffect(() => {
+    setWorkspaceName(workspace.name);
+  }, [setWorkspaceName, workspace.name]);
   const session = useMemo<WorkspaceSession>(() => ({
     user,
     workspace,
@@ -198,80 +185,28 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
   }), [accounts, navigate, refreshUser, switchAccount, user, workspace]);
   /** When G was pressed; read straight from the listener, so G and a fast next key never race a render. */
   const goToPressedAt = useRef(0);
-  const syncingRoute = useRef(true);
-  /**
-   * The address the shell opened itself for a tab change. When the route catches
-   * up with it the tab is already right, or already further on: on a slow device
-   * G A then G R can both land before the route renders, and taking the tab from
-   * the route would pull it back to Ads Manager and drop G R.
-   */
-  const ownPath = useRef<string | null>(null);
-
-  useEffect(() => {
-    // Back, Forward and openAppPath are someone else's navigation.
-    const forget = () => { ownPath.current = null; };
-    window.addEventListener('popstate', forget);
-    return () => window.removeEventListener('popstate', forget);
-  }, []);
 
   useEffect(() => {
     // A member or guest has no Administration pages: their addresses open Settings itself.
     if (route.settingsSection && !canOpenSettingsSection({ role: workspace.role }, route.settingsSection)) {
       navigate(`/${workspace.slug}/settings`, true);
-      return;
     }
-    const caughtUp = ownPath.current !== null && ownPath.current === window.location.pathname;
-    ownPath.current = null;
-    if (caughtUp) return;
-    syncingRoute.current = true;
-    setWorkspaceName(workspace.name);
-    // Settings and search keep the team they were opened from, for their way back.
-    if (route.tab !== 'preferences' && route.tab !== 'search') {
-      if (route.mine) setMyCampaigns(true);
-      else setActiveTeamKey(route.teamKey ?? null);
-    }
-    setActiveTab(route.tab);
-    if (route.entity) setCampaignFilterTab(route.entity);
-    if (route.tab === 'preferences') {
-      const { settingsSection: current } = shellStore;
-      // Plain /settings keeps any open section that has no address of its own.
-      if (route.settingsSection === 'team') openTeamSettings(route.teamPath ?? '');
-      else if (route.settingsSection) setSettingsSection(route.settingsSection);
-      else if (isRoutedSettingsSection(current)) setSettingsSection('preferences');
-    }
-    queueMicrotask(() => {
-      syncingRoute.current = false;
-    });
-  }, [navigate, openTeamSettings, route.entity, route.settingsSection, route.mine, route.teamKey, route.teamPath, route.tab, setActiveTab, setActiveTeamKey, setMyCampaigns, setCampaignFilterTab, setSettingsSection, setWorkspaceName, workspace.name, workspace.role, workspace.slug]);
+  }, [navigate, route.settingsSection, workspace.role, workspace.slug]);
 
   useEffect(() => {
-    // Linear closes the small-screen sidebar drawer on every navigation. Some
-    // settings sections have no address of their own, so a section change counts too.
+    // Settings and search go back to the app page they were opened from, and keep its team.
+    const place = appPlaceOf(route);
+    if (place) rememberAppPlace(place.tab, place.teamKey, place.mine);
+    // Ads Manager opens on the level last on screen.
+    if (route.entity) setCampaignFilterTab(route.entity);
+  }, [rememberAppPlace, route, setCampaignFilterTab]);
+
+  useEffect(() => {
+    // Linear closes the small-screen sidebar drawer on every navigation.
     // The desktop peek over the content closes the same way.
     setSidebarOpen(false);
     setSidebarPeekOpen(false);
-  }, [route, activeTab, settingsSection, settingsTeamPath, setSidebarOpen, setSidebarPeekOpen]);
-
-  useEffect(() => {
-    if (syncingRoute.current) return;
-    const desiredPath = pathForTab(
-      workspace.slug, activeTab, campaignFilterTab, settingsSection, settingsTeamPath, undefined, activeTeamKey, myCampaigns,
-    );
-    // A record under the page (a notification, an account) and the team Home's other tabs keep their address.
-    const underPage = ((activeTab === 'inbox' || activeTab === 'accounts') && window.location.pathname.startsWith(`${desiredPath}/`))
-      || (activeTab === 'team' && activeTeamKey !== null && TEAM_HOME_PAGES.some((page) => (
-        window.location.pathname.startsWith(teamHomePath(workspace.slug, activeTeamKey, page))
-      )));
-    if (window.location.pathname !== desiredPath && !underPage) {
-      // The filters and period follow to the next level; an old link's ad account stays behind.
-      const campaignSearch = new URLSearchParams(window.location.search);
-      campaignSearch.delete('account');
-      const campaignQuery = activeTab === 'campaigns' && /\/(ads-manager|my-campaigns)\//.test(window.location.pathname)
-        && campaignSearch.toString() ? `?${campaignSearch}` : '';
-      ownPath.current = desiredPath;
-      navigate(desiredPath + campaignQuery);
-    }
-  }, [activeTab, activeTeamKey, campaignFilterTab, myCampaigns, navigate, settingsSection, settingsTeamPath, workspace.slug]);
+  }, [pathname, setSidebarOpen, setSidebarPeekOpen]);
 
   useEffect(() => {
     // Linear keeps the unread count fresh in the sidebar and the tab title.
@@ -287,24 +222,25 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
 
   // The tab's title is the page's name, as Linear's ("Members", "Team › Ads Manager").
   const { teams: titleTeams } = useTeams(workspace.id, 'all');
+  const activeTab = route.tab;
   useEffect(() => {
     // An account's page and a document name their record themselves once it has loaded.
     if ((activeTab === 'accounts' || activeTab === 'team') && route.recordId) return;
     document.title = activeTab === 'search'
-      ? searchPageTitle(window.location.search)
+      // The search page's title follows its query, which only the address holds.
+      ? searchPageTitle(search)
       : pageTitle({
         activeTab,
         activeTeamKey,
         myCampaigns,
-        settingsSection,
-        settingsTeamPath,
+        settingsSection: route.settingsSection ?? 'preferences',
+        settingsTeamPath: route.teamPath ?? '',
         teamName: (key) => titleTeams?.find((team) => team.key === key)?.name ?? null,
-        teamPage: route.tab === 'team' ? route.teamPage : undefined,
-        rulesPage: route.tab === 'rules' ? route.rulesPage : undefined,
+        teamPage: route.teamPage,
+        rulesPage: route.rulesPage,
         inboxBadge,
       });
-    // The search page's title follows its query, which only the address holds.
-  }, [activeTab, activeTeamKey, inboxBadge, myCampaigns, navigationKey, route.recordId, route.rulesPage, route.tab, route.teamPage, settingsSection, settingsTeamPath, titleTeams]);
+  }, [activeTab, activeTeamKey, inboxBadge, myCampaigns, route.recordId, route.rulesPage, route.settingsSection, route.teamPage, route.teamPath, search, titleTeams]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -322,8 +258,8 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
       }
       // Linear's "Open/Close navigation sidebar": shows the collapsed sidebar over the content.
       if ((event.ctrlKey || event.metaKey) && !event.altKey && (event.key === '\\' || event.code === 'Backslash')) {
-        const { isSidebarCollapsed, isSidebarPeekOpen, activeTab: tab } = shellStore;
-        if (isSmallScreen() || !isSidebarCollapsed || tab === 'preferences') return;
+        const { isSidebarCollapsed, isSidebarPeekOpen } = shellStore;
+        if (isSmallScreen() || !isSidebarCollapsed || currentTab() === 'preferences') return;
         event.preventDefault();
         setSidebarPeekOpen(!isSidebarPeekOpen, 'keyboard');
         return;
@@ -332,7 +268,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
       const detailsKey = ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.code === 'KeyI')
         || (!event.ctrlKey && !event.altKey && !event.metaKey && event.key === ']');
       if (detailsKey) {
-        const { activeTab: tab } = shellStore;
+        const tab = currentTab();
         const pane = tab === 'campaigns' ? 'adsManager' : tab === 'rules' ? 'rules' : null;
         if (!pane) return;
         event.preventDefault();
@@ -350,13 +286,12 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
           const target = goToTargetFor(key);
           if (target) {
             event.preventDefault();
-            if (target === 'preferences') setSettingsSection(GO_TO_SETTINGS_SECTION);
+            if (target === 'preferences') openSettings(GO_TO_SETTINGS_SECTION);
             // G R from Recently deleted goes back to the list: the tab itself does not change.
             // G K from an account's page goes back to the Ad accounts list the same way.
-            if ((target === 'rules' || target === 'accounts') && shellStore.activeTab === target) {
+            else if ((target === 'rules' || target === 'accounts') && currentTab() === target) {
               openAppPath(pathForTab(workspace.slug, target));
-            }
-            setActiveTab(target);
+            } else openTab(target);
             goToPressedAt.current = 0;
           }
         }
@@ -364,7 +299,7 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setActiveTab, setSettingsSection, toggleDetailsPane, setSidebarPeekOpen, toggleSidebarCollapsed, toggleSidebarOpen, workspace.slug]);
+  }, [toggleDetailsPane, setSidebarPeekOpen, toggleSidebarCollapsed, toggleSidebarOpen, workspace.slug]);
 
   // The member's favorites of this workspace, for the sidebar and every star.
   useEffect(() => {
@@ -392,100 +327,12 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
     return () => systemTheme.removeEventListener('change', applyTheme);
   }, [interfaceTheme]);
 
-  // The page in `main` follows the store and the address once it has its data (#490);
-  // until then the previous page stays, as of its own navigation.
-  const { pathname, search } = useAddress();
-  const shown = useHeldPage({
-    tab: activeTab,
-    teamKey: activeTeamKey,
-    mine: myCampaigns,
-    entity: campaignFilterTab,
-    inboxTab: route.tab === 'inbox' ? route.inboxTab ?? null : null,
-    search,
-    pathname,
-    route,
-    navigationKey,
-    // Whether the store has caught up with the address yet (the sync above runs after the first paint).
-    addressed: route.tab === activeTab
-      && (route.tab === 'preferences' || route.tab === 'search' || (Boolean(route.mine) === myCampaigns && (route.mine || (route.teamKey ?? null) === activeTeamKey))),
-  }, `${activeTab}:${activeTeamKey ?? ''}:${myCampaigns}:${campaignFilterTab}:${navigationKey}`, workspace.id);
-  const page = shown.page;
-  const pageRoute = page.route;
-  const pageScope = useMemo(
-    () => ({ teamKey: page.teamKey, entity: page.entity, pathname: page.pathname }),
-    [page.teamKey, page.entity, page.pathname],
-  );
-
   return (
     <WorkspaceSessionProvider value={session}>
       <TooltipProvider>
         <div {...withClassName(stylex.props(styles.shell), 'app-shell')}>
-          {activeTab === 'preferences' ? (
-            <PreferencesView user={user} workspace={workspace} onUserChanged={refreshUser} />
-          ) : (
-            <>
-              <Sidebar />
-              <main className="buyerly-floating-canvas">
-                <BuyerlyPageScopeContext value={pageScope}>
-                  <Suspense fallback={<BuyerlyPageSkeleton />}>
-                    <BuyerlyPageGate ready={shown.ready}>
-                      {page.tab === 'inbox' && (
-                        <InboxView
-                          openEventId={pageRoute.tab === 'inbox' ? pageRoute.recordId : undefined}
-                          inboxTab={pageRoute.tab === 'inbox' ? pageRoute.inboxTab ?? null : null}
-                          // The query keeps Inbox filters while notifications open and close.
-                          onNavigate={(tab, eventId) => navigate(
-                            `/${workspace.slug}/inbox${tab ? `/${tab}` : ''}${eventId === null ? '' : `/${eventId}`}`
-                              + window.location.search,
-                          )}
-                          onOpenRecord={(path) => navigate(path)}
-                        />
-                      )}
-                      {page.tab === 'accounts' && (pageRoute.tab === 'accounts' && pageRoute.recordId ? (
-                        <AccountPage
-                          accountId={pageRoute.recordId}
-                          navigate={navigate}
-                          navigationKey={page.navigationKey}
-                        />
-                      ) : (
-                        <AccountsView navigate={navigate} navigationKey={page.navigationKey} />
-                      ))}
-                      {page.tab === 'campaigns' && (
-                        <CampaignsView
-                          key={page.mine ? 'mine' : 'all'}
-                          mine={page.mine}
-                          reveal={pageRoute.tab === 'campaigns' && pageRoute.entity && pageRoute.recordId
-                            ? { entity: pageRoute.entity, id: pageRoute.recordId }
-                            : undefined}
-                          navigationKey={page.navigationKey}
-                        />
-                      )}
-                      {page.tab === 'rules' && pageRoute.tab === 'rules' && pageRoute.rulesPage === 'recently-deleted' && (
-                        <RecentlyDeletedRulesPage
-                          rulesPath={pathForTab(workspace.slug, 'rules')}
-                          onOpenRules={() => navigate(pathForTab(workspace.slug, 'rules'))}
-                        />
-                      )}
-                      {page.tab === 'rules' && !pageRoute.rulesPage && (
-                        <RulesView
-                          revealId={pageRoute.tab === 'rules' ? pageRoute.recordId : undefined}
-                          navigationKey={page.navigationKey}
-                        />
-                      )}
-                      {page.tab === 'team' && pageRoute.tab === 'team' && (
-                        <TeamHomeView page={pageRoute.teamPage ?? 'overview'} documentId={pageRoute.recordId} navigate={navigate} />
-                      )}
-                      {page.tab === 'members' && <WorkspaceMembersView />}
-                      {page.tab === 'teams' && <WorkspaceTeamsView />}
-                      {page.tab === 'search' && (
-                        <SearchView workspace={workspace} navigate={navigate} navigationKey={page.navigationKey} />
-                      )}
-                    </BuyerlyPageGate>
-                  </Suspense>
-                </BuyerlyPageScopeContext>
-              </main>
-            </>
-          )}
+          {/* Settings, or the sidebar and the page on screen. */}
+          <Outlet context={outlet} />
           <AppUtilityBar />
         </div>
         {/* Over Settings too, as in Linear: Security & access adds "Revoke all other sessions". */}
@@ -503,7 +350,6 @@ const WorkspaceApplication: React.FC<WorkspaceApplicationProps> = ({
 };
 
 export const App: React.FC = () => {
-  const locationVersion = useLocationVersion();
   const [user, setUser] = useState<SessionUser | null | undefined>(remembered ? remembered.user : undefined);
   const [accounts, setAccounts] = useState<BrowserAccount[]>(remembered ? remembered.accounts : []);
   const route = useRoute();
@@ -535,11 +381,7 @@ export const App: React.FC = () => {
     if (!document.querySelector('[data-boot-loading]')) finishSplash();
   });
 
-  const navigate = useCallback((path: string, replace = false) => {
-    const method = replace ? 'replaceState' : 'pushState';
-    window.history[method]({}, '', path);
-    notifyLocationChanged();
-  }, []);
+  const navigate = useAppNavigate();
 
   const loadAccounts = useCallback(async () => {
     setKnownAccounts(await apiRequest<BrowserAccount[]>('/api/auth/accounts'));
@@ -833,18 +675,7 @@ export const App: React.FC = () => {
 
   if (route.kind !== 'workspace') return <AuthLoading label="Opening your workspace…" />;
   if (!resolvedWorkspace || !desiredScope || workspaceScope !== desiredScope) return <AuthLoading />;
-  const routeWorkspace = resolvedWorkspace;
-  return (
-    <WorkspaceApplication
-      key={desiredScope}
-      route={route}
-      navigationKey={locationVersion}
-      workspace={routeWorkspace}
-      user={user}
-      accounts={accounts}
-      navigate={navigate}
-      refreshUser={refreshUser}
-      switchAccount={switchAccount}
-    />
-  );
+  const outlet: WorkspaceOutlet = { workspace: resolvedWorkspace, user, accounts, refreshUser, switchAccount };
+  // The workspace's routes, from scratch for each account and workspace.
+  return <Outlet key={desiredScope} context={outlet} />;
 };

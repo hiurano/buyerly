@@ -1,4 +1,5 @@
 import React, { FormEvent, useEffect, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { ApiError, apiRequest } from '@/lib/api';
 import type { LoginResult } from '@/lib/types';
 import { AuthFrame, BuyerlyBrand } from './AuthFrame';
@@ -8,6 +9,21 @@ type LoginStage = 'start' | 'email' | 'verify' | 'check' | 'code';
 
 // The server's answer when a new address has not passed Cloudflare Turnstile yet.
 const HUMAN_CHECK_FAILED = "We couldn't verify you're human. Please try again.";
+
+const styles = stylex.create({
+  /** Read by screen readers only, as Tailwind's sr-only. */
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    borderWidth: 0,
+  },
+});
 
 interface LoginViewProps {
   inviteToken?: string;
@@ -186,7 +202,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <form onSubmit={requestLogin} noValidate>
             <h1>What’s your email address?</h1>
             <label className="buyerly-auth-field">
-              <span className="sr-only">Email address</span>
+              <span {...stylex.props(styles.srOnly)}>Email address</span>
               <input
                 type="email"
                 inputMode="email"
@@ -251,7 +267,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               <strong className="buyerly-auth-email">{email}</strong>
             </p>
             <label className="buyerly-auth-field buyerly-auth-code-field">
-              <span className="sr-only">Login code</span>
+              <span {...stylex.props(styles.srOnly)}>Login code</span>
               <input
                 type="text"
                 autoComplete="one-time-code"

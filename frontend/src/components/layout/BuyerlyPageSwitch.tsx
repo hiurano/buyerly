@@ -4,7 +4,7 @@ import { preloadPage, type PageToOpen } from '@/models/pagePreload';
 /** How long the previous page stays while the next one reads its data; then the skeleton shows. */
 export const PAGE_HOLD_MS = 1_000;
 
-/** What the shell shows in `main`: one page, as of one navigation. */
+/** What the app shows in `main`: one page, as of one navigation. */
 export interface BuyerlyShownPage<P> {
   page: P;
   key: string;
@@ -21,21 +21,14 @@ export interface BuyerlyShownPage<P> {
  * before, so rapid switches land on the last page only. After PAGE_HOLD_MS the
  * swap goes ahead with the skeleton.
  *
- * `page` is the page as the store and the address have it now; `key` names it.
+ * `page` is the page as the address has it now; `key` names it.
  */
-export function useHeldPage<P extends PageToOpen & { addressed: boolean }>(page: P, key: string, workspaceId: number): BuyerlyShownPage<P> {
+export function useHeldPage<P extends PageToOpen>(page: P, key: string, workspaceId: number): BuyerlyShownPage<P> {
   const [shown, setShown] = useState<BuyerlyShownPage<P>>(() => ({ page, key, ready: null }));
   const switchPage = useEffectEvent(() => {
     if (key === shown.key) {
       // Back to the page on screen before the next one came: drop that switch.
       setShown(shown);
-      return undefined;
-    }
-    // Settings has a layout of its own; going there and coming back are not held. Nor is a
-    // page the address never named (the store's state before it reads the address, as
-    // Campaigns before /my-campaigns): held, it would act on an address not its own.
-    if (page.tab === 'preferences' || shown.page.tab === 'preferences' || !shown.page.addressed) {
-      setShown({ page, key, ready: null });
       return undefined;
     }
     const next = { page, key, ready: preloadPage(page, workspaceId) };

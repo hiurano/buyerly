@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { changeInviteLink, fetchInviteLink, type InviteLink } from '@/lib/workspaces';
 import { finishedEmails, isEmail, parseEmails } from '@/lib/emails';
 import type { Workspace } from '@/lib/types';
@@ -11,6 +12,32 @@ import {
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
 import { ASSIGNABLE_ROLES, roleLabel } from '@/components/preferences/MemberDialogs';
+import { colors } from '@/styles/tokens.stylex';
+
+const styles = stylex.create({
+  roleOption: {
+    height: 'auto',
+    paddingTop: 6,
+    paddingBottom: 6,
+  },
+  roleOptionText: {
+    minWidth: 0,
+  },
+  roleOptionLabel: {
+    display: 'block',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  roleOptionDetail: {
+    display: 'block',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 12,
+    color: colors['--text-tertiary'],
+  },
+});
 
 
 type LinkState =
@@ -167,10 +194,10 @@ export const InviteTeamStep: React.FC<InviteTeamStepProps> = ({ workspace, busy,
             <DropdownMenuContent align="end" style={{ zIndex: 1100, width: 280 }}>
               <DropdownMenuRadioGroup value={role} onValueChange={setRole}>
                 {ASSIGNABLE_ROLES.map((option) => (
-                  <DropdownMenuRadioItem key={option.value} value={option.value} className="!h-auto py-1.5">
-                    <span className="min-w-0">
-                      <span className="block truncate">{option.label}</span>
-                      <span className="block truncate text-[12px] text-[var(--text-tertiary)]">{option.description}</span>
+                  <DropdownMenuRadioItem key={option.value} value={option.value} xstyle={styles.roleOption}>
+                    <span {...stylex.props(styles.roleOptionText)}>
+                      <span {...stylex.props(styles.roleOptionLabel)}>{option.label}</span>
+                      <span {...stylex.props(styles.roleOptionDetail)}>{option.description}</span>
                     </span>
                     {role === option.value && <BuyerlyCheckIcon size={14} />}
                   </DropdownMenuRadioItem>

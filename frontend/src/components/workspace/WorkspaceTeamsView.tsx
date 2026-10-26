@@ -13,8 +13,9 @@ import { HeaderCreateButton } from '@/ui/HeaderCreateButton';
 import { BuyerlyDataListRow, BuyerlyDataListToolbar, BuyerlyDataTable, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 import { toast } from '@/ui/toast';
 import { ListSearchField } from './ListSearchField';
-import { useShellStore } from '@/models/shellStore';
 import { colors } from '@/styles/tokens.stylex';
+import { openSettings } from '@/lib/routing';
+import { openTab } from '@/lib/navigation';
 
 const styles = stylex.create({
   root: {
@@ -112,9 +113,6 @@ const MAX_FACES = 5;
 export const WorkspaceTeamsView: React.FC = () => {
   const { workspace, user } = useWorkspaceSession();
   const { teams, error, refresh } = useTeams(workspace.id, 'active');
-  const setActiveTab = useShellStore((state) => state.setActiveTab);
-  const setActiveTeamKey = useShellStore((state) => state.setActiveTeamKey);
-  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
   const [members, setMembers] = useState<MemberItem[]>([]);
   const [query, setQuery] = useState('');
   const [direction, setDirection] = useState<'asc' | 'desc'>('asc');
@@ -138,8 +136,7 @@ export const WorkspaceTeamsView: React.FC = () => {
   }, [direction, query, teams]);
 
   const openTeam = (team: TeamItem) => {
-    setActiveTeamKey(team.key);
-    setActiveTab('team');
+    openTab('team', { teamKey: team.key });
   };
 
   /** Linear's Join and Leave: anyone may put themselves on a team, or take themselves off. */
@@ -247,8 +244,7 @@ export const WorkspaceTeamsView: React.FC = () => {
               label="Create team"
               tooltip="Create team"
               onClick={() => {
-                setSettingsSection('new-team');
-                setActiveTab('preferences');
+                openSettings('new-team');
               }}
             />
           )}

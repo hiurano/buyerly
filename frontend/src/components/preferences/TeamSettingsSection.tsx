@@ -35,9 +35,9 @@ import { ChoiceDialog, errorMessage, memberName, type MemberItem } from './Membe
 import { Initials, RoleStatus, RowMenu } from './MembersSection';
 import { TeamIcon } from './TeamIcon';
 import { useLastPresent } from '@/ui/useLastPresent';
-import { useShellStore } from '@/models/shellStore';
 import { rowMarker } from '@/ui/markers.stylex';
 import { colors } from '@/styles/tokens.stylex';
+import { openSettings, openTeamSettings } from '@/lib/routing';
 
 const SM = '@media (min-width: 640px)';
 
@@ -318,7 +318,6 @@ const accountName = (account: MetaAccount) => account.custom_name || account.nam
  * the team by its identifier, so renaming the identifier moves the address.
  */
 export const TeamSettingsSection: React.FC<{ workspace: Workspace; path: string }> = ({ workspace, path }) => {
-  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
   const { teams, error, refresh } = useTeams(workspace.id, 'all');
   const [teamKey, sub = ''] = path.split('/');
   const page: TeamPage = sub === 'general' || sub === 'members' || sub === 'accounts' ? sub : 'overview';
@@ -334,7 +333,7 @@ export const TeamSettingsSection: React.FC<{ workspace: Workspace; path: string 
         title="Team not found"
         detail="It may have been deleted, or its identifier has changed."
         actionLabel="Go to Teams"
-        onAction={() => setSettingsSection('teams')}
+        onAction={() => openSettings('teams')}
       />
     );
   }
@@ -346,13 +345,11 @@ export const TeamSettingsSection: React.FC<{ workspace: Workspace; path: string 
 
 /** Linear's way back from a team's page: the team's icon and name, or "Teams" from its overview. */
 const TeamBreadcrumb: React.FC<{ team?: TeamItem }> = ({ team }) => {
-  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
-  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
   return (
     <button
       type="button"
       className="preferences-breadcrumb"
-      onClick={() => (team ? openTeamSettings(team.key) : setSettingsSection('teams'))}
+      onClick={() => (team ? openTeamSettings(team.key) : openSettings('teams'))}
     >
       <ChevronLeft size={14} aria-hidden="true" />
       {team && <TeamIcon size={12} />}
@@ -396,8 +393,6 @@ const DangerRow: React.FC<{ title: string; description: string; action: string; 
 );
 
 const TeamOverview: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ workspace, team }) => {
-  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
-  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
   const { user } = useWorkspaceSession();
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [retireOpen, setRetireOpen] = useState(false);
@@ -537,7 +532,7 @@ const TeamOverview: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ work
             () => deleteTeam(workspace.id, team.id),
             `${team.name} was deleted`,
             "Couldn't delete the team",
-          )) setSettingsSection('teams');
+          )) openSettings('teams');
         }}
       />
     </>
@@ -643,7 +638,6 @@ const DeleteTeamDialog: React.FC<{
  * loses focus or on Enter; Escape puts the saved value back.
  */
 const TeamGeneral: React.FC<{ workspace: Workspace; team: TeamItem }> = ({ workspace, team }) => {
-  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
   const { user } = useWorkspaceSession();
   // Only those who run the team change it; everyone else reads it.
   const readOnly = !canManageTeam(team, workspace.role, user.id);

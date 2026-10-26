@@ -23,7 +23,7 @@ import {
   DropdownMenuLabel,
 } from '@/ui/DropdownMenu';
 import { useScopeStore } from '@/models/scopeStore';
-import { useShellStore } from '@/models/shellStore';
+import { openSettings } from '@/lib/routing';
 
 /** Tailwind's font-sans, as tailwind.config.js sets it. */
 const SANS = '"Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -146,8 +146,6 @@ const styles = stylex.create({
 
 export const SidebarHeader: React.FC = () => {
   const workspaceName = useScopeStore((state) => state.workspaceName);
-  const setActiveTab = useShellStore((state) => state.setActiveTab);
-  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
   const { user, workspace, accounts, switchWorkspace, openCreateWorkspace, openAddAccount } = useWorkspaceSession();
   const blocks = accountBlocks(accounts, user);
   const isOpenAccount = (accountId?: number) => accountId === undefined || user.id == null || accountId === user.id;
@@ -233,8 +231,7 @@ export const SidebarHeader: React.FC = () => {
             {/* 1. Settings */}
             <DropdownMenuItem
               onSelect={() => {
-                setSettingsSection('preferences');
-                setActiveTab('preferences');
+                openSettings('preferences');
               }}
             >
               <span {...stylex.props(styles.truncate)}>Settings</span>
@@ -255,8 +252,7 @@ export const SidebarHeader: React.FC = () => {
             {canAdministerWorkspace(workspace) && (
               <DropdownMenuItem
                 onSelect={() => {
-                  setSettingsSection('members');
-                  setActiveTab('preferences');
+                  openSettings('members');
                 }}
               >
                 <span {...stylex.props(styles.truncate)}>Invite and manage members</span>

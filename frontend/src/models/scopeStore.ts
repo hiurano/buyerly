@@ -1,4 +1,4 @@
-import { parseRoute } from '@/lib/routing';
+import { currentRoute } from '@/lib/routing';
 import type { Workspace } from '@/lib/types';
 import { pool } from './pool';
 import { sync } from './sync';
@@ -41,7 +41,7 @@ export class ScopeStore {
   captureScope(): () => boolean {
     const { workspaceScope, workspaceSlug, scopeGeneration } = this;
     return () => {
-      const current = parseRoute();
+      const current = currentRoute();
       return workspaceScope !== null && this.workspaceScope === workspaceScope
         && this.scopeGeneration === scopeGeneration && current.kind === 'workspace'
         && current.workspace === workspaceSlug;
