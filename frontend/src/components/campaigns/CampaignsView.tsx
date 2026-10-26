@@ -27,6 +27,7 @@ import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapse
 import { ViewTitle } from '@/components/teams/ViewTitle';
 import { favoritePath } from '@/lib/favorites';
 import { pathForTab } from '@/lib/routing';
+import { openTab } from '@/lib/navigation';
 import { usePageEntity, usePagePathname } from '@/lib/pageScope';
 import { useActiveTeam } from '@/lib/teams';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
@@ -313,7 +314,6 @@ function facetIcon(fieldId: string, option: FilterOption): React.ReactNode {
 const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reveal, navigationKey }) => {
   // The level this page was opened on, while the next page gets ready (#490).
   const campaignFilterTab = usePageEntity();
-  const setCampaignFilterTab = useViewStore((state) => state.setCampaignFilterTab);
   const isDisplayOptionsOpen = useViewStore((state) => state.isDisplayOptionsOpen);
   const toggleDisplayOptions = useViewStore((state) => state.toggleDisplayOptions);
   const setIsDisplayOptionsOpen = useViewStore((state) => state.setIsDisplayOptionsOpen);
@@ -1176,7 +1176,8 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
               { id: 'ads', label: 'Ads' },
             ]}
             activeTabId={campaignFilterTab}
-            onChange={(id) => setCampaignFilterTab(id as AdsManagerEntity)}
+            // Each level has its own address; the filters and period go along.
+            onChange={(id) => openTab('campaigns', { entity: id as AdsManagerEntity })}
             aria-label="Level"
           />
 

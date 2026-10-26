@@ -15,8 +15,8 @@ import { DataState } from '@/ui/DataState';
 import { HeaderCreateButton } from '@/ui/HeaderCreateButton';
 import { BuyerlyDataListRow, BuyerlyDataListToolbar, BuyerlyDataTable, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 import { ListSearchField } from './ListSearchField';
-import { useShellStore } from '@/models/shellStore';
 import { colors } from '@/styles/tokens.stylex';
+import { openTab } from '@/lib/navigation';
 
 const styles = stylex.create({
   root: {
@@ -122,8 +122,6 @@ const COLUMNS: BuyerlyDataListColumn[] = [
 const WorkspaceMembersViewContent: React.FC = () => {
   const { workspace } = useWorkspaceSession();
   const { teams } = useTeams(workspace.id, 'active');
-  const setActiveTab = useShellStore((state) => state.setActiveTab);
-  const setActiveTeamKey = useShellStore((state) => state.setActiveTeamKey);
   // From the pool: a page already visited draws its members at once (#488).
   const { data: members, error } = usePoolQuery(membersQuery(workspace.id));
   const [query, setQuery] = useState('');
@@ -187,8 +185,7 @@ const WorkspaceMembersViewContent: React.FC = () => {
                   className="team-chip"
                   title={team.name}
                   onClick={() => {
-                    setActiveTeamKey(team.key);
-                    setActiveTab('team');
+                    openTab('team', { teamKey: team.key });
                   }}
                 >
                   <TeamIcon size={14} />

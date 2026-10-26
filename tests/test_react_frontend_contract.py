@@ -9,7 +9,7 @@ ROOT = Path(__file__).parents[1]
 class TestReactFrontendContract(unittest.TestCase):
     def test_workspace_routes_scope_api_requests(self):
         api = (ROOT / "frontend/src/lib/api.ts").read_text()
-        self.assertIn("const route = parseRoute()", api)
+        self.assertIn("const route = currentRoute()", api)
         self.assertIn("headers.set('X-Workspace-Slug', route.workspace)", api)
         self.assertIn("key={desiredScope}", self.app)
         self.assertIn("workspaceScope !== desiredScope", self.app)
@@ -24,6 +24,8 @@ class TestReactFrontendContract(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = (ROOT / "frontend" / "src" / "App.tsx").read_text()
+        # The app's pages, as React Router's page routes (#495).
+        cls.app_pages = (ROOT / "frontend" / "src" / "components" / "layout" / "BuyerlyAppPages.tsx").read_text()
         cls.routing = (ROOT / "frontend" / "src" / "lib" / "routing.ts").read_text()
         cls.login = (
             ROOT / "frontend" / "src" / "components" / "auth" / "LoginView.tsx"
@@ -224,7 +226,7 @@ class TestReactFrontendContract(unittest.TestCase):
         turnstile = (ROOT / "frontend" / "src" / "components" / "auth" / "TurnstileWidget.tsx").read_text()
         self.assertIn("challenges.cloudflare.com/turnstile/v0/api.js?render=explicit", turnstile)
         self.assertIn("0x4AAAAAAFb_r8WtuISX0Y1E", turnstile)
-        self.assertIn("parts[0] === 'signup'", self.routing)
+        self.assertIn("{ path: 'signup', handle: handle({ kind: 'signup' }) }", self.routing)
         self.assertIn("mode={route.kind === 'signup' ? 'signup' : 'login'}", self.app)
 
     def test_workspace_creation_and_welcome_have_only_approved_fields(self):
@@ -238,19 +240,21 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertNotIn("Title", self.welcome)
 
     def test_router_contains_only_canonical_entry_and_workspace_shapes(self):
+        # React Router's tree (#495): the entry screens, then the workspace's pages.
         for contract in (
-            "parts[0] === 'login'",
-            "parts[0] === 'signup'",
-            "parts[0] === 'create-workspace'",
-            "parts[0] === 'auth'",
-            "parts[0] === 'invite'",
-            "parts[1] === 'inbox'",
-            "parts[1] === 'ads-manager'",
-            "parts[1] === 'rules'",
-            "parts[1] === 'settings'",
-            "SYSTEM_ROOTS.has(parts[0])",
+            "{ path: 'login', handle: handle({ kind: 'login' }) }",
+            "{ path: 'signup', handle: handle({ kind: 'signup' }) }",
+            "{ path: 'create-workspace', handle: handle({ kind: 'create-workspace' }) }",
+            "{ path: 'auth/email/verify', handle: handle({ kind: 'verify-email-link' }) }",
+            "{ path: 'invite/:token', handle: handle({ kind: 'invite' }) }",
+            "{ path: 'inbox/:recordId?', handle: handle({ page: 'inbox' }) }",
+            "ads-manager`}/${entity}/:recordId?",
+            "{ path: `${prefix}rules/:recordId?`, handle: handle({ page: 'rules' }) }",
+            "{ id: 'settings', path: 'settings', children: settingsRoutes }",
+            "if (SYSTEM_ROOTS.has(workspace)) return { kind: 'unknown' };",
         ):
             self.assertIn(contract, self.routing)
+        self.assertIn("createBrowserRouter(withComponents(buyerlyRouteTree))", (ROOT / "frontend" / "src" / "routes.tsx").read_text())
         # Statistics was removed: no route, no screen.
         self.assertNotIn("statistics", self.routing)
         self.assertFalse((ROOT / "frontend" / "src" / "components" / "statistics").exists())
@@ -320,7 +324,7 @@ class TestReactFrontendContract(unittest.TestCase):
             "Couldn't load ad accounts",
             "Couldn't load campaigns",
             "Zero-activity entities are included",
-            "setCampaignFilterTab",
+            "openTab('campaigns', { entity: id as AdsManagerEntity })",
             "BuyerlyFilterButton",
             "BuyerlyFilterMenu",
             "ActiveFilterFormula",
@@ -345,7 +349,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertEqual(view_model.count("grouping: 'account',"), 3)
         self.assertIn("{ value: 'account', label: 'Ad account' }", view_model)
         # My campaigns is the same view over the accounts you lead, with views of its own.
-        self.assertIn("mine={page.mine}", self.app)
+        self.assertIn("mine={Boolean(route.mine)}", self.app_pages)
         self.assertIn("account.lead_user_id === user.id", self.campaigns_view)
         self.assertIn("'my-campaigns' : 'ads-manager'", view_model)
         self.assertFalse((ROOT / "frontend" / "src" / "components" / "campaigns" / "MyCampaignsView.tsx").exists())
@@ -873,7 +877,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertNotIn("RecentlyDeletedView", self.rules_view)
         self.assertNotIn("runs nowhere yet", self.rules_view)
         self.assertIn("export const RECENTLY_DELETED_RULES = 'recently-deleted';", self.routing)
-        self.assertIn("<RecentlyDeletedRulesPage", self.app)
+        self.assertIn("<RecentlyDeletedRulesPage", self.app_pages)
         recently_deleted_page = (
             ROOT / "frontend" / "src" / "components" / "rules" / "RecentlyDeletedRulesPage.tsx"
         ).read_text()
@@ -956,13 +960,13 @@ class TestReactFrontendContract(unittest.TestCase):
         workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
 
         # A page with its own address, its query and tab in it, and the tab title Linear gives it.
-        self.assertIn("parts[1] === 'search'", routing)
+        self.assertIn("{ path: 'search', handle: handle({ page: 'search' }) }", routing)
         self.assertIn("return `/${workspace}/search", search)
         for key in ("'q'", "'type'", "'status'", "'account'", "'order'", "'includeDeleted'"):
             self.assertIn(key, search)
         self.assertIn("Search: ${query}", search)
-        self.assertIn("searchPageTitle(window.location.search)", self.app)
-        self.assertIn("<SearchView workspace={workspace}", self.app)
+        self.assertIn("searchPageTitle(search)", self.app)
+        self.assertIn("<SearchView workspace={workspace}", self.app_pages)
 
         # A real source scoped by the address, asked on Enter, with its states in words.
         self.assertIn("/api/search?", search)
@@ -1025,7 +1029,7 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("[data-row-id=", reveal)
         for view in (self.campaigns_view, self.rules_view):
             self.assertIn("useRevealRow({", view)
-        self.assertIn("navigationKey={locationVersion}", self.app)
+        self.assertIn("const navigationKey = useNavigationKey();", self.app_pages)
         self.assertIn("data-row-id={rule.id}", self.rule_card)
         self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?command-menu( .*)?$")
         self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?search-page( .*)?$")
@@ -1084,7 +1088,7 @@ class TestReactFrontendContract(unittest.TestCase):
 
         # Addresses, G K beside O K, Ctrl/Cmd+K, and the sidebar's Workspace section as Linear's:
         # Members, Ad accounts (Linear's Projects), Teams; each team has Ads Manager, Ad accounts, Rules.
-        self.assertIn("parts[1] === 'accounts'", routing)
+        self.assertIn("{ path: `${prefix}accounts/:recordId?`, handle: handle({ page: 'accounts' }) }", routing)
         self.assertIn("accounts: 'K',", shortcuts)
         self.assertIn("label: 'Go to ad accounts'", menu)
         self.assertLess(sidebar.index('label="Inbox"'), sidebar.index('title="Workspace"'))
@@ -1094,8 +1098,8 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertLess(sidebar.index("label: 'Home'"), sidebar.index("label: 'Campaigns'"))
         self.assertLess(sidebar.index("label: 'Campaigns'"), sidebar.index("label: 'Rules'"))
         self.assertIn("return `/${workspace}/accounts/${encodeURIComponent(result.id)}`", search)
-        self.assertIn("<AccountsView", self.app)
-        self.assertIn("<AccountPage", self.app)
+        self.assertIn("<AccountsView", self.app_pages)
+        self.assertIn("<AccountPage", self.app_pages)
 
         # The shared header button and empty state; the view is saved per member (#385).
         self.assertIn('<HeaderCreateButton label="Add account" tooltip="Add ad account"', view)

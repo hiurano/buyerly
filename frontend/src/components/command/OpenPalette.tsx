@@ -26,7 +26,7 @@ import { SearchResultFacts, StatusMark, formatAge, statusLabel } from '@/compone
 import { SettingsPageIcon } from '@/components/preferences/SettingsPageIcon';
 import { commandMenuStore, useCommandMenuStore, type OpenPaletteKind } from '@/models/commandMenuStore';
 import { useScopeStore } from '@/models/scopeStore';
-import { useShellStore } from '@/models/shellStore';
+import { openSettings as openSettingsPage } from '@/lib/routing';
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, another palette. */
 const OPEN_LAYER_SELECTOR = [
@@ -370,8 +370,6 @@ interface PaletteBodyProps {
 /** The palette's content, mounted per open so it starts empty. */
 const PaletteBody: React.FC<PaletteBodyProps> = ({ kind, workspace, navigate, choose }) => {
   const scope = useScopeStore((state) => state.workspaceScope);
-  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
-  const setActiveTab = useShellStore((state) => state.setActiveTab);
   const setRecordActionsFor = useCommandMenuStore((state) => state.setRecordActionsFor);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState('');
@@ -390,10 +388,7 @@ const PaletteBody: React.FC<PaletteBodyProps> = ({ kind, workspace, navigate, ch
     setRecordActionsFor(withActions ? `${result.kind}:${result.id}` : null);
     go(searchResultPath(slug, result));
   });
-  const openSettings = (section: SettingsPage) => choose(() => {
-    setSettingsSection(section);
-    setActiveTab('preferences');
-  });
+  const openSettings = (section: SettingsPage) => choose(() => openSettingsPage(section));
 
   const records: SearchResult[] = recordKind ? (text ? (quick ?? []).slice(0, QUICK_RESULTS_LIMIT) : recent) : [];
   const settingsGroups = kind === 'settings' ? filterSettingsGroups(text, settingsGroupsFor(workspace)) : [];

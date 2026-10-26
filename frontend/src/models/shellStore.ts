@@ -17,7 +17,7 @@ export type SettingsSection =
   | 'teams'
   /** Linear's "Create a new team" page, at /settings/new-team. */
   | 'new-team'
-  /** One team's pages at /settings/teams/<KEY>[/general|/members|/accounts]; `settingsTeamPath` says which. */
+  /** One team's pages at /settings/teams/<KEY>[/general|/members|/accounts]; the address says which. */
   | 'team'
   | 'members'
   | 'workspace-security'
@@ -31,7 +31,7 @@ function storedTheme(): InterfaceTheme {
   return theme === 'light' || theme === 'dark' ? theme : 'system';
 }
 
-/** The app's frame: the sidebar, which page is open, Settings' page and the theme. */
+/** The app's frame: the sidebar, the app page Settings returns to, and the theme. */
 export class ShellStore {
   sidebarWidth = 244;
   isSidebarCollapsed = false;
@@ -44,15 +44,12 @@ export class ShellStore {
    * cursor visits the sidebar; opened by hover, leaving the sidebar closes it.
    */
   sidebarPeekSource: 'hover' | 'keyboard' = 'hover';
-  activeTab: ActiveTab = 'campaigns';
-  lastAppTab: AppTab = 'campaigns';
-  /** The team whose Ads Manager, Ad accounts or Rules are on screen (/team/<KEY>/…); null for the workspace's own. */
-  activeTeamKey: string | null = null;
-  /** Ads Manager over the ad accounts you lead (/my-campaigns), as Linear's My issues. */
-  myCampaigns = false;
-  settingsSection: SettingsSection = 'preferences';
-  /** The open team page, "<KEY>" or "<KEY>/<page>", while `settingsSection` is 'team'. */
-  settingsTeamPath = '';
+  /**
+   * The app page last on screen: Settings and search go back to it, and the
+   * sidebar keeps its team while they are open. The address says which page is
+   * open (#495); this only remembers where it was.
+   */
+  lastAppPlace: { tab: AppTab; teamKey: string | null; mine: boolean } = { tab: 'campaigns', teamKey: null, mine: false };
   interfaceTheme: InterfaceTheme = storedTheme();
   /** Ctrl/Cmd+K's "Create new label…": Settings → Rules → Labels opens its new row. */
   newRuleLabelRequest = 0;
@@ -91,40 +88,19 @@ export class ShellStore {
     this.sidebarPeekSource = source;
   }
 
-  setActiveTab(tab: ActiveTab) {
-    this.activeTab = tab;
-    if (tab !== 'preferences' && tab !== 'search') this.lastAppTab = tab;
-  }
-
-  /** Opening a team's page leaves My campaigns. */
-  setActiveTeamKey(key: string | null) {
-    this.activeTeamKey = key;
-    this.myCampaigns = false;
-  }
-
-  /** Turning it on leaves any team's pages. */
-  setMyCampaigns(on: boolean) {
-    this.myCampaigns = on;
-    if (on) this.activeTeamKey = null;
-  }
-
-  setSettingsSection(section: SettingsSection) {
-    this.settingsSection = section;
-  }
-
-  /** Opens a team's settings page: "MED", "MED/general", "MED/members" or "MED/accounts". */
-  openTeamSettings(path: string) {
-    this.settingsSection = 'team';
-    this.settingsTeamPath = path;
+  rememberAppPlace(tab: AppTab, teamKey: string | null, mine: boolean) {
+    const place = this.lastAppPlace;
+    if (place.tab === tab && place.teamKey === teamKey && place.mine === mine) return;
+    this.lastAppPlace = { tab, teamKey, mine };
   }
 
   setInterfaceTheme(theme: InterfaceTheme) {
     this.interfaceTheme = theme;
   }
 
+  /** Settings → Rules → Labels, opened by the caller, opens its new row. */
   requestNewRuleLabel() {
     this.newRuleLabelRequest += 1;
-    this.settingsSection = 'rule-labels';
   }
 
   /** Settings → Rules → Labels has opened its new row. */

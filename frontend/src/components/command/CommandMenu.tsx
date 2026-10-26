@@ -5,7 +5,8 @@ import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
 import { ArrowRight, Maximize2 } from 'lucide-react';
-import { pathForTab, recentlyDeletedRulesPath } from '@/lib/routing';
+import { currentTab, openSettings, pathForTab, recentlyDeletedRulesPath } from '@/lib/routing';
+import { openLastAppPage, useCurrentPage } from '@/lib/navigation';
 import type { Workspace } from '@/lib/types';
 import { openSearchPage } from '@/components/search/openSearchPage';
 import { StatusMark } from '@/components/search/SearchView';
@@ -118,7 +119,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
       if (isTypingTarget(event.target) || document.querySelector(OPEN_LAYER_SELECTOR)) return;
       event.preventDefault();
       // In Settings `/` searches the settings, as Linear's "Search settings /".
-      if (shellStore.activeTab === 'preferences') {
+      if (currentTab() === 'preferences') {
         document.querySelector<HTMLInputElement>(SETTINGS_SEARCH_SELECTOR)?.focus();
         return;
       }
@@ -289,15 +290,12 @@ interface CommandPaletteProps {
 
 /** The menu's content, mounted on every open so it starts empty. */
 const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, choose }) => {
-  const activeTab = useShellStore((state) => state.activeTab);
+  const { tab: activeTab } = useCurrentPage();
   const campaignFilterTab = useViewStore((state) => state.campaignFilterTab);
   const openCreateRuleModal = useDialogStore((state) => state.openCreateRuleModal);
   const isSidebarCollapsed = useShellStore((state) => state.isSidebarCollapsed);
   const toggleSidebarCollapsed = useShellStore((state) => state.toggleSidebarCollapsed);
   const scope = useScopeStore((state) => state.workspaceScope);
-  const setSettingsSection = useShellStore((state) => state.setSettingsSection);
-  const setActiveTab = useShellStore((state) => state.setActiveTab);
-  const lastAppTab = useShellStore((state) => state.lastAppTab);
   const pageGroup = usePageGroup();
   const favoriteHere = useFavorites((state) => state.here);
   const starred = useFavorites((state) => state.favorites.some((favorite) => favorite.path === state.here?.path));
@@ -315,7 +313,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
       openSearchPage();
       return;
     }
-    if (shellStore.activeTab !== 'search') {
+    if (currentTab() !== 'search') {
       rememberSearchReturnPath(`${window.location.pathname}${window.location.search}`);
     }
     go(searchPagePath(slug, { query: text, tab: 'all', statuses: [], accounts: [], order: 'relevance', includeDeleted: false }));
@@ -332,8 +330,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
         keywords: SETTINGS_PAGE_KEYWORDS[page.section].split(' '),
         icon: <SettingsPageIcon section={page.section} size={14} />,
         run: () => {
-          setSettingsSection(page.section);
-          setActiveTab('preferences');
+          openSettings(page.section);
         },
       })),
     }))
@@ -422,7 +419,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
           }]),
         // Linear's way out of Settings, also on Ctrl+Esc there.
         ...(inSettings
-          ? [{ id: 'back-to-app', label: 'Back to app', icon: arrowIcon, shortcut: 'Ctrl Esc', run: () => setActiveTab(lastAppTab) }]
+          ? [{ id: 'back-to-app', label: 'Back to app', icon: arrowIcon, shortcut: 'Ctrl Esc', run: openLastAppPage }]
           : []),
       ],
     },

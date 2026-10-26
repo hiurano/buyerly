@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import {
   ADMINISTRATION_PAGES,
-  canOpenSettingsSection,
   SETTINGS_PAGE_GROUPS,
   SETTINGS_PAGE_KEYWORDS,
   canAdministerWorkspace,
@@ -32,6 +31,8 @@ import { findModelContext, setWebMcpEnabled, useWebMcpEnabled } from '@/webmcp/r
 import { SidebarBackdrop, useSidebarDrawer } from '@/components/sidebar/SidebarDrawer';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { useShellStore, type InterfaceTheme } from '@/models/shellStore';
+import { openSettings, openTeamSettings, useSettingsPage } from '@/lib/routing';
+import { openLastAppPage } from '@/lib/navigation';
 
 const themeOptions: Array<{
   value: InterfaceTheme;
@@ -53,12 +54,8 @@ interface PreferencesViewProps {
 export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspace, onUserChanged }) => {
   const interfaceTheme = useShellStore((state) => state.interfaceTheme);
   const setInterfaceTheme = useShellStore((state) => state.setInterfaceTheme);
-  const lastAppTab = useShellStore((state) => state.lastAppTab);
-  const setActiveTab = useShellStore((state) => state.setActiveTab);
-  const section = useShellStore((state) => state.settingsSection);
-  const setSection = useShellStore((state) => state.setSettingsSection);
-  const teamPath = useShellStore((state) => state.settingsTeamPath);
-  const openTeamSettings = useShellStore((state) => state.openTeamSettings);
+  // The page of Settings is the address's (#495); the App sends a section this role has no access to back to /settings.
+  const { section, teamPath } = useSettingsPage();
   const [searchQuery, setSearchQuery] = useState('');
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -90,21 +87,16 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
     .filter((page) => visibleSections.includes(page.section));
 
   useEffect(() => {
-    // A member or guest has no Administration pages; their addresses open Preferences.
-    if (!canOpenSettingsSection(workspace, section)) setSection('preferences');
-  }, [section, setSection, workspace]);
-
-  useEffect(() => {
     // Linear's "Back to app": Ctrl+Esc leaves Settings for the page it came from.
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || !event.ctrlKey || event.altKey || event.shiftKey || event.metaKey) return;
       if (document.querySelector('[role="dialog"], [role="alertdialog"], [cmdk-root]')) return;
       event.preventDefault();
-      setActiveTab(lastAppTab);
+      openLastAppPage();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [lastAppTab, setActiveTab]);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -147,7 +139,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
             type="button"
             aria-label="Back to app"
             className="preferences-back-button"
-            onClick={() => setActiveTab(lastAppTab)}
+            onClick={openLastAppPage}
           >
             <span className="preferences-back-icon" aria-hidden="true">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
@@ -195,7 +187,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                 data-active={section === 'preferences'}
                 onClick={(e) => {
                   e.preventDefault();
-                  setSection('preferences');
+                  openSettings('preferences');
                 }}
               >
                 <SettingsPageIcon section="preferences" className="preferences-nav-icon" />
@@ -209,7 +201,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                 data-active={section === 'profile'}
                 onClick={(e) => {
                   e.preventDefault();
-                  setSection('profile');
+                  openSettings('profile');
                 }}
               >
                 <SettingsPageIcon section="profile" className="preferences-nav-icon" />
@@ -223,7 +215,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                 data-active={notificationsOpen}
                 onClick={(e) => {
                   e.preventDefault();
-                  setSection('notifications');
+                  openSettings('notifications');
                 }}
               >
                 <SettingsPageIcon section="notifications" className="preferences-nav-icon" />
@@ -237,7 +229,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                 data-active={section === 'security'}
                 onClick={(e) => {
                   e.preventDefault();
-                  setSection('security');
+                  openSettings('security');
                 }}
               >
                 <SettingsPageIcon section="security" className="preferences-nav-icon" />
@@ -251,7 +243,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                 data-active={section === 'connected-accounts'}
                 onClick={(e) => {
                   e.preventDefault();
-                  setSection('connected-accounts');
+                  openSettings('connected-accounts');
                 }}
               >
                 <SettingsPageIcon section="connected-accounts" className="preferences-nav-icon" />
@@ -269,7 +261,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                 data-active={section === 'rule-labels'}
                 onClick={(e) => {
                   e.preventDefault();
-                  setSection('rule-labels');
+                  openSettings('rule-labels');
                 }}
               >
                 <SettingsPageIcon section="rule-labels" className="preferences-nav-icon" />
@@ -293,7 +285,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                   data-active={active}
                   onClick={(e) => {
                     e.preventDefault();
-                    setSection(page.section);
+                    openSettings(page.section);
                   }}
                 >
                   <SettingsPageIcon section={page.section} className="preferences-nav-icon" />
@@ -328,7 +320,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                 data-active={section === 'new-team'}
                 onClick={(e) => {
                   e.preventDefault();
-                  setSection('new-team');
+                  openSettings('new-team');
                 }}
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className="preferences-nav-icon">
@@ -356,7 +348,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
               <button
                 type="button"
                 className="preferences-small-header-link"
-                onClick={() => setActiveTab(lastAppTab)}
+                onClick={openLastAppPage}
               >
                 <svg width="7" height="12" viewBox="0 0 11 18" fill="currentColor" aria-hidden="true">
                   <path d="M3.68293 8.63202L3.30966 8.99195L3.68293 9.35188L10.1643 15.6015C10.6051 16.0265 10.6028 16.7325 10.162 17.1712C9.70399 17.6104 8.96011 17.6096 8.5031 17.1689L0.83567 9.77564C0.388109 9.34408 0.388109 8.65592 0.83567 8.22436L8.5031 0.83107C8.96089 0.389643 9.70653 0.389643 10.1643 0.83107C10.6119 1.26263 10.6119 1.95079 10.1643 2.38235L3.68293 8.63202Z" />
@@ -372,29 +364,29 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
 
             {section === 'notifications' && (
               <NotificationsSection
-                onOpenPriority={() => setSection('priority-notifications')}
-                onOpenEmail={() => setSection('email-notifications')}
-                onOpenTelegram={() => setSection('telegram-notifications')}
+                onOpenPriority={() => openSettings('priority-notifications')}
+                onOpenEmail={() => openSettings('email-notifications')}
+                onOpenTelegram={() => openSettings('telegram-notifications')}
               />
             )}
 
             {section === 'priority-notifications' && (
-              <PriorityNotificationsSection onBack={() => setSection('notifications')} />
+              <PriorityNotificationsSection onBack={() => openSettings('notifications')} />
             )}
 
             {section === 'email-notifications' && (
               <EmailNotificationsSection
                 email={user.email}
-                onBack={() => setSection('notifications')}
-                onOpenPriority={() => setSection('priority-notifications')}
+                onBack={() => openSettings('notifications')}
+                onOpenPriority={() => openSettings('priority-notifications')}
               />
             )}
 
             {section === 'telegram-notifications' && (
               <TelegramNotificationsSection
-                onBack={() => setSection('notifications')}
-                onOpenPriority={() => setSection('priority-notifications')}
-                onOpenConnections={() => setSection('connected-accounts')}
+                onBack={() => openSettings('notifications')}
+                onOpenPriority={() => openSettings('priority-notifications')}
+                onOpenConnections={() => openSettings('connected-accounts')}
               />
             )}
 

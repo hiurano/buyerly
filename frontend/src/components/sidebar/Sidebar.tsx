@@ -16,6 +16,7 @@ import {
 } from '@/icons/BuyerlyIcons';
 import { goToShortcut } from '@/lib/shortcuts';
 import { openAppPath, pathForTab, useRoute } from '@/lib/routing';
+import { openTab, useCurrentPage } from '@/lib/navigation';
 import { useTeams } from '@/lib/teams';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { SidebarLink, SidebarSection, SidebarTeam } from './SidebarSections';
@@ -55,14 +56,9 @@ const SidebarContent: React.FC = () => {
   const isSidebarCollapsed = useShellStore((state) => state.isSidebarCollapsed);
   const setSidebarCollapsed = useShellStore((state) => state.setSidebarCollapsed);
   const resetSidebarWidth = useShellStore((state) => state.resetSidebarWidth);
-  const activeTab = useShellStore((state) => state.activeTab);
-  const setActiveTab = useShellStore((state) => state.setActiveTab);
   const workspaceSlug = useScopeStore((state) => state.workspaceSlug);
   const inboxUnreadCount = useInboxStore((store) => store.badgeCount);
-  const activeTeamKey = useShellStore((state) => state.activeTeamKey);
-  const setActiveTeamKey = useShellStore((state) => state.setActiveTeamKey);
-  const myCampaigns = useShellStore((state) => state.myCampaigns);
-  const setMyCampaigns = useShellStore((state) => state.setMyCampaigns);
+  const { tab: activeTab, teamKey: activeTeamKey, mine: myCampaigns } = useCurrentPage();
   const { workspace } = useWorkspaceSession();
   const { teams } = useTeams(workspace.id, 'active');
   const yourTeams = (teams ?? []).filter((team) => team.is_member);
@@ -81,8 +77,7 @@ const SidebarContent: React.FC = () => {
   /** A page of the workspace itself; from an account's page, Ad accounts goes back to the list. */
   const openWorkspacePage = (tab: AppTab) => {
     if (tab === 'accounts' && activeTab === tab && !activeTeamKey && workspaceSlug) openAppPath(pathForTab(workspaceSlug, tab));
-    setActiveTeamKey(null);
-    setActiveTab(tab);
+    else openTab(tab, { teamKey: null });
   };
   const [isDragging, setIsDragging] = useState(false);
 
@@ -216,9 +211,7 @@ const SidebarContent: React.FC = () => {
             onClick={() => {
               if (activeTab === 'campaigns' && myCampaigns && workspaceSlug) {
                 openAppPath(pathForTab(workspaceSlug, 'campaigns', 'campaigns', 'preferences', '', undefined, null, true));
-              }
-              setMyCampaigns(true);
-              setActiveTab('campaigns');
+              } else openTab('campaigns', { mine: true });
             }}
           />
 

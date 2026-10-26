@@ -4,8 +4,8 @@ import { TeamIcon } from '@/components/preferences/TeamIcon';
 import type { TeamItem } from '@/lib/teams';
 import type { FavoriteInput } from '@/lib/favorites';
 import { BuyerlyFavoriteButton } from '@/ui/BuyerlyFavoriteButton';
-import { useShellStore } from '@/models/shellStore';
 import { colors } from '@/styles/tokens.stylex';
+import { openTab } from '@/lib/navigation';
 
 const styles = stylex.create({
   heading: {
@@ -43,8 +43,6 @@ const styles = stylex.create({
  * and Linear's star 8px after it when the page can be a favorite.
  */
 export const ViewTitle: React.FC<{ title: string; team?: TeamItem | null; favorite?: FavoriteInput }> = ({ title, team, favorite }) => {
-  const setActiveTeamKey = useShellStore((state) => state.setActiveTeamKey);
-  const setActiveTab = useShellStore((state) => state.setActiveTab);
   const heading = (
     <h2 {...stylex.props(styles.heading)}>{title}</h2>
   );
@@ -58,8 +56,7 @@ export const ViewTitle: React.FC<{ title: string; team?: TeamItem | null; favori
         type="button"
         className="team-breadcrumb-link"
         onClick={() => {
-          setActiveTeamKey(team.key);
-          setActiveTab('team');
+          openTab('team', { teamKey: team.key });
         }}
       >
         <TeamIcon size={16} className={stylex.props(styles.teamIcon).className} />

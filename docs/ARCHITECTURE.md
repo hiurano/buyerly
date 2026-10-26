@@ -18,7 +18,7 @@ flowchart LR
 
 ## Frontend и HTTP
 
-[App.tsx](../frontend/src/App.tsx) собирает React-приложение; [routing.ts](../frontend/src/lib/routing.ts) определяет публичные и workspace-маршруты. Основные разделы — Inbox, Ads Manager, Rules и Settings. Данные хранятся в пуле моделей MobX ([pool.ts](../frontend/src/models/pool.ts)), состояние UI — в MobX-сторах рядом с ним (`frontend/src/models/*Store.ts`), HTTP-запросы проходят через [api.ts](../frontend/src/lib/api.ts).
+[App.tsx](../frontend/src/App.tsx) собирает React-приложение; [routing.ts](../frontend/src/lib/routing.ts) определяет публичные и workspace-маршруты как дерево React Router, [routes.tsx](../frontend/src/routes.tsx) даёт им компоненты; адрес — источник истины о текущей странице. Основные разделы — Inbox, Ads Manager, Rules и Settings. Данные хранятся в пуле моделей MobX ([pool.ts](../frontend/src/models/pool.ts)), состояние UI — в MobX-сторах рядом с ним (`frontend/src/models/*Store.ts`), HTTP-запросы проходят через [api.ts](../frontend/src/lib/api.ts).
 
 Vite собирает `frontend/dist`, и FastAPI сам отдаёт эти файлы (`SERVE_STATIC=true`): сборку, юридические документы и React-приложение для любого адреса без своего маршрута, кроме корней сервера. Юридические страницы и их ресурсы находятся в `frontend/public`. Runtime-каталог `uploads/` монтируется в production как именованный том `buyerly-uploads`; публичные URL начинаются с `/uploads/`.
 

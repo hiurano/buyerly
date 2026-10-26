@@ -1,4 +1,4 @@
-import { parseRoute } from './routing';
+import { currentRoute } from './routing';
 import { requestAccount } from './accounts';
 import { pool } from '@/models/pool';
 
@@ -25,7 +25,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   const method = (init.method || 'GET').toUpperCase();
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
-  const route = parseRoute();
+  const route = currentRoute();
   if (route.kind === 'workspace' || route.kind === 'welcome') {
     headers.set('X-Workspace-Slug', route.workspace);
   }
