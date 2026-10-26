@@ -1,9 +1,128 @@
 import React, { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import * as stylex from '@stylexjs/stylex';
 import { apiRequest } from '@/lib/api';
 import { Button } from '@/ui/Button';
 import { Input } from '@/ui/Input';
+import { withClassName } from '@/ui/withClassName';
 import { BuyerlyCloseIcon } from '@/icons/BuyerlyIcons';
+import { colors } from '@/styles/tokens.stylex';
+
+const styles = stylex.create({
+  overlay: {
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 500,
+    backgroundColor: 'rgb(0 0 0 / 0.5)',
+    backdropFilter: 'blur(2px)',
+  },
+  frame: {
+    pointerEvents: 'none',
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 501,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 16,
+    paddingRight: 16,
+    paddingBottom: 16,
+    paddingLeft: 16,
+  },
+  content: {
+    pointerEvents: 'auto',
+    width: '100%',
+    maxWidth: 480,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    backgroundColor: colors['--card-bg'],
+    textAlign: 'left',
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 6px 24px rgba(0,0,0,0.12), 0 12px 48px rgba(0,0,0,0.18)',
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 24,
+    paddingRight: 24,
+    paddingTop: 24,
+    paddingBottom: 8,
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: 600,
+    color: colors['--text-primary'],
+  },
+  close: {
+    display: 'flex',
+    height: 28,
+    width: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9999,
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    transitionProperty: 'color, background-color, border-color, text-decoration-color, fill, stroke',
+    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    transitionDuration: '150ms',
+    cursor: 'default',
+  },
+  body: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 16,
+    paddingLeft: 24,
+    paddingRight: 24,
+    paddingBottom: 24,
+    paddingTop: 8,
+  },
+  text: {
+    fontSize: 13,
+    lineHeight: '20px',
+    color: colors['--text-secondary'],
+  },
+  address: {
+    color: colors['--text-primary'],
+  },
+  field: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  error: {
+    fontSize: 13,
+    lineHeight: '18px',
+    color: colors['--rules-action-stop-text'],
+  },
+  actions: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
+    paddingTop: 4,
+  },
+});
 
 type Step = 'address' | 'code';
 
@@ -81,16 +200,16 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[500] bg-black/50 backdrop-blur-[2px] animate-fade-in" />
-        <div className="pointer-events-none fixed inset-0 z-[501] flex items-center justify-center p-4">
-          <Dialog.Content className="ui-dialog pointer-events-auto w-full max-w-[480px] rounded-[20px] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] text-left outline-none animate-scale-in shadow-[0_1px_2px_rgba(0,0,0,0.04),0_6px_24px_rgba(0,0,0,0.12),0_12px_48px_rgba(0,0,0,0.18)]">
-            <header className="flex items-center justify-between px-6 pt-6 pb-2">
-              <Dialog.Title className="text-[15px] font-semibold text-[var(--text-primary)]">
+        <Dialog.Overlay {...stylex.props(styles.overlay)} />
+        <div {...stylex.props(styles.frame)}>
+          <Dialog.Content {...withClassName(stylex.props(styles.content), 'ui-dialog animate-scale-in')}>
+            <header {...stylex.props(styles.header)}>
+              <Dialog.Title {...stylex.props(styles.title)}>
                 Change email
               </Dialog.Title>
               <Dialog.Close asChild>
                 <button
-                  className="ui-icon-button flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] transition-colors duration-150 cursor-default"
+                  {...withClassName(stylex.props(styles.close), 'ui-icon-button')}
                   type="button"
                   aria-label="Close"
                 >
@@ -99,17 +218,17 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
               </Dialog.Close>
             </header>
 
-            <div className="flex flex-col gap-4 px-6 pb-6 pt-2">
+            <div {...stylex.props(styles.body)}>
               {step === 'address' ? (
                 <>
-                  <p className="text-[13px] leading-[20px] text-[var(--text-secondary)]">
+                  <p {...stylex.props(styles.text)}>
                     We will send a confirmation code to the new address. Until the code is
                     entered, you keep signing in with the current address.
                   </p>
-                  <div className="flex flex-col gap-1.5">
+                  <div {...stylex.props(styles.field)}>
                     <label
                       htmlFor="change-email-address"
-                      className="text-[13px] font-medium text-[var(--text-primary)]"
+                      {...stylex.props(styles.label)}
                     >
                       New email address
                     </label>
@@ -131,14 +250,14 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
                 </>
               ) : (
                 <>
-                  <p className="text-[13px] leading-[20px] text-[var(--text-secondary)]">
-                    A code was sent to <span className="text-[var(--text-primary)]">{newEmail.trim().toLowerCase()}</span>.
+                  <p {...stylex.props(styles.text)}>
+                    A code was sent to <span {...stylex.props(styles.address)}>{newEmail.trim().toLowerCase()}</span>.
                     Enter it to finish changing your address.
                   </p>
-                  <div className="flex flex-col gap-1.5">
+                  <div {...stylex.props(styles.field)}>
                     <label
                       htmlFor="change-email-code"
-                      className="text-[13px] font-medium text-[var(--text-primary)]"
+                      {...stylex.props(styles.label)}
                     >
                       Confirmation code
                     </label>
@@ -161,12 +280,12 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
               )}
 
               {error && (
-                <p role="alert" className="text-[13px] leading-[18px] text-[var(--rules-action-stop-text)]">
+                <p role="alert" {...stylex.props(styles.error)}>
                   {error}
                 </p>
               )}
 
-              <div className="flex items-center justify-end gap-2 pt-1">
+              <div {...stylex.props(styles.actions)}>
                 {step === 'code' && (
                   <Button
                     onClick={() => {

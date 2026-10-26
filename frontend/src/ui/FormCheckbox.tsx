@@ -11,6 +11,8 @@ export interface FormCheckboxProps {
   hint?: string;
   disabled?: boolean;
   className?: string;
+  /** StyleX overrides from the caller, applied last. */
+  xstyle?: stylex.StyleXStyles;
 }
 
 const styles = stylex.create({
@@ -77,8 +79,9 @@ export const FormCheckbox: React.FC<FormCheckboxProps> = ({
   hint,
   disabled = false,
   className = '',
+  xstyle,
 }) => (
-  <label {...withClassName(stylex.props(styles.root, disabled && styles.disabled), className)}>
+  <label {...withClassName(stylex.props(styles.root, disabled && styles.disabled, xstyle), className)}>
     <input
       type="checkbox"
       checked={checked}

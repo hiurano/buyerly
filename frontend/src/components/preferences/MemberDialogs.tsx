@@ -1,13 +1,183 @@
 import React, { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import * as stylex from '@stylexjs/stylex';
 import { ApiError, apiRequest } from '@/lib/api';
 import type { Workspace } from '@/lib/types';
 import { BuyerlyCloseIcon } from '@/icons/BuyerlyIcons';
 import { Button } from '@/ui/Button';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { toast } from '@/ui/toast';
-import { TOUCH_HEIGHT_CLASS } from '@/lib/useMediaQuery';
 import { useLastPresent } from '@/ui/useLastPresent';
+import { withClassName } from '@/ui/withClassName';
+import { colors, radii } from '@/styles/tokens.stylex';
+
+const styles = stylex.create({
+  overlay: {
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 500,
+    backgroundColor: 'rgb(0 0 0 / 0.5)',
+  },
+  frame: {
+    pointerEvents: 'none',
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 501,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 16,
+    paddingRight: 16,
+    paddingBottom: 16,
+    paddingLeft: 16,
+  },
+  content: {
+    pointerEvents: 'auto',
+    width: '100%',
+    maxWidth: 480,
+    borderRadius: radii['--canvas-border-radius'],
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    backgroundColor: colors['--card-bg'],
+    paddingTop: 24,
+    paddingRight: 24,
+    paddingBottom: 24,
+    paddingLeft: 24,
+    textAlign: 'left',
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    boxShadow: colors['--dialog-elevation-shadow'],
+  },
+  contentWide: {
+    maxWidth: 540,
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  title: {
+    margin: 0,
+    minWidth: 0,
+    flex: '1 1 0%',
+    fontSize: 15,
+    fontWeight: 600,
+    color: colors['--text-primary'],
+  },
+  close: {
+    marginRight: -4,
+    display: 'flex',
+    height: 24,
+    width: 24,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 4,
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+  },
+  description: {
+    margin: 0,
+    marginTop: 8,
+    fontSize: 13,
+    lineHeight: '20px',
+    color: colors['--text-secondary'],
+  },
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    borderWidth: 0,
+  },
+  footer: {
+    marginTop: 20,
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  choices: {
+    marginTop: 16,
+    display: 'flex',
+    maxHeight: 240,
+    flexDirection: 'column',
+    gap: 4,
+    overflowY: 'auto',
+  },
+  choice: {
+    display: 'flex',
+    minWidth: 0,
+    cursor: 'pointer',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 6,
+    paddingLeft: 8,
+    paddingRight: 8,
+    paddingTop: 6,
+    paddingBottom: 6,
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+  },
+  radio: {
+    accentColor: colors['--action-primary'],
+  },
+  choiceText: {
+    minWidth: 0,
+  },
+  choiceLabel: {
+    display: 'block',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 13,
+    color: colors['--text-primary'],
+  },
+  choiceDetail: {
+    display: 'block',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 12,
+    color: colors['--text-tertiary'],
+  },
+  loading: {
+    margin: 0,
+    marginTop: 16,
+    fontSize: 13,
+    color: colors['--text-tertiary'],
+  },
+  error: {
+    margin: 0,
+    marginTop: 12,
+    fontSize: 12,
+    color: colors['--toast-error-icon'],
+  },
+});
 
 export interface MemberItem {
   id: number;
@@ -69,32 +239,32 @@ interface ChoiceDialogProps {
 export const ChoiceDialog: React.FC<ChoiceDialogProps> = ({ open, title, description, wide = false, busy, onClose, children, footer }) => (
   <Dialog.Root open={open} onOpenChange={(next) => { if (!next && !busy) onClose(); }}>
     <Dialog.Portal>
-      <Dialog.Overlay className="fixed inset-0 z-[500] bg-black/50 animate-fade-in" />
-      <div className="pointer-events-none fixed inset-0 z-[501] flex items-center justify-center p-4">
+      <Dialog.Overlay {...stylex.props(styles.overlay)} />
+      <div {...stylex.props(styles.frame)}>
         <Dialog.Content
-          className={`ui-dialog pointer-events-auto w-full ${wide ? 'max-w-[540px]' : 'max-w-[480px]'} rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] p-6 text-left outline-none animate-scale-in [box-shadow:var(--dialog-elevation-shadow)]`}
+          {...withClassName(stylex.props(styles.content, wide && styles.contentWide), 'ui-dialog animate-scale-in')}
         >
-          <div className="flex items-start gap-2">
-            <Dialog.Title className="m-0 min-w-0 flex-1 text-[15px] font-semibold text-[var(--text-primary)]">{title}</Dialog.Title>
+          <div {...stylex.props(styles.header)}>
+            <Dialog.Title {...stylex.props(styles.title)}>{title}</Dialog.Title>
             {wide && (
               <Dialog.Close
                 aria-label="Close"
                 disabled={busy}
-                className="-mr-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] text-[var(--text-tertiary)] outline-none hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
+                {...stylex.props(styles.close)}
               >
                 <BuyerlyCloseIcon size={12} />
               </Dialog.Close>
             )}
           </div>
           {description ? (
-            <Dialog.Description className="m-0 mt-2 text-[13px] leading-[20px] text-[var(--text-secondary)]">
+            <Dialog.Description {...stylex.props(styles.description)}>
               {description}
             </Dialog.Description>
           ) : (
-            <Dialog.Description className="sr-only">{title}</Dialog.Description>
+            <Dialog.Description {...stylex.props(styles.srOnly)}>{title}</Dialog.Description>
           )}
           {children}
-          <div className="mt-5 flex justify-end gap-2">{footer}</div>
+          <div {...stylex.props(styles.footer)}>{footer}</div>
         </Dialog.Content>
       </div>
     </Dialog.Portal>
@@ -114,11 +284,11 @@ const ChoiceList: React.FC<{
   disabled: boolean;
   onChange: (value: string) => void;
 }> = ({ label, options, value, disabled, onChange }) => (
-  <div role="radiogroup" aria-label={label} className="mt-4 flex max-h-[240px] flex-col gap-1 overflow-y-auto">
+  <div role="radiogroup" aria-label={label} {...stylex.props(styles.choices)}>
     {options.map((option) => (
       <label
         key={option.value}
-        className="flex min-w-0 cursor-pointer items-center gap-2.5 rounded-[6px] px-2 py-1.5 hover:bg-[var(--item-hover-bg)]"
+        {...stylex.props(styles.choice)}
       >
         <input
           type="radio"
@@ -127,11 +297,11 @@ const ChoiceList: React.FC<{
           checked={value === option.value}
           disabled={disabled}
           onChange={() => onChange(option.value)}
-          className="accent-[var(--action-primary)]"
+          {...stylex.props(styles.radio)}
         />
-        <span className="min-w-0">
-          <span className="block truncate text-[13px] text-[var(--text-primary)]">{option.label}</span>
-          <span className="block truncate text-[12px] text-[var(--text-tertiary)]">{option.detail}</span>
+        <span {...stylex.props(styles.choiceText)}>
+          <span {...stylex.props(styles.choiceLabel)}>{option.label}</span>
+          <span {...stylex.props(styles.choiceDetail)}>{option.detail}</span>
         </span>
       </label>
     ))}
@@ -242,12 +412,12 @@ export const LeaveWorkspaceDialog: React.FC<LeaveWorkspaceDialogProps> = ({ open
       busy={busy}
       onClose={onClose}
       footer={alone ? (
-        <Button className={TOUCH_HEIGHT_CLASS} onClick={onClose}>Close</Button>
+        <Button touchHeight onClick={onClose}>Close</Button>
       ) : (
         <>
-          <Button className={TOUCH_HEIGHT_CLASS} onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button touchHeight onClick={onClose} disabled={busy}>Cancel</Button>
           <Button
-            className={TOUCH_HEIGHT_CLASS}
+            touchHeight
             variant="primary"
             onClick={() => void leave()}
             disabled={busy || !newOwner}
@@ -258,12 +428,12 @@ export const LeaveWorkspaceDialog: React.FC<LeaveWorkspaceDialogProps> = ({ open
       )}
     >
       {candidates === null && (
-        <p className="m-0 mt-4 text-[13px] text-[var(--text-tertiary)]">Loading members…</p>
+        <p {...stylex.props(styles.loading)}>Loading members…</p>
       )}
       {options.length > 0 && (
         <ChoiceList label="New owner" options={options} value={newOwner} disabled={busy} onChange={setNewOwner} />
       )}
-      {error && <p role="alert" className="m-0 mt-3 text-[12px] text-[var(--toast-error-icon)]">{error}</p>}
+      {error && <p role="alert" {...stylex.props(styles.error)}>{error}</p>}
     </ChoiceDialog>
   );
 };
@@ -323,8 +493,8 @@ export const ChangeRoleDialog: React.FC<ChangeRoleDialogProps> = ({ member, work
       onClose={onClose}
       footer={(
         <>
-          <Button className={TOUCH_HEIGHT_CLASS} onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button className={TOUCH_HEIGHT_CLASS} variant="primary" onClick={() => void save()} disabled={busy || !role}>
+          <Button touchHeight onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button touchHeight variant="primary" onClick={() => void save()} disabled={busy || !role}>
             Save
           </Button>
         </>

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import type { Workspace } from '@/lib/types';
 import { ApiError } from '@/lib/api';
 import { LABEL_COLORS, formatRelativeTime, randomLabelColor } from '@/lib/rules';
@@ -7,6 +8,8 @@ import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { DataState } from '@/ui/DataState';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/ui/DropdownMenu';
 import { toast } from '@/ui/toast';
+import { withClassName } from '@/ui/withClassName';
+import { colors } from '@/styles/tokens.stylex';
 import { deletionPrompt, runPendingDeletion } from '@/components/rules/ruleActions';
 import { RowMenu, shortDate } from './MembersSection';
 import { SortHeader, sortedBy, useListSort } from './SettingsListSort';
@@ -14,6 +17,123 @@ import { useDialogStore } from '@/models/dialogStore';
 import { useRulesStore, type RuleLabel } from '@/models/rulesStore';
 import { useScopeStore } from '@/models/scopeStore';
 import { shellStore, useShellStore } from '@/models/shellStore';
+
+const styles = stylex.create({
+  fullWidth: {
+    width: '100%',
+  },
+  dotFrame: {
+    position: 'relative',
+    display: 'flex',
+    height: 14,
+    width: 14,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dotButton: {
+    display: 'flex',
+    height: 14,
+    width: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9999,
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    backgroundColor: {
+      default: null,
+      ':enabled:hover': colors['--item-hover-bg'],
+    },
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+    cursor: {
+      default: null,
+      ':disabled': 'default',
+    },
+  },
+  dot: {
+    display: 'block',
+    height: 9,
+    width: 9,
+    borderRadius: 9999,
+  },
+  palette: {
+    position: 'absolute',
+    left: 0,
+    top: 'calc(100% + 4px)',
+    zIndex: 20,
+    display: 'flex',
+    gap: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    backgroundColor: colors['--card-bg'],
+    paddingTop: 6,
+    paddingRight: 6,
+    paddingBottom: 6,
+    paddingLeft: 6,
+    boxShadow: colors['--dropdown-shadow'],
+  },
+  swatchButton: {
+    display: 'flex',
+    height: 24,
+    width: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9999,
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+  },
+  swatch: {
+    display: 'block',
+    height: 12,
+    width: 12,
+    borderRadius: 9999,
+  },
+  field: {
+    width: '100%',
+  },
+  text: {
+    cursor: {
+      default: null,
+      ':disabled': 'default',
+    },
+  },
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    borderWidth: 0,
+  },
+  actions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+  },
+  truncate: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  danger: {
+    color: colors['--rules-action-stop-text'],
+  },
+});
 
 /**
  * Linear's Issue labels table: Name, Description, Last applied, Created; Buyerly
@@ -50,7 +170,7 @@ const ColorDot: React.FC<{ color: string; label: string; disabled?: boolean; onP
     };
   }, [open]);
   return (
-    <span ref={ref} className="relative flex h-[14px] w-[14px] shrink-0 items-center justify-center">
+    <span ref={ref} {...stylex.props(styles.dotFrame)}>
       <button
         type="button"
         aria-label={`Color of ${label}`}
@@ -60,15 +180,15 @@ const ColorDot: React.FC<{ color: string; label: string; disabled?: boolean; onP
           event.stopPropagation();
           setOpen((value) => !value);
         }}
-        className="flex h-[14px] w-[14px] items-center justify-center rounded-full outline-none hover:bg-[var(--item-hover-bg)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] disabled:cursor-default disabled:hover:bg-transparent"
+        {...stylex.props(styles.dotButton)}
       >
-        <span className="block h-[9px] w-[9px] rounded-full" style={{ backgroundColor: color }} />
+        <span {...stylex.props(styles.dot)} style={{ backgroundColor: color }} />
       </button>
       {open && (
         <span
           role="listbox"
           aria-label="Label color"
-          className="absolute left-0 top-[calc(100%+4px)] z-20 flex gap-1 rounded-[8px] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] p-1.5 [box-shadow:var(--dropdown-shadow)]"
+          {...stylex.props(styles.palette)}
         >
           {LABEL_COLORS.map((swatch) => (
             <button
@@ -82,10 +202,10 @@ const ColorDot: React.FC<{ color: string; label: string; disabled?: boolean; onP
                 setOpen(false);
                 if (swatch !== color) onPick(swatch);
               }}
-              className="flex h-6 w-6 items-center justify-center rounded-full outline-none hover:bg-[var(--item-hover-bg)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
+              {...stylex.props(styles.swatchButton)}
             >
               <span
-                className="block h-3 w-3 rounded-full"
+                {...stylex.props(styles.swatch)}
                 style={{ backgroundColor: swatch, boxShadow: swatch === color ? `0 0 0 2px var(--card-bg), 0 0 0 3.5px ${swatch}` : undefined }}
               />
             </button>
@@ -136,7 +256,7 @@ const InlineText: React.FC<{
             finish(false);
           }
         }}
-        className={`w-full ${textClass}`}
+        {...withClassName(stylex.props(styles.field), textClass)}
       />
     );
   }
@@ -145,7 +265,7 @@ const InlineText: React.FC<{
       type="button"
       disabled={disabled}
       onClick={() => setEditing(true)}
-      className={`${textClass} disabled:cursor-default ${value ? '' : 'settings-list-inline--placeholder'}`}
+      {...withClassName(stylex.props(styles.text), value ? textClass : `${textClass} settings-list-inline--placeholder`)}
     >
       {value || (disabled ? '' : placeholder)}
     </button>
@@ -194,7 +314,7 @@ const NewLabelRow: React.FC<{ onDone: () => void }> = ({ onDone }) => {
           disabled={busy}
           onChange={(event) => setName(event.target.value)}
           onKeyDown={onKeyDown}
-          className="settings-list-inline settings-list-inline--strong w-full"
+          {...withClassName(stylex.props(styles.fullWidth), 'settings-list-inline settings-list-inline--strong')}
         />
       </span>
       <span role="cell" className="settings-list-col-wide settings-list-description">
@@ -206,7 +326,7 @@ const NewLabelRow: React.FC<{ onDone: () => void }> = ({ onDone }) => {
           disabled={busy}
           onChange={(event) => setDescription(event.target.value)}
           onKeyDown={onKeyDown}
-          className="settings-list-inline w-full"
+          {...withClassName(stylex.props(styles.fullWidth), 'settings-list-inline')}
         />
       </span>
       <span role="cell" />
@@ -292,7 +412,7 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
 
       <div className="settings-list-filter-row">
         <label className="settings-list-search">
-          <span className="sr-only">Filter by name…</span>
+          <span {...stylex.props(styles.srOnly)}>Filter by name…</span>
           <svg viewBox="0 0 16 16" aria-hidden="true" className="settings-list-search-icon">
             <path d="M7 1.5a5.5 5.5 0 0 1 4.38 8.82l3.15 3.15a.75.75 0 1 1-1.06 1.06l-3.15-3.15A5.5 5.5 0 1 1 7 1.5Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
           </svg>
@@ -322,7 +442,7 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
               <SortHeader label="Rules" column="rules" sort={sort} onSort={toggleSort} />
               <SortHeader label="Last applied" column="lastApplied" sort={sort} onSort={toggleSort} className="settings-list-col-wide" />
               <SortHeader label="Created" column="created" sort={sort} onSort={toggleSort} className="settings-list-col-wide" />
-              <span role="columnheader" className="sr-only">Actions</span>
+              <span role="columnheader" {...stylex.props(styles.srOnly)}>Actions</span>
             </div>
             {adding && <NewLabelRow onDone={() => setAdding(false)} />}
             {visible.map((label) => (
@@ -375,20 +495,20 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
                   {label.lastAppliedAt ? formatRelativeTime(label.lastAppliedAt) : ''}
                 </span>
                 <span role="cell" className="settings-list-cell settings-list-col-wide">{shortDate(label.createdAt)}</span>
-                <span role="cell" className="flex justify-end">
+                <span role="cell" {...stylex.props(styles.actions)}>
                   {canEdit && (
                     <RowMenu label={`Label actions for ${label.name}`} visible>
                       <DropdownMenuItem onSelect={() => setRenaming(label.id)}>
-                        <span className="truncate">Rename…</span>
+                        <span {...stylex.props(styles.truncate)}>Rename…</span>
                       </DropdownMenuItem>
                       {label.ruleCount > 0 && (
                         <DropdownMenuItem onSelect={() => openRules(label)}>
-                          <span className="truncate">View rules</span>
+                          <span {...stylex.props(styles.truncate)}>View rules</span>
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onSelect={() => requestDeletion('rule_group', [label.id])}>
-                        <span className="truncate text-[var(--rules-action-stop-text)]">Delete label…</span>
+                        <span {...stylex.props(styles.truncate, styles.danger)}>Delete label…</span>
                       </DropdownMenuItem>
                     </RowMenu>
                   )}

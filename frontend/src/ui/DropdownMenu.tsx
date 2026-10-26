@@ -222,13 +222,16 @@ export const DropdownMenuSubContent: React.FC<DropdownMenuPrimitive.DropdownMenu
   </DropdownMenuPrimitive.Portal>
 );
 
-export const DropdownMenuRadioItem: React.FC<DropdownMenuPrimitive.DropdownMenuRadioItemProps> = ({
+export const DropdownMenuRadioItem: React.FC<
+  DropdownMenuPrimitive.DropdownMenuRadioItemProps & { xstyle?: stylex.StyleXStyles }
+> = ({
   className = '',
+  xstyle,
   children,
   ...props
 }) => (
   <DropdownMenuPrimitive.RadioItem
-    {...withClassName(stylex.props(styles.item, menuItemMarker), `group ${className}`.trim())}
+    {...withClassName(stylex.props(styles.item, menuItemMarker, xstyle), `group ${className}`.trim())}
     {...props}
   >
     <div {...stylex.props(styles.pill)} />

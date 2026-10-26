@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
 import { apiRequest } from '@/lib/api';
 import type { SessionUser, Workspace } from '@/lib/types';
 import { Input } from '@/ui/Input';
@@ -14,6 +16,31 @@ interface ProfileSectionProps {
   workspace: Workspace;
   onUserChanged: () => void | Promise<unknown>;
 }
+
+const styles = stylex.create({
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    borderWidth: 0,
+  },
+  menuItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+  },
+  menuIcon: {
+    color: colors['--text-tertiary'],
+  },
+  tooltipTarget: {
+    display: 'inline-flex',
+  },
+});
 
 // Linear takes SVG as well; our uploads accept raster images only.
 const AVATAR_ACCEPT = 'image/png,.png,image/jpeg,.jpg,.jpeg,image/webp,.webp';
@@ -176,7 +203,7 @@ const ProfileAvatar: React.FC<{ user: SessionUser; onUserChanged: () => void | P
         accept={AVATAR_ACCEPT}
         aria-label="Profile photo"
         tabIndex={-1}
-        className="sr-only"
+        {...stylex.props(styles.srOnly)}
         onChange={(event) => {
           const file = event.target.files?.[0];
           event.target.value = '';
@@ -197,14 +224,14 @@ const ProfileAvatar: React.FC<{ user: SessionUser; onUserChanged: () => void | P
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" style={{ width: '174px' }}>
             <DropdownMenuItem onSelect={() => fileRef.current?.click()}>
-              <span className="flex items-center gap-2.5">
-                <BuyerlyPencilIcon size={16} className="text-[var(--text-tertiary)]" />
+              <span {...stylex.props(styles.menuItem)}>
+                <BuyerlyPencilIcon size={16} {...stylex.props(styles.menuIcon)} />
                 Change avatar
               </span>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => void remove()}>
-              <span className="flex items-center gap-2.5">
-                <BuyerlyCloseIcon size={16} className="text-[var(--text-tertiary)]" />
+              <span {...stylex.props(styles.menuItem)}>
+                <BuyerlyCloseIcon size={16} {...stylex.props(styles.menuIcon)} />
                 Remove avatar
               </span>
             </DropdownMenuItem>
@@ -338,7 +365,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, workspace,
               <span className="preferences-row-title">Remove yourself from workspace</span>
             </div>
             <Tooltip content="Workspace requires at least one owner" disabled={!cannotLeave}>
-              <span className="inline-flex">
+              <span {...stylex.props(styles.tooltipTarget)}>
                 <button
                   type="button"
                   className="preferences-row-ghost-button"
