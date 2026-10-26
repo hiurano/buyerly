@@ -1,9 +1,286 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import * as stylex from '@stylexjs/stylex';
 import { apiRequest } from '@/lib/api';
 import type { MetaAssetsResponse, MetaConnectionAsset, MetaInviteCreated } from '@/lib/types';
 import { BuyerlyCloseIcon, BuyerlyMetaIcon } from '@/icons/BuyerlyIcons';
 import { BuyerlyCheckbox } from '@/ui/BuyerlyCheckbox';
+import { withClassName } from '@/ui/withClassName';
+import { colors } from '@/styles/tokens.stylex';
+
+const WIDE = '@media (min-width: 640px)';
+
+const styles = stylex.create({
+  overlay: {
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 500,
+    backgroundColor: 'rgb(0 0 0 / 0.5)',
+    backdropFilter: 'blur(2px)',
+  },
+  frame: {
+    pointerEvents: 'none',
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 501,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 16,
+    paddingRight: 16,
+    paddingBottom: 16,
+    paddingLeft: 16,
+  },
+  content: {
+    pointerEvents: 'auto',
+    width: '100%',
+    maxWidth: 560,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    backgroundColor: colors['--card-bg'],
+    textAlign: 'left',
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    boxShadow: '0 1px 2px rgba(0,0,0,0.04), 0 6px 24px rgba(0,0,0,0.12), 0 12px 48px rgba(0,0,0,0.18)',
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 24,
+    paddingRight: 24,
+    paddingBottom: 8,
+    paddingLeft: 24,
+  },
+  heading: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+  },
+  metaIcon: {
+    color: colors['--text-secondary'],
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: 600,
+    color: colors['--text-primary'],
+  },
+  close: {
+    display: 'flex',
+    height: 28,
+    width: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9999,
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    transitionProperty: 'color, background-color, border-color, text-decoration-color, fill, stroke',
+    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    transitionDuration: '150ms',
+    cursor: 'default',
+  },
+  body: {
+    maxHeight: '60vh',
+    overflowY: 'auto',
+    paddingTop: 8,
+    paddingRight: 24,
+    paddingBottom: 8,
+    paddingLeft: 24,
+  },
+  description: {
+    fontSize: 13,
+    lineHeight: 1.625,
+    color: colors['--text-secondary'],
+  },
+  status: {
+    fontSize: 13,
+    color: colors['--text-secondary'],
+  },
+  invite: {
+    marginTop: 12,
+    width: '100%',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+    backgroundColor: colors['--item-hover-bg'],
+    paddingTop: 8,
+    paddingRight: 12,
+    paddingBottom: 8,
+    paddingLeft: 12,
+    fontFamily: '"Berkeley Mono", "JetBrains Mono", monospace',
+    fontSize: 12,
+    color: colors['--text-primary'],
+  },
+  // Each block after the description, 16px apart.
+  stacked: {
+    marginTop: 16,
+  },
+  noAssets: {
+    fontSize: 13,
+    color: colors['--text-tertiary'],
+  },
+  business: {
+    paddingLeft: 4,
+    paddingRight: 4,
+    fontSize: 12,
+    fontWeight: 500,
+    color: colors['--text-tertiary'],
+  },
+  assets: {
+    marginTop: 6,
+    overflow: 'hidden',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+  },
+  asset: {
+    display: 'flex',
+    minHeight: 40,
+    cursor: 'default',
+    userSelect: 'none',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 0,
+    borderBottomWidth: {
+      default: 1,
+      ':last-child': 0,
+    },
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+    paddingLeft: 12,
+    paddingRight: 12,
+    transitionProperty: 'color, background-color, border-color, text-decoration-color, fill, stroke',
+    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    transitionDuration: '150ms',
+    outline: {
+      default: null,
+      ':focus-visible': '2px solid transparent',
+    },
+    outlineOffset: {
+      default: null,
+      ':focus-visible': 2,
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+      ':focus-visible': colors['--item-hover-bg'],
+    },
+  },
+  // An added account does not light up under the pointer.
+  assetImported: {
+    backgroundColor: {
+      default: null,
+      ':focus-visible': colors['--item-hover-bg'],
+    },
+  },
+  assetName: {
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    fontSize: 13,
+    color: colors['--text-primary'],
+  },
+  assetDetail: {
+    fontSize: 12,
+    color: colors['--text-tertiary'],
+  },
+  error: {
+    marginTop: 12,
+    fontSize: 13,
+    color: colors['--rules-action-stop-text'],
+  },
+  footer: {
+    display: 'flex',
+    flexDirection: {
+      default: 'column',
+      [WIDE]: 'row',
+    },
+    alignItems: {
+      default: 'stretch',
+      [WIDE]: 'center',
+    },
+    justifyContent: {
+      default: null,
+      [WIDE]: 'flex-end',
+    },
+    gap: 8,
+    paddingTop: 16,
+    paddingRight: 24,
+    paddingBottom: 24,
+    paddingLeft: 24,
+  },
+  button: {
+    display: 'inline-flex',
+    height: 28,
+    width: {
+      default: '100%',
+      [WIDE]: 'auto',
+    },
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9999,
+    fontSize: 12,
+    fontWeight: 500,
+    transitionProperty: 'color, background-color, border-color, text-decoration-color, fill, stroke',
+    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    transitionDuration: {
+      default: '150ms',
+      ':active': '0s',
+    },
+    cursor: 'default',
+    userSelect: 'none',
+  },
+  secondary: {
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    backgroundColor: {
+      default: 'transparent',
+      ':hover': colors['--item-hover-bg'],
+    },
+    paddingLeft: 12,
+    paddingRight: 12,
+    color: {
+      default: colors['--text-secondary'],
+      ':hover': colors['--text-primary'],
+    },
+  },
+  primary: {
+    backgroundColor: {
+      default: '#5e6ad2',
+      ':hover': '#6875e5',
+    },
+    paddingLeft: 14,
+    paddingRight: 14,
+    color: '#fff',
+    boxShadow: '0 1px 1px rgba(0,0,0,0.04), 0 3px 6px -2px rgba(0,0,0,0.02)',
+    opacity: {
+      default: null,
+      ':disabled': 0.5,
+    },
+  },
+  wait: {
+    fontSize: 12,
+    color: colors['--text-tertiary'],
+  },
+});
 
 type FlowStep = 'choice' | 'creating_invite' | 'invite_ready' | 'discovering' | 'selecting' | 'importing' | 'done';
 
@@ -153,54 +430,54 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[500] bg-black/50 backdrop-blur-[2px] animate-fade-in" />
-        <div className="pointer-events-none fixed inset-0 z-[501] flex items-center justify-center p-4">
-          <Dialog.Content className="ui-dialog pointer-events-auto w-full max-w-[560px] rounded-[20px] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] text-left outline-none animate-scale-in shadow-[0_1px_2px_rgba(0,0,0,0.04),0_6px_24px_rgba(0,0,0,0.12),0_12px_48px_rgba(0,0,0,0.18)]">
-            <header className="flex items-center justify-between px-6 pt-6 pb-2">
-              <div className="flex items-center gap-2.5">
-                <BuyerlyMetaIcon size={16} className="text-[var(--text-secondary)]" />
-                <Dialog.Title className="text-[15px] font-semibold text-[var(--text-primary)]">{title}</Dialog.Title>
+        <Dialog.Overlay {...stylex.props(styles.overlay)} />
+        <div {...stylex.props(styles.frame)}>
+          <Dialog.Content {...withClassName(stylex.props(styles.content), 'ui-dialog animate-scale-in')}>
+            <header {...stylex.props(styles.header)}>
+              <div {...stylex.props(styles.heading)}>
+                <BuyerlyMetaIcon size={16} className={stylex.props(styles.metaIcon).className} />
+                <Dialog.Title {...stylex.props(styles.title)}>{title}</Dialog.Title>
               </div>
               <Dialog.Close asChild>
-                <button className="ui-icon-button flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] transition-colors duration-150 cursor-default" type="button" aria-label="Close">
+                <button {...withClassName(stylex.props(styles.close), 'ui-icon-button')} type="button" aria-label="Close">
                   <BuyerlyCloseIcon size={14} />
                 </button>
               </Dialog.Close>
             </header>
 
-            <div className="max-h-[60vh] overflow-y-auto px-6 py-2">
+            <div {...stylex.props(styles.body)}>
               {step === 'choice' && (
-                <div className="space-y-2">
-                  <Dialog.Description className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
+                <div>
+                  <Dialog.Description {...stylex.props(styles.description)}>
                     Choose how to connect your ad accounts.
                   </Dialog.Description>
                 </div>
               )}
 
-              {step === 'creating_invite' && <p className="text-[13px] text-[var(--text-secondary)]" role="status">Creating a one-time link…</p>}
+              {step === 'creating_invite' && <p {...stylex.props(styles.status)} role="status">Creating a one-time link…</p>}
 
               {step === 'invite_ready' && invite && (
-                <div className="space-y-3">
-                  <Dialog.Description className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
+                <div>
+                  <Dialog.Description {...stylex.props(styles.description)}>
                     Open this link in a browser signed in to the right Facebook profile, or send it to the profile owner. The link is valid for 24 hours and can be used once.
                   </Dialog.Description>
-                  <input className="ui-input w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--item-hover-bg)] px-3 py-2 font-mono text-[12px] text-[var(--text-primary)]" readOnly value={invite.invite_url} aria-label="One-time connection link" />
+                  <input {...withClassName(stylex.props(styles.invite), 'ui-input')} readOnly value={invite.invite_url} aria-label="One-time connection link" />
                 </div>
               )}
 
-              {step === 'discovering' && <p className="text-[13px] text-[var(--text-secondary)]" role="status">Looking for available ad accounts…</p>}
+              {step === 'discovering' && <p {...stylex.props(styles.status)} role="status">Looking for available ad accounts…</p>}
 
               {step === 'selecting' && (
-                <div className="space-y-4">
-                  <Dialog.Description className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
+                <div>
+                  <Dialog.Description {...stylex.props(styles.description)}>
                     Choose the ad accounts to add to this workspace.
                   </Dialog.Description>
                   {groupedAssets.length === 0 ? (
-                    <p className="text-[13px] text-[var(--text-tertiary)]">Facebook returned no available ad accounts for this profile.</p>
+                    <p {...stylex.props(styles.stacked, styles.noAssets)}>Facebook returned no available ad accounts for this profile.</p>
                   ) : groupedAssets.map(([businessName, businessAssets]) => (
-                    <section key={businessName} className="space-y-1.5" aria-label={businessName}>
-                      <h3 className="px-1 text-[12px] font-medium text-[var(--text-tertiary)]">{businessName}</h3>
-                      <div className="overflow-hidden rounded-xl border border-[var(--color-border-primary)]">
+                    <section key={businessName} {...stylex.props(styles.stacked)} aria-label={businessName}>
+                      <h3 {...stylex.props(styles.business)}>{businessName}</h3>
+                      <div {...stylex.props(styles.assets)}>
                         {businessAssets.map((asset) => {
                           const imported = asset.import_status === 'this_connection';
                           const checked = selectedIds.has(asset.account_id);
@@ -217,12 +494,12 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
                                 event.preventDefault();
                                 toggleAsset(asset);
                               }}
-                              className={`flex min-h-10 cursor-default select-none items-center gap-2 border-b border-[var(--color-border-primary)] px-3 last:border-b-0 transition-colors focus-visible:outline-none focus-visible:bg-[var(--item-hover-bg)] ${imported ? '' : 'hover:bg-[var(--item-hover-bg)]'}`}
+                              {...stylex.props(styles.asset, imported && styles.assetImported)}
                             >
                               {/* An added account keeps the slot, like a row that cannot be selected. */}
                               <BuyerlyCheckbox checked={checked} onChange={() => toggleAsset(asset)} hidden={imported} alwaysVisible decorative />
-                              <span className="min-w-0 flex-1 text-[13px] text-[var(--text-primary)]">{accountLabel(asset)}</span>
-                              <span className="text-[12px] text-[var(--text-tertiary)]">{imported ? 'Added' : asset.currency}</span>
+                              <span {...stylex.props(styles.assetName)}>{accountLabel(asset)}</span>
+                              <span {...stylex.props(styles.assetDetail)}>{imported ? 'Added' : asset.currency}</span>
                             </div>
                           );
                         })}
@@ -232,29 +509,29 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
                 </div>
               )}
 
-              {step === 'importing' && <p className="text-[13px] text-[var(--text-secondary)]" role="status">Adding the selected ad accounts…</p>}
+              {step === 'importing' && <p {...stylex.props(styles.status)} role="status">Adding the selected ad accounts…</p>}
 
               {step === 'done' && (
-                <Dialog.Description className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
+                <Dialog.Description {...stylex.props(styles.description)}>
                   Ad accounts added. Automation rules are switched off for them.
                 </Dialog.Description>
               )}
 
-              {error && <p className="mt-3 text-[13px] text-[var(--rules-action-stop-text)]" role="alert">{error}</p>}
+              {error && <p {...stylex.props(styles.error)} role="alert">{error}</p>}
             </div>
 
-            <footer className="flex flex-col items-stretch gap-2 px-6 pb-6 pt-4 sm:flex-row sm:items-center sm:justify-end">
+            <footer {...stylex.props(styles.footer)}>
               {step === 'choice' && (
                 <>
                   <button
-                    className="inline-flex h-7 items-center justify-center rounded-full border border-[var(--color-border-secondary)] bg-transparent px-3 text-[12px] font-medium text-[var(--text-secondary)] transition-colors duration-150 hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] active:duration-0 cursor-default select-none w-full sm:w-auto"
+                    {...stylex.props(styles.button, styles.secondary)}
                     type="button"
                     onClick={() => setStep('creating_invite')}
                   >
                     Generate link
                   </button>
                   <button
-                    className="inline-flex h-7 items-center justify-center rounded-full bg-[#5e6ad2] px-3.5 text-[12px] font-medium text-white shadow-[0_1px_1px_rgba(0,0,0,0.04),0_3px_6px_-2px_rgba(0,0,0,0.02)] transition-colors duration-150 hover:bg-[#6875e5] active:duration-0 cursor-default select-none w-full sm:w-auto"
+                    {...stylex.props(styles.button, styles.primary)}
                     type="button"
                     onClick={continueWithFacebook}
                   >
@@ -264,7 +541,7 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
               )}
               {step === 'invite_ready' && (
                 <button
-                  className="inline-flex h-7 items-center justify-center rounded-full bg-[#5e6ad2] px-3.5 text-[12px] font-medium text-white shadow-[0_1px_1px_rgba(0,0,0,0.04),0_3px_6px_-2px_rgba(0,0,0,0.02)] transition-colors duration-150 hover:bg-[#6875e5] active:duration-0 cursor-default select-none w-full sm:w-auto"
+                  {...stylex.props(styles.button, styles.primary)}
                   type="button"
                   onClick={copyInvite}
                 >
@@ -273,7 +550,7 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
               )}
               {step === 'selecting' && (
                 <button
-                  className="inline-flex h-7 items-center justify-center rounded-full bg-[#5e6ad2] px-3.5 text-[12px] font-medium text-white shadow-[0_1px_1px_rgba(0,0,0,0.04),0_3px_6px_-2px_rgba(0,0,0,0.02)] transition-colors duration-150 hover:bg-[#6875e5] active:duration-0 disabled:opacity-50 cursor-default select-none w-full sm:w-auto"
+                  {...stylex.props(styles.button, styles.primary)}
                   type="button"
                   disabled={selectedIds.size === 0}
                   onClick={importSelected}
@@ -284,14 +561,14 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
               {step === 'done' && (
                 <Dialog.Close asChild>
                   <button
-                    className="inline-flex h-7 items-center justify-center rounded-full bg-[#5e6ad2] px-3.5 text-[12px] font-medium text-white shadow-[0_1px_1px_rgba(0,0,0,0.04),0_3px_6px_-2px_rgba(0,0,0,0.02)] transition-colors duration-150 hover:bg-[#6875e5] active:duration-0 cursor-default select-none w-full sm:w-auto"
+                    {...stylex.props(styles.button, styles.primary)}
                     type="button"
                   >
                     Done
                   </button>
                 </Dialog.Close>
               )}
-              {isBusy && <span className="text-[12px] text-[var(--text-tertiary)]" aria-live="polite">Please wait…</span>}
+              {isBusy && <span {...stylex.props(styles.wait)} aria-live="polite">Please wait…</span>}
             </footer>
           </Dialog.Content>
         </div>

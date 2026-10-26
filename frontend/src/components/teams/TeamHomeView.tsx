@@ -1,3 +1,4 @@
+import * as stylex from '@stylexjs/stylex';
 import React, { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { apiRequest } from '@/lib/api';
@@ -38,6 +39,134 @@ import { toast } from '@/ui/toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import { BuyerlyDataListRow, BuyerlyDataListToolbar, BuyerlyDataTable, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 import { shellStore, useShellStore, type AppTab } from '@/models/shellStore';
+import { colors } from '@/styles/tokens.stylex';
+
+const truncate = {
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+} as const;
+
+const styles = stylex.create({
+  root: {
+    display: 'flex',
+    height: '100%',
+    width: '100%',
+    userSelect: 'none',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  header: {
+    display: 'flex',
+    flexShrink: 0,
+    flexDirection: 'column',
+  },
+  // The 44px title bar over a hairline.
+  titleBar: {
+    display: 'flex',
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 18,
+    paddingRight: 11,
+  },
+  title: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+  },
+  teamIcon: {
+    marginRight: 6,
+  },
+  teamName: {
+    ...truncate,
+    color: colors['--text-primary'],
+  },
+  documentHeading: {
+    ...truncate,
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-secondary'],
+  },
+  toolbar: {
+    gap: 8,
+  },
+  body: {
+    display: 'flex',
+    minHeight: 0,
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+  },
+  documentIcon: {
+    flexShrink: 0,
+    color: colors['--text-tertiary'],
+  },
+  resourceTitle: {
+    ...truncate,
+  },
+  noMembers: {
+    fontSize: 13,
+    color: colors['--text-muted'],
+  },
+  row: {
+    cursor: 'pointer',
+  },
+  cellLead: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 10,
+  },
+  author: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 8,
+  },
+  documentName: {
+    ...truncate,
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  names: {
+    display: 'flex',
+    minWidth: 0,
+    flexDirection: 'column',
+  },
+  memberName: {
+    ...truncate,
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-secondary'],
+  },
+  username: {
+    ...truncate,
+    fontSize: 12,
+    fontWeight: 500,
+    color: colors['--text-tertiary'],
+  },
+  email: {
+    ...truncate,
+    fontSize: 13,
+    fontWeight: 450,
+    color: colors['--text-secondary'],
+  },
+  meta: {
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--text-tertiary'],
+  },
+  metaTruncated: {
+    ...truncate,
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--text-tertiary'],
+  },
+});
 
 const TABS: { id: TeamHomePage; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -155,24 +284,22 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
   };
 
   return (
-    <div className="flex h-full w-full select-none flex-col overflow-hidden bg-transparent">
-      <header className="flex shrink-0 flex-col">
-        <div
-          style={{ borderBottom: 'var(--canvas-border)', paddingLeft: '18px', paddingRight: '11px' }}
-          className="flex h-[44px] items-center justify-between"
-        >
-          <div className="flex min-w-0 items-center">
+    <div {...stylex.props(styles.root)}>
+      <header {...stylex.props(styles.header)}>
+        {/* --canvas-border is a whole border; StyleX would split the shorthand and lose it. */}
+        <div {...stylex.props(styles.titleBar)} style={{ borderBottom: 'var(--canvas-border)' }}>
+          <div {...stylex.props(styles.title)}>
             <SidebarCollapsedNavigation />
             {team && (
               <button type="button" className="team-breadcrumb-link" onClick={() => open('overview')}>
-                <TeamIcon size={16} className="mr-[6px]" />
-                <span className="truncate text-[var(--text-primary)]">{team.name}</span>
+                <TeamIcon size={16} className={stylex.props(styles.teamIcon).className} />
+                <span {...stylex.props(styles.teamName)}>{team.name}</span>
               </button>
             )}
             {team && documentId && openDocument && (
               <>
                 <span className="team-breadcrumb-separator" aria-hidden="true">›</span>
-                <h2 className="truncate text-[13px] font-medium text-[var(--text-secondary)]">{documentTitle(openDocument)}</h2>
+                <h2 {...stylex.props(styles.documentHeading)}>{documentTitle(openDocument)}</h2>
               </>
             )}
           </div>
@@ -185,7 +312,7 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
           )}
         </div>
         {!documentId && (
-          <BuyerlyDataListToolbar className="gap-2">
+          <BuyerlyDataListToolbar xstyle={styles.toolbar}>
             <BuyerlyTabs
               aria-label="Team pages"
               tabs={TABS}
@@ -217,7 +344,7 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
           </BuyerlyDataListToolbar>
         )}
       </header>
-      <div className="flex min-h-0 min-w-0 flex-1">{renderBody()}</div>
+      <div {...stylex.props(styles.body)}>{renderBody()}</div>
     </div>
   );
 };
@@ -288,8 +415,8 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
             <div className="team-overview__resource-list">
               {documents.map((document) => (
                 <button key={document.id} type="button" className="team-resource" onClick={() => onOpenTab('documents', document.id)}>
-                  <BuyerlyDocumentIcon size={16} className="shrink-0 text-[var(--text-tertiary)]" />
-                  <span className="truncate">{documentTitle(document)}</span>
+                  <BuyerlyDocumentIcon size={16} {...stylex.props(styles.documentIcon)} />
+                  <span {...stylex.props(styles.resourceTitle)}>{documentTitle(document)}</span>
                 </button>
               ))}
             </div>
@@ -305,7 +432,7 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
               <Initials label={memberName(member)} avatarUrl={member.avatar_url} />
             </span>
           ))}
-          {people.length === 0 && <span className="text-[13px] text-[var(--text-muted)]">No members</span>}
+          {people.length === 0 && <span {...stylex.props(styles.noMembers)}>No members</span>}
         </button>
 
         <div className="team-overview__aside-label team-overview__aside-label--spaced">Go to</div>
@@ -399,21 +526,21 @@ const TeamDocumentsList: React.FC<{ documents: TeamDocument[]; members: MemberIt
           layout="grid"
           columns={DOCUMENT_COLUMNS}
           tabIndex={0}
-          className="cursor-pointer"
+          xstyle={styles.row}
           onClick={() => onOpen(document.id)}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && event.target === event.currentTarget) onOpen(document.id);
           }}
         >
-          <div className="flex min-w-0 items-center gap-[10px]">
-            <BuyerlyDocumentIcon size={16} className="shrink-0 text-[var(--text-tertiary)]" />
-            <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">{documentTitle(document)}</span>
+          <div {...stylex.props(styles.cellLead)}>
+            <BuyerlyDocumentIcon size={16} {...stylex.props(styles.documentIcon)} />
+            <span {...stylex.props(styles.documentName)}>{documentTitle(document)}</span>
           </div>
-          <div className="flex min-w-0 items-center gap-2">
+          <div {...stylex.props(styles.author)}>
             {author && <Initials label={memberName(author)} avatarUrl={author.avatar_url} />}
-            <span className="truncate text-[12px] font-[450] text-[var(--text-tertiary)]">{author ? memberName(author) : ''}</span>
+            <span {...stylex.props(styles.metaTruncated)}>{author ? memberName(author) : ''}</span>
           </div>
-          <span className="text-[12px] font-[450] text-[var(--text-tertiary)]">{shortDate(document.updated_at)}</span>
+          <span {...stylex.props(styles.meta)}>{shortDate(document.updated_at)}</span>
         </BuyerlyDataListRow>
       );
     })}
@@ -589,15 +716,15 @@ const TeamMembersTab: React.FC<{ team: TeamItem; members: MemberItem[] | null }>
     <BuyerlyDataTable columns={MEMBER_COLUMNS}>
       {people.map((member) => (
         <BuyerlyDataListRow key={member.id} layout="grid" columns={MEMBER_COLUMNS} height={50}>
-          <div className="flex min-w-0 items-center gap-[10px]">
+          <div {...stylex.props(styles.cellLead)}>
             <Initials label={memberName(member)} avatarUrl={member.avatar_url} size={24} />
-            <div className="flex min-w-0 flex-col">
-              <span className="truncate text-[13px] font-medium text-[var(--text-secondary)]">{memberName(member)}</span>
-              {member.username && member.username !== member.email && <span className="truncate text-[12px] font-medium text-[var(--text-tertiary)]">{member.username}</span>}
+            <div {...stylex.props(styles.names)}>
+              <span {...stylex.props(styles.memberName)}>{memberName(member)}</span>
+              {member.username && member.username !== member.email && <span {...stylex.props(styles.username)}>{member.username}</span>}
             </div>
           </div>
-          <span className="truncate text-[13px] font-[450] text-[var(--text-secondary)]">{member.email ?? ''}</span>
-          <span className="text-[12px] font-[450] text-[var(--text-tertiary)]"><RoleStatus role={member.role} /></span>
+          <span {...stylex.props(styles.email)}>{member.email ?? ''}</span>
+          <span {...stylex.props(styles.meta)}><RoleStatus role={member.role} /></span>
         </BuyerlyDataListRow>
       ))}
     </BuyerlyDataTable>

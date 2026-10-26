@@ -1,7 +1,205 @@
 import React, { useLayoutEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import * as stylex from '@stylexjs/stylex';
 import { BuyerlyClockOutlineIcon } from '@/icons/BuyerlyIcons';
 import { Button } from '@/ui/Button';
+import { withClassName } from '@/ui/withClassName';
+import { colors } from '@/styles/tokens.stylex';
+
+const styles = stylex.create({
+  month: {
+    display: 'flex',
+    width: 246,
+    gap: 8,
+    paddingLeft: 8,
+    paddingRight: 8,
+    paddingBottom: 8,
+    paddingTop: 8,
+  },
+  weekday: {
+    display: 'flex',
+    width: 26,
+    flexDirection: 'column',
+    alignItems: 'center',
+    borderRadius: 8,
+    paddingBottom: 8,
+  },
+  weekend: {
+    backgroundColor: colors['--calendar-weekend-bg'],
+  },
+  weekdayLabel: {
+    display: 'flex',
+    height: 28,
+    alignItems: 'center',
+    fontSize: 13,
+    color: colors['--text-tertiary'],
+  },
+  weekdayGap: {
+    height: 12,
+  },
+  emptyCell: {
+    height: 34,
+  },
+  cell: {
+    display: 'flex',
+    height: 34,
+    alignItems: 'center',
+  },
+  day: {
+    display: 'flex',
+    height: 26,
+    width: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9999,
+    fontSize: 12,
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+    color: {
+      default: colors['--text-secondary'],
+      ':hover': colors['--text-primary'],
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+  },
+  dayWeekend: {
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+  },
+  dayPast: {
+    cursor: 'default',
+    color: colors['--text-muted'],
+    backgroundColor: null,
+  },
+  daySelected: {
+    backgroundColor: colors['--calendar-selected-bg'],
+    color: colors['--calendar-selected-fg'],
+  },
+  frame: {
+    pointerEvents: 'none',
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 700,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 16,
+    paddingRight: 16,
+    paddingBottom: 16,
+    paddingLeft: 16,
+  },
+  content: {
+    pointerEvents: 'auto',
+    maxHeight: 'calc(100vh - 32px)',
+    maxWidth: '100%',
+    overflow: 'auto',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    backgroundColor: colors['--card-bg'],
+    paddingLeft: 32,
+    paddingRight: 32,
+    paddingBottom: 32,
+    paddingTop: 32,
+    boxShadow: colors['--dialog-elevation-shadow'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+  },
+  title: {
+    marginTop: 0,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+    display: 'flex',
+    height: 23,
+    alignItems: 'center',
+    gap: 8,
+    fontSize: 15,
+    fontWeight: 600,
+    color: colors['--text-primary'],
+  },
+  months: {
+    marginTop: 6,
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  monthHeader: {
+    display: 'flex',
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    fontSize: 12,
+    color: colors['--text-secondary'],
+  },
+  nav: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+  },
+  navButton: {
+    display: 'flex',
+    height: 28,
+    width: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+      ':disabled': colors['--text-muted'],
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    pointerEvents: {
+      default: null,
+      ':disabled': 'none',
+    },
+  },
+  actions: {
+    marginTop: 20,
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  cancel: {
+    borderColor: 'transparent',
+    backgroundColor: colors['--calendar-cancel-bg'],
+    fontSize: 13,
+    color: colors['--calendar-cancel-fg'],
+    boxShadow: {
+      default: colors['--calendar-cancel-shadow'],
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+  },
+  apply: {
+    backgroundColor: colors['--calendar-apply-bg'],
+    fontSize: 13,
+    color: colors['--calendar-apply-fg'],
+    boxShadow: {
+      default: colors['--calendar-apply-shadow'],
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+    filter: {
+      default: null,
+      ':hover': 'brightness(1.1)',
+    },
+  },
+});
 
 interface SnoozeCalendarDialogProps {
   open: boolean;
@@ -58,24 +256,22 @@ interface MonthGridProps {
 const MonthGrid: React.FC<MonthGridProps> = ({ first, today, selected, onSelect }) => {
   const weeks = monthWeeks(first);
   return (
-    <div role="group" aria-label={monthTitle.format(first)} className="flex w-[246px] gap-[8px] px-[8px] pb-[8px] pt-[8px]">
+    <div role="group" aria-label={monthTitle.format(first)} {...stylex.props(styles.month)}>
       {WEEKDAY_LABELS.map((label, index) => (
         <div
           key={label}
-          className={`flex w-[26px] flex-col items-center rounded-[8px] pb-[8px] ${
-            index === 0 || index === 6 ? 'bg-[var(--calendar-weekend-bg)]' : ''
-          }`}
+          {...stylex.props(styles.weekday, (index === 0 || index === 6) && styles.weekend)}
         >
-          <div aria-hidden="true" className="flex h-[28px] items-center text-[13px] text-[var(--text-tertiary)]">{label}</div>
-          <div className="h-[12px]" />
+          <div aria-hidden="true" {...stylex.props(styles.weekdayLabel)}>{label}</div>
+          <div {...stylex.props(styles.weekdayGap)} />
           {weeks.map((week, weekIndex) => {
             const day = week[index];
-            if (!day) return <div key={weekIndex} className="h-[34px]" />;
+            if (!day) return <div key={weekIndex} {...stylex.props(styles.emptyCell)} />;
             const past = day < today;
             const isSelected = sameDay(day, selected);
             const weekend = index === 0 || index === 6;
             return (
-              <div key={weekIndex} className="flex h-[34px] items-center">
+              <div key={weekIndex} {...stylex.props(styles.cell)}>
                 <button
                   type="button"
                   disabled={past}
@@ -83,13 +279,12 @@ const MonthGrid: React.FC<MonthGridProps> = ({ first, today, selected, onSelect 
                   aria-pressed={isSelected}
                   data-snooze-day={`${day.getFullYear()}-${day.getMonth() + 1}-${day.getDate()}`}
                   onClick={() => onSelect(day)}
-                  className={`flex h-[26px] w-[26px] items-center justify-center rounded-full text-[12px] outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] ${
-                    isSelected
-                      ? 'bg-[var(--calendar-selected-bg)] text-[var(--calendar-selected-fg)]'
-                      : past
-                        ? 'cursor-default text-[var(--text-muted)]'
-                        : `${weekend ? 'text-[var(--text-tertiary)]' : 'text-[var(--text-secondary)]'} hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]`
-                  }`}
+                  {...stylex.props(
+                    styles.day,
+                    weekend && styles.dayWeekend,
+                    past && styles.dayPast,
+                    isSelected && styles.daySelected,
+                  )}
                 >
                   {day.getDate()}
                 </button>
@@ -134,29 +329,29 @@ export const SnoozeCalendarDialog: React.FC<SnoozeCalendarDialogProps> = ({ open
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <div className="pointer-events-none fixed inset-0 z-[700] flex items-center justify-center p-4">
+        <div {...stylex.props(styles.frame)}>
           <Dialog.Content
             aria-describedby={undefined}
             onCloseAutoFocus={(event) => event.preventDefault()}
-            className="pointer-events-auto max-h-[calc(100vh-32px)] max-w-full overflow-auto rounded-[12px] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] px-[32px] pb-[32px] pt-[32px] [box-shadow:var(--dialog-elevation-shadow)] outline-none animate-scale-in"
+            {...withClassName(stylex.props(styles.content), 'animate-scale-in')}
           >
-            <Dialog.Title className="m-0 flex h-[23px] items-center gap-[8px] text-[15px] font-semibold text-[var(--text-primary)]">
+            <Dialog.Title {...stylex.props(styles.title)}>
               <BuyerlyClockOutlineIcon size={16} />
               Snooze notification until
             </Dialog.Title>
-            <div className="mt-[6px] flex flex-wrap gap-[4px]">
+            <div {...stylex.props(styles.months)}>
               {[first, second].map((month, index) => (
                 <div key={month.getTime()}>
-                  <div className="flex h-[36px] items-center justify-between text-[12px] text-[var(--text-secondary)]">
+                  <div {...stylex.props(styles.monthHeader)}>
                     <span>{monthTitle.format(month)}</span>
                     {index === 1 && (
-                      <span className="flex items-center gap-[4px]">
+                      <span {...stylex.props(styles.nav)}>
                         <button
                           type="button"
                           aria-label="Previous month"
                           disabled={atFirstMonth}
                           onClick={() => shiftMonths(-1)}
-                          className="flex h-[28px] w-[28px] items-center justify-center rounded-[6px] text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] disabled:pointer-events-none disabled:text-[var(--text-muted)]"
+                          {...stylex.props(styles.navButton)}
                         >
                           <NavArrow direction="left" />
                         </button>
@@ -164,7 +359,7 @@ export const SnoozeCalendarDialog: React.FC<SnoozeCalendarDialogProps> = ({ open
                           type="button"
                           aria-label="Next month"
                           onClick={() => shiftMonths(1)}
-                          className="flex h-[28px] w-[28px] items-center justify-center rounded-[6px] text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]"
+                          {...stylex.props(styles.navButton)}
                         >
                           <NavArrow direction="right" />
                         </button>
@@ -175,17 +370,17 @@ export const SnoozeCalendarDialog: React.FC<SnoozeCalendarDialogProps> = ({ open
                 </div>
               ))}
             </div>
-            <div className="mt-[20px] flex justify-end gap-[10px]">
+            <div {...stylex.props(styles.actions)}>
               <Button
                 onClick={() => onOpenChange(false)}
-                className="!border-transparent !bg-[var(--calendar-cancel-bg)] !text-[13px] !text-[var(--calendar-cancel-fg)] [box-shadow:var(--calendar-cancel-shadow)]"
+                xstyle={styles.cancel}
               >
                 Cancel
               </Button>
               <Button
                 variant="primary"
                 onClick={apply}
-                className="!bg-[var(--calendar-apply-bg)] !text-[13px] !text-[var(--calendar-apply-fg)] [box-shadow:var(--calendar-apply-shadow)] hover:brightness-110"
+                xstyle={styles.apply}
               >
                 Apply
               </Button>

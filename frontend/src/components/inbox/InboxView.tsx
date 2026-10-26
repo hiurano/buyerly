@@ -72,6 +72,9 @@ import { useViewStore, viewStore } from '@/models/viewStore';
 import { useInboxStore } from '@/models/inboxStore';
 import { useScopeStore } from '@/models/scopeStore';
 import { useShellStore } from '@/models/shellStore';
+import * as stylex from '@stylexjs/stylex';
+import { colors, radii } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type ActionState = 'idle' | 'loading';
@@ -100,11 +103,332 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
 }
 
+const WIDE = '@media (min-width: 640px)';
+const SPLIT = '@media (min-width: 768px)';
+
+const truncate = {
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+} as const;
+
+const styles = stylex.create({
+  metadataRow: {
+    display: 'grid',
+    gridTemplateColumns: {
+      default: null,
+      [WIDE]: '140px minmax(0, 1fr)',
+    },
+    gap: {
+      default: 4,
+      [WIDE]: 16,
+    },
+    borderBottomWidth: 1,
+    borderBottomStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+    paddingTop: 12,
+    paddingBottom: 12,
+  },
+  metadataLabel: {
+    fontSize: 13,
+    color: colors['--text-muted'],
+  },
+  metadataValue: {
+    minWidth: 0,
+    overflowWrap: 'break-word',
+    fontSize: 14,
+    color: colors['--text-secondary'],
+  },
+  recordLink: {
+    color: colors['--text-primary'],
+    textDecorationLine: 'underline',
+    textDecorationColor: {
+      default: colors['--color-border-secondary'],
+      ':hover': colors['--text-tertiary'],
+    },
+    textUnderlineOffset: 2,
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    borderRadius: {
+      default: null,
+      ':focus-visible': 2,
+    },
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+  },
+  menuKey: {
+    fontFamily: '"Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    fontSize: 12,
+    fontWeight: 500,
+    color: colors['--text-muted'],
+  },
+  menuLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+  },
+  fill: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+  },
+  empty: {
+    display: 'flex',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingLeft: 24,
+    paddingRight: 24,
+  },
+  emptyStack: {
+    flexDirection: 'column',
+    gap: 20,
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-tertiary'],
+  },
+  showAll: {
+    fontSize: 13,
+    fontWeight: 500,
+    color: {
+      default: colors['--text-secondary'],
+      ':hover': colors['--text-primary'],
+    },
+  },
+  list: {
+    minHeight: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    overflowY: 'auto',
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  root: {
+    position: 'relative',
+    display: 'flex',
+    height: '100%',
+    minWidth: 0,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  // Beside the notification from 768px, at the width the split keeps in --inbox-list-width.
+  inboxList: {
+    display: 'flex',
+    height: '100%',
+    minWidth: 0,
+    width: {
+      default: '100%',
+      [SPLIT]: 'var(--inbox-list-width)',
+    },
+    maxWidth: {
+      default: null,
+      [SPLIT]: 'var(--inbox-list-width)',
+    },
+    flexShrink: {
+      default: null,
+      [SPLIT]: 0,
+    },
+    flexDirection: 'column',
+  },
+  // A phone shows the list or the notification, not both.
+  hiddenUntilSplit: {
+    display: {
+      default: 'none',
+      [SPLIT]: 'flex',
+    },
+  },
+  header: {
+    display: 'flex',
+    height: 44,
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 4,
+    borderBottomWidth: 1,
+    borderBottomStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+    paddingLeft: 10,
+    paddingRight: 10,
+  },
+  title: {
+    paddingLeft: 8,
+    paddingRight: 4,
+    fontSize: 13,
+    fontWeight: 500,
+    lineHeight: '16px',
+    color: colors['--text-secondary'],
+  },
+  notification: {
+    display: 'flex',
+    height: '100%',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    flexDirection: 'column',
+    overflow: 'hidden',
+  },
+  notificationHeader: {
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingLeft: {
+      default: 10,
+      [WIDE]: 16,
+    },
+    paddingRight: {
+      default: 10,
+      [WIDE]: 16,
+    },
+  },
+  notificationTitle: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 8,
+  },
+  back: {
+    display: {
+      default: null,
+      [SPLIT]: 'none',
+    },
+  },
+  notificationName: {
+    ...truncate,
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-secondary'],
+  },
+  notificationActions: {
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 4,
+  },
+  scroll: {
+    minHeight: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    overflowY: 'auto',
+    paddingLeft: {
+      default: 16,
+      [WIDE]: 32,
+    },
+    paddingRight: {
+      default: 16,
+      [WIDE]: 32,
+    },
+    paddingTop: {
+      default: 24,
+      [WIDE]: 32,
+    },
+    paddingBottom: {
+      default: 24,
+      [WIDE]: 32,
+    },
+  },
+  article: {
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    maxWidth: 720,
+  },
+  lead: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 14,
+  },
+  leadText: {
+    minWidth: 0,
+  },
+  heading: {
+    overflowWrap: 'break-word',
+    fontSize: 22,
+    fontWeight: 500,
+    lineHeight: '28px',
+    letterSpacing: '-0.015em',
+    color: colors['--text-primary'],
+  },
+  timestamp: {
+    marginTop: 4,
+    fontSize: 13,
+    color: colors['--text-tertiary'],
+  },
+  message: {
+    marginTop: 24,
+    fontSize: 14,
+    lineHeight: 1.625,
+    color: colors['--text-secondary'],
+  },
+  metadata: {
+    marginTop: 28,
+    borderTopWidth: 1,
+    borderTopStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+  },
+  undo: {
+    marginTop: 28,
+    borderRadius: radii['--control-border-radius'],
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+    backgroundColor: colors['--card-bg'],
+    paddingTop: 16,
+    paddingRight: 16,
+    paddingBottom: 16,
+    paddingLeft: 16,
+  },
+  undoTitle: {
+    fontSize: 14,
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  undoHint: {
+    marginTop: 4,
+    fontSize: 14,
+    lineHeight: 1.625,
+    color: colors['--text-tertiary'],
+  },
+  undoButton: {
+    marginTop: 16,
+    fontSize: 14,
+  },
+  outcome: {
+    marginTop: 16,
+    fontSize: 14,
+    color: colors['--text-secondary'],
+  },
+  outcomeError: {
+    color: colors['--text-primary'],
+  },
+  nothingSelected: {
+    display: 'flex',
+    height: '100%',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 24,
+    paddingLeft: 24,
+    paddingRight: 24,
+    textAlign: 'center',
+  },
+  nothingSelectedError: {
+    fontSize: 13,
+    color: colors['--text-primary'],
+  },
+});
+
 function MetadataRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="grid gap-1 border-b border-[var(--color-border-primary)] py-3 sm:grid-cols-[140px_minmax(0,1fr)] sm:gap-4">
-      <dt className="text-[13px] text-[var(--text-muted)]">{label}</dt>
-      <dd className="min-w-0 break-words text-[14px] text-[var(--text-secondary)]">{value}</dd>
+    <div {...stylex.props(styles.metadataRow)}>
+      <dt {...stylex.props(styles.metadataLabel)}>{label}</dt>
+      <dd {...stylex.props(styles.metadataValue)}>{value}</dd>
     </div>
   );
 }
@@ -119,7 +443,7 @@ function RecordLink({ path, label, onOpen }: { path: string; label: string; onOp
         event.preventDefault();
         onOpen(path);
       }}
-      className="text-[var(--text-primary)] underline decoration-[var(--color-border-secondary)] underline-offset-2 outline-none hover:decoration-[var(--text-tertiary)] focus-visible:rounded-[2px] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
+      {...stylex.props(styles.recordLink)}
     >
       {label}
     </a>
@@ -127,7 +451,7 @@ function RecordLink({ path, label, onOpen }: { path: string; label: string; onOp
 }
 
 const MenuKey: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <kbd className="font-sans text-[12px] font-[500] text-[var(--text-muted)]">{children}</kbd>
+  <kbd {...stylex.props(styles.menuKey)}>{children}</kbd>
 );
 
 const OPEN_LAYER_SELECTOR = [
@@ -564,7 +888,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
 
   const renderList = () => {
     if (loadState === 'loading') {
-      return <div className="flex-1" aria-busy="true" aria-label="Loading notifications" />;
+      return <div {...stylex.props(styles.fill)} aria-busy="true" aria-label="Loading notifications" />;
     }
     if (loadState === 'error') {
       return (
@@ -580,19 +904,19 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
     if (items.length === 0) {
       if (filters.length) {
         return (
-          <div className="flex-1">
+          <div {...stylex.props(styles.fill)}>
             <InboxFilterFooter hiddenCount={hiddenByFilters} onClear={() => applyFilters([])} />
           </div>
         );
       }
       if (inboxDisplay.unreadOnly) {
         return (
-          <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
-            <p className="text-[13px] font-medium text-[var(--text-tertiary)]">No unreads</p>
+          <div {...stylex.props(styles.empty, styles.emptyStack)}>
+            <p {...stylex.props(styles.emptyText)}>No unreads</p>
             <button
               type="button"
               onClick={() => setInboxDisplay({ unreadOnly: false })}
-              className="text-[13px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              {...stylex.props(styles.showAll)}
             >
               Show all notifications
             </button>
@@ -600,8 +924,8 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
         );
       }
       return (
-        <div className="flex flex-1 items-center justify-center px-6">
-          <p className="text-[13px] font-medium text-[var(--text-tertiary)]">No notifications</p>
+        <div {...stylex.props(styles.empty)}>
+          <p {...stylex.props(styles.emptyText)}>No notifications</p>
         </div>
       );
     }
@@ -610,7 +934,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
         ref={listRef}
         role="listbox"
         aria-label="Notifications"
-        className="min-h-0 flex-1 overflow-y-auto py-2"
+        {...stylex.props(styles.list)}
         onScroll={(event) => {
           const element = event.currentTarget;
           if (element.scrollHeight - element.scrollTop - element.clientHeight < 200) void loadMore();
@@ -653,15 +977,15 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
   const unreadLabel = inboxUnreadCount === 1 ? '1 unread notification' : `${inboxUnreadCount} unread notifications`;
 
   return (
-    <div ref={splitContainerRef} className="relative flex h-full min-w-0 overflow-hidden bg-transparent">
+    <div ref={splitContainerRef} {...stylex.props(styles.root)}>
       <section
         aria-label="Inbox"
-        className={`${selectedItem ? 'hidden md:flex' : 'flex'} inbox-list h-full min-w-0 w-full flex-col`}
+        {...withClassName(stylex.props(styles.inboxList, selectedItem && styles.hiddenUntilSplit), 'inbox-list')}
         style={{ '--inbox-list-width': `${splitWidth}px` } as React.CSSProperties}
       >
-        <header className="flex h-[44px] shrink-0 items-center gap-1 border-b border-[var(--color-border-primary)] px-2.5">
+        <header {...stylex.props(styles.header)}>
           <SidebarCollapsedNavigation />
-          <h1 className="pl-2 pr-1 text-[13px] font-medium leading-4 text-[var(--text-secondary)]">Inbox</h1>
+          <h1 {...stylex.props(styles.title)}>Inbox</h1>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button type="button" aria-label="Notification actions" className={headerButtonClass()}>
@@ -670,13 +994,13 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
             </DropdownMenuTrigger>
             <DropdownMenuContent style={{ width: '184px' }}>
               <DropdownMenuItem onSelect={() => void deleteAll(false)}>
-                <span className="flex items-center gap-2.5">
+                <span {...stylex.props(styles.menuLabel)}>
                   <BuyerlyInboxDeleteIcon size={16} />
                   Delete all
                 </span>
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => void deleteAll(true)}>
-                <span className="flex items-center gap-2.5">
+                <span {...stylex.props(styles.menuLabel)}>
                   <BuyerlyInboxDeleteIcon size={16} />
                   Delete all read
                 </span>
@@ -690,14 +1014,14 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                   setActiveTab('preferences');
                 }}
               >
-                <span className="flex items-center gap-2.5">
+                <span {...stylex.props(styles.menuLabel)}>
                   <BuyerlySlidersIcon size={16} />
                   Go to settings
                 </span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <div className="flex-1" />
+          <div {...stylex.props(styles.fill)} />
           <Tooltip content={inboxDisplay.unreadOnly ? 'Show all notifications' : 'Show unreads only'}>
             <button
               type="button"
@@ -800,25 +1124,25 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
 
       <section
         aria-label="Notification"
-        className={`${selectedItem ? 'flex' : 'hidden md:flex'} h-full min-w-0 flex-1 flex-col overflow-hidden`}
+        {...stylex.props(styles.notification, !selectedItem && styles.hiddenUntilSplit)}
       >
         {selectedItem ? (
           <>
-            <header className="flex h-[44px] shrink-0 items-center justify-between gap-3 border-b border-[var(--color-border-primary)] px-2.5 sm:px-4">
-              <div className="flex min-w-0 items-center gap-2">
+            <header {...stylex.props(styles.header, styles.notificationHeader)}>
+              <div {...stylex.props(styles.notificationTitle)}>
                 <button
                   type="button"
                   onClick={() => openItem(null)}
-                  className="buyerly-icon-btn buyerly-header-target md:hidden"
+                  {...withClassName(stylex.props(styles.back), 'buyerly-icon-btn buyerly-header-target')}
                   aria-label="Back to Inbox"
                 >
                   <ArrowLeft size={16} aria-hidden="true" />
                 </button>
-                <span className="truncate text-[13px] font-medium text-[var(--text-secondary)]">
+                <span {...stylex.props(styles.notificationName)}>
                   {auditEventTitle(selectedItem)} · {auditEventTarget(selectedItem)}
                 </span>
               </div>
-              <div className="flex shrink-0 items-center gap-1">
+              <div {...stylex.props(styles.notificationActions)}>
                 <Tooltip content="Snooze notification" shortcut="H" disabled={snoozePalette !== null}>
                   <button
                     type="button"
@@ -852,26 +1176,26 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
               </div>
             </header>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8">
-              <article className="mx-auto max-w-[720px]">
-                <div className="flex items-start gap-3.5">
+            <div {...stylex.props(styles.scroll)}>
+              <article {...stylex.props(styles.article)}>
+                <div {...stylex.props(styles.lead)}>
                   <BuyerlyLogoAvatar size={40} shape="rounded" />
-                  <div className="min-w-0">
-                    <h2 className="break-words text-[22px] font-medium leading-7 tracking-[-0.015em] text-[var(--text-primary)]">
+                  <div {...stylex.props(styles.leadText)}>
+                    <h2 {...stylex.props(styles.heading)}>
                       {auditEventTitle(selectedItem)}
                     </h2>
-                    <p className="mt-1 text-[13px] text-[var(--text-tertiary)]">
+                    <p {...stylex.props(styles.timestamp)}>
                       {formatAuditTimestamp(selectedItem.created_at)}
                       {selectedItem.snoozed_until && ` · Snoozed until ${formatSnoozeTime(new Date(selectedItem.snoozed_until))}`}
                     </p>
                   </div>
                 </div>
 
-                <p className="mt-6 text-[14px] leading-relaxed text-[var(--text-secondary)]">
+                <p {...stylex.props(styles.message)}>
                   {selectedItem.message || 'No additional message was recorded for this event.'}
                 </p>
 
-                <dl className="mt-7 border-t border-[var(--color-border-primary)]">
+                <dl {...stylex.props(styles.metadata)}>
                   <MetadataRow
                     label="Target"
                     value={selectedPaths.entity
@@ -907,9 +1231,9 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                 </dl>
 
                 {(selectedItem.can_undo || selectedItem.is_reverted) && (
-                  <section className="mt-7 rounded-[var(--control-border-radius)] border border-[var(--color-border-primary)] bg-[var(--card-bg)] p-4" aria-labelledby="inbox-undo-heading">
-                    <h3 id="inbox-undo-heading" className="text-[14px] font-medium text-[var(--text-primary)]">Undo</h3>
-                    <p className="mt-1 text-[14px] leading-relaxed text-[var(--text-tertiary)]">
+                  <section {...stylex.props(styles.undo)} aria-labelledby="inbox-undo-heading">
+                    <h3 id="inbox-undo-heading" {...stylex.props(styles.undoTitle)}>Undo</h3>
+                    <p {...stylex.props(styles.undoHint)}>
                       {selectedItem.is_reverted
                         ? 'This action has already been undone.'
                         : auditUndoHint(selectedItem)}
@@ -917,7 +1241,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                     {selectedItem.can_undo && (
                       <Button
                         variant="primary"
-                        className="mt-4 text-[14px]"
+                        xstyle={styles.undoButton}
                         onClick={handleUndo}
                         disabled={actionState === 'loading'}
                       >
@@ -927,18 +1251,18 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                   </section>
                 )}
 
-                {actionMessage && <p className="mt-4 text-[14px] text-[var(--text-secondary)]" role="status">{actionMessage}</p>}
-                {actionError && <p className="mt-4 text-[14px] text-[var(--text-primary)]" role="alert">{actionError}</p>}
+                {actionMessage && <p {...stylex.props(styles.outcome)} role="status">{actionMessage}</p>}
+                {actionError && <p {...stylex.props(styles.outcome, styles.outcomeError)} role="alert">{actionError}</p>}
               </article>
             </div>
           </>
         ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-6 px-6 text-center">
+          <div {...stylex.props(styles.nothingSelected)}>
             <BuyerlyEmptyInboxIllustration />
-            <p className="text-[13px] font-medium text-[var(--text-tertiary)]">
+            <p {...stylex.props(styles.emptyText)}>
               {inboxUnreadCount > 0 ? unreadLabel : 'No notification selected'}
             </p>
-            {actionError && <p className="text-[13px] text-[var(--text-primary)]" role="alert">{actionError}</p>}
+            {actionError && <p {...stylex.props(styles.nothingSelectedError)} role="alert">{actionError}</p>}
           </div>
         )}
       </section>

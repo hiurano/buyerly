@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { observer } from 'mobx-react-lite';
 import type { MetaAccount } from '@/lib/types';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
@@ -40,6 +41,60 @@ import {
   naturalAccountDirection,
   sortAccounts,
 } from './accountsModel';
+
+const styles = stylex.create({
+  root: {
+    display: 'flex',
+    height: '100%',
+    width: '100%',
+    userSelect: 'none',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  header: {
+    display: 'flex',
+    flexShrink: 0,
+    flexDirection: 'column',
+  },
+  // The 44px title bar over a hairline.
+  titleBar: {
+    display: 'flex',
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 18,
+    paddingRight: 11,
+  },
+  title: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  toolbar: {
+    gap: 8,
+  },
+  body: {
+    display: 'flex',
+    minHeight: 0,
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+  },
+  actions: {
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 6,
+  },
+  scroll: {
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    overflowY: 'auto',
+  },
+});
 
 interface OpenFilterMenu {
   mode: FilterMenuMode;
@@ -254,7 +309,7 @@ const AccountsViewContent: React.FC<AccountsViewProps> = ({ navigate, navigation
     }
     if (shown.length === 0) {
       return (
-        <div className="min-w-0 flex-1 overflow-y-auto">
+        <div {...stylex.props(styles.scroll)}>
           <FilteredEmptyState noun="ad accounts" hiddenCount={accounts.length} onClear={() => setFilters([])} />
         </div>
       );
@@ -272,13 +327,11 @@ const AccountsViewContent: React.FC<AccountsViewProps> = ({ navigate, navigation
   };
 
   return (
-    <div className="flex h-full w-full select-none flex-col overflow-hidden bg-transparent">
-      <header className="flex shrink-0 flex-col">
-        <div
-          style={{ borderBottom: 'var(--canvas-border)', paddingLeft: '18px', paddingRight: '11px' }}
-          className="flex h-[44px] items-center justify-between"
-        >
-          <div className="flex items-center">
+    <div {...stylex.props(styles.root)}>
+      <header {...stylex.props(styles.header)}>
+        {/* --canvas-border is a whole border; StyleX would split the shorthand and lose it. */}
+        <div {...stylex.props(styles.titleBar)} style={{ borderBottom: 'var(--canvas-border)' }}>
+          <div {...stylex.props(styles.title)}>
             <SidebarCollapsedNavigation />
             <ViewTitle
               title="Ad accounts"
@@ -293,14 +346,14 @@ const AccountsViewContent: React.FC<AccountsViewProps> = ({ navigate, navigation
           {canEdit && <HeaderCreateButton label="Add account" tooltip="Add ad account" onClick={dialogs.openAdd} />}
         </div>
 
-        <BuyerlyDataListToolbar className="gap-2">
+        <BuyerlyDataListToolbar xstyle={styles.toolbar}>
           <BuyerlyTabs
             collapseOverflow
             tabs={[{ id: 'all', label: 'All ad accounts' }]}
             activeTabId="all"
             onChange={() => {}}
           />
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div {...stylex.props(styles.actions)}>
             <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(openFilterMenu)}>
               <BuyerlyFilterButton
                 ref={filterButtonRef}
@@ -325,7 +378,7 @@ const AccountsViewContent: React.FC<AccountsViewProps> = ({ navigate, navigation
                   setOpenFilterMenu(null);
                   setIsDisplayOpen((open) => !open);
                 }}
-                className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target group"
+                className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target"
               >
                 <BuyerlySlidersIcon size={14} />
                 <DisplayOptionsChangedDot show={displayChanged} />
@@ -363,7 +416,7 @@ const AccountsViewContent: React.FC<AccountsViewProps> = ({ navigate, navigation
         countNoun={['account', 'accounts']}
       />
 
-      <div className="flex min-h-0 min-w-0 flex-1">{renderBody()}</div>
+      <div {...stylex.props(styles.body)}>{renderBody()}</div>
 
       {dialogs.element}
     </div>

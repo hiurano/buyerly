@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { observer } from 'mobx-react-lite';
 import { ChevronRight, Copy } from 'lucide-react';
 import type { MetaAccount } from '@/lib/types';
@@ -39,6 +40,533 @@ import {
   teamsOf,
 } from './accountsModel';
 import { type RuleItem, useRulesStore } from '@/models/rulesStore';
+import { colors } from '@/styles/tokens.stylex';
+
+const TOUCH = '@media (hover: none) and (pointer: coarse)';
+const WIDE = '@media (min-width: 480px)';
+
+const truncate = {
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+} as const;
+
+const noMargin = {
+  marginTop: 0,
+  marginRight: 0,
+  marginBottom: 0,
+  marginLeft: 0,
+} as const;
+
+const styles = stylex.create({
+  sectionTitle: {
+    marginBottom: 8,
+    display: 'flex',
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionHeading: {
+    ...noMargin,
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-tertiary'],
+  },
+  property: {
+    display: 'flex',
+    minHeight: 36,
+    alignItems: 'center',
+  },
+  propertyLabel: {
+    width: 120,
+    flexShrink: 0,
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--text-tertiary'],
+  },
+  propertyValue: {
+    display: 'flex',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    alignItems: 'center',
+    gap: 8,
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--text-primary'],
+  },
+  figure: {
+    minWidth: 0,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+    paddingLeft: {
+      default: 12,
+      [WIDE]: 14,
+    },
+    paddingRight: {
+      default: 12,
+      [WIDE]: 14,
+    },
+    paddingTop: {
+      default: 10,
+      [WIDE]: 12,
+    },
+    paddingBottom: {
+      default: 10,
+      [WIDE]: 12,
+    },
+  },
+  figureLabel: {
+    ...truncate,
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--text-tertiary'],
+  },
+  figureValue: {
+    ...truncate,
+    marginTop: 4,
+    fontSize: {
+      default: 16,
+      [WIDE]: 18,
+    },
+    fontWeight: 600,
+    fontVariantNumeric: 'tabular-nums',
+    color: colors['--text-primary'],
+  },
+  figureCaption: {
+    ...truncate,
+    marginTop: 2,
+    fontSize: 12,
+    fontVariantNumeric: 'tabular-nums',
+    color: colors['--text-tertiary'],
+  },
+  // The 44px title bar over a hairline.
+  titleBar: {
+    display: 'flex',
+    height: 44,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingLeft: 18,
+    paddingRight: 11,
+  },
+  titleStart: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+  },
+  breadcrumbLink: {
+    flexShrink: 0,
+    borderRadius: 4,
+    fontSize: 13,
+    fontWeight: 500,
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    transitionProperty: 'color, background-color, border-color, text-decoration-color, fill, stroke',
+    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    transitionDuration: '150ms',
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+  },
+  breadcrumbChevron: {
+    marginLeft: 4,
+    marginRight: 4,
+    flexShrink: 0,
+    color: colors['--text-tertiary'],
+  },
+  breadcrumbPage: {
+    ...noMargin,
+    ...truncate,
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  titleActions: {
+    marginLeft: 8,
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 4,
+  },
+  headerEnd: {
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 8,
+  },
+  noShrink: {
+    flexShrink: 0,
+  },
+  root: {
+    display: 'flex',
+    height: '100%',
+    width: '100%',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  header: {
+    display: 'flex',
+    flexShrink: 0,
+    flexDirection: 'column',
+  },
+  propertiesStacked: {
+    marginTop: 32,
+  },
+  truncate,
+  muted: {
+    color: colors['--text-tertiary'],
+  },
+  secondary: {
+    color: colors['--text-secondary'],
+  },
+  reconnect: {
+    flexShrink: 0,
+    borderRadius: 9999,
+    paddingLeft: 8,
+    paddingRight: 8,
+    paddingTop: 2,
+    paddingBottom: 2,
+    fontSize: 12,
+    fontWeight: 500,
+    color: {
+      default: colors['--text-secondary'],
+      ':hover': colors['--text-primary'],
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+  },
+  main: {
+    minWidth: 0,
+  },
+  icon: {
+    display: 'flex',
+    height: 36,
+    width: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    color: colors['--text-secondary'],
+  },
+  nameInput: {
+    marginTop: 12,
+    width: '100%',
+    backgroundColor: 'transparent',
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    fontSize: 24,
+    fontWeight: 600,
+    lineHeight: '32px',
+    color: colors['--text-primary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    '::placeholder': {
+      color: colors['--text-muted'],
+    },
+  },
+  name: {
+    ...noMargin,
+    marginTop: 12,
+    fontSize: 24,
+    fontWeight: 600,
+    lineHeight: '32px',
+    color: colors['--text-primary'],
+  },
+  ids: {
+    marginTop: 6,
+    display: 'flex',
+    minWidth: 0,
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: 6,
+    fontSize: 13,
+    fontWeight: 450,
+    color: colors['--text-tertiary'],
+  },
+  accountId: {
+    userSelect: 'text',
+    fontVariantNumeric: 'tabular-nums',
+  },
+  copy: {
+    display: 'flex',
+    height: {
+      default: 24,
+      [TOUCH]: 36,
+    },
+    width: {
+      default: 24,
+      [TOUCH]: 36,
+    },
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9999,
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+  },
+  noteInput: {
+    marginTop: 16,
+    width: '100%',
+    resize: 'none',
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    fontSize: 15,
+    fontWeight: 450,
+    lineHeight: '24px',
+    color: colors['--text-secondary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    '::placeholder': {
+      color: colors['--text-muted'],
+    },
+  },
+  note: {
+    ...noMargin,
+    marginTop: 16,
+    whiteSpace: 'pre-wrap',
+    fontSize: 15,
+    fontWeight: 450,
+    lineHeight: '24px',
+    color: colors['--text-secondary'],
+  },
+  section: {
+    marginTop: 32,
+  },
+  lastSection: {
+    marginTop: 32,
+    paddingBottom: 40,
+  },
+  figures: {
+    display: 'grid',
+    gridTemplateColumns: {
+      default: 'repeat(1, minmax(0, 1fr))',
+      [WIDE]: 'repeat(3, minmax(0, 1fr))',
+    },
+    gap: 8,
+  },
+  hint: {
+    ...noMargin,
+    marginTop: 8,
+    fontSize: 12,
+    color: colors['--text-tertiary'],
+  },
+  attach: {
+    display: 'flex',
+    height: {
+      default: 28,
+      [TOUCH]: 36,
+    },
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 9999,
+    paddingLeft: 10,
+    paddingRight: 10,
+    fontSize: 12,
+    fontWeight: 500,
+    color: {
+      default: colors['--text-secondary'],
+      ':hover': colors['--text-primary'],
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+  },
+  menuNote: {
+    paddingLeft: 14,
+    paddingRight: 14,
+    paddingTop: 8,
+    paddingBottom: 8,
+    fontSize: 12,
+    color: colors['--text-muted'],
+  },
+  count: {
+    marginLeft: 6,
+    fontVariantNumeric: 'tabular-nums',
+  },
+  empty: {
+    ...noMargin,
+    fontSize: 13,
+    color: colors['--text-tertiary'],
+  },
+  list: {
+    ...noMargin,
+    display: 'flex',
+    listStyleType: 'none',
+    flexDirection: 'column',
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+  },
+  rules: {
+    gap: 2,
+  },
+  rule: {
+    display: 'flex',
+    minHeight: 40,
+    width: '100%',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 8,
+    paddingLeft: 8,
+    paddingRight: 8,
+    textAlign: 'left',
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--data-row-hover-bg'],
+    },
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+  },
+  ruleName: {
+    ...truncate,
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  ruleState: {
+    display: 'flex',
+    width: 76,
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 6,
+    fontSize: 12,
+    color: colors['--text-secondary'],
+  },
+  ruleScope: {
+    ...truncate,
+    width: 104,
+    flexShrink: 0,
+    textAlign: 'right',
+    fontSize: 12,
+    color: colors['--text-tertiary'],
+  },
+  event: {
+    display: 'flex',
+    minHeight: 40,
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingTop: 6,
+    paddingBottom: 6,
+  },
+  eventDot: {
+    marginTop: 7,
+    height: 6,
+    width: 6,
+    flexShrink: 0,
+    borderRadius: 9999,
+    backgroundColor: colors['--text-muted'],
+  },
+  eventText: {
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+  },
+  eventTitle: {
+    ...truncate,
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  eventSummary: {
+    ...truncate,
+    fontSize: 12,
+    color: colors['--text-tertiary'],
+  },
+  eventTime: {
+    flexShrink: 0,
+    paddingTop: 2,
+    fontSize: 12,
+    fontVariantNumeric: 'tabular-nums',
+    color: colors['--text-tertiary'],
+  },
+  oneColumn: {
+    minHeight: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    overflowY: 'auto',
+    paddingLeft: {
+      default: 16,
+      '@media (min-width: 640px)': 32,
+    },
+    paddingRight: {
+      default: 16,
+      '@media (min-width: 640px)': 32,
+    },
+    paddingTop: 24,
+  },
+  column: {
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    maxWidth: 670,
+  },
+  twoColumns: {
+    display: 'flex',
+    minHeight: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+  },
+  mainScroll: {
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    overflowY: 'auto',
+    paddingLeft: 56,
+    paddingRight: 56,
+    paddingTop: 64,
+  },
+  aside: {
+    width: 400,
+    flexShrink: 0,
+    overflowY: 'auto',
+    borderLeftWidth: 1,
+    borderLeftStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+    paddingLeft: 17,
+    paddingRight: 17,
+    paddingTop: 12,
+  },
+});
 
 /** Below this width the properties move under the title, in one column (#388). */
 const ONE_COLUMN_QUERY = '(max-width: 1199px)';
@@ -51,24 +579,24 @@ interface AccountPageProps {
 }
 
 const SectionTitle: React.FC<React.PropsWithChildren<{ action?: React.ReactNode }>> = ({ children, action }) => (
-  <div className="mb-2 flex h-7 items-center justify-between">
-    <h3 className="m-0 text-[13px] font-medium text-[var(--text-tertiary)]">{children}</h3>
+  <div {...stylex.props(styles.sectionTitle)}>
+    <h3 {...stylex.props(styles.sectionHeading)}>{children}</h3>
     {action}
   </div>
 );
 
 const PropertyRow: React.FC<React.PropsWithChildren<{ label: string }>> = ({ label, children }) => (
-  <div className="flex min-h-9 items-center" role="group" aria-label={label}>
-    <div className="w-[120px] shrink-0 text-[12px] font-[450] text-[var(--text-tertiary)]">{label}</div>
-    <div className="flex min-w-0 flex-1 items-center gap-2 text-[12px] font-[450] text-[var(--text-primary)]">{children}</div>
+  <div {...stylex.props(styles.property)} role="group" aria-label={label}>
+    <div {...stylex.props(styles.propertyLabel)}>{label}</div>
+    <div {...stylex.props(styles.propertyValue)}>{children}</div>
   </div>
 );
 
 const Figure: React.FC<{ label: string; value: string; caption?: string }> = ({ label, value, caption }) => (
-  <div className="min-w-0 rounded-[8px] border border-[var(--color-border-primary)] px-3 py-2.5 min-[480px]:px-3.5 min-[480px]:py-3">
-    <div className="truncate text-[12px] font-[450] text-[var(--text-tertiary)]">{label}</div>
-    <div className="mt-1 truncate text-[16px] min-[480px]:text-[18px] font-semibold tabular-nums text-[var(--text-primary)]">{value}</div>
-    {caption && <div className="mt-0.5 truncate text-[12px] tabular-nums text-[var(--text-tertiary)]">{caption}</div>}
+  <div {...stylex.props(styles.figure)}>
+    <div {...stylex.props(styles.figureLabel)}>{label}</div>
+    <div {...stylex.props(styles.figureValue)}>{value}</div>
+    {caption && <div {...stylex.props(styles.figureCaption)}>{caption}</div>}
   </div>
 );
 
@@ -121,13 +649,11 @@ const AccountPageContent: React.FC<AccountPageProps> = ({ accountId, navigate, n
   };
 
   const header = (
-    <div
-      style={{ borderBottom: 'var(--canvas-border)', paddingLeft: '18px', paddingRight: '11px' }}
-      className="flex h-[44px] shrink-0 items-center justify-between gap-2"
-    >
-      <div className="flex min-w-0 items-center">
+    // --canvas-border is a whole border; StyleX would split the shorthand and lose it.
+    <div {...stylex.props(styles.titleBar)} style={{ borderBottom: 'var(--canvas-border)' }}>
+      <div {...stylex.props(styles.titleStart)}>
         <SidebarCollapsedNavigation />
-        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center">
+        <nav aria-label="Breadcrumb" {...stylex.props(styles.titleStart)}>
           <a
             href={listPath}
             onClick={(event) => {
@@ -135,17 +661,17 @@ const AccountPageContent: React.FC<AccountPageProps> = ({ accountId, navigate, n
               event.preventDefault();
               navigate(listPath);
             }}
-            className="shrink-0 rounded-[4px] text-[13px] font-medium text-[var(--text-tertiary)] outline-none transition-colors hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
+            {...stylex.props(styles.breadcrumbLink)}
           >
             Ad accounts
           </a>
-          <ChevronRight size={14} aria-hidden="true" className="mx-[4px] shrink-0 text-[var(--text-tertiary)]" />
-          <h2 aria-current="page" className="m-0 truncate p-0 text-[13px] font-medium text-[var(--text-primary)]">
+          <ChevronRight size={14} aria-hidden="true" {...stylex.props(styles.breadcrumbChevron)} />
+          <h2 aria-current="page" {...stylex.props(styles.breadcrumbPage)}>
             {account ? accountName(account) : accountId}
           </h2>
         </nav>
         {account && (
-          <span className="ml-2 flex shrink-0 items-center gap-1">
+          <span {...stylex.props(styles.titleActions)}>
             <BuyerlyFavoriteButton
               favorite={{ kind: 'account', path: favoritePath(accountPagePath(workspace.slug, account.account_id), workspace.slug), title: accountName(account) }}
             />
@@ -154,9 +680,9 @@ const AccountPageContent: React.FC<AccountPageProps> = ({ accountId, navigate, n
         )}
       </div>
       {account && (
-        <div className="flex shrink-0 items-center gap-2">
+        <div {...stylex.props(styles.headerEnd)}>
           {account.is_active !== false && (
-            <Button size="compact" className="shrink-0" aria-label="Open campaigns" onClick={() => actions.openInAdsManager(account)}>
+            <Button size="compact" xstyle={styles.noShrink} aria-label="Open campaigns" onClick={() => actions.openInAdsManager(account)}>
               Campaigns
             </Button>
           )}
@@ -208,8 +734,8 @@ const AccountPageContent: React.FC<AccountPageProps> = ({ accountId, navigate, n
   }
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-transparent">
-      <header className="flex shrink-0 flex-col">{header}</header>
+    <div {...stylex.props(styles.root)}>
+      <header {...stylex.props(styles.header)}>{header}</header>
       {body}
       {dialogs.element}
     </div>
@@ -283,7 +809,7 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
   const lastSync = health?.last_success_at || metrics?.saved_at || metrics?.generated_at || '';
 
   const properties = (
-    <section aria-label="Properties" className={oneColumn ? 'mt-8' : ''}>
+    <section aria-label="Properties" {...stylex.props(oneColumn && styles.propertiesStacked)}>
       <SectionTitle>Properties</SectionTitle>
       <PropertyRow label="Status">
         <AccountStatusLabel account={account} />
@@ -292,15 +818,15 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
         {problem ? (
           <>
             <ConnectionProblemIcon account={account} onReconnect={canEdit ? onReconnect : undefined} />
-            <span className="truncate" title={problem}>{health?.status === 'critical' || account.status_label === 'Meta connection required' ? 'Needs reconnect' : 'Sync problems'}</span>
+            <span {...stylex.props(styles.truncate)} title={problem}>{health?.status === 'critical' || account.status_label === 'Meta connection required' ? 'Needs reconnect' : 'Sync problems'}</span>
             {canEdit && (
-              <button type="button" onClick={onReconnect} className="shrink-0 rounded-full px-2 py-0.5 text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)]">
+              <button type="button" onClick={onReconnect} {...stylex.props(styles.reconnect)}>
                 Reconnect
               </button>
             )}
           </>
         ) : (
-          <span className={health?.status === 'healthy' ? '' : 'text-[var(--text-tertiary)]'}>
+          <span {...stylex.props(health?.status !== 'healthy' && styles.muted)}>
             {health?.status === 'healthy' ? 'Healthy' : 'Not checked yet'}
           </span>
         )}
@@ -317,27 +843,27 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
           }
           onChange={canAct ? onToggleAutomation : undefined}
         />
-        <span className="text-[var(--text-secondary)]">{account.rules_enabled ? 'On' : 'Off'}</span>
+        <span {...stylex.props(styles.secondary)}>{account.rules_enabled ? 'On' : 'Off'}</span>
       </PropertyRow>
       <PropertyRow label="Lead">
         <AccountLeadPicker account={account} members={members} canEdit={canAct} onChange={onSetLead} variant="property" />
       </PropertyRow>
       <PropertyRow label="Team">
-        <span className={teamsText ? 'truncate' : 'text-[var(--text-tertiary)]'}>{teamsText || 'No team'}</span>
+        <span {...stylex.props(teamsText ? styles.truncate : styles.muted)}>{teamsText || 'No team'}</span>
       </PropertyRow>
       <PropertyRow label="Connected by">
-        <span className={connectedBy ? 'truncate' : 'text-[var(--text-tertiary)]'}>
+        <span {...stylex.props(connectedBy ? styles.truncate : styles.muted)}>
           {connectedBy ? connectedBy.full_name || connectedBy.username : '—'}
         </span>
       </PropertyRow>
       <PropertyRow label="Time zone">
-        <span className="truncate">{account.timezone_name || 'UTC'}</span>
+        <span {...stylex.props(styles.truncate)}>{account.timezone_name || 'UTC'}</span>
       </PropertyRow>
       <PropertyRow label="Added">
         <span>{formatAddedDate(account.created_at)}</span>
       </PropertyRow>
       <PropertyRow label="Last sync">
-        <span title={lastSync ? formatAuditTimestamp(lastSync) : undefined} className={lastSync ? '' : 'text-[var(--text-tertiary)]'}>
+        <span title={lastSync ? formatAuditTimestamp(lastSync) : undefined} {...stylex.props(!lastSync && styles.muted)}>
           {lastSync ? formatRelativeTime(lastSync) : 'Never'}
         </span>
       </PropertyRow>
@@ -345,8 +871,8 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
   );
 
   const main = (
-    <div className="min-w-0">
-      <span className="flex h-9 w-9 items-center justify-center rounded-[8px] text-[var(--text-secondary)]" aria-hidden="true">
+    <div {...stylex.props(styles.main)}>
+      <span {...stylex.props(styles.icon)} aria-hidden="true">
         <BuyerlyProjectIcon size={22} />
       </span>
       {canAct ? (
@@ -363,26 +889,26 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
               requestAnimationFrame(() => (event.target as HTMLInputElement).blur());
             }
           }}
-          className="mt-3 w-full bg-transparent p-0 text-[24px] font-semibold leading-8 text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
+          {...stylex.props(styles.nameInput)}
         />
       ) : (
-        <h1 className="m-0 mt-3 text-[24px] font-semibold leading-8 text-[var(--text-primary)]">{accountName(account)}</h1>
+        <h1 {...stylex.props(styles.name)}>{accountName(account)}</h1>
       )}
-      <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-1.5 text-[13px] font-[450] text-[var(--text-tertiary)]">
+      <div {...stylex.props(styles.ids)}>
         {/* Meta's own name, when the buyer gave the account another one. */}
         {account.custom_name?.trim() && account.name && account.custom_name.trim() !== account.name && (
           <>
-            <span className="truncate">In Meta: {account.name}</span>
+            <span {...stylex.props(styles.truncate)}>In Meta: {account.name}</span>
             <span aria-hidden="true">·</span>
           </>
         )}
-        <span className="select-text tabular-nums">{account.account_id}</span>
+        <span {...stylex.props(styles.accountId)}>{account.account_id}</span>
         <Tooltip content="Copy account ID">
           <button
             type="button"
             aria-label="Copy account ID"
             onClick={() => void copyAccountId(account.account_id)}
-            className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--text-tertiary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] [@media(hover:none)_and_(pointer:coarse)]:h-9 [@media(hover:none)_and_(pointer:coarse)]:w-9"
+            {...stylex.props(styles.copy)}
           >
             <Copy size={13} strokeWidth={1.75} aria-hidden="true" />
           </button>
@@ -399,17 +925,17 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
           placeholder="Add a note…"
           onChange={(event) => setNote(event.target.value)}
           onBlur={() => onSaveProfile({ note: note.trim() })}
-          className="mt-4 w-full resize-none overflow-hidden bg-transparent p-0 text-[15px] font-[450] leading-6 text-[var(--text-secondary)] outline-none placeholder:text-[var(--text-muted)]"
+          {...stylex.props(styles.noteInput)}
         />
       ) : account.note ? (
-        <p className="m-0 mt-4 whitespace-pre-wrap text-[15px] font-[450] leading-6 text-[var(--text-secondary)]">{account.note}</p>
+        <p {...stylex.props(styles.note)}>{account.note}</p>
       ) : null}
 
       {oneColumn && properties}
 
-      <section aria-label="Today" className="mt-8">
+      <section aria-label="Today" {...stylex.props(styles.section)}>
         <SectionTitle>Today</SectionTitle>
-        <div className="grid grid-cols-1 gap-2 min-[480px]:grid-cols-3">
+        <div {...stylex.props(styles.figures)}>
           <Figure label="Spend" value={accountMoney(metrics?.spend, account)} />
           <Figure
             label="Leads"
@@ -422,17 +948,17 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
             caption={metrics?.registrations ? `CPReg ${accountMoney(metrics.cpreg, account)}` : undefined}
           />
         </div>
-        {!metrics && <p className="m-0 mt-2 text-[12px] text-[var(--text-tertiary)]">No figures yet: they appear after the first sync.</p>}
+        {!metrics && <p {...stylex.props(styles.hint)}>No figures yet: they appear after the first sync.</p>}
       </section>
 
-      <section aria-label="Rules" className="mt-8">
+      <section aria-label="Rules" {...stylex.props(styles.section)}>
         <SectionTitle
           action={canAct && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] [@media(hover:none)_and_(pointer:coarse)]:h-9"
+                  {...stylex.props(styles.attach)}
                 >
                   <BuyerlyPlusIcon size={14} aria-hidden="true" />
                   Attach rule
@@ -441,24 +967,24 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
               <DropdownMenuContent align="end" sideOffset={4} style={{ width: 'min(320px, calc(100vw - 32px))' }}>
                 <DropdownMenuLabel>Run on this ad account</DropdownMenuLabel>
                 {attachable.length === 0 ? (
-                  <div className="px-3.5 py-2 text-[12px] text-[var(--text-muted)]">
+                  <div {...stylex.props(styles.menuNote)}>
                     {rules.length === 0 ? 'No rules in this workspace yet' : 'Every rule already runs here'}
                   </div>
                 ) : attachable.map((rule) => (
                   <DropdownMenuItem key={rule.id} onSelect={() => setPreviewRule({ id: rule.id, presetId: rule.presetId, name: rule.name })}>
-                    <span className="truncate">{rule.name}</span>
+                    <span {...stylex.props(styles.truncate)}>{rule.name}</span>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
         >
-          Rules{attached.length > 0 && <span className="ml-1.5 tabular-nums">{attached.length}</span>}
+          Rules{attached.length > 0 && <span {...stylex.props(styles.count)}>{attached.length}</span>}
         </SectionTitle>
         {attached.length === 0 ? (
-          <p className="m-0 text-[13px] text-[var(--text-tertiary)]">No rules act on this account yet.</p>
+          <p {...stylex.props(styles.empty)}>No rules act on this account yet.</p>
         ) : (
-          <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
+          <ul {...stylex.props(styles.list, styles.rules)}>
             {attached.map((attachedRule) => {
               const rule = rules.find((item) => item.id === String(attachedRule.preset_id));
               const on = rule ? rule.status === 'active' : true;
@@ -470,16 +996,16 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
                     type="button"
                     data-rule-id={attachedRule.preset_id}
                     onClick={() => onOpenRule(String(attachedRule.preset_id))}
-                    className="flex min-h-10 w-full items-center gap-3 rounded-[8px] px-2 text-left outline-none hover:bg-[var(--data-row-hover-bg)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
+                    {...stylex.props(styles.rule)}
                   >
-                    <span className={`min-w-0 flex-1 truncate text-[13px] font-medium ${on ? 'text-[var(--text-primary)]' : 'text-[var(--text-tertiary)]'}`}>
+                    <span {...stylex.props(styles.ruleName, !on && styles.muted)}>
                       {rule?.name ?? attachedRule.name}
                     </span>
-                    <span className="flex w-[76px] shrink-0 items-center gap-1.5 text-[12px] text-[var(--text-secondary)]">
+                    <span {...stylex.props(styles.ruleState)}>
                       <BuyerlyStatusCircleIcon status={on ? 'active' : 'paused'} size={14} />
                       {on ? 'Active' : 'Paused'}
                     </span>
-                    <span className="w-[104px] shrink-0 truncate text-right text-[12px] text-[var(--text-tertiary)]">
+                    <span {...stylex.props(styles.ruleScope)}>
                       {formatAccountScope(attachedRuleScope(attachedRule))}
                     </span>
                   </button>
@@ -489,26 +1015,26 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
           </ul>
         )}
         {attached.length > 0 && !account.rules_enabled && (
-          <p className="m-0 mt-2 text-[12px] text-[var(--text-tertiary)]">Automation is off, so these rules don’t act on this account.</p>
+          <p {...stylex.props(styles.hint)}>Automation is off, so these rules don’t act on this account.</p>
         )}
       </section>
 
-      <section aria-label="Recent events" className="mt-8 pb-10">
+      <section aria-label="Recent events" {...stylex.props(styles.lastSection)}>
         <SectionTitle>Recent events</SectionTitle>
         {events === null ? (
-          <p className="m-0 text-[13px] text-[var(--text-tertiary)]">Loading…</p>
+          <p {...stylex.props(styles.empty)}>Loading…</p>
         ) : events.length === 0 ? (
-          <p className="m-0 text-[13px] text-[var(--text-tertiary)]">Nothing has happened on this account yet.</p>
+          <p {...stylex.props(styles.empty)}>Nothing has happened on this account yet.</p>
         ) : (
-          <ul className="m-0 flex list-none flex-col p-0">
+          <ul {...stylex.props(styles.list)}>
             {events.map((event) => (
-              <li key={event.id} className="flex min-h-10 items-start gap-3 py-1.5">
-                <span aria-hidden="true" className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--text-muted)]" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13px] font-medium text-[var(--text-primary)]">{auditEventTitle(event)}</div>
-                  <div className="truncate text-[12px] text-[var(--text-tertiary)]">{auditEventSummary(event)}</div>
+              <li key={event.id} {...stylex.props(styles.event)}>
+                <span aria-hidden="true" {...stylex.props(styles.eventDot)} />
+                <div {...stylex.props(styles.eventText)}>
+                  <div {...stylex.props(styles.eventTitle)}>{auditEventTitle(event)}</div>
+                  <div {...stylex.props(styles.eventSummary)}>{auditEventSummary(event)}</div>
                 </div>
-                <span className="shrink-0 pt-[2px] text-[12px] tabular-nums text-[var(--text-tertiary)]" title={formatAuditTimestamp(event.created_at)}>
+                <span {...stylex.props(styles.eventTime)} title={formatAuditTimestamp(event.created_at)}>
                   {formatAuditRelativeTime(event.created_at)}
                 </span>
               </li>
@@ -537,18 +1063,18 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
 
   if (oneColumn) {
     return (
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-6 min-[640px]:px-8">
-        <div className="mx-auto max-w-[670px]">{main}</div>
+      <div {...stylex.props(styles.oneColumn)}>
+        <div {...stylex.props(styles.column)}>{main}</div>
       </div>
     );
   }
   return (
-    <div className="flex min-h-0 flex-1">
+    <div {...stylex.props(styles.twoColumns)}>
       {/* Linear's project page: a 670px column, and a 400px properties panel on the right. */}
-      <div className="min-w-0 flex-1 overflow-y-auto px-14 pt-16">
-        <div className="mx-auto max-w-[670px]">{main}</div>
+      <div {...stylex.props(styles.mainScroll)}>
+        <div {...stylex.props(styles.column)}>{main}</div>
       </div>
-      <aside className="w-[400px] shrink-0 overflow-y-auto border-l border-[var(--color-border-primary)] px-[17px] pt-3">
+      <aside {...stylex.props(styles.aside)}>
         {properties}
       </aside>
     </div>

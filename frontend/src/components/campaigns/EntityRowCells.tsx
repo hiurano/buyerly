@@ -1,4 +1,5 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { BuyerlyCheckbox } from '@/ui/BuyerlyCheckbox';
 import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { BuyerlyDataMetricCell } from '@/ui/BuyerlyDataList';
@@ -6,6 +7,57 @@ import type { DeliveryControl } from '@/lib/delivery';
 import { BuyerlyProjectIcon } from '@/icons/BuyerlyIcons';
 import { findMetric, type AdsManagerMetrics } from './adsManagerMetrics';
 import { formatMetric } from './liveCampaigns';
+import { colors } from '@/styles/tokens.stylex';
+
+const styles = stylex.create({
+  // An em dash where a toggle would be: the status is not in the snapshot.
+  statusUnknown: {
+    display: 'inline-flex',
+    height: 20,
+    width: 32,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 12,
+    color: colors['--text-muted'],
+  },
+  text: {
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--text-secondary'],
+  },
+  textMuted: {
+    color: colors['--text-tertiary'],
+  },
+  account: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 6,
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--text-secondary'],
+  },
+  accountIcon: {
+    display: 'flex',
+    height: 14,
+    width: 14,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: colors['--text-tertiary'],
+  },
+  accountName: {
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+});
 
 interface EntityRowControlsProps {
   /** Singular noun for tooltips, e.g. "ad set". */
@@ -44,7 +96,7 @@ export const EntityRowControls: React.FC<EntityRowControlsProps> = ({
       {showStatus && (
         status === 'unknown' ? (
           <span
-            className="inline-flex h-5 w-8 shrink-0 items-center justify-center text-[12px] text-[var(--text-muted)]"
+            {...stylex.props(styles.statusUnknown)}
             title="Delivery status is not available in this snapshot"
             aria-label="Delivery status unavailable"
           >
@@ -77,7 +129,7 @@ export interface EntityPropertyRow {
 
 const EntityTextCell: React.FC<{ text: string; muted?: boolean }> = ({ text, muted = false }) => (
   <div
-    className={`min-w-0 truncate whitespace-nowrap text-[12px] font-[450] ${muted ? 'text-[var(--text-tertiary)]' : 'text-[var(--text-secondary)]'}`}
+    {...stylex.props(styles.text, muted && styles.textMuted)}
     title={text || undefined}
   >
     {text || '—'}
@@ -86,11 +138,11 @@ const EntityTextCell: React.FC<{ text: string; muted?: boolean }> = ({ text, mut
 
 /** The row's ad account with Ad accounts' icon, as Linear shows a project on an issue row. */
 const EntityAccountCell: React.FC<{ name: string }> = ({ name }) => (
-  <div className="flex min-w-0 items-center gap-1.5 text-[12px] font-[450] text-[var(--text-secondary)]" title={name || undefined}>
-    <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center text-[var(--text-tertiary)]" aria-hidden="true">
+  <div {...stylex.props(styles.account)} title={name || undefined}>
+    <span {...stylex.props(styles.accountIcon)} aria-hidden="true">
       <BuyerlyProjectIcon size={12} />
     </span>
-    <span className="min-w-0 truncate whitespace-nowrap">{name || '—'}</span>
+    <span {...stylex.props(styles.accountName)}>{name || '—'}</span>
   </div>
 );
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import * as stylex from '@stylexjs/stylex';
 import { BuyerlyBoltIcon } from '@/icons/BuyerlyIcons';
 import type { RuleExecutionLevel, RuleScope } from '@/lib/rules';
 import { explainRulePrecedence } from '@/lib/rulePrecedence';
@@ -9,6 +10,174 @@ import type { RuleEntityStatePayload } from '@/lib/rules';
 import { RuleStateLine } from '@/components/rules/RuleStateLine';
 import { rulesStore, useRulesStore, type RuleItem } from '@/models/rulesStore';
 import { useDialogStore } from '@/models/dialogStore';
+import { colors } from '@/styles/tokens.stylex';
+import { pickerStyles } from './pickerStyles';
+
+const TOUCH = '@media (hover: none) and (pointer: coarse)';
+
+const styles = stylex.create({
+  // 44px rows under a finger.
+  optionTouch: {
+    height: {
+      default: 32,
+      [TOUCH]: 44,
+    },
+  },
+  optionLocked: {
+    cursor: 'not-allowed',
+    opacity: 0.55,
+  },
+  boltSlot: {
+    display: 'flex',
+    width: 16,
+    height: 16,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bolt: {
+    color: '#eab308',
+  },
+  scopeNote: {
+    marginLeft: 8,
+    flexShrink: 0,
+    color: colors['--text-tertiary'],
+    fontSize: 11,
+    lineHeight: '20px',
+    whiteSpace: 'nowrap',
+  },
+  listbox: {
+    minHeight: 0,
+  },
+  newRule: {
+    display: 'flex',
+    height: {
+      default: 36,
+      [TOUCH]: 44,
+    },
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopStyle: 'solid',
+    borderColor: colors['--color-border-primary'],
+    paddingLeft: 14,
+    paddingRight: 14,
+    textAlign: 'left',
+    fontSize: 13,
+    color: {
+      default: colors['--text-secondary'],
+      ':hover': colors['--text-primary'],
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+  },
+  newRuleIcon: {
+    color: colors['--text-tertiary'],
+  },
+  section: {
+    flexShrink: 0,
+    overflowY: 'auto',
+    paddingTop: 8,
+    paddingRight: 14,
+    paddingBottom: 10,
+    paddingLeft: 14,
+    borderTopWidth: 1,
+    borderTopStyle: 'solid',
+    borderTopColor: colors['--color-border-primary'],
+  },
+  precedence: {
+    maxHeight: 196,
+    fontSize: 11,
+    lineHeight: '15px',
+    color: colors['--text-tertiary'],
+  },
+  precedenceTitle: {
+    fontWeight: 500,
+    color: colors['--text-secondary'],
+  },
+  precedenceGap: {
+    marginTop: 4,
+  },
+  plainList: {
+    marginTop: 0,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    listStyle: 'none',
+  },
+  precedenceRule: {
+    overflow: 'hidden',
+    color: colors['--text-secondary'],
+    fontSize: 12,
+    fontWeight: 400,
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  precedenceRuleWins: {
+    color: colors['--text-primary'],
+    fontWeight: 500,
+  },
+  precedenceNote: {
+    marginTop: 6,
+    marginRight: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+  },
+  states: {
+    maxHeight: 184,
+  },
+  statesTitle: {
+    marginBottom: 6,
+    color: colors['--text-tertiary'],
+    fontSize: 11,
+    fontWeight: 500,
+    lineHeight: '16px',
+  },
+  statesMessage: {
+    color: colors['--text-muted'],
+    fontSize: 12,
+    lineHeight: '16px',
+  },
+  statesList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+  stateRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2,
+    minWidth: 0,
+  },
+  stateRuleName: {
+    overflow: 'hidden',
+    color: colors['--text-primary'],
+    fontSize: 12,
+    lineHeight: '16px',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  error: {
+    flexShrink: 0,
+    paddingTop: 8,
+    paddingRight: 14,
+    paddingBottom: 8,
+    paddingLeft: 14,
+    borderTopWidth: 1,
+    borderTopStyle: 'solid',
+    borderTopColor: colors['--color-border-primary'],
+    color: colors['--rules-action-stop-text'],
+    fontSize: 12,
+    lineHeight: '16px',
+  },
+});
 
 /** The level this picker attaches rules to. */
 export type RuleTargetLevel = 'campaign' | 'adset';
@@ -358,54 +527,12 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
         aria-disabled={locked}
         onMouseEnter={() => setActiveIndex(index)}
         onClick={() => toggleRule(rule)}
-        style={{
-          position: 'relative',
-          display: 'flex',
-          height: rowHeight,
-          alignItems: 'center',
-          padding: '0 18px 0 14px',
-          cursor: locked ? 'not-allowed' : 'pointer',
-          opacity: locked ? 0.55 : 1,
-        }}
+        {...stylex.props(pickerStyles.option, styles.optionTouch, locked && styles.optionLocked)}
       >
-        <div
-          aria-hidden="true"
-          style={{
-            position: 'absolute',
-            inset: '0 6px',
-            borderRadius: 8,
-            backgroundColor: isActive ? 'var(--item-hover-bg)' : 'transparent',
-            transition: 'background-color 80ms ease',
-          }}
-        />
+        <div aria-hidden="true" {...stylex.props(pickerStyles.highlight, isActive && pickerStyles.highlightActive)} />
 
-        <div
-          style={{
-            position: 'relative',
-            zIndex: 1,
-            display: 'flex',
-            width: 16,
-            height: 14,
-            flexShrink: 0,
-            alignItems: 'center',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              width: 14,
-              height: 14,
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxSizing: 'border-box',
-              borderRadius: 3,
-              backgroundColor: isSelected || isMixed ? '#eab308' : 'transparent',
-              border: isSelected || isMixed
-                ? '1px solid #eab308'
-                : '1px solid var(--checkbox-border-rest)',
-              color: '#09090a',
-            }}
-          >
+        <div {...stylex.props(pickerStyles.checkSlot)}>
+          <div {...stylex.props(pickerStyles.check, (isSelected || isMixed) && pickerStyles.checkSelected)}>
             {isSelected && (
               <svg width="10" height="9" viewBox="0 0 10 8" fill="currentColor" aria-hidden="true">
                 <path d="M3.46975 5.70757L1.88358 4.1225C1.65832 3.8974 1.29423 3.8974 1.06897 4.1225C0.843675 4.34765 0.843675 4.7116 1.06897 4.93674L3.0648 6.93117C3.29006 7.15628 3.65414 7.15628 3.8794 6.93117L8.93103 1.88306C9.15633 1.65792 9.15633 1.29397 8.93103 1.06883C8.70578 0.843736 8.34172 0.843724 8.11646 1.06879L3.46975 5.70757Z" />
@@ -419,55 +546,15 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
           </div>
         </div>
 
-        <div
-          style={{
-            position: 'relative',
-            zIndex: 1,
-            display: 'flex',
-            minWidth: 0,
-            flex: 1,
-            alignItems: 'center',
-            paddingLeft: 6,
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              width: 16,
-              height: 16,
-              flexShrink: 0,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <BuyerlyBoltIcon size={13} className="text-[#eab308]" />
+        <div {...stylex.props(pickerStyles.label)}>
+          <div {...stylex.props(styles.boltSlot)}>
+            <BuyerlyBoltIcon size={13} className={stylex.props(styles.bolt).className} />
           </div>
-          <span
-            style={{
-              minWidth: 0,
-              marginLeft: 5,
-              overflow: 'hidden',
-              color: 'var(--text-primary)',
-              fontSize: 13,
-              fontWeight: 400,
-              lineHeight: '20px',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <span {...stylex.props(pickerStyles.name)}>
             {rule.name}
           </span>
           {note && (
-            <span
-              style={{
-                marginLeft: 8,
-                flexShrink: 0,
-                color: 'var(--text-tertiary)',
-                fontSize: 11,
-                lineHeight: '20px',
-                whiteSpace: 'nowrap',
-              }}
-            >
+            <span {...stylex.props(styles.scopeNote)}>
               {note}
             </span>
           )}
@@ -484,27 +571,12 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
       tabIndex={-1}
       data-animated-popover-container="true"
       data-menu-active="true"
+      {...stylex.props(pickerStyles.popover)}
       style={{
-        position: 'fixed',
         left,
         top,
-        width: popoverWidth,
-        minWidth: 277,
-        maxWidth: 500,
         // Status and "If they all match" under the list can outgrow a phone; the list gives way.
         maxHeight: `calc(100dvh - ${top + margin}px)`,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'visible',
-        backgroundColor: 'var(--card-bg)',
-        color: 'var(--text-primary)',
-        border: '1px solid var(--color-border-secondary)',
-        borderRadius: 12,
-        boxShadow: 'var(--dropdown-shadow)',
-        zIndex: 9999,
-        fontFamily:
-          '"Inter Variable", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        animation: 'buyerlyPopoverScale 120ms cubic-bezier(0.16, 1, 0.3, 1)',
         transformOrigin: anchorRect
           ? `${Math.min(
             popoverWidth - 2,
@@ -517,17 +589,9 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
       <form
         autoComplete="off"
         onSubmit={(event) => event.preventDefault()}
-        style={{
-          display: 'flex',
-          height: 43,
-          flexShrink: 0,
-          alignItems: 'center',
-          gap: 8,
-          padding: '0 12px 0 14px',
-          borderBottom: '1px solid var(--color-border-primary)',
-        }}
+        {...stylex.props(pickerStyles.search)}
       >
-        <span className="sr-only" role="status" aria-live="polite">
+        <span {...stylex.props(pickerStyles.srOnly)} role="status" aria-live="polite">
           {searchQuery ? `${orderedRules.length} matching rules` : 'Showing all rules'}
         </span>
         <input
@@ -548,38 +612,10 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
             setActiveIndex(-1);
           }}
           onKeyDown={handleInputKeyDown}
-          style={{
-            width: 219,
-            minWidth: 0,
-            height: 36,
-            flex: 1,
-            padding: '10px 0 9px',
-            border: 0,
-            outline: 0,
-            background: 'transparent',
-            color: 'var(--text-primary)',
-            caretColor: 'var(--text-primary)',
-            font: '400 13px/17px inherit',
-          }}
+          {...stylex.props(pickerStyles.input)}
         />
         {shortcut && (
-          <kbd
-            style={{
-              display: 'inline-flex',
-              minWidth: 18,
-              height: 19,
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '0 4px',
-              border: '1px solid var(--color-border-secondary)',
-              borderRadius: 4,
-              backgroundColor: 'var(--item-hover-bg)',
-              color: 'var(--text-tertiary)',
-              fontSize: 11,
-              fontWeight: 500,
-              lineHeight: '13px',
-            }}
-          >
+          <kbd {...stylex.props(pickerStyles.shortcut)}>
             {shortcut}
           </kbd>
         )}
@@ -589,14 +625,14 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
         id={listId}
         role="listbox"
         aria-multiselectable="true"
-        style={{ maxHeight: 340, minHeight: 0, overflowY: 'auto', padding: '2px 0' }}
+        {...stylex.props(pickerStyles.listbox, styles.listbox)}
       >
-        <ul role="presentation" style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+        <ul role="presentation" {...stylex.props(pickerStyles.list)}>
           {attachedRules.map((rule, index) => renderOption(rule, index))}
 
           {attachedRules.length > 0 && unattachedRules.length > 0 && (
-            <li role="separator" style={{ height: 12, padding: '6px 0', boxSizing: 'border-box' }}>
-              <div style={{ height: 1, borderBottom: '1px solid var(--color-border-primary)' }} />
+            <li role="separator" {...stylex.props(pickerStyles.separator)}>
+              <div {...stylex.props(pickerStyles.separatorLine)} />
             </li>
           )}
 
@@ -605,7 +641,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
           )}
 
           {orderedRules.length === 0 && (
-            <li style={{ padding: '16px 14px', color: 'var(--text-muted)', fontSize: 12, textAlign: 'center' }}>
+            <li {...stylex.props(pickerStyles.empty)}>
               {rules.length > 0
                 ? 'No rules found'
                 : rulesLoadState === 'ready'
@@ -626,9 +662,9 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
             onClose();
             openCreateRuleModal(undefined, { accountId, scope: { level, ids: [...entityIds] } });
           }}
-          className={`flex shrink-0 items-center gap-2 border-t border-[var(--color-border-primary)] px-3.5 text-left text-[13px] text-[var(--text-secondary)] hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] ${coarse ? 'h-11' : 'h-9'}`}
+          {...stylex.props(styles.newRule)}
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className="text-[var(--text-tertiary)]">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" {...stylex.props(styles.newRuleIcon)}>
             <path d="M8.75 4a.75.75 0 0 0-1.5 0v3.25H4a.75.75 0 0 0 0 1.5h3.25V12a.75.75 0 0 0 1.5 0V8.75H12a.75.75 0 0 0 0-1.5H8.75V4Z" />
           </svg>
           New rule…
@@ -638,36 +674,18 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
       {precedence.length > 0 && (
         <section
           aria-label="If these rules all match"
-          style={{
-            flexShrink: 0,
-            maxHeight: 196,
-            overflowY: 'auto',
-            padding: '8px 14px 10px',
-            borderTop: '1px solid var(--color-border-primary)',
-            fontSize: 11,
-            lineHeight: '15px',
-            color: 'var(--text-tertiary)',
-          }}
+          {...stylex.props(styles.section, styles.precedence)}
         >
-          <div style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>If they all match</div>
+          <div {...stylex.props(styles.precedenceTitle)}>If they all match</div>
           {precedence.map((group) => (
-            <div key={group.level} style={{ marginTop: 4 }}>
+            <div key={group.level} {...stylex.props(styles.precedenceGap)}>
               {(precedence.length > 1 || group.level !== level) && (
-                <div style={{ marginTop: 4 }}>{LEVEL_HEADINGS[group.level]}</div>
+                <div {...stylex.props(styles.precedenceGap)}>{LEVEL_HEADINGS[group.level]}</div>
               )}
-              <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+              <ul {...stylex.props(styles.plainList)}>
                 {group.lines.map((line) => (
-                  <li key={line.rule.id} data-precedence-role={line.role} style={{ marginTop: 4 }}>
-                    <div
-                      style={{
-                        overflow: 'hidden',
-                        color: line.role === 'wins' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        fontSize: 12,
-                        fontWeight: line.role === 'wins' ? 500 : 400,
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
+                  <li key={line.rule.id} data-precedence-role={line.role} {...stylex.props(styles.precedenceGap)}>
+                    <div {...stylex.props(styles.precedenceRule, line.role === 'wins' && styles.precedenceRuleWins)}>
                       {line.rule.name}
                     </div>
                     <div>{line.note}</div>
@@ -676,7 +694,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
               </ul>
             </div>
           ))}
-          <p style={{ margin: '6px 0 0' }}>
+          <p {...stylex.props(styles.precedenceNote)}>
             One change per check: turn off, then budget −, budget +, turn on; equal ones in the
             order shown. Alerts always fire.
             {anyGivesWay && ' While a stronger rule waits to repeat, weaker ones wait too.'}
@@ -688,52 +706,31 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
         <section
           aria-label={`Rule status on this ${thisNoun}`}
           data-rule-states="true"
-          style={{
-            flexShrink: 0,
-            maxHeight: 184,
-            overflowY: 'auto',
-            padding: '8px 14px 10px',
-            borderTop: '1px solid var(--color-border-primary)',
-          }}
+          {...stylex.props(styles.section, styles.states)}
         >
-          <div
-            style={{
-              marginBottom: 6,
-              color: 'var(--text-tertiary)',
-              fontSize: 11,
-              fontWeight: 500,
-              lineHeight: '16px',
-            }}
-          >
+          <div {...stylex.props(styles.statesTitle)}>
             Status on this {thisNoun}
           </div>
           {entityStates === null && (
-            <div style={{ color: 'var(--text-muted)', fontSize: 12, lineHeight: '16px' }}>Loading…</div>
+            <div {...stylex.props(styles.statesMessage)}>Loading…</div>
           )}
           {entityStates === 'error' && (
-            <div style={{ color: 'var(--text-muted)', fontSize: 12, lineHeight: '16px' }}>
+            <div {...stylex.props(styles.statesMessage)}>
               Couldn't load the rules' status
             </div>
           )}
           {Array.isArray(entityStates) && entityStates.length === 0 && uncheckedRules.length === 0 && (
-            <div style={{ color: 'var(--text-muted)', fontSize: 12, lineHeight: '16px' }}>
+            <div {...stylex.props(styles.statesMessage)}>
               Not checked yet
             </div>
           )}
           {Array.isArray(entityStates) && (entityStates.length > 0 || uncheckedRules.length > 0) && (
-            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <ul {...stylex.props(styles.plainList, styles.statesList)}>
               {[...entityStates, ...uncheckedRules.map(uncheckedStateRow)].map((row) => (
-                <li key={`${row.account_id}:${row.rule_id}`} style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                <li key={`${row.account_id}:${row.rule_id}`} {...stylex.props(styles.stateRow)}>
                   <span
                     title={row.rule_name}
-                    style={{
-                      overflow: 'hidden',
-                      color: 'var(--text-primary)',
-                      fontSize: 12,
-                      lineHeight: '16px',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
+                    {...stylex.props(styles.stateRuleName)}
                   >
                     {row.rule_name}
                   </span>
@@ -748,14 +745,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
       {attachmentError && (
         <div
           role="alert"
-          style={{
-            flexShrink: 0,
-            padding: '8px 14px',
-            borderTop: '1px solid var(--color-border-primary)',
-            color: 'var(--rules-action-stop-text)',
-            fontSize: 12,
-            lineHeight: '16px',
-          }}
+          {...stylex.props(styles.error)}
         >
           {attachmentError}
         </div>

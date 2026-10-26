@@ -1,3 +1,4 @@
+import * as stylex from '@stylexjs/stylex';
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '@/lib/api';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
@@ -13,6 +14,91 @@ import { BuyerlyDataListRow, BuyerlyDataListToolbar, BuyerlyDataTable, type Buye
 import { toast } from '@/ui/toast';
 import { ListSearchField } from './ListSearchField';
 import { useShellStore } from '@/models/shellStore';
+import { colors } from '@/styles/tokens.stylex';
+
+const styles = stylex.create({
+  root: {
+    display: 'flex',
+    height: '100%',
+    width: '100%',
+    userSelect: 'none',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  header: {
+    display: 'flex',
+    flexShrink: 0,
+    flexDirection: 'column',
+  },
+  // The 44px title bar over a hairline.
+  titleBar: {
+    display: 'flex',
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 18,
+    paddingRight: 11,
+  },
+  title: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  heading: {
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-secondary'],
+  },
+  toolbar: {
+    gap: 8,
+  },
+  body: {
+    display: 'flex',
+    minHeight: 0,
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+  },
+  row: {
+    cursor: 'pointer',
+  },
+  team: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 10,
+  },
+  name: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  key: {
+    flexShrink: 0,
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-muted'],
+  },
+  lock: {
+    flexShrink: 0,
+    color: colors['--text-muted'],
+  },
+  faces: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  more: {
+    marginLeft: 4,
+    fontSize: 12,
+    color: colors['--text-tertiary'],
+  },
+});
 
 const COLUMNS: BuyerlyDataListColumn[] = [
   { id: 'name', label: 'Name', width: 'minmax(220px, 1fr)', sortable: true },
@@ -102,17 +188,17 @@ export const WorkspaceTeamsView: React.FC = () => {
               layout="grid"
               columns={COLUMNS}
               tabIndex={0}
-              className="cursor-pointer"
+              xstyle={styles.row}
               onClick={() => openTeam(team)}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' && event.target === event.currentTarget) openTeam(team);
               }}
             >
-              <div className="flex min-w-0 items-center gap-[10px]">
+              <div {...stylex.props(styles.team)}>
                 <TeamIcon size={14} />
-                <span className="truncate text-[13px] font-medium text-[var(--text-primary)]">{team.name}</span>
-                <span className="shrink-0 text-[13px] font-medium text-[var(--text-muted)]">{team.key}</span>
-                {team.private && <BuyerlyLockIcon size={12} className="shrink-0 text-[var(--text-muted)]" aria-label="Private team" />}
+                <span {...stylex.props(styles.name)}>{team.name}</span>
+                <span {...stylex.props(styles.key)}>{team.key}</span>
+                {team.private && <BuyerlyLockIcon size={12} {...stylex.props(styles.lock)} aria-label="Private team" />}
               </div>
               <div>
                 <button
@@ -130,14 +216,14 @@ export const WorkspaceTeamsView: React.FC = () => {
                   {team.is_member && <span className="team-membership__leave">Leave</span>}
                 </button>
               </div>
-              <div className="flex items-center" aria-label={`${people.length} members`}>
+              <div {...stylex.props(styles.faces)} aria-label={`${people.length} members`}>
                 {people.slice(0, MAX_FACES).map((member, index) => (
                   <span key={member.user_id} className="team-face" style={{ zIndex: MAX_FACES - index }} title={memberName(member)}>
                     <Initials label={memberName(member)} avatarUrl={member.avatar_url} />
                   </span>
                 ))}
                 {people.length > MAX_FACES && (
-                  <span className="ml-1 text-[12px] text-[var(--text-tertiary)]">+{people.length - MAX_FACES}</span>
+                  <span {...stylex.props(styles.more)}>+{people.length - MAX_FACES}</span>
                 )}
               </div>
             </BuyerlyDataListRow>
@@ -148,15 +234,13 @@ export const WorkspaceTeamsView: React.FC = () => {
   };
 
   return (
-    <div className="flex h-full w-full select-none flex-col overflow-hidden bg-transparent">
-      <header className="flex shrink-0 flex-col">
-        <div
-          style={{ borderBottom: 'var(--canvas-border)', paddingLeft: '18px', paddingRight: '11px' }}
-          className="flex h-[44px] items-center justify-between"
-        >
-          <div className="flex items-center">
+    <div {...stylex.props(styles.root)}>
+      <header {...stylex.props(styles.header)}>
+        {/* --canvas-border is a whole border; StyleX would split the shorthand and lose it. */}
+        <div {...stylex.props(styles.titleBar)} style={{ borderBottom: 'var(--canvas-border)' }}>
+          <div {...stylex.props(styles.title)}>
             <SidebarCollapsedNavigation />
-            <h2 className="overflow-hidden whitespace-nowrap text-[13px] font-medium text-[var(--text-secondary)]">Teams</h2>
+            <h2 {...stylex.props(styles.heading)}>Teams</h2>
           </div>
           {canCreate && (
             <HeaderCreateButton
@@ -169,11 +253,11 @@ export const WorkspaceTeamsView: React.FC = () => {
             />
           )}
         </div>
-        <BuyerlyDataListToolbar className="gap-2">
+        <BuyerlyDataListToolbar xstyle={styles.toolbar}>
           <ListSearchField value={query} onChange={setQuery} placeholder="Find teams…" />
         </BuyerlyDataListToolbar>
       </header>
-      <div className="flex min-h-0 min-w-0 flex-1">{renderBody()}</div>
+      <div {...stylex.props(styles.body)}>{renderBody()}</div>
     </div>
   );
 };

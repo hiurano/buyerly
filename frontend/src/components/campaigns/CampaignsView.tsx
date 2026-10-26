@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
+import * as stylex from '@stylexjs/stylex';
 import { Pause, Play } from 'lucide-react';
 import { BuyerlyRowContextMenu, type RowMenuEntry } from '@/ui/BuyerlyRowMenu';
 import {
@@ -104,6 +105,8 @@ import { scopeStore } from '@/models/scopeStore';
 import { useViewStore, type AdsManagerEntity } from '@/models/viewStore';
 import { useRulesStore } from '@/models/rulesStore';
 import { useSelectionStore } from '@/models/selectionStore';
+import { colors } from '@/styles/tokens.stylex';
+import { withClassName } from '@/ui/withClassName';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -194,6 +197,106 @@ const detailsTabs = (entity: AdsManagerEntity) => (
 /** How this platform's tooltips and dialogs write undo. */
 const UNDO_SHORTCUT = typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘Z' : 'Ctrl+Z';
 
+const TOUCH = '@media (hover: none) and (pointer: coarse)';
+
+const styles = stylex.create({
+  root: {
+    display: 'flex',
+    height: '100%',
+    width: '100%',
+    userSelect: 'none',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  header: {
+    display: 'flex',
+    flexShrink: 0,
+    flexDirection: 'column',
+  },
+  // The 44px title bar over a hairline.
+  titleBar: {
+    display: 'flex',
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 18,
+    paddingRight: 11,
+  },
+  title: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  actions: {
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 6,
+  },
+  list: {
+    position: 'relative',
+  },
+  board: {
+    display: 'flex',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    flexDirection: 'column',
+  },
+  boardBody: {
+    minHeight: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+  },
+  accountIcon: {
+    color: colors['--text-tertiary'],
+  },
+  // The period pill beside Filter, as Meta's date picker.
+  period: {
+    display: 'inline-flex',
+    height: {
+      default: 28,
+      [TOUCH]: 32,
+    },
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 4,
+    whiteSpace: 'nowrap',
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    paddingLeft: 10,
+    paddingRight: 10,
+    fontSize: 12,
+    fontWeight: 500,
+    color: {
+      default: colors['--text-secondary'],
+      ':hover': colors['--text-primary'],
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 1px ${colors['--focus-ring-color']}`,
+    },
+    transitionProperty: 'color, background-color, border-color, text-decoration-color, fill, stroke',
+    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    transitionDuration: '150ms',
+  },
+  periodLabel: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+  },
+});
+
 /** A phone keeps the name and Spend side by side; the other figures scroll (#389). */
 const PHONE_TABLE_QUERY = '(max-width: 640px)';
 
@@ -201,7 +304,7 @@ function facetIcon(fieldId: string, option: FilterOption): React.ReactNode {
   if (fieldId === 'rule') {
     return <BuyerlyBoltIcon size={14} style={{ color: option.value === 'no-rule' ? 'var(--text-muted)' : option.color }} />;
   }
-  if (fieldId === 'account') return <BuyerlyProjectIcon size={14} className="text-[var(--text-tertiary)]" />;
+  if (fieldId === 'account') return <BuyerlyProjectIcon size={14} className={stylex.props(styles.accountIcon).className} />;
   if (fieldId === 'campaign') return <span className="details-facets-dot" style={{ backgroundColor: 'var(--text-tertiary)' }} />;
   if (option.value === 'active' || option.value === 'paused') return <BuyerlyStatusCircleIcon status={option.value} size={14} />;
   return <span className="details-facets-dot" style={{ backgroundColor: option.color }} />;
@@ -968,7 +1071,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
 
     if (isBoard) {
       return (
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div {...stylex.props(styles.board)}>
           {failedAccounts.length > 0 && (
             <div className="campaign-filter-summary" role="alert">
               <span>
@@ -980,7 +1083,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
               <Button size="compact" onClick={() => reloadHierarchy()}>Retry</Button>
             </div>
           )}
-          <div className="min-h-0 flex-1">
+          <div {...stylex.props(styles.boardBody)}>
             {(currentFilters.length > 0 || quick) && filteredCurrentCount === 0
               ? renderRows()
               : campaignFilterTab === 'campaigns'
@@ -1044,14 +1147,12 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
   ) : null;
 
   return (
-    <div className="flex h-full w-full select-none flex-col overflow-hidden bg-transparent">
-      <header className="flex shrink-0 flex-col">
-        <div
-          style={{ borderBottom: 'var(--canvas-border)', paddingLeft: '18px', paddingRight: '11px' }}
-          className="flex h-[44px] items-center justify-between"
-        >
+    <div {...stylex.props(styles.root)}>
+      <header {...stylex.props(styles.header)}>
+        {/* --canvas-border is a whole border; StyleX would split the shorthand and lose it. */}
+        <div {...stylex.props(styles.titleBar)} style={{ borderBottom: 'var(--canvas-border)' }}>
           {/* Every ad account is on screen; one is connected on Ad accounts, as a Linear project is made under Projects. */}
-          <div className="flex items-center">
+          <div {...stylex.props(styles.title)}>
             <SidebarCollapsedNavigation />
             <ViewTitle
               title={mine ? 'My campaigns' : 'Campaigns'}
@@ -1079,7 +1180,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
             aria-label="Level"
           />
 
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div {...stylex.props(styles.actions)}>
             <PeriodMenu period={period} label={periodLabel} onChange={setPeriod} />
             <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(openFilterMenu)}>
               <BuyerlyFilterButton
@@ -1107,7 +1208,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
                   setOpenFilterMenu(null);
                   toggleDisplayOptions();
                 }}
-                className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target group"
+                className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target"
               >
                 <BuyerlySlidersIcon size={14} />
                 <DisplayOptionsChangedDot show={displayChanged} />
@@ -1150,7 +1251,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
       />
 
       <DetailsPaneLayout pane="adsManager" label="Campaigns details" details={details}>
-        <div className="campaign-view-list relative">
+        <div {...withClassName(stylex.props(styles.list), 'campaign-view-list')}>
           {renderData()}
           <SelectionDock count={selection.count} onOpenActions={() => selection.setMenuOpen(true)} onClear={selection.clear} />
         </div>
@@ -1231,7 +1332,7 @@ const PeriodMenu: React.FC<PeriodMenuProps> = ({ period, label, onChange }) => (
         <button
           type="button"
           aria-label={`Period: ${label}`}
-          className="inline-flex h-[28px] shrink-0 [@media(hover:none)_and_(pointer:coarse)]:h-8 items-center gap-1 whitespace-nowrap rounded-full border border-[var(--color-border-secondary)] px-2.5 text-[12px] font-medium text-[var(--text-secondary)] outline-none transition-colors hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--focus-ring-color)]"
+          {...stylex.props(styles.period)}
         >
           {label}
           <span aria-hidden="true">▾</span>
@@ -1242,7 +1343,7 @@ const PeriodMenu: React.FC<PeriodMenuProps> = ({ period, label, onChange }) => (
       <DropdownMenuLabel>Period</DropdownMenuLabel>
       {ADS_MANAGER_PERIODS.map((option) => (
         <DropdownMenuItem key={option.value} onSelect={() => onChange(option.value)}>
-          <span className="flex-1">{option.label}</span>
+          <span {...stylex.props(styles.periodLabel)}>{option.label}</span>
           {option.value === period && <span aria-hidden="true">✓</span>}
         </DropdownMenuItem>
       ))}
