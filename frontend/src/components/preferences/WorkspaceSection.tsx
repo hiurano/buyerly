@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
 import { apiRequest } from '@/lib/api';
 import type { Workspace } from '@/lib/types';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
-import { TOUCH_HEIGHT_CLASS } from '@/lib/useMediaQuery';
 import { BuyerlyPencilIcon } from '@/icons/BuyerlyIcons';
 import { Button } from '@/ui/Button';
 import { FormCheckbox } from '@/ui/FormCheckbox';
@@ -11,6 +12,64 @@ import { Tooltip } from '@/ui/Tooltip';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
 import { toast } from '@/ui/toast';
 import { ChoiceDialog, errorMessage } from './MemberDialogs';
+
+const styles = stylex.create({
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    borderWidth: 0,
+  },
+  form: {
+    marginTop: 16,
+  },
+  label: {
+    marginBottom: 8,
+    display: 'block',
+    fontSize: 13,
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  labelSpaced: {
+    marginTop: 16,
+  },
+  error: {
+    margin: 0,
+    marginTop: 8,
+    fontSize: 12,
+    color: colors['--toast-error-icon'],
+  },
+  errorSpaced: {
+    marginTop: 12,
+  },
+  fullWidth: {
+    width: '100%',
+  },
+  spaced: {
+    marginTop: 16,
+  },
+  warning: {
+    marginTop: 12,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    fontSize: 13,
+    lineHeight: '20px',
+    color: colors['--text-secondary'],
+  },
+  paragraph: {
+    margin: 0,
+  },
+  name: {
+    fontWeight: 600,
+    color: colors['--text-primary'],
+  },
+});
 
 interface WorkspaceSectionProps {
   workspace: Workspace;
@@ -113,7 +172,7 @@ export const WorkspaceSection: React.FC<WorkspaceSectionProps> = ({ workspace, o
               ref={fileRef}
               type="file"
               accept="image/png,image/jpeg,image/webp"
-              className="sr-only"
+              {...stylex.props(styles.srOnly)}
               tabIndex={-1}
               aria-hidden="true"
               onChange={(event) => {
@@ -267,21 +326,21 @@ const ChangeWorkspaceUrlDialog: React.FC<{
       onClose={onClose}
       footer={(
         <>
-          <Button className={TOUCH_HEIGHT_CLASS} onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button className={TOUCH_HEIGHT_CLASS} variant="danger" onClick={() => void submit()} disabled={busy}>
+          <Button touchHeight onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button touchHeight variant="danger" onClick={() => void submit()} disabled={busy}>
             Update
           </Button>
         </>
       )}
     >
       <form
-        className="mt-4"
+        {...stylex.props(styles.form)}
         onSubmit={(event) => {
           event.preventDefault();
           void submit();
         }}
       >
-        <label htmlFor="workspace-url-new" className="mb-2 block text-[13px] font-medium text-[var(--text-primary)]">
+        <label htmlFor="workspace-url-new" {...stylex.props(styles.label)}>
           Enter the new workspace URL
         </label>
         <div className="preferences-url-field">
@@ -300,7 +359,7 @@ const ChangeWorkspaceUrlDialog: React.FC<{
 
           />
         </div>
-        {error && <p role="alert" className="m-0 mt-2 text-[12px] text-[var(--toast-error-icon)]">{error}</p>}
+        {error && <p role="alert" {...stylex.props(styles.error)}>{error}</p>}
       </form>
     </ChoiceDialog>
   );
@@ -356,7 +415,8 @@ const DeleteWorkspaceDialog: React.FC<{
       onClose={onClose}
       footer={(
         <Button
-          className={`${TOUCH_HEIGHT_CLASS} w-full`}
+          touchHeight
+          xstyle={styles.fullWidth}
           variant="danger"
           disabled={busy || !matches || !acknowledged}
           onClick={() => void remove()}
@@ -365,39 +425,39 @@ const DeleteWorkspaceDialog: React.FC<{
         </Button>
       )}
     >
-      <div className="mt-3 flex flex-col gap-2 text-[13px] leading-[20px] text-[var(--text-secondary)]">
-        <p className="m-0">
+      <div {...stylex.props(styles.warning)}>
+        <p {...stylex.props(styles.paragraph)}>
           If you are sure you want to proceed with the deletion of the workspace{' '}
-          <strong className="font-semibold text-[var(--text-primary)]">{workspace.name}</strong>, please continue below.
+          <strong {...stylex.props(styles.name)}>{workspace.name}</strong>, please continue below.
         </p>
-        <p className="m-0">
+        <p {...stylex.props(styles.paragraph)}>
           Keep in mind this operation is irreversible and will result in a complete deletion of all the data associated with the workspace.
         </p>
-        <p className="m-0">
+        <p {...stylex.props(styles.paragraph)}>
           Data including but not limited to members, ad accounts, rules and alerts will be permanently deleted.
         </p>
       </div>
-      <label htmlFor="workspace-delete-name" className="mb-2 mt-4 block text-[13px] font-medium text-[var(--text-primary)]">
+      <label htmlFor="workspace-delete-name" {...stylex.props(styles.label, styles.labelSpaced)}>
         Enter the workspace name to confirm
       </label>
       <Input
         id="workspace-delete-name"
         autoFocus
         autoComplete="off"
-        className="w-full"
+        {...stylex.props(styles.fullWidth)}
         placeholder={workspace.name}
         value={typed}
         disabled={busy}
         onChange={(event) => setTyped(event.target.value)}
       />
       <FormCheckbox
-        className="mt-4"
+        xstyle={styles.spaced}
         checked={acknowledged}
         disabled={busy}
         onChange={setAcknowledged}
         label="I acknowledge that all of the workspace data will be deleted and want to proceed."
       />
-      {error && <p role="alert" className="m-0 mt-3 text-[12px] text-[var(--toast-error-icon)]">{error}</p>}
+      {error && <p role="alert" {...stylex.props(styles.error, styles.errorSpaced)}>{error}</p>}
     </ChoiceDialog>
   );
 };

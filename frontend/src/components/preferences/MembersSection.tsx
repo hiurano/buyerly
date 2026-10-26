@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import * as stylex from '@stylexjs/stylex';
 import { apiRequest } from '@/lib/api';
 import { finishedEmails, isEmail, parseEmails } from '@/lib/emails';
 import { plural, useTeams } from '@/lib/teams';
@@ -8,6 +9,9 @@ import { Button } from '@/ui/Button';
 import { DataState } from '@/ui/DataState';
 import { BuyerlyCheckIcon, BuyerlyCloseIcon } from '@/icons/BuyerlyIcons';
 import { toast } from '@/ui/toast';
+import { rowMarker } from '@/ui/markers.stylex';
+import { withClassName } from '@/ui/withClassName';
+import { colors, radii } from '@/styles/tokens.stylex';
 import { SortHeader, sortedBy, useListSort } from './SettingsListSort';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
 import {
@@ -29,6 +33,293 @@ import {
   roleLabel,
   type MemberItem,
 } from './MemberDialogs';
+
+const styles = stylex.create({
+  roleBadge: {
+    display: 'inline-flex',
+    height: 19,
+    alignItems: 'center',
+    borderRadius: 3,
+    backgroundColor: colors['--role-badge-bg'],
+    paddingLeft: 6,
+    paddingRight: 6,
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--role-badge-fg'],
+  },
+  avatar: {
+    flexShrink: 0,
+    borderRadius: 9999,
+  },
+  avatar16: {
+    height: 16,
+    width: 16,
+    fontSize: 7,
+  },
+  avatar20: {
+    height: 20,
+    width: 20,
+    fontSize: 9,
+  },
+  avatar24: {
+    height: 24,
+    width: 24,
+    fontSize: 11,
+  },
+  avatarImage: {
+    objectFit: 'cover',
+  },
+  initials: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 600,
+    textTransform: 'uppercase',
+  },
+  initialsMuted: {
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    color: colors['--text-tertiary'],
+  },
+  initialsFilled: {
+    backgroundColor: colors['--action-primary'],
+    color: 'rgb(255 255 255)',
+  },
+  overlay: {
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 500,
+    backgroundColor: 'rgb(0 0 0 / 0.5)',
+  },
+  frame: {
+    pointerEvents: 'none',
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 501,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 16,
+    paddingRight: 16,
+    paddingBottom: 16,
+    paddingLeft: 16,
+  },
+  dialog: {
+    pointerEvents: 'auto',
+    width: '100%',
+    maxWidth: 456,
+    borderRadius: radii['--canvas-border-radius'],
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+    backgroundColor: colors['--card-bg'],
+    paddingTop: 16,
+    paddingRight: 16,
+    paddingBottom: 16,
+    paddingLeft: 16,
+    textAlign: 'left',
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    boxShadow: colors['--dialog-elevation-shadow'],
+  },
+  dialogHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dialogTitle: {
+    margin: 0,
+    flex: '1 1 0%',
+    fontSize: 14,
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  iconButton: {
+    display: 'flex',
+    height: 24,
+    width: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 4,
+    color: {
+      default: colors['--text-tertiary'],
+      ':hover': colors['--text-primary'],
+    },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+  },
+  srOnly: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    borderWidth: 0,
+  },
+  emailHeader: {
+    marginTop: 16,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  emailLabel: {
+    display: 'block',
+    fontSize: 12,
+    fontWeight: 500,
+    color: colors['--text-primary'],
+  },
+  roleTrigger: {
+    display: 'flex',
+    height: 24,
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 4,
+    paddingLeft: 6,
+    paddingRight: 6,
+    fontSize: 12,
+    fontWeight: 500,
+    color: colors['--text-primary'],
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--item-hover-bg'],
+    },
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    boxShadow: {
+      default: null,
+      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
+    opacity: {
+      default: null,
+      ':disabled': 0.5,
+    },
+  },
+  roleTriggerPrefix: {
+    fontWeight: 400,
+    color: colors['--text-tertiary'],
+  },
+  tertiary: {
+    color: colors['--text-tertiary'],
+  },
+  roleOption: {
+    height: 'auto',
+    paddingTop: 6,
+    paddingBottom: 6,
+  },
+  roleOptionText: {
+    minWidth: 0,
+  },
+  roleOptionLabel: {
+    display: 'block',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  roleOptionDetail: {
+    display: 'block',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 12,
+    color: colors['--text-tertiary'],
+  },
+  emails: {
+    marginTop: 8,
+    display: 'block',
+    width: '100%',
+    resize: 'none',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: {
+      default: colors['--color-border-secondary'],
+      ':focus': colors['--action-primary'],
+    },
+    backgroundColor: 'transparent',
+    paddingLeft: 10,
+    paddingRight: 10,
+    paddingTop: 8,
+    paddingBottom: 8,
+    fontSize: 13,
+    color: colors['--text-primary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
+    '::placeholder': {
+      color: colors['--text-tertiary'],
+    },
+  },
+  emailsInvalid: {
+    borderColor: colors['--toast-error-icon'],
+  },
+  error: {
+    margin: 0,
+    marginTop: 8,
+    fontSize: 12,
+    color: colors['--toast-error-icon'],
+  },
+  dialogFooter: {
+    marginTop: 16,
+    display: 'flex',
+    justifyContent: 'flex-end',
+  },
+  rowMenuTrigger: {
+    transitionProperty: 'opacity',
+    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    transitionDuration: '150ms',
+  },
+  rowMenuHidden: {
+    opacity: {
+      default: 0,
+      ':focus-visible': 1,
+      ':is([data-state="open"])': 1,
+      [stylex.when.ancestor(':hover', rowMarker)]: 1,
+    },
+  },
+  menuGap: {
+    height: 6,
+    width: '100%',
+  },
+  truncate: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  spacer: {
+    flex: '1 1 0%',
+  },
+  exportButton: {
+    display: {
+      default: null,
+      '@media not all and (min-width: 640px)': 'none',
+    },
+  },
+  person: {
+    minWidth: 0,
+  },
+  actions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+  },
+});
 
 interface InviteItem {
   id: number;
@@ -79,7 +370,7 @@ function downloadMembersCsv(workspace: Workspace, members: MemberItem[], invites
 /** Linear marks only the roles above a member with a tinted badge. */
 export const RoleStatus: React.FC<{ role: string }> = ({ role }) => (
   role === 'owner' || role === 'admin' || role === 'team-owner' ? (
-    <span className="inline-flex h-[19px] items-center rounded-[3px] bg-[var(--role-badge-bg)] px-1.5 text-[12px] font-[450] text-[var(--role-badge-fg)]">
+    <span {...stylex.props(styles.roleBadge)}>
       {roleLabel(role)}
     </span>
   ) : (
@@ -100,18 +391,14 @@ export const Initials: React.FC<{ label: string; avatarUrl?: string; muted?: boo
   muted,
   size = 20,
 }) => {
-  const box = size === 24 ? 'h-6 w-6 text-[11px]' : size === 16 ? 'h-4 w-4 text-[7px]' : 'h-5 w-5 text-[9px]';
+  const box = size === 24 ? styles.avatar24 : size === 16 ? styles.avatar16 : styles.avatar20;
   if (avatarUrl) {
-    return <img src={avatarUrl} alt="" className={`${box} shrink-0 rounded-full object-cover`} />;
+    return <img src={avatarUrl} alt="" {...stylex.props(styles.avatar, box, styles.avatarImage)} />;
   }
   return (
     <span
       aria-hidden="true"
-      className={`flex ${box} shrink-0 items-center justify-center rounded-full font-semibold uppercase ${
-        muted
-          ? 'border border-[var(--color-border-secondary)] text-[var(--text-tertiary)]'
-          : 'bg-[var(--action-primary)] text-white'
-      }`}
+      {...stylex.props(styles.avatar, box, styles.initials, muted ? styles.initialsMuted : styles.initialsFilled)}
     >
       {label.slice(0, 2)}
     </span>
@@ -187,33 +474,33 @@ export const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onC
   return (
     <Dialog.Root open={open} onOpenChange={(next) => { if (!next && !busy) onClose(); }}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-[500] bg-black/50 animate-fade-in" />
-        <div className="pointer-events-none fixed inset-0 z-[501] flex items-center justify-center p-4">
+        <Dialog.Overlay {...stylex.props(styles.overlay)} />
+        <div {...stylex.props(styles.frame)}>
           <Dialog.Content
             onOpenAutoFocus={(event) => {
               event.preventDefault();
               fieldRef.current?.focus();
             }}
-            className="ui-dialog pointer-events-auto w-full max-w-[456px] rounded-[var(--canvas-border-radius)] border border-[var(--color-border-secondary)] bg-[var(--card-bg)] p-4 text-left outline-none animate-scale-in [box-shadow:var(--dialog-elevation-shadow)]"
+            {...withClassName(stylex.props(styles.dialog), 'ui-dialog animate-scale-in')}
           >
-            <div className="flex items-center gap-2">
+            <div {...stylex.props(styles.dialogHeader)}>
               <WorkspaceAvatar workspace={workspace} size="tiny" />
-              <Dialog.Title className="m-0 flex-1 text-[14px] font-medium text-[var(--text-primary)]">
+              <Dialog.Title {...stylex.props(styles.dialogTitle)}>
                 Invite to your workspace
               </Dialog.Title>
               <Dialog.Close
                 aria-label="Close"
                 disabled={busy}
-                className="flex h-6 w-6 items-center justify-center rounded-[4px] text-[var(--text-tertiary)] outline-none hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)]"
+                {...stylex.props(styles.iconButton)}
               >
                 <BuyerlyCloseIcon size={12} />
               </Dialog.Close>
             </div>
-            <Dialog.Description className="sr-only">
+            <Dialog.Description {...stylex.props(styles.srOnly)}>
               Enter one or more email addresses separated by commas.
             </Dialog.Description>
-            <div className="mt-4 flex items-center justify-between gap-2">
-              <label className="block text-[12px] font-medium text-[var(--text-primary)]" htmlFor="invite-emails">
+            <div {...stylex.props(styles.emailHeader)}>
+              <label {...stylex.props(styles.emailLabel)} htmlFor="invite-emails">
                 Email
               </label>
               <DropdownMenu>
@@ -222,11 +509,11 @@ export const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onC
                     type="button"
                     aria-label={`Role: ${roleLabel(role)}`}
                     disabled={busy}
-                    className="flex h-6 items-center gap-1 rounded-[4px] px-1.5 text-[12px] font-medium text-[var(--text-primary)] outline-none hover:bg-[var(--item-hover-bg)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] disabled:opacity-50"
+                    {...stylex.props(styles.roleTrigger)}
                   >
-                    <span className="font-normal text-[var(--text-tertiary)]">Invite as</span>
+                    <span {...stylex.props(styles.roleTriggerPrefix)}>Invite as</span>
                     {roleLabel(role)}
-                    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" className="text-[var(--text-tertiary)]">
+                    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" {...stylex.props(styles.tertiary)}>
                       <path d="M2.5 4l2.5 2.5L7.5 4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </button>
@@ -234,10 +521,10 @@ export const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onC
                 <DropdownMenuContent align="end" style={{ width: 280 }}>
                   <DropdownMenuRadioGroup value={role} onValueChange={setRole}>
                     {ASSIGNABLE_ROLES.map((option) => (
-                      <DropdownMenuRadioItem key={option.value} value={option.value} className="!h-auto py-1.5">
-                        <span className="min-w-0">
-                          <span className="block truncate">{option.label}</span>
-                          <span className="block truncate text-[12px] text-[var(--text-tertiary)]">{option.description}</span>
+                      <DropdownMenuRadioItem key={option.value} value={option.value} xstyle={styles.roleOption}>
+                        <span {...stylex.props(styles.roleOptionText)}>
+                          <span {...stylex.props(styles.roleOptionLabel)}>{option.label}</span>
+                          <span {...stylex.props(styles.roleOptionDetail)}>{option.description}</span>
                         </span>
                         {role === option.value && <BuyerlyCheckIcon size={14} />}
                       </DropdownMenuRadioItem>
@@ -266,20 +553,16 @@ export const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onC
               placeholder="email@example.com, email2@example.com…"
               aria-invalid={shownInvalid.length > 0}
               aria-describedby={shownInvalid.length > 0 ? 'invite-emails-error' : undefined}
-              className={`mt-2 block w-full resize-none rounded-[6px] border bg-transparent px-2.5 py-2 text-[13px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-tertiary)] ${
-                shownInvalid.length > 0
-                  ? 'border-[var(--toast-error-icon)]'
-                  : 'border-[var(--color-border-secondary)] focus:border-[var(--action-primary)]'
-              }`}
+              {...stylex.props(styles.emails, shownInvalid.length > 0 && styles.emailsInvalid)}
             />
             {shownInvalid.length > 0 && (
-              <p id="invite-emails-error" role="alert" className="m-0 mt-2 text-[12px] text-[var(--toast-error-icon)]">
+              <p id="invite-emails-error" role="alert" {...stylex.props(styles.error)}>
                 {shownInvalid.length === 1
                   ? `${shownInvalid[0]} isn’t a valid email address`
                   : `These aren’t valid email addresses: ${shownInvalid.join(', ')}`}
               </p>
             )}
-            <div className="mt-4 flex justify-end">
+            <div {...stylex.props(styles.dialogFooter)}>
               <Button variant="primary" onClick={() => void send()} disabled={!canSend}>
                 {busy ? 'Sending…' : count > 0 ? `Send ${count} ${count === 1 ? 'invite' : 'invites'}` : 'Send invites'}
               </Button>
@@ -298,9 +581,7 @@ export const RowMenu: React.FC<{ label: string; children: React.ReactNode; visib
       <button
         type="button"
         aria-label={label}
-        className={`flex h-6 w-6 items-center justify-center rounded-[4px] text-[var(--text-tertiary)] outline-none transition-opacity hover:bg-[var(--item-hover-bg)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] ${
-          visible ? '' : 'opacity-0 focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100'
-        }`}
+        {...stylex.props(styles.iconButton, styles.rowMenuTrigger, !visible && styles.rowMenuHidden)}
       >
         <svg width={visible ? 16 : 14} height={visible ? 16 : 14} viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
           <circle cx="3" cy="8" r="1.25" />
@@ -310,9 +591,9 @@ export const RowMenu: React.FC<{ label: string; children: React.ReactNode; visib
       </button>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" sideOffset={4}>
-      <div className="h-[6px] w-full" />
+      <div {...stylex.props(styles.menuGap)} />
       {children}
-      <div className="h-[6px] w-full" />
+      <div {...stylex.props(styles.menuGap)} />
     </DropdownMenuContent>
   </DropdownMenu>
 );
@@ -432,7 +713,7 @@ export const MembersSection: React.FC<{
 
       <div className="settings-list-toolbar">
         <label className="settings-list-search">
-          <span className="sr-only">Search by name or email</span>
+          <span {...stylex.props(styles.srOnly)}>Search by name or email</span>
           <svg viewBox="0 0 16 16" aria-hidden="true" className="settings-list-search-icon">
             <path d="M7 1.5a5.5 5.5 0 0 1 4.38 8.82l3.15 3.15a.75.75 0 1 1-1.06 1.06l-3.15-3.15A5.5 5.5 0 1 1 7 1.5Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
           </svg>
@@ -459,22 +740,22 @@ export const MembersSection: React.FC<{
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" sideOffset={4}>
-              <div className="h-[6px] w-full" />
+              <div {...stylex.props(styles.menuGap)} />
               <DropdownMenuRadioGroup value={filter} onValueChange={(value) => setFilter(value as MemberFilter)}>
                 {(Object.keys(FILTER_LABELS) as MemberFilter[]).map((key) => (
                   <DropdownMenuRadioItem key={key} value={key}>
-                    <span className="truncate">{FILTER_LABELS[key]}</span>
+                    <span {...stylex.props(styles.truncate)}>{FILTER_LABELS[key]}</span>
                     {filter === key && <BuyerlyCheckIcon size={14} />}
                   </DropdownMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>
-              <div className="h-[6px] w-full" />
+              <div {...stylex.props(styles.menuGap)} />
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-        <div className="flex-1" />
+        <div {...stylex.props(styles.spacer)} />
         {canManage && state === 'ready' && (
-          <button type="button" className="settings-list-button max-sm:hidden" onClick={() => downloadMembersCsv(workspace, members, invites)}>
+          <button type="button" {...withClassName(stylex.props(styles.exportButton), 'settings-list-button')} onClick={() => downloadMembersCsv(workspace, members, invites)}>
             Export CSV
           </button>
         )}
@@ -506,7 +787,7 @@ export const MembersSection: React.FC<{
             <SortHeader label="Status" column="status" sort={sort} onSort={toggleSort} />
             <span role="columnheader" className="settings-list-col-wide">Teams</span>
             <SortHeader label="Joined" column="joined" sort={sort} onSort={toggleSort} className="settings-list-col-wide" />
-            <span role="columnheader" className="sr-only">Actions</span>
+            <span role="columnheader" {...stylex.props(styles.srOnly)}>Actions</span>
           </div>
 
           {filter !== 'invites' && (
@@ -519,7 +800,7 @@ export const MembersSection: React.FC<{
             <div key={member.id} role="row" className="settings-list-row">
               <span role="cell" className="settings-list-person">
                 <Initials label={member.full_name || member.username} avatarUrl={member.avatar_url} size={24} />
-                <span className="min-w-0">
+                <span {...stylex.props(styles.person)}>
                   <span className="settings-list-person-name">{member.full_name || member.username}</span>
                   <span className="settings-list-person-handle">{member.username}</span>
                 </span>
@@ -530,12 +811,12 @@ export const MembersSection: React.FC<{
                 {teamCounts.get(member.user_id) ? plural(teamCounts.get(member.user_id) as number, 'team') : ''}
               </span>
               <span role="cell" className="settings-list-cell settings-list-col-wide">{shortDate(member.joined_at)}</span>
-              <span role="cell" className="flex justify-end">
+              <span role="cell" {...stylex.props(styles.actions)}>
                 {/* Linear gives your row no menu while nobody else could run the workspace. */}
                 {member.is_current_user ? (workspace.role === 'owner' && members.length < 2 ? null : (
                   <RowMenu label={`Member actions for ${memberName(member)}`} visible>
                     <DropdownMenuItem onSelect={() => setLeaveOpen(true)}>
-                      <span className="truncate">Leave workspace…</span>
+                      <span {...stylex.props(styles.truncate)}>Leave workspace…</span>
                     </DropdownMenuItem>
                   </RowMenu>
                 )) : canManageMember(member) ? (
@@ -544,11 +825,11 @@ export const MembersSection: React.FC<{
                   // Buyerly counterpart, so they are left out.
                   <RowMenu label={`Member actions for ${memberName(member)}`} visible>
                     <DropdownMenuItem onSelect={() => setRoleTarget(member)}>
-                      <span className="truncate">Change role…</span>
+                      <span {...stylex.props(styles.truncate)}>Change role…</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => setRemoveTarget(member)}>
-                      <span className="truncate">Remove from workspace…</span>
+                      <span {...stylex.props(styles.truncate)}>Remove from workspace…</span>
                     </DropdownMenuItem>
                   </RowMenu>
                 ) : null}
@@ -574,13 +855,13 @@ export const MembersSection: React.FC<{
                   </span>
                   <span role="cell" className="settings-list-col-wide" />
                   <span role="cell" className="settings-list-cell settings-list-col-wide">{shortDate(invite.created_at)}</span>
-                  <span role="cell" className="flex justify-end">
+                  <span role="cell" {...stylex.props(styles.actions)}>
                     <RowMenu label={`Invite actions for ${invite.email}`} visible>
                       <DropdownMenuItem onSelect={() => void resend(invite)}>
-                        <span className="truncate">Resend invite</span>
+                        <span {...stylex.props(styles.truncate)}>Resend invite</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => void revoke(invite)}>
-                        <span className="truncate">Revoke invite</span>
+                        <span {...stylex.props(styles.truncate)}>Revoke invite</span>
                       </DropdownMenuItem>
                     </RowMenu>
                   </span>

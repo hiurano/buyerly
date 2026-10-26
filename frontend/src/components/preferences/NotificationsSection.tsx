@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import * as stylex from '@stylexjs/stylex';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   INBOX_KINDS,
@@ -37,6 +38,14 @@ import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { Tooltip } from '@/ui/Tooltip';
 import { useInboxStore } from '@/models/inboxStore';
 import { useNotificationSettingsStore } from '@/models/notificationSettingsStore';
+
+const styles = stylex.create({
+  menuItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+  },
+});
 
 /** What each kind holds, in place of Linear's descriptions of its notification types. */
 const KIND_DESCRIPTIONS: Record<InboxKind, string> = {
@@ -648,13 +657,13 @@ const SavedFilter: React.FC<{
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onSelect={onEdit}>
-              <span className="flex items-center gap-2.5">
+              <span {...stylex.props(styles.menuItem)}>
                 <BuyerlyPencilIcon size={14} />
                 Edit
               </span>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={onDelete}>
-              <span className="flex items-center gap-2.5">
+              <span {...stylex.props(styles.menuItem)}>
                 <BuyerlyTrashIcon size={14} />
                 Delete
               </span>
