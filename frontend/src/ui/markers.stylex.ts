@@ -1,8 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
 
 /*
- * Markers for styles that follow an ancestor's state, as Tailwind's named
- * groups did: a data row's checkbox shows while the row is hovered, a menu
+ * Markers for styles that follow an ancestor's state: a data row's checkbox shows while the row is hovered, a menu
  * row's pill fills while the row is highlighted.
  */
 

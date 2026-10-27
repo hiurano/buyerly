@@ -1,7 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
 import { colors, layout } from '@/styles/tokens.stylex';
 
-/** Tailwind's font-sans, as tailwind.config.js sets it. */
+/** The sans stack the app's controls use. */
 const SANS = '"Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
 /**
@@ -154,7 +154,7 @@ export const commandMenuStyles = stylex.create({
     fontSize: 12,
     color: colors['--text-muted'],
   },
-  /** Read by screen readers only, as Tailwind's sr-only. */
+  /** Read by screen readers only. */
   srOnly: {
     position: 'absolute',
     width: 1,

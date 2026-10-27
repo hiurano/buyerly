@@ -68,7 +68,7 @@ export const getLinearDataListMinWidth = (columns: BuyerlyDataListColumn[]) => {
   );
 };
 
-/** Tailwind's font-mono, as tailwind.config.js sets it. */
+/** The app's monospace stack. */
 const MONO = '"Berkeley Mono", "JetBrains Mono", monospace';
 
 const truncate = {
@@ -455,10 +455,9 @@ export const BuyerlyDataListRow = React.forwardRef<HTMLDivElement, BuyerlyDataLi
       role="row"
       data-selected={selected ? 'true' : 'false'}
       aria-selected={selected}
-      // `group/row` stays for callers' Tailwind (`group-hover/row:`) until their pages move to StyleX.
       {...withClassName(
         stylex.props(styles.row, layout === 'grid' && styles.rowGrid, selected && styles.rowSelected, rowMarker, xstyle),
-        `buyerly-data-row group/row ${className}`.trim(),
+        `buyerly-data-row ${className}`.trim(),
       )}
       style={{
         minHeight: `${height}px`,

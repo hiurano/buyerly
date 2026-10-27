@@ -1,7 +1,6 @@
 import React from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
-import { TOUCH_HEIGHT_CLASS } from '@/lib/useMediaQuery';
 import { withClassName } from '@/ui/withClassName';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -98,20 +97,10 @@ const styles = stylex.create({
       '@media (hover: none) and (pointer: coarse)': 40,
     },
   },
-  // A caller's own text size, which won over the button's under Tailwind.
-  callerFontSize: {
-    fontSize: null,
-  },
 });
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant = 'secondary', size = 'default', touchHeight = false, xstyle, className = '', type = 'button', ...props }, ref) => {
-    // Callers still pass Tailwind's touch height until their pages move to StyleX (#514–#518).
-    const touchClass = className.includes(TOUCH_HEIGHT_CLASS);
-    const touch = touchHeight || touchClass;
-    const callerClasses = touchClass ? className.replace(TOUCH_HEIGHT_CLASS, '').trim() : className;
-    const ownFontSize = /(^|\s)!?text-\[\d+px\]/.test(callerClasses);
-
     return (
       <button
         ref={ref}
@@ -121,11 +110,10 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             styles.root,
             styles[variant],
             size === 'compact' ? styles.compact : styles.regular,
-            touch && (size === 'compact' ? styles.compactTouch : styles.regularTouch),
-            ownFontSize && styles.callerFontSize,
+            touchHeight && (size === 'compact' ? styles.compactTouch : styles.regularTouch),
             xstyle,
           ),
-          callerClasses,
+          className,
         )}
         {...props}
       />

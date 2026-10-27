@@ -25,7 +25,7 @@ import {
 import { useScopeStore } from '@/models/scopeStore';
 import { openSettings } from '@/lib/routing';
 
-/** Tailwind's font-sans, as tailwind.config.js sets it. */
+/** The sans stack the app's controls use. */
 const SANS = '"Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
 const styles = stylex.create({

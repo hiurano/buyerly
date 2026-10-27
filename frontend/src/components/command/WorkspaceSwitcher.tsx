@@ -7,7 +7,7 @@ import { commandItemMarker } from '@/ui/markers.stylex';
 import { withClassName } from '@/ui/withClassName';
 import { commandMenuStyles } from './commandMenuStyles';
 
-/** Tailwind's font-sans, as tailwind.config.js sets it. */
+/** The sans stack the app's controls use. */
 const SANS = '"Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 import { BuyerlyCheckIcon } from '@/icons/BuyerlyIcons';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
