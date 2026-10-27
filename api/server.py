@@ -217,6 +217,16 @@ def create_app() -> FastAPI:
             return FileResponse(release_path, headers={"Cache-Control": "public, max-age=300"})
         return JSONResponse(status_code=404, content={"detail": "Document not found"})
 
+    # The service worker (#499, frontend/sw/). Browsers look for a new one at
+    # every navigation; no cache in between may hold an old copy. SERVICE_WORKER
+    # off serves the kill switch, which drops the worker and its caches.
+    @app.get("/sw.js", include_in_schema=False)
+    async def serve_service_worker():
+        worker_path = frontend_dir / ("sw.js" if settings.SERVICE_WORKER else "sw-off.js")
+        if not worker_path.is_file():
+            return JSONResponse(status_code=404, content={"detail": "Not found"})
+        return FileResponse(worker_path, media_type="text/javascript", headers={"Cache-Control": "no-cache, no-store"})
+
     # Root segments the React app routes itself (frontend/src/lib/routing.ts);
     # every other reserved root belongs to the server.
     app_roots = {"login", "signup", "auth", "create-workspace", "invite", "connect"}
