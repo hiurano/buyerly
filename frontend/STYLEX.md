@@ -1,8 +1,9 @@
 # Writing styles in StyleX
 
-Buyerly is moving from Tailwind to StyleX, as Linear's styles are written (#501).
-Until #519 removes Tailwind, both run in the same build; a component moves whole,
-not class by class.
+Buyerly's components are styled with StyleX, as Linear's styles are written
+(#501). Tailwind is gone since #519; what is left outside StyleX is
+`src/styles/reset.css` (the element reset), the semantic classes in
+`src/styles/index.css` and the public website's stylesheet.
 
 ## Tokens
 
@@ -10,7 +11,7 @@ not class by class.
   `space`, `radii`, `type`, `layout` and `motion`, each a `stylex.defineVars`.
   `colors` holds the dark values; `lightColors` (`stylex.createTheme`) holds the light ones.
 - The keys keep their CSS names (`'--bg-canvas'`), so StyleX leaves them unhashed
-  and Tailwind classes, `index.css` and the public website keep reading
+  and `index.css` and the public website keep reading
   `var(--bg-canvas)`.
 - `buyerlyTokens()` in `vite.config.ts` compiles that file into the token CSS,
   with the defaults on `:root` and `lightColors` on `html[data-theme='light']`.
@@ -58,37 +59,37 @@ not class by class.
 - Its lightningcss targets are Vite's default build targets, so `lch()` values
   stay as they are written, as in `index.css`.
 
-## Next to Tailwind and index.css
+## Next to index.css
 
 - StyleX raises each rule's specificity with `:not(#\#)`, so its rules beat
-  any Tailwind class and any index.css rule on the same element, whatever the
-  order. A class from a caller only adds properties the component leaves
-  unset; an index.css rule that must restyle a StyleX component needs
-  `!important` until its page moves to StyleX.
+  any index.css or reset.css rule on the same element, whatever the order. A
+  class from a caller only adds properties the component leaves unset; an
+  index.css rule that must restyle a StyleX component needs `!important`.
 - The lowest group of rules (now the `margin` and `padding` shorthands) gets
   no `:not(#\#)`. Dev serves StyleX's CSS before index.css and the build puts
   it after, so keep those shorthands off elements that index.css also styles.
 - `stylex.when.ancestor(...)` and other `stylex.*` calls only compile inside
   `stylex.create`. Pulled into a module constant they reach the browser and
   throw, and the build does not catch it.
-- A style that follows an ancestor's state (Tailwind's `group-hover:`) uses a
+- A style that follows an ancestor's state (hover on a row, say) uses a
   marker from `src/ui/markers.stylex.ts`, set on the ancestor with
   `stylex.props(..., rowMarker)`.
 - Styles that several components share can come from one module's exported
   `stylex.create` (`components/command/commandMenuStyles.ts`). A plain
   constant used inside `stylex.create` must be declared in the same file:
   imported from anywhere but a `.stylex.ts` file, it fails the build.
-- StyleX styles only the element it is applied to. What Tailwind reached
-  through a child selector (cmdk's group headings, `space-y-*`) keeps the
-  same selector in index.css under a semantic class (`.buyerly-command-group`,
+- StyleX styles only the element it is applied to. What needs a child
+  selector (cmdk's group headings) keeps it in index.css under a semantic class (`.buyerly-command-group`,
   `.buyerly-sidebar-navigation`).
 - A token that holds a whole border (`--canvas-border`) can't go in
   `borderBottom`: StyleX splits the shorthand and the line is lost. Such
   an element keeps `style={{ borderBottom: 'var(--canvas-border)' }}`.
-- Tailwind's `border-b border-[color]` coloured all four sides; write
-  `borderColor`, not `borderBottomColor`, to keep the computed style the same.
+- reset.css gives every element `border-style: solid` and a 0 width, so a
+  border needs only `borderWidth` (or one side's) and `borderColor`. Pages
+  that came from Tailwind's `border-b border-[color]` colour all four sides
+  with `borderColor`; keep that, so the computed style stays the same.
 - Browser checks find elements by semantic class (`buyerly-data-group-title`)
-  or role, never by a Tailwind class.
+  or role, never by a StyleX class.
 
 `src/ui/SubmenuArrow.tsx` is the first component written this way; the rest
 of `src/ui` followed in #513.

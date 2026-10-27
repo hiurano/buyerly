@@ -3,7 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { BuyerlySearchIcon } from '@/icons/BuyerlyIcons';
 
 const styles = stylex.create({
-  /** Read by screen readers only, as Tailwind's sr-only. */
+  /** Read by screen readers only. */
   srOnly: {
     position: 'absolute',
     width: 1,

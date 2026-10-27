@@ -48,7 +48,7 @@ Use the existing primitives from `frontend/src/ui/`:
 | Label/status | `BuyerlyLabelPill` | Semantic text or icon accompanies color. |
 | Display controls | `BuyerlyDisplayOptions` | Changes real view state and exposes the current selection. |
 
-Tailwind utilities may be used for composition. Repeated arbitrary values for color, geometry, shadow, z-index or motion must be promoted to `tokens.stylex.ts` or a shared primitive. External brand colors, user-configured colors and runtime-calculated dimensions are allowed as local, explained exceptions.
+Components are styled with StyleX (`frontend/STYLEX.md`). Repeated arbitrary values for color, geometry, shadow, z-index or motion must be promoted to `tokens.stylex.ts` or a shared primitive. External brand colors, user-configured colors and runtime-calculated dimensions are allowed as local, explained exceptions.
 
 ## Density and geometry
 

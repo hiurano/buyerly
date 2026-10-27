@@ -6,7 +6,7 @@ import { colors, layout } from '@/styles/tokens.stylex';
 import type { SelectionAction } from '@/ui/useRowSelection';
 import { withClassName } from '@/ui/withClassName';
 
-/** Tailwind's font-sans, as tailwind.config.js sets it. */
+/** The sans stack the app's controls use. */
 const SANS = '"Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
 const kbd = {
