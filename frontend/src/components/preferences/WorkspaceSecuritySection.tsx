@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { apiRequest } from '@/lib/api';
+import { changeInviteLink, fetchInviteLink, type InviteLink } from '@/lib/workspaces';
 import type { Workspace } from '@/lib/types';
 import { Button } from '@/ui/Button';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
@@ -7,10 +7,6 @@ import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { Tooltip } from '@/ui/Tooltip';
 import { toast } from '@/ui/toast';
 import { errorMessage } from './MemberDialogs';
-
-interface InviteLinkResponse {
-  invite_url: string | null;
-}
 
 /** Linear's ResetIcon: a circular arrow around a dot. */
 const ResetIcon: React.FC = () => (
@@ -36,21 +32,21 @@ export const WorkspaceSecuritySection: React.FC<{ workspace: Workspace }> = ({ w
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
-  const endpoint = `/api/workspaces/${workspace.id}/invite-link`;
+  const workspaceId = workspace.id;
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    apiRequest<InviteLinkResponse>(endpoint)
+    fetchInviteLink(workspaceId)
       .then((result) => { if (!cancelled) setInviteUrl(result.invite_url); })
       .catch((error) => {
         if (!cancelled) toast.error("Couldn't load the invite link", errorMessage(error, 'Please try again.'));
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [endpoint]);
+  }, [workspaceId]);
 
-  const run = async (request: () => Promise<InviteLinkResponse>, done?: () => void) => {
+  const run = async (request: () => Promise<InviteLink>, done?: () => void) => {
     setBusy(true);
     try {
       const result = await request();
@@ -63,13 +59,10 @@ export const WorkspaceSecuritySection: React.FC<{ workspace: Workspace }> = ({ w
     setBusy(false);
   };
 
-  const toggle = (enabled: boolean) => run(() => apiRequest<InviteLinkResponse>(endpoint, {
-    method: enabled ? 'POST' : 'DELETE',
-    ...(enabled ? { body: JSON.stringify({}) } : {}),
-  }));
+  const toggle = (enabled: boolean) => run(() => changeInviteLink(workspaceId, enabled ? 'enable' : 'disable'));
 
   const reset = () => run(
-    () => apiRequest<InviteLinkResponse>(`${endpoint}/reset`, { method: 'POST', body: JSON.stringify({}) }),
+    () => changeInviteLink(workspaceId, 'reset'),
     () => {
       setResetOpen(false);
       toast.show({ tone: 'success', title: 'Invite link replaced' });

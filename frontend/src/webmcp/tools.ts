@@ -1,4 +1,5 @@
-import { ApiError, apiRequest } from '@/lib/api';
+import { ApiError } from '@/lib/api';
+import { graphql } from '@/lib/graphql';
 import { auditEventTitle, type AuditEventListResponse } from '@/lib/audit';
 import {
   ACCOUNT_SCOPE,
@@ -24,13 +25,19 @@ import { rulesStore } from '@/models/rulesStore';
 
 /**
  * The tools one open workspace offers the browser's AI agent. Each calls the
- * same `/api/*` the interface does, so the session, CSRF and the server's role
+ * same API the interface does, so the session, CSRF and the server's role
  * checks apply unchanged: the agent can do exactly what this person can.
  *
  * Deliberately absent: turning automation on or off, pausing or starting ads,
  * budgets, deleting rules, undo, members and connections. Those move money or
  * access, and stay with the person in Buyerly's own interface.
  */
+
+const ACCOUNTS = 'query Accounts { accounts }';
+const RULES = 'query Rules { rules }';
+const HIERARCHY = `query AnalyticsHierarchy($parentId: String!, $level: String, $period: String) {
+  analyticsHierarchy(parentId: $parentId, level: $level, period: $period)
+}`;
 
 /** Marks the approved writes so the server records them in Inbox as the assistant's. */
 const ASSISTANT_HEADERS = { 'X-Buyerly-Agent': 'webmcp' };
@@ -94,9 +101,9 @@ function defineTool<Input>(
 }
 
 /** A read whose answer arrives after the workspace changed describes the old one, so it is dropped. */
-async function read<T>(context: ToolContext, path: string): Promise<T> {
+async function read<T>(context: ToolContext, document: string, variables: Record<string, unknown> = {}): Promise<T> {
   if (!context.inScope()) throw new OutOfScopeError();
-  const result = await apiRequest<T>(path);
+  const result = await graphql<T>(document, variables);
   if (!context.inScope()) throw new OutOfScopeError();
   return result;
 }
@@ -247,9 +254,8 @@ async function entityNames(
   accountId: string,
   level: 'campaign' | 'adset',
 ): Promise<Map<string, string> | null> {
-  const params = new URLSearchParams({ parent_id: accountId, level, period: 'last_7d' });
   try {
-    const response = await read<AnalyticsHierarchyResponse>(context, `/api/analytics/hierarchy?${params}`);
+    const response = await read<AnalyticsHierarchyResponse>(context, HIERARCHY, { parentId: accountId, level, period: 'last_7d' });
     return new Map(response.items.map((item) => [item.entity_id, item.entity_name]));
   } catch (error) {
     if (error instanceof OutOfScopeError) throw error;
@@ -406,7 +412,7 @@ export function workspaceTools(context: ToolContext): WebMcpTool[] {
     inputSchema: NO_INPUT,
     annotations: { readOnlyHint: true, untrustedContentHint: true },
   }, async () => {
-    const accounts = await read<MetaAccount[]>(context, '/api/accounts');
+    const accounts = await read<MetaAccount[]>(context, ACCOUNTS);
     return { workspace: context.workspace, accounts: accounts.map(compactAccount) };
   });
 
@@ -438,8 +444,7 @@ export function workspaceTools(context: ToolContext): WebMcpTool[] {
   }, async (input) => {
     const accountId = normalizeAccountId(input.account_id);
     const parent = input.parent_id ?? accountId;
-    const params = new URLSearchParams({ parent_id: parent, level: input.level, period: input.period });
-    const response = await read<AnalyticsHierarchyResponse>(context, `/api/analytics/hierarchy?${params}`);
+    const response = await read<AnalyticsHierarchyResponse>(context, HIERARCHY, { parentId: parent, level: input.level, period: input.period });
     if (response.items.some((item) => item.account_id !== accountId)) {
       return { error: `${parent} is not in ad account ${accountId}.`, status: 404 };
     }
@@ -477,7 +482,7 @@ export function workspaceTools(context: ToolContext): WebMcpTool[] {
     },
     annotations: { readOnlyHint: true, untrustedContentHint: true },
   }, async (input) => {
-    const presets = await read<RulePresetPayload[]>(context, '/api/presets');
+    const presets = await read<RulePresetPayload[]>(context, RULES);
     const accountId = input.account_id ? normalizeAccountId(input.account_id) : null;
     const rules = accountId
       ? presets.filter((preset) => preset.attached_account_ids.includes(accountId))
@@ -503,14 +508,18 @@ export function workspaceTools(context: ToolContext): WebMcpTool[] {
     },
     annotations: { readOnlyHint: true, untrustedContentHint: true },
   }, async (input) => {
-    const params = new URLSearchParams({
-      page: '1',
-      page_size: String(input.limit),
-      category: 'RULE_ACTION',
-      date_from: new Date(Date.now() - input.hours * 3_600_000).toISOString(),
-    });
-    if (input.account_id) params.set('account_id', normalizeAccountId(input.account_id));
-    const response = await read<AuditEventListResponse>(context, `/api/audit-events?${params}`);
+    const response = await read<AuditEventListResponse>(
+      context,
+      `query AuditEvents($pageSize: Int, $category: String, $dateFrom: String, $accountId: String) {
+        auditEvents(page: 1, pageSize: $pageSize, category: $category, dateFrom: $dateFrom, accountId: $accountId)
+      }`,
+      {
+        pageSize: input.limit,
+        category: 'RULE_ACTION',
+        dateFrom: new Date(Date.now() - input.hours * 3_600_000).toISOString(),
+        accountId: input.account_id ? normalizeAccountId(input.account_id) : undefined,
+      },
+    );
     return {
       hours: input.hours,
       total: response.total,
@@ -548,7 +557,7 @@ export function workspaceTools(context: ToolContext): WebMcpTool[] {
     },
     annotations: { readOnlyHint: true, untrustedContentHint: true },
   }, async (input) => {
-    const stopped = await read<StoppedAdSet[]>(context, '/api/adsets/stopped');
+    const stopped = await read<StoppedAdSet[]>(context, 'query StoppedAdSets { stoppedAdSets }');
     const accountId = input.account_id ? normalizeAccountId(input.account_id) : null;
     const matching = accountId ? stopped.filter((item) => item.account_id === accountId) : stopped;
     return {
@@ -695,8 +704,8 @@ export function workspaceTools(context: ToolContext): WebMcpTool[] {
         : ACCOUNT_SCOPE;
 
     const [presets, accounts] = await Promise.all([
-      read<RulePresetPayload[]>(context, '/api/presets'),
-      read<MetaAccount[]>(context, '/api/accounts'),
+      read<RulePresetPayload[]>(context, RULES),
+      read<MetaAccount[]>(context, ACCOUNTS),
     ]);
     const rule = presets.find((preset) => preset.id === input.rule_id);
     if (!rule) return { error: `There is no rule ${input.rule_id} in this workspace. Call list_rules.`, status: 404 };
@@ -775,8 +784,8 @@ export function workspaceTools(context: ToolContext): WebMcpTool[] {
     if (!context.canWrite) return guestFailure('detach rules from ad accounts');
     const accountId = normalizeAccountId(input.account_id);
     const [presets, accounts] = await Promise.all([
-      read<RulePresetPayload[]>(context, '/api/presets'),
-      read<MetaAccount[]>(context, '/api/accounts'),
+      read<RulePresetPayload[]>(context, RULES),
+      read<MetaAccount[]>(context, ACCOUNTS),
     ]);
     const account = accounts.find((item) => item.account_id === accountId);
     if (!account) {

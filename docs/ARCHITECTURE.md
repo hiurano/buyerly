@@ -18,7 +18,7 @@ flowchart LR
 
 ## Frontend и HTTP
 
-[App.tsx](../frontend/src/App.tsx) собирает React-приложение; [routing.ts](../frontend/src/lib/routing.ts) определяет публичные и workspace-маршруты как дерево React Router, [routes.tsx](../frontend/src/routes.tsx) даёт им компоненты; адрес — источник истины о текущей странице. Основные разделы — Inbox, Ads Manager, Rules и Settings. Данные хранятся в пуле моделей MobX ([pool.ts](../frontend/src/models/pool.ts)), состояние UI — в MobX-сторах рядом с ним (`frontend/src/models/*Store.ts`), HTTP-запросы проходят через [api.ts](../frontend/src/lib/api.ts).
+[App.tsx](../frontend/src/App.tsx) собирает React-приложение; [routing.ts](../frontend/src/lib/routing.ts) определяет публичные и workspace-маршруты как дерево React Router, [routes.tsx](../frontend/src/routes.tsx) даёт им компоненты; адрес — источник истины о текущей странице. Основные разделы — Inbox, Ads Manager, Rules и Settings. Данные хранятся в пуле моделей MobX ([pool.ts](../frontend/src/models/pool.ts)), состояние UI — в MobX-сторах рядом с ним (`frontend/src/models/*Store.ts`). Чтения вне sync и все изменения идут через клиентский GraphQL API `POST /api/graphql` ([graphql.ts](../frontend/src/lib/graphql.ts), [api/client_api](../api/client_api/), как у Linear, #509); REST ([api.ts](../frontend/src/lib/api.ts)) остаётся для sync, входа, загрузки файлов и публичных ссылок.
 
 Vite собирает `frontend/dist`, и FastAPI сам отдаёт эти файлы (`SERVE_STATIC=true`): сборку, юридические документы и React-приложение для любого адреса без своего маршрута, кроме корней сервера. Юридические страницы и их ресурсы находятся в `frontend/public`. Runtime-каталог `uploads/` монтируется в production как именованный том `buyerly-uploads`; публичные URL начинаются с `/uploads/`.
 
@@ -38,9 +38,9 @@ Vite собирает `frontend/dist`, и FastAPI сам отдаёт эти ф�
 
 [meta_api/client.py](../meta_api/client.py) получает inventory и Insights, нормализует метрики, обрабатывает квоты и ошибки. Inventory и метрики периода имеют разное происхождение: отсутствие активности не означает отсутствие рекламной сущности.
 
-[services/analytics_store.py](../services/analytics_store.py) сохраняет и читает `AnalyticsEntityFact`. Campaigns читает его через `/api/analytics/hierarchy/accounts` (все кабинеты одним запросом), правила и WebMCP — через `/api/analytics/hierarchy`. Старый account-level API `/api/summary` и `SummarySnapshot` продолжают существовать на backend; это не отдельный текущий React-экран. Справочник маршрутов — [API.md](API.md).
+[services/analytics_store.py](../services/analytics_store.py) сохраняет и читает `AnalyticsEntityFact`. Campaigns читает его GraphQL-запросом `analyticsAccountsHierarchy` (маршрут `/api/analytics/hierarchy/accounts`, все кабинеты одним запросом), правила и WebMCP — `analyticsHierarchy` (`/api/analytics/hierarchy`). Старый account-level API `/api/summary` и `SummarySnapshot` продолжают существовать на backend; это не отдельный текущий React-экран. Справочник маршрутов — [API.md](API.md).
 
-Страница поиска `/<workspace>/search` (`/` и кнопка Search workspace) ищет по Enter через `GET /api/search` ([api/routers/search.py](../api/routers/search.py)): кампании, ad sets и объявления из сегодняшнего инвентаря `AnalyticsEntityFact` по часам каждого кабинета (того же, что показывает Ads Manager), правила и рекламные кабинеты workspace из адреса. Результат открывается по каноническому адресу записи, и список показывает её строку.
+Страница поиска `/<workspace>/search` (`/` и кнопка Search workspace) ищет по Enter GraphQL-запросом `search` (маршрут `GET /api/search`, [api/routers/search.py](../api/routers/search.py)): кампании, ad sets и объявления из сегодняшнего инвентаря `AnalyticsEntityFact` по часам каждого кабинета (того же, что показывает Ads Manager), правила и рекламные кабинеты workspace из адреса. Результат открывается по каноническому адресу записи, и список показывает её строку.
 
 ## Правила и worker
 
@@ -60,7 +60,7 @@ Vite собирает `frontend/dist`, и FastAPI сам отдаёт эти ф�
 
 ## Аудит и отмена
 
-`AuditEvent` хранит события workspace и сведения о результате. Inbox читает `/api/audit-events`; это журнал активности, без вымышленных состояний прочтения или архивации.
+`AuditEvent` хранит события workspace и сведения о результате. Inbox читает его запросом `auditEvents` (`/api/audit-events`); это журнал активности, без вымышленных состояний прочтения или архивации.
 
 [core/action_undo.py](../core/action_undo.py) проверяет workspace, успешность исходного действия, окно 24 часа, последующие изменения и текущее состояние Meta. Отмена поддерживаемого действия создаёт отдельное событие.
 

@@ -1,4 +1,4 @@
-import { apiRequest } from './api';
+import { graphql } from './graphql';
 
 /** The member's personal Telegram account, as Linear's personal Slack account. */
 export interface TelegramConnection {
@@ -38,17 +38,22 @@ function fromPayload(payload: TelegramConnectionPayload): TelegramConnection {
 }
 
 export async function fetchTelegramConnection(): Promise<TelegramConnection> {
-  return fromPayload(await apiRequest<TelegramConnectionPayload>('/api/telegram/connection'));
+  return fromPayload(await graphql<TelegramConnectionPayload>('query TelegramConnection { telegramConnection }'));
 }
 
 /** A one-time t.me link to the bot; pressing Start there connects this account. */
 export async function createTelegramLink(): Promise<string> {
-  const { url } = await apiRequest<{ url: string }>('/api/telegram/link', { method: 'POST' });
-  return url;
+  const { telegram } = await graphql<{ telegram: { url: string } }>(
+    'mutation TelegramLinkCreate { telegramLinkCreate { success lastSyncId telegram } }',
+  );
+  return telegram.url;
 }
 
 export async function disconnectTelegram(): Promise<TelegramConnection> {
-  return fromPayload(await apiRequest<TelegramConnectionPayload>('/api/telegram/connection', { method: 'DELETE' }));
+  const { telegram } = await graphql<{ telegram: TelegramConnectionPayload }>(
+    'mutation TelegramDisconnect { telegramDisconnect { success lastSyncId telegram } }',
+  );
+  return fromPayload(telegram);
 }
 
 /** How the account is named next to "Telegram", as Linear's "Jira · name". */

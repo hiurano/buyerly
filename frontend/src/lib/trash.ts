@@ -1,4 +1,4 @@
-import { apiRequest } from '@/lib/api';
+import { graphql } from '@/lib/graphql';
 
 export type DeletedKind = 'rule' | 'rule_group';
 
@@ -27,11 +27,14 @@ export interface RestoreResult {
 export const TRASH_RETENTION_DAYS = 30;
 
 export function fetchDeletedItems(): Promise<DeletedItem[]> {
-  return apiRequest<DeletedItem[]>('/api/deleted-items');
+  return graphql<DeletedItem[]>('query DeletedItems { deletedItems }');
 }
 
 export function restoreDeletedItem(itemId: number): Promise<RestoreResult> {
-  return apiRequest<RestoreResult>(`/api/deleted-items/${itemId}/restore`, { method: 'POST' });
+  return graphql<{ deletedItem: RestoreResult }>(
+    'mutation DeletedItemRestore($id: Int!) { deletedItemRestore(id: $id) { success lastSyncId deletedItem } }',
+    { id: itemId },
+  ).then((payload) => payload.deletedItem);
 }
 
 /** What a restore could not bring back, in words, or '' when it all came back. */

@@ -14,6 +14,7 @@ import { ToastRegion } from '@/ui/ToastRegion';
 import { useUndoShortcuts } from '@/lib/undoHistory';
 import { useNewVersionNotice } from '@/lib/appVersion';
 import { ApiError, apiRequest } from '@/lib/api';
+import { graphql } from '@/lib/graphql';
 import type { LoginResult, SessionUser, Workspace } from '@/lib/types';
 import {
   currentRoute,
@@ -105,6 +106,14 @@ function activeWorkspace(user: SessionUser): Workspace | null {
   return user.active_workspace || user.workspaces.find((workspace) => workspace.is_active) || user.workspaces[0] || null;
 }
 
+/** Remembers the workspace as the one the account's next visit opens. */
+function switchWorkspace(slug: string): Promise<unknown> {
+  return graphql(
+    'mutation WorkspaceSwitch($input: JSON!) { workspaceSwitch(input: $input) { success lastSyncId } }',
+    { input: { slug } },
+  );
+}
+
 /** What the App hands the workspace's routes once its profile and scope are ready. */
 interface WorkspaceOutlet extends BuyerlyWorkspaceOutlet {
   workspace: Workspace;
@@ -162,7 +171,7 @@ export const WorkspaceApplication: React.FC = () => {
       // The address alone scopes the app and every API request to the chosen workspace.
       navigate(`/${slug}/inbox`);
       // Remembered so the next visit to Buyerly opens it; the switch above does not wait for it.
-      apiRequest('/api/workspaces/switch', { method: 'POST', body: JSON.stringify({ slug }) })
+      switchWorkspace(slug)
         .then(() => refreshUser())
         .catch(() => {});
     },
@@ -424,7 +433,7 @@ export const App: React.FC = () => {
     scopeStore.setWorkspaceScope(null);
     navigate(`/${slug}/inbox`);
     // Remembered for that account, as a switch within one account is.
-    apiRequest('/api/workspaces/switch', { method: 'POST', body: JSON.stringify({ slug }) }).catch(() => {});
+    switchWorkspace(slug).catch(() => {});
   }, [navigate]);
 
   /** A login makes its account this tab's account (Add an account, invite, email link). */

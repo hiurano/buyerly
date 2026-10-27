@@ -22,11 +22,49 @@ global.document = { cookie: '' };
 // No WebSocket, no sync engine: this checks scoped state over the REST API, which then serves every list.
 // The sync engine's client is checked in the browser (scripts/sync-browser.mjs).
 global.WebSocket = undefined;
+// The client API (/api/graphql, #509) is held as the REST request of its field, as the browser
+// checks hold it (scripts/graphql-mock.mjs, whose table of fields this reads), and answered as GraphQL.
+const graphqlFields = (() => {
+  const source = fs.readFileSync(path.resolve(__dirname, '../../scripts/graphql-mock.mjs'), 'utf8');
+  const table = /const FIELDS = String\.raw`([\s\S]*?)`;/.exec(source)[1];
+  const qs = (params) => {
+    const query = new URLSearchParams();
+    for (const [name, value] of Object.entries(params)) {
+      if (value === undefined || value === null) continue;
+      for (const item of Array.isArray(value) ? value : [value]) query.append(name, String(item));
+    }
+    const text = query.toString();
+    return text ? `?${text}` : '';
+  };
+  return new Function('enc', 'qs', `return ${table};`)(encodeURIComponent, qs);
+})();
+function asRest(url, init) {
+  if (url !== '/api/graphql') return { url, method: init.method, wrap: (body, status) => ({ body, status }) };
+  const { query, variables = {} } = JSON.parse(init.body);
+  const [, kind, field, selection = ''] = /^\s*(query|mutation)\b[^{]*\{\s*(\w+)\s*(?:\([^)]*\))?\s*(?:\{([^}]*)\})?/.exec(query);
+  const [method, restUrl] = graphqlFields[field](variables);
+  const wrap = (body, status) => {
+    if (status >= 400) {
+      const message = typeof body?.detail === 'string' ? body.detail : 'Something went wrong';
+      return { body: { data: null, errors: [{ message, extensions: { statusCode: status } }] }, status: 200 };
+    }
+    const value = kind === 'query' ? body : Object.fromEntries(selection.split(/\s+/).filter(Boolean)
+      .map((name) => [name, name === 'success' ? true : name === 'lastSyncId' ? 0 : body]));
+    return { body: { data: { [field]: value } }, status: 200 };
+  };
+  return { url: restUrl, method, wrap };
+}
 const pending = [];
-global.fetch = (url, init) => new Promise(resolve => pending.push({
-  url, method: init.method, workspace: init.headers.get('X-Workspace-Slug'),
-  reply: (body, status = 200) => resolve({ ok: status < 400, status, json: async () => body }),
-}));
+global.fetch = (url, init) => new Promise(resolve => {
+  const request = asRest(url, init);
+  pending.push({
+    url: request.url, method: request.method, workspace: init.headers.get('X-Workspace-Slug'),
+    reply: (body, status = 200) => {
+      const answer = request.wrap(body, status);
+      resolve({ ok: answer.status < 400, status: answer.status, json: async () => answer.body });
+    },
+  });
+});
 // The UI state's MobX stores (#510), read as one: each name is found on the store that has it.
 const stores = ['scope', 'shell', 'commandMenu', 'inbox', 'notificationSettings', 'view', 'detailsPane', 'selection', 'dialog', 'rules']
   .map(name => load(path.join(root, `models/${name}Store.ts`))[`${name}Store`]);

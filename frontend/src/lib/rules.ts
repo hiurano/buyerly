@@ -1,4 +1,4 @@
-import { apiRequest } from '@/lib/api';
+import { graphql } from '@/lib/graphql';
 import { formatMetricMoney } from '@/components/campaigns/liveCampaigns';
 
 /**
@@ -186,7 +186,7 @@ export type RuleDraftRequest = Omit<RulePresetWriteRequest, 'label_ids' | 'attac
 
 /** Whether a draft could be saved as it stands; the error says why not. */
 export function checkRuleDraft(draft: RuleDraftRequest): Promise<{ valid: true }> {
-  return apiRequest<{ valid: true }>('/api/presets/check', { method: 'POST', body: JSON.stringify(draft) });
+  return graphql<{ valid: true }>('query RuleDraftCheck($input: JSON!) { ruleDraftCheck(input: $input) }', { input: draft });
 }
 
 export interface RuleLabelWriteRequest {
@@ -546,16 +546,16 @@ export function formatScope(preset: RulePresetPayload): string {
 /* ------------------------------------------------------------- requests -- */
 
 export function fetchRulePresets(): Promise<RulePresetPayload[]> {
-  return apiRequest<RulePresetPayload[]>('/api/presets');
+  return graphql<RulePresetPayload[]>('query Rules { rules }');
 }
 
 export function fetchRuleLabels(): Promise<RuleLabelPayload[]> {
-  return apiRequest<RuleLabelPayload[]>('/api/rule-labels');
+  return graphql<RuleLabelPayload[]>('query RuleLabels { ruleLabels }');
 }
 
 /** One rule's state on every entity it checks. */
 export function fetchRuleStates(presetId: number): Promise<RuleEntityStatePayload[]> {
-  return apiRequest<RuleEntityStatePayload[]>(`/api/presets/${presetId}/states`);
+  return graphql<RuleEntityStatePayload[]>('query RuleEntityStates($ruleId: Int!) { ruleEntityStates(ruleId: $ruleId) }', { ruleId: presetId });
 }
 
 /** Every rule's state on one campaign, ad set or ad. */
@@ -563,29 +563,31 @@ export function fetchEntityRuleStates(
   level: RuleExecutionLevel,
   entityId: string,
 ): Promise<RuleEntityStatePayload[]> {
-  const query = new URLSearchParams({ entity_level: level, entity_id: entityId });
-  return apiRequest<RuleEntityStatePayload[]>(`/api/rule-states?${query}`);
+  return graphql<RuleEntityStatePayload[]>(
+    'query RuleStates($entityLevel: String!, $entityId: String!) { ruleStates(entityLevel: $entityLevel, entityId: $entityId) }',
+    { entityLevel: level, entityId },
+  );
 }
 
 export function createRulePreset(
   payload: RulePresetWriteRequest,
   headers?: HeadersInit,
 ): Promise<RulePresetPayload> {
-  return apiRequest<RulePresetPayload>('/api/presets', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-    headers,
-  });
+  return graphql<{ rule: RulePresetPayload }>(
+    'mutation RuleCreate($input: JSON!) { ruleCreate(input: $input) { success lastSyncId rule } }',
+    { input: payload },
+    { headers },
+  ).then((result) => result.rule);
 }
 
 export function updateRulePreset(
   presetId: number,
   payload: RulePresetWriteRequest,
 ): Promise<RulePresetPayload> {
-  return apiRequest<RulePresetPayload>(`/api/presets/${presetId}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  });
+  return graphql<{ rule: RulePresetPayload }>(
+    'mutation RuleUpdate($id: Int!, $input: JSON!) { ruleUpdate(id: $id, input: $input) { success lastSyncId rule } }',
+    { id: presetId, input: payload },
+  ).then((result) => result.rule);
 }
 
 /** The deletion keeps the rule restorable; `deleted_item_id` is its entry in Recently deleted. */
@@ -595,42 +597,44 @@ export interface DeleteResponse {
 }
 
 export function deleteRulePreset(presetId: number): Promise<DeleteResponse> {
-  return apiRequest<DeleteResponse>(`/api/presets/${presetId}`, {
-    method: 'DELETE',
-  });
+  return graphql<{ rule: DeleteResponse }>(
+    'mutation RuleDelete($id: Int!) { ruleDelete(id: $id) { success lastSyncId rule } }',
+    { id: presetId },
+  ).then((result) => result.rule);
 }
 
 export function createRuleLabel(
   payload: { name: string; color?: string; description?: string },
 ): Promise<RuleLabelPayload> {
-  return apiRequest<RuleLabelPayload>('/api/rule-labels', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  return graphql<{ ruleLabel: RuleLabelPayload }>(
+    'mutation RuleLabelCreate($input: JSON!) { ruleLabelCreate(input: $input) { success lastSyncId ruleLabel } }',
+    { input: payload },
+  ).then((result) => result.ruleLabel);
 }
 
 export function updateRuleLabel(
   labelId: number,
   payload: RuleLabelWriteRequest,
 ): Promise<RuleLabelPayload> {
-  return apiRequest<RuleLabelPayload>(`/api/rule-labels/${labelId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(payload),
-  });
+  return graphql<{ ruleLabel: RuleLabelPayload }>(
+    'mutation RuleLabelUpdate($id: Int!, $input: JSON!) { ruleLabelUpdate(id: $id, input: $input) { success lastSyncId ruleLabel } }',
+    { id: labelId, input: payload },
+  ).then((result) => result.ruleLabel);
 }
 
 export function deleteRuleLabel(labelId: number): Promise<DeleteResponse> {
-  return apiRequest<DeleteResponse>(`/api/rule-labels/${labelId}`, {
-    method: 'DELETE',
-  });
+  return graphql<{ ruleLabel: DeleteResponse }>(
+    'mutation RuleLabelDelete($id: Int!) { ruleLabelDelete(id: $id) { success lastSyncId ruleLabel } }',
+    { id: labelId },
+  ).then((result) => result.ruleLabel);
 }
 
 /** A rule's whole set of labels, in one write. */
 export function setPresetLabels(presetId: number, labelIds: number[]): Promise<RulePresetPayload> {
-  return apiRequest<RulePresetPayload>(`/api/presets/${presetId}/labels`, {
-    method: 'PUT',
-    body: JSON.stringify({ label_ids: labelIds }),
-  });
+  return graphql<{ rule: RulePresetPayload }>(
+    'mutation RuleLabelsSet($id: Int!, $input: JSON!) { ruleLabelsSet(id: $id, input: $input) { success lastSyncId rule } }',
+    { id: presetId, input: { label_ids: labelIds } },
+  ).then((result) => result.rule);
 }
 
 /** Labels put on, or taken off, several rules at once. */
@@ -638,14 +642,16 @@ export function changePresetsLabels(
   presetIds: number[],
   change: { add?: number[]; remove?: number[] },
 ): Promise<{ updated_count: number }> {
-  return apiRequest<{ updated_count: number }>('/api/presets/labels', {
-    method: 'PATCH',
-    body: JSON.stringify({
-      preset_ids: presetIds,
-      add_label_ids: change.add ?? [],
-      remove_label_ids: change.remove ?? [],
-    }),
-  });
+  return graphql<{ rules: { updated_count: number } }>(
+    'mutation RulesLabelsChange($input: JSON!) { rulesLabelsChange(input: $input) { success lastSyncId rules } }',
+    {
+      input: {
+        preset_ids: presetIds,
+        add_label_ids: change.add ?? [],
+        remove_label_ids: change.remove ?? [],
+      },
+    },
+  ).then((result) => result.rules);
 }
 
 /* ------------------------------------------- rules attached to accounts -- */
@@ -662,14 +668,13 @@ export function assignRuleToAccount(
   scope: RuleScope,
   headers?: HeadersInit,
 ): Promise<AccountRulesResponse> {
-  return apiRequest<AccountRulesResponse>(
-    `/api/accounts/${encodeURIComponent(accountId)}/assign-rule`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ preset_id: presetId, scope }),
-      headers,
-    },
-  );
+  return graphql<{ account: AccountRulesResponse }>(
+    `mutation AccountRuleAttach($accountId: String!, $input: JSON!) {
+      accountRuleAttach(accountId: $accountId, input: $input) { success lastSyncId account }
+    }`,
+    { accountId, input: { preset_id: presetId, scope } },
+    { headers },
+  ).then((result) => result.account);
 }
 
 /** One entity a whole-account attachment would check, as the rule sees it now. */
@@ -704,8 +709,9 @@ export function fetchRuleAccountPreview(
   accountId: string,
   presetId: number,
 ): Promise<RuleAccountPreview> {
-  return apiRequest<RuleAccountPreview>(
-    `/api/accounts/${encodeURIComponent(accountId)}/rules/${presetId}/preview`,
+  return graphql<RuleAccountPreview>(
+    'query RulePreview($accountId: String!, $ruleId: Int!) { rulePreview(accountId: $accountId, ruleId: $ruleId) }',
+    { accountId, ruleId: presetId },
   );
 }
 
@@ -714,9 +720,9 @@ export function fetchRuleDraftPreview(
   accountId: string,
   draft: RuleDraftRequest,
 ): Promise<RuleAccountPreview> {
-  return apiRequest<RuleAccountPreview>(
-    `/api/accounts/${encodeURIComponent(accountId)}/rules/preview`,
-    { method: 'POST', body: JSON.stringify(draft) },
+  return graphql<RuleAccountPreview>(
+    'query RuleDraftPreview($accountId: String!, $input: JSON!) { ruleDraftPreview(accountId: $accountId, input: $input) }',
+    { accountId, input: draft },
   );
 }
 
@@ -725,13 +731,12 @@ export function setAttachedRuleScope(
   presetId: number,
   scope: RuleScope,
 ): Promise<AccountRulesResponse> {
-  return apiRequest<AccountRulesResponse>(
-    `/api/accounts/${encodeURIComponent(accountId)}/rules/${presetId}/scope`,
-    {
-      method: 'PUT',
-      body: JSON.stringify(scope),
-    },
-  );
+  return graphql<{ account: AccountRulesResponse }>(
+    `mutation AccountRuleScopeUpdate($accountId: String!, $ruleId: Int!, $input: JSON!) {
+      accountRuleScopeUpdate(accountId: $accountId, ruleId: $ruleId, input: $input) { success lastSyncId account }
+    }`,
+    { accountId, ruleId: presetId, input: scope },
+  ).then((result) => result.account);
 }
 
 export function detachRuleFromAccount(
@@ -739,10 +744,13 @@ export function detachRuleFromAccount(
   presetId: number,
   headers?: HeadersInit,
 ): Promise<AccountRulesResponse> {
-  return apiRequest<AccountRulesResponse>(
-    `/api/accounts/${encodeURIComponent(accountId)}/detach-rule/${presetId}`,
-    { method: 'POST', headers },
-  );
+  return graphql<{ account: AccountRulesResponse }>(
+    `mutation AccountRuleDetach($accountId: String!, $ruleId: Int!) {
+      accountRuleDetach(accountId: $accountId, ruleId: $ruleId) { success lastSyncId account }
+    }`,
+    { accountId, ruleId: presetId },
+    { headers },
+  ).then((result) => result.account);
 }
 
 /**

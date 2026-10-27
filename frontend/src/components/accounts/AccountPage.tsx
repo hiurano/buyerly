@@ -3,9 +3,8 @@ import * as stylex from '@stylexjs/stylex';
 import { observer } from 'mobx-react-lite';
 import { ChevronRight, Copy } from 'lucide-react';
 import type { MetaAccount } from '@/lib/types';
-import { apiRequest } from '@/lib/api';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
-import { auditEventSummary, auditEventTitle, formatAuditRelativeTime, formatAuditTimestamp, type AuditEventListResponse, type AuditEventItem } from '@/lib/audit';
+import { auditEventSummary, auditEventTitle, fetchAuditEvents, formatAuditRelativeTime, formatAuditTimestamp, type AuditEventItem } from '@/lib/audit';
 import { attachedRuleScope, formatAccountScope, formatRelativeTime } from '@/lib/rules';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { AttachRulePreviewDialog } from '@/components/rules/AttachRulePreviewDialog';
@@ -624,7 +623,7 @@ const AccountPageContent: React.FC<AccountPageProps> = ({ accountId, navigate, n
   useEffect(() => {
     let active = true;
     setEvents(null);
-    apiRequest<AuditEventListResponse>(`/api/audit-events?page=1&page_size=5&account_id=${encodeURIComponent(accountId)}`)
+    fetchAuditEvents({ page: 1, pageSize: 5, accountId })
       .then((result) => { if (active) setEvents(result.items); })
       .catch(() => { if (active) setEvents([]); });
     return () => { active = false; };

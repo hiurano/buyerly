@@ -76,6 +76,7 @@ from api.routers import (
     account_notifications_router,
     sync_router,
 )
+from api.client_api import router as client_api_router
 from api.schemas import (
     AccountItem,
     AccountLatestMetrics,
@@ -149,6 +150,7 @@ router.include_router(views_router)
 router.include_router(favorites_router)
 router.include_router(account_notifications_router)
 router.include_router(sync_router)
+router.include_router(client_api_router)
 
 class _RoutesModule(sys.modules[__name__].__class__):
     """Custom module class to propagate dynamically patched attributes (e.g. in tests) to submodules."""
@@ -156,6 +158,7 @@ class _RoutesModule(sys.modules[__name__].__class__):
     def __setattr__(self, name: str, value: Any) -> None:
         super().__setattr__(name, value)
         if name == "async_session_maker":
+            import api.client_api.bridge
             import api.deps
             import api.meta_oauth
             import api.routers.account_notifications
@@ -181,6 +184,7 @@ class _RoutesModule(sys.modules[__name__].__class__):
 
             database.db.async_session_maker = value
             api.deps.async_session_maker = value
+            api.client_api.bridge.async_session_maker = value
             api.meta_oauth.async_session_maker = value
             api.routers.account_notifications.async_session_maker = value
             api.routers.accounts.async_session_maker = value

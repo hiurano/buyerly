@@ -1,5 +1,5 @@
 import { reaction } from 'mobx';
-import { ApiError, apiRequest } from '@/lib/api';
+import { ApiError } from '@/lib/api';
 import type { MetaAccount } from '@/lib/types';
 import { eligibleMetaAccounts } from '@/components/campaigns/liveCampaigns';
 import type { AdsManagerMetrics } from '@/components/campaigns/adsManagerMetrics';
@@ -35,7 +35,7 @@ import type {
 } from '@/lib/rules';
 import { pushHistory } from '@/lib/undoHistory';
 import { pool, type Query } from './pool';
-import { adAccountsQuery, presetsQuery, ruleLabelsQuery } from './queries';
+import { adAccountsQuery, fetchAccounts, presetsQuery, ruleLabelsQuery } from './queries';
 import { OUT_OF_SCOPE, scopeStore } from './scopeStore';
 import { selectionStore } from './selectionStore';
 import { makeStore, useStore } from './store';
@@ -340,7 +340,7 @@ export class RulesStore {
     );
   }
 
-  /** `accounts`: ones just read from `/api/accounts`, so their `active_rules` need no second read. */
+  /** `accounts`: ones just read by the `accounts` query, so their `active_rules` need no second read. */
   async loadRuleAttachments(accountIds: string[], loadedAccounts?: MetaAccount[]) {
     const inScope = scopeStore.captureScope();
     if (!inScope()) return;
@@ -363,7 +363,7 @@ export class RulesStore {
     }
     if (accountIds.length === 0) return;
     try {
-      const accounts = loadedAccounts ?? await apiRequest<MetaAccount[]>('/api/accounts');
+      const accounts = loadedAccounts ?? await fetchAccounts();
       if (!current()) return;
       const scopes: Record<string, Record<string, RuleScope>> = {};
       const order: Record<string, string[]> = {};

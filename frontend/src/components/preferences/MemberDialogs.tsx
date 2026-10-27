@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as stylex from '@stylexjs/stylex';
-import { ApiError, apiRequest } from '@/lib/api';
+import { ApiError } from '@/lib/api';
+import { leaveWorkspace, removeMember, transferWorkspaceOwnership, updateMemberRole } from '@/lib/workspaces';
+import { fetchWorkspaceMembers } from '@/models/queries';
 import type { Workspace } from '@/lib/types';
 import { BuyerlyCloseIcon } from '@/icons/BuyerlyIcons';
 import { Button } from '@/ui/Button';
@@ -337,7 +339,7 @@ export const LeaveWorkspaceDialog: React.FC<LeaveWorkspaceDialogProps> = ({ open
     if (!open || !isOwner) return;
     let cancelled = false;
     setCandidates(null);
-    apiRequest<MemberItem[]>(`/api/workspaces/${workspace.id}/members`)
+    fetchWorkspaceMembers(workspace.id)
       .then((members) => {
         if (!cancelled) setCandidates(members.filter((member) => !member.is_current_user));
       })
@@ -357,12 +359,9 @@ export const LeaveWorkspaceDialog: React.FC<LeaveWorkspaceDialogProps> = ({ open
     setError('');
     try {
       if (isOwner) {
-        await apiRequest(`/api/workspaces/${workspace.id}/transfer-ownership`, {
-          method: 'POST',
-          body: JSON.stringify({ new_owner_user_id: Number(newOwner) }),
-        });
+        await transferWorkspaceOwnership(workspace.id, Number(newOwner));
       }
-      await apiRequest(`/api/workspaces/${workspace.id}/leave`, { method: 'POST', body: JSON.stringify({}) });
+      await leaveWorkspace(workspace.id);
       toast.show({ tone: 'info', title: `You left ${workspace.name}` });
       onClose();
       await onLeft();
@@ -467,10 +466,7 @@ export const ChangeRoleDialog: React.FC<ChangeRoleDialogProps> = ({ member, work
     }
     setBusy(true);
     try {
-      const updated = await apiRequest<MemberItem>(`/api/workspaces/${workspace.id}/members/${member.user_id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ role }),
-      });
+      const updated = await updateMemberRole<MemberItem>(workspace.id, member.user_id, role);
       onChanged(updated);
       toast.show({
         tone: 'success',
@@ -537,7 +533,7 @@ export const RemoveMemberDialog: React.FC<RemoveMemberDialogProps> = ({ member, 
     if (!member) return;
     setBusy(true);
     try {
-      await apiRequest(`/api/workspaces/${workspace.id}/members/${member.user_id}`, { method: 'DELETE' });
+      await removeMember(workspace.id, member.user_id);
       onRemoved(member);
       onClose();
     } catch (removeError) {

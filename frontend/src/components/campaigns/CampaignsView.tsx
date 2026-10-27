@@ -410,7 +410,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
     await Promise.all([pool.fetch(adAccountsQuery, { afterWrite: true }), pool.fetch(connectionsQuery, { afterWrite: true })]);
   }, []);
 
-  // Rules attach per ad account, read from the accounts just loaded rather than a second `/api/accounts`.
+  // Rules attach per ad account, read from the accounts just loaded rather than a second `accounts` query.
   useEffect(() => {
     const ids = accountsState === 'ready' && accountIdsKey ? accountIdsKey.split(',') : [];
     void loadRuleAttachments(ids, allMetaAccounts);

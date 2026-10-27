@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo } from 'react';
+import { graphql } from '@/lib/graphql';
 import { pool } from '@/models/pool';
 import { teamsQuery } from '@/models/queries';
 import { usePoolQuery } from '@/models/usePool';
 import { usePageTeamKey } from '@/lib/pageScope';
 
-/** One team as GET /api/workspaces/{id}/teams returns it (#371). */
+/** One team as the `teams` query returns it (#371). */
 export interface TeamItem {
   id: number;
   name: string;
@@ -35,7 +36,72 @@ export const TEAM_NAME_MAX = 48;
 export const TEAM_KEY_MAX = 7;
 export const TEAM_DESCRIPTION_MAX = 255;
 
-export const teamsPath = (workspaceId: number, suffix = '') => `/api/workspaces/${workspaceId}/teams${suffix}`;
+const TEAM_PAYLOAD = '{ success lastSyncId team }';
+
+async function teamMutation<T = TeamItem>(document: string, variables: Record<string, unknown>): Promise<T> {
+  return (await graphql<{ team: T }>(document, variables)).team;
+}
+
+export const createTeam = (workspaceId: number, input: { name: string; key: string; private: boolean }) => teamMutation(
+  `mutation TeamCreate($workspaceId: Int!, $input: JSON!) { teamCreate(workspaceId: $workspaceId, input: $input) ${TEAM_PAYLOAD} }`,
+  { workspaceId, input },
+);
+
+export const updateTeam = (workspaceId: number, id: number, input: Partial<TeamItem>) => teamMutation(
+  `mutation TeamUpdate($workspaceId: Int!, $id: Int!, $input: JSON!) { teamUpdate(workspaceId: $workspaceId, id: $id, input: $input) ${TEAM_PAYLOAD} }`,
+  { workspaceId, id, input },
+);
+
+export const retireTeam = (workspaceId: number, id: number) => teamMutation(
+  `mutation TeamRetire($workspaceId: Int!, $id: Int!) { teamRetire(workspaceId: $workspaceId, id: $id) ${TEAM_PAYLOAD} }`,
+  { workspaceId, id },
+);
+
+export const restoreTeam = (workspaceId: number, id: number) => teamMutation(
+  `mutation TeamRestore($workspaceId: Int!, $id: Int!) { teamRestore(workspaceId: $workspaceId, id: $id) ${TEAM_PAYLOAD} }`,
+  { workspaceId, id },
+);
+
+export const deleteTeam = (workspaceId: number, id: number) => teamMutation<unknown>(
+  `mutation TeamDelete($workspaceId: Int!, $id: Int!) { teamDelete(workspaceId: $workspaceId, id: $id) ${TEAM_PAYLOAD} }`,
+  { workspaceId, id },
+);
+
+export const addTeamMembers = (workspaceId: number, teamId: number, userIds: number[]) => teamMutation<unknown>(
+  `mutation TeamMembersAdd($workspaceId: Int!, $teamId: Int!, $input: JSON!) {
+    teamMembersAdd(workspaceId: $workspaceId, teamId: $teamId, input: $input) ${TEAM_PAYLOAD}
+  }`,
+  { workspaceId, teamId, input: { user_ids: userIds } },
+);
+
+export const removeTeamMember = (workspaceId: number, teamId: number, userId: number) => teamMutation<unknown>(
+  `mutation TeamMemberRemove($workspaceId: Int!, $teamId: Int!, $userId: Int!) {
+    teamMemberRemove(workspaceId: $workspaceId, teamId: $teamId, userId: $userId) ${TEAM_PAYLOAD}
+  }`,
+  { workspaceId, teamId, userId },
+);
+
+/** Linear's "Make team owner" / "Remove team owner". */
+export const setTeamOwner = (workspaceId: number, teamId: number, userId: number, isOwner: boolean) => teamMutation<unknown>(
+  `mutation TeamMemberUpdate($workspaceId: Int!, $teamId: Int!, $userId: Int!, $input: JSON!) {
+    teamMemberUpdate(workspaceId: $workspaceId, teamId: $teamId, userId: $userId, input: $input) ${TEAM_PAYLOAD}
+  }`,
+  { workspaceId, teamId, userId, input: { is_owner: isOwner } },
+);
+
+export const addTeamAccounts = (workspaceId: number, teamId: number, accountIds: number[]) => teamMutation<unknown>(
+  `mutation TeamAccountsAdd($workspaceId: Int!, $teamId: Int!, $input: JSON!) {
+    teamAccountsAdd(workspaceId: $workspaceId, teamId: $teamId, input: $input) ${TEAM_PAYLOAD}
+  }`,
+  { workspaceId, teamId, input: { account_ids: accountIds } },
+);
+
+export const removeTeamAccount = (workspaceId: number, teamId: number, accountId: number) => teamMutation<unknown>(
+  `mutation TeamAccountRemove($workspaceId: Int!, $teamId: Int!, $accountId: Int!) {
+    teamAccountRemove(workspaceId: $workspaceId, teamId: $teamId, accountId: $accountId) ${TEAM_PAYLOAD}
+  }`,
+  { workspaceId, teamId, accountId },
+);
 
 /**
  * Linear fills the identifier from the name as it is typed: its first three
@@ -127,8 +193,32 @@ export interface TeamDocument {
   updated_at: string;
 }
 
-export const teamDocumentsPath = (workspaceId: number, teamId: number, documentId?: number) =>
-  teamsPath(workspaceId, `/${teamId}/documents${documentId !== undefined ? `/${documentId}` : ''}`);
+const DOCUMENT_PAYLOAD = '{ success lastSyncId teamDocument }';
+
+async function documentMutation(document: string, variables: Record<string, unknown>): Promise<TeamDocument> {
+  return (await graphql<{ teamDocument: TeamDocument }>(document, variables)).teamDocument;
+}
+
+export const createTeamDocument = (workspaceId: number, teamId: number, input: { title: string; content: string }) => documentMutation(
+  `mutation TeamDocumentCreate($workspaceId: Int!, $teamId: Int!, $input: JSON!) {
+    teamDocumentCreate(workspaceId: $workspaceId, teamId: $teamId, input: $input) ${DOCUMENT_PAYLOAD}
+  }`,
+  { workspaceId, teamId, input },
+);
+
+export const updateTeamDocument = (workspaceId: number, teamId: number, id: number, input: Partial<Pick<TeamDocument, 'title' | 'content'>>) => documentMutation(
+  `mutation TeamDocumentUpdate($workspaceId: Int!, $teamId: Int!, $id: Int!, $input: JSON!) {
+    teamDocumentUpdate(workspaceId: $workspaceId, teamId: $teamId, id: $id, input: $input) ${DOCUMENT_PAYLOAD}
+  }`,
+  { workspaceId, teamId, id, input },
+);
+
+export const deleteTeamDocument = (workspaceId: number, teamId: number, id: number) => documentMutation(
+  `mutation TeamDocumentDelete($workspaceId: Int!, $teamId: Int!, $id: Int!) {
+    teamDocumentDelete(workspaceId: $workspaceId, teamId: $teamId, id: $id) ${DOCUMENT_PAYLOAD}
+  }`,
+  { workspaceId, teamId, id },
+);
 
 /** A document's name in lists and headers; Linear shows "Untitled" for one without a title. */
 export const documentTitle = (document: Pick<TeamDocument, 'title'>) => document.title.trim() || 'Untitled';

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as stylex from '@stylexjs/stylex';
-import { apiRequest } from '@/lib/api';
+import { createInvite, fetchInvites, resendInvite, revokeInvite } from '@/lib/workspaces';
+import { fetchWorkspaceMembers } from '@/models/queries';
 import { finishedEmails, isEmail, parseEmails } from '@/lib/emails';
 import { plural, useTeams } from '@/lib/teams';
 import type { Workspace } from '@/lib/types';
@@ -451,10 +452,7 @@ export const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onC
     const failed: string[] = [];
     for (const email of emails) {
       try {
-        await apiRequest(`/api/workspaces/${workspace.id}/invites`, {
-          method: 'POST',
-          body: JSON.stringify({ email, role }),
-        });
+        await createInvite(workspace.id, email, role);
         toast.show({
           tone: 'info',
           title: 'Invite sent',
@@ -639,11 +637,11 @@ export const MembersSection: React.FC<{
 
   const refresh = useCallback(async () => {
     const invitesRead = canManage
-      ? apiRequest<InviteItem[]>(`/api/workspaces/${workspace.id}/invites`)
+      ? fetchInvites<InviteItem>(workspace.id)
       : Promise.resolve([] as InviteItem[]);
     try {
       const [nextMembers, nextInvites] = await Promise.all([
-        apiRequest<MemberItem[]>(`/api/workspaces/${workspace.id}/members`),
+        fetchWorkspaceMembers(workspace.id),
         invitesRead,
       ]);
       setMembers(nextMembers);
@@ -681,10 +679,7 @@ export const MembersSection: React.FC<{
 
   const resend = async (invite: InviteItem) => {
     try {
-      await apiRequest(`/api/workspaces/${workspace.id}/invites/${invite.id}/resend`, {
-        method: 'POST',
-        body: JSON.stringify({}),
-      });
+      await resendInvite(workspace.id, invite.id);
       toast.show({
         tone: 'info',
         title: 'Invite sent',
@@ -698,7 +693,7 @@ export const MembersSection: React.FC<{
 
   const revoke = async (invite: InviteItem) => {
     try {
-      await apiRequest(`/api/workspaces/${workspace.id}/invites/${invite.id}`, { method: 'DELETE' });
+      await revokeInvite(workspace.id, invite.id);
       setInvites((current) => current.filter((item) => item.id !== invite.id));
     } catch (error) {
       toast.error("Couldn't revoke the invite", errorMessage(error, 'Please try again.'));

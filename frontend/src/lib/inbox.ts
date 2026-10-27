@@ -1,4 +1,4 @@
-import { apiRequest } from './api';
+import { graphql } from './graphql';
 import type { AuditEventItem } from './audit';
 
 /**
@@ -138,7 +138,7 @@ function inboxDisplayFromPayload(payload: Partial<InboxDisplayPayload> | null): 
 
 /** Linear remembers Display options for each member of a workspace, on every device. */
 export async function fetchInboxDisplay(): Promise<InboxDisplay> {
-  return inboxDisplayFromPayload(await apiRequest<InboxDisplayPayload>('/api/inbox/display'));
+  return inboxDisplayFromPayload(await graphql<InboxDisplayPayload>('query InboxDisplay { inboxDisplay }'));
 }
 
 export async function saveInboxDisplay(display: InboxDisplay): Promise<InboxDisplay> {
@@ -153,10 +153,11 @@ export async function saveInboxDisplay(display: InboxDisplay): Promise<InboxDisp
     priority_rules: display.priorityRules,
     badge_count: display.badgeCount,
   };
-  return inboxDisplayFromPayload(await apiRequest<InboxDisplayPayload>('/api/inbox/display', {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  }));
+  const saved = await graphql<{ inboxDisplay: InboxDisplayPayload }>(
+    'mutation InboxDisplayUpdate($input: JSON!) { inboxDisplayUpdate(input: $input) { success lastSyncId inboxDisplay } }',
+    { input: payload },
+  );
+  return inboxDisplayFromPayload(saved.inboxDisplay);
 }
 
 /** The number next to Inbox in the sidebar and in the tab title, by Linear's Badge count. */
@@ -222,9 +223,8 @@ export interface InboxQuery {
 
 export const INBOX_PAGE_SIZE = 50;
 
-function setTabParams(params: URLSearchParams, { tab, priority }: Pick<InboxQuery, 'tab' | 'priority'>) {
-  if (tab) params.set('tab', tab);
-  if (priority) params.set('priority', JSON.stringify(priority));
+function tabVariables({ tab, priority }: Pick<InboxQuery, 'tab' | 'priority'>) {
+  return { tab: tab || undefined, priority: priority ? JSON.stringify(priority) : undefined };
 }
 
 export function fetchInbox({
@@ -238,17 +238,23 @@ export function fetchInbox({
   tab,
   priority,
 }: InboxQuery): Promise<InboxListResponse> {
-  const params = new URLSearchParams({
-    offset: String(offset),
-    limit: String(limit),
-    ordering,
-  });
-  if (unreadOnly) params.set('unread_only', 'true');
-  if (showSnoozed) params.set('show_snoozed', 'true');
-  if (unreadFirst) params.set('unread_first', 'true');
-  setTabParams(params, { tab, priority });
-  if (filters.length) params.set('filter', JSON.stringify(filters));
-  return apiRequest<InboxListResponse>(`/api/inbox?${params.toString()}`);
+  return graphql<InboxListResponse>(
+    `query Inbox($offset: Int, $limit: Int, $ordering: String, $unreadOnly: Boolean, $showSnoozed: Boolean,
+      $unreadFirst: Boolean, $tab: String, $priority: String, $filter: String) {
+      inbox(offset: $offset, limit: $limit, ordering: $ordering, unreadOnly: $unreadOnly, showSnoozed: $showSnoozed,
+        unreadFirst: $unreadFirst, tab: $tab, priority: $priority, filter: $filter)
+    }`,
+    {
+      offset,
+      limit,
+      ordering,
+      unreadOnly: unreadOnly || undefined,
+      showSnoozed: showSnoozed || undefined,
+      unreadFirst: unreadFirst || undefined,
+      ...tabVariables({ tab, priority }),
+      filter: filters.length ? JSON.stringify(filters) : undefined,
+    },
+  );
 }
 
 export function fetchInboxFacets(
@@ -256,11 +262,12 @@ export function fetchInboxFacets(
   showSnoozed: boolean,
   tab: Pick<InboxQuery, 'tab' | 'priority'> = {},
 ): Promise<InboxFacets> {
-  const params = new URLSearchParams();
-  if (unreadOnly) params.set('unread_only', 'true');
-  if (showSnoozed) params.set('show_snoozed', 'true');
-  setTabParams(params, tab);
-  return apiRequest<InboxFacets>(`/api/inbox/facets?${params.toString()}`);
+  return graphql<InboxFacets>(
+    `query InboxFacets($unreadOnly: Boolean, $showSnoozed: Boolean, $tab: String, $priority: String) {
+      inboxFacets(unreadOnly: $unreadOnly, showSnoozed: $showSnoozed, tab: $tab, priority: $priority)
+    }`,
+    { unreadOnly: unreadOnly || undefined, showSnoozed: showSnoozed || undefined, ...tabVariables(tab) },
+  );
 }
 
 /** Someone a notification can be from: a member, a rule or Buyerly itself. */
@@ -274,7 +281,7 @@ export interface InboxSender {
 
 /** Everyone in the workspace a notification can be from, whether or not anything came from them yet. */
 export function fetchInboxSenders(): Promise<InboxSender[]> {
-  return apiRequest<InboxSender[]>('/api/inbox/senders');
+  return graphql<InboxSender[]>('query InboxSenders { inboxSenders }');
 }
 
 interface FocusNode {
@@ -445,32 +452,39 @@ export function decodeInboxFilter(value: string | null): InboxFilterClause[] {
 }
 
 export function fetchInboxUnreadCount(): Promise<InboxUnread> {
-  return apiRequest<InboxUnread>('/api/inbox/unread-count');
+  return graphql<InboxUnread>('query InboxUnreadCount { inboxUnreadCount }');
 }
 
 export function markInboxRead(eventId: number, read: boolean): Promise<InboxActionResponse> {
-  return apiRequest<InboxActionResponse>(`/api/inbox/${eventId}/read`, {
-    method: 'POST',
-    body: JSON.stringify({ read }),
-  });
+  return inboxAction(
+    'mutation InboxNotificationRead($id: Int!, $input: JSON!) { inboxNotificationRead(id: $id, input: $input) { success lastSyncId inboxNotification } }',
+    { id: eventId, input: { read } },
+  );
 }
 
 export function deleteInboxNotification(eventId: number): Promise<InboxActionResponse> {
-  return apiRequest<InboxActionResponse>(`/api/inbox/${eventId}/delete`, { method: 'POST' });
+  return inboxAction(
+    'mutation InboxNotificationDelete($id: Int!) { inboxNotificationDelete(id: $id) { success lastSyncId inboxNotification } }',
+    { id: eventId },
+  );
 }
 
 export function snoozeInboxNotification(eventId: number, until: Date | null): Promise<InboxActionResponse> {
-  return apiRequest<InboxActionResponse>(`/api/inbox/${eventId}/snooze`, {
-    method: 'POST',
-    body: JSON.stringify({ until: until ? until.toISOString() : null }),
-  });
+  return inboxAction(
+    'mutation InboxNotificationSnooze($id: Int!, $input: JSON!) { inboxNotificationSnooze(id: $id, input: $input) { success lastSyncId inboxNotification } }',
+    { id: eventId, input: { until: until ? until.toISOString() : null } },
+  );
 }
 
 export function deleteAllInbox(onlyRead: boolean): Promise<InboxActionResponse> {
-  return apiRequest<InboxActionResponse>(
-    onlyRead ? '/api/inbox/delete-all-read' : '/api/inbox/delete-all',
-    { method: 'POST' },
-  );
+  return inboxAction(onlyRead
+    ? 'mutation InboxDeleteAllRead { inboxDeleteAllRead { success lastSyncId inboxNotification } }'
+    : 'mutation InboxDeleteAll { inboxDeleteAll { success lastSyncId inboxNotification } }');
+}
+
+async function inboxAction(document: string, variables: Record<string, unknown> = {}): Promise<InboxActionResponse> {
+  const { inboxNotification } = await graphql<{ inboxNotification: InboxActionResponse }>(document, variables);
+  return inboxNotification;
 }
 
 /** Linear's short age next to each notification: 5m, 3h, 4d, 2w. */

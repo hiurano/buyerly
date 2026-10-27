@@ -1,7 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
 import React, { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
-import { apiRequest } from '@/lib/api';
 import { pool } from '@/models/pool';
 import { membersQuery, teamDocumentsQuery } from '@/models/queries';
 import { usePoolQuery } from '@/models/usePool';
@@ -12,8 +11,10 @@ import { openTab } from '@/lib/navigation';
 import {
   documentTitle,
   notifyTeamsChanged,
-  teamDocumentsPath,
-  teamsPath,
+  createTeamDocument,
+  deleteTeamDocument,
+  updateTeam,
+  updateTeamDocument,
   useActiveTeam,
   type TeamDocument,
   type TeamItem,
@@ -206,10 +207,7 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
   const createDocument = async () => {
     if (!team) return;
     try {
-      const created = await apiRequest<TeamDocument>(teamDocumentsPath(workspace.id, team.id), {
-        method: 'POST',
-        body: JSON.stringify({ title: '', content: '' }),
-      });
+      const created = await createTeamDocument(workspace.id, team.id, { title: '', content: '' });
       pool.append(teamDocumentsQuery(workspace.id, team.id), created, { first: true });
       open('documents', created.id);
     } catch (error) {
@@ -457,7 +455,7 @@ const TeamDescription: React.FC<{ team: TeamItem; canEdit: boolean }> = ({ team,
     const next = value.trim();
     if (next === team.description) return;
     try {
-      await apiRequest(teamsPath(workspace.id, `/${team.id}`), { method: 'PATCH', body: JSON.stringify({ description: next }) });
+      await updateTeam(workspace.id, team.id, { description: next });
       notifyTeamsChanged();
     } catch (error) {
       setValue(team.description);
@@ -570,10 +568,7 @@ const TeamDocumentEditor: React.FC<TeamDocumentEditorProps> = ({ team, document,
     pending.current = {};
     setSaving('saving');
     try {
-      const saved = await apiRequest<TeamDocument>(teamDocumentsPath(workspace.id, team.id, document.id), {
-        method: 'PATCH',
-        body: JSON.stringify(changes),
-      });
+      const saved = await updateTeamDocument(workspace.id, team.id, document.id, changes);
       onSaved(saved);
       setSaving('saved');
     } catch (error) {
@@ -610,7 +605,7 @@ const TeamDocumentEditor: React.FC<TeamDocumentEditorProps> = ({ team, document,
     if (timer.current !== null) window.clearTimeout(timer.current);
     pending.current = {};
     try {
-      await apiRequest(teamDocumentsPath(workspace.id, team.id, document.id), { method: 'DELETE' });
+      await deleteTeamDocument(workspace.id, team.id, document.id);
       toast.show({ tone: 'success', title: 'Document deleted' });
       onDeleted();
     } catch (error) {

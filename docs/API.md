@@ -335,6 +335,17 @@ Meta возвращает браузер на служебный callback `/api/
 
 Во фронтенде вид страницы читает и пишет `useListView(key, defaults)` (`frontend/src/ui/useListView.ts`): хранится только то, что отличается от значений по умолчанию страницы, `displayChanged` включает точку на кнопке Display options и Reset. Фильтры дополнительно лежат в адресе (`?filter=`, JSON): ссылка с фильтром побеждает и становится сохранённым фильтром, адрес без него получает сохранённый фильтр обратно (`useFiltersInAddress`). Inbox хранит под ключом `inbox` только фильтры — его Display options живут в `/api/inbox/display`.
 
+## Клиентский API (GraphQL)
+
+Как `client-api.linear.app/graphql` у Linear (#509): web-клиент читает всё, чего нет в sync, и делает все изменения через один endpoint `POST /api/graphql` (`{"query", "variables"}`). REST клиент использует только для sync (`/api/sync/*`), входа и сессий (`/api/auth/*`, `/api/me`), загрузки файлов (`/api/onboarding/avatar`, `/api/onboarding/workspace/logo`) и публичных ссылок (приглашение в workspace, подключение Facebook по приглашению). Вебхуки Meta и Telegram остаются REST. Остальные REST-маршруты пока работают и будут убираться по одному.
+
+Авторизация та же, что у REST: cookie сессии аккаунта из `X-Buyerly-Account`, `X-CSRF-Token` (запрос всегда POST; GET и GraphiQL выключены) и workspace из `X-Workspace-Slug`. Без сессии — HTTP 401, без CSRF — 403, до выполнения любого поля. Каждое поле вызывает обработчик своего REST-маршрута ([api/client_api/schema.py](../api/client_api/schema.py), `ROUTES`) с теми же проверками прав, rate limit, валидацией и `response_model`, поэтому поле может ровно то же, что маршрут; [tests/test_client_api.py](../tests/test_client_api.py) сравнивает каждое поле с маршрутом для вышедшего, чужого workspace, гостя и участника.
+
+- Запросы (`query`) — чтения вне sync: `search`, `analyticsHierarchy`, `analyticsAccountsHierarchy`, `auditEvents`, `inbox`, `rules`, `accounts`, `workspaceMembers` и др. Значение — JSON, как у маршрута.
+- Мутации — изменения синхронизируемых моделей, по имени Linear `<модель><Действие>`: `ruleCreate`, `ruleLabelUpdate`, `favoriteDelete`, `teamMembersAdd`, `workspaceUpdate`… Ответ — payload Linear: `success`, `lastSyncId` (sync id, в котором уже есть изменение: очередь транзакций #508 держит локальную правку, пока sync не дошёл до него) и запись, как её вернул маршрут (`rule`, `ruleLabel`, `team`, …).
+- Отказ — ошибка GraphQL с текстом маршрута и `extensions`: `statusCode` (статус REST: 403, 404, 409, 422, 429…), `type` (как у Linear: `forbidden`, `entity not found`, `invalid input`, `ratelimited`), `userPresentableMessage`.
+- Запись — JSON в полях snake_case, как у синхронизируемых моделей; аргументы полей — camelCase. Документ — не глубже 4 уровней, не больше 10 алиасов и 2000 токенов.
+
 ## Синхронизация (Sync engine)
 
 Как `/sync/bootstrap` и `/sync/archived_models` у Linear (#505): новый клиент одним запросом получает все синхронизируемые модели, которые видит участник в активном workspace, и sync id, на который они актуальны. Дальше он догоняет изменения после этого id по журналу `sync_actions` (#504). Видимость та же, что у журнала: строка отдаётся, если `sync_log_groups` даёт ей группу участника, а поля — те же, что пишет триггер (без секретов и служебных колонок, личные настройки Inbox — только самому участнику). Всё читается в одном снимке REPEATABLE READ, поэтому всё до `last_sync_id` в данных есть, а всё после — нет. Ответ сжимается gzip, если клиент его принимает.

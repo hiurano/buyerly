@@ -1,6 +1,6 @@
-import { apiRequest } from './api';
+import { graphql } from './graphql';
 
-/** What GET /api/search finds; the search page promises nothing else. */
+/** What the `search` query finds; the search page promises nothing else. */
 export type SearchKind = 'campaign' | 'adset' | 'ad' | 'rule' | 'account';
 /** The Status filter: Meta's delivery and a rule's run state in three words. */
 export type SearchStatus = 'active' | 'paused' | 'other';
@@ -114,13 +114,21 @@ export function searchPageTitle(search: string): string {
 
 /** Searches the workspace in the address; the request carries its slug. */
 export function searchWorkspace(params: SearchParams, signal?: AbortSignal): Promise<SearchResponse> {
-  const query = new URLSearchParams({ q: params.query, limit: String(SEARCH_LIMIT) });
-  if (params.tab !== 'all') query.set('kind', params.tab);
-  params.statuses.forEach((status) => query.append('status', status));
-  params.accounts.forEach((account) => query.append('account', account));
-  if (params.order !== 'relevance') query.set('order', params.order);
-  if (params.includeDeleted) query.set('include_deleted', 'true');
-  return apiRequest<SearchResponse>(`/api/search?${query.toString()}`, { signal });
+  return graphql<SearchResponse>(
+    `query Search($q: String!, $limit: Int, $kind: String, $status: [String!], $account: [String!], $order: String, $includeDeleted: Boolean) {
+      search(q: $q, limit: $limit, kind: $kind, status: $status, account: $account, order: $order, includeDeleted: $includeDeleted)
+    }`,
+    {
+      q: params.query,
+      limit: SEARCH_LIMIT,
+      kind: params.tab !== 'all' ? params.tab : undefined,
+      status: params.statuses,
+      account: params.accounts,
+      order: params.order !== 'relevance' ? params.order : undefined,
+      includeDeleted: params.includeDeleted || undefined,
+    },
+    { signal },
+  );
 }
 
 /** Which filters a tab offers: Linear's Projects tab has none of the issue filters. */

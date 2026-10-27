@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { apiRequest } from '@/lib/api';
+import { fetchWorkspaceMembers } from '@/models/queries';
 import type { Workspace } from '@/lib/types';
 import { BuyerlyCheckIcon } from '@/icons/BuyerlyIcons';
 import {
   TEAM_FILTER_LABELS,
   notifyTeamsChanged,
-  teamsPath,
+  restoreTeam,
   useTeams,
   type TeamFilter,
   type TeamItem,
@@ -108,7 +108,7 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
   const [restoreTarget, setRestoreTarget] = useState<TeamItem | null>(null);
 
   useEffect(() => {
-    apiRequest<MemberItem[]>(`/api/workspaces/${workspace.id}/members`).then(setMembers).catch(() => setMembers([]));
+    fetchWorkspaceMembers(workspace.id).then(setMembers).catch(() => setMembers([]));
   }, [workspace.id]);
 
   const membersById = useMemo(() => new Map(members.map((member) => [member.user_id, member])), [members]);
@@ -126,7 +126,7 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
 
   const restore = async (team: TeamItem) => {
     try {
-      await apiRequest(teamsPath(workspace.id, `/${team.id}/restore`), { method: 'POST' });
+      await restoreTeam(workspace.id, team.id);
       toast.show({ tone: 'success', title: `${team.name} was successfully restored.` });
       notifyTeamsChanged();
     } catch (restoreError) {

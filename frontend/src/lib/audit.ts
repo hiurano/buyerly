@@ -1,4 +1,4 @@
-import { apiRequest } from './api';
+import { graphql } from './graphql';
 
 export interface AuditEventItem {
   id: number;
@@ -56,6 +56,8 @@ interface AuditEventQuery {
   pageSize?: number;
   filter?: AuditInboxFilter;
   search?: string;
+  /** Only this ad account's events. */
+  accountId?: string;
 }
 
 export function fetchAuditEvents({
@@ -63,21 +65,27 @@ export function fetchAuditEvents({
   pageSize = 25,
   filter = 'all',
   search = '',
+  accountId,
 }: AuditEventQuery): Promise<AuditEventListResponse> {
-  const params = new URLSearchParams({
-    page: String(page),
-    page_size: String(pageSize),
-  });
-  if (filter === 'error') params.set('status', 'ERROR');
-  if (filter === 'reverted') params.set('status', 'REVERTED');
-  if (search.trim()) params.set('search', search.trim());
-  return apiRequest<AuditEventListResponse>(`/api/audit-events?${params.toString()}`);
+  return graphql<AuditEventListResponse>(
+    `query AuditEvents($page: Int, $pageSize: Int, $status: String, $search: String, $accountId: String) {
+      auditEvents(page: $page, pageSize: $pageSize, status: $status, search: $search, accountId: $accountId)
+    }`,
+    {
+      page,
+      pageSize,
+      status: filter === 'error' ? 'ERROR' : filter === 'reverted' ? 'REVERTED' : undefined,
+      search: search.trim() || undefined,
+      accountId,
+    },
+  );
 }
 
 export function undoAuditEvent(eventId: number): Promise<AuditUndoResponse> {
-  return apiRequest<AuditUndoResponse>(`/api/audit-events/${eventId}/undo`, {
-    method: 'POST',
-  });
+  return graphql<{ auditEvent: AuditUndoResponse }>(
+    'mutation AuditEventUndo($id: Int!) { auditEventUndo(id: $id) { success lastSyncId auditEvent } }',
+    { id: eventId },
+  ).then((payload) => payload.auditEvent);
 }
 
 export function humanizeAuditValue(value: string): string {
