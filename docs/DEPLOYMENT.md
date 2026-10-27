@@ -145,7 +145,8 @@ bash scripts/deploy.sh
 готов, открытые вкладки показывают «New version available», и Reload загружает
 новую сборку целиком. `/sw.js` отдаётся с `Cache-Control: no-cache, no-store`.
 
-Если выкатился плохой worker, выключатель — `SERVICE_WORKER=false` в `.env` и
+Если выкатился плохой worker, выключатель — настройка `SERVICE_WORKER`:
+`SERVICE_WORKER=false` в `.env` и
 перезапуск `api` (`docker compose up -d api`): `/sw.js` начинает отдавать
 `sw-off.js`, который при следующей навигации заменяет worker, удаляет его кэши
 и снимает регистрацию; страницы дальше грузятся из сети. Вернуть —
