@@ -38,33 +38,64 @@ const graphqlFields = (() => {
   };
   return new Function('enc', 'qs', `return ${table};`)(encodeURIComponent, qs);
 })();
-function asRest(url, init) {
-  if (url !== '/api/graphql') return { url, method: init.method, wrap: (body, status) => ({ body, status }) };
-  const { query, variables = {} } = JSON.parse(init.body);
-  const [, kind, field, selection = ''] = /^\s*(query|mutation)\b[^{]*\{\s*(\w+)\s*(?:\([^)]*\))?\s*(?:\{([^}]*)\})?/.exec(query);
+/** One root field held as its REST request; `wrap` makes the field's GraphQL answer from the REST one. */
+function fieldAsRest(kind, field, selection, variables) {
   const [method, restUrl] = graphqlFields[field](variables);
   const wrap = (body, status) => {
     if (status >= 400) {
       const message = typeof body?.detail === 'string' ? body.detail : 'Something went wrong';
-      return { body: { data: null, errors: [{ message, extensions: { statusCode: status } }] }, status: 200 };
+      return { error: { message, path: [field], extensions: { statusCode: status } } };
     }
     const value = kind === 'query' ? body : Object.fromEntries(selection.split(/\s+/).filter(Boolean)
       .map((name) => [name, name === 'success' ? true : name === 'lastSyncId' ? 0 : body]));
-    return { body: { data: { [field]: value } }, status: 200 };
+    return { value };
   };
   return { url: restUrl, method, wrap };
 }
+/** A request as the REST requests it stands for: one, or one per write of a transaction batch (#508). */
+function asRest(url, init) {
+  if (url !== '/api/graphql') return [{ url, method: init.method, wrap: (body, status) => ({ value: body, status }) }];
+  const { query, variables = {} } = JSON.parse(init.body);
+  if (/^\s*mutation\s+Transactions\b/.test(query)) {
+    return [...query.matchAll(/\b(t\d+):\s*(\w+)\s*(?:\([^)]*\))?\s*\{([^}]*)\}/g)].map(([, alias, field, selection]) => {
+      const own = Object.fromEntries(Object.entries(variables)
+        .filter(([name]) => name.startsWith(`${alias}_`)).map(([name, value]) => [name.slice(alias.length + 1), value]));
+      return { ...fieldAsRest('mutation', field, selection, own), alias };
+    });
+  }
+  const [, kind, field, selection = ''] = /^\s*(query|mutation)\b[^{]*\{\s*(\w+)\s*(?:\([^)]*\))?\s*(?:\{([^}]*)\})?/.exec(query);
+  return [{ ...fieldAsRest(kind, field, selection, variables), alias: field }];
+}
 const pending = [];
 global.fetch = (url, init) => new Promise(resolve => {
-  const request = asRest(url, init);
-  pending.push({
+  const requests = asRest(url, init);
+  const answers = new Array(requests.length);
+  let left = requests.length;
+  const finish = () => {
+    if (url !== '/api/graphql') {
+      const { value, status } = answers[0];
+      resolve({ ok: status < 400, status, json: async () => value });
+      return;
+    }
+    const data = {};
+    const errors = [];
+    requests.forEach((request, index) => {
+      data[request.alias] = answers[index].error ? null : answers[index].value;
+      if (answers[index].error) errors.push({ ...answers[index].error, path: [request.alias] });
+    });
+    resolve({ ok: true, status: 200, json: async () => (errors.length > 0 ? { data, errors } : { data }) });
+  };
+  requests.forEach((request, index) => pending.push({
     url: request.url, method: request.method, workspace: init.headers.get('X-Workspace-Slug'),
     reply: (body, status = 200) => {
-      const answer = request.wrap(body, status);
-      resolve({ ok: answer.status < 400, status: answer.status, json: async () => answer.body });
+      answers[index] = request.wrap(body, status);
+      if (url !== '/api/graphql') answers[index].status = status;
+      if ((left -= 1) === 0) finish();
     },
-  });
+  }));
 });
+/** Lets the transaction queue send what was just written: it sends once the code making changes is done. */
+const sent = () => new Promise((resolve) => setTimeout(resolve, 0));
 // The UI state's MobX stores (#510), read as one: each name is found on the store that has it.
 const stores = ['scope', 'shell', 'commandMenu', 'inbox', 'notificationSettings', 'view', 'detailsPane', 'selection', 'dialog', 'rules']
   .map(name => load(path.join(root, `models/${name}Store.ts`))[`${name}Store`]);
@@ -146,12 +177,14 @@ async function main() {
   enter('a'); const logout = state().loadRules(); const logoutReplies = rulesReplies();
   enter(null); enter('a'); replyRules(logoutReplies, [preset(1)]); await logout;
   assert.deepEqual(state().rules, []);
-  await seed(); const mutation = state().toggleRuleStatus('1'); const write = take('/api/presets/1', 'PUT');
+  await seed(); const mutation = state().toggleRuleStatus('1'); await sent(); const write = take('/api/presets/1', 'PUT');
   enter('b'); write.reply(preset(1)); await mutation;
   assert.equal(pending.length, 0); assert.deepEqual(state().rules, []);
 
-  await seed(); const bulk = state().setRulesEnabled(['1', '2'], false); const first = take('/api/presets/1', 'PUT');
-  enter('b'); first.reply(preset(1)); await bulk; assert.equal(pending.length, 0);
+  await seed(); const bulk = state().setRulesEnabled(['1', '2'], false); await sent();
+  // Both writes go as one batch of transactions.
+  const first = take('/api/presets/1', 'PUT'); const second = take('/api/presets/2', 'PUT');
+  enter('b'); first.reply(preset(1)); second.reply(preset(2)); await bulk; assert.equal(pending.length, 0);
 
   await seed('a', [{ id: 9, name: 'Group', description: '', icon: 'custom', preset_ids: [] }]);
   const create = state().addRule(preset(3), '9'); const creating = take('/api/presets', 'POST');

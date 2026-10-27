@@ -37,6 +37,8 @@ interface StoredRow {
 export interface StoredSync {
   lastSyncId: number;
   syncGroups: string[];
+  /** Every model held, an empty one too: it has no rows to show it was there. */
+  models?: string[];
 }
 
 /** Everything read back on start. */
@@ -150,6 +152,7 @@ async function readAll(db: IDBDatabase): Promise<LocalData> {
   valueKeys.forEach((key, index) => data.values.set(String(key), valueRows[index]));
   data.sync = (data.values.get('sync') as StoredSync | undefined) ?? null;
   data.values.delete('sync');
+  for (const model of data.sync?.models ?? []) data.models.set(model, new Map());
   for (const { model, row } of rows) {
     let held = data.models.get(model);
     if (!held) {

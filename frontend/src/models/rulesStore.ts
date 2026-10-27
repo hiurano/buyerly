@@ -9,8 +9,6 @@ import {
   attachedRuleScope,
   detachRuleFromAccount,
   setAttachedRuleScope,
-  changePresetsLabels,
-  createRuleLabel as createRuleLabelRequest,
   createRulePreset,
   deleteRuleLabel as deleteRuleLabelRequest,
   deleteRulePreset,
@@ -19,10 +17,13 @@ import {
   formatRelativeTime,
   formatScope,
   presetToWriteRequest,
+  RULE_LABEL_CREATE,
+  RULE_LABEL_UPDATE,
+  RULE_LABELS_SET,
+  RULE_UPDATE,
+  RULES_LABELS_CHANGE,
   randomLabelColor,
   ruleCurrency,
-  setPresetLabels,
-  updateRuleLabel as updateRuleLabelRequest,
   updateRulePreset,
 } from '@/lib/rules';
 import type {
@@ -34,7 +35,8 @@ import type {
   RuleScope,
 } from '@/lib/rules';
 import { pushHistory } from '@/lib/undoHistory';
-import { pool, type Query } from './pool';
+import { pool, type PoolChange, type Query } from './pool';
+import { transactions } from './transactions';
 import { adAccountsQuery, fetchAccounts, presetsQuery, ruleLabelsQuery } from './queries';
 import { OUT_OF_SCOPE, scopeStore } from './scopeStore';
 import { selectionStore } from './selectionStore';
@@ -249,8 +251,6 @@ function mergeRuleIndexes(
 
 const sameIds = (left: string[], right: string[]) =>
   left.length === right.length && left.every((id, index) => id === right[index]);
-
-const byName = (a: RuleLabel, b: RuleLabel) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
 
 /**
  * The workspace's rules and labels as Rules shows them, read through the
@@ -481,7 +481,8 @@ export class RulesStore {
     }
   }
 
-  async toggleRuleStatus(id: string) {
+  /** A rule switched on or off from its row: drawn at once, written as a transaction (#508). */
+  toggleRuleStatus(id: string) {
     const current = scopeStore.captureScope();
     if (!current()) return;
     const rule = this.rules.find((item) => item.id === id);
@@ -497,33 +498,25 @@ export class RulesStore {
     }
     const enabled = rule.status === 'paused';
     this.set({ rulesMutationError: '' });
-    try {
-      await updateRulePreset(
-        rule.presetId,
-        presetToWriteRequest(rule.preset, { enabled }),
-      );
-      if (!current()) return;
-      await this.loadRules();
-      if (!current()) return;
-      pushHistory({
-        label: `${enabled ? 'resume' : 'pause'} ${rule.name}`,
-        undo: () => applyRulesEnabled([id], !enabled),
-        redo: () => applyRulesEnabled([id], enabled),
-      });
-    } catch (error) {
-      if (!current()) return;
-      this.set({ rulesMutationError: requestErrorMessage(error) });
-    }
+    void writeRuleEnabled(rule, enabled, { quiet: false }).catch(() => {});
+    pushHistory({
+      label: `${enabled ? 'resume' : 'pause'} ${rule.name}`,
+      undo: () => applyRulesEnabled([id], !enabled),
+      redo: () => applyRulesEnabled([id], enabled),
+    });
   }
 
-  /** Enables or pauses each rule; rules held for review are never enabled. */
+  /**
+   * Enables or pauses each rule; rules held for review are never enabled.
+   * Every row changes at once and the writes go as one batch of transactions.
+   */
   async setRulesEnabled(ids: string[], enabled: boolean): Promise<RulesEnabledOutcome> {
     const current = scopeStore.captureScope();
     const outcome: RulesEnabledOutcome = { changed: [], unchanged: [], skipped: [], failed: [] };
     if (!current()) return outcome;
     this.set({ rulesMutationError: '' });
+    const writes: Promise<void>[] = [];
     for (const id of ids) {
-      if (!current()) return outcome;
       const rule = this.rules.find((item) => item.id === id);
       if (!rule) continue;
       if ((rule.status !== 'paused') === enabled) {
@@ -535,15 +528,12 @@ export class RulesStore {
         outcome.skipped.push(id);
         continue;
       }
-      try {
-        await updateRulePreset(rule.presetId, presetToWriteRequest(rule.preset, { enabled }));
-        outcome.changed.push(id);
-      } catch (error) {
-        if (!current()) return outcome;
-        outcome.failed.push({ id, error: requestErrorMessage(error) });
-      }
+      writes.push(writeRuleEnabled(rule, enabled, { quiet: true }).then(
+        () => { outcome.changed.push(id); },
+        (error: unknown) => { outcome.failed.push({ id, error: requestErrorMessage(error) }); },
+      ));
     }
-    if (current() && outcome.changed.length > 0) await this.loadRules();
+    await Promise.all(writes);
     return outcome;
   }
 
@@ -564,24 +554,37 @@ export class RulesStore {
     }
   }
 
-  /** Creates a label (a random palette color unless one is given); throws on failure. */
+  /**
+   * Creates a label (a random palette color unless one is given): in the list
+   * at once, as the server made it once it answers; throws on failure.
+   */
   async createRuleLabel(name: string, color?: string, description?: string): Promise<RuleLabel> {
     const current = scopeStore.captureScope();
     if (!current()) throw new Error(OUT_OF_SCOPE);
-    const created = toRuleLabel(
-      await createRuleLabelRequest({ name, color: color ?? randomLabelColor(), description: description ?? '' }),
-    );
-    if (current()) this.set({ ruleLabels: [...this.ruleLabels, created].sort(byName) });
-    return created;
+    const input = { name, color: color ?? randomLabelColor(), description: description ?? '' };
+    const standIn: RuleLabelPayload = { id: standInId(), ...input, rule_count: 0, last_applied_at: '', created_at: new Date().toISOString() };
+    const answer = await transactions.commit<{ ruleLabel: RuleLabelPayload }>({
+      label: "Couldn't create the label",
+      mutation: RULE_LABEL_CREATE,
+      variables: { input },
+      changes: [{ kind: 'insert', type: 'ruleLabel', id: String(standIn.id), record: { ...standIn }, list: ruleLabelsQuery.key }],
+      created: 'ruleLabel',
+      quiet: true,
+    });
+    return toRuleLabel(answer.ruleLabel);
   }
 
-  /** Renames, recolors or redescribes a label; throws on failure. */
+  /** Renames, recolors or redescribes a label: at once, then written; throws on failure. */
   async updateRuleLabel(id: string, patch: RuleLabelWriteRequest) {
     const current = scopeStore.captureScope();
     if (!current()) throw new Error(OUT_OF_SCOPE);
-    const updated = toRuleLabel(await updateRuleLabelRequest(Number(id), patch));
-    if (!current()) return;
-    this.set({ ruleLabels: this.ruleLabels.map((label) => (label.id === id ? updated : label)).sort(byName) });
+    await transactions.commit({
+      label: "Couldn't save the label",
+      mutation: RULE_LABEL_UPDATE,
+      variables: { id: Number(id), input: patch },
+      changes: [{ kind: 'update', type: 'ruleLabel', id, data: { ...patch } }],
+      quiet: true,
+    });
   }
 
   /** Deletes without asking and returns its Recently deleted entry; throws on failure. */
@@ -593,73 +596,47 @@ export class RulesStore {
     return response.deleted_item_id;
   }
 
-  /** A rule's whole set of labels; shown at once, saved in one write. */
-  async setRuleLabels(ruleId: string, labelIds: string[]) {
+  /** A rule's whole set of labels; shown at once, saved as one transaction. */
+  setRuleLabels(ruleId: string, labelIds: string[]) {
     const current = scopeStore.captureScope();
     const rule = this.rules.find((item) => item.id === ruleId);
     if (!current() || !rule) return;
     const before = rule.labelIds;
     if (before.length === labelIds.length && before.every((id) => labelIds.includes(id))) return;
-    // The row changes at once, as Linear's does; the write follows.
-    const apply = async (ids: string[]) => {
-      this.set({ rules: this.rules.map((item) => (item.id === ruleId ? { ...item, labelIds: ids } : item)) });
-      try {
-        await setPresetLabels(rule.presetId, ids.map(Number));
-      } finally {
-        if (current()) await this.loadRules();
-      }
-    };
     this.set({ rulesMutationError: '' });
-    try {
-      await apply(labelIds);
-      if (!current()) return;
-      pushHistory({
-        label: `change labels of ${rule.name}`,
-        undo: () => apply(before),
-        redo: () => apply(labelIds),
-      });
-    } catch (error) {
-      if (!current()) return;
-      this.set({ rulesMutationError: requestErrorMessage(error) });
-    }
+    void writeRuleLabels([[rule.presetId, labelIds]]).catch(() => {});
+    pushHistory({
+      label: `change labels of ${rule.name}`,
+      undo: () => writeRuleLabels([[rule.presetId, before]], { quiet: true }),
+      redo: () => writeRuleLabels([[rule.presetId, labelIds]], { quiet: true }),
+    });
   }
 
-  /** Puts labels on, or takes them off, several rules at once. */
-  async changeRulesLabels(ruleIds: string[], change: { add?: string[]; remove?: string[] }) {
+  /** Puts labels on, or takes them off, several rules at once: one transaction. */
+  changeRulesLabels(ruleIds: string[], change: { add?: string[]; remove?: string[] }) {
     const current = scopeStore.captureScope();
     const rules = this.rules.filter((item) => ruleIds.includes(item.id));
     if (!current() || rules.length === 0) return;
     const add = change.add ?? [];
     const remove = change.remove ?? [];
-    const before = new Map(rules.map((rule) => [rule.id, rule.labelIds]));
     const next = (ids: string[]) => [...ids.filter((id) => !remove.includes(id)), ...add.filter((id) => !ids.includes(id) && !remove.includes(id))];
-    this.set({
-      rulesMutationError: '',
-      rules: this.rules.map((item) => (before.has(item.id) ? { ...item, labelIds: next(item.labelIds) } : item)),
-    });
-    try {
-      await changePresetsLabels(rules.map((rule) => rule.presetId), { add: add.map(Number), remove: remove.map(Number) });
-      if (!current()) return;
-      await this.loadRules();
-      if (!current()) return;
+    const write = (quiet: boolean) => transactions.commit({
+      label: "Couldn't change the labels",
+      mutation: RULES_LABELS_CHANGE,
+      variables: {
+        input: { preset_ids: rules.map((rule) => rule.presetId), add_label_ids: add.map(Number), remove_label_ids: remove.map(Number) },
+      },
+      changes: rules.map((rule) => labelsChange(rule.presetId, next(rule.labelIds))),
+      quiet,
+    }).then(() => {});
+    this.set({ rulesMutationError: '' });
+    void write(false).catch(() => {});
+    pushHistory({
+      label: `change labels of ${rules.length === 1 ? rules[0].name : `${rules.length} rules`}`,
       // Undo puts back each rule's own labels, not the inverse change.
-      const restore = async () => {
-        await Promise.all(rules.map((rule) => setPresetLabels(rule.presetId, (before.get(rule.id) ?? []).map(Number))));
-        if (current()) await this.loadRules();
-      };
-      pushHistory({
-        label: `change labels of ${rules.length === 1 ? rules[0].name : `${rules.length} rules`}`,
-        undo: restore,
-        redo: async () => {
-          await changePresetsLabels(rules.map((rule) => rule.presetId), { add: add.map(Number), remove: remove.map(Number) });
-          if (current()) await this.loadRules();
-        },
-      });
-    } catch (error) {
-      if (!current()) return;
-      this.set({ rulesMutationError: requestErrorMessage(error) });
-      await this.loadRules();
-    }
+      undo: () => writeRuleLabels(rules.map((rule) => [rule.presetId, rule.labelIds]), { quiet: true }),
+      redo: () => write(true),
+    });
   }
 
   async deleteRule(id: string): Promise<number> {
@@ -751,6 +728,36 @@ export class RulesStore {
 }
 
 export const rulesStore = new RulesStore();
+
+let standIns = 0;
+/** An id for a record the server hasn't made yet: negative, so it never meets a real one. */
+const standInId = () => -(Date.now() * 100 + (standIns += 1) % 100);
+
+const labelsChange = (presetId: number, labelIds: string[]): PoolChange => ({
+  kind: 'update', type: 'preset', id: String(presetId), data: { label_ids: labelIds.map(Number) },
+});
+
+/** A rule switched on or off as a transaction; settles once the server confirmed it. */
+function writeRuleEnabled(rule: RuleItem, enabled: boolean, { quiet }: { quiet: boolean }): Promise<void> {
+  return transactions.commit({
+    label: `Couldn't ${enabled ? 'resume' : 'pause'} ${rule.name}`,
+    mutation: RULE_UPDATE,
+    variables: { id: rule.presetId, input: presetToWriteRequest(rule.preset, { enabled }) },
+    changes: [{ kind: 'update', type: 'preset', id: String(rule.presetId), data: { enabled } }],
+    quiet,
+  }).then(() => {});
+}
+
+/** Each rule's whole set of labels, one transaction per rule, sent together. */
+async function writeRuleLabels(sets: [number, string[]][], { quiet = false }: { quiet?: boolean } = {}): Promise<void> {
+  await Promise.all(sets.map(([presetId, labelIds]) => transactions.commit({
+    label: "Couldn't change the labels",
+    mutation: RULE_LABELS_SET,
+    variables: { id: presetId, input: { label_ids: labelIds.map(Number) } },
+    changes: [labelsChange(presetId, labelIds)],
+    quiet,
+  })));
+}
 
 export const useRulesStore = <T,>(select: (store: RulesStore) => T): T => useStore(rulesStore, select);
 

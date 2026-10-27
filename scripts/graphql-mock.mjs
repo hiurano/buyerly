@@ -144,20 +144,15 @@ function install(fieldsSource) {
   const json = (body) => new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
   const realFetch = window.fetch.bind(window);
 
-  window.fetch = async (input, init = {}) => {
-    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-    if (new URL(url, window.location.href).pathname !== '/api/graphql') return realFetch(input, init);
-    const { query, variables = {} } = JSON.parse(init.body);
-    const head = /^\s*(query|mutation)\b[^{]*\{\s*(\w+)\s*(\([^)]*\))?\s*(\{([^}]*)\})?\s*\}\s*$/.exec(query);
-    if (!head) throw new Error(`graphql-mock: one root field per document, got ${query}`);
-    const [, kind, field, , , selection = ''] = head;
+  /** One root field answered by its REST route: its value, or the route's refusal as a GraphQL error. */
+  const answer = async (kind, field, selection, variables, init, path) => {
     const route = fields[field];
     if (!route) throw new Error(`graphql-mock: no REST route for the field ${field}`);
-    const [method, path, input_] = route(variables);
+    const [method, url, input_] = route(variables);
     const headers = new Headers(init.headers);
     const body = input_ === undefined ? undefined : JSON.stringify(input_);
     if (!body) headers.delete('Content-Type');
-    const response = await realFetch(path, { method, headers, body, credentials: init.credentials, signal: init.signal });
+    const response = await realFetch(url, { method, headers, body, credentials: init.credentials, signal: init.signal });
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
       const detail = payload?.detail;
@@ -167,14 +162,39 @@ function install(fieldsSource) {
             : typeof payload?.message === 'string' ? payload.message : 'Something went wrong';
       const extensions = { statusCode: response.status, userPresentableMessage: message };
       if (detail && typeof detail === 'object' && !Array.isArray(detail)) extensions.detail = detail;
-      return json({ data: null, errors: [{ message, path: [field], extensions }] });
+      return { error: { message, path: [path], extensions } };
     }
-    if (kind === 'query') return json({ data: { [field]: payload } });
+    if (kind === 'query') return { value: payload };
     const result = {};
     for (const name of selection.split(/[\s,]+/).filter(Boolean)) {
       result[name] = name === 'success' ? true : name === 'lastSyncId' ? 0 : payload;
     }
-    return json({ data: { [field]: result } });
+    return { value: result };
+  };
+
+  window.fetch = async (input, init = {}) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    if (new URL(url, window.location.href).pathname !== '/api/graphql') return realFetch(input, init);
+    const { query, variables = {} } = JSON.parse(init.body);
+    // The transaction queue's batch (#508): `t0: field(…) {…} t1: …`, each field's variables prefixed `t0_`.
+    if (/^\s*mutation\s+Transactions\b/.test(query)) {
+      const data = {};
+      const errors = [];
+      for (const [, alias, field, , selection = ''] of query.matchAll(/\b(t\d+):\s*(\w+)\s*(\([^)]*\))?\s*\{([^}]*)\}/g)) {
+        const own = Object.fromEntries(Object.entries(variables)
+          .filter(([name]) => name.startsWith(`${alias}_`))
+          .map(([name, value]) => [name.slice(alias.length + 1), value]));
+        const { value, error } = await answer('mutation', field, selection, own, init, alias);
+        data[alias] = error ? null : value;
+        if (error) errors.push(error);
+      }
+      return json(errors.length > 0 ? { data, errors } : { data });
+    }
+    const head = /^\s*(query|mutation)\b[^{]*\{\s*(\w+)\s*(\([^)]*\))?\s*(\{([^}]*)\})?\s*\}\s*$/.exec(query);
+    if (!head) throw new Error(`graphql-mock: one root field per document, got ${query}`);
+    const [, kind, field, , , selection = ''] = head;
+    const { value, error } = await answer(kind, field, selection, variables, init, field);
+    return json(error ? { data: null, errors: [error] } : { data: { [field]: value } });
   };
 }
 

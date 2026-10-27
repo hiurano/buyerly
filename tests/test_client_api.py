@@ -638,6 +638,32 @@ class TestClientApi(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(label_changes, delta)
         self.assertTrue(all(action["sync_id"] <= payload["lastSyncId"] for action in label_changes))
 
+    async def test_writes_sent_together_are_each_answered_on_their_own(self):
+        # The client's transaction queue (#508) sends what is waiting as one document, a field per write.
+        response = await self.client.post(GRAPHQL, headers=self.headers["owner"], json={
+            "query": (
+                "mutation Transactions($t0_input: JSON!, $t1_accountId: String!, $t1_input: JSON!, $t2_input: JSON!) {"
+                " t0: ruleLabelCreate(input: $t0_input) { success lastSyncId ruleLabel }"
+                " t1: accountUpdate(accountId: $t1_accountId, input: $t1_input) { success lastSyncId }"
+                " t2: ruleLabelCreate(input: $t2_input) { success lastSyncId ruleLabel } }"
+            ),
+            "variables": {
+                "t0_input": {"name": "First", "color": "#4cb782"},
+                "t1_accountId": "act_404", "t1_input": {},
+                "t2_input": {"name": "Third", "color": "#4cb782"},
+            },
+        })
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        # The refused one is null with its error; the others before and after it are made and answered.
+        self.assertEqual(body["data"]["t0"]["ruleLabel"]["name"], "First")
+        self.assertIsNone(body["data"]["t1"])
+        self.assertEqual(body["data"]["t2"]["ruleLabel"]["name"], "Third")
+        self.assertEqual([error["path"] for error in body["errors"]], [["t1"]])
+        rest = await self.client.patch("/api/accounts/act_404/profile", json={}, headers=self.headers["owner"])
+        self.assertEqual(body["errors"][0]["extensions"]["statusCode"], rest.status_code)
+        self.assertLessEqual(body["data"]["t0"]["lastSyncId"], body["data"]["t2"]["lastSyncId"])
+
     async def test_a_refusal_keeps_the_routes_status_and_words(self):
         status, error = await self._graphql("owner", "accountUpdate", variables={"accountId": "act_404", "input": {}})
         rest = await self.client.patch("/api/accounts/act_404/profile", json={}, headers=self.headers["owner"])

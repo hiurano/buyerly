@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { graphql } from '@/lib/graphql';
 import { pool } from '@/models/pool';
-import { teamsQuery } from '@/models/queries';
+import { teamDocumentsQuery, teamsQuery } from '@/models/queries';
+import { sync } from '@/models/sync';
+import { transactions } from '@/models/transactions';
 import { usePoolQuery } from '@/models/usePool';
 import { usePageTeamKey } from '@/lib/pageScope';
 
@@ -47,19 +49,45 @@ export const createTeam = (workspaceId: number, input: { name: string; key: stri
   { workspaceId, input },
 );
 
-export const updateTeam = (workspaceId: number, id: number, input: Partial<TeamItem>) => teamMutation(
+/**
+ * A write to one team as a transaction (#508): every list of teams shows
+ * `change` at once, and drops it again if the server refuses. Settles with
+ * the team as the server holds it; the caller says why it failed.
+ */
+async function teamWrite<T = TeamItem>(
+  teamId: number, label: string, document: string, variables: Record<string, unknown>,
+  change: (team: TeamItem) => Partial<TeamItem>,
+): Promise<T> {
+  const team = pool.record<TeamItem>('team', teamId);
+  const answer = await transactions.commit<{ team: T }>({
+    label,
+    mutation: document,
+    variables,
+    changes: team ? [{ kind: 'update', type: 'team', id: String(teamId), data: change(team) }] : [],
+    quiet: true,
+  });
+  return answer.team;
+}
+
+export const updateTeam = (workspaceId: number, id: number, input: Partial<TeamItem>) => teamWrite(
+  id, "Couldn't update the team",
   `mutation TeamUpdate($workspaceId: Int!, $id: Int!, $input: JSON!) { teamUpdate(workspaceId: $workspaceId, id: $id, input: $input) ${TEAM_PAYLOAD} }`,
   { workspaceId, id, input },
+  () => input,
 );
 
-export const retireTeam = (workspaceId: number, id: number) => teamMutation(
+export const retireTeam = (workspaceId: number, id: number) => teamWrite(
+  id, "Couldn't retire the team",
   `mutation TeamRetire($workspaceId: Int!, $id: Int!) { teamRetire(workspaceId: $workspaceId, id: $id) ${TEAM_PAYLOAD} }`,
   { workspaceId, id },
+  () => ({ retired_at: new Date().toISOString() }),
 );
 
-export const restoreTeam = (workspaceId: number, id: number) => teamMutation(
+export const restoreTeam = (workspaceId: number, id: number) => teamWrite(
+  id, "Couldn't restore the team",
   `mutation TeamRestore($workspaceId: Int!, $id: Int!) { teamRestore(workspaceId: $workspaceId, id: $id) ${TEAM_PAYLOAD} }`,
   { workspaceId, id },
+  () => ({ retired_at: null }),
 );
 
 export const deleteTeam = (workspaceId: number, id: number) => teamMutation<unknown>(
@@ -67,40 +95,63 @@ export const deleteTeam = (workspaceId: number, id: number) => teamMutation<unkn
   { workspaceId, id },
 );
 
-export const addTeamMembers = (workspaceId: number, teamId: number, userIds: number[]) => teamMutation<unknown>(
+const without = (ids: number[], id: number) => ids.filter((item) => item !== id);
+
+export const addTeamMembers = (workspaceId: number, teamId: number, userIds: number[]) => teamWrite<unknown>(
+  teamId, "Couldn't add to the team",
   `mutation TeamMembersAdd($workspaceId: Int!, $teamId: Int!, $input: JSON!) {
     teamMembersAdd(workspaceId: $workspaceId, teamId: $teamId, input: $input) ${TEAM_PAYLOAD}
   }`,
   { workspaceId, teamId, input: { user_ids: userIds } },
+  (team) => {
+    const added = userIds.filter((id) => !team.member_user_ids.includes(id));
+    const me = sync.userId;
+    return {
+      member_user_ids: [...team.member_user_ids, ...added],
+      ...(me !== null && added.includes(me) ? { is_member: true } : {}),
+    };
+  },
 );
 
-export const removeTeamMember = (workspaceId: number, teamId: number, userId: number) => teamMutation<unknown>(
+export const removeTeamMember = (workspaceId: number, teamId: number, userId: number) => teamWrite<unknown>(
+  teamId, "Couldn't remove from the team",
   `mutation TeamMemberRemove($workspaceId: Int!, $teamId: Int!, $userId: Int!) {
     teamMemberRemove(workspaceId: $workspaceId, teamId: $teamId, userId: $userId) ${TEAM_PAYLOAD}
   }`,
   { workspaceId, teamId, userId },
+  (team) => ({
+    member_user_ids: without(team.member_user_ids, userId),
+    owner_user_ids: without(team.owner_user_ids, userId),
+    ...(userId === sync.userId ? { is_member: false } : {}),
+  }),
 );
 
 /** Linear's "Make team owner" / "Remove team owner". */
-export const setTeamOwner = (workspaceId: number, teamId: number, userId: number, isOwner: boolean) => teamMutation<unknown>(
+export const setTeamOwner = (workspaceId: number, teamId: number, userId: number, isOwner: boolean) => teamWrite<unknown>(
+  teamId, "Couldn't change the team owner",
   `mutation TeamMemberUpdate($workspaceId: Int!, $teamId: Int!, $userId: Int!, $input: JSON!) {
     teamMemberUpdate(workspaceId: $workspaceId, teamId: $teamId, userId: $userId, input: $input) ${TEAM_PAYLOAD}
   }`,
   { workspaceId, teamId, userId, input: { is_owner: isOwner } },
+  (team) => ({ owner_user_ids: isOwner ? [...without(team.owner_user_ids, userId), userId] : without(team.owner_user_ids, userId) }),
 );
 
-export const addTeamAccounts = (workspaceId: number, teamId: number, accountIds: number[]) => teamMutation<unknown>(
+export const addTeamAccounts = (workspaceId: number, teamId: number, accountIds: number[]) => teamWrite<unknown>(
+  teamId, "Couldn't add the ad accounts",
   `mutation TeamAccountsAdd($workspaceId: Int!, $teamId: Int!, $input: JSON!) {
     teamAccountsAdd(workspaceId: $workspaceId, teamId: $teamId, input: $input) ${TEAM_PAYLOAD}
   }`,
   { workspaceId, teamId, input: { account_ids: accountIds } },
+  (team) => ({ account_ids: [...team.account_ids, ...accountIds.filter((id) => !team.account_ids.includes(id))] }),
 );
 
-export const removeTeamAccount = (workspaceId: number, teamId: number, accountId: number) => teamMutation<unknown>(
+export const removeTeamAccount = (workspaceId: number, teamId: number, accountId: number) => teamWrite<unknown>(
+  teamId, "Couldn't remove the ad account",
   `mutation TeamAccountRemove($workspaceId: Int!, $teamId: Int!, $accountId: Int!) {
     teamAccountRemove(workspaceId: $workspaceId, teamId: $teamId, accountId: $accountId) ${TEAM_PAYLOAD}
   }`,
   { workspaceId, teamId, accountId },
+  (team) => ({ account_ids: without(team.account_ids, accountId) }),
 );
 
 /**
@@ -195,30 +246,63 @@ export interface TeamDocument {
 
 const DOCUMENT_PAYLOAD = '{ success lastSyncId teamDocument }';
 
-async function documentMutation(document: string, variables: Record<string, unknown>): Promise<TeamDocument> {
-  return (await graphql<{ teamDocument: TeamDocument }>(document, variables)).teamDocument;
+let standIns = 0;
+
+/**
+ * A new document: first in its team's list at once, as the server made it
+ * once it answers (#508); the caller opens it by its real id.
+ */
+export async function createTeamDocument(workspaceId: number, teamId: number, input: { title: string; content: string }): Promise<TeamDocument> {
+  const now = new Date().toISOString();
+  const standIn: TeamDocument = {
+    id: -(standIns += 1), team_id: teamId, ...input,
+    created_by_user_id: sync.userId, updated_by_user_id: sync.userId, created_at: now, updated_at: now,
+  };
+  const answer = await transactions.commit<{ teamDocument: TeamDocument }>({
+    label: "Couldn't create the document",
+    mutation: `mutation TeamDocumentCreate($workspaceId: Int!, $teamId: Int!, $input: JSON!) {
+      teamDocumentCreate(workspaceId: $workspaceId, teamId: $teamId, input: $input) ${DOCUMENT_PAYLOAD}
+    }`,
+    variables: { workspaceId, teamId, input },
+    changes: [{
+      kind: 'insert', type: 'teamDocument', id: String(standIn.id), record: { ...standIn },
+      list: teamDocumentsQuery(workspaceId, teamId).key, first: true,
+    }],
+    created: 'teamDocument',
+    quiet: true,
+  });
+  return answer.teamDocument;
 }
 
-export const createTeamDocument = (workspaceId: number, teamId: number, input: { title: string; content: string }) => documentMutation(
-  `mutation TeamDocumentCreate($workspaceId: Int!, $teamId: Int!, $input: JSON!) {
-    teamDocumentCreate(workspaceId: $workspaceId, teamId: $teamId, input: $input) ${DOCUMENT_PAYLOAD}
-  }`,
-  { workspaceId, teamId, input },
-);
+/** A document's title or text: on every page showing it at once, then written. */
+export async function updateTeamDocument(
+  workspaceId: number, teamId: number, id: number, input: Partial<Pick<TeamDocument, 'title' | 'content'>>,
+): Promise<TeamDocument> {
+  const answer = await transactions.commit<{ teamDocument: TeamDocument }>({
+    label: "Couldn't save the document",
+    mutation: `mutation TeamDocumentUpdate($workspaceId: Int!, $teamId: Int!, $id: Int!, $input: JSON!) {
+      teamDocumentUpdate(workspaceId: $workspaceId, teamId: $teamId, id: $id, input: $input) ${DOCUMENT_PAYLOAD}
+    }`,
+    variables: { workspaceId, teamId, id, input },
+    changes: [{ kind: 'update', type: 'teamDocument', id: String(id), data: { ...input, updated_at: new Date().toISOString() } }],
+    quiet: true,
+  });
+  return answer.teamDocument;
+}
 
-export const updateTeamDocument = (workspaceId: number, teamId: number, id: number, input: Partial<Pick<TeamDocument, 'title' | 'content'>>) => documentMutation(
-  `mutation TeamDocumentUpdate($workspaceId: Int!, $teamId: Int!, $id: Int!, $input: JSON!) {
-    teamDocumentUpdate(workspaceId: $workspaceId, teamId: $teamId, id: $id, input: $input) ${DOCUMENT_PAYLOAD}
-  }`,
-  { workspaceId, teamId, id, input },
-);
-
-export const deleteTeamDocument = (workspaceId: number, teamId: number, id: number) => documentMutation(
-  `mutation TeamDocumentDelete($workspaceId: Int!, $teamId: Int!, $id: Int!) {
-    teamDocumentDelete(workspaceId: $workspaceId, teamId: $teamId, id: $id) ${DOCUMENT_PAYLOAD}
-  }`,
-  { workspaceId, teamId, id },
-);
+/** Gone from its team's list at once; back if the server refuses. */
+export async function deleteTeamDocument(workspaceId: number, teamId: number, id: number): Promise<TeamDocument> {
+  const answer = await transactions.commit<{ teamDocument: TeamDocument }>({
+    label: "Couldn't delete the document",
+    mutation: `mutation TeamDocumentDelete($workspaceId: Int!, $teamId: Int!, $id: Int!) {
+      teamDocumentDelete(workspaceId: $workspaceId, teamId: $teamId, id: $id) ${DOCUMENT_PAYLOAD}
+    }`,
+    variables: { workspaceId, teamId, id },
+    changes: [{ kind: 'delete', type: 'teamDocument', id: String(id) }],
+    quiet: true,
+  });
+  return answer.teamDocument;
+}
 
 /** A document's name in lists and headers; Linear shows "Untitled" for one without a title. */
 export const documentTitle = (document: Pick<TeamDocument, 'title'>) => document.title.trim() || 'Untitled';

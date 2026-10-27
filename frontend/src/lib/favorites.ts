@@ -1,5 +1,7 @@
 import { graphql } from './graphql';
-import { toast } from '@/ui/toast';
+import { reaction } from 'mobx';
+import { pool, type ListQuery } from '@/models/pool';
+import { transactions } from '@/models/transactions';
 import { makeStore, useStore } from '@/models/store';
 
 /**
@@ -38,9 +40,24 @@ export function toggleFavorite(input: FavoriteInput): Promise<void> {
     : favoritesStore.add(input);
 }
 
+/** The member's favorites in the pool: their order is the server's, a new one last. */
+const favoritesQuery: ListQuery<Favorite> = {
+  kind: 'list',
+  key: 'favorites',
+  type: 'favorite',
+  load: async () => {
+    const payload = await graphql<{ favorites?: Favorite[] }>('query Favorites { favorites }');
+    return Array.isArray(payload.favorites) ? payload.favorites : [];
+  },
+  id: (favorite) => favorite.id,
+};
+
+let standIns = 0;
+
 export class FavoritesStore {
   /** The workspace the list belongs to; another one starts empty. */
   workspace: string | null = null;
+  /** As the pool shows them, with the stars still being written (#508). */
   favorites: Favorite[] = [];
   loaded = false;
   /** The open page's star, which the command menu offers as "Favorite page". */
@@ -48,6 +65,10 @@ export class FavoritesStore {
 
   constructor() {
     makeStore(this);
+    reaction(
+      () => pool.result<Favorite[]>(favoritesQuery.key).data,
+      (favorites) => this.set({ favorites: favorites ?? [] }),
+    );
   }
 
   setHere(here: FavoriteInput | null) {
@@ -55,51 +76,36 @@ export class FavoritesStore {
   }
 
   async load(workspace: string) {
-    if (this.workspace !== workspace) this.set({ workspace, favorites: [], loaded: false });
-    try {
-      const payload = await graphql<{ favorites?: Favorite[] }>('query Favorites { favorites }');
-      if (this.workspace !== workspace) return;
-      this.set({ favorites: Array.isArray(payload.favorites) ? payload.favorites : [], loaded: true });
-    } catch {
-      // The section stays hidden; starring still works once the server answers.
-      if (this.workspace === workspace) this.set({ loaded: true });
-    }
+    if (this.workspace !== workspace) this.set({ workspace, loaded: false });
+    // The section stays hidden after a failure; starring still works once the server answers.
+    await pool.fetch(favoritesQuery);
+    if (this.workspace === workspace) this.set({ loaded: true });
   }
 
+  /** Shown at once at the end of the section, as Linear's; the server's id replaces the stand-in's. */
   async add(input: FavoriteInput) {
-    const { workspace, favorites } = this;
+    const { favorites } = this;
     if (favorites.some((favorite) => favorite.path === input.path)) return;
-    // Shown at once at the end of the section, as Linear's; the server's id replaces this one.
-    const pending: Favorite = { ...input, id: -Date.now(), position: (favorites[favorites.length - 1]?.position ?? 0) + 1 };
-    this.set({ favorites: [...favorites, pending] });
-    try {
-      const { favorite: saved } = await graphql<{ favorite: Favorite }>(
-        'mutation FavoriteCreate($input: JSON!) { favoriteCreate(input: $input) { success lastSyncId favorite } }',
-        { input },
-      );
-      if (this.workspace !== workspace) return;
-      this.set({ favorites: this.favorites.map((favorite) => (favorite.id === pending.id ? saved : favorite)) });
-    } catch (error) {
-      if (this.workspace !== workspace) return;
-      this.set({ favorites: this.favorites.filter((favorite) => favorite.id !== pending.id) });
-      toast.error("Couldn't add to favorites", error instanceof Error ? error.message : undefined);
-    }
+    const standIn: Favorite = { ...input, id: -(standIns += 1), position: (favorites[favorites.length - 1]?.position ?? 0) + 1 };
+    await transactions.commit({
+      label: "Couldn't add to favorites",
+      mutation: 'mutation FavoriteCreate($input: JSON!) { favoriteCreate(input: $input) { success lastSyncId favorite } }',
+      variables: { input },
+      changes: [{ kind: 'insert', type: 'favorite', id: String(standIn.id), record: { ...standIn }, list: favoritesQuery.key }],
+      created: 'favorite',
+    }).catch(() => {});
   }
 
+  /** Gone from the section at once; back if the server refuses. */
   async remove(path: string) {
-    const { workspace, favorites } = this;
-    const target = favorites.find((favorite) => favorite.path === path);
+    const target = this.favorites.find((favorite) => favorite.path === path);
     if (!target) return;
-    this.set({ favorites: favorites.filter((favorite) => favorite.path !== path) });
-    try {
-      if (target.id > 0) {
-        await graphql('mutation FavoriteDelete($id: Int!) { favoriteDelete(id: $id) { success lastSyncId } }', { id: target.id });
-      }
-    } catch (error) {
-      if (this.workspace !== workspace) return;
-      this.set({ favorites: [...this.favorites, target].sort((a, b) => a.position - b.position) });
-      toast.error("Couldn't remove from favorites", error instanceof Error ? error.message : undefined);
-    }
+    await transactions.commit({
+      label: "Couldn't remove from favorites",
+      mutation: 'mutation FavoriteDelete($id: Int!) { favoriteDelete(id: $id) { success lastSyncId } }',
+      variables: { id: target.id },
+      changes: [{ kind: 'delete', type: 'favorite', id: String(target.id) }],
+    }).catch(() => {});
   }
 
   private set(patch: Partial<FavoritesStore>) {

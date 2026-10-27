@@ -147,7 +147,7 @@ export class SyncClient {
     }
     this.lastSyncId = Math.max(this.lastSyncId, lastSyncId);
     // The rows and the sync id they reach are kept together: a reload catches up from exactly there.
-    if (this.lastSyncId > held) localDatabase.applyChanges(stored, { lastSyncId: this.lastSyncId, syncGroups: this.#syncGroups });
+    if (this.lastSyncId > held) localDatabase.applyChanges(stored, { lastSyncId: this.lastSyncId, syncGroups: this.#syncGroups, models: [...this.#models.keys()] });
     pool.syncChanged();
     if (applied.length > 0) for (const listener of this.#listeners) listener(applied);
   }
@@ -245,7 +245,7 @@ export class SyncClient {
       models.set(model, new Map(rows.map((row) => [row.id, row])));
     }
     this.#hold(models, bootstrap.last_sync_id, bootstrap.sync_groups);
-    localDatabase.replaceModels(models, { lastSyncId: bootstrap.last_sync_id, syncGroups: bootstrap.sync_groups });
+    localDatabase.replaceModels(models, { lastSyncId: bootstrap.last_sync_id, syncGroups: bootstrap.sync_groups, models: [...models.keys()] });
   }
 
   /** Holds a whole set of models, from bootstrap or as the local database kept them. */
