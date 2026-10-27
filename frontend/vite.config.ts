@@ -233,6 +233,10 @@ export default defineConfig({
   optimizeDeps: {
     include: ['react/compiler-runtime'],
   },
+  // The sync hub's SharedWorker (#498) is a module, as the app is.
+  worker: {
+    format: 'es',
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
