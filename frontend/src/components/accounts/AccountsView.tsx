@@ -180,7 +180,7 @@ interface AccountsViewProps {
 const AccountsViewContent: React.FC<AccountsViewProps> = ({ navigate, navigationKey }) => {
   const { workspace } = useWorkspaceSession();
   const data = useWorkspaceAccounts();
-  const { teams, state, error, canEdit } = data;
+  const { teams, state, error, canEdit, saveLead, toggleAutomation } = data;
   // A team's Ad accounts, as Linear's team Projects: only the accounts on that team.
   const activeTeam = useActiveTeam(workspace.id);
   const team = activeTeam.team;
@@ -214,15 +214,16 @@ const AccountsViewContent: React.FC<AccountsViewProps> = ({ navigate, navigation
   );
   const columns = getAccountColumns(view.properties, phone);
 
+  // Built from what stays the same while accounts change, not from `data`: a row draws again only for its own account (#500).
   const actions: AccountRowActions = {
     canEdit,
     canAct: data.canAct,
     members: data.members,
-    setLead: (account, leadUserId) => void data.saveLead(account, leadUserId),
+    setLead: (account, leadUserId) => void saveLead(account, leadUserId),
     open: (account) => navigate(accountPagePath(workspace.slug, account.account_id)),
     openInAdsManager: (account) => navigate(accountAdsManagerPath(workspace.slug, account.account_id)),
     rename: dialogs.rename,
-    toggleAutomation: (account) => void data.toggleAutomation(account),
+    toggleAutomation: (account) => void toggleAutomation(account),
     copyId: (account) => void copyAccountId(account.account_id),
     remove: dialogs.remove,
     reconnect: dialogs.openAdd,

@@ -5,7 +5,7 @@ import { pool } from '@/models/pool';
 import { membersQuery } from '@/models/queries';
 import { usePoolQuery } from '@/models/usePool';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
-import { useTeams } from '@/lib/teams';
+import { useTeams, type TeamItem } from '@/lib/teams';
 import { canAdministerWorkspace } from '@/lib/settingsPages';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { InviteDialog, Initials, RoleStatus, shortDate } from '@/components/preferences/MembersSection';
@@ -118,6 +118,42 @@ const COLUMNS: BuyerlyDataListColumn[] = [
   { id: 'teams', label: 'Teams', width: 'minmax(120px, 220px)' },
 ];
 
+/** One member's row; draws again only when that member or the teams change (#500). */
+const MemberRow = React.memo(function MemberRow({ member, teams }: { member: MemberItem; teams: readonly TeamItem[] | null }) {
+  const memberTeams = (teams ?? []).filter((team) => team.member_user_ids.includes(member.user_id));
+  return (
+    <BuyerlyDataListRow layout="grid" columns={COLUMNS} height={50}>
+      <div {...stylex.props(styles.person)}>
+        <Initials label={memberName(member)} avatarUrl={member.avatar_url} size={24} />
+        <div {...stylex.props(styles.names)}>
+          <span {...stylex.props(styles.name)}>{memberName(member)}</span>
+          {member.username && (
+            <span {...stylex.props(styles.username)}>{member.username}</span>
+          )}
+        </div>
+      </div>
+      <span {...stylex.props(styles.cell)}><RoleStatus role={member.role} /></span>
+      <span {...stylex.props(styles.cell)}>{shortDate(member.joined_at)}</span>
+      <div {...stylex.props(styles.teams)}>
+        {memberTeams.map((team) => (
+          <button
+            key={team.id}
+            type="button"
+            className="team-chip"
+            title={team.name}
+            onClick={() => {
+              openTab('team', { teamKey: team.key });
+            }}
+          >
+            <TeamIcon size={14} />
+            <span>{team.key}</span>
+          </button>
+        ))}
+      </div>
+    </BuyerlyDataListRow>
+  );
+});
+
 /** Linear's workspace Members page: who is in the workspace, their role and their teams. */
 const WorkspaceMembersViewContent: React.FC = () => {
   const { workspace } = useWorkspaceSession();
@@ -144,8 +180,6 @@ const WorkspaceMembersViewContent: React.FC = () => {
     return [...matching].sort((a, b) => (value(a) < value(b) ? -sign : value(a) > value(b) ? sign : 0));
   }, [members, query, sort]);
 
-  const teamsOf = (member: MemberItem) => (teams ?? []).filter((team) => team.member_user_ids.includes(member.user_id));
-
   const renderBody = () => {
     if (error && !members) {
       return <DataState title="Couldn't load members" detail={error} role="alert" actionLabel="Retry" onAction={() => void load()} />;
@@ -164,37 +198,7 @@ const WorkspaceMembersViewContent: React.FC = () => {
           direction: current.key === columnId && current.direction === 'asc' ? 'desc' : 'asc',
         }))}
       >
-        {shown.map((member) => (
-          <BuyerlyDataListRow key={member.id} layout="grid" columns={COLUMNS} height={50}>
-            <div {...stylex.props(styles.person)}>
-              <Initials label={memberName(member)} avatarUrl={member.avatar_url} size={24} />
-              <div {...stylex.props(styles.names)}>
-                <span {...stylex.props(styles.name)}>{memberName(member)}</span>
-                {member.username && (
-                  <span {...stylex.props(styles.username)}>{member.username}</span>
-                )}
-              </div>
-            </div>
-            <span {...stylex.props(styles.cell)}><RoleStatus role={member.role} /></span>
-            <span {...stylex.props(styles.cell)}>{shortDate(member.joined_at)}</span>
-            <div {...stylex.props(styles.teams)}>
-              {teamsOf(member).map((team) => (
-                <button
-                  key={team.id}
-                  type="button"
-                  className="team-chip"
-                  title={team.name}
-                  onClick={() => {
-                    openTab('team', { teamKey: team.key });
-                  }}
-                >
-                  <TeamIcon size={14} />
-                  <span>{team.key}</span>
-                </button>
-              ))}
-            </div>
-          </BuyerlyDataListRow>
-        ))}
+        {shown.map((member) => <MemberRow key={member.id} member={member} teams={teams} />)}
       </BuyerlyDataTable>
     );
   };
