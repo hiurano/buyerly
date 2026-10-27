@@ -18,6 +18,11 @@ import { action, computed, makeObservable, observable, observableRef, reaction, 
  * The lists read from the server are kept in IndexedDB between visits (#496,
  * `snapshot` and `hydrate`): after a reload they are drawn at once, as stale,
  * and read again behind the page.
+ *
+ * A write is drawn before the server has it (#508): the transaction queue lays
+ * its changes over what is held (`setOverlay`), and every list and record read
+ * shows them, whatever answer or delta lands underneath, until the server has
+ * it or says no.
  */
 
 /** How long a query's answer counts as current; older ones are read again after the page is drawn. */
@@ -32,6 +37,7 @@ export type RecordType =
   | 'ruleLabel'
   | 'inboxEvent'
   | 'teamDocument'
+  | 'favorite'
   /** One ad account's campaigns, ad sets and ads for one period: `<act_…>:<period>`. */
   | 'accountHierarchy';
 
@@ -75,6 +81,37 @@ export interface QueryResult<T> {
 
 const IDLE: QueryResult<never> = { data: undefined, error: '', loading: true };
 
+/**
+ * A change a write shows before the server has it (#508), in the pages' own
+ * shapes: some fields of a record, a new record in a list, a record gone.
+ */
+export type PoolChange =
+  | { kind: 'update'; type: RecordType; id: string; data: Record<string, unknown> }
+  | { kind: 'insert'; type: RecordType; id: string; record: Record<string, unknown>; list: string; first?: boolean }
+  | { kind: 'delete'; type: RecordType; id: string };
+
+/** The pending changes, indexed for reading. */
+interface Overlay {
+  /** Fields laid over a record, by record key, in the order they were made. */
+  patches: Map<string, Record<string, unknown>[]>;
+  /** Records the server hasn't made yet, by record key. */
+  inserted: Map<string, unknown>;
+  /** Records taken out of every list. */
+  hidden: Set<string>;
+  /** Ids put in a list, by its key. */
+  added: Map<string, { id: string; first: boolean }[]>;
+}
+
+const NO_OVERLAY: Overlay = { patches: new Map(), inserted: new Map(), hidden: new Set(), added: new Map() };
+
+/** Same list and same records, so a query's result stays the same object. */
+const sameResult = (left: QueryResult<unknown>, right: QueryResult<unknown>) => {
+  if (left.loading !== right.loading || left.error !== right.error) return false;
+  if (left.data === right.data) return true;
+  if (!Array.isArray(left.data) || !Array.isArray(right.data) || left.data.length !== right.data.length) return false;
+  return left.data.every((item, index) => item === (right.data as unknown[])[index]);
+};
+
 class Entry {
   ids: string[] | null = null;
   value: unknown = undefined;
@@ -87,7 +124,7 @@ class Entry {
   /** Computed once and kept, so an unchanged query hands out the same object. */
   readonly result: IComputedValue<QueryResult<unknown>>;
 
-  constructor(pool: BuyerlyPool, readonly type: RecordType | null) {
+  constructor(pool: BuyerlyPool, readonly key: string, readonly type: RecordType | null) {
     makeObservable(this, {
       ids: observableRef,
       value: observableRef,
@@ -98,9 +135,9 @@ class Entry {
       if (!this.held) return { data: undefined, error: this.error, loading: !this.error };
       const data = type === null
         ? this.value
-        : (this.ids ?? []).map((id) => pool.record(type, id)).filter((record) => record !== undefined);
+        : pool.listIds(key, this.ids ?? []).map((id) => pool.record(type, id)).filter((record) => record !== undefined);
       return { data, error: '', loading: false };
-    }, { keepAlive: true });
+    }, { keepAlive: true, equals: sameResult });
   }
 }
 
@@ -147,10 +184,17 @@ export class BuyerlyPool {
   private readonly entries = observable.map<string, Entry>({}, { deep: false });
   /** The lists read from the sync engine's models, read again after every change it applies. */
   private readonly synced = new Map<string, ListQuery<unknown>>();
+  /** The transaction queue's pending changes (#508). */
+  private overlay: Overlay = NO_OVERLAY;
+  /** A record with fields laid over it, kept while neither changes: the same object for the same view. */
+  private readonly merged = new Map<string, { base: unknown; patches: Record<string, unknown>[]; value: unknown }>();
 
   constructor() {
-    makeObservable(this, {
+    makeObservable<BuyerlyPool, 'overlay'>(this, {
       scope: observable,
+      overlay: observableRef,
+      setOverlay: action,
+      place: action,
       reset: action,
       upsert: action,
       patch: action,
@@ -175,10 +219,57 @@ export class BuyerlyPool {
     this.records.clear();
     this.entries.clear();
     this.synced.clear();
+    this.overlay = NO_OVERLAY;
+    this.merged.clear();
   }
 
+  /** A record as the pages show it: as held, with the writes still pending on it. */
   record<T>(type: RecordType, id: string | number): T | undefined {
-    return this.records.get(`${type}:${id}`) as T | undefined;
+    const key = `${type}:${id}`;
+    const { patches, inserted, hidden } = this.overlay;
+    if (hidden.has(key)) return undefined;
+    const base = this.records.get(key) ?? inserted.get(key);
+    const laid = patches.get(key);
+    if (!laid || base === undefined) return base as T | undefined;
+    const kept = this.merged.get(key);
+    if (kept && kept.base === base && kept.patches === laid) return kept.value as T;
+    const value = Object.assign({}, base, ...laid);
+    this.merged.set(key, { base, patches: laid, value });
+    return value as T;
+  }
+
+  /** A list's ids with the records pending writes put in it. */
+  listIds(key: string, ids: string[]): string[] {
+    const added = this.overlay.added.get(key);
+    if (!added) return ids;
+    const first = added.filter((item) => item.first && !ids.includes(item.id)).map((item) => item.id).reverse();
+    const last = added.filter((item) => !item.first && !ids.includes(item.id)).map((item) => item.id);
+    return [...first, ...ids, ...last];
+  }
+
+  /** Lays the transaction queue's pending changes over what is held, in order; replaces the last ones. */
+  setOverlay(changes: PoolChange[]) {
+    const overlay: Overlay = { patches: new Map(), inserted: new Map(), hidden: new Set(), added: new Map() };
+    for (const change of changes) {
+      const key = `${change.type}:${change.id}`;
+      if (change.kind === 'update') {
+        overlay.patches.set(key, [...(overlay.patches.get(key) ?? []), change.data]);
+      } else if (change.kind === 'insert') {
+        overlay.inserted.set(key, change.record);
+        overlay.hidden.delete(key);
+        const added = overlay.added.get(change.list) ?? [];
+        overlay.added.set(change.list, [...added.filter((item) => item.id !== change.id), { id: change.id, first: Boolean(change.first) }]);
+      } else {
+        overlay.hidden.add(key);
+      }
+    }
+    // An unchanged record's patches stay the same array, so it stays the same object.
+    for (const [key, patches] of overlay.patches) {
+      const held = this.overlay.patches.get(key);
+      if (held && same(held, patches)) overlay.patches.set(key, held);
+    }
+    this.overlay = overlay;
+    for (const key of this.merged.keys()) if (!overlay.patches.has(key)) this.merged.delete(key);
   }
 
   /** A query's current result; the same object until something in it changes. */
@@ -282,7 +373,7 @@ export class BuyerlyPool {
 
   /** Changes some fields of a held record: a new object, so every list showing it redraws. */
   patch<T extends object>(type: RecordType, id: string | number, change: Partial<T>) {
-    const current = this.record<T>(type, id);
+    const current = this.records.get(`${type}:${id}`) as T | undefined;
     if (current) this.upsert(type, { ...current, ...change }, id);
   }
 
@@ -309,10 +400,15 @@ export class BuyerlyPool {
 
   /** Adds a new record to a list query, at its end or with `first` at its start, as a create does. */
   append<T>(query: ListQuery<T>, record: T, { first = false }: { first?: boolean } = {}) {
-    const entry = this.entry(query);
-    const id = String(query.id(record));
-    this.upsert(query.type, record, id);
-    if (entry.ids && !entry.ids.includes(id)) entry.ids = first ? [id, ...entry.ids] : [...entry.ids, id];
+    this.entry(query);
+    this.place(query.key, query.type, String(query.id(record)), record, first);
+  }
+
+  /** Puts a record in a held list by the list's key, as `append` does; for a write the server confirmed (#508). */
+  place(key: string, type: RecordType, id: string, record: unknown, first = false) {
+    this.upsert(type, record, id);
+    const entry = this.entries.get(key);
+    if (entry?.ids && !entry.ids.includes(id)) entry.ids = first ? [id, ...entry.ids] : [...entry.ids, id];
     this.onChange?.();
   }
 
@@ -424,7 +520,7 @@ export class BuyerlyPool {
   private entry(query: { key: string; kind?: Query<unknown>['kind']; type?: RecordType }): Entry {
     let entry = this.entries.get(query.key);
     if (!entry) {
-      const created = new Entry(this, query.kind === 'list' && query.type ? query.type : null);
+      const created = new Entry(this, query.key, query.kind === 'list' && query.type ? query.type : null);
       runInAction(() => this.entries.set(query.key, created));
       entry = created;
     }

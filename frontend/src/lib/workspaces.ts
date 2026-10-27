@@ -1,4 +1,5 @@
 import { graphql } from './graphql';
+import { transactions } from '@/models/transactions';
 import type { Workspace } from './types';
 
 /** Workspace settings, members and invites, through the client API (#509). */
@@ -26,23 +27,31 @@ export async function transferWorkspaceOwnership(id: number, newOwnerUserId: num
   );
 }
 
+/** A member's role: on Members at once, written as a transaction (#508); the caller says why it failed. */
 export async function updateMemberRole<T>(workspaceId: number, userId: number, role: string): Promise<T> {
-  const { workspaceMember } = await graphql<{ workspaceMember: T }>(
-    `mutation WorkspaceMemberUpdate($workspaceId: Int!, $userId: Int!, $input: JSON!) {
+  const { workspaceMember } = await transactions.commit<{ workspaceMember: T }>({
+    label: "Couldn't change the role",
+    mutation: `mutation WorkspaceMemberUpdate($workspaceId: Int!, $userId: Int!, $input: JSON!) {
       workspaceMemberUpdate(workspaceId: $workspaceId, userId: $userId, input: $input) { success lastSyncId workspaceMember }
     }`,
-    { workspaceId, userId, input: { role } },
-  );
+    variables: { workspaceId, userId, input: { role } },
+    changes: [{ kind: 'update', type: 'member', id: String(userId), data: { role } }],
+    quiet: true,
+  });
   return workspaceMember;
 }
 
+/** Off Members at once; back if the server refuses. */
 export async function removeMember(workspaceId: number, userId: number): Promise<void> {
-  await graphql(
-    `mutation WorkspaceMemberRemove($workspaceId: Int!, $userId: Int!) {
+  await transactions.commit({
+    label: "Couldn't remove the member",
+    mutation: `mutation WorkspaceMemberRemove($workspaceId: Int!, $userId: Int!) {
       workspaceMemberRemove(workspaceId: $workspaceId, userId: $userId) { success lastSyncId }
     }`,
-    { workspaceId, userId },
-  );
+    variables: { workspaceId, userId },
+    changes: [{ kind: 'delete', type: 'member', id: String(userId) }],
+    quiet: true,
+  });
 }
 
 export function fetchInvites<T>(workspaceId: number): Promise<T[]> {

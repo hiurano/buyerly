@@ -59,6 +59,7 @@ import {
 import { useInboxStore } from '@/models/inboxStore';
 import { useScopeStore, scopeStore } from '@/models/scopeStore';
 import { useSyncStatus } from '@/models/sync';
+import { useUnsentWrites } from '@/models/transactions';
 import { shellStore, useShellStore } from '@/models/shellStore';
 import { useDetailsPaneStore } from '@/models/detailsPaneStore';
 import { useViewStore } from '@/models/viewStore';
@@ -371,6 +372,11 @@ export const App: React.FC = () => {
   useEffect(() => {
     document.documentElement.dataset.sync = syncStatus;
   }, [syncStatus]);
+  // Writes the server hasn't confirmed yet (#508), there too.
+  const unsentWrites = useUnsentWrites();
+  useEffect(() => {
+    document.documentElement.dataset.unsentWrites = String(unsentWrites);
+  }, [unsentWrites]);
   // The profile is kept for the next start; with no account signed in, nothing this browser kept stays (#496).
   useEffect(() => {
     if (user) rememberSession(user, accounts);

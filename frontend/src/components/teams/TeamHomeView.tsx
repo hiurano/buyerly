@@ -207,8 +207,8 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
   const createDocument = async () => {
     if (!team) return;
     try {
+      // In the list at once; opened once the server gave it its id (#508).
       const created = await createTeamDocument(workspace.id, team.id, { title: '', content: '' });
-      pool.append(teamDocumentsQuery(workspace.id, team.id), created, { first: true });
       open('documents', created.id);
     } catch (error) {
       toast.error("Couldn't create the document", error instanceof Error ? error.message : undefined);
@@ -243,11 +243,7 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
             team={team}
             document={openDocument}
             readOnly={!canWrite}
-            onSaved={(saved) => pool.upsert('teamDocument', saved, saved.id)}
-            onDeleted={() => {
-              pool.remove('teamDocument', openDocument.id);
-              open('documents');
-            }}
+            onDeleted={() => open('documents')}
           />
         );
       }
@@ -544,12 +540,11 @@ interface TeamDocumentEditorProps {
   team: TeamItem;
   document: TeamDocument;
   readOnly: boolean;
-  onSaved: (document: TeamDocument) => void;
   onDeleted: () => void;
 }
 
 /** One document, as Linear's: a large title over the body, saved as you type. */
-const TeamDocumentEditor: React.FC<TeamDocumentEditorProps> = ({ team, document, readOnly, onSaved, onDeleted }) => {
+const TeamDocumentEditor: React.FC<TeamDocumentEditorProps> = ({ team, document, readOnly, onDeleted }) => {
   const { workspace } = useWorkspaceSession();
   const [title, setTitle] = useState(document.title);
   const [content, setContent] = useState(document.content);
@@ -568,15 +563,14 @@ const TeamDocumentEditor: React.FC<TeamDocumentEditorProps> = ({ team, document,
     pending.current = {};
     setSaving('saving');
     try {
-      const saved = await updateTeamDocument(workspace.id, team.id, document.id, changes);
-      onSaved(saved);
+      await updateTeamDocument(workspace.id, team.id, document.id, changes);
       setSaving('saved');
     } catch (error) {
       pending.current = { ...changes, ...pending.current };
       setSaving('error');
       toast.error("Couldn't save the document", error instanceof Error ? error.message : undefined);
     }
-  }, [document.id, onSaved, team.id, workspace.id]);
+  }, [document.id, team.id, workspace.id]);
 
   const schedule = (changes: { title?: string; content?: string }) => {
     pending.current = { ...pending.current, ...changes };
@@ -604,10 +598,11 @@ const TeamDocumentEditor: React.FC<TeamDocumentEditorProps> = ({ team, document,
   const remove = async () => {
     if (timer.current !== null) window.clearTimeout(timer.current);
     pending.current = {};
+    // Gone from the list at once, as Linear's; it comes back if the server refuses (#508).
+    onDeleted();
     try {
       await deleteTeamDocument(workspace.id, team.id, document.id);
       toast.show({ tone: 'success', title: 'Document deleted' });
-      onDeleted();
     } catch (error) {
       toast.error("Couldn't delete the document", error instanceof Error ? error.message : undefined);
     }

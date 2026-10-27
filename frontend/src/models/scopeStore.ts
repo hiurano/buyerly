@@ -2,6 +2,8 @@ import { currentRoute } from '@/lib/routing';
 import type { Workspace } from '@/lib/types';
 import { pool } from './pool';
 import { sync } from './sync';
+// The transaction queue keeps its writes in the local database: it is there before it is read back (#508).
+import './transactions';
 import { makeStore, useStore } from './store';
 
 /** The open workspace: which one, its name and the member's role in it. */

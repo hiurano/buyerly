@@ -412,146 +412,148 @@ M_INVITE_LINK_DISABLE = _routed("workspaceInviteLinkDisable", members, members.d
 
 @strawberry.type
 class Mutation:
+    # Every payload may be null: a refused write is null with its error, and the other writes sent in
+    # the same document (the client's transactions, #508) keep their own answers.
     # Ad accounts
 
     @strawberry.mutation(description="Renames an ad account or changes its note.")
-    async def account_update(self, info: Info, account_id: str, input: JSON) -> AccountPayload:
+    async def account_update(self, info: Info, account_id: str, input: JSON) -> Optional[AccountPayload]:
         return await _mutate(info, AccountPayload, M_ACCOUNT_UPDATE, account_id=account_id, payload=input)
 
     @strawberry.mutation(description="Sets or clears an ad account's lead.")
-    async def account_lead_update(self, info: Info, account_id: str, input: JSON) -> AccountPayload:
+    async def account_lead_update(self, info: Info, account_id: str, input: JSON) -> Optional[AccountPayload]:
         return await _mutate(info, AccountPayload, M_ACCOUNT_LEAD, account_id=account_id, payload=input)
 
     @strawberry.mutation(description="Removes an ad account from the workspace.")
-    async def account_delete(self, info: Info, account_id: str) -> AccountPayload:
+    async def account_delete(self, info: Info, account_id: str) -> Optional[AccountPayload]:
         return await _mutate(info, AccountPayload, M_ACCOUNT_DELETE, account_id=account_id)
 
     @strawberry.mutation(description="Sets the member's notifications for one ad account.")
     async def account_notification_setting_update(
         self, info: Info, account_id: str, input: JSON
-    ) -> AccountNotificationSettingPayload:
+    ) -> Optional[AccountNotificationSettingPayload]:
         return await _mutate(
             info, AccountNotificationSettingPayload, M_ACCOUNT_NOTIFICATIONS, account_id=account_id, payload=input
         )
 
     @strawberry.mutation(description="Attaches a rule to an ad account.")
-    async def account_rule_attach(self, info: Info, account_id: str, input: JSON) -> AccountPayload:
+    async def account_rule_attach(self, info: Info, account_id: str, input: JSON) -> Optional[AccountPayload]:
         return await _mutate(info, AccountPayload, M_ACCOUNT_RULE_ATTACH, account_id=account_id, payload=input)
 
     @strawberry.mutation(description="Detaches a rule from an ad account.")
-    async def account_rule_detach(self, info: Info, account_id: str, rule_id: int) -> AccountPayload:
+    async def account_rule_detach(self, info: Info, account_id: str, rule_id: int) -> Optional[AccountPayload]:
         return await _mutate(info, AccountPayload, M_ACCOUNT_RULE_DETACH, account_id=account_id, preset_id=rule_id)
 
     @strawberry.mutation(description="Narrows an attached rule to some campaigns, ad sets or ads.")
     async def account_rule_scope_update(
         self, info: Info, account_id: str, rule_id: int, input: JSON
-    ) -> AccountPayload:
+    ) -> Optional[AccountPayload]:
         return await _mutate(
             info, AccountPayload, M_ACCOUNT_RULE_SCOPE, account_id=account_id, preset_id=rule_id, payload=input
         )
 
     @strawberry.mutation(description="Turns an ad account's rules on or off.")
-    async def account_rules_toggle(self, info: Info, account_id: str) -> AccountPayload:
+    async def account_rules_toggle(self, info: Info, account_id: str) -> Optional[AccountPayload]:
         return await _mutate(info, AccountPayload, M_ACCOUNT_RULES_TOGGLE, account_id=account_id)
 
     # Meta Ads delivery
 
     @strawberry.mutation(description="Turns a stopped ad set back on in Meta.")
-    async def ad_set_reactivate(self, info: Info, ad_set_id: str) -> DeliveryPayload:
+    async def ad_set_reactivate(self, info: Info, ad_set_id: str) -> Optional[DeliveryPayload]:
         return await _mutate(info, DeliveryPayload, M_AD_SET_REACTIVATE, adset_id=ad_set_id)
 
     @strawberry.mutation(description="Dismisses a stopped ad set from the list.")
-    async def ad_set_dismiss(self, info: Info, ad_set_id: str) -> DeliveryPayload:
+    async def ad_set_dismiss(self, info: Info, ad_set_id: str) -> Optional[DeliveryPayload]:
         return await _mutate(info, DeliveryPayload, M_AD_SET_DISMISS, adset_id=ad_set_id)
 
     @strawberry.mutation(description="Turns a campaign, ad set or ad on or off in Meta.")
-    async def entity_delivery_update(self, info: Info, level: str, entity_id: str, input: JSON) -> DeliveryPayload:
+    async def entity_delivery_update(self, info: Info, level: str, entity_id: str, input: JSON) -> Optional[DeliveryPayload]:
         return await _mutate(info, DeliveryPayload, M_ENTITY_DELIVERY, level=level, entity_id=entity_id, payload=input)
 
     @strawberry.mutation(description="Changes a campaign's or ad set's budget in Meta.")
-    async def entity_budget_update(self, info: Info, level: str, entity_id: str, input: JSON) -> DeliveryPayload:
+    async def entity_budget_update(self, info: Info, level: str, entity_id: str, input: JSON) -> Optional[DeliveryPayload]:
         return await _mutate(info, DeliveryPayload, M_ENTITY_BUDGET, level=level, entity_id=entity_id, payload=input)
 
     # Audit log and Recently deleted
 
     @strawberry.mutation(description="Undoes what an audit event did.")
-    async def audit_event_undo(self, info: Info, id: int) -> AuditEventPayload:
+    async def audit_event_undo(self, info: Info, id: int) -> Optional[AuditEventPayload]:
         return await _mutate(info, AuditEventPayload, M_AUDIT_UNDO, event_id=id)
 
     @strawberry.mutation(description="Restores a rule or label from Recently deleted.")
-    async def deleted_item_restore(self, info: Info, id: int) -> DeletedItemPayload:
+    async def deleted_item_restore(self, info: Info, id: int) -> Optional[DeletedItemPayload]:
         return await _mutate(info, DeletedItemPayload, M_DELETED_RESTORE, item_id=id)
 
     # Favorites and views
 
     @strawberry.mutation(description="Stars a page or record; starring it again returns the favorite it already is.")
-    async def favorite_create(self, info: Info, input: JSON) -> FavoritePayload:
+    async def favorite_create(self, info: Info, input: JSON) -> Optional[FavoritePayload]:
         return await _mutate(info, FavoritePayload, M_FAVORITE_CREATE, payload=input)
 
     @strawberry.mutation(description="Unstars a favorite; succeeds when it was already gone.")
-    async def favorite_delete(self, info: Info, id: int) -> SuccessPayload:
+    async def favorite_delete(self, info: Info, id: int) -> Optional[SuccessPayload]:
         return await _mutate(info, SuccessPayload, M_FAVORITE_DELETE, favorite_id=id)
 
     @strawberry.mutation(description="Saves the member's options for a view.")
-    async def view_setting_update(self, info: Info, key: str, input: JSON) -> ViewSettingPayload:
+    async def view_setting_update(self, info: Info, key: str, input: JSON) -> Optional[ViewSettingPayload]:
         return await _mutate(info, ViewSettingPayload, M_VIEW_SETTING_UPDATE, view_key=key, payload=input)
 
     @strawberry.mutation(description="Resets the member's options for a view to the workspace's default.")
-    async def view_setting_reset(self, info: Info, key: str) -> SuccessPayload:
+    async def view_setting_reset(self, info: Info, key: str) -> Optional[SuccessPayload]:
         return await _mutate(info, SuccessPayload, M_VIEW_SETTING_RESET, view_key=key)
 
     @strawberry.mutation(description="Saves a view's options as the workspace's default.")
-    async def workspace_view_default_update(self, info: Info, key: str, input: JSON) -> ViewSettingPayload:
+    async def workspace_view_default_update(self, info: Info, key: str, input: JSON) -> Optional[ViewSettingPayload]:
         return await _mutate(info, ViewSettingPayload, M_VIEW_DEFAULT_UPDATE, view_key=key, payload=input)
 
     # Inbox
 
     @strawberry.mutation(description="Saves the member's Inbox display options.")
-    async def inbox_display_update(self, info: Info, input: JSON) -> InboxDisplayPayload:
+    async def inbox_display_update(self, info: Info, input: JSON) -> Optional[InboxDisplayPayload]:
         return await _mutate(info, InboxDisplayPayload, M_INBOX_DISPLAY, payload=input)
 
     @strawberry.mutation(description="Marks an Inbox notification read or unread.")
-    async def inbox_notification_read(self, info: Info, id: int, input: JSON) -> InboxNotificationPayload:
+    async def inbox_notification_read(self, info: Info, id: int, input: JSON) -> Optional[InboxNotificationPayload]:
         return await _mutate(info, InboxNotificationPayload, M_INBOX_READ, event_id=id, payload=input)
 
     @strawberry.mutation(description="Deletes an Inbox notification for the member.")
-    async def inbox_notification_delete(self, info: Info, id: int) -> InboxNotificationPayload:
+    async def inbox_notification_delete(self, info: Info, id: int) -> Optional[InboxNotificationPayload]:
         return await _mutate(info, InboxNotificationPayload, M_INBOX_DELETE, event_id=id)
 
     @strawberry.mutation(description="Snoozes an Inbox notification, or wakes it.")
-    async def inbox_notification_snooze(self, info: Info, id: int, input: JSON) -> InboxNotificationPayload:
+    async def inbox_notification_snooze(self, info: Info, id: int, input: JSON) -> Optional[InboxNotificationPayload]:
         return await _mutate(info, InboxNotificationPayload, M_INBOX_SNOOZE, event_id=id, payload=input)
 
     @strawberry.mutation(description="Deletes every Inbox notification of the member.")
-    async def inbox_delete_all(self, info: Info) -> InboxNotificationPayload:
+    async def inbox_delete_all(self, info: Info) -> Optional[InboxNotificationPayload]:
         return await _mutate(info, InboxNotificationPayload, M_INBOX_DELETE_ALL)
 
     @strawberry.mutation(description="Deletes the member's read Inbox notifications.")
-    async def inbox_delete_all_read(self, info: Info) -> InboxNotificationPayload:
+    async def inbox_delete_all_read(self, info: Info) -> Optional[InboxNotificationPayload]:
         return await _mutate(info, InboxNotificationPayload, M_INBOX_DELETE_ALL_READ)
 
     @strawberry.mutation(description="Sets where the member's notifications go besides the Inbox.")
-    async def notification_channels_update(self, info: Info, input: JSON) -> NotificationChannelsPayload:
+    async def notification_channels_update(self, info: Info, input: JSON) -> Optional[NotificationChannelsPayload]:
         return await _mutate(info, NotificationChannelsPayload, M_NOTIFICATION_CHANNELS, payload=input)
 
     # Meta connections
 
     @strawberry.mutation(description="Creates a one-time link for someone else to connect their Facebook profile.")
-    async def meta_invite_create(self, info: Info, input: JSON) -> MetaInvitePayload:
+    async def meta_invite_create(self, info: Info, input: JSON) -> Optional[MetaInvitePayload]:
         return await _mutate(info, MetaInvitePayload, M_META_INVITE, payload=input)
 
     @strawberry.mutation(description="Reads a Meta connection's ad accounts from Meta again.")
-    async def meta_connection_discover(self, info: Info, connection_id: int) -> MetaConnectionPayload:
+    async def meta_connection_discover(self, info: Info, connection_id: int) -> Optional[MetaConnectionPayload]:
         return await _mutate(info, MetaConnectionPayload, M_META_DISCOVER, connection_id=connection_id)
 
     @strawberry.mutation(description="Adds ad accounts of a Meta connection to the workspace.")
-    async def meta_connection_import(self, info: Info, connection_id: int, input: JSON) -> MetaConnectionPayload:
+    async def meta_connection_import(self, info: Info, connection_id: int, input: JSON) -> Optional[MetaConnectionPayload]:
         return await _mutate(info, MetaConnectionPayload, M_META_IMPORT, connection_id=connection_id, payload=input)
 
     @strawberry.mutation(description="Starts Facebook login; returns the address to send the browser to.")
     async def meta_oauth_start(
         self, info: Info, return_path: Optional[str] = None, reconnect_connection_id: Optional[int] = None
-    ) -> MetaOAuthPayload:
+    ) -> Optional[MetaOAuthPayload]:
         return await _mutate(
             info, MetaOAuthPayload, M_META_OAUTH, return_path=return_path,
             reconnect_connection_id=reconnect_connection_id,
@@ -560,83 +562,83 @@ class Mutation:
     # Onboarding
 
     @strawberry.mutation(description="Saves the new user's name.")
-    async def onboarding_personal_details_update(self, info: Info, input: JSON) -> OnboardingPayload:
+    async def onboarding_personal_details_update(self, info: Info, input: JSON) -> Optional[OnboardingPayload]:
         return await _mutate(info, OnboardingPayload, M_ONBOARDING_DETAILS, req=input)
 
     @strawberry.mutation(description="Creates the new user's first workspace.")
-    async def onboarding_workspace_create(self, info: Info, input: JSON) -> OnboardingPayload:
+    async def onboarding_workspace_create(self, info: Info, input: JSON) -> Optional[OnboardingPayload]:
         return await _mutate(info, OnboardingPayload, M_ONBOARDING_WORKSPACE, req=input)
 
     @strawberry.mutation(description="Invites teammates during onboarding.")
-    async def onboarding_invites_send(self, info: Info, input: JSON) -> OnboardingPayload:
+    async def onboarding_invites_send(self, info: Info, input: JSON) -> Optional[OnboardingPayload]:
         return await _mutate(info, OnboardingPayload, M_ONBOARDING_INVITES, req=input)
 
     @strawberry.mutation(description="Skips the rest of onboarding.")
-    async def onboarding_skip(self, info: Info) -> OnboardingPayload:
+    async def onboarding_skip(self, info: Info) -> Optional[OnboardingPayload]:
         return await _mutate(info, OnboardingPayload, M_ONBOARDING_SKIP)
 
     # Rules and labels
 
     @strawberry.mutation(description="Creates a rule.")
-    async def rule_create(self, info: Info, input: JSON) -> RulePayload:
+    async def rule_create(self, info: Info, input: JSON) -> Optional[RulePayload]:
         return await _mutate(info, RulePayload, M_RULE_CREATE, payload=input)
 
     @strawberry.mutation(description="Changes a rule.")
-    async def rule_update(self, info: Info, id: int, input: JSON) -> RulePayload:
+    async def rule_update(self, info: Info, id: int, input: JSON) -> Optional[RulePayload]:
         return await _mutate(info, RulePayload, M_RULE_UPDATE, preset_id=id, payload=input)
 
     @strawberry.mutation(description="Moves a rule to Recently deleted.")
-    async def rule_delete(self, info: Info, id: int) -> RulePayload:
+    async def rule_delete(self, info: Info, id: int) -> Optional[RulePayload]:
         return await _mutate(info, RulePayload, M_RULE_DELETE, preset_id=id)
 
     @strawberry.mutation(description="Sets a rule's labels.")
-    async def rule_labels_set(self, info: Info, id: int, input: JSON) -> RulePayload:
+    async def rule_labels_set(self, info: Info, id: int, input: JSON) -> Optional[RulePayload]:
         return await _mutate(info, RulePayload, M_RULE_LABELS_SET, preset_id=id, payload=input)
 
     @strawberry.mutation(description="Adds or removes labels on several rules at once.")
-    async def rules_labels_change(self, info: Info, input: JSON) -> RulesPayload:
+    async def rules_labels_change(self, info: Info, input: JSON) -> Optional[RulesPayload]:
         return await _mutate(info, RulesPayload, M_RULES_LABELS_CHANGE, payload=input)
 
     @strawberry.mutation(description="Creates a rule label.")
-    async def rule_label_create(self, info: Info, input: JSON) -> RuleLabelPayload:
+    async def rule_label_create(self, info: Info, input: JSON) -> Optional[RuleLabelPayload]:
         return await _mutate(info, RuleLabelPayload, M_RULE_LABEL_CREATE, payload=input)
 
     @strawberry.mutation(description="Changes a rule label.")
-    async def rule_label_update(self, info: Info, id: int, input: JSON) -> RuleLabelPayload:
+    async def rule_label_update(self, info: Info, id: int, input: JSON) -> Optional[RuleLabelPayload]:
         return await _mutate(info, RuleLabelPayload, M_RULE_LABEL_UPDATE, label_id=id, payload=input)
 
     @strawberry.mutation(description="Moves a rule label to Recently deleted.")
-    async def rule_label_delete(self, info: Info, id: int) -> RuleLabelPayload:
+    async def rule_label_delete(self, info: Info, id: int) -> Optional[RuleLabelPayload]:
         return await _mutate(info, RuleLabelPayload, M_RULE_LABEL_DELETE, label_id=id)
 
     # Teams
 
     @strawberry.mutation(description="Creates a team.")
-    async def team_create(self, info: Info, workspace_id: int, input: JSON) -> TeamPayload:
+    async def team_create(self, info: Info, workspace_id: int, input: JSON) -> Optional[TeamPayload]:
         return await _mutate(info, TeamPayload, M_TEAM_CREATE, workspace_id=workspace_id, req=input)
 
     @strawberry.mutation(description="Changes a team.")
-    async def team_update(self, info: Info, workspace_id: int, id: int, input: JSON) -> TeamPayload:
+    async def team_update(self, info: Info, workspace_id: int, id: int, input: JSON) -> Optional[TeamPayload]:
         return await _mutate(info, TeamPayload, M_TEAM_UPDATE, workspace_id=workspace_id, team_id=id, req=input)
 
     @strawberry.mutation(description="Retires a team.")
-    async def team_retire(self, info: Info, workspace_id: int, id: int) -> TeamPayload:
+    async def team_retire(self, info: Info, workspace_id: int, id: int) -> Optional[TeamPayload]:
         return await _mutate(info, TeamPayload, M_TEAM_RETIRE, workspace_id=workspace_id, team_id=id)
 
     @strawberry.mutation(description="Brings a retired team back.")
-    async def team_restore(self, info: Info, workspace_id: int, id: int) -> TeamPayload:
+    async def team_restore(self, info: Info, workspace_id: int, id: int) -> Optional[TeamPayload]:
         return await _mutate(info, TeamPayload, M_TEAM_RESTORE, workspace_id=workspace_id, team_id=id)
 
     @strawberry.mutation(description="Deletes a team.")
-    async def team_delete(self, info: Info, workspace_id: int, id: int) -> TeamPayload:
+    async def team_delete(self, info: Info, workspace_id: int, id: int) -> Optional[TeamPayload]:
         return await _mutate(info, TeamPayload, M_TEAM_DELETE, workspace_id=workspace_id, team_id=id)
 
     @strawberry.mutation(description="Adds workspace members to a team.")
-    async def team_members_add(self, info: Info, workspace_id: int, team_id: int, input: JSON) -> TeamPayload:
+    async def team_members_add(self, info: Info, workspace_id: int, team_id: int, input: JSON) -> Optional[TeamPayload]:
         return await _mutate(info, TeamPayload, M_TEAM_MEMBERS_ADD, workspace_id=workspace_id, team_id=team_id, req=input)
 
     @strawberry.mutation(description="Takes a member off a team.")
-    async def team_member_remove(self, info: Info, workspace_id: int, team_id: int, user_id: int) -> TeamPayload:
+    async def team_member_remove(self, info: Info, workspace_id: int, team_id: int, user_id: int) -> Optional[TeamPayload]:
         return await _mutate(
             info, TeamPayload, M_TEAM_MEMBER_REMOVE, workspace_id=workspace_id, team_id=team_id, member_user_id=user_id
         )
@@ -644,24 +646,24 @@ class Mutation:
     @strawberry.mutation(description="Makes a team member a team owner, or not.")
     async def team_member_update(
         self, info: Info, workspace_id: int, team_id: int, user_id: int, input: JSON
-    ) -> TeamPayload:
+    ) -> Optional[TeamPayload]:
         return await _mutate(
             info, TeamPayload, M_TEAM_MEMBER_UPDATE, workspace_id=workspace_id, team_id=team_id,
             member_user_id=user_id, req=input,
         )
 
     @strawberry.mutation(description="Puts ad accounts on a team.")
-    async def team_accounts_add(self, info: Info, workspace_id: int, team_id: int, input: JSON) -> TeamPayload:
+    async def team_accounts_add(self, info: Info, workspace_id: int, team_id: int, input: JSON) -> Optional[TeamPayload]:
         return await _mutate(info, TeamPayload, M_TEAM_ACCOUNTS_ADD, workspace_id=workspace_id, team_id=team_id, req=input)
 
     @strawberry.mutation(description="Takes an ad account off a team.")
-    async def team_account_remove(self, info: Info, workspace_id: int, team_id: int, account_id: int) -> TeamPayload:
+    async def team_account_remove(self, info: Info, workspace_id: int, team_id: int, account_id: int) -> Optional[TeamPayload]:
         return await _mutate(
             info, TeamPayload, M_TEAM_ACCOUNT_REMOVE, workspace_id=workspace_id, team_id=team_id, account_pk=account_id
         )
 
     @strawberry.mutation(description="Creates a team document.")
-    async def team_document_create(self, info: Info, workspace_id: int, team_id: int, input: JSON) -> TeamDocumentPayload:
+    async def team_document_create(self, info: Info, workspace_id: int, team_id: int, input: JSON) -> Optional[TeamDocumentPayload]:
         return await _mutate(
             info, TeamDocumentPayload, M_TEAM_DOCUMENT_CREATE, workspace_id=workspace_id, team_id=team_id, req=input
         )
@@ -669,14 +671,14 @@ class Mutation:
     @strawberry.mutation(description="Changes a team document.")
     async def team_document_update(
         self, info: Info, workspace_id: int, team_id: int, id: int, input: JSON
-    ) -> TeamDocumentPayload:
+    ) -> Optional[TeamDocumentPayload]:
         return await _mutate(
             info, TeamDocumentPayload, M_TEAM_DOCUMENT_UPDATE, workspace_id=workspace_id, team_id=team_id,
             document_id=id, req=input,
         )
 
     @strawberry.mutation(description="Deletes a team document.")
-    async def team_document_delete(self, info: Info, workspace_id: int, team_id: int, id: int) -> TeamDocumentPayload:
+    async def team_document_delete(self, info: Info, workspace_id: int, team_id: int, id: int) -> Optional[TeamDocumentPayload]:
         return await _mutate(
             info, TeamDocumentPayload, M_TEAM_DOCUMENT_DELETE, workspace_id=workspace_id, team_id=team_id, document_id=id
         )
@@ -684,82 +686,82 @@ class Mutation:
     # Telegram and the user
 
     @strawberry.mutation(description="Creates the link that connects the member's Telegram.")
-    async def telegram_link_create(self, info: Info) -> TelegramPayload:
+    async def telegram_link_create(self, info: Info) -> Optional[TelegramPayload]:
         return await _mutate(info, TelegramPayload, M_TELEGRAM_LINK)
 
     @strawberry.mutation(description="Disconnects the member's Telegram.")
-    async def telegram_disconnect(self, info: Info) -> TelegramPayload:
+    async def telegram_disconnect(self, info: Info) -> Optional[TelegramPayload]:
         return await _mutate(info, TelegramPayload, M_TELEGRAM_DISCONNECT)
 
     @strawberry.mutation(description="Changes the user's name or username.")
-    async def user_update(self, info: Info, input: JSON) -> UserPayload:
+    async def user_update(self, info: Info, input: JSON) -> Optional[UserPayload]:
         return await _mutate(info, UserPayload, M_USER_UPDATE, req=input)
 
     # Workspaces, members and invites
 
     @strawberry.mutation(description="Creates a workspace.")
-    async def workspace_create(self, info: Info, input: JSON) -> WorkspacePayload:
+    async def workspace_create(self, info: Info, input: JSON) -> Optional[WorkspacePayload]:
         return await _mutate(info, WorkspacePayload, M_WORKSPACE_CREATE, req=input)
 
     @strawberry.mutation(description="Changes a workspace's name, address or logo.")
-    async def workspace_update(self, info: Info, id: int, input: JSON) -> WorkspacePayload:
+    async def workspace_update(self, info: Info, id: int, input: JSON) -> Optional[WorkspacePayload]:
         return await _mutate(info, WorkspacePayload, M_WORKSPACE_UPDATE, workspace_id=id, req=input)
 
     @strawberry.mutation(description="Deletes a workspace.")
-    async def workspace_delete(self, info: Info, id: int) -> WorkspacePayload:
+    async def workspace_delete(self, info: Info, id: int) -> Optional[WorkspacePayload]:
         return await _mutate(info, WorkspacePayload, M_WORKSPACE_DELETE, workspace_id=id)
 
     @strawberry.mutation(description="Makes a workspace the user's active one.")
-    async def workspace_switch(self, info: Info, input: JSON) -> WorkspacePayload:
+    async def workspace_switch(self, info: Info, input: JSON) -> Optional[WorkspacePayload]:
         return await _mutate(info, WorkspacePayload, M_WORKSPACE_SWITCH, req=input)
 
     @strawberry.mutation(description="Leaves a workspace.")
-    async def workspace_leave(self, info: Info, id: int) -> WorkspacePayload:
+    async def workspace_leave(self, info: Info, id: int) -> Optional[WorkspacePayload]:
         return await _mutate(info, WorkspacePayload, M_WORKSPACE_LEAVE, workspace_id=id)
 
     @strawberry.mutation(description="Hands a workspace to another member.")
-    async def workspace_ownership_transfer(self, info: Info, id: int, input: JSON) -> WorkspacePayload:
+    async def workspace_ownership_transfer(self, info: Info, id: int, input: JSON) -> Optional[WorkspacePayload]:
         return await _mutate(info, WorkspacePayload, M_WORKSPACE_TRANSFER, workspace_id=id, req=input)
 
     @strawberry.mutation(description="Changes a member's role.")
     async def workspace_member_update(
         self, info: Info, workspace_id: int, user_id: int, input: JSON
-    ) -> WorkspaceMemberPayload:
+    ) -> Optional[WorkspaceMemberPayload]:
         return await _mutate(
             info, WorkspaceMemberPayload, M_MEMBER_UPDATE, workspace_id=workspace_id, member_user_id=user_id, req=input
         )
 
     @strawberry.mutation(description="Removes a member from the workspace.")
-    async def workspace_member_remove(self, info: Info, workspace_id: int, user_id: int) -> WorkspaceMemberPayload:
+    async def workspace_member_remove(self, info: Info, workspace_id: int, user_id: int) -> Optional[WorkspaceMemberPayload]:
         return await _mutate(
             info, WorkspaceMemberPayload, M_MEMBER_REMOVE, workspace_id=workspace_id, member_user_id=user_id
         )
 
     @strawberry.mutation(description="Invites people to the workspace by email.")
-    async def workspace_invite_create(self, info: Info, workspace_id: int, input: JSON) -> WorkspaceInvitePayload:
+    async def workspace_invite_create(self, info: Info, workspace_id: int, input: JSON) -> Optional[WorkspaceInvitePayload]:
         return await _mutate(info, WorkspaceInvitePayload, M_INVITE_CREATE, workspace_id=workspace_id, req=input)
 
     @strawberry.mutation(description="Revokes a pending invite.")
-    async def workspace_invite_delete(self, info: Info, workspace_id: int, id: int) -> WorkspaceInvitePayload:
+    async def workspace_invite_delete(self, info: Info, workspace_id: int, id: int) -> Optional[WorkspaceInvitePayload]:
         return await _mutate(info, WorkspaceInvitePayload, M_INVITE_DELETE, workspace_id=workspace_id, invite_id=id)
 
     @strawberry.mutation(description="Sends a pending invite again.")
-    async def workspace_invite_resend(self, info: Info, workspace_id: int, id: int) -> WorkspaceInvitePayload:
+    async def workspace_invite_resend(self, info: Info, workspace_id: int, id: int) -> Optional[WorkspaceInvitePayload]:
         return await _mutate(info, WorkspaceInvitePayload, M_INVITE_RESEND, workspace_id=workspace_id, invite_id=id)
 
     @strawberry.mutation(description="Joins a workspace through an invite.")
-    async def workspace_invite_accept(self, info: Info, token: str) -> WorkspaceInvitePayload:
+    async def workspace_invite_accept(self, info: Info, token: str) -> Optional[WorkspaceInvitePayload]:
         return await _mutate(info, WorkspaceInvitePayload, M_INVITE_ACCEPT, token=token)
 
     @strawberry.mutation(description="Turns the workspace's invite link on.")
-    async def workspace_invite_link_enable(self, info: Info, workspace_id: int) -> WorkspaceInviteLinkPayload:
+    async def workspace_invite_link_enable(self, info: Info, workspace_id: int) -> Optional[WorkspaceInviteLinkPayload]:
         return await _mutate(info, WorkspaceInviteLinkPayload, M_INVITE_LINK_ENABLE, workspace_id=workspace_id)
 
     @strawberry.mutation(description="Replaces the workspace's invite link; the old one stops working.")
-    async def workspace_invite_link_reset(self, info: Info, workspace_id: int) -> WorkspaceInviteLinkPayload:
+    async def workspace_invite_link_reset(self, info: Info, workspace_id: int) -> Optional[WorkspaceInviteLinkPayload]:
         return await _mutate(info, WorkspaceInviteLinkPayload, M_INVITE_LINK_RESET, workspace_id=workspace_id)
 
     @strawberry.mutation(description="Turns the workspace's invite link off.")
-    async def workspace_invite_link_disable(self, info: Info, workspace_id: int) -> WorkspaceInviteLinkPayload:
+    async def workspace_invite_link_disable(self, info: Info, workspace_id: int) -> Optional[WorkspaceInviteLinkPayload]:
         return await _mutate(info, WorkspaceInviteLinkPayload, M_INVITE_LINK_DISABLE, workspace_id=workspace_id)
 

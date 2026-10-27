@@ -569,6 +569,13 @@ export function fetchEntityRuleStates(
   );
 }
 
+/** The writes the rules page sends as transactions (#508), and the functions below. */
+export const RULE_UPDATE = 'mutation RuleUpdate($id: Int!, $input: JSON!) { ruleUpdate(id: $id, input: $input) { success lastSyncId rule } }';
+export const RULE_LABEL_CREATE = 'mutation RuleLabelCreate($input: JSON!) { ruleLabelCreate(input: $input) { success lastSyncId ruleLabel } }';
+export const RULE_LABEL_UPDATE = 'mutation RuleLabelUpdate($id: Int!, $input: JSON!) { ruleLabelUpdate(id: $id, input: $input) { success lastSyncId ruleLabel } }';
+export const RULE_LABELS_SET = 'mutation RuleLabelsSet($id: Int!, $input: JSON!) { ruleLabelsSet(id: $id, input: $input) { success lastSyncId rule } }';
+export const RULES_LABELS_CHANGE = 'mutation RulesLabelsChange($input: JSON!) { rulesLabelsChange(input: $input) { success lastSyncId rules } }';
+
 export function createRulePreset(
   payload: RulePresetWriteRequest,
   headers?: HeadersInit,
@@ -585,7 +592,7 @@ export function updateRulePreset(
   payload: RulePresetWriteRequest,
 ): Promise<RulePresetPayload> {
   return graphql<{ rule: RulePresetPayload }>(
-    'mutation RuleUpdate($id: Int!, $input: JSON!) { ruleUpdate(id: $id, input: $input) { success lastSyncId rule } }',
+    RULE_UPDATE,
     { id: presetId, input: payload },
   ).then((result) => result.rule);
 }
@@ -607,7 +614,7 @@ export function createRuleLabel(
   payload: { name: string; color?: string; description?: string },
 ): Promise<RuleLabelPayload> {
   return graphql<{ ruleLabel: RuleLabelPayload }>(
-    'mutation RuleLabelCreate($input: JSON!) { ruleLabelCreate(input: $input) { success lastSyncId ruleLabel } }',
+    RULE_LABEL_CREATE,
     { input: payload },
   ).then((result) => result.ruleLabel);
 }
@@ -617,7 +624,7 @@ export function updateRuleLabel(
   payload: RuleLabelWriteRequest,
 ): Promise<RuleLabelPayload> {
   return graphql<{ ruleLabel: RuleLabelPayload }>(
-    'mutation RuleLabelUpdate($id: Int!, $input: JSON!) { ruleLabelUpdate(id: $id, input: $input) { success lastSyncId ruleLabel } }',
+    RULE_LABEL_UPDATE,
     { id: labelId, input: payload },
   ).then((result) => result.ruleLabel);
 }
@@ -632,7 +639,7 @@ export function deleteRuleLabel(labelId: number): Promise<DeleteResponse> {
 /** A rule's whole set of labels, in one write. */
 export function setPresetLabels(presetId: number, labelIds: number[]): Promise<RulePresetPayload> {
   return graphql<{ rule: RulePresetPayload }>(
-    'mutation RuleLabelsSet($id: Int!, $input: JSON!) { ruleLabelsSet(id: $id, input: $input) { success lastSyncId rule } }',
+    RULE_LABELS_SET,
     { id: presetId, input: { label_ids: labelIds } },
   ).then((result) => result.rule);
 }
@@ -643,7 +650,7 @@ export function changePresetsLabels(
   change: { add?: number[]; remove?: number[] },
 ): Promise<{ updated_count: number }> {
   return graphql<{ rules: { updated_count: number } }>(
-    'mutation RulesLabelsChange($input: JSON!) { rulesLabelsChange(input: $input) { success lastSyncId rules } }',
+    RULES_LABELS_CHANGE,
     {
       input: {
         preset_ids: presetIds,
