@@ -45,6 +45,9 @@ try {
       if (url.pathname === '/api/me') return route.fulfill({ json: user });
       if (request.method() !== 'GET') {
         writes.push({ path: url.pathname, workspace });
+        // The first write and the Undo are held; a write sent again (#508: beta's toggle was never
+        // confirmed to beta, so going back to beta sends it again) is answered at once.
+        if (delayedWrite && !url.pathname.endsWith('/api/test-undo')) return route.fulfill({ json: preset(2, 'beta rule') });
         delayedWrite = route;
         notifyWrite();
         return;
@@ -138,7 +141,9 @@ try {
     }), 0);
     assert.equal(await page.getByText('alpha rule', { exact: true }).count(), 0);
     await page.evaluate(() => window.testStore.getState().deleteRule('1').catch(() => {}));
-    assert.equal(writes.length, 2);
+    // Beta's toggle (sent again once beta was open again, #508) and the Undo; no deletion in alpha.
+    assert.deepEqual(writes.filter((write) => write.path !== '/api/presets/2').map((write) => write.path), ['/api/test-undo']);
+    assert.ok(writes.filter((write) => write.path === '/api/presets/2').every((write) => write.workspace === 'beta'));
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `overflow at ${width}`);
     await page.screenshot({ path: `${output}/rules-error-${width}.png`, fullPage: true });
     assert.deepEqual(errors, []);

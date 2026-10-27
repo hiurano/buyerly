@@ -2,6 +2,7 @@ import { reaction, runInAction } from 'mobx';
 import { ApiError, send } from '@/lib/api';
 import { toast } from '@/ui/toast';
 import { localDatabase } from './localDatabase';
+import { OUT_OF_SCOPE } from './scopeStore';
 import { pool, type PoolChange } from './pool';
 import { makeStore, useStore } from './store';
 import { sync } from './sync';
@@ -151,6 +152,8 @@ export class TransactionQueue {
     this.#attempt = 0;
     if (this.#timer) clearTimeout(this.#timer);
     this.#timer = null;
+    // Whoever waits on one hears it is gone with the workspace, not that the server refused it.
+    for (const { reject } of this.#waiting.values()) reject(new Error(OUT_OF_SCOPE));
     this.#waiting.clear();
     this.pending = [];
     this.offline = false;

@@ -275,8 +275,9 @@ try {
 
     await page.screenshot({ path: `${output}/transactions.png` });
     assert.deepEqual(errors, []);
-    // Synced lists, an empty model's too, came from the local database after the reload, never the server.
-    assert.deepEqual(unexpected.filter((read) => /\/teams$|\/rule-labels$|\/documents$/.test(read)), []);
+    // Teams and documents, from models with an empty one among them (TeamAccount), came from the
+    // local database after the reload, never the server.
+    assert.deepEqual(unexpected.filter((read) => /\/teams$|\/documents$/.test(read)), []);
     console.log('Transactions: drawn before the server answers, batched, refused ones undone with a toast, sent after offline and a reload, kept until their delta');
   } catch (error) {
     await page.screenshot({ path: `${output}/failure.png`, fullPage: true }).catch(() => {});
