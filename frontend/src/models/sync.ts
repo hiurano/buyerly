@@ -1,88 +1,64 @@
-import { apiRequest, ApiError } from '@/lib/api';
 import { requestAccount } from '@/lib/accounts';
 import { runInAction } from 'mobx';
-import { localDatabase, type LocalData, type StoredChange } from './localDatabase';
+import { localDatabase, type LocalData } from './localDatabase';
 import { pool, type PoolSnapshot } from './pool';
 import { makeStore, useStore } from './store';
+import type { HubMessage, HubRequest, HubResponse, SharedTransaction, SyncAction, SyncRow, SyncStatus } from './syncProtocol';
+import { HubLink, tabId } from './syncTransport';
+
+export type { SyncAction, SyncRow, SyncStatus } from './syncProtocol';
 
 /**
  * The client of the sync engine, as Linear's (#507): the workspace's synced
  * models are read once with /api/sync/bootstrap, then kept current by the
- * changes /api/sync/ws pushes after the last sync id held. A dropped socket
- * opens again from that id and the server sends what was missed first
- * (catch-up), so nothing is read twice and nothing is lost.
+ * changes /api/sync/ws pushes after the last sync id held.
+ *
+ * The connection itself is the workspace's sync hub (#498, syncHub.ts), which
+ * every open tab of the workspace shares through a SharedWorker: one socket,
+ * one stream of changes and one writer of the local database (#496) for all of
+ * them. This tab joins it, is sent every model held and then each batch of
+ * changes applied, and keeps its own copy for the pages to read at once.
+ * Without SharedWorker the hub runs in the tab, as the connection did before.
  *
  * Rows are held as the server sends them, one map per model. The pages'
  * lists are derived from them (syncedLists.ts) into the pool, which is told
  * after every change applied; the pool redraws only what changed.
  *
- * The rows and the sync id are kept in IndexedDB between visits (#496): a
- * reload opens on them with no bootstrap, and the socket asks only for what
- * changed since. #498 shares one socket between tabs, #508 sends writes as
- * transactions.
+ * The tab's writes (#508) are sent through the hub too, and the other tabs'
+ * are drawn here until the sync engine holds them (transactions.ts).
  */
-
-/** A row of a synced model, as bootstrap and the change log give it. */
-export type SyncRow = Record<string, unknown> & { id: number };
-
-/** One change from the log, as /api/sync/ws and /api/sync/delta send it. */
-export interface SyncAction {
-  sync_id: number;
-  model: string;
-  model_id: string;
-  action: 'insert' | 'update' | 'archive' | 'delete';
-  data: Record<string, unknown> | null;
-}
-
-interface Bootstrap {
-  last_sync_id: number;
-  sync_groups: string[];
-  models: Record<string, SyncRow[]>;
-}
-
-type SyncMessage =
-  | { type: 'delta'; actions: SyncAction[]; last_sync_id: number }
-  | { type: 'caught_up'; last_sync_id: number }
-  | { type: 'sync_groups'; sync_groups: string[]; added: string[]; removed: string[] }
-  | { type: 'ping' }
-  | { type: 'pong' };
-
-/**
- * What the app shows of it, as Linear's: `connecting` until the socket is
- * open and caught up, `synced` while changes come as they happen, `offline`
- * while it waits to open again. `off` with no workspace open, or when the
- * server has no sync engine for it.
- */
-export type SyncStatus = 'off' | 'connecting' | 'synced' | 'offline';
-
-// Close codes of /api/sync/ws (api/sync_stream.py).
-const CLOSE_UNAUTHORIZED = 4401;
-const CLOSE_FORBIDDEN = 4403;
-const CLOSE_NOT_FOUND = 4404;
-const CLOSE_BOOTSTRAP = 4410;
-
-/** Waits before opening again: doubling from the first, never longer than the last. */
-const RETRY_MS = [500, 1_000, 2_000, 5_000, 10_000, 30_000];
 
 export class SyncClient {
   status: SyncStatus = 'off';
-  /** The newest change held; the socket opens again from it. */
+  /** The newest change held. */
   lastSyncId = 0;
 
   #scope: string | null = null;
   #slug = '';
   #models = new Map<string, Map<number, SyncRow>>();
   #userId: number | null = null;
-  #syncGroups: string[] = [];
-  #socket: WebSocket | null = null;
-  #retry: ReturnType<typeof setTimeout> | null = null;
-  #attempt = 0;
-  /** Bumped by every open and stop: an answer or socket of an earlier one is dropped. */
-  #generation = 0;
+  #link: HubLink | null = null;
+  /** The hub's messages wait until the local database's values are in the pool. */
+  #ready = false;
+  #waiting: HubMessage[] = [];
+  #settle: (() => void) | null = null;
+  /** This tab's writes, as the hub keeps them; sent again when it joins again. */
+  #pending: SharedTransaction[] = [];
+  #requestId = 0;
+  readonly #requests = new Map<number, { resolve: (response: HubResponse) => void }>();
   readonly #listeners: ((actions: SyncAction[]) => void)[] = [];
+  #peers: (transactions: SharedTransaction[]) => void = () => {};
+  #adopt: (transactions: SharedTransaction[]) => void = () => {};
 
   constructor() {
     makeStore(this);
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      // A closing tab leaves its hub; one back from the back/forward cache joins again.
+      window.addEventListener('pagehide', () => this.#link?.post({ type: 'leave', tab: tabId }));
+      window.addEventListener('pageshow', (event) => {
+        if (event.persisted) this.#join();
+      });
+    }
   }
 
   /** Opens the workspace's models (scope as the pool's), or closes them with null. */
@@ -93,17 +69,26 @@ export class SyncClient {
     this.#slug = slug ?? '';
     this.#models = new Map();
     this.#userId = null;
-    this.#syncGroups = [];
     this.lastSyncId = 0;
     pool.sync.live = false;
     const local = localDatabase.open(scope);
-    // Nothing kept and no socket to keep it current: the pages read the server, as before.
-    if (scope === null || (typeof WebSocket === 'undefined' && !localDatabase.available)) {
+    if (scope === null) {
       this.#setStatus('off');
       pool.sync.booting = null;
       return;
     }
+    this.#link = new HubLink(scope, (message) => this.#hear(message), () => this.#restarted());
+    // Nothing kept and no socket to keep it current: the pages read the server, as before; the hub sends the writes.
+    if (typeof WebSocket === 'undefined' && !localDatabase.available) {
+      this.#setStatus('off');
+      pool.sync.booting = null;
+      this.#ready = true;
+      this.#join();
+      return;
+    }
     this.#setStatus(typeof WebSocket === 'undefined' ? 'off' : 'connecting');
+    this.#booting();
+    this.#join();
     void this.#start(scope, local);
   }
 
@@ -118,214 +103,182 @@ export class SyncClient {
     return this.#userId;
   }
 
+  /**
+   * Whether the connection is the SharedWorker's, shared with the workspace's
+   * other tabs. A method: a store's getter is a computed value, and with
+   * nothing observable to watch it would keep its first answer.
+   */
+  isShared(): boolean {
+    return this.#link?.shared ?? false;
+  }
+
   /** Calls back with every batch of changes applied, for lists the pool still reads from the server. */
   onChanges(listener: (actions: SyncAction[]) => void) {
     this.#listeners.push(listener);
   }
 
-  /** Applies changes from the log in order, skipping any already held; then the pool reads its lists again. */
+  /** Calls back with the other tabs' writes, whenever they change. */
+  onPeers(listener: (transactions: SharedTransaction[]) => void) {
+    this.#peers = listener;
+  }
+
+  /** Calls back with writes a closed tab (or the last visit) left unsent, for this tab to send. */
+  onAdopt(listener: (transactions: SharedTransaction[]) => void) {
+    this.#adopt = listener;
+  }
+
+  /** This tab's writes changed: the hub keeps them for the next visit and shows them to the other tabs. */
+  announce(transactions: SharedTransaction[]) {
+    this.#pending = transactions;
+    this.#link?.post({ type: 'pending', tab: tabId, transactions });
+  }
+
+  /**
+   * Sends a request through the hub, in the shape `fetch` answers (lib/api.ts
+   * reads it); rejects as fetch does when the network or the hub failed.
+   */
+  request(path: string, init: RequestInit = {}): Promise<Pick<Response, 'ok' | 'status' | 'json'>> {
+    const link = this.#link;
+    if (!link) return fetch(path, init);
+    const id = (this.#requestId += 1);
+    const request: HubRequest = {
+      path,
+      method: init.method ?? 'GET',
+      headers: Object.fromEntries(new Headers(init.headers).entries()),
+      body: typeof init.body === 'string' ? init.body : undefined,
+    };
+    return new Promise<HubResponse>((resolve) => {
+      this.#requests.set(id, { resolve });
+      link.post({ type: 'request', tab: tabId, id, request });
+    }).then((response) => {
+      if ('error' in response) throw new TypeError(response.error);
+      return { ok: response.status < 400, status: response.status, json: async () => response.body };
+    });
+  }
+
+  /** Applies changes the hub applied, in order, skipping any already held; then the pool reads its lists again. */
   apply(actions: SyncAction[], lastSyncId: number) {
     const applied: SyncAction[] = [];
-    const stored: StoredChange[] = [];
-    const held = this.lastSyncId;
     for (const change of actions) {
       if (change.sync_id <= this.lastSyncId) continue;
       applied.push(change);
       const rows = this.#models.get(change.model);
       if (rows) {
         const id = Number(change.model_id);
-        if (change.action === 'delete') {
-          rows.delete(id);
-          stored.push({ model: change.model, id, row: null });
-        } else {
-          const row = { ...rows.get(id), ...change.data, id } as SyncRow;
-          rows.set(id, row);
-          stored.push({ model: change.model, id, row });
-        }
+        if (change.action === 'delete') rows.delete(id);
+        else rows.set(id, { ...rows.get(id), ...change.data, id } as SyncRow);
       }
       this.lastSyncId = change.sync_id;
     }
     this.lastSyncId = Math.max(this.lastSyncId, lastSyncId);
-    // The rows and the sync id they reach are kept together: a reload catches up from exactly there.
-    if (this.lastSyncId > held) localDatabase.applyChanges(stored, { lastSyncId: this.lastSyncId, syncGroups: this.#syncGroups, models: [...this.#models.keys()] });
     pool.syncChanged();
     if (applied.length > 0) for (const listener of this.#listeners) listener(applied);
   }
 
   #close() {
-    this.#generation += 1;
-    if (this.#retry) clearTimeout(this.#retry);
-    this.#retry = null;
-    this.#attempt = 0;
-    const socket = this.#socket;
-    this.#socket = null;
-    if (socket) socket.close(1000);
+    this.#link?.post({ type: 'leave', tab: tabId });
+    this.#link?.close();
+    this.#link = null;
+    this.#ready = false;
+    this.#waiting = [];
+    this.#pending = [];
+    this.#settle?.();
+    this.#settle = null;
+    this.#failRequests();
   }
 
-  #current(generation: number) {
-    return generation === this.#generation;
+  #join() {
+    const scope = this.#scope;
+    if (!this.#link || scope === null) return;
+    const account = requestAccount();
+    const headers: Record<string, string> = { Accept: 'application/json' };
+    if (this.#slug) headers['X-Workspace-Slug'] = this.#slug;
+    if (account) headers['X-Buyerly-Account'] = String(account.id);
+    this.#link.post({
+      type: 'join', tab: tabId, scope, slug: this.#slug, account: account?.id ?? null, headers, pending: this.#pending,
+    });
   }
 
-  /**
-   * Opens on what the local database kept, as Linear does: the pool holds it
-   * before any page is drawn, and the socket asks only for what changed since
-   * its sync id. With nothing kept the workspace is bootstrapped.
-   */
-  async #start(scope: string, reading: Promise<LocalData | null>) {
-    const generation = this.#generation;
+  /** The worker was gone: what was asked of it is failed (the queue sends again), and the tab joins the new one. */
+  #restarted() {
+    this.#failRequests();
+    pool.sync.live = false;
+    this.#join();
+  }
+
+  #failRequests() {
+    const waiting = [...this.#requests.values()];
+    this.#requests.clear();
+    for (const { resolve } of waiting) resolve({ error: 'The sync hub restarted.' });
+  }
+
+  /** The pages wait for the models from now until the hub says they are held (or there are none). */
+  #booting() {
+    if (this.#settle) return;
     let settle = () => {};
     const booting = new Promise<void>((resolve) => { settle = resolve; });
     pool.sync.booting = booting;
-    const local = await reading;
-    if (!this.#current(generation)) {
+    this.#settle = () => {
+      if (pool.sync.booting === booting) pool.sync.booting = null;
       settle();
-      return;
-    }
+    };
+  }
+
+  /**
+   * Draws what the local database kept before the hub's models arrive, as
+   * Linear does: the pool's lists and the stores' values are there before any
+   * page is drawn.
+   */
+  async #start(scope: string, reading: Promise<LocalData | null>) {
+    const link = this.#link;
+    const local = await reading;
+    if (this.#link !== link) return;
     if (local) {
       const snapshot = local.values.get('pool') as PoolSnapshot | undefined;
       if (snapshot) pool.hydrate(scope, snapshot);
       localDatabase.hydrate(local);
     }
-    if (typeof WebSocket === 'undefined') {
-      // Without a socket the models couldn't be kept current: the pages read the server.
-      if (pool.sync.booting === booting) pool.sync.booting = null;
-      settle();
-      return;
-    }
-    if (local?.sync && local.models.size > 0) {
-      this.#hold(local.models, local.sync.lastSyncId, local.sync.syncGroups);
-      if (pool.sync.booting === booting) pool.sync.booting = null;
-      settle();
-      this.#connect();
-      return;
-    }
-    // A bootstrap of its own takes over before this settles, so the pages waiting go on waiting for it.
-    void this.#bootstrap();
-    settle();
+    this.#ready = true;
+    for (const message of this.#waiting.splice(0)) this.#hear(message);
   }
 
-  async #bootstrap() {
-    const generation = this.#generation;
-    let settle = () => {};
-    const booting = new Promise<void>((resolve) => { settle = resolve; });
-    pool.sync.booting = booting;
-    const answer = await apiRequest<Bootstrap>('/api/sync/bootstrap').then(
-      (data) => ({ data, error: null }),
-      (error: unknown) => ({ data: null, error }),
-    );
-    if (pool.sync.booting === booting) pool.sync.booting = null;
-    if (!this.#current(generation)) {
-      settle();
+  #hear(message: HubMessage) {
+    if (!this.#ready && message.type !== 'response') {
+      this.#waiting.push(message);
       return;
     }
-    if (answer.data?.models) this.#take(answer.data);
-    // The pages waiting for it read the models now, or the server when there are none.
-    settle();
-    if (answer.data?.models) {
-      this.#connect();
-      return;
-    }
-    // A server without the sync engine, or a member it can't serve: the pages read the server as before.
-    const status = answer.error instanceof ApiError ? answer.error.status : 0;
-    if (answer.data || status === 401 || status === 403 || status === 404) {
-      this.#setStatus('off');
-      return;
-    }
-    this.#setStatus('offline');
-    this.#later(() => void this.#bootstrap());
+    if (message.type === 'hold') this.#hold(message.models, message.lastSyncId, message.syncGroups);
+    else if (message.type === 'delta') this.apply(message.actions, message.lastSyncId);
+    else if (message.type === 'status') {
+      this.#setStatus(message.status);
+      pool.sync.live = message.live;
+      if (message.booting) this.#booting();
+      else {
+        this.#settle?.();
+        this.#settle = null;
+      }
+    } else if (message.type === 'peers') this.#peers(message.transactions);
+    else if (message.type === 'adopt') this.#adopt(message.transactions);
+    else if (message.type === 'response') {
+      this.#requests.get(message.id)?.resolve(message.response);
+      this.#requests.delete(message.id);
+    } else if (message.type === 'unknown') this.#join();
   }
 
   #setStatus(status: SyncStatus) {
-    runInAction(() => { this.status = status; });
+    if (this.status !== status) runInAction(() => { this.status = status; });
   }
 
-  #take(bootstrap: Bootstrap) {
+  /** Holds a whole set of models, as the hub holds them. */
+  #hold(held: Record<string, SyncRow[]>, lastSyncId: number, syncGroups: string[]) {
     const models = new Map<string, Map<number, SyncRow>>();
-    for (const [model, rows] of Object.entries(bootstrap.models)) {
-      models.set(model, new Map(rows.map((row) => [row.id, row])));
-    }
-    this.#hold(models, bootstrap.last_sync_id, bootstrap.sync_groups);
-    localDatabase.replaceModels(models, { lastSyncId: bootstrap.last_sync_id, syncGroups: bootstrap.sync_groups, models: [...models.keys()] });
-  }
-
-  /** Holds a whole set of models, from bootstrap or as the local database kept them. */
-  #hold(models: Map<string, Map<number, SyncRow>>, lastSyncId: number, syncGroups: string[]) {
+    for (const [model, rows] of Object.entries(held)) models.set(model, new Map(rows.map((row) => [row.id, row])));
     this.#models = models;
-    this.#syncGroups = syncGroups;
     runInAction(() => { this.lastSyncId = lastSyncId; });
     const memberGroup = syncGroups.find((group) => group.startsWith('member:'));
     const member = memberGroup ? models.get('WorkspaceMember')?.get(Number(memberGroup.slice('member:'.length))) : undefined;
     this.#userId = member ? Number(member.user_id) : null;
     pool.syncChanged();
-  }
-
-  #connect() {
-    const generation = this.#generation;
-    const params = new URLSearchParams({ since: String(this.lastSyncId), workspace: this.#slug });
-    const account = requestAccount();
-    if (account) params.set('account', String(account.id));
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socket = new WebSocket(`${protocol}//${window.location.host}/api/sync/ws?${params}`);
-    this.#socket = socket;
-    this.#setStatus(this.#attempt === 0 ? 'connecting' : 'offline');
-    socket.onmessage = (event) => {
-      if (this.#current(generation)) this.#receive(JSON.parse(String(event.data)) as SyncMessage);
-    };
-    socket.onclose = (event) => {
-      if (!this.#current(generation)) return;
-      this.#socket = null;
-      this.#closed(event.code);
-    };
-  }
-
-  #receive(message: SyncMessage) {
-    if (message.type === 'delta') {
-      this.apply(message.actions, message.last_sync_id);
-    } else if (message.type === 'caught_up') {
-      this.apply([], message.last_sync_id);
-      this.#attempt = 0;
-      this.#setStatus('synced');
-      pool.sync.live = true;
-    } else if (message.type === 'sync_groups' && (message.added.length > 0 || message.removed.length > 0)) {
-      this.#syncGroups = message.sync_groups;
-      // There's no bootstrap of one group yet: the member's data is read whole again.
-      this.#rebootstrap();
-    }
-  }
-
-  #closed(code: number) {
-    pool.sync.live = false;
-    if (code === CLOSE_UNAUTHORIZED || code === CLOSE_FORBIDDEN || code === CLOSE_NOT_FOUND) {
-      // Signed out or out of the workspace: the app finds out with its next request and leaves.
-      this.#setStatus('off');
-      return;
-    }
-    if (code === CLOSE_BOOTSTRAP) {
-      this.#rebootstrap();
-      return;
-    }
-    this.#setStatus('offline');
-    this.#later(() => this.#connect());
-  }
-
-  #rebootstrap() {
-    const socket = this.#socket;
-    this.#generation += 1;
-    this.#socket = null;
-    if (socket) socket.close(1000);
-    pool.sync.live = false;
-    this.#setStatus('connecting');
-    void this.#bootstrap();
-  }
-
-  #later(run: () => void) {
-    const generation = this.#generation;
-    const wait = RETRY_MS[Math.min(this.#attempt, RETRY_MS.length - 1)];
-    this.#attempt += 1;
-    this.#retry = setTimeout(() => {
-      this.#retry = null;
-      if (this.#current(generation)) run();
-    }, wait);
   }
 }
 

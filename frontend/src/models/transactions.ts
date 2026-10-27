@@ -1,7 +1,6 @@
 import { reaction, runInAction } from 'mobx';
 import { ApiError, send } from '@/lib/api';
 import { toast } from '@/ui/toast';
-import { localDatabase } from './localDatabase';
 import { OUT_OF_SCOPE } from './scopeStore';
 import { pool, type PoolChange } from './pool';
 import { makeStore, useStore } from './store';
@@ -22,6 +21,12 @@ import { sync } from './sync';
  *
  * Everything not yet confirmed is kept in the local database (#496): after a
  * reload it is drawn again and sent.
+ *
+ * The workspace's tabs share its sync hub (#498): the queue's documents are
+ * sent through it, it keeps every tab's writes in the local database, and it
+ * shows each tab the others' writes, which are drawn here the same way until
+ * the sync engine holds them. The writes of a tab that closed before sending
+ * them are handed to another tab, which sends them.
  */
 
 export interface TransactionInput {
@@ -63,8 +68,6 @@ const MAX_BATCH = 10;
 const RETRY_MS = [1_000, 2_000, 5_000, 10_000, 30_000];
 /** A server error (5xx) is tried this many times, then the transaction is refused. */
 const SERVER_ATTEMPTS = 5;
-
-const STORE_KEY = 'transactions';
 
 const reason = (error: unknown) => (error instanceof Error && error.message ? error.message : 'Something went wrong. Please try again.');
 
@@ -111,6 +114,8 @@ export class TransactionQueue {
   /** The last send failed on the network and waits to try again. */
   offline = false;
 
+  /** The other tabs' writes, drawn over the pool as this tab's are. */
+  #others: StoredTransaction[] = [];
   #inFlight = false;
   #timer: ReturnType<typeof setTimeout> | null = null;
   #scheduled = false;
@@ -156,6 +161,7 @@ export class TransactionQueue {
     for (const { reject } of this.#waiting.values()) reject(new Error(OUT_OF_SCOPE));
     this.#waiting.clear();
     this.pending = [];
+    this.#others = [];
     this.offline = false;
   }
 
@@ -168,7 +174,30 @@ export class TransactionQueue {
       .map((transaction): Transaction => ({ ...transaction, attempts: 0 }));
     this.#set([...kept, ...this.pending]);
     this.reconcile();
+    // The hub holds them as this tab's now.
+    this.#save();
     this.#schedule();
+  }
+
+  /**
+   * The other tabs' writes changed: drawn over the pool too. One the server
+   * just confirmed is written into the pool underneath, as this tab's own are,
+   * so lists the sync engine doesn't hold show it as well.
+   */
+  showOthers(value: unknown) {
+    if (!Array.isArray(value)) return;
+    const before = new Map(this.#others.map((transaction) => [transaction.id, transaction.state]));
+    const others = (value as StoredTransaction[]).filter((transaction) => typeof transaction?.mutation === 'string');
+    if (others.length === 0 && this.#others.length === 0) return;
+    let confirmed = false;
+    for (const transaction of others) {
+      if (transaction.state !== 'confirmed' || before.get(transaction.id) === 'confirmed') continue;
+      this.#write(transaction.changes ?? []);
+      confirmed = true;
+    }
+    this.#others = others;
+    this.#set(this.pending);
+    if (confirmed) pool.invalidate('');
   }
 
   /** Drops the confirmed transactions the sync engine now holds: their delta is underneath. */
@@ -193,7 +222,7 @@ export class TransactionQueue {
   #set(pending: Transaction[]) {
     runInAction(() => {
       this.pending = pending;
-      pool.setOverlay(pending.flatMap((transaction) => transaction.changes ?? []));
+      pool.setOverlay([...pending, ...this.#others].flatMap((transaction) => transaction.changes ?? []));
     });
   }
 
@@ -202,7 +231,8 @@ export class TransactionQueue {
       ...transaction,
       state: state === 'confirmed' ? 'confirmed' : 'queued',
     }));
-    localDatabase.save(STORE_KEY, stored);
+    // The hub keeps them in the local database, with the other tabs' (#498).
+    sync.announce(stored);
   }
 
   /** Sends once the code making changes is done: changes made together go in one document. */
@@ -231,7 +261,7 @@ export class TransactionQueue {
     let payload: { data?: Record<string, Answer | null> | null; errors?: GraphQLError[] };
     try {
       const { query, variables } = batchDocument(batch);
-      payload = await send('/api/graphql', { method: 'POST', body: JSON.stringify({ query, variables }) });
+      payload = await send('/api/graphql', { method: 'POST', body: JSON.stringify({ query, variables }) }, sync.request);
     } catch (error) {
       if (generation !== this.#generation) return;
       this.#inFlight = false;
@@ -303,11 +333,7 @@ export class TransactionQueue {
       const insert = changes[stand] as Extract<PoolChange, { kind: 'insert' }>;
       changes = changes.map((change, index) => (index === stand ? { ...insert, id: String(made.id), record: made } : change));
     }
-    for (const change of changes) {
-      if (change.kind === 'update') pool.patch(change.type, change.id, change.data);
-      else if (change.kind === 'insert') pool.place(change.list, change.type, change.id, change.record, change.first);
-      else pool.remove(change.type, change.id);
-    }
+    this.#write(changes);
     const confirmed: Transaction = {
       ...transaction,
       changes,
@@ -317,6 +343,15 @@ export class TransactionQueue {
     this.#set(this.pending.map((item) => (item.id === transaction.id ? confirmed : item)));
     this.#waiting.get(transaction.id)?.resolve(answer);
     this.#waiting.delete(transaction.id);
+  }
+
+  /** Writes confirmed changes into the pool, underneath the overlay. */
+  #write(changes: PoolChange[]) {
+    for (const change of changes) {
+      if (change.kind === 'update') pool.patch(change.type, change.id, change.data);
+      else if (change.kind === 'insert') pool.place(change.list, change.type, change.id, change.record, change.first);
+      else pool.remove(change.type, change.id);
+    }
   }
 
   /** The server said no: the change comes off the pool, and the member is told why. */
@@ -331,7 +366,9 @@ export class TransactionQueue {
 
 export const transactions = new TransactionQueue();
 
-localDatabase.keep(STORE_KEY, (value) => transactions.hydrate(value));
+// What the last visit or a closed tab left unsent, and the other tabs' writes, come from the sync hub.
+sync.onAdopt((value) => transactions.hydrate(value));
+sync.onPeers((value) => transactions.showOthers(value));
 // Another workspace, account or none: the queue holds one workspace's writes, as the pool does.
 reaction(() => pool.scope, () => transactions.reset());
 // The sync engine caught up past a confirmed write: its delta is in, the overlay comes off.

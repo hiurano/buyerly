@@ -31,8 +31,14 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   return payload as T;
 }
 
-/** Sends a request as this tab's account and workspace; a refusal is an `ApiError`. */
-export async function send(path: string, init: RequestInit = {}): Promise<any> {
+type Fetcher = (path: string, init: RequestInit) => Promise<Pick<Response, 'ok' | 'status' | 'json'>>;
+
+/**
+ * Sends a request as this tab's account and workspace; a refusal is an
+ * `ApiError`. `through` sends it another way than `fetch`: the transaction
+ * queue's go through the sync hub (#498).
+ */
+export async function send(path: string, init: RequestInit = {}, through: Fetcher = (url, options) => fetch(url, options)): Promise<any> {
   const method = (init.method || 'GET').toUpperCase();
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
@@ -51,7 +57,7 @@ export async function send(path: string, init: RequestInit = {}): Promise<any> {
     if (csrf) headers.set('X-CSRF-Token', csrf);
   }
 
-  const response = await fetch(path, {
+  const response = await through(path, {
     ...init,
     method,
     headers,
