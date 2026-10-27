@@ -77,6 +77,7 @@ from api.routers import (
     sync_router,
 )
 from api.client_api import router as client_api_router
+from api.client_api.schema import ROUTES as CLIENT_API_ROUTES
 from api.schemas import (
     AccountItem,
     AccountLatestMetrics,
@@ -124,32 +125,47 @@ from database.db import async_session_maker
 
 logger = logging.getLogger(__name__)
 
+# Every REST router, as written. The routes the client API serves (api/client_api/schema.py, #509)
+# are not mounted over HTTP: GraphQL runs their handlers, with the routes' own checks.
+ALL_REST_ROUTERS = [
+    auth_router,
+    admin_support_router,
+    workspaces_router,
+    members_router,
+    onboarding_router,
+    accounts_router,
+    rules_router,
+    search_router,
+    trash_router,
+    teams_router,
+    summary_router,
+    settings_router,
+    audit_router,
+    telegram_router,
+    adsets_router,
+    delivery_router,
+    health_router,
+    analytics_router,
+    views_router,
+    favorites_router,
+    account_notifications_router,
+    sync_router,
+]
+
+_CLIENT_API_ONLY = {id(route) for route in CLIENT_API_ROUTES.values()}
+
+
+def rest_only(source: APIRouter) -> APIRouter:
+    """`source` without the routes the client API serves; sync, sign-in, uploads, public links and webhooks stay."""
+    kept = APIRouter()
+    kept.routes.extend(route for route in source.routes if id(route) not in _CLIENT_API_ONLY)
+    return kept
+
+
 # Master API Router (prefix="/api")
 router = APIRouter(prefix="/api")
-
-# Mount all modular domain routers
-router.include_router(auth_router)
-router.include_router(admin_support_router)
-router.include_router(workspaces_router)
-router.include_router(members_router)
-router.include_router(onboarding_router)
-router.include_router(accounts_router)
-router.include_router(rules_router)
-router.include_router(search_router)
-router.include_router(trash_router)
-router.include_router(teams_router)
-router.include_router(summary_router)
-router.include_router(settings_router)
-router.include_router(audit_router)
-router.include_router(telegram_router)
-router.include_router(adsets_router)
-router.include_router(delivery_router)
-router.include_router(health_router)
-router.include_router(analytics_router)
-router.include_router(views_router)
-router.include_router(favorites_router)
-router.include_router(account_notifications_router)
-router.include_router(sync_router)
+for rest_router in ALL_REST_ROUTERS:
+    router.include_router(rest_only(rest_router))
 router.include_router(client_api_router)
 
 class _RoutesModule(sys.modules[__name__].__class__):

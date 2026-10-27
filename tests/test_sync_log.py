@@ -33,6 +33,7 @@ from database.sync_log import (
     needs_bootstrap,
 )
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
+from tests.client_api_transport import client_api_transport
 
 
 class TestSyncLog(unittest.IsolatedAsyncioTestCase):
@@ -100,7 +101,7 @@ class TestSyncLog(unittest.IsolatedAsyncioTestCase):
             self.loose_id, self.shared_id, self.hidden_id = loose.id, shared.id, hidden.id
 
         self.owner = await session_headers(self.sessions, {'id': 950000001, 'username': 'owner'})
-        self.client = httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app()), base_url='http://test')
+        self.client = httpx.AsyncClient(transport=client_api_transport(app=create_app()), base_url='http://test')
 
     async def asyncTearDown(self):
         await self.client.aclose()
@@ -170,7 +171,7 @@ class TestSyncLog(unittest.IsolatedAsyncioTestCase):
         mark = await self.last()
         res = await self.client.post('/api/favorites', json={'kind': 'page', 'path': 'team/GRW/rules',
                                                              'title': 'Rules'}, headers=self.owner)
-        self.assertEqual(res.status_code, 201, res.text)
+        self.assertEqual(res.status_code, 200, res.text)
         favorite = await self.one(mark, 'Favorite', res.json()['id'])
         self.assertEqual(favorite.sync_groups, [f'member:{self.owner_member.id}'])
 

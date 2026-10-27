@@ -12,6 +12,7 @@ from core.config import settings
 from database.models import Account, RulePreset, User, Workspace, WorkspaceMember
 from services.analytics_store import AnalyticsFactService, resolve_account_period_dates
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
+from tests.client_api_transport import client_api_transport
 
 
 VALID_CONDITIONS = [{"metric": "spend", "operator": "gte", "value": 10, "time_window": "today"}]
@@ -148,7 +149,7 @@ class TestWorkspaceSearch(unittest.IsolatedAsyncioTestCase):
         headers = await session_headers(self.test_session_maker, {"id": telegram_id, "username": username})
         if slug is not None:
             headers["X-Workspace-Slug"] = slug
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             return await client.get("/api/search", params={"q": query, **params}, headers=headers)
 
@@ -342,7 +343,7 @@ class TestWorkspaceSearch(unittest.IsolatedAsyncioTestCase):
                 response = await self._search(query, slug="alpha", **params)
                 self.assertEqual(response.status_code, 422)
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             anonymous = await client.get("/api/search", params={"q": "test"})
         self.assertEqual(anonymous.status_code, 401)

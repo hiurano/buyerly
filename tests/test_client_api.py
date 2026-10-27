@@ -1,24 +1,30 @@
 """The GraphQL client API (#509) allows exactly what the REST routes allow.
 
-Every field of the schema runs a REST route's handler (api/client_api/bridge.py). These tests hold
-each field to its route: the same request as REST and as GraphQL, by people who may not do it
+Every field of the schema runs a REST route's handler (api/client_api/bridge.py); production no
+longer mounts those routes, so the test app mounts them as written. These tests hold each field to
+its route: the same request as REST and as GraphQL, by people who may not do it
 (signed out, from another workspace, a guest off every team, a plain member), must be refused with
 the same status, and what is allowed must be allowed both ways. Each write has two copies of its
 target, one for the REST request and one for the GraphQL one, so neither sees the other's effect.
 """
 
 import json
+import re
 import secrets
 import sys
 import unittest
 from datetime import datetime, timedelta, timezone
 
 import httpx
+from fastapi import APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import api.routes as api_routes_module
 from api.client_api import schema as client_schema  # the ClientSchema the endpoint serves
 from api.client_api.schema import ROUTES
+from api.meta_oauth import router as meta_oauth_router
+from api.routers import telegram as telegram_router
+from api.routes import ALL_REST_ROUTERS, rest_only
 from api.server import create_app
 from core.config import settings
 from core.rate_limit import limiter
@@ -502,6 +508,12 @@ class TestClientApi(unittest.IsolatedAsyncioTestCase):
             "conditions": [{"metric": "spend", "operator": "gte", "value": 10, "time_window": "today"}],
         }
         self.app = create_app()
+        # The routes as written, which production no longer mounts: each field is compared with its own.
+        rest = APIRouter(prefix="/api")
+        for rest_router in ALL_REST_ROUTERS:
+            rest.include_router(rest_router)
+        self.app.include_router(rest)
+        self.app.include_router(meta_oauth_router)
         self.client = httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test")
         self.headers = {}
         for name, user in (("owner", self.owner), ("member", self.member), ("guest", self.guest), ("outsider", self.outsider)):
@@ -637,6 +649,31 @@ class TestClientApi(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((status, error["message"]), (422, "Unknown kind of favorite."))
         status, error = await self._graphql("owner", "auditEvents", variables={"pageSize": 1000})
         self.assertEqual(status, 422)
+
+    async def test_production_serves_these_routes_only_as_graphql(self):
+        production = create_app()
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=production), base_url="http://test") as client:
+            for name, route in ROUTES.items():
+                path = route.path if route.path.startswith("/api") else "/api" + route.path
+                path = re.sub(r"\{[^}]+\}", "1", path)
+                for method in route.methods:
+                    response = await client.request(method, path, headers=self.headers["owner"])
+                    self.assertIn(
+                        (response.status_code, response.text),
+                        ((404, '{"detail":"Not Found"}'), (405, '{"detail":"Method Not Allowed"}')),
+                        f"{name}'s route {method} {path} still answers over REST",
+                    )
+            # Sync, sign-in, uploads and public links stay REST: each answers, if only to say its record is not there.
+            for method, path in (
+                ("GET", "/api/sync/bootstrap"), ("GET", "/api/auth/sessions"), ("GET", "/api/me"),
+                ("DELETE", "/api/onboarding/avatar"), ("GET", "/api/invites/unknown"),
+                ("GET", "/api/meta/invites/public/unknown"), ("GET", "/api/meta/oauth/callback"),
+            ):
+                response = await client.request(method, path, headers=self.headers["owner"])
+                self.assertNotEqual(response.status_code, 405, f"{method} {path}")
+                self.assertNotEqual(response.text, '{"detail":"Not Found"}', f"{method} {path}")
+        # Telegram's webhook answers 404 to anyone but Telegram, so it is checked on its router.
+        self.assertIn(telegram_router.telegram_webhook, [route.endpoint for route in rest_only(telegram_router.router).routes])
 
     async def test_one_request_cannot_repeat_a_field_without_limit(self):
         aliases = " ".join(f"a{index}: favorites" for index in range(20))

@@ -23,6 +23,7 @@ from database.models import (
     WorkspaceSupportGrant,
 )
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
+from tests.client_api_transport import client_api_transport
 
 
 class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
@@ -165,7 +166,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
             ))
             await session.commit()
         headers = {**await self._headers_for(self.tenant_a_user), "X-Workspace-Slug": self.ws_b.slug}
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
+        async with httpx.AsyncClient(transport=client_api_transport(app=self.app), base_url="http://test") as client:
             response = await client.get("/api/accounts", headers=headers)
             self.assertEqual(response.status_code, 200, response.text)
             self.assertEqual([row["account_id"] for row in response.json()], [self.acc_b.account_id])
@@ -183,7 +184,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((await session.get(Account, self.acc_b.id)).custom_name, "Route B")
 
     async def test_route_workspace_rejects_missing_membership_without_fallback(self):
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
+        async with httpx.AsyncClient(transport=client_api_transport(app=self.app), base_url="http://test") as client:
             for slug in (self.ws_b.slug, "missing-workspace", ""):
                 response = await client.get("/api/accounts", headers={
                     **await self._headers_for(self.tenant_a_user), "X-Workspace-Slug": slug,
@@ -191,7 +192,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(response.status_code, 403, response.text)
 
     async def test_profile_ignores_foreign_route_workspace(self):
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
+        async with httpx.AsyncClient(transport=client_api_transport(app=self.app), base_url="http://test") as client:
             for slug in (self.ws_b.slug, "missing-workspace", ""):
                 response = await client.get("/api/me", headers={
                     **await self._headers_for(self.tenant_a_user), "X-Workspace-Slug": slug,
@@ -204,7 +205,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
     async def test_global_admin_cannot_leak_or_mutate_foreign_accounts(self):
         """Verify global admin cannot see or mutate foreign workspace accounts without membership."""
         admin_headers = await self._headers_for(self.admin_user)
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
 
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # 1. Admin gets accounts -> must only see Admin HQ accounts (0 accounts), NOT Tenant B
@@ -241,7 +242,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
     async def test_global_admin_cannot_switch_workspace_without_grant(self):
         """Admin cannot switch to Tenant B workspace without explicit membership or support grant."""
         admin_headers = await self._headers_for(self.admin_user)
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
 
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             res = await client.post(
@@ -302,7 +303,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
             group_id = group.id
 
         viewer_headers = await self._headers_for(viewer_user)
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
 
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # Read works
@@ -461,7 +462,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
             foreign_group_id = foreign_group.id
 
         headers = await self._headers_for(self.tenant_a_user)
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             presets = await client.get("/api/presets", headers=headers)
             groups = await client.get("/api/rule-labels", headers=headers)
@@ -536,7 +537,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
     async def test_admin_support_session_lifecycle(self):
         """Admin creates bounded support session, accesses workspace, and revokes session."""
         admin_headers = await self._headers_for(self.admin_user)
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
 
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # 1. Non-admin cannot create support session
@@ -617,7 +618,7 @@ class TestWorkspaceIsolationSecurity(unittest.IsolatedAsyncioTestCase):
     async def test_audit_events_and_undo_strict_workspace_scoping(self):
         """Verify audit events are strictly isolated per workspace and cross-workspace undo is blocked."""
         admin_headers = await self._headers_for(self.admin_user)
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
 
         async with self.test_session_maker() as session:
             admin_audit_account = Account(

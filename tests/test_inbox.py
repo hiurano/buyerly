@@ -14,6 +14,7 @@ from core.config import settings
 from core.rate_limit import limiter
 from database.models import Account, AuditEvent, InboxNotificationState, RulePreset, User, Workspace, WorkspaceMember
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
+from tests.client_api_transport import client_api_transport
 
 OWNER = {"id": 7100000001, "first_name": "Owner", "username": "inbox_owner"}
 BUYER = {"id": 7100000002, "first_name": "Buyer", "username": "inbox_buyer"}
@@ -83,7 +84,7 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
             ])
             await session.commit()
         self.client = httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=create_app()), base_url="http://test"
+            transport=client_api_transport(app=create_app()), base_url="http://test"
         )
 
     async def asyncTearDown(self):

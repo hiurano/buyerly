@@ -13,6 +13,7 @@ from api.server import create_app
 from core.rate_limit import limiter
 from database.models import User, ViewSetting, Workspace, WorkspaceMember, WorkspaceViewDefault
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
+from tests.client_api_transport import client_api_transport
 
 RULES_VIEW = {
     "layout": "list",
@@ -59,7 +60,7 @@ class TestViewSettings(unittest.IsolatedAsyncioTestCase):
 
         self.owner = await session_headers(self.sessions, {'id': 910000001, 'username': 'owner'})
         self.buyer = await session_headers(self.sessions, {'id': 910000002, 'username': 'buyer'})
-        self.client = httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app()), base_url='http://test')
+        self.client = httpx.AsyncClient(transport=client_api_transport(app=create_app()), base_url='http://test')
 
     async def asyncTearDown(self):
         await self.client.aclose()

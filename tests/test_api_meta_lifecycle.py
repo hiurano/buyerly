@@ -11,6 +11,7 @@ import api.server as server
 from api.meta_dependencies import get_meta_client
 from meta_api.client import MetaClient
 from services.inventory_cache import PostgreSQLInventoryCache
+from tests.client_api_transport import client_api_transport
 
 
 class TestApiMetaLifecycle(unittest.IsolatedAsyncioTestCase):
@@ -56,7 +57,7 @@ class TestApiMetaLifecycle(unittest.IsolatedAsyncioTestCase):
                 return await meta.get_account_info("act_123", "fake")
 
         async def fetch(app):
-            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as http:
+            async with httpx.AsyncClient(transport=client_api_transport(app=app), base_url="http://test") as http:
                 return (await http.get("/api/meta-probe")).json()
 
         async with first.router.lifespan_context(first):

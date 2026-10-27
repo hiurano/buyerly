@@ -21,6 +21,7 @@ client's transaction queue (#508) keeps its local change until sync has caught u
 import inspect
 import json
 import logging
+import sys
 from typing import Annotated, Any, Callable, Optional
 
 from fastapi import BackgroundTasks, HTTPException, Request, Response
@@ -175,7 +176,11 @@ async def run(info: Info, route: APIRoute, /, **values: Any) -> Any:
         raise RouteError(500, "Something went wrong") from error
 
 
-async def current_sync_id() -> int:
-    """The newest sync id: every write this request committed has one at most this."""
-    async with async_session_maker() as session:
+async def current_sync_id(route: APIRoute) -> int:
+    """The newest sync id: every write this request committed has one at most this.
+
+    Read through the session factory of the route's own module, the one its handler wrote with.
+    """
+    sessions = getattr(sys.modules[route.endpoint.__module__], "async_session_maker", async_session_maker)
+    async with sessions() as session:
         return await last_sync_id(session)

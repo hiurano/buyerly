@@ -21,6 +21,7 @@ from database.models import (
     WorkspaceMember,
 )
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
+from tests.client_api_transport import client_api_transport
 
 OWNER = {"id": 7200000001, "first_name": "Owner", "username": "bell_owner"}
 BUYER = {"id": 7200000002, "first_name": "Buyer", "username": "bell_buyer"}
@@ -74,7 +75,7 @@ class TestAccountNotifications(unittest.IsolatedAsyncioTestCase):
             self.ws_id = ws.id
             self.buyer_member_id = buyer_member.id
 
-        self.client = httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app()), base_url="http://test")
+        self.client = httpx.AsyncClient(transport=client_api_transport(app=create_app()), base_url="http://test")
 
     async def asyncTearDown(self):
         await self.client.aclose()

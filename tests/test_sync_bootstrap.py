@@ -33,6 +33,7 @@ from database.models import (
 from database.sync_bootstrap import begin_snapshot, bootstrap_json
 from database.sync_log import SYNCED_TABLES, changes_since, last_sync_id, member_sync_groups
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
+from tests.client_api_transport import client_api_transport
 
 MODELS = sorted(synced.model for synced in SYNCED_TABLES.values())
 
@@ -127,7 +128,7 @@ class TestSyncBootstrap(unittest.IsolatedAsyncioTestCase):
         self.headers = {}
         for name, telegram_id in (('owner', 960000001), ('buyer', 960000002), ('guest', 960000003)):
             self.headers[name] = await session_headers(self.sessions, {'id': telegram_id, 'username': name})
-        self.client = httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app()), base_url='http://test')
+        self.client = httpx.AsyncClient(transport=client_api_transport(app=create_app()), base_url='http://test')
 
     async def asyncTearDown(self):
         await self.client.aclose()

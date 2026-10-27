@@ -13,6 +13,7 @@ from api.server import create_app
 from core.rate_limit import limiter
 from database.models import Favorite, User, Workspace, WorkspaceMember, utcnow
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
+from tests.client_api_transport import client_api_transport
 
 RULES = {"kind": "page", "path": "team/TES/rules", "title": "Rules"}
 ACCOUNT = {"kind": "account", "path": "accounts/act_1001", "title": "Nutra US"}
@@ -55,7 +56,7 @@ class TestFavorites(unittest.IsolatedAsyncioTestCase):
 
         self.owner = await session_headers(self.sessions, {'id': 920000001, 'username': 'owner'})
         self.buyer = await session_headers(self.sessions, {'id': 920000002, 'username': 'buyer'})
-        self.client = httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app()), base_url='http://test')
+        self.client = httpx.AsyncClient(transport=client_api_transport(app=create_app()), base_url='http://test')
 
     async def asyncTearDown(self):
         await self.client.aclose()
@@ -69,10 +70,11 @@ class TestFavorites(unittest.IsolatedAsyncioTestCase):
     async def test_starring_lists_a_favorite_once_in_the_order_starred(self):
         self.assertEqual(await self.favorites(self.owner), [])
 
+        # favoriteCreate answers alike whether it starred or found the star: the list tells them apart.
         first = await self.client.post('/api/favorites', json=RULES, headers=self.owner)
-        self.assertEqual(first.status_code, 201, first.text)
+        self.assertEqual(first.status_code, 200, first.text)
         second = await self.client.post('/api/favorites', json=ACCOUNT, headers=self.owner)
-        self.assertEqual(second.status_code, 201, second.text)
+        self.assertEqual(second.status_code, 200, second.text)
         again = await self.client.post('/api/favorites', json={**RULES, 'title': 'Renamed'}, headers=self.owner)
         self.assertEqual(again.status_code, 200, again.text)
         self.assertEqual(again.json()['id'], first.json()['id'])
