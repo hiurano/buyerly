@@ -28,6 +28,7 @@ from services.analytics_store import (
     resolve_previous_period_dates,
 )
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
+from tests.client_api_transport import client_api_transport
 
 
 class FakeResponse:
@@ -858,7 +859,7 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
             )
             await session.commit()
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
             auth_w1 = await session_headers(self.test_session_maker, {"id": 11111111, "first_name": "Buyer One", "username": "buyer1"})
             headers_w1 = {**auth_w1}
@@ -997,7 +998,7 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
             )
             await session.commit()
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
             headers = await session_headers(self.test_session_maker, {"id": 11111111, "first_name": "Buyer One", "username": "buyer1"})
             ids = ",".join([self.acc1.account_id, self.acc2.account_id, self.acc3.account_id, "act_9999"])
@@ -1083,7 +1084,7 @@ class TestAnalyticsFactStore(unittest.IsolatedAsyncioTestCase):
             )
             await session.commit()
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
             auth_w1 = await session_headers(self.test_session_maker, {"id": 11111111, "first_name": "Buyer One", "username": "buyer1"})
             headers_w1 = {**auth_w1}

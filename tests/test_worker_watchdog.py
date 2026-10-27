@@ -28,6 +28,7 @@ from core.config import settings
 from core.rate_limit import limiter
 from database.models import Account, AuditEvent, AutomationRuntimeState, User, Workspace, WorkspaceMember
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
+from tests.client_api_transport import client_api_transport
 
 OWNER = {"id": 7300000001, "first_name": "Owner", "username": "watchdog_owner"}
 
@@ -103,7 +104,7 @@ class TestWorkerWatchdog(unittest.IsolatedAsyncioTestCase):
             owner.active_workspace_id = self.workspace.id
             owner.is_approved = True
             await session.commit()
-        self.client = httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app()), base_url="http://test")
+        self.client = httpx.AsyncClient(transport=client_api_transport(app=create_app()), base_url="http://test")
 
     async def asyncTearDown(self):
         await self.client.aclose()

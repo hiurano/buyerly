@@ -51,6 +51,7 @@ from database.models import (
 
 from tests.sign_in_helper import confirm_email, sign_in
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
+from tests.client_api_transport import client_api_transport
 
 
 class TestWebApi(unittest.IsolatedAsyncioTestCase):
@@ -159,7 +160,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         self.assertIn("ws:30:today", api_routes_module._summary_cache)
 
     async def test_health_endpoints(self):
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             live_response = await client.get("/health/live")
             ready_response = await client.get("/health/ready")
@@ -173,7 +174,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
     async def test_browser_sessions_are_hashed_csrf_protected_and_individually_revocable(self):
         await confirm_email(self.test_session_maker, "buyer_nick", "buyer@example.test")
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
             login = await sign_in(client, "buyer@example.test", headers={"User-Agent": "Buyerly test browser"})
             self.assertEqual(login.status_code, 200)
@@ -210,7 +211,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
     async def test_logout_all_keep_current_ends_only_other_sessions(self):
         await confirm_email(self.test_session_maker, "buyer_nick", "buyer@example.test")
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with (
             httpx.AsyncClient(transport=transport, base_url="https://test") as laptop,
             httpx.AsyncClient(transport=transport, base_url="https://test") as phone,
@@ -250,7 +251,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         await confirm_email(self.test_session_maker, "buyer_nick", "buyer@example.test")
         await confirm_email(self.test_session_maker, "admin_user", "admin@example.test")
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="https://test") as browser:
             first = await sign_in(browser, "buyer@example.test")
             self.assertEqual(first.status_code, 200, first.text)
@@ -336,7 +337,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 ))
             await session.commit()
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="https://test") as browser:
             statuses = []
             for index in range(6):
@@ -350,7 +351,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         await confirm_email(self.test_session_maker, "buyer_nick", "buyer@example.test")
         await confirm_email(self.test_session_maker, "admin_user", "admin@example.test")
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="https://test") as browser:
             buyer_id = (await sign_in(browser, "buyer@example.test")).json()["account_id"]
             admin_id = (await sign_in(browser, "admin@example.test")).json()["account_id"]
@@ -385,7 +386,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((await browser.get("/api/auth/accounts")).json(), [])
 
     async def test_browser_accounts_without_sign_in_is_empty(self):
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="https://test") as browser:
             response = await browser.get("/api/auth/accounts")
         self.assertEqual(response.status_code, 200)
@@ -396,7 +397,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         original_proxies = api_auth_module.settings.TRUSTED_PROXY_CIDRS
         api_auth_module.settings.TRUSTED_PROXY_CIDRS = "127.0.0.1/32"
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         try:
             async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
                 login = await sign_in(client, "buyer@example.test", headers={"X-Forwarded-For": "203.0.113.10"})
@@ -424,7 +425,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         }
         original_proxies = api_auth_module.settings.TRUSTED_PROXY_CIDRS
         api_auth_module.settings.TRUSTED_PROXY_CIDRS = "127.0.0.1/32"
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         try:
             async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
                 login = await sign_in(client, "buyer@example.test", headers=helsinki)
@@ -475,7 +476,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         original_proxies = api_auth_module.settings.TRUSTED_PROXY_CIDRS
         api_auth_module.settings.TRUSTED_PROXY_CIDRS = "127.0.0.1/32"
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         try:
             async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
                 login = await sign_in(client, "buyer@example.test", headers={"X-Forwarded-For": "203.0.113.10"})
@@ -541,7 +542,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         headers = {**auth}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             overview = await client.get("/api/health/overview", headers=headers)
             foreign = await client.get("/api/accounts/act_foreign_health/health", headers=headers)
@@ -578,7 +579,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             await session.commit()
 
         auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/api/accounts", headers={**auth})
 
@@ -595,7 +596,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
         auth = await session_headers(self.test_session_maker, user_info)
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             headers = {**auth}
             resp = await client.get("/api/accounts", headers=headers)
@@ -674,7 +675,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         headers = {**buyer_data}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             accounts = await client.get("/api/accounts", headers=headers)
             updated = await client.patch(
@@ -731,7 +732,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         with patch.object(meta, "get_entity_state", AsyncMock(return_value=state)), patch.object(
             meta, "_request_with_retry", AsyncMock(return_value=httpx.Response(200, json={"success": True})),
         ), patch.object(provider, "invalidate", wraps=provider.invalidate) as invalidate:
-            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
+            async with httpx.AsyncClient(transport=client_api_transport(app=self.app), base_url="http://test") as client:
                 response = await client.post(
                     "/api/entities/campaign/cmp_cached/delivery",
                     headers=headers,
@@ -756,7 +757,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         with patch.object(meta, "get_entity_state", AsyncMock(return_value=state)), patch.object(
             meta, "set_entity_status", AsyncMock(return_value=True),
         ):
-            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
+            async with httpx.AsyncClient(transport=client_api_transport(app=self.app), base_url="http://test") as client:
                 response = await client.post(
                     "/api/entities/campaign/cmp_no_telegram/delivery",
                     headers=headers,
@@ -804,7 +805,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 "currency": "USD",
             }
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         client_args = dict(transport=transport, base_url="http://test")
 
         # A successful pause, and the same call again once Meta reports PAUSED.
@@ -976,7 +977,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
         auth = await session_headers(self.test_session_maker, user_info)
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             headers = {**auth}
 
@@ -1153,7 +1154,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             ],
         }
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # The person's own edits in Rules stay out of Inbox.
             own = (await client.post("/api/presets", headers=headers, json=payload)).json()
@@ -1213,7 +1214,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             ],
         }
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             created = await client.post("/api/presets", headers=headers, json=payload)
             self.assertEqual(created.status_code, 200)
@@ -1287,7 +1288,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         }
         checked = datetime(2026, 10, 6, 9, 0, tzinfo=timezone.utc)
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             preset_id = (await client.post("/api/presets", headers=headers, json=payload)).json()["id"]
             self.assertEqual((await client.post(
@@ -1378,7 +1379,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         auth = await session_headers(self.test_session_maker, user_info)
         headers = {**auth}
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             created = await client.post(
                 "/api/rule-labels",
@@ -1439,7 +1440,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             "conditions": [{"metric": "spend", "operator": "gte", "value": 10}],
         }
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             safety = (await client.post("/api/rule-labels", headers=headers, json={"name": "Safety"})).json()
             test = (await client.post("/api/rule-labels", headers=headers, json={"name": "Test"})).json()
@@ -1526,7 +1527,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             ],
         }
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             preset_id = (
                 await client.post("/api/presets", headers=headers, json=payload)
@@ -1622,7 +1623,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             {"metric": "spend", "operator": "gte", "value": 10, "time_window": "today"}
         ]
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             stop = await client.post(
                 "/api/presets",
@@ -1698,7 +1699,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         admin_data = await session_headers(self.test_session_maker, {"id": 8634201356, "first_name": "Admin", "username": "admin_user"})
         buyer_headers = {**buyer_data}
         admin_headers = {**admin_data}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             created = await client.post(
                 "/api/rule-labels",
@@ -1798,7 +1799,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         teammate_headers = await session_headers(
             self.test_session_maker, {"id": 5550001386, "first_name": "Teammate", "username": "teammate"}
         )
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             teammate_presets = await client.get("/api/presets", headers=teammate_headers)
             buyer_presets = await client.get("/api/presets", headers=buyer_headers)
@@ -1863,7 +1864,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         buyer_headers = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         admin_headers = await session_headers(self.test_session_maker, {"id": 8634201356, "first_name": "Admin", "username": "admin_user"})
         scope = {"level": "campaign", "ids": ["120200000000001"]}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             group = (await client.post(
                 "/api/rule-labels",
@@ -1976,7 +1977,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         Швеция 1083
         act_1000000000000002
         """
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             headers = {**auth}
             resp = await client.post("/api/accounts/parse-raw", headers=headers, json={"raw_text": raw_fb_text})
@@ -2006,7 +2007,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             "rules_enabled": True,
         }
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         with patch.object(
             self.app.state.meta_client,
             "get_account_info",
@@ -2079,7 +2080,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             "access_token": "replacement_system_user_token",
         }
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         with patch.object(
             self.app.state.meta_client,
             "get_account_info",
@@ -2129,7 +2130,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             "currency": "USD",
         }
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         with patch.object(
             self.app.state.meta_client,
             "get_account_info",
@@ -2160,7 +2161,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         admin_data = await session_headers(self.test_session_maker, {"id": 8634201356, "first_name": "Admin", "username": "admin_user"})
         buyer_headers = {**buyer_data}
         admin_headers = {**admin_data}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
 
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             default_view = await client.get("/api/analytics-view", headers=buyer_headers)
@@ -2341,7 +2342,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         headers = {**buyer_data}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         mocked_insights = AsyncMock(side_effect=insights_side_effect)
         with patch.object(self.app.state.meta_client, "get_account_insights_summary", new=mocked_insights):
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -2415,7 +2416,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
     async def test_summary_survives_reload_and_keeps_previous_snapshot(self):
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         headers = {**buyer_data}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
 
         first_metrics = {
             "spend": 100.0,
@@ -2517,7 +2518,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             "get_account_insights_summary",
             new=AsyncMock(side_effect=insights),
         ):
-            transport = httpx.ASGITransport(app=self.app)
+            transport = client_api_transport(app=self.app)
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
                 response = await client.get(
                     "/api/summary?period=today&force=true",
@@ -2569,7 +2570,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         headers = {**buyer_data}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
 
         async def insights_router(account_id, access_token, date_preset, **_period):
             if account_id == "act_second_ws_999":
@@ -2677,7 +2678,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         headers = {**buyer_data}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
 
         async def insights_2acc(account_id, access_token, date_preset, **_period):
             return {
@@ -2736,7 +2737,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         headers = {**buyer_data}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
 
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # Switch to empty workspace
@@ -2787,7 +2788,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         headers = {**buyer_data}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
 
         insights_mock = AsyncMock()
         with patch.object(self.app.state.meta_client, "get_account_insights_summary", new=insights_mock):
@@ -2842,7 +2843,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.test_session_maker,
             {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"},
         )
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
 
         async def read_settings():
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -2905,7 +2906,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
         )
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             headers = {**admin_auth}
 
@@ -3000,7 +3001,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         admin_data = await session_headers(self.test_session_maker, {"id": 8634201356, "first_name": "Admin", "username": "admin_user"})
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             forbidden = await client.post(
                 "/api/adsets/admin_adset_1/dismiss",
@@ -3074,7 +3075,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         admin_data = await session_headers(self.test_session_maker, {"id": 8634201356, "first_name": "Admin", "username": "admin_user"})
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             buyer_response = await client.get(
                 "/api/audit-events?category=rule_action&search=Buyer",
@@ -3116,7 +3117,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             await session.commit()
 
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         with patch.object(
             self.app.state.meta_client,
             "set_adset_status",
@@ -3180,7 +3181,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         headers = {**buyer_data}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         current_state = {
             "adset_id": "undo_stop_adset",
             "adset_name": "Undo stop",
@@ -3291,7 +3292,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         )
         auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         headers = {**auth}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
 
         with (
             patch.object(
@@ -3381,7 +3382,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             await session.commit()
 
         auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         with (
             patch.object(
                 self.app.state.meta_client,
@@ -3450,7 +3451,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             await session.commit()
 
         auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             preset = await client.post(
                 "/api/presets",
@@ -3534,7 +3535,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             ],
         }
         auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             created = await client.post("/api/presets", headers=auth, json={**rule, "attachments": [
                 {"account_id": "act_1018756607700064", "scope": {"level": "account", "ids": []}},
@@ -3605,7 +3606,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             "conditions": [{"metric": "spend", "operator": "gte", "value": 10.0, "time_window": "today"}],
         }
         auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             preview = await client.post("/api/accounts/act_1018756607700064/rules/preview", headers=auth, json=draft)
             missing = await client.post("/api/accounts/act_5555555555/rules/preview", headers=auth, json=draft)
@@ -3661,7 +3662,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             await session.commit()
 
         auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             preset = await client.post(
                 "/api/presets",
@@ -3700,7 +3701,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         )
         auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         headers = {**auth}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
 
         with (
             patch.object(
@@ -3744,7 +3745,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         )
         auth = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         headers = {**auth}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
 
         with (
             patch.object(
@@ -3817,7 +3818,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             "get_adset_state",
             new=AsyncMock(),
         ) as get_state:
-            transport = httpx.ASGITransport(app=self.app)
+            transport = client_api_transport(app=self.app)
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
                 response = await client.post(
                     f"/api/audit-events/{source_id}/undo",
@@ -3862,7 +3863,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 new=AsyncMock(return_value=True),
             ) as update_budget,
         ):
-            transport = httpx.ASGITransport(app=self.app)
+            transport = client_api_transport(app=self.app)
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
                 response = await client.post(
                     f"/api/audit-events/{source_id}/undo",
@@ -3891,7 +3892,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             preset_id = foreign_preset.id
 
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 "/api/accounts/act_1018756607700064/assign-rule",
@@ -3905,7 +3906,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
         auth = await session_headers(self.test_session_maker, user_info)
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             headers = {**auth}
 
@@ -3917,14 +3918,14 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(acc_resp.json()), 0)
 
     async def test_unauthorized_direct_access_blocked(self):
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # Request without a session
             resp = await client.get("/api/me")
             self.assertEqual(resp.status_code, 401)
 
     async def test_security_headers_present(self):
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get("/health/live")
             self.assertEqual(resp.status_code, 200)
@@ -3933,7 +3934,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(resp.headers.get("x-xss-protection"), "1; mode=block")
 
     async def test_otp_request_rate_limiting(self):
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             with patch("api.routers.auth.send_otp_verification_email", new=AsyncMock()):
                 first = await client.post(
@@ -3949,7 +3950,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(second.status_code, 429)
 
     async def test_otp_request_delivery_failure_raises_502(self):
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         orig_key = settings.RESEND_API_KEY
         settings.RESEND_API_KEY = "re_test_dummy_key"
         try:
@@ -3983,7 +3984,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             settings.RESEND_API_KEY = orig_key
 
     async def test_otp_brute_force_lockout(self):
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             with patch("api.routers.auth.send_otp_verification_email", new=AsyncMock()):
                 req = await client.post(
@@ -4027,7 +4028,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             delivered["login_link"] = login_link
             return True
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             with patch("api.routers.auth.send_otp_verification_email", new=capture_code):
                 requested = await client.post(
@@ -4074,7 +4075,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             delivered.update(email=email, code=code, login_link=login_link)
             return True
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             with patch("api.routers.auth.send_otp_verification_email", new=capture_message):
                 requested = await client.post(
@@ -4139,7 +4140,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             delivered["code"] = code
             return True
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             with patch("api.routers.auth.send_otp_verification_email", new=capture_message):
                 requested = await client.post(
@@ -4172,7 +4173,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
     async def test_avatar_and_logo_disallow_svg(self):
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         headers = {**buyer_data}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             avatar_svg = await client.post(
                 "/api/onboarding/avatar",
@@ -4198,7 +4199,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
     async def test_image_uploads_are_canonical_owned_and_cleaned(self):
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         headers = {**buyer_data}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
 
         png_buffer = io.BytesIO()
         png_metadata = PngImagePlugin.PngInfo()
@@ -4321,7 +4322,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
     async def test_update_profile_avatar_url_validation(self):
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         headers = {**buyer_data}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # 1. Malicious schemes and XSS payloads must be rejected with 422
             for bad_avatar in (
@@ -4363,7 +4364,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
     async def test_update_profile_title_username_and_full_name_as_in_linear(self):
         headers = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         await session_headers(self.test_session_maker, {"id": 8948797432, "first_name": "Ann", "username": "ann.k"})
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             res = await client.post(
                 "/api/auth/update-profile",
@@ -4406,7 +4407,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
     async def test_update_profile_cannot_bypass_email_verification(self):
         buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
         headers = {**buyer_data}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # Direct modification of email in update-profile must be rejected
             res = await client.post(
@@ -4426,7 +4427,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             delivered[email] = code
             return True
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # 1. Request email change
             with patch("api.routers.auth.send_otp_verification_email", new=capture_code):
@@ -4508,7 +4509,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             delivered[email] = code
             return True
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             with patch("api.routers.auth.send_otp_verification_email", new=capture_code):
                 req_res = await client.post("/api/auth/request-email-verification", headers=headers)
@@ -4559,7 +4560,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
         user2_data = await session_headers(self.test_session_maker, {"id": 8948797222, "first_name": "Two", "username": "user_two"})
         headers = {**user2_data}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # User 2 tries to claim User 1's email with different case / spaces -> 409 Conflict
             collision_res = await client.post(

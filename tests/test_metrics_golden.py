@@ -54,6 +54,7 @@ from core.metrics import round_half_up
 from database.models import Account, AnalyticsEntityFact, User, Workspace, WorkspaceMember
 from meta_api.client import MetaClient
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
+from tests.client_api_transport import client_api_transport
 
 UTC = timezone.utc
 NZ = "act_9120001"
@@ -540,7 +541,7 @@ class TestGoldenMetrics(unittest.IsolatedAsyncioTestCase):
             last = today - timedelta(days=1) if period == "yesterday" else today
             return [last - timedelta(days=n) for n in range(length)][::-1]
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             headers = await session_headers(
                 self.sessions, {"id": 71200001, "first_name": "Golden", "username": "golden"}

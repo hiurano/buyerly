@@ -20,6 +20,7 @@ from core.rate_limit import (
 from database.db import Base
 from database.models import User, Workspace
 from tests.test_db_helper import create_test_engine, init_test_db
+from tests.client_api_transport import client_api_transport
 
 
 class TestRateLimiterCore(unittest.IsolatedAsyncioTestCase):
@@ -290,7 +291,7 @@ class TestApiRateLimitingAndDosProtection(unittest.IsolatedAsyncioTestCase):
         await self.test_engine.dispose()
 
     async def test_login_code_rate_limiting(self):
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # Send 10 wrong login codes (limit is 10/min)
             for _ in range(10):
@@ -313,7 +314,7 @@ class TestApiRateLimitingAndDosProtection(unittest.IsolatedAsyncioTestCase):
         original = settings.TRUSTED_PROXY_CIDRS
         settings.TRUSTED_PROXY_CIDRS = "127.0.0.1/32"
         try:
-            transport = httpx.ASGITransport(app=self.app, client=("127.0.0.1", 123))
+            transport = client_api_transport(app=self.app, client=("127.0.0.1", 123))
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
                 for index in range(10):
                     response = await client.post(
@@ -334,7 +335,7 @@ class TestApiRateLimitingAndDosProtection(unittest.IsolatedAsyncioTestCase):
 
     async def test_check_slug_rate_limiting(self):
         headers = {"Authorization": "Bearer test-valid-auth-token-12345"}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # 30 requests allowed
             for i in range(30):
@@ -347,7 +348,7 @@ class TestApiRateLimitingAndDosProtection(unittest.IsolatedAsyncioTestCase):
 
     async def test_parse_raw_max_payload_length_validation(self):
         headers = {"Authorization": "Bearer test-valid-auth-token-12345"}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # Valid string within 64KB
             valid_res = await client.post(
@@ -373,7 +374,7 @@ class TestApiRateLimitingAndDosProtection(unittest.IsolatedAsyncioTestCase):
             "Content-Length": "2000000",
             "Content-Type": "application/json",
         }
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             res = await client.post(
                 "/api/accounts/parse-raw",

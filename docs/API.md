@@ -1,6 +1,6 @@
 # API Buyerly
 
-Этот документ фиксирует публичный HTTP-контракт текущей production-версии. Интерактивная OpenAPI-схема доступна на `/docs`, исходная JSON-схема — на `/openapi.json`. Все даты в API передаются в ISO 8601, серверные даты истории — в UTC.
+Этот документ фиксирует публичный HTTP-контракт текущей production-версии. Web-клиент ходит в API через GraphQL (раздел «Клиентский API»): маршруты, которые служат полями GraphQL, больше не отдаются по HTTP, а их описания ниже — это поведение соответствующих полей (таблица соответствия там же). Интерактивная OpenAPI-схема доступна на `/docs`, исходная JSON-схема — на `/openapi.json`. Все даты в API передаются в ISO 8601, серверные даты истории — в UTC.
 
 ## Базовый адрес и авторизация
 
@@ -337,7 +337,7 @@ Meta возвращает браузер на служебный callback `/api/
 
 ## Клиентский API (GraphQL)
 
-Как `client-api.linear.app/graphql` у Linear (#509): web-клиент читает всё, чего нет в sync, и делает все изменения через один endpoint `POST /api/graphql` (`{"query", "variables"}`). REST клиент использует только для sync (`/api/sync/*`), входа и сессий (`/api/auth/*`, `/api/me`), загрузки файлов (`/api/onboarding/avatar`, `/api/onboarding/workspace/logo`) и публичных ссылок (приглашение в workspace, подключение Facebook по приглашению). Вебхуки Meta и Telegram остаются REST. Остальные REST-маршруты пока работают и будут убираться по одному.
+Как `client-api.linear.app/graphql` у Linear (#509): web-клиент читает всё, чего нет в sync, и делает все изменения через один endpoint `POST /api/graphql` (`{"query", "variables"}`). REST клиент использует только для sync (`/api/sync/*`), входа и сессий (`/api/auth/*`, `/api/me`), загрузки файлов (`/api/onboarding/avatar`, `/api/onboarding/workspace/logo`) и публичных ссылок (приглашение в workspace, подключение Facebook по приглашению). Вебхуки Meta и Telegram остаются REST, как и служебные маршруты, которые клиент не вызывает (`/api/admin/*`, `/api/summary`, `/api/settings*`, `/api/health/overview`, `/api/meta/oauth/config` и др.). Маршруты, ставшие полями GraphQL, по HTTP больше не отдаются (#509): ниже они описаны как поведение своих полей.
 
 Авторизация та же, что у REST: cookie сессии аккаунта из `X-Buyerly-Account`, `X-CSRF-Token` (запрос всегда POST; GET и GraphiQL выключены) и workspace из `X-Workspace-Slug`. Без сессии — HTTP 401, без CSRF — 403, до выполнения любого поля. Каждое поле вызывает обработчик своего REST-маршрута ([api/client_api/schema.py](../api/client_api/schema.py), `ROUTES`) с теми же проверками прав, rate limit, валидацией и `response_model`, поэтому поле может ровно то же, что маршрут; [tests/test_client_api.py](../tests/test_client_api.py) сравнивает каждое поле с маршрутом для вышедшего, чужого workspace, гостя и участника.
 
@@ -345,6 +345,116 @@ Meta возвращает браузер на служебный callback `/api/
 - Мутации — изменения синхронизируемых моделей, по имени Linear `<модель><Действие>`: `ruleCreate`, `ruleLabelUpdate`, `favoriteDelete`, `teamMembersAdd`, `workspaceUpdate`… Ответ — payload Linear: `success`, `lastSyncId` (sync id, в котором уже есть изменение: очередь транзакций #508 держит локальную правку, пока sync не дошёл до него) и запись, как её вернул маршрут (`rule`, `ruleLabel`, `team`, …).
 - Отказ — ошибка GraphQL с текстом маршрута и `extensions`: `statusCode` (статус REST: 403, 404, 409, 422, 429…), `type` (как у Linear: `forbidden`, `entity not found`, `invalid input`, `ratelimited`), `userPresentableMessage`.
 - Запись — JSON в полях snake_case, как у синхронизируемых моделей; аргументы полей — camelCase. Документ — не глубже 4 уровней, не больше 10 алиасов и 2000 токенов.
+
+Поля и маршруты, обработчики которых они вызывают:
+
+| Поле GraphQL | Вид | Бывший маршрут |
+|---|---|---|
+| `accountDelete` | mutation | `DELETE /api/accounts/{account_id}` |
+| `accountLeadUpdate` | mutation | `PATCH /api/accounts/{account_id}/lead` |
+| `accountNotificationSetting` | query | `GET /api/accounts/{account_id}/notifications` |
+| `accountNotificationSettingUpdate` | mutation | `PUT /api/accounts/{account_id}/notifications` |
+| `accountRuleAttach` | mutation | `POST /api/accounts/{account_id}/assign-rule` |
+| `accountRuleDetach` | mutation | `POST /api/accounts/{account_id}/detach-rule/{preset_id}` |
+| `accountRuleScopeUpdate` | mutation | `PUT /api/accounts/{account_id}/rules/{preset_id}/scope` |
+| `accountRulesToggle` | mutation | `POST /api/accounts/{account_id}/toggle-rules` |
+| `accountUpdate` | mutation | `PATCH /api/accounts/{account_id}/profile` |
+| `accounts` | query | `GET /api/accounts` |
+| `adSetDismiss` | mutation | `POST /api/adsets/{adset_id}/dismiss` |
+| `adSetReactivate` | mutation | `POST /api/adsets/{adset_id}/reactivate` |
+| `analyticsAccountsHierarchy` | query | `GET /api/analytics/hierarchy/accounts` |
+| `analyticsHierarchy` | query | `GET /api/analytics/hierarchy` |
+| `auditEventUndo` | mutation | `POST /api/audit-events/{event_id}/undo` |
+| `auditEvents` | query | `GET /api/audit-events` |
+| `deletedItemRestore` | mutation | `POST /api/deleted-items/{item_id}/restore` |
+| `deletedItems` | query | `GET /api/deleted-items` |
+| `entityBudgetUpdate` | mutation | `PATCH /api/entities/{level}/{entity_id}/budget` |
+| `entityDeliveryUpdate` | mutation | `POST /api/entities/{level}/{entity_id}/delivery` |
+| `favoriteCreate` | mutation | `POST /api/favorites` |
+| `favoriteDelete` | mutation | `DELETE /api/favorites/{favorite_id}` |
+| `favorites` | query | `GET /api/favorites` |
+| `inbox` | query | `GET /api/inbox` |
+| `inboxDeleteAll` | mutation | `POST /api/inbox/delete-all` |
+| `inboxDeleteAllRead` | mutation | `POST /api/inbox/delete-all-read` |
+| `inboxDisplay` | query | `GET /api/inbox/display` |
+| `inboxDisplayUpdate` | mutation | `PUT /api/inbox/display` |
+| `inboxFacets` | query | `GET /api/inbox/facets` |
+| `inboxNotificationDelete` | mutation | `POST /api/inbox/{event_id}/delete` |
+| `inboxNotificationRead` | mutation | `POST /api/inbox/{event_id}/read` |
+| `inboxNotificationSnooze` | mutation | `POST /api/inbox/{event_id}/snooze` |
+| `inboxSenders` | query | `GET /api/inbox/senders` |
+| `inboxUnreadCount` | query | `GET /api/inbox/unread-count` |
+| `metaConnectionDiscover` | mutation | `POST /api/meta/connections/{connection_id}/discover` |
+| `metaConnectionImport` | mutation | `POST /api/meta/connections/{connection_id}/import` |
+| `metaConnections` | query | `GET /api/meta/connections` |
+| `metaInviteCreate` | mutation | `POST /api/meta/invites` |
+| `metaOauthStart` | mutation | `POST /api/meta/oauth/start` |
+| `notificationChannels` | query | `GET /api/notifications/channels` |
+| `notificationChannelsUpdate` | mutation | `PUT /api/notifications/channels` |
+| `onboardingInvitesSend` | mutation | `POST /api/onboarding/invites` |
+| `onboardingPersonalDetailsUpdate` | mutation | `POST /api/onboarding/personal-details` |
+| `onboardingSkip` | mutation | `POST /api/onboarding/skip` |
+| `onboardingWorkspaceCreate` | mutation | `POST /api/onboarding/workspace` |
+| `ruleCreate` | mutation | `POST /api/presets` |
+| `ruleDelete` | mutation | `DELETE /api/presets/{preset_id}` |
+| `ruleDraftCheck` | query | `POST /api/presets/check` |
+| `ruleDraftPreview` | query | `POST /api/accounts/{account_id}/rules/preview` |
+| `ruleEntityStates` | query | `GET /api/presets/{preset_id}/states` |
+| `ruleLabelCreate` | mutation | `POST /api/rule-labels` |
+| `ruleLabelDelete` | mutation | `DELETE /api/rule-labels/{label_id}` |
+| `ruleLabelUpdate` | mutation | `PATCH /api/rule-labels/{label_id}` |
+| `ruleLabels` | query | `GET /api/rule-labels` |
+| `ruleLabelsSet` | mutation | `PUT /api/presets/{preset_id}/labels` |
+| `rulePreview` | query | `GET /api/accounts/{account_id}/rules/{preset_id}/preview` |
+| `ruleStates` | query | `GET /api/rule-states` |
+| `ruleUpdate` | mutation | `PUT /api/presets/{preset_id}` |
+| `rules` | query | `GET /api/presets` |
+| `rulesLabelsChange` | mutation | `PATCH /api/presets/labels` |
+| `search` | query | `GET /api/search` |
+| `stoppedAdSets` | query | `GET /api/adsets/stopped` |
+| `teamAccountRemove` | mutation | `DELETE /api/workspaces/{workspace_id}/teams/{team_id}/accounts/{account_pk}` |
+| `teamAccountsAdd` | mutation | `POST /api/workspaces/{workspace_id}/teams/{team_id}/accounts` |
+| `teamCreate` | mutation | `POST /api/workspaces/{workspace_id}/teams` |
+| `teamDelete` | mutation | `DELETE /api/workspaces/{workspace_id}/teams/{team_id}` |
+| `teamDocumentCreate` | mutation | `POST /api/workspaces/{workspace_id}/teams/{team_id}/documents` |
+| `teamDocumentDelete` | mutation | `DELETE /api/workspaces/{workspace_id}/teams/{team_id}/documents/{document_id}` |
+| `teamDocumentUpdate` | mutation | `PATCH /api/workspaces/{workspace_id}/teams/{team_id}/documents/{document_id}` |
+| `teamDocuments` | query | `GET /api/workspaces/{workspace_id}/teams/{team_id}/documents` |
+| `teamMemberRemove` | mutation | `DELETE /api/workspaces/{workspace_id}/teams/{team_id}/members/{member_user_id}` |
+| `teamMemberUpdate` | mutation | `PATCH /api/workspaces/{workspace_id}/teams/{team_id}/members/{member_user_id}` |
+| `teamMembersAdd` | mutation | `POST /api/workspaces/{workspace_id}/teams/{team_id}/members` |
+| `teamRestore` | mutation | `POST /api/workspaces/{workspace_id}/teams/{team_id}/restore` |
+| `teamRetire` | mutation | `POST /api/workspaces/{workspace_id}/teams/{team_id}/retire` |
+| `teamUpdate` | mutation | `PATCH /api/workspaces/{workspace_id}/teams/{team_id}` |
+| `teams` | query | `GET /api/workspaces/{workspace_id}/teams` |
+| `telegramConnection` | query | `GET /api/telegram/connection` |
+| `telegramDisconnect` | mutation | `DELETE /api/telegram/connection` |
+| `telegramLinkCreate` | mutation | `POST /api/telegram/link` |
+| `userUpdate` | mutation | `POST /api/auth/update-profile` |
+| `viewSettingReset` | mutation | `DELETE /api/view-settings/{view_key}` |
+| `viewSettingUpdate` | mutation | `PUT /api/view-settings/{view_key}` |
+| `viewSettings` | query | `GET /api/view-settings` |
+| `workspaceCreate` | mutation | `POST /api/workspaces` |
+| `workspaceDelete` | mutation | `DELETE /api/workspaces/{workspace_id}` |
+| `workspaceInviteAccept` | mutation | `POST /api/invites/{token}/accept` |
+| `workspaceInviteCreate` | mutation | `POST /api/workspaces/{workspace_id}/invites` |
+| `workspaceInviteDelete` | mutation | `DELETE /api/workspaces/{workspace_id}/invites/{invite_id}` |
+| `workspaceInviteLink` | query | `GET /api/workspaces/{workspace_id}/invite-link` |
+| `workspaceInviteLinkDisable` | mutation | `DELETE /api/workspaces/{workspace_id}/invite-link` |
+| `workspaceInviteLinkEnable` | mutation | `POST /api/workspaces/{workspace_id}/invite-link` |
+| `workspaceInviteLinkReset` | mutation | `POST /api/workspaces/{workspace_id}/invite-link/reset` |
+| `workspaceInviteResend` | mutation | `POST /api/workspaces/{workspace_id}/invites/{invite_id}/resend` |
+| `workspaceInvites` | query | `GET /api/workspaces/{workspace_id}/invites` |
+| `workspaceLeave` | mutation | `POST /api/workspaces/{workspace_id}/leave` |
+| `workspaceMemberRemove` | mutation | `DELETE /api/workspaces/{workspace_id}/members/{member_user_id}` |
+| `workspaceMemberUpdate` | mutation | `PATCH /api/workspaces/{workspace_id}/members/{member_user_id}` |
+| `workspaceMembers` | query | `GET /api/workspaces/{workspace_id}/members` |
+| `workspaceOwnershipTransfer` | mutation | `POST /api/workspaces/{workspace_id}/transfer-ownership` |
+| `workspaceSlugCheck` | query | `GET /api/onboarding/check-slug` |
+| `workspaceSwitch` | mutation | `POST /api/workspaces/switch` |
+| `workspaceUpdate` | mutation | `PATCH /api/workspaces/{workspace_id}` |
+| `workspaceViewDefaultUpdate` | mutation | `PUT /api/view-settings/{view_key}/default` |
+| `workspaces` | query | `GET /api/workspaces` |
 
 ## Синхронизация (Sync engine)
 

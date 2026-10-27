@@ -29,6 +29,7 @@ from core.config import settings
 from database.models import MetaConnectionInvite, MetaOAuthState, User, Workspace, WorkspaceMember
 
 from tests.test_db_helper import create_test_engine, init_test_db
+from tests.client_api_transport import client_api_transport
 
 
 def _now():
@@ -129,7 +130,7 @@ class TestMetaInvites(unittest.IsolatedAsyncioTestCase):
         return {"Authorization": f"Bearer {token}"}
 
     def _client(self):
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         return httpx.AsyncClient(transport=transport, base_url="http://test")
 
     # ------------------------------------------------------------------

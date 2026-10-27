@@ -26,6 +26,7 @@ from database.models import (
     WorkspaceMember,
 )
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
+from tests.client_api_transport import client_api_transport
 
 OWNER = {"id": 7200000001, "first_name": "Owner", "username": "tg_owner"}
 BUYER = {"id": 7200000002, "first_name": "Buyer", "username": "tg_buyer"}
@@ -93,7 +94,7 @@ class TestTelegram(unittest.IsolatedAsyncioTestCase):
                 user.active_workspace_id = self.workspace.id
                 user.is_approved = True
             await session.commit()
-        self.client = httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app()), base_url="http://test")
+        self.client = httpx.AsyncClient(transport=client_api_transport(app=create_app()), base_url="http://test")
 
     async def asyncTearDown(self):
         settings.TELEGRAM_BOT_TOKEN, settings.WEBAPP_URL, telegram._bot_username = self.saved

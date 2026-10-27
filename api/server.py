@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from api.routes import router as api_router
+from api.routes import rest_only, router as api_router
 from api.meta_oauth import router as meta_oauth_router
 from core import telegram
 from core.config import settings
@@ -135,7 +135,7 @@ def create_app() -> FastAPI:
 
     # API routes
     app.include_router(api_router)
-    app.include_router(meta_oauth_router)
+    app.include_router(rest_only(meta_oauth_router))
 
     @app.get("/health/live", include_in_schema=False)
     async def health_live():

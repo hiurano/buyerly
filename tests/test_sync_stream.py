@@ -28,6 +28,7 @@ from database.models import (
 )
 from database.sync_log import STATE_KEY, changes_since, last_sync_id, member_sync_groups
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
+from tests.client_api_transport import client_api_transport
 
 
 class Closed(Exception):
@@ -169,7 +170,7 @@ class TestSyncStream(unittest.IsolatedAsyncioTestCase):
                                   ("stranger", 970000004)):
             self.headers[name] = await session_headers(self.sessions, {"id": telegram_id, "username": name})
         self.app = create_app()
-        self.client = httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test")
+        self.client = httpx.AsyncClient(transport=client_api_transport(app=self.app), base_url="http://test")
         self.sockets: list[Socket] = []
 
     async def asyncTearDown(self):

@@ -93,7 +93,7 @@ WorkspaceMemberPayload = _payload("WorkspaceMemberPayload", "workspace_member")
 
 async def _mutate(info: Info, payload_type, route, /, **values):
     result = await run(info, route, **values)
-    fields = {"success": True, "last_sync_id": await current_sync_id()}
+    fields = {"success": True, "last_sync_id": await current_sync_id(route)}
     for name in payload_type.__annotations__:
         fields.setdefault(name, result)
     return payload_type(**fields)

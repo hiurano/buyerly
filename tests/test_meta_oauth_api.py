@@ -25,6 +25,7 @@ from database.models import (
 
 
 from tests.test_db_helper import create_test_engine, init_test_db
+from tests.client_api_transport import client_api_transport
 
 
 class TestMetaOAuthReturnPath(unittest.TestCase):
@@ -138,7 +139,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
         await self.engine.dispose()
 
     async def test_start_returns_business_login_url_and_persists_state(self):
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 "/api/meta/oauth/start?return_path=/buyerly/settings",
@@ -177,7 +178,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
             "status_label": "Active (ACTIVE)",
         }
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         with (
             patch.object(meta_oauth_module, "_oauth_client", return_value=fake_oauth),
             patch.object(
@@ -235,7 +236,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
             session.add(account)
             await session.commit()
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.delete(
                 f"/api/meta/connections/{self.connection_id}",
@@ -311,7 +312,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
             await session.commit()
             foreign_connection_id = foreign_connection.id
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             viewer_response = await client.delete(
                 f"/api/meta/connections/{self.connection_id}",
@@ -337,7 +338,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
             "expires_at": 1893456000,
         }
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         with patch.object(meta_oauth_module, "_oauth_client", return_value=fake_oauth):
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
                 response = await client.post(
@@ -362,7 +363,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
             "expires_at": 1893456000,
         }
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         with patch.object(meta_oauth_module, "_oauth_client", return_value=fake_oauth):
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
                 response = await client.post(
@@ -393,7 +394,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
             session.add(account)
             await session.commit()
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             start_resp = await client.post(
                 f"/api/meta/oauth/start?return_path=/buyerly/settings&reconnect_connection_id={self.connection_id}",
@@ -449,7 +450,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(audit.action, "RECONNECT_CONNECTION")
 
     async def test_reconnect_blocks_identity_mismatch(self):
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             start_resp = await client.post(
                 f"/api/meta/oauth/start?return_path=/buyerly/settings&reconnect_connection_id={self.connection_id}",
@@ -502,7 +503,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
             await session.commit()
             ws2_id = ws2.id
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # Start OAuth in workspace 2
             start_resp = await client.post(
@@ -577,7 +578,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
             await session.commit()
             other_ws_id = ws_other.id
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             # Start OAuth while self.workspace_id is active
             start_resp = await client.post(
@@ -649,7 +650,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
             )
             await session.commit()
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.post(
                 "/api/meta/oauth/start",
@@ -658,7 +659,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(resp.status_code, 403)
 
     async def test_oauth_callback_blocks_revoked_or_viewer_membership(self):
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             start_resp = await client.post(
                 "/api/meta/oauth/start?return_path=/buyerly/settings",
@@ -746,7 +747,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
             },
         ]
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         with patch.object(meta_oauth_module, "_oauth_client", return_value=fake_oauth):
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
                 discovery = await client.post(
@@ -818,7 +819,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
             "status_label": "Active (ACTIVE)",
         }
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         with (
             patch.object(meta_oauth_module, "_oauth_client", return_value=fake_oauth),
             patch.object(
@@ -922,7 +923,7 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
             "status_label": "Active",
         }
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         with (
             patch.object(meta_oauth_module, "_oauth_client", return_value=fake_oauth),
             patch.object(

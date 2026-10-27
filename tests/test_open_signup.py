@@ -24,6 +24,7 @@ from database.models import (
 )
 from tests.sign_in_helper import sign_in
 from tests.test_db_helper import create_test_engine, init_test_db
+from tests.client_api_transport import client_api_transport
 
 
 class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
@@ -115,7 +116,7 @@ class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
     async def test_joined_member_can_repeat_login_with_code_and_link(self):
         await self._seed_joined_member()
         with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock, return_value=True) as send:
-            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+            async with httpx.AsyncClient(transport=client_api_transport(app=self.app), base_url="https://test") as client:
                 for use_link in (False, True):
                     response = await client.post("/api/auth/request-temporary-password", json={"email": "buyer@buyerly.com"})
                     self.assertEqual(response.status_code, 200, response.text)
@@ -149,7 +150,7 @@ class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
 
         with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock) as mock_send:
             mock_send.return_value = True
-            transport = httpx.ASGITransport(app=self.app)
+            transport = client_api_transport(app=self.app)
             async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
                 resp = await client.post(
                     "/api/auth/request-temporary-password",
@@ -180,7 +181,7 @@ class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
     async def test_invite_email_login_returns_to_the_invitation(self):
         token = await self._seed_pending_invite()
         with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock, return_value=True) as send:
-            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+            async with httpx.AsyncClient(transport=client_api_transport(app=self.app), base_url="https://test") as client:
                 response = await client.post(
                     "/api/auth/request-temporary-password",
                     json={"email": "newcomer@agency.com", "invite_token": token},
@@ -225,7 +226,7 @@ class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
         # Sign-up is open: a stranger gets a code, becomes a user and goes
         # through onboarding to their own workspace.
         with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock, return_value=True) as send:
-            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+            async with httpx.AsyncClient(transport=client_api_transport(app=self.app), base_url="https://test") as client:
                 response = await self._request_code(client, "Stranger@Elsewhere.com")
                 self.assertEqual(response.status_code, 200, response.text)
                 code = send.call_args.args[1]
@@ -252,7 +253,7 @@ class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
 
     async def test_any_existing_account_can_create_a_workspace(self):
         await self._add_user("no_workspace_yet", email="nows@agency.com", verified=True)
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+        async with httpx.AsyncClient(transport=client_api_transport(app=self.app), base_url="https://test") as client:
             response = await self._create_first_workspace(client, "nows@agency.com", "Solo Team")
             self.assertEqual(response.status_code, 200, response.text)
 
@@ -263,7 +264,7 @@ class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
             user.email_verified_at = datetime.now(timezone.utc)
             await session.commit()
         with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock, return_value=True) as send:
-            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+            async with httpx.AsyncClient(transport=client_api_transport(app=self.app), base_url="https://test") as client:
                 response = await self._request_code(client, "buyer@buyerly.com")
                 self.assertEqual(response.status_code, 200, response.text)
                 response = await client.post(
@@ -279,7 +280,7 @@ class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
         # buyer@buyerly.com was never confirmed on its account: whoever reads
         # that inbox must not be signed in to it, nor have it marked confirmed.
         with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock, return_value=True) as send:
-            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+            async with httpx.AsyncClient(transport=client_api_transport(app=self.app), base_url="https://test") as client:
                 for use_link in (False, True):
                     response = await self._request_code(client, "buyer@buyerly.com")
                     self.assertEqual(response.status_code, 200, response.text)
@@ -295,7 +296,7 @@ class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
 
     async def test_onboarding_does_not_set_an_email(self):
         user_id = await self._add_user("namer", email="namer@agency.com", verified=True)
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+        async with httpx.AsyncClient(transport=client_api_transport(app=self.app), base_url="https://test") as client:
             headers = await self._login(client, "namer@agency.com")
             response = await client.post(
                 "/api/onboarding/personal-details",
@@ -312,7 +313,7 @@ class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
     async def test_spent_or_foreign_invitation_is_refused(self):
         token = await self._seed_pending_invite()
         with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock, return_value=True) as send:
-            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+            async with httpx.AsyncClient(transport=client_api_transport(app=self.app), base_url="https://test") as client:
                 for email, invite_token in (
                     ("someone.else@agency.com", token),
                     ("newcomer@agency.com", "no-such-invitation-token"),
@@ -332,7 +333,7 @@ class TestOpenSignUp(unittest.IsolatedAsyncioTestCase):
         try:
             with patch("api.routers.auth.send_otp_verification_email", new_callable=AsyncMock, return_value=True) as send, \
                  patch("api.routers.auth.verify_turnstile", new_callable=AsyncMock) as verify:
-                async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="https://test") as client:
+                async with httpx.AsyncClient(transport=client_api_transport(app=self.app), base_url="https://test") as client:
                     verify.return_value = False
                     response = await self._request_code(client, "fresh@agency.com")
                     self.assertEqual(response.status_code, 400, response.text)

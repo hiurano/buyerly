@@ -34,6 +34,7 @@ from database.models import (
 
 
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
+from tests.client_api_transport import client_api_transport
 
 
 class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
@@ -141,7 +142,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
     async def test_workspace_lifecycle_and_data_isolation(self):
         artem_data = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
         headers = {**artem_data}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
 
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
             # 1. Get initial workspaces list
@@ -248,7 +249,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
 
     async def test_workspace_url_change_from_settings(self):
         headers = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
 
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
             other = await client.post('/api/workspaces', headers=headers, json={'name': 'Canada Traffic'})
@@ -279,7 +280,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
     async def test_workspace_creation_rejects_occupied_and_reserved_slugs(self):
         artem_data = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
         headers = {**artem_data}
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
 
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
             first, second = await asyncio.gather(
@@ -323,7 +324,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(len(names), 1)
 
     async def test_spa_workspace_slug_routes(self):
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
             routes = [
                 '/',
@@ -413,7 +414,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
         artem_data = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
         artem_headers = {**artem_data}
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
             # Create Bob and Charlie in DB
             async with self.test_session_maker() as session:
@@ -531,7 +532,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
         artem_data = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
         artem_headers = {**artem_data}
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
             # Create Dave in DB
             async with self.test_session_maker() as session:
@@ -652,7 +653,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
         url = f'/api/workspaces/{ws_id}/invite-link'
         token_of = lambda invite_url: invite_url.rsplit('/', 1)[-1]
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
             # Off until an admin turns it on; never had one, so not "turned off" (onboarding turns it on).
             self.assertEqual((await client.get(url, headers=artem_headers)).json(), {'invite_url': None, 'turned_off': False})
@@ -713,7 +714,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             await session.commit()
         viewer_headers = await session_headers(self.test_session_maker, {'id': 777000555, 'first_name': 'Vera', 'username': 'vera'})
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
             with patch('api.routers.members.send_workspace_invitation_email', new_callable=AsyncMock, return_value=True) as send:
                 personal = (await client.post(
@@ -802,7 +803,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             )
         ]
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
             created = await client.post(
                 f'/api/workspaces/{ws_id}/invites',
@@ -856,7 +857,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
         artem_data = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
         artem_headers = {**artem_data}
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
             # Create Victor (viewer in Buyerly)
             async with self.test_session_maker() as session:
@@ -933,7 +934,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
         auth = await session_headers(self.test_session_maker, {"id": 777009999, "first_name": "Colleague"})
         info = {"name": "Updated", "account_status": 1, "timezone_name": "UTC", "currency": "USD"}
         with patch.object(self.app.state.meta_client, "get_account_info", new=AsyncMock(return_value=info)):
-            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
+            async with httpx.AsyncClient(transport=client_api_transport(app=self.app), base_url="http://test") as client:
                 for role, owns_account, allowed in (("member", False, False), ("member", True, True), ("admin", False, True), ("owner", False, True)):
                     with self.subTest(role=role, owns_account=owns_account):
                         async with self.test_session_maker() as session:
@@ -998,7 +999,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             'currency': 'USD',
         }
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         with patch.object(self.app.state.meta_client, 'get_account_info', new=AsyncMock(return_value=mock_meta_info)):
             async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
                 res = await client.post(
@@ -1058,7 +1059,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             'currency': 'USD',
         }
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         with patch.object(self.app.state.meta_client, 'get_account_info', new=AsyncMock(return_value=mock_meta_info)):
             async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
                 response = await client.post(
@@ -1113,7 +1114,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
         recipient_data = await session_headers(self.test_session_maker, {'id': 777000777, 'first_name': 'Legit', 'username': 'recipient'})
         recipient_headers = {**recipient_data}
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
             create_res = await client.post(
                 f'/api/workspaces/{ws_id}/invites',
@@ -1174,7 +1175,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             **(await session_headers(self.test_session_maker, {'id': 777000555, 'first_name': 'NoEmail', 'username': 'no_email_user'}))
         }
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
             create_res = await client.post(
                 f'/api/workspaces/{ws_id}/invites',
@@ -1218,7 +1219,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
         artem_data = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
         artem_headers = {**artem_data}
 
-        transport = httpx.ASGITransport(app=self.app)
+        transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
             async with self.test_session_maker() as session:
                 ws = (await session.execute(select(Workspace).where(Workspace.slug == 'buyerly'))).scalar_one()

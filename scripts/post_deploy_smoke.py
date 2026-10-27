@@ -88,7 +88,7 @@ def _health(path: str, expected_status: str) -> dict:
 
 def _auth_boundary() -> dict:
     protected_paths = (
-        "/api/workspaces",
+        "/api/graphql",
         "/api/summary",
         "/api/meta/oauth/config",
     )
