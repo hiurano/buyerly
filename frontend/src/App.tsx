@@ -1,13 +1,9 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, useLocation, useOutletContext } from 'react-router';
-import { CommandMenu } from '@/components/command/CommandMenu';
-import { BuyerlyShortcutsPanel } from '@/components/help/BuyerlyShortcutsPanel';
 import { favoritesStore } from '@/lib/favorites';
-import { OpenPalette } from '@/components/command/OpenPalette';
 import { searchPageTitle } from '@/lib/search';
 import { pageTitle } from '@/lib/pageTitle';
 import { useTeams } from '@/lib/teams';
-import { WorkspaceSwitcher } from '@/components/command/WorkspaceSwitcher';
 import { AppUtilityBar } from '@/components/layout/AppUtilityBar';
 import { TooltipProvider } from '@/ui/Tooltip';
 import { ToastRegion } from '@/ui/ToastRegion';
@@ -31,16 +27,9 @@ import { appPlaceOf, openTab, useCurrentPage } from '@/lib/navigation';
 import type { BuyerlyWorkspaceOutlet } from '@/components/layout/BuyerlyAppPages';
 import { AuthLoading } from '@/components/auth/AuthFrame';
 import { finishSplash } from '@/lib/splash';
-import { LoginView } from '@/components/auth/LoginView';
-import { VerifyEmailLinkView } from '@/components/auth/VerifyEmailLinkView';
-import { InviteView } from '@/components/auth/InviteView';
-import { NotFoundView } from '@/components/auth/NotFoundView';
-import { CreateWorkspaceView } from '@/components/onboarding/CreateWorkspaceView';
-import { WelcomeView } from '@/components/onboarding/WelcomeView';
-import { MetaConnectInviteView, MetaConnectSuccessView } from '@/components/auth/MetaConnectInviteView';
-import { ApprovalDialog } from '@/webmcp/ApprovalDialog';
-import { CreateRuleModal } from '@/components/rules/CreateRuleModal';
 import { useWebMcpTools } from '@/webmcp/register';
+import { OVERLAY_CHUNK, SIGNED_OUT_CHUNK } from '@/components/layout/BuyerlyPageChunks';
+import { buyerlyLazy } from '@/components/layout/BuyerlyLazy';
 import { WorkspaceSessionProvider, type WorkspaceSession } from '@/lib/workspaceSession';
 import { isSmallScreen } from '@/lib/useMediaQuery';
 import { GO_TO_SETTINGS_SECTION, goToTargetFor } from '@/lib/shortcuts';
@@ -64,6 +53,23 @@ import { useDetailsPaneStore } from '@/models/detailsPaneStore';
 import { useViewStore } from '@/models/viewStore';
 import * as stylex from '@stylexjs/stylex';
 import { withClassName } from '@/ui/withClassName';
+
+// Their own chunks (#494): a signed-in page doesn't download sign-in, and the
+// overlays download beside the first page's code (routes.tsx) instead of in the entry.
+const LoginView = buyerlyLazy(SIGNED_OUT_CHUNK, 'LoginView', <AuthLoading />);
+const VerifyEmailLinkView = buyerlyLazy(SIGNED_OUT_CHUNK, 'VerifyEmailLinkView', <AuthLoading />);
+const InviteView = buyerlyLazy(SIGNED_OUT_CHUNK, 'InviteView', <AuthLoading />);
+const NotFoundView = buyerlyLazy(SIGNED_OUT_CHUNK, 'NotFoundView', <AuthLoading />);
+const MetaConnectInviteView = buyerlyLazy(SIGNED_OUT_CHUNK, 'MetaConnectInviteView', <AuthLoading />);
+const MetaConnectSuccessView = buyerlyLazy(SIGNED_OUT_CHUNK, 'MetaConnectSuccessView', <AuthLoading />);
+const CreateWorkspaceView = buyerlyLazy(SIGNED_OUT_CHUNK, 'CreateWorkspaceView', <AuthLoading />);
+const WelcomeView = buyerlyLazy(SIGNED_OUT_CHUNK, 'WelcomeView', <AuthLoading />);
+const CommandMenu = buyerlyLazy(OVERLAY_CHUNK, 'CommandMenu');
+const OpenPalette = buyerlyLazy(OVERLAY_CHUNK, 'OpenPalette');
+const WorkspaceSwitcher = buyerlyLazy(OVERLAY_CHUNK, 'WorkspaceSwitcher');
+const BuyerlyShortcutsPanel = buyerlyLazy(OVERLAY_CHUNK, 'BuyerlyShortcutsPanel');
+const CreateRuleModal = buyerlyLazy(OVERLAY_CHUNK, 'CreateRuleModal');
+const ApprovalDialog = buyerlyLazy(OVERLAY_CHUNK, 'ApprovalDialog');
 
 const RETURN_ROUTE_KEY = 'buyerly-return-route';
 

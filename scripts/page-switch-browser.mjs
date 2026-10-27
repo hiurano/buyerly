@@ -23,6 +23,10 @@
 //   frame between.
 // - A page whose data takes SLOW_DELAY_MS, on a reloaded app: old frames
 //   until about HOLD_MS, then the skeleton, then the page; no empty frame.
+// - Each page's code is its own chunk (#494): once Inbox is idle, every
+//   page's module has been requested (prefetched).
+// - A page whose code is still on its way (held until DELAY_MS after the
+//   click), on a reloaded app: only old frames, then only new ones.
 const DELAY_MS = 400;
 const SLOW_DELAY_MS = 2_500;
 const HOLD_MS = 1_000;
@@ -31,6 +35,13 @@ const ACTIVE_ROW_MS = 100;
 const RAPID_GAP_MS = 120;
 const SETTLE_MS = 300;
 const WATCH_LIMIT_MS = 6_000;
+// The pages' modules, as the dev server serves them; each is a chunk in the build.
+const PAGE_MODULES = [
+  'inbox/InboxView', 'accounts/AccountsView', 'accounts/AccountPage', 'campaigns/CampaignsView', 'rules/RulesView',
+  'rules/RecentlyDeletedRulesPage', 'teams/TeamHomeView', 'workspace/WorkspaceMembersView',
+  'workspace/WorkspaceTeamsView', 'search/SearchView', 'preferences/PreferencesView',
+].map((name) => `/src/components/${name}.tsx`);
+const HELD_MODULE = '/src/components/teams/TeamHomeView.tsx';
 
 
 import assert from 'node:assert/strict';
@@ -138,6 +149,14 @@ try {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   let delay = 0;
+  const requestedModules = new Set();
+  page.on('request', (request) => requestedModules.add(new URL(request.url()).pathname));
+  // Set to a promise: Home's code waits for it.
+  let heldCode = null;
+  await context.route((url) => url.pathname === HELD_MODULE, async (route) => {
+    if (heldCode) await heldCode;
+    await route.continue();
+  });
   await context.route('**/health/live', (route) => route.fulfill({ json: { status: 'alive', version: 'local' } }));
   await context.route('**/api/**', async (route) => {
     const request = route.request();
@@ -264,6 +283,9 @@ try {
     await page.goto(`${origin}/${workspace.slug}/inbox`);
     await page.locator('main').getByText(inboxItem.message).first().waitFor();
     await page.waitForTimeout(500);
+    // The other pages' code, prefetched once Inbox is idle: in, as for anyone who looked at Inbox a moment.
+    await page.evaluate(() => import('/src/components/layout/BuyerlyPageChunks.ts')
+      .then(({ PAGE_CHUNKS }) => Promise.all(Object.values(PAGE_CHUNKS).map((chunk) => chunk.load()))));
 
     // Pages never visited, each answer late: the old page holds until the new one has its data.
     delay = DELAY_MS;
@@ -293,6 +315,31 @@ try {
       if (between.length) failures.push(`G K, G R: Ad accounts showed in ${between.length} frame(s)`);
     }
 
+    // Once Inbox is idle, every page's code has been asked for.
+    await freshInbox();
+    requestedModules.clear();
+    await freshInbox();
+    {
+      const missing = PAGE_MODULES.filter((path) => !requestedModules.has(path));
+      if (missing.length) failures.push(`Prefetch: not requested after Inbox went idle: ${missing.join(', ')}`);
+    }
+
+    // A page whose code is still downloading: the old page holds until it is in.
+    {
+      let release;
+      heldCode = new Promise((resolve) => { release = resolve; });
+      await freshInbox();
+      setTimeout(release, DELAY_MS);
+      const frames = await watch({ row: ROWS.home, marker: document.title });
+      heldCode = null;
+      report.push({ switch: 'Home (code late)', frames: runs(frames) });
+      const order = frames.map((frame) => frame.kind).filter((kind, index, all) => kind !== all[index - 1]);
+      if (order.join(',') !== 'old,new') failures.push(`Home (code late): ${runs(frames)}; want old frames, then the page`);
+      else if (frames.find((frame) => frame.kind === 'new').at < DELAY_MS - 50) {
+        failures.push('Home (code late): the page showed before its code was released');
+      }
+    }
+
     // A page whose data is slow: the old page, then the skeleton after HOLD_MS, then the page.
     await freshInbox();
     delay = SLOW_DELAY_MS;
@@ -312,7 +359,7 @@ try {
     await page.screenshot({ path: `${output}/last-page.png` });
     assert.deepEqual(failures, [], `page switches:\n${failures.join('\n')}`);
     assert.deepEqual(errors, []);
-    console.log(`Page switch: the old page holds until the next has its data, the skeleton shows after ${HOLD_MS} ms, and G K then G R lands on Rules alone`);
+    console.log(`Page switch: the old page holds until the next has its data and its code, the skeleton shows after ${HOLD_MS} ms, every page's code is prefetched once Inbox is idle, and G K then G R lands on Rules alone`);
   } catch (error) {
     console.table(report);
     await page.screenshot({ path: `${output}/failure.png`, fullPage: true });
