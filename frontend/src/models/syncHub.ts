@@ -56,9 +56,10 @@ const RETRY_MS = [500, 1_000, 2_000, 5_000, 10_000, 30_000];
 /** A tab silent this long is gone (it closed without saying so). Hidden tabs' timers run once a minute. */
 export const PEER_TIMEOUT_MS = 5 * 60_000;
 /**
- * Writes the last visit left unsent are handed to a tab this long after the
- * hub started: tabs that held them already join again first (after a worker
- * restart) and keep their own, so none is sent twice.
+ * Writes the last visit left unsent are handed to a tab at once, drawn in the
+ * first frame after a reload; but when a tab joins again after the worker
+ * restarted, this long after the hub started: the other tabs that held them
+ * join again first and keep their own, so none is sent twice.
  */
 export const ADOPT_DELAY_MS = 3_000;
 
@@ -179,7 +180,7 @@ export class SyncHub {
     this.#orphans = this.#orphans.filter((transaction) => !own.has(transaction.id));
     if (this.#models) peer.post(this.#holdMessage());
     peer.post(this.#statusMessage());
-    if (!this.#started) this.#start();
+    if (!this.#started) this.#start(message.rejoin);
     this.#adopt();
     this.#transactionsChanged();
   }
@@ -256,9 +257,9 @@ export class SyncHub {
 
   // The connection.
 
-  #start() {
+  #start(rejoin: boolean) {
     this.#started = true;
-    this.#adoptAfter = this.#env.now() + ADOPT_DELAY_MS;
+    this.#adoptAfter = rejoin ? this.#env.now() + ADOPT_DELAY_MS : 0;
     this.#db = this.#env.openDatabase(this.scope);
     const { WebSocket } = this.#env;
     void this.#db.then(async (db) => {

@@ -69,9 +69,9 @@ function tab(host, id) {
     of: (type) => heard.filter((message) => message.type === type),
     last: (type) => heard.filter((message) => message.type === type).at(-1),
     say: (message) => host.receive(peer, { tab: id, ...message }),
-    join: (scope = 'olga:7:alpha', pending = []) => host.receive(peer, {
+    join: (scope = 'olga:7:alpha', pending = [], rejoin = false) => host.receive(peer, {
       type: 'join', tab: id, scope, slug: scope.split(':')[2], account: 100,
-      headers: { 'x-buyerly-account': '100', 'x-workspace-slug': scope.split(':')[2] }, pending,
+      headers: { 'x-buyerly-account': '100', 'x-workspace-slug': scope.split(':')[2] }, pending, rejoin,
     }),
   };
 }
@@ -244,9 +244,9 @@ async function checkLink() {
   let restarts = 0;
   const link = new HubLink('olga:7:alpha', (message) => heard.push(message), () => {
     restarts += 1;
-    link.post({ type: 'join', tab: 't', scope: 'olga:7:alpha', slug: 'alpha', account: null, headers: {}, pending: [] });
+    link.post({ type: 'join', tab: 't', scope: 'olga:7:alpha', slug: 'alpha', account: null, headers: {}, pending: [], rejoin: false });
   });
-  link.post({ type: 'join', tab: 't', scope: 'olga:7:alpha', slug: 'alpha', account: null, headers: {}, pending: [] });
+  link.post({ type: 'join', tab: 't', scope: 'olga:7:alpha', slug: 'alpha', account: null, headers: {}, pending: [], rejoin: false });
   await tick();
   assert.equal(link.shared, true);
   assert.equal(workers.length, 1);

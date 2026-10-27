@@ -56,7 +56,7 @@ export class SyncClient {
       // A closing tab leaves its hub; one back from the back/forward cache joins again.
       window.addEventListener('pagehide', () => this.#link?.post({ type: 'leave', tab: tabId }));
       window.addEventListener('pageshow', (event) => {
-        if (event.persisted) this.#join();
+        if (event.persisted) this.#join(true);
       });
     }
   }
@@ -187,7 +187,7 @@ export class SyncClient {
     this.#failRequests();
   }
 
-  #join() {
+  #join(rejoin = false) {
     const scope = this.#scope;
     if (!this.#link || scope === null) return;
     const account = requestAccount();
@@ -195,7 +195,7 @@ export class SyncClient {
     if (this.#slug) headers['X-Workspace-Slug'] = this.#slug;
     if (account) headers['X-Buyerly-Account'] = String(account.id);
     this.#link.post({
-      type: 'join', tab: tabId, scope, slug: this.#slug, account: account?.id ?? null, headers, pending: this.#pending,
+      type: 'join', tab: tabId, scope, slug: this.#slug, account: account?.id ?? null, headers, pending: this.#pending, rejoin,
     });
   }
 
@@ -203,7 +203,7 @@ export class SyncClient {
   #restarted() {
     this.#failRequests();
     pool.sync.live = false;
-    this.#join();
+    this.#join(true);
   }
 
   #failRequests() {
@@ -262,7 +262,7 @@ export class SyncClient {
     else if (message.type === 'response') {
       this.#requests.get(message.id)?.resolve(message.response);
       this.#requests.delete(message.id);
-    } else if (message.type === 'unknown') this.#join();
+    } else if (message.type === 'unknown') this.#join(true);
   }
 
   #setStatus(status: SyncStatus) {

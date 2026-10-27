@@ -50,8 +50,11 @@ export type HubResponse =
 
 /** What a tab says to the hub. */
 export type TabMessage =
-  /** Opens the workspace for this tab; `pending` is what its queue holds already (after the hub restarted). */
-  | { type: 'join'; tab: string; scope: string; slug: string; account: number | null; headers: Record<string, string>; pending: SharedTransaction[] }
+  /**
+   * Opens the workspace for this tab; `rejoin` after the hub restarted (or
+   * forgot the tab), when `pending` holds what its queue has already.
+   */
+  | { type: 'join'; tab: string; scope: string; slug: string; account: number | null; headers: Record<string, string>; pending: SharedTransaction[]; rejoin: boolean }
   | { type: 'leave'; tab: string }
   /** Every few seconds: a hub that doesn't answer is gone, and the tab opens another. */
   | { type: 'ping'; tab: string }
