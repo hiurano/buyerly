@@ -11,7 +11,7 @@ import type { RuleActionTone } from '@/lib/rules';
 import { getRulesColumns } from './tableColumns';
 import { RuleRowMenu } from './RuleRowMenu';
 import { useIsSmallScreen } from '@/lib/useMediaQuery';
-import { labelsOf, useRulesView } from './rulesViewModel';
+import { useRulesView } from './rulesViewModel';
 import { RuleLabelPills } from './RuleLabelPills';
 import { formatCheckInterval, formatRepeat } from './ruleDraft';
 import { useRulesStore, RuleItem } from '@/models/rulesStore';
@@ -130,16 +130,15 @@ interface RuleRowProps {
   rule: RuleItem;
 }
 
-export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
-  const selectedRuleIds = useSelectionStore((state) => state.selectedRuleIds);
+const RuleRowContent: React.FC<RuleRowProps> = ({ rule }) => {
+  // Only this rule's selection and labels: a change to another rule draws its own row alone (#500).
+  const isSelected = useSelectionStore((state) => state.selectedRuleIds.includes(rule.id));
   const toggleRuleSelection = useSelectionStore((state) => state.toggleRuleSelection);
   const toggleRuleStatus = useRulesStore((state) => state.toggleRuleStatus);
   const setFocusedRuleId = useSelectionStore((state) => state.setFocusedRuleId);
   const rulesDisplayProperties = useRulesView().view.properties;
-  const ruleLabels = useRulesStore((state) => state.ruleLabels);
-  const rowLabels = labelsOf(rule, ruleLabels);
+  const rowLabels = useRulesStore((state) => state.labelsOfRule(rule));
 
-  const isSelected = selectedRuleIds.includes(rule.id);
   const isDeliveryOn = rule.status !== 'paused';
   const columns = getRulesColumns(rulesDisplayProperties);
   const isSmall = useIsSmallScreen();
@@ -287,3 +286,6 @@ export const RuleRow: React.FC<RuleRowProps> = ({ rule }) => {
     </BuyerlyDataListRow>
   );
 };
+
+/** Draws again only when its rule, its selection or its labels change, as Linear's rows. */
+export const RuleRow = React.memo(RuleRowContent);

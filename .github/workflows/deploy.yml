@@ -78,7 +78,7 @@ jobs:
       matrix:
         include:
           - group: small screens and Inbox
-            scripts: mobile-screens inbox
+            scripts: mobile-screens inbox rerender
           - group: sidebar, command menu, rules
             scripts: mobile-sidebar command-menu rule-states rules-phone rule-labels rule-window rules-view favorites account-bell
           - group: workspace state, new version, WebMCP
