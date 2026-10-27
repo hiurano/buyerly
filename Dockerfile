@@ -6,7 +6,7 @@ WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 
-COPY frontend/index.html frontend/postcss.config.js frontend/tailwind.config.js ./
+COPY frontend/index.html ./
 COPY frontend/tsconfig.json frontend/tsconfig.node.json frontend/vite.config.ts ./
 COPY frontend/public ./public
 COPY frontend/src ./src

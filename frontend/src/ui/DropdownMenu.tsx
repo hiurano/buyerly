@@ -179,9 +179,8 @@ export const DropdownMenuContent: React.FC<DropdownMenuPrimitive.DropdownMenuCon
 export const DropdownMenuItem: React.FC<
   DropdownMenuPrimitive.DropdownMenuItemProps & { xstyle?: stylex.StyleXStyles }
 > = ({ className = '', xstyle, children, ...props }) => (
-  // `group` stays for callers' Tailwind (`group-hover:`) until their pages move to StyleX.
   <DropdownMenuPrimitive.Item
-    {...withClassName(stylex.props(styles.item, styles.plainItem, menuItemMarker, xstyle), `group ${className}`.trim())}
+    {...withClassName(stylex.props(styles.item, styles.plainItem, menuItemMarker, xstyle), className)}
     {...props}
   >
     {/* Inner Hover/Focus/Highlighted Pill */}
@@ -200,7 +199,7 @@ export const DropdownMenuSubTrigger: React.FC<DropdownMenuPrimitive.DropdownMenu
   ...props
 }) => (
   <DropdownMenuPrimitive.SubTrigger
-    {...withClassName(stylex.props(styles.item, styles.subTriggerOpen, menuItemMarker), `group ${className}`.trim())}
+    {...withClassName(stylex.props(styles.item, styles.subTriggerOpen, menuItemMarker), className)}
     {...props}
   >
     <div {...stylex.props(styles.pill, styles.subTriggerPill)} />
@@ -231,7 +230,7 @@ export const DropdownMenuRadioItem: React.FC<
   ...props
 }) => (
   <DropdownMenuPrimitive.RadioItem
-    {...withClassName(stylex.props(styles.item, menuItemMarker, xstyle), `group ${className}`.trim())}
+    {...withClassName(stylex.props(styles.item, menuItemMarker, xstyle), className)}
     {...props}
   >
     <div {...stylex.props(styles.pill)} />

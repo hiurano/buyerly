@@ -11,7 +11,7 @@ type LoginStage = 'start' | 'email' | 'verify' | 'check' | 'code';
 const HUMAN_CHECK_FAILED = "We couldn't verify you're human. Please try again.";
 
 const styles = stylex.create({
-  /** Read by screen readers only, as Tailwind's sr-only. */
+  /** Read by screen readers only. */
   srOnly: {
     position: 'absolute',
     width: 1,

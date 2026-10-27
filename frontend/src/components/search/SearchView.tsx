@@ -69,7 +69,7 @@ const styles = stylex.create({
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
-  /** Read by screen readers only, as Tailwind's sr-only. */
+  /** Read by screen readers only. */
   srOnly: {
     position: 'absolute',
     width: 1,

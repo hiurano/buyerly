@@ -9,10 +9,10 @@ import stylexBabel from '@stylexjs/babel-plugin';
 import stylex from '@stylexjs/unplugin';
 
 // The design tokens are StyleX variables in src/styles/tokens.stylex.ts (#512).
-// Their keys keep their CSS names, so Tailwind classes, index.css and the
-// public website read the same var(--…) as before. This compiles that file into
-// their CSS: the defaults on :root, and each theme on the data-theme that the
-// boot script in index.html sets from Settings or the system, as before.
+// Their keys keep their CSS names, so index.css and the public website read
+// the same var(--…) as before. This compiles that file into their CSS: the
+// defaults on :root, and each theme on the data-theme that the boot script in
+// index.html sets from Settings or the system, as before.
 const tokensModule = path.resolve(__dirname, 'src/styles/tokens.stylex.ts');
 const themeSelectors: Record<string, string> = { lightColors: "html[data-theme='light']" };
 type StylexRule = [string, { ltr: string }, number];

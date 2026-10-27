@@ -1,4 +1,6 @@
 import React from 'react';
+import * as stylex from '@stylexjs/stylex';
+import { colors } from '@/styles/tokens.stylex';
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
   size?: number;
@@ -325,20 +327,35 @@ export const BuyerlyMark: React.FC<{ size?: number; className?: string }> = ({
 );
 
 // 12b. Buyerly Logo Avatar
+const avatarStyles = stylex.create({
+  root: {
+    position: 'relative',
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    userSelect: 'none',
+    backgroundColor: colors['--item-hover-bg'],
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: colors['--color-border-secondary'],
+  },
+  circle: {
+    borderRadius: '50%',
+  },
+  rounded: {
+    borderRadius: 8,
+  },
+});
+
 export const BuyerlyLogoAvatar: React.FC<{
   size?: number;
-  className?: string;
   shape?: 'circle' | 'rounded';
-}> = ({ size = 32, className = '', shape = 'circle' }) => (
+}> = ({ size = 32, shape = 'circle' }) => (
   <div
-    style={{
-      width: `${size}px`,
-      height: `${size}px`,
-      borderRadius: shape === 'circle' ? '50%' : '8px',
-      backgroundColor: 'var(--item-hover-bg)',
-      border: '1px solid var(--color-border-secondary)',
-    }}
-    className={`relative flex shrink-0 items-center justify-center overflow-hidden select-none ${className}`}
+    {...stylex.props(avatarStyles.root, shape === 'circle' ? avatarStyles.circle : avatarStyles.rounded)}
+    style={{ width: `${size}px`, height: `${size}px` }}
     role="img"
     aria-label="Buyerly"
   >

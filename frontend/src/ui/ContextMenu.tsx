@@ -163,9 +163,8 @@ type ItemStyle = { xstyle?: stylex.StyleXStyles };
 export const ContextMenuItem: React.FC<
   ContextMenuPrimitive.ContextMenuItemProps & ItemStyle
 > = ({ className = '', xstyle, children, ...props }) => (
-  // `group` stays for callers' Tailwind (`group-hover:`) until their pages move to StyleX.
   <ContextMenuPrimitive.Item
-    {...withClassName(stylex.props(styles.item, menuItemMarker, xstyle), `group ${className}`.trim())}
+    {...withClassName(stylex.props(styles.item, menuItemMarker, xstyle), className)}
     {...props}
   >
     {/* Inner Hover/Focus/Highlighted Pill */}
@@ -182,7 +181,7 @@ export const ContextMenuSubTrigger: React.FC<
   ContextMenuPrimitive.ContextMenuSubTriggerProps
 > = ({ className = '', children, ...props }) => (
   <ContextMenuPrimitive.SubTrigger
-    {...withClassName(stylex.props(styles.item, styles.subTriggerOpen, menuItemMarker), `group ${className}`.trim())}
+    {...withClassName(stylex.props(styles.item, styles.subTriggerOpen, menuItemMarker), className)}
     {...props}
   >
     {/* Inner Hover Pill */}

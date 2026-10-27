@@ -43,7 +43,7 @@ The live token vocabulary is defined in `frontend/src/styles/tokens.stylex.ts`. 
 | Elevation and motion | shadow, speed and easing tokens | Menus, dialogs and state transitions |
 | Domain | Ads Manager, Rules, Preferences and filter tokens | Stable product-specific semantics |
 
-New reusable values belong in this file with a semantic name. Page-local Tailwind literals are acceptable only when truly one-off; a repeated literal is a missing token.
+New reusable values belong in this file with a semantic name. Page-local StyleX literals are acceptable only when truly one-off; a repeated literal is a missing token.
 
 ## Components
 

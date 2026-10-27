@@ -2,7 +2,7 @@ import * as stylex from '@stylexjs/stylex';
 
 /*
  * Buyerly's design tokens, as StyleX variables (#512). The keys keep their CSS
- * names, so Tailwind classes, index.css and the public website go on reading
+ * names, so index.css and the public website go on reading
  * var(--bg-canvas) and the rest. The buyerlyTokens() plugin in vite.config.ts
  * turns this file into the app's and the public website's token CSS: the
  * defaults on :root, `lightColors` on html[data-theme='light'].
