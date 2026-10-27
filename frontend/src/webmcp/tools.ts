@@ -154,7 +154,7 @@ function refusal(outcome: Exclude<ApprovalOutcome, 'approved'>): ToolFailure {
 
 /** Views that already show rules pick up the change, as after an edit in the interface. */
 function refreshRuleViews(accountId?: string): void {
-  if (rulesStore.rulesLoadState !== 'idle') void rulesStore.loadRules();
+  if (rulesStore.rulesLoadState !== 'idle') void rulesStore.loadRules({ afterWrite: true });
   if (accountId && rulesStore.attachedRulesAccountIds.includes(accountId)) void rulesStore.loadRuleAttachments(rulesStore.attachedRulesAccountIds);
 }
 

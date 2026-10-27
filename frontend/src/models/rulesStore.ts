@@ -205,6 +205,16 @@ function presetToRuleItem(
   };
 }
 
+/** What `make` gives for a record, made once while the record is held. */
+function cached<K extends object, V>(held: WeakMap<K, V>, record: K, make: () => V): V {
+  let value = held.get(record);
+  if (value === undefined) {
+    value = make();
+    held.set(record, value);
+  }
+  return value;
+}
+
 function toRuleLabel(label: RuleLabelPayload): RuleLabel {
   return {
     id: String(label.id),
@@ -295,12 +305,18 @@ export class RulesStore {
   #shownFrom: unknown[] = [];
   /** Rules reads under way: their three answers are shown together once all are in, never one by one. */
   #rulesReading = 0;
+  /** Each pool record's item, kept while the record is (#500). */
+  #ruleItems = new WeakMap<RulePresetPayload, RuleItem>();
+  #ruleLabels = new WeakMap<RuleLabelPayload, RuleLabel>();
+  /** What `labelsOfRule` last gave each rule. */
+  #rowLabels = new Map<string, RuleLabel[]>();
 
   constructor() {
     makeStore(this);
     scopeStore.onWorkspaceChange(() => {
       this.#rulesRequest += 1;
       this.#attachmentsRequest += 1;
+      this.#rowLabels.clear();
       this.set({
         ...this.emptyAccountState(),
         campaignGroups: [],
@@ -443,7 +459,7 @@ export class RulesStore {
       }
       if (!current()) return;
       // The Rules screen's per-account notes read the same attachments.
-      if (this.rulesLoadState === 'ready') void this.loadRules();
+      if (this.rulesLoadState === 'ready') void this.loadRules({ afterWrite: true });
       await this.loadRuleAttachments(attachedRulesAccountIds);
     } catch (error) {
       if (!current()) return;
@@ -456,8 +472,10 @@ export class RulesStore {
   /**
    * Reads the rules, their labels and ad accounts again. `ifStale`, for a page
    * visit: what the pool holds shows at once and is read again only when stale (#488).
+   * `afterWrite`, after a write of this store's: read from the server even while
+   * the synced models hold the list, unless the socket is live to bring the change.
    */
-  async loadRules({ ifStale = false }: { ifStale?: boolean } = {}) {
+  async loadRules({ ifStale = false, afterWrite = false }: { ifStale?: boolean; afterWrite?: boolean } = {}) {
     const inScope = scopeStore.captureScope();
     if (!inScope()) return;
     const request = ++this.#rulesRequest;
@@ -472,7 +490,7 @@ export class RulesStore {
     if (this.rulesLoadState !== 'ready') this.set({ rulesLoadState: 'loading', rulesError: '' });
     // Ad accounts are needed to offer "run on this ad account"; a failure there must not hide the rules.
     this.#rulesReading += 1;
-    await Promise.all(RULE_QUERIES.map((query) => pool.fetch(query, { afterWrite: true })));
+    await Promise.all(RULE_QUERIES.map((query) => pool.fetch(query, { afterWrite })));
     this.#rulesReading -= 1;
     if (!current()) return;
     if (!this.showPooledRules()) {
@@ -545,7 +563,7 @@ export class RulesStore {
     try {
       await createRulePreset(payload);
       if (!current()) return;
-      await this.loadRules();
+      await this.loadRules({ afterWrite: true });
       await this.refreshAttachments(payload);
     } catch (error) {
       if (!current()) return;
@@ -655,7 +673,7 @@ export class RulesStore {
     try {
       await updateRulePreset(Number(ruleId), payload);
       if (!current()) return;
-      await this.loadRules();
+      await this.loadRules({ afterWrite: true });
       await this.refreshAttachments(payload);
     } catch (error) {
       if (!current()) return;
@@ -680,7 +698,7 @@ export class RulesStore {
         await assignRuleToAccount(accountId, rule.presetId, ACCOUNT_SCOPE);
       }
       if (!current()) return;
-      await this.loadRules();
+      await this.loadRules({ afterWrite: true });
     } catch (error) {
       if (!current()) return;
       this.set({ rulesMutationError: requestErrorMessage(error) });
@@ -703,14 +721,30 @@ export class RulesStore {
     if (this.rulesLoadState === 'ready' && from.every((value, index) => value === this.#shownFrom[index])) return true;
     this.#shownFrom = from;
     const ruleAccounts = eligibleMetaAccounts(accounts ?? []);
+    // A record the pool kept keeps its item, so only the rows of what changed draw again (#500).
+    const sameAccounts = this.ruleAccounts.length === ruleAccounts.length
+      && this.ruleAccounts.every((account, index) => account === ruleAccounts[index]);
+    if (!sameAccounts) this.#ruleItems = new WeakMap();
     this.set({
-      rules: presets.map((preset) => presetToRuleItem(preset, ruleAccounts)),
-      ruleLabels: labels.map(toRuleLabel),
+      rules: presets.map((preset) => cached(this.#ruleItems, preset, () => presetToRuleItem(preset, ruleAccounts))),
+      ruleLabels: labels.map((label) => cached(this.#ruleLabels, label, () => toRuleLabel(label))),
       ruleAccounts,
       rulesLoadState: 'ready',
       rulesError: '',
     });
     return true;
+  }
+
+  /**
+   * A rule's labels, the same array while they are the same labels: a row
+   * reading them draws again only when its own labels change (#500).
+   */
+  labelsOfRule(rule: Pick<RuleItem, 'id' | 'labelIds'>): RuleLabel[] {
+    const held = this.#rowLabels.get(rule.id);
+    const labels = this.ruleLabels.filter((label) => rule.labelIds.includes(label.id));
+    if (held && held.length === labels.length && held.every((label, index) => label === labels[index])) return held;
+    this.#rowLabels.set(rule.id, labels);
+    return labels;
   }
 
   /** What Ads Manager's rule attachments forget when it shows other ad accounts. */

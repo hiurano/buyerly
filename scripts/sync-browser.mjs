@@ -7,6 +7,8 @@
 // - A dropped socket opens again from the last sync id held, and what was
 //   committed while it was down arrives first (catch-up), with no bootstrap.
 // - Close code 4410 reads bootstrap again.
+// - Rules opened as the first page takes its labels from the synced models,
+//   even before the socket is live: no request to /api/rule-labels.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -63,8 +65,17 @@ const models = {
     created_at: '2026-10-01T10:00:00', updated_at: '2026-10-02T10:00:00',
   }],
   Account: [{ id: 100, workspace_id: 7, account_id: 'act_100', name: 'Main account', custom_name: '', note: '' }],
-  Rule: [], Label: [], RuleLabel: [], InboxEvent: [], InboxNotificationState: [], Favorite: [], ViewSetting: [],
+  Rule: [], Label: [{ id: 21, workspace_id: 7, name: 'Launch', color: '#4cb782', description: '', created_at: '2026-09-05T10:00:00' }],
+  RuleLabel: [{ id: 51, preset_id: 61, group_id: 21, created_at: '2026-09-06T10:00:00' }], InboxEvent: [], InboxNotificationState: [], Favorite: [], ViewSetting: [],
   WorkspaceViewDefault: [], AccountNotificationSetting: [],
+};
+// Rules are still read from the server (#507: their runtime fields are worked out there); their labels are synced.
+const rulePreset = {
+  id: 61, name: 'Stop ad sets without leads', action: 'turn_off', level: 'adset', enabled: true,
+  conditions: [{ metric: 'spend', operator: 'gte', value: 10, time_window: 'today' }],
+  condition_logic: 'and', cooldown_minutes: 1440, check_interval_minutes: 5, budget_change_percent: 0, budget_max_daily: 0,
+  needs_review: false, created_at: '2026-09-06T10:00:00Z', review_reason: '', last_run_at: '', last_checked_at: '',
+  attached_account_ids: [], attached_scopes: {}, label_ids: [21],
 };
 const syncGroups = ['workspace:7', 'workspace:7:members', 'team:3', 'member:11'];
 /** REST lists the synced models replace: none of them may be read. */
@@ -99,6 +110,7 @@ try {
     if (path === '/api/me') return route.fulfill({ json: me });
     if (path === '/api/auth/accounts') return route.fulfill({ json: [] });
     if (path === '/api/accounts') return route.fulfill({ json: [account] });
+    if (path === '/api/presets') return route.fulfill({ json: [rulePreset] });
     if (path === '/api/workspaces/7/invites') return route.fulfill({ json: [] });
     // Meta Ads data isn't synced: Ads Manager's rows are read from the server at start, as before.
     if (path === '/api/meta/connections') return route.fulfill({ json: [] });
@@ -169,9 +181,17 @@ try {
     assert.equal(sync.state.bootstraps, 2, '4410 reads bootstrap again');
     assert.equal(sync.state.sockets.at(-1).since, 105);
 
+    // Rules opened first, on a fresh load: its labels come from bootstrap's models, not /api/rule-labels.
+    await page.goto(`${origin}/${workspace.slug}/rules`);
+    await main.getByText('Stop ad sets without leads').first().waitFor();
+    await main.getByText('Launch', { exact: true }).first().waitFor();
+    await synced();
+    await page.waitForTimeout(300);
+    assert.equal(requests.filter((request) => request.endsWith('/api/rule-labels')).length, 0, 'Rules reads no labels from the server');
+
     await page.screenshot({ path: `${output}/sync.png` });
     assert.deepEqual(errors, []);
-    console.log('Sync engine: pages open on bootstrap, a pushed delta redraws them with no request, a dropped socket catches up from its last sync id, and 4410 bootstraps again');
+    console.log('Sync engine: pages open on bootstrap, a pushed delta redraws them with no request, a dropped socket catches up from its last sync id, 4410 bootstraps again, and Rules takes its labels from the synced models');
   } catch (error) {
     await page.screenshot({ path: `${output}/failure.png`, fullPage: true });
     console.error(errors, requests);
