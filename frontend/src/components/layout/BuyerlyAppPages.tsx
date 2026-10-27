@@ -1,18 +1,8 @@
-import React, { Suspense, createContext, use, useMemo } from 'react';
+import React, { Suspense, createContext, use, useEffect, useMemo } from 'react';
 import { Outlet, useLocation, useOutlet, useOutletContext } from 'react-router';
 import { Sidebar } from '@/components/sidebar/Sidebar';
-import { InboxView } from '@/components/inbox/InboxView';
-import { CampaignsView } from '@/components/campaigns/CampaignsView';
-import { RulesView } from '@/components/rules/RulesView';
-import { AccountsView } from '@/components/accounts/AccountsView';
-import { AccountPage } from '@/components/accounts/AccountPage';
-import { RecentlyDeletedRulesPage } from '@/components/rules/RecentlyDeletedRulesPage';
-import { SearchView } from '@/components/search/SearchView';
-import { WorkspaceMembersView } from '@/components/workspace/WorkspaceMembersView';
-import { WorkspaceTeamsView } from '@/components/workspace/WorkspaceTeamsView';
-import { TeamHomeView } from '@/components/teams/TeamHomeView';
-import { PreferencesView } from '@/components/preferences/PreferencesView';
 import { BuyerlyPageGate, BuyerlyPageSkeleton, useHeldPage } from '@/components/layout/BuyerlyPageSwitch';
+import { PAGE_CHUNKS, prefetchChunks, useBuyerlyChunk } from '@/components/layout/BuyerlyPageChunks';
 import { BuyerlyPageScopeContext } from '@/lib/pageScope';
 import { pathForTab, useAppNavigate, useNavigationKey, useRoute, type BuyerlyRouteHandle, type WorkspaceRoute } from '@/lib/routing';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
@@ -77,6 +67,9 @@ export const BuyerlyAppPages: React.FC = () => {
     () => ({ route: page.route, search: page.search, navigationKey: page.navigationKey }),
     [page.route, page.search, page.navigationKey],
   );
+  // After the first page's code, the other pages' comes while the browser is idle (#494).
+  const firstTab = page.route.tab;
+  useEffect(() => prefetchChunks(Object.values(PAGE_CHUNKS), PAGE_CHUNKS[firstTab]), []);
 
   return (
     <>
@@ -95,12 +88,18 @@ export const BuyerlyAppPages: React.FC = () => {
 };
 
 /** Settings' routes: each section is Settings itself, handed what the App gives the workspace. */
-export const BuyerlySettingsLayout: React.FC = () => <Outlet context={useOutletContext<BuyerlyWorkspaceOutlet>()} />;
+export const BuyerlySettingsLayout: React.FC = () => (
+  // Its code comes with the other pages' once the first is idle; opened before that, it waits blank.
+  <Suspense fallback={null}>
+    <Outlet context={useOutletContext<BuyerlyWorkspaceOutlet>()} />
+  </Suspense>
+);
 
 /** Settings: its own layout in place of the sidebar, its section from the address. */
 export const BuyerlySettingsRoute: React.FC = () => {
   const { user, workspace } = useWorkspaceSession();
   const { refreshUser } = useOutletContext<BuyerlyWorkspaceOutlet>();
+  const { PreferencesView } = useBuyerlyChunk(PAGE_CHUNKS.preferences);
   return <PreferencesView user={user} workspace={workspace} onUserChanged={refreshUser} />;
 };
 
@@ -108,6 +107,7 @@ const BuyerlyInboxRoute: React.FC = () => {
   const { route } = useBuyerlyHeldPage();
   const { workspace } = useWorkspaceSession();
   const navigate = useAppNavigate();
+  const { InboxView } = useBuyerlyChunk(PAGE_CHUNKS.inbox);
   return (
     <InboxView
       openEventId={route.recordId}
@@ -124,6 +124,7 @@ const BuyerlyInboxRoute: React.FC = () => {
 const BuyerlyAccountsRoute: React.FC = () => {
   const { route, navigationKey } = useBuyerlyHeldPage();
   const navigate = useAppNavigate();
+  const { AccountPage, AccountsView } = useBuyerlyChunk(PAGE_CHUNKS.accounts);
   return route.recordId
     ? <AccountPage accountId={route.recordId} navigate={navigate} navigationKey={navigationKey} />
     : <AccountsView navigate={navigate} navigationKey={navigationKey} />;
@@ -131,6 +132,7 @@ const BuyerlyAccountsRoute: React.FC = () => {
 
 const BuyerlyCampaignsRoute: React.FC = () => {
   const { route, navigationKey } = useBuyerlyHeldPage();
+  const { CampaignsView } = useBuyerlyChunk(PAGE_CHUNKS.campaigns);
   return (
     <CampaignsView
       key={route.mine ? 'mine' : 'all'}
@@ -143,12 +145,14 @@ const BuyerlyCampaignsRoute: React.FC = () => {
 
 const BuyerlyRulesRoute: React.FC = () => {
   const { route, navigationKey } = useBuyerlyHeldPage();
+  const { RulesView } = useBuyerlyChunk(PAGE_CHUNKS.rules);
   return <RulesView revealId={route.recordId} navigationKey={navigationKey} />;
 };
 
 const BuyerlyRecentlyDeletedRulesRoute: React.FC = () => {
   const { workspace } = useWorkspaceSession();
   const navigate = useAppNavigate();
+  const { RecentlyDeletedRulesPage } = useBuyerlyChunk(PAGE_CHUNKS.rules);
   return (
     <RecentlyDeletedRulesPage
       rulesPath={pathForTab(workspace.slug, 'rules')}
@@ -160,6 +164,7 @@ const BuyerlyRecentlyDeletedRulesRoute: React.FC = () => {
 const BuyerlyTeamHomeRoute: React.FC = () => {
   const { route } = useBuyerlyHeldPage();
   const navigate = useAppNavigate();
+  const { TeamHomeView } = useBuyerlyChunk(PAGE_CHUNKS.team);
   return <TeamHomeView page={route.teamPage ?? 'overview'} documentId={route.recordId} navigate={navigate} />;
 };
 
@@ -167,7 +172,18 @@ const BuyerlySearchRoute: React.FC = () => {
   const { search, navigationKey } = useBuyerlyHeldPage();
   const { workspace } = useWorkspaceSession();
   const navigate = useAppNavigate();
+  const { SearchView } = useBuyerlyChunk(PAGE_CHUNKS.search);
   return <SearchView workspace={workspace} query={search} navigate={navigate} navigationKey={navigationKey} />;
+};
+
+const BuyerlyMembersRoute: React.FC = () => {
+  const { WorkspaceMembersView } = useBuyerlyChunk(PAGE_CHUNKS.members);
+  return <WorkspaceMembersView />;
+};
+
+const BuyerlyTeamsRoute: React.FC = () => {
+  const { WorkspaceTeamsView } = useBuyerlyChunk(PAGE_CHUNKS.teams);
+  return <WorkspaceTeamsView />;
 };
 
 /** The component a page route renders; Settings' sections render inside BuyerlySettingsRoute. */
@@ -178,8 +194,8 @@ export function pageComponentFor(opened: Extract<BuyerlyRouteHandle, { page: unk
     case 'campaigns': return BuyerlyCampaignsRoute;
     case 'rules': return opened.rulesPage ? BuyerlyRecentlyDeletedRulesRoute : BuyerlyRulesRoute;
     case 'team': return BuyerlyTeamHomeRoute;
-    case 'members': return WorkspaceMembersView;
-    case 'teams': return WorkspaceTeamsView;
+    case 'members': return BuyerlyMembersRoute;
+    case 'teams': return BuyerlyTeamsRoute;
     case 'search': return BuyerlySearchRoute;
     default: return undefined;
   }

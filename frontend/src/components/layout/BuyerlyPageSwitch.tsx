@@ -1,5 +1,6 @@
 import React, { startTransition, use, useEffectEvent, useLayoutEffect, useState } from 'react';
 import { preloadPage, type PageToOpen } from '@/models/pagePreload';
+import { preloadPageChunk } from '@/components/layout/BuyerlyPageChunks';
 
 /** How long the previous page stays while the next one reads its data; then the skeleton shows. */
 export const PAGE_HOLD_MS = 1_000;
@@ -31,7 +32,7 @@ export function useHeldPage<P extends PageToOpen>(page: P, key: string, workspac
       setShown(shown);
       return undefined;
     }
-    const next = { page, key, ready: preloadPage(page, workspaceId) };
+    const next = { page, key, ready: pageReady(preloadPage(page, workspaceId), preloadPageChunk(page.tab)) };
     const ready = next.ready;
     // The pool holds it all: swapped in before the frame is painted, as the address changes.
     // An update queued after a held switch, so that one never lands over it.
@@ -47,6 +48,16 @@ export function useHeldPage<P extends PageToOpen>(page: P, key: string, workspac
   });
   useLayoutEffect(() => switchPage(), [key]);
   return shown;
+}
+
+/** The page's data and its code, read together; null when both are in. */
+function pageReady(data: Promise<void> | null, code: Promise<void> | null): Promise<void> | null {
+  if (!code) return data;
+  if (!data) return code;
+  // Set as it settles, as preloadPage's own, so the gate reads it at once.
+  const both = Promise.all([data, code]).then(() => undefined) as Promise<void> & { status?: string };
+  void both.then(() => { both.status = 'fulfilled'; });
+  return both;
 }
 
 /** Holds a page back, inside a transition, until its data is in the pool. */
