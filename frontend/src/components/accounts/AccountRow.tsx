@@ -234,7 +234,7 @@ interface AccountRowProps {
   actions: AccountRowActions;
 }
 
-export const AccountRow: React.FC<AccountRowProps> = ({ account, columns, properties, phone, actions }) => {
+const AccountRowContent: React.FC<AccountRowProps> = ({ account, columns, properties, phone, actions }) => {
   const name = accountName(account);
   const metrics = account.today_metrics;
   return (
@@ -305,5 +305,8 @@ export const AccountRow: React.FC<AccountRowProps> = ({ account, columns, proper
     </BuyerlyRowContextMenu>
   );
 };
+
+/** Draws again only when its account or the list's settings change, as Linear's rows (#500). */
+export const AccountRow = React.memo(AccountRowContent);
 
 export const usePhoneWidth = () => useMediaQuery(PHONE_QUERY);

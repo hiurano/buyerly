@@ -140,9 +140,9 @@ async function main() {
   replyRules(ar, [preset(1, 'A')]); await a;
   assert.equal(state().rules[0].name, 'B');
 
-  // Same workspace refreshes also use latest-request-wins, including errors.
-  const old = state().loadRules(); const oldReplies = rulesReplies();
-  const fresh = state().loadRules(); replyRules(rulesReplies(), [preset(3)]); await fresh;
+  // Same workspace refreshes after writes also use latest-request-wins, including errors.
+  const old = state().loadRules({ afterWrite: true }); const oldReplies = rulesReplies();
+  const fresh = state().loadRules({ afterWrite: true }); replyRules(rulesReplies(), [preset(3)]); await fresh;
   oldReplies[0].reply({ detail: 'old error' }, 500); oldReplies[1].reply([]); oldReplies[2].reply([]); await old;
   assert.equal(state().rulesLoadState, 'ready'); assert.equal(state().rules[0].id, '3');
 
