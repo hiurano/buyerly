@@ -1,14 +1,14 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { RouterProvider } from 'react-router/dom';
-import { router } from './routes';
+import { firstPageCode, router } from './routes';
 import { keepFaviconAcrossRoutes } from './lib/favicon';
 import 'virtual:buyerly-tokens.css';
 import './styles/index.css';
 
 keepFaviconAcrossRoutes();
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+void firstPageCode().then(() => ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     {/*
       The address applies at once, as a link's would: shortcuts and the session read it in
@@ -16,4 +16,4 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     */}
     <RouterProvider router={router} useTransitions={false} />
   </React.StrictMode>
-);
+));

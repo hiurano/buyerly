@@ -92,6 +92,8 @@ interface InboxViewProps {
 /** Linear's Inbox list: 300px at least, at most half the canvas, 400px until dragged. */
 const INBOX_LIST_MIN_WIDTH = 300;
 const INBOX_SPLIT_QUERY = '(min-width: 768px)';
+/** How long after G the next letter is a go-to, as the App's shortcuts read it. */
+const GO_TO_PREFIX_WINDOW_MS = 1500;
 
 function requestErrorMessage(error: unknown): string {
   if (error instanceof ApiError || error instanceof Error) return error.message;
@@ -819,11 +821,21 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
   }, [selectedId]);
 
   useEffect(() => {
+    // The letter after G goes somewhere (G K: Ad accounts), as in Linear; it never moves in the list.
+    let goToPressedAt = 0;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
       if (isTypingTarget(event.target)) return;
       // A menu still fading out after closing no longer holds the keyboard.
       if (document.querySelector(OPEN_LAYER_SELECTOR)) return;
+      if (event.key === 'g' || event.key === 'G') {
+        goToPressedAt = Date.now();
+        return;
+      }
+      if (Date.now() - goToPressedAt < GO_TO_PREFIX_WINDOW_MS) {
+        goToPressedAt = 0;
+        return;
+      }
       const current = visibleRef.current;
       const index = current.findIndex((item) => item.id === selectedId);
       const selected = index >= 0 ? current[index] : null;

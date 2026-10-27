@@ -1,6 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import type { Workspace } from '@/lib/types';
-import { workspaceTools } from './tools';
 import type { ModelContext, WebMcpTool } from './types';
 import { scopeStore } from '@/models/scopeStore';
 
@@ -81,6 +80,11 @@ export function registerTools(modelContext: ModelContext, tools: WebMcpTool[], s
   }
 }
 
+/** Outside the hook: the React Compiler cannot compile an import(). */
+function loadTools() {
+  return import('./tools');
+}
+
 /**
  * Offers the open workspace's tools to the browser's AI agent. The component
  * using this remounts per workspace and session, so the tools of a workspace
@@ -94,13 +98,13 @@ export function useWebMcpTools(workspace: Pick<Workspace, 'slug' | 'role'>): voi
     const modelContext = findModelContext();
     if (!modelContext || !enabled) return;
     const controller = new AbortController();
-    const tools = workspaceTools({
-      workspace: slug,
-      canWrite: role !== 'guest',
-      inScope: scopeStore.captureScope(),
-      signal: controller.signal,
+    const inScope = scopeStore.captureScope();
+    // The tools are their own chunk (#494): only a browser with an agent downloads them.
+    void loadTools().then(({ workspaceTools }) => {
+      if (controller.signal.aborted) return;
+      const tools = workspaceTools({ workspace: slug, canWrite: role !== 'guest', inScope, signal: controller.signal });
+      registerTools(modelContext, tools, controller.signal);
     });
-    registerTools(modelContext, tools, controller.signal);
     return () => controller.abort();
   }, [slug, role, enabled]);
 }

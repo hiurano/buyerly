@@ -2,7 +2,7 @@
 // compiles a file differently in dev than in the build, so the React Compiler's
 // cache from the warm-up build misses every StyleX file in dev; the first check
 // of a group compiled them inside its first page and outran its 10 s timeout.
-// A signed-in user opens the Inbox, which imports the whole app, so every file
+// A signed-in user opens the Inbox and then loads every chunk, so every file
 // is compiled here; every other API call answers 404.
 import { createRequire } from 'node:module';
 import { mockSync } from './sync-mock.mjs';
@@ -36,6 +36,13 @@ try {
   const started = Date.now();
   await page.goto(`${origin}/alpha/inbox`, { timeout: 120_000 });
   await page.waitForLoadState('networkidle', { timeout: 120_000 });
+  // The other pages come as chunks once the Inbox is idle (#494); the screens
+  // before the workspace and the WebMCP tools only where they are used: compile them too.
+  await page.evaluate(() => Promise.all([
+    '/src/components/layout/BuyerlyPageChunks.ts',
+    '/src/webmcp/tools.ts',
+  ].map((path) => import(path)))
+    .then(([chunks]) => Promise.all([chunks.SIGNED_OUT_CHUNK, ...Object.values(chunks.PAGE_CHUNKS)].map((chunk) => chunk.load()))));
   console.log(`Dev server warmed in ${((Date.now() - started) / 1000).toFixed(1)} s`);
 } finally {
   await browser?.close();
