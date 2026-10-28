@@ -1158,10 +1158,11 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
             <ViewTitle
               title={mine ? 'My campaigns' : 'Campaigns'}
               team={activeTeam.team}
-              favorite={{
+              // A personal view has no star, as Linear's My issues, Inbox and Reviews.
+              favorite={mine ? undefined : {
                 kind: 'page',
-                path: favoritePath(pathForTab(workspace.slug, 'campaigns', 'campaigns', 'preferences', '', undefined, activeTeam.key, mine), workspace.slug),
-                title: mine ? 'My campaigns' : activeTeam.team ? `${activeTeam.team.name} › Campaigns` : 'Campaigns',
+                path: favoritePath(pathForTab(workspace.slug, 'campaigns', 'campaigns', 'preferences', '', undefined, activeTeam.key), workspace.slug),
+                title: activeTeam.team ? `${activeTeam.team.name} › Campaigns` : 'Campaigns',
               }}
             />
           </div>
