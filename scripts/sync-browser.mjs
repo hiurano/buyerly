@@ -2,7 +2,7 @@
 // API whose bootstrap holds the workspace's models.
 //
 // - Members and a team's documents open on the synced models: no request to
-//   their REST lists, before or after.
+//   their REST lists, before or after; Your teams lists the member's team.
 // - A change pushed over the socket redraws the open page with no request.
 // - A dropped socket opens again from the last sync id held, and what was
 //   committed while it was down arrives first (catch-up), with no bootstrap.
@@ -137,6 +137,8 @@ try {
     await synced();
     assert.equal(sync.state.bootstraps, 1);
     assert.equal(sync.state.sockets[0].since, 100, 'the socket opens from bootstrap\'s sync id');
+    // Your teams lists the team the member is on, from the same models (#552: it stayed empty).
+    await page.locator('#sidebar-section-teams .sidebar-team-name', { hasText: 'Growth' }).waitFor();
 
     // A delta redraws the open page and asks the server nothing.
     let before = requests.length;

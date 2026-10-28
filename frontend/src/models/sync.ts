@@ -32,11 +32,17 @@ export class SyncClient {
   status: SyncStatus = 'off';
   /** The newest change held. */
   lastSyncId = 0;
+  /**
+   * The signed-in member's user id in this workspace, from the member group
+   * bootstrap names. A field, not a getter over a private one: a store's getter
+   * is a computed value, and one read while nothing observable had changed
+   * kept null for good, so no team showed as yours (#552).
+   */
+  userId: number | null = null;
 
   #scope: string | null = null;
   #slug = '';
   #models = new Map<string, Map<number, SyncRow>>();
-  #userId: number | null = null;
   #link: HubLink | null = null;
   /** The hub's messages wait until the local database's values are in the pool. */
   #ready = false;
@@ -68,7 +74,7 @@ export class SyncClient {
     this.#scope = scope;
     this.#slug = slug ?? '';
     this.#models = new Map();
-    this.#userId = null;
+    this.userId = null;
     this.lastSyncId = 0;
     pool.sync.live = false;
     const local = localDatabase.open(scope);
@@ -96,11 +102,6 @@ export class SyncClient {
   rows(model: string): SyncRow[] | undefined {
     const rows = this.#models.get(model);
     return rows ? [...rows.values()] : undefined;
-  }
-
-  /** The signed-in member's user id in this workspace, from the member group bootstrap names. */
-  get userId(): number | null {
-    return this.#userId;
   }
 
   /**
@@ -274,10 +275,12 @@ export class SyncClient {
     const models = new Map<string, Map<number, SyncRow>>();
     for (const [model, rows] of Object.entries(held)) models.set(model, new Map(rows.map((row) => [row.id, row])));
     this.#models = models;
-    runInAction(() => { this.lastSyncId = lastSyncId; });
     const memberGroup = syncGroups.find((group) => group.startsWith('member:'));
     const member = memberGroup ? models.get('WorkspaceMember')?.get(Number(memberGroup.slice('member:'.length))) : undefined;
-    this.#userId = member ? Number(member.user_id) : null;
+    runInAction(() => {
+      this.lastSyncId = lastSyncId;
+      this.userId = member ? Number(member.user_id) : null;
+    });
     pool.syncChanged();
   }
 }
