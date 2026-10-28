@@ -1,5 +1,6 @@
 import type { SessionUser } from '@/lib/types';
 import type { BrowserAccount } from '@/lib/accounts';
+import { SYNC_CHANNEL, type WipeMessage } from './syncProtocol';
 
 /**
  * The open workspace's data kept between visits, as Linear's local database
@@ -13,6 +14,10 @@ import type { BrowserAccount } from '@/lib/accounts';
  * Nothing here is the truth: a schema change drops the database, signing out
  * deletes it, and without IndexedDB (a private window) everything still works
  * from memory and the server, as before.
+ *
+ * The models, the sync id and the unsent writes have one writer for all the
+ * workspace's tabs, the sync hub (#498, syncHub.ts), through the functions
+ * below that take a database; a tab writes its own stores' values.
  */
 
 /** Bumped whenever what is stored changes shape: an older database is dropped, never read. */
@@ -130,7 +135,7 @@ function deleteDatabase(name: string): Promise<void> {
 }
 
 /** Opens a scope's database; one written by a newer schema is dropped and made again. */
-async function openScope(name: string): Promise<IDBDatabase> {
+export async function openScope(name: string): Promise<IDBDatabase> {
   const db = await openDatabase(name).catch(async (error: unknown) => {
     if (!(error instanceof DOMException) || error.name !== 'VersionError') throw error;
     await deleteDatabase(name);
@@ -139,12 +144,12 @@ async function openScope(name: string): Promise<IDBDatabase> {
   return db;
 }
 
-async function readAll(db: IDBDatabase): Promise<LocalData> {
-  const transaction = db.transaction([MODELS, VALUES], 'readonly');
-  const models = transaction.objectStore(MODELS);
+/** Reads a database back; without `models` only its values, as a tab needs them. */
+export async function readAll(db: IDBDatabase, { models: withModels = true } = {}): Promise<LocalData> {
+  const transaction = db.transaction(withModels ? [MODELS, VALUES] : [VALUES], 'readonly');
   const values = transaction.objectStore(VALUES);
   const [rows, valueKeys, valueRows] = await Promise.all([
-    request(models.getAll() as IDBRequest<StoredRow[]>),
+    withModels ? request(transaction.objectStore(MODELS).getAll() as IDBRequest<StoredRow[]>) : Promise.resolve([]),
     request(values.getAllKeys()),
     request(values.getAll()),
   ]);
@@ -152,7 +157,7 @@ async function readAll(db: IDBDatabase): Promise<LocalData> {
   valueKeys.forEach((key, index) => data.values.set(String(key), valueRows[index]));
   data.sync = (data.values.get('sync') as StoredSync | undefined) ?? null;
   data.values.delete('sync');
-  for (const model of data.sync?.models ?? []) data.models.set(model, new Map());
+  if (withModels) for (const model of data.sync?.models ?? []) data.models.set(model, new Map());
   for (const { model, row } of rows) {
     let held = data.models.get(model);
     if (!held) {
@@ -162,6 +167,50 @@ async function readAll(db: IDBDatabase): Promise<LocalData> {
     held.set(row.id, row);
   }
   return data;
+}
+
+/** Runs one write; a closed or full database loses it quietly: the server still has it all. */
+export async function writeTo(db: IDBDatabase, stores: string[], run: (transaction: IDBTransaction) => void): Promise<void> {
+  // Written in order: IndexedDB runs transactions on the same stores one after another.
+  let transaction: IDBTransaction;
+  try {
+    transaction = db.transaction(stores, 'readwrite');
+    run(transaction);
+  } catch {
+    return;
+  }
+  await done(transaction).catch(() => {});
+}
+
+/** Replaces every stored model with bootstrap's, with its sync id. */
+export function replaceModels(db: IDBDatabase, models: Map<string, Map<number, StoredRow['row']>>, sync: StoredSync) {
+  return writeTo(db, [MODELS, VALUES], (transaction) => {
+    const store = transaction.objectStore(MODELS);
+    store.clear();
+    for (const [model, rows] of models) {
+      for (const row of rows.values()) store.put({ model, row } satisfies StoredRow, `${model}:${row.id}`);
+    }
+    transaction.objectStore(VALUES).put(sync, 'sync');
+  });
+}
+
+/** Writes a batch of changes with the sync id it reached, in one transaction: never one without the other. */
+export function applyChanges(db: IDBDatabase, changes: StoredChange[], sync: StoredSync) {
+  return writeTo(db, [MODELS, VALUES], (transaction) => {
+    const store = transaction.objectStore(MODELS);
+    for (const { model, id, row } of changes) {
+      if (row) store.put({ model, row } satisfies StoredRow, `${model}:${id}`);
+      else store.delete(`${model}:${id}`);
+    }
+    transaction.objectStore(VALUES).put(sync, 'sync');
+  });
+}
+
+/** Keeps one value. */
+export function writeValue(db: IDBDatabase, key: string, value: unknown) {
+  return writeTo(db, [VALUES], (transaction) => {
+    transaction.objectStore(VALUES).put(value, key);
+  });
 }
 
 /** Waits before the pool's lists are written: a burst of answers makes one write. */
@@ -183,11 +232,12 @@ export class LocalDatabase {
   }
 
   /**
-   * Opens a scope's database (null closes it) and reads back what it holds;
-   * null when there is nothing, or no IndexedDB. Never rejects.
+   * Opens a scope's database (null closes it) and reads back its values (the
+   * sync hub reads the models); null when there is nothing, or no IndexedDB.
+   * Never rejects.
    */
   open(scope: string | null): Promise<LocalData | null> {
-    if (scope === this.#scope) return this.#db.then((db) => (db ? readAll(db).catch(() => null) : null));
+    if (scope === this.#scope) return this.#db.then((db) => (db ? readAll(db, { models: false }).catch(() => null) : null));
     this.flush();
     const previous = this.#db;
     this.#generation += 1;
@@ -203,32 +253,8 @@ export class LocalDatabase {
     this.#db = openScope(name).catch(() => null);
     return this.#db.then(async (db) => {
       if (!db || generation !== this.#generation) return null;
-      const data = await readAll(db).catch(() => null);
+      const data = await readAll(db, { models: false }).catch(() => null);
       return data && (data.sync || data.values.size > 0) ? data : null;
-    });
-  }
-
-  /** Replaces every stored model with bootstrap's, with its sync id. */
-  replaceModels(models: Map<string, Map<number, StoredRow['row']>>, sync: StoredSync) {
-    void this.#write([MODELS, VALUES], (transaction) => {
-      const store = transaction.objectStore(MODELS);
-      store.clear();
-      for (const [model, rows] of models) {
-        for (const row of rows.values()) store.put({ model, row } satisfies StoredRow, `${model}:${row.id}`);
-      }
-      transaction.objectStore(VALUES).put(sync, 'sync');
-    });
-  }
-
-  /** Writes a batch of changes with the sync id it reached, in one transaction: never one without the other. */
-  applyChanges(changes: StoredChange[], sync: StoredSync) {
-    void this.#write([MODELS, VALUES], (transaction) => {
-      const store = transaction.objectStore(MODELS);
-      for (const { model, id, row } of changes) {
-        if (row) store.put({ model, row } satisfies StoredRow, `${model}:${id}`);
-        else store.delete(`${model}:${id}`);
-      }
-      transaction.objectStore(VALUES).put(sync, 'sync');
     });
   }
 
@@ -294,17 +320,7 @@ export class LocalDatabase {
   async #write(stores: string[], run: (transaction: IDBTransaction) => void): Promise<void> {
     // The database open when the write was asked for: one for a workspace since left never lands in another's.
     const db = await this.#db;
-    if (!db) return;
-    // Written in order: IndexedDB runs transactions on the same stores one after another.
-    let transaction: IDBTransaction;
-    try {
-      transaction = db.transaction(stores, 'readwrite');
-      run(transaction);
-    } catch {
-      // A closed or full database: the server still has it all.
-      return;
-    }
-    await done(transaction).catch(() => {});
+    if (db) await writeTo(db, stores, run);
   }
 
   /**
@@ -324,6 +340,12 @@ export class LocalDatabase {
       // The open one goes too: close it first, so the delete isn't blocked by this tab.
       this.#pending.clear();
       await this.open(null);
+    }
+    // The sync hubs holding them stop and let go, in a SharedWorker or in another tab (#498).
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel(SYNC_CHANNEL);
+      channel.postMessage({ type: 'wipe', username } satisfies WipeMessage);
+      channel.close();
     }
     const rest = Object.fromEntries(Object.entries(held).filter(([name]) => !names.includes(name)));
     writeJson(() => window.localStorage, REGISTRY_KEY, Object.keys(rest).length > 0 ? rest : null);

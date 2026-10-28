@@ -9,6 +9,8 @@
 // logs them, as when the socket is down; `drop` closes the socket, and the
 // client's next socket gets what it missed from the log before `caught_up`.
 //
+// The sync hub runs in the page here (#498), not in its SharedWorker, so the routes reach it.
+//
 // It also answers the client API (/api/graphql, #509) with the check's REST mocks; see graphql-mock.mjs.
 import { mockGraphqlAsRest } from './graphql-mock.mjs';
 
@@ -23,6 +25,9 @@ export async function mockSync(page, { models = {}, lastSyncId = 0, syncGroups =
     lastSyncId,
   };
   await mockGraphqlAsRest(page);
+  // A SharedWorker's requests and socket don't pass the page's routes: these checks run the
+  // sync hub in the page, as a browser without SharedWorker does. shared-sync-browser.mjs checks the worker.
+  await page.addInitScript(() => { window.buyerlySharedSync = false; });
   const delta = (actions) => JSON.stringify({ type: 'delta', actions, last_sync_id: actions[actions.length - 1].sync_id });
   await page.route('**/api/sync/bootstrap', (route) => {
     state.bootstraps += 1;

@@ -42,6 +42,7 @@ jobs:
           node scripts/check-campaign-filters.cjs
           node scripts/check-scoped-state.cjs
           node scripts/check-pool.cjs
+          node scripts/check-sync-hub.cjs
           node scripts/check-hierarchy-parents.cjs
           node scripts/check-snooze-query.cjs
           node scripts/check-sessions.cjs
@@ -83,7 +84,7 @@ jobs:
           - group: workspace state, new version, WebMCP
             scripts: scoped-state new-version service-worker webmcp view-options accounts navigation page-switch
           - group: members, search, settings
-            scripts: members search-page workspace-switcher security profile sync local-database transactions
+            scripts: members search-page workspace-switcher security profile sync local-database transactions shared-sync
           - group: auth, details pane, Ads Manager rules
             scripts: details-pane invite-auth onboarding-invites auth-theme workspace-settings multi-account rules-attach ads-manager
 
