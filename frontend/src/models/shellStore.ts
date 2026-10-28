@@ -9,6 +9,7 @@ export type SettingsSection =
   | 'profile'
   | 'notifications'
   | 'priority-notifications'
+  | 'desktop-notifications'
   | 'email-notifications'
   | 'telegram-notifications'
   | 'connected-accounts'

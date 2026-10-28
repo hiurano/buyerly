@@ -62,6 +62,16 @@ def _qs(**params):
     return f"?{query}" if query else ""
 
 
+# A browser's PushSubscription.toJSON(); the keys are a valid P-256 point and auth secret.
+PUSH_SUBSCRIPTION = {
+    "endpoint": "https://push.example.com/send/parity",
+    "keys": {
+        "p256dh": "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM",
+        "auth": "tBHItJI5svbpez7KI4CCXg",
+    },
+}
+
+
 # Every schema field, as its REST route. `f` is the fixture, `n` 1 for REST and 2 for GraphQL.
 CASES = {
     # Queries
@@ -82,6 +92,7 @@ CASES = {
         lambda f, n: {"pageSize": 5, "accountId": f.acc[n]},
     ),
     "deletedItems": _case("GET", lambda f, n: "/api/deleted-items", lambda f, n: {}),
+    "desktopNotifications": _case("GET", lambda f, n: "/api/notifications/desktop", lambda f, n: {}),
     "favorites": _case("GET", lambda f, n: "/api/favorites", lambda f, n: {}),
     "inbox": _case("GET", lambda f, n: "/api/inbox?limit=5", lambda f, n: {"limit": 5}),
     "inboxFacets": _case("GET", lambda f, n: "/api/inbox/facets", lambda f, n: {}),
@@ -208,6 +219,15 @@ CASES = {
     ),
     "inboxDeleteAll": _case("POST", lambda f, n: "/api/inbox/delete-all", lambda f, n: {}),
     "inboxDeleteAllRead": _case("POST", lambda f, n: "/api/inbox/delete-all-read", lambda f, n: {}),
+    "desktopNotificationsSubscribe": _case(
+        "POST", lambda f, n: "/api/notifications/desktop/subscribe", lambda f, n: {"input": PUSH_SUBSCRIPTION},
+        lambda f, n: PUSH_SUBSCRIPTION,
+    ),
+    "desktopNotificationsUnsubscribe": _case(
+        "POST", lambda f, n: "/api/notifications/desktop/unsubscribe",
+        lambda f, n: {"input": {"endpoint": PUSH_SUBSCRIPTION["endpoint"]}},
+        lambda f, n: {"endpoint": PUSH_SUBSCRIPTION["endpoint"]},
+    ),
     "notificationChannelsUpdate": _case(
         "PUT", lambda f, n: "/api/notifications/channels", lambda f, n: {"input": {"invite_accepted": False}},
         lambda f, n: {"invite_accepted": False},

@@ -6,16 +6,27 @@ import {
   type NotificationChannel,
   type NotificationChannels,
 } from '@/lib/notificationChannels';
+import {
+  NO_DESKTOP_NOTIFICATIONS,
+  fetchDesktopNotifications,
+  turnOffDesktopNotifications,
+  turnOnDesktopNotifications,
+  type DesktopNotificationsState,
+} from '@/lib/desktopNotifications';
 import { NO_TELEGRAM_CONNECTION, fetchTelegramConnection, type TelegramConnection } from '@/lib/telegram';
 import { scopeStore } from './scopeStore';
 import { makeStore, useStore } from './store';
 
-/** Settings → Notifications: each channel's choices and the Telegram connection, saved per member. */
+/** Settings → Notifications: each channel's choices, the Telegram connection and this browser's desktop notifications. */
 export class NotificationSettingsStore {
   notificationChannels: NotificationChannels = DEFAULT_NOTIFICATION_CHANNELS;
   notificationChannelsLoaded = false;
   telegramConnection: TelegramConnection = NO_TELEGRAM_CONNECTION;
   telegramConnectionLoaded = false;
+  desktop: DesktopNotificationsState = NO_DESKTOP_NOTIFICATIONS;
+  desktopLoaded = false;
+  /** Turning Desktop on or off: the permission prompt and the subscription take a moment. */
+  desktopBusy = false;
   #channelsSave: Promise<unknown> = Promise.resolve();
 
   constructor() {
@@ -25,6 +36,8 @@ export class NotificationSettingsStore {
       this.notificationChannelsLoaded = false;
       this.telegramConnection = NO_TELEGRAM_CONNECTION;
       this.telegramConnectionLoaded = false;
+      this.desktop = NO_DESKTOP_NOTIFICATIONS;
+      this.desktopLoaded = false;
     });
   }
 
@@ -73,6 +86,44 @@ export class NotificationSettingsStore {
   setTelegramConnection(connection: TelegramConnection) {
     this.telegramConnection = connection;
     this.telegramConnectionLoaded = true;
+  }
+
+  async loadDesktop(): Promise<void> {
+    const inScope = scopeStore.captureScope();
+    let desktop = NO_DESKTOP_NOTIFICATIONS;
+    try {
+      desktop = await fetchDesktopNotifications();
+    } catch {
+      // Shown as unavailable.
+    }
+    if (inScope()) this.setDesktop(desktop);
+  }
+
+  /** The Desktop switch: on asks for permission first; the server turns the channel on or off. */
+  async setDesktopOn(on: boolean): Promise<void> {
+    if (this.desktopBusy) return;
+    const inScope = scopeStore.captureScope();
+    this.setDesktopBusy(true);
+    try {
+      const desktop = await (on ? turnOnDesktopNotifications() : turnOffDesktopNotifications());
+      if (!inScope()) return;
+      this.setDesktop(desktop);
+      // The server changed the channel's `enabled`; take its copy.
+      await this.loadNotificationChannels(true);
+    } catch {
+      if (inScope()) await this.loadDesktop();
+    } finally {
+      this.setDesktopBusy(false);
+    }
+  }
+
+  private setDesktop(desktop: DesktopNotificationsState) {
+    this.desktop = desktop;
+    this.desktopLoaded = true;
+  }
+
+  private setDesktopBusy(busy: boolean) {
+    this.desktopBusy = busy;
   }
 
   private setChannelsLoaded(loaded: boolean) {

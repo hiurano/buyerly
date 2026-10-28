@@ -19,6 +19,7 @@ import type { FilterClause } from '@/components/filters/filterModel';
 import { InboxFilterChip } from '@/components/inbox/InboxFilterBar';
 import { fromMenuClauses, inboxFilterFields, toMenuClause } from '@/components/inbox/inboxFilterFields';
 import {
+  BuyerlyDesktopIcon,
   BuyerlyDotsIcon,
   BuyerlyEmailIcon,
   BuyerlyFilterIcon,
@@ -88,6 +89,19 @@ function useNotificationChannels() {
   return { notificationChannels, setChannelNotifications, setNotificationChannels };
 }
 
+/** Desktop notifications in this browser: whether they can work and whether it gets them. */
+function useDesktopNotifications() {
+  const desktop = useNotificationSettingsStore((state) => state.desktop);
+  const desktopLoaded = useNotificationSettingsStore((state) => state.desktopLoaded);
+  const desktopBusy = useNotificationSettingsStore((state) => state.desktopBusy);
+  const loadDesktop = useNotificationSettingsStore((state) => state.loadDesktop);
+  const setDesktopOn = useNotificationSettingsStore((state) => state.setDesktopOn);
+  useEffect(() => {
+    if (!desktopLoaded) void loadDesktop();
+  }, [desktopLoaded, loadDesktop]);
+  return { desktop, desktopBusy, setDesktopOn };
+}
+
 /** The member's personal Telegram account, loaded once per workspace. */
 export function useTelegramConnection() {
   const telegramConnection = useNotificationSettingsStore((state) => state.telegramConnection);
@@ -131,20 +145,23 @@ const ChannelRow: React.FC<{
   );
 };
 
-/** Settings → Notifications, as in Linear: Inbox, Push notifications with Email and Telegram, then Other updates. */
+/** Settings → Notifications, as in Linear: Inbox, Push notifications with Desktop, Email and Telegram, then Other updates. */
 export const NotificationsSection: React.FC<{
   onOpenPriority: () => void;
+  onOpenDesktop: () => void;
   onOpenEmail: () => void;
   onOpenTelegram: () => void;
 }> = ({
   onOpenPriority,
+  onOpenDesktop,
   onOpenEmail,
   onOpenTelegram,
 }) => {
   const { inboxDisplay, setInboxDisplay } = useInboxDisplay();
   const { notificationChannels, setNotificationChannels } = useNotificationChannels();
   const telegramConnection = useTelegramConnection();
-  const { email, telegram } = notificationChannels;
+  const { desktop: desktopHere } = useDesktopNotifications();
+  const { desktop, email, telegram } = notificationChannels;
   const priorityRowContent = (
     <>
       <span className="preferences-row-copy">
@@ -203,6 +220,13 @@ export const NotificationsSection: React.FC<{
           Choose which notifications are pushed to your devices. All notifications will still appear in your inbox.
         </p>
         <section className="preferences-card-container preferences-card-container--divided">
+          {/* Linear lists Desktop first; it is on only in a browser that gets them. */}
+          <ChannelRow
+            name="Desktop"
+            icon={<BuyerlyDesktopIcon size={16} />}
+            status={channelStatus(desktopHere.subscribed && desktop.enabled, desktop.kinds)}
+            onOpen={onOpenDesktop}
+          />
           <ChannelRow
             name="Email"
             icon={<BuyerlyEmailIcon size={16} />}
@@ -256,15 +280,17 @@ const ChannelNotificationsSection: React.FC<{
   accountCard?: React.ReactNode;
   /** Shown above the switches while the channel cannot deliver. */
   notice?: React.ReactNode;
+  /** Desktop's switch is this browser's: on only where it is subscribed, and switching asks the browser first. */
+  channelSwitch?: { checked: boolean; disabled: boolean; onChange: (value: boolean) => void };
   onBack: () => void;
   onOpenPriority: () => void;
-}> = ({ channel, title, enableTitle, enableDescription, accountCard, notice, onBack, onOpenPriority }) => {
+}> = ({ channel, title, enableTitle, enableDescription, accountCard, notice, channelSwitch, onBack, onOpenPriority }) => {
   const { inboxDisplay } = useInboxDisplay();
   const { notificationChannels, setChannelNotifications } = useNotificationChannels();
   const settings = notificationChannels[channel];
   const update = (patch: Parameters<typeof setChannelNotifications>[1]) => setChannelNotifications(channel, patch);
   const connected = !accountCard;
-  const enabled = connected && settings.enabled;
+  const enabled = connected && (channelSwitch ? channelSwitch.checked : settings.enabled);
   const priorityOnly = inboxDisplay.priorityInbox && settings.priorityOnly;
   // Linear: switching the channel on with every type off switches every type on.
   const toggleChannel = (value: boolean) => update(
@@ -316,7 +342,13 @@ const ChannelNotificationsSection: React.FC<{
                 <span className="preferences-row-title">{enableTitle}</span>
                 <span className="preferences-row-desc">{enableDescription}</span>
               </div>
-              <BuyerlyToggle size="settings" label={enableTitle} checked={settings.enabled} onChange={toggleChannel} />
+              <BuyerlyToggle
+                size="settings"
+                label={enableTitle}
+                checked={channelSwitch ? channelSwitch.checked : settings.enabled}
+                disabled={channelSwitch?.disabled}
+                onChange={channelSwitch ? channelSwitch.onChange : toggleChannel}
+              />
             </div>
             {inboxDisplay.priorityInbox ? priorityRow : (
               <Tooltip content="Priority inbox isn't enabled" side="bottom" sideOffset={8}>
@@ -374,6 +406,64 @@ export const EmailNotificationsSection: React.FC<{
     onOpenPriority={onOpenPriority}
   />
 );
+
+/** A line in a card: why the channel cannot deliver here. */
+const NoticeCard: React.FC<{ title: string; description?: string }> = ({ title, description }) => (
+  <section className="preferences-card-container">
+    <div className="preferences-row-item">
+      <span className="preferences-row-copy">
+        <span className="preferences-row-title">{title}</span>
+        {description && <span className="preferences-row-desc">{description}</span>}
+      </span>
+    </div>
+  </section>
+);
+
+/**
+ * Settings → Notifications → Desktop, as Linear's: notifications in this browser,
+ * even when Buyerly is closed. The browser asks for permission only when the switch is turned on.
+ */
+export const DesktopNotificationsSection: React.FC<{
+  onBack: () => void;
+  onOpenPriority: () => void;
+}> = ({ onBack, onOpenPriority }) => {
+  const { desktop, desktopBusy, setDesktopOn } = useDesktopNotifications();
+  const { notificationChannels } = useNotificationChannels();
+  const blocked = desktop.permission === 'denied';
+  let notice: React.ReactNode;
+  if (!desktop.available) {
+    notice = (
+      <NoticeCard
+        title="Desktop notifications aren't available in this browser"
+        description="Open Buyerly in a browser that supports notifications, such as Chrome, Edge, Firefox or Safari."
+      />
+    );
+  } else if (blocked) {
+    notice = (
+      <NoticeCard
+        title="Notifications are blocked for Buyerly in this browser"
+        description="Allow notifications for this site in the browser's settings, then turn them on here."
+      />
+    );
+  }
+  return (
+    <ChannelNotificationsSection
+      channel="desktop"
+      title="Desktop"
+      enableTitle="Enable desktop notifications"
+      enableDescription="Receive notifications in this browser, even when Buyerly is closed"
+      notice={notice}
+      channelSwitch={{
+        checked: desktop.subscribed && notificationChannels.desktop.enabled,
+        // Turning off always works; turning on needs a browser that can and may show them.
+        disabled: desktopBusy || (!desktop.subscribed && (!desktop.available || blocked)),
+        onChange: (value) => void setDesktopOn(value),
+      }}
+      onBack={onBack}
+      onOpenPriority={onOpenPriority}
+    />
+  );
+};
 
 /** Linear's "Personal Slack account not connected" card, leading to Connected accounts. */
 const AccountCard: React.FC<{ title: string; onOpenConnections: () => void }> = ({ title, onOpenConnections }) => (

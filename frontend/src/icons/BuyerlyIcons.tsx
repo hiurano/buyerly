@@ -1000,6 +1000,26 @@ export const BuyerlyEmailIcon: React.FC<IconProps> = ({ size = 16, className = '
   </svg>
 );
 
+// A screen, as Linear's Desktop channel in Settings → Notifications
+export const BuyerlyDesktopIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    role="img"
+    focusable="false"
+    aria-hidden="true"
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    <path
+      fillRule="evenodd"
+      d="M12 2a3 3 0 0 1 3 3v3.5a3 3 0 0 1-3 3H4a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3zM4 3.5A1.5 1.5 0 0 0 2.5 5v3.5A1.5 1.5 0 0 0 4 10h8a1.5 1.5 0 0 0 1.5-1.5V5A1.5 1.5 0 0 0 12 3.5zM4.75 13h6.5a.75.75 0 0 1 0 1.5h-6.5a.75.75 0 0 1 0-1.5"
+    />
+  </svg>
+);
+
 // Telegram logo, one colour like Linear's Slack logo in the same row (Simple Icons, CC0)
 export const TelegramIcon: React.FC<IconProps> = ({ size = 16, className = '', ...props }) => (
   <svg

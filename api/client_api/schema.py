@@ -27,6 +27,7 @@ from api.routers import (
     audit,
     auth,
     delivery,
+    desktop_notifications,
     favorites,
     members,
     onboarding,
@@ -69,6 +70,7 @@ AccountNotificationSettingPayload = _payload("AccountNotificationSettingPayload"
 AuditEventPayload = _payload("AuditEventPayload", "audit_event")
 DeletedItemPayload = _payload("DeletedItemPayload", "deleted_item")
 DeliveryPayload = _payload("DeliveryPayload", "entity")
+DesktopNotificationsPayload = _payload("DesktopNotificationsPayload", "desktop_notifications")
 FavoritePayload = _payload("FavoritePayload", "favorite")
 InboxDisplayPayload = _payload("InboxDisplayPayload", "inbox_display")
 InboxNotificationPayload = _payload("InboxNotificationPayload", "inbox_notification")
@@ -108,6 +110,9 @@ R_ACCOUNT_NOTIFICATIONS = _routed(
 R_HIERARCHY = _routed("analyticsHierarchy", analytics, analytics.get_analytics_hierarchy)
 R_ACCOUNTS_HIERARCHY = _routed("analyticsAccountsHierarchy", analytics, analytics.get_accounts_hierarchy)
 R_AUDIT_EVENTS = _routed("auditEvents", audit, audit.list_audit_events)
+R_DESKTOP_NOTIFICATIONS = _routed(
+    "desktopNotifications", desktop_notifications, desktop_notifications.get_desktop_notifications
+)
 R_DELETED_ITEMS = _routed("deletedItems", trash, trash.list_deleted_items)
 R_FAVORITES = _routed("favorites", favorites, favorites.list_favorites)
 R_INBOX = _routed("inbox", audit, audit.list_inbox)
@@ -239,6 +244,10 @@ class Query:
     async def notification_channels(self, info: Info) -> JSON:
         return await run(info, R_NOTIFICATION_CHANNELS)
 
+    @strawberry.field(description="Whether desktop notifications work here and reach this browser.")
+    async def desktop_notifications(self, info: Info, endpoint: Optional[str] = None) -> JSON:
+        return await run(info, R_DESKTOP_NOTIFICATIONS, endpoint=endpoint)
+
     @strawberry.field(description="The workspace's Meta connections.")
     async def meta_connections(self, info: Info) -> JSON:
         return await run(info, R_META_CONNECTIONS)
@@ -360,6 +369,12 @@ M_META_DISCOVER = _routed("metaConnectionDiscover", meta_oauth, meta_oauth.disco
 M_META_IMPORT = _routed("metaConnectionImport", meta_oauth, meta_oauth.import_accounts)
 M_META_OAUTH = _routed("metaOauthStart", meta_oauth, meta_oauth.start_oauth)
 M_NOTIFICATION_CHANNELS = _routed("notificationChannelsUpdate", audit, audit.save_notification_channels)
+M_DESKTOP_SUBSCRIBE = _routed(
+    "desktopNotificationsSubscribe", desktop_notifications, desktop_notifications.subscribe_desktop_notifications
+)
+M_DESKTOP_UNSUBSCRIBE = _routed(
+    "desktopNotificationsUnsubscribe", desktop_notifications, desktop_notifications.unsubscribe_desktop_notifications
+)
 M_ONBOARDING_DETAILS = _routed(
     "onboardingPersonalDetailsUpdate", onboarding, onboarding.submit_onboarding_personal_details
 )
@@ -535,6 +550,16 @@ class Mutation:
     @strawberry.mutation(description="Sets where the member's notifications go besides the Inbox.")
     async def notification_channels_update(self, info: Info, input: JSON) -> Optional[NotificationChannelsPayload]:
         return await _mutate(info, NotificationChannelsPayload, M_NOTIFICATION_CHANNELS, payload=input)
+
+    @strawberry.mutation(description="This browser gets the member's desktop notifications.")
+    async def desktop_notifications_subscribe(self, info: Info, input: JSON) -> Optional[DesktopNotificationsPayload]:
+        return await _mutate(info, DesktopNotificationsPayload, M_DESKTOP_SUBSCRIBE, payload=input)
+
+    @strawberry.mutation(description="This browser stops getting the member's desktop notifications.")
+    async def desktop_notifications_unsubscribe(
+        self, info: Info, input: JSON
+    ) -> Optional[DesktopNotificationsPayload]:
+        return await _mutate(info, DesktopNotificationsPayload, M_DESKTOP_UNSUBSCRIBE, payload=input)
 
     # Meta connections
 

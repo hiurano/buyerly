@@ -78,6 +78,7 @@ export const SETTINGS_PATHS = {
   profile: 'account/profile',
   notifications: 'account/notifications',
   'priority-notifications': 'account/notifications/priority-filter',
+  'desktop-notifications': 'account/notifications/desktop',
   'email-notifications': 'account/notifications/email',
   'telegram-notifications': 'account/notifications/telegram',
   'connected-accounts': 'account/connections',

@@ -1309,6 +1309,49 @@ class InboxTelegramDelivery(Base):
     sent_at = Column(DateTime(timezone=True), nullable=True)
 
 
+class DesktopPushSubscription(Base):
+    """One browser's Web Push subscription for a member's desktop notifications (#503).
+
+    It lasts as long as the sign-in it was made in: logging out of that browser ends the web
+    session, and with it the notifications. The push service's 404 or 410 removes it too.
+    """
+
+    __tablename__ = "desktop_push_subscriptions"
+    __table_args__ = (
+        UniqueConstraint("member_id", "endpoint", name="uq_desktop_push_member_endpoint"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    member_id = Column(
+        Integer, ForeignKey("workspace_members.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    web_session_id = Column(
+        String(36), ForeignKey("web_sessions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    endpoint = Column(Text, nullable=False, index=True, doc="The browser's push service address")
+    p256dh = Column(String, nullable=False)
+    auth = Column(String, nullable=False)
+    user_agent = Column(String(500), default="", nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class InboxPushDelivery(Base):
+    """One desktop notification about one Inbox notification to one member, so it is never sent twice."""
+
+    __tablename__ = "inbox_push_deliveries"
+    __table_args__ = (
+        UniqueConstraint("user_id", "audit_event_id", name="uq_inbox_push_user_event"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    audit_event_id = Column(
+        Integer, ForeignKey("audit_events.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+
+
 class AutomationScheduleState(Base):
     """Durable worker schedule state that survives restart and deploy."""
 

@@ -2,6 +2,9 @@
 // keeps one build's files and serves the app from them, so a tab opens without
 // the network; a deploy installs as a second worker that waits until Reload in
 // the "New version available" notice (lib/appVersion.ts) lets it take over.
+// A clicked desktop notification (#503) asks the tab to open its Inbox record.
+
+import { openAppPath } from './routing';
 
 declare global {
   interface ImportMetaEnv {
@@ -32,6 +35,12 @@ export function registerServiceWorker(): void {
   if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
   const container = navigator.serviceWorker;
   tabWorker = container.controller;
+  // The worker focused this tab for a clicked notification: go to its record, as a link would.
+  container.addEventListener('message', (event: MessageEvent<{ type?: string; url?: unknown } | null>) => {
+    if (event.data?.type === 'OPEN_URL' && typeof event.data.url === 'string' && event.data.url.startsWith('/')) {
+      openAppPath(event.data.url);
+    }
+  });
   container.addEventListener('controllerchange', () => {
     const previous = tabWorker;
     tabWorker = container.controller;

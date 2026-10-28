@@ -619,6 +619,8 @@ class TestInbox(unittest.IsolatedAsyncioTestCase):
             "email": {"enabled": True, "priority_only": False, "kinds": all_kinds},
             # Telegram stays off until an account is connected, as Linear's Slack.
             "telegram": {"enabled": False, "priority_only": False, "kinds": all_kinds},
+            # Desktop stays off until turned on in a browser that allows notifications.
+            "desktop": {"enabled": False, "priority_only": False, "kinds": all_kinds},
             "invite_accepted": True,
         }
         response = await self.client.get("/api/notifications/channels", headers=self.owner_headers)

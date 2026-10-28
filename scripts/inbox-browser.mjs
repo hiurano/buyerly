@@ -130,6 +130,7 @@ try {
     // Settings → Notifications → Email (#274, #275).
     const allKinds = ['urgent', 'rule_alerts', 'rule_actions', 'assistant', 'manual', 'team', 'system'];
     let savedChannels = {
+      desktop: { enabled: false, priority_only: false, kinds: [...allKinds] },
       email: { enabled: true, priority_only: false, kinds: [...allKinds] },
       telegram: { enabled: false, priority_only: false, kinds: [...allKinds] },
     };
@@ -137,6 +138,45 @@ try {
     const noTelegram = { available: true, connected: false, username: null, first_name: null, connected_at: null, error: null };
     let telegram = { ...noTelegram };
     let telegramLinks = 0;
+    // Settings → Notifications → Desktop (#503): this browser's push subscription, as the server keeps it.
+    const vapidKey = 'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM';
+    const desktopSubscriptions = new Map();
+    // The dev server registers no service worker, and headless Chromium has no push service:
+    // a stand-in registration whose pushManager keeps its subscription across reloads. Playwright
+    // answers every permission prompt itself, so the browser's prompt is a stand-in too: it
+    // counts the asks and gives `test-permission-answer`.
+    await context.addInitScript((key) => {
+      Object.defineProperty(Notification, 'permission', {
+        configurable: true,
+        get: () => localStorage.getItem('test-permission') ?? 'default',
+      });
+      Notification.requestPermission = async () => {
+        localStorage.setItem('test-permission-asks', String(Number(localStorage.getItem('test-permission-asks') ?? 0) + 1));
+        const answer = localStorage.getItem('test-permission-answer') ?? 'denied';
+        localStorage.setItem('test-permission', answer);
+        return answer;
+      };
+      const decode = (text) => Uint8Array.from(atob(text.replace(/-/g, '+').replace(/_/g, '/') + '='), (c) => c.charCodeAt(0));
+      const stored = () => localStorage.getItem('test-push-subscription');
+      const subscription = (endpoint) => ({
+        endpoint,
+        options: { applicationServerKey: decode(key).buffer },
+        toJSON: () => ({ endpoint, keys: { p256dh: key, auth: 'tBHItJI5svbpez7KI4CCXg' } }),
+        unsubscribe: async () => {
+          localStorage.removeItem('test-push-subscription');
+          return true;
+        },
+      });
+      const pushManager = {
+        getSubscription: async () => (stored() ? subscription(stored()) : null),
+        subscribe: async (options) => {
+          if (!options.userVisibleOnly || new Uint8Array(options.applicationServerKey).length !== 65) throw new Error('bad subscribe');
+          localStorage.setItem('test-push-subscription', 'https://push.example.com/send/inbox-check');
+          return subscription(stored());
+        },
+      };
+      navigator.serviceWorker.getRegistration = async () => ({ pushManager });
+    }, vapidKey);
     await context.route('https://t.me/**', route => route.fulfill({ contentType: 'text/html', body: '<title>Telegram</title>' }));
     const state = inboxState(() => ({
       kinds: savedDisplay.priority_kinds ?? ['urgent', 'rule_alerts', 'rule_actions', 'assistant', 'manual', 'team', 'system'],
@@ -168,6 +208,20 @@ try {
       if (viewKey && verb === 'DELETE') {
         delete savedViews[viewKey];
         return route.fulfill({ status: 204, body: '' });
+      }
+      if (path === '/api/notifications/desktop') {
+        const endpoint = url.searchParams.get('endpoint');
+        return route.fulfill({ json: { available: true, public_key: vapidKey, subscribed: desktopSubscriptions.has(endpoint) } });
+      }
+      if (verb === 'POST' && path === '/api/notifications/desktop/subscribe') {
+        desktopSubscriptions.set(body.endpoint, body.keys);
+        savedChannels = { ...savedChannels, desktop: { ...savedChannels.desktop, enabled: true } };
+        return route.fulfill({ json: { available: true, public_key: vapidKey, subscribed: true } });
+      }
+      if (verb === 'POST' && path === '/api/notifications/desktop/unsubscribe') {
+        desktopSubscriptions.delete(body.endpoint);
+        if (desktopSubscriptions.size === 0) savedChannels = { ...savedChannels, desktop: { ...savedChannels.desktop, enabled: false } };
+        return route.fulfill({ json: { available: true, public_key: vapidKey, subscribed: false, browser_in_use: false } });
       }
       if (path === '/api/telegram/connection') {
         if (verb === 'DELETE') telegram = { ...noTelegram };
@@ -744,6 +798,64 @@ try {
       await page.waitForFunction(() => document.querySelector('[role="switch"][aria-label="Enable email notifications"]')?.getAttribute('aria-checked') === 'false');
       await page.goto(`${origin}/${workspace.slug}/settings/account/notifications`);
       await page.getByRole('button', { name: /^Email\s+Disabled/ }).waitFor();
+
+      // Desktop (#503): listed first, as in Linear; Disabled until turned on in this browser.
+      await page.getByRole('button', { name: /^Desktop\s+Disabled/ }).waitFor();
+      const pushRows = await page.locator('.preferences-channel-icon + .preferences-row-copy .preferences-row-title').allTextContents();
+      assert.deepEqual(pushRows, ['Desktop', 'Email', 'Telegram']);
+      await page.getByRole('button', { name: /^Desktop/ }).click();
+      await page.waitForFunction(() => location.pathname.endsWith('/settings/account/notifications/desktop'));
+      await page.getByRole('heading', { name: 'Desktop' }).waitFor();
+      await page.getByText('Receive notifications in this browser, even when Buyerly is closed').waitFor();
+      const desktopSwitch = page.getByRole('switch', { name: 'Enable desktop notifications' });
+      const desktopOn = (value) => page.waitForFunction((on) => document.querySelector('[role="switch"][aria-label="Enable desktop notifications"]')?.getAttribute('aria-checked') === on, String(value));
+      const asks = () => page.evaluate(() => Number(localStorage.getItem('test-permission-asks') ?? 0));
+      // Opening the page asks nothing; turning it on asks, and a refusal leaves it off.
+      assert.equal(await page.evaluate(() => Notification.permission), 'default');
+      assert.equal(await asks(), 0);
+      assert.equal(await page.getByRole('switch', { name: 'Urgent' }).getAttribute('aria-disabled'), 'true');
+      await desktopSwitch.click();
+      await page.getByText('Notifications are blocked for Buyerly in this browser').waitFor();
+      assert.equal(await desktopSwitch.getAttribute('aria-checked'), 'false');
+      assert.equal(await desktopSwitch.getAttribute('aria-disabled'), 'true');
+      assert.equal(desktopSubscriptions.size, 0);
+      assert.equal(await asks(), 1);
+      // The site's permission reset in the browser: on asks again, is allowed, subscribes this browser and turns the channel on.
+      await page.evaluate(() => {
+        localStorage.removeItem('test-permission');
+        localStorage.setItem('test-permission-answer', 'granted');
+      });
+      await page.reload();
+      await page.getByRole('heading', { name: 'Desktop' }).waitFor();
+      assert.equal(await page.getByText('Notifications are blocked for Buyerly in this browser').count(), 0);
+      await desktopSwitch.click();
+      await desktopOn(true);
+      assert.equal(await asks(), 2);
+      assert.deepEqual([...desktopSubscriptions.keys()], ['https://push.example.com/send/inbox-check']);
+      assert.equal(desktopSubscriptions.get('https://push.example.com/send/inbox-check').p256dh, vapidKey);
+      assert.equal(savedChannels.desktop.enabled, true);
+      // Its types are the member's, as Email's.
+      await page.getByRole('switch', { name: 'Manual' }).click();
+      await expectSaved(() => savedChannels.desktop.kinds.join() === 'urgent,rule_alerts,rule_actions,assistant,team,system');
+      await page.waitForFunction(() => document.querySelector('[role="switch"][aria-label="Manual changes"]')?.getAttribute('aria-checked') === 'false');
+      assert.equal(await desktopSwitch.getAttribute('aria-checked'), 'true');
+      await page.mouse.move(0, 0);
+      await page.waitForTimeout(400);
+      await page.screenshot({ path: `${output}/notifications-desktop-${width}.png` });
+      await page.emulateMedia({ colorScheme: 'dark' });
+      await page.screenshot({ path: `${output}/notifications-desktop-dark-${width}.png` });
+      await page.emulateMedia({ colorScheme: 'light' });
+      await page.locator('.preferences-breadcrumb').click();
+      await page.getByRole('button', { name: /^Desktop\s+Enabled for urgent, rule alerts, 4 others/ }).waitFor();
+      // Off: this browser is unsubscribed and the row says Disabled.
+      await page.getByRole('button', { name: /^Desktop/ }).click();
+      await desktopSwitch.click();
+      await desktopOn(false);
+      assert.equal(desktopSubscriptions.size, 0);
+      assert.equal(await page.evaluate(() => localStorage.getItem('test-push-subscription')), null);
+      await expectSaved(() => savedChannels.desktop.enabled === false);
+      await page.locator('.preferences-breadcrumb').click();
+      await page.getByRole('button', { name: /^Desktop\s+Disabled/ }).waitFor();
 
       // Telegram page before connecting: Linear's "not connected" card and dimmed types (#277).
       await page.getByRole('button', { name: /^Telegram/ }).click();

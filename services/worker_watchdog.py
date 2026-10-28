@@ -152,10 +152,12 @@ async def check_once(now: Optional[datetime] = None, session_maker=None) -> dict
 async def _deliver_inbox_while_stalled() -> None:
     # Imported here: the delivery modules pull in the API routers.
     from services.inbox_email import run_inbox_email_tick
+    from services.inbox_push import run_inbox_push_tick
     from services.inbox_telegram import run_inbox_telegram_tick
 
     await run_inbox_email_tick()
     await run_inbox_telegram_tick()
+    await run_inbox_push_tick()
 
 
 async def run_forever(interval: float = CHECK_INTERVAL_SECONDS) -> None:

@@ -10,8 +10,9 @@
 // the waiting worker to take over (src/lib/serviceWorker.ts).
 //
 // API responses are never cached here: the local database keeps the data (#496).
-// Browser notifications (#503) add their `push` and `notificationclick`
-// listeners to this same file.
+// Desktop notifications (#503), as Linear's: the server's Web Push wakes the
+// worker with `push` even while no tab is open, and `notificationclick` opens
+// the Inbox record, in an open tab if there is one.
 
 /// <reference lib="webworker" />
 
@@ -39,8 +40,14 @@ function isAppPage(pathname: string): boolean {
   return !SERVER_ROOTS.has(pathname.split('/')[1]);
 }
 
-/** What the page asks the worker; #503 may add its own types. */
+/** What the page asks the worker. */
 type Message = { type: 'SKIP_WAITING' } | { type: 'VERSION' };
+
+/** What the worker tells a tab: open this app address (a clicked notification's record). */
+type WorkerMessage = { type: 'OPEN_URL'; url: string };
+
+/** A desktop notification, as services/inbox_push.py sends it. */
+interface PushMessage { title: string; body?: string; url?: string; tag?: string }
 
 self.addEventListener('install', (event) => {
   // All or nothing: one file missing (a deploy still rolling out) fails the
@@ -91,4 +98,48 @@ async function fromCache(key: string, request: Request): Promise<Response> {
   const cached = (await caches.match(key, { cacheName: CACHE })) ?? (await caches.match(key));
   // The browser may have evicted the cache under storage pressure.
   return cached ?? fetch(request);
+}
+
+self.addEventListener('push', (event) => {
+  let message: PushMessage;
+  try {
+    message = event.data?.json() as PushMessage;
+  } catch {
+    return;
+  }
+  if (!message?.title) return;
+  // The browser requires a notification for every push (userVisibleOnly).
+  event.waitUntil(self.registration.showNotification(message.title, {
+    body: message.body,
+    tag: message.tag,
+    icon: '/apple-touch-icon.png',
+    data: { url: message.url ?? '/' },
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const data = event.notification.data as { url?: string } | null;
+  event.waitUntil(openInTab(appAddress(data?.url)));
+});
+
+/** Only this app's own addresses open from a notification. */
+function appAddress(url: string | undefined): string {
+  const target = new URL(url ?? '/', self.location.origin);
+  return target.origin === self.location.origin ? `${target.pathname}${target.search}${target.hash}` : '/';
+}
+
+/** The focused tab, else the last one used, goes to the address; with no tab, a new window. */
+async function openInTab(url: string): Promise<void> {
+  const tabs = (await self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+    .filter((tab) => new URL(tab.url).origin === self.location.origin);
+  const tab = tabs.find((client) => client.focused) ?? tabs[0];
+  if (!tab) {
+    await self.clients.openWindow(url);
+    return;
+  }
+  // The app routes there itself, without reloading (src/lib/serviceWorker.ts).
+  tab.postMessage({ type: 'OPEN_URL', url } satisfies WorkerMessage);
+  // Allowed only while handling the click; the tab has its address either way.
+  await tab.focus().catch(() => undefined);
 }

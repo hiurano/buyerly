@@ -106,6 +106,17 @@ class Settings(BaseSettings):
         default="",
         description="Token of the Buyerly Telegram bot from @BotFather; only in the server's .env",
     )
+    VAPID_PRIVATE_KEY: str = Field(
+        default="",
+        description=(
+            "Web Push signing key for desktop notifications (P-256, base64url or DER); "
+            "scripts/deploy.sh creates it once on the server. Changing it ends every browser's subscription"
+        ),
+    )
+    VAPID_SUBJECT: str = Field(
+        default="mailto:team@buyerly.app",
+        description="Contact push services see with each desktop notification (mailto: or https:)",
+    )
     RESEND_API_KEY: str = Field(
         default="",
         description="Resend.com API Key for sending transactional emails",
