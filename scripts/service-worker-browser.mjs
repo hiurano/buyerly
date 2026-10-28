@@ -250,8 +250,12 @@ try {
   await second.page.close();
 
   // Desktop notifications (#503): the push service wakes the worker, which shows the notification.
+  // In a tab of its own, closed after, so its DevTools session and navigation leave the tab below as it was.
   await context.grantPermissions(['notifications'], { origin });
-  const cdp = await context.newCDPSession(tab.page);
+  const pushTab = await openTab();
+  await pushTab.page.goto(`${origin}/alpha/members`);
+  await members(pushTab.page);
+  const cdp = await context.newCDPSession(pushTab.page);
   const registrationId = new Promise((resolve) => {
     cdp.on('ServiceWorker.workerRegistrationUpdated', ({ registrations }) => {
       const live = registrations.find((registration) => registration.scopeURL === `${origin}/` && !registration.isDeleted);
@@ -261,15 +265,17 @@ try {
   await cdp.send('ServiceWorker.enable');
   const push = { title: 'Rule alert · Ad set 7', body: 'CPL above 3\nMain · Alpha', url: '/alpha/inbox/42', tag: 'inbox-42', id: 42 };
   await cdp.send('ServiceWorker.deliverPushMessage', { origin, registrationId: await registrationId, data: JSON.stringify(push) });
-  const notifications = () => tab.page.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications())
+  const notifications = () => pushTab.page.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications())
     .map(({ title, body, tag, data }) => ({ title, body, tag, data })));
   for (const deadline = Date.now() + 10_000; (await notifications()).length === 0;) {
     assert.ok(Date.now() < deadline, 'a push shows a notification');
-    await tab.page.waitForTimeout(100);
+    await pushTab.page.waitForTimeout(100);
   }
   assert.deepEqual(await notifications(), [{ title: push.title, body: push.body, tag: 'inbox-42', data: { url: '/alpha/inbox/42' } }]);
   // A click, as the browser sends it (no CDP command clicks a notification): the open tab goes to the record.
-  await tab.page.evaluate(() => { window.notReloaded = true; });
+  // The worker picks the focused tab, so this one, not the tab below.
+  await pushTab.page.bringToFront();
+  await pushTab.page.evaluate(() => { window.notReloaded = true; });
   const [worker] = context.serviceWorkers().filter((candidate) => candidate.url() === `${origin}/sw.js`);
   await worker.evaluate(async () => {
     const [notification] = await self.registration.getNotifications();
@@ -279,12 +285,11 @@ try {
     self.dispatchEvent(click);
     await Promise.all(pending);
   });
-  await tab.page.waitForFunction(() => location.pathname === '/alpha/inbox/42');
-  assert.equal(await tab.page.evaluate(() => window.notReloaded), true, 'the tab routes to the record without reloading');
+  await pushTab.page.waitForFunction(() => location.pathname === '/alpha/inbox/42');
+  assert.equal(await pushTab.page.evaluate(() => window.notReloaded), true, 'the tab routes to the record without reloading');
   assert.deepEqual(await notifications(), [], 'the clicked notification closes');
   await cdp.detach();
-  await tab.page.goto(`${origin}/alpha/members`);
-  await members(tab.page);
+  await pushTab.page.close();
 
   // The kill switch: the next update check finds sw-off.js, which deletes the caches and unregisters.
   killSwitch = true;
