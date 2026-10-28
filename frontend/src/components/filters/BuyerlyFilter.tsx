@@ -46,6 +46,8 @@ import {
 import { useMenuExit } from '@/ui/useMenuExit';
 import { SubmenuArrow } from '@/ui/SubmenuArrow';
 import { setRef } from '@/ui/setRef';
+import { Tooltip } from '@/ui/Tooltip';
+import { BuyerlyToolbarButton, type BuyerlyToolbarButtonPlacement } from '@/ui/BuyerlyToolbarButton';
 
 const MENU_SURFACE = 'var(--card-bg)';
 const MENU_BORDER = 'var(--filter-menu-border)';
@@ -1505,29 +1507,30 @@ export const BuyerlyFilterMenu = <T,>({
   );
 };
 
-interface FilterButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'type'> {
-  active: boolean;
+interface FilterButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'type' | 'children'> {
+  /** Only names the button "Add another filter": as in Linear, the filter bar shows the filters, not the button. */
+  hasFilters: boolean;
   open: boolean;
-  /** "header" sits bare in a page header (Inbox, Search); "toolbar" on white in a list's tab row. */
-  variant?: 'header' | 'toolbar';
+  placement?: BuyerlyToolbarButtonPlacement;
   onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
-/** Spreads the rest so a wrapping Tooltip trigger gets its pointer and focus handlers. */
+/** "Add Filter" (F), the same on every page; lit only while its menu is open. */
 export const BuyerlyFilterButton = React.forwardRef<HTMLButtonElement, FilterButtonProps>(
-  ({ active, open, variant = 'toolbar', ...rest }, ref) => (
-    <button
-      {...rest}
-      ref={ref}
-      type="button"
-      aria-label={active ? 'Add another filter' : 'Add filter'}
-      aria-haspopup="dialog"
-      aria-expanded={open}
-      data-active={open || active ? 'true' : undefined}
-      className={`buyerly-header-button buyerly-header-button--${variant} buyerly-header-target`}
-    >
-      <BuyerlyFilterIcon size={14} />
-    </button>
+  ({ hasFilters, open, placement = 'toolbar', ...rest }, ref) => (
+    <Tooltip content="Add Filter" shortcut="F" disabled={open}>
+      <BuyerlyToolbarButton
+        {...rest}
+        ref={ref}
+        placement={placement}
+        active={open}
+        aria-label={hasFilters ? 'Add another filter' : 'Add filter'}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+      >
+        <BuyerlyFilterIcon size={14} />
+      </BuyerlyToolbarButton>
+    </Tooltip>
   )
 );
 BuyerlyFilterButton.displayName = 'BuyerlyFilterButton';

@@ -202,6 +202,8 @@ export const colors = stylex.defineVars({
   '--toolbar-button-ring': '0 0 0 0.5px lch(100% 0 0 / 0.137), 0 0.5px 1px 1px lch(0% 0 0 / 0.3)',
   '--toolbar-button-ring-hover': '0 0 0 0.5px lch(100% 0 0 / 0.229), 0 0.5px 1px 1px lch(0% 0 0 / 0.3)',
   '--toolbar-button-ring-active': '0 0 0 0.5px lch(100% 0 0 / 0.229)',
+  /* Their keyboard focus ring: Linear's accent, 1px (28.10, #556). */
+  '--header-button-focus-ring': 'lch(47.918% 59.303 288.421 / 1)',
   '--filter-menu-shadow': 'var(--dropdown-shadow)',
   '--filter-menu-strong-shadow': '0px 9px 48px lch(0% 0 0 / 0.28), 0px 6px 24px lch(0% 0 0 / 0.24), 0px 1px 1px lch(0% 0 0 / 0.3)',
 
@@ -604,6 +606,7 @@ export const lightColors = stylex.createTheme(colors, {
   '--toolbar-button-ring': '0 0 0 0.5px lch(0% 0 0 / 0.09), 0 3px 6px -2px lch(0% 0 0 / 0.02), 0 1px 1px 0 lch(0% 0 0 / 0.04)',
   '--toolbar-button-ring-hover': '0 0 0 0.5px lch(0% 0 0 / 0.15), 0 3px 6px -2px lch(0% 0 0 / 0.02), 0 1px 1px 0 lch(0% 0 0 / 0.04)',
   '--toolbar-button-ring-active': '0 0 0 0.5px lch(0% 0 0 / 0.15)',
+  '--header-button-focus-ring': 'lch(53% 52.26 286.91 / 1)',
   '--filter-menu-shadow': '0px 6px 18px lch(0% 0 0 / 0.02), 0px 3px 9px lch(0% 0 0 / 0.04), 0px 1px 1px lch(0% 0 0 / 0.04)',
   '--filter-menu-strong-shadow': '0px 9px 48px lch(0% 0 0 / 0.08), 0px 6px 24px lch(0% 0 0 / 0.1), 0px 1px 1px lch(0% 0 0 / 0.04)',
 

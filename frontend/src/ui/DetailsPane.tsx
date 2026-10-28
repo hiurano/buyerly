@@ -13,6 +13,7 @@ import {
   type SpringValue,
 } from './detailsPaneModel';
 import { detailsPaneStore, useDetailsPaneStore } from '@/models/detailsPaneStore';
+import { BuyerlyToolbarButton } from './BuyerlyToolbarButton';
 
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
@@ -352,16 +353,9 @@ export function DetailsPaneToggle({ pane }: { pane: DetailsPaneId }) {
   const label = open ? 'Close details' : 'Open details';
   return (
     <Tooltip content={label} shortcut={navigator.platform.includes('Mac') ? '⌘I' : 'Ctrl+I'} align="end">
-      <button
-        type="button"
-        aria-label={label}
-        aria-expanded={open}
-        data-active={open ? 'true' : undefined}
-        onClick={() => toggleDetailsPane(pane)}
-        className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target"
-      >
+      <BuyerlyToolbarButton active={open} aria-label={label} aria-expanded={open} onClick={() => toggleDetailsPane(pane)}>
         <BuyerlySidebarToggleIcon isOpen={open} size={14} />
-      </button>
+      </BuyerlyToolbarButton>
     </Tooltip>
   );
 }

@@ -75,7 +75,6 @@ import { arrangeBoardColumns, arrangeGroups, sortByColumn, toggleHiddenGroup } f
 import { BuyerlyBoard, type BoardLane } from '@/ui/BuyerlyBoard';
 import { useLayoutShortcut } from '@/ui/useLayoutShortcut';
 import { AdsManagerCard, type CardChip } from './AdsManagerCard';
-import { DisplayOptionsChangedDot } from '@/ui/BuyerlyDisplayOptions';
 import { DetailsPaneLayout, DetailsPaneToggle } from '@/ui/DetailsPane';
 import { DetailsFacets, type DetailsFacetTab } from '@/ui/DetailsFacets';
 import type { FilterOption } from '@/components/filters/filterModel';
@@ -91,7 +90,6 @@ import { useRevealRow } from '@/ui/useRevealRow';
 import type { FilterClause, FilterFieldDefinition } from '@/components/filters/filterModel';
 import {
   BuyerlyProjectIcon,
-  BuyerlySlidersIcon,
   BuyerlyStatusCircleIcon,
 } from '@/icons/BuyerlyIcons';
 import { getAdsManagerColumns } from './tableColumns';
@@ -108,6 +106,7 @@ import { useRulesStore } from '@/models/rulesStore';
 import { useSelectionStore } from '@/models/selectionStore';
 import { colors } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
+import { BuyerlyDisplayOptionsButton } from '@/ui/BuyerlyToolbarButton';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -1185,38 +1184,29 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
 
           <div {...stylex.props(styles.actions)}>
             <PeriodMenu period={period} label={periodLabel} onChange={setPeriod} />
-            <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(openFilterMenu)}>
-              <BuyerlyFilterButton
-                ref={filterButtonRef}
-                active={currentFilters.length > 0}
-                open={Boolean(openFilterMenu)}
-                onPointerDown={(event) => event.stopPropagation()}
-                onMouseDown={(event) => event.stopPropagation()}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  const anchor = event.currentTarget;
-                  setIsDisplayOptionsOpen(false);
-                  setOpenFilterMenu((current) => current ? null : { mode: 'root', anchor });
-                }}
-              />
-            </Tooltip>
-            <Tooltip content="Show display options" shortcut="Shift V" align="end" disabled={isDisplayOptionsOpen}>
-              <button
-                ref={displayOptionsButtonRef}
-                type="button"
-                aria-label="Display options"
-                data-active={isDisplayOptionsOpen ? 'true' : undefined}
-                onMouseDown={(event) => event.stopPropagation()}
-                onClick={() => {
-                  setOpenFilterMenu(null);
-                  toggleDisplayOptions();
-                }}
-                className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target"
-              >
-                <BuyerlySlidersIcon size={14} />
-                <DisplayOptionsChangedDot show={displayChanged} />
-              </button>
-            </Tooltip>
+            <BuyerlyFilterButton
+              ref={filterButtonRef}
+              hasFilters={currentFilters.length > 0}
+              open={Boolean(openFilterMenu)}
+              onPointerDown={(event) => event.stopPropagation()}
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                const anchor = event.currentTarget;
+                setIsDisplayOptionsOpen(false);
+                setOpenFilterMenu((current) => current ? null : { mode: 'root', anchor });
+              }}
+            />
+            <BuyerlyDisplayOptionsButton
+              ref={displayOptionsButtonRef}
+              open={isDisplayOptionsOpen}
+              changed={displayChanged}
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={() => {
+                setOpenFilterMenu(null);
+                toggleDisplayOptions();
+              }}
+            />
             <DisplayOptionsPopover
               isOpen={isDisplayOptionsOpen}
               onClose={() => setIsDisplayOptionsOpen(false)}
