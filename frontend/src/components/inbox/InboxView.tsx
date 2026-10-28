@@ -1183,7 +1183,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
             <div {...stylex.props(styles.scroll)}>
               <article {...stylex.props(styles.article)}>
                 <div {...stylex.props(styles.lead)}>
-                  <BuyerlyLogoAvatar size={40} shape="rounded" />
+                  <BuyerlyLogoAvatar size={40} />
                   <div {...stylex.props(styles.leadText)}>
                     <h2 {...stylex.props(styles.heading)}>
                       {auditEventTitle(selectedItem)}

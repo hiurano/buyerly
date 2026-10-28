@@ -22,7 +22,7 @@ import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { SidebarLink, SidebarSection, SidebarTeam } from './SidebarSections';
 import { SidebarFavorites } from './SidebarFavorites';
 import { SidebarUtilityFooter } from '@/components/layout/AppUtilityBar';
-import { BuyerlyHelpMenu } from '@/components/sidebar/BuyerlyHelpMenu';
+import { BuyerlyHelpButton } from '@/components/sidebar/BuyerlyHelpButton';
 import { SidebarBackdrop, useSidebarDrawer, useSidebarPeek } from './SidebarDrawer';
 import { useInboxStore } from '@/models/inboxStore';
 import { useShellStore, type AppTab } from '@/models/shellStore';
@@ -256,7 +256,7 @@ const SidebarContent: React.FC = () => {
         </div>
 
         <SidebarUtilityFooter>
-          <BuyerlyHelpMenu />
+          <BuyerlyHelpButton />
         </SidebarUtilityFooter>
 
         {/* 3. Linear Exact 3-Layer Spotlight Resizer with Double-Click Reset */}

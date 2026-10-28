@@ -326,41 +326,43 @@ export const BuyerlyMark: React.FC<{ size?: number; className?: string }> = ({
   </svg>
 );
 
-// 12b. Buyerly Logo Avatar
+// 12b. Buyerly Logo Avatar (#557), as Linear's logo in its Inbox welcome item:
+// a disc in the inverse of the page (#2f2f31 in light, #e3e4e6 in dark) with
+// the mark at 160/256 in the canvas color.
 const avatarStyles = stylex.create({
   root: {
-    position: 'relative',
-    display: 'flex',
+    display: 'block',
     flexShrink: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
     userSelect: 'none',
-    backgroundColor: colors['--item-hover-bg'],
-    borderWidth: 1,
-    borderStyle: 'solid',
-    borderColor: colors['--color-border-secondary'],
   },
-  circle: {
-    borderRadius: '50%',
+  disc: {
+    fill: colors['--logo-avatar-bg'],
   },
-  rounded: {
-    borderRadius: 8,
+  mark: {
+    fill: colors['--bg-canvas'],
   },
 });
 
-export const BuyerlyLogoAvatar: React.FC<{
-  size?: number;
-  shape?: 'circle' | 'rounded';
-}> = ({ size = 32, shape = 'circle' }) => (
-  <div
-    {...stylex.props(avatarStyles.root, shape === 'circle' ? avatarStyles.circle : avatarStyles.rounded)}
-    style={{ width: `${size}px`, height: `${size}px` }}
+export const BuyerlyLogoAvatar: React.FC<{ size?: number }> = ({ size = 32 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 256 256"
+    fill="none"
     role="img"
     aria-label="Buyerly"
+    {...stylex.props(avatarStyles.root)}
   >
-    <BuyerlyMark size={size * 0.75} />
-  </div>
+    <rect width="256" height="256" rx="128" {...stylex.props(avatarStyles.disc)} />
+    <svg x="48" y="48" width="160" height="160" viewBox="0 0 512 512" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M192 464V336H112L80 224H192V192H288V48H320L432 464H192Z M288 224L224 256H288V224Z M192 176V48H224L256 176H192Z"
+        {...stylex.props(avatarStyles.mark)}
+      />
+    </svg>
+  </svg>
 );
 
 // 13. Exact Linear Empty State Inbox Illustration (97.5 x 100px)

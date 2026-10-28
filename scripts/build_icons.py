@@ -1,10 +1,10 @@
 """Raster icons of the Buyerly mark, drawn from the same path as favicon.svg (#432).
 
-Pages link only the SVG favicon, which follows the system theme: the #222326
-mark on light tab bars, the white one on dark, with no tile behind it. The
-unlinked /favicon.ico and favicon-32x32.png are the same #222326 mark on a
-transparent square. Only the home screen icon keeps a #222326 tile, because
-iOS fills a transparent one with black.
+The tab icons are Linear's favicon (#557): a white mark at 3/4 on a black
+square with corners rounded 2/16, the same on light and dark tab bars, so it
+reads at 16px in Chrome and Safari alike. The home screen icon is a full
+#222326 tile (iOS rounds its corners). buyerly-logo.png stays the bare mark,
+the CSS mask of the public pages' header.
 
     python3 scripts/build_icons.py
 """
@@ -18,6 +18,7 @@ PUBLIC_DIR = ROOT / "frontend" / "public"
 BRANDING_DIR = ROOT / "docs" / "branding" / "buyerly"
 
 INK = (0x22, 0x23, 0x26, 255)
+BLACK = (0, 0, 0, 255)
 WHITE = (255, 255, 255, 255)
 SUPERSAMPLE = 16
 
@@ -47,28 +48,33 @@ def mark(size: int, color: tuple, scale: float = 1.0) -> Image.Image:
     return image
 
 
-def tile(size: int, radius: float) -> Image.Image:
-    """White mark on a #222326 square with rounded corners (`radius` of size)."""
+def tile(size: int, radius: float, color: tuple, scale: float) -> Image.Image:
+    """White mark at `scale` on a `color` square with corners rounded `radius` of size."""
     big = size * SUPERSAMPLE
     shape = Image.new("L", (big, big), 0)
     ImageDraw.Draw(shape).rounded_rectangle((0, 0, big - 1, big - 1), radius=big * radius, fill=255)
-    image = Image.new("RGBA", (size, size), INK)
+    image = Image.new("RGBA", (size, size), color)
     image.putalpha(shape.resize((size, size), Image.LANCZOS))
-    return Image.alpha_composite(image, mark(size, WHITE, scale=0.8))
+    return Image.alpha_composite(image, mark(size, WHITE, scale=scale))
+
+
+def tab_icon(size: int) -> Image.Image:
+    """favicon.svg: rect rx 2/16, mark at translate(64 64) scale(0.75)."""
+    return tile(size, radius=2 / 16, color=BLACK, scale=0.75)
 
 
 def main() -> None:
     # Each size drawn on its own grid rather than shrunk from the largest.
     sizes = [(16, 16), (32, 32), (48, 48)]
-    favicon = mark(48, INK)
-    smaller = [mark(16, INK), mark(32, INK)]
+    favicon = tab_icon(48)
+    smaller = [tab_icon(16), tab_icon(32)]
     for directory in (PUBLIC_DIR, BRANDING_DIR):
         favicon.save(directory / "favicon.ico", sizes=sizes, append_images=smaller)
     # iOS rounds the corners of the home screen icon itself.
-    touch = tile(180, radius=0)
+    touch = tile(180, radius=0, color=INK, scale=0.8)
     touch.save(PUBLIC_DIR / "apple-touch-icon.png", optimize=True)
     touch.save(BRANDING_DIR / "apple-touch-icon.png", optimize=True)
-    favicon_32 = mark(32, INK)
+    favicon_32 = tab_icon(32)
     favicon_32.save(PUBLIC_DIR / "static" / "icons" / "favicon-32x32.png", optimize=True)
     favicon_32.save(BRANDING_DIR / "favicon-32x32.png", optimize=True)
     favicon_32.save(BRANDING_DIR / "favicon.png", optimize=True)

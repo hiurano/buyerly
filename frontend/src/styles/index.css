@@ -4815,8 +4815,8 @@ body.details-pane-resizing, body.details-pane-resizing * { cursor: col-resize !i
 body.buyerly-split-resizing, body.buyerly-split-resizing * { cursor: col-resize !important; user-select: none !important; }
 .buyerly-split-resizer-overlay { position: fixed; inset: 0; z-index: 2147483000; cursor: col-resize; }
 
-/* Linear's Help button at the sidebar's foot (2026-10-24): 24px round, a 16px icon, filled while
-   hovered or open; colours change at once on hover and fade back in 0.15s. */
+/* Linear's Help button at the sidebar's foot (2026-10-24, focus ring 2026-10-28): 24px round, a 16px icon,
+   filled while hovered or open; colours change at once on hover and fade back in 0.15s. */
 .buyerly-help-button {
   display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; flex-shrink: 0;
   border: 0.5px solid transparent; border-radius: 50%; background-color: transparent; color: var(--help-button-fg);
@@ -4826,7 +4826,7 @@ body.buyerly-split-resizing, body.buyerly-split-resizing * { cursor: col-resize 
 @media (any-hover: hover) and (any-pointer: fine) {
   .buyerly-help-button:hover { background-color: var(--help-button-hover-bg); color: var(--help-button-hover-fg); transition-duration: 0s; }
 }
-.buyerly-help-button:focus-visible { outline: 1px solid var(--focus-ring-color); outline-offset: -1px; }
+.buyerly-help-button:focus-visible { outline: 1px solid var(--help-focus-ring); outline-offset: 0; }
 
 /* Its menu, and Linear's right-click menus on rows: Linear's 0.5px edge, the menu's own text, pill and grey.
    The edge is !important to beat the menu primitive's StyleX. */

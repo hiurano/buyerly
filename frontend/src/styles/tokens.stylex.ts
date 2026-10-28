@@ -290,6 +290,10 @@ export const colors = stylex.defineVars({
   '--help-menu-highlight': 'lch(20.82% 1.3 272 / 1)',
   '--help-menu-secondary': 'lch(64.714% 1.425 272 / 1)',
   '--help-menu-timeline': 'lch(21.36% 1.93 272 / 1)',
+  /* Its search row, empty note and focus ring (#558), measured in dark on 2026-10-28. */
+  '--help-menu-divider': 'lch(20.28% 1.93 272 / 1)',
+  '--help-menu-empty': 'lch(41.778% 1.425 272 / 1)',
+  '--help-focus-ring': 'lch(47.918% 59.303 288.421 / 1)',
   '--row-menu-chevron': 'lch(41.778% 1.425 272 / 1)',
   '--favorite-star': 'lch(80% 90 85 / 1)',
   '--favorite-number-border': 'lch(20.28% 1.93 272 / 1)',
@@ -343,6 +347,7 @@ export const colors = stylex.defineVars({
   '--site-fig-low': '#2e2e32',
   '--site-panel-bg': '#0f1011',
   '--site-logo': '#fff', /* monochrome mark (#432): white in dark, Linear's #222326 in light */
+  '--logo-avatar-bg': 'lch(90.451% 1.2 272 / 1)', /* Linear's logo disc (#557): #e3e4e6 in dark, #2f2f31 in light */
   '--site-background': 'var(--site-bg)',
   '--site-border-color': 'var(--site-line)',
 });
@@ -685,6 +690,9 @@ export const lightColors = stylex.createTheme(colors, {
   '--help-menu-highlight': 'lch(95% 0 282 / 1)',
   '--help-menu-secondary': 'lch(40% 1 282 / 1)',
   '--help-menu-timeline': 'lch(90.55% 0 282 / 1)',
+  '--help-menu-divider': 'lch(91.9% 0 282 / 1)',
+  '--help-menu-empty': 'lch(66% 1 282 / 1)',
+  '--help-focus-ring': 'lch(53% 52.26 286.91 / 1)',
   '--row-menu-chevron': 'lch(66% 1 282 / 1)',
   '--favorite-star': 'lch(80% 90 85 / 1)',
   '--favorite-number-border': 'lch(91.9% 0 282 / 1)',
@@ -731,4 +739,5 @@ export const lightColors = stylex.createTheme(colors, {
   '--site-fig-low': '#dcdde1',
   '--site-panel-bg': '#ffffff',
   '--site-logo': '#222326',
+  '--logo-avatar-bg': 'lch(19.588% 1.25 282 / 1)',
 });
