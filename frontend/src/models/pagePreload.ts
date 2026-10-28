@@ -1,11 +1,11 @@
 import { decodeInboxFilter, fetchInbox, inboxListKey, inboxPageKey, inboxTabShown, INBOX_PAGE_SIZE, type InboxQuery, type InboxTab } from '@/lib/inbox';
-import { periodFromSearch } from '@/components/campaigns/adsManagerMetrics';
+import { savedAdsManagerPeriod } from '@/components/campaigns/adsManagerViewModel';
 import type { TeamItem } from '@/lib/teams';
 import { pool, type Query } from './pool';
 import { adAccountsQuery, connectionsQuery, hierarchyQuery, membersQuery, teamDocumentsQuery, teamsQuery } from './queries';
 import { inboxStore } from '@/models/inboxStore';
 import { type ActiveTab } from '@/models/shellStore';
-import { viewStore } from '@/models/viewStore';
+import { viewStore, type AdsManagerEntity } from '@/models/viewStore';
 import { rulesStore } from '@/models/rulesStore';
 
 /** A page as the shell opens it: enough to know what it draws. */
@@ -13,8 +13,10 @@ export interface PageToOpen {
   tab: ActiveTab;
   teamKey: string | null;
   mine: boolean;
+  /** Ads Manager's level. */
+  entity: AdsManagerEntity;
   inboxTab: InboxTab | null;
-  /** The address's query when the page was opened (Ads Manager's `?period=`, Inbox's `?filter=`). */
+  /** The address's query when the page was opened (Inbox's `?filter=`). */
   search: string;
 }
 
@@ -58,11 +60,18 @@ export function preloadPage(page: PageToOpen, workspaceId: number): Readiness | 
     need(membersQuery(workspaceId));
     need(connectionsQuery);
   } else if (page.tab === 'campaigns') {
-    needViews();
     if (!page.mine) needTeams();
     need(adAccountsQuery);
     need(connectionsQuery);
-    need(hierarchyQuery(periodFromSearch(page.search)));
+    // The rows are for the period the level's view keeps, so they wait for the views.
+    const hierarchy = () => hierarchyQuery(savedAdsManagerPeriod(page.entity, page.mine));
+    if (viewStore.viewSettingsLoaded) need(hierarchy());
+    else {
+      waits.push(viewStore.loadViewSettings().then(() => {
+        const query = hierarchy();
+        return pool.has(query.key) ? undefined : pool.fetch(query);
+      }));
+    }
   } else if (page.tab === 'rules') {
     needViews();
     needTeams();

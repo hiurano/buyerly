@@ -7,8 +7,9 @@
 //   still mean leads and CPL.
 // - Metrics filter as numbers under Metrics; ad sets filter and group by their
 //   campaign, ads also by ad set, and show their parents as columns.
-// - The period sits beside the filters, rides in the address (`?period=`),
-//   reloads every figure and survives a reload.
+// - The period is a row of Display options, as Linear's "Completed issues"
+//   (#554): kept in each level's view, it reloads every figure and survives
+//   a reload.
 // - On a phone Spend follows the name.
 // - Every ad account is on screen at once, grouped by account as Linear's
 //   team Issues groups by project; with no grouping the account is a column,
@@ -262,26 +263,28 @@ try {
       await page.getByRole('button', { name: 'Clear all filters' }).click();
       await page.locator('[data-row-id="802"]').waitFor();
 
-      // The period: beside the filters, in the address, every figure reloaded, kept on reload.
-      await page.getByRole('button', { name: 'Period: Today' }).click();
-      await page.getByRole('menuitem', { name: 'Last 7 days' }).click();
-      await page.getByRole('button', { name: 'Period: Last 7 days' }).waitFor();
+      // The period: a row of Display options, in the level's view, every figure reloaded, kept on reload.
+      assert.equal(await page.locator('main').getByRole('button', { name: /^Period/ }).count(), 0, 'no period button in the toolbar');
+      await displayButton(page).click();
+      await popover(page).waitFor();
+      await select(page, 'Period', 'Last 7 days');
+      await page.keyboard.press('Escape');
       await page.locator('[data-row-id="802"]').waitFor();
+      await settle(page);
       assert.equal(await cell(page, '802', 'Spend'), 'USD 2,100.00');
       assert.equal(await cell(page, '802', 'Leads'), '21');
-      assert.match(page.url(), /period=last_7d/);
+      assert.equal(views['ads-manager.campaigns'].period, 'last_7d');
+      assert.doesNotMatch(page.url(), /period=/);
       assert.equal(periods.at(-1), 'last_7d');
       await page.screenshot({ path: `${output}/campaigns-last-7-days-1440.png` });
       await page.reload();
-      await page.getByRole('button', { name: 'Period: Last 7 days' }).waitFor();
       await page.locator('[data-row-id="802"]').waitFor();
       assert.equal(await cell(page, '802', 'Spend'), 'USD 2,100.00', 'the period survives a reload');
 
-      // Ad sets: group by campaign, filter by campaign, the parent as a column; the period stays.
+      // Ad sets: group by campaign, filter by campaign, the parent as a column; each level keeps its own period.
       await page.getByRole('tab', { name: /Ad sets/ }).click();
       await page.locator('[data-row-id="901"]').waitFor();
-      assert.match(page.url(), /period=last_7d/, 'the period follows to the next level');
-      assert.equal(await cell(page, '903', 'Spend'), 'USD 2,100.00');
+      assert.equal(await cell(page, '903', 'Spend'), 'USD 300.00', 'ad sets keep their own period');
       await displayButton(page).click();
       await popover(page).waitFor();
       await select(page, 'Grouping', 'Campaign');
@@ -322,23 +325,22 @@ try {
     }
   }
 
-  // 390px phone: Spend follows the name, the period control stays on screen.
+  // 390px phone: Spend follows the name, the toolbar stays on screen.
   {
     const { context, page, errors } = await openPage(390, true);
     try {
-      await page.goto(`${origin}/alpha/ads-manager/campaigns?period=yesterday`);
+      await page.goto(`${origin}/alpha/ads-manager/campaigns`);
       await page.locator('[data-row-id="801"]').waitFor();
       assert.deepEqual((await headers(page)).slice(0, 2), ['Name', 'Spend'], 'Spend follows the name on a phone');
-      assert.equal(await cell(page, '801', 'Spend'), 'USD 100.00');
+      assert.equal(await cell(page, '801', 'Spend'), 'USD 50.00');
       // Spend is on screen, left of the Rules cell pinned to the right edge.
       const cells = page.locator('[data-row-id="801"] > *');
       const spendBox = await cells.nth(1).boundingBox();
       const rulesBox = await cells.last().boundingBox();
       assert.ok(spendBox.x >= 0 && spendBox.x + spendBox.width <= rulesBox.x + 0.5,
         `Spend hides under Rules: ${JSON.stringify({ spendBox, rulesBox })}`);
-      const period = page.getByRole('button', { name: 'Period: Yesterday' });
-      const box = await period.boundingBox();
-      assert.ok(box && box.x >= 0 && box.x + box.width <= 390.5, `the period control leaves the screen: ${JSON.stringify(box)}`);
+      const box = await displayButton(page).boundingBox();
+      assert.ok(box && box.x >= 0 && box.x + box.width <= 390.5, `Display options leaves the screen: ${JSON.stringify(box)}`);
       const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
       assert.ok(scrollWidth <= 390, `the page scrolls sideways: ${scrollWidth}`);
       await page.screenshot({ path: `${output}/campaigns-390.png` });

@@ -89,7 +89,7 @@ assert.deepEqual(ids(filterView(delivered, deliveredFields, [], { fieldId: 'stat
 // A shared link's old "Status is Paused" still finds what is not delivering because it is paused.
 assert.deepEqual(ids(applyFilterClauses(delivered, deliveredFields, [{ fieldId: 'status', operator: 'is', values: ['paused'] }])), ['parent-off']);
 // Every figure of the period filters as a number (#389); a row without one never matches.
-const { readMetrics, metricsFor, periodFromSearch } = load(path.join(root, 'components/campaigns/adsManagerMetrics.ts'));
+const { readMetrics, metricsFor, readAdsManagerPeriod } = load(path.join(root, 'components/campaigns/adsManagerMetrics.ts'));
 const { migrateAdsManagerClauses } = load(path.join(root, 'components/campaigns/campaignViewModel.ts'));
 const measured = [
   { id: 'cheap', name: 'Cheap leads', status: 'active', campaignId: 'C1', metrics: readMetrics({ spend: 30, leads: 6, cost_per_lead: 5, daily_budget: 50, ctr: 1.5 }) },
@@ -130,7 +130,7 @@ assert.deepEqual(migrateAdsManagerClauses([{ fieldId: 'cpa', operator: 'lt', val
 assert.deepEqual(migrateAdsManagerClauses([{ fieldId: 'group', operator: 'includes_all', values: ['4'] }, { fieldId: 'name', operator: 'contains', values: ['x'] }]),
   [{ fieldId: 'name', operator: 'contains', values: ['x'] }]);
 // The period comes from the address; anything unknown is today.
-assert.equal(periodFromSearch('?account=a&period=last_7d'), 'last_7d');
-assert.equal(periodFromSearch('?period=lifetime'), 'today');
-assert.equal(periodFromSearch(''), 'today');
+assert.equal(readAdsManagerPeriod('last_7d'), 'last_7d');
+assert.equal(readAdsManagerPeriod('lifetime'), 'today');
+assert.equal(readAdsManagerPeriod(''), 'today');
 console.log('Campaign filter semantics passed');

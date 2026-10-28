@@ -10,6 +10,7 @@ import {
   adsManagerProperties,
   useAdsManagerView,
 } from './adsManagerViewModel';
+import { ADS_MANAGER_PERIODS, readAdsManagerPeriod } from './adsManagerMetrics';
 import { type AdsManagerEntity } from '@/models/viewStore';
 
 interface DisplayOptionsPopoverProps {
@@ -93,6 +94,9 @@ export const DisplayOptionsPopover: React.FC<DisplayOptionsPopoverProps> = ({ is
         onOrderingChange={(value) => update({ ordering: value })}
         direction={view.direction}
         onDirectionChange={(direction) => update({ direction })}
+        period={readAdsManagerPeriod(view.period)}
+        periodOptions={[...ADS_MANAGER_PERIODS]}
+        onPeriodChange={(period) => update({ period })}
         // Status is a fixed set of states; accounts and rules only list what has rows.
         // On the board any empty column waits in Hidden columns until this shows it.
         // In a list it covers sub-groups too, as Linear's.

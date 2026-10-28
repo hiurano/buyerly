@@ -93,8 +93,7 @@ export const ADS_MANAGER_PERIODS = [
 
 export type AdsManagerPeriod = (typeof ADS_MANAGER_PERIODS)[number]['value'];
 
-/** `?period=` of the address; today when it names none or something unknown. */
-export function periodFromSearch(search: string): AdsManagerPeriod {
-  const value = new URLSearchParams(search).get('period');
+/** A saved view's period; today when it names none or something unknown. */
+export function readAdsManagerPeriod(value: string): AdsManagerPeriod {
   return ADS_MANAGER_PERIODS.some((period) => period.value === value) ? value as AdsManagerPeriod : 'today';
 }
