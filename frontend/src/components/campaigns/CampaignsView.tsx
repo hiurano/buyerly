@@ -411,10 +411,12 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
   }, []);
 
   // Rules attach per ad account, read from the accounts just loaded rather than a second `accounts` query.
+  // Read again whenever the accounts change, not only their ids: a reload draws the accounts the local
+  // database kept (#496), and the server's answer after it may hold other rules.
   useEffect(() => {
     const ids = accountsState === 'ready' && accountIdsKey ? accountIdsKey.split(',') : [];
     void loadRuleAttachments(ids, allMetaAccounts);
-  }, [loadRuleAttachments, accountsState, accountIdsKey]);
+  }, [loadRuleAttachments, accountsState, accountIdsKey, allMetaAccounts]);
 
   // The rows of every account for the period, read beside the accounts (#489).
   const hierarchyRead = usePoolQuery(hierarchyQuery(period));
