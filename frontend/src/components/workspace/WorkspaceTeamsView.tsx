@@ -1,6 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
-import React, { useEffect, useMemo, useState } from 'react';
-import { fetchWorkspaceMembers } from '@/models/queries';
+import React, { useMemo, useState } from 'react';
+import { membersQuery } from '@/models/queries';
+import { usePoolQuery } from '@/models/usePool';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { addTeamMembers, notifyTeamsChanged, removeTeamMember, useTeams, type TeamItem } from '@/lib/teams';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
@@ -108,25 +109,19 @@ const COLUMNS: BuyerlyDataListColumn[] = [
 ];
 
 const MAX_FACES = 5;
+const NO_MEMBERS: MemberItem[] = [];
 
 /** Linear's workspace Teams page: every active team, whether you are on it, and who is. */
 export const WorkspaceTeamsView: React.FC = () => {
   const { workspace, user } = useWorkspaceSession();
   const { teams, error, refresh } = useTeams(workspace.id, 'active');
-  const [members, setMembers] = useState<MemberItem[]>([]);
+  // From the pool, as Members reads them: held since that page, or the synced models, opens it without a request.
+  const members = usePoolQuery(membersQuery(workspace.id)).data ?? NO_MEMBERS;
   const [query, setQuery] = useState('');
   const [direction, setDirection] = useState<'asc' | 'desc'>('asc');
   const [busyTeam, setBusyTeam] = useState<number | null>(null);
   // As in Linear, every member may create a team; guests can't.
   const canCreate = workspace.role !== 'guest';
-
-  useEffect(() => {
-    let active = true;
-    fetchWorkspaceMembers(workspace.id)
-      .then((items) => { if (active) setMembers(items); })
-      .catch(() => {});
-    return () => { active = false; };
-  }, [workspace.id]);
 
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase();

@@ -87,6 +87,7 @@ export function preloadPage(page: PageToOpen, workspaceId: number): Readiness | 
     need(membersQuery(workspaceId));
   } else if (page.tab === 'teams') {
     need(teamsQuery(workspaceId));
+    need(membersQuery(workspaceId));
   }
 
   return waits.length === 0 ? null : readiness(waits);
@@ -121,7 +122,7 @@ function preloadInbox(page: PageToOpen): Promise<void> | null {
     const response = await fetchInbox({ offset: 0, limit: INBOX_PAGE_SIZE, ...listQuery, filters });
     // Another workspace opened meanwhile, or Inbox read the list itself.
     if (pool.scope !== scope || pool.has(pageKey)) return;
-    pool.setValue({ key: pageKey }, { items: response.items, hasMore: response.has_more, hiddenByFilters: response.hidden_by_filters ?? 0 });
+    pool.setValue({ key: pageKey }, { items: response.items, hasMore: response.has_more, hiddenByFilters: response.hidden_by_filters ?? 0 }, { read: true });
     inboxStore.setInboxUnread(response);
   })();
 }

@@ -594,6 +594,8 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
       });
       if (generation !== requestGenerationRef.current) return;
       if (!quiet) setReadOnFirstSeen(new Map());
+      // Current from now: Inbox opened again within STALE_AFTER_MS asks nothing.
+      pool.setValue({ key }, { items: response.items, hasMore: response.has_more, hiddenByFilters: hiddenByFiltersOf(response) }, { read: true });
       setItems(response.items);
       setItemsKey(key);
       setHasMore(response.has_more);
@@ -609,6 +611,8 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
   }, [filters, filtersSettled, inboxDisplayLoaded, listQuery, pageKey, setInboxUnread]);
 
   useEffect(() => {
+    // Held and read a moment ago: drawn as it is, as the pool's other pages are.
+    if (reloadToken === 0 && pool.current(pageKey)) return undefined;
     // Held: already drawn, read again behind it once it is painted.
     if (pool.has(pageKey)) {
       let active = true;
