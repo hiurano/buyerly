@@ -4939,32 +4939,31 @@ body.buyerly-split-resizing, body.buyerly-split-resizing * { cursor: col-resize 
   .inbox-list { border-right: var(--canvas-border); }
 }
 
-/* The header's details button: lit while the pane is open. */
-/* Linear's round 28px icon buttons in a view header (Filter, Display options, details), measured
-   17.10: 0.5px clear border, 14px icon in tertiary that turns primary on hover and while open.
-   --header sits bare (Inbox, Search), --toolbar on white (a list's tab row). */
+/* BuyerlyToolbarButton: Linear's one round 28px icon button in a view (Filter, Display options, details),
+   measured 17.10 and 28.10 (#556): 0.5px clear border, 14px icon in tertiary that turns primary on hover
+   and while open. --header sits bare in a page header (Inbox), --toolbar on white in a list's tab row. */
 .buyerly-header-button {
   position: relative; display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 28px; height: 28px;
   border: 0.5px solid transparent; border-radius: 9999px; color: var(--header-button-fg); cursor: default; outline: none;
   transition: border-color 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
 }
-.buyerly-header-button:hover, .buyerly-header-button[data-active='true'], .buyerly-header-button--active { color: var(--text-primary); }
+.buyerly-header-button:hover, .buyerly-header-button[data-active='true'] { color: var(--text-primary); }
 /* As Linear's: hover and press land at once, only leaving fades over 0.15s. */
 .buyerly-header-button:hover, .buyerly-header-button:active { transition-duration: 0s; }
-.buyerly-header-button:focus-visible { outline: 1px solid #8b8df8; }
+.buyerly-header-button:focus-visible { outline: 1px solid var(--header-button-focus-ring); }
 .buyerly-header-button--header { background-color: transparent; }
 .buyerly-header-button--header:hover { background-color: var(--header-button-hover-bg); }
-.buyerly-header-button--header[data-active='true'], .buyerly-header-button--header.buyerly-header-button--active { background-color: var(--header-button-active-bg); }
+.buyerly-header-button--header[data-active='true'] { background-color: var(--header-button-active-bg); }
 .buyerly-header-button--toolbar { background-color: var(--toolbar-button-bg); }
 .buyerly-header-button--toolbar:hover { background-color: var(--toolbar-button-hover-bg); }
-.buyerly-header-button--toolbar[data-active='true'], .buyerly-header-button--toolbar.buyerly-header-button--active { background-color: var(--toolbar-button-active-bg); }
+.buyerly-header-button--toolbar[data-active='true'] { background-color: var(--toolbar-button-active-bg); }
 /* Linear draws the toolbar buttons' ring on ::after, like an inactive tab's. */
 .buyerly-header-button--toolbar::after {
   content: ""; position: absolute; inset: 0; border-radius: 9999px; pointer-events: none;
   box-shadow: var(--toolbar-button-ring);
 }
 .buyerly-header-button--toolbar:hover::after { box-shadow: var(--toolbar-button-ring-hover); }
-.buyerly-header-button--toolbar[data-active='true']::after, .buyerly-header-button--toolbar.buyerly-header-button--active::after { box-shadow: var(--toolbar-button-ring-active); }
+.buyerly-header-button--toolbar[data-active='true']::after { box-shadow: var(--toolbar-button-ring-active); }
 
 /* Linear's quick-filter section (DetailsFacets): one card filling the pane, 8px from its right and bottom. */
 .details-facets {

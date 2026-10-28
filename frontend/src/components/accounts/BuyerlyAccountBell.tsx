@@ -11,6 +11,7 @@ import {
 import { toast } from '@/ui/toast';
 import { Tooltip } from '@/ui/Tooltip';
 import { useMenuExit } from '@/ui/useMenuExit';
+import { BuyerlyToolbarButton } from '@/ui/BuyerlyToolbarButton';
 
 const POPOVER_WIDTH = 334;
 
@@ -84,17 +85,17 @@ export const BuyerlyAccountBell: React.FC<{ accountId: string; accountName: stri
   return (
     <>
       <Tooltip content="Ad account notifications">
-        <button
+        <BuyerlyToolbarButton
           ref={buttonRef}
-          type="button"
+          placement="header"
+          active={open}
           aria-label="Setup ad account notifications"
           aria-haspopup="dialog"
           aria-expanded={open}
-          className={`buyerly-header-button buyerly-header-button--header buyerly-header-target${open ? ' buyerly-header-button--active' : ''}`}
           onClick={() => setOpen((value) => !value)}
         >
           <BuyerlyBellIcon size={16} />
-        </button>
+        </BuyerlyToolbarButton>
       </Tooltip>
       {isMounted && createPortal(
         <div

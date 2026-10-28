@@ -12,16 +12,13 @@ import {
 } from '@/components/filters/BuyerlyFilter';
 import { applyFilterClauses, type FilterClause } from '@/components/filters/filterModel';
 import { MetaConnectionDialog } from '@/components/campaigns/MetaConnectionDialog';
-import { DisplayOptionsChangedDot } from '@/ui/BuyerlyDisplayOptions';
 import { BuyerlyDataListGroup, BuyerlyDataListToolbar, BuyerlyDataTable } from '@/ui/BuyerlyDataList';
 import { BuyerlyTabs } from '@/ui/BuyerlyTabs';
 import { DataState } from '@/ui/DataState';
-import { Tooltip } from '@/ui/Tooltip';
 import { HeaderCreateButton } from '@/ui/HeaderCreateButton';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { arrangeGroups, sortByColumn } from '@/ui/listView';
 import { useFiltersInAddress, writeFilterParam } from '@/ui/useListView';
-import { BuyerlySlidersIcon } from '@/icons/BuyerlyIcons';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { useActiveTeam } from '@/lib/teams';
 import { favoritePath } from '@/lib/favorites';
@@ -41,6 +38,7 @@ import {
   naturalAccountDirection,
   sortAccounts,
 } from './accountsModel';
+import { BuyerlyDisplayOptionsButton } from '@/ui/BuyerlyToolbarButton';
 
 const styles = stylex.create({
   root: {
@@ -355,36 +353,27 @@ const AccountsViewContent: React.FC<AccountsViewProps> = ({ navigate, navigation
             onChange={() => {}}
           />
           <div {...stylex.props(styles.actions)}>
-            <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(openFilterMenu)}>
-              <BuyerlyFilterButton
-                ref={filterButtonRef}
-                active={view.filters.length > 0}
-                open={Boolean(openFilterMenu)}
-                onMouseDown={(event) => event.stopPropagation()}
-                onClick={(event) => {
-                  const anchor = event.currentTarget;
-                  setIsDisplayOpen(false);
-                  setOpenFilterMenu((current) => (current ? null : { mode: 'root', anchor }));
-                }}
-              />
-            </Tooltip>
-            <Tooltip content="Show display options" shortcut="Shift V" align="end" disabled={isDisplayOpen}>
-              <button
-                ref={displayButtonRef}
-                type="button"
-                aria-label="Display options"
-                data-active={isDisplayOpen ? 'true' : undefined}
-                onMouseDown={(event) => event.stopPropagation()}
-                onClick={() => {
-                  setOpenFilterMenu(null);
-                  setIsDisplayOpen((open) => !open);
-                }}
-                className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target"
-              >
-                <BuyerlySlidersIcon size={14} />
-                <DisplayOptionsChangedDot show={displayChanged} />
-              </button>
-            </Tooltip>
+            <BuyerlyFilterButton
+              ref={filterButtonRef}
+              hasFilters={view.filters.length > 0}
+              open={Boolean(openFilterMenu)}
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                const anchor = event.currentTarget;
+                setIsDisplayOpen(false);
+                setOpenFilterMenu((current) => (current ? null : { mode: 'root', anchor }));
+              }}
+            />
+            <BuyerlyDisplayOptionsButton
+              ref={displayButtonRef}
+              open={isDisplayOpen}
+              changed={displayChanged}
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={() => {
+                setOpenFilterMenu(null);
+                setIsDisplayOpen((open) => !open);
+              }}
+            />
             <AccountDisplayOptionsPopover
               isOpen={isDisplayOpen}
               onClose={() => setIsDisplayOpen(false)}

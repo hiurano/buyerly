@@ -23,14 +23,12 @@ import {
 } from '@/components/filters/BuyerlyFilter';
 import { createRuleFilterFields } from '@/components/filters/filterCatalogs';
 import { applyFilterClauses, type FilterClause } from '@/components/filters/filterModel';
-import { DisplayOptionsChangedDot } from '@/ui/BuyerlyDisplayOptions';
 import { useFiltersInAddress, writeFilterParam } from '@/ui/useListView';
 import { NO_LABEL_COLOR, ruleActiveRows, ruleGroupAccounts, ruleGroupIds, sortRules, useRulesView } from './rulesViewModel';
 import { RuleLabelPickerHost } from './RuleLabelPickerHost';
 import {
   BuyerlyBoltIcon,
   BuyerlyLabelIcon,
-  BuyerlySlidersIcon,
   BuyerlyStatusCircleIcon,
 } from '@/icons/BuyerlyIcons';
 import { BuyerlyTabs } from '@/ui/BuyerlyTabs';
@@ -38,7 +36,6 @@ import { DetailsPaneLayout, DetailsPaneToggle } from '@/ui/DetailsPane';
 import { DetailsFacets, type DetailsFacetTab } from '@/ui/DetailsFacets';
 import { DataState } from '@/ui/DataState';
 import { BuyerlyDataListToolbar } from '@/ui/BuyerlyDataList';
-import { Tooltip } from '@/ui/Tooltip';
 import { HeaderCreateButton } from '@/ui/HeaderCreateButton';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { toast } from '@/ui/toast';
@@ -57,6 +54,7 @@ import { useDialogStore, dialogStore } from '@/models/dialogStore';
 import { useViewStore, type RuleFilterTab } from '@/models/viewStore';
 import { useRulesStore } from '@/models/rulesStore';
 import { useSelectionStore } from '@/models/selectionStore';
+import { BuyerlyDisplayOptionsButton } from '@/ui/BuyerlyToolbarButton';
 
 const styles = stylex.create({
   root: {
@@ -490,42 +488,33 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
           <div {...stylex.props(styles.actions)}>
             {/* Add Filter Button with Popover */}
             <div {...stylex.props(styles.anchor)}>
-              <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(openFilterMenu)}>
-                <BuyerlyFilterButton
-                  ref={filterButtonRef}
-                  active={rulesFilterClauses.length > 0}
-                  open={Boolean(openFilterMenu)}
-                  onMouseDown={(event) => event.stopPropagation()}
-                  onClick={(event) => {
-                    const anchor = event.currentTarget;
-                    setIsRulesDisplayOptionsOpen(false);
-                    setOpenFilterMenu((current) =>
-                      current ? null : { mode: 'root', anchor }
-                    );
-                  }}
-                />
-              </Tooltip>
+              <BuyerlyFilterButton
+                ref={filterButtonRef}
+                hasFilters={rulesFilterClauses.length > 0}
+                open={Boolean(openFilterMenu)}
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  const anchor = event.currentTarget;
+                  setIsRulesDisplayOptionsOpen(false);
+                  setOpenFilterMenu((current) =>
+                    current ? null : { mode: 'root', anchor }
+                  );
+                }}
+              />
             </div>
 
             {/* Display Options Button with Popover */}
             <div {...stylex.props(styles.anchor)}>
-              <Tooltip content="Show display options" shortcut="Shift V" align="end" disabled={isRulesDisplayOptionsOpen}>
-                <button
-                  ref={displayOptionsButtonRef}
-                  type="button"
-                  aria-label="Display options"
-                  data-active={isRulesDisplayOptionsOpen ? 'true' : undefined}
-                  onMouseDown={(event) => event.stopPropagation()}
-                  onClick={() => {
-                    setOpenFilterMenu(null);
-                    toggleRulesDisplayOptions();
-                  }}
-                  className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target"
-                >
-                  <BuyerlySlidersIcon size={14} />
-                  <DisplayOptionsChangedDot show={rulesDisplayChanged} />
-                </button>
-              </Tooltip>
+              <BuyerlyDisplayOptionsButton
+                ref={displayOptionsButtonRef}
+                open={isRulesDisplayOptionsOpen}
+                changed={rulesDisplayChanged}
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={() => {
+                  setOpenFilterMenu(null);
+                  toggleRulesDisplayOptions();
+                }}
+              />
 
               <RuleDisplayOptionsPopover
                 isOpen={isRulesDisplayOptionsOpen}

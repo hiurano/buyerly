@@ -75,6 +75,7 @@ import * as stylex from '@stylexjs/stylex';
 import { colors, radii } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
 import { openSettings } from '@/lib/routing';
+import { BuyerlyDisplayOptionsButton, BuyerlyToolbarButton } from '@/ui/BuyerlyToolbarButton';
 
 type LoadState = 'loading' | 'ready' | 'error';
 type ActionState = 'idle' | 'loading';
@@ -461,9 +462,6 @@ const OPEN_LAYER_SELECTOR = [
   '[role="dialog"]:not(.buyerly-menu-exit)',
   '.buyerly-display-select-menu',
 ].join(', ');
-
-const headerButtonClass = (active = false) =>
-  `buyerly-header-button buyerly-header-button--header buyerly-header-target${active ? ' buyerly-header-button--active' : ''}`;
 
 /** Notifications the filters hide; an older API leaves the count out. */
 const hiddenByFiltersOf = (response: { hidden_by_filters?: number | null }) => response.hidden_by_filters ?? 0;
@@ -1004,9 +1002,9 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
           <h1 {...stylex.props(styles.title)}>Inbox</h1>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button type="button" aria-label="Notification actions" className={headerButtonClass()}>
+              <BuyerlyToolbarButton placement="header" aria-label="Notification actions">
                 <BuyerlyDotsIcon size={14} />
-              </button>
+              </BuyerlyToolbarButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent style={{ width: '184px' }}>
               <DropdownMenuItem onSelect={() => void deleteAll(false)}>
@@ -1038,42 +1036,34 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
           </DropdownMenu>
           <div {...stylex.props(styles.fill)} />
           <Tooltip content={inboxDisplay.unreadOnly ? 'Show all notifications' : 'Show unreads only'}>
-            <button
-              type="button"
+            <BuyerlyToolbarButton
+              placement="header"
+              active={inboxDisplay.unreadOnly}
               aria-label="Show unreads only"
               aria-pressed={inboxDisplay.unreadOnly}
               onClick={() => setInboxDisplay({ unreadOnly: !inboxDisplay.unreadOnly })}
-              className={headerButtonClass(inboxDisplay.unreadOnly)}
             >
               <BuyerlyInboxUnreadIcon size={16} />
-            </button>
+            </BuyerlyToolbarButton>
           </Tooltip>
-          <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(filterMenu)}>
-            <BuyerlyFilterButton
-              variant="header"
-              ref={filterButtonRef}
-              active={filters.length > 0}
-              open={Boolean(filterMenu)}
-              onMouseDown={(event) => event.stopPropagation()}
-              onClick={(event) => {
-                if (filterMenu) setFilterMenu(null);
-                else openFilterMenu('root', event.currentTarget);
-              }}
-            />
-          </Tooltip>
-          <Tooltip content="Show display options" shortcut="Shift V" disabled={isDisplayOpen}>
-            <button
-              ref={displayButtonRef}
-              type="button"
-              aria-label="Display options"
-              aria-expanded={isDisplayOpen}
-              onMouseDown={(event) => event.stopPropagation()}
-              onClick={() => setIsDisplayOpen((current) => !current)}
-              className={headerButtonClass(isDisplayOpen)}
-            >
-              <BuyerlySlidersIcon size={14} />
-            </button>
-          </Tooltip>
+          <BuyerlyFilterButton
+            placement="header"
+            ref={filterButtonRef}
+            hasFilters={filters.length > 0}
+            open={Boolean(filterMenu)}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              if (filterMenu) setFilterMenu(null);
+              else openFilterMenu('root', event.currentTarget);
+            }}
+          />
+          <BuyerlyDisplayOptionsButton
+            placement="header"
+            ref={displayButtonRef}
+            open={isDisplayOpen}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={() => setIsDisplayOpen((current) => !current)}
+          />
           <InboxDisplayOptionsPopover
             isOpen={isDisplayOpen}
             onClose={() => setIsDisplayOpen(false)}
@@ -1159,14 +1149,14 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
               </div>
               <div {...stylex.props(styles.notificationActions)}>
                 <Tooltip content="Snooze notification" shortcut="H" disabled={snoozePalette !== null}>
-                  <button
-                    type="button"
+                  <BuyerlyToolbarButton
+                    placement="header"
+                    active={snoozePalette !== null}
                     aria-label="Snooze notification"
                     onClick={() => setSnoozePalette('button')}
-                    className={headerButtonClass(snoozePalette !== null)}
                   >
                     <BuyerlyClockOutlineIcon size={16} />
-                  </button>
+                  </BuyerlyToolbarButton>
                 </Tooltip>
                 <SnoozePalette
                   open={snoozePalette !== null}
@@ -1179,14 +1169,13 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                   onUnsnooze={unsnoozeSelected}
                 />
                 <Tooltip content="Delete notification" shortcut="⌫">
-                  <button
-                    type="button"
+                  <BuyerlyToolbarButton
+                    placement="header"
                     aria-label="Delete notification"
                     onClick={() => deleteItem(selectedItem)}
-                    className={headerButtonClass()}
                   >
                     <BuyerlyInboxDeleteIcon size={16} />
-                  </button>
+                  </BuyerlyToolbarButton>
                 </Tooltip>
               </div>
             </header>

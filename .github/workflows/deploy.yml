@@ -86,7 +86,7 @@ jobs:
           - group: members, search, settings
             scripts: members search-page workspace-switcher security profile sync local-database transactions shared-sync
           - group: auth, details pane, Ads Manager rules
-            scripts: details-pane invite-auth onboarding-invites auth-theme workspace-settings multi-account rules-attach ads-manager
+            scripts: details-pane invite-auth onboarding-invites auth-theme workspace-settings multi-account rules-attach ads-manager toolbar-buttons
 
     steps:
       - name: Checkout Code

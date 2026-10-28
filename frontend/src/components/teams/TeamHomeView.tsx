@@ -42,6 +42,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { BuyerlyDataListRow, BuyerlyDataListToolbar, BuyerlyDataTable, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
 import type { AppTab } from '@/models/shellStore';
 import { colors } from '@/styles/tokens.stylex';
+import { BuyerlyToolbarButton } from '@/ui/BuyerlyToolbarButton';
 
 const truncate = {
   overflow: 'hidden',
@@ -316,23 +317,21 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
             />
             {page === 'members' && canAdministerWorkspace({ role: workspace.role }) && team && (
               <Tooltip content="Add members" side="bottom" align="end">
-                <button
-                  type="button"
+                <BuyerlyToolbarButton
                   aria-label="Add members"
                   onClick={() => {
                     openTeamSettings(`${team.key}/members`);
                   }}
-                  className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target"
                 >
                   <BuyerlyPlusIcon size={14} />
-                </button>
+                </BuyerlyToolbarButton>
               </Tooltip>
             )}
             {page === 'documents' && canWrite && team && (
               <Tooltip content="Create document" side="bottom" align="end">
-                <button type="button" aria-label="Create document" onClick={() => void createDocument()} className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target">
+                <BuyerlyToolbarButton aria-label="Create document" onClick={() => void createDocument()}>
                   <BuyerlyPlusIcon size={14} />
-                </button>
+                </BuyerlyToolbarButton>
               </Tooltip>
             )}
           </BuyerlyDataListToolbar>
@@ -392,9 +391,9 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
             <h3 className="team-overview__section-title">Team resources</h3>
             {canWrite && (
               <Tooltip content="Add document" side="bottom" align="end">
-                <button type="button" aria-label="Add document" onClick={onCreateDocument} className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target">
+                <BuyerlyToolbarButton aria-label="Add document" onClick={onCreateDocument}>
                   <BuyerlyPlusIcon size={14} />
-                </button>
+                </BuyerlyToolbarButton>
               </Tooltip>
             )}
           </div>
@@ -622,9 +621,9 @@ const TeamDocumentEditor: React.FC<TeamDocumentEditorProps> = ({ team, document,
           {!readOnly && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button type="button" aria-label="Document actions" className="buyerly-header-button buyerly-header-button--toolbar buyerly-header-target">
+                <BuyerlyToolbarButton aria-label="Document actions">
                   <BuyerlyDotsIcon size={14} />
-                </button>
+                </BuyerlyToolbarButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={4}>
                 <DropdownMenuItem onSelect={() => void remove()}>Delete document</DropdownMenuItem>

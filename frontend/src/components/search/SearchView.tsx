@@ -34,7 +34,7 @@ import { BuyerlyFilterButton, BuyerlyFilterMenu, type FilterMenuMode } from '@/c
 import type { FilterClause, FilterFieldDefinition } from '@/components/filters/filterModel';
 import { InboxFilterBar } from '@/components/inbox/InboxFilterBar';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
-import { BuyerlyProjectIcon, BuyerlySearchIcon, BuyerlySlidersIcon, BuyerlyStatusCircleIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyProjectIcon, BuyerlySearchIcon, BuyerlyStatusCircleIcon } from '@/icons/BuyerlyIcons';
 import { BuyerlySelect } from '@/ui/BuyerlyDisplayOptions';
 import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { BuyerlyTabs } from '@/ui/BuyerlyTabs';
@@ -43,6 +43,7 @@ import { useMenuExit } from '@/ui/useMenuExit';
 import { scopeStore, useScopeStore } from '@/models/scopeStore';
 import { useShellStore } from '@/models/shellStore';
 import { useViewStore } from '@/models/viewStore';
+import { BuyerlyDisplayOptionsButton, BuyerlyToolbarButton } from '@/ui/BuyerlyToolbarButton';
 
 const styles = stylex.create({
   match: {
@@ -526,9 +527,6 @@ function isTypingTarget(target: EventTarget | null): boolean {
   if (target instanceof HTMLInputElement) return !['checkbox', 'radio', 'button'].includes(target.type);
   return target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement;
 }
-
-const headerButtonClass = (active = false) =>
-  `buyerly-header-button buyerly-header-button--header buyerly-header-target${active ? ' buyerly-header-button--active' : ''}`;
 
 /** The answer on screen always belongs to the search in the address, never to an earlier one. */
 type SearchState =
@@ -1090,18 +1088,17 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, query: addres
               {...stylex.props(styles.input)}
             />
             {draft && (
-              <button
-                type="button"
+              <BuyerlyToolbarButton
+                placement="header"
                 aria-label="Clear search"
                 onClick={() => {
                   setDraft('');
                   update({ query: '' });
                   inputRef.current?.focus();
                 }}
-                className={headerButtonClass()}
               >
                 <X size={14} strokeWidth={1.8} aria-hidden="true" />
-              </button>
+              </BuyerlyToolbarButton>
             )}
           </form>
         </header>
@@ -1125,33 +1122,23 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, query: addres
             />
           </div>
           {hasFilters && (
-            <Tooltip content="Add Filter" shortcut="F" disabled={Boolean(filterMenu)}>
-              <BuyerlyFilterButton
-                variant="header"
-                ref={filterButtonRef}
-                active={filterClauses.length > 0}
-                open={Boolean(filterMenu)}
-                onMouseDown={(event) => event.stopPropagation()}
-                onClick={(event) => {
-                  if (filterMenu) setFilterMenu(null);
-                  else openFilterMenu('root', event.currentTarget);
-                }}
-              />
-            </Tooltip>
-          )}
-          <Tooltip content="Show display options" shortcut="Shift V" disabled={isDisplayOpen}>
-            <button
-              ref={displayButtonRef}
-              type="button"
-              aria-label="Display options"
-              aria-expanded={isDisplayOpen}
+            <BuyerlyFilterButton
+              ref={filterButtonRef}
+              hasFilters={filterClauses.length > 0}
+              open={Boolean(filterMenu)}
               onMouseDown={(event) => event.stopPropagation()}
-              onClick={() => setIsDisplayOpen((open) => !open)}
-              className={headerButtonClass(isDisplayOpen)}
-            >
-              <BuyerlySlidersIcon size={14} />
-            </button>
-          </Tooltip>
+              onClick={(event) => {
+                if (filterMenu) setFilterMenu(null);
+                else openFilterMenu('root', event.currentTarget);
+              }}
+            />
+          )}
+          <BuyerlyDisplayOptionsButton
+            ref={displayButtonRef}
+            open={isDisplayOpen}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={() => setIsDisplayOpen((open) => !open)}
+          />
           <SearchDisplayOptions
             isOpen={isDisplayOpen}
             onClose={() => setIsDisplayOpen(false)}
@@ -1205,9 +1192,9 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, query: addres
                 {`Go to ${SEARCH_KIND_LABELS[preview.kind].toLowerCase()}`}
               </button>
               <Tooltip content="Close preview" shortcut="Esc">
-                <button type="button" aria-label="Close preview" onClick={() => setPreviewOpen(false)} className={headerButtonClass()}>
+                <BuyerlyToolbarButton placement="header" aria-label="Close preview" onClick={() => setPreviewOpen(false)}>
                   <X size={14} strokeWidth={1.8} aria-hidden="true" />
-                </button>
+                </BuyerlyToolbarButton>
               </Tooltip>
             </div>
           </header>

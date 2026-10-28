@@ -937,7 +937,8 @@ class TestReactFrontendContract(unittest.TestCase):
             "Delete all read",
             "Go to settings",
             'aria-label="Show unreads only"',
-            'aria-label="Display options"',
+            # Display options is the shared toolbar button, labelled in BuyerlyToolbarButton (#556).
+            "<BuyerlyDisplayOptionsButton",
             'aria-label="Snooze notification"',
             'aria-label="Delete notification"',
             "undoAuditEvent",
