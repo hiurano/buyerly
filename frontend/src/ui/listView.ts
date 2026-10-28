@@ -6,7 +6,7 @@ export type ListLayout = 'list' | 'board';
 /**
  * One list page's view, as Linear remembers it for each view (#385): layout,
  * grouping with its group order and hidden groups, ordering with its
- * direction, empty groups, display properties and filters. Each page gives
+ * direction, empty groups, display properties, the period and filters. Each page gives
  * its defaults; the saved copy lives on the server per member (see
  * `useListView`) and filters also travel in the address.
  */
@@ -24,6 +24,8 @@ export interface ListViewSettings {
   /** Board's "Show empty rows": bands of Rows with no cards. */
   showEmptySubGroups: boolean;
   properties: Record<string, boolean>;
+  /** The reporting window, as Linear's "Completed issues"; empty where a page has none. */
+  period: string;
   filters: FilterClause[];
 }
 
@@ -38,6 +40,7 @@ export function listViewDefaults(defaults: ListViewDefaults): ListViewSettings {
     hiddenGroups: {},
     showEmptyGroups: false,
     showEmptySubGroups: false,
+    period: '',
     filters: [],
     ...defaults,
   };
@@ -79,6 +82,7 @@ export function readListView(stored: unknown, defaults: ListViewSettings): ListV
     showEmptyGroups: typeof stored.showEmptyGroups === 'boolean' ? stored.showEmptyGroups : defaults.showEmptyGroups,
     showEmptySubGroups: typeof stored.showEmptySubGroups === 'boolean' ? stored.showEmptySubGroups : defaults.showEmptySubGroups,
     properties,
+    period: text('period'),
     filters: 'filters' in stored ? sanitizeFilterClauses(stored.filters) : defaults.filters,
   };
 }

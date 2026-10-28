@@ -403,6 +403,10 @@ interface BuyerlyDisplayOptionsProps {
   onDirectionChange?: (direction: 'asc' | 'desc') => void;
   /** Without it (or with no grouping) the Group ordering button is left out. */
   groupOrdering?: GroupOrderingProps;
+  /** The reporting window, in a block of its own as Linear's "Completed issues". */
+  period?: string;
+  periodOptions?: DisplayOption[];
+  onPeriodChange?: (value: string) => void;
   properties: Record<string, string>;
   enabledProperties: Record<string, boolean>;
   onToggleProperty: (value: string) => void;
@@ -439,6 +443,9 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
   direction,
   onDirectionChange,
   groupOrdering,
+  period,
+  periodOptions,
+  onPeriodChange,
   properties,
   enabledProperties,
   onToggleProperty,
@@ -544,6 +551,15 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
           </div>
         </div>
       </section>
+
+      {period !== undefined && periodOptions && onPeriodChange && (
+        <section className="buyerly-display-view-section">
+          <div className="buyerly-display-row">
+            <span>Period</span>
+            <BuyerlySelect value={period} options={periodOptions} onChange={onPeriodChange} />
+          </div>
+        </section>
+      )}
 
       <section className="buyerly-display-options-section">
         <div className="buyerly-display-section-title">{optionsLabel}</div>

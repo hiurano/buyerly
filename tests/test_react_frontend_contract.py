@@ -437,7 +437,7 @@ class TestReactFrontendContract(unittest.TestCase):
 
     def test_ads_manager_shows_any_api_metric_for_a_chosen_period(self):
         # Columns, ordering and metric filters come from one catalog of what
-        # the analytics hierarchy returns, read for the period in the address (#389).
+        # the analytics hierarchy returns, read for the period the level's view keeps (#389, #554).
         campaigns = ROOT / "frontend" / "src" / "components" / "campaigns"
         metrics = (campaigns / "adsManagerMetrics.ts").read_text()
         for field in ("cost_per_lead", "cost_per_registration", "cost_per_purchase", "landing_page_views", "ctr_link", "cpc_link"):
@@ -452,7 +452,8 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("{ period },", (ROOT / "frontend" / "src" / "models" / "queries.ts").read_text())
         self.assertIn("hierarchyQuery(period)", self.campaigns_view)
         self.assertNotIn("period=today", self.campaigns_view)
-        self.assertIn("periodFromSearch(window.location.search)", self.campaigns_view)
+        self.assertIn("readAdsManagerPeriod(view.period)", self.campaigns_view)
+        self.assertNotIn("window.location.search).get('period')", self.campaigns_view)
         self.assertIn("migrateAdsManagerClauses", (campaigns / "useCampaignViewFilters.ts").read_text())
         workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text()
         self.assertRegex(workflow, r"(?m)^ +scripts: (.* )?ads-manager( .*)?$")

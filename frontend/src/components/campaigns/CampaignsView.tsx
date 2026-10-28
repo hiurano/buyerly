@@ -38,15 +38,7 @@ import { DisplayOptionsPopover } from './DisplayOptionsPopover';
 import { MetaConnectionDialog } from './MetaConnectionDialog';
 import { DataState } from '@/ui/DataState';
 import { Button } from '@/ui/Button';
-import { Tooltip } from '@/ui/Tooltip';
 import { BuyerlyTabs } from '@/ui/BuyerlyTabs';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/ui/DropdownMenu';
 import {
   BuyerlyDataListGroup,
   BuyerlyDataListToolbar,
@@ -69,7 +61,7 @@ import {
   naturalAdsManagerDirection,
   useAdsManagerView,
 } from './adsManagerViewModel';
-import { ADS_MANAGER_PERIODS, metricsFor, periodFromSearch, type AdsManagerMetrics, type AdsManagerPeriod } from './adsManagerMetrics';
+import { ADS_MANAGER_PERIODS, metricsFor, readAdsManagerPeriod, type AdsManagerMetrics } from './adsManagerMetrics';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { arrangeBoardColumns, arrangeGroups, sortByColumn, toggleHiddenGroup } from '@/ui/listView';
 import { BuyerlyBoard, type BoardLane } from '@/ui/BuyerlyBoard';
@@ -197,8 +189,6 @@ const detailsTabs = (entity: AdsManagerEntity) => (
 /** How this platform's tooltips and dialogs write undo. */
 const UNDO_SHORTCUT = typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘Z' : 'Ctrl+Z';
 
-const TOUCH = '@media (hover: none) and (pointer: coarse)';
-
 const styles = stylex.create({
   root: {
     display: 'flex',
@@ -252,48 +242,6 @@ const styles = stylex.create({
   },
   accountIcon: {
     color: colors['--text-tertiary'],
-  },
-  // The period pill beside Filter, as Meta's date picker.
-  period: {
-    display: 'inline-flex',
-    height: {
-      default: 28,
-      [TOUCH]: 32,
-    },
-    flexShrink: 0,
-    alignItems: 'center',
-    gap: 4,
-    whiteSpace: 'nowrap',
-    borderRadius: 9999,
-    borderWidth: 1,
-    borderStyle: 'solid',
-    borderColor: colors['--color-border-secondary'],
-    paddingLeft: 10,
-    paddingRight: 10,
-    fontSize: 12,
-    fontWeight: 500,
-    color: {
-      default: colors['--text-secondary'],
-      ':hover': colors['--text-primary'],
-    },
-    backgroundColor: {
-      default: null,
-      ':hover': colors['--item-hover-bg'],
-    },
-    outline: '2px solid transparent',
-    outlineOffset: 2,
-    boxShadow: {
-      default: null,
-      ':focus-visible': `0 0 0 1px ${colors['--focus-ring-color']}`,
-    },
-    transitionProperty: 'color, background-color, border-color, text-decoration-color, fill, stroke',
-    transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
-    transitionDuration: '150ms',
-  },
-  periodLabel: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: '0%',
   },
 });
 
@@ -368,19 +316,8 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
   }, [mine, user.id, activeTeam.key, activeTeam.team, allMetaAccounts]);
   const accountIds = useMemo(() => metaAccounts.map((account) => account.account_id), [metaAccounts]);
   const accountIdsKey = accountIds.join(',');
-  // The reporting window, in the address (`?period=`) so a link and a reload keep it (#389).
-  const [period, setPeriodState] = useState<AdsManagerPeriod>(() => periodFromSearch(window.location.search));
-  useEffect(() => {
-    setPeriodState(periodFromSearch(window.location.search));
-  }, [navigationKey]);
-  const setPeriod = (next: AdsManagerPeriod) => {
-    if (next === period) return;
-    setPeriodState(next);
-    const url = new URL(window.location.href);
-    if (next === 'today') url.searchParams.delete('period');
-    else url.searchParams.set('period', next);
-    window.history.replaceState(window.history.state, '', url);
-  };
+  // The reporting window, kept in the level's view as Linear keeps "Completed issues".
+  const period = readAdsManagerPeriod(view.period);
   const periodLabel = ADS_MANAGER_PERIODS.find((option) => option.value === period)?.label ?? 'Today';
   const { filters: adsManagerFilters, updateFilters: setAdsManagerFilters, quick: savedQuick, setQuick } = useCampaignViewFilters(
     `${pathname}:${campaignFilterTab}`,
@@ -1178,13 +1115,12 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
               { id: 'ads', label: 'Ads' },
             ]}
             activeTabId={campaignFilterTab}
-            // Each level has its own address; the filters and period go along.
+            // Each level has its own address; the filters go along.
             onChange={(id) => openTab('campaigns', { entity: id as AdsManagerEntity })}
             aria-label="Level"
           />
 
           <div {...stylex.props(styles.actions)}>
-            <PeriodMenu period={period} label={periodLabel} onChange={setPeriod} />
             <BuyerlyFilterButton
               ref={filterButtonRef}
               hasFilters={currentFilters.length > 0}
@@ -1309,41 +1245,6 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
   );
 };
 
-interface PeriodMenuProps {
-  period: AdsManagerPeriod;
-  label: string;
-  onChange: (period: AdsManagerPeriod) => void;
-}
-
-/**
- * The window every figure, metric filter and ordering is read for (#389):
- * the periods the hierarchy API serves, as Meta's date picker names them.
- */
-const PeriodMenu: React.FC<PeriodMenuProps> = ({ period, label, onChange }) => (
-  <DropdownMenu>
-    <Tooltip content="Period">
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          aria-label={`Period: ${label}`}
-          {...stylex.props(styles.period)}
-        >
-          {label}
-          <span aria-hidden="true">▾</span>
-        </button>
-      </DropdownMenuTrigger>
-    </Tooltip>
-    <DropdownMenuContent align="end" style={{ minWidth: 160 }}>
-      <DropdownMenuLabel>Period</DropdownMenuLabel>
-      {ADS_MANAGER_PERIODS.map((option) => (
-        <DropdownMenuItem key={option.value} onSelect={() => onChange(option.value)}>
-          <span {...stylex.props(styles.periodLabel)}>{option.label}</span>
-          {option.value === period && <span aria-hidden="true">✓</span>}
-        </DropdownMenuItem>
-      ))}
-    </DropdownMenuContent>
-  </DropdownMenu>
-);
 
 /** Draws the pool's models as they change (#488). */
 export const CampaignsView = observer(CampaignsViewContent);

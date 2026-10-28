@@ -63,10 +63,12 @@ body {
 }
 
 .buyerly-display-main-section,
+.buyerly-display-view-section,
 .buyerly-display-options-section {
   padding: 8px 16px;
 }
 
+.buyerly-display-view-section,
 .buyerly-display-options-section {
   display: flex;
   flex-direction: column;

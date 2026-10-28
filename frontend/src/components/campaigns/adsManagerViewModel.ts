@@ -1,7 +1,7 @@
-import { boardGrouping, listViewDefaults, type ListViewSettings, type SortDirection } from '@/ui/listView';
+import { boardGrouping, listViewDefaults, readListView, type ListViewSettings, type SortDirection } from '@/ui/listView';
 import { useListView } from '@/ui/useListView';
-import { metricsFor } from './adsManagerMetrics';
-import { type AdsManagerEntity } from '@/models/viewStore';
+import { metricsFor, readAdsManagerPeriod, type AdsManagerPeriod } from './adsManagerMetrics';
+import { viewStore, type AdsManagerEntity } from '@/models/viewStore';
 
 /**
  * Display properties of one level, in column order (#389): Status is the
@@ -39,18 +39,21 @@ export const ADS_MANAGER_VIEW_DEFAULTS: Record<AdsManagerEntity, ListViewSetting
     ordering: 'manual',
     direction: 'desc',
     properties: defaultProperties('campaigns'),
+    period: 'today',
   }),
   adsets: listViewDefaults({
     grouping: 'account',
     ordering: 'manual',
     direction: 'desc',
     properties: defaultProperties('adsets'),
+    period: 'today',
   }),
   ads: listViewDefaults({
     grouping: 'account',
     ordering: 'manual',
     direction: 'desc',
     properties: defaultProperties('ads'),
+    period: 'today',
   }),
 };
 
@@ -60,6 +63,16 @@ export const adsManagerViewKey = (entity: AdsManagerEntity, mine = false) =>
 
 export const useAdsManagerView = (entity: AdsManagerEntity, mine = false) =>
   useListView(adsManagerViewKey(entity, mine), ADS_MANAGER_VIEW_DEFAULTS[entity]);
+
+/**
+ * The level's saved period, read outside React: the page reads its rows for it
+ * before it draws. Call once the view settings are loaded.
+ */
+export function savedAdsManagerPeriod(entity: AdsManagerEntity, mine = false): AdsManagerPeriod {
+  const key = adsManagerViewKey(entity, mine);
+  const base = readListView(viewStore.viewDefaults[key], ADS_MANAGER_VIEW_DEFAULTS[entity]);
+  return readAdsManagerPeriod(readListView(viewStore.viewSettings[key], base).period);
+}
 
 /** Names sort A→Z first, metrics largest first. */
 export const naturalAdsManagerDirection = (ordering: string): SortDirection => (ordering === 'name' ? 'asc' : 'desc');
