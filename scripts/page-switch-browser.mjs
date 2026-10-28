@@ -27,6 +27,16 @@
 //   page's module has been requested (prefetched).
 // - A page whose code is still on its way (held until DELAY_MS after the
 //   click), on a reloaded app: only old frames, then only new ones.
+// - Every sidebar page and Settings, once the app has opened each and synced
+//   (#502's "Done when"): a switch between any two, in either direction, asks
+//   the server nothing (the sync socket aside) and draws the whole new page in
+//   the first frame after the click, never an empty or partial one, as Linear's.
+//   Settings is opened with G S and left with Back to app, as in Linear.
+//   The page's clock is stopped for the walk: data not in the sync engine is
+//   read again behind the page once it is 30 s old, and the walk is longer.
+//
+// PAGE_SWITCH_BUILD=1 builds the app and runs only that last check on the
+// build, served as the server does, for switch times as users get them.
 const DELAY_MS = 400;
 const SLOW_DELAY_MS = 2_500;
 const HOLD_MS = 1_000;
@@ -35,6 +45,8 @@ const ACTIVE_ROW_MS = 100;
 const RAPID_GAP_MS = 120;
 const SETTLE_MS = 300;
 const WATCH_LIMIT_MS = 6_000;
+const WARM_SETTLE_MS = 150;
+const BUILD = Boolean(process.env.PAGE_SWITCH_BUILD);
 // The pages' modules, as the dev server serves them; each is a chunk in the build.
 const PAGE_MODULES = [
   'inbox/InboxView', 'accounts/AccountsView', 'accounts/AccountPage', 'campaigns/CampaignsView', 'rules/RulesView',
@@ -47,16 +59,20 @@ const HELD_MODULE = '/src/components/teams/TeamHomeView.tsx';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { execFileSync } from 'node:child_process';
 import { mockSync } from './sync-mock.mjs';
 
 const require = createRequire(new URL('../frontend/package.json', import.meta.url));
 const { chromium } = require('playwright');
-const { createServer } = await import(require.resolve('vite'));
+const { createServer, preview } = await import(require.resolve('vite'));
 const root = new URL('../frontend/', import.meta.url).pathname;
 process.chdir(root);
 const output = '/tmp/buyerly-page-switch';
 await mkdir(output, { recursive: true });
-const server = await createServer({ root, server: { host: '127.0.0.1', port: 0 } });
+if (BUILD) execFileSync('npx', ['vite', 'build', '--logLevel', 'warn'], { stdio: 'inherit' });
+const server = BUILD
+  ? await preview({ root, preview: { host: '127.0.0.1', port: 0 } })
+  : await createServer({ root, server: { host: '127.0.0.1', port: 0 } });
 
 const workspace = {
   id: 7, slug: 'alpha', name: 'Alpha', role: 'owner', badge_text: 'A', badge_color: '#5E6AD2', logo_url: '', is_active: true,
@@ -138,10 +154,11 @@ const FIRST_VISITS = [
 
 let browser;
 try {
-  await server.listen();
+  if (!BUILD) await server.listen();
   const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
   browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH });
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  // The build registers a service worker; its fetches would pass the routes below.
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: 'block' });
   await context.addCookies([{ name: 'buyerly_csrf', value: 'csrf-test', url: origin }]);
   const page = await context.newPage();
   await mockSync(page);
@@ -150,7 +167,13 @@ try {
   page.on('pageerror', (error) => errors.push(error.message));
   let delay = 0;
   const requestedModules = new Set();
-  page.on('request', (request) => requestedModules.add(new URL(request.url()).pathname));
+  // What the app asks the server, the sync socket aside.
+  const apiRequests = [];
+  page.on('request', (request) => {
+    const { pathname } = new URL(request.url());
+    requestedModules.add(pathname);
+    if (pathname.startsWith('/api/') && !pathname.startsWith('/api/sync/ws')) apiRequests.push(`${request.method()} ${pathname}`);
+  });
   // Set to a promise: Home's code waits for it.
   let heldCode = null;
   await context.route((url) => url.pathname === HELD_MODULE, async (route) => {
@@ -279,89 +302,227 @@ try {
     await page.waitForTimeout(500);
   };
 
-  try {
-    await page.goto(`${origin}/${workspace.slug}/inbox`);
+  /**
+   * Each page as its first frame must draw it whole: in `scope`, text that
+   * starts with its header and holds a row of its data.
+   */
+  const SIDEBAR_PAGES = [
+    { name: 'Inbox', row: ROWS.inbox, prefix: 'Inbox', marker: inboxItem.message },
+    { name: 'My campaigns', row: '.buyerly-sidebar-nav-item:has-text("My campaigns")', prefix: 'My campaigns', marker: hierarchy.campaigns[0].entity_name },
+    { name: 'Members', row: ROWS.members, prefix: 'Members', marker: 'Bob Buyer' },
+    { name: 'Ad accounts', row: ROWS.accounts, prefix: 'Ad accounts', marker: account.name },
+    { name: 'Teams', row: '#sidebar-section-workspace .buyerly-sidebar-nav-item:has-text("Teams")', prefix: 'Teams', marker: team.key },
+    { name: 'Home', row: ROWS.home, prefix: `${team.name}\nOverview`, marker: document.title },
+    { name: 'Campaigns', row: '.sidebar-team .buyerly-sidebar-nav-item:has-text("Campaigns")', prefix: `${team.name}\n›\nCampaigns`, marker: hierarchy.campaigns[0].entity_name },
+    { name: 'Team ad accounts', row: '.sidebar-team .buyerly-sidebar-nav-item:has-text("Ad accounts")', prefix: `${team.name}\n›\nAd accounts`, marker: account.name },
+    { name: 'Rules', row: ROWS.rules, prefix: `${team.name}\n›\nRules`, marker: preset.name },
+  ].map((target) => ({ scope: 'main', ...target }));
+  const SETTINGS = { name: 'Settings', scope: 'body:has(.preferences-sidebar)', prefix: 'Back to app', marker: 'Interface theme' };
+
+  /** Every ordered pair of sidebar pages once, as one walk from Inbox (an Euler circuit of the complete graph). */
+  const everyPair = (count) => {
+    const next = Array.from({ length: count }, (_, from) => Array.from({ length: count }, (_, to) => to).filter((to) => to !== from));
+    const stack = [0];
+    const walk = [];
+    while (stack.length) {
+      const at = stack.at(-1);
+      if (next[at].length) stack.push(next[at].shift());
+      else walk.push(stack.pop());
+    }
+    return walk.reverse();
+  };
+
+  /**
+   * One switch from `from` to `to` on an app that holds both: the frames from
+   * the click until `to` has shown for WARM_SETTLE_MS, and what was asked of the server.
+   */
+  const warmSwitch = async (from, to) => {
+    apiRequests.length = 0;
+    const start = to === SETTINGS ? { keys: ['g', 's'] } : from === SETTINGS ? { button: '[aria-label="Back to app"]' } : { button: to.row };
+    if (start.button) await page.locator(start.button).first().evaluate((element) => element.setAttribute('data-switch-target', ''));
+    const frames = await page.evaluate(({ from, to, keys, settle, limit }) => new Promise((resolve) => {
+      const shows = ({ scope, prefix, marker }) => [...window.document.querySelectorAll(scope)].some((element) => {
+        if (!element.checkVisibility()) return false;
+        const text = element.innerText.trim();
+        return text.startsWith(prefix) && text.includes(marker);
+      });
+      const button = window.document.querySelector('[data-switch-target]');
+      button?.removeAttribute('data-switch-target');
+      const frames = [];
+      let shownAt = null;
+      const t0 = performance.now();
+      const sample = () => {
+        const at = performance.now() - t0;
+        const kind = shows(to) ? 'new' : shows(from) ? 'old' : 'empty';
+        const text = kind === 'empty' ? (window.document.querySelector('main') ?? window.document.body).innerText.slice(0, 60).replace(/\s+/g, ' ') : '';
+        frames.push({ at, kind, text });
+        if (kind === 'new' && shownAt === null) shownAt = at;
+        if ((shownAt !== null && at - shownAt > settle) || at > limit) {
+          resolve(frames);
+          return;
+        }
+        requestAnimationFrame(sample);
+      };
+      if (button) button.click();
+      else for (const key of keys) window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+      requestAnimationFrame(sample);
+    }), { from, to, keys: start.keys, settle: WARM_SETTLE_MS, limit: WATCH_LIMIT_MS });
+    // Anything asked a moment after the page drew is the switch's too.
+    await page.waitForTimeout(100);
+    return { frames, requests: [...apiRequests] };
+  };
+
+  /** Every sidebar page and Settings opened once, then every pair switched both ways. */
+  const warmSwitches = async () => {
+    // On the build this is the first page: the app's origin, so its databases can be emptied.
+    if (BUILD) await page.goto(`${origin}/${workspace.slug}/inbox`);
+    await freshInbox();
+    for (const target of [...SIDEBAR_PAGES.slice(1), SIDEBAR_PAGES[0]]) {
+      await page.locator(target.row).first().click();
+      await page.locator('main').getByText(target.marker).first().waitFor();
+    }
+    await page.keyboard.press('g');
+    await page.keyboard.press('s');
+    await page.getByText(SETTINGS.marker).first().waitFor();
+    await page.getByRole('button', { name: 'Back to app' }).click();
     await page.locator('main').getByText(inboxItem.message).first().waitFor();
-    await page.waitForTimeout(500);
-    // The other pages' code, prefetched once Inbox is idle: in, as for anyone who looked at Inbox a moment.
-    await page.evaluate(() => import('/src/components/layout/BuyerlyPageChunks.ts')
-      .then(({ PAGE_CHUNKS }) => Promise.all(Object.values(PAGE_CHUNKS).map((chunk) => chunk.load()))));
-
-    // Pages never visited, each answer late: the old page holds until the new one has its data.
+    // Synced and idle: the other pages' code prefetched, the socket caught up.
+    await page.waitForTimeout(1_000);
+    // Late answers from here, so a switch that waits on one shows it.
     delay = DELAY_MS;
-    for (const target of FIRST_VISITS) {
-      const frames = await watch(target);
-      report.push({ switch: target.name, frames: runs(frames) });
-      const order = frames.map((frame) => frame.kind).filter((kind, index, all) => kind !== all[index - 1]);
-      if (order.join(',') !== 'old,new' && order.join(',') !== 'new') {
-        failures.push(`${target.name}: ${runs(frames)}; want old frames, then the page with its data`);
+    // The walk takes longer than the pool counts an answer current (30 s); the clock stops,
+    // so the pages' data stays as current as it is on any switch a moment after the last.
+    await page.clock.setFixedTime(await page.evaluate(() => Date.now()));
+    const walk = everyPair(SIDEBAR_PAGES.length).map((index) => SIDEBAR_PAGES[index]);
+    const steps = [];
+    const toSettings = new Set();
+    for (const [index, to] of walk.entries()) {
+      if (index === 0) continue;
+      const from = walk[index - 1];
+      if (!toSettings.has(from.name)) {
+        toSettings.add(from.name);
+        steps.push([from, SETTINGS], [SETTINGS, from]);
       }
-      const marked = frames.find((frame) => frame.active.includes(target.name.split(' ')[0]));
-      if (!marked || marked.at > ACTIVE_ROW_MS) {
-        failures.push(`${target.name}: sidebar row marked at ${marked ? Math.round(marked.at) : 'never'} ms, budget ${ACTIVE_ROW_MS} ms`);
-      }
-      await page.waitForTimeout(DELAY_MS + 300);
+      steps.push([from, to]);
     }
-
-    // Rapid switching on a reloaded app: G K, then G R before Ad accounts is ready.
-    await freshInbox();
-    delay = DELAY_MS;
-    {
-      const frames = await watch({ keys: ['k', 'r'], marker: preset.name });
-      report.push({ switch: 'G K, G R', frames: runs(frames) });
+    const times = [];
+    for (const [from, to] of steps) {
+      const { frames, requests } = await warmSwitch(from, to);
+      const name = `${from.name} → ${to.name}`;
       const order = frames.map((frame) => frame.kind).filter((kind, index, all) => kind !== all[index - 1]);
-      if (order.join(',') !== 'old,new') failures.push(`G K, G R: ${runs(frames)}; want old frames, then Rules`);
-      const between = frames.filter((frame) => frame.text.startsWith('Ad accounts'));
-      if (between.length) failures.push(`G K, G R: Ad accounts showed in ${between.length} frame(s)`);
+      const shown = frames.find((frame) => frame.kind === 'new');
+      if (shown) times.push({ name, ms: shown.at });
+      warmReport.push({ switch: name, ms: shown ? Math.round(shown.at) : null, frames: runs(frames), requests: requests.join(', ') });
+      if (requests.length) failures.push(`${name}: asked the server ${requests.join(', ')}; want nothing`);
+      // The whole page in the first frame after the click: at most that frame still shows the old one.
+      if (order.join(',') !== 'new' && !(order.join(',') === 'old,new' && frames.filter((frame) => frame.kind === 'old').length <= 1)) {
+        const empty = frames.find((frame) => frame.kind === 'empty');
+        failures.push(`${name}: ${runs(frames)}${empty ? ` (empty: "${empty.text}")` : ''}; want the new page in the first frame`);
+      }
     }
+    delay = 0;
+    const sorted = times.map((time) => time.ms).sort((a, b) => a - b);
+    warmSummary = {
+      switches: steps.length,
+      median: Math.round(sorted[Math.floor(sorted.length / 2)]),
+      p90: Math.round(sorted[Math.floor(sorted.length * 0.9)]),
+      max: Math.round(sorted.at(-1)),
+    };
+  };
+  const warmReport = [];
+  let warmSummary = null;
 
-    // Once Inbox is idle, every page's code has been asked for.
-    await freshInbox();
-    requestedModules.clear();
-    await freshInbox();
-    {
-      const missing = PAGE_MODULES.filter((path) => !requestedModules.has(path));
-      if (missing.length) failures.push(`Prefetch: not requested after Inbox went idle: ${missing.join(', ')}`);
-    }
+  try {
+    if (!BUILD) {
+      await page.goto(`${origin}/${workspace.slug}/inbox`);
+      await page.locator('main').getByText(inboxItem.message).first().waitFor();
+      await page.waitForTimeout(500);
+      // The other pages' code, prefetched once Inbox is idle: in, as for anyone who looked at Inbox a moment.
+      await page.evaluate(() => import('/src/components/layout/BuyerlyPageChunks.ts')
+        .then(({ PAGE_CHUNKS }) => Promise.all(Object.values(PAGE_CHUNKS).map((chunk) => chunk.load()))));
 
-    // A page whose code is still downloading: the old page holds until it is in.
-    {
-      let release;
-      heldCode = new Promise((resolve) => { release = resolve; });
+      // Pages never visited, each answer late: the old page holds until the new one has its data.
+      delay = DELAY_MS;
+      for (const target of FIRST_VISITS) {
+        const frames = await watch(target);
+        report.push({ switch: target.name, frames: runs(frames) });
+        const order = frames.map((frame) => frame.kind).filter((kind, index, all) => kind !== all[index - 1]);
+        if (order.join(',') !== 'old,new' && order.join(',') !== 'new') {
+          failures.push(`${target.name}: ${runs(frames)}; want old frames, then the page with its data`);
+        }
+        const marked = frames.find((frame) => frame.active.includes(target.name.split(' ')[0]));
+        if (!marked || marked.at > ACTIVE_ROW_MS) {
+          failures.push(`${target.name}: sidebar row marked at ${marked ? Math.round(marked.at) : 'never'} ms, budget ${ACTIVE_ROW_MS} ms`);
+        }
+        await page.waitForTimeout(DELAY_MS + 300);
+      }
+
+      // Rapid switching on a reloaded app: G K, then G R before Ad accounts is ready.
       await freshInbox();
-      setTimeout(release, DELAY_MS);
-      const frames = await watch({ row: ROWS.home, marker: document.title });
-      heldCode = null;
-      report.push({ switch: 'Home (code late)', frames: runs(frames) });
-      const order = frames.map((frame) => frame.kind).filter((kind, index, all) => kind !== all[index - 1]);
-      if (order.join(',') !== 'old,new') failures.push(`Home (code late): ${runs(frames)}; want old frames, then the page`);
-      else if (frames.find((frame) => frame.kind === 'new').at < DELAY_MS - 50) {
-        failures.push('Home (code late): the page showed before its code was released');
+      delay = DELAY_MS;
+      {
+        const frames = await watch({ keys: ['k', 'r'], marker: preset.name });
+        report.push({ switch: 'G K, G R', frames: runs(frames) });
+        const order = frames.map((frame) => frame.kind).filter((kind, index, all) => kind !== all[index - 1]);
+        if (order.join(',') !== 'old,new') failures.push(`G K, G R: ${runs(frames)}; want old frames, then Rules`);
+        const between = frames.filter((frame) => frame.text.startsWith('Ad accounts'));
+        if (between.length) failures.push(`G K, G R: Ad accounts showed in ${between.length} frame(s)`);
+      }
+
+      // Once Inbox is idle, every page's code has been asked for.
+      await freshInbox();
+      requestedModules.clear();
+      await freshInbox();
+      {
+        const missing = PAGE_MODULES.filter((path) => !requestedModules.has(path));
+        if (missing.length) failures.push(`Prefetch: not requested after Inbox went idle: ${missing.join(', ')}`);
+      }
+
+      // A page whose code is still downloading: the old page holds until it is in.
+      {
+        let release;
+        heldCode = new Promise((resolve) => { release = resolve; });
+        await freshInbox();
+        setTimeout(release, DELAY_MS);
+        const frames = await watch({ row: ROWS.home, marker: document.title });
+        heldCode = null;
+        report.push({ switch: 'Home (code late)', frames: runs(frames) });
+        const order = frames.map((frame) => frame.kind).filter((kind, index, all) => kind !== all[index - 1]);
+        if (order.join(',') !== 'old,new') failures.push(`Home (code late): ${runs(frames)}; want old frames, then the page`);
+        else if (frames.find((frame) => frame.kind === 'new').at < DELAY_MS - 50) {
+          failures.push('Home (code late): the page showed before its code was released');
+        }
+      }
+
+      // A page whose data is slow: the old page, then the skeleton after HOLD_MS, then the page.
+      await freshInbox();
+      delay = SLOW_DELAY_MS;
+      {
+        const frames = await watch({ row: ROWS.rules, marker: preset.name });
+        report.push({ switch: 'Rules (slow)', frames: runs(frames) });
+        const order = frames.map((frame) => frame.kind).filter((kind, index, all) => kind !== all[index - 1]);
+        const skeletonAt = frames.find((frame) => frame.kind === 'skeleton')?.at ?? Infinity;
+        if (order.join(',') !== 'old,skeleton,new') {
+          failures.push(`Rules (slow): ${runs(frames)}; want old frames, the skeleton, then the page`);
+        } else if (Math.abs(skeletonAt - HOLD_MS) > HOLD_SLACK_MS) {
+          failures.push(`Rules (slow): skeleton at ${Math.round(skeletonAt)} ms, want ${HOLD_MS} ± ${HOLD_SLACK_MS} ms`);
+        }
       }
     }
 
-    // A page whose data is slow: the old page, then the skeleton after HOLD_MS, then the page.
-    await freshInbox();
-    delay = SLOW_DELAY_MS;
-    {
-      const frames = await watch({ row: ROWS.rules, marker: preset.name });
-      report.push({ switch: 'Rules (slow)', frames: runs(frames) });
-      const order = frames.map((frame) => frame.kind).filter((kind, index, all) => kind !== all[index - 1]);
-      const skeletonAt = frames.find((frame) => frame.kind === 'skeleton')?.at ?? Infinity;
-      if (order.join(',') !== 'old,skeleton,new') {
-        failures.push(`Rules (slow): ${runs(frames)}; want old frames, the skeleton, then the page`);
-      } else if (Math.abs(skeletonAt - HOLD_MS) > HOLD_SLACK_MS) {
-        failures.push(`Rules (slow): skeleton at ${Math.round(skeletonAt)} ms, want ${HOLD_MS} ± ${HOLD_SLACK_MS} ms`);
-      }
-    }
+    await warmSwitches();
 
     console.table(report);
+    console.table(warmReport);
+    console.log('Switches between sidebar pages, ms to the new page:', warmSummary);
     await page.screenshot({ path: `${output}/last-page.png` });
     assert.deepEqual(failures, [], `page switches:\n${failures.join('\n')}`);
     assert.deepEqual(errors, []);
-    console.log(`Page switch: the old page holds until the next has its data and its code, the skeleton shows after ${HOLD_MS} ms, every page's code is prefetched once Inbox is idle, and G K then G R lands on Rules alone`);
+    if (!BUILD) console.log(`Page switch: the old page holds until the next has its data and its code, the skeleton shows after ${HOLD_MS} ms, every page's code is prefetched once Inbox is idle, and G K then G R lands on Rules alone`);
+    console.log(`Page switch: ${warmSummary.switches} switches between every two sidebar pages and Settings ask the server nothing and draw the new page in the first frame`);
   } catch (error) {
     console.table(report);
+    console.table(warmReport);
     await page.screenshot({ path: `${output}/failure.png`, fullPage: true });
     console.error(errors);
     throw error;

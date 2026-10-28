@@ -282,6 +282,12 @@ export class BuyerlyPool {
     return Boolean(this.entries.get(key)?.held);
   }
 
+  /** Held and read from the server less than STALE_AFTER_MS ago: a page opening on it asks nothing. */
+  current(key: string, staleAfter = STALE_AFTER_MS): boolean {
+    const entry = this.entries.get(key);
+    return entry?.held === true && Date.now() - entry.fetchedAt < staleAfter;
+  }
+
   /** Calls back whenever a query's result changes, also when the pool is emptied; for useSyncExternalStore. */
   subscribe(key: string, onChange: () => void): () => void {
     return reaction(() => this.result(key), onChange);
@@ -416,10 +422,11 @@ export class BuyerlyPool {
    * Replaces a value's answer, as a write that returns it does; also holds a
    * page's own list (Inbox) under a key of its own, without a query to read it.
    */
-  setValue<T>(query: Pick<ValueQuery<T>, 'key'>, value: T) {
+  setValue<T>(query: Pick<ValueQuery<T>, 'key'>, value: T, { read = false }: { read?: boolean } = {}) {
     const entry = this.entry(query);
     if (!same(entry.value, value)) entry.value = value;
-    if (!entry.held) {
+    // `read`: the server's answer, so current from now; a change made on the page is not.
+    if (!entry.held || read) {
       entry.held = true;
       entry.fetchedAt = Date.now();
     }
