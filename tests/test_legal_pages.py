@@ -118,13 +118,13 @@ class TestLegalPageFiles(unittest.TestCase):
         self.assertNotIn('securely hashed web password', privacy)
 
     def test_every_page_links_the_monochrome_icons(self):
-        # Issue #432: no yellow icon anywhere. Pages link only the SVG favicon,
-        # so every browser shows the mark without a tile: #222326 on light tab
-        # bars, white on dark. `?v=3` drops the cached tiled one, and the
-        # unlinked /favicon.ico is a real file, not the app shell.
+        # Issue #432: no yellow icon anywhere, and the unlinked /favicon.ico is
+        # a real file, not the app shell. Issue #557: the tab icon is Linear's,
+        # a white mark on a black rounded square in both themes; `?v=4` drops
+        # the cached bare mark.
         icons = (
-            '<link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg?v=3"',
-            '<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" sizes="180x180"',
+            '<link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg?v=4"',
+            '<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" sizes="180x180"',
         )
         pages = [PROJECT_ROOT / "frontend" / "index.html", *(PUBLIC_ROOT / name for name in DOCUMENTS)]
         pages += sorted((PUBLIC_ROOT / "changelog").glob("*.html"))
@@ -141,13 +141,18 @@ class TestLegalPageFiles(unittest.TestCase):
                 colours = {(r, g, b) for r, g, b, a in pixels if a > 32}
             # Grey only: #222326, white and the shades between them.
             self.assertTrue(all(max(c) - min(c) <= 4 for c in colours), path)
-        # The tab icons are the bare mark: no tile, transparent corners.
+        # The tab icons are a black tile with rounded corners and a white mark.
         for path in ("favicon.ico", "static/icons/favicon-32x32.png"):
             with Image.open(PUBLIC_ROOT / path) as image:
-                self.assertEqual(image.convert("RGBA").getpixel((0, 0))[3], 0, path)
+                rgba = image.convert("RGBA")
+                width, height = rgba.size
+                self.assertLess(rgba.getpixel((0, 0))[3], 255, path)
+                self.assertEqual(rgba.getpixel((1, height // 2)), (0, 0, 0, 255), path)
+                self.assertEqual(rgba.getpixel((int(width * 0.56), int(height * 0.68)))[:3], (255, 255, 255), path)
         svg = (PUBLIC_ROOT / "static" / "icons" / "favicon.svg").read_text()
-        self.assertIn("fill: #222326", svg)
-        self.assertIn("@media (prefers-color-scheme: dark) { path { fill: #fff; } }", svg)
+        self.assertIn('<rect width="512" height="512" rx="64" fill="#000"/>', svg)
+        self.assertIn('fill="#FFF"', svg)
+        self.assertNotIn("prefers-color-scheme", svg)
 
     def test_public_pages_promise_only_delivered_notification_channels(self):
         # Issue #196: alerts reach people through the Inbox and, if they turn it

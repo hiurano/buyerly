@@ -352,7 +352,7 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
             {...stylex.props(styles.rowBody, menuOpen && styles.rowBodyMenuOpen, isSelected && styles.rowBodySelected)}
           >
             <span {...stylex.props(styles.avatar)}>
-              <BuyerlyLogoAvatar size={32} shape="circle" />
+              <BuyerlyLogoAvatar size={32} />
             </span>
             <div {...stylex.props(styles.lines)}>
               <div {...stylex.props(styles.line, (isSelected || unread) && styles.lineStrong)}>

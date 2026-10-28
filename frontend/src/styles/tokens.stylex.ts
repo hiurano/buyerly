@@ -347,6 +347,7 @@ export const colors = stylex.defineVars({
   '--site-fig-low': '#2e2e32',
   '--site-panel-bg': '#0f1011',
   '--site-logo': '#fff', /* monochrome mark (#432): white in dark, Linear's #222326 in light */
+  '--logo-avatar-bg': 'lch(90.451% 1.2 272 / 1)', /* Linear's logo disc (#557): #e3e4e6 in dark, #2f2f31 in light */
   '--site-background': 'var(--site-bg)',
   '--site-border-color': 'var(--site-line)',
 });
@@ -738,4 +739,5 @@ export const lightColors = stylex.createTheme(colors, {
   '--site-fig-low': '#dcdde1',
   '--site-panel-bg': '#ffffff',
   '--site-logo': '#222326',
+  '--logo-avatar-bg': 'lch(19.588% 1.25 282 / 1)',
 });

@@ -323,7 +323,7 @@ export const FilterOptionAvatarImage: React.FC<{ avatar: FilterOptionAvatar; lab
   if (avatar.kind === 'buyerly') {
     return (
       <span data-filter-avatar="buyerly" aria-hidden="true" style={{ display: 'inline-flex' }}>
-        <BuyerlyLogoAvatar size={size} shape="circle" />
+        <BuyerlyLogoAvatar size={size} />
       </span>
     );
   }
