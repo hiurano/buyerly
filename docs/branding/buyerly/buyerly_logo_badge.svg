@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
-  <style>path { fill: #222326; } @media (prefers-color-scheme: dark) { path { fill: #fff; } }</style>
-  <path fill-rule="evenodd" clip-rule="evenodd" d="M192 464V336H112L80 224H192V192H288V48H320L432 464H192Z M288 224L224 256H288V224Z M192 176V48H224L256 176H192Z" />
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none">
+  <style>rect { fill: #2f2f31; } path { fill: #f9f8fb; } @media (prefers-color-scheme: dark) { rect { fill: #e3e4e6; } path { fill: #111212; } }</style>
+  <rect width="256" height="256" rx="128"/>
+  <svg x="48" y="48" width="160" height="160" viewBox="0 0 512 512"><path fill-rule="evenodd" clip-rule="evenodd" d="M192 464V336H112L80 224H192V192H288V48H320L432 464H192Z M288 224L224 256H288V224Z M192 176V48H224L256 176H192Z" /></svg>
 </svg>
