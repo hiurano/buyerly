@@ -176,14 +176,34 @@ const styles = stylex.create({
     paddingBottom: 64,
     textAlign: 'center',
   },
+  /* Linear's search before typing and with no results: the text alone, centred in the page. */
+  centered: {
+    display: 'flex',
+    height: '100%',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingLeft: 8,
+    paddingRight: 8,
+    textAlign: 'center',
+  },
   emptyTitle: {
-    marginTop: 8,
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: 500,
+    lineHeight: 'normal',
     color: colors['--text-primary'],
   },
-  note: {
+  emptyText: {
     fontSize: 13,
+    fontWeight: 500,
+    lineHeight: 'normal',
+    color: colors['--text-tertiary'],
+  },
+  noResults: {
+    fontSize: 15,
+    fontWeight: 450,
+    lineHeight: '23px',
     color: colors['--text-tertiary'],
   },
   alert: {
@@ -208,16 +228,6 @@ const styles = stylex.create({
       default: colors['--text-secondary'],
       ':hover': colors['--text-primary'],
     },
-  },
-  noResults: {
-    display: 'flex',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingLeft: 24,
-    paddingRight: 24,
-    paddingBottom: 64,
-    textAlign: 'center',
   },
   results: {
     paddingTop: 4,
@@ -631,17 +641,6 @@ export const SearchResultFacts: React.FC<{ result: SearchResult; xstyle?: stylex
   </dl>
 );
 
-/** Linear's empty search: small record marks around a magnifier. */
-const SearchIllustration: React.FC = () => (
-  <svg width="96" height="80" viewBox="0 0 96 80" fill="none" aria-hidden="true">
-    {[[8, 10], [30, 4], [62, 6], [80, 22], [4, 40], [76, 50], [14, 62], [56, 66]].map(([x, y]) => (
-      <rect key={`${x}-${y}`} x={x} y={y} width="12" height="12" rx="3.5" stroke="var(--text-tertiary)" strokeWidth="1.25" opacity="0.6" />
-    ))}
-    <circle cx="44" cy="36" r="15" stroke="var(--text-tertiary)" strokeWidth="2" />
-    <path d="M55 47l10 10" stroke="var(--text-tertiary)" strokeWidth="2.5" strokeLinecap="round" />
-  </svg>
-);
-
 interface SearchDisplayOptionsProps {
   isOpen: boolean;
   onClose: () => void;
@@ -969,10 +968,9 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, query: addres
         );
       }
       return (
-        <div {...stylex.props(styles.empty)}>
-          <SearchIllustration />
+        <div {...stylex.props(styles.centered)}>
           <h2 {...stylex.props(styles.emptyTitle)}>Search</h2>
-          <p {...stylex.props(styles.note)}>Find campaigns, ad sets, ads, rules and ad accounts.</p>
+          <p {...stylex.props(styles.emptyText)}>Find campaigns, ad sets, ads, rules and ad accounts.</p>
         </div>
       );
     }
@@ -995,8 +993,8 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, query: addres
     }
     if (results.length === 0) {
       return (
-        <div {...stylex.props(styles.noResults)}>
-          <p role="status" {...stylex.props(styles.note)}>{`No results found for "${current.response.query}"`}</p>
+        <div {...stylex.props(styles.centered)}>
+          <p role="status" {...stylex.props(styles.noResults)}>{`No results found for "${current.response.query}"`}</p>
         </div>
       );
     }
