@@ -64,6 +64,7 @@ export interface TooltipProps {
   side?: 'top' | 'right' | 'bottom' | 'left';
   align?: 'start' | 'center' | 'end';
   sideOffset?: number;
+  alignOffset?: number;
   /** Hidden while the button's own menu is open, as in Linear. */
   disabled?: boolean;
 }
@@ -75,6 +76,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
   side = 'bottom',
   align = 'center',
   sideOffset = 8,
+  alignOffset = 0,
   disabled = false,
 }) => {
   // Parse shortcut like "G I" into ["G", "then", "I"], "Shift V" into ["⇧", "V"], "Alt I" into ["⌥", "I"]
@@ -143,6 +145,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
           side={side}
           align={align}
           sideOffset={sideOffset}
+          alignOffset={alignOffset}
           className="buyerly-tooltip-content"
         >
           {/* Tooltip Content */}
