@@ -286,9 +286,15 @@ try {
       await page.screenshot({ path: `${output}/filter-menu-${width}.png` });
       await typeValues.getByRole('option', { name: /Rule alert/ }).click();
       // Escape closes the whole menu, as in Linear: the submenu goes at once, the menu fades out.
+      // The fade is recorded as it happens: on a slow runner it can end before the next command.
+      await addFilter.evaluate((node) => {
+        window.__menuClasses = [];
+        new MutationObserver(() => window.__menuClasses.push(node.getAttribute('class')))
+          .observe(node, { attributes: true, attributeFilter: ['class'] });
+      });
       await page.keyboard.press('Escape');
       assert.equal(await typeValues.count(), 0);
-      assert.equal(await addFilter.getAttribute('class'), 'buyerly-menu-exit');
+      await page.waitForFunction(() => window.__menuClasses.includes('buyerly-menu-exit'));
       await addFilter.waitFor({ state: 'detached' });
       await waitForRows(1);
       const bar = page.locator('[aria-label="Active filters"]');

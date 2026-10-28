@@ -137,6 +137,21 @@ cd /opt/buyerly
 bash scripts/deploy.sh
 ```
 
+## Service worker
+
+Приложение ставит service worker (`/sw.js`, исходник `frontend/sw/sw.ts`, #499):
+он кэширует `index.html`, все чанки, CSS и шрифты сборки, и следующий запуск
+открывается без сети. Новый деплой скачивается в фоне вторым worker'ом; когда он
+готов, открытые вкладки показывают «New version available», и Reload загружает
+новую сборку целиком. `/sw.js` отдаётся с `Cache-Control: no-cache, no-store`.
+
+Если выкатился плохой worker, выключатель — настройка `SERVICE_WORKER`:
+`SERVICE_WORKER=false` в `.env` и
+перезапуск `api` (`docker compose up -d api`): `/sw.js` начинает отдавать
+`sw-off.js`, который при следующей навигации заменяет worker, удаляет его кэши
+и снимает регистрацию; страницы дальше грузятся из сети. Вернуть —
+`SERVICE_WORKER=true` и снова перезапуск.
+
 ## Cloudflare
 
 DNS-запись `buyerly.app` — CNAME на туннель `buyerly-prod` (Proxied). Маршрут

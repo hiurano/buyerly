@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { toast } from '@/ui/toast';
+import { checkForNewBuild, onNewBuild, reloadToNewBuild, servedByWorker } from './serviceWorker';
 
 /** The commit this bundle was built from: `APP_VERSION` at build time, "local" otherwise (vite.config.ts). */
 declare const __APP_VERSION__: string;
@@ -62,10 +63,12 @@ export function isPersonBusy(doc: Document = document): boolean {
  * every few minutes and whenever the tab comes back into view, and once the
  * versions differ it shows one notice with Reload: it never reloads on its
  * own, never shows over a dialog or a field being typed in, and never twice.
+ * A tab the service worker serves asks the worker instead (#499): the notice
+ * waits until the new build is cached, and Reload loads that build.
  */
 export function useNewVersionNotice(buildVersion: string = BUILD_VERSION): void {
   useEffect(() => {
-    if (UNKNOWN_VERSIONS.has(buildVersion) || noticeShown) return undefined;
+    if (noticeShown || (UNKNOWN_VERSIONS.has(buildVersion) && !servedByWorker())) return undefined;
     let disposed = false;
     let checking = false;
     let found = false;
@@ -85,19 +88,29 @@ export function useNewVersionNotice(buildVersion: string = BUILD_VERSION): void 
         title: 'New version available',
         description: 'An improved version of Buyerly is available. Please reload this window now to update.',
         persistent: true,
-        action: { label: 'Reload', onClick: () => window.location.reload(), button: true },
+        action: { label: 'Reload', onClick: () => void reloadToNewBuild(), button: true },
       });
+    };
+
+    const foundNewBuild = () => {
+      if (disposed || found) return;
+      found = true;
+      window.clearInterval(interval);
+      showWhenFree();
     };
 
     const check = async () => {
       if (disposed || checking || found || document.visibilityState !== 'visible') return;
       checking = true;
+      // The worker announces a new build once it has cached it (onNewBuild below).
+      if (servedByWorker()) {
+        await checkForNewBuild();
+        checking = false;
+        return;
+      }
       const serverVersion = await fetchServerVersion();
       checking = false;
-      if (disposed || found || !isNewerRelease(buildVersion, serverVersion)) return;
-      found = true;
-      window.clearInterval(interval);
-      showWhenFree();
+      if (isNewerRelease(buildVersion, serverVersion)) foundNewBuild();
     };
 
     const interval = window.setInterval(check, VERSION_CHECK_INTERVAL_MS);
@@ -106,8 +119,10 @@ export function useNewVersionNotice(buildVersion: string = BUILD_VERSION): void 
     };
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('online', handleVisibility);
+    const stopListening = onNewBuild(foundNewBuild);
     return () => {
       disposed = true;
+      stopListening();
       window.clearInterval(interval);
       window.clearTimeout(retryTimer);
       document.removeEventListener('visibilitychange', handleVisibility);

@@ -10,6 +10,8 @@ COPY frontend/index.html ./
 COPY frontend/tsconfig.json frontend/tsconfig.node.json frontend/vite.config.ts ./
 COPY frontend/public ./public
 COPY frontend/src ./src
+# The service worker (#499); vite.config.ts compiles it into dist/sw.js.
+COPY frontend/sw ./sw
 # The release sha, so an open tab can tell when the server runs a newer one.
 ARG APP_VERSION=local
 ENV APP_VERSION=${APP_VERSION}

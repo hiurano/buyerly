@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, transformWithOxc, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'node:fs';
@@ -203,6 +203,47 @@ function reactCompiler(): Plugin {
   };
 }
 
+// The service worker (#499): sw/sw.ts with the list of every file the app can
+// load written into it, as Linear's /client/sw.js carries its build's files.
+// That is index.html, every chunk and its CSS and assets, and the fonts and
+// icons index.html names from public/; not the public website's pages and CSS.
+// The list's contents name the build, so each deploy is a new worker with its
+// own cache. sw/off.ts is the kill switch the server can serve instead.
+function serviceWorker(): Plugin {
+  const source = (name: string) => path.resolve(__dirname, 'sw', name);
+  const compile = async (name: string, build?: object) => {
+    const { code } = await transformWithOxc(fs.readFileSync(source(name), 'utf8'), source(name), { lang: 'ts' });
+    const script = code.replace(/^export \{\};.*\n/m, '');
+    return build ? script.replace(/\b__BUYERLY_BUILD__\b/g, JSON.stringify(build)) : script;
+  };
+  return {
+    name: 'buyerly-service-worker',
+    apply: 'build',
+    buildStart() {
+      for (const name of ['sw.ts', 'off.ts']) this.addWatchFile(source(name));
+    },
+    async writeBundle(options, bundle) {
+      const outDir = options.dir!;
+      const files = new Set(['/index.html']);
+      for (const item of Object.values(bundle)) {
+        if (item.type !== 'chunk') continue;
+        files.add(`/${item.fileName}`);
+        for (const file of [...(item.viteMetadata?.importedCss ?? []), ...(item.viteMetadata?.importedAssets ?? [])]) {
+          files.add(`/${file}`);
+        }
+      }
+      for (const folder of ['fonts', 'static/icons']) {
+        for (const file of fs.readdirSync(path.join(outDir, folder)).sort()) files.add(`/${folder}/${file}`);
+      }
+      const hash = crypto.createHash('sha256');
+      for (const file of [...files].sort()) hash.update(file).update(fs.readFileSync(path.join(outDir, file)));
+      const version = `${process.env.APP_VERSION || 'local'}-${hash.digest('hex').slice(0, 12)}`;
+      fs.writeFileSync(path.join(outDir, 'sw.js'), await compile('sw.ts', { version, files: [...files] }));
+      fs.writeFileSync(path.join(outDir, 'sw-off.js'), await compile('off.ts'));
+    },
+  };
+}
+
 // Where the dev server forwards API calls; compose.dev.yaml points it at its api service.
 const apiOrigin = process.env.VITE_API_ORIGIN || 'http://127.0.0.1:8080';
 
@@ -222,6 +263,7 @@ export default defineConfig({
     }),
     reactCompiler(),
     react(),
+    serviceWorker(),
   ],
   // The release this bundle belongs to; an open tab compares it with /health/live (#303).
   define: {
