@@ -9,6 +9,7 @@ from core.runtime import configure_logging
 from database.sync_log import run_sync_log_compaction_tick
 from scheduler.worker import MonitoringWorker
 from services.inbox_email import run_inbox_email_tick
+from services.inbox_push import run_inbox_push_tick
 from services.inbox_telegram import run_inbox_telegram_tick
 
 
@@ -80,6 +81,15 @@ async def main() -> None:
         "interval",
         seconds=20,
         id="inbox_telegram_job",
+        next_run_time=datetime.now(timezone.utc),
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        run_inbox_push_tick,
+        "interval",
+        seconds=20,
+        id="inbox_push_job",
         next_run_time=datetime.now(timezone.utc),
         max_instances=1,
         coalesce=True,

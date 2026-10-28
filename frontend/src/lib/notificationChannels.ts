@@ -1,7 +1,7 @@
 import { graphql } from './graphql';
 import { INBOX_KINDS, INBOX_KIND_LABELS, type InboxKind } from './inbox';
 
-/** One push channel's page in Settings → Notifications (Email, Telegram), as in Linear. */
+/** One push channel's page in Settings → Notifications (Desktop, Email, Telegram), as in Linear. */
 export interface ChannelNotifications {
   enabled: boolean;
   /** "Only deliver priority notifications"; counts only while Priority inbox is on. */
@@ -9,9 +9,11 @@ export interface ChannelNotifications {
   kinds: InboxKind[];
 }
 
-export type NotificationChannel = 'email' | 'telegram';
+export type NotificationChannel = 'desktop' | 'email' | 'telegram';
 
 export interface NotificationChannels {
+  /** Off until turned on in a browser that allowed notifications (lib/desktopNotifications.ts). */
+  desktop: ChannelNotifications;
   email: ChannelNotifications;
   /** In place of Linear's Slack: off until a personal Telegram account is connected. */
   telegram: ChannelNotifications;
@@ -19,8 +21,9 @@ export interface NotificationChannels {
   inviteAccepted: boolean;
 }
 
-/** Linear's defaults: email on for every type, the chat app off until connected. */
+/** Linear's defaults: email on for every type, desktop and the chat app off until set up. */
 export const DEFAULT_NOTIFICATION_CHANNELS: NotificationChannels = {
+  desktop: { enabled: false, priorityOnly: false, kinds: [...INBOX_KINDS] },
   email: { enabled: true, priorityOnly: false, kinds: [...INBOX_KINDS] },
   telegram: { enabled: false, priorityOnly: false, kinds: [...INBOX_KINDS] },
   inviteAccepted: true,
@@ -29,6 +32,7 @@ export const DEFAULT_NOTIFICATION_CHANNELS: NotificationChannels = {
 interface ChannelPayload { enabled: boolean; priority_only: boolean; kinds: InboxKind[] }
 
 interface NotificationChannelsPayload {
+  desktop: ChannelPayload;
   email: ChannelPayload;
   telegram: ChannelPayload;
   invite_accepted: boolean;
@@ -48,6 +52,7 @@ function channelFromPayload(
 
 function channelsFromPayload(payload: Partial<NotificationChannelsPayload> | null): NotificationChannels {
   return {
+    desktop: channelFromPayload(payload?.desktop, DEFAULT_NOTIFICATION_CHANNELS.desktop),
     email: channelFromPayload(payload?.email, DEFAULT_NOTIFICATION_CHANNELS.email),
     telegram: channelFromPayload(payload?.telegram, DEFAULT_NOTIFICATION_CHANNELS.telegram),
     inviteAccepted: payload?.invite_accepted !== false,
@@ -64,6 +69,7 @@ export async function fetchNotificationChannels(): Promise<NotificationChannels>
 
 export async function saveNotificationChannels(channels: NotificationChannels): Promise<NotificationChannels> {
   const payload: NotificationChannelsPayload = {
+    desktop: channelPayload(channels.desktop),
     email: channelPayload(channels.email),
     telegram: channelPayload(channels.telegram),
     invite_accepted: channels.inviteAccepted,

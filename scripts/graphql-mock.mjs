@@ -20,6 +20,7 @@ const FIELDS = String.raw`({
     rule_id: v.ruleId, search: v.search, date_from: v.dateFrom, date_to: v.dateTo,
   })],
   deletedItems: () => ['GET', '/api/deleted-items'],
+  desktopNotifications: (v) => ['GET', '/api/notifications/desktop' + qs({ endpoint: v.endpoint })],
   favorites: () => ['GET', '/api/favorites'],
   inbox: (v) => ['GET', '/api/inbox' + qs({
     offset: v.offset, limit: v.limit, ordering: v.ordering, unread_only: v.unreadOnly, show_snoozed: v.showSnoozed,
@@ -77,6 +78,8 @@ const FIELDS = String.raw`({
   inboxNotificationSnooze: (v) => ['POST', '/api/inbox/' + v.id + '/snooze', v.input],
   inboxDeleteAll: () => ['POST', '/api/inbox/delete-all'],
   inboxDeleteAllRead: () => ['POST', '/api/inbox/delete-all-read'],
+  desktopNotificationsSubscribe: (v) => ['POST', '/api/notifications/desktop/subscribe', v.input],
+  desktopNotificationsUnsubscribe: (v) => ['POST', '/api/notifications/desktop/unsubscribe', v.input],
   notificationChannelsUpdate: (v) => ['PUT', '/api/notifications/channels', v.input],
   metaInviteCreate: (v) => ['POST', '/api/meta/invites', v.input],
   metaConnectionDiscover: (v) => ['POST', '/api/meta/connections/' + v.connectionId + '/discover', {}],

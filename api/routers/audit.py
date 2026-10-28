@@ -1028,9 +1028,20 @@ class TelegramNotifications(EmailNotifications):
     enabled: bool = False
 
 
+class DesktopNotifications(EmailNotifications):
+    """Settings → Notifications → Desktop, as Linear's: browser notifications through Web Push.
+
+    Off until the member turns it on in a browser and allows notifications there; each
+    browser's subscription is kept apart (DesktopPushSubscription).
+    """
+
+    enabled: bool = False
+
+
 class NotificationChannels(BaseModel):
     email: EmailNotifications = Field(default_factory=EmailNotifications)
     telegram: TelegramNotifications = Field(default_factory=TelegramNotifications)
+    desktop: DesktopNotifications = Field(default_factory=DesktopNotifications)
     # Linear's Other updates → Invite accepted: "Email when invitees accept an invite".
     invite_accepted: bool = True
 

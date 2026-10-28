@@ -7,6 +7,7 @@ const SETTINGS_TITLES: Record<Exclude<SettingsSection, 'team'>, string> = {
   profile: 'Profile',
   notifications: 'Notifications',
   'priority-notifications': 'Priority notifications',
+  'desktop-notifications': 'Desktop',
   'email-notifications': 'Email',
   'telegram-notifications': 'Telegram',
   security: 'Security & access',

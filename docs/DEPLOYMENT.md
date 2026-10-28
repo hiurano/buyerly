@@ -61,6 +61,10 @@ META_GRAPH_VERSION=v26.0
 - `POSTGRES_PASSWORD` — пароль базы;
 - `OTP_PEPPER` — секрет для хранения кодов входа (без него коды не выдаются);
 - `META_TOKEN_ENCRYPTION_KEY` — URL-safe base64 Fernet key для токенов Meta.
+- `VAPID_PRIVATE_KEY` — ключ Web Push для уведомлений Desktop (P-256, DER в
+  base64url). Не меняйте его: подписки браузеров привязаны к его публичной
+  половине и после смены перестают работать. `VAPID_SUBJECT` (по умолчанию
+  `mailto:team@buyerly.app`) — контакт, который видят push-сервисы браузеров.
 
 Неверный уже заданный `META_TOKEN_ENCRYPTION_KEY` не перезаписывается: деплой
 останавливается до миграции, чтобы не потерять доступ к зашифрованным токенам.

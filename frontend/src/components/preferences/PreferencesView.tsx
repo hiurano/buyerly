@@ -16,6 +16,7 @@ import { TeamSettingsSection } from './TeamSettingsSection';
 import { TeamIcon } from './TeamIcon';
 import { useTeams } from '@/lib/teams';
 import {
+  DesktopNotificationsSection,
   EmailNotificationsSection,
   NotificationsSection,
   PriorityNotificationsSection,
@@ -68,7 +69,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
   const assistantForced = import.meta.env.VITE_WEBMCP === '1';
 
   const notificationsOpen = section === 'notifications' || section === 'priority-notifications'
-    || section === 'email-notifications' || section === 'telegram-notifications';
+    || section === 'desktop-notifications' || section === 'email-notifications' || section === 'telegram-notifications';
   const selectedTheme = themeOptions.find((option) => option.value === interfaceTheme) || themeOptions[0];
   const canAdminister = canAdministerWorkspace(workspace);
   const { teams } = useTeams(workspace.id, 'active');
@@ -365,6 +366,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
             {section === 'notifications' && (
               <NotificationsSection
                 onOpenPriority={() => openSettings('priority-notifications')}
+                onOpenDesktop={() => openSettings('desktop-notifications')}
                 onOpenEmail={() => openSettings('email-notifications')}
                 onOpenTelegram={() => openSettings('telegram-notifications')}
               />
@@ -372,6 +374,13 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
 
             {section === 'priority-notifications' && (
               <PriorityNotificationsSection onBack={() => openSettings('notifications')} />
+            )}
+
+            {section === 'desktop-notifications' && (
+              <DesktopNotificationsSection
+                onBack={() => openSettings('notifications')}
+                onOpenPriority={() => openSettings('priority-notifications')}
+              />
             )}
 
             {section === 'email-notifications' && (

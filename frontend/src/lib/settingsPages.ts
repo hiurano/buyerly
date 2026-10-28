@@ -5,14 +5,14 @@ import { type SettingsSection } from '@/models/shellStore';
 /** The settings pages in the sidebar; the notification channels open from Notifications, team pages from Teams. */
 export type SettingsPage = Exclude<
   SettingsSection,
-  'priority-notifications' | 'email-notifications' | 'telegram-notifications' | 'new-team' | 'team'
+  'priority-notifications' | 'desktop-notifications' | 'email-notifications' | 'telegram-notifications' | 'new-team' | 'team'
 >;
 
 /** Keywords the settings search and "Open settings…" match against, per page. */
 export const SETTINGS_PAGE_KEYWORDS: Record<SettingsPage, string> = {
   preferences: 'preferences interface theme appearance ai assistant agent webmcp chrome',
   profile: 'profile account email name avatar picture photo title role username leave',
-  notifications: 'notifications inbox priority inbox custom filters push email telegram',
+  notifications: 'notifications inbox priority inbox custom filters push desktop browser email telegram',
   security: 'security access sessions devices auth log out logout revoke sign in',
   'connected-accounts': 'connected accounts telegram connect disconnect',
   workspace: 'workspace name logo url address slug delete workspace',

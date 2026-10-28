@@ -114,6 +114,9 @@ POST_BASELINE_TABLES: set[str] = {
     "workspace_view_defaults",
     # Added by the sync log migration (0051).
     "sync_actions",
+    # Added by the desktop notifications migration (0053).
+    "desktop_push_subscriptions",
+    "inbox_push_deliveries",
 }
 REQUIRED_COLUMN_TYPES = {
     ("automation_runtime_states", "payload"): "JSONB",

@@ -75,6 +75,11 @@ ensure_generated_secrets() {
         set_env_value OTP_PEPPER "$(openssl rand -hex 32)"
         echo "[INFO] Generated the sign-in code pepper."
     fi
+    if [[ -z "$(env_value VAPID_PRIVATE_KEY)" ]]; then
+        # Desktop notifications' Web Push key; browsers' subscriptions depend on it, so it is never replaced.
+        set_env_value VAPID_PRIVATE_KEY "$(openssl ecparam -name prime256v1 -genkey -noout -outform DER | openssl base64 -A | tr '+/' '-_' | tr -d '=')"
+        echo "[INFO] Generated the desktop notifications key."
+    fi
     ensure_meta_token_encryption_key
 }
 
