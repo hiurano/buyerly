@@ -33,8 +33,6 @@ export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, selectable =
 
   const displayProperties = properties;
   const isSelected = selectable && selectedCampaignIds.includes(ad.id);
-  const isDeliveryKnown = ad.status !== 'unknown';
-  const isDeliveryOn = ad.status === 'active';
 
   return (
     <BuyerlyDataListRow
@@ -60,7 +58,6 @@ export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, selectable =
           />
         )}
         title={ad.name}
-        dimmed={isDeliveryKnown && !isDeliveryOn}
         hint={`${ad.name} · ${ad.identifier}`}
       />
 

@@ -47,8 +47,6 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
   const ruleCellRef = useRef<RuleAttachmentCellHandle>(null);
 
   const isSelected = selectable && selectedCampaignIds.includes(campaign.id);
-  const isDeliveryKnown = campaign.status !== 'unknown';
-  const isDeliveryOn = campaign.status === 'active';
   const displayProperties = properties;
 
   const handleRowClick = () => {
@@ -96,7 +94,6 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
             />
           )}
           title={campaign.name}
-          dimmed={isDeliveryKnown && !isDeliveryOn}
           hint={`${campaign.name} · ${campaign.identifier}`}
         />
 

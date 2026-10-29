@@ -32,9 +32,6 @@ const styles = stylex.create({
     lineHeight: '16px',
     color: colors['--text-primary'],
   },
-  nameDimmed: {
-    color: colors['--text-tertiary'],
-  },
   chipIcon: {
     display: 'flex',
     height: 14,
@@ -95,7 +92,6 @@ export const AdsManagerCard: React.FC<AdsManagerCardProps> = ({
   busy = false,
   onToggleSelected,
 }) => {
-  const dimmed = status === 'paused';
   const control = delivery && delivery !== 'read-only' ? delivery : undefined;
   const showSwitch = Boolean(delivery) && status !== 'unknown';
   return (
@@ -138,7 +134,7 @@ export const AdsManagerCard: React.FC<AdsManagerCardProps> = ({
         </div>
       )}
       <span
-        {...stylex.props(styles.name, dimmed && styles.nameDimmed)}
+        {...stylex.props(styles.name)}
         title={name}
       >
         {name}
