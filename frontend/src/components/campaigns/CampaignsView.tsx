@@ -663,6 +663,22 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
     setSelection: setCampaignSelection,
     actions: selectionActions,
     enabled: accountsState === 'ready' && hierarchyState === 'ready',
+    onRowKey: (id, key) => {
+      // Linear's S: the row's status menu.
+      if (key === 's') {
+        const status = document.querySelector<HTMLButtonElement>(`[data-row-id="${CSS.escape(id)}"] [data-delivery-status]`);
+        if (!status || status.disabled) return false;
+        status.click();
+        return true;
+      }
+      // Any other key the row's right-click menu prints, on that row alone.
+      const row = currentRows.find((candidate) => candidate.id === id);
+      const entry = row && rowMenu(row).find((item) => item !== 'separator' && item.shortcut?.length === 1
+        && item.shortcut[0].toLowerCase() === key && !item.disabled && item.onSelect);
+      if (!entry || entry === 'separator') return false;
+      entry.onSelect?.();
+      return true;
+    },
   });
   // "Apply rule…" from a row's right-click menu works on the rows it names, the selection otherwise.
   const ruleTargetIds = ruleMenuTargets ?? selectedRowIds;
