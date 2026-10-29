@@ -213,9 +213,9 @@ try {
       await page.locator('[data-row-id="801"]').waitFor();
       assert.deepEqual(await headers(page), ['Name', 'Budget', 'Spend', 'Leads', 'CPL', 'Rules'], 'the short daily set');
       assert.equal(await cell(page, '802', 'Leads'), '3');
-      assert.equal(await cell(page, '802', 'CPL'), 'USD 100.00');
+      assert.equal(await cell(page, '802', 'CPL'), '$100.00');
       assert.equal(await cell(page, '803', 'CPL'), '—', 'no leads, no CPL');
-      assert.equal(await cell(page, '801', 'Budget'), 'USD 25.00/day');
+      assert.equal(await cell(page, '801', 'Budget'), '$25.00/day');
       assert.ok(periods.every((period) => period === 'today'), 'today by default');
       await page.screenshot({ path: `${output}/campaigns-1440.png` });
 
@@ -273,7 +273,7 @@ try {
       await page.keyboard.press('Escape');
       await page.locator('[data-row-id="802"]').waitFor();
       await settle(page);
-      assert.equal(await cell(page, '802', 'Spend'), 'USD 2,100.00');
+      assert.equal(await cell(page, '802', 'Spend'), '$2,100.00');
       assert.equal(await cell(page, '802', 'Leads'), '21');
       assert.equal(views['ads-manager.campaigns'].period, 'last_7d');
       assert.doesNotMatch(page.url(), /period=/);
@@ -281,12 +281,12 @@ try {
       await page.screenshot({ path: `${output}/campaigns-last-7-days-1440.png` });
       await page.reload();
       await page.locator('[data-row-id="802"]').waitFor();
-      assert.equal(await cell(page, '802', 'Spend'), 'USD 2,100.00', 'the period survives a reload');
+      assert.equal(await cell(page, '802', 'Spend'), '$2,100.00', 'the period survives a reload');
 
       // Ad sets: group by campaign, filter by campaign, the parent as a column; each level keeps its own period.
       await page.getByRole('tab', { name: /Ad sets/ }).click();
       await page.locator('[data-row-id="901"]').waitFor();
-      assert.equal(await cell(page, '903', 'Spend'), 'USD 300.00', 'ad sets keep their own period');
+      assert.equal(await cell(page, '903', 'Spend'), '$300.00', 'ad sets keep their own period');
       await displayButton(page).click();
       await popover(page).waitFor();
       await select(page, 'Grouping', 'Campaign');
@@ -334,7 +334,7 @@ try {
       await page.goto(`${origin}/alpha/ads-manager/campaigns`);
       await page.locator('[data-row-id="801"]').waitFor();
       assert.deepEqual((await headers(page)).slice(0, 2), ['Name', 'Spend'], 'Spend follows the name on a phone');
-      assert.equal(await cell(page, '801', 'Spend'), 'USD 50.00');
+      assert.equal(await cell(page, '801', 'Spend'), '$50.00');
       // Spend is on screen, left of the Rules cell pinned to the right edge.
       const cells = page.locator('[data-row-id="801"] > *');
       const spendBox = await cells.nth(1).boundingBox();
@@ -375,7 +375,7 @@ try {
       assert.equal(await page.getByRole('button', { name: 'Select ad account' }).count(), 0, 'no account switcher');
       assert.deepEqual(await page.locator('.buyerly-data-group-header:not(.buyerly-data-subgroup-header) .buyerly-data-group-title').allTextContents(), ['Euro account', 'Main account'], 'grouped by ad account, A→Z');
       assert.deepEqual(await rowIds(page), ['701', '801', '802', '803']);
-      assert.equal(await cell(page, '701', 'Spend'), 'EUR 40.00', 'each account in its own currency');
+      assert.equal(await cell(page, '701', 'Spend'), '€40.00', 'each account in its own currency');
       assert.equal((await headers(page)).includes('Ad account'), false, 'the group names the account');
       await page.screenshot({ path: `${output}/all-accounts-1440.png` });
 

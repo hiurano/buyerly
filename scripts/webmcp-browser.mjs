@@ -572,7 +572,7 @@ try {
       shown,
     );
     if (name === '$7, 0 registrations, under 2 leads') {
-      assert.ok(shown.includes('Alert in Inbox when an ad set has spend ≥ USD 7.00, registrations = 0 and leads < 2 today.'), shown);
+      assert.ok(shown.includes('Alert in Inbox when an ad set has spend ≥ $7.00, registrations = 0 and leads < 2 today.'), shown);
     }
     const attached = await finishTool(page, attaching);
     assert.deepEqual(attached.attached, { rule_id: rule.rule_id, account_id: 'act_100', scope: { level: 'account', ids: [] } });

@@ -1,3 +1,4 @@
+import { currencyPrefix } from '@/components/campaigns/liveCampaigns';
 import {
   ACCOUNT_SCOPE,
   RULE_LEVEL_LABELS,
@@ -188,7 +189,7 @@ function valueText(condition: ConditionDraft, currency?: string): string {
   const text = condition.value.trim() || '…';
   const unit = metricUnit(condition.metric);
   if (unit === 'percent') return `${text}%`;
-  if (unit === 'money' && currency) return `${currency} ${text}`;
+  if (unit === 'money' && currency) return `${currencyPrefix(currency)}${text}`;
   return text;
 }
 
@@ -246,7 +247,7 @@ export function describeDraft(draft: RuleDraft, accounts: RunOnAccount[]): strin
   const currency = draftCurrency(draft, accounts);
   const every = draft.checkInterval >= 1440 ? 'once a day' : formatCheckInterval(draft.checkInterval).toLowerCase();
   const percent = draft.budgetPercent.trim() || '…';
-  const ceiling = draft.budgetMax.trim() ? ` up to ${currency ? `${currency} ` : ''}${draft.budgetMax.trim()} a day` : '';
+  const ceiling = draft.budgetMax.trim() ? ` up to ${currency ? currencyPrefix(currency) : ''}${draft.budgetMax.trim()} a day` : '';
   const does = {
     turn_off: 'turns it off',
     turn_on: 'turns it on',

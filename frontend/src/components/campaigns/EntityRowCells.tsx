@@ -22,6 +22,9 @@ const styles = stylex.create({
   textMuted: {
     color: colors['--text-tertiary'],
   },
+  textEmpty: {
+    color: colors['--text-muted'],
+  },
   account: {
     display: 'flex',
     minWidth: 0,
@@ -105,7 +108,7 @@ export interface EntityPropertyRow {
 
 const EntityTextCell: React.FC<{ text: string; muted?: boolean }> = ({ text, muted = false }) => (
   <div
-    {...stylex.props(styles.text, muted && styles.textMuted)}
+    {...stylex.props(styles.text, muted && styles.textMuted, !text && styles.textEmpty)}
     title={text || undefined}
   >
     {text || '—'}
