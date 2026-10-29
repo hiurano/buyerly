@@ -68,6 +68,7 @@ export const RulesListView: React.FC<RulesListViewProps> = ({ filteredRules }) =
           <BuyerlyDataListGroup
             key={key}
             subGroup
+            statusAligned={view.properties.status !== false}
             title={sub.label}
             count={sub.rows.length}
             dotColor={sub.dotColor}
@@ -94,6 +95,7 @@ export const RulesListView: React.FC<RulesListViewProps> = ({ filteredRules }) =
         key={group.id}
         title={group.label}
         count={group.rows.length}
+        statusAligned={view.properties.status !== false}
         dotColor={group.dotColor}
         tint={group.tint}
         isCollapsed={rulesCollapsedGroups.includes(group.id)}

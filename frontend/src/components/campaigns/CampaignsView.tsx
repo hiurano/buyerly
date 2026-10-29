@@ -494,6 +494,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
       .filter(sub => sub.rows.length > 0 || (view.showEmptyGroups && rowsField === 'status'))
       .map(sub => sub.label ? (
         <BuyerlyDataListGroup key={sub.id} subGroup title={sub.label} count={sub.rows.length}
+          statusAligned={displayProperties.status !== false}
           dotColor="var(--text-tertiary)"
           icon={rowsField === 'account' ? <BuyerlyIcon name="ad-accounts" size={14} /> : optionIcon(fields.find(field => field.id === rowsField), sub.id)}
           isCollapsed={Boolean(collapsedGroups[subGroupKey(group, sub)])}
@@ -507,6 +508,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
       <React.Fragment key={group.id}>
         {group.label ? (
           <BuyerlyDataListGroup title={group.label} count={group.rows.length}
+            statusAligned={displayProperties.status !== false}
             dotColor="var(--text-tertiary)"
             icon={groupingField === 'account' ? <BuyerlyIcon name="ad-accounts" size={14} /> : undefined}
             isCollapsed={Boolean(collapsedGroups[groupKey(group)])}
