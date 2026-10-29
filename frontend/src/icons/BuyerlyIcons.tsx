@@ -35,6 +35,58 @@ export const BuyerlyStatusCircleIcon: React.FC<{ status: 'active' | 'scaling' | 
   );
 };
 
+/** Meta's delivery states as Ads Manager's Status shows them (campaignViewModel's DELIVERY_STATUS_OPTIONS). */
+export type BuyerlyDeliveryState = 'active' | 'paused' | 'in_review' | 'disapproved' | 'with_issues' | 'archived' | 'unknown';
+
+/**
+ * A row's delivery, drawn as Linear draws an issue's status (14x14): a ring
+ * that fills as it runs, a solid disc with a mark once Meta has a say.
+ */
+export const BuyerlyDeliveryIcon: React.FC<{ state: BuyerlyDeliveryState; size?: number; className?: string }> = ({
+  state,
+  size = 14,
+  className = '',
+}) => {
+  if (state === 'active' || state === 'paused') return <BuyerlyStatusCircleIcon status={state} size={size} className={className} />;
+  return <DeliveryFrame size={size} className={className}><DeliveryMark state={state} /></DeliveryFrame>;
+};
+
+const DeliveryFrame: React.FC<React.PropsWithChildren<{ size: number; className: string }>> = ({ size, className, children }) => (
+  <svg width={size} height={size} viewBox="0 0 14 14" fill="none" aria-hidden="true" className={className}>{children}</svg>
+);
+
+/** Every state but Active and Paused, in a 14x14 frame. */
+const DeliveryMark: React.FC<{ state: BuyerlyDeliveryState }> = ({ state }) => {
+  if (state === 'in_review') {
+    // Linear's In Progress: a ring with its right half filled.
+    return (<>
+      <circle cx="7" cy="7" r="5.5" stroke="#f2c94c" strokeWidth="1.5" />
+      <path d="M7 4a3 3 0 0 1 0 6z" fill="#f2c94c" />
+    </>);
+  }
+  if (state === 'disapproved') {
+    return (<>
+      <circle cx="7" cy="7" r="6.25" fill="#eb5757" />
+      <path d="M5 5l4 4M9 5l-4 4" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
+    </>);
+  }
+  if (state === 'with_issues') {
+    return (<>
+      <circle cx="7" cy="7" r="6.25" fill="#f2994a" />
+      <path d="M7 4v3.5" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="7" cy="9.75" r="0.8" fill="#fff" />
+    </>);
+  }
+  if (state === 'archived') {
+    return (<>
+      <circle cx="7" cy="7" r="6.25" fill="#73767c" />
+      <path d="M4.75 7h4.5" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
+    </>);
+  }
+  // Linear's Backlog: a sparse dashed ring, for a state the snapshot does not hold.
+  return <circle cx="7" cy="7" r="5.5" stroke="#73767c" strokeWidth="1.5" strokeDasharray="1 2.4" />;
+};
+
 // 12a. Buyerly mark (#432): monochrome, follows the theme through --site-logo
 // (Linear's #222326 in light, white in dark). Same 512 frame as /buyerly-logo.png.
 export const BuyerlyMark: React.FC<{ size?: number; className?: string }> = ({

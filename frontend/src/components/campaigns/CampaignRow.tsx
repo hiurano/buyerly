@@ -85,6 +85,7 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
             <EntityRowControls
               noun="campaign"
               status={campaign.status}
+              effectiveStatus={campaign.effectiveStatus}
               statusLabel={campaign.statusLabel}
               delivery={delivery}
               showStatus={displayProperties.status !== false}

@@ -16,7 +16,9 @@ export const BUYERLY_DATA_LIST = {
   rowGap: 0,
   // A row's leading controls: the selection checkbox, then the status switch, 12px apart.
   selectionWidth: 18,
+  // Rules lead with a switch; Ads Manager with Linear's status icon in a 16px slot.
   statusWidth: 22,
+  statusIconWidth: 16,
   leadingGap: 12,
   rowPaddingX: 12,
   columnGap: 6,
@@ -46,10 +48,13 @@ export const getLinearDataListTemplate = (columns: BuyerlyDataListColumn[]) =>
 export const buyerlyDataNameColumn = ({
   width,
   statusVisible = true,
+  statusWidth = BUYERLY_DATA_LIST.statusWidth,
   label = 'Name',
 }: {
   width: string;
   statusVisible?: boolean;
+  /** The status control's width: the switch's by default. */
+  statusWidth?: number;
   label?: string;
 }): BuyerlyDataListColumn => ({
   id: 'name',
@@ -57,7 +62,7 @@ export const buyerlyDataNameColumn = ({
   width,
   // The label starts over the title; its pill adds 6px of its own.
   headerInset: statusVisible
-    ? BUYERLY_DATA_LIST.selectionWidth + BUYERLY_DATA_LIST.statusWidth + BUYERLY_DATA_LIST.leadingGap * 2 - 6
+    ? BUYERLY_DATA_LIST.selectionWidth + statusWidth + BUYERLY_DATA_LIST.leadingGap * 2 - 6
     : BUYERLY_DATA_LIST.selectionWidth + BUYERLY_DATA_LIST.leadingGap - 6,
   sortable: true,
 });
@@ -300,8 +305,8 @@ const styles = stylex.create({
     justifyContent: 'center',
     color: colors['--text-tertiary'],
   },
+  // Its width is the rows' status control's, set inline.
   groupIconStatus: {
-    width: BUYERLY_DATA_LIST.statusWidth,
     marginRight: BUYERLY_DATA_LIST.leadingGap - 8,
   },
   groupDot: {
@@ -588,8 +593,10 @@ interface BuyerlyDataListGroupHeaderProps {
    * background, not sticky, with a hairline running to the right edge.
    */
   subGroup?: boolean;
-  /** The rows lead with a checkbox and a status switch: line the icon and title up with them. */
+  /** The rows lead with a checkbox and a status control: line the icon and title up with them. */
   statusAligned?: boolean;
+  /** That status control's width: the switch's by default. */
+  statusWidth?: number;
 }
 
 const GROUP_HEADER_BG = 'var(--rules-group-bg, var(--card-bg))';
@@ -608,6 +615,7 @@ export const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProp
   tint,
   subGroup = false,
   statusAligned = false,
+  statusWidth = BUYERLY_DATA_LIST.statusWidth,
 }) => (
   <div
     {...withClassName(
@@ -637,7 +645,11 @@ export const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProp
         )}
       </div>
 
-      <span {...stylex.props(styles.groupIcon, statusAligned && styles.groupIconStatus)} aria-hidden="true">
+      <span
+        {...stylex.props(styles.groupIcon, statusAligned && styles.groupIconStatus)}
+        style={statusAligned ? { width: statusWidth } : undefined}
+        aria-hidden="true"
+      >
         {icon ?? <span {...stylex.props(styles.groupDot)} style={{ backgroundColor: dotColor }} />}
       </span>
 

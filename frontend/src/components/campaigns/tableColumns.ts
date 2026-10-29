@@ -1,10 +1,10 @@
-import { BuyerlyDataListColumn, buyerlyDataNameColumn } from '@/ui/BuyerlyDataList';
+import { BUYERLY_DATA_LIST, BuyerlyDataListColumn, buyerlyDataNameColumn } from '@/ui/BuyerlyDataList';
 import { metricsFor } from './adsManagerMetrics';
 
 export type AdsManagerTableTab = 'campaigns' | 'adsets' | 'ads';
 
 const primaryColumn = (statusVisible: boolean, width: string) =>
-  buyerlyDataNameColumn({ width, statusVisible });
+  buyerlyDataNameColumn({ width, statusVisible, statusWidth: BUYERLY_DATA_LIST.statusIconWidth });
 
 /**
  * The columns a level shows, in the order Display properties lists them
