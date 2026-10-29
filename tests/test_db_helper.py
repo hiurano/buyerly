@@ -103,7 +103,7 @@ async def session_headers(session_maker, telegram_user: dict) -> dict:
                 user_agent="tests",
                 ip_address="",
                 created_at=now,
-                expires_at=now + timedelta(hours=settings.WEB_SESSION_TTL_HOURS),
+                expires_at=now + timedelta(days=settings.WEB_SESSION_IDLE_DAYS),
                 last_seen_at=now,
                 rotated_at=now,
             )

@@ -48,7 +48,7 @@ def upgrade() -> None:
 
     bind = op.get_bind()
     now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(hours=settings.WEB_SESSION_TTL_HOURS)
+    expires_at = now + timedelta(days=settings.WEB_SESSION_IDLE_DAYS)
     rows = bind.execute(
         sa.text("SELECT id, auth_token FROM users WHERE auth_token IS NOT NULL")
     ).mappings()

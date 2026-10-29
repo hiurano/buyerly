@@ -94,7 +94,7 @@ cross-origin клиентов; `ENABLE_DEV_AUTH` в production всегда `fal
 
 Допустимые операционные overrides: `ADMIN_CHAT_ID` (legacy Telegram ID
 супер-админа для dev-входа), `DEFAULT_POLL_INTERVAL_MINUTES`,
-`WEB_SESSION_TTL_HOURS` и `WEB_SESSION_ROTATE_MINUTES`. `DEV_EMAIL_LOG` включает
+`WEB_SESSION_IDLE_DAYS`. `DEV_EMAIL_LOG` включает
 только локальный стек (`compose.dev.yaml`): без `RESEND_API_KEY` письмо со
 ссылкой и кодом входа пишется в лог; в production всегда `false`.
 Полный перечень — в `.env.example`.

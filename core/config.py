@@ -79,17 +79,15 @@ class Settings(BaseSettings):
         default="",
         description="Comma-separated list of allowed CORS origins (e.g. https://buyerly.app)",
     )
-    WEB_SESSION_TTL_HOURS: int = Field(
-        default=24,
+    WEB_SESSION_IDLE_DAYS: int = Field(
+        default=90,
         ge=1,
-        le=168,
-        description="Absolute lifetime of a browser session",
-    )
-    WEB_SESSION_ROTATE_MINUTES: int = Field(
-        default=15,
-        ge=1,
-        le=1440,
-        description="Maximum age of a browser session token before rotation",
+        le=365,
+        description=(
+            "A browser session ends after this many days without use; every use "
+            "moves the end forward, so a member who keeps working stays signed in "
+            "until they log out or revoke the session, as in Linear"
+        ),
     )
     SESSION_COOKIE_SECURE: bool = Field(
         default=True,

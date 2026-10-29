@@ -1192,7 +1192,7 @@ async def migrate_legacy_web_auth_tokens(conn) -> int:
         return 0
 
     now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(hours=settings.WEB_SESSION_TTL_HOURS)
+    expires_at = now + timedelta(days=settings.WEB_SESSION_IDLE_DAYS)
     migrated = 0
     for row in rows:
         raw_token = row["auth_token"]
