@@ -45,28 +45,21 @@ export const getLinearDataListTemplate = (columns: BuyerlyDataListColumn[]) =>
 
 /**
  * The Name column every entity table starts with. Its header label is inset to
- * start on the same pixel as the row title, past the selection slot and, when
- * shown, the status toggle; the sortable header pill adds 6px of its own.
+ * start over the row's first mark, past the selection slot.
  */
 export const buyerlyDataNameColumn = ({
   width,
-  statusVisible = true,
-  statusWidth = BUYERLY_DATA_LIST.statusWidth,
   label = 'Name',
 }: {
   width: string;
-  statusVisible?: boolean;
-  /** The status control's width: the switch's by default. */
-  statusWidth?: number;
   label?: string;
 }): BuyerlyDataListColumn => ({
   id: 'name',
   label,
   width,
-  // The label starts over the title; its pill adds 6px of its own.
-  headerInset: statusVisible
-    ? BUYERLY_DATA_LIST.selectionWidth + statusWidth + BUYERLY_DATA_LIST.leadingGap * 2 - 6
-    : BUYERLY_DATA_LIST.selectionWidth + BUYERLY_DATA_LIST.leadingGap - 6,
+  // As Linear's, the label starts over the column's first mark (status icon, switch, or
+  // the title when status is hidden), past the selection slot; its pill adds 6px of its own.
+  headerInset: BUYERLY_DATA_LIST.selectionWidth + BUYERLY_DATA_LIST.leadingGap - 6,
   sortable: true,
 });
 
@@ -550,7 +543,11 @@ export const BuyerlyDataListColumnHeader: React.FC<BuyerlyDataListColumnHeaderPr
           role="columnheader"
           aria-sort={isActive ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined}
           {...stylex.props(styles.columnCell, column.align === 'right' && styles.columnCellRight)}
-          style={{ paddingLeft: column.headerInset ? `${column.headerInset}px` : undefined }}
+          // A negative inset pulls the label's pill out to the left, so its text meets a mark at the cell's edge.
+          style={{
+            paddingLeft: column.headerInset && column.headerInset > 0 ? `${column.headerInset}px` : undefined,
+            marginLeft: column.headerInset && column.headerInset < 0 ? `${column.headerInset}px` : undefined,
+          }}
         >
           {column.sortable && onSort ? (
             <button

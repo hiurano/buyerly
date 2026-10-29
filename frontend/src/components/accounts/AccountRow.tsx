@@ -146,9 +146,9 @@ const styles = stylex.create({
 export const PHONE_QUERY = '(max-width: 640px)';
 
 export function getAccountColumns(properties: Record<string, boolean>, phone: boolean): BuyerlyDataListColumn[] {
-  // The header's label starts over the title, past the 16px icon and its 12px gap (the pill adds 6px).
+  // As Linear's, the header's label starts over the row's icon; its pill's 6px sit out to the left.
   const columns: BuyerlyDataListColumn[] = [
-    { id: 'name', label: 'Name', width: phone ? 'minmax(120px, 1fr)' : 'minmax(260px, 1fr)', sortable: true, headerInset: phone ? undefined : 22 },
+    { id: 'name', label: 'Name', width: phone ? 'minmax(120px, 1fr)' : 'minmax(260px, 1fr)', sortable: true, headerInset: phone ? undefined : -6 },
   ];
   if (properties.status !== false) columns.push({ id: 'status', label: 'Status', width: phone ? '84px' : '150px', sortable: true });
   // Linear's Lead column on Projects: a 48px column of 28px avatar buttons.

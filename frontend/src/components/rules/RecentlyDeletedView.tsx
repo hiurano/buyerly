@@ -16,7 +16,7 @@ import { restoreFromTrash } from './ruleActions';
 import { useRulesStore } from '@/models/rulesStore';
 
 const COLUMNS: BuyerlyDataListColumn[] = [
-  buyerlyDataNameColumn({ width: 'minmax(240px, 1fr)', statusVisible: false }),
+  buyerlyDataNameColumn({ width: 'minmax(240px, 1fr)' }),
   { id: 'kind', label: 'Type', width: '88px' },
   { id: 'deleted', label: 'Deleted', width: '96px' },
   { id: 'by', label: 'Deleted by', width: '160px' },
