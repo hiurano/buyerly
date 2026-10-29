@@ -195,7 +195,7 @@ try {
       const cell = page.locator('[data-row-id="801"] [data-rule-cell]');
       await cell.waitFor();
       // The account-wide rule counts on every campaign: 801 has its own and
-      // that one, 802 only the account's — never a bare "+ Rule".
+      // that one, 802 only the account's — never an empty cell.
       await page.waitForFunction(() => document.querySelector('[data-row-id="801"] [data-rule-cell]')?.textContent?.trim() === '2 rules');
       assert.equal(await cell.getAttribute('data-inherited-rules'), '1');
       assert.equal(await cell.getAttribute('title'), '1 on this campaign · 1 through the ad account');
