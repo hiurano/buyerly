@@ -155,6 +155,7 @@ try {
         const buttons = [['Display options', display]];
         if (await filterButton.count()) buttons.push(['Filter', filterButton]);
         if (target.filtered) {
+          // Read once on purpose: the address's filter shows from the first paint, before the saved views load.
           assert.equal(await filterButton.getAttribute('aria-label'), 'Add another filter', `${label}: a filter from the address`);
         }
         // The mouse rests away from the buttons while they are read.

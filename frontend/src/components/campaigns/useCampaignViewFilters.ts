@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { sanitizeFilterClauses, type FilterClause } from '@/components/filters/filterModel';
-import { readFilterParam, writeFilterParam } from '@/ui/useListView';
+import { parseFilterParam, readFilterParam, writeFilterParam } from '@/ui/useListView';
+import { useAddress } from '@/lib/routing';
 import { migrateAdsManagerClauses, type QuickSelection } from './campaignViewModel';
 import { useAdsManagerView } from './adsManagerViewModel';
 import { type AdsManagerEntity } from '@/models/viewStore';
@@ -9,8 +10,7 @@ type Filters = Record<AdsManagerEntity, FilterClause[]>;
 const ENTITIES: AdsManagerEntity[] = ['campaigns', 'adsets', 'ads'];
 
 /** `?filter=` holds every level's filters in one object, so one link shares them all. */
-function filtersFromAddress(): Filters | null {
-  const value = readFilterParam();
+function filtersFromAddress(value: unknown | null = readFilterParam()): Filters | null {
   if (value === null) return null;
   const source = typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
   return {
@@ -47,25 +47,31 @@ export function useCampaignViewFilters(scope: string, navigationKey: number, min
     ads: useAdsManagerView('ads', mine),
   };
   const loaded = views.campaigns.loaded;
-  const filters: Filters = {
+  const saved: Filters = {
     campaigns: migrateAdsManagerClauses(views.campaigns.view.filters),
     adsets: migrateAdsManagerClauses(views.adsets.view.filters),
     ads: migrateAdsManagerClauses(views.ads.view.filters),
   };
+  // Until the saved views load and take the address's filters, the page shows
+  // the address's own, so a filtered link never draws the list unfiltered first.
+  const { search } = useAddress();
+  const [takenFor, setTakenFor] = useState<number | null>(null);
+  const filters = (takenFor === navigationKey ? null : filtersFromAddress(parseFilterParam(new URLSearchParams(search).get('filter')))) ?? saved;
 
   useEffect(() => {
     if (!loaded) return;
     const fromAddress = filtersFromAddress();
     if (fromAddress) {
       for (const entity of ENTITIES) {
-        if (JSON.stringify(fromAddress[entity]) !== JSON.stringify(filters[entity])) {
+        if (JSON.stringify(fromAddress[entity]) !== JSON.stringify(saved[entity])) {
           views[entity].update({ filters: fromAddress[entity] });
         }
       }
       writeAddress(fromAddress);
     } else {
-      writeAddress(filters);
+      writeAddress(saved);
     }
+    setTakenFor(navigationKey);
     // Only arrival and navigation read the address; later changes write it.
   }, [loaded, navigationKey]);
 

@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { StoredView } from '@/lib/viewSettings';
 import { sanitizeFilterClauses, type FilterClause } from '@/components/filters/filterModel';
 import { displayDiffers, readListView, type ListViewSettings } from './listView';
 import { toast } from './toast';
 import { useScopeStore } from '@/models/scopeStore';
 import { viewStore, useViewStore } from '@/models/viewStore';
+import { useAddress } from '@/lib/routing';
 
 /** Only what differs from the page's defaults is kept, so a later default still reaches untouched views. */
 function sparse(view: ListViewSettings, defaults: ListViewSettings): StoredView {
@@ -88,8 +89,12 @@ export function useListView(key: string, defaults: ListViewSettings) {
 
 /** The address's `?filter=`: null when it has none, the clauses it names otherwise. */
 export function readFilterParam(param = 'filter'): unknown | null {
+  return parseFilterParam(new URLSearchParams(window.location.search).get(param));
+}
+
+/** A `?filter=` value: null for none, the clauses it names otherwise. */
+export function parseFilterParam(raw: string | null): unknown | null {
   try {
-    const raw = new URLSearchParams(window.location.search).get(param);
     if (raw === null) return null;
     if (raw.length > 20000) return [];
     return JSON.parse(raw);
@@ -110,13 +115,19 @@ export function writeFilterParam(value: unknown | null, param = 'filter') {
  * Filters live in the view and in the address, as Linear's do: a link with
  * `?filter=` wins and becomes the saved filter; an address without one gets
  * the saved filter back. Runs on arrival and on every navigation.
+ *
+ * Returns the filters to show: until the saved views load and take the
+ * address's filter, the address's own, so a filtered link never draws the
+ * list unfiltered first.
  */
 export function useFiltersInAddress(
   filters: FilterClause[],
   setFilters: (clauses: FilterClause[]) => void,
   loaded: boolean,
   navigationKey: number,
-) {
+): FilterClause[] {
+  const { search } = useAddress();
+  const [takenFor, setTakenFor] = useState<number | null>(null);
   useEffect(() => {
     if (!loaded) return;
     const fromAddress = readFilterParam();
@@ -127,6 +138,11 @@ export function useFiltersInAddress(
     } else if (filters.length > 0) {
       writeFilterParam(filters);
     }
+    setTakenFor(navigationKey);
     // Only arrival and navigation read the address; later changes write it.
   }, [loaded, navigationKey]);
+
+  if (takenFor === navigationKey) return filters;
+  const fromAddress = parseFilterParam(new URLSearchParams(search).get('filter'));
+  return fromAddress === null ? filters : sanitizeFilterClauses(fromAddress);
 }
