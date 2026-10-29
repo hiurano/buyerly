@@ -159,7 +159,7 @@ try {
 
       // 0. The condition carries its window and the account currency (#324). How to
       // attach a rule is the hint on "Not attached"; no line above the list says it (#381).
-      assert.match(await page.locator('[data-row-id="7"]').innerText(), /IF Spend ≥ USD\s10\.00 today/);
+      assert.match(await page.locator('[data-row-id="7"]').innerText(), /IF Spend ≥ \$10\.00 today/);
       const notAttached = page.locator('[data-row-id="7"]').getByText('Not attached', { exact: true });
       assert.match(await notAttached.getAttribute('title'), /^Attach a rule to an ad account/);
       assert.equal(await page.getByText(/runs? nowhere yet/).count(), 0, 'no "runs nowhere yet" line');
@@ -177,7 +177,7 @@ try {
       // One sentence says what the rule does, how often, when and where (#387).
       await form.getByRole('textbox', { name: 'Rule name' }).fill('Second rule');
       await form.getByRole('textbox', { name: 'Spend value' }).fill('5');
-      assert.match(await form.getByTestId('rule-summary').innerText(), /^Checks each ad set every 5 min and turns it off when spend ≥ USD 5 \(today\)\. .*Runs nowhere until you pick where\.$/);
+      assert.match(await form.getByTestId('rule-summary').innerText(), /^Checks each ad set every 5 min and turns it off when spend ≥ \$5 \(today\)\. .*Runs nowhere until you pick where\.$/);
       // The form's own menus: a pill and its items are finger-sized.
       const actionPill = form.getByRole('button', { name: /^Action:/ });
       await fingerSized(actionPill, 'the Action pill');

@@ -410,6 +410,11 @@ const styles = stylex.create({
     fontWeight: 500,
     color: colors['--text-primary'],
   },
+  // No figure: a quiet dash, as Linear's empty property ("---" for no priority).
+  metricValueEmpty: {
+    fontWeight: 450,
+    color: colors['--text-muted'],
+  },
   // The caller's valueClassName sets the weight and colour.
   metricValueCustom: {
     fontWeight: null,
@@ -772,6 +777,9 @@ interface BuyerlyDataMetricCellProps {
   valueXstyle?: stylex.StyleXStyles;
 }
 
+/** What a cell shows for no value. */
+export const EMPTY_VALUE = '—';
+
 /** A right-aligned number with tabular figures and an optional caption. */
 export const BuyerlyDataMetricCell: React.FC<BuyerlyDataMetricCellProps> = ({
   value,
@@ -789,6 +797,7 @@ export const BuyerlyDataMetricCell: React.FC<BuyerlyDataMetricCellProps> = ({
           emphasis && styles.metricValueEmphasis,
           valueClassName !== undefined && styles.metricValueCustom,
           valueXstyle,
+          value === EMPTY_VALUE && styles.metricValueEmpty,
         ),
         `buyerly-data-metric-value ${valueClassName ?? ''}`.trim(),
       )}

@@ -13,6 +13,10 @@ export function metaAccountLabel(account: MetaAccount): string {
   return `${name} · ${account.account_id}`;
 }
 
+/**
+ * Money with its currency's symbol, as a buyer reads it in Meta: "$25.00",
+ * "€40.00"; Intl keeps a code where a symbol would mislead ("CA$", "UAH").
+ */
 export function formatMetricMoney(value: number | null, currency: string): string {
   const normalizedCurrency = currency.trim().toUpperCase();
   if (value === null || !Number.isFinite(value) || !KNOWN_CURRENCY.test(normalizedCurrency)) {
@@ -22,10 +26,24 @@ export function formatMetricMoney(value: number | null, currency: string): strin
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: normalizedCurrency,
-      currencyDisplay: 'code',
+      currencyDisplay: 'symbol',
     }).format(value);
   } catch {
     return '—';
+  }
+}
+
+/** What goes before an amount in that currency: "$", "CA$", "UAH " (empty when unknown). */
+export function currencyPrefix(currency: string): string {
+  const normalizedCurrency = currency.trim().toUpperCase();
+  if (!KNOWN_CURRENCY.test(normalizedCurrency)) return '';
+  try {
+    const parts = new Intl.NumberFormat('en-US', { style: 'currency', currency: normalizedCurrency, currencyDisplay: 'symbol' })
+      .formatToParts(1);
+    const integer = parts.findIndex((part) => part.type === 'integer');
+    return parts.slice(0, integer).map((part) => part.value).join('').replace(/\u00a0/g, ' ');
+  } catch {
+    return '';
   }
 }
 

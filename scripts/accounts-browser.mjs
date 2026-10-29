@@ -186,7 +186,7 @@ try {
       await page.locator('main header').getByRole('button', { name: 'Add account' }).waitFor();
 
       const nl = page.locator('[data-row-id="act_101"]');
-      assert.match(await nl.innerText(), /NL · Lead gen[\s\S]*Active[\s\S]*USD\s?120\.50[\s\S]*4 · USD\s?30\.13[\s\S]*1 rule[\s\S]*On/);
+      assert.match(await nl.innerText(), /NL · Lead gen[\s\S]*Active[\s\S]*\$120\.50[\s\S]*4 · \$30\.13[\s\S]*1 rule[\s\S]*On/);
       assert.match(await page.locator('[data-row-id="act_103"]').innerText(), /Unsettled[\s\S]*No rules/);
       // The connection mark only where the sync fails, with the reason.
       assert.equal(await page.locator('[data-connection-problem]').count(), 1);
@@ -250,7 +250,7 @@ try {
       }
       assert.match(await properties.getByRole('group', { name: 'Team' }).innerText(), /Media/);
       assert.match(await properties.getByRole('group', { name: 'Connected by' }).innerText(), /Bo Buyer/);
-      assert.match(await page.locator('section[aria-label="Today"]').innerText(), /USD\s?120\.50[\s\S]*CPL USD\s?30\.13/);
+      assert.match(await page.locator('section[aria-label="Today"]').innerText(), /\$120\.50[\s\S]*CPL \$30\.13/);
       // The rule's own status and where it runs; no switch here — pausing a rule pauses it on every account.
       const rulesSection = page.locator('section[aria-label="Rules"]');
       assert.match(await rulesSection.innerText(), /Stop ad sets without leads[\s\S]*Active[\s\S]*Whole account/);

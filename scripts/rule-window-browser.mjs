@@ -197,7 +197,7 @@ try {
       assert.equal(await form.getByRole('textbox', { name: 'Rule name' }).getAttribute('placeholder'), 'Spend ≥ 4 & Leads = 0 → Turn off');
       assert.equal(
         await text(summary(form)),
-        'Checks each ad set every 5 min and turns it off when spend ≥ USD 4 and leads = 0 (lifetime). '
+        'Checks each ad set every 5 min and turns it off when spend ≥ $4 and leads = 0 (lifetime). '
         + 'Acts on the same ad set at most once a day. Runs nowhere until you pick where.',
       );
 
