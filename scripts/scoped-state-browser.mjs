@@ -43,6 +43,9 @@ try {
       const url = new URL(request.url());
       const workspace = request.headers()['x-workspace-slug'];
       if (url.pathname === '/api/me') return route.fulfill({ json: user });
+      // The editor's draft check (ruleDraftCheck) goes 350ms after it opens: a read, not a write.
+      // Taken as one, a slow run counted alpha's check as the held write.
+      if (url.pathname === '/api/presets/check') return route.fulfill({ json: { valid: true } });
       if (request.method() !== 'GET') {
         writes.push({ path: url.pathname, workspace });
         // The first write and the Undo are held; a write sent again (#508: beta's toggle was never
