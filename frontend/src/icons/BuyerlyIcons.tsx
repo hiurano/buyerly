@@ -47,7 +47,7 @@ export const BuyerlyDeliveryIcon: React.FC<{ state: BuyerlyDeliveryState; size?:
   size = 14,
   className = '',
 }) => {
-  if (state === 'active' || state === 'paused') return <BuyerlyStatusCircleIcon status={state} size={size} className={className} />;
+  if (state === 'active') return <BuyerlyStatusCircleIcon status={state} size={size} className={className} />;
   return <DeliveryFrame size={size} className={className}><DeliveryMark state={state} /></DeliveryFrame>;
 };
 
@@ -55,8 +55,15 @@ const DeliveryFrame: React.FC<React.PropsWithChildren<{ size: number; className:
   <svg width={size} height={size} viewBox="0 0 14 14" fill="none" aria-hidden="true" className={className}>{children}</svg>
 );
 
-/** Every state but Active and Paused, in a 14x14 frame. */
+/** Every state but Active, in a 14x14 frame. */
 const DeliveryMark: React.FC<{ state: BuyerlyDeliveryState }> = ({ state }) => {
+  if (state === 'paused') {
+    // A ring with pause bars, so it never reads as the dotted "unknown".
+    return (<>
+      <circle cx="7" cy="7" r="5.5" stroke="#6b7280" strokeWidth="1.5" />
+      <path d="M5.75 5v4M8.25 5v4" stroke="#6b7280" strokeWidth="1.4" strokeLinecap="round" />
+    </>);
+  }
   if (state === 'in_review') {
     // Linear's In Progress: a ring with its right half filled.
     return (<>
