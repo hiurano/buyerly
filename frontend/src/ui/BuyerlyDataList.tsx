@@ -217,6 +217,10 @@ const styles = stylex.create({
     fontWeight: 450,
     color: colors['--text-tertiary'],
   },
+  // A plain label over figures ends where a sort pill's text does, 6px in.
+  columnLabelRight: {
+    paddingRight: 6,
+  },
   groupHeader: {
     position: 'sticky',
     top: -4,
@@ -372,8 +376,10 @@ const styles = stylex.create({
   primaryTitleDimmed: {
     color: colors['--text-tertiary'],
   },
+  // Linear sits a figure in a 6px-padded pill: it ends under its header label and 12px from the next column.
   metric: {
     minWidth: 0,
+    paddingRight: 6,
     textAlign: 'right',
   },
   metricValue: {
@@ -538,7 +544,7 @@ export const BuyerlyDataListColumnHeader: React.FC<BuyerlyDataListColumnHeaderPr
               )}
             </button>
           ) : (
-            <span {...stylex.props(styles.columnLabel)}>{column.label}</span>
+            <span {...stylex.props(styles.columnLabel, column.align === 'right' && styles.columnLabelRight)}>{column.label}</span>
           )}
         </div>
       );

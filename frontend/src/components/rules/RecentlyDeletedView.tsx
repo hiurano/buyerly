@@ -35,7 +35,9 @@ const styles = stylex.create({
   number: {
     fontVariantNumeric: 'tabular-nums',
   },
+  // Ends under its label, as Ads Manager's figures.
   purge: {
+    paddingRight: 6,
     textAlign: 'right',
     color: colors['--text-tertiary'],
   },
