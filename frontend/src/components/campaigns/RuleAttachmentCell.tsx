@@ -1,6 +1,6 @@
 import React, { forwardRef, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { BuyerlyBoltIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { useIsSmallScreen } from '@/lib/useMediaQuery';
 import { withClassName } from '@/ui/withClassName';
 import { inheritedRuleIds } from '@/lib/rules';
@@ -176,7 +176,7 @@ export const RuleAttachmentCell = forwardRef<
           {...stylex.props(styles.pill, styles.attached)}
         >
           <div {...stylex.props(styles.boltSlot)}>
-            <BuyerlyBoltIcon size={12} className={stylex.props(styles.bolt).className} />
+            <BuyerlyIcon name="rules" size={12} className={stylex.props(styles.bolt).className} />
           </div>
           <span {...stylex.props(styles.label, ownCount > 0 ? styles.labelOwn : styles.labelInherited)}>
             {attachedCount} {attachedCount === 1 ? 'rule' : 'rules'}
@@ -190,18 +190,7 @@ export const RuleAttachmentCell = forwardRef<
           {...stylex.props(styles.pill, styles.add)}
           title="Add rule"
         >
-          <svg
-            width="10"
-            height="10"
-            viewBox="0 0 10 10"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.3"
-            strokeLinecap="round"
-          >
-            <line x1="5" y1="2" x2="5" y2="8" />
-            <line x1="2" y1="5" x2="8" y2="5" />
-          </svg>
+          <BuyerlyIcon name="add" size={10} />
           <span {...stylex.props(styles.label)}>
             Rule
           </span>

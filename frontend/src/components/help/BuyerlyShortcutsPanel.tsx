@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { BuyerlyCloseIcon, BuyerlySearchIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { filterShortcutGroups, keyCap, type ShortcutEntry } from '@/lib/shortcutCatalog';
 import { commandMenuStore, useCommandMenuStore } from '@/models/commandMenuStore';
 
@@ -65,11 +65,11 @@ export function BuyerlyShortcutsPanel() {
           <header className="buyerly-shortcuts-header">
             <Dialog.Title className="buyerly-shortcuts-title">Keyboard Shortcuts</Dialog.Title>
             <Dialog.Close className="buyerly-shortcuts-close" aria-label="Close dialog">
-              <BuyerlyCloseIcon size={14} />
+              <BuyerlyIcon name="close" size={14} />
             </Dialog.Close>
           </header>
           <div className="buyerly-shortcuts-search">
-            <BuyerlySearchIcon size={16} className="buyerly-shortcuts-search-icon" />
+            <BuyerlyIcon name="search" size={16} className="buyerly-shortcuts-search-icon" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}

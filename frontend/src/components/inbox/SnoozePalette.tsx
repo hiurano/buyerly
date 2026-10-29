@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Command } from 'cmdk';
 import * as stylex from '@stylexjs/stylex';
-import { BuyerlyClockOutlineIcon, BuyerlyTrashIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { formatSnoozedFor, formatSnoozeTime, matchesTyped, snoozeOptions } from '@/lib/inbox';
 import { parseSnoozeQuery } from '@/lib/snoozeQuery';
 import { colors } from '@/styles/tokens.stylex';
@@ -213,7 +213,7 @@ export const SnoozePalette: React.FC<SnoozePaletteProps> = ({
         id: 'unsnooze',
         label: 'Unsnooze notification',
         hint: formatSnoozedFor(snoozedUntil),
-        icon: <BuyerlyTrashIcon size={16} />,
+        icon: <BuyerlyIcon name="delete" size={16} />,
         onSelect: () => {
           onOpenChange(false);
           onUnsnooze();
@@ -283,7 +283,7 @@ export const SnoozePalette: React.FC<SnoozePaletteProps> = ({
                 >
                   <span {...stylex.props(styles.highlight)} />
                   <span {...stylex.props(styles.label)}>
-                    <span {...stylex.props(styles.icon)}>{row.icon ?? <BuyerlyClockOutlineIcon size={16} />}</span>
+                    <span {...stylex.props(styles.icon)}>{row.icon ?? <BuyerlyIcon name="snooze" size={16} />}</span>
                     <span {...stylex.props(styles.truncate)}>{row.label}</span>
                   </span>
                   {row.hint && (

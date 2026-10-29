@@ -9,7 +9,7 @@ import { Input } from '@/ui/Input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import { Tooltip } from '@/ui/Tooltip';
 import { toast } from '@/ui/toast';
-import { BuyerlyCloseIcon, BuyerlyPencilIcon, BuyerlyPlusIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { ChangeEmailDialog } from './ChangeEmailDialog';
 import { LeaveWorkspaceDialog } from './MemberDialogs';
 
@@ -192,7 +192,7 @@ const ProfileAvatar: React.FC<{ user: SessionUser; onUserChanged: () => void | P
         <span className="preferences-avatar-initials">{initials(user)}</span>
       )}
       <span className="preferences-avatar-overlay" aria-hidden="true">
-        {hasPhoto ? <BuyerlyPencilIcon size={16} /> : <BuyerlyPlusIcon size={16} />}
+        {hasPhoto ? <BuyerlyIcon name="edit" size={16} /> : <BuyerlyIcon name="add" size={16} />}
       </span>
     </>
   );
@@ -227,13 +227,13 @@ const ProfileAvatar: React.FC<{ user: SessionUser; onUserChanged: () => void | P
           <DropdownMenuContent align="end" style={{ width: '174px' }}>
             <DropdownMenuItem onSelect={() => fileRef.current?.click()}>
               <span {...stylex.props(styles.menuItem)}>
-                <BuyerlyPencilIcon size={16} {...stylex.props(styles.menuIcon)} />
+                <BuyerlyIcon name="edit" size={16} {...stylex.props(styles.menuIcon)} />
                 Change avatar
               </span>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => void remove()}>
               <span {...stylex.props(styles.menuItem)}>
-                <BuyerlyCloseIcon size={16} {...stylex.props(styles.menuIcon)} />
+                <BuyerlyIcon name="close" size={16} {...stylex.props(styles.menuIcon)} />
                 Remove avatar
               </span>
             </DropdownMenuItem>
@@ -315,7 +315,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ user, workspace,
                 aria-label="Change email"
                 onClick={() => setEmailDialogOpen(true)}
               >
-                <BuyerlyPencilIcon size={13} />
+                <BuyerlyIcon name="edit" size={13} />
               </button>
             </div>
           </div>

@@ -2,7 +2,7 @@ import React from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type { MetaAccount } from '@/lib/types';
 import { Initials } from '@/components/preferences/MembersSection';
-import { BuyerlyCheckIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import { Tooltip } from '@/ui/Tooltip';
 import type { AccountMember } from './accountsData';
@@ -77,7 +77,7 @@ export const AccountLeadPicker: React.FC<AccountLeadPickerProps> = ({ account, m
             <span {...stylex.props(styles.noLead)}><NoLeadIcon /></span>
             <span>No lead</span>
           </span>
-          {!lead && <BuyerlyCheckIcon size={14} />}
+          {!lead && <BuyerlyIcon name="check" size={14} />}
         </DropdownMenuItem>
         {members.length > 0 && <DropdownMenuSeparator />}
         {members.map((member) => (
@@ -86,7 +86,7 @@ export const AccountLeadPicker: React.FC<AccountLeadPickerProps> = ({ account, m
               <Initials label={memberLabel(member)} avatarUrl={member.avatar_url} size={16} />
               <span {...stylex.props(styles.name)}>{memberLabel(member)}</span>
             </span>
-            {lead?.user_id === member.user_id && <BuyerlyCheckIcon size={14} />}
+            {lead?.user_id === member.user_id && <BuyerlyIcon name="check" size={14} />}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

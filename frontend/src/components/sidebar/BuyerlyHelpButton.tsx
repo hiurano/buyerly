@@ -3,7 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { GO_TO_KEYS } from '@/lib/shortcuts';
 import { matchesTyped } from '@/lib/inbox';
 import { Tooltip } from '@/ui/Tooltip';
-import { BuyerlyChatIcon, BuyerlyGearIcon, BuyerlyKeyboardIcon, BuyerlyQuestionMarkIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import changelogLatest from '@/lib/changelogLatest.json';
 import { useCommandMenuStore } from '@/models/commandMenuStore';
@@ -244,7 +244,6 @@ export function BuyerlyHelpButton() {
     setOpen(true);
   };
 
-
   const openFromKey = useEffectEvent(() => openMenu(true));
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -262,14 +261,14 @@ export function BuyerlyHelpButton() {
       id: 'contact',
       label: 'Contact us',
       news: false,
-      icon: () => <BuyerlyChatIcon size={16} />,
+      icon: () => <BuyerlyIcon name="contact" size={16} />,
       run: writeToUs,
     },
     {
       id: 'shortcuts',
       label: 'Keyboard shortcuts',
       news: false,
-      icon: () => <BuyerlyKeyboardIcon size={16} />,
+      icon: () => <BuyerlyIcon name="keyboard" size={16} />,
       keys: (
         <span className="buyerly-help-shortcut" aria-label={IS_MAC ? 'Command /' : 'Control /'}>
           <kbd>{IS_MAC ? '⌘' : 'Ctrl'}</kbd>
@@ -282,7 +281,7 @@ export function BuyerlyHelpButton() {
       id: 'settings',
       label: 'Settings',
       news: false,
-      icon: () => <BuyerlyGearIcon size={16} />,
+      icon: () => <BuyerlyIcon name="settings" size={16} />,
       keys: (
         <span className="buyerly-help-shortcut" aria-label={`G, then ${GO_TO_KEYS.preferences}`}>
           <kbd>G</kbd>
@@ -363,7 +362,7 @@ export function BuyerlyHelpButton() {
               if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') byKeyboardRef.current = true;
             }}
           >
-            <BuyerlyQuestionMarkIcon size={16} />
+            <BuyerlyIcon name="help" size={16} />
           </button>
         </DropdownMenuTrigger>
       </Tooltip>

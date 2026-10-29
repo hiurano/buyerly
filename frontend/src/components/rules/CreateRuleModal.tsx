@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
-import { Maximize2, Minimize2, Repeat } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +22,7 @@ import {
   fetchRuleDraftPreview,
   type RuleAccountPreview,
 } from '@/lib/rules';
-import { BuyerlyBoltIcon, BuyerlyClockOutlineIcon, BuyerlyLabelIcon, BuyerlyPlusIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { RuleLabelPicker } from './RuleLabelPicker';
 import { BuyerlyRuleChip, ConditionChip, RunOnPicker } from './RuleWindowParts';
 import {
@@ -678,7 +677,7 @@ export const CreateRuleModal: React.FC = () => {
                           onClick={() => setExpanded((value) => !value)}
                           {...stylex.props(styles.windowButton)}
                         >
-                          {expanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                          {expanded ? <BuyerlyIcon name="minimize" size={14} /> : <BuyerlyIcon name="maximize" size={14} />}
                         </button>
                       </Tooltip>
                     )}
@@ -688,9 +687,7 @@ export const CreateRuleModal: React.FC = () => {
                       onClick={closeWindow}
                       {...stylex.props(styles.windowButton, styles.closeButton)}
                     >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                        <path d="M2.97 2.97a.75.75 0 0 1 1.06 0L8 6.94l3.97-3.97a.75.75 0 1 1 1.06 1.06L9.06 8l3.97 3.97a.75.75 0 1 1-1.06 1.06L8 9.06l-3.97 3.97a.75.75 0 0 1-1.06-1.06L6.94 8 2.97 4.03a.75.75 0 0 1 0-1.06Z" />
-                      </svg>
+                      <BuyerlyIcon name="close" size={16} />
                     </button>
                   </div>
                 </div>
@@ -759,14 +756,14 @@ export const CreateRuleModal: React.FC = () => {
                       dashed
                       onClick={() => update({ conditions: [...draft.conditions, { ...DEFAULT_CONDITION, metric: 'leads', operator: 'eq' }] })}
                     >
-                      <BuyerlyPlusIcon size={12} />
+                      <BuyerlyIcon name="add" size={12} />
                       Condition
                     </BuyerlyRuleChip>
                   )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <BuyerlyRuleChip aria-label={`Window: ${RULE_TIME_WINDOW_MENU_LABELS[draft.timeWindow]}`}>
-                        <BuyerlyClockOutlineIcon size={12} />
+                        <BuyerlyIcon name="snooze" size={12} />
                         {RULE_TIME_WINDOW_MENU_LABELS[draft.timeWindow]}
                       </BuyerlyRuleChip>
                     </DropdownMenuTrigger>
@@ -850,7 +847,7 @@ export const CreateRuleModal: React.FC = () => {
                       data-popover-trigger="Run on"
                       onClick={() => setPopover((current) => (current === 'runOn' ? null : 'runOn'))}
                     >
-                      <BuyerlyBoltIcon size={12} />
+                      <BuyerlyIcon name="rules" size={12} />
                       <span {...stylex.props(runOnEntries.length > 0 && styles.chosen)}>{runOnText}</span>
                     </BuyerlyRuleChip>
                     {popover === 'runOn' && (
@@ -874,7 +871,7 @@ export const CreateRuleModal: React.FC = () => {
                     >
                       {chosenLabels.length === 0 ? (
                         <>
-                          <BuyerlyLabelIcon size={12} />
+                          <BuyerlyIcon name="label" size={12} />
                           <span>Labels</span>
                         </>
                       ) : (
@@ -918,7 +915,7 @@ export const CreateRuleModal: React.FC = () => {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <BuyerlyRuleChip aria-label={`Check: ${formatCheckInterval(draft.checkInterval)}`}>
-                        <BuyerlyClockOutlineIcon size={12} />
+                        <BuyerlyIcon name="snooze" size={12} />
                         {formatCheckInterval(draft.checkInterval)}
                       </BuyerlyRuleChip>
                     </DropdownMenuTrigger>
@@ -935,7 +932,7 @@ export const CreateRuleModal: React.FC = () => {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <BuyerlyRuleChip aria-label={`Repeat: ${formatRepeat(draft.repeatMinutes)}`}>
-                        <Repeat size={12} />
+                        <BuyerlyIcon name="repeat" size={12} />
                         {formatRepeat(draft.repeatMinutes)}
                       </BuyerlyRuleChip>
                     </DropdownMenuTrigger>

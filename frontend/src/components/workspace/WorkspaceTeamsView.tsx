@@ -8,7 +8,7 @@ import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapse
 import { Initials } from '@/components/preferences/MembersSection';
 import { memberName, type MemberItem } from '@/components/preferences/MemberDialogs';
 import { TeamIcon } from '@/components/preferences/TeamIcon';
-import { BuyerlyCheckIcon, BuyerlyLockIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { DataState } from '@/ui/DataState';
 import { HeaderCreateButton } from '@/ui/HeaderCreateButton';
 import { BuyerlyDataListRow, BuyerlyDataListToolbar, BuyerlyDataTable, type BuyerlyDataListColumn } from '@/ui/BuyerlyDataList';
@@ -190,7 +190,7 @@ export const WorkspaceTeamsView: React.FC = () => {
                 <TeamIcon size={14} />
                 <span {...stylex.props(styles.name)}>{team.name}</span>
                 <span {...stylex.props(styles.key)}>{team.key}</span>
-                {team.private && <BuyerlyLockIcon size={12} {...stylex.props(styles.lock)} aria-label="Private team" />}
+                {team.private && <BuyerlyIcon name="lock" size={12} {...stylex.props(styles.lock)} aria-label="Private team" />}
               </div>
               <div>
                 <button
@@ -203,7 +203,7 @@ export const WorkspaceTeamsView: React.FC = () => {
                     void setMembership(team, !team.is_member);
                   }}
                 >
-                  {team.is_member && <BuyerlyCheckIcon size={12} />}
+                  {team.is_member && <BuyerlyIcon name="check" size={12} />}
                   <span className="team-membership__label">{team.is_member ? 'Joined' : 'Join'}</span>
                   {team.is_member && <span className="team-membership__leave">Leave</span>}
                 </button>

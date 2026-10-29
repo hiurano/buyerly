@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { fetchAccounts, fetchWorkspaceMembers } from '@/models/queries';
 import type { MetaAccount, Workspace } from '@/lib/types';
 import {
@@ -351,7 +351,7 @@ const TeamBreadcrumb: React.FC<{ team?: TeamItem }> = ({ team }) => {
       className="preferences-breadcrumb"
       onClick={() => (team ? openTeamSettings(team.key) : openSettings('teams'))}
     >
-      <ChevronLeft size={14} aria-hidden="true" />
+      <BuyerlyIcon name="chevron-left" size={14} aria-hidden="true" />
       {team && <TeamIcon size={12} />}
       {team ? team.name : 'Teams'}
     </button>
@@ -372,7 +372,7 @@ const LinkRow: React.FC<{ title: string; description: string; value?: string; on
     </span>
     <span className="preferences-row-control">
       {value && <span className="preferences-row-value">{value}</span>}
-      <ChevronRight size={16} aria-hidden="true" className="preferences-row-chevron" />
+      <BuyerlyIcon name="chevron-right" size={16} aria-hidden="true" className="preferences-row-chevron" />
     </span>
   </button>
 );
@@ -783,9 +783,7 @@ const SearchField: React.FC<{ value: string; placeholder: string; onChange: (val
 }) => (
   <label {...stylex.props(styles.search)}>
     <span {...stylex.props(styles.srOnly)}>{placeholder}</span>
-    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" {...stylex.props(styles.searchIcon)}>
-      <path d="M7 1.5a5.5 5.5 0 0 1 4.38 8.82l3.15 3.15a.75.75 0 1 1-1.06 1.06l-3.15-3.15A5.5 5.5 0 1 1 7 1.5Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
-    </svg>
+    <BuyerlyIcon name="search" size={14} {...stylex.props(styles.searchIcon)} />
     <input
       type="search"
       value={value}

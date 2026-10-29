@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import * as stylex from '@stylexjs/stylex';
-import { Pause, Play } from 'lucide-react';
 import { BuyerlyRowContextMenu, type RowMenuEntry } from '@/ui/BuyerlyRowMenu';
 import {
   deliveryHistoryEntry,
@@ -81,17 +80,14 @@ import type { FilterOption } from '@/components/filters/filterModel';
 import { SelectionDock } from '@/ui/SelectionDock';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { SelectionCommandMenu } from '@/ui/SelectionCommandMenu';
-import { BuyerlyBoltIcon, BuyerlyClipboardIcon, BuyerlyCopyIdIcon, BuyerlyCopyTitleIcon, BuyerlyCopyUrlIcon } from '@/icons/BuyerlyIcons';
 import { RuleSelectorPopover } from './RuleSelectorPopover';
 import { openCommandMenu } from '@/components/command/CommandMenu';
 import { takeRecordActions } from '@/components/command/OpenPalette';
 import { useRowSelection, type SelectionAction } from '@/ui/useRowSelection';
 import { useRevealRow } from '@/ui/useRevealRow';
 import type { FilterClause, FilterFieldDefinition } from '@/components/filters/filterModel';
-import {
-  BuyerlyProjectIcon,
-  BuyerlyStatusCircleIcon,
-} from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
+import { BuyerlyStatusCircleIcon } from '@/icons/BuyerlyIcons';
 import { getAdsManagerColumns } from './tableColumns';
 import {
   eligibleMetaAccounts,
@@ -302,9 +298,9 @@ const PHONE_TABLE_QUERY = '(max-width: 640px)';
 
 function facetIcon(fieldId: string, option: FilterOption): React.ReactNode {
   if (fieldId === 'rule') {
-    return <BuyerlyBoltIcon size={14} style={{ color: option.value === 'no-rule' ? 'var(--text-muted)' : option.color }} />;
+    return <BuyerlyIcon name="rules" size={14} style={{ color: option.value === 'no-rule' ? 'var(--text-muted)' : option.color }} />;
   }
-  if (fieldId === 'account') return <BuyerlyProjectIcon size={14} className={stylex.props(styles.accountIcon).className} />;
+  if (fieldId === 'account') return <BuyerlyIcon name="ad-accounts" size={14} className={stylex.props(styles.accountIcon).className} />;
   if (fieldId === 'campaign') return <span className="details-facets-dot" style={{ backgroundColor: 'var(--text-tertiary)' }} />;
   if (option.value === 'active' || option.value === 'paused') return <BuyerlyStatusCircleIcon status={option.value} size={14} />;
   return <span className="details-facets-dot" style={{ backgroundColor: option.color }} />;
@@ -562,7 +558,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
       .map(sub => sub.label ? (
         <BuyerlyDataListGroup key={sub.id} subGroup title={sub.label} count={sub.rows.length}
           dotColor="var(--text-tertiary)"
-          icon={rowsField === 'account' ? <BuyerlyProjectIcon size={14} /> : optionIcon(fields.find(field => field.id === rowsField), sub.id)}
+          icon={rowsField === 'account' ? <BuyerlyIcon name="ad-accounts" size={14} /> : optionIcon(fields.find(field => field.id === rowsField), sub.id)}
           isCollapsed={Boolean(collapsedGroups[subGroupKey(group, sub)])}
           onToggleCollapse={() => toggleCollapsed(subGroupKey(group, sub))}>
           {sub.rows.map(render)}
@@ -575,7 +571,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
         {group.label ? (
           <BuyerlyDataListGroup title={group.label} count={group.rows.length}
             dotColor="var(--text-tertiary)"
-            icon={groupingField === 'account' ? <BuyerlyProjectIcon size={14} /> : undefined}
+            icon={groupingField === 'account' ? <BuyerlyIcon name="ad-accounts" size={14} /> : undefined}
             isCollapsed={Boolean(collapsedGroups[groupKey(group)])}
             onToggleCollapse={() => toggleCollapsed(groupKey(group))}>
             {renderSubGroups(group, fields, render)}
@@ -708,11 +704,11 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
   const selectedAccountIds = [...new Set(selectedRows.map((row) => row.accountId ?? ''))];
   const ruleAccountId = selectedAccountIds.length === 1 ? selectedAccountIds[0] : '';
   const selectionActions: SelectionAction[] = [
-    { id: 'pause', label: 'Pause delivery', shortcut: 'p', icon: <Pause size={14} />, run: () => void runBulkDelivery('paused') },
-    { id: 'resume', label: 'Resume delivery', shortcut: 'r', icon: <Play size={14} />, run: () => void runBulkDelivery('active') },
+    { id: 'pause', label: 'Pause delivery', shortcut: 'p', icon: <BuyerlyIcon name="pause" size={14} />, run: () => void runBulkDelivery('paused') },
+    { id: 'resume', label: 'Resume delivery', shortcut: 'r', icon: <BuyerlyIcon name="play" size={14} />, run: () => void runBulkDelivery('active') },
     // Meta's "Apply rule to" the selected campaigns or ad sets; ads take no rules.
     ...(campaignFilterTab !== 'ads' && attachmentsLoadState === 'ready' && ruleAccountId
-      ? [{ id: 'rule', label: 'Apply rule…', shortcut: 'a', icon: <BuyerlyBoltIcon size={14} />, run: () => setIsBulkRulePickerOpen(true) }]
+      ? [{ id: 'rule', label: 'Apply rule…', shortcut: 'a', icon: <BuyerlyIcon name="rules" size={14} />, run: () => setIsBulkRulePickerOpen(true) }]
       : []),
   ];
   const visibleRowIds = (
@@ -758,15 +754,15 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
     const link = `${window.location.origin}${entityPath}/${campaignFilterTab}/${encodeURIComponent(row.id)}`;
     return [
       ...(controllable && targets.some((target) => statusOf(target) === 'active')
-        ? [{ label: 'Pause delivery', icon: <Pause size={16} strokeWidth={1.75} />, shortcut: ['P'], onSelect: () => void runBulkDelivery('paused', ids) }]
+        ? [{ label: 'Pause delivery', icon: <BuyerlyIcon name="pause" size={16} />, shortcut: ['P'], onSelect: () => void runBulkDelivery('paused', ids) }]
         : []),
       ...(controllable && targets.some((target) => statusOf(target) === 'paused')
-        ? [{ label: 'Resume delivery', icon: <Play size={16} strokeWidth={1.75} />, shortcut: ['R'], onSelect: () => void runBulkDelivery('active', ids) }]
+        ? [{ label: 'Resume delivery', icon: <BuyerlyIcon name="play" size={16} />, shortcut: ['R'], onSelect: () => void runBulkDelivery('active', ids) }]
         : []),
       ...(campaignFilterTab !== 'ads' && attachmentsLoadState === 'ready' && accounts.size === 1 && !accounts.has('')
         ? [{
           label: 'Apply rule…',
-          icon: <BuyerlyBoltIcon size={16} />,
+          icon: <BuyerlyIcon name="rules" size={16} />,
           shortcut: ['A'],
           onSelect: () => {
             setRuleMenuTargets(ids);
@@ -777,11 +773,11 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
       'separator',
       {
         label: 'Copy',
-        icon: <BuyerlyClipboardIcon size={16} />,
+        icon: <BuyerlyIcon name="copy" size={16} />,
         items: [
-          { label: 'Copy ID', icon: <BuyerlyCopyIdIcon size={16} />, onSelect: () => void copy(row.identifier || row.id, `${noun[0].toUpperCase()}${noun.slice(1)} ID`) },
-          { label: 'Copy URL', icon: <BuyerlyCopyUrlIcon size={16} />, onSelect: () => void copy(link, 'URL') },
-          { label: 'Copy name', icon: <BuyerlyCopyTitleIcon size={16} />, onSelect: () => void copy(row.name, 'Name') },
+          { label: 'Copy ID', icon: <BuyerlyIcon name="copy-id" size={16} />, onSelect: () => void copy(row.identifier || row.id, `${noun[0].toUpperCase()}${noun.slice(1)} ID`) },
+          { label: 'Copy URL', icon: <BuyerlyIcon name="link" size={16} />, onSelect: () => void copy(link, 'URL') },
+          { label: 'Copy name', icon: <BuyerlyIcon name="copy-title" size={16} />, onSelect: () => void copy(row.name, 'Name') },
         ],
       },
     ];

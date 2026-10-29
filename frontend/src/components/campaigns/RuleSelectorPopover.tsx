@@ -1,7 +1,8 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import * as stylex from '@stylexjs/stylex';
-import { BuyerlyBoltIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
+import { BuyerlyCheckGlyph } from '@/icons/BuyerlyIcons';
 import type { RuleExecutionLevel, RuleScope } from '@/lib/rules';
 import { explainRulePrecedence } from '@/lib/rulePrecedence';
 import type { PrecedenceLine } from '@/lib/rulePrecedence';
@@ -534,9 +535,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
         <div {...stylex.props(pickerStyles.checkSlot)}>
           <div {...stylex.props(pickerStyles.check, (isSelected || isMixed) && pickerStyles.checkSelected)}>
             {isSelected && (
-              <svg width="10" height="9" viewBox="0 0 10 8" fill="currentColor" aria-hidden="true">
-                <path d="M3.46975 5.70757L1.88358 4.1225C1.65832 3.8974 1.29423 3.8974 1.06897 4.1225C0.843675 4.34765 0.843675 4.7116 1.06897 4.93674L3.0648 6.93117C3.29006 7.15628 3.65414 7.15628 3.8794 6.93117L8.93103 1.88306C9.15633 1.65792 9.15633 1.29397 8.93103 1.06883C8.70578 0.843736 8.34172 0.843724 8.11646 1.06879L3.46975 5.70757Z" />
-              </svg>
+              <BuyerlyCheckGlyph />
             )}
             {isMixed && (
               <svg width="8" height="2" viewBox="0 0 8 2" fill="currentColor" aria-hidden="true">
@@ -548,7 +547,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
 
         <div {...stylex.props(pickerStyles.label)}>
           <div {...stylex.props(styles.boltSlot)}>
-            <BuyerlyBoltIcon size={13} className={stylex.props(styles.bolt).className} />
+            <BuyerlyIcon name="rules" size={13} className={stylex.props(styles.bolt).className} />
           </div>
           <span {...stylex.props(pickerStyles.name)}>
             {rule.name}
@@ -664,9 +663,7 @@ export const RuleSelectorPopover: React.FC<RuleSelectorPopoverProps> = ({
           }}
           {...stylex.props(styles.newRule)}
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" {...stylex.props(styles.newRuleIcon)}>
-            <path d="M8.75 4a.75.75 0 0 0-1.5 0v3.25H4a.75.75 0 0 0 0 1.5h3.25V12a.75.75 0 0 0 1.5 0V8.75H12a.75.75 0 0 0 0-1.5H8.75V4Z" />
-          </svg>
+          <BuyerlyIcon name="add" size={14} {...stylex.props(styles.newRuleIcon)} />
           New rule…
         </button>
       )}

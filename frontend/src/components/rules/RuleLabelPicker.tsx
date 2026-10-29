@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import * as stylex from '@stylexjs/stylex';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
+import { BuyerlyCheckGlyph } from '@/icons/BuyerlyIcons';
 import { colors } from '@/styles/tokens.stylex';
 import { useRulesStore, type RuleLabel } from '@/models/rulesStore';
 
@@ -26,8 +28,6 @@ const MARGIN = 8;
 
 type Entry = { kind: 'label'; label: RuleLabel } | { kind: 'create'; name: string };
 
-const CHECK_PATH =
-  'M3.46975 5.70757L1.88358 4.1225C1.65832 3.8974 1.29423 3.8974 1.06897 4.1225C0.843675 4.34765 0.843675 4.7116 1.06897 4.93674L3.0648 6.93117C3.29006 7.15628 3.65414 7.15628 3.8794 6.93117L8.93103 1.88306C9.15633 1.65792 9.15633 1.29397 8.93103 1.06883C8.70578 0.843736 8.34172 0.843724 8.11646 1.06879L3.46975 5.70757Z';
 
 const truncate = {
   overflow: 'hidden',
@@ -425,7 +425,7 @@ export const RuleLabelPicker: React.FC<RuleLabelPickerProps> = ({
             <span {...stylex.props(styles.boxFrame)}>
               <span {...stylex.props(styles.box, (on || dash) && styles.boxOn)}>
                 {on && (
-                  <svg width="10" height="9" viewBox="0 0 10 8" fill="currentColor" aria-hidden="true"><path d={CHECK_PATH} /></svg>
+                  <BuyerlyCheckGlyph />
                 )}
                 {dash && <span {...stylex.props(styles.dash)} />}
               </span>
@@ -439,9 +439,7 @@ export const RuleLabelPicker: React.FC<RuleLabelPickerProps> = ({
           </>
         ) : (
           <span {...stylex.props(styles.create)}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" {...stylex.props(styles.createIcon)}>
-              <path d="M8.75 4a.75.75 0 0 0-1.5 0v3.25H4a.75.75 0 0 0 0 1.5h3.25V12a.75.75 0 0 0 1.5 0V8.75H12a.75.75 0 0 0 0-1.5H8.75V4Z" />
-            </svg>
+            <BuyerlyIcon name="add" size={14} {...stylex.props(styles.createIcon)} />
             <span {...stylex.props(styles.createText)}>
               Create new label: <span {...stylex.props(styles.createName)}>"{entry.name}"</span>
             </span>

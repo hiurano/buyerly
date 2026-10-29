@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { fetchWorkspaceMembers } from '@/models/queries';
 import type { Workspace } from '@/lib/types';
-import { BuyerlyCheckIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
+import { BuyerlyChevronGlyph } from '@/icons/BuyerlyIcons';
 import {
   TEAM_FILTER_LABELS,
   notifyTeamsChanged,
@@ -143,9 +144,7 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
       <div className="settings-list-toolbar">
         <label className="settings-list-search">
           <span {...stylex.props(styles.srOnly)}>Filter by name…</span>
-          <svg viewBox="0 0 16 16" aria-hidden="true" className="settings-list-search-icon">
-            <path d="M7 1.5a5.5 5.5 0 0 1 4.38 8.82l3.15 3.15a.75.75 0 1 1-1.06 1.06l-3.15-3.15A5.5 5.5 0 1 1 7 1.5Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
-          </svg>
+          <BuyerlyIcon name="search" className="settings-list-search-icon" />
           <input
             type="search"
             value={query}
@@ -158,9 +157,7 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
           <DropdownMenuTrigger asChild>
             <button type="button" aria-label={`Show teams: ${TEAM_FILTER_LABELS[filter]}`} className="settings-list-select">
               {TEAM_FILTER_LABELS[filter]}
-              <svg width="10" height="5" viewBox="0 0 9 5" aria-hidden="true">
-                <path d="M1.915.557a.667.667 0 0 0-.943.943l2.862 2.862a.942.942 0 0 0 1.333 0L8.028 1.5a.667.667 0 0 0-.943-.943L4.5 3.14 1.915.557Z" />
-              </svg>
+              <BuyerlyChevronGlyph />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" sideOffset={4}>
@@ -169,7 +166,7 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
               {(Object.keys(TEAM_FILTER_LABELS) as TeamFilter[]).map((key) => (
                 <DropdownMenuRadioItem key={key} value={key}>
                   <span {...stylex.props(styles.truncate)}>{TEAM_FILTER_LABELS[key]}</span>
-                  {filter === key && <BuyerlyCheckIcon size={14} />}
+                  {filter === key && <BuyerlyIcon name="check" size={14} />}
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>

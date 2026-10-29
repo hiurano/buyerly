@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { observer } from 'mobx-react-lite';
-import { ArrowLeft } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import {
   auditEventPaths,
@@ -43,15 +42,8 @@ import { InboxDisplayOptionsPopover } from './InboxDisplayOptionsPopover';
 import { SnoozeCalendarDialog } from './SnoozeCalendarDialog';
 import { SNOOZE_SEARCH_HINT, SnoozePalette } from './SnoozePalette';
 import { usePageCommands } from '@/components/command/pageCommands';
-import {
-  BuyerlyLogoAvatar,
-  BuyerlyClockOutlineIcon,
-  BuyerlyDotsIcon,
-  BuyerlyEmptyInboxIllustration,
-  BuyerlyInboxDeleteIcon,
-  BuyerlyInboxUnreadIcon,
-  BuyerlySlidersIcon,
-} from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
+import { BuyerlyLogoAvatar } from '@/icons/BuyerlyIcons';
 import { Button } from '@/ui/Button';
 import { DataState } from '@/ui/DataState';
 import {
@@ -191,6 +183,9 @@ const styles = stylex.create({
     flexDirection: 'column',
     gap: 20,
     textAlign: 'center',
+  },
+  emptyIcon: {
+    color: colors['--text-tertiary'],
   },
   emptyText: {
     fontSize: 13,
@@ -797,8 +792,8 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
   usePageCommands({
     heading: 'Notifications',
     commands: [
-      { id: 'delete-all-notifications', label: 'Delete all notifications', icon: <BuyerlyInboxDeleteIcon size={16} />, run: () => void deleteAll(false) },
-      { id: 'delete-read-notifications', label: 'Delete all read notifications', icon: <BuyerlyInboxDeleteIcon size={16} />, shortcut: 'Shift ⌫', run: () => void deleteAll(true) },
+      { id: 'delete-all-notifications', label: 'Delete all notifications', icon: <BuyerlyIcon name="delete" size={16} />, run: () => void deleteAll(false) },
+      { id: 'delete-read-notifications', label: 'Delete all read notifications', icon: <BuyerlyIcon name="delete" size={16} />, shortcut: 'Shift ⌫', run: () => void deleteAll(true) },
     ],
   });
 
@@ -1003,19 +998,19 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <BuyerlyToolbarButton placement="header" aria-label="Notification actions">
-                <BuyerlyDotsIcon size={14} />
+                <BuyerlyIcon name="more" size={14} />
               </BuyerlyToolbarButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent style={{ width: '184px' }}>
               <DropdownMenuItem onSelect={() => void deleteAll(false)}>
                 <span {...stylex.props(styles.menuLabel)}>
-                  <BuyerlyInboxDeleteIcon size={16} />
+                  <BuyerlyIcon name="delete" size={16} />
                   Delete all
                 </span>
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => void deleteAll(true)}>
                 <span {...stylex.props(styles.menuLabel)}>
-                  <BuyerlyInboxDeleteIcon size={16} />
+                  <BuyerlyIcon name="delete" size={16} />
                   Delete all read
                 </span>
                 <MenuKey>⇧ ⌫</MenuKey>
@@ -1028,7 +1023,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                 }}
               >
                 <span {...stylex.props(styles.menuLabel)}>
-                  <BuyerlySlidersIcon size={16} />
+                  <BuyerlyIcon name="display" size={16} />
                   Go to settings
                 </span>
               </DropdownMenuItem>
@@ -1043,7 +1038,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
               aria-pressed={inboxDisplay.unreadOnly}
               onClick={() => setInboxDisplay({ unreadOnly: !inboxDisplay.unreadOnly })}
             >
-              <BuyerlyInboxUnreadIcon size={16} />
+              <BuyerlyIcon name="unread" size={16} />
             </BuyerlyToolbarButton>
           </Tooltip>
           <BuyerlyFilterButton
@@ -1141,7 +1136,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                   {...withClassName(stylex.props(styles.back), 'buyerly-icon-btn buyerly-header-target')}
                   aria-label="Back to Inbox"
                 >
-                  <ArrowLeft size={16} aria-hidden="true" />
+                  <BuyerlyIcon name="arrow-left" size={16} aria-hidden="true" />
                 </button>
                 <span {...stylex.props(styles.notificationName)}>
                   {auditEventTitle(selectedItem)} · {auditEventTarget(selectedItem)}
@@ -1155,7 +1150,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                     aria-label="Snooze notification"
                     onClick={() => setSnoozePalette('button')}
                   >
-                    <BuyerlyClockOutlineIcon size={16} />
+                    <BuyerlyIcon name="snooze" size={16} />
                   </BuyerlyToolbarButton>
                 </Tooltip>
                 <SnoozePalette
@@ -1174,7 +1169,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                     aria-label="Delete notification"
                     onClick={() => deleteItem(selectedItem)}
                   >
-                    <BuyerlyInboxDeleteIcon size={16} />
+                    <BuyerlyIcon name="delete" size={16} />
                   </BuyerlyToolbarButton>
                 </Tooltip>
               </div>
@@ -1262,7 +1257,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
           </>
         ) : (
           <div {...stylex.props(styles.nothingSelected)}>
-            <BuyerlyEmptyInboxIllustration />
+            <BuyerlyIcon name="inbox-empty" size={96} {...stylex.props(styles.emptyIcon)} />
             <p {...stylex.props(styles.emptyText)}>
               {inboxUnreadCount > 0 ? unreadLabel : 'No notification selected'}
             </p>

@@ -1,6 +1,6 @@
 import React from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { BuyerlySearchIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 
 const styles = stylex.create({
   /** Read by screen readers only. */
@@ -25,7 +25,7 @@ export const ListSearchField: React.FC<{ value: string; placeholder: string; onC
 }) => (
   <label className="list-search-field">
     <span {...stylex.props(styles.srOnly)}>{placeholder}</span>
-    <BuyerlySearchIcon size={14} aria-hidden="true" className="list-search-field__icon" />
+    <BuyerlyIcon name="search" size={14} aria-hidden="true" className="list-search-field__icon" />
     <input
       type="search"
       value={value}

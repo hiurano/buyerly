@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { BuyerlyDisclosureIcon, BuyerlyDotsIcon, BuyerlyLockIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
+import { BuyerlyDisclosureGlyph } from '@/icons/BuyerlyIcons';
 import { TeamIcon } from '@/components/preferences/TeamIcon';
 import { Tooltip } from '@/ui/Tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
@@ -123,7 +124,7 @@ export const SidebarSection: React.FC<SidebarSectionProps> = ({ id, title, actio
           onClick={toggle}
         >
           <span>{title}</span>
-          <BuyerlyDisclosureIcon size={16} className="sidebar-disclosure" data-open={collapsed ? 'false' : 'true'} />
+          <BuyerlyDisclosureGlyph className="sidebar-disclosure" data-open={collapsed ? 'false' : 'true'} />
         </button>
         {action && (
           <Tooltip content={action.label} side="bottom" sideOffset={6}>
@@ -171,16 +172,16 @@ export const SidebarTeam: React.FC<SidebarTeamProps> = ({ team, workspaceSlug, p
         <button type="button" className="sidebar-team-toggle" aria-expanded={!collapsed} onClick={toggle}>
           <TeamIcon size={14} />
           <span className="sidebar-team-name">{team.name}</span>
-          {team.private && <BuyerlyLockIcon size={12} className="sidebar-team-lock" aria-label="Private team" />}
+          {team.private && <BuyerlyIcon name="lock" size={12} className="sidebar-team-lock" aria-label="Private team" />}
           <span className="sidebar-team-disclosure">
-            <BuyerlyDisclosureIcon size={16} className="sidebar-disclosure" data-open={collapsed ? 'false' : 'true'} />
+            <BuyerlyDisclosureGlyph className="sidebar-disclosure" data-open={collapsed ? 'false' : 'true'} />
           </span>
         </button>
         <div className="sidebar-team-menu">
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
             <DropdownMenuTrigger asChild>
               <button type="button" aria-label="Team menu" className="sidebar-section-action sidebar-team-menu-button">
-                <BuyerlyDotsIcon size={14} />
+                <BuyerlyIcon name="more" size={14} />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" sideOffset={4}>

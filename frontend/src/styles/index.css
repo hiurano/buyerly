@@ -1480,11 +1480,12 @@ html[data-theme='light'] .buyerly-display-property[aria-pressed='true'] {
   padding: 0 10px !important;
 }
 
-.documents-illustration__paper { fill: var(--bg-canvas); }
 .documents-illustration__ink-1 { fill: var(--illustration-ink-1); }
 .documents-illustration__ink-2 { fill: var(--illustration-ink-2); }
 .documents-illustration__ink-3 { fill: var(--illustration-ink-3); }
 .documents-illustration__ink-4 { fill: var(--illustration-ink-4); }
+
+.documents-empty__icon { color: var(--text-tertiary); }
 
 /* One team document: Linear's centered page, a 24px/600 title over a 15px body. */
 .team-document {

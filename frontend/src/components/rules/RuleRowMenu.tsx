@@ -15,7 +15,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from '@/ui/DropdownMenu';
-import { BuyerlyCheckIcon, BuyerlyDotsIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { metaAccountLabel } from '@/components/campaigns/liveCampaigns';
 import { useIsTouchScreen } from '@/lib/useMediaQuery';
 import { formatAccountScope } from '@/lib/rules';
@@ -166,7 +166,7 @@ export const RuleRowMenu: React.FC<RuleRowMenuProps> = ({ rule }) => {
                 </span>
               )}
               {isAttached && (
-                <BuyerlyCheckIcon size={16} {...stylex.props(styles.check)} />
+                <BuyerlyIcon name="check" size={16} {...stylex.props(styles.check)} />
               )}
             </span>
           </DropdownMenuItem>
@@ -183,7 +183,7 @@ export const RuleRowMenu: React.FC<RuleRowMenuProps> = ({ rule }) => {
           aria-label={`Actions for ${rule.name}`}
           {...stylex.props(styles.trigger)}
         >
-          <BuyerlyDotsIcon size={14} />
+          <BuyerlyIcon name="more" size={14} />
         </button>
       </DropdownMenuTrigger>
 

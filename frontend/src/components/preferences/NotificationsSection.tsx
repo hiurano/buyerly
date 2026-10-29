@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   INBOX_KINDS,
   INBOX_KIND_LABELS,
@@ -18,16 +17,7 @@ import { BuyerlyFilterMenu, type FilterMenuMode } from '@/components/filters/Buy
 import type { FilterClause } from '@/components/filters/filterModel';
 import { InboxFilterChip } from '@/components/inbox/InboxFilterBar';
 import { fromMenuClauses, inboxFilterFields, toMenuClause } from '@/components/inbox/inboxFilterFields';
-import {
-  BuyerlyDesktopIcon,
-  BuyerlyDotsIcon,
-  BuyerlyEmailIcon,
-  BuyerlyFilterIcon,
-  BuyerlyPencilIcon,
-  BuyerlyPlusIcon,
-  BuyerlyTrashIcon,
-  TelegramIcon,
-} from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { Button } from '@/ui/Button';
 import {
   DropdownMenu,
@@ -133,7 +123,7 @@ const ChannelRow: React.FC<{
           {status.text}
         </span>
       </span>
-      {onOpen && <ChevronRight size={16} aria-hidden="true" className="preferences-row-chevron" />}
+      {onOpen && <BuyerlyIcon name="chevron-right" size={16} aria-hidden="true" className="preferences-row-chevron" />}
     </>
   );
   return onOpen ? (
@@ -173,7 +163,7 @@ export const NotificationsSection: React.FC<{
         <span className="preferences-row-value">
           {plural(inboxDisplay.priorityKinds.length + inboxDisplay.priorityRules.length, 'type')}
         </span>
-        <ChevronRight size={16} aria-hidden="true" className="preferences-row-chevron" />
+        <BuyerlyIcon name="chevron-right" size={16} aria-hidden="true" className="preferences-row-chevron" />
       </span>
     </>
   );
@@ -223,20 +213,20 @@ export const NotificationsSection: React.FC<{
           {/* Linear lists Desktop first; it is on only in a browser that gets them. */}
           <ChannelRow
             name="Desktop"
-            icon={<BuyerlyDesktopIcon size={16} />}
+            icon={<BuyerlyIcon name="desktop" size={16} />}
             status={channelStatus(desktopHere.subscribed && desktop.enabled, desktop.kinds)}
             onOpen={onOpenDesktop}
           />
           <ChannelRow
             name="Email"
-            icon={<BuyerlyEmailIcon size={16} />}
+            icon={<BuyerlyIcon name="email" size={16} />}
             status={channelStatus(email.enabled, email.kinds)}
             onOpen={onOpenEmail}
           />
           {/* Telegram stands where Linear has Slack: Disabled until a personal account is connected. */}
           <ChannelRow
             name="Telegram"
-            icon={<TelegramIcon size={16} />}
+            icon={<BuyerlyIcon name="telegram" size={16} />}
             status={channelStatus(telegramConnection.connected && telegram.enabled, telegram.kinds)}
             onOpen={onOpenTelegram}
           />
@@ -327,7 +317,7 @@ const ChannelNotificationsSection: React.FC<{
   return (
     <>
       <button type="button" className="preferences-breadcrumb" onClick={onBack}>
-        <ChevronLeft size={14} aria-hidden="true" />
+        <BuyerlyIcon name="chevron-left" size={14} aria-hidden="true" />
         Notifications
       </button>
       <div className="preferences-title-container">
@@ -474,7 +464,7 @@ const AccountCard: React.FC<{ title: string; onOpenConnections: () => void }> = 
       </span>
       <span className="preferences-row-control">
         <span className="preferences-row-value">Connected accounts</span>
-        <ChevronRight size={16} aria-hidden="true" className="preferences-row-chevron" />
+        <BuyerlyIcon name="chevron-right" size={16} aria-hidden="true" className="preferences-row-chevron" />
       </span>
     </button>
   </section>
@@ -517,7 +507,7 @@ export const PriorityNotificationsSection: React.FC<{ onBack: () => void }> = ({
   return (
     <>
       <button type="button" className="preferences-breadcrumb" onClick={onBack}>
-        <ChevronLeft size={14} aria-hidden="true" />
+        <BuyerlyIcon name="chevron-left" size={14} aria-hidden="true" />
         Notifications
       </button>
       <div className="preferences-title-container preferences-title-container--with-note">
@@ -619,7 +609,7 @@ const CustomFilters: React.FC<{
             className="preferences-filter-button"
             onClick={(event) => openMenu('root', event.currentTarget)}
           >
-            <BuyerlyFilterIcon size={14} />
+            <BuyerlyIcon name="filter" size={14} />
             Filter
           </button>
         ) : (
@@ -643,7 +633,7 @@ const CustomFilters: React.FC<{
                 className="preferences-filter-icon-button"
                 onClick={(event) => openMenu('root', event.currentTarget)}
               >
-                <BuyerlyPlusIcon size={14} />
+                <BuyerlyIcon name="add" size={14} />
               </button>
             )}
           </>
@@ -682,7 +672,7 @@ const CustomFilters: React.FC<{
               className="preferences-filter-icon-button"
               onClick={() => startEditing('new')}
             >
-              <BuyerlyPlusIcon size={14} />
+              <BuyerlyIcon name="add" size={14} />
             </button>
           ))}
         </div>
@@ -742,19 +732,19 @@ const SavedFilter: React.FC<{
               aria-label="Custom filter actions"
               className="preferences-filter-icon-button preferences-filter-actions-trigger"
             >
-              <BuyerlyDotsIcon size={14} />
+              <BuyerlyIcon name="more" size={14} />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onSelect={onEdit}>
               <span {...stylex.props(styles.menuItem)}>
-                <BuyerlyPencilIcon size={14} />
+                <BuyerlyIcon name="edit" size={14} />
                 Edit
               </span>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={onDelete}>
               <span {...stylex.props(styles.menuItem)}>
-                <BuyerlyTrashIcon size={14} />
+                <BuyerlyIcon name="delete" size={14} />
                 Delete
               </span>
             </DropdownMenuItem>

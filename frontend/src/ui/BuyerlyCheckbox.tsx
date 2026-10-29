@@ -1,5 +1,6 @@
 import React from 'react';
 import * as stylex from '@stylexjs/stylex';
+import { BuyerlyCheckGlyph } from '@/icons/BuyerlyIcons';
 import { colors } from '@/styles/tokens.stylex';
 import { rowMarker } from '@/ui/markers.stylex';
 import { withClassName } from '@/ui/withClassName';
@@ -138,9 +139,7 @@ export const BuyerlyCheckbox: React.FC<BuyerlyCheckboxProps> = ({
         {/* Linear checkmark, light on the accent fill */}
         {checked && !indeterminate && (
           <div {...stylex.props(styles.check)}>
-            <svg width="10" height="9" viewBox="0 0 10 8" fill="currentColor">
-              <path strokeWidth="0.2" d="M3.46975 5.70757L1.88358 4.1225C1.65832 3.8974 1.29423 3.8974 1.06897 4.1225C0.843675 4.34765 0.843675 4.7116 1.06897 4.93674L3.0648 6.93117C3.29006 7.15628 3.65414 7.15628 3.8794 6.93117L8.93103 1.88306C9.15633 1.65792 9.15633 1.29397 8.93103 1.06883C8.70578 0.843736 8.34172 0.843724 8.11646 1.06879C8.11645 1.0688 8.11643 1.06882 8.11642 1.06883L3.46975 5.70757Z" />
-            </svg>
+            <BuyerlyCheckGlyph />
           </div>
         )}
 

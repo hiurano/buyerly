@@ -12,11 +12,7 @@ import {
   ContextMenuSubContent,
   ContextMenuSeparator,
 } from '@/ui/ContextMenu';
-import {
-  BuyerlyLabelIcon,
-  BuyerlyTrashIcon,
-  BuyerlyCheckIcon,
-} from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { ruleActionTone } from '@/lib/rules';
 import type { RuleActionTone } from '@/lib/rules';
 import { ruleStatesTitle } from './RuleStatesDialog';
@@ -287,7 +283,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({
         <ContextMenuSub>
           <ContextMenuSubTrigger>
             <div {...stylex.props(styles.menuLine)}>
-              <BuyerlyLabelIcon size={16} {...stylex.props(styles.menuIcon)} />
+              <BuyerlyIcon name="label" size={16} {...stylex.props(styles.menuIcon)} />
               <span>Labels</span>
             </div>
             <div {...stylex.props(styles.menuHint)}>
@@ -318,7 +314,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({
                       <span {...stylex.props(styles.labelDot)} style={{ backgroundColor: label.color }} />
                       <span {...stylex.props(styles.labelName)}>{label.name}</span>
                     </div>
-                    {on && <BuyerlyCheckIcon size={16} {...stylex.props(styles.check)} />}
+                    {on && <BuyerlyIcon name="check" size={16} {...stylex.props(styles.check)} />}
                   </ContextMenuItem>
                 );
               })
@@ -342,7 +338,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({
           onClick={() => requestDeletion('rule', [rule.id])}
         >
           <div {...stylex.props(styles.menuLine)}>
-            <BuyerlyTrashIcon size={16} {...stylex.props(styles.deleteIcon)} />
+            <BuyerlyIcon name="delete" size={16} {...stylex.props(styles.deleteIcon)} />
             <span>Delete</span>
           </div>
           <div {...stylex.props(styles.deleteKeys)}>

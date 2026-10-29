@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { Check, ChevronLeft } from 'lucide-react';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { apiRequest } from '@/lib/api';
 import { acceptInvite } from '@/lib/workspaces';
 import type { InviteInfo, LoginResult, SessionUser } from '@/lib/types';
@@ -183,7 +183,7 @@ export const InviteView: React.FC<InviteViewProps> = ({
       {user && (
         <>
           <button className="buyerly-invite-back" type="button" onClick={onBack}>
-            <ChevronLeft size={14} strokeWidth={2} aria-hidden="true" />
+            <BuyerlyIcon name="chevron-left" size={14} aria-hidden="true" />
             Back to Buyerly
           </button>
           {/* Linear's account switcher; "Add an account" keeps this account logged in (#231). */}
@@ -200,7 +200,7 @@ export const InviteView: React.FC<InviteViewProps> = ({
               </DropdownMenuLabel>
               <DropdownMenuItem>
                 <span {...stylex.props(styles.truncate)}>{user.email || user.username}</span>
-                <Check size={14} strokeWidth={2} aria-hidden="true" />
+                <BuyerlyIcon name="check" size={14} aria-hidden="true" />
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={onAddAccount}>Add an account</DropdownMenuItem>
               <DropdownMenuSeparator />

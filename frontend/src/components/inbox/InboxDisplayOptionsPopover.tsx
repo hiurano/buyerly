@@ -8,7 +8,7 @@ import {
   type InboxKind,
   type InboxOrdering,
 } from '@/lib/inbox';
-import { BuyerlyPlusIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { BuyerlyMultiSelect, BuyerlySelect } from '@/ui/BuyerlyDisplayOptions';
 import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { useMenuExit } from '@/ui/useMenuExit';
@@ -105,7 +105,7 @@ export const InboxDisplayOptionsPopover: React.FC<InboxDisplayOptionsPopoverProp
                   label: customFilters > 0
                     ? `${customFilters} custom filter${customFilters === 1 ? '' : 's'}`
                     : 'Add custom filters',
-                  icon: <BuyerlyPlusIcon size={14} />,
+                  icon: <BuyerlyIcon name="add" size={14} />,
                   // Linear opens Settings → Notifications → Priority notifications.
                   onSelect: () => {
                     onClose();

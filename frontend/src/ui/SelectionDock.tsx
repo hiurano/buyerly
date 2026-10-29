@@ -1,7 +1,7 @@
 import React from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
-import { BuyerlyCommandIcon, BuyerlyCloseIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { Tooltip } from '@/ui/Tooltip';
 import { withClassName } from '@/ui/withClassName';
 
@@ -133,7 +133,7 @@ export const SelectionDock: React.FC<SelectionDockProps> = ({ count, onOpenActio
             {...stylex.props(styles.actions)}
           >
             <span {...stylex.props(styles.actionsIcon)} aria-hidden="true">
-              <BuyerlyCommandIcon size={14} />
+              <BuyerlyIcon name="command" size={14} />
             </span>
             Actions
           </button>
@@ -146,7 +146,7 @@ export const SelectionDock: React.FC<SelectionDockProps> = ({ count, onOpenActio
             onClick={onClear}
             {...stylex.props(styles.clear)}
           >
-            <BuyerlyCloseIcon size={12} />
+            <BuyerlyIcon name="close" size={12} />
           </button>
         </Tooltip>
       </div>

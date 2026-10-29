@@ -4,7 +4,7 @@ import { BuyerlyCheckbox } from '@/ui/BuyerlyCheckbox';
 import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { BuyerlyDataMetricCell } from '@/ui/BuyerlyDataList';
 import type { DeliveryControl } from '@/lib/delivery';
-import { BuyerlyProjectIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { findMetric, type AdsManagerMetrics } from './adsManagerMetrics';
 import { formatMetric } from './liveCampaigns';
 import { colors } from '@/styles/tokens.stylex';
@@ -140,7 +140,7 @@ const EntityTextCell: React.FC<{ text: string; muted?: boolean }> = ({ text, mut
 const EntityAccountCell: React.FC<{ name: string }> = ({ name }) => (
   <div {...stylex.props(styles.account)} title={name || undefined}>
     <span {...stylex.props(styles.accountIcon)} aria-hidden="true">
-      <BuyerlyProjectIcon size={12} />
+      <BuyerlyIcon name="ad-accounts" size={12} />
     </span>
     <span {...stylex.props(styles.accountName)}>{name || '—'}</span>
   </div>

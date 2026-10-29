@@ -14,6 +14,8 @@ import { TeamsSection } from './TeamsSection';
 import { NewTeamSection } from './NewTeamSection';
 import { TeamSettingsSection } from './TeamSettingsSection';
 import { TeamIcon } from './TeamIcon';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
+import { BuyerlyChevronGlyph } from '@/icons/BuyerlyIcons';
 import { useTeams } from '@/lib/teams';
 import {
   DesktopNotificationsSection,
@@ -143,9 +145,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
             onClick={openLastAppPage}
           >
             <span className="preferences-back-icon" aria-hidden="true">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M10.53033 11.4697C10.82322 11.7626 10.82322 12.2374 10.53033 12.5303C10.23744 12.8232 9.76256 12.8232 9.46967 12.5303L5.46967 8.53033C5.1793 8.23999 5.1764 7.77014 5.4632 7.47624L9.36581 3.47624C9.65508 3.17976 10.12991 3.17391 10.42639 3.46318C10.72287 3.75244 10.72872 4.22728 10.43946 4.52376L7.05417 7.99351L10.53033 11.4697Z" />
-              </svg>
+              <BuyerlyIcon name="chevron-left" size={14} />
             </span>
             <span>Back to app</span>
           </button>
@@ -166,13 +166,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
               className="preferences-search-input"
             />
             <span className="preferences-search-icon" aria-hidden="true">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M7 2C9.76142 2 12 4.23858 12 7C12 8.11012 11.6375 9.13519 11.0254 9.96484L13.7803 12.7197L13.832 12.7764C14.0723 13.0709 14.0549 13.5057 13.7803 13.7803C13.5057 14.0549 13.0709 14.0723 12.7764 13.832L12.7197 13.7803L9.96484 11.0254C9.13519 11.6375 8.11012 12 7 12C4.23858 12 2 9.76142 2 7C2 4.23858 4.23858 2 7 2ZM7 3.5C5.067 3.5 3.5 5.067 3.5 7C3.5 8.933 5.067 10.5 7 10.5C8.933 10.5 10.5 8.933 10.5 7C10.5 5.067 8.933 3.5 7 3.5Z"
-                />
-              </svg>
+              <BuyerlyIcon name="search" size={16} />
             </span>
           </form>
         </div>
@@ -324,9 +318,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                   openSettings('new-team');
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className="preferences-nav-icon">
-                  <path d="M8 2.75a.75.75 0 0 1 .75.75v3.75h3.75a.75.75 0 0 1 0 1.5H8.75v3.75a.75.75 0 0 1-1.5 0V8.75H3.5a.75.75 0 0 1 0-1.5h3.75V3.5A.75.75 0 0 1 8 2.75Z" />
-                </svg>
+                <BuyerlyIcon name="add" size={16} className="preferences-nav-icon" />
                 <span className="preferences-nav-label">Create a team</span>
               </a>
             </div>
@@ -351,9 +343,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                 className="preferences-small-header-link"
                 onClick={openLastAppPage}
               >
-                <svg width="7" height="12" viewBox="0 0 11 18" fill="currentColor" aria-hidden="true">
-                  <path d="M3.68293 8.63202L3.30966 8.99195L3.68293 9.35188L10.1643 15.6015C10.6051 16.0265 10.6028 16.7325 10.162 17.1712C9.70399 17.6104 8.96011 17.6096 8.5031 17.1689L0.83567 9.77564C0.388109 9.34408 0.388109 8.65592 0.83567 8.22436L8.5031 0.83107C8.96089 0.389643 9.70653 0.389643 10.1643 0.83107C10.6119 1.26263 10.6119 1.95079 10.1643 2.38235L3.68293 8.63202Z" />
-                </svg>
+                <BuyerlyChevronGlyph size={12} direction="right" />
                 <span>Settings</span>
               </button>
             </header>
@@ -471,9 +461,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                         </span>
                       </span>
                       <span className="preferences-combobox-chevron" aria-hidden="true">
-                        <svg width="9" height="5" viewBox="0 0 9 5" fill="currentColor">
-                          <path d="M1.915.557a.667.667 0 0 0-.943.943l2.862 2.862a.942.942 0 0 0 1.333 0L8.028 1.5a.667.667 0 0 0-.943-.943L4.5 3.14 1.915.557Z" />
-                        </svg>
+                        <BuyerlyChevronGlyph />
                       </span>
                     </button>
 
@@ -507,16 +495,7 @@ export const PreferencesView: React.FC<PreferencesViewProps> = ({ user, workspac
                                 {option.label}
                               </span>
                               {isSelected && (
-                                <svg
-                                  className="preferences-dropdown-check"
-                                  width="14"
-                                  height="14"
-                                  viewBox="0 0 16 16"
-                                  fill="currentColor"
-                                  aria-hidden="true"
-                                >
-                                  <path d="M13.53 4.53a.75.75 0 0 0-1.06-1.06L6.5 9.44 3.53 6.47a.75.75 0 0 0-1.06 1.06l3.5 3.5a.75.75 0 0 0 1.06 0l6.5-6.5Z" />
-                                </svg>
+                                <BuyerlyIcon name="check" size={14} className="preferences-dropdown-check" />
                               )}
                             </button>
                           );

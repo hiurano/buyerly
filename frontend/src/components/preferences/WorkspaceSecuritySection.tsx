@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { changeInviteLink, fetchInviteLink, type InviteLink } from '@/lib/workspaces';
 import type { Workspace } from '@/lib/types';
 import { Button } from '@/ui/Button';
@@ -8,12 +9,9 @@ import { Tooltip } from '@/ui/Tooltip';
 import { toast } from '@/ui/toast';
 import { errorMessage } from './MemberDialogs';
 
-/** Linear's ResetIcon: a circular arrow around a dot. */
+/** Reset to default: a circular arrow, where Linear has its ResetIcon. */
 const ResetIcon: React.FC = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-    <path d="M14.1538 8.02559C14.1538 10.8044 12.1559 13.111 9.5346 13.5542C9.03176 13.6392 8.61539 14.0493 8.61539 14.5653C8.61539 15.0812 9.03073 15.5056 9.53663 15.4419C13.1803 14.983 16 11.8376 16 8.02559C16 3.89787 12.6938 0.551697 8.61539 0.551697C4.53697 0.551697 1.23077 3.89787 1.23077 8.02559H0.615385C0.391677 8.02559 0.18559 8.14846 0.0771433 8.34649C-0.0313032 8.54452 -0.0250251 8.78652 0.0935398 8.97851L1.632 11.4698C1.74446 11.6519 1.94167 11.7625 2.15385 11.7625C2.36602 11.7625 2.56324 11.6519 2.67569 11.4698L4.21415 8.97851C4.33272 8.78652 4.339 8.54452 4.23055 8.34649C4.1221 8.14846 3.91602 8.02559 3.69231 8.02559H3.07692C3.07692 4.9298 5.55658 2.42017 8.61539 2.42017C11.6742 2.42017 14.1538 4.9298 14.1538 8.02559Z" />
-    <path d="M8.61539 10.5169C9.97486 10.5169 11.0769 9.4015 11.0769 8.02559C11.0769 6.64969 9.97486 5.53429 8.61539 5.53429C7.25591 5.53429 6.15385 6.64969 6.15385 8.02559C6.15385 9.4015 7.25591 10.5169 8.61539 10.5169Z" />
-  </svg>
+  <BuyerlyIcon name="reset" size={14} />
 );
 
 /** The server's link may be a path when no public address is configured. */

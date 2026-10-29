@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, X } from 'lucide-react';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
@@ -34,7 +33,8 @@ import { BuyerlyFilterButton, BuyerlyFilterMenu, type FilterMenuMode } from '@/c
 import type { FilterClause, FilterFieldDefinition } from '@/components/filters/filterModel';
 import { InboxFilterBar } from '@/components/inbox/InboxFilterBar';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
-import { BuyerlyProjectIcon, BuyerlySearchIcon, BuyerlyStatusCircleIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
+import { BuyerlyStatusCircleIcon } from '@/icons/BuyerlyIcons';
 import { BuyerlySelect } from '@/ui/BuyerlyDisplayOptions';
 import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { BuyerlyTabs } from '@/ui/BuyerlyTabs';
@@ -598,7 +598,7 @@ function highlight(name: string, query: string): React.ReactNode {
 
 /** A result's mark: its delivery or run state, or a cube for an ad account. */
 export const StatusMark: React.FC<{ result: SearchResult }> = ({ result }) => {
-  if (result.kind === 'account') return <BuyerlyProjectIcon size={14} {...stylex.props(styles.tertiary)} />;
+  if (result.kind === 'account') return <BuyerlyIcon name="ad-accounts" size={14} {...stylex.props(styles.tertiary)} />;
   const status = searchStatusOf(result);
   if (status === 'active' || status === 'paused') return <BuyerlyStatusCircleIcon status={status} size={14} />;
   return (
@@ -959,7 +959,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, query: addres
                     onClick={() => runSearch(query)}
                     {...stylex.props(styles.recentRow)}
                   >
-                    <span {...stylex.props(styles.fixed, styles.tertiary)} aria-hidden="true"><BuyerlySearchIcon size={14} /></span>
+                    <span {...stylex.props(styles.fixed, styles.tertiary)} aria-hidden="true"><BuyerlyIcon name="search" size={14} /></span>
                     <span {...stylex.props(styles.truncate)}>{query}</span>
                   </button>
                 </li>
@@ -1066,7 +1066,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, query: addres
               runSearch(draft);
             }}
           >
-            <span {...stylex.props(styles.fixed, styles.tertiary)} aria-hidden="true"><BuyerlySearchIcon size={16} /></span>
+            <span {...stylex.props(styles.fixed, styles.tertiary)} aria-hidden="true"><BuyerlyIcon name="search" size={16} /></span>
             <input
               ref={inputRef}
               data-search-page-input=""
@@ -1097,7 +1097,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, query: addres
                   inputRef.current?.focus();
                 }}
               >
-                <X size={14} strokeWidth={1.8} aria-hidden="true" />
+                <BuyerlyIcon name="close" size={14} aria-hidden="true" />
               </BuyerlyToolbarButton>
             )}
           </form>
@@ -1178,7 +1178,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, query: addres
           <header {...stylex.props(styles.header, styles.previewHeader)}>
             <div {...stylex.props(styles.previewTitle)}>
               <button type="button" onClick={() => setPreviewOpen(false)} {...withClassName(stylex.props(styles.back), 'buyerly-icon-btn')} aria-label="Back to results">
-                <ArrowLeft size={16} aria-hidden="true" />
+                <BuyerlyIcon name="arrow-left" size={16} aria-hidden="true" />
               </button>
               <span {...stylex.props(styles.mark)} aria-hidden="true"><StatusMark result={preview} /></span>
               <span {...stylex.props(styles.previewName)}>{preview.name}</span>
@@ -1193,7 +1193,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, query: addres
               </button>
               <Tooltip content="Close preview" shortcut="Esc">
                 <BuyerlyToolbarButton placement="header" aria-label="Close preview" onClick={() => setPreviewOpen(false)}>
-                  <X size={14} strokeWidth={1.8} aria-hidden="true" />
+                  <BuyerlyIcon name="close" size={14} aria-hidden="true" />
                 </BuyerlyToolbarButton>
               </Tooltip>
             </div>

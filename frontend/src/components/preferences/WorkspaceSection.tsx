@@ -5,7 +5,7 @@ import { apiRequest } from '@/lib/api';
 import { deleteWorkspace, updateWorkspace } from '@/lib/workspaces';
 import type { Workspace } from '@/lib/types';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
-import { BuyerlyPencilIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { Button } from '@/ui/Button';
 import { FormCheckbox } from '@/ui/FormCheckbox';
 import { Input } from '@/ui/Input';
@@ -160,12 +160,8 @@ export const WorkspaceSection: React.FC<WorkspaceSectionProps> = ({ workspace, o
               >
                 <WorkspaceAvatar workspace={workspace} size="regular" px={32} />
                 <span className="preferences-workspace-logo-overlay" aria-hidden="true">
-                  {/* Linear's brush over the logo on hover. */}
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M10.1805 3.34195L4.14166 9.416C5.32948 9.77021 6.29238 10.6629 6.74008 11.8184L12.6877 5.8425C11.6642 5.22123 10.8043 4.36352 10.1805 3.34195Z" />
-                    <path d="M13.7391 4.71631C14.1575 4.02948 14.0727 3.11738 13.4846 2.5219C12.8908 1.92072 11.9784 1.83892 11.298 2.27649C11.8547 3.31132 12.7037 4.15999 13.7391 4.71631Z" />
-                    <path d="M3.03104 10.7502C4.30296 10.7658 5.36645 11.7423 5.49783 13.0114C4.83268 13.426 3.40197 13.7922 2.53114 13.9886C2.2001 14.0632 1.92026 13.7602 2.02075 13.4373C2.25326 12.6902 2.64592 11.5136 3.03104 10.7502Z" />
-                  </svg>
+                  {/* A brush over the logo on hover, as Linear's. */}
+                  <BuyerlyIcon name="brush" size={16} />
                 </span>
               </button>
             </Tooltip>
@@ -223,7 +219,7 @@ export const WorkspaceSection: React.FC<WorkspaceSectionProps> = ({ workspace, o
                 }}
               />
               <span className="preferences-url-accessory" aria-hidden="true">
-                <BuyerlyPencilIcon size={14} />
+                <BuyerlyIcon name="edit" size={14} />
               </span>
             </div>
           </div>

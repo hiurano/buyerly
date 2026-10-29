@@ -71,11 +71,6 @@ export const colors = stylex.defineVars({
   /* The "›" between a team and its page in a header. */
   '--breadcrumb-separator-fg': 'lch(61.803% 1.2 272 / 1)',
 
-  /* The inks of Linear's empty-state illustrations, back sheet to front. */
-  '--illustration-ink-1': 'lch(20.64% 1.48 272 / 1)',
-  '--illustration-ink-2': 'lch(36.975% 1.2 272 / 1)',
-  '--illustration-ink-3': 'lch(61.803% 1.2 272 / 1)',
-  '--illustration-ink-4': 'lch(90.451% 1.2 272 / 1)',
   '--row-selected-bg': 'lch(13.2% 6 282 / 1)',
   '--inbox-unread-dot': 'lch(47.918% 59.303 288.421 / 1)', /* Linear unread notification dot */
 
@@ -493,10 +488,6 @@ export const lightColors = stylex.createTheme(colors, {
   '--sidebar-icon-button-hover-bg': 'lch(0% 0 0 / 0.06)',
   '--sidebar-disclosure-fg': 'lch(62.33% 1.25 282 / 1)',
   '--breadcrumb-separator-fg': 'lch(39.176% 1.25 282 / 1)',
-  '--illustration-ink-1': 'lch(73.64% 0 282 / 1)',
-  '--illustration-ink-2': 'lch(64.64% 1.25 282 / 1)',
-  '--illustration-ink-3': 'lch(39.176% 1.25 282 / 1)',
-  '--illustration-ink-4': 'lch(19.588% 1.25 282 / 1)',
   '--row-selected-bg': 'lch(92.254% 5.903 282.518 / 1)', /* Linear selected row */
   '--inbox-unread-dot': 'lch(47.918% 59.303 288.421 / 1)',
 

@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { TriangleAlert } from 'lucide-react';
 import { createTelegramLink, disconnectTelegram, telegramAccountName } from '@/lib/telegram';
-import { BuyerlyArrowUpRightIcon, TelegramIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import { Tooltip } from '@/ui/Tooltip';
@@ -22,7 +21,7 @@ const LINK_LIFETIME_MS = 10 * 60 * 1000;
 const ConnectButton = ({ label, ...props }: { label: string } & React.ComponentProps<'button'>) => (
   <button type="button" className="preferences-connect-button" {...props}>
     {label}
-    <BuyerlyArrowUpRightIcon size={16} />
+    <BuyerlyIcon name="external" size={16} />
   </button>
 );
 
@@ -105,7 +104,7 @@ export const ConnectedAccountsSection: React.FC = () => {
           <div className="preferences-row-item preferences-connection-row">
             <span className="preferences-connection-main">
               <span className="preferences-channel-icon">
-                <TelegramIcon size={16} />
+                <BuyerlyIcon name="telegram" size={16} />
               </span>
               <span className="preferences-row-copy preferences-connection-copy">
                 <span className="preferences-connection-title">
@@ -119,7 +118,7 @@ export const ConnectedAccountsSection: React.FC = () => {
                       side="top"
                     >
                       <span className="preferences-connection-alert" aria-label="Notifications can't be delivered">
-                        <TriangleAlert size={14} aria-hidden="true" />
+                        <BuyerlyIcon name="warning" size={14} aria-hidden="true" />
                       </span>
                     </Tooltip>
                   )}

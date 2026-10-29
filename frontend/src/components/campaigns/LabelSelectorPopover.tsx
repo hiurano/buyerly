@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import * as stylex from '@stylexjs/stylex';
+import { BuyerlyCheckGlyph } from '@/icons/BuyerlyIcons';
 import { useRulesStore, type CampaignGroup } from '@/models/rulesStore';
 import { pickerStyles } from './pickerStyles';
 
@@ -166,9 +167,7 @@ export const LabelSelectorPopover: React.FC<LabelSelectorPopoverProps> = ({
         <div {...stylex.props(pickerStyles.checkSlot)}>
           <div {...stylex.props(pickerStyles.check, isSelected && pickerStyles.checkSelected)}>
             {isSelected && (
-              <svg width="10" height="9" viewBox="0 0 10 8" fill="currentColor" aria-hidden="true">
-                <path d="M3.46975 5.70757L1.88358 4.1225C1.65832 3.8974 1.29423 3.8974 1.06897 4.1225C0.843675 4.34765 0.843675 4.7116 1.06897 4.93674L3.0648 6.93117C3.29006 7.15628 3.65414 7.15628 3.8794 6.93117L8.93103 1.88306C9.15633 1.65792 9.15633 1.29397 8.93103 1.06883C8.70578 0.843736 8.34172 0.843724 8.11646 1.06879L3.46975 5.70757Z" />
-              </svg>
+              <BuyerlyCheckGlyph />
             )}
           </div>
         </div>

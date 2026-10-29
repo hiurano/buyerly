@@ -4,7 +4,6 @@ import { Command } from 'cmdk';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
-import { Settings } from 'lucide-react';
 import type { Workspace } from '@/lib/types';
 import {
   readOpenedRecords,
@@ -17,7 +16,7 @@ import {
 } from '@/lib/search';
 import { filterSettingsGroups, settingsGroupsFor, type SettingsPage } from '@/lib/settingsPages';
 import { openPaletteFor } from '@/lib/shortcuts';
-import { BuyerlyBoltIcon, BuyerlyIssuesIcon, BuyerlyProjectIcon, BuyerlyStarOutlineIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { useFavorites, type Favorite } from '@/lib/favorites';
 import { favoriteIcon } from '@/components/sidebar/SidebarFavorites';
 import { CommandMenuFooterKeys } from '@/ui/SelectionCommandMenu';
@@ -55,11 +54,11 @@ export const OPEN_PALETTE_LABELS: Record<OpenPaletteKind, string> = {
 
 /** The mark in the field and on each command: the sidebar's page icons. */
 export const OpenPaletteIcon: React.FC<{ kind: OpenPaletteKind; size?: number }> = ({ kind, size = 16 }) => {
-  if (kind === 'settings') return <Settings size={size} strokeWidth={1.75} />;
-  if (kind === 'favorite') return <BuyerlyStarOutlineIcon size={size} />;
-  if (kind === 'account') return <BuyerlyProjectIcon size={size} />;
-  if (kind === 'rule') return <BuyerlyBoltIcon size={size} />;
-  return <BuyerlyIssuesIcon size={size} />;
+  if (kind === 'settings') return <BuyerlyIcon name="settings" size={size} />;
+  if (kind === 'favorite') return <BuyerlyIcon name="favorite" size={size} />;
+  if (kind === 'account') return <BuyerlyIcon name="ad-accounts" size={size} />;
+  if (kind === 'rule') return <BuyerlyIcon name="rules" size={size} />;
+  return <BuyerlyIcon name="campaigns" size={size} />;
 };
 
 /** What had focus when a palette opened; it gets focus back unless a choice moves it on. */
@@ -186,7 +185,6 @@ export const OpenPalette: React.FC<OpenPaletteProps> = ({ workspace, navigate })
 /** Typing searches at once, as in Linear's palettes; a short pause keeps one request per word. */
 const QUICK_RESULTS_DELAY_MS = 120;
 const QUICK_RESULTS_LIMIT = 8;
-
 
 const styles = stylex.create({
   dialog: {

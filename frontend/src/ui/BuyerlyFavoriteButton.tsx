@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BuyerlyStarFilledIcon, BuyerlyStarOutlineIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { favoritesStore, toggleFavorite, useFavorites, type FavoriteInput } from '@/lib/favorites';
 import { Tooltip } from '@/ui/Tooltip';
 
@@ -52,8 +52,8 @@ export function BuyerlyFavoriteButton({ favorite }: { favorite: FavoriteInput })
         onClick={toggle}
       >
         {starred
-          ? <BuyerlyStarFilledIcon size={14} className="buyerly-favorite-star" />
-          : <BuyerlyStarOutlineIcon size={14} />}
+          ? <BuyerlyIcon name="favorite-filled" size={14} className="buyerly-favorite-star" />
+          : <BuyerlyIcon name="favorite" size={14} />}
       </button>
     </Tooltip>
   );

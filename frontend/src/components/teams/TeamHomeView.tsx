@@ -23,18 +23,9 @@ import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapse
 import { Initials, RoleStatus, shortDate } from '@/components/preferences/MembersSection';
 import { memberName, type MemberItem } from '@/components/preferences/MemberDialogs';
 import { TeamIcon } from '@/components/preferences/TeamIcon';
-import {
-  BuyerlyBoltIcon,
-  BuyerlyDocumentIcon,
-  BuyerlyDotsIcon,
-  BuyerlyLinkIcon,
-  BuyerlyIssuesIcon,
-  BuyerlyPlusIcon,
-  BuyerlyProjectIcon,
-} from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { DataState } from '@/ui/DataState';
 import { Button } from '@/ui/Button';
-import { DocumentsIllustration } from './DocumentsIllustration';
 import { BuyerlyTabs } from '@/ui/BuyerlyTabs';
 import { Tooltip } from '@/ui/Tooltip';
 import { toast } from '@/ui/toast';
@@ -252,7 +243,7 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
         return (
           <div className="documents-empty" role="status">
             <div className="documents-empty__column">
-              <DocumentsIllustration />
+              <BuyerlyIcon name="documents-empty" size={80} className="documents-empty__icon" />
               <span className="documents-empty__title">Team documents</span>
               <span className="documents-empty__detail">Create documents to share notes, decisions, and plans with your team.</span>
               {canWrite && (
@@ -302,7 +293,7 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
           {team && (
             <Tooltip content="Copy team URL" side="bottom" align="end">
               <button type="button" aria-label="Copy team URL" onClick={copyLink} className="buyerly-icon-btn buyerly-header-target">
-                <BuyerlyLinkIcon size={14} />
+                <BuyerlyIcon name="link" size={14} />
               </button>
             </Tooltip>
           )}
@@ -323,14 +314,14 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
                     openTeamSettings(`${team.key}/members`);
                   }}
                 >
-                  <BuyerlyPlusIcon size={14} />
+                  <BuyerlyIcon name="add" size={14} />
                 </BuyerlyToolbarButton>
               </Tooltip>
             )}
             {page === 'documents' && canWrite && team && (
               <Tooltip content="Create document" side="bottom" align="end">
                 <BuyerlyToolbarButton aria-label="Create document" onClick={() => void createDocument()}>
-                  <BuyerlyPlusIcon size={14} />
+                  <BuyerlyIcon name="add" size={14} />
                 </BuyerlyToolbarButton>
               </Tooltip>
             )}
@@ -372,9 +363,9 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
         openTeamSettings(team.key);
       },
     }] : []),
-    { id: 'campaigns', label: 'Campaigns', icon: <BuyerlyIssuesIcon size={16} />, run: () => goTo('campaigns') },
-    { id: 'accounts', label: 'Ad accounts', icon: <BuyerlyProjectIcon size={16} />, run: () => goTo('accounts') },
-    { id: 'rules', label: 'Rules', icon: <BuyerlyBoltIcon size={16} />, run: () => goTo('rules') },
+    { id: 'campaigns', label: 'Campaigns', icon: <BuyerlyIcon name="campaigns" size={16} />, run: () => goTo('campaigns') },
+    { id: 'accounts', label: 'Ad accounts', icon: <BuyerlyIcon name="ad-accounts" size={16} />, run: () => goTo('accounts') },
+    { id: 'rules', label: 'Rules', icon: <BuyerlyIcon name="rules" size={16} />, run: () => goTo('rules') },
   ];
 
   return (
@@ -392,7 +383,7 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
             {canWrite && (
               <Tooltip content="Add document" side="bottom" align="end">
                 <BuyerlyToolbarButton aria-label="Add document" onClick={onCreateDocument}>
-                  <BuyerlyPlusIcon size={14} />
+                  <BuyerlyIcon name="add" size={14} />
                 </BuyerlyToolbarButton>
               </Tooltip>
             )}
@@ -403,7 +394,7 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
             <div className="team-overview__resource-list">
               {documents.map((document) => (
                 <button key={document.id} type="button" className="team-resource" onClick={() => onOpenTab('documents', document.id)}>
-                  <BuyerlyDocumentIcon size={16} {...stylex.props(styles.documentIcon)} />
+                  <BuyerlyIcon name="document" size={16} {...stylex.props(styles.documentIcon)} />
                   <span {...stylex.props(styles.resourceTitle)}>{documentTitle(document)}</span>
                 </button>
               ))}
@@ -481,17 +472,12 @@ const TeamDescription: React.FC<{ team: TeamItem; canEdit: boolean }> = ({ team,
 };
 
 const TeamSettingsIcon: React.FC = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-    <path fillRule="evenodd" clipRule="evenodd" d="M8.00021 5.25C9.51887 5.25015 10.7502 6.48131 10.7502 8C10.7502 9.51869 9.51887 10.7499 8.00021 10.75C6.48142 10.75 5.25021 9.51878 5.25021 8C5.25021 6.48122 6.48142 5.25 8.00021 5.25ZM8.00021 6.75C7.30985 6.75 6.75021 7.30964 6.75021 8C6.75021 8.69036 7.30985 9.25 8.00021 9.25C8.69044 9.24985 9.25021 8.69027 9.25021 8C9.25021 7.30973 8.69044 6.75015 8.00021 6.75Z" />
-    <path fillRule="evenodd" clipRule="evenodd" d="M8.4797 1C8.79032 1.00005 9.11521 1.07609 9.39571 1.28516C9.67641 1.49469 9.84241 1.78493 9.93087 2.08301L10.0764 2.57422C10.1033 2.66485 10.1451 2.71838 10.2268 2.76562L11.4192 3.4541C11.5007 3.50111 11.5678 3.51013 11.6594 3.48828L12.1584 3.36914C12.4605 3.2968 12.7939 3.29566 13.1154 3.43359C13.4372 3.57185 13.666 3.81486 13.8215 4.08398L14.302 4.91602C14.4573 5.18528 14.554 5.50472 14.5129 5.85254C14.4717 6.20036 14.303 6.48828 14.0891 6.71387L13.7365 7.08594C13.6717 7.15443 13.6467 7.21713 13.6467 7.31152V8.68848C13.6467 8.78287 13.6717 8.84557 13.7365 8.91406L14.0891 9.28613C14.303 9.51172 14.4717 9.79964 14.5129 10.1475C14.554 10.4953 14.4573 10.8147 14.302 11.084L13.8215 11.916C13.666 12.1851 13.4372 12.4281 13.1154 12.5664C12.7939 12.7043 12.4605 12.7032 12.1584 12.6309L11.6594 12.5117C11.5678 12.4899 11.5007 12.4989 11.4192 12.5459L10.2268 13.2344C10.1451 13.2816 10.1033 13.3352 10.0764 13.4258L9.93087 13.917C9.84241 14.2151 9.67641 14.5053 9.39571 14.7148C9.11521 14.9239 8.79032 15 8.4797 15H7.51974C7.20899 14.9999 6.8833 14.9242 6.60275 14.7148C6.32229 14.5053 6.15699 14.2149 6.06857 13.917L5.92306 13.4258C5.89612 13.3351 5.85359 13.2817 5.77169 13.2344L4.58028 12.5459C4.51915 12.5107 4.46564 12.4967 4.4045 12.501L4.33907 12.5117L3.84103 12.6309C3.53875 12.7032 3.20473 12.7047 2.88302 12.5664C2.56142 12.428 2.33239 12.1852 2.17696 11.916L1.69747 11.084C1.54209 10.8147 1.44542 10.4953 1.48653 10.1475C1.52769 9.79988 1.69567 9.51165 1.90939 9.28613L2.26192 8.91406C2.327 8.84544 2.35271 8.783 2.35275 8.68848V7.31152C2.35271 7.217 2.327 7.15455 2.26192 7.08594L1.90939 6.71387C1.69567 6.48835 1.52769 6.20012 1.48653 5.85254C1.44542 5.50474 1.54209 5.18527 1.69747 4.91602L2.17696 4.08398C2.33239 3.81484 2.56142 3.57196 2.88302 3.43359C3.20473 3.29533 3.53875 3.29676 3.84103 3.36914L4.33907 3.48828L4.4045 3.49902C4.46564 3.50331 4.51915 3.48931 4.58028 3.4541L5.77169 2.76562C5.85359 2.71834 5.89612 2.66492 5.92306 2.57422L6.06857 2.08301C6.15699 1.78507 6.32229 1.49467 6.60275 1.28516C6.8833 1.07582 7.20899 1.0001 7.51974 1H8.4797ZM7.50607 2.50977L7.36056 3.00098C7.2244 3.45982 6.93621 3.82513 6.52169 4.06445L5.33028 4.75293C4.9675 4.96225 4.56891 5.03929 4.16329 4.98047L3.98946 4.94727L3.49142 4.82812C3.48792 4.82734 3.48373 4.82682 3.48067 4.82617C3.47921 4.82856 3.47735 4.83128 3.47579 4.83398L2.9963 5.66602C2.99471 5.66872 2.99276 5.67137 2.99142 5.67383C2.9935 5.67614 2.99584 5.67906 2.99825 5.68164L3.35079 6.05371C3.68013 6.401 3.8527 6.83292 3.85275 7.31152V8.68848C3.8527 9.16708 3.68013 9.599 3.35079 9.94629L2.99825 10.3184C2.99599 10.3207 2.99337 10.323 2.99142 10.3252C2.99288 10.3279 2.99458 10.331 2.9963 10.334L3.47579 11.166C3.4772 11.1685 3.47931 11.1707 3.48067 11.1729C3.48367 11.1722 3.48798 11.1726 3.49142 11.1719L3.98946 11.0527L4.16329 11.0195C4.56891 10.9607 4.96751 11.0378 5.33028 11.2471L6.52169 11.9355C6.93621 12.1749 7.2244 12.5402 7.36056 12.999L7.50607 13.4902L7.509 13.499C7.51207 13.4991 7.51622 13.4999 7.51974 13.5H8.4797C8.48257 13.5 8.48588 13.4992 8.48849 13.499C8.48939 13.4962 8.49141 13.4934 8.49239 13.4902L8.6379 12.999L8.6965 12.8311C8.84844 12.4508 9.11439 12.1449 9.47677 11.9355L10.6692 11.2471C11.0834 11.008 11.5439 10.9414 12.009 11.0527L12.508 11.1719C12.5108 11.1725 12.5142 11.1724 12.5168 11.1729C12.5182 11.1705 12.5211 11.1686 12.5227 11.166L13.0022 10.334C13.0038 10.3311 13.0047 10.3278 13.0061 10.3252C13.0043 10.3232 13.0022 10.3205 13.0002 10.3184L12.6477 9.94629C12.3186 9.59908 12.1467 9.16687 12.1467 8.68848V7.31152C12.1467 6.83313 12.3186 6.40092 12.6477 6.05371L13.0002 5.68164C13.0024 5.67931 13.0042 5.67603 13.0061 5.67383C13.0048 5.67147 13.0036 5.66858 13.0022 5.66602L12.5227 4.83398C12.521 4.83114 12.5183 4.82869 12.5168 4.82617C12.5142 4.82674 12.5109 4.82744 12.508 4.82812L12.009 4.94727C11.5439 5.05858 11.0834 4.99203 10.6692 4.75293L9.47677 4.06445C9.11439 3.8551 8.84844 3.54923 8.6965 3.16895L8.6379 3.00098L8.49239 2.50977C8.49133 2.50626 8.48948 2.50306 8.48849 2.5H7.509L7.50607 2.50977Z" />
-  </svg>
+  <BuyerlyIcon name="settings" size={16} />
 );
 
 /** The chevron at the end of a "Go to" link. */
 const GoToChevron: React.FC = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className="team-overview__link-arrow">
-    <path d="M5.46967 11.4697C5.17678 11.7626 5.17678 12.2374 5.46967 12.5303C5.76256 12.8232 6.23744 12.8232 6.53033 12.5303L10.5303 8.53033C10.8207 8.23999 10.8236 7.77014 10.5368 7.47624L6.63419 3.47624C6.34492 3.17976 5.87009 3.17391 5.57361 3.46318C5.27713 3.75244 5.27128 4.22728 5.56054 4.52376L8.94583 7.99351L5.46967 11.4697Z" />
-  </svg>
+  <BuyerlyIcon name="chevron-right" size={14} className="team-overview__link-arrow" />
 );
 
 const DOCUMENT_COLUMNS: BuyerlyDataListColumn[] = [
@@ -521,7 +507,7 @@ const TeamDocumentsList: React.FC<{ documents: TeamDocument[]; members: MemberIt
           }}
         >
           <div {...stylex.props(styles.cellLead)}>
-            <BuyerlyDocumentIcon size={16} {...stylex.props(styles.documentIcon)} />
+            <BuyerlyIcon name="document" size={16} {...stylex.props(styles.documentIcon)} />
             <span {...stylex.props(styles.documentName)}>{documentTitle(document)}</span>
           </div>
           <div {...stylex.props(styles.author)}>
@@ -622,7 +608,7 @@ const TeamDocumentEditor: React.FC<TeamDocumentEditorProps> = ({ team, document,
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <BuyerlyToolbarButton aria-label="Document actions">
-                  <BuyerlyDotsIcon size={14} />
+                  <BuyerlyIcon name="more" size={14} />
                 </BuyerlyToolbarButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={4}>

@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pause, Play, Trash2 } from 'lucide-react';
 import * as stylex from '@stylexjs/stylex';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { RuleBoard } from './RuleBoard';
@@ -26,11 +25,8 @@ import { applyFilterClauses, type FilterClause } from '@/components/filters/filt
 import { useFiltersInAddress, writeFilterParam } from '@/ui/useListView';
 import { NO_LABEL_COLOR, ruleActiveRows, ruleGroupAccounts, ruleGroupIds, sortRules, useRulesView } from './rulesViewModel';
 import { RuleLabelPickerHost } from './RuleLabelPickerHost';
-import {
-  BuyerlyBoltIcon,
-  BuyerlyLabelIcon,
-  BuyerlyStatusCircleIcon,
-} from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
+import { BuyerlyStatusCircleIcon } from '@/icons/BuyerlyIcons';
 import { BuyerlyTabs } from '@/ui/BuyerlyTabs';
 import { DetailsPaneLayout, DetailsPaneToggle } from '@/ui/DetailsPane';
 import { DetailsFacets, type DetailsFacetTab } from '@/ui/DetailsFacets';
@@ -146,7 +142,7 @@ function ruleFacetIcon(facet: string, value: string, labels: { id: string; color
     if (value === 'needs_review') return <span className="details-facets-dot" style={{ backgroundColor: '#f2994a' }} />;
     return <BuyerlyStatusCircleIcon status={value === 'paused' ? 'paused' : 'active'} size={14} />;
   }
-  if (facet === 'action') return <BuyerlyBoltIcon size={14} style={{ color: 'var(--text-tertiary)' }} />;
+  if (facet === 'action') return <BuyerlyIcon name="rules" size={14} style={{ color: 'var(--text-tertiary)' }} />;
   const color = labels.find((label) => label.id === value)?.color ?? NO_LABEL_COLOR;
   return <span className="details-facets-dot" style={{ backgroundColor: color }} />;
 }
@@ -277,14 +273,14 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
 
   const liveSelection = () => selectedRuleIds.filter((id) => rules.some((rule) => rule.id === id));
   const selectionActions: SelectionAction[] = [
-    { id: 'pause', label: 'Pause rules', shortcut: 'p', icon: <Pause size={14} />, run: () => void runBulkRulesEnabled(liveSelection(), false) },
-    { id: 'resume', label: 'Resume rules', shortcut: 'r', icon: <Play size={14} />, run: () => void runBulkRulesEnabled(liveSelection(), true) },
+    { id: 'pause', label: 'Pause rules', shortcut: 'p', icon: <BuyerlyIcon name="pause" size={14} />, run: () => void runBulkRulesEnabled(liveSelection(), false) },
+    { id: 'resume', label: 'Resume rules', shortcut: 'r', icon: <BuyerlyIcon name="play" size={14} />, run: () => void runBulkRulesEnabled(liveSelection(), true) },
     // Linear's L on a selection: one picker puts a label on, or takes it off, every selected rule.
     {
       id: 'labels',
       label: 'Labels…',
       shortcut: 'l',
-      icon: <BuyerlyLabelIcon size={14} />,
+      icon: <BuyerlyIcon name="label" size={14} />,
       run: () => dialogStore.openRuleLabelPicker(liveSelection(), null),
     },
     {
@@ -292,7 +288,7 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
       label: 'Delete rules',
       shortcut: 'Delete',
       withModifier: true,
-      icon: <Trash2 size={14} />,
+      icon: <BuyerlyIcon name="delete" size={14} />,
       run: () => requestDeletion('rule', liveSelection()),
     },
   ];

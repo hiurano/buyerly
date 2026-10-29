@@ -3,7 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { changeInviteLink, fetchInviteLink, type InviteLink } from '@/lib/workspaces';
 import { finishedEmails, isEmail, parseEmails } from '@/lib/emails';
 import type { Workspace } from '@/lib/types';
-import { BuyerlyCheckIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,7 +38,6 @@ const styles = stylex.create({
     color: colors['--text-tertiary'],
   },
 });
-
 
 type LinkState =
   | { kind: 'loading' }
@@ -152,7 +151,7 @@ export const InviteTeamStep: React.FC<InviteTeamStepProps> = ({ workspace, busy,
                 onFocus={(event) => event.currentTarget.select()}
               />
               <button type="button" className="buyerly-onboarding-invites__copy" onClick={() => void copy()}>
-                {copied && <BuyerlyCheckIcon size={14} />}
+                {copied && <BuyerlyIcon name="check" size={14} />}
                 {copied ? 'Copied' : 'Copy'}
               </button>
             </div>
@@ -199,7 +198,7 @@ export const InviteTeamStep: React.FC<InviteTeamStepProps> = ({ workspace, busy,
                       <span {...stylex.props(styles.roleOptionLabel)}>{option.label}</span>
                       <span {...stylex.props(styles.roleOptionDetail)}>{option.description}</span>
                     </span>
-                    {role === option.value && <BuyerlyCheckIcon size={14} />}
+                    {role === option.value && <BuyerlyIcon name="check" size={14} />}
                   </DropdownMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>
