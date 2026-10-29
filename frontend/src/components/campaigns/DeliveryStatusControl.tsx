@@ -136,8 +136,8 @@ interface DeliveryStatusControlProps {
 
 /**
  * A row's delivery as Linear's issue status: the state's icon, and with a
- * live control a click opens "Change status…" with Active and Paused, picked
- * by click, arrows and Enter, or 1 and 2.
+ * live control a click (or S over the row) opens "Change status…" with Active
+ * and Paused, picked by click, arrows and Enter, or 1 and 2.
  */
 export const DeliveryStatusControl: React.FC<DeliveryStatusControlProps> = ({ noun, state, statusLabel, delivery }) => {
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
@@ -213,19 +213,22 @@ const DeliveryStatusMenu: React.FC<{
     const handleClickOutside = (event: MouseEvent) => {
       if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) onClose();
     };
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
+    // Escape, and 1 or 2 before the search has focus: "S 2" typed in one go, as in Linear.
+    const handleKey = (event: KeyboardEvent) => {
+      const byKey = CHOICES.find((choice) => choice.key === event.key);
+      if (event.key !== 'Escape' && !byKey) return;
       event.preventDefault();
       event.stopPropagation();
-      onClose();
+      if (byKey) onPick(byKey.state);
+      else onClose();
     };
     document.addEventListener('mousedown', handleClickOutside, true);
-    document.addEventListener('keydown', handleEscape, true);
+    document.addEventListener('keydown', handleKey, true);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside, true);
-      document.removeEventListener('keydown', handleEscape, true);
+      document.removeEventListener('keydown', handleKey, true);
     };
-  }, [onClose]);
+  }, [onClose, onPick]);
 
   const width = 207;
   const margin = 8;
@@ -236,11 +239,7 @@ const DeliveryStatusMenu: React.FC<{
     : anchorRect.bottom + 4;
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    const byKey = CHOICES.find((choice) => choice.key === event.key);
-    if (byKey) {
-      event.preventDefault();
-      onPick(byKey.state);
-    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
       const step = event.key === 'ArrowDown' ? 1 : -1;
       setActiveIndex((index) => (shown.length === 0 ? -1 : (Math.max(index, 0) + step + shown.length) % shown.length));
@@ -281,6 +280,7 @@ const DeliveryStatusMenu: React.FC<{
           onKeyDown={handleKeyDown}
           {...stylex.props(pickerStyles.input)}
         />
+        <kbd {...stylex.props(pickerStyles.shortcut)}>S</kbd>
       </form>
       <div id="delivery-status-list" role="listbox" {...stylex.props(pickerStyles.listbox)}>
         <ul role="presentation" {...stylex.props(pickerStyles.list)}>

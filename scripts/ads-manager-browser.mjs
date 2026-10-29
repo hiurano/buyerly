@@ -15,7 +15,8 @@
 //   team Issues groups by project; with no grouping the account is a column,
 //   an old link's `?account=` is a filter, and My campaigns shows only the
 //   accounts you lead.
-// - A row's delivery is Linear's status icon; a click opens Change status….
+// - A row's delivery is Linear's status icon; a click or S opens Change status…;
+//   P, R and A act on the row under the pointer when nothing is selected.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -513,8 +514,9 @@ try {
     }
   }
 
-  // A row's delivery as Linear's issue status: its icon opens "Change status…" with
-  // Active and Paused; a click, 1 or 2 picks, Escape writes nothing.
+  // A row's delivery as Linear's issue status: its icon, or S over the row, opens
+  // "Change status…" with Active and Paused; a click, 1 or 2 picks, Escape writes
+  // nothing; P and R over a row pause and resume it.
   {
     const { context, page, errors, writes } = await openPage(1440, false, [account]);
     try {
@@ -553,6 +555,24 @@ try {
       await page.keyboard.press('Escape');
       await menu.waitFor({ state: 'detached' });
       assert.equal(writes.length, 2, 'Escape writes nothing');
+
+      // Linear's keys on the row under the pointer, with nothing selected:
+      // S opens its status, P and R pause and resume it, as its right-click menu prints.
+      await page.locator('[data-row-id="802"]').hover();
+      await page.keyboard.press('s');
+      await menu.waitFor();
+      await page.keyboard.press('2');
+      await menu.waitFor({ state: 'detached' });
+      await shows('802', 'paused');
+      assert.deepEqual(writes[2], { path: '/api/entities/campaign/802/delivery', body: { account_id: 'act_100', status: 'PAUSED' } });
+      await page.locator('[data-row-id="803"]').hover();
+      await page.keyboard.press('p');
+      await shows('803', 'paused');
+      assert.deepEqual(writes[3], { path: '/api/entities/campaign/803/delivery', body: { account_id: 'act_100', status: 'PAUSED' } });
+      await page.keyboard.press('r');
+      await shows('803', 'active');
+      assert.deepEqual(writes[4], { path: '/api/entities/campaign/803/delivery', body: { account_id: 'act_100', status: 'ACTIVE' } });
+      assert.deepEqual(await page.locator('[data-row-id][data-selected="true"]').count(), 0, 'keys on a hovered row select nothing');
       assert.deepEqual(errors, []);
       console.log('Ads Manager status menu passed');
     } catch (error) {
