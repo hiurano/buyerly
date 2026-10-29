@@ -1,10 +1,7 @@
-import { BUYERLY_DATA_LIST, BuyerlyDataListColumn, buyerlyDataNameColumn } from '@/ui/BuyerlyDataList';
+import { BuyerlyDataListColumn, buyerlyDataNameColumn } from '@/ui/BuyerlyDataList';
 import { metricsFor } from './adsManagerMetrics';
 
 export type AdsManagerTableTab = 'campaigns' | 'adsets' | 'ads';
-
-const primaryColumn = (statusVisible: boolean, width: string) =>
-  buyerlyDataNameColumn({ width, statusVisible, statusWidth: BUYERLY_DATA_LIST.statusIconWidth });
 
 /**
  * The columns a level shows, in the order Display properties lists them
@@ -18,7 +15,7 @@ export const getAdsManagerColumns = (
 ): BuyerlyDataListColumn[] => {
   const phone = Boolean(options.spendFirst);
   const columns: BuyerlyDataListColumn[] = [
-    primaryColumn(properties.status !== false, phone ? 'minmax(150px, 1fr)' : 'minmax(260px, 1fr)'),
+    buyerlyDataNameColumn({ width: phone ? 'minmax(150px, 1fr)' : 'minmax(260px, 1fr)' }),
   ];
 
   // Grouped by account, the group names it; as Linear drops the project from rows grouped by project.

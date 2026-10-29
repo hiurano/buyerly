@@ -3,7 +3,7 @@ import { BuyerlyDataListColumn, buyerlyDataNameColumn } from '@/ui/BuyerlyDataLi
 /** The Rules list's columns, in the order Display properties lists them (#390). */
 export const getRulesColumns = (properties: Record<string, boolean>): BuyerlyDataListColumn[] => {
   const columns: BuyerlyDataListColumn[] = [
-    buyerlyDataNameColumn({ width: 'minmax(260px, 1fr)', statusVisible: properties.status !== false }),
+    buyerlyDataNameColumn({ width: 'minmax(260px, 1fr)' }),
   ];
 
   if (properties.id) columns.push({ id: 'id', label: 'ID', width: '64px' });
