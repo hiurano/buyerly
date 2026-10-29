@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import Depends, Header, HTTPException, Query, Request, Response, status
-from sqlalchemy import select, update
+from sqlalchemy import select
 
 from core.config import settings
 from core.rate_limit import get_client_ip, get_client_location
@@ -192,7 +192,7 @@ async def create_web_session(
         ip_address=_client_ip(request),
         location=get_client_location(request),
         created_at=now,
-        expires_at=now + timedelta(hours=settings.WEB_SESSION_TTL_HOURS),
+        expires_at=now + timedelta(days=settings.WEB_SESSION_IDLE_DAYS),
         last_seen_at=now,
         rotated_at=now,
     )
@@ -286,7 +286,7 @@ async def get_authenticated_user(
                         ip_address=_client_ip(request),
                         location=get_client_location(request),
                         created_at=now,
-                        expires_at=now + timedelta(hours=settings.WEB_SESSION_TTL_HOURS),
+                        expires_at=now + timedelta(days=settings.WEB_SESSION_IDLE_DAYS),
                         last_seen_at=now,
                         rotated_at=now,
                     )
@@ -333,32 +333,15 @@ async def get_authenticated_user(
                             detail="CSRF check failed",
                         )
 
-                rotated_token = None
-                if _as_utc(web_session.rotated_at) <= now - timedelta(
-                    minutes=settings.WEB_SESSION_ROTATE_MINUTES
-                ):
-                    candidate_token = secrets.token_urlsafe(32)
-                    rotated_id = (
-                        await session.execute(
-                            update(WebSession)
-                            .where(
-                                WebSession.id == web_session.id,
-                                WebSession.token_hash == _secret_hash(token),
-                            )
-                            .values(
-                                token_hash=_secret_hash(candidate_token),
-                                rotated_at=now,
-                            )
-                            .returning(WebSession.id)
-                            .execution_options(synchronize_session=False)
-                        )
-                    ).scalar_one_or_none()
-                    if rotated_id is not None:
-                        rotated_token = candidate_token
-
-                # Linear shows where a session was last seen, so the address follows it.
+                # Linear keeps a session until it is logged out, revoked or left
+                # unused, and never swaps its token mid-session: a swap races the
+                # browser's parallel requests (and a reload after a deploy) and
+                # signs the member out. Use moves the end forward instead.
+                extended = False
                 if _as_utc(web_session.last_seen_at) <= now - timedelta(minutes=5):
                     web_session.last_seen_at = now
+                    web_session.expires_at = now + timedelta(days=settings.WEB_SESSION_IDLE_DAYS)
+                    extended = True
                     seen_ip = _client_ip(request)
                     seen_location = get_client_location(request)
                     if seen_location or (seen_ip and seen_ip != web_session.ip_address):
@@ -374,10 +357,16 @@ async def get_authenticated_user(
                 request.state.web_session_id = web_session.id
                 request.state.web_session_slot = slot
                 request.state.auth_channel = "browser_session"
-                if token_source == "bearer" or rotated_token is not None:
+                if token_source == "cookie" and extended:
+                    # The CSRF cookie lives as long as the session cookie; only
+                    # the browser holds its value, so it is renewed as sent.
+                    sent_csrf = request.cookies.get(csrf_cookie_name(slot)) or ""
+                    if sent_csrf and hmac.compare_digest(web_session.csrf_hash, _secret_hash(sent_csrf)):
+                        csrf_token_to_set = sent_csrf
+                if token_source == "bearer" or extended:
                     set_session_cookies(
                         response,
-                        token=rotated_token or token,
+                        token=token,
                         csrf_token=csrf_token_to_set,
                         expires_at=web_session.expires_at,
                         slot=slot,

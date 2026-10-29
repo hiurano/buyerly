@@ -495,6 +495,45 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             stored = (await session.execute(select(WebSession))).scalar_one()
         self.assertEqual(stored.ip_address, "198.51.100.7")
 
+    async def test_session_in_use_stays_signed_in_with_the_same_token(self):
+        """Linear keeps a session while it is used: no token swap, the end moves forward."""
+        await confirm_email(self.test_session_maker, "buyer_nick", "buyer@example.test")
+
+        transport = client_api_transport(app=self.app)
+        async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
+            login = await sign_in(client, "buyer@example.test")
+            self.assertEqual(login.status_code, 200)
+            raw_token = client.cookies.get("buyerly_session")
+            csrf_token = client.cookies.get("buyerly_csrf")
+
+            # Signed in long ago and last used yesterday: well past the old 24-hour limit.
+            async with self.test_session_maker() as session:
+                stored = (await session.execute(select(WebSession))).scalar_one()
+                stored.created_at = datetime.now(timezone.utc) - timedelta(days=30)
+                stored.rotated_at = stored.created_at
+                stored.last_seen_at = datetime.now(timezone.utc) - timedelta(days=1)
+                stored.expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+                await session.commit()
+
+            # A reload after a deploy sends many requests at once with the same cookie.
+            burst = await asyncio.gather(*(client.get("/api/me") for _ in range(8)))
+            self.assertEqual([r.status_code for r in burst], [200] * 8)
+            self.assertEqual(client.cookies.get("buyerly_session"), raw_token)
+            self.assertEqual(client.cookies.get("buyerly_csrf"), csrf_token)
+            renewed = [r for r in burst if "buyerly_session=" in r.headers.get("set-cookie", "")]
+            self.assertTrue(renewed)
+            self.assertIn("buyerly_csrf=", renewed[0].headers.get("set-cookie", ""))
+
+            logout_all = await client.post("/api/auth/logout-all", headers={"X-CSRF-Token": csrf_token})
+            self.assertEqual(logout_all.status_code, 200)
+
+        async with self.test_session_maker() as session:
+            stored = (await session.execute(select(WebSession))).scalar_one()
+        self.assertGreater(
+            stored.expires_at.replace(tzinfo=stored.expires_at.tzinfo or timezone.utc),
+            datetime.now(timezone.utc) + timedelta(days=settings.WEB_SESSION_IDLE_DAYS - 1),
+        )
+
     async def test_health_overview_is_workspace_isolated_and_secret_safe(self):
         async with self.test_session_maker() as session:
             buyer = (
