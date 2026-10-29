@@ -25,6 +25,9 @@ export const BUYERLY_DATA_LIST = {
   toolbarPaddingLeft: 8,
   toolbarPaddingRight: 11,
   viewportPaddingX: 8,
+  // Rows and the column header reach into the list's side padding, 8px past the group
+  // headers on each side, as Linear's (1027 against 1011px); their content stays put.
+  rowBleed: 8,
   viewportPaddingY: 4,
 } as const;
 
@@ -139,12 +142,14 @@ const styles = stylex.create({
   row: {
     position: 'relative',
     display: 'flex',
-    width: '100%',
+    width: `calc(100% + ${BUYERLY_DATA_LIST.rowBleed * 2}px)`,
+    marginLeft: -BUYERLY_DATA_LIST.rowBleed,
+    marginRight: -BUYERLY_DATA_LIST.rowBleed,
     userSelect: 'none',
     alignItems: 'center',
     borderRadius: BUYERLY_DATA_LIST.radius,
-    paddingLeft: BUYERLY_DATA_LIST.rowPaddingX,
-    paddingRight: BUYERLY_DATA_LIST.rowPaddingX,
+    paddingLeft: BUYERLY_DATA_LIST.rowPaddingX + BUYERLY_DATA_LIST.rowBleed,
+    paddingRight: BUYERLY_DATA_LIST.rowPaddingX + BUYERLY_DATA_LIST.rowBleed,
     backgroundColor: {
       default: 'transparent',
       ':hover': colors['--data-row-hover-bg'],
@@ -181,8 +186,10 @@ const styles = stylex.create({
     fontWeight: 400,
     color: colors['--text-muted'],
     gap: BUYERLY_DATA_LIST.columnGap,
-    paddingLeft: BUYERLY_DATA_LIST.rowPaddingX,
-    paddingRight: BUYERLY_DATA_LIST.rowPaddingX,
+    marginLeft: -BUYERLY_DATA_LIST.rowBleed,
+    marginRight: -BUYERLY_DATA_LIST.rowBleed,
+    paddingLeft: BUYERLY_DATA_LIST.rowPaddingX + BUYERLY_DATA_LIST.rowBleed,
+    paddingRight: BUYERLY_DATA_LIST.rowPaddingX + BUYERLY_DATA_LIST.rowBleed,
   },
   columnCell: {
     display: 'flex',
@@ -279,10 +286,10 @@ const styles = stylex.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 9999,
-    color: colors['--text-tertiary'],
-    backgroundColor: {
-      default: null,
-      ':hover': colors['--item-hover-bg'],
+    // Linear's chevron all but disappears until the pointer is on it.
+    color: {
+      default: colors['--group-chevron'],
+      ':hover': colors['--group-chevron-hover'],
     },
     ...colorTransition,
   },
