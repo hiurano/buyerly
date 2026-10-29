@@ -28,6 +28,12 @@ interface UseRowSelectionOptions {
   actions: SelectionAction[];
   /** False while the list is not the thing on screen (loading, error, empty). */
   enabled?: boolean;
+  /**
+   * With nothing selected, a plain letter goes to the row under the pointer
+   * (else the focused one), as Linear's S on a hovered issue. True when it was
+   * that row's key.
+   */
+  onRowKey?: (rowId: string, key: string) => boolean;
 }
 
 const isTypingTarget = (target: EventTarget | null) => {
@@ -44,7 +50,8 @@ const GO_TO_PREFIX_WINDOW_MS = 1500;
 /**
  * Linear's list selection keyboard: X toggles the row under the pointer,
  * Ctrl/Cmd+A selects every visible row, Esc clears, Ctrl/Cmd+K opens the
- * actions menu, and each action's letter runs it directly. Rows opt in by
+ * actions menu, and each action's letter runs it directly; with nothing
+ * selected a letter goes to the row under the pointer (onRowKey). Rows opt in by
  * carrying `data-row-id`.
  */
 export function useRowSelection({
@@ -53,6 +60,7 @@ export function useRowSelection({
   setSelection,
   actions,
   enabled = true,
+  onRowKey,
 }: UseRowSelectionOptions) {
   const [menuOpen, setMenuOpen] = useState(false);
   const goToPressedAt = useRef(0);
@@ -95,17 +103,25 @@ export function useRowSelection({
         setSelection(visibleIds);
         return;
       }
-      if (plain && key === 'x' && !afterGoTo) {
-        // The row under the pointer, as in Linear, else the row with keyboard focus.
+      // The row under the pointer, as in Linear, else the row with keyboard focus.
+      const targetRow = () => {
         const row = document.querySelector<HTMLElement>('[data-row-id]:hover')
           ?? (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('[data-row-id]');
         const id = row?.dataset.rowId;
-        if (!id || !visibleIds.includes(id)) return;
+        return id && visibleIds.includes(id) ? id : undefined;
+      };
+      if (plain && key === 'x' && !afterGoTo) {
+        const id = targetRow();
+        if (!id) return;
         event.preventDefault();
         toggle(id);
         return;
       }
-      if (count === 0) return;
+      if (count === 0) {
+        const id = plain && !afterGoTo && onRowKey ? targetRow() : undefined;
+        if (id && onRowKey?.(id, key)) event.preventDefault();
+        return;
+      }
       if (event.key === 'Escape') {
         event.preventDefault();
         clear();
@@ -136,7 +152,7 @@ export function useRowSelection({
     };
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [actions, clear, count, enabled, menuOpen, setSelection, toggle, visibleIds]);
+  }, [actions, clear, count, enabled, menuOpen, onRowKey, setSelection, toggle, visibleIds]);
 
   return { count, toggle, clear, menuOpen, setMenuOpen };
 }
