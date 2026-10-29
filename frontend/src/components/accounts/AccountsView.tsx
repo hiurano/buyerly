@@ -199,7 +199,7 @@ const AccountsViewContent: React.FC<AccountsViewProps> = ({ navigate, navigation
     update({ filters: clauses });
     writeFilterParam(clauses.length ? clauses : null);
   };
-  useFiltersInAddress(view.filters, (clauses) => update({ filters: clauses }), loaded, navigationKey);
+  const filters = useFiltersInAddress(view.filters, (clauses) => update({ filters: clauses }), loaded, navigationKey);
 
   const leads = useMemo(
     () => data.members.map((member) => ({ user_id: member.user_id, name: member.full_name || member.username })),
@@ -207,8 +207,8 @@ const AccountsViewContent: React.FC<AccountsViewProps> = ({ navigate, navigation
   );
   const filterFields = useMemo(() => createAccountFilterFields(accounts, teams, leads), [accounts, teams, leads]);
   const shown = useMemo(
-    () => sortAccounts(applyFilterClauses(accounts, filterFields, view.filters), view.ordering, view.direction),
-    [accounts, filterFields, view.filters, view.ordering, view.direction],
+    () => sortAccounts(applyFilterClauses(accounts, filterFields, filters), view.ordering, view.direction),
+    [accounts, filterFields, filters, view.ordering, view.direction],
   );
   const columns = getAccountColumns(view.properties, phone);
 
@@ -355,7 +355,7 @@ const AccountsViewContent: React.FC<AccountsViewProps> = ({ navigate, navigation
           <div {...stylex.props(styles.actions)}>
             <BuyerlyFilterButton
               ref={filterButtonRef}
-              hasFilters={view.filters.length > 0}
+              hasFilters={filters.length > 0}
               open={Boolean(openFilterMenu)}
               onMouseDown={(event) => event.stopPropagation()}
               onClick={(event) => {
@@ -387,7 +387,7 @@ const AccountsViewContent: React.FC<AccountsViewProps> = ({ navigate, navigation
 
         <ActiveFilterFormula
           fields={filterFields}
-          clauses={view.filters}
+          clauses={filters}
           onChange={setFilters}
           onOpenMenu={(mode, anchor, fieldId) => setOpenFilterMenu({ mode, anchor, fieldId })}
         />
@@ -399,7 +399,7 @@ const AccountsViewContent: React.FC<AccountsViewProps> = ({ navigate, navigation
         anchorElement={openFilterMenu?.anchor ?? null}
         fieldId={openFilterMenu?.fieldId}
         fields={filterFields}
-        clauses={view.filters}
+        clauses={filters}
         onChange={setFilters}
         onClose={() => setOpenFilterMenu(null)}
         items={accounts}

@@ -204,12 +204,11 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
   );
   useLayoutShortcut(toggleRulesLayout, rulesViewLoaded);
   const rulesDisplayGrouping = rulesView.grouping;
-  const rulesFilterClauses = rulesView.filters;
   const setRulesFilterClauses = (clauses: FilterClause[]) => {
     updateRulesView({ filters: clauses });
     writeFilterParam(clauses.length ? clauses : null);
   };
-  useFiltersInAddress(rulesFilterClauses, (clauses) => updateRulesView({ filters: clauses }), rulesViewLoaded, navigationKey);
+  const rulesFilterClauses = useFiltersInAddress(rulesView.filters, (clauses) => updateRulesView({ filters: clauses }), rulesViewLoaded, navigationKey);
 
   // Rules are read again whenever an address names one, so a rule created
   // since the list was loaded is found as well.
