@@ -1,6 +1,6 @@
 // Exercise the real App with a synthetic API: aiming rules at campaigns and
-// ad sets from Ads Manager (#320). The Rules cell shows "N rules" or "+ Rule"
-// with no hover needed; its picker attaches and detaches one row's rule, and
+// ad sets from Ads Manager (#320). The Rules cell shows "N rules", or with none
+// Linear's empty property: an icon under the pointer, always on a phone; its picker attaches and detaches one row's rule, and
 // "Apply rule…" over a row selection aims a rule at several rows at once, as
 // Meta's "Apply rule to". On a phone everything is tapped: the row checkbox
 // shows, the picker rows are finger-sized and no keyboard pops up over them.
@@ -132,13 +132,21 @@ try {
     };
 
     try {
-      // 1. One campaign: "+ Rule" shows without a pointer over the row.
+      // 1. One campaign without rules: as Linear's empty property, its icon shows only under
+      // the pointer; a touch screen has none, so there it always shows.
       await page.goto(`${origin}/alpha/ads-manager/campaigns`);
       await cell('801').waitFor();
-      await page.mouse.move(0, 0);
-      assert.equal(await cell('801').innerText(), 'Rule');
-      assert.equal(await cell('801').evaluate((el) => getComputedStyle(el).opacity), '1', '+ Rule shows without hover');
+      assert.equal(await cell('801').getAttribute('data-rules'), '0');
+      assert.equal(await cell('801').getAttribute('aria-label'), 'Add rule');
+      const opacity = () => cell('801').evaluate((el) => getComputedStyle(el).opacity);
+      if (!phone) {
+        await page.mouse.move(0, 0);
+        assert.equal(await opacity(), '0', 'the empty Rules cell is blank without a pointer');
+        await cell('801').hover();
+        assert.equal(await opacity(), '1', 'the empty Rules cell shows its icon under the pointer');
+      }
       if (phone) {
+        assert.equal(await opacity(), '1', 'the empty Rules cell shows on a touch screen');
         assert.equal(await page.evaluate(() => matchMedia('(hover: none) and (pointer: coarse)').matches), true, 'the phone is a touch screen');
         // The column sits past the scroll on a phone; the cell stays pinned to the right edge.
         const reach = await cell('801').evaluate((el) => {
@@ -146,8 +154,8 @@ try {
           const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
           return { right: rect.right, width: innerWidth, onTop: Boolean(hit && el.contains(hit)) };
         });
-        assert.ok(reach.right <= reach.width, `"+ Rule" ends at ${reach.right}px, past the ${reach.width}px screen`);
-        assert.ok(reach.onTop, '"+ Rule" is not covered by another cell');
+        assert.ok(reach.right <= reach.width, `the Rules cell ends at ${reach.right}px, past the ${reach.width}px screen`);
+        assert.ok(reach.onTop, 'the Rules cell is not covered by another cell');
       }
 
       await press(cell('801'));
@@ -179,7 +187,7 @@ try {
       await press(single.getByRole('option', { name: /Example stop/ }));
       await waitForWrites(2);
       assert.deepEqual(lastWrite(), { verb: 'POST', path: '/api/accounts/act_100/detach-rule/8', body: null });
-      await page.waitForFunction(() => document.querySelector('[data-row-id="801"] [data-rule-cell]')?.textContent?.trim() === 'Rule');
+      await page.waitForFunction(() => document.querySelector('[data-row-id="801"] [data-rule-cell]')?.dataset.rules === '0');
       await page.keyboard.press('Escape');
       await single.waitFor({ state: 'detached' });
 
@@ -217,7 +225,7 @@ try {
       await page.waitForFunction(() => ['902', '903'].every((id) => (
         document.querySelector(`[data-row-id="${id}"] [data-rule-cell]`)?.textContent?.trim() === '1 rule'
       )));
-      assert.equal(await cell('901').innerText(), 'Rule');
+      assert.equal(await cell('901').getAttribute('data-rules'), '0');
       await page.keyboard.press('Escape');
       await bulk.waitFor({ state: 'detached' });
 
@@ -246,7 +254,7 @@ try {
       });
       // Both cells are waited for: the list is redrawn from the refreshed account, not at once.
       await page.waitForFunction(() => (
-        document.querySelector('[data-row-id="902"] [data-rule-cell]')?.textContent?.trim() === 'Rule'
+        document.querySelector('[data-row-id="902"] [data-rule-cell]')?.dataset.rules === '0'
         && document.querySelector('[data-row-id="903"] [data-rule-cell]')?.textContent?.trim() === '1 rule'
       ));
       await page.keyboard.press('Escape');

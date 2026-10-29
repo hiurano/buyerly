@@ -191,6 +191,9 @@ export const colors = stylex.defineVars({
   '--header-button-fg': 'lch(61.803% 1.2 272 / 1)',
   '--header-button-hover-bg': 'lch(14.006% 0.593 272 / 1)',
   '--header-button-active-bg': 'lch(18.634% 1.075 272 / 1)',
+  /* A list cell's property button (Linear's DetailsProperty), as Rules' empty cell in Ads Manager (29.10). */
+  '--property-fg': 'var(--header-button-fg)',
+  '--property-hover-bg': 'lch(14.006% 0.593 272 / 1)',
   '--toolbar-button-bg': 'lch(10.149% 0.689 272 / 1)',
   '--toolbar-button-hover-bg': 'lch(14.777% 1.075 272 / 1)',
   '--toolbar-button-active-bg': 'lch(18.634% 1.075 272 / 1)',
@@ -594,6 +597,8 @@ export const lightColors = stylex.createTheme(colors, {
   '--header-button-fg': 'var(--text-tertiary)',
   '--header-button-hover-bg': 'lch(94.854% 0.5 282 / 1)',
   '--header-button-active-bg': 'lch(94.854% 0.157 282 / 1)',
+  '--property-fg': 'var(--header-button-fg)',
+  '--property-hover-bg': 'lch(92.44% 0.5 282 / 1)',
   '--toolbar-button-bg': 'lch(99.997% 0.5 282 / 1)',
   '--toolbar-button-hover-bg': 'lch(95.883% 0.157 282 / 1)',
   '--toolbar-button-active-bg': 'lch(94.854% 0.157 282 / 1)',
