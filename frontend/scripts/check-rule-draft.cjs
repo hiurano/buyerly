@@ -74,13 +74,13 @@ assert.deepEqual([raised.budget_change_percent, raised.budget_max_daily], [20, 3
 // The sentence under the chips: what, how often, when and where.
 assert.equal(
   describeDraft(nl, accounts),
-  'Checks each ad set every 5 min and turns it off when spend ≥ USD 4 and leads = 0 (lifetime). '
+  'Checks each ad set every 5 min and turns it off when spend ≥ $4 and leads = 0 (lifetime). '
   + 'Acts on the same ad set at most once a day. Runs nowhere until you pick where.',
 );
 assert.match(describeDraft({ ...nl, runOn: { act_1: { level: 'account', ids: [] } } }, accounts), /Runs on Main\.$/);
 assert.match(describeDraft({ ...nl, runOn: { act_1: { level: 'campaign', ids: ['c1', 'c2'] } } }, accounts), /Runs on 2 campaigns in Main\.$/);
 assert.match(describeDraft({ ...nl, runOn: { act_1: { level: 'account', ids: [] }, act_2: { level: 'account', ids: [] } } }, accounts), /Runs on 2 ad accounts\.$/);
-assert.match(describeDraft({ ...raise, budgetMax: '300', checkInterval: 60 }, accounts), /every hour and raises its daily budget by 20% up to USD 300 a day/);
+assert.match(describeDraft({ ...raise, budgetMax: '300', checkInterval: 60 }, accounts), /every hour and raises its daily budget by 20% up to \$300 a day/);
 assert.match(describeDraft({ ...nl, conditions: [{ metric: 'ctr', operator: 'lt', value: '0.8' }] }, accounts), /when CTR < 0\.8%/);
 // Mixed currencies: no unit is claimed.
 assert.match(describeDraft(nl, [...accounts, { account_id: 'act_3', name: 'Euro', currency: 'EUR' }]), /spend ≥ 4 and/);
