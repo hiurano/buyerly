@@ -4,7 +4,6 @@ import { Command } from 'cmdk';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
-import { ArrowRight, Maximize2 } from 'lucide-react';
 import { currentTab, openSettings, pathForTab, recentlyDeletedRulesPath } from '@/lib/routing';
 import { openLastAppPage, useCurrentPage } from '@/lib/navigation';
 import type { Workspace } from '@/lib/types';
@@ -25,7 +24,8 @@ import { OpenPaletteIcon, OPEN_PALETTE_LABELS, openOpenPalette } from './OpenPal
 import { SETTINGS_PAGE_KEYWORDS, settingsGroupsFor } from '@/lib/settingsPages';
 import { SettingsPageIcon } from '@/components/preferences/SettingsPageIcon';
 import { isSmallScreen } from '@/lib/useMediaQuery';
-import { BuyerlyLabelIcon, BuyerlyPlusIcon, BuyerlySearchIcon, BuyerlySidebarLeftToggleIcon, BuyerlyStarOutlineIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
+import { BuyerlySidebarLeftToggleIcon } from '@/icons/BuyerlyIcons';
 import { toggleFavorite, useFavorites } from '@/lib/favorites';
 import { CommandMenuFooterKeys } from '@/ui/SelectionCommandMenu';
 import { commandMenuStyles as menu } from './commandMenuStyles';
@@ -169,7 +169,6 @@ const QUICK_RESULTS_MIN_LENGTH = 2;
 const QUICK_RESULTS_LIMIT = 8;
 const QUICK_RESULTS_DELAY_MS = 120;
 
-
 const styles = stylex.create({
   dialog: {
     maxHeight: 'min(450px, 84vh)',
@@ -278,7 +277,7 @@ const styles = stylex.create({
   },
 });
 
-const arrowIcon = <ArrowRight size={14} strokeWidth={1.75} />;
+const arrowIcon = <BuyerlyIcon name="arrow-right" size={14} />;
 
 const OPEN_PALETTE_KINDS = Object.keys(OPEN_KEYS) as OpenPaletteKind[];
 
@@ -343,7 +342,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
       id: 'favorite-page',
       label: starred ? 'Unfavorite page' : 'Favorite page',
       keywords: ['star', 'favorites'],
-      icon: <BuyerlyStarOutlineIcon size={14} />,
+      icon: <BuyerlyIcon name="favorite" size={14} />,
       shortcut: 'Alt F',
       run: () => void toggleFavorite(favoriteHere),
     }],
@@ -359,7 +358,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
         id: 'create-rule',
         label: 'Create rule…',
         keywords: ['new rule', 'automation'],
-        icon: <BuyerlyPlusIcon size={14} />,
+        icon: <BuyerlyIcon name="add" size={14} />,
         // C creates a rule on the Rules page only, so the key shows there.
         shortcut: activeTab === 'rules' ? 'C' : undefined,
         run: () => {
@@ -371,7 +370,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
         id: 'create-rule-label',
         label: 'Create new label…',
         keywords: ['new label', 'tag', 'rule labels'],
-        icon: <BuyerlyLabelIcon size={14} />,
+        icon: <BuyerlyIcon name="label" size={14} />,
         run: () => {
           shellStore.requestNewRuleLabel();
           go(pathForTab(slug, 'preferences', 'campaigns', 'rule-labels'));
@@ -381,13 +380,13 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
     {
       heading: 'Filter',
       commands: [
-        { id: 'search', label: 'Search workspace…', keywords: ['find', 'campaigns', 'rules'], icon: <BuyerlySearchIcon size={14} />, run: openSearchPage },
+        { id: 'search', label: 'Search workspace…', keywords: ['find', 'campaigns', 'rules'], icon: <BuyerlyIcon name="search" size={14} />, run: openSearchPage },
       ],
     },
     {
       heading: 'Navigation',
       commands: [
-        { id: 'advanced-search', label: 'Go to advanced search', icon: <Maximize2 size={13} strokeWidth={1.75} />, shortcut: '/', run: advancedSearch },
+        { id: 'advanced-search', label: 'Go to advanced search', icon: <BuyerlyIcon name="maximize" size={13} />, shortcut: '/', run: advancedSearch },
         // Linear leaves out Go to inbox on Inbox itself.
         ...(activeTab === 'inbox'
           ? []
@@ -501,7 +500,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
               onSelect={() => choose(advancedSearch)}
               {...stylex.props(menu.item)}
             >
-              <span {...stylex.props(menu.icon)} aria-hidden="true"><BuyerlySearchIcon size={14} /></span>
+              <span {...stylex.props(menu.icon)} aria-hidden="true"><BuyerlyIcon name="search" size={14} /></span>
               <span {...stylex.props(styles.searchAll)}>
                 <span {...stylex.props(styles.fixed)}>{results.length > 0 ? 'Search entire workspace' : 'No results found'}</span>
                 <span {...stylex.props(styles.truncate, styles.muted)}>{results.length > 0 ? text : 'Go to advanced search'}</span>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BuyerlySlidersIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { Tooltip } from '@/ui/Tooltip';
 import { DisplayOptionsChangedDot } from '@/ui/BuyerlyDisplayOptions';
 
@@ -63,7 +63,7 @@ export const BuyerlyDisplayOptionsButton = React.forwardRef<HTMLButtonElement, B
         aria-label="Display options"
         aria-expanded={open}
       >
-        <BuyerlySlidersIcon size={14} />
+        <BuyerlyIcon name="display" size={14} />
         <DisplayOptionsChangedDot show={changed} />
       </BuyerlyToolbarButton>
     </Tooltip>

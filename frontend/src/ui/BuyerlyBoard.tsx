@@ -12,7 +12,8 @@ import {
 } from '@dnd-kit/core';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './DropdownMenu';
 import { Tooltip } from './Tooltip';
-import { BuyerlyDotsIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
+import { BuyerlyDisclosureGlyph } from '@/icons/BuyerlyIcons';
 
 /**
  * Linear's Board (measured on linear.app 2026-10-22, light and dark): 348px
@@ -71,22 +72,14 @@ interface BuyerlyBoardProps<T> {
 }
 
 const Chevron: React.FC<{ open: boolean }> = ({ open }) => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 16 16"
-    aria-hidden="true"
+  <BuyerlyDisclosureGlyph
     className="buyerly-board-chevron"
     style={{ transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}
-  >
-    <path d="M7.00194 10.6239C6.66861 10.8183 6.25 10.5779 6.25 10.192V5.80802C6.25 5.42212 6.66861 5.18169 7.00194 5.37613L10.7596 7.56811C11.0904 7.76105 11.0904 8.23895 10.7596 8.43189L7.00194 10.6239Z" />
-  </svg>
+  />
 );
 
 const PlusIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-    <path d="M8.75 4C8.75 3.58579 8.41421 3.25 8 3.25C7.58579 3.25 7.25 3.58579 7.25 4V7.25H4C3.58579 7.25 3.25 7.58579 3.25 8C3.25 8.41421 3.58579 8.75 4 8.75H7.25V12C7.25 12.4142 7.58579 12.75 8 12.75C8.41421 12.75 8.75 12.4142 8.75 12V8.75H12C12.4142 8.75 12.75 8.41421 12.75 8C12.75 7.58579 12.4142 7.25 12 7.25H8.75V4Z" />
-  </svg>
+  <BuyerlyIcon name="add" size={14} />
 );
 
 const cellKey = (laneId: string, columnId: string) => `${laneId}::${columnId}`;
@@ -212,7 +205,7 @@ export function BuyerlyBoard<T>({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button type="button" className="buyerly-board-icon-button" aria-label={`${column.label} menu`}>
-                      <BuyerlyDotsIcon size={14} />
+                      <BuyerlyIcon name="more" size={14} />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">

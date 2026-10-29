@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { observer } from 'mobx-react-lite';
-import { ChevronRight, Copy } from 'lucide-react';
 import type { MetaAccount } from '@/lib/types';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { auditEventSummary, auditEventTitle, fetchAuditEvents, formatAuditRelativeTime, formatAuditTimestamp, type AuditEventItem } from '@/lib/audit';
@@ -20,7 +19,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
-import { BuyerlyPlusIcon, BuyerlyProjectIcon, BuyerlyStatusCircleIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
+import { BuyerlyStatusCircleIcon } from '@/icons/BuyerlyIcons';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { AccountRowMenu, type AccountRowActions } from './AccountRow';
 import { AccountStatusLabel, ConnectionProblemIcon, accountMoney } from './AccountParts';
@@ -664,7 +664,7 @@ const AccountPageContent: React.FC<AccountPageProps> = ({ accountId, navigate, n
           >
             Ad accounts
           </a>
-          <ChevronRight size={14} aria-hidden="true" {...stylex.props(styles.breadcrumbChevron)} />
+          <BuyerlyIcon name="chevron-right" size={14} aria-hidden="true" {...stylex.props(styles.breadcrumbChevron)} />
           <h2 aria-current="page" {...stylex.props(styles.breadcrumbPage)}>
             {account ? accountName(account) : accountId}
           </h2>
@@ -872,7 +872,7 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
   const main = (
     <div {...stylex.props(styles.main)}>
       <span {...stylex.props(styles.icon)} aria-hidden="true">
-        <BuyerlyProjectIcon size={22} />
+        <BuyerlyIcon name="ad-accounts" size={22} />
       </span>
       {canAct ? (
         <input
@@ -909,7 +909,7 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
             onClick={() => void copyAccountId(account.account_id)}
             {...stylex.props(styles.copy)}
           >
-            <Copy size={13} strokeWidth={1.75} aria-hidden="true" />
+            <BuyerlyIcon name="copy" size={13} aria-hidden="true" />
           </button>
         </Tooltip>
       </div>
@@ -959,7 +959,7 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
                   type="button"
                   {...stylex.props(styles.attach)}
                 >
-                  <BuyerlyPlusIcon size={14} aria-hidden="true" />
+                  <BuyerlyIcon name="add" size={14} aria-hidden="true" />
                   Attach rule
                 </button>
               </DropdownMenuTrigger>

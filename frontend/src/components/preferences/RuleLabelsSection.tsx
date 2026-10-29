@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import type { Workspace } from '@/lib/types';
 import { ApiError } from '@/lib/api';
 import { LABEL_COLORS, formatRelativeTime, randomLabelColor } from '@/lib/rules';
@@ -413,9 +414,7 @@ export const RuleLabelsSection: React.FC<{ workspace: Workspace }> = ({ workspac
       <div className="settings-list-filter-row">
         <label className="settings-list-search">
           <span {...stylex.props(styles.srOnly)}>Filter by name…</span>
-          <svg viewBox="0 0 16 16" aria-hidden="true" className="settings-list-search-icon">
-            <path d="M7 1.5a5.5 5.5 0 0 1 4.38 8.82l3.15 3.15a.75.75 0 1 1-1.06 1.06l-3.15-3.15A5.5 5.5 0 1 1 7 1.5Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
-          </svg>
+          <BuyerlyIcon name="search" className="settings-list-search-icon" />
           <input
             type="search"
             value={query}

@@ -1,12 +1,5 @@
 import React from 'react';
-import {
-  BuyerlyBoltIcon,
-  BuyerlyCloseIcon,
-  BuyerlyIssuesIcon,
-  BuyerlyMetaIcon,
-  BuyerlyMyIssuesIcon,
-  BuyerlyProjectIcon,
-} from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { favoritePath, useFavorites, type Favorite } from '@/lib/favorites';
 import { openAppPath } from '@/lib/routing';
 import { SidebarLink, SidebarSection } from './SidebarSections';
@@ -14,14 +7,14 @@ import { useAddress } from '@/lib/routing';
 
 /** The sidebar icon of what a favorite opens: the page's own, or the record's kind. */
 export function favoriteIcon(favorite: Favorite): React.ReactNode {
-  if (favorite.kind === 'account') return <BuyerlyProjectIcon size={14} />;
-  if (favorite.kind === 'rule') return <BuyerlyBoltIcon size={14} />;
-  if (favorite.kind !== 'page') return <BuyerlyMetaIcon size={14} />;
+  if (favorite.kind === 'account') return <BuyerlyIcon name="ad-accounts" size={14} />;
+  if (favorite.kind === 'rule') return <BuyerlyIcon name="rules" size={14} />;
+  if (favorite.kind !== 'page') return <BuyerlyIcon name="meta" size={14} />;
   const parts = favorite.path.split('/');
-  if (parts.includes('my-campaigns')) return <BuyerlyMyIssuesIcon size={14} />;
-  if (parts.includes('rules')) return <BuyerlyBoltIcon size={14} />;
-  if (parts.includes('accounts')) return <BuyerlyProjectIcon size={14} />;
-  return <BuyerlyIssuesIcon size={14} />;
+  if (parts.includes('my-campaigns')) return <BuyerlyIcon name="my-campaigns" size={14} />;
+  if (parts.includes('rules')) return <BuyerlyIcon name="rules" size={14} />;
+  if (parts.includes('accounts')) return <BuyerlyIcon name="ad-accounts" size={14} />;
+  return <BuyerlyIcon name="campaigns" size={14} />;
 }
 
 /**
@@ -61,7 +54,7 @@ export const SidebarFavorites: React.FC<{
                 void remove(favorite.path);
               }}
             >
-              <BuyerlyCloseIcon size={10} />
+              <BuyerlyIcon name="close" size={10} />
             </span>
           )}
         />

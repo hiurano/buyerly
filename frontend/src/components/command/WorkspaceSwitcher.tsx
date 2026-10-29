@@ -9,7 +9,7 @@ import { commandMenuStyles } from './commandMenuStyles';
 
 /** The sans stack the app's controls use. */
 const SANS = '"Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-import { BuyerlyCheckIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { accountBlocks } from '@/lib/accounts';
@@ -235,7 +235,7 @@ export const WorkspaceSwitcher: React.FC = () => {
                     <span {...stylex.props(styles.trailing)}>
                       {item.id === workspace.id && isOpenAccount(block.accountId) && (
                         <span {...stylex.props(styles.current)} aria-label="Current workspace">
-                          <BuyerlyCheckIcon size={16} />
+                          <BuyerlyIcon name="check" size={16} />
                         </span>
                       )}
                       {!query && number <= 9 && (

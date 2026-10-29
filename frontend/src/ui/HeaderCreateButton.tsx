@@ -1,7 +1,7 @@
 import React from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
-import { BuyerlyPlusIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { Tooltip } from '@/ui/Tooltip';
 
 export interface HeaderCreateButtonProps {
@@ -93,7 +93,7 @@ export const HeaderCreateButton: React.FC<HeaderCreateButtonProps> = ({ label, t
       onClick={onClick}
       {...stylex.props(styles.button)}
     >
-      <BuyerlyPlusIcon size={14} />
+      <BuyerlyIcon name="add" size={14} />
       <span aria-hidden="true" {...stylex.props(styles.label)}>
         {label}
       </span>

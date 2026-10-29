@@ -3,7 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import * as stylex from '@stylexjs/stylex';
 import { graphql } from '@/lib/graphql';
 import type { MetaAssetsResponse, MetaConnectionAsset, MetaInviteCreated } from '@/lib/types';
-import { BuyerlyCloseIcon, BuyerlyMetaIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { BuyerlyCheckbox } from '@/ui/BuyerlyCheckbox';
 import { withClassName } from '@/ui/withClassName';
 import { colors } from '@/styles/tokens.stylex';
@@ -439,12 +439,12 @@ export const MetaConnectionDialog: React.FC<MetaConnectionDialogProps> = ({
           <Dialog.Content {...withClassName(stylex.props(styles.content), 'ui-dialog animate-scale-in')}>
             <header {...stylex.props(styles.header)}>
               <div {...stylex.props(styles.heading)}>
-                <BuyerlyMetaIcon size={16} className={stylex.props(styles.metaIcon).className} />
+                <BuyerlyIcon name="meta" size={16} className={stylex.props(styles.metaIcon).className} />
                 <Dialog.Title {...stylex.props(styles.title)}>{title}</Dialog.Title>
               </div>
               <Dialog.Close asChild>
                 <button {...withClassName(stylex.props(styles.close), 'ui-icon-button')} type="button" aria-label="Close">
-                  <BuyerlyCloseIcon size={14} />
+                  <BuyerlyIcon name="close" size={14} />
                 </button>
               </Dialog.Close>
             </header>

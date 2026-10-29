@@ -5,7 +5,7 @@ import { ApiError } from '@/lib/api';
 import { leaveWorkspace, removeMember, transferWorkspaceOwnership, updateMemberRole } from '@/lib/workspaces';
 import { fetchWorkspaceMembers } from '@/models/queries';
 import type { Workspace } from '@/lib/types';
-import { BuyerlyCloseIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { Button } from '@/ui/Button';
 import { ConfirmDialog } from '@/ui/ConfirmDialog';
 import { toast } from '@/ui/toast';
@@ -254,7 +254,7 @@ export const ChoiceDialog: React.FC<ChoiceDialogProps> = ({ open, title, descrip
                 disabled={busy}
                 {...stylex.props(styles.close)}
               >
-                <BuyerlyCloseIcon size={12} />
+                <BuyerlyIcon name="close" size={12} />
               </Dialog.Close>
             )}
           </div>

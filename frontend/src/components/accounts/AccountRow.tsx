@@ -6,7 +6,7 @@ import {
   BuyerlyDataMetricCell,
   type BuyerlyDataListColumn,
 } from '@/ui/BuyerlyDataList';
-import { BuyerlyProjectIcon, BuyerlyDotsIcon, BuyerlyCopyIdIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import { BuyerlyRowContextMenu, DropdownEntries, type RowMenuEntry } from '@/ui/BuyerlyRowMenu';
 import { useMediaQuery } from '@/lib/useMediaQuery';
@@ -197,7 +197,7 @@ export function accountMenuEntries(account: MetaAccount, actions: AccountRowActi
       ]
       : []),
     'separator',
-    { label: 'Copy account ID', icon: <BuyerlyCopyIdIcon size={16} />, onSelect: () => actions.copyId(account) },
+    { label: 'Copy account ID', icon: <BuyerlyIcon name="copy-id" size={16} />, onSelect: () => actions.copyId(account) },
     ...(actions.canEdit ? ['separator' as const, { label: 'Remove from workspace…', onSelect: () => actions.remove(account) }] : []),
   ];
 }
@@ -217,7 +217,7 @@ export const AccountRowMenu: React.FC<{
         onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); }}
         {...stylex.props(styles.menuTrigger, inHeader && styles.menuTriggerHeader)}
       >
-        <BuyerlyDotsIcon size={14} />
+        <BuyerlyIcon name="more" size={14} />
       </button>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" sideOffset={4} onClick={(event) => event.stopPropagation()}>
@@ -257,7 +257,7 @@ const AccountRowContent: React.FC<AccountRowProps> = ({ account, columns, proper
         {/* A phone keeps the width for the name. */}
         {!phone && (
           <span {...stylex.props(styles.icon)} aria-hidden="true">
-            <BuyerlyProjectIcon size={14} />
+            <BuyerlyIcon name="ad-accounts" size={14} />
           </span>
         )}
         <span {...stylex.props(styles.nameLine)}>

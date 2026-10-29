@@ -8,7 +8,8 @@ import { plural, useTeams } from '@/lib/teams';
 import type { Workspace } from '@/lib/types';
 import { Button } from '@/ui/Button';
 import { DataState } from '@/ui/DataState';
-import { BuyerlyCheckIcon, BuyerlyCloseIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
+import { BuyerlyChevronGlyph } from '@/icons/BuyerlyIcons';
 import { toast } from '@/ui/toast';
 import { rowMarker } from '@/ui/markers.stylex';
 import { withClassName } from '@/ui/withClassName';
@@ -491,7 +492,7 @@ export const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onC
                 disabled={busy}
                 {...stylex.props(styles.iconButton)}
               >
-                <BuyerlyCloseIcon size={12} />
+                <BuyerlyIcon name="close" size={12} />
               </Dialog.Close>
             </div>
             <Dialog.Description {...stylex.props(styles.srOnly)}>
@@ -524,7 +525,7 @@ export const InviteDialog: React.FC<InviteDialogProps> = ({ open, workspace, onC
                           <span {...stylex.props(styles.roleOptionLabel)}>{option.label}</span>
                           <span {...stylex.props(styles.roleOptionDetail)}>{option.description}</span>
                         </span>
-                        {role === option.value && <BuyerlyCheckIcon size={14} />}
+                        {role === option.value && <BuyerlyIcon name="check" size={14} />}
                       </DropdownMenuRadioItem>
                     ))}
                   </DropdownMenuRadioGroup>
@@ -581,11 +582,7 @@ export const RowMenu: React.FC<{ label: string; children: React.ReactNode; visib
         aria-label={label}
         {...stylex.props(styles.iconButton, styles.rowMenuTrigger, !visible && styles.rowMenuHidden)}
       >
-        <svg width={visible ? 16 : 14} height={visible ? 16 : 14} viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
-          <circle cx="3" cy="8" r="1.25" />
-          <circle cx="8" cy="8" r="1.25" />
-          <circle cx="13" cy="8" r="1.25" />
-        </svg>
+        <BuyerlyIcon name="more" size={visible ? 16 : 14} />
       </button>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" sideOffset={4}>
@@ -709,9 +706,7 @@ export const MembersSection: React.FC<{
       <div className="settings-list-toolbar">
         <label className="settings-list-search">
           <span {...stylex.props(styles.srOnly)}>Search by name or email</span>
-          <svg viewBox="0 0 16 16" aria-hidden="true" className="settings-list-search-icon">
-            <path d="M7 1.5a5.5 5.5 0 0 1 4.38 8.82l3.15 3.15a.75.75 0 1 1-1.06 1.06l-3.15-3.15A5.5 5.5 0 1 1 7 1.5Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
-          </svg>
+          <BuyerlyIcon name="search" className="settings-list-search-icon" />
           <input
             type="search"
             value={query}
@@ -729,9 +724,7 @@ export const MembersSection: React.FC<{
                 className="settings-list-select"
               >
                 {FILTER_LABELS[filter]}
-                <svg width="10" height="5" viewBox="0 0 9 5" aria-hidden="true">
-                  <path d="M1.915.557a.667.667 0 0 0-.943.943l2.862 2.862a.942.942 0 0 0 1.333 0L8.028 1.5a.667.667 0 0 0-.943-.943L4.5 3.14 1.915.557Z" />
-                </svg>
+                <BuyerlyChevronGlyph />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" sideOffset={4}>
@@ -740,7 +733,7 @@ export const MembersSection: React.FC<{
                 {(Object.keys(FILTER_LABELS) as MemberFilter[]).map((key) => (
                   <DropdownMenuRadioItem key={key} value={key}>
                     <span {...stylex.props(styles.truncate)}>{FILTER_LABELS[key]}</span>
-                    {filter === key && <BuyerlyCheckIcon size={14} />}
+                    {filter === key && <BuyerlyIcon name="check" size={14} />}
                   </DropdownMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>

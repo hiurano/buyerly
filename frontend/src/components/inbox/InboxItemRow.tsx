@@ -12,13 +12,8 @@ import {
   type InboxItem,
 } from '@/lib/inbox';
 import { parseSnoozeQuery } from '@/lib/snoozeQuery';
-import {
-  BuyerlyLogoAvatar,
-  BuyerlyClockOutlineIcon,
-  BuyerlyInboxDeleteIcon,
-  BuyerlyInboxUnreadIcon,
-  BuyerlyTrashIcon,
-} from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
+import { BuyerlyLogoAvatar, BuyerlyDisclosureGlyph } from '@/icons/BuyerlyIcons';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -222,7 +217,7 @@ const SnoozeRow: React.FC<{
 }> = ({ label, hint, icon, onSelect }) => (
   <ContextMenuItem onSelect={onSelect}>
     <span {...stylex.props(styles.menuLabel)}>
-      {icon ?? <BuyerlyClockOutlineIcon size={16} />}
+      {icon ?? <BuyerlyIcon name="snooze" size={16} />}
       {label}
     </span>
     {hint && <span {...stylex.props(styles.menuHint)}>{hint}</span>}
@@ -247,7 +242,7 @@ const SnoozeSubmenu: React.FC<{
     <SnoozeRow
       label={UNSNOOZE_LABEL}
       hint={formatSnoozedFor(item.snoozed_until)}
-      icon={<BuyerlyTrashIcon size={16} />}
+      icon={<BuyerlyIcon name="delete" size={16} />}
       onSelect={() => onUnsnooze(item)}
     />
   );
@@ -395,14 +390,14 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
       <ContextMenuContent style={{ width: '190px' }}>
         <ContextMenuItem onSelect={() => onToggleRead(item)}>
           <span {...stylex.props(styles.menuLabel)}>
-            <BuyerlyInboxUnreadIcon size={16} />
+            <BuyerlyIcon name="unread" size={16} />
             {unread ? 'Mark as read' : 'Mark as unread'}
           </span>
           <MenuKey>U</MenuKey>
         </ContextMenuItem>
         <ContextMenuItem onSelect={() => onDelete(item)}>
           <span {...stylex.props(styles.menuLabel)}>
-            <BuyerlyInboxDeleteIcon size={16} />
+            <BuyerlyIcon name="delete" size={16} />
             Delete notification
           </span>
           <MenuKey>⌫</MenuKey>
@@ -410,7 +405,7 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
         <ContextMenuSub>
           <ContextMenuSubTrigger>
             <span {...stylex.props(styles.menuLabel)}>
-              <BuyerlyClockOutlineIcon size={16} />
+              <BuyerlyIcon name="snooze" size={16} />
               Snooze
             </span>
             <span {...stylex.props(styles.menuKeys)}>
@@ -439,12 +434,7 @@ export const InboxGroupHeader: React.FC<{ label: string; expanded: boolean; onTo
       onClick={onToggle}
     >
       <span>{label}</span>
-      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-        <path
-          fill="currentColor"
-          d="M7.00194 10.6239C6.66861 10.8183 6.25 10.5779 6.25 10.192V5.80802C6.25 5.42212 6.66861 5.18169 7.00194 5.37613L10.7596 7.56811C11.0904 7.76105 11.0904 8.23895 10.7596 8.43189L7.00194 10.6239Z"
-        />
-      </svg>
+      <BuyerlyDisclosureGlyph />
     </button>
   </div>
 );

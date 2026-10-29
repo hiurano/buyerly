@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, X } from 'lucide-react';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import * as stylex from '@stylexjs/stylex';
 import { FilterOptionAvatarImage, type FilterMenuMode } from '@/components/filters/BuyerlyFilter';
 import {
@@ -230,7 +230,7 @@ export const InboxFilterChip: React.FC<InboxFilterChipProps> = ({ field, clause,
         onClick={onRemove}
         {...stylex.props(styles.segment, styles.segmentFixed, styles.remove)}
       >
-        <X size={12} strokeWidth={1.8} aria-hidden="true" />
+        <BuyerlyIcon name="close" size={12} aria-hidden="true" />
       </button>
     )}
   </div>
@@ -269,7 +269,7 @@ export const InboxFilterBar: React.FC<InboxFilterBarProps> = ({ fields, clauses,
         onClick={(event) => onOpenMenu('root', event.currentTarget)}
         {...stylex.props(styles.add)}
       >
-        <Plus size={14} strokeWidth={1.8} aria-hidden="true" />
+        <BuyerlyIcon name="add" size={14} aria-hidden="true" />
       </button>
     </div>
   );
@@ -292,7 +292,7 @@ export const InboxFilterFooter: React.FC<{ hiddenCount: number; onClear: () => v
       {...stylex.props(styles.clear)}
     >
       Clear Filters
-      <X size={12} strokeWidth={1.8} aria-hidden="true" />
+      <BuyerlyIcon name="close" size={12} aria-hidden="true" />
     </button>
   </div>
 );

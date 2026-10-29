@@ -5,7 +5,7 @@ import { apiRequest } from '@/lib/api';
 import { Button } from '@/ui/Button';
 import { Input } from '@/ui/Input';
 import { withClassName } from '@/ui/withClassName';
-import { BuyerlyCloseIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { colors } from '@/styles/tokens.stylex';
 
 const styles = stylex.create({
@@ -213,7 +213,7 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
                   type="button"
                   aria-label="Close"
                 >
-                  <BuyerlyCloseIcon size={14} />
+                  <BuyerlyIcon name="close" size={14} />
                 </button>
               </Dialog.Close>
             </header>

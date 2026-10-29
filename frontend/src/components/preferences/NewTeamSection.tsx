@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { ChevronLeft } from 'lucide-react';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { colors } from '@/styles/tokens.stylex';
 import type { Workspace } from '@/lib/types';
 import {
@@ -88,7 +88,7 @@ export const NewTeamSection: React.FC<{ workspace: Workspace }> = ({ workspace }
   return (
     <>
       <button type="button" className="preferences-breadcrumb" onClick={() => openSettings('teams')}>
-        <ChevronLeft size={14} aria-hidden="true" />
+        <BuyerlyIcon name="chevron-left" size={14} aria-hidden="true" />
         Back
       </button>
       <div className="preferences-title-container preferences-title-container--with-note">

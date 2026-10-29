@@ -1,5 +1,5 @@
 import React from 'react';
-import { Chrome, Compass, Globe } from 'lucide-react';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 
 /** Firefox drawn as Linear's tile shows it: a ring with the fox's swirl, in one colour. */
 const FirefoxMark: React.FC<{ size: number }> = ({ size }) => (
@@ -9,15 +9,15 @@ const FirefoxMark: React.FC<{ size: number }> = ({ size }) => (
   </svg>
 );
 
-// Linear's session tiles carry the browser's mark in one colour; lucide has
-// Chrome's and a compass for Safari, every other browser gets a globe.
+// Linear's session tiles carry the browser's mark in one colour: Chrome's logo,
+// Firefox's ring, a compass for Safari, a globe for every other browser.
 const ICONS: Record<string, (size: number) => React.ReactNode> = {
-  Chrome: (size) => <Chrome size={size} aria-hidden />,
-  Safari: (size) => <Compass size={size} aria-hidden />,
+  Chrome: (size) => <BuyerlyIcon name="chrome" size={size} />,
+  Safari: (size) => <BuyerlyIcon name="compass" size={size} />,
   Firefox: (size) => <FirefoxMark size={size} />,
 };
 
 /** The browser's mark for a session row; a globe when there is none. */
 export const BrowserIcon: React.FC<{ browser: string; size?: number }> = ({ browser, size = 16 }) => (
-  <>{ICONS[browser]?.(size) ?? <Globe size={size} aria-hidden />}</>
+  <>{ICONS[browser]?.(size) ?? <BuyerlyIcon name="globe" size={size} />}</>
 );

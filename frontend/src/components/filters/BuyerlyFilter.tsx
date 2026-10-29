@@ -2,29 +2,8 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import { createPortal } from 'react-dom';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
-import {
-  CalendarDays,
-  Check,
-  Circle,
-  CircleDashed,
-  Gauge,
-  Hash,
-  Layers3,
-  Plus,
-  Type,
-  UserRound,
-  UsersRound,
-  X,
-} from 'lucide-react';
-import {
-  BuyerlyLogoAvatar,
-  BuyerlyBacklogDashedIcon,
-  BuyerlyBoltIcon,
-  BuyerlyFilterIcon,
-  BuyerlyInboxUnreadIcon,
-  BuyerlyLabelIcon,
-  BuyerlyProjectIcon,
-} from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
+import { BuyerlyLogoAvatar, BuyerlyBacklogDashedIcon } from '@/icons/BuyerlyIcons';
 import {
   DATE_PRESETS,
   NEVER_DATE,
@@ -178,22 +157,21 @@ const FilterFieldIcon: React.FC<{ fieldId: string; type: FilterFieldDefinition<u
   fieldId,
   type,
 }) => {
-  const props = { size: 15, strokeWidth: 1.8, 'aria-hidden': true } as const;
-  if (fieldId === 'notificationType') return <BuyerlyInboxUnreadIcon size={14} />;
-  if (fieldId === 'from') return <UserRound {...props} />;
-  if (fieldId === 'adAccount') return <BuyerlyProjectIcon size={14} />;
-  if (fieldId === 'eventStatus') return <Circle {...props} />;
+  if (fieldId === 'notificationType') return <BuyerlyIcon name="unread" size={14} />;
+  if (fieldId === 'from') return <BuyerlyIcon name="user" size={14} />;
+  if (fieldId === 'adAccount') return <BuyerlyIcon name="ad-accounts" size={14} />;
+  if (fieldId === 'eventStatus') return <BuyerlyIcon name="status" size={14} />;
   if (fieldId === 'status') return <BuyerlyBacklogDashedIcon size={14} />;
-  if (fieldId === 'label') return <BuyerlyLabelIcon size={14} />;
+  if (fieldId === 'label') return <BuyerlyIcon name="label" size={14} />;
   if (fieldId.includes('group') || fieldId.includes('campaign') || fieldId.includes('adSet')) {
-    return <Layers3 {...props} />;
+    return <BuyerlyIcon name="stack" size={14} />;
   }
-  if (fieldId === 'team') return <UsersRound {...props} />;
-  if (fieldId.includes('rule') || fieldId.includes('action') || fieldId === 'automation') return <BuyerlyBoltIcon size={14} />;
-  if (type === 'number') return <Gauge {...props} />;
-  if (type === 'date') return <CalendarDays {...props} />;
-  if (type === 'text') return <Type {...props} />;
-  return <Hash {...props} />;
+  if (fieldId === 'team') return <BuyerlyIcon name="members" size={14} />;
+  if (fieldId.includes('rule') || fieldId.includes('action') || fieldId === 'automation') return <BuyerlyIcon name="rules" size={14} />;
+  if (type === 'number') return <BuyerlyIcon name="gauge" size={14} />;
+  if (type === 'date') return <BuyerlyIcon name="calendar" size={14} />;
+  if (type === 'text') return <BuyerlyIcon name="text" size={14} />;
+  return <BuyerlyIcon name="number" size={14} />;
 };
 
 const MenuSurface = React.forwardRef<
@@ -339,7 +317,7 @@ export const FilterOptionAvatarImage: React.FC<{ avatar: FilterOptionAvatar; lab
   if (avatar.kind === 'rule') {
     return (
       <span data-filter-avatar="rule" aria-hidden="true" style={{ ...box, backgroundColor: MENU_TEXT, color: MENU_SURFACE }}>
-        <BuyerlyBoltIcon size={Math.round(size * 0.625)} />
+        <BuyerlyIcon name="rules" size={Math.round(size * 0.625)} />
       </span>
     );
   }
@@ -442,7 +420,7 @@ const MenuOption: React.FC<{
           zIndex: 1,
         }}
       >
-        {selected && <Check size={10} strokeWidth={2.5} aria-hidden="true" />}
+        {selected && <BuyerlyIcon name="check" size={10} aria-hidden="true" />}
       </span>
     )}
     {!multiSelect && (
@@ -457,7 +435,7 @@ const MenuOption: React.FC<{
           zIndex: 1,
         }}
       >
-        {selected ? <Check size={14} strokeWidth={2.2} aria-hidden="true" /> : icon}
+        {selected ? <BuyerlyIcon name="check" size={14} aria-hidden="true" /> : icon}
       </span>
     )}
     {avatar && (
@@ -1528,7 +1506,7 @@ export const BuyerlyFilterButton = React.forwardRef<HTMLButtonElement, FilterBut
         aria-haspopup="dialog"
         aria-expanded={open}
       >
-        <BuyerlyFilterIcon size={14} />
+        <BuyerlyIcon name="filter" size={14} />
       </BuyerlyToolbarButton>
     </Tooltip>
   )
@@ -1612,7 +1590,7 @@ export const ActiveFilterFormula = <T,>({
                 onClick={() => onChange(removeFilterClause(clauses, field.id))}
                 style={{ display: 'inline-flex', width: 24, height: 22, alignItems: 'center', justifyContent: 'center', padding: 0, border: 0, borderLeft: '1px solid var(--color-border-secondary)', background: 'transparent', color: MENU_MUTED, cursor: 'pointer' }}
               >
-                <X size={12} strokeWidth={1.8} aria-hidden="true" />
+                <BuyerlyIcon name="close" size={12} aria-hidden="true" />
               </button>
             </div>
           );
@@ -1623,7 +1601,7 @@ export const ActiveFilterFormula = <T,>({
           onClick={(event) => onOpenMenu('root', event.currentTarget)}
           style={{ display: 'inline-flex', width: 24, height: 24, flexShrink: 0, alignItems: 'center', justifyContent: 'center', border: 0, borderRadius: 9999, background: 'transparent', color: MENU_MUTED, cursor: 'pointer' }}
         >
-          <Plus size={13} strokeWidth={1.8} aria-hidden="true" />
+          <BuyerlyIcon name="add" size={13} aria-hidden="true" />
         </button>
       </div>
       <button
@@ -1680,7 +1658,7 @@ export const FilteredEmptyState: React.FC<{
   onClear: () => void;
 }> = ({ noun, hiddenCount, onClear }) => (
   <div {...stylex.props(styles.empty)}>
-    <CircleDashed size={22} strokeWidth={1.5} {...stylex.props(styles.emptyIcon)} aria-hidden="true" />
+    <BuyerlyIcon name="empty" size={22} {...stylex.props(styles.emptyIcon)} aria-hidden="true" />
     <div {...stylex.props(styles.emptyTitle)}>No {noun} matching the filters</div>
     <div {...stylex.props(styles.emptyNote)}>{hiddenCount} hidden by filters</div>
     <button

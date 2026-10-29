@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
@@ -125,7 +125,7 @@ export const RecentlyDeletedRulesPage: React.FC<RecentlyDeletedRulesPageProps> =
             >
               Rules
             </a>
-            <ChevronRight size={14} aria-hidden="true" {...stylex.props(styles.separator)} />
+            <BuyerlyIcon name="chevron-right" size={14} aria-hidden="true" {...stylex.props(styles.separator)} />
             <h2
               aria-current="page"
               {...stylex.props(styles.title)}

@@ -1,7 +1,7 @@
 import React, { useLayoutEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as stylex from '@stylexjs/stylex';
-import { BuyerlyClockOutlineIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { Button } from '@/ui/Button';
 import { withClassName } from '@/ui/withClassName';
 import { colors } from '@/styles/tokens.stylex';
@@ -234,15 +234,7 @@ const monthTitle = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'nume
 const dayTitle = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
 const NavArrow: React.FC<{ direction: 'left' | 'right' }> = ({ direction }) => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <path
-      d={direction === 'left' ? 'M9.5 4.5 6 8l3.5 3.5' : 'M6.5 4.5 10 8l-3.5 3.5'}
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
+  <BuyerlyIcon name={direction === 'left' ? 'chevron-left' : 'chevron-right'} size={16} />
 );
 
 interface MonthGridProps {
@@ -336,7 +328,7 @@ export const SnoozeCalendarDialog: React.FC<SnoozeCalendarDialogProps> = ({ open
             {...withClassName(stylex.props(styles.content), 'animate-scale-in')}
           >
             <Dialog.Title {...stylex.props(styles.title)}>
-              <BuyerlyClockOutlineIcon size={16} />
+              <BuyerlyIcon name="snooze" size={16} />
               Snooze notification until
             </Dialog.Title>
             <div {...stylex.props(styles.months)}>

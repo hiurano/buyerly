@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
+import { BuyerlyCheckGlyph } from '@/icons/BuyerlyIcons';
 import { colors } from '@/styles/tokens.stylex';
 import { graphql } from '@/lib/graphql';
 import type { AnalyticsHierarchyResponse } from '@/lib/types';
@@ -360,8 +362,6 @@ export const BuyerlyRuleChip = React.forwardRef<HTMLButtonElement, React.ButtonH
 ));
 BuyerlyRuleChip.displayName = 'BuyerlyRuleChip';
 
-const CHECK_PATH =
-  'M3.46975 5.70757L1.88358 4.1225C1.65832 3.8974 1.29423 3.8974 1.06897 4.1225C0.843675 4.34765 0.843675 4.7116 1.06897 4.93674L3.0648 6.93117C3.29006 7.15628 3.65414 7.15628 3.8794 6.93117L8.93103 1.88306C9.15633 1.65792 9.15633 1.29397 8.93103 1.06883C8.70578 0.843736 8.34172 0.843724 8.11646 1.06879L3.46975 5.70757Z';
 
 /**
  * A menu that opens under its chip inside the rule window. It stays in the
@@ -508,9 +508,7 @@ export const MetricMenu: React.FC<{
 };
 
 const CheckMark = () => (
-  <svg width="12" height="10" viewBox="0 0 10 8" fill="currentColor" aria-hidden="true" {...stylex.props(styles.checkMark)}>
-    <path d={CHECK_PATH} />
-  </svg>
+  <BuyerlyCheckGlyph width={12} height={10} {...stylex.props(styles.checkMark)} />
 );
 
 /**
@@ -594,9 +592,7 @@ export const ConditionChip: React.FC<{
               onClick={onRemove}
               {...stylex.props(styles.segment, styles.remove)}
             >
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                <path d="M2.97 2.97a.75.75 0 0 1 1.06 0L8 6.94l3.97-3.97a.75.75 0 1 1 1.06 1.06L9.06 8l3.97 3.97a.75.75 0 1 1-1.06 1.06L8 9.06l-3.97 3.97a.75.75 0 0 1-1.06-1.06L6.94 8 2.97 4.03a.75.75 0 0 1 0-1.06Z" />
-              </svg>
+              <BuyerlyIcon name="close" size={12} />
             </button>
           </>
         )}
@@ -795,6 +791,6 @@ const Box: React.FC<{ on: boolean }> = ({ on }) => (
     aria-hidden="true"
     {...stylex.props(styles.box, on && styles.boxOn)}
   >
-    {on && <svg width="10" height="9" viewBox="0 0 10 8" fill="currentColor"><path d={CHECK_PATH} /></svg>}
+    {on && <BuyerlyCheckGlyph />}
   </span>
 );

@@ -3,17 +3,7 @@ import { observer } from 'mobx-react-lite';
 import * as stylex from '@stylexjs/stylex';
 import { withClassName } from '@/ui/withClassName';
 import { SidebarHeader } from './SidebarHeader';
-import {
-  BuyerlyHomeIcon,
-  BuyerlyInboxIcon,
-  BuyerlyMembersIcon,
-  BuyerlyMyIssuesIcon,
-  BuyerlyIssuesIcon,
-  BuyerlyBoltIcon,
-  BuyerlyPlusIcon,
-  BuyerlyTeamsIcon,
-  BuyerlyProjectIcon,
-} from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { goToShortcut } from '@/lib/shortcuts';
 import { openAppPath, pathForTab, useRoute } from '@/lib/routing';
 import { openTab, useCurrentPage } from '@/lib/navigation';
@@ -44,10 +34,10 @@ const styles = stylex.create({
 
 /** A team's pages, as Linear's: its Home, then Campaigns, Ad accounts and Rules (Linear's Issues and Projects). */
 const TEAM_PAGES: { tab: AppTab; label: string; icon: React.ReactNode }[] = [
-  { tab: 'team', label: 'Home', icon: <BuyerlyHomeIcon size={14} /> },
-  { tab: 'campaigns', label: 'Campaigns', icon: <BuyerlyIssuesIcon size={14} /> },
-  { tab: 'accounts', label: 'Ad accounts', icon: <BuyerlyProjectIcon size={14} /> },
-  { tab: 'rules', label: 'Rules', icon: <BuyerlyBoltIcon size={14} /> },
+  { tab: 'team', label: 'Home', icon: <BuyerlyIcon name="home" size={14} /> },
+  { tab: 'campaigns', label: 'Campaigns', icon: <BuyerlyIcon name="campaigns" size={14} /> },
+  { tab: 'accounts', label: 'Ad accounts', icon: <BuyerlyIcon name="ad-accounts" size={14} /> },
+  { tab: 'rules', label: 'Rules', icon: <BuyerlyIcon name="rules" size={14} /> },
 ];
 
 const SidebarContent: React.FC = () => {
@@ -189,7 +179,7 @@ const SidebarContent: React.FC = () => {
         {/* 2. Navigation: Inbox, then Linear's "Workspace" and "Your teams" sections */}
         <div {...withClassName(stylex.props(styles.navigation), 'buyerly-sidebar-navigation')}>
           <SidebarLink
-            icon={<BuyerlyInboxIcon size={14} />}
+            icon={<BuyerlyIcon name="inbox" size={14} />}
             label="Inbox"
             tooltip="Inbox"
             shortcut={goToShortcut('inbox')}
@@ -204,7 +194,7 @@ const SidebarContent: React.FC = () => {
 
           {/* Linear's My issues: campaigns of the ad accounts you lead. */}
           <SidebarLink
-            icon={<BuyerlyMyIssuesIcon size={14} />}
+            icon={<BuyerlyIcon name="my-campaigns" size={14} />}
             label="My campaigns"
             tooltip="Go to my campaigns"
             active={activeTab === 'campaigns' && myCampaigns}
@@ -217,7 +207,7 @@ const SidebarContent: React.FC = () => {
 
           <SidebarSection id="workspace" title="Workspace">
             <SidebarLink
-              icon={<BuyerlyMembersIcon size={14} />}
+              icon={<BuyerlyIcon name="members" size={14} />}
               label="Members"
               tooltip="Go to members"
               active={activeTab === 'members'}
@@ -225,7 +215,7 @@ const SidebarContent: React.FC = () => {
             />
             {/* Ad accounts, as Linear's Projects (#388) */}
             <SidebarLink
-              icon={<BuyerlyProjectIcon size={14} />}
+              icon={<BuyerlyIcon name="ad-accounts" size={14} />}
               label="Ad accounts"
               tooltip="Go to ad accounts"
               shortcut={goToShortcut('accounts')}
@@ -233,7 +223,7 @@ const SidebarContent: React.FC = () => {
               onClick={() => openWorkspacePage('accounts')}
             />
             <SidebarLink
-              icon={<BuyerlyTeamsIcon size={14} />}
+              icon={<BuyerlyIcon name="teams" size={14} />}
               label="Teams"
               tooltip="Go to teams"
               active={activeTab === 'teams'}
@@ -247,7 +237,7 @@ const SidebarContent: React.FC = () => {
           <SidebarSection
             id="teams"
             title="Your teams"
-            action={{ label: 'Join a team', icon: <BuyerlyPlusIcon size={14} />, onClick: () => openWorkspacePage('teams') }}
+            action={{ label: 'Join a team', icon: <BuyerlyIcon name="add" size={14} />, onClick: () => openWorkspacePage('teams') }}
           >
             {yourTeams.map((team) => (
               <SidebarTeam key={team.id} team={team} workspaceSlug={workspace.slug} pages={TEAM_PAGES} />

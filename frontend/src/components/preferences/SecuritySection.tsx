@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as stylex from '@stylexjs/stylex';
-import { Info, LogOut } from 'lucide-react';
 import { BrowserIcon } from '@/icons/BrowserIcons';
-import { BuyerlyCloseIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import {
   browserOf,
   byLastSeen,
@@ -199,13 +198,13 @@ const SessionRow: React.FC<SessionRowProps> = ({ session, busy, onOpen, onAction
       <ContextMenuContent>
         <ContextMenuItem onSelect={onOpen}>
           <span {...stylex.props(styles.menuItem)}>
-            <Info size={14} strokeWidth={1.75} aria-hidden="true" />
+            <BuyerlyIcon name="info" size={14} aria-hidden="true" />
             View details
           </span>
         </ContextMenuItem>
         <ContextMenuItem onSelect={onAction} disabled={busy}>
           <span {...stylex.props(styles.menuItem)}>
-            <LogOut size={14} strokeWidth={1.75} aria-hidden="true" />
+            <BuyerlyIcon name="sign-out" size={14} aria-hidden="true" />
             {actionLabel}
           </span>
         </ContextMenuItem>
@@ -260,7 +259,7 @@ const SessionDetailsDialog: React.FC<SessionDetailsDialogProps> = ({ session, bu
                 aria-label="Close dialog"
                 {...withClassName(stylex.props(styles.close), 'ui-icon-button')}
               >
-                <BuyerlyCloseIcon size={14} />
+                <BuyerlyIcon name="close" size={14} />
               </button>
             </Dialog.Close>
             <header {...stylex.props(styles.header)}>

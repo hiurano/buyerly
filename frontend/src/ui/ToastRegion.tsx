@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CircleAlert, CircleCheck, Info, Redo2, TriangleAlert, Undo2 } from 'lucide-react';
 import * as stylex from '@stylexjs/stylex';
-import { BuyerlyCloseIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { colors, layout, radii, space } from '@/styles/tokens.stylex';
 import { Button } from '@/ui/Button';
 import { withClassName } from '@/ui/withClassName';
@@ -118,12 +117,12 @@ const styles = stylex.create({
 });
 
 const TONE_ICON: Record<ToastTone, React.ReactNode> = {
-  success: <CircleCheck size={16} {...stylex.props(styles.success)} />,
-  error: <CircleAlert size={16} {...stylex.props(styles.error)} />,
-  undo: <Undo2 size={16} {...stylex.props(styles.neutral)} />,
-  redo: <Redo2 size={16} {...stylex.props(styles.neutral)} />,
-  info: <Info size={16} {...stylex.props(styles.neutral)} />,
-  warning: <TriangleAlert size={16} {...stylex.props(styles.warning)} />,
+  success: <BuyerlyIcon name="success" size={16} {...stylex.props(styles.success)} />,
+  error: <BuyerlyIcon name="error" size={16} {...stylex.props(styles.error)} />,
+  undo: <BuyerlyIcon name="undo" size={16} {...stylex.props(styles.neutral)} />,
+  redo: <BuyerlyIcon name="redo" size={16} {...stylex.props(styles.neutral)} />,
+  info: <BuyerlyIcon name="info" size={16} {...stylex.props(styles.neutral)} />,
+  warning: <BuyerlyIcon name="warning" size={16} {...stylex.props(styles.warning)} />,
 };
 
 /**
@@ -197,7 +196,7 @@ const ToastCard: React.FC<{ item: ToastItem }> = ({ item }) => {
         onClick={() => dismiss(item.id)}
         {...stylex.props(styles.dismiss)}
       >
-        <BuyerlyCloseIcon size={12} />
+        <BuyerlyIcon name="close" size={12} />
       </button>
     </div>
   );

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as stylex from '@stylexjs/stylex';
-import { AlertTriangle } from 'lucide-react';
+import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import type { MetaAccount } from '@/lib/types';
 import { formatMetricMoney } from '@/components/campaigns/liveCampaigns';
 import { Button } from '@/ui/Button';
@@ -203,7 +203,7 @@ export const ConnectionProblemIcon: React.FC<{ account: MetaAccount; onReconnect
             onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); }}
             {...stylex.props(styles.problem, critical ? styles.problemCritical : styles.problemDegraded)}
           >
-            <AlertTriangle size={13} strokeWidth={2} aria-hidden="true" />
+            <BuyerlyIcon name="warning" size={13} aria-hidden="true" />
           </button>
         </DropdownMenuTrigger>
       </Tooltip>

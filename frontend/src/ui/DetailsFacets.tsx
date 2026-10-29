@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import * as stylex from '@stylexjs/stylex';
+import { BuyerlyChevronGlyph } from '@/icons/BuyerlyIcons';
 import { colors } from '@/styles/tokens.stylex';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './DropdownMenu';
 
@@ -150,9 +151,7 @@ export function DetailsFacets({ tabs, selection, onSelect, storageKey, noun }: D
           <DropdownMenuTrigger asChild>
             <button type="button" className="details-facets-select">
               <span {...stylex.props(styles.selectLabel)}>{current.label}</span>
-              <svg width="8" height="8" viewBox="0 0 12 8" fill="currentColor" aria-hidden="true">
-                <path d="M10.16.31 6 4.48 1.83.31A1.07 1.07 0 0 0 .31 1.83l4.93 4.93c.42.42 1.1.42 1.52 0l4.93-4.93A1.07 1.07 0 0 0 10.16.31Z" />
-              </svg>
+              <BuyerlyChevronGlyph size={8} />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" aria-label="Quick filter categories">
