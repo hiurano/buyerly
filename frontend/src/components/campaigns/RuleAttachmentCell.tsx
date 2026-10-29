@@ -8,6 +8,7 @@ import { RuleSelectorPopover } from './RuleSelectorPopover';
 import type { RuleTargetLevel } from './RuleSelectorPopover';
 import { useRulesStore } from '@/models/rulesStore';
 import { colors } from '@/styles/tokens.stylex';
+import { propertyMarker } from '@/ui/markers.stylex';
 
 interface RuleAttachmentCellProps {
   /** The row's ad account, where its rules are attached. */
@@ -26,8 +27,6 @@ export interface RuleAttachmentCellHandle {
   open: () => void;
 }
 
-const LABEL_FONT = '"Inter Variable", "SF Pro Display", -apple-system, sans-serif';
-
 const styles = stylex.create({
   cell: {
     display: 'flex',
@@ -41,19 +40,22 @@ const styles = stylex.create({
     zIndex: 1,
     alignSelf: 'stretch',
   },
+  // Linear's label pill: 24px, a hairline border on the canvas, the figure in tertiary text.
   pill: {
     position: 'relative',
     display: 'inline-flex',
-    height: 22,
+    height: 24,
     alignItems: 'center',
+    gap: 6,
     paddingTop: 0,
     paddingRight: 8,
     paddingBottom: 0,
     paddingLeft: 8,
     borderRadius: 9999,
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderStyle: 'solid',
-    borderColor: colors['--color-border-secondary'],
+    borderColor: colors['--color-border-tertiary'],
+    backgroundColor: colors['--bg-canvas'],
     cursor: 'pointer',
     outline: 'none',
     boxShadow: {
@@ -70,24 +72,6 @@ const styles = stylex.create({
       left: -6,
     },
   },
-  attached: {
-    gap: 5,
-    backgroundColor: colors['--item-hover-bg'],
-    transitionProperty: 'border-color, background-color',
-    transitionDuration: '0.15s',
-  },
-  // "+ Rule": dashed, and only its text lights up on hover.
-  add: {
-    gap: 4,
-    borderStyle: 'dashed',
-    backgroundColor: 'transparent',
-    color: {
-      default: colors['--text-tertiary'],
-      ':hover': colors['--text-primary'],
-    },
-    transitionProperty: 'opacity, border-color, background-color, color',
-    transitionDuration: '0.15s',
-  },
   boltSlot: {
     display: 'flex',
     height: 14,
@@ -100,18 +84,71 @@ const styles = stylex.create({
     color: '#eab308',
   },
   label: {
-    fontFamily: LABEL_FONT,
     fontSize: 12,
-    fontWeight: 500,
-    lineHeight: 1,
+    fontWeight: 450,
+    lineHeight: 'normal',
     whiteSpace: 'nowrap',
+    color: {
+      default: colors['--property-fg'],
+      [stylex.when.ancestor(':hover', propertyMarker)]: colors['--text-primary'],
+    },
+    transitionProperty: 'color',
+    transitionDuration: '0.15s',
   },
   // Only inherited rules: the row has none of its own.
   labelInherited: {
-    color: colors['--text-secondary'],
+    color: {
+      default: colors['--text-muted'],
+      [stylex.when.ancestor(':hover', propertyMarker)]: colors['--text-primary'],
+    },
   },
-  labelOwn: {
-    color: colors['--text-primary'],
+  // No rules: as Linear's empty property, nothing until the pointer is over the cell, then
+  // the property's icon in a 28px circle. Touch screens have no hover, so it stays shown there.
+  empty: {
+    display: 'flex',
+    width: '100%',
+    height: 28,
+    alignItems: 'center',
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    cursor: 'pointer',
+    outline: 'none',
+    opacity: {
+      default: 0,
+      ':hover': 1,
+      ':focus-visible': 1,
+      '@media (hover: none)': 1,
+    },
+  },
+  emptyOpen: {
+    opacity: 1,
+  },
+  emptyIcon: {
+    display: 'flex',
+    height: 28,
+    width: 28,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9999,
+    color: colors['--property-fg'],
+    backgroundColor: {
+      default: null,
+      [stylex.when.ancestor(':hover', propertyMarker)]: colors['--property-hover-bg'],
+    },
+  },
+  emptyIconActive: {
+    backgroundColor: colors['--property-hover-bg'],
+  },
+  emptyIconFocus: {
+    boxShadow: {
+      default: null,
+      [stylex.when.ancestor(':focus-visible', propertyMarker)]: `0 0 0 2px ${colors['--focus-ring-color']}`,
+    },
   },
 });
 
@@ -171,14 +208,15 @@ export const RuleAttachmentCell = forwardRef<
           type="button"
           onClick={open}
           data-rule-cell="true"
+          data-rules={attachedCount}
           data-inherited-rules={inheritedCount || undefined}
           title={reachTitle}
-          {...stylex.props(styles.pill, styles.attached)}
+          {...stylex.props(styles.pill, propertyMarker)}
         >
           <div {...stylex.props(styles.boltSlot)}>
             <BuyerlyIcon name="rules" size={12} className={stylex.props(styles.bolt).className} />
           </div>
-          <span {...stylex.props(styles.label, ownCount > 0 ? styles.labelOwn : styles.labelInherited)}>
+          <span {...stylex.props(styles.label, ownCount === 0 && styles.labelInherited)}>
             {attachedCount} {attachedCount === 1 ? 'rule' : 'rules'}
           </span>
         </button>
@@ -187,12 +225,13 @@ export const RuleAttachmentCell = forwardRef<
           type="button"
           onClick={open}
           data-rule-cell="true"
-          {...stylex.props(styles.pill, styles.add)}
+          data-rules={0}
+          aria-label="Add rule"
           title="Add rule"
+          {...stylex.props(styles.empty, isOpen && styles.emptyOpen, propertyMarker)}
         >
-          <BuyerlyIcon name="add" size={10} />
-          <span {...stylex.props(styles.label)}>
-            Rule
+          <span {...stylex.props(styles.emptyIcon, isOpen && styles.emptyIconActive, styles.emptyIconFocus)}>
+            <BuyerlyIcon name="rules" size={16} />
           </span>
         </button>
       )}
