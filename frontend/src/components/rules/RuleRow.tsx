@@ -194,7 +194,6 @@ const RuleRowContent: React.FC<RuleRowProps> = ({ rule }) => {
             dotColor="var(--rules-action-stop-text)"
           />
         )}
-        dimmed={!isDeliveryOn}
         hint={rule.name}
       />
 
