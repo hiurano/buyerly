@@ -12,7 +12,12 @@ export const BUYERLY_DATA_LIST = {
   rowHeightComfortable: 56,
   groupHeaderHeight: 36,
   radius: 8,
-  rowGap: 2,
+  // Linear's rows touch; only a group header keeps 2px above and below its rows.
+  rowGap: 0,
+  // A row's leading controls: the selection checkbox, then the status switch, 12px apart.
+  selectionWidth: 18,
+  statusWidth: 22,
+  leadingGap: 12,
   rowPaddingX: 12,
   columnGap: 6,
   toolbarPaddingLeft: 8,
@@ -50,7 +55,10 @@ export const buyerlyDataNameColumn = ({
   id: 'name',
   label,
   width,
-  headerInset: statusVisible ? 64 : 24,
+  // The label starts over the title; its pill adds 6px of its own.
+  headerInset: statusVisible
+    ? BUYERLY_DATA_LIST.selectionWidth + BUYERLY_DATA_LIST.statusWidth + BUYERLY_DATA_LIST.leadingGap * 2 - 6
+    : BUYERLY_DATA_LIST.selectionWidth + BUYERLY_DATA_LIST.leadingGap - 6,
   sortable: true,
 });
 
@@ -71,7 +79,6 @@ export const getLinearDataListMinWidth = (columns: BuyerlyDataListColumn[]) => {
 };
 
 /** The app's monospace stack. */
-const MONO = '"Berkeley Mono", "JetBrains Mono", monospace';
 
 const truncate = {
   overflow: 'hidden',
@@ -118,7 +125,7 @@ const styles = stylex.create({
   },
   groupRows: {
     paddingTop: 2,
-    paddingBottom: 8,
+    paddingBottom: 2,
   },
   // A sub-group's last row runs straight into the next sub-group, as Linear's; the group closes with the gap.
   subGroupRows: {
@@ -249,6 +256,13 @@ const styles = stylex.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Over rows that lead with a checkbox and a status switch: the chevron centres on the checkbox,
+  // the icon on the switch, so the title starts where the row titles do, as Linear's.
+  // 34px plus the body's 8px gap reach the switch at 42px; 8px of padding centres the chevron at 21px.
+  toggleSlotStatus: {
+    width: 34,
+    paddingLeft: 8,
+  },
   toggle: {
     display: 'flex',
     height: 20,
@@ -282,6 +296,10 @@ const styles = stylex.create({
     justifyContent: 'center',
     color: colors['--text-tertiary'],
   },
+  groupIconStatus: {
+    width: BUYERLY_DATA_LIST.statusWidth,
+    marginRight: BUYERLY_DATA_LIST.leadingGap - 8,
+  },
   groupDot: {
     height: 8,
     width: 8,
@@ -293,13 +311,12 @@ const styles = stylex.create({
     fontWeight: 500,
     color: colors['--text-primary'],
   },
+  // Linear's count: the title's size in tabular figures, a step quieter.
   groupCount: {
     flexShrink: 0,
-    fontFamily: MONO,
-    fontSize: 11,
-    color: colors['--text-muted'],
-  },
-  subGroupCount: {
+    fontSize: 13,
+    fontWeight: 450,
+    fontVariantNumeric: 'tabular-nums',
     color: colors['--text-tertiary'],
   },
   groupDescription: {
@@ -565,6 +582,8 @@ interface BuyerlyDataListGroupHeaderProps {
    * background, not sticky, with a hairline running to the right edge.
    */
   subGroup?: boolean;
+  /** The rows lead with a checkbox and a status switch: line the icon and title up with them. */
+  statusAligned?: boolean;
 }
 
 const GROUP_HEADER_BG = 'var(--rules-group-bg, var(--card-bg))';
@@ -582,6 +601,7 @@ export const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProp
   className = '',
   tint,
   subGroup = false,
+  statusAligned = false,
 }) => (
   <div
     {...withClassName(
@@ -597,7 +617,7 @@ export const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProp
     }}
   >
     <div {...stylex.props(styles.groupHeaderBody)}>
-      <div {...stylex.props(styles.toggleSlot)}>
+      <div {...stylex.props(styles.toggleSlot, statusAligned && styles.toggleSlotStatus)}>
         {onToggleCollapse && (
           <button
             type="button"
@@ -611,12 +631,12 @@ export const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProp
         )}
       </div>
 
-      <span {...stylex.props(styles.groupIcon)} aria-hidden="true">
+      <span {...stylex.props(styles.groupIcon, statusAligned && styles.groupIconStatus)} aria-hidden="true">
         {icon ?? <span {...stylex.props(styles.groupDot)} style={{ backgroundColor: dotColor }} />}
       </span>
 
       <span {...withClassName(stylex.props(styles.groupTitle), 'buyerly-data-group-title')}>{title}</span>
-      <span {...stylex.props(styles.groupCount, subGroup && styles.subGroupCount)}>{count}</span>
+      <span {...stylex.props(styles.groupCount)}>{count}</span>
       {description && <span {...stylex.props(styles.groupDescription)}>{description}</span>}
       {subGroup
         ? <span {...stylex.props(styles.spacer, styles.subGroupLine)} aria-hidden="true" />
