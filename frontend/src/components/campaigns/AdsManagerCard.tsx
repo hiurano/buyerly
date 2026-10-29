@@ -1,8 +1,8 @@
 import React from 'react';
 import * as stylex from '@stylexjs/stylex';
 import type { DeliveryControl } from '@/lib/delivery';
-import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { colors } from '@/styles/tokens.stylex';
+import { DeliveryStatusControl, rowDeliveryState } from './DeliveryStatusControl';
 
 const styles = stylex.create({
   // The ID and the Status switch, as Linear's issue ID and assignee.
@@ -62,6 +62,8 @@ interface AdsManagerCardProps {
   /** Singular noun for the switch's tooltip, e.g. "ad set". */
   noun: string;
   status: 'active' | 'paused' | 'unknown';
+  /** Meta's `effective_status`, which the status icon shows. */
+  effectiveStatus?: string;
   statusLabel: string;
   /** Present when the Status switch shows; without `delivery.onChange` it only reads. */
   delivery?: DeliveryControl | 'read-only';
@@ -84,6 +86,7 @@ export const AdsManagerCard: React.FC<AdsManagerCardProps> = ({
   identifier,
   noun,
   status,
+  effectiveStatus,
   statusLabel,
   delivery,
   chips,
@@ -93,7 +96,8 @@ export const AdsManagerCard: React.FC<AdsManagerCardProps> = ({
   onToggleSelected,
 }) => {
   const control = delivery && delivery !== 'read-only' ? delivery : undefined;
-  const showSwitch = Boolean(delivery) && status !== 'unknown';
+  // Linear's status icon has a shape for every state, unknown too.
+  const showSwitch = Boolean(delivery);
   return (
     <div
       role="button"
@@ -118,16 +122,13 @@ export const AdsManagerCard: React.FC<AdsManagerCardProps> = ({
         <div {...stylex.props(styles.top)}>
           <span {...stylex.props(styles.identifier)}>{identifier}</span>
           {showSwitch && (
-            // The switch acts on Meta; it never selects the card.
+            // The status acts on Meta; it never selects the card.
             <span onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
-              <BuyerlyToggle
-                checked={control ? control.status === 'active' : status === 'active'}
-                busy={control?.busy}
-                onChange={control?.onChange}
-                disabled={!control}
-                tooltipContent={control
-                  ? (control.status === 'active' ? `Turn this ${noun} off` : `Turn this ${noun} on`)
-                  : `${statusLabel}. Controls are not available for this account`}
+              <DeliveryStatusControl
+                noun={noun}
+                state={rowDeliveryState(status, effectiveStatus, control)}
+                statusLabel={statusLabel}
+                delivery={control}
               />
             </span>
           )}

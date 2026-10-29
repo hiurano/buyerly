@@ -39,6 +39,7 @@ import { DataState } from '@/ui/DataState';
 import { Button } from '@/ui/Button';
 import { BuyerlyTabs } from '@/ui/BuyerlyTabs';
 import {
+  BUYERLY_DATA_LIST,
   BuyerlyDataListGroup,
   BuyerlyDataListToolbar,
   BuyerlyDataTable,
@@ -79,7 +80,7 @@ import { useRowSelection, type SelectionAction } from '@/ui/useRowSelection';
 import { useRevealRow } from '@/ui/useRevealRow';
 import type { FilterClause, FilterFieldDefinition } from '@/components/filters/filterModel';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
-import { BuyerlyStatusCircleIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyDeliveryIcon, BuyerlyStatusCircleIcon, type BuyerlyDeliveryState } from '@/icons/BuyerlyIcons';
 import { getAdsManagerColumns } from './tableColumns';
 import {
   eligibleMetaAccounts,
@@ -250,6 +251,7 @@ function facetIcon(fieldId: string, option: FilterOption): React.ReactNode {
   }
   if (fieldId === 'account') return <BuyerlyIcon name="ad-accounts" size={14} className={stylex.props(styles.accountIcon).className} />;
   if (fieldId === 'campaign') return <span className="details-facets-dot" style={{ backgroundColor: 'var(--text-tertiary)' }} />;
+  if (fieldId === 'status') return <BuyerlyDeliveryIcon state={option.value as BuyerlyDeliveryState} />;
   if (option.value === 'active' || option.value === 'paused') return <BuyerlyStatusCircleIcon status={option.value} size={14} />;
   return <span className="details-facets-dot" style={{ backgroundColor: option.color }} />;
 }
@@ -495,6 +497,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
       .map(sub => sub.label ? (
         <BuyerlyDataListGroup key={sub.id} subGroup title={sub.label} count={sub.rows.length}
           statusAligned={displayProperties.status !== false}
+          statusWidth={BUYERLY_DATA_LIST.statusIconWidth}
           dotColor="var(--text-tertiary)"
           icon={rowsField === 'account' ? <BuyerlyIcon name="ad-accounts" size={14} /> : optionIcon(fields.find(field => field.id === rowsField), sub.id)}
           isCollapsed={Boolean(collapsedGroups[subGroupKey(group, sub)])}
@@ -509,6 +512,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
         {group.label ? (
           <BuyerlyDataListGroup title={group.label} count={group.rows.length}
             statusAligned={displayProperties.status !== false}
+          statusWidth={BUYERLY_DATA_LIST.statusIconWidth}
             dotColor="var(--text-tertiary)"
             icon={groupingField === 'account' ? <BuyerlyIcon name="ad-accounts" size={14} /> : undefined}
             isCollapsed={Boolean(collapsedGroups[groupKey(group)])}
@@ -871,6 +875,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
         identifier={displayProperties.id ? row.identifier : undefined}
         noun={entityLabels[campaignFilterTab].singular}
         status={row.status}
+        effectiveStatus={row.effectiveStatus}
         statusLabel={row.statusLabel}
         delivery={displayProperties.status !== false && activeGrouping !== 'status' && activeRows !== 'status'
           ? deliveryControl(level, row) ?? 'read-only'

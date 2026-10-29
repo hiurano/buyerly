@@ -160,6 +160,9 @@ class TestReactFrontendContract(unittest.TestCase):
         cls.linear_data_list = (
             ROOT / "frontend" / "src" / "ui" / "BuyerlyDataList.tsx"
         ).read_text()
+        cls.delivery_status_control = (
+            ROOT / "frontend" / "src" / "components" / "campaigns" / "DeliveryStatusControl.tsx"
+        ).read_text()
         cls.campaigns_row_sources = "\n".join(
             (ROOT / "frontend" / "src" / "components" / "campaigns" / name).read_text()
             for name in ("CampaignRow.tsx", "AdSetRow.tsx", "AdRow.tsx", "EntityRowCells.tsx")
@@ -409,12 +412,15 @@ class TestReactFrontendContract(unittest.TestCase):
         for row in (self.campaign_row, self.adset_row, self.ad_row):
             self.assertNotIn("subtitle=", row)
         self.assertIn("readOnly ? undefined", self.campaign_row)
-        # Delivery is a real write, so the toggle is driven by the control the
-        # view hands down. All three levels share one set of leading controls,
-        # and a row that cannot be selected keeps the checkbox slot for alignment.
+        # Delivery is a real write, so the status menu is driven by the control the
+        # view hands down; without one the status is an icon only. All three levels
+        # share one set of leading controls, and a row that cannot be selected keeps
+        # the checkbox slot for alignment.
         self.assertIn("<BuyerlyCheckbox checked={false} hidden />", self.entity_row_cells)
-        self.assertIn("onChange={delivery ? delivery.onChange : undefined}", self.entity_row_cells)
-        self.assertIn("disabled={!delivery}", self.entity_row_cells)
+        self.assertIn("<DeliveryStatusControl", self.entity_row_cells)
+        self.assertIn("delivery={delivery}", self.entity_row_cells)
+        self.assertIn("if (!delivery) {", self.delivery_status_control)
+        self.assertIn("if (next !== delivery.status) delivery.onChange(next === 'active');", self.delivery_status_control)
         for row in (self.campaign_row, self.adset_row, self.ad_row):
             self.assertIn("<EntityRowControls", row)
             self.assertIn("delivery={delivery}", row)
@@ -800,7 +806,7 @@ class TestReactFrontendContract(unittest.TestCase):
 
         # Ads Manager no longer ships a toggle that claims to be unfinished.
         self.assertNotIn("controls are not connected yet", self.campaigns_row_sources)
-        self.assertIn("delivery ? delivery.onChange : undefined", self.campaigns_row_sources)
+        self.assertIn("delivery.onChange(next === 'active')", self.delivery_status_control)
         # The local-only delivery flip is gone: it changed the screen, not Meta.
         for dead in ("toggleCampaignDelivery", "toggleAdSetDelivery", "toggleAdDelivery"):
             self.assertNotIn(dead, self.app_store)
