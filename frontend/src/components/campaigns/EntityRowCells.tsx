@@ -1,26 +1,15 @@
 import React from 'react';
 import * as stylex from '@stylexjs/stylex';
 import { BuyerlyCheckbox } from '@/ui/BuyerlyCheckbox';
-import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { BuyerlyDataMetricCell } from '@/ui/BuyerlyDataList';
 import type { DeliveryControl } from '@/lib/delivery';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { findMetric, type AdsManagerMetrics } from './adsManagerMetrics';
 import { formatMetric } from './liveCampaigns';
+import { DeliveryStatusControl, rowDeliveryState } from './DeliveryStatusControl';
 import { colors } from '@/styles/tokens.stylex';
 
 const styles = stylex.create({
-  // An em dash where a toggle would be: the status is not in the snapshot.
-  statusUnknown: {
-    display: 'inline-flex',
-    height: 20,
-    width: 32,
-    flexShrink: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 12,
-    color: colors['--text-muted'],
-  },
   text: {
     minWidth: 0,
     overflow: 'hidden',
@@ -66,6 +55,8 @@ interface EntityRowControlsProps {
   /** Singular noun for tooltips, e.g. "ad set". */
   noun: string;
   status: 'active' | 'paused' | 'unknown';
+  /** Meta's `effective_status`, which the icon shows. */
+  effectiveStatus?: string;
   statusLabel: string;
   /** Present when the row may really change delivery in Meta. */
   delivery?: DeliveryControl;
@@ -76,50 +67,35 @@ interface EntityRowControlsProps {
   onToggleSelected: () => void;
 }
 
-/** Selection and delivery controls that lead every Ads Manager row. */
+/** Selection and delivery status that lead every Ads Manager row. */
 export const EntityRowControls: React.FC<EntityRowControlsProps> = ({
   noun,
   status,
+  effectiveStatus,
   statusLabel,
   delivery,
   showStatus,
   selectable,
   selected,
   onToggleSelected,
-}) => {
-  const controlLabel = noun.charAt(0).toUpperCase() + noun.slice(1);
-  return (
-    <>
-      {/* Keep the selection slot so read-only rows retain the established Name alignment. */}
-      {!selectable ? (
-        <BuyerlyCheckbox checked={false} hidden />
-      ) : (
-        <BuyerlyCheckbox checked={selected} onChange={onToggleSelected} />
-      )}
-      {showStatus && (
-        status === 'unknown' ? (
-          <span
-            {...stylex.props(styles.statusUnknown)}
-            title="Delivery status is not available in this snapshot"
-            aria-label="Delivery status unavailable"
-          >
-            —
-          </span>
-        ) : (
-          <BuyerlyToggle
-            checked={delivery ? delivery.status === 'active' : status === 'active'}
-            busy={delivery?.busy}
-            onChange={delivery ? delivery.onChange : undefined}
-            disabled={!delivery}
-            tooltipContent={delivery
-              ? (delivery.status === 'active' ? `Turn this ${noun} off` : `Turn this ${noun} on`)
-              : `${statusLabel}. ${controlLabel} controls are not available for this account`}
-          />
-        )
-      )}
-    </>
-  );
-};
+}) => (
+  <>
+    {/* Keep the selection slot so read-only rows retain the established Name alignment. */}
+    {!selectable ? (
+      <BuyerlyCheckbox checked={false} hidden />
+    ) : (
+      <BuyerlyCheckbox checked={selected} onChange={onToggleSelected} />
+    )}
+    {showStatus && (
+      <DeliveryStatusControl
+        noun={noun}
+        state={rowDeliveryState(status, effectiveStatus, delivery)}
+        statusLabel={statusLabel}
+        delivery={delivery}
+      />
+    )}
+  </>
+);
 
 export interface EntityPropertyRow {
   identifier: string;

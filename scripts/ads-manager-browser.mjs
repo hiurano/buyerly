@@ -15,6 +15,7 @@
 //   team Issues groups by project; with no grouping the account is a column,
 //   an old link's `?account=` is a filter, and My campaigns shows only the
 //   accounts you lead.
+// - A row's delivery is Linear's status icon; a click opens Change status….
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -505,6 +506,58 @@ try {
     } catch (error) {
       console.error(error);
       await page.screenshot({ path: `${output}/failure-accounts.png`, fullPage: true }).catch(() => {});
+      console.error(errors);
+      throw error;
+    } finally {
+      await context.close();
+    }
+  }
+
+  // A row's delivery as Linear's issue status: its icon opens "Change status…" with
+  // Active and Paused; a click, 1 or 2 picks, Escape writes nothing.
+  {
+    const { context, page, errors, writes } = await openPage(1440, false, [account]);
+    try {
+      await page.goto(`${origin}/alpha/ads-manager/campaigns`);
+      await page.locator('[data-row-id="801"]').waitFor();
+      const status = (id) => page.locator(`[data-row-id="${id}"] [data-delivery-status]`);
+      const shows = (id, state) => page.waitForFunction(
+        ([rowId, wanted]) => document.querySelector(`[data-row-id="${rowId}"] [data-delivery-status]`)?.getAttribute('data-delivery-status') === wanted,
+        [id, state],
+      );
+      assert.equal(await status('801').getAttribute('data-delivery-status'), 'active');
+      assert.equal(await page.locator('[data-row-id="801"] [role="switch"]').count(), 0, 'no switch in the row');
+      await status('801').click();
+      const menu = page.getByRole('dialog', { name: 'Change status' });
+      await menu.waitFor();
+      assert.equal(await menu.getByRole('option', { name: /Active/ }).getAttribute('aria-selected'), 'true');
+      assert.equal(await menu.getByRole('option').count(), 2, 'only what a buyer can set');
+      await page.waitForTimeout(200);
+      await page.screenshot({ path: `${output}/status-menu-1440.png` });
+      await menu.getByRole('option', { name: /Paused/ }).click();
+      await menu.waitFor({ state: 'detached' });
+      await shows('801', 'paused');
+      assert.deepEqual(writes[0], { path: '/api/entities/campaign/801/delivery', body: { account_id: 'act_100', status: 'PAUSED' } });
+
+      await status('801').click();
+      await menu.waitFor();
+      assert.equal(await menu.getByRole('option', { name: /Paused/ }).getAttribute('aria-selected'), 'true');
+      await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Change status…');
+      await page.keyboard.press('1');
+      await menu.waitFor({ state: 'detached' });
+      await shows('801', 'active');
+      assert.deepEqual(writes[1], { path: '/api/entities/campaign/801/delivery', body: { account_id: 'act_100', status: 'ACTIVE' } });
+
+      await status('802').click();
+      await menu.waitFor();
+      await page.keyboard.press('Escape');
+      await menu.waitFor({ state: 'detached' });
+      assert.equal(writes.length, 2, 'Escape writes nothing');
+      assert.deepEqual(errors, []);
+      console.log('Ads Manager status menu passed');
+    } catch (error) {
+      console.error(error);
+      await page.screenshot({ path: `${output}/failure-status.png`, fullPage: true }).catch(() => {});
       console.error(errors);
       throw error;
     } finally {

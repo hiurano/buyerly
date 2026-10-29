@@ -49,6 +49,7 @@ export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, selectable =
           <EntityRowControls
             noun="ad"
             status={ad.status}
+            effectiveStatus={ad.effectiveStatus}
             statusLabel={ad.statusLabel}
             delivery={delivery}
             showStatus={displayProperties.status !== false}

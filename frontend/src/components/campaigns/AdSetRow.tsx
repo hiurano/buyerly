@@ -51,6 +51,7 @@ export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, sel
           <EntityRowControls
             noun="ad set"
             status={adSet.status}
+            effectiveStatus={adSet.effectiveStatus}
             statusLabel={adSet.statusLabel}
             delivery={delivery}
             showStatus={displayProperties.status !== false}
