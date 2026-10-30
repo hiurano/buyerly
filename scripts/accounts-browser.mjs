@@ -196,6 +196,14 @@ try {
       await page.getByRole('menuitem', { name: 'Reconnect…' }).waitFor();
       await page.keyboard.press('Escape');
       await page.screenshot({ path: `${output}/list-1440.png` });
+      // As Linear's Projects: 48px rows, and the default columns fit beside the sidebar at 1024px.
+      assert.equal(Math.round((await nl.boundingBox()).height), 48);
+      await page.setViewportSize({ width: 1024, height: 900 });
+      assert.equal(await nl.evaluate((row) => {
+        const viewport = row.closest('main').querySelector('[class*="viewport"]');
+        return viewport.scrollWidth <= viewport.clientWidth;
+      }), true, 'no horizontal scroll at 1024px');
+      await page.setViewportSize({ width: 1440, height: 900 });
 
       // Display options: ordering by Spend today, grouping by Team, saved per member.
       await page.keyboard.press('Shift+V');
@@ -236,8 +244,8 @@ try {
       await page.locator('[data-row-id="act_102"]', { hasText: 'DE · Shop' }).waitFor();
       assert.ok(writes.includes('profile act_102 DE · Shop|'), writes.join('\n'));
 
-      // The account's page.
-      await page.locator('[data-row-id="act_101"]').click();
+      // The account's page, on a click of the name (the row's middle is the Lead picker).
+      await page.locator('[data-row-id="act_101"]').getByText('NL · Lead gen', { exact: true }).click();
       await page.waitForURL(`${origin}/alpha/accounts/act_101`);
       const properties = page.getByRole('region', { name: 'Properties' }).or(page.locator('section[aria-label="Properties"]'));
       await properties.waitFor();

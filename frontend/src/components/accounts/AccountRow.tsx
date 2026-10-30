@@ -142,21 +142,26 @@ const styles = stylex.create({
   },
 });
 
+/** As Linear's Projects rows (measured 31.10). */
+export const ACCOUNT_ROW_HEIGHT = 48;
+
 /** At phone width the list keeps Name, Status and Spend today (#388). */
 export const PHONE_QUERY = '(max-width: 640px)';
 
 export function getAccountColumns(properties: Record<string, boolean>, phone: boolean): BuyerlyDataListColumn[] {
   // As Linear's, the header's label starts over the row's icon; its pill's 6px sit out to the left.
+  // As Linear's Projects, the default columns fit a 1024px window beside the sidebar: they share
+  // the width by fractions, the name twice as much, and never scroll the list sideways.
   const columns: BuyerlyDataListColumn[] = [
-    { id: 'name', label: 'Name', width: phone ? 'minmax(120px, 1fr)' : 'minmax(260px, 1fr)', sortable: true, headerInset: phone ? undefined : -6 },
+    { id: 'name', label: 'Name', width: phone ? 'minmax(120px, 1fr)' : 'minmax(180px, 2fr)', sortable: true, headerInset: phone ? undefined : -6 },
   ];
-  if (properties.status !== false) columns.push({ id: 'status', label: 'Status', width: phone ? '84px' : '150px', sortable: true });
+  if (properties.status !== false) columns.push({ id: 'status', label: 'Status', width: phone ? '84px' : 'minmax(84px, 0.9fr)', sortable: true });
   // Linear's Lead column on Projects: a 48px column of 28px avatar buttons.
   if (!phone && properties.lead !== false) columns.push({ id: 'lead', label: 'Lead', width: '48px' });
-  if (properties.spend !== false) columns.push({ id: 'spend', label: 'Spend today', width: phone ? '94px' : '130px', align: 'right', sortable: true });
-  if (!phone && properties.leads !== false) columns.push({ id: 'leads', label: 'Leads/CPL today', width: '150px', align: 'right' });
+  if (properties.spend !== false) columns.push({ id: 'spend', label: 'Spend today', width: phone ? '94px' : 'minmax(84px, 0.8fr)', align: 'right', sortable: true });
+  if (!phone && properties.leads !== false) columns.push({ id: 'leads', label: 'Leads/CPL today', width: 'minmax(104px, 0.9fr)', align: 'right' });
   // Text after right-aligned numbers: 24px of air so "Rules" does not read as part of the figure.
-  if (!phone && properties.rules !== false) columns.push({ id: 'rules', label: 'Rules', width: '150px', headerInset: 24 });
+  if (!phone && properties.rules !== false) columns.push({ id: 'rules', label: 'Rules', width: 'minmax(88px, 0.8fr)', headerInset: 24 });
   columns.push({ id: 'actions', label: '', width: '32px' });
   return columns;
 }
@@ -243,6 +248,8 @@ const AccountRowContent: React.FC<AccountRowProps> = ({ account, columns, proper
       data-row-id={account.account_id}
       layout="grid"
       columns={columns}
+      // Linear's Projects rows are 48px, taller than its issue rows.
+      height={ACCOUNT_ROW_HEIGHT}
       tabIndex={0}
       onClick={() => actions.open(account)}
       onKeyDown={(event) => {
