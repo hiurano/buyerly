@@ -85,7 +85,7 @@ const styles = stylex.create({
     flexShrink: 0,
     fontSize: 13,
     fontWeight: 500,
-    color: colors['--text-muted'],
+    color: colors['--text-quaternary'],
   },
   lock: {
     flexShrink: 0,
@@ -104,8 +104,10 @@ const styles = stylex.create({
 
 const COLUMNS: BuyerlyDataListColumn[] = [
   { id: 'name', label: 'Name', width: 'minmax(220px, 1fr)', sortable: true },
-  { id: 'membership', label: 'Membership', width: '110px' },
+  { id: 'membership', label: 'Membership', width: '90px' },
   { id: 'members', label: 'Members', width: '120px' },
+  // Linear keeps a 28px column for the row's menu at the end; it holds Membership and Members in place.
+  { id: 'end', label: '', width: '28px' },
 ];
 
 const MAX_FACES = 5;
@@ -171,6 +173,7 @@ export const WorkspaceTeamsView: React.FC = () => {
         sortKey="name"
         sortDirection={direction}
         onSort={() => setDirection((current) => (current === 'asc' ? 'desc' : 'asc'))}
+        divider
       >
         {shown.map((team) => {
           const people = faces(team);
@@ -179,6 +182,8 @@ export const WorkspaceTeamsView: React.FC = () => {
               key={team.id}
               layout="grid"
               columns={COLUMNS}
+              // Linear's Teams rows are 48px, as its Projects rows.
+              height={48}
               tabIndex={0}
               xstyle={styles.row}
               onClick={() => openTeam(team)}
@@ -203,7 +208,7 @@ export const WorkspaceTeamsView: React.FC = () => {
                     void setMembership(team, !team.is_member);
                   }}
                 >
-                  {team.is_member && <BuyerlyIcon name="check" size={12} />}
+                  {team.is_member && <BuyerlyIcon name="check" size={14} />}
                   <span className="team-membership__label">{team.is_member ? 'Joined' : 'Join'}</span>
                   {team.is_member && <span className="team-membership__leave">Leave</span>}
                 </button>
@@ -218,6 +223,7 @@ export const WorkspaceTeamsView: React.FC = () => {
                   <span {...stylex.props(styles.more)}>+{people.length - MAX_FACES}</span>
                 )}
               </div>
+              <span />
             </BuyerlyDataListRow>
           );
         })}
