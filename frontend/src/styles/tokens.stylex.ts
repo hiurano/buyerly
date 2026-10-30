@@ -24,9 +24,11 @@ export const colors = stylex.defineVars({
   '--sidebar-resizer-track': 'lch(24.195% 1.48 272 / 1)',
 
   /* Typography Colors */
+  /* Linear's --color-text-* in dark, re-measured 31.10: the content's secondary and
+     tertiary moved to 90.451 and 61.803; the sidebar keeps its own values below. */
   '--text-primary': 'lch(100% 0 272 / 1)',
-  '--text-secondary': 'lch(90.155% 1.2 272 / 1)',
-  '--text-tertiary': 'lch(64.714% 1.425 272 / 1)',
+  '--text-secondary': 'lch(90.451% 1.2 272 / 1)',
+  '--text-tertiary': 'lch(61.803% 1.2 272 / 1)',
   '--text-muted': 'lch(41.778% 1.425 272 / 1)',
 
   /* Shadows */
