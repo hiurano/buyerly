@@ -199,7 +199,7 @@ const styles = stylex.create({
     height: 24,
     minWidth: 0,
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
     borderRadius: 9999,
     paddingLeft: 6,
     paddingRight: 6,
@@ -214,12 +214,6 @@ const styles = stylex.create({
       ':hover': colors['--text-secondary'],
     },
     ...colorTransition,
-  },
-  sortButtonActive: {
-    color: colors['--text-secondary'],
-  },
-  sortAscending: {
-    transform: 'rotate(180deg)',
   },
   truncate,
   columnLabel: {
@@ -553,25 +547,12 @@ export const BuyerlyDataListColumnHeader: React.FC<BuyerlyDataListColumnHeaderPr
               type="button"
               aria-label={`Order by ${column.label}`}
               onClick={() => onSort(column.id)}
-              {...stylex.props(styles.sortButton, isActive && styles.sortButtonActive)}
+              {...stylex.props(styles.sortButton)}
             >
               <span {...stylex.props(styles.truncate)}>{column.label}</span>
-              {isActive && (
-                <svg
-                  width="10"
-                  height="10"
-                  viewBox="0 0 10 10"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.25"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                  {...stylex.props(sortDirection === 'asc' && styles.sortAscending)}
-                >
-                  <path d="M2.5 3.75 5 6.25l2.5-2.5" />
-                </svg>
-              )}
+              {/* As Linear's: a 12px arrow in the label's own tone, 2px after it, and the label not lit;
+                  down while values grow down the list (A to Z), up while they fall. */}
+              {isActive && <BuyerlyIcon name={sortDirection === 'asc' ? 'arrow-down' : 'arrow-up'} size={12} />}
             </button>
           ) : (
             <span {...stylex.props(styles.columnLabel, column.align === 'right' && styles.columnLabelRight)}>{column.label}</span>

@@ -1160,7 +1160,7 @@ html[data-theme='light'] .buyerly-display-property[aria-pressed='true'] {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   height: 28px;
   padding: 3px 6px;
   border-radius: 9999px;
