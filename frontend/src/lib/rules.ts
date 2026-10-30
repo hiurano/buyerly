@@ -219,7 +219,7 @@ export const RULE_OPERATOR_LABELS: Record<RuleOperator, string> = {
   eq: '=',
 };
 
-/** The window as it ends a condition: "IF Spend ≥ $4 & Leads = 0 lifetime". */
+/** The window as it ends a condition: "Spend ≥ $4 & Leads = 0 lifetime". */
 export const RULE_TIME_WINDOW_LABELS: Record<RuleTimeWindow, string> = {
   today: 'today',
   yesterday: 'yesterday',
@@ -251,11 +251,11 @@ export const RULE_LEVEL_LABELS: Record<RuleExecutionLevel, string> = {
 };
 
 export const RULE_ACTION_LABELS: Record<RuleAction, string> = {
-  turn_off: 'TURN OFF',
-  turn_on: 'TURN ON',
-  notify_only: 'NOTIFY',
-  increase_budget: 'BUDGET +',
-  decrease_budget: 'BUDGET −',
+  turn_off: 'Turn off',
+  turn_on: 'Turn on',
+  notify_only: 'Notify',
+  increase_budget: 'Budget +',
+  decrease_budget: 'Budget −',
 };
 
 const PERCENT_METRICS: ReadonlySet<RuleMetric> = new Set(['ctr']);
@@ -277,7 +277,7 @@ function formatConditionValue(metric: RuleMetric, value: number, currency?: stri
   return rounded;
 }
 
-/** "IF Spend ≥ USD 50.00 & Leads = 0 today": the window is part of the condition. */
+/** "Spend ≥ $50.00 & Leads = 0 today": the window is part of the condition. */
 export function formatCondition(preset: RulePresetPayload, currency?: string): string {
   if (preset.conditions.length === 0) return 'No conditions';
   const joiner = preset.condition_logic === 'or' ? ' OR ' : ' & ';
@@ -290,7 +290,7 @@ export function formatCondition(preset: RulePresetPayload, currency?: string): s
     return shared ? text : `${text} ${RULE_TIME_WINDOW_LABELS[condition.time_window] ?? condition.time_window}`;
   });
   const joined = parts.join(joiner);
-  return shared ? `IF ${joined} ${RULE_TIME_WINDOW_LABELS[shared] ?? shared}` : `IF ${joined}`;
+  return shared ? `${joined} ${RULE_TIME_WINDOW_LABELS[shared] ?? shared}` : joined;
 }
 
 /**
@@ -331,14 +331,14 @@ export function describeRuleReach(level: RuleExecutionLevel): string {
  */
 export function formatAction(preset: RulePresetPayload): string {
   if (preset.action === 'increase_budget') {
-    return `BUDGET +${preset.budget_change_percent}%`;
+    return `Budget +${preset.budget_change_percent}%`;
   }
   if (preset.action === 'decrease_budget') {
-    return `BUDGET −${preset.budget_change_percent}%`;
+    return `Budget −${preset.budget_change_percent}%`;
   }
-  const label = RULE_ACTION_LABELS[preset.action] ?? preset.action.toUpperCase();
+  const label = RULE_ACTION_LABELS[preset.action] ?? preset.action;
   if (preset.action === 'notify_only') return label;
-  return `${label} ${RULE_LEVEL_LABELS[preset.level]?.toUpperCase() ?? 'AD SET'}`;
+  return `${label} ${RULE_LEVEL_LABELS[preset.level]?.toLowerCase() ?? 'ad set'}`;
 }
 
 /**

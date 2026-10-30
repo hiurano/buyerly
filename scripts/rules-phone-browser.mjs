@@ -159,7 +159,7 @@ try {
 
       // 0. The condition carries its window and the account currency (#324). How to
       // attach a rule is the hint on "Not attached"; no line above the list says it (#381).
-      assert.match(await page.locator('[data-row-id="7"]').innerText(), /IF Spend ≥ \$10\.00 today/);
+      assert.match(await page.locator('[data-row-id="7"]').innerText(), /Spend ≥ \$10\.00 today/);
       const notAttached = page.locator('[data-row-id="7"]').getByText('Not attached', { exact: true });
       assert.match(await notAttached.getAttribute('title'), /^Attach a rule to an ad account/);
       assert.equal(await page.getByText(/runs? nowhere yet/).count(), 0, 'no "runs nowhere yet" line');
@@ -216,7 +216,7 @@ try {
       assert.equal(lastWrite().body.conditions[0].time_window, 'lifetime');
       await form.waitFor({ state: 'detached' });
       await page.locator('[data-row-id="9"]').waitFor();
-      if (!phone) assert.match(await page.locator('[data-row-id="9"]').innerText(), /IF Spend ≥ \S*\s?5\S* lifetime/);
+      if (!phone) assert.match(await page.locator('[data-row-id="9"]').innerText(), /Spend ≥ \S*\s?5\S* lifetime/);
       await page.mouse.move(0, 0);
 
       // 2. Edit it from its row's menu.

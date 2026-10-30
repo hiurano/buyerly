@@ -165,6 +165,26 @@ try {
     await bar.getByRole('button', { name: 'Clear all filters' }).click();
     await page.locator('[data-row-id="7"]').waitFor();
 
+    // Linear's status icon, not a switch: S over the row opens Change status, Escape writes nothing.
+    assert.equal(await page.locator('[data-row-id] [role="switch"]').count(), 0, 'rules lead with a status icon');
+    assert.equal(await page.locator('[data-row-id="7"] [data-delivery-status]').getAttribute('data-delivery-status'), 'active');
+    // The filter menu above is still closing; row keys wait for it, as in Linear.
+    await page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
+    await page.locator('[data-row-id="7"]').first().hover();
+    await page.keyboard.press('s');
+    await page.getByRole('dialog', { name: 'Change status' }).waitFor();
+    await page.keyboard.press('Escape');
+    await page.getByRole('dialog', { name: 'Change status' }).waitFor({ state: 'detached' });
+    assert.equal(writes.length, 0, 'Escape changes nothing');
+    // Condition and Action are plain text, and the default columns fit beside the sidebar at 1024px.
+    assert.match(await page.locator('[data-row-id="8"]').first().innerText(), /CPL ≤ \$2\.00 last 3 days[\s\S]*Budget \+20%/);
+    await page.setViewportSize({ width: 1024, height: 900 });
+    assert.equal(await page.locator('main [data-row-id]').first().evaluate((row) => {
+      const viewport = row.closest('main').querySelector('[class*="viewport"]');
+      return viewport.scrollWidth <= viewport.clientWidth;
+    }), true, 'no horizontal scroll at 1024px');
+    await page.setViewportSize({ width: 1440, height: 900 });
+
     // Group by ad account: the rule on two accounts shows under both.
     await displayButton().click();
     await popover().waitFor();

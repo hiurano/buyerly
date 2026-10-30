@@ -132,6 +132,8 @@ interface DeliveryStatusControlProps {
   statusLabel: string;
   /** Present when the row may really change delivery in Meta. */
   delivery?: DeliveryControl;
+  /** Why the icon is read-only, when it is not that the account gives no controls. */
+  unavailableTitle?: string;
 }
 
 /**
@@ -139,7 +141,7 @@ interface DeliveryStatusControlProps {
  * live control a click (or S over the row) opens "Change status…" with Active
  * and Paused, picked by click, arrows and Enter, or 1 and 2.
  */
-export const DeliveryStatusControl: React.FC<DeliveryStatusControlProps> = ({ noun, state, statusLabel, delivery }) => {
+export const DeliveryStatusControl: React.FC<DeliveryStatusControlProps> = ({ noun, state, statusLabel, delivery, unavailableTitle }) => {
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const icon = <BuyerlyDeliveryIcon state={state} />;
 
@@ -148,7 +150,7 @@ export const DeliveryStatusControl: React.FC<DeliveryStatusControlProps> = ({ no
     return (
       <span
         {...stylex.props(styles.button, styles.readOnly)}
-        title={`${statusLabel}. ${controlLabel} controls are not available for this account`}
+        title={unavailableTitle ?? `${statusLabel}. ${controlLabel} controls are not available for this account`}
         aria-label={statusLabel}
         role="img"
       >

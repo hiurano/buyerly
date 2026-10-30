@@ -14,11 +14,10 @@ export const BUYERLY_DATA_LIST = {
   radius: 8,
   // Linear's rows touch; only a group header keeps 2px above and below its rows.
   rowGap: 0,
-  // A row's leading controls: the selection checkbox, then the status switch, 12px apart.
+  // A row's leading controls: the selection checkbox, then the status icon, 12px apart.
   selectionWidth: 18,
-  // Rules lead with a switch; Ads Manager with Linear's status icon in a 16px slot.
-  statusWidth: 22,
-  statusIconWidth: 16,
+  // Rules and Ads Manager lead with Linear's status icon in a 16px slot.
+  statusWidth: 16,
   leadingGap: 12,
   rowPaddingX: 12,
   columnGap: 6,
@@ -602,10 +601,8 @@ interface BuyerlyDataListGroupHeaderProps {
    * background, not sticky, with a hairline running to the right edge.
    */
   subGroup?: boolean;
-  /** The rows lead with a checkbox and a status control: line the icon and title up with them. */
+  /** The rows lead with a checkbox and a status icon: line the group's icon and title up with them. */
   statusAligned?: boolean;
-  /** That status control's width: the switch's by default. */
-  statusWidth?: number;
 }
 
 const GROUP_HEADER_BG = 'var(--rules-group-bg, var(--card-bg))';
@@ -624,7 +621,6 @@ export const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProp
   tint,
   subGroup = false,
   statusAligned = false,
-  statusWidth = BUYERLY_DATA_LIST.statusWidth,
 }) => (
   <div
     {...withClassName(
@@ -656,7 +652,7 @@ export const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProp
 
       <span
         {...stylex.props(styles.groupIcon, statusAligned && styles.groupIconStatus)}
-        style={statusAligned ? { width: statusWidth } : undefined}
+        style={statusAligned ? { width: BUYERLY_DATA_LIST.statusWidth } : undefined}
         aria-hidden="true"
       >
         {icon ?? <span {...stylex.props(styles.groupDot)} style={{ backgroundColor: dotColor }} />}
