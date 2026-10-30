@@ -684,6 +684,8 @@ interface BuyerlyDataTableProps
   before?: React.ReactNode;
   /** Rendered below the rows at table width, e.g. a filter summary. */
   after?: React.ReactNode;
+  /** A hairline under the column header, as Linear's Teams list. */
+  divider?: boolean;
   className?: string;
 }
 
@@ -698,6 +700,7 @@ export const BuyerlyDataTable: React.FC<BuyerlyDataTableProps> = ({
   onSort,
   before,
   after,
+  divider = false,
   className,
   children,
 }) => {
@@ -712,6 +715,8 @@ export const BuyerlyDataTable: React.FC<BuyerlyDataTableProps> = ({
           sortKey={sortKey}
           sortDirection={sortDirection}
           onSort={onSort}
+          // --canvas-border is a whole border; StyleX would split the shorthand and lose it.
+          style={divider ? { borderBottom: 'var(--canvas-border)' } : undefined}
         />
         <BuyerlyDataListStack>{children}</BuyerlyDataListStack>
         {after}

@@ -111,11 +111,13 @@ const styles = stylex.create({
 type MemberSort = 'name' | 'status' | 'joined';
 const ROLE_ORDER = ['owner', 'admin', 'member', 'guest'];
 
+// As Linear's Members: the name takes the room, Role and Teams keep to their content, and the
+// Name label starts over the avatar, its pill's 6px out to the left.
 const COLUMNS: BuyerlyDataListColumn[] = [
-  { id: 'name', label: 'Name', width: 'minmax(220px, 1fr)', sortable: true },
-  { id: 'status', label: 'Status', width: '100px', sortable: true },
+  { id: 'name', label: 'Name', width: 'minmax(180px, 1fr)', sortable: true, headerInset: -6 },
+  { id: 'status', label: 'Role', width: '87px', sortable: true },
   { id: 'joined', label: 'Joined', width: '100px', sortable: true },
-  { id: 'teams', label: 'Teams', width: 'minmax(120px, 220px)' },
+  { id: 'teams', label: 'Teams', width: '120px' },
 ];
 
 /** One member's row; draws again only when that member or the teams change (#500). */
@@ -145,7 +147,7 @@ const MemberRow = React.memo(function MemberRow({ member, teams }: { member: Mem
               openTab('team', { teamKey: team.key });
             }}
           >
-            <TeamIcon size={14} />
+            <TeamIcon size={16} />
             <span>{team.key}</span>
           </button>
         ))}

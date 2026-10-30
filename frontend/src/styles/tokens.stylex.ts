@@ -30,6 +30,8 @@ export const colors = stylex.defineVars({
   '--text-secondary': 'lch(90.451% 1.2 272 / 1)',
   '--text-tertiary': 'lch(61.803% 1.2 272 / 1)',
   '--text-muted': 'lch(41.778% 1.425 272 / 1)',
+  /* Linear's content --color-text-quaternary (a team's identifier on Teams), measured 31.10. */
+  '--text-quaternary': 'lch(36.975% 1.2 272 / 1)',
 
   /* Shadows */
   '--canvas-shadow': '0px 0.5px 1px 1px lch(0% 0 0 / 0.3)',
@@ -466,6 +468,7 @@ export const lightColors = stylex.createTheme(colors, {
   '--text-secondary': 'lch(19.588% 1.25 282 / 1)', /* #2f2f31 */
   '--text-tertiary': 'lch(39.176% 1.25 282 / 1)', /* #5d5d5e */
   '--text-muted': 'lch(64.64% 1.25 282 / 1)', /* #9d9d9e */
+  '--text-quaternary': 'lch(64.64% 1.25 282 / 1)',
 
   /* Shadows */
   '--canvas-shadow': '0px 3px 6px -2px rgba(0, 0, 0, 0.02), 0px 1px 1px 0px rgba(0, 0, 0, 0.04)',
