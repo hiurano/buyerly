@@ -1,13 +1,12 @@
 import React from 'react';
 import * as stylex from '@stylexjs/stylex';
-import { colors, type as typeTokens } from '@/styles/tokens.stylex';
+import { colors } from '@/styles/tokens.stylex';
 import { BuyerlyCheckbox } from '@/ui/BuyerlyCheckbox';
-import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
+import { DeliveryStatusControl } from '@/components/campaigns/DeliveryStatusControl';
 
 import { BuyerlyDataListRow, BuyerlyDataMetricCell, BuyerlyDataPrimaryCell } from '@/ui/BuyerlyDataList';
 import { BuyerlyLabelPill } from '@/ui/BuyerlyLabelPill';
-import { ATTACH_STEPS, RULE_LEVEL_LABELS, ruleActionTone } from '@/lib/rules';
-import type { RuleActionTone } from '@/lib/rules';
+import { ATTACH_STEPS, RULE_LEVEL_LABELS } from '@/lib/rules';
 import { getRulesColumns } from './tableColumns';
 import { RuleRowMenu } from './RuleRowMenu';
 import { useIsSmallScreen } from '@/lib/useMediaQuery';
@@ -57,55 +56,12 @@ const styles = stylex.create({
     alignItems: 'center',
     overflow: 'hidden',
   },
+  // Condition, Action and Scope read as Linear's text properties: 12px, secondary, no chip.
   cell: {
     display: 'flex',
     minWidth: 0,
     alignItems: 'center',
     overflow: 'hidden',
-  },
-  chip: {
-    ...truncate,
-    fontSize: 11,
-    fontWeight: 500,
-    borderWidth: 1,
-    borderStyle: 'solid',
-    borderRadius: 4,
-    paddingTop: 2,
-    paddingRight: 7,
-    paddingBottom: 2,
-    paddingLeft: 7,
-    letterSpacing: '-0.01em',
-  },
-  condition: {
-    backgroundColor: colors['--rules-property-bg'],
-    borderColor: colors['--rules-property-border'],
-    color: colors['--rules-property-text'],
-    fontFamily: typeTokens['--font-monospace'],
-    userSelect: 'text',
-  },
-  stop: {
-    backgroundColor: colors['--rules-action-stop-bg'],
-    borderColor: colors['--rules-action-stop-border'],
-    color: colors['--rules-action-stop-text'],
-  },
-  positive: {
-    backgroundColor: colors['--rules-action-positive-bg'],
-    borderColor: colors['--rules-action-positive-border'],
-    color: colors['--rules-action-positive-text'],
-  },
-  default: {
-    backgroundColor: colors['--rules-action-default-bg'],
-    borderColor: colors['--rules-action-default-border'],
-    color: colors['--rules-action-default-text'],
-  },
-  scope: {
-    fontWeight: 450,
-    paddingRight: 6,
-    paddingLeft: 6,
-    letterSpacing: null,
-    backgroundColor: colors['--rules-scope-bg'],
-    borderColor: colors['--rules-property-border'],
-    color: colors['--rules-scope-text'],
   },
   menu: {
     display: 'flex',
@@ -120,12 +76,6 @@ const styles = stylex.create({
   },
 });
 
-const ACTION_BADGE_STYLES: Record<RuleActionTone, stylex.StyleXStyles> = {
-  stop: styles.stop,
-  positive: styles.positive,
-  default: styles.default,
-};
-
 interface RuleRowProps {
   rule: RuleItem;
 }
@@ -139,15 +89,15 @@ const RuleRowContent: React.FC<RuleRowProps> = ({ rule }) => {
   const rulesDisplayProperties = useRulesView().view.properties;
   const rowLabels = useRulesStore((state) => state.labelsOfRule(rule));
 
-  const isDeliveryOn = rule.status !== 'paused';
+  const status = rule.status === 'paused' ? 'paused' : 'active';
+  // A paused rule held for review is re-saved before it runs again: its icon only says why.
+  const heldForReview = rule.needsReview && status === 'paused';
   const columns = getRulesColumns(rulesDisplayProperties);
   const isSmall = useIsSmallScreen();
 
   const handleRowClick = () => {
     setFocusedRuleId(rule.id);
   };
-
-  const actionStyle = ACTION_BADGE_STYLES[ruleActionTone(rule.actionKind)];
 
   return (
     <BuyerlyDataListRow
@@ -170,20 +120,17 @@ const RuleRowContent: React.FC<RuleRowProps> = ({ rule }) => {
           <>
             <BuyerlyCheckbox checked={isSelected} onChange={() => toggleRuleSelection(rule.id)} />
             {rulesDisplayProperties.status !== false && (
-              <div onClick={(e) => e.stopPropagation()}>
-                <BuyerlyToggle
-                  checked={isDeliveryOn}
-                  disabled={rule.needsReview && !isDeliveryOn}
-                  tooltipContent={
-                    rule.needsReview && !isDeliveryOn
-                      ? rule.reviewReason || 'Re-save this rule before switching it on'
-                      : isDeliveryOn
-                      ? 'Pause rule'
-                      : 'Resume rule'
-                  }
-                  onChange={() => void toggleRuleStatus(rule.id)}
-                />
-              </div>
+              <DeliveryStatusControl
+                noun="rule"
+                state={status}
+                statusLabel={status === 'paused' ? 'Rule paused' : 'Rule active'}
+                delivery={heldForReview ? undefined : {
+                  status,
+                  busy: false,
+                  onChange: () => toggleRuleStatus(rule.id),
+                }}
+                unavailableTitle={heldForReview ? rule.reviewReason || 'Re-save this rule before switching it on' : undefined}
+              />
             )}
           </>
         )}
@@ -225,7 +172,7 @@ const RuleRowContent: React.FC<RuleRowProps> = ({ rule }) => {
 
       {rulesDisplayProperties.condition !== false && (
           <div {...stylex.props(styles.cell)}>
-            <span {...stylex.props(styles.chip, styles.condition)} title={rule.condition}>
+            <span {...stylex.props(styles.text)} title={rule.condition}>
               {rule.condition}
             </span>
           </div>
@@ -233,7 +180,7 @@ const RuleRowContent: React.FC<RuleRowProps> = ({ rule }) => {
 
       {rulesDisplayProperties.action !== false && (
           <div {...stylex.props(styles.cell)}>
-            <span {...stylex.props(styles.chip, actionStyle)}>
+            <span {...stylex.props(styles.text)} title={rule.action}>
               {rule.action}
             </span>
           </div>
@@ -247,8 +194,8 @@ const RuleRowContent: React.FC<RuleRowProps> = ({ rule }) => {
           <div {...stylex.props(styles.cell)}>
             {rule.scope && (
             <span
-              {...stylex.props(styles.chip, styles.scope)}
-              title={rule.preset.attached_account_ids.length === 0 ? ATTACH_STEPS : undefined}
+              {...stylex.props(styles.text)}
+              title={rule.preset.attached_account_ids.length === 0 ? ATTACH_STEPS : rule.scope}
             >
               {rule.scope}
             </span>

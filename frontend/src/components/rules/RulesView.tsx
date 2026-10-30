@@ -299,6 +299,14 @@ export const RulesView: React.FC<RulesViewProps> = ({ revealId, navigationKey })
     actions: selectionActions,
     // Selection lives in the list; the board has no row checkboxes.
     enabled: rulesLoadState === 'ready' && rulesViewMode === 'list',
+    // Linear's S: the row's status menu, as in Ads Manager.
+    onRowKey: (id, key) => {
+      if (key !== 's') return false;
+      const status = document.querySelector<HTMLButtonElement>(`[data-row-id="${CSS.escape(id)}"] [data-delivery-status]`);
+      if (!status || status.disabled) return false;
+      status.click();
+      return true;
+    },
   });
 
   useEffect(() => {
