@@ -4971,18 +4971,23 @@ body.buyerly-split-resizing, body.buyerly-split-resizing * { cursor: col-resize 
 /* Linear's quick-filter section (DetailsFacets): one card filling the pane, 8px from its right and bottom. */
 .details-facets {
   display: flex; flex: 1 0 auto; flex-direction: column; margin: 0 8px 8px 0; padding: 12px;
-  border: 1px solid var(--details-pane-card-border); border-radius: 10px; background-color: var(--details-pane-card-bg);
+  border: 0.5px solid var(--details-pane-card-border); border-radius: 10px; background-color: var(--details-pane-card-bg);
   box-shadow: var(--details-pane-card-shadow); user-select: none;
 }
 .details-facets-tabs { margin-bottom: 10px; }
 .details-facets-tabs[data-folded='true'] { height: 0; margin-bottom: 0; overflow: hidden; visibility: hidden; }
 .details-facets-tablist { display: flex; gap: 2px; width: 100%; height: 32px; border-radius: 5px; background-color: var(--details-tabs-bg); }
 .details-facets-tab {
-  display: inline-flex; flex: 1 0 auto; align-items: center; justify-content: center; height: 28px; margin: 2px; padding: 0 12px;
-  border: 1px solid transparent; border-radius: 9999px; background-color: var(--details-tab-bg); box-shadow: var(--details-tab-shadow);
+  position: relative; display: inline-flex; flex: 1 0 auto; align-items: center; justify-content: center; height: 28px; margin: 2px; padding: 0 12px;
+  border: 0.5px solid transparent; border-radius: 9999px; background-color: var(--details-tab-bg);
   color: var(--details-tab-fg); font-size: 12px; font-weight: 500; white-space: nowrap; outline: none; cursor: pointer;
   transition: border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
 }
+/* Linear draws the tab's ring on ::after; the chosen tab's is lighter and without the drop. */
+.details-facets-tab::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: var(--details-tab-ring);
+}
+.details-facets-tab[aria-selected='true']::after { box-shadow: var(--details-tab-ring-active); }
 .details-facets-tab:hover { background-color: var(--details-tab-hover-bg); color: var(--details-tab-hover-fg); }
 .details-facets-tab[aria-selected='true'] { background-color: var(--details-tab-active-bg); color: var(--details-tab-active-fg); cursor: default; }
 .details-facets-tab:focus-visible { outline: 1px solid var(--focus-ring-color); outline-offset: -1px; }
