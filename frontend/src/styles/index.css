@@ -1178,16 +1178,18 @@ html[data-theme='light'] .buyerly-display-property[aria-pressed='true'] {
 
 /* Linear's Membership cell on Teams: a "Joined" pill that offers Leave under the cursor, or Join. */
 .team-membership {
+  /* Linear's Joined tag on Teams: 18px, a 0.5px border on the grouped-list grey, tertiary text. */
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 4px;
-  background-color: var(--item-hover-bg);
-  color: var(--text-secondary);
+  gap: 2px;
+  height: 18px;
+  padding: 1px 3px;
+  border: 0.5px solid var(--preferences-search-border);
+  border-radius: 3px;
+  background-color: var(--settings-list-group-bg);
+  color: var(--text-tertiary);
   font-size: 12px;
-  font-weight: 450;
+  font-weight: 500;
   cursor: default;
 }
 
