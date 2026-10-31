@@ -778,7 +778,7 @@ export const MembersSection: React.FC<{
           <div role="row" className="settings-list-row settings-list-row--header">
             <SortHeader label="Name" column="name" sort={sort} onSort={toggleSort} />
             <SortHeader label="Email" column="email" sort={sort} onSort={toggleSort} className="settings-list-col-wide" />
-            <SortHeader label="Status" column="status" sort={sort} onSort={toggleSort} />
+            <SortHeader label="Role" column="status" sort={sort} onSort={toggleSort} />
             <span role="columnheader" className="settings-list-col-wide">Teams</span>
             <SortHeader label="Joined" column="joined" sort={sort} onSort={toggleSort} className="settings-list-col-wide" />
             <span role="columnheader" {...stylex.props(styles.srOnly)}>Actions</span>

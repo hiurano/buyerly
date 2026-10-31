@@ -194,12 +194,15 @@ try {
       await page.getByText('Workspace URL updated').waitFor();
       assert.equal(await page.getByRole('textbox', { name: 'URL', exact: true }).inputValue(), 'alpha-media');
 
-      // Teams: Linear's toolbar without Export CSV over an empty table; Create team opens its page (#371).
+      // Teams: Linear's toolbar — Export CSV for admins on a wide window — over an empty table; Create team opens its page (#371).
       await page.goto(`${origin}/alpha-media/settings/teams`);
       await page.getByRole('heading', { name: 'Teams', exact: true }).waitFor();
       await page.getByRole('searchbox', { name: 'Filter by name…' }).waitFor();
       assert.equal(await page.getByRole('button', { name: 'Create team' }).first().isDisabled(), false);
-      assert.equal(await page.getByRole('button', { name: 'Export CSV' }).count(), 0);
+      assert.equal(
+        await page.getByRole('button', { name: 'Export CSV' }).isVisible(),
+        (role === 'owner' || role === 'admin') && width >= 640,
+      );
       await page.getByText('No teams yet').waitFor();
       await assertNoOverflow('Teams');
       await page.screenshot({ path: `${output}/teams-${role}-${width}.png`, fullPage: true });

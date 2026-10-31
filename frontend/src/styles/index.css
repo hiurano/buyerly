@@ -2537,7 +2537,15 @@ html[data-theme='dark'] .buyerly-sidebar-badge,
 .settings-list-sort svg {
   flex-shrink: 0;
   fill: var(--settings-list-muted);
-  transition: fill 0.15s;
+  /* As Linear's Settings lists: only the sorted column shows its arrow; another's appears under the cursor. */
+  opacity: 0;
+  transition: fill 0.15s, opacity 0.15s;
+}
+
+.settings-list-sort[data-active='true'] svg,
+.settings-list-sort:hover svg,
+.settings-list-sort:focus-visible svg {
+  opacity: 1;
 }
 
 .settings-list-sort[data-active='true'] svg {
@@ -3094,7 +3102,7 @@ input.settings-list-inline:focus {
 .preferences-row-desc {
   display: block;
   margin-top: 3px;
-  color: var(--text-tertiary);
+  color: var(--settings-row-desc);
   font-family: var(--font-regular);
   font-size: 12px;
   font-weight: 450;

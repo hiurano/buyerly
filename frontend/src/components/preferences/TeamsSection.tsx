@@ -36,6 +36,7 @@ import { TeamIcon } from './TeamIcon';
 import { RestoreTeamDialog } from './TeamSettingsSection';
 import { colors } from '@/styles/tokens.stylex';
 import { openSettings, openTeamSettings } from '@/lib/routing';
+import { canAdministerWorkspace } from '@/lib/settingsPages';
 
 const styles = stylex.create({
   srOnly: {
@@ -57,6 +58,13 @@ const styles = stylex.create({
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+  },
+  // As Members': a phone keeps Create team only.
+  exportButton: {
+    display: {
+      default: null,
+      '@media not all and (min-width: 640px)': 'none',
+    },
   },
   spacer: {
     flex: '1 1 0%',
@@ -95,10 +103,33 @@ const TEAM_SETTINGS_PAGES: Array<{ path: string; label: string }> = [
   { path: 'accounts', label: 'Ad accounts' },
 ];
 
+const csvCell = (value: string) => (/[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
+
+/** Linear's Export CSV on Teams: the teams the filter shows, whatever the search. */
+function downloadTeamsCsv(workspace: Workspace, teams: TeamItem[]) {
+  const rows = [
+    ['Name', 'Identifier', 'Visibility', 'Members', 'Ad accounts', 'Created'],
+    ...teams.map((team) => [
+      team.name,
+      team.key,
+      team.private ? 'Private' : 'Workspace',
+      String(team.member_user_ids.length),
+      String(team.account_ids.length),
+      team.created_at,
+    ]),
+  ];
+  const blob = new Blob([`${rows.map((row) => row.map(csvCell).join(',')).join('\r\n')}\r\n`], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${workspace.slug}-teams.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 /**
  * Settings → Administration → Teams, as Linear's: "Filter by name…", the
- * Active / Retired / Recently deleted filter and Create team over the table
- * (no Export CSV). A row opens the team; its menu opens the team's pages, or
+ * Active / Retired / Recently deleted filter, Export CSV for admins and Create team over the table. A row opens the team; its menu opens the team's pages, or
  * restores a retired or deleted team. The member count lists the members on hover.
  */
 export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) => {
@@ -174,6 +205,11 @@ export const TeamsSection: React.FC<{ workspace: Workspace }> = ({ workspace }) 
           </DropdownMenuContent>
         </DropdownMenu>
         <div {...stylex.props(styles.spacer)} />
+        {canAdministerWorkspace({ role: workspace.role }) && teams && (
+          <button type="button" {...withClassName(stylex.props(styles.exportButton), 'settings-list-button')} onClick={() => downloadTeamsCsv(workspace, teams)}>
+            Export CSV
+          </button>
+        )}
         <button type="button" className="settings-list-button settings-list-button--primary" onClick={() => openSettings('new-team')}>
           Create team
         </button>
