@@ -1,3 +1,4 @@
+import type { AccountPageTab } from '@/lib/routing';
 import type { MetaAccount } from '@/lib/types';
 import type { FilterFieldDefinition, FilterOption } from '@/components/filters/filterModel';
 import { listViewDefaults, type SortDirection } from '@/ui/listView';
@@ -268,9 +269,9 @@ export function formatAddedDate(value: string | undefined): string {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(date);
 }
 
-/** The account's page: /{workspace}/accounts/{act_id}. */
-export const accountPagePath = (workspace: string, accountId: string) =>
-  `/${workspace}/accounts/${encodeURIComponent(accountId)}`;
+/** The account's page: /{workspace}/accounts/{act_id}, its Activity tab at …/activity. */
+export const accountPagePath = (workspace: string, accountId: string, tab?: AccountPageTab) =>
+  `/${workspace}/accounts/${encodeURIComponent(accountId)}${tab ? `/${tab}` : ''}`;
 
 /**
  * Campaigns filtered to this account, as Linear's project opens its issues:

@@ -265,6 +265,13 @@ try {
       await properties.getByRole('group', { name: 'Status' }).waitFor({ state: 'detached' });
       await fold.click();
       await properties.getByRole('group', { name: 'Status' }).waitFor();
+      // Linear's project tabs: Activity lists every event of the account at …/activity, beside the same panel.
+      await page.getByRole('tab', { name: 'Activity' }).or(page.getByRole('button', { name: 'Activity', exact: true })).first().click();
+      await page.waitForURL(`${origin}/alpha/accounts/act_101/activity`);
+      await page.locator('section[aria-label="Activity"]').getByText('Paused: no leads after 20', { exact: false }).waitFor();
+      await properties.getByRole('group', { name: 'Status' }).waitFor();
+      await page.getByRole('tab', { name: 'Overview' }).or(page.getByRole('button', { name: 'Overview', exact: true })).first().click();
+      await page.waitForURL(`${origin}/alpha/accounts/act_101`);
       assert.match(await page.locator('section[aria-label="Today"]').innerText(), /\$120\.50[\s\S]*CPL \$30\.13/);
       // The rule's own status and where it runs; no switch here — pausing a rule pauses it on every account.
       const rulesSection = page.locator('section[aria-label="Rules"]');
@@ -375,12 +382,17 @@ try {
       await page.screenshot({ path: `${output}/list-390.png` });
       await page.locator('[data-row-id="act_101"]').tap();
       await page.waitForURL(`${origin}/alpha/accounts/act_101`);
+      // As Linear's project page on a phone: the column alone, the properties panel opened over it on demand.
+      await page.locator('section[aria-label="Today"]').waitFor();
       const properties = page.locator('section[aria-label="Properties"]');
+      // A phone opens on the column: the panel, open by default on a wide window, slides away.
+      await properties.waitFor({ state: 'detached' });
+      await page.getByRole('button', { name: 'Open details' }).tap();
       await properties.waitFor();
-      const today = await page.locator('section[aria-label="Today"]').boundingBox();
+      // Once it has slid in.
+      await page.waitForFunction(() => document.querySelector('section[aria-label="Properties"]').getBoundingClientRect().right <= 390);
       const panel = await properties.boundingBox();
-      assert.ok(panel.y < today.y, 'one column: properties above Today');
-      assert.ok(panel.x + panel.width <= 390);
+      assert.ok(panel.x >= 0 && panel.x + panel.width <= 390, `the panel leaves the screen: ${JSON.stringify(panel)}`);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth) <= 390);
       await page.screenshot({ path: `${output}/page-390.png`, fullPage: true });
       assert.deepEqual(errors, []);

@@ -36,10 +36,15 @@ export type Route =
       mine?: boolean;
       /** With tab 'team': the tab of the team's Home (/team/<KEY>/overview, …/documents, …/members). */
       teamPage?: TeamHomePage;
+      /** With tab 'accounts' and an account: its Activity tab (/accounts/<act_id>/activity), as a Linear project's. */
+      accountPage?: AccountPageTab;
     }
   | { kind: 'unknown' };
 
 export type WorkspaceRoute = Extract<Route, { kind: 'workspace' }>;
+
+/** An ad account page's tabs past Overview, as a Linear project's. */
+export type AccountPageTab = 'activity';
 
 /** Rules pages beside the list: deleted rules and groups live at /rules/recently-deleted. */
 export const RECENTLY_DELETED_RULES = 'recently-deleted';
@@ -111,6 +116,7 @@ export type BuyerlyRouteHandle =
       inboxTab?: 'priority' | 'other';
       rulesPage?: RulesPage;
       teamPage?: TeamHomePage;
+      accountPage?: AccountPageTab;
       settingsSection?: SettingsSection;
       /** With settingsSection 'team': the team's page after its overview. */
       teamSettingsPage?: typeof TEAM_PAGES[number];
@@ -133,6 +139,7 @@ function scopedPages(prefix: '' | 'team/:teamKey/' | 'my-campaigns'): RouteObjec
     })),
     ...(mine ? [] : [
       // The Ad accounts list, and one account's page at /accounts/{act_id} (#388).
+      { path: `${prefix}accounts/:recordId/activity`, handle: handle({ page: 'accounts', accountPage: 'activity' }) },
       { path: `${prefix}accounts/:recordId?`, handle: handle({ page: 'accounts' }) },
       { path: `${prefix}rules/${RECENTLY_DELETED_RULES}`, handle: handle({ page: 'rules', rulesPage: RECENTLY_DELETED_RULES }) },
       { path: `${prefix}rules/:recordId?`, handle: handle({ page: 'rules' }) },
@@ -238,6 +245,7 @@ export function routeFromMatches(matches: readonly MatchLike[] | null, search: s
   if (opened.inboxTab) route.inboxTab = opened.inboxTab;
   if (opened.rulesPage) route.rulesPage = opened.rulesPage;
   if (opened.teamPage) route.teamPage = opened.teamPage;
+  if (opened.accountPage) route.accountPage = opened.accountPage;
   if (params.teamKey) route.teamKey = params.teamKey.toUpperCase();
   if (params.recordId) route.recordId = params.recordId;
   if (opened.settingsSection && opened.settingsSection !== 'preferences') route.settingsSection = opened.settingsSection;

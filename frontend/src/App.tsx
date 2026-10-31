@@ -276,7 +276,9 @@ export const WorkspaceApplication: React.FC = () => {
         || (!event.ctrlKey && !event.altKey && !event.metaKey && event.key === ']');
       if (detailsKey) {
         const tab = currentTab();
-        const pane = tab === 'campaigns' ? 'adsManager' : tab === 'rules' ? 'rules' : null;
+        const shown = currentRoute();
+        const onAccount = tab === 'accounts' && shown.kind === 'workspace' && Boolean(shown.recordId);
+        const pane = tab === 'campaigns' ? 'adsManager' : tab === 'rules' ? 'rules' : onAccount ? 'account' : null;
         if (!pane) return;
         event.preventDefault();
         toggleDetailsPane(pane);

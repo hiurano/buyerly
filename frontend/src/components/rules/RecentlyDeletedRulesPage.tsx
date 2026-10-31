@@ -29,7 +29,7 @@ const styles = stylex.create({
     height: 44,
     boxSizing: 'border-box',
     paddingLeft: 18,
-    paddingRight: 11,
+    paddingRight: 8,
   },
   breadcrumb: {
     display: 'flex',

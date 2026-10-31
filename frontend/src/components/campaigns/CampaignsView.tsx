@@ -207,7 +207,7 @@ const styles = stylex.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingLeft: 18,
-    paddingRight: 11,
+    paddingRight: 8,
   },
   title: {
     display: 'flex',

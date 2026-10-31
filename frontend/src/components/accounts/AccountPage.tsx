@@ -21,7 +21,10 @@ import {
 } from '@/ui/DropdownMenu';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
 import { BuyerlyDisclosureGlyph, BuyerlyStatusCircleIcon } from '@/icons/BuyerlyIcons';
-import { useMediaQuery } from '@/lib/useMediaQuery';
+import { DetailsPaneLayout, DetailsPaneToggle } from '@/ui/DetailsPane';
+import { BuyerlyDataListToolbar } from '@/ui/BuyerlyDataList';
+import { BuyerlyTabs } from '@/ui/BuyerlyTabs';
+import type { AccountPageTab } from '@/lib/routing';
 import { AccountRowMenu, type AccountRowActions } from './AccountRow';
 import { AccountStatusLabel, ConnectionProblemIcon, accountMoney } from './AccountParts';
 import { copyAccountId, useWorkspaceAccounts, type AccountMember } from './accountsData';
@@ -151,7 +154,7 @@ const styles = stylex.create({
     justifyContent: 'space-between',
     gap: 8,
     paddingLeft: 18,
-    paddingRight: 11,
+    paddingRight: 8,
   },
   titleStart: {
     display: 'flex',
@@ -222,9 +225,6 @@ const styles = stylex.create({
     display: 'flex',
     flexShrink: 0,
     flexDirection: 'column',
-  },
-  propertiesStacked: {
-    marginTop: 32,
   },
   truncate,
   muted: {
@@ -516,33 +516,10 @@ const styles = stylex.create({
     fontVariantNumeric: 'tabular-nums',
     color: colors['--text-tertiary'],
   },
-  oneColumn: {
-    minHeight: 0,
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: '0%',
-    overflowY: 'auto',
-    paddingLeft: {
-      default: 16,
-      '@media (min-width: 640px)': 32,
-    },
-    paddingRight: {
-      default: 16,
-      '@media (min-width: 640px)': 32,
-    },
-    paddingTop: 24,
-  },
   column: {
     marginLeft: 'auto',
     marginRight: 'auto',
     maxWidth: 805,
-  },
-  twoColumns: {
-    display: 'flex',
-    minHeight: 0,
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: '0%',
   },
   mainScroll: {
     minWidth: 0,
@@ -550,19 +527,30 @@ const styles = stylex.create({
     flexShrink: 1,
     flexBasis: '0%',
     overflowY: 'auto',
-    // Linear's project column: 48px at the sides, up to 805px wide.
-    paddingLeft: 48,
-    paddingRight: 48,
-    paddingTop: 64,
+    // Linear's project column: 48px at the sides, up to 805px wide; a phone keeps 16px.
+    paddingLeft: { default: 48, '@media (max-width: 640px)': 16 },
+    paddingRight: { default: 48, '@media (max-width: 640px)': 16 },
+    paddingTop: { default: 64, '@media (max-width: 640px)': 24 },
   },
-  // Linear's project panel (measured 01.11): a 396px column of cards, 8px from the canvas's edge.
-  aside: {
-    width: 396,
+  // The page's tabs, as a Linear project's Overview / Activity bar over the column and its panel.
+  tabBar: {
+    gap: 8,
+  },
+  tabBarEnd: {
+    display: 'flex',
     flexShrink: 0,
-    overflowY: 'auto',
-    paddingTop: 8,
-    paddingRight: 8,
-    paddingBottom: 8,
+    alignItems: 'center',
+    marginLeft: 'auto',
+  },
+  loadMore: {
+    marginTop: 12,
+  },
+  // Linear's Activity tab has no title: its timeline starts 40px under the tabs.
+  mainScrollActivity: {
+    paddingTop: { default: 40, '@media (max-width: 640px)': 24 },
+  },
+  activity: {
+    paddingBottom: 40,
   },
   // Each card as the details pane's: 0.5px border, 10px corners, 12px in.
   panelCard: {
@@ -576,6 +564,9 @@ const styles = stylex.create({
     paddingRight: 12,
     paddingBottom: 12,
     paddingLeft: 12,
+    // In the details pane, 8px from its right and bottom edges, as the quick-filter card.
+    marginRight: 8,
+    marginBottom: 8,
   },
   // "Properties ▾": a 28px pill that folds the card, its text 8px in, as Linear's.
   panelHeader: {
@@ -622,11 +613,10 @@ const styles = stylex.create({
   },
 });
 
-/** Below this width the properties move under the title, in one column (#388). */
-const ONE_COLUMN_QUERY = '(max-width: 1199px)';
-
 interface AccountPageProps {
   accountId: string;
+  /** The tab on screen: Overview at /accounts/<act_id>, Activity at …/activity. */
+  page: AccountPageTab | 'overview';
   navigate: (path: string) => void;
   /** Changes on every navigation, Back and Forward included. */
   navigationKey: number;
@@ -639,10 +629,10 @@ const SectionTitle: React.FC<React.PropsWithChildren<{ action?: React.ReactNode 
   </div>
 );
 
-const PropertyRow: React.FC<React.PropsWithChildren<{ label: string; panel?: boolean }>> = ({ label, panel = false, children }) => (
+const PropertyRow: React.FC<React.PropsWithChildren<{ label: string }>> = ({ label, children }) => (
   <div {...stylex.props(styles.property)} role="group" aria-label={label}>
-    <div {...stylex.props(styles.propertyLabel, panel && styles.panelLabel)}>{label}</div>
-    <div {...stylex.props(styles.propertyValue, panel && styles.panelValue)}>{children}</div>
+    <div {...stylex.props(styles.propertyLabel, styles.panelLabel)}>{label}</div>
+    <div {...stylex.props(styles.propertyValue, styles.panelValue)}>{children}</div>
   </div>
 );
 
@@ -654,14 +644,83 @@ const Figure: React.FC<{ label: string; value: string; caption?: string }> = ({ 
   </div>
 );
 
+/** Events of an account, newest first: what happened, on what, and when. */
+const EventList: React.FC<{ events: AuditEventItem[] }> = ({ events }) => (
+  <ul {...stylex.props(styles.list)}>
+    {events.map((event) => (
+      <li key={event.id} {...stylex.props(styles.event)}>
+        <span aria-hidden="true" {...stylex.props(styles.eventDot)} />
+        <div {...stylex.props(styles.eventText)}>
+          <div {...stylex.props(styles.eventTitle)}>{auditEventTitle(event)}</div>
+          <div {...stylex.props(styles.eventSummary)}>{auditEventSummary(event)}</div>
+        </div>
+        <span {...stylex.props(styles.eventTime)} title={formatAuditTimestamp(event.created_at)}>
+          {formatAuditRelativeTime(event.created_at)}
+        </span>
+      </li>
+    ))}
+  </ul>
+);
+
+const ACTIVITY_PAGE_SIZE = 50;
+
+/** The Activity tab, as a Linear project's: every event of the account, 50 at a time. */
+const AccountActivity: React.FC<{ accountId: string; navigationKey: number }> = ({ accountId, navigationKey }) => {
+  const [events, setEvents] = useState<AuditEventItem[] | null>(null);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const load = (next: number) => {
+    setLoading(true);
+    setFailed(false);
+    return fetchAuditEvents({ page: next, pageSize: ACTIVITY_PAGE_SIZE, accountId })
+      .then((result) => {
+        setEvents((current) => (next === 1 ? result.items : [...(current ?? []), ...result.items]));
+        setPage(next);
+        setPages(result.total_pages);
+        setLoading(false);
+      })
+      .catch(() => {
+        setFailed(true);
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    setEvents(null);
+    void load(1);
+    // A new account or a navigation starts over at the newest page.
+  }, [accountId, navigationKey]);
+
+  return (
+    <section aria-label="Activity" {...stylex.props(styles.activity)}>
+      {failed && events === null ? (
+        <p {...stylex.props(styles.empty)}>Couldn’t load the activity of this account.</p>
+      ) : events === null ? (
+        <p {...stylex.props(styles.empty)}>Loading…</p>
+      ) : events.length === 0 ? (
+        <p {...stylex.props(styles.empty)}>Nothing has happened on this account yet.</p>
+      ) : (
+        <EventList events={events} />
+      )}
+      {events !== null && page < pages && (
+        <Button size="compact" xstyle={styles.loadMore} disabled={loading} onClick={() => void load(page + 1)}>
+          {loading ? 'Loading…' : 'Show older'}
+        </Button>
+      )}
+    </section>
+  );
+};
+
 /** One ad account's page, as Linear's project page: name, note, today's numbers, rules, recent events, properties. */
-const AccountPageContent: React.FC<AccountPageProps> = ({ accountId, navigate, navigationKey }) => {
+const AccountPageContent: React.FC<AccountPageProps> = ({ accountId, page, navigate, navigationKey }) => {
   const { workspace } = useWorkspaceSession();
   const data = useWorkspaceAccounts();
   const { accounts, teams, members, state, error, canEdit } = data;
   const listPath = `/${workspace.slug}/accounts`;
   const dialogs = useAccountDialogs(data, () => navigate(listPath));
-  const oneColumn = useMediaQuery(ONE_COLUMN_QUERY);
   const account = accounts.find((item) => item.account_id === accountId);
 
   const rules = useRulesStore((state) => state.rules);
@@ -766,7 +825,8 @@ const AccountPageContent: React.FC<AccountPageProps> = ({ accountId, navigate, n
       <AccountPageBody
         key={account.account_id}
         account={account}
-        oneColumn={oneColumn}
+        page={page}
+        navigationKey={navigationKey}
         canEdit={canEdit}
         canAct={data.canAct}
         teamsText={teamsOf(account, teams).map((team) => team.name).join(', ')}
@@ -787,9 +847,26 @@ const AccountPageContent: React.FC<AccountPageProps> = ({ accountId, navigate, n
     );
   }
 
+  const tabBar = account && (
+    <BuyerlyDataListToolbar xstyle={styles.tabBar}>
+      <BuyerlyTabs
+        aria-label="Ad account"
+        tabs={[{ id: 'overview', label: 'Overview' }, { id: 'activity', label: 'Activity' }]}
+        activeTabId={page}
+        onChange={(tab) => navigate(accountPagePath(workspace.slug, account.account_id, tab === 'activity' ? 'activity' : undefined))}
+      />
+      <div {...stylex.props(styles.tabBarEnd)}>
+        <DetailsPaneToggle pane="account" />
+      </div>
+    </BuyerlyDataListToolbar>
+  );
+
   return (
     <div {...stylex.props(styles.root)}>
-      <header {...stylex.props(styles.header)}>{header}</header>
+      <header {...stylex.props(styles.header)}>
+        {header}
+        {tabBar}
+      </header>
       {body}
       {dialogs.element}
     </div>
@@ -798,7 +875,8 @@ const AccountPageContent: React.FC<AccountPageProps> = ({ accountId, navigate, n
 
 interface AccountPageBodyProps {
   account: MetaAccount;
-  oneColumn: boolean;
+  page: AccountPageTab | 'overview';
+  navigationKey: number;
   canEdit: boolean;
   /** Changing this account itself: everyone who sees it, guests too. */
   canAct: boolean;
@@ -817,7 +895,8 @@ interface AccountPageBodyProps {
 
 const AccountPageBody: React.FC<AccountPageBodyProps> = ({
   account,
-  oneColumn,
+  page,
+  navigationKey,
   canEdit,
   canAct,
   teamsText,
@@ -863,28 +942,23 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
   const health = account.health;
   const lastSync = health?.last_success_at || metrics?.saved_at || metrics?.generated_at || '';
 
-  // Beside the page, Linear's properties card, which folds; under the title on a narrow window, plain rows.
-  const panel = !oneColumn;
+  // Linear's properties card in the page's details pane; its header folds it.
   const properties = (
-    <section aria-label="Properties" {...stylex.props(oneColumn && styles.propertiesStacked, panel && styles.panelCard)}>
-      {panel ? (
-        <button
+    <section aria-label="Properties" {...stylex.props(styles.panelCard)}>
+      <button
           type="button"
           aria-expanded={!propertiesFolded}
           onClick={() => setPropertiesFolded((folded) => !folded)}
           {...stylex.props(styles.panelHeader, propertiesFolded && styles.panelHeaderFolded)}
         >
           Properties
-          <BuyerlyDisclosureGlyph size={16} {...stylex.props(styles.disclosure, propertiesFolded && styles.disclosureFolded)} />
-        </button>
-      ) : (
-        <SectionTitle>Properties</SectionTitle>
-      )}
-      {!(panel && propertiesFolded) && <>
-        <PropertyRow panel={panel} label="Status">
+        <BuyerlyDisclosureGlyph size={16} {...stylex.props(styles.disclosure, propertiesFolded && styles.disclosureFolded)} />
+      </button>
+      {!propertiesFolded && <>
+        <PropertyRow label="Status">
           <AccountStatusLabel account={account} />
         </PropertyRow>
-        <PropertyRow panel={panel} label="Health">
+        <PropertyRow label="Health">
           {problem ? (
             <>
               <ConnectionProblemIcon account={account} onReconnect={canEdit ? onReconnect : undefined} />
@@ -901,7 +975,7 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
             </span>
           )}
         </PropertyRow>
-        <PropertyRow panel={panel} label="Automation">
+        <PropertyRow label="Automation">
           <BuyerlyToggle
             checked={Boolean(account.rules_enabled)}
             disabled={!canAct || automationBlocked}
@@ -915,24 +989,24 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
           />
           <span {...stylex.props(styles.secondary)}>{account.rules_enabled ? 'On' : 'Off'}</span>
         </PropertyRow>
-        <PropertyRow panel={panel} label="Lead">
+        <PropertyRow label="Lead">
           <AccountLeadPicker account={account} members={members} canEdit={canAct} onChange={onSetLead} variant="property" />
         </PropertyRow>
-        <PropertyRow panel={panel} label="Team">
+        <PropertyRow label="Team">
           <span {...stylex.props(teamsText ? styles.truncate : styles.muted)}>{teamsText || 'No team'}</span>
         </PropertyRow>
-        <PropertyRow panel={panel} label="Connected by">
+        <PropertyRow label="Connected by">
           <span {...stylex.props(connectedBy ? styles.truncate : styles.muted)}>
             {connectedBy ? connectedBy.full_name || connectedBy.username : '—'}
           </span>
         </PropertyRow>
-        <PropertyRow panel={panel} label="Time zone">
+        <PropertyRow label="Time zone">
           <span {...stylex.props(styles.truncate)}>{account.timezone_name || 'UTC'}</span>
         </PropertyRow>
-        <PropertyRow panel={panel} label="Added">
+        <PropertyRow label="Added">
           <span>{formatAddedDate(account.created_at)}</span>
         </PropertyRow>
-        <PropertyRow panel={panel} label="Last sync">
+        <PropertyRow label="Last sync">
           <span title={lastSync ? formatAuditTimestamp(lastSync) : undefined} {...stylex.props(!lastSync && styles.muted)}>
             {lastSync ? formatRelativeTime(lastSync) : 'Never'}
           </span>
@@ -1002,7 +1076,6 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
         <p {...stylex.props(styles.note)}>{account.note}</p>
       ) : null}
 
-      {oneColumn && properties}
 
       <section aria-label="Today" {...stylex.props(styles.section)}>
         <SectionTitle>Today</SectionTitle>
@@ -1097,20 +1170,7 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
         ) : events.length === 0 ? (
           <p {...stylex.props(styles.empty)}>Nothing has happened on this account yet.</p>
         ) : (
-          <ul {...stylex.props(styles.list)}>
-            {events.map((event) => (
-              <li key={event.id} {...stylex.props(styles.event)}>
-                <span aria-hidden="true" {...stylex.props(styles.eventDot)} />
-                <div {...stylex.props(styles.eventText)}>
-                  <div {...stylex.props(styles.eventTitle)}>{auditEventTitle(event)}</div>
-                  <div {...stylex.props(styles.eventSummary)}>{auditEventSummary(event)}</div>
-                </div>
-                <span {...stylex.props(styles.eventTime)} title={formatAuditTimestamp(event.created_at)}>
-                  {formatAuditRelativeTime(event.created_at)}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <EventList events={events} />
         )}
       </section>
 
@@ -1132,23 +1192,14 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
     </div>
   );
 
-  if (oneColumn) {
-    return (
-      <div {...stylex.props(styles.oneColumn)}>
-        <div {...stylex.props(styles.column)}>{main}</div>
-      </div>
-    );
-  }
   return (
-    <div {...stylex.props(styles.twoColumns)}>
-      {/* Linear's project page: a column up to 805px, and its 396px panel of cards on the right. */}
-      <div {...stylex.props(styles.mainScroll)}>
-        <div {...stylex.props(styles.column)}>{main}</div>
+    <DetailsPaneLayout pane="account" label="Ad account details" details={properties}>
+      <div {...stylex.props(styles.mainScroll, page === 'activity' && styles.mainScrollActivity)}>
+        <div {...stylex.props(styles.column)}>
+          {page === 'activity' ? <AccountActivity accountId={account.account_id} navigationKey={navigationKey} /> : main}
+        </div>
       </div>
-      <aside {...stylex.props(styles.aside)}>
-        {properties}
-      </aside>
-    </div>
+    </DetailsPaneLayout>
   );
 };
 
