@@ -5012,7 +5012,11 @@ body.buyerly-split-resizing, body.buyerly-split-resizing * { cursor: col-resize 
 .details-facets-row[data-status='muted'] { opacity: 0.5; }
 .details-facets-row:focus-visible { box-shadow: inset 0 0 0 1px var(--focus-ring-color); }
 .details-facets-row-content { position: relative; display: flex; flex: 1 1 auto; align-items: center; gap: 8px; min-width: 0; align-self: stretch; }
-.details-facets-row-icon { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; width: 18px; height: 18px; }
+/* As Linear's (01.11): the mark takes its own width and the name follows 8px after it, so a 9px label
+   dot, a 16px icon and an 18px avatar each set where the name starts. */
+.details-facets-row-icon { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; height: 18px; }
+.details-facets-row-icon > svg { width: 16px; height: 16px; }
+.details-facets-row-icon > .details-facets-dot { width: 9px; height: 9px; }
 .details-facets-dot { width: 8px; height: 8px; border-radius: 9999px; }
 .details-facets-row-name { min-width: 0; overflow: hidden; color: var(--details-row-fg); font-size: 13px; font-weight: 450; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
 /* "See …" on hover, "Clear filter" on the chosen row, laid over the name's end. */
