@@ -1092,7 +1092,8 @@ html[data-theme='light'] .buyerly-display-property[aria-pressed='true'] {
   border-radius: 8px;
   color: var(--text-secondary);
   font-size: 13px;
-  font-weight: 500;
+  /* Linear's team name in the header is 450, lighter than a page title's 500. */
+  font-weight: 450;
   cursor: default;
   outline: none;
 }
@@ -1231,17 +1232,30 @@ html[data-theme='light'] .buyerly-display-property[aria-pressed='true'] {
 /* Linear's team Overview, measured live at 1280px (21.10): the page 32px in and 24px under
    the tabs' toolbar, a 36px icon tile 12px before the 24px/500 name, Members and Go to in a 212px
    column 32px to the right of the page and 51px from the canvas edge. */
+/* Linear's team Home (measured 01.11): a column up to 700px (12px of it on the right) and a 220px aside,
+   32px apart and centred between two empty tracks. */
 .team-overview {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 212px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 700px) 220px minmax(0, 1fr);
   gap: 32px;
   align-content: start;
   width: 100%;
   min-width: 0;
-  padding: 24px 51.5px 48px 32.5px;
+  padding: 24px 0 48px;
   overflow-y: auto;
   container-type: inline-size;
   user-select: text;
+}
+
+@media (min-width: 901px) {
+  .team-overview__main {
+    grid-column: 2;
+    padding-right: 12px;
+  }
+
+  .team-overview__aside {
+    grid-column: 3;
+  }
 }
 
 @media (max-width: 900px) {
@@ -1258,7 +1272,7 @@ html[data-theme='light'] .buyerly-display-property[aria-pressed='true'] {
 .team-overview__heading {
   display: flex;
   align-items: center;
-  gap: 12.5px;
+  gap: 12px;
 }
 
 .team-overview__icon {
@@ -1280,7 +1294,7 @@ html[data-theme='light'] .buyerly-display-property[aria-pressed='true'] {
   text-overflow: ellipsis;
   color: var(--text-primary);
   font-size: 24px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 32px;
 }
 
@@ -1312,6 +1326,8 @@ html[data-theme='light'] .buyerly-display-property[aria-pressed='true'] {
   align-items: center;
   justify-content: space-between;
   min-height: 28px;
+  /* Linear's header buttons run 10px into the column's right gutter. */
+  margin-right: -10px;
 }
 
 .team-overview__section-title {
@@ -1370,7 +1386,7 @@ html[data-theme='light'] .buyerly-display-property[aria-pressed='true'] {
 }
 
 .team-overview__aside-label--spaced {
-  margin-top: 22.5px;
+  margin-top: 24.5px;
 }
 
 .team-overview__faces {
@@ -4963,6 +4979,10 @@ body.buyerly-split-resizing, body.buyerly-split-resizing * { cursor: col-resize 
 .buyerly-header-button--toolbar { background-color: var(--toolbar-button-bg); }
 .buyerly-header-button--toolbar:hover { background-color: var(--toolbar-button-hover-bg); }
 .buyerly-header-button--toolbar[data-active='true'] { background-color: var(--toolbar-button-active-bg); }
+/* A labelled toolbar button, as Linear's "Add a member": a 16px icon and 12px text, 8px in on the left, 10 on the right. */
+.buyerly-header-button--labelled {
+  width: auto; gap: 6px; padding: 0 10px 0 8px; color: var(--text-secondary); font-size: 12px; font-weight: 500; white-space: nowrap;
+}
 /* Linear draws the toolbar buttons' ring on ::after, like an inactive tab's. */
 .buyerly-header-button--toolbar::after {
   content: ""; position: absolute; inset: 0; border-radius: 9999px; pointer-events: none;

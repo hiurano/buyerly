@@ -177,6 +177,19 @@ try {
     await page.screenshot({ path: `${output}/teams-1440.png` });
     assert.deepEqual(errors, []);
     console.log('Teams: ordering, display properties and filters passed');
+
+    // A team's Home, as Linear's: the star and the team menu after its name, a labelled "Add a member" on Members.
+    await page.goto(`${origin}/alpha/team/MED/overview`);
+    await page.locator('.team-overview').waitFor();
+    await page.locator('main header').getByRole('button', { name: /favorites/i }).waitFor();
+    await page.getByRole('button', { name: 'Team actions' }).click();
+    assert.deepEqual((await page.getByRole('menuitem').allInnerTexts()).map((text) => text.trim()), ['Team settings', 'Open archive']);
+    await page.getByRole('menuitem', { name: 'Open archive' }).click();
+    await page.waitForURL(`${origin}/alpha/team/MED/rules/recently-deleted`);
+    await page.goto(`${origin}/alpha/team/MED/members`);
+    await page.getByRole('button', { name: 'Add a member' }).waitFor();
+    assert.deepEqual(await headers(), ['Name', 'Email', 'Role']);
+    console.log('Team Home: header actions and Members passed');
   } catch (error) {
     console.error(error);
     await page.screenshot({ path: `${output}/failure.png`, fullPage: true }).catch(() => {});

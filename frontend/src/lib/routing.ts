@@ -336,7 +336,7 @@ export function pathForTab(
   if (mine && tab === 'campaigns') return `/${workspace}/my-campaigns/${entity}`;
   if (teamKey && tab === 'team') return teamHomePath(workspace, teamKey);
   if (teamKey && (tab === 'campaigns' || tab === 'accounts' || tab === 'rules')) {
-    return pathForTab(`${workspace}/team/${teamKey}`, tab, entity);
+    return pathForTab(`${workspace}/team/${teamKey}`, tab, entity, 'preferences', '', rulesPage);
   }
   if (tab === 'campaigns') return `/${workspace}/ads-manager/${entity}`;
   if (tab === 'rules' && rulesPage) return `/${workspace}/rules/${rulesPage}`;
