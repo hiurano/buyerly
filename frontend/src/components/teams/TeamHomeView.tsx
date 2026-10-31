@@ -6,7 +6,9 @@ import { membersQuery, teamDocumentsQuery } from '@/models/queries';
 import { usePoolQuery } from '@/models/usePool';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { canAdministerWorkspace } from '@/lib/settingsPages';
-import { openTeamSettings, type TeamHomePage, teamHomePath } from '@/lib/routing';
+import { RECENTLY_DELETED_RULES, openAppPath, openTeamSettings, pathForTab, type TeamHomePage, teamHomePath } from '@/lib/routing';
+import { favoritePath } from '@/lib/favorites';
+import { BuyerlyFavoriteButton } from '@/ui/BuyerlyFavoriteButton';
 import { openTab } from '@/lib/navigation';
 import {
   documentTitle,
@@ -72,6 +74,13 @@ const styles = stylex.create({
   },
   teamIcon: {
     marginRight: 6,
+  },
+  titleActions: {
+    marginLeft: 8,
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 4,
   },
   teamName: {
     ...truncate,
@@ -283,6 +292,15 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
                 <span {...stylex.props(styles.teamName)}>{team.name}</span>
               </button>
             )}
+            {team && !documentId && (
+              // Linear's star and team menu follow the team's name, 8px after it and 4px apart.
+              <span {...stylex.props(styles.titleActions)}>
+                <BuyerlyFavoriteButton
+                  favorite={{ kind: 'page', path: favoritePath(teamHomePath(workspace.slug, team.key), workspace.slug), title: team.name }}
+                />
+                <TeamActionsMenu teamKey={team.key} canOpenSettings={workspace.role !== 'guest'} />
+              </span>
+            )}
             {team && documentId && openDocument && (
               <>
                 <span className="team-breadcrumb-separator" aria-hidden="true">›</span>
@@ -307,16 +325,16 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
               onChange={(id) => open(id as TeamHomePage)}
             />
             {page === 'members' && canAdministerWorkspace({ role: workspace.role }) && team && (
-              <Tooltip content="Add members" side="bottom" align="end">
-                <BuyerlyToolbarButton
-                  aria-label="Add members"
-                  onClick={() => {
-                    openTeamSettings(`${team.key}/members`);
-                  }}
-                >
-                  <BuyerlyIcon name="add" size={14} />
-                </BuyerlyToolbarButton>
-              </Tooltip>
+              // Linear's team Members tab: a labelled "Add a member" button at the row's end.
+              <BuyerlyToolbarButton
+                className="buyerly-header-button--labelled"
+                onClick={() => {
+                  openTeamSettings(`${team.key}/members`);
+                }}
+              >
+                <BuyerlyIcon name="add" size={16} />
+                Add a member
+              </BuyerlyToolbarButton>
             )}
             {page === 'documents' && canWrite && team && (
               <Tooltip content="Create document" side="bottom" align="end">
@@ -408,7 +426,7 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
         <button type="button" className="team-overview__faces" onClick={() => onOpenTab('members')} aria-label={`${people.length} members`}>
           {people.slice(0, 8).map((member, index) => (
             <span key={member.user_id} className="team-face" style={{ zIndex: 8 - index }} title={memberName(member)}>
-              <Initials label={memberName(member)} avatarUrl={member.avatar_url} />
+              <Initials label={memberName(member)} avatarUrl={member.avatar_url} size={18} />
             </span>
           ))}
           {people.length === 0 && <span {...stylex.props(styles.noMembers)}>No members</span>}
@@ -426,6 +444,30 @@ const TeamOverview: React.FC<TeamOverviewProps> = ({ team, members, documents, c
         </div>
       </aside>
     </div>
+  );
+};
+
+/** Linear's team menu beside its name: Team settings, and the archive (the team's recently deleted rules). */
+const TeamActionsMenu: React.FC<{ teamKey: string; canOpenSettings: boolean }> = ({ teamKey, canOpenSettings }) => {
+  const { workspace } = useWorkspaceSession();
+  return (
+    <DropdownMenu>
+      <Tooltip content="Team actions" side="bottom">
+        <DropdownMenuTrigger asChild>
+          <button type="button" aria-label="Team actions" className="buyerly-icon-btn buyerly-header-target">
+            <BuyerlyIcon name="more" size={14} />
+          </button>
+        </DropdownMenuTrigger>
+      </Tooltip>
+      <DropdownMenuContent align="start" sideOffset={4}>
+        {canOpenSettings && <DropdownMenuItem onSelect={() => openTeamSettings(teamKey)}>Team settings</DropdownMenuItem>}
+        <DropdownMenuItem
+          onSelect={() => openAppPath(pathForTab(workspace.slug, 'rules', 'campaigns', 'preferences', '', RECENTLY_DELETED_RULES, teamKey))}
+        >
+          Open archive
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 
@@ -656,8 +698,10 @@ const TeamDocumentEditor: React.FC<TeamDocumentEditorProps> = ({ team, document,
 
 const MEMBER_COLUMNS: BuyerlyDataListColumn[] = [
   { id: 'name', label: 'Name', width: 'minmax(220px, 1fr)' },
-  { id: 'email', label: 'Email', width: 'minmax(160px, 240px)' },
-  { id: 'role', label: 'Role', width: '120px' },
+  // As Linear's team Members: Email 220px and Role 140px, then the row menu's 28px and 14px more of row padding.
+  { id: 'email', label: 'Email', width: '220px' },
+  { id: 'role', label: 'Role', width: '140px' },
+  { id: 'end', label: '', width: '42px' },
 ];
 
 /** Linear's team Members tab: who is on the team; owners and admins change it in the team's settings. */
@@ -692,6 +736,7 @@ const TeamMembersTab: React.FC<{ team: TeamItem; members: MemberItem[] | null }>
           </div>
           <span {...stylex.props(styles.email)}>{member.email ?? ''}</span>
           <span {...stylex.props(styles.meta)}><RoleStatus role={member.role} /></span>
+          <span />
         </BuyerlyDataListRow>
       ))}
     </BuyerlyDataTable>
