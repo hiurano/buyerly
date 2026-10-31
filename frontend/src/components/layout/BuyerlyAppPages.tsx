@@ -177,13 +177,15 @@ const BuyerlySearchRoute: React.FC = () => {
 };
 
 const BuyerlyMembersRoute: React.FC = () => {
+  const { navigationKey } = useBuyerlyHeldPage();
   const { WorkspaceMembersView } = useBuyerlyChunk(PAGE_CHUNKS.members);
-  return <WorkspaceMembersView />;
+  return <WorkspaceMembersView navigationKey={navigationKey} />;
 };
 
 const BuyerlyTeamsRoute: React.FC = () => {
+  const { navigationKey } = useBuyerlyHeldPage();
   const { WorkspaceTeamsView } = useBuyerlyChunk(PAGE_CHUNKS.teams);
-  return <WorkspaceTeamsView />;
+  return <WorkspaceTeamsView navigationKey={navigationKey} />;
 };
 
 /** The component a page route renders; Settings' sections render inside BuyerlySettingsRoute. */

@@ -387,6 +387,8 @@ interface BuyerlyDisplayOptionsProps {
   inactiveProperties?: string[];
   showViewModes?: boolean;
   showGrouping?: boolean;
+  /** Off where Linear's popover has no List options block, as on Members and Teams: only Display properties. */
+  showOptionsTitle?: boolean;
   /** Linear's footer once the view differs from its default: Reset brings the default back. */
   onReset?: () => void;
   /** Linear's "Set default for everyone" beside Reset, for admins and owners (#472). */
@@ -421,6 +423,7 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
   inactiveProperties = [],
   showViewModes = true,
   showGrouping = true,
+  showOptionsTitle = true,
   onReset,
   onSetDefault,
 }) => {
@@ -527,7 +530,7 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
       )}
 
       <section className="buyerly-display-options-section">
-        <div className="buyerly-display-section-title">{optionsLabel}</div>
+        {showOptionsTitle && <div className="buyerly-display-section-title">{optionsLabel}</div>}
         {showEmptyGroups !== undefined && onShowEmptyGroupsChange && (
           <div className="buyerly-display-row">
             <span>{showEmptyLabel}</span>

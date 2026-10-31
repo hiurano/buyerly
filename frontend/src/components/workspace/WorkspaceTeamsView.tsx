@@ -17,6 +17,17 @@ import { ListSearchField } from './ListSearchField';
 import { colors } from '@/styles/tokens.stylex';
 import { openSettings } from '@/lib/routing';
 import { openTab } from '@/lib/navigation';
+import { FilteredEmptyState } from '@/components/filters/BuyerlyFilter';
+import { shortDate } from '@/components/preferences/MembersSection';
+import { sortByColumn } from '@/ui/listView';
+import { useWorkspaceListControls } from './useWorkspaceListControls';
+import {
+  TEAMS_VIEW_DEFAULTS,
+  TEAM_ORDERING_OPTIONS,
+  TEAM_PROPERTY_LABELS,
+  createTeamFilterFields,
+  sortTeams,
+} from './workspaceListModels';
 
 const styles = stylex.create({
   root: {
@@ -95,6 +106,21 @@ const styles = stylex.create({
     display: 'flex',
     alignItems: 'center',
   },
+  cell: {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    fontSize: 12,
+    fontWeight: 450,
+    color: colors['--text-tertiary'],
+  },
+  actions: {
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: 'auto',
+  },
   more: {
     marginLeft: 4,
     fontSize: 12,
@@ -102,35 +128,63 @@ const styles = stylex.create({
   },
 });
 
-const COLUMNS: BuyerlyDataListColumn[] = [
-  { id: 'name', label: 'Name', width: 'minmax(220px, 1fr)', sortable: true },
-  { id: 'membership', label: 'Membership', width: '90px' },
-  { id: 'members', label: 'Members', width: '120px' },
-  // Linear keeps a 28px column for the row's menu at the end; it holds Membership and Members in place.
-  { id: 'end', label: '', width: '28px' },
-];
+// Linear's Teams columns, as Display options leave them; a 28px column for the row's menu ends
+// the row, as Linear's, and holds the others in place.
+function teamColumns(properties: Record<string, boolean>): BuyerlyDataListColumn[] {
+  const columns: BuyerlyDataListColumn[] = [
+    { id: 'name', label: 'Name', width: 'minmax(220px, 1fr)', sortable: true },
+  ];
+  if (properties.membership !== false) columns.push({ id: 'membership', label: 'Membership', width: '90px' });
+  if (properties.owners) columns.push({ id: 'owners', label: 'Owners', width: '120px' });
+  if (properties.accounts) columns.push({ id: 'accounts', label: 'Ad accounts', width: '96px' });
+  if (properties.created) columns.push({ id: 'created', label: 'Created', width: '84px', sortable: true });
+  if (properties.members !== false) columns.push({ id: 'members', label: 'Members', width: '120px' });
+  columns.push({ id: 'end', label: '', width: '28px' });
+  return columns;
+}
 
 const MAX_FACES = 5;
 const NO_MEMBERS: MemberItem[] = [];
+const NO_TEAMS: TeamItem[] = [];
+
+interface WorkspaceTeamsViewProps {
+  /** Changes on every navigation, so a `?filter=` link is read again. */
+  navigationKey: number;
+}
 
 /** Linear's workspace Teams page: every active team, whether you are on it, and who is. */
-export const WorkspaceTeamsView: React.FC = () => {
+export const WorkspaceTeamsView: React.FC<WorkspaceTeamsViewProps> = ({ navigationKey }) => {
   const { workspace, user } = useWorkspaceSession();
   const { teams, error, refresh } = useTeams(workspace.id, 'active');
   // From the pool, as Members reads them: held since that page, or the synced models, opens it without a request.
   const members = usePoolQuery(membersQuery(workspace.id)).data ?? NO_MEMBERS;
   const [query, setQuery] = useState('');
-  const [direction, setDirection] = useState<'asc' | 'desc'>('asc');
   const [busyTeam, setBusyTeam] = useState<number | null>(null);
   // As in Linear, every member may create a team; guests can't.
   const canCreate = workspace.role !== 'guest';
 
+  const all = teams ?? NO_TEAMS;
+  const fields = useMemo(() => createTeamFilterFields(all, members), [all, members]);
+  const controls = useWorkspaceListControls({
+    viewKey: 'teams',
+    defaults: TEAMS_VIEW_DEFAULTS,
+    navigationKey,
+    fields,
+    items: all,
+    countNoun: ['team', 'teams'],
+    orderingOptions: TEAM_ORDERING_OPTIONS,
+    properties: TEAM_PROPERTY_LABELS,
+  });
+  const { view, filtered } = controls;
+  const properties = view.properties;
+  const columns = teamColumns(properties);
+
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const matching = (teams ?? []).filter((team) => !needle
+    const matching = filtered.filter((team) => !needle
       || team.name.toLowerCase().includes(needle) || team.key.toLowerCase().includes(needle));
-    return [...matching].sort((a, b) => a.name.localeCompare(b.name) * (direction === 'asc' ? 1 : -1));
-  }, [direction, query, teams]);
+    return sortTeams(matching, view.ordering, view.direction);
+  }, [filtered, query, view.ordering, view.direction]);
 
   const openTeam = (team: TeamItem) => {
     openTab('team', { teamKey: team.key });
@@ -155,33 +209,49 @@ export const WorkspaceTeamsView: React.FC = () => {
     setBusyTeam(null);
   };
 
-  const faces = (team: TeamItem) => team.member_user_ids
+  const people = (userIds: readonly number[]) => userIds
     .map((id) => members.find((member) => member.user_id === id))
     .filter((member): member is MemberItem => Boolean(member));
+
+  const renderFaces = (list: MemberItem[], noun: string) => (
+    <div {...stylex.props(styles.faces)} aria-label={`${list.length} ${noun}`}>
+      {list.slice(0, MAX_FACES).map((member, index) => (
+        <span key={member.user_id} className="team-face" style={{ zIndex: MAX_FACES - index }} title={memberName(member)}>
+          <Initials label={memberName(member)} avatarUrl={member.avatar_url} />
+        </span>
+      ))}
+      {list.length > MAX_FACES && (
+        <span {...stylex.props(styles.more)}>+{list.length - MAX_FACES}</span>
+      )}
+    </div>
+  );
 
   const renderBody = () => {
     if (error && !teams) {
       return <DataState title="Couldn't load teams" detail={error} role="alert" actionLabel="Retry" onAction={() => void refresh()} />;
     }
     if (!teams) return <DataState title="Loading teams…" detail="Reading the teams of this workspace." />;
+    if (shown.length === 0 && controls.filters.length > 0 && !query.trim()) {
+      return <FilteredEmptyState noun="teams" hiddenCount={all.length} onClear={controls.clearFilters} />;
+    }
     if (shown.length === 0) {
       return <DataState title="No teams found" detail={query ? 'No team name or identifier matches the search.' : 'This workspace has no active team.'} />;
     }
     return (
       <BuyerlyDataTable
-        columns={COLUMNS}
-        sortKey="name"
-        sortDirection={direction}
-        onSort={() => setDirection((current) => (current === 'asc' ? 'desc' : 'asc'))}
+        columns={columns}
+        sortKey={view.ordering}
+        sortDirection={view.direction}
+        onSort={(columnId) => controls.update(sortByColumn(view, columnId, 'asc'))}
         divider
       >
         {shown.map((team) => {
-          const people = faces(team);
           return (
             <BuyerlyDataListRow
               key={team.id}
+              data-row-id={team.key}
               layout="grid"
-              columns={COLUMNS}
+              columns={columns}
               // Linear's Teams rows are 48px, as its Projects rows.
               height={48}
               tabIndex={0}
@@ -194,10 +264,10 @@ export const WorkspaceTeamsView: React.FC = () => {
               <div {...stylex.props(styles.team)}>
                 <TeamIcon size={14} />
                 <span {...stylex.props(styles.name)}>{team.name}</span>
-                <span {...stylex.props(styles.key)}>{team.key}</span>
+                {properties.id !== false && <span {...stylex.props(styles.key)}>{team.key}</span>}
                 {team.private && <BuyerlyIcon name="lock" size={12} {...stylex.props(styles.lock)} aria-label="Private team" />}
               </div>
-              <div>
+              {properties.membership !== false && <div>
                 <button
                   type="button"
                   className="team-membership"
@@ -212,17 +282,15 @@ export const WorkspaceTeamsView: React.FC = () => {
                   <span className="team-membership__label">{team.is_member ? 'Joined' : 'Join'}</span>
                   {team.is_member && <span className="team-membership__leave">Leave</span>}
                 </button>
-              </div>
-              <div {...stylex.props(styles.faces)} aria-label={`${people.length} members`}>
-                {people.slice(0, MAX_FACES).map((member, index) => (
-                  <span key={member.user_id} className="team-face" style={{ zIndex: MAX_FACES - index }} title={memberName(member)}>
-                    <Initials label={memberName(member)} avatarUrl={member.avatar_url} />
-                  </span>
-                ))}
-                {people.length > MAX_FACES && (
-                  <span {...stylex.props(styles.more)}>+{people.length - MAX_FACES}</span>
-                )}
-              </div>
+              </div>}
+              {properties.owners && renderFaces(people(team.owner_user_ids), 'owners')}
+              {properties.accounts && (
+                <span {...stylex.props(styles.cell)}>
+                  {team.account_ids.length === 1 ? '1 account' : `${team.account_ids.length} accounts`}
+                </span>
+              )}
+              {properties.created && <span {...stylex.props(styles.cell)}>{shortDate(team.created_at)}</span>}
+              {properties.members !== false && renderFaces(people(team.member_user_ids), 'members')}
               <span />
             </BuyerlyDataListRow>
           );
@@ -252,8 +320,11 @@ export const WorkspaceTeamsView: React.FC = () => {
         </div>
         <BuyerlyDataListToolbar xstyle={styles.toolbar}>
           <ListSearchField value={query} onChange={setQuery} placeholder="Find teams…" />
+          <div {...stylex.props(styles.actions)}>{controls.buttons}</div>
         </BuyerlyDataListToolbar>
+        {controls.formula}
       </header>
+      {controls.menu}
       <div {...stylex.props(styles.body)}>{renderBody()}</div>
     </div>
   );

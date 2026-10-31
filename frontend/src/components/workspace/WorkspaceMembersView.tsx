@@ -17,6 +17,18 @@ import { BuyerlyDataListRow, BuyerlyDataListToolbar, BuyerlyDataTable, type Buye
 import { ListSearchField } from './ListSearchField';
 import { colors } from '@/styles/tokens.stylex';
 import { openTab } from '@/lib/navigation';
+import { FilteredEmptyState } from '@/components/filters/BuyerlyFilter';
+import { sortByColumn } from '@/ui/listView';
+import { useWorkspaceListControls } from './useWorkspaceListControls';
+import {
+  MEMBERS_VIEW_DEFAULTS,
+  MEMBER_ORDERING_OPTIONS,
+  MEMBER_PROPERTY_LABELS,
+  createMemberFilterFields,
+  sortMembers,
+} from './workspaceListModels';
+
+const NO_MEMBERS: MemberItem[] = [];
 
 const styles = stylex.create({
   root: {
@@ -55,6 +67,13 @@ const styles = stylex.create({
   },
   toolbar: {
     gap: 8,
+  },
+  actions: {
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: 'auto',
   },
   body: {
     display: 'flex',
@@ -108,23 +127,30 @@ const styles = stylex.create({
   },
 });
 
-type MemberSort = 'name' | 'status' | 'joined';
-const ROLE_ORDER = ['owner', 'admin', 'member', 'guest'];
-
 // As Linear's Members: the name takes the room, Role and Teams keep to their content, and the
-// Name label starts over the avatar, its pill's 6px out to the left.
-const COLUMNS: BuyerlyDataListColumn[] = [
-  { id: 'name', label: 'Name', width: 'minmax(180px, 1fr)', sortable: true, headerInset: -6 },
-  { id: 'status', label: 'Role', width: '87px', sortable: true },
-  { id: 'joined', label: 'Joined', width: '100px', sortable: true },
-  { id: 'teams', label: 'Teams', width: '120px' },
-];
+// Name label starts over the avatar, its pill's 6px out to the left. Display options hide the others.
+function memberColumns(properties: Record<string, boolean>): BuyerlyDataListColumn[] {
+  const columns: BuyerlyDataListColumn[] = [
+    { id: 'name', label: 'Name', width: 'minmax(180px, 1fr)', sortable: true, headerInset: -6 },
+  ];
+  if (properties.role !== false) columns.push({ id: 'role', label: 'Role', width: '87px', sortable: true });
+  if (properties.joined !== false) columns.push({ id: 'joined', label: 'Joined', width: '100px', sortable: true });
+  if (properties.teams !== false) columns.push({ id: 'teams', label: 'Teams', width: '120px' });
+  return columns;
+}
 
-/** One member's row; draws again only when that member or the teams change (#500). */
-const MemberRow = React.memo(function MemberRow({ member, teams }: { member: MemberItem; teams: readonly TeamItem[] | null }) {
+interface MemberRowProps {
+  member: MemberItem;
+  teams: readonly TeamItem[] | null;
+  columns: BuyerlyDataListColumn[];
+  properties: Record<string, boolean>;
+}
+
+/** One member's row; draws again only when that member, the teams or the columns change (#500). */
+const MemberRow = React.memo(function MemberRow({ member, teams, columns, properties }: MemberRowProps) {
   const memberTeams = (teams ?? []).filter((team) => team.member_user_ids.includes(member.user_id));
   return (
-    <BuyerlyDataListRow layout="grid" columns={COLUMNS} height={50}>
+    <BuyerlyDataListRow data-row-id={member.user_id} layout="grid" columns={columns} height={50}>
       <div {...stylex.props(styles.person)}>
         <Initials label={memberName(member)} avatarUrl={member.avatar_url} size={24} />
         <div {...stylex.props(styles.names)}>
@@ -134,73 +160,89 @@ const MemberRow = React.memo(function MemberRow({ member, teams }: { member: Mem
           )}
         </div>
       </div>
-      <span {...stylex.props(styles.cell)}><RoleStatus role={member.role} /></span>
-      <span {...stylex.props(styles.cell)}>{shortDate(member.joined_at)}</span>
-      <div {...stylex.props(styles.teams)}>
-        {memberTeams.map((team) => (
-          <button
-            key={team.id}
-            type="button"
-            className="team-chip"
-            title={team.name}
-            onClick={() => {
-              openTab('team', { teamKey: team.key });
-            }}
-          >
-            <TeamIcon size={16} />
-            <span>{team.key}</span>
-          </button>
-        ))}
-      </div>
+      {properties.role !== false && <span {...stylex.props(styles.cell)}><RoleStatus role={member.role} /></span>}
+      {properties.joined !== false && <span {...stylex.props(styles.cell)}>{shortDate(member.joined_at)}</span>}
+      {properties.teams !== false && (
+        <div {...stylex.props(styles.teams)}>
+          {memberTeams.map((team) => (
+            <button
+              key={team.id}
+              type="button"
+              className="team-chip"
+              title={team.name}
+              onClick={() => {
+                openTab('team', { teamKey: team.key });
+              }}
+            >
+              <TeamIcon size={16} />
+              <span>{team.key}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </BuyerlyDataListRow>
   );
 });
 
+interface WorkspaceMembersViewProps {
+  /** Changes on every navigation, so a `?filter=` link is read again. */
+  navigationKey: number;
+}
+
 /** Linear's workspace Members page: who is in the workspace, their role and their teams. */
-const WorkspaceMembersViewContent: React.FC = () => {
+const WorkspaceMembersViewContent: React.FC<WorkspaceMembersViewProps> = ({ navigationKey }) => {
   const { workspace } = useWorkspaceSession();
   const { teams } = useTeams(workspace.id, 'active');
   // From the pool: a page already visited draws its members at once (#488).
   const { data: members, error } = usePoolQuery(membersQuery(workspace.id));
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<{ key: MemberSort; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
   const [inviting, setInviting] = useState(false);
   const canInvite = canAdministerWorkspace({ role: workspace.role });
+  const all = members ?? NO_MEMBERS;
+  const fields = useMemo(() => createMemberFilterFields(all), [all]);
+  const controls = useWorkspaceListControls({
+    viewKey: 'members',
+    defaults: MEMBERS_VIEW_DEFAULTS,
+    navigationKey,
+    fields,
+    items: all,
+    countNoun: ['member', 'members'],
+    orderingOptions: MEMBER_ORDERING_OPTIONS,
+    properties: MEMBER_PROPERTY_LABELS,
+  });
+  const { view, filtered } = controls;
+  const columns = memberColumns(view.properties);
 
   const load = () => pool.fetch(membersQuery(workspace.id), { afterWrite: true });
 
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const matching = (members ?? []).filter((member) => !needle
+    const matching = filtered.filter((member) => !needle
       || [member.full_name, member.username, member.email ?? ''].some((value) => value.toLowerCase().includes(needle)));
-    const value = (member: MemberItem): string | number => {
-      if (sort.key === 'status') return ROLE_ORDER.indexOf(member.role);
-      if (sort.key === 'joined') return member.joined_at;
-      return memberName(member).toLowerCase();
-    };
-    const sign = sort.direction === 'asc' ? 1 : -1;
-    return [...matching].sort((a, b) => (value(a) < value(b) ? -sign : value(a) > value(b) ? sign : 0));
-  }, [members, query, sort]);
+    return sortMembers(matching, view.ordering, view.direction);
+  }, [filtered, query, view.ordering, view.direction]);
 
   const renderBody = () => {
     if (error && !members) {
       return <DataState title="Couldn't load members" detail={error} role="alert" actionLabel="Retry" onAction={() => void load()} />;
     }
     if (!members) return <DataState title="Loading members…" detail="Reading the members of this workspace." />;
+    if (shown.length === 0 && controls.filters.length > 0 && !query.trim()) {
+      return <FilteredEmptyState noun="members" hiddenCount={all.length} onClear={controls.clearFilters} />;
+    }
     if (shown.length === 0) {
       return <DataState title="No members found" detail="No member's name, username or email matches the search." />;
     }
     return (
       <BuyerlyDataTable
-        columns={COLUMNS}
-        sortKey={sort.key}
-        sortDirection={sort.direction}
-        onSort={(columnId) => setSort((current) => ({
-          key: columnId as MemberSort,
-          direction: current.key === columnId && current.direction === 'asc' ? 'desc' : 'asc',
-        }))}
+        columns={columns}
+        sortKey={view.ordering}
+        sortDirection={view.direction}
+        onSort={(columnId) => controls.update(sortByColumn(view, columnId, 'asc'))}
       >
-        {shown.map((member) => <MemberRow key={member.id} member={member} teams={teams} />)}
+        {shown.map((member) => (
+          <MemberRow key={member.id} member={member} teams={teams} columns={columns} properties={view.properties} />
+        ))}
       </BuyerlyDataTable>
     );
   };
@@ -218,8 +260,11 @@ const WorkspaceMembersViewContent: React.FC = () => {
         </div>
         <BuyerlyDataListToolbar xstyle={styles.toolbar}>
           <ListSearchField value={query} onChange={setQuery} placeholder="Find members…" />
+          <div {...stylex.props(styles.actions)}>{controls.buttons}</div>
         </BuyerlyDataListToolbar>
+        {controls.formula}
       </header>
+      {controls.menu}
       <div {...stylex.props(styles.body)}>{renderBody()}</div>
       <InviteDialog
         open={inviting}
