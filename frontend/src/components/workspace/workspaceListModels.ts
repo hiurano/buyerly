@@ -132,3 +132,48 @@ export function sortTeams(teams: readonly TeamItem[], ordering: string, directio
   if (ordering === 'created') return [...teams].sort((a, b) => a.created_at.localeCompare(b.created_at) * sign);
   return [...teams].sort((a, b) => a.name.localeCompare(b.name) * sign);
 }
+
+/*
+ * A team's Members tab: Linear orders by Name, Email or Role, shows Email and
+ * Role, and switches each kind of member on or off (all on). Buyerly's teams
+ * have no applications or pending invitations, so three of Linear's five.
+ */
+
+export const TEAM_MEMBERS_VIEW_DEFAULTS = listViewDefaults({
+  grouping: 'none',
+  ordering: 'name',
+  direction: 'asc',
+  properties: { email: true, role: true, showAdmins: true, showMembers: true, showGuests: true },
+});
+
+export const TEAM_MEMBER_ORDERING_OPTIONS = [
+  { value: 'name', label: 'Name' },
+  { value: 'email', label: 'Email' },
+  { value: 'role', label: 'Role' },
+];
+
+export const TEAM_MEMBER_PROPERTY_LABELS: Record<string, string> = {
+  email: 'Email',
+  role: 'Role',
+};
+
+export const TEAM_MEMBER_TOGGLES: Record<string, string> = {
+  showAdmins: 'Show owners and admins',
+  showMembers: 'Show members',
+  showGuests: 'Show guests',
+};
+
+/** Whether the tab's switches let this member through. */
+export function teamMemberShown(member: MemberItem, properties: Record<string, boolean>): boolean {
+  if (member.role === 'owner' || member.role === 'admin') return properties.showAdmins !== false;
+  if (member.role === 'guest') return properties.showGuests !== false;
+  return properties.showMembers !== false;
+}
+
+export function sortTeamMembers(members: readonly MemberItem[], ordering: string, direction: 'asc' | 'desc'): MemberItem[] {
+  if (ordering === 'email') {
+    const sign = direction === 'asc' ? 1 : -1;
+    return [...members].sort((a, b) => (a.email ?? '').localeCompare(b.email ?? '') * sign);
+  }
+  return sortMembers(members, ordering, direction);
+}

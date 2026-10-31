@@ -389,6 +389,8 @@ interface BuyerlyDisplayOptionsProps {
   showGrouping?: boolean;
   /** Off where Linear's popover has no List options block, as on Members and Teams: only Display properties. */
   showOptionsTitle?: boolean;
+  /** Switches above Display properties, as a team Members tab's "Show members" and the like. */
+  toggles?: { id: string; label: string; checked: boolean; onChange: (checked: boolean) => void }[];
   /** Linear's footer once the view differs from its default: Reset brings the default back. */
   onReset?: () => void;
   /** Linear's "Set default for everyone" beside Reset, for admins and owners (#472). */
@@ -424,6 +426,7 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
   showViewModes = true,
   showGrouping = true,
   showOptionsTitle = true,
+  toggles = [],
   onReset,
   onSetDefault,
 }) => {
@@ -551,6 +554,12 @@ export const BuyerlyDisplayOptions: React.FC<BuyerlyDisplayOptionsProps> = ({
             />
           </div>
         )}
+        {toggles.map((toggle) => (
+          <div key={toggle.id} className="buyerly-display-row">
+            <span>{toggle.label}</span>
+            <BuyerlyToggle label={toggle.label} checked={toggle.checked} onChange={toggle.onChange} />
+          </div>
+        ))}
         <div className="buyerly-display-properties-label">Display properties</div>
         <div className="buyerly-display-properties">
           {Object.entries(properties).map(([key, label]) => {
