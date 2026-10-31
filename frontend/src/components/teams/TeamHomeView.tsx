@@ -8,6 +8,16 @@ import { useWorkspaceSession } from '@/lib/workspaceSession';
 import { canAdministerWorkspace } from '@/lib/settingsPages';
 import { RECENTLY_DELETED_RULES, openAppPath, openTeamSettings, pathForTab, type TeamHomePage, teamHomePath } from '@/lib/routing';
 import { favoritePath } from '@/lib/favorites';
+import { useWorkspaceListControls } from '@/components/workspace/useWorkspaceListControls';
+import {
+  TEAM_MEMBERS_VIEW_DEFAULTS,
+  TEAM_MEMBER_ORDERING_OPTIONS,
+  TEAM_MEMBER_PROPERTY_LABELS,
+  TEAM_MEMBER_TOGGLES,
+  sortTeamMembers,
+  teamMemberShown,
+} from '@/components/workspace/workspaceListModels';
+import { sortByColumn, type ListViewSettings } from '@/ui/listView';
 import { BuyerlyFavoriteButton } from '@/ui/BuyerlyFavoriteButton';
 import { openTab } from '@/lib/navigation';
 import {
@@ -94,6 +104,13 @@ const styles = stylex.create({
   },
   toolbar: {
     gap: 8,
+  },
+  toolbarEnd: {
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: 'auto',
   },
   body: {
     display: 'flex',
@@ -205,6 +222,25 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
     if (team) navigate(teamHomePath(workspace.slug, team.key, next, id));
   };
 
+  // The Members tab's Display options, as Linear's: one saved view for every team's tab.
+  const teamPeople = useMemo(
+    () => (team && members ? members.filter((member) => team.member_user_ids.includes(member.user_id)) : NO_PEOPLE),
+    [team, members],
+  );
+  const memberControls = useWorkspaceListControls({
+    viewKey: 'team-members',
+    defaults: TEAM_MEMBERS_VIEW_DEFAULTS,
+    navigationKey: 0,
+    fields: NO_MEMBER_FIELDS,
+    items: teamPeople,
+    countNoun: ['member', 'members'],
+    orderingOptions: TEAM_MEMBER_ORDERING_OPTIONS,
+    properties: TEAM_MEMBER_PROPERTY_LABELS,
+    toggles: TEAM_MEMBER_TOGGLES,
+    filter: false,
+    enabled: page === 'members' && !documentId,
+  });
+
   const createDocument = async () => {
     if (!team) return;
     try {
@@ -230,7 +266,9 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
   const renderBody = () => {
     if (missing) return <DataState title="Team not found" detail="This workspace has no team with that identifier." />;
     if (loading || !team) return <DataState title="Loading team…" detail="Reading the team of this workspace." />;
-    if (page === 'members') return <TeamMembersTab team={team} members={members} />;
+    if (page === 'members') {
+      return <TeamMembersTab team={team} members={members} view={memberControls.view} onUpdate={memberControls.update} />;
+    }
     if (page === 'documents') {
       if (documentsError && !documents) {
         return <DataState title="Couldn't load documents" detail={documentsError} role="alert" actionLabel="Retry" onAction={() => void loadDocuments()} />;
@@ -324,17 +362,22 @@ const TeamHomeViewContent: React.FC<TeamHomeViewProps> = ({ page, documentId, na
               activeTabId={page}
               onChange={(id) => open(id as TeamHomePage)}
             />
-            {page === 'members' && canAdministerWorkspace({ role: workspace.role }) && team && (
-              // Linear's team Members tab: a labelled "Add a member" button at the row's end.
-              <BuyerlyToolbarButton
-                className="buyerly-header-button--labelled"
-                onClick={() => {
-                  openTeamSettings(`${team.key}/members`);
-                }}
-              >
-                <BuyerlyIcon name="add" size={16} />
-                Add a member
-              </BuyerlyToolbarButton>
+            {page === 'members' && team && (
+              // Linear's team Members tab: a labelled "Add a member", then Display options, at the row's end.
+              <div {...stylex.props(styles.toolbarEnd)}>
+                {canAdministerWorkspace({ role: workspace.role }) && (
+                  <BuyerlyToolbarButton
+                    className="buyerly-header-button--labelled"
+                    onClick={() => {
+                      openTeamSettings(`${team.key}/members`);
+                    }}
+                  >
+                    <BuyerlyIcon name="add" size={16} />
+                    Add a member
+                  </BuyerlyToolbarButton>
+                )}
+                {memberControls.buttons}
+              </div>
             )}
             {page === 'documents' && canWrite && team && (
               <Tooltip content="Create document" side="bottom" align="end">
@@ -696,23 +739,37 @@ const TeamDocumentEditor: React.FC<TeamDocumentEditorProps> = ({ team, document,
   );
 };
 
-const MEMBER_COLUMNS: BuyerlyDataListColumn[] = [
-  { id: 'name', label: 'Name', width: 'minmax(220px, 1fr)' },
-  // As Linear's team Members: Email 220px and Role 140px, then the row menu's 28px and 14px more of row padding.
-  { id: 'email', label: 'Email', width: '220px' },
-  { id: 'role', label: 'Role', width: '140px' },
-  { id: 'end', label: '', width: '42px' },
-];
+const NO_PEOPLE: MemberItem[] = [];
+const NO_MEMBER_FIELDS: never[] = [];
+
+// As Linear's team Members: Email 220px and Role 140px, then the row menu's 28px and 14px more of row padding.
+function memberColumns(properties: Record<string, boolean>): BuyerlyDataListColumn[] {
+  const columns: BuyerlyDataListColumn[] = [{ id: 'name', label: 'Name', width: 'minmax(220px, 1fr)', sortable: true }];
+  if (properties.email !== false) columns.push({ id: 'email', label: 'Email', width: '220px', sortable: true });
+  if (properties.role !== false) columns.push({ id: 'role', label: 'Role', width: '140px', sortable: true });
+  columns.push({ id: 'end', label: '', width: '42px' });
+  return columns;
+}
 
 /** Linear's team Members tab: who is on the team; owners and admins change it in the team's settings. */
-const TeamMembersTab: React.FC<{ team: TeamItem; members: MemberItem[] | null }> = ({ team, members }) => {
+const TeamMembersTab: React.FC<{
+  team: TeamItem;
+  members: MemberItem[] | null;
+  view: ListViewSettings;
+  onUpdate: (patch: Partial<ListViewSettings>) => void;
+}> = ({ team, members, view, onUpdate }) => {
   const { workspace } = useWorkspaceSession();
   if (!members) return <DataState title="Loading members…" detail="Reading the members of this team." />;
-  const people = members.filter((member) => team.member_user_ids.includes(member.user_id));
+  const onTeam = members.filter((member) => team.member_user_ids.includes(member.user_id));
+  const people = sortTeamMembers(onTeam.filter((member) => teamMemberShown(member, view.properties)), view.ordering, view.direction);
+  const columns = memberColumns(view.properties);
   const canEdit = canAdministerWorkspace({ role: workspace.role });
   const manage = () => {
     openTeamSettings(`${team.key}/members`);
   };
+  if (people.length === 0 && onTeam.length > 0) {
+    return <DataState title="No members shown" detail="Display options hide every member of this team." />;
+  }
   if (people.length === 0) {
     return (
       <DataState
@@ -724,9 +781,14 @@ const TeamMembersTab: React.FC<{ team: TeamItem; members: MemberItem[] | null }>
     );
   }
   return (
-    <BuyerlyDataTable columns={MEMBER_COLUMNS}>
+    <BuyerlyDataTable
+      columns={columns}
+      sortKey={view.ordering}
+      sortDirection={view.direction}
+      onSort={(columnId) => onUpdate(sortByColumn(view, columnId, 'asc'))}
+    >
       {people.map((member) => (
-        <BuyerlyDataListRow key={member.id} layout="grid" columns={MEMBER_COLUMNS} height={50}>
+        <BuyerlyDataListRow key={member.id} layout="grid" columns={columns} height={50}>
           <div {...stylex.props(styles.cellLead)}>
             <Initials label={memberName(member)} avatarUrl={member.avatar_url} size={24} />
             <div {...stylex.props(styles.names)}>
@@ -734,8 +796,8 @@ const TeamMembersTab: React.FC<{ team: TeamItem; members: MemberItem[] | null }>
               {member.username && member.username !== member.email && <span {...stylex.props(styles.username)}>{member.username}</span>}
             </div>
           </div>
-          <span {...stylex.props(styles.email)}>{member.email ?? ''}</span>
-          <span {...stylex.props(styles.meta)}><RoleStatus role={member.role} /></span>
+          {view.properties.email !== false && <span {...stylex.props(styles.email)}>{member.email ?? ''}</span>}
+          {view.properties.role !== false && <span {...stylex.props(styles.meta)}><RoleStatus role={member.role} /></span>}
           <span />
         </BuyerlyDataListRow>
       ))}

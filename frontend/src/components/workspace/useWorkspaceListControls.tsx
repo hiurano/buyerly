@@ -30,6 +30,12 @@ interface WorkspaceListControlsOptions<T> {
   countNoun: [string, string];
   orderingOptions: DisplayOption[];
   properties: Record<string, string>;
+  /** Switches kept in the view's properties, on unless turned off: id → label. */
+  toggles?: Record<string, string>;
+  /** False where Linear's view has Display options only, as a team's Members tab. */
+  filter?: boolean;
+  /** False while the list is not on screen (another tab of the page): Shift V and F do nothing. */
+  enabled?: boolean;
 }
 
 /**
@@ -47,6 +53,9 @@ export function useWorkspaceListControls<T>({
   countNoun,
   orderingOptions,
   properties,
+  toggles = {},
+  filter = true,
+  enabled = true,
 }: WorkspaceListControlsOptions<T>) {
   const { view, update, loaded, reset, displayChanged, canSetDefault, setDefaultForEveryone } = useListView(viewKey, defaults);
   const [isDisplayOpen, setIsDisplayOpen] = useState(false);
@@ -59,9 +68,10 @@ export function useWorkspaceListControls<T>({
     writeFilterParam(clauses.length ? clauses : null);
   };
   const filters = useFiltersInAddress(view.filters, (clauses) => update({ filters: clauses }), loaded, navigationKey);
-  const filtered = useMemo(() => applyFilterClauses(items, fields, filters), [items, fields, filters]);
+  const filtered = useMemo(() => (filter ? applyFilterClauses(items, fields, filters) : items), [filter, items, fields, filters]);
 
   useEffect(() => {
+    if (!enabled) return undefined;
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
@@ -79,11 +89,11 @@ export function useWorkspaceListControls<T>({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [enabled]);
 
   const buttons = (
     <>
-      <BuyerlyFilterButton
+      {filter && <BuyerlyFilterButton
         ref={filterButtonRef}
         hasFilters={filters.length > 0}
         open={Boolean(openFilterMenu)}
@@ -93,7 +103,7 @@ export function useWorkspaceListControls<T>({
           setIsDisplayOpen(false);
           setOpenFilterMenu((current) => (current ? null : { mode: 'root', anchor }));
         }}
-      />
+      />}
       <BuyerlyDisplayOptionsButton
         ref={displayButtonRef}
         open={isDisplayOpen}
@@ -111,6 +121,12 @@ export function useWorkspaceListControls<T>({
           showViewModes={false}
           showGrouping={false}
           showOptionsTitle={false}
+          toggles={Object.entries(toggles).map(([id, label]) => ({
+            id,
+            label,
+            checked: view.properties[id] !== false,
+            onChange: (checked) => update({ properties: { ...view.properties, [id]: checked } }),
+          }))}
           grouping="none"
           groupingOptions={[]}
           onGroupingChange={() => {}}
@@ -129,7 +145,7 @@ export function useWorkspaceListControls<T>({
     </>
   );
 
-  const formula = (
+  const formula = filter && (
     <ActiveFilterFormula
       fields={fields}
       clauses={filters}
@@ -138,7 +154,7 @@ export function useWorkspaceListControls<T>({
     />
   );
 
-  const menu = (
+  const menu = filter && (
     <BuyerlyFilterMenu
       isOpen={Boolean(openFilterMenu)}
       mode={openFilterMenu?.mode ?? 'root'}

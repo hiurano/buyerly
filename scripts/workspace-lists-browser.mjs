@@ -189,6 +189,19 @@ try {
     await page.goto(`${origin}/alpha/team/MED/members`);
     await page.getByRole('button', { name: 'Add a member' }).waitFor();
     assert.deepEqual(await headers(), ['Name', 'Email', 'Role']);
+    // Its Display options, as Linear's: ordering, a switch per kind of member, Email and Role.
+    const teamRows = () => page.locator('main .buyerly-data-row').allInnerTexts();
+    assert.equal((await teamRows()).length, 2);
+    await page.keyboard.press('Shift+V');
+    await popover.waitFor();
+    assert.match(await popover.innerText(), /Ordering[\s\S]*Show owners and admins[\s\S]*Show members[\s\S]*Show guests[\s\S]*Display properties/);
+    await popover.locator('.buyerly-display-row', { hasText: 'Show owners and admins' }).getByRole('switch').click();
+    await page.waitForFunction(() => document.querySelectorAll('main .buyerly-data-row').length === 1);
+    assert.match((await teamRows())[0], /Bob Buyer/);
+    await property('Email').click();
+    assert.deepEqual(await headers(), ['Name', 'Role']);
+    await settle();
+    assert.deepEqual(views['team-members'].properties, { email: false, role: true, showAdmins: false, showMembers: true, showGuests: true });
     console.log('Team Home: header actions and Members passed');
   } catch (error) {
     console.error(error);
