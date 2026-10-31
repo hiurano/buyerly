@@ -27,7 +27,9 @@ export const BUYERLY_DATA_LIST = {
   // Rows and the column header reach into the list's side padding, 8px past the group
   // headers on each side, as Linear's (1027 against 1011px); their content stays put.
   rowBleed: 8,
-  viewportPaddingY: 4,
+  // Linear's lists start at the top of their scroll area (a column header or the first group at once,
+  // measured on Issues, Projects, Members and Teams 01.11); 4px stay below the last row.
+  viewportPaddingBottom: 4,
 } as const;
 
 export interface BuyerlyDataListColumn {
@@ -110,8 +112,7 @@ const styles = stylex.create({
     flexBasis: '0%',
     overflowY: 'auto',
     overflowX: 'hidden',
-    paddingTop: BUYERLY_DATA_LIST.viewportPaddingY,
-    paddingBottom: BUYERLY_DATA_LIST.viewportPaddingY,
+    paddingBottom: BUYERLY_DATA_LIST.viewportPaddingBottom,
     paddingLeft: BUYERLY_DATA_LIST.viewportPaddingX,
     paddingRight: BUYERLY_DATA_LIST.viewportPaddingX,
   },
@@ -228,7 +229,7 @@ const styles = stylex.create({
   },
   groupHeader: {
     position: 'sticky',
-    top: -4,
+    top: 0,
     zIndex: 2,
     display: 'flex',
     alignItems: 'center',
