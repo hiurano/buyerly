@@ -258,6 +258,13 @@ try {
       }
       assert.match(await properties.getByRole('group', { name: 'Team' }).innerText(), /Media/);
       assert.match(await properties.getByRole('group', { name: 'Connected by' }).innerText(), /Bo Buyer/);
+      // Linear's properties card folds under its "Properties" header.
+      const fold = properties.getByRole('button', { name: 'Properties' });
+      assert.equal(await fold.getAttribute('aria-expanded'), 'true');
+      await fold.click();
+      await properties.getByRole('group', { name: 'Status' }).waitFor({ state: 'detached' });
+      await fold.click();
+      await properties.getByRole('group', { name: 'Status' }).waitFor();
       assert.match(await page.locator('section[aria-label="Today"]').innerText(), /\$120\.50[\s\S]*CPL \$30\.13/);
       // The rule's own status and where it runs; no switch here — pausing a rule pauses it on every account.
       const rulesSection = page.locator('section[aria-label="Rules"]');

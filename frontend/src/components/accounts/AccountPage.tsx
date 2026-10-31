@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@/ui/DropdownMenu';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
-import { BuyerlyStatusCircleIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlyDisclosureGlyph, BuyerlyStatusCircleIcon } from '@/icons/BuyerlyIcons';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { AccountRowMenu, type AccountRowActions } from './AccountRow';
 import { AccountStatusLabel, ConnectionProblemIcon, accountMoney } from './AccountParts';
@@ -535,7 +535,7 @@ const styles = stylex.create({
   column: {
     marginLeft: 'auto',
     marginRight: 'auto',
-    maxWidth: 670,
+    maxWidth: 805,
   },
   twoColumns: {
     display: 'flex',
@@ -550,20 +550,75 @@ const styles = stylex.create({
     flexShrink: 1,
     flexBasis: '0%',
     overflowY: 'auto',
-    paddingLeft: 56,
-    paddingRight: 56,
+    // Linear's project column: 48px at the sides, up to 805px wide.
+    paddingLeft: 48,
+    paddingRight: 48,
     paddingTop: 64,
   },
+  // Linear's project panel (measured 01.11): a 396px column of cards, 8px from the canvas's edge.
   aside: {
-    width: 400,
+    width: 396,
     flexShrink: 0,
     overflowY: 'auto',
-    borderLeftWidth: 1,
-    borderLeftStyle: 'solid',
-    borderColor: colors['--color-border-primary'],
-    paddingLeft: 17,
-    paddingRight: 17,
+    paddingTop: 8,
+    paddingRight: 8,
+    paddingBottom: 8,
+  },
+  // Each card as the details pane's: 0.5px border, 10px corners, 12px in.
+  panelCard: {
+    borderWidth: 0.5,
+    borderStyle: 'solid',
+    borderColor: colors['--details-pane-card-border'],
+    borderRadius: 10,
+    backgroundColor: colors['--details-pane-card-bg'],
+    boxShadow: colors['--details-pane-card-shadow'],
     paddingTop: 12,
+    paddingRight: 12,
+    paddingBottom: 12,
+    paddingLeft: 12,
+  },
+  // "Properties ▾": a 28px pill that folds the card, its text 8px in, as Linear's.
+  panelHeader: {
+    display: 'flex',
+    width: 'calc(100% + 16px)',
+    height: 28,
+    alignItems: 'center',
+    gap: 6,
+    marginTop: -5,
+    marginLeft: -8,
+    marginRight: -8,
+    marginBottom: 6,
+    paddingLeft: 8,
+    paddingRight: 8,
+    borderWidth: 0,
+    borderRadius: 8,
+    backgroundColor: {
+      default: 'transparent',
+      ':hover': colors['--item-hover-bg'],
+    },
+    color: colors['--details-tab-fg'],
+    fontSize: 13,
+    fontWeight: 500,
+    textAlign: 'left',
+    cursor: 'default',
+  },
+  panelHeaderFolded: {
+    marginBottom: -5,
+  },
+  disclosure: {
+    transform: 'rotate(90deg)',
+  },
+  disclosureFolded: {
+    transform: 'none',
+  },
+  panelLabel: {
+    width: 90,
+    color: colors['--details-tab-fg'],
+  },
+  // Linear's values are pills 6px in, so their marks line up 6px after the label column.
+  panelValue: {
+    paddingLeft: 6,
+    color: colors['--details-row-fg'],
   },
 });
 
@@ -584,10 +639,10 @@ const SectionTitle: React.FC<React.PropsWithChildren<{ action?: React.ReactNode 
   </div>
 );
 
-const PropertyRow: React.FC<React.PropsWithChildren<{ label: string }>> = ({ label, children }) => (
+const PropertyRow: React.FC<React.PropsWithChildren<{ label: string; panel?: boolean }>> = ({ label, panel = false, children }) => (
   <div {...stylex.props(styles.property)} role="group" aria-label={label}>
-    <div {...stylex.props(styles.propertyLabel)}>{label}</div>
-    <div {...stylex.props(styles.propertyValue)}>{children}</div>
+    <div {...stylex.props(styles.propertyLabel, panel && styles.panelLabel)}>{label}</div>
+    <div {...stylex.props(styles.propertyValue, panel && styles.panelValue)}>{children}</div>
   </div>
 );
 
@@ -778,6 +833,7 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
   onAttachRule,
 }) => {
   const [name, setName] = useState(accountName(account));
+  const [propertiesFolded, setPropertiesFolded] = useState(false);
   const [note, setNote] = useState(account.note ?? '');
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const [previewRule, setPreviewRule] = useState<{ id: string; presetId: number; name: string } | null>(null);
@@ -807,65 +863,81 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
   const health = account.health;
   const lastSync = health?.last_success_at || metrics?.saved_at || metrics?.generated_at || '';
 
+  // Beside the page, Linear's properties card, which folds; under the title on a narrow window, plain rows.
+  const panel = !oneColumn;
   const properties = (
-    <section aria-label="Properties" {...stylex.props(oneColumn && styles.propertiesStacked)}>
-      <SectionTitle>Properties</SectionTitle>
-      <PropertyRow label="Status">
-        <AccountStatusLabel account={account} />
-      </PropertyRow>
-      <PropertyRow label="Health">
-        {problem ? (
-          <>
-            <ConnectionProblemIcon account={account} onReconnect={canEdit ? onReconnect : undefined} />
-            <span {...stylex.props(styles.truncate)} title={problem}>{health?.status === 'critical' || account.status_label === 'Meta connection required' ? 'Needs reconnect' : 'Sync problems'}</span>
-            {canEdit && (
-              <button type="button" onClick={onReconnect} {...stylex.props(styles.reconnect)}>
-                Reconnect
-              </button>
-            )}
-          </>
-        ) : (
-          <span {...stylex.props(health?.status !== 'healthy' && styles.muted)}>
-            {health?.status === 'healthy' ? 'Healthy' : 'Not checked yet'}
+    <section aria-label="Properties" {...stylex.props(oneColumn && styles.propertiesStacked, panel && styles.panelCard)}>
+      {panel ? (
+        <button
+          type="button"
+          aria-expanded={!propertiesFolded}
+          onClick={() => setPropertiesFolded((folded) => !folded)}
+          {...stylex.props(styles.panelHeader, propertiesFolded && styles.panelHeaderFolded)}
+        >
+          Properties
+          <BuyerlyDisclosureGlyph size={16} {...stylex.props(styles.disclosure, propertiesFolded && styles.disclosureFolded)} />
+        </button>
+      ) : (
+        <SectionTitle>Properties</SectionTitle>
+      )}
+      {!(panel && propertiesFolded) && <>
+        <PropertyRow panel={panel} label="Status">
+          <AccountStatusLabel account={account} />
+        </PropertyRow>
+        <PropertyRow panel={panel} label="Health">
+          {problem ? (
+            <>
+              <ConnectionProblemIcon account={account} onReconnect={canEdit ? onReconnect : undefined} />
+              <span {...stylex.props(styles.truncate)} title={problem}>{health?.status === 'critical' || account.status_label === 'Meta connection required' ? 'Needs reconnect' : 'Sync problems'}</span>
+              {canEdit && (
+                <button type="button" onClick={onReconnect} {...stylex.props(styles.reconnect)}>
+                  Reconnect
+                </button>
+              )}
+            </>
+          ) : (
+            <span {...stylex.props(health?.status !== 'healthy' && styles.muted)}>
+              {health?.status === 'healthy' ? 'Healthy' : 'Not checked yet'}
+            </span>
+          )}
+        </PropertyRow>
+        <PropertyRow panel={panel} label="Automation">
+          <BuyerlyToggle
+            checked={Boolean(account.rules_enabled)}
+            disabled={!canAct || automationBlocked}
+            label="Automation"
+            tooltipContent={
+              !canAct ? 'You can’t change automation'
+                : automationBlocked ? 'Attach a rule to the account first'
+                  : account.rules_enabled ? 'Turn automation off' : 'Turn automation on'
+            }
+            onChange={canAct ? onToggleAutomation : undefined}
+          />
+          <span {...stylex.props(styles.secondary)}>{account.rules_enabled ? 'On' : 'Off'}</span>
+        </PropertyRow>
+        <PropertyRow panel={panel} label="Lead">
+          <AccountLeadPicker account={account} members={members} canEdit={canAct} onChange={onSetLead} variant="property" />
+        </PropertyRow>
+        <PropertyRow panel={panel} label="Team">
+          <span {...stylex.props(teamsText ? styles.truncate : styles.muted)}>{teamsText || 'No team'}</span>
+        </PropertyRow>
+        <PropertyRow panel={panel} label="Connected by">
+          <span {...stylex.props(connectedBy ? styles.truncate : styles.muted)}>
+            {connectedBy ? connectedBy.full_name || connectedBy.username : '—'}
           </span>
-        )}
-      </PropertyRow>
-      <PropertyRow label="Automation">
-        <BuyerlyToggle
-          checked={Boolean(account.rules_enabled)}
-          disabled={!canAct || automationBlocked}
-          label="Automation"
-          tooltipContent={
-            !canAct ? 'You can’t change automation'
-              : automationBlocked ? 'Attach a rule to the account first'
-                : account.rules_enabled ? 'Turn automation off' : 'Turn automation on'
-          }
-          onChange={canAct ? onToggleAutomation : undefined}
-        />
-        <span {...stylex.props(styles.secondary)}>{account.rules_enabled ? 'On' : 'Off'}</span>
-      </PropertyRow>
-      <PropertyRow label="Lead">
-        <AccountLeadPicker account={account} members={members} canEdit={canAct} onChange={onSetLead} variant="property" />
-      </PropertyRow>
-      <PropertyRow label="Team">
-        <span {...stylex.props(teamsText ? styles.truncate : styles.muted)}>{teamsText || 'No team'}</span>
-      </PropertyRow>
-      <PropertyRow label="Connected by">
-        <span {...stylex.props(connectedBy ? styles.truncate : styles.muted)}>
-          {connectedBy ? connectedBy.full_name || connectedBy.username : '—'}
-        </span>
-      </PropertyRow>
-      <PropertyRow label="Time zone">
-        <span {...stylex.props(styles.truncate)}>{account.timezone_name || 'UTC'}</span>
-      </PropertyRow>
-      <PropertyRow label="Added">
-        <span>{formatAddedDate(account.created_at)}</span>
-      </PropertyRow>
-      <PropertyRow label="Last sync">
-        <span title={lastSync ? formatAuditTimestamp(lastSync) : undefined} {...stylex.props(!lastSync && styles.muted)}>
-          {lastSync ? formatRelativeTime(lastSync) : 'Never'}
-        </span>
-      </PropertyRow>
+        </PropertyRow>
+        <PropertyRow panel={panel} label="Time zone">
+          <span {...stylex.props(styles.truncate)}>{account.timezone_name || 'UTC'}</span>
+        </PropertyRow>
+        <PropertyRow panel={panel} label="Added">
+          <span>{formatAddedDate(account.created_at)}</span>
+        </PropertyRow>
+        <PropertyRow panel={panel} label="Last sync">
+          <span title={lastSync ? formatAuditTimestamp(lastSync) : undefined} {...stylex.props(!lastSync && styles.muted)}>
+            {lastSync ? formatRelativeTime(lastSync) : 'Never'}
+          </span>
+        </PropertyRow>
+      </>}
     </section>
   );
 
@@ -1069,7 +1141,7 @@ const AccountPageBody: React.FC<AccountPageBodyProps> = ({
   }
   return (
     <div {...stylex.props(styles.twoColumns)}>
-      {/* Linear's project page: a 670px column, and a 400px properties panel on the right. */}
+      {/* Linear's project page: a column up to 805px, and its 396px panel of cards on the right. */}
       <div {...stylex.props(styles.mainScroll)}>
         <div {...stylex.props(styles.column)}>{main}</div>
       </div>
