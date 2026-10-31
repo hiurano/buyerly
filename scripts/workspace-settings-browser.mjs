@@ -199,11 +199,12 @@ try {
       await page.getByRole('heading', { name: 'Teams', exact: true }).waitFor();
       await page.getByRole('searchbox', { name: 'Filter by name…' }).waitFor();
       assert.equal(await page.getByRole('button', { name: 'Create team' }).first().isDisabled(), false);
+      // Export CSV waits for the teams to load.
+      await page.getByText('No teams yet').waitFor();
       assert.equal(
         await page.getByRole('button', { name: 'Export CSV' }).isVisible(),
         (role === 'owner' || role === 'admin') && width >= 640,
       );
-      await page.getByText('No teams yet').waitFor();
       await assertNoOverflow('Teams');
       await page.screenshot({ path: `${output}/teams-${role}-${width}.png`, fullPage: true });
 
