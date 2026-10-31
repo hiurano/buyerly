@@ -313,7 +313,7 @@ const styles = stylex.create({
     ...truncate,
     fontSize: 13,
     fontWeight: 500,
-    color: colors['--text-primary'],
+    color: colors['--group-title-fg'],
   },
   // Linear's count: the title's size in tabular figures, a step quieter.
   groupCount: {

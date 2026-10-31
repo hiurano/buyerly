@@ -60,6 +60,8 @@ export const colors = stylex.defineVars({
   /* A list group's collapse chevron, as Linear's (29.10): faint at rest, bright under the pointer. */
   '--group-chevron': 'lch(20.032% 7 272 / 1)',
   '--group-chevron-hover': 'lch(90.826% 1.425 272 / 1)',
+  /* A list group's title, a step under primary, as Linear's Issues groups (measured 01.11). */
+  '--group-title-fg': 'lch(90.826% 1.425 272 / 1)',
   '--data-row-hover-bg': 'var(--item-hover-bg)',
   '--item-active-bg': 'lch(13.845% 1.3 272 / 1)',
 
@@ -493,6 +495,7 @@ export const lightColors = stylex.createTheme(colors, {
   '--item-hover-bg': 'lch(89.54% 0.5 282 / 1)', /* #e1e1e2 */
   '--group-chevron': 'lch(80.94% 12 282 / 1)',
   '--group-chevron-hover': 'lch(18.888% 1.25 282 / 1)',
+  '--group-title-fg': 'lch(18.888% 1.25 282 / 1)',
   '--data-row-hover-bg': 'lch(94.44% 0.5 282 / 1)', /* Linear data-row hover */
   '--item-active-bg': 'lch(89.54% 0.5 282 / 1)', /* #e1e1e2 */
 
