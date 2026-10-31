@@ -20,14 +20,20 @@ function load(file) {
 const pane = load(path.join(root, 'ui/detailsPaneModel.ts'));
 const facets = load(path.join(root, 'components/rules/ruleFacets.ts'));
 
-// Both panes start closed; a saved value survives, a broken one falls back.
-assert.deepEqual(pane.parseDetailsPanes(null), { adsManager: { open: false, width: null }, rules: { open: false, width: null } });
+// The views' panes start closed and the account page's properties open; a saved value survives, a broken one falls back.
+assert.deepEqual(pane.parseDetailsPanes(null), {
+  adsManager: { open: false, width: null }, rules: { open: false, width: null }, account: { open: true, width: null },
+});
+assert.deepEqual(pane.parseDetailsPanes('{"account":{"open":false,"width":null}}').account, { open: false, width: null });
 assert.deepEqual(pane.parseDetailsPanes('{"rules":{"open":true,"width":420}}').rules, { open: true, width: 420 });
 assert.deepEqual(pane.parseDetailsPanes('{"rules":{"open":"yes","width":"wide"}}').rules, { open: false, width: null });
 assert.deepEqual(pane.parseDetailsPanes('not json').adsManager, { open: false, width: null });
 
 // Beside the list: 350 until dragged, the dragged width after, never past 600 or into the list's 300px.
 assert.equal(pane.detailsPaneWidth(null, 1500, false), 350);
+// The account page's panel is Linear's project panel: 400 until dragged, 350 over the page.
+assert.equal(pane.detailsPaneWidth(null, 1500, false, pane.DETAILS_PANE_DEFAULT_WIDTHS.account), 400);
+assert.equal(pane.detailsPaneWidth(null, 1000, true, pane.DETAILS_PANE_DEFAULT_WIDTHS.account), 350);
 assert.equal(pane.detailsPaneWidth(440, 1500, false), 440);
 assert.equal(pane.detailsPaneWidth(900, 1500, false), 600);
 assert.equal(pane.detailsPaneWidth(440, 1025, false), 395);

@@ -126,7 +126,7 @@ const BuyerlyAccountsRoute: React.FC = () => {
   const navigate = useAppNavigate();
   const { AccountPage, AccountsView } = useBuyerlyChunk(PAGE_CHUNKS.accounts);
   return route.recordId
-    ? <AccountPage accountId={route.recordId} navigate={navigate} navigationKey={navigationKey} />
+    ? <AccountPage accountId={route.recordId} page={route.accountPage ?? 'overview'} navigate={navigate} navigationKey={navigationKey} />
     : <AccountsView navigate={navigate} navigationKey={navigationKey} />;
 };
 

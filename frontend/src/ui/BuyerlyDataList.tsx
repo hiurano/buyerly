@@ -22,7 +22,8 @@ export const BUYERLY_DATA_LIST = {
   rowPaddingX: 12,
   columnGap: 6,
   toolbarPaddingLeft: 8,
-  toolbarPaddingRight: 11,
+  // The last toolbar button ends 8px from the canvas's edge, as Linear's (01.11).
+  toolbarPaddingRight: 8,
   viewportPaddingX: 8,
   // Rows and the column header reach into the list's side padding, 8px past the group
   // headers on each side, as Linear's (1027 against 1011px); their content stays put.

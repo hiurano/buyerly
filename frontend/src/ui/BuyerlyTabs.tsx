@@ -34,7 +34,8 @@ const styles = stylex.create({
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: 28,
-    gap: 8,
+    // Linear's view tabs sit 4px apart (Issues, Projects, a project's tabs; measured 01.11).
+    gap: 4,
     padding: 0,
     margin: 0,
     position: 'relative',

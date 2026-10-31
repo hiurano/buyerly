@@ -3,6 +3,7 @@ import { useMediaQuery, useIsTouchScreen } from '@/lib/useMediaQuery';
 import { Tooltip } from '@/ui/Tooltip';
 import { BuyerlySidebarToggleIcon } from '@/icons/BuyerlyIcons';
 import {
+  DETAILS_PANE_DEFAULT_WIDTHS,
   DETAILS_PANE_OVERLAY_QUERY,
   DETAILS_PANE_PHONE_QUERY,
   clampDetailsPaneWidth,
@@ -249,7 +250,7 @@ export function DetailsPaneLayout({ pane, label, details, children }: DetailsPan
   const swipeStart = useRef<{ x: number; y: number; at: number } | null>(null);
 
   const open = state.open && details !== null;
-  const width = detailsPaneWidth(liveWidth ?? state.width, windowWidth, overlay);
+  const width = detailsPaneWidth(liveWidth ?? state.width, windowWidth, overlay, DETAILS_PANE_DEFAULT_WIDTHS[pane]);
   const [mounted, setMounted] = useState(open);
   if (open && !mounted) setMounted(true);
 

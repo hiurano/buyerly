@@ -3,7 +3,8 @@
  * `DetailsPaneContainer` (2026-10-09). Kept free of React so CI can check it.
  */
 
-export type DetailsPaneId = 'adsManager' | 'rules';
+/** Ads Manager's and Rules' panes, and the ad account page's properties, as Linear's project panel. */
+export type DetailsPaneId = 'adsManager' | 'rules' | 'account';
 
 export interface DetailsPaneState {
   open: boolean;
@@ -13,6 +14,12 @@ export interface DetailsPaneState {
 
 /** Linear's `DetailsPaneWidth.default`: the pane's width until it is resized. */
 export const DETAILS_PANE_DEFAULT_WIDTH = 350;
+/** Each pane's width beside its view until resized: Linear's project panel is 400px (measured 01.11). */
+export const DETAILS_PANE_DEFAULT_WIDTHS: Record<DetailsPaneId, number> = {
+  adsManager: DETAILS_PANE_DEFAULT_WIDTH,
+  rules: DETAILS_PANE_DEFAULT_WIDTH,
+  account: 400,
+};
 /** The narrowest a drag leaves it. */
 export const DETAILS_PANE_MIN_WIDTH = 360;
 /** The widest it ever gets. */
@@ -27,10 +34,11 @@ export const DETAILS_PANE_PHONE_QUERY = '(max-width: 640px)';
 
 export const DETAILS_PANE_STORAGE_KEY = 'buyerly:details-panes';
 
-/** Both panes start closed, as Linear's `show…DetailPane` settings do. */
+/** The views' panes start closed, as Linear's `show…DetailPane` settings do; a project's panel starts open. */
 export const defaultDetailsPanes = (): Record<DetailsPaneId, DetailsPaneState> => ({
   adsManager: { open: false, width: null },
   rules: { open: false, width: null },
+  account: { open: true, width: null },
 });
 
 /** The saved panes, or the defaults for anything missing or malformed. */
@@ -53,9 +61,17 @@ export function maxDetailsPaneWidth(windowWidth: number, overlay: boolean): numb
   return Math.min(DETAILS_PANE_MAX_WIDTH, overlay ? windowWidth + 1 : windowWidth - RESERVED_WIDTH);
 }
 
-/** The width the pane takes: its saved width beside the list, the default over it, never past the maximum. */
-export function detailsPaneWidth(saved: number | null, windowWidth: number, overlay: boolean): number {
-  const width = overlay ? DETAILS_PANE_DEFAULT_WIDTH : saved ?? DETAILS_PANE_DEFAULT_WIDTH;
+/**
+ * The width the pane takes: its saved width beside the list (`defaultWidth` until dragged), 350 over it,
+ * never past the maximum.
+ */
+export function detailsPaneWidth(
+  saved: number | null,
+  windowWidth: number,
+  overlay: boolean,
+  defaultWidth: number = DETAILS_PANE_DEFAULT_WIDTH,
+): number {
+  const width = overlay ? DETAILS_PANE_DEFAULT_WIDTH : saved ?? defaultWidth;
   return Math.max(0, Math.min(maxDetailsPaneWidth(windowWidth, overlay), width));
 }
 
