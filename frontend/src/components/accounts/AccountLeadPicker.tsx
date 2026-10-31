@@ -47,7 +47,7 @@ interface AccountLeadPickerProps {
 export const AccountLeadPicker: React.FC<AccountLeadPickerProps> = ({ account, members, canEdit, onChange, variant }) => {
   const lead = members.find((member) => member.user_id === account.lead_user_id) ?? null;
   const avatar = lead
-    ? <Initials label={memberLabel(lead)} avatarUrl={lead.avatar_url} size={16} />
+    ? <Initials label={memberLabel(lead)} avatarUrl={lead.avatar_url} size={variant === 'property' ? 18 : 16} />
     : <span {...stylex.props(styles.noLead)}><NoLeadIcon /></span>;
   const trigger = (
     <button

@@ -58,6 +58,12 @@ const styles = stylex.create({
     width: 16,
     fontSize: 7,
   },
+  // Linear's avatar in a property pill: 18px, 9px initials.
+  avatar18: {
+    height: 18,
+    width: 18,
+    fontSize: 9,
+  },
   avatar20: {
     height: 20,
     width: 20,
@@ -387,13 +393,13 @@ export function shortDate(iso: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export const Initials: React.FC<{ label: string; avatarUrl?: string; muted?: boolean; size?: 16 | 20 | 24 }> = ({
+export const Initials: React.FC<{ label: string; avatarUrl?: string; muted?: boolean; size?: 16 | 18 | 20 | 24 }> = ({
   label,
   avatarUrl,
   muted,
   size = 20,
 }) => {
-  const box = size === 24 ? styles.avatar24 : size === 16 ? styles.avatar16 : styles.avatar20;
+  const box = size === 24 ? styles.avatar24 : size === 18 ? styles.avatar18 : size === 16 ? styles.avatar16 : styles.avatar20;
   if (avatarUrl) {
     return <img src={avatarUrl} alt="" {...stylex.props(styles.avatar, box, styles.avatarImage)} />;
   }

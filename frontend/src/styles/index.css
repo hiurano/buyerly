@@ -1562,17 +1562,18 @@ html[data-theme='light'] .buyerly-display-property[aria-pressed='true'] {
 }
 
 /* The same Lead on the account's page, with the member's name. */
+/* Linear's Lead property: a pill, its avatar 6px before a 12px name in the panel's value tone. */
 .account-lead-property {
   display: inline-flex;
   min-width: 0;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   height: 28px;
   margin-left: -6px;
   padding: 0 8px 0 6px;
   border-radius: 9999px;
-  color: var(--text-secondary);
-  font-size: 13px;
+  color: var(--details-row-fg);
+  font-size: 12px;
   font-weight: 450;
   cursor: default;
 }
