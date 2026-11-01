@@ -184,8 +184,15 @@ const styles = stylex.create({
     gap: 20,
     textAlign: 'center',
   },
+  // Linear's empty tray: 97.5 × 100, its inner tray a step darker.
   emptyIcon: {
+    display: 'block',
+    width: 97.5,
+    height: 100,
     color: colors['--text-tertiary'],
+  },
+  emptyIconInner: {
+    stroke: colors['--text-secondary'],
   },
   emptyText: {
     fontSize: 13,
@@ -243,24 +250,22 @@ const styles = stylex.create({
       [SPLIT]: 'flex',
     },
   },
+  // Linear's: 8px in, its buttons 6px apart, over the canvas's 0.5px line (set inline: a shorthand).
   header: {
     display: 'flex',
     height: 44,
     flexShrink: 0,
     alignItems: 'center',
-    gap: 4,
-    borderBottomWidth: 1,
-    borderBottomStyle: 'solid',
-    borderColor: colors['--color-border-primary'],
-    paddingLeft: 10,
-    paddingRight: 10,
+    gap: 6,
+    paddingLeft: 8,
+    paddingRight: 8,
   },
   title: {
-    paddingLeft: 8,
-    paddingRight: 4,
+    paddingLeft: 10,
+    paddingRight: 2,
     fontSize: 13,
     fontWeight: 500,
-    lineHeight: '16px',
+    lineHeight: 'normal',
     color: colors['--text-secondary'],
   },
   notification: {
@@ -277,11 +282,7 @@ const styles = stylex.create({
     justifyContent: 'space-between',
     gap: 12,
     paddingLeft: {
-      default: 10,
-      [WIDE]: 16,
-    },
-    paddingRight: {
-      default: 10,
+      default: 8,
       [WIDE]: 16,
     },
   },
@@ -307,7 +308,7 @@ const styles = stylex.create({
     display: 'flex',
     flexShrink: 0,
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
   },
   scroll: {
     minHeight: 0,
@@ -421,6 +422,29 @@ const styles = stylex.create({
     color: colors['--text-primary'],
   },
 });
+
+/** Linear's "No notification selected" tray, drawn as its 78 × 80 outline. */
+function InboxEmptyTray() {
+  return (
+    <svg viewBox="0 0 78 80" fill="none" aria-hidden="true" {...stylex.props(styles.emptyIcon)}>
+      <path
+        stroke="currentColor"
+        strokeWidth="1.5"
+        d="M10.4 9.11A10 10 0 0 1 20.22 1h37.56a10 10 0 0 1 9.82 8.11l8.11 42.2a10 10 0 0 1-9.82 11.9H54.7a6.36 6.36 0 0 0-5.65 3.45 6.36 6.36 0 0 1-5.66 3.45H34.6a6.36 6.36 0 0 1-5.66-3.45 6.36 6.36 0 0 0-5.65-3.46H12.1a10 10 0 0 1-9.8-11.89l8.11-42.2Z"
+      />
+      <path
+        strokeWidth="1.5"
+        d="M14.3 9.03a5 5 0 0 1 4.91-4.08H58.8a5 5 0 0 1 4.91 4.08l8.07 43.22a6 6 0 0 1-5.9 7.1H52.76a5.72 5.72 0 0 0-5.24 3.41 5.72 5.72 0 0 1-5.23 3.42h-6.58a5.72 5.72 0 0 1-5.23-3.42 5.72 5.72 0 0 0-5.24-3.4h-13.1a6 6 0 0 1-5.9-7.1L14.3 9.02Z"
+        {...stylex.props(styles.emptyIconInner)}
+      />
+      <path
+        stroke="currentColor"
+        strokeWidth="1.5"
+        d="m2.36 55.6 3.2 14.06A12 12 0 0 0 17.26 79h43.48a12 12 0 0 0 11.7-9.34l3.2-14.06"
+      />
+    </svg>
+  );
+}
 
 function MetadataRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -992,7 +1016,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
         {...withClassName(stylex.props(styles.inboxList, selectedItem && styles.hiddenUntilSplit), 'inbox-list')}
         style={{ '--inbox-list-width': `${splitWidth}px` } as React.CSSProperties}
       >
-        <header {...stylex.props(styles.header)}>
+        <header {...stylex.props(styles.header)} style={{ borderBottom: 'var(--canvas-border)' }}>
           <SidebarCollapsedNavigation />
           <h1 {...stylex.props(styles.title)}>Inbox</h1>
           <DropdownMenu>
@@ -1038,7 +1062,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
               aria-pressed={inboxDisplay.unreadOnly}
               onClick={() => setInboxDisplay({ unreadOnly: !inboxDisplay.unreadOnly })}
             >
-              <BuyerlyIcon name="unread" size={16} />
+              <BuyerlyIcon name="unread" size={14} />
             </BuyerlyToolbarButton>
           </Tooltip>
           <BuyerlyFilterButton
@@ -1128,7 +1152,10 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
       >
         {selectedItem ? (
           <>
-            <header {...stylex.props(styles.header, styles.notificationHeader)}>
+            <header
+              {...stylex.props(styles.header, styles.notificationHeader)}
+              style={{ borderBottom: 'var(--canvas-border)' }}
+            >
               <div {...stylex.props(styles.notificationTitle)}>
                 <button
                   type="button"
@@ -1150,7 +1177,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                     aria-label="Snooze notification"
                     onClick={() => setSnoozePalette('button')}
                   >
-                    <BuyerlyIcon name="snooze" size={16} />
+                    <BuyerlyIcon name="snooze" size={14} />
                   </BuyerlyToolbarButton>
                 </Tooltip>
                 <SnoozePalette
@@ -1169,7 +1196,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
                     aria-label="Delete notification"
                     onClick={() => deleteItem(selectedItem)}
                   >
-                    <BuyerlyIcon name="delete" size={16} />
+                    <BuyerlyIcon name="delete" size={14} />
                   </BuyerlyToolbarButton>
                 </Tooltip>
               </div>
@@ -1257,7 +1284,7 @@ const InboxViewContent: React.FC<InboxViewProps> = ({ openEventId, inboxTab, onN
           </>
         ) : (
           <div {...stylex.props(styles.nothingSelected)}>
-            <BuyerlyIcon name="inbox-empty" size={96} {...stylex.props(styles.emptyIcon)} />
+            <InboxEmptyTray />
             <p {...stylex.props(styles.emptyText)}>
               {inboxUnreadCount > 0 ? unreadLabel : 'No notification selected'}
             </p>
