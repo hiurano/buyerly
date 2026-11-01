@@ -75,6 +75,8 @@ export const colors = stylex.defineVars({
   '--sidebar-item-hover-bg': 'var(--item-hover-bg)',
   '--sidebar-workspace-fg': 'lch(90.155% 1.2 272 / 1)',
   '--sidebar-icon-button-hover-bg': 'lch(10.149% 0.689 272 / 1)',
+  /* Linear's sidebar Search while the search page is open (01.11). */
+  '--sidebar-icon-button-active-bg': 'lch(10.695% 0.85 272 / 1)',
 
   /* Linear's disclosure triangle after a team's name in the sidebar. */
   '--sidebar-disclosure-fg': 'lch(35.024% 1.2 272 / 1)',
@@ -147,6 +149,10 @@ export const colors = stylex.defineVars({
   '--settings-list-group-bg': 'lch(7.32% 0.85 272 / 1)',
   '--settings-list-group-count': 'lch(36.975% 1.2 272 / 1)',
   '--settings-list-row-hover-bg': 'lch(9.345% 0.85 272 / 1)',
+  /* Linear's search page in dark (01.11): a result or recent search under the pointer, the result ↑/↓ reached. */
+  '--search-row-hover-bg': 'lch(9.345% 0.85 272 / 1)',
+  '--search-row-active-bg': 'lch(13.62% 0.85 272 / 1)',
+  '--search-header-border': 'lch(13.08% 1.48 272 / 1)', /* the field row's 0.5px rule */
   '--settings-list-muted': 'lch(61.803% 1.2 272 / 1)',
   '--settings-list-search-bg': 'lch(10.149% 0.689 272 / 1)',
   '--settings-list-search-border': 'lch(27.12% 1.48 272 / 1)',
@@ -509,6 +515,7 @@ export const lightColors = stylex.createTheme(colors, {
   '--sidebar-item-hover-bg': 'lch(91.64% 0.5 282 / 1)',
   '--sidebar-workspace-fg': 'lch(18.888% 1.25 282 / 1)',
   '--sidebar-icon-button-hover-bg': 'lch(0% 0 0 / 0.06)',
+  '--sidebar-icon-button-active-bg': 'lch(89.44% 0.5 282 / 1)',
   '--sidebar-disclosure-fg': 'lch(62.33% 1.25 282 / 1)',
   '--breadcrumb-separator-fg': 'lch(39.176% 1.25 282 / 1)',
   '--row-selected-bg': 'lch(92.254% 5.903 282.518 / 1)', /* Linear selected row */
@@ -569,6 +576,10 @@ export const lightColors = stylex.createTheme(colors, {
   '--settings-list-group-bg': 'lch(92.44% 0.5 282 / 1)',
   '--settings-list-group-count': 'lch(64.64% 1.25 282 / 1)',
   '--settings-list-row-hover-bg': 'lch(94.44% 0.5 282 / 1)',
+  /* Linear's search page in light (01.11). */
+  '--search-row-hover-bg': 'lch(94.44% 0.5 282 / 1)',
+  '--search-row-active-bg': 'lch(92.94% 0.5 282 / 1)',
+  '--search-header-border': 'lch(89.84% 0 282 / 1)',
   '--settings-list-muted': 'var(--text-tertiary)',
   '--settings-list-search-bg': 'lch(99.997% 0.5 282 / 1)',
   '--settings-list-search-border': 'lch(84.44% 0 282 / 1)',

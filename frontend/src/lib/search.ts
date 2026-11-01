@@ -186,6 +186,19 @@ export function rememberSearch(scope: string | null, query: string): string[] {
   return recent;
 }
 
+/** Linear's × on a recent search: that one search leaves the list. */
+export function forgetSearch(scope: string | null, query: string): string[] {
+  const recent = readRecentSearches(scope).filter((value) => value !== query);
+  if (scope) {
+    try {
+      window.localStorage.setItem(recentSearchesKey(scope), JSON.stringify(recent));
+    } catch {
+      // Nothing stored, nothing to forget.
+    }
+  }
+  return recent;
+}
+
 export function clearRecentSearches(scope: string | null): void {
   if (!scope) return;
   try {
