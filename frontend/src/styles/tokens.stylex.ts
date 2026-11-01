@@ -343,6 +343,16 @@ export const colors = stylex.defineVars({
   /* Values and their counts read in the primary tone now (31.10). */
   '--details-row-fg': 'var(--text-primary)',
   '--details-row-count-fg': 'var(--text-primary)',
+  /* Linear's property chip in the New issue modal (01.11): fill 17.574, label 64.805,
+     a 0.5px ring 0.149 (0.248 on hover, fill 22.202). The rule window's chips. */
+  '--property-chip-bg': 'lch(17.574% 1.589 272 / 1)',
+  '--property-chip-hover-bg': 'lch(22.202% 1.975 272 / 1)',
+  '--property-chip-fg': 'lch(64.805% 1.65 272 / 1)',
+  '--property-chip-ring': '0 0 0 0.5px lch(100% 0 0 / 0.149), 0px 0.5px 1px 1px lch(0% 0 0 / 0.3)',
+  '--property-chip-ring-hover': '0 0 0 0.5px lch(100% 0 0 / 0.248), 0px 0.5px 1px 1px lch(0% 0 0 / 0.3)',
+  /* Linear's filter chip, "Status │ is │ Todo ×" (01.11): segments 10.149, a 0.5px border 0.137. */
+  '--condition-chip-bg': 'lch(10.149% 0.689 272 / 1)',
+  '--condition-chip-border': 'lch(100% 0 0 / 0.137)',
   '--details-row-link-fg': 'var(--text-primary)',
   '--details-pane-scrim': 'rgb(0 0 0 / 0.4)',
   '--board-card-ring': 'lch(100% 0 0 / 0.083)',
@@ -745,6 +755,13 @@ export const lightColors = stylex.createTheme(colors, {
   '--details-row-active-bg': 'var(--item-active-bg)',
   '--details-row-fg': 'lch(10% 0 282 / 1)',
   '--details-row-count-fg': 'lch(10% 0 282 / 1)',
+  '--property-chip-bg': 'lch(100% 0 282 / 1)',
+  '--property-chip-hover-bg': 'lch(95.886% 0 282 / 1)',
+  '--property-chip-fg': 'lch(40% 1 282 / 1)',
+  '--property-chip-ring': '0 0 0 0.5px lch(0% 0 0 / 0.088), 0 3px 6px -2px lch(0% 0 0 / 0.02), 0 1px 1px lch(0% 0 0 / 0.04)',
+  '--property-chip-ring-hover': '0 0 0 0.5px lch(0% 0 0 / 0.147), 0 3px 6px -2px lch(0% 0 0 / 0.02), 0 1px 1px lch(0% 0 0 / 0.04)',
+  '--condition-chip-bg': 'lch(99.997% 0.5 282 / 1)',
+  '--condition-chip-border': 'lch(0% 0 0 / 0.09)',
   '--details-pane-scrim': 'rgb(0 0 0 / 0.25)',
   '--board-card-ring': 'lch(0% 0 0 / 0.088)',
   '--board-lane-bg': 'lch(94.44% 0.5 282 / 1)', /* #efeff0 */

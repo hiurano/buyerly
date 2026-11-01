@@ -117,12 +117,10 @@ const styles = stylex.create({
     width: '100%',
     maxWidth: 750,
     backgroundColor: colors['--card-bg'],
-    borderWidth: 1,
-    borderStyle: 'solid',
-    borderColor: colors['--color-border-secondary'],
+    // Linear's New issue has no border: its shadow alone, three layers in
+    // light and five in dark.
     borderRadius: 21,
-    boxShadow:
-      '0px 4px 40px 0px rgba(0,0,0,0.1), 0px 3px 20px 0px rgba(0,0,0,0.125), 0px 3px 12px 0px rgba(0,0,0,0.125), 0px 2px 8px 0px rgba(0,0,0,0.125), 0px 1px 1px 0px rgba(0,0,0,0.125)',
+    boxShadow: colors['--dialog-elevation-shadow'],
   },
   contentExpanded: {
     maxWidth: 1040,
@@ -131,9 +129,6 @@ const styles = stylex.create({
   contentPhone: {
     maxWidth: null,
     minHeight: '100dvh',
-    borderWidth: null,
-    borderStyle: null,
-    borderColor: null,
     borderRadius: null,
     boxShadow: null,
   },
@@ -167,87 +162,98 @@ const styles = stylex.create({
     flexShrink: 1,
     flexBasis: '0%',
     flexDirection: 'column',
-    paddingLeft: 20,
-    paddingRight: 20,
-    paddingTop: 16,
+    paddingLeft: 12,
+    paddingRight: 12,
   },
   bodyPhone: {
-    paddingLeft: 16,
-    paddingRight: 16,
-    paddingTop: 12,
+    paddingLeft: 10,
+    paddingRight: 10,
   },
+  // Linear's header: 12px around a 32px row — the team chip, "›", the title,
+  // then ⤢ and × 6px apart.
   header: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingTop: 12,
     paddingBottom: 12,
   },
   crumbs: {
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   crumbTeam: {
     display: 'inline-flex',
     height: 24,
     alignItems: 'center',
+    gap: 4,
     borderRadius: 9999,
-    backgroundColor: colors['--item-hover-bg'],
-    paddingLeft: 10,
-    paddingRight: 10,
+    backgroundColor: colors['--property-chip-bg'],
+    boxShadow: colors['--property-chip-ring'],
+    paddingLeft: 5,
+    paddingRight: 8,
     fontSize: 12,
-    fontWeight: 500,
-    color: colors['--text-tertiary'],
+    fontWeight: 450,
+    color: colors['--text-primary'],
+  },
+  crumbIcon: {
+    color: colors['--property-chip-fg'],
   },
   crumbSeparator: {
     fontSize: 13,
-    color: colors['--text-muted'],
+    fontWeight: 450,
+    color: colors['--text-tertiary'],
   },
   crumbTitle: {
     fontSize: 13,
     fontWeight: 450,
-    color: colors['--text-primary'],
+    color: colors['--text-secondary'],
   },
   windowButtons: {
     display: 'flex',
     alignItems: 'center',
-    gap: 2,
+    gap: 6,
   },
   windowButton: {
     ...colorTransition,
     display: 'inline-flex',
-    height: 28,
-    width: 28,
+    height: 32,
+    width: 32,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 9999,
-    color: {
-      default: colors['--text-tertiary'],
-      ':hover': colors['--text-primary'],
-    },
+    color: colors['--text-secondary'],
     backgroundColor: {
       default: null,
-      ':hover': colors['--item-hover-bg'],
+      ':hover': colors['--property-chip-hover-bg'],
     },
     outline: '2px solid transparent',
     outlineOffset: 2,
   },
   closeButton: {
     height: {
-      default: 28,
+      default: 32,
       [TOUCH]: 40,
     },
     width: {
-      default: 28,
+      default: 32,
       [TOUCH]: 40,
     },
   },
+  // Linear's title: 18px/600, -0.1px, 18px in from the window's edge.
   name: {
+    marginTop: 5,
     marginBottom: 12,
+    paddingLeft: 6,
+    paddingRight: 6,
     width: '100%',
+    height: 24,
     backgroundColor: 'transparent',
     fontSize: 18,
     fontWeight: 600,
+    lineHeight: '24px',
+    letterSpacing: '-0.1px',
     color: colors['--text-primary'],
     outline: '2px solid transparent',
     outlineOffset: 2,
@@ -261,6 +267,8 @@ const styles = stylex.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: 6,
+    paddingLeft: 6,
+    paddingRight: 6,
   },
   whenLine: {
     paddingBottom: 8,
@@ -268,11 +276,11 @@ const styles = stylex.create({
   thenLine: {
     paddingBottom: 12,
   },
+  // Linear's property row: no divider above it, 6px over and 12px under.
   settingsLine: {
-    borderTopWidth: 1,
-    borderTopStyle: 'solid',
-    borderColor: colors['--color-border-primary'],
-    paddingTop: 12,
+    paddingTop: 6,
+    paddingLeft: 0,
+    paddingRight: 0,
   },
   lineLabel: {
     width: 44,
@@ -333,9 +341,6 @@ const styles = stylex.create({
   anchor: {
     position: 'relative',
   },
-  chosen: {
-    color: colors['--text-primary'],
-  },
   dots: {
     display: 'flex',
     alignItems: 'center',
@@ -348,42 +353,45 @@ const styles = stylex.create({
   },
   summary: {
     paddingTop: 12,
+    paddingLeft: 6,
+    paddingRight: 6,
     fontSize: 12,
     lineHeight: '18px',
     color: colors['--text-tertiary'],
   },
   problem: {
     paddingTop: 8,
+    paddingLeft: 6,
+    paddingRight: 6,
     fontSize: 12,
     color: colors['--rules-action-stop-text'],
   },
+  // Linear's footer: no divider, 12px under the properties, 0 12 12.
   footer: {
-    marginTop: 16,
+    marginTop: 12,
     display: 'flex',
+    minHeight: 28,
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopStyle: 'solid',
-    borderColor: colors['--color-border-primary'],
-    paddingTop: 12,
-    paddingRight: 20,
+    gap: 18,
+    paddingRight: 12,
     paddingBottom: 12,
-    paddingLeft: 20,
+    paddingLeft: 12,
   },
   footerPhone: {
     position: 'sticky',
     bottom: 0,
     backgroundColor: colors['--card-bg'],
-    paddingRight: 16,
-    paddingLeft: 16,
+    paddingTop: 12,
+    paddingRight: 10,
+    paddingLeft: 10,
   },
   discard: {
     height: {
       default: 28,
       [TOUCH]: 40,
     },
-    borderRadius: 6,
+    borderRadius: 9999,
     paddingLeft: 8,
     paddingRight: 8,
     fontSize: 12,
@@ -393,7 +401,7 @@ const styles = stylex.create({
     },
     backgroundColor: {
       default: null,
-      ':hover': colors['--item-hover-bg'],
+      ':hover': colors['--property-chip-hover-bg'],
     },
   },
   submitRow: {
@@ -404,9 +412,9 @@ const styles = stylex.create({
   createMore: {
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     fontSize: 12,
-    color: colors['--text-secondary'],
+    color: colors['--text-tertiary'],
   },
   submitAnchor: {
     display: 'inline-flex',
@@ -661,7 +669,10 @@ export const CreateRuleModal: React.FC = () => {
                 {/* Header: "Rules › New rule", ⤢ and ×. */}
                 <div {...stylex.props(styles.header)}>
                   <div {...stylex.props(styles.crumbs)}>
-                    <span {...stylex.props(styles.crumbTeam)}>Rules</span>
+                    <span {...stylex.props(styles.crumbTeam)}>
+                      <BuyerlyIcon name="rules" size={14} {...stylex.props(styles.crumbIcon)} />
+                      Rules
+                    </span>
                     <span {...stylex.props(styles.crumbSeparator)}>›</span>
                     <span {...stylex.props(styles.crumbTitle)}>{title}</span>
                     {restored && (
@@ -677,7 +688,7 @@ export const CreateRuleModal: React.FC = () => {
                           onClick={() => setExpanded((value) => !value)}
                           {...stylex.props(styles.windowButton)}
                         >
-                          {expanded ? <BuyerlyIcon name="minimize" size={14} /> : <BuyerlyIcon name="maximize" size={14} />}
+                          {expanded ? <BuyerlyIcon name="minimize" size={16} /> : <BuyerlyIcon name="maximize" size={16} />}
                         </button>
                       </Tooltip>
                     )}
@@ -753,17 +764,17 @@ export const CreateRuleModal: React.FC = () => {
                   ))}
                   {draft.conditions.length < MAX_CONDITIONS && (
                     <BuyerlyRuleChip
-                      dashed
+                      empty
                       onClick={() => update({ conditions: [...draft.conditions, { ...DEFAULT_CONDITION, metric: 'leads', operator: 'eq' }] })}
                     >
-                      <BuyerlyIcon name="add" size={12} />
+                      <BuyerlyIcon name="add" size={14} />
                       Condition
                     </BuyerlyRuleChip>
                   )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <BuyerlyRuleChip aria-label={`Window: ${RULE_TIME_WINDOW_MENU_LABELS[draft.timeWindow]}`}>
-                        <BuyerlyIcon name="snooze" size={12} />
+                        <BuyerlyIcon name="snooze" size={14} />
                         {RULE_TIME_WINDOW_MENU_LABELS[draft.timeWindow]}
                       </BuyerlyRuleChip>
                     </DropdownMenuTrigger>
@@ -842,13 +853,14 @@ export const CreateRuleModal: React.FC = () => {
                 <div {...stylex.props(styles.line, styles.settingsLine)}>
                   <div {...stylex.props(styles.anchor)}>
                     <BuyerlyRuleChip
+                      empty={runOnEntries.length === 0}
                       aria-expanded={popover === 'runOn'}
                       aria-label={`Run on: ${runOnEntries.length ? runOnText : 'nowhere yet'}`}
                       data-popover-trigger="Run on"
                       onClick={() => setPopover((current) => (current === 'runOn' ? null : 'runOn'))}
                     >
-                      <BuyerlyIcon name="rules" size={12} />
-                      <span {...stylex.props(runOnEntries.length > 0 && styles.chosen)}>{runOnText}</span>
+                      <BuyerlyIcon name="rules" size={14} />
+                      {runOnText}
                     </BuyerlyRuleChip>
                     {popover === 'runOn' && (
                       <RunOnPicker
@@ -864,33 +876,34 @@ export const CreateRuleModal: React.FC = () => {
 
                   {/* Linear's Labels chip: several at once, a new one made in place (#383). */}
                   <div {...stylex.props(styles.anchor)}>
-                    <BuyerlyRuleChip
-                      data-label-picker-trigger=""
-                      aria-expanded={popover === 'labels'}
-                      onClick={() => setPopover((current) => (current === 'labels' ? null : 'labels'))}
-                    >
-                      {chosenLabels.length === 0 ? (
-                        <>
-                          <BuyerlyIcon name="label" size={12} />
-                          <span>Labels</span>
-                        </>
-                      ) : (
-                        <>
-                          <span {...stylex.props(styles.dots)} aria-hidden="true">
-                            {chosenLabels.slice(0, 4).map((label, index) => (
-                              <span
-                                key={label.id}
-                                {...stylex.props(styles.dot)}
-                                style={{ backgroundColor: label.color, marginLeft: index === 0 ? 0 : -3, boxShadow: '0 0 0 1.5px var(--card-bg)' }}
-                              />
-                            ))}
-                          </span>
-                          <span {...stylex.props(styles.chosen)}>
-                            {chosenLabels.length === 1 ? chosenLabels[0].name : `${chosenLabels.length} labels`}
-                          </span>
-                        </>
-                      )}
-                    </BuyerlyRuleChip>
+                    {chosenLabels.length === 0 ? (
+                      <BuyerlyRuleChip
+                        empty
+                        data-label-picker-trigger=""
+                        aria-expanded={popover === 'labels'}
+                        onClick={() => setPopover((current) => (current === 'labels' ? null : 'labels'))}
+                      >
+                        <BuyerlyIcon name="label" size={14} />
+                        Labels
+                      </BuyerlyRuleChip>
+                    ) : (
+                      <BuyerlyRuleChip
+                        data-label-picker-trigger=""
+                        aria-expanded={popover === 'labels'}
+                        onClick={() => setPopover((current) => (current === 'labels' ? null : 'labels'))}
+                      >
+                        <span {...stylex.props(styles.dots)} aria-hidden="true">
+                          {chosenLabels.slice(0, 4).map((label, index) => (
+                            <span
+                              key={label.id}
+                              {...stylex.props(styles.dot)}
+                              style={{ backgroundColor: label.color, marginLeft: index === 0 ? 0 : -3, boxShadow: '0 0 0 1.5px var(--card-bg)' }}
+                            />
+                          ))}
+                        </span>
+                        {chosenLabels.length === 1 ? chosenLabels[0].name : `${chosenLabels.length} labels`}
+                      </BuyerlyRuleChip>
+                    )}
                     {popover === 'labels' && (
                       <RuleLabelPicker
                         inline
@@ -915,7 +928,7 @@ export const CreateRuleModal: React.FC = () => {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <BuyerlyRuleChip aria-label={`Check: ${formatCheckInterval(draft.checkInterval)}`}>
-                        <BuyerlyIcon name="snooze" size={12} />
+                        <BuyerlyIcon name="snooze" size={14} />
                         {formatCheckInterval(draft.checkInterval)}
                       </BuyerlyRuleChip>
                     </DropdownMenuTrigger>
@@ -932,7 +945,7 @@ export const CreateRuleModal: React.FC = () => {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <BuyerlyRuleChip aria-label={`Repeat: ${formatRepeat(draft.repeatMinutes)}`}>
-                        <BuyerlyIcon name="repeat" size={12} />
+                        <BuyerlyIcon name="repeat" size={14} />
                         {formatRepeat(draft.repeatMinutes)}
                       </BuyerlyRuleChip>
                     </DropdownMenuTrigger>

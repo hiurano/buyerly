@@ -44,6 +44,8 @@ const colorTransition = {
 } as const;
 
 const styles = stylex.create({
+  // Linear's property chip (Todo, Priority, Labels… in New issue): 24px, a
+  // 14px icon 4px from a 12px/450 label, padded 0 8 0 6, a 0.5px ring.
   chip: {
     ...colorTransition,
     display: 'inline-flex',
@@ -52,41 +54,52 @@ const styles = stylex.create({
       [TOUCH]: 40,
     },
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     borderRadius: 9999,
-    borderWidth: 1,
-    borderStyle: 'solid',
-    borderColor: colors['--color-border-secondary'],
+    borderWidth: 0,
     backgroundColor: {
-      default: 'transparent',
-      ':hover': colors['--item-hover-bg'],
-      ':is([aria-expanded="true"])': colors['--item-hover-bg'],
+      default: colors['--property-chip-bg'],
+      ':hover': colors['--property-chip-hover-bg'],
+      ':is([aria-expanded="true"])': colors['--property-chip-hover-bg'],
     },
     paddingLeft: 8,
     paddingRight: 8,
     fontSize: 12,
-    fontWeight: 500,
-    color: {
-      default: colors['--text-secondary'],
-      ':hover': colors['--text-primary'],
+    fontWeight: 450,
+    color: colors['--property-chip-fg'],
+    outlineWidth: 1,
+    outlineStyle: {
+      default: 'none',
+      ':focus-visible': 'solid',
     },
-    outline: '2px solid transparent',
-    outlineOffset: 2,
+    outlineColor: colors['--action-primary'],
+    outlineOffset: 0,
     cursor: 'pointer',
     boxShadow: {
-      default: null,
-      ':focus-visible': `0 0 0 2px ${colors['--focus-ring-color']}`,
+      default: colors['--property-chip-ring'],
+      ':hover': colors['--property-chip-ring-hover'],
+      ':focus-visible': colors['--property-chip-ring-hover'],
+      ':is([aria-expanded="true"])': colors['--property-chip-ring-hover'],
     },
   },
-  chipDashed: {
-    borderStyle: 'dashed',
+  chipWithIcon: {
+    paddingLeft: 6,
+  },
+  chipLabel: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    whiteSpace: 'nowrap',
+  },
+  chipValue: {
+    color: colors['--text-secondary'],
   },
   popover: {
     position: 'absolute',
     zIndex: 30,
     display: 'flex',
     flexDirection: 'column',
-    top: 'calc(100% + 6px)',
+    top: 'calc(100% + 4px)',
     backgroundColor: colors['--card-bg'],
     borderWidth: 1,
     borderStyle: 'solid',
@@ -97,19 +110,20 @@ const styles = stylex.create({
     animationDuration: '120ms',
     animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
   },
+  // Linear's "Add labels…" field: 36px, 13px, 14px in from the edge.
   search: {
     display: 'flex',
-    height: 40,
+    height: 36,
     flexShrink: 0,
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomStyle: 'solid',
     borderColor: colors['--color-border-primary'],
-    paddingLeft: 12,
-    paddingRight: 12,
+    paddingLeft: 14,
+    paddingRight: 14,
   },
   searchInput: {
-    height: 32,
+    height: 36,
     minWidth: 0,
     flexGrow: 1,
     flexShrink: 1,
@@ -140,10 +154,13 @@ const styles = stylex.create({
     paddingLeft: 8,
     paddingRight: 8,
     fontSize: 13,
-    color: colors['--text-primary'],
+    fontWeight: 450,
+    color: colors['--text-secondary'],
   },
+  // The menus' own highlight: --item-hover-bg sat below the card in dark (8.4 on 9.2).
   optionActive: {
-    backgroundColor: colors['--item-hover-bg'],
+    backgroundColor: colors['--menu-item-highlight'],
+    color: colors['--text-primary'],
   },
   listbox: {
     overflowY: 'auto',
@@ -187,19 +204,21 @@ const styles = stylex.create({
   condition: {
     position: 'relative',
   },
+  // Linear's filter chip, "Status │ is │ Todo ×": 24px, radius 8, a 0.5px
+  // border, each segment 0 6px at 12px/400.
   conditionBox: {
     display: 'inline-flex',
     height: {
-      default: 28,
+      default: 24,
       [TOUCH]: 40,
     },
     alignItems: 'stretch',
     overflow: 'hidden',
     borderRadius: 8,
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderStyle: 'solid',
-    borderColor: colors['--color-border-secondary'],
-    color: colors['--text-primary'],
+    borderColor: colors['--condition-chip-border'],
+    color: colors['--text-secondary'],
   },
   conditionBoxInvalid: {
     borderColor: colors['--rules-action-stop-text'],
@@ -212,30 +231,30 @@ const styles = stylex.create({
       [TOUCH]: 40,
     },
     alignItems: 'center',
-    paddingLeft: 8,
-    paddingRight: 8,
+    paddingLeft: 6,
+    paddingRight: 6,
     fontSize: 12,
-    fontWeight: 500,
+    fontWeight: 400,
     outline: '2px solid transparent',
     outlineOffset: 2,
     backgroundColor: {
-      default: null,
-      ':hover': colors['--item-hover-bg'],
-      ':focus-visible': colors['--item-hover-bg'],
+      default: colors['--condition-chip-bg'],
+      ':hover': colors['--property-chip-hover-bg'],
+      ':focus-visible': colors['--property-chip-hover-bg'],
     },
   },
   operator: {
-    minWidth: 28,
+    minWidth: 24,
     justifyContent: 'center',
-    color: colors['--text-secondary'],
+    color: colors['--text-tertiary'],
   },
   valueSegment: {
     cursor: 'text',
     gap: 4,
     backgroundColor: {
-      default: null,
-      ':hover': 'transparent',
-      ':focus-visible': colors['--item-hover-bg'],
+      default: colors['--condition-chip-bg'],
+      ':hover': colors['--condition-chip-bg'],
+      ':focus-visible': colors['--property-chip-hover-bg'],
     },
   },
   remove: {
@@ -245,9 +264,9 @@ const styles = stylex.create({
     },
   },
   divider: {
-    width: 1,
+    width: 0.5,
     alignSelf: 'stretch',
-    backgroundColor: colors['--color-border-secondary'],
+    backgroundColor: colors['--condition-chip-border'],
   },
   operatorSymbol: {
     width: 16,
@@ -266,9 +285,9 @@ const styles = stylex.create({
     borderWidth: 0,
     backgroundColor: 'transparent',
     fontSize: 12,
-    fontWeight: 500,
+    fontWeight: 400,
     fontVariantNumeric: 'tabular-nums',
-    color: colors['--text-primary'],
+    color: colors['--text-secondary'],
     outline: '2px solid transparent',
     outlineOffset: 2,
     '::placeholder': {
@@ -353,13 +372,25 @@ const styles = stylex.create({
   },
 });
 
-/** A chip of the rule window: Linear's 24px property pill. */
+/**
+ * A chip of the rule window: Linear's 24px property chip. One that starts
+ * with an icon sits 6px from its left edge, and a set value reads a step
+ * darker than its icon, as Linear's "Todo"; `empty` keeps the label in the
+ * icon's tone, as "Priority" before one is picked.
+ */
 export const BuyerlyRuleChip = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  /** "+ Condition": a chip that adds rather than sets. */
-  dashed?: boolean;
-}>(({ dashed = false, type = 'button', ...props }, ref) => (
-  <button ref={ref} type={type} {...props} {...stylex.props(styles.chip, dashed && styles.chipDashed)} />
-));
+  empty?: boolean;
+}>(({ type = 'button', empty = false, children, ...props }, ref) => {
+  const parts = React.Children.toArray(children);
+  const icon = React.isValidElement(parts[0]) && parts[0].type === BuyerlyIcon ? parts[0] : null;
+  const label = icon ? parts.slice(1) : parts;
+  return (
+    <button ref={ref} type={type} {...props} {...stylex.props(styles.chip, icon !== null && styles.chipWithIcon)}>
+      {icon}
+      <span {...stylex.props(styles.chipLabel, !empty && styles.chipValue)}>{label}</span>
+    </button>
+  );
+});
 BuyerlyRuleChip.displayName = 'BuyerlyRuleChip';
 
 
