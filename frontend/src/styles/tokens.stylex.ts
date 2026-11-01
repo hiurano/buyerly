@@ -86,6 +86,11 @@ export const colors = stylex.defineVars({
 
   '--row-selected-bg': 'lch(13.2% 6 282 / 1)',
   '--inbox-unread-dot': 'lch(47.918% 59.303 288.421 / 1)', /* Linear unread notification dot */
+  /* Linear Inbox notification rows: under the pointer, and open (or under the list cursor) with its text. */
+  '--inbox-row-hover-bg': 'lch(9.345% 0.85 272 / 1)',
+  '--inbox-row-active-bg': 'lch(13.62% 0.85 272 / 1)',
+  '--inbox-row-active-title': 'lch(91.269% 1.425 272 / 1)',
+  '--inbox-row-active-fg': 'lch(65.078% 1.425 272 / 1)',
 
   /* Linear Inbox Focus group headers and Priority / Other tabs, measured in dark Linear. */
   '--inbox-group-header-bg': 'lch(9.232% 0.85 272 / 1)',
@@ -519,7 +524,11 @@ export const lightColors = stylex.createTheme(colors, {
   '--sidebar-disclosure-fg': 'lch(62.33% 1.25 282 / 1)',
   '--breadcrumb-separator-fg': 'lch(39.176% 1.25 282 / 1)',
   '--row-selected-bg': 'lch(92.254% 5.903 282.518 / 1)', /* Linear selected row */
-  '--inbox-unread-dot': 'lch(47.918% 59.303 288.421 / 1)',
+  '--inbox-unread-dot': 'lch(53% 52.26 286.91 / 1)',
+  '--inbox-row-hover-bg': 'lch(94.44% 0.5 282 / 1)',
+  '--inbox-row-active-bg': 'lch(92.94% 0.5 282 / 1)',
+  '--inbox-row-active-title': 'lch(18.588% 1.25 282 / 1)',
+  '--inbox-row-active-fg': 'lch(37.176% 1.25 282 / 1)',
 
   /* Linear Inbox Focus group headers and Priority / Other tabs, measured in light Linear. */
   '--inbox-group-header-bg': 'lch(94.44% 0.5 282 / 1)',
