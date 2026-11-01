@@ -17,7 +17,7 @@ const kbd = {
   borderStyle: 'solid',
   borderColor: colors['--command-menu-kbd-border'],
   fontSize: 12,
-  color: colors['--text-tertiary'],
+  color: colors['--command-menu-text-tertiary'],
 } as const;
 
 /**
@@ -46,7 +46,7 @@ const styles = stylex.create({
     maxWidth: 720,
     overflow: 'hidden',
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderStyle: 'solid',
     borderColor: colors['--command-menu-border'],
     backgroundColor: colors['--command-menu-bg'],
@@ -66,21 +66,23 @@ const styles = stylex.create({
     paddingLeft: 12,
     paddingRight: 12,
     fontSize: 13,
-    color: colors['--text-secondary'],
+    color: colors['--command-menu-text'],
     outline: '2px solid transparent',
     outlineOffset: 2,
     '::placeholder': {
-      color: colors['--text-muted'],
+      color: colors['--command-menu-placeholder'],
     },
   },
   list: {
     maxHeight: 'min(404px, 60vh)',
     overflowY: 'auto',
+    scrollbarWidth: 'thin',
     paddingLeft: 6,
     paddingRight: 6,
+    paddingTop: 6,
     paddingBottom: 6,
   },
-  /** 46px rows; the selected one gets a rounded fill inset 2px top and bottom. */
+  /** 46px rows; the selected one gets a rounded fill inset 2px top and bottom, and brighter text. */
   item: {
     position: 'relative',
     marginLeft: 0,
@@ -90,12 +92,15 @@ const styles = stylex.create({
     cursor: 'default',
     userSelect: 'none',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
     paddingLeft: 12,
     paddingRight: 12,
     fontSize: 13,
     fontWeight: 450,
-    color: colors['--command-menu-text'],
+    color: {
+      default: colors['--command-menu-text'],
+      ':is([data-selected=true])': colors['--command-menu-text-selected'],
+    },
     outline: '2px solid transparent',
     outlineOffset: 2,
     '::before': {
@@ -113,9 +118,10 @@ const styles = stylex.create({
       },
     },
   },
-  /** Linear draws a row's icon in the row's own text color. */
+  /** Linear draws a row's icon in the menu's tertiary, selected or not. */
   icon: {
     position: 'relative',
+    color: colors['--command-menu-text-tertiary'],
     display: 'flex',
     height: 16,
     width: 16,
@@ -140,17 +146,17 @@ const styles = stylex.create({
     alignItems: 'center',
     gap: 3,
   },
-  /** A row's keys on the right. */
+  /** A row's keys on the right: 11px in a 0.5px box, 4px inside, 21px high. */
   kbd: {
     ...kbd,
-    height: 23,
     minWidth: 20,
     borderRadius: 3,
-    paddingLeft: 4,
-    paddingRight: 4,
+    borderWidth: 0.5,
+    padding: 4,
     fontFamily: SANS,
+    fontSize: 11,
     fontWeight: 450,
-    lineHeight: '13px',
+    lineHeight: 1.1,
   },
   note: {
     paddingLeft: 12,
@@ -307,7 +313,7 @@ export const SelectionCommandMenu: React.FC<SelectionCommandMenuProps> = ({
       onMouseDown={() => onOpenChange(false)}
     >
       <div
-        {...withClassName(stylex.props(styles.surface), 'animate-scale-in')}
+        {...withClassName(stylex.props(styles.surface), 'buyerly-command-menu-motion')}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <Command

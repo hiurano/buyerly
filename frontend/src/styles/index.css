@@ -6138,7 +6138,41 @@ button.buyerly-board-hidden-row:hover,
   font-size: 12px;
   font-weight: 500;
   line-height: 14px;
-  color: var(--text-tertiary);
+  color: var(--command-menu-text-tertiary);
+}
+
+/*
+ * Linear's command menu springs open and shut (react-spring, measured from its
+ * bundle): open is tension 1500 / friction 100 from opacity 0 and scale 0.98,
+ * fully opaque by ~50ms and settled by ~300ms; close is tension 2500 / friction
+ * 100 to opacity 0 and scale 0.96, gone in ~100ms. Radix keeps a closing menu
+ * mounted until its animation ends.
+ */
+.buyerly-command-menu-motion {
+  transform-origin: center center;
+  animation:
+    buyerlyCommandMenuFade 50ms ease-in-out,
+    buyerlyCommandMenuGrow 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.buyerly-command-menu-motion[data-state='closed'] {
+  pointer-events: none;
+  animation: buyerlyCommandMenuShut 100ms cubic-bezier(0.33, 0, 0.2, 1) forwards;
+}
+
+/* A theme's "Aa" swatch in the command menu sits 8px from its label, as Linear's. */
+.buyerly-command-theme-badge {
+  position: relative;
+  margin-right: 0;
+}
+
+@keyframes buyerlyCommandMenuFade { from { opacity: 0; } }
+@keyframes buyerlyCommandMenuGrow { from { transform: scale(0.98); } }
+@keyframes buyerlyCommandMenuShut { to { opacity: 0; transform: scale(0.96); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .buyerly-command-menu-motion,
+  .buyerly-command-menu-motion[data-state='closed'] { animation: none; }
 }
 
 /* Switch workspace (O then W): an account's email over its workspaces. */

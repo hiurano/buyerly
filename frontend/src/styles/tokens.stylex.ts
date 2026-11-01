@@ -103,13 +103,20 @@ export const colors = stylex.defineVars({
   '--dock-clear-btn-bg': 'lch(13.861% 1.139 272 / 1)',
   '--command-menu-shadow': 'lch(0% 0 0 / 0.1) 0px 4px 40px 0px, lch(0% 0 0 / 0.125) 0px 3px 20px 0px, lch(0% 0 0 / 0.125) 0px 3px 12px 0px, lch(0% 0 0 / 0.125) 0px 2px 8px 0px, lch(0% 0 0 / 0.125) 0px 1px 1px 0px',
 
-  /* Linear's Ctrl/Cmd+K, measured live in both themes (#311). */
+  /*
+   * Linear's Ctrl/Cmd+K, measured live in both themes (#311): the panel's 0.5px
+   * border, a row's text and its brighter text once selected, the icons, keys
+   * and headings in the menu's own tertiary, the field's placeholder.
+   */
   '--command-menu-bg': 'lch(12.72% 0.85 272 / 1)',
-  '--command-menu-border': 'lch(21.36% 1.93 272 / 1)',
+  '--command-menu-border': 'lch(25.68% 1.93 272 / 1)',
   '--command-menu-text': 'lch(91.178% 1.425 272 / 1)',
+  '--command-menu-text-selected': 'lch(100% 0 272 / 1)',
+  '--command-menu-text-tertiary': 'lch(64.714% 1.425 272 / 1)',
+  '--command-menu-placeholder': 'lch(41.778% 1.425 272 / 1)',
   '--command-menu-row-selected-bg': 'lch(20.82% 1.3 272 / 1)',
   '--command-menu-chip-bg': 'var(--command-menu-row-selected-bg)',
-  '--command-menu-kbd-border': 'lch(17.04% 1.93 272 / 1)',
+  '--command-menu-kbd-border': 'lch(20.28% 1.93 272 / 1)',
   '--toast-bg': 'var(--card-bg)',
   '--toast-shadow': '0 0 0 1px lch(100% 0 272 / 0.1), 0 6px 18px lch(0% 0 0 / 0.3), 0 3px 9px lch(0% 0 0 / 0.3), 0 1px 1px lch(0% 0 0 / 0.2)',
   '--toast-success-icon': '#4cb782',
@@ -532,11 +539,14 @@ export const lightColors = stylex.createTheme(colors, {
   '--dock-clear-btn-bg': 'lch(96.914% 0 282 / 1)',
   '--command-menu-shadow': '0px 9px 48px 0px lch(0% 0 0 / 0.08), 0px 6px 24px 0px lch(0% 0 0 / 0.1), 0px 1px 1px 0px lch(0% 0 0 / 0.04)',
   '--command-menu-bg': 'lch(100% 0 282 / 1)',
-  '--command-menu-border': 'lch(90.55% 0 282 / 1)',
-  '--command-menu-text': 'lch(10% 0 282 / 1)',
+  '--command-menu-border': 'lch(91.9% 0 282 / 1)',
+  '--command-menu-text': 'lch(20% 1 282 / 1)',
+  '--command-menu-text-selected': 'lch(10% 0 282 / 1)',
+  '--command-menu-text-tertiary': 'lch(40% 1 282 / 1)',
+  '--command-menu-placeholder': 'lch(66% 1 282 / 1)',
   '--command-menu-row-selected-bg': 'lch(95% 0 282 / 1)',
   '--command-menu-chip-bg': 'var(--command-menu-row-selected-bg)',
-  '--command-menu-kbd-border': 'lch(97.3% 0 282 / 1)',
+  '--command-menu-kbd-border': 'lch(91.9% 0 282 / 1)',
   '--toast-shadow': '0 0 0 1px lch(0% 0 0 / 0.103), 0 6px 18px lch(0% 0 0 / 0.02), 0 3px 9px lch(0% 0 0 / 0.04), 0 1px 1px lch(0% 0 0 / 0.04)',
   '--toast-success-icon': '#2da562',
   '--toast-error-icon': '#b42318',
