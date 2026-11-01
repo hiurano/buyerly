@@ -61,6 +61,7 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
       <BuyerlyDataListRow
         data-row-id={campaign.id}
         layout="grid"
+        issueLayout
         columns={columns}
         tabIndex={readOnly ? undefined : 0}
         onClick={readOnly ? undefined : handleRowClick}
@@ -81,6 +82,7 @@ export const CampaignRow: React.FC<CampaignRowProps> = ({
         xstyle={readOnly ? styles.readOnly : styles.row}
       >
         <BuyerlyDataPrimaryCell
+          issueLayout
           leading={(
             <EntityRowControls
               noun="campaign"
