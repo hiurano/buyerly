@@ -38,6 +38,7 @@ export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, selectable =
     <BuyerlyDataListRow
       data-row-id={ad.id}
       layout="grid"
+      issueLayout
       columns={columns}
       tabIndex={readOnly ? undefined : 0}
       selected={isSelected}
@@ -45,6 +46,7 @@ export const AdRow: React.FC<AdRowProps> = ({ ad, readOnly = false, selectable =
       xstyle={readOnly ? styles.readOnly : styles.row}
     >
       <BuyerlyDataPrimaryCell
+        issueLayout
         leading={(
           <EntityRowControls
             noun="ad"

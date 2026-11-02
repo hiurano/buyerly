@@ -15,7 +15,7 @@ export const getAdsManagerColumns = (
 ): BuyerlyDataListColumn[] => {
   const phone = Boolean(options.spendFirst);
   const columns: BuyerlyDataListColumn[] = [
-    buyerlyDataNameColumn({ width: phone ? 'minmax(150px, 1fr)' : 'minmax(260px, 1fr)' }),
+    buyerlyDataNameColumn({ width: phone ? 'minmax(150px, 1fr)' : 'minmax(260px, 1fr)', issueLayout: true }),
   ];
 
   // Grouped by account, the group names it; as Linear drops the project from rows grouped by project.

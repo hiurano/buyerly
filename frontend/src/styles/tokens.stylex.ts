@@ -62,9 +62,12 @@ export const colors = stylex.defineVars({
   '--group-chevron-hover': 'lch(90.826% 1.425 272 / 1)',
   /* A list group's title, a step under primary, as Linear's Issues groups (measured 01.11). */
   '--group-title-fg': 'lch(90.826% 1.425 272 / 1)',
+  /* A list group's count, as Linear's Issues groups (measured 01.11). */
+  '--group-count-fg': 'lch(63.304% 7 270.292 / 1)',
   /* A Settings row's description, as Linear's on Preferences and Notifications (measured 01.11). */
   '--settings-row-desc': 'lch(63.304% 1.425 272 / 1)',
-  '--data-row-hover-bg': 'var(--item-hover-bg)',
+  /* Linear's list row under the pointer (Issues and Projects, 01.11). */
+  '--data-row-hover-bg': 'lch(9.345% 0.85 272 / 1)',
   '--item-active-bg': 'lch(13.845% 1.3 272 / 1)',
 
   /* The sidebar's own text and fills (Linear's sit a step off the content's). */
@@ -84,7 +87,7 @@ export const colors = stylex.defineVars({
   /* The "›" between a team and its page in a header. */
   '--breadcrumb-separator-fg': 'lch(61.803% 1.2 272 / 1)',
 
-  '--row-selected-bg': 'lch(13.2% 6 282 / 1)',
+  '--row-selected-bg': 'lch(12.141% 17.792 286.445 / 1)', /* Linear selected row (01.11) */
   '--inbox-unread-dot': 'lch(47.918% 59.303 288.421 / 1)', /* Linear unread notification dot */
   /* Linear Inbox notification rows: under the pointer, and open (or under the list cursor) with its text. */
   '--inbox-row-hover-bg': 'lch(9.345% 0.85 272 / 1)',
@@ -102,12 +105,17 @@ export const colors = stylex.defineVars({
   '--inbox-error-bg': 'lch(66% 80 48 / 1)',
   '--inbox-filter-bg': 'lch(9.345% 0.85 272 / 1)', /* Linear Inbox filter box */
   '--inbox-filter-chip-bg': 'lch(10.149% 0.689 272 / 1)',
-  '--row-selected-hover-bg': 'lch(15.8% 6 282 / 1)',
+  '--row-selected-hover-bg': 'lch(15.966% 18.242 286.445 / 1)', /* Linear selected row under the pointer */
   '--checkbox-checked-bg': 'lch(47.918% 59.303 288.421 / 1)', /* Linear accent */
   '--checkbox-checked-fg': 'lch(100% 5 288.421 / 1)',
   '--checkbox-border-hover': 'lch(52.418% 61.103 288.421 / 1)', /* Linear: the box under the pointer */
-  '--dock-border': 'var(--color-border-secondary)',
-  '--dock-clear-btn-bg': 'lch(13.861% 1.139 272 / 1)',
+  /* The selection dock's buttons, as Linear's (01.11): Actions a raised secondary pill, the X bare. */
+  '--dock-button-bg': 'lch(13.861% 1.139 272 / 1)',
+  '--dock-button-hover-bg': 'lch(18.49% 1.525 272 / 1)',
+  '--dock-button-fg': 'lch(90.826% 1.425 272 / 1)',
+  '--dock-button-ring': '0 0 0 0.5px lch(100% 0 0 / 0.143), 0 0.5px 1px 1px lch(0% 0 0 / 0.3)',
+  '--dock-button-ring-hover': '0 0 0 0.5px lch(100% 0 0 / 0.238), 0 0.5px 1px 1px lch(0% 0 0 / 0.3)',
+  '--dock-clear-hover-bg': 'lch(17.718% 1.043 272 / 1)',
   '--command-menu-shadow': 'lch(0% 0 0 / 0.1) 0px 4px 40px 0px, lch(0% 0 0 / 0.125) 0px 3px 20px 0px, lch(0% 0 0 / 0.125) 0px 3px 12px 0px, lch(0% 0 0 / 0.125) 0px 2px 8px 0px, lch(0% 0 0 / 0.125) 0px 1px 1px 0px',
 
   /* Linear's Ctrl/Cmd+K, measured live in both themes (#311). */
@@ -519,6 +527,7 @@ export const lightColors = stylex.createTheme(colors, {
   '--group-chevron': 'lch(80.94% 12 282 / 1)',
   '--group-chevron-hover': 'lch(18.888% 1.25 282 / 1)',
   '--group-title-fg': 'lch(18.888% 1.25 282 / 1)',
+  '--group-count-fg': 'lch(37.776% 12 279.067 / 1)',
   '--settings-row-desc': 'lch(40% 1 282 / 1)',
   '--data-row-hover-bg': 'lch(94.44% 0.5 282 / 1)', /* Linear data-row hover */
   '--item-active-bg': 'lch(89.54% 0.5 282 / 1)', /* #e1e1e2 */
@@ -554,8 +563,12 @@ export const lightColors = stylex.createTheme(colors, {
   '--checkbox-checked-bg': 'lch(53% 52.26 286.91 / 1)', /* Linear accent */
   '--checkbox-checked-fg': 'lch(100% 5 286.91 / 1)',
   '--checkbox-border-hover': 'lch(47% 50.26 286.91 / 1)', /* Linear: the box under the pointer */
-  '--dock-border': 'transparent',
-  '--dock-clear-btn-bg': 'lch(96.914% 0 282 / 1)',
+  '--dock-button-bg': 'lch(100% 0 282 / 1)',
+  '--dock-button-hover-bg': 'lch(95.886% 0 282 / 1)',
+  '--dock-button-fg': 'lch(20% 1 282 / 1)',
+  '--dock-button-ring': '0 0 0 0.5px lch(0% 0 0 / 0.088), 0 3px 6px -2px lch(0% 0 0 / 0.02), 0 1px 1px 0 lch(0% 0 0 / 0.04)',
+  '--dock-button-ring-hover': '0 0 0 0.5px lch(0% 0 0 / 0.147), 0 3px 6px -2px lch(0% 0 0 / 0.02), 0 1px 1px 0 lch(0% 0 0 / 0.04)',
+  '--dock-clear-hover-bg': 'lch(96.914% 0 282 / 1)',
   '--command-menu-shadow': '0px 9px 48px 0px lch(0% 0 0 / 0.08), 0px 6px 24px 0px lch(0% 0 0 / 0.1), 0px 1px 1px 0px lch(0% 0 0 / 0.04)',
   '--command-menu-bg': 'lch(100% 0 282 / 1)',
   '--command-menu-border': 'lch(90.55% 0 282 / 1)',
