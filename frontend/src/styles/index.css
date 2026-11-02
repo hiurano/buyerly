@@ -1780,6 +1780,10 @@ html[data-theme='dark'] .buyerly-sidebar-badge,
   transition: border 0.15s, background-color 0.15s, color 0.15s, opacity 0.15s;
 }
 
+.buyerly-sidebar-icon-btn[data-active='true'] {
+  background-color: var(--sidebar-icon-button-active-bg);
+}
+
 .buyerly-sidebar-icon-btn:active {
   background-color: var(--sidebar-icon-button-hover-bg);
   color: var(--sidebar-item-fg-strong);

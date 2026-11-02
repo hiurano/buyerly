@@ -278,7 +278,7 @@ try {
       assert.equal(await page.title(), 'Search: Test Campaign');
       assert.deepEqual(await rowNames(), ['Test Campaign', 'Test campaign EU']);
       assert.deepEqual(await rowKinds(), ['Campaign', 'Campaign']);
-      assert.equal(await rows().first().locator('strong').innerText(), 'Test Campaign', 'the match is bold');
+      assert.equal(await rows().first().locator('strong').count(), 0, 'as Linear, the match is not bold');
       assert.equal(await rows().first().getAttribute('href'), '/alpha/ads-manager/campaigns/120045?account=act_1001');
       assert.equal(lastSearch().get('q'), 'Test Campaign');
       assert.equal(searches.at(-1).scope, 'alpha');
@@ -336,9 +336,12 @@ try {
       const recent = page.getByRole('list', { name: 'Recent searches' });
       await recent.waitFor();
       assert.deepEqual(
-        (await recent.getByRole('button').allInnerTexts()).map((text) => text.trim()),
+        (await recent.locator('li > button:first-child').allInnerTexts()).map((text) => text.trim()),
         ['test', 'Spring', 'zzz', 'stop', 'Test Campaign'],
       );
+      // As Linear's, each recent search has its own × that forgets it.
+      await recent.getByRole('listitem').filter({ hasText: 'zzz' }).getByRole('button', { name: 'Clear search' }).click();
+      await recent.getByRole('button', { name: 'zzz', exact: true }).waitFor({ state: 'detached' });
       await assertNoOverflow('recent searches');
       await page.screenshot({ path: `${output}/recent-${width}.png` });
       await recent.getByRole('button', { name: 'stop' }).click();

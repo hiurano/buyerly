@@ -6,7 +6,7 @@ import { logOut } from '@/lib/sessions';
 import { accountBlocks } from '@/lib/accounts';
 import { Tooltip } from '@/ui/Tooltip';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
-import { BuyerlyChevronGlyph } from '@/icons/BuyerlyIcons';
+import { BuyerlyChevronGlyph, BuyerlySearchGlyph } from '@/icons/BuyerlyIcons';
 import { WorkspaceAvatar } from '@/ui/WorkspaceAvatar';
 import { openSearchPage } from '@/components/search/openSearchPage';
 import { useWorkspaceSession } from '@/lib/workspaceSession';
@@ -24,7 +24,7 @@ import {
   DropdownMenuLabel,
 } from '@/ui/DropdownMenu';
 import { useScopeStore } from '@/models/scopeStore';
-import { openSettings } from '@/lib/routing';
+import { openSettings, useRoute } from '@/lib/routing';
 
 /** The sans stack the app's controls use. */
 const SANS = '"Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -147,6 +147,8 @@ const styles = stylex.create({
 
 export const SidebarHeader: React.FC = () => {
   const workspaceName = useScopeStore((state) => state.workspaceName);
+  const route = useRoute();
+  const isSearchOpen = route.kind === 'workspace' && route.tab === 'search';
   const { user, workspace, accounts, switchWorkspace, openCreateWorkspace, openAddAccount } = useWorkspaceSession();
   const blocks = accountBlocks(accounts, user);
   const isOpenAccount = (accountId?: number) => accountId === undefined || user.id == null || accountId === user.id;
@@ -363,10 +365,12 @@ export const SidebarHeader: React.FC = () => {
               type="button"
               onClick={openSearchPage}
               aria-label="Search workspace"
+              // Linear's Search stays pressed while its page is open.
+              data-active={isSearchOpen ? 'true' : undefined}
               className="buyerly-icon-btn buyerly-sidebar-icon-btn"
             >
               <span {...stylex.props(styles.searchIcon)}>
-                <BuyerlyIcon name="search" size={14} />
+                <BuyerlySearchGlyph size={14} />
               </span>
             </button>
           </Tooltip>
