@@ -262,7 +262,7 @@ sudo bash scripts/backup_db.sh --check-config
 sudo bash scripts/setup_backup_cron.sh
 ```
 
-Скрипт сначала выполняет `--check-config` в пустом окружении, как у cron, и при ошибке не ставит задачу. Затем записывает `/etc/cron.d/buyerly-backup` с явным `BUYERLY_ENV_FILE=/opt/buyerly/.env`. Бэкап запускается в 03:00 по часовому поясу сервера (cron не знает про UTC; пояс показывает `timedatectl`, на текущем VPS это EEST). Лог — `/var/log/buyerly-backup.log` с правами `0600`; без root задача ставится в crontab пользователя, лог — `~/.local/state/buyerly/backup.log`. После первой ночи проверить результат: `tail /var/log/buyerly-backup.log` — строка `[SUCCESS] Database backup created and verified: ….sql.gz.enc (off-site: uploaded)`.
+Скрипт сначала выполняет `--check-config` в пустом окружении, как у cron, и при ошибке не ставит задачу. Затем записывает `/etc/cron.d/buyerly-backup` с явным `BUYERLY_ENV_FILE=/opt/buyerly/.env`. Бэкап запускается в 03:00 по часовому поясу сервера (cron не знает про UTC; пояс показывает `timedatectl`, на текущем VPS это UTC). Лог — `/var/log/buyerly-backup.log` с правами `0600`; без root задача ставится в crontab пользователя, лог — `~/.local/state/buyerly/backup.log`. После первой ночи проверить результат: `tail /var/log/buyerly-backup.log` — строка `[SUCCESS] Database backup created and verified: ….sql.gz.enc (off-site: uploaded)`.
 
 ### Восстановление базы данных
 
@@ -345,8 +345,11 @@ Production checkout `/opt/buyerly` приводится к владельцу с
 - **Файрвол** (`ufw`): открыт только SSH (`22/tcp`) и порты других служб
   владельца на этом сервере (VPN). Веб-портов наружу нет: сайт идёт через
   Cloudflare Tunnel, `127.0.0.1:8080` доступен только локально.
-- **SSH**: вход по ключу; владелец также входит по паролю, поэтому включён
-  `fail2ban` (jail `sshd`), который блокирует подбор паролей.
+- **SSH**: только по ключу, вход по паролю выключен
+  (`/etc/ssh/sshd_config.d/00-hardening.conf`: `PasswordAuthentication no`,
+  `PermitRootLogin prohibit-password`). Порт 22 открыт публично: GitHub Actions
+  подключается к `VPS_HOST` напрямую, без VPN.
 - **Ключи**: доверенные публичные ключи — в `~/.ssh/authorized_keys`; для деплоя
-  из GitHub Actions — секрет репозитория `VPS_SSH_KEY`.
+  из GitHub Actions — отдельный ключ `github-actions-deploy@buyerly`, его
+  приватная часть хранится только в секрете репозитория `VPS_SSH_KEY`.
 - **Сеть Docker**: PostgreSQL (`5432`) доступен только внутри сети `buyerly`.
