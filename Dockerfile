@@ -21,8 +21,11 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# postgresql-client and util-linux (flock) are for the backup service.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tzdata \
+    postgresql-client \
+    util-linux \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -40,6 +43,7 @@ COPY rules ./rules
 COPY scheduler ./scheduler
 COPY services ./services
 COPY scripts/rotate_meta_tokens.py ./scripts/rotate_meta_tokens.py
+COPY scripts/backup_service.sh scripts/backup_db.sh scripts/backup_env.sh scripts/offsite_sync.py ./scripts/
 COPY --from=frontend /frontend/dist ./frontend/dist
 
 # The command is selected per service in docker-compose.yml.

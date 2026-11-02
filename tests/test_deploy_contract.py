@@ -84,7 +84,7 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("public_edge_ok", after_smoke)
 
     def test_production_roles_are_separate_services(self):
-        for service in ("db:", "api:", "worker:", "migrate:", "tunnel:"):
+        for service in ("db:", "api:", "worker:", "migrate:", "backup:", "tunnel:"):
             self.assertIn(f"  {service}", self.compose)
         for retired in ("web:", "redis:", "bot:"):
             self.assertNotIn(f"\n  {retired}", self.compose)
@@ -111,6 +111,7 @@ class TestDeployContract(unittest.TestCase):
             "buyerly-db",
             "buyerly-api",
             "buyerly-worker",
+            "buyerly-backup",
             "buyerly-tunnel",
         ):
             self.assertIn(container_name, self.log_verification_script)
@@ -138,7 +139,7 @@ class TestDeployContract(unittest.TestCase):
         self.assertLess(disk_check_position, build_position)
 
     def test_verified_backup_survives_optional_runtime_metric_failure(self):
-        self.assertIn('if docker exec "${POSTGRES_CONTAINER}" psql', self.backup_script)
+        self.assertIn("if db_command psql", self.backup_script)
         self.assertIn(
             "Backup is valid, but runtime timestamp publication failed.",
             self.backup_script,
@@ -387,6 +388,33 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("AWS4-HMAC-SHA256", self.offsite_sync_script)
         self.assertIn("min_keep_count", self.offsite_sync_script)
         self.assertIn("prune_old_backups", self.offsite_sync_script)
+
+    def test_backups_are_scheduled_by_compose_not_the_host(self):
+        # A new server gets nightly backups from deploy.sh alone: no cron.
+        root = Path(__file__).parents[1]
+        self.assertFalse((root / "scripts" / "setup_backup_cron.sh").exists())
+        backup = self.compose[self.compose.index("\n  backup:"):self.compose.index("\n  tunnel:")]
+        self.assertIn('command: ["bash", "scripts/backup_service.sh"]', backup)
+        self.assertIn("BACKUP_DB_ACCESS: network", backup)
+        self.assertIn("- ./backups:/backups", backup)
+        self.assertIn("- buyerly-uploads:/uploads:ro", backup)
+        self.assertIn("healthcheck:", backup)
+        self.assertNotIn("/var/run/docker.sock", backup)
+        self.assertIn("postgresql-client", self.dockerfile)
+        self.assertIn(
+            "COPY scripts/backup_service.sh scripts/backup_db.sh scripts/backup_env.sh scripts/offsite_sync.py ./scripts/",
+            self.dockerfile,
+        )
+        # Started with every release and every rollback.
+        self.assertEqual(self.script.count("docker compose up -d --no-deps api worker backup"), 2)
+
+    def test_empty_database_is_restored_from_offsite_before_migrations(self):
+        restore = self.script.index("if ! restore_empty_server; then")
+        self.assertLess(self.script.index('docker compose up -d db'), restore)
+        self.assertLess(restore, self.script.index("if ! docker compose run --rm migrate; then"))
+        self.assertIn("to_regclass('public.alembic_version') IS NULL", self.script)
+        self.assertIn('bash "${SCRIPT_DIR}/restore_db.sh" --download-latest-offsite --yes', self.script)
+        self.assertIn('bash "${SCRIPT_DIR}/restore_uploads.sh" --download-latest-offsite --yes', self.script)
 
     def test_database_restore_and_drill_contracts(self):
         self.assertIn("openssl enc -d -aes-256-cbc", self.restore_script)

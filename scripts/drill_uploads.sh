@@ -9,8 +9,8 @@
 # containers run the API's image without network. The throwaway volume and
 # the archive are removed at the end, whatever the result.
 #
-# This proves the archive/restore procedure only: backup_db.sh does not copy
-# uploads, so there is no scheduled uploads backup to restore yet.
+# The nightly backup service archives the volume too (backup_db.sh with
+# UPLOADS_DIR); restore_uploads.sh brings such an archive back.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -77,4 +77,3 @@ if [[ "${files}" -eq 0 ]]; then
 fi
 echo
 echo "[SUCCESS] Uploads archive and restore round trip ($(( $(date +%s) - started )) s)."
-echo "Not covered: no scheduled backup copies uploads; see DEPLOYMENT.md."

@@ -11,6 +11,7 @@
 | `buyerly-worker` | синхронизация с Meta и выполнение правил (APScheduler) |
 | `buyerly-db` | PostgreSQL 16, данные в томе `buyerly-postgres` |
 | `buyerly-tunnel` | Cloudflare Tunnel (`cloudflared`): единственный вход из интернета |
+| `buyerly-backup` | каждую ночь бэкап базы и uploads, зашифрованный, в S3 (см. «Резервные копии») |
 
 Одноразовый `migrate` (`docker compose run --rm migrate`) применяет миграции
 перед запуском релиза и не остаётся запущенным. Образ один — `buyerly-app`: в
@@ -113,8 +114,31 @@ cp .env.example .env && chmod 600 .env   # заполнить по раздел�
 bash scripts/deploy.sh
 ```
 
-Первый деплой создаёт пустую базу. Файрвол: открыт только SSH (`ufw allow
-22/tcp`); веб-порты не нужны.
+Файрвол: открыт только SSH (`ufw allow 22/tcp`); веб-порты не нужны. Cron,
+systemd-таймеры и другие пакеты не нужны: расписание бэкапов — контейнер
+`buyerly-backup`.
+
+Первый деплой видит пустую базу. Если в `.env` есть ключи S3 и в бакете есть
+копия, он сам восстанавливает самую новую копию базы и uploads и только потом
+применяет миграции; без копии начинается новая установка. Поэтому переезд на
+другой сервер — те же четыре команды плюс `.env` со старого сервера.
+
+### Что нельзя потерять
+
+Всё остальное деплой создаёт заново или берёт из S3, а эти значения из `.env`
+незаменимы — их держат вне сервера (менеджер паролей):
+
+- `BACKUP_ENCRYPTION_KEY` — без него копии в S3 не расшифровать;
+- `S3_ENDPOINT_URL`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`;
+- `META_TOKEN_ENCRYPTION_KEY` — без него все подключения Meta придётся
+  авторизовать заново;
+- `VAPID_PRIVATE_KEY` — без него перестанут работать push-подписки браузеров;
+- `CLOUDFLARE_TUNNEL_TOKEN`, `META_APP_SECRET`, `META_APP_ID`,
+  `META_LOGIN_CONFIG_ID`.
+
+`POSTGRES_PASSWORD` и `OTP_PEPPER` новый сервер может сгенерировать сам: база
+восстанавливается из дампа, а новый pepper только сбрасывает ещё не введённые
+коды входа.
 
 ## Автодеплой
 
@@ -127,9 +151,10 @@ bash scripts/deploy.sh
 3. делает бэкап базы;
 4. получает точный commit из `main` (неотслеживаемые файлы удаляются, `.env`,
    логи и бэкапы остаются) и собирает `buyerly-app:<sha>`;
-5. применяет миграции (`migrate`);
-6. запускает `api` и `worker`, ждёт healthcheck и полный цикл планировщика,
-   запускает туннель;
+5. если база пустая, восстанавливает её и uploads из S3 (см. выше); применяет
+   миграции (`migrate`);
+6. запускает `api`, `worker` и `backup`, ждёт healthcheck `api`, `worker` и
+   полный цикл планировщика, запускает туннель;
 7. выполняет read-only smoke и проверяет https://buyerly.app/health/live через
    Cloudflare (`cf-ray`); при ошибке возвращает предыдущий образ;
 8. удаляет старые образы, сохраняя два последних релиза.
@@ -238,15 +263,17 @@ Alembic/schema contract. Все операции — GET/SELECT; Meta Marketing 
 
 ## Резервные копии и Disaster Recovery
 
-`scripts/backup_db.sh` автоматически выполняет потоковый горячий дамп PostgreSQL:
+`scripts/backup_db.sh` автоматически выполняет потоковый горячий дамп PostgreSQL
+и, в сервисе `backup`, архивирует uploads:
 
 - `buyerly_postgres_YYYYMMDD_HHMMSS.sql.gz.enc` с потоковым шифрованием `AES-256-CBC` (при наличии `BACKUP_ENCRYPTION_KEY`) или `buyerly_postgres_YYYYMMDD_HHMMSS.sql.gz`.
 - Потоковая передача данных через Unix pipeline исключает накопление промежуточных несжатых файлов на диске.
 - Архив сначала пишется в скрытый `.incomplete_buyerly_postgres_…` в том же каталоге, затем читается обратно (расшифровка и распаковка, как при восстановлении) и проверяется метка конца `pg_dump`. Только после этого файл переименовывается в `buyerly_postgres_…`. Если дамп оборвался или не читается, бэкап завершается с кодом 1, файла с настоящим именем нет, время последнего бэкапа не обновляется и в облако ничего не уходит. Недописанный файл после убитого процесса удаляется при следующем запуске; `--latest-local` его никогда не выбирает.
-- По умолчанию локально сохраняются последние 30 архивов в `/opt/buyerly/backups`.
+- Uploads (volume `buyerly-uploads`: аватары и логотипы) — `buyerly_uploads_YYYYMMDD_HHMMSS.tar.gz.enc` (или `.tar.gz` без ключа) с той же схемой: скрытый `.incomplete_…`, полное чтение архива обратно, затем переименование.
+- По умолчанию локально сохраняются последние 30 архивов каждого вида в `/opt/buyerly/backups`.
 - При настроенных переменных `S3_ENDPOINT_URL`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION` и `OFFSITE_RETENTION_DAYS` зашифрованный архив автоматически выгружается в удаленное хранилище (Cloudflare R2 / AWS S3 / Backblaze B2) через `scripts/offsite_sync.py` с автоматической ротацией копий старше `OFFSITE_RETENTION_DAYS` дней и защитным порогом (не менее 7 копий).
 
-Откуда берутся настройки. `backup_db.sh` и `restore_db.sh` запускаются на хосте (cron, шаг 1 `deploy.sh`, runbook), куда Compose `.env` не передаёт. Поэтому оба скрипта сами читают из `/opt/buyerly/.env` (другой файл — `BUYERLY_ENV_FILE`) только `BACKUP_ENCRYPTION_KEY`, `S3_ENDPOINT_URL`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION` и `OFFSITE_RETENTION_DAYS`. Файл разбирается как текст, а не выполняется; кавычки и `# комментарий` после значения понимаются как в приложении. Непустое значение, уже экспортированное в окружение, главнее `.env`.
+Откуда берутся настройки. В сервисе `backup` Compose передаёт `.env` в контейнер. На хосте (шаг 1 `deploy.sh`, восстановление, runbook) Compose `.env` не передаёт, поэтому `backup_db.sh`, `restore_db.sh` и `restore_uploads.sh` сами читают из `/opt/buyerly/.env` (другой файл — `BUYERLY_ENV_FILE`) только `BACKUP_ENCRYPTION_KEY`, `S3_ENDPOINT_URL`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION` и `OFFSITE_RETENTION_DAYS`. Файл разбирается как текст, а не выполняется; кавычки и `# комментарий` после значения понимаются как в приложении. Непустое значение, уже экспортированное в окружение, главнее `.env`.
 
 Offsite считается включённым, как только заполнены `S3_ACCESS_KEY_ID` или `S3_SECRET_ACCESS_KEY`. Тогда пустые `S3_ENDPOINT_URL`, `S3_BUCKET`, второй ключ или `BACKUP_ENCRYPTION_KEY` — ошибка: бэкап не создаётся, код выхода 1. Незашифрованные дампы с сервера не выгружаются. Без ключей S3 и без `BACKUP_ENCRYPTION_KEY` делается локальный `.sql.gz`, и лог прямо пишет `encryption off`. Сбой самой выгрузки не отменяет локальный бэкап, итоговая строка заканчивается `(off-site: FAILED)`.
 
@@ -256,13 +283,20 @@ sudo bash scripts/backup_db.sh --check-config
 # [INFO] Backup settings from /opt/buyerly/.env: encryption on; off-site on, retention 60 days.
 ```
 
-### Настройка расписания бэкапов на сервере
+### Расписание: сервис `backup`
+
+Ночные бэкапы делает контейнер `buyerly-backup` (`scripts/backup_service.sh`) из того же образа `buyerly-app`; на хосте ничего настраивать не нужно, его запускает `deploy.sh`. Каждый день в `BACKUP_HOUR_UTC` (по умолчанию 3, то есть 03:00 UTC) он вызывает `backup_db.sh`: `pg_dump` подключается к `db` по сети Compose, volume `buyerly-uploads` смонтирован только для чтения. Архивы пишутся в тот же `/opt/buyerly/backups`, что и бэкап перед деплоем; общий lock-файл там же не даёт двум бэкапам идти одновременно. Контейнер, запущенный больше чем через сутки после последнего полного бэкапа (новый сервер, долгий простой), делает бэкап сразу.
+
+После полного успеха (оба архива, оба выгружены в S3, если он включён) обновляется `/opt/buyerly/backups/.last-success`. Healthcheck контейнера — `unhealthy`, если этот файл старше 26 часов. Поэтому неудачный бэкап виден в `docker compose ps`, а время последнего бэкапа базы — ещё и в reliability-сигналах приложения (`backup_age_hours`).
 
 ```bash
-sudo bash scripts/setup_backup_cron.sh
+docker compose ps backup
+docker compose logs --tail=50 backup
+# [SUCCESS] Database backup created and verified: ….sql.gz.enc (off-site: uploaded)
+# [SUCCESS] Uploads archived and verified: ….tar.gz.enc (off-site: uploaded)
 ```
 
-Скрипт сначала выполняет `--check-config` в пустом окружении, как у cron, и при ошибке не ставит задачу. Затем записывает `/etc/cron.d/buyerly-backup` с явным `BUYERLY_ENV_FILE=/opt/buyerly/.env`. Бэкап запускается в 03:00 по часовому поясу сервера (cron не знает про UTC; пояс показывает `timedatectl`, на текущем VPS это UTC). Лог — `/var/log/buyerly-backup.log` с правами `0600`; без root задача ставится в crontab пользователя, лог — `~/.local/state/buyerly/backup.log`. После первой ночи проверить результат: `tail /var/log/buyerly-backup.log` — строка `[SUCCESS] Database backup created and verified: ….sql.gz.enc (off-site: uploaded)`.
+Бэкап вне расписания: `docker compose exec backup bash scripts/backup_db.sh`.
 
 ### Восстановление базы данных
 
@@ -278,7 +312,17 @@ bash scripts/restore_db.sh --latest-local
 bash scripts/restore_db.sh --download-latest-offsite
 ```
 
-Оффсайт-копия скачивается под своим именем, поэтому `.sql.gz` и `.sql.gz.enc` восстанавливаются каждый своим способом. Скачанный файл лежит во временном каталоге внутри `/opt/buyerly/backups` и удаляется после восстановления; в хранилище копия остаётся. Перед расшифровкой скрипт сверяет содержимое с расширением: незашифрованный архив с именем `.enc` или пустой файл останавливаются с понятной ошибкой, не трогая базу.
+### Восстановление uploads
+
+```bash
+bash scripts/restore_uploads.sh --download-latest-offsite   # последняя копия из S3
+bash scripts/restore_uploads.sh --latest-local               # последняя локальная
+bash scripts/restore_uploads.sh --file /opt/buyerly/backups/buyerly_uploads_YYYYMMDD_HHMMSS.tar.gz.enc
+```
+
+Архив сначала полностью расшифровывается, распаковывается и читается; повреждённый файл или неверный ключ останавливают скрипт, не трогая volume. Затем содержимое `buyerly-uploads` заменяется содержимым архива (временный контейнер образа `buyerly-api`, без сети).
+
+Оффсайт-копия базы скачивается под своим именем, поэтому `.sql.gz` и `.sql.gz.enc` восстанавливаются каждый своим способом. Скачанный файл лежит во временном каталоге внутри `/opt/buyerly/backups` и удаляется после восстановления; в хранилище копия остаётся. Перед расшифровкой скрипт сверяет содержимое с расширением: незашифрованный архив с именем `.enc` или пустой файл останавливаются с понятной ошибкой, не трогая базу.
 
 Что гарантировано при неуспешном восстановлении. До изменения целевой БД архив полностью расшифровывается и распаковывается во временный файл рядом с архивом (другое место — `RESTORE_WORK_DIR`; нужно свободное место размером с распакованный дамп), затем проверяется, что в конце дампа есть метка `-- PostgreSQL database dump complete`. Поэтому повреждённый gzip, обрезанный или повреждённый `.enc`, неверный или отсутствующий `BACKUP_ENCRYPTION_KEY` и обрезанный дамп останавливают скрипт с кодом 1, не открыв соединения с базой. Сам дамп применяется одной транзакцией (`psql --single-transaction` с `ON_ERROR_STOP=1`): любая ошибка SQL, обрыв соединения или остановка `psql` посреди восстановления откатывают всё, и целевая БД остаётся прежней. Не защищено: дамп, который применился без ошибок, но содержит не те данные (например, старый бэкап), — выбор файла остаётся на операторе. Пока идёт восстановление, таблицы заблокированы транзакцией, поэтому приложение лучше остановить заранее.
 
@@ -333,10 +377,8 @@ gh workflow run ops-drill.yml -f drill=restore-local -f confirm=restore-local
 `buyerly-uploads`: API записывает их в `/app/uploads` и сам отдаёт по `/uploads/…`.
 Каждый релиз использует тот же volume.
 
-Этот volume **не входит** в резервные копии: `backup_db.sh` сохраняет только
-PostgreSQL. После восстановления на новом сервере аватары и логотипы
-workspace пропадут (записи в базе останутся, картинки — нет), их загружают
-заново. Включение uploads в копии — отдельная задача C08.
+Volume входит в ночные копии сервиса `backup` (`buyerly_uploads_….tar.gz.enc`)
+и восстанавливается `restore_uploads.sh`, а на пустом сервере — самим деплоем.
 
 Production checkout `/opt/buyerly` приводится к владельцу системного deploy-пользователя через root/passwordless sudo, а `origin` обязан указывать на канонический `hiurano/buyerly` по SSH или HTTPS. Если ownership нельзя безопасно нормализовать либо remote отличается, выкладка останавливается до сборки. В production-образ входят только runtime-каталоги; тесты, документация, локальные диагностические скрипты, транскрипты и исследовательские снимки интерфейсов не копируются.
 

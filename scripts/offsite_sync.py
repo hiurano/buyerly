@@ -21,9 +21,13 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 
-# Names backup_db.sh publishes. The suffix is the archive format restore_db.sh
-# decodes by, so a download keeps it instead of renaming the file.
-BACKUP_KEY_PATTERN = re.compile(r"^buyerly_postgres_\d{8}_\d{6}\.sql\.gz(\.enc)?$")
+# Names backup_db.sh publishes, per kind: the database dump and the uploads
+# archive. The suffix is the archive format the restore scripts decode by, so
+# a download keeps it instead of renaming the file.
+BACKUP_KINDS = {
+    "postgres": ("buyerly_postgres_", re.compile(r"^buyerly_postgres_\d{8}_\d{6}(\.sql\.gz(\.enc)?)$")),
+    "uploads": ("buyerly_uploads_", re.compile(r"^buyerly_uploads_\d{8}_\d{6}(\.tar\.gz(\.enc)?)$")),
+}
 
 
 class S3Error(RuntimeError):
@@ -232,10 +236,10 @@ class S3Client:
             print(f"[ERROR] S3 delete failed with HTTP {status}: {resp_body.decode('utf-8', errors='replace')}", file=sys.stderr)
             return False
 
-    def prune_old_backups(self, retention_days: int = 60, min_keep_count: int = 7) -> int:
-        """Prune backups older than retention_days, preserving at least min_keep_count backups."""
+    def prune_old_backups(self, retention_days: int = 60, min_keep_count: int = 7, kind: str = "postgres") -> int:
+        """Prune backups of one kind older than retention_days, preserving at least min_keep_count of them."""
         try:
-            objects = self.list_objects(prefix="buyerly_postgres_")
+            objects = self.list_objects(prefix=BACKUP_KINDS[kind][0])
         except S3Error as exc:
             print(f"[WARNING] Skipping prune: {exc}", file=sys.stderr)
             return 0
@@ -288,6 +292,12 @@ def main() -> int:
     parser.add_argument("--prune", action="store_true", help="Prune old remote backups")
     parser.add_argument("--retention-days", type=int, default=60, help="Retention period in days (default: 60)")
     parser.add_argument("--min-keep", type=int, default=7, help="Minimum backups to preserve (default: 7)")
+    parser.add_argument(
+        "--kind",
+        choices=sorted(BACKUP_KINDS),
+        default="postgres",
+        help="Which backups --prune and --download-latest work on (default: postgres)",
+    )
     args = parser.parse_args()
 
     endpoint = os.environ.get("S3_ENDPOINT_URL", "").strip()
@@ -316,7 +326,7 @@ def _run(client: "S3Client", args: argparse.Namespace, parser: argparse.Argument
     if args.upload:
         success = client.upload_file(args.upload)
         if success and args.prune:
-            client.prune_old_backups(retention_days=args.retention_days, min_keep_count=args.min_keep)
+            client.prune_old_backups(retention_days=args.retention_days, min_keep_count=args.min_keep, kind=args.kind)
         return 0 if success else 1
 
     if args.list:
@@ -328,10 +338,8 @@ def _run(client: "S3Client", args: argparse.Namespace, parser: argparse.Argument
         return 0
 
     if args.download_latest:
-        items = [
-            item for item in client.list_objects(prefix="buyerly_postgres_")
-            if BACKUP_KEY_PATTERN.match(item["key"])
-        ]
+        prefix, pattern = BACKUP_KINDS[args.kind]
+        items = [item for item in client.list_objects(prefix=prefix) if pattern.match(item["key"])]
         if not items:
             print("[ERROR] No remote backups found to download.", file=sys.stderr)
             return 1
@@ -342,7 +350,7 @@ def _run(client: "S3Client", args: argparse.Namespace, parser: argparse.Argument
             dest = args.dest or Path(latest_key)
             # The suffix is the format: saving an .enc object as .sql.gz (or
             # the reverse) sends restore down the wrong decode path.
-            remote_format = ".sql.gz.enc" if latest_key.endswith(".enc") else ".sql.gz"
+            remote_format = pattern.match(latest_key).group(1)
             if not dest.name.endswith(remote_format):
                 print(
                     f"[ERROR] Latest backup {latest_key} is {remote_format}; --dest {dest} has a different suffix. "
@@ -361,7 +369,7 @@ def _run(client: "S3Client", args: argparse.Namespace, parser: argparse.Argument
         return 0 if success else 1
 
     if args.prune:
-        client.prune_old_backups(retention_days=args.retention_days, min_keep_count=args.min_keep)
+        client.prune_old_backups(retention_days=args.retention_days, min_keep_count=args.min_keep, kind=args.kind)
         return 0
 
     parser.print_help()

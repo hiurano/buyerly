@@ -95,6 +95,39 @@ services:
       retries: 4
       start_period: 15s
 
+  # Nightly backup of the database and uploads, encrypted, to S3
+  # (scripts/backup_service.sh). It lives here rather than in the host's cron
+  # so a new server gets it from `deploy.sh` alone. deploy.sh starts it by
+  # name; the profile keeps a local `docker compose up` from running it.
+  backup:
+    <<: *app
+    container_name: buyerly-backup
+    command: ["bash", "scripts/backup_service.sh"]
+    profiles: ["backup"]
+    environment:
+      <<: *app-environment
+      BACKUP_DB_ACCESS: network
+      PGHOST: db
+      PGPASSWORD: ${POSTGRES_PASSWORD:-buyerly-local-change-me}
+      BACKUP_DIR: /backups
+      UPLOADS_DIR: /uploads
+      BACKUP_STATUS_FILE: /backups/.last-success
+    volumes:
+      # The host's backups directory: deploy.sh's own dumps land there too.
+      - ./backups:/backups
+      - buyerly-uploads:/uploads:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    # Healthy while the last complete run, off-site copies included, is
+    # under 26 hours old.
+    healthcheck:
+      test: ["CMD", "bash", "-c", "f=/backups/.last-success; [[ -f $$f ]] && (( $$(date +%s) - $$(stat -c %Y $$f) < 93600 ))"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 10m
+
   # Cloudflare Tunnel: the only way in from the internet. It connects out to
   # Cloudflare, so the server publishes no web ports. Routes live in the
   # tunnel's settings at Cloudflare (buyerly.app -> http://api:8080). The

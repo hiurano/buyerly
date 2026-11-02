@@ -10,6 +10,7 @@ containers=(
     buyerly-db
     buyerly-api
     buyerly-worker
+    buyerly-backup
 )
 # The tunnel runs only where COMPOSE_PROFILES enables it.
 if docker inspect buyerly-tunnel >/dev/null 2>&1; then

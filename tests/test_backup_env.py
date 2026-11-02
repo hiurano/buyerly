@@ -1,9 +1,10 @@
 """Backup and restore scripts, run for real in a sandbox.
 
-cron and deploy.sh run backup_db.sh with no exported settings; Compose only
-hands .env to the containers. These tests run the real scripts in such an
-environment with fake docker/python3/crontab, so they need bash, gzip and
-openssl but no Docker or network. They also cover how a backup is published
+deploy.sh runs backup_db.sh on the host with no exported settings; Compose
+only hands .env to the containers. The backup service runs the same script
+inside the image, connected to the database over the network. These tests
+run the real scripts in both settings with fake docker/python3/pg_dump, so
+they need bash, gzip, tar, flock and openssl but no Docker or network. They also cover how a backup is published
 (never half-written under its final name) and how an off-site copy keeps its
 format on the way back.
 """
@@ -22,7 +23,7 @@ from unittest import mock
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = ("backup_db.sh", "backup_env.sh", "restore_db.sh", "setup_backup_cron.sh")
+SCRIPTS = ("backup_db.sh", "backup_env.sh", "restore_db.sh", "restore_uploads.sh")
 DUMP = "-- fake dump\nSELECT 1;\n-- PostgreSQL database dump complete\n"
 
 FAKE_DOCKER = """#!/usr/bin/env bash
@@ -36,6 +37,10 @@ case "$1" in
         elif [[ " $* " == *" -i "* ]]; then
             cat > "${FAKE_LOG}.restored"
         fi
+        ;;
+    run)
+        mkdir -p "${FAKE_LOG}.uploads"
+        tar -xf - -C "${FAKE_LOG}.uploads"
         ;;
 esac
 """
@@ -53,10 +58,22 @@ fi
         echo "${key}=${!key:-}"
     done
 } >> "${FAKE_LOG}"
+exit "${FAKE_PYTHON_EXIT:-0}"
 """
 
-FAKE_CRONTAB = """#!/usr/bin/env bash
-if [[ "${1:-}" == "-" ]]; then cat > "${FAKE_LOG}.crontab"; fi
+# The backup service's database tools: libpq clients on PATH, no docker.
+FAKE_PG_DUMP = """#!/usr/bin/env bash
+echo "pg_dump $*" >> "${FAKE_LOG}"
+printf '%s' "${FAKE_DUMP}"
+"""
+
+FAKE_PSQL = """#!/usr/bin/env bash
+echo "psql $*" >> "${FAKE_LOG}"
+"""
+
+FAKE_PG_ISREADY = """#!/usr/bin/env bash
+echo "pg_isready $*" >> "${FAKE_LOG}"
+exit "${FAKE_PG_ISREADY_EXIT:-0}"
 """
 
 
@@ -73,7 +90,14 @@ class BackupScriptSandbox(unittest.TestCase):
         self.log.touch()
         fake_bin = self.tmp / "bin"
         fake_bin.mkdir()
-        for name, body in (("docker", FAKE_DOCKER), ("python3", FAKE_PYTHON), ("crontab", FAKE_CRONTAB)):
+        fakes = (
+            ("docker", FAKE_DOCKER),
+            ("python3", FAKE_PYTHON),
+            ("pg_dump", FAKE_PG_DUMP),
+            ("psql", FAKE_PSQL),
+            ("pg_isready", FAKE_PG_ISREADY),
+        )
+        for name, body in fakes:
             path = fake_bin / name
             path.write_text(body)
             path.chmod(path.stat().st_mode | stat.S_IEXEC)
@@ -239,37 +263,6 @@ class BackupSettingsTests(BackupScriptSandbox):
         self.assertIn("S3_ENDPOINT_URL S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY", result.stdout)
         self.assertNotIn("python3", self.log.read_text())
 
-    @unittest.skipIf(os.geteuid() == 0, "the user-crontab branch runs as a normal user")
-    def test_cron_job_passes_env_file_and_logs_where_it_can_write(self):
-        self.write_env(self.full_env())
-
-        result = self.run_script(
-            "setup_backup_cron.sh", extra_env={"APP_DIR": str(self.app), "CRON_PATH": self.path}
-        )
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        line = Path(f"{self.log}.crontab").read_text().strip()
-        self.assertTrue(line.startswith("0 3 * * * cd "), line)
-        self.assertIn(f"BUYERLY_ENV_FILE={self.app}/.env bash scripts/backup_db.sh", line)
-        log_file = self.tmp / "home" / ".local" / "state" / "buyerly" / "backup.log"
-        self.assertIn(f">> {log_file} 2>&1", line)
-        self.assertEqual(stat.S_IMODE(log_file.stat().st_mode), 0o600)
-        # The zone is whatever the machine runs in (UTC on CI, EEST on the VPS).
-        self.assertIn("03:00 server time (", result.stdout)
-        self.assertNotIn("03:00 UTC", result.stdout)
-
-    @unittest.skipIf(os.geteuid() == 0, "the user-crontab branch runs as a normal user")
-    def test_cron_job_is_not_installed_with_broken_settings(self):
-        self.write_env("S3_ACCESS_KEY_ID=AKIA\n")
-
-        result = self.run_script(
-            "setup_backup_cron.sh", extra_env={"APP_DIR": str(self.app), "CRON_PATH": self.path}
-        )
-
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("the cron job was not installed", result.stderr)
-        self.assertFalse(Path(f"{self.log}.crontab").exists())
-
 
 @unittest.skipUnless(shutil.which("openssl"), "openssl is required")
 class BackupPublishingTests(BackupScriptSandbox):
@@ -399,6 +392,114 @@ class OffsiteRestoreFormatTests(BackupScriptSandbox):
                 self.assertIsNone(self.restored())
 
 
+@unittest.skipUnless(shutil.which("openssl"), "openssl is required")
+class NightlyBackupServiceTests(BackupScriptSandbox):
+    """backup_db.sh as the backup service runs it: database over the network, uploads too."""
+
+    def setUp(self):
+        super().setUp()
+        self.uploads = self.tmp / "uploads"
+        (self.uploads / "avatars").mkdir(parents=True)
+        (self.uploads / "workspaces").mkdir()
+        (self.uploads / "avatars" / "u1.png").write_bytes(b"\x89PNG avatar")
+        (self.uploads / "workspaces" / "w1.webp").write_bytes(b"RIFF logo")
+        self.status = self.backups / ".last-success"
+
+    def run_nightly(self, **extra_env):
+        return self.run_script("backup_db.sh", extra_env={
+            "BACKUP_DB_ACCESS": "network",
+            "PGHOST": "db",
+            "UPLOADS_DIR": str(self.uploads),
+            "BACKUP_STATUS_FILE": str(self.status),
+            **extra_env,
+        })
+
+    def uploads_made(self):
+        return sorted(p.name for p in self.backups.glob("buyerly_uploads_*")) if self.backups.exists() else []
+
+    def test_database_and_uploads_are_archived_uploaded_and_marked_complete(self):
+        self.write_env(self.full_env())
+
+        result = self.run_nightly()
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = self.log.read_text()
+        self.assertNotIn("docker", calls)
+        self.assertIn("pg_dump --username=buyerly --dbname=buyerly", calls)
+        self.assertIn("last_backup_at", calls)
+        [dump] = self.backups_made()
+        [archive] = self.uploads_made()
+        self.assertTrue(dump.endswith(".sql.gz.enc"), dump)
+        self.assertTrue(archive.endswith(".tar.gz.enc"), archive)
+        self.assertIn(f"--upload {self.backups / dump} --prune", calls)
+        self.assertIn(f"--kind uploads --upload {self.backups / archive} --prune", calls)
+        self.assertTrue(self.status.exists())
+        self.assertEqual(self.leftovers(), [".last-success"])
+
+    def test_failed_offsite_upload_keeps_the_archives_but_not_the_success_mark(self):
+        self.write_env(self.full_env())
+
+        result = self.run_nightly(FAKE_PYTHON_EXIT="1")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("(off-site: FAILED)", result.stdout)
+        self.assertEqual(len(self.backups_made()), 1)
+        self.assertEqual(len(self.uploads_made()), 1)
+        self.assertFalse(self.status.exists())
+
+    def test_unreachable_database_fails_the_run(self):
+        self.write_env(self.full_env())
+
+        result = self.run_nightly(FAKE_PG_ISREADY_EXIT="2")
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("does not accept connections", result.stderr)
+        self.assertEqual(self.backups_made(), [])
+        self.assertFalse(self.status.exists())
+
+    def test_uploads_come_back_from_the_offsite_copy(self):
+        self.write_env(self.full_env())
+        self.assertEqual(self.run_nightly().returncode, 0)
+        [archive] = self.uploads_made()
+        remote = self.tmp / "remote" / archive
+        remote.parent.mkdir()
+        shutil.move(self.backups / archive, remote)
+
+        result = self.run_script(
+            "restore_uploads.sh", "--download-latest-offsite", "--yes",
+            extra_env={"FAKE_REMOTE_FILE": str(remote), "RESTORE_IMAGE": "buyerly-app:test"},
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("(2 file(s))", result.stdout)
+        restored = Path(f"{self.log}.uploads")
+        self.assertEqual((restored / "avatars" / "u1.png").read_bytes(), b"\x89PNG avatar")
+        self.assertEqual((restored / "workspaces" / "w1.webp").read_bytes(), b"RIFF logo")
+        self.assertIn("--kind uploads --download-latest", self.log.read_text())
+        self.assertEqual(self.leftovers(), [".last-success"])
+
+    def test_damaged_uploads_archive_or_wrong_key_never_touches_the_volume(self):
+        self.write_env(self.full_env())
+        self.assertEqual(self.run_nightly().returncode, 0)
+        archive = self.backups / self.uploads_made()[0]
+        truncated = self.tmp / archive.name
+        truncated.write_bytes(archive.read_bytes()[:40])
+        cases = {
+            "truncated": (truncated, {}),
+            "wrong key": (archive, {"BACKUP_ENCRYPTION_KEY": "not the key"}),
+        }
+        for name, (path, extra_env) in cases.items():
+            with self.subTest(name):
+                result = self.run_script(
+                    "restore_uploads.sh", "--file", str(path), "--yes",
+                    extra_env={"RESTORE_IMAGE": "buyerly-app:test", **extra_env},
+                )
+
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn("Uploads were not changed", result.stdout)
+                self.assertNotIn("docker run", self.log.read_text())
+
+
 def load_offsite_sync():
     spec = importlib.util.spec_from_file_location("offsite_sync", PROJECT_ROOT / "scripts" / "offsite_sync.py")
     module = importlib.util.module_from_spec(spec)
@@ -417,8 +518,10 @@ class OffsiteDownloadTests(unittest.TestCase):
             "buyerly_postgres_20260930_030000.sql.gz": b"\x1f\x8bnewest",
             "buyerly_postgres_20260929_030000.sql.gz.enc": b"Salted__older",
             "buyerly_postgres_notes.txt": b"not a backup",
+            "buyerly_uploads_20260929_030000.tar.gz.enc": b"Salted__uploads",
         }
         listing = [
+            {"key": "buyerly_uploads_20260929_030000.tar.gz.enc", "last_modified": "2026-10-02T00:00:00Z", "size": "1"},
             {"key": "buyerly_postgres_notes.txt", "last_modified": "2026-10-01T00:00:00Z", "size": "1"},
             {"key": "buyerly_postgres_20260930_030000.sql.gz", "last_modified": "2026-09-30T00:00:00Z", "size": "1"},
             {"key": "buyerly_postgres_20260929_030000.sql.gz.enc", "last_modified": "2026-09-29T00:00:00Z", "size": "1"},
@@ -427,8 +530,11 @@ class OffsiteDownloadTests(unittest.TestCase):
         def request(client, method, key="", query=None, body=b"", headers=None):
             return 200, self.objects[key], {}
 
+        def list_objects(client, prefix=""):
+            return [item for item in listing if item["key"].startswith(prefix)]
+
         patches = [
-            mock.patch.object(self.module.S3Client, "list_objects", lambda client, prefix="": listing),
+            mock.patch.object(self.module.S3Client, "list_objects", list_objects),
             mock.patch.object(self.module.S3Client, "_request", request),
             mock.patch.dict(os.environ, {
                 "S3_ENDPOINT_URL": "https://r2.example.test",
@@ -454,6 +560,12 @@ class OffsiteDownloadTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(sorted(p.name for p in self.tmp.iterdir()), ["buyerly_postgres_20260930_030000.sql.gz"])
         self.assertEqual((self.tmp / "buyerly_postgres_20260930_030000.sql.gz").read_bytes(), b"\x1f\x8bnewest")
+
+    def test_uploads_kind_downloads_the_newest_uploads_archive(self):
+        code, _ = self.run_main("--kind", "uploads", "--download-latest", "--dest-dir", str(self.tmp))
+
+        self.assertEqual(code, 0)
+        self.assertEqual(sorted(p.name for p in self.tmp.iterdir()), ["buyerly_uploads_20260929_030000.tar.gz.enc"])
 
     def test_dest_with_another_format_suffix_is_refused(self):
         dest = self.tmp / "latest_offsite_restore.sql.gz.enc"
