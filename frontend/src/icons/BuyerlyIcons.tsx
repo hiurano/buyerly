@@ -294,3 +294,13 @@ export const BuyerlyDisclosureGlyph: React.FC<IconProps> = ({ size = 16, ...prop
     <path d="M6.5 5.4v5.2a.6.6 0 0 0 .93.5l3.9-2.6a.6.6 0 0 0 0-1l-3.9-2.6a.6.6 0 0 0-.93.5Z" />
   </svg>
 );
+
+// The search magnifier at Linear's proportions, drawn for Buyerly: a 1.5px ring 10px
+// across and a handle to the corner, 12px of the 16x16 box (shown at 14px).
+// Drawn in strokes: the inline fill outlasts the sidebar buttons' `svg { fill }`.
+export const BuyerlySearchGlyph: React.FC<IconProps> = ({ size = 14, style, ...props }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" style={{ fill: 'none', ...style }} {...props}>
+    <circle cx="7" cy="7" r="4.25" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M10.25 10.25 13.25 13.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+);

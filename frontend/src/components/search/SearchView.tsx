@@ -7,6 +7,7 @@ import { fetchAccounts } from '@/models/queries';
 import { pathForTab } from '@/lib/routing';
 import {
   clearRecentSearches,
+  forgetSearch,
   parseSearchParams,
   readRecentSearches,
   rememberOpenedRecord,
@@ -34,7 +35,7 @@ import type { FilterClause, FilterFieldDefinition } from '@/components/filters/f
 import { InboxFilterBar } from '@/components/inbox/InboxFilterBar';
 import { SidebarCollapsedNavigation } from '@/components/sidebar/SidebarCollapsedNavigation';
 import { BuyerlyIcon } from '@/icons/BuyerlyIcon';
-import { BuyerlyStatusCircleIcon } from '@/icons/BuyerlyIcons';
+import { BuyerlySearchGlyph, BuyerlyStatusCircleIcon } from '@/icons/BuyerlyIcons';
 import { BuyerlySelect } from '@/ui/BuyerlyDisplayOptions';
 import { BuyerlyToggle } from '@/ui/BuyerlyToggle';
 import { BuyerlyTabs } from '@/ui/BuyerlyTabs';
@@ -46,13 +47,6 @@ import { useViewStore } from '@/models/viewStore';
 import { BuyerlyDisplayOptionsButton, BuyerlyToolbarButton } from '@/ui/BuyerlyToolbarButton';
 
 const styles = stylex.create({
-  match: {
-    fontWeight: 700,
-    color: colors['--text-primary'],
-  },
-  primary: {
-    color: colors['--text-primary'],
-  },
   tertiary: {
     color: colors['--text-tertiary'],
   },
@@ -107,61 +101,75 @@ const styles = stylex.create({
     overflowWrap: 'break-word',
     color: colors['--text-secondary'],
   },
-  recent: {
-    paddingLeft: 8,
-    paddingRight: 8,
-    paddingTop: 12,
-    paddingBottom: 12,
-  },
+  /* Linear's recent searches: a 36px title, then 32px rows with an × on hover and Clear History last. */
   recentHeader: {
     display: 'flex',
-    height: 32,
+    height: 36,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingLeft: 12,
-    paddingRight: 12,
+    paddingLeft: 18,
+    paddingRight: 18,
   },
   recentTitle: {
-    fontSize: 12,
-    fontWeight: 500,
+    fontSize: 13,
+    fontWeight: 450,
     color: colors['--text-tertiary'],
   },
-  clearHistory: {
-    borderRadius: 6,
-    paddingLeft: 6,
-    paddingRight: 6,
-    paddingTop: 2,
-    paddingBottom: 2,
-    fontSize: 12,
-    fontWeight: 500,
-    backgroundColor: {
-      default: null,
-      ':hover': colors['--item-hover-bg'],
-    },
-    color: {
-      default: colors['--text-tertiary'],
-      ':hover': colors['--text-primary'],
-    },
+  recentItem: {
+    position: 'relative',
+    marginLeft: 8,
+    marginRight: 8,
   },
   recentRow: {
     display: 'flex',
-    height: 36,
+    height: 32,
     width: '100%',
     alignItems: 'center',
     gap: 10,
-    borderRadius: 6,
-    paddingLeft: 12,
-    paddingRight: 12,
+    borderRadius: 8,
+    paddingLeft: 10,
+    paddingRight: 10,
     textAlign: 'left',
     fontSize: 13,
+    fontWeight: 450,
+    color: colors['--text-primary'],
+    outline: '2px solid transparent',
+    outlineOffset: 2,
     backgroundColor: {
       default: null,
-      ':hover': colors['--item-hover-bg'],
+      ':hover': colors['--search-row-hover-bg'],
+      ':focus-visible': colors['--search-row-hover-bg'],
     },
-    color: {
-      default: colors['--text-secondary'],
-      ':hover': colors['--text-primary'],
+  },
+  /** The query leaves room for the × that shows on hover. */
+  recentQuery: {
+    paddingRight: 34,
+  },
+  clearHistory: {
+    color: colors['--text-tertiary'],
+  },
+  /** Linear's "Clear search" on a recent search: 24px, 10px from the row's end, shown on hover. */
+  recentRemove: {
+    position: 'absolute',
+    top: 4,
+    right: 10,
+    display: 'flex',
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9999,
+    color: colors['--text-secondary'],
+    opacity: {
+      default: 0,
+      ':focus-visible': 1,
     },
+    backgroundColor: {
+      default: null,
+      ':hover': colors['--search-row-active-bg'],
+    },
+  },
+  recentRemoveShown: {
+    opacity: 1,
   },
   /** The page's empty state and errors, centred a little above the middle. */
   empty: {
@@ -229,43 +237,61 @@ const styles = stylex.create({
       ':hover': colors['--text-primary'],
     },
   },
+  /**
+   * Linear's results share one kind column, as wide as the widest kind listed
+   * ("Issue" alone, "Project" beside an issue): each row lays out on the list's grid.
+   */
   results: {
-    paddingTop: 4,
-    paddingBottom: 4,
+    display: 'grid',
+    gridTemplateColumns: 'max-content minmax(0, 1fr)',
   },
+  resultItem: {
+    display: 'grid',
+    gridColumn: '1 / -1',
+    gridTemplateColumns: 'subgrid',
+  },
+  /* Linear's search row: 40px, 8px in from the panel, 10px and 8px inside, radius 8. */
   result: {
     marginLeft: 8,
     marginRight: 8,
-    display: 'flex',
+    display: 'grid',
+    gridColumn: '1 / -1',
+    gridTemplateColumns: 'subgrid',
+    columnGap: 16,
     height: 40,
     minWidth: 0,
     alignItems: 'center',
-    gap: 10,
-    borderRadius: 6,
-    paddingLeft: 12,
-    paddingRight: 12,
+    borderRadius: 8,
+    paddingLeft: 10,
+    paddingRight: 8,
     fontSize: 13,
+    fontWeight: 450,
     color: colors['--text-secondary'],
     outline: '2px solid transparent',
     outlineOffset: 2,
     backgroundColor: {
       default: null,
-      ':hover': colors['--item-hover-bg'],
-      ':focus-visible': colors['--item-hover-bg'],
+      ':hover': colors['--search-row-hover-bg'],
+      ':focus-visible': colors['--search-row-hover-bg'],
     },
   },
   /** The row ↑/↓ reached, under the cursor or not. */
   resultActive: {
-    backgroundColor: colors['--item-active-bg'],
+    backgroundColor: colors['--search-row-active-bg'],
   },
   kind: {
-    width: 72,
-    flexShrink: 0,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
     fontSize: 12,
     color: colors['--text-tertiary'],
+  },
+  /** The mark and name, the ad account and the age, 8px apart. */
+  resultMain: {
+    display: 'flex',
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 8,
   },
   mark: {
     display: 'flex',
@@ -281,25 +307,33 @@ const styles = stylex.create({
     fontSize: 12,
     color: colors['--text-tertiary'],
   },
+  /** Where Linear's row names the team: an 18px icon box, the name 8px on, 24px before the age. */
   account: {
     display: {
       default: 'none',
-      '@media (min-width: 768px)': 'inline',
+      '@media (min-width: 768px)': 'flex',
     },
     maxWidth: 180,
     flexShrink: 0,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    alignItems: 'center',
+    gap: 8,
+    marginLeft: 8,
+    marginRight: 24,
     fontSize: 12,
     color: colors['--text-tertiary'],
   },
-  age: {
-    width: 40,
+  accountIcon: {
+    display: 'flex',
+    width: 18,
+    height: 18,
     flexShrink: 0,
-    textAlign: 'right',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  age: {
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
     fontSize: 12,
-    fontVariantNumeric: 'tabular-nums',
     color: colors['--text-tertiary'],
   },
   page: {
@@ -350,11 +384,16 @@ const styles = stylex.create({
     borderStyle: 'solid',
     borderColor: colors['--color-border-primary'],
   },
+  /* Linear's search field row: 44px over a 0.5px rule, 8px in. */
   searchHeader: {
+    height: 44,
+    borderBottomWidth: 0.5,
+    borderColor: colors['--search-header-border'],
     gap: 4,
-    paddingLeft: 10,
-    paddingRight: 10,
+    paddingLeft: 8,
+    paddingRight: 8,
   },
+  /** The 14px magnifier 9px in, the words at 32px. */
   form: {
     display: 'flex',
     minWidth: 0,
@@ -362,8 +401,8 @@ const styles = stylex.create({
     flexShrink: 1,
     flexBasis: '0%',
     alignItems: 'center',
-    gap: 8,
-    paddingLeft: 8,
+    gap: 9,
+    paddingLeft: 9,
   },
   input: {
     height: 36,
@@ -373,23 +412,25 @@ const styles = stylex.create({
     flexBasis: '0%',
     backgroundColor: 'transparent',
     fontSize: 13,
-    fontWeight: 500,
-    color: colors['--text-primary'],
+    fontWeight: 450,
+    lineHeight: '22px',
+    color: colors['--text-secondary'],
     outline: '2px solid transparent',
     outlineOffset: 2,
     '::placeholder': {
+      fontWeight: 500,
       color: colors['--text-muted'],
     },
   },
+  /* Linear's tabs row: 43.5px, 8px in, Filter and Display 6px apart. */
   toolbar: {
     display: 'flex',
+    height: 43.5,
     flexShrink: 0,
     alignItems: 'center',
-    gap: 8,
-    paddingLeft: 12,
-    paddingRight: 12,
-    paddingTop: 8,
-    paddingBottom: 8,
+    gap: 6,
+    paddingLeft: 8,
+    paddingRight: 8,
   },
   tabs: {
     minWidth: 0,
@@ -402,6 +443,7 @@ const styles = stylex.create({
   /** As wide as its tabs: on a phone they scroll sideways instead of shrinking to "Ca…". */
   tabStrip: {
     width: 'max-content',
+    gap: 8,
   },
   list: {
     minHeight: 0,
@@ -420,23 +462,25 @@ const styles = stylex.create({
     flexDirection: 'column',
     overflow: 'hidden',
   },
+  /* Linear's preview header: 44px over the same 0.5px rule, 8px in, the title from 18px. */
   previewHeader: {
+    height: 44,
+    borderBottomWidth: 0.5,
+    borderColor: colors['--search-header-border'],
     justifyContent: 'space-between',
     gap: 12,
-    paddingLeft: {
-      default: 10,
-      '@media (min-width: 640px)': 16,
-    },
-    paddingRight: {
-      default: 10,
-      '@media (min-width: 640px)': 16,
-    },
+    paddingLeft: 8,
+    paddingRight: 8,
   },
   previewTitle: {
     display: 'flex',
     minWidth: 0,
     alignItems: 'center',
     gap: 8,
+    paddingLeft: {
+      default: 0,
+      '@media (min-width: 768px)': 10,
+    },
   },
   /** Back to the results, on a phone, where the preview takes the page. */
   back: {
@@ -457,24 +501,25 @@ const styles = stylex.create({
     display: 'flex',
     flexShrink: 0,
     alignItems: 'center',
-    gap: 4,
+    gap: 12,
   },
+  /** Linear's "Go to issue": a filled 24px capsule, 8px in. */
   goTo: {
-    height: 28,
+    height: 24,
     whiteSpace: 'nowrap',
     borderRadius: 9999,
-    paddingLeft: 10,
-    paddingRight: 10,
+    borderWidth: 0.5,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    paddingLeft: 8,
+    paddingRight: 8,
     fontSize: 12,
     fontWeight: 500,
     backgroundColor: {
-      default: null,
-      ':hover': colors['--item-hover-bg'],
+      default: colors['--toolbar-button-bg'],
+      ':hover': colors['--toolbar-button-hover-bg'],
     },
-    color: {
-      default: colors['--text-secondary'],
-      ':hover': colors['--text-primary'],
-    },
+    color: colors['--text-secondary'],
   },
   previewBody: {
     minHeight: 0,
@@ -588,22 +633,6 @@ export function formatAgeTitle(result: SearchResult): string {
   if (isDayOnly(result)) return `First synced on ${day}`;
   const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(date);
   return `${result.kind === 'rule' ? 'Updated' : 'Added'} on ${day}, ${time}`;
-}
-
-/** The name with every match in bold, as Linear's results show it. */
-function highlight(name: string, query: string): React.ReactNode {
-  const needle = query.toLowerCase();
-  if (!needle) return name;
-  const parts: React.ReactNode[] = [];
-  const haystack = name.toLowerCase();
-  let position = 0;
-  for (let found = haystack.indexOf(needle); found >= 0; found = haystack.indexOf(needle, position)) {
-    if (found > position) parts.push(name.slice(position, found));
-    parts.push(<strong key={found} {...stylex.props(styles.match)}>{name.slice(found, found + needle.length)}</strong>);
-    position = found + needle.length;
-  }
-  parts.push(name.slice(position));
-  return parts;
 }
 
 /** A result's mark: its delivery or run state, or a cube for an ad account. */
@@ -757,6 +786,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, query: addres
 
   const [draft, setDraft] = useState(params.query);
   const [recent, setRecent] = useState<string[]>(() => readRecentSearches(scope));
+  const [hoveredRecent, setHoveredRecent] = useState<string | null>(null);
   const [search, setSearch] = useState<SearchState | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [activeKey, setActiveKey] = useState<string | null>(null);
@@ -936,34 +966,50 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, query: addres
     if (!current) {
       if (recent.length > 0) {
         return (
-          <div {...stylex.props(styles.recent)}>
+          <div>
             <div {...stylex.props(styles.recentHeader)}>
               <h2 {...stylex.props(styles.recentTitle)}>Recent searches</h2>
+            </div>
+            <ul aria-label="Recent searches">
+              {recent.map((query) => (
+                <li
+                  key={query}
+                  onMouseEnter={() => setHoveredRecent(query)}
+                  onMouseLeave={() => setHoveredRecent(null)}
+                  {...stylex.props(styles.recentItem)}
+                >
+                  <button
+                    type="button"
+                    onClick={() => runSearch(query)}
+                    {...stylex.props(styles.recentRow)}
+                  >
+                    <span {...stylex.props(styles.fixed, styles.tertiary)} aria-hidden="true"><BuyerlySearchGlyph size={14} /></span>
+                    <span {...stylex.props(styles.truncate, styles.recentQuery)}>{query}</span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Clear search"
+                    onClick={() => setRecent(forgetSearch(scope, query))}
+                    {...stylex.props(styles.recentRemove, hoveredRecent === query && styles.recentRemoveShown)}
+                  >
+                    <BuyerlyIcon name="close" size={14} aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div {...stylex.props(styles.recentItem)}>
               <button
                 type="button"
                 onClick={() => {
                   clearRecentSearches(scope);
                   setRecent([]);
                 }}
-                {...stylex.props(styles.clearHistory)}
+                {...stylex.props(styles.recentRow)}
               >
-                Clear History
+                <span {...stylex.props(styles.fixed, styles.tertiary)} aria-hidden="true"><BuyerlyIcon name="close" size={14} /></span>
+                <span {...stylex.props(styles.truncate, styles.clearHistory)}>Clear History</span>
               </button>
             </div>
-            <ul aria-label="Recent searches">
-              {recent.map((query) => (
-                <li key={query}>
-                  <button
-                    type="button"
-                    onClick={() => runSearch(query)}
-                    {...stylex.props(styles.recentRow)}
-                  >
-                    <span {...stylex.props(styles.fixed, styles.tertiary)} aria-hidden="true"><BuyerlyIcon name="search" size={14} /></span>
-                    <span {...stylex.props(styles.truncate)}>{query}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
           </div>
         );
       }
@@ -1007,7 +1053,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, query: addres
             const status = statusLabel(result);
             const age = formatAge(result);
             return (
-              <li key={key}>
+              <li key={key} {...stylex.props(styles.resultItem)}>
                 <a
                   href={searchResultPath(slug, result)}
                   data-search-result={key}
@@ -1021,24 +1067,27 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, query: addres
                   {...stylex.props(styles.result, key === activeKey && styles.resultActive)}
                 >
                   <span data-search-kind="" {...stylex.props(styles.kind)}>{SEARCH_KIND_LABELS[result.kind]}</span>
-                  <span {...stylex.props(styles.mark)} aria-hidden="true"><StatusMark result={result} /></span>
-                  <span {...stylex.props(styles.truncate, styles.grow)}>
-                    <span data-search-name="" {...stylex.props(styles.primary)}>{highlight(result.name, params.query)}</span>
-                    {result.parent_name && (
-                      <span {...stylex.props(styles.parent)}>{result.parent_name}</span>
-                    )}
-                    {status && <span {...stylex.props(styles.srOnly)}>{`, ${status}`}</span>}
-                  </span>
-                  {showAccount && result.account_name && (
-                    <span {...stylex.props(styles.account)}>
-                      {result.account_name}
+                  <span {...stylex.props(styles.resultMain)}>
+                    <span {...stylex.props(styles.mark)} aria-hidden="true"><StatusMark result={result} /></span>
+                    <span {...stylex.props(styles.truncate, styles.grow)}>
+                      <span data-search-name="">{result.name}</span>
+                      {result.parent_name && (
+                        <span {...stylex.props(styles.parent)}>{result.parent_name}</span>
+                      )}
+                      {status && <span {...stylex.props(styles.srOnly)}>{`, ${status}`}</span>}
                     </span>
-                  )}
-                  {age && (
-                    <Tooltip content={formatAgeTitle(result)}>
-                      <span {...stylex.props(styles.age)}>{age}</span>
-                    </Tooltip>
-                  )}
+                    {showAccount && result.account_name && (
+                      <span {...stylex.props(styles.account)}>
+                        <span {...stylex.props(styles.accountIcon)} aria-hidden="true"><BuyerlyIcon name="ad-accounts" size={14} /></span>
+                        <span {...stylex.props(styles.truncate)}>{result.account_name}</span>
+                      </span>
+                    )}
+                    {age && (
+                      <Tooltip content={formatAgeTitle(result)}>
+                        <span {...stylex.props(styles.age)}>{age}</span>
+                      </Tooltip>
+                    )}
+                  </span>
                 </a>
               </li>
             );
@@ -1064,7 +1113,7 @@ export const SearchView: React.FC<SearchViewProps> = ({ workspace, query: addres
               runSearch(draft);
             }}
           >
-            <span {...stylex.props(styles.fixed, styles.tertiary)} aria-hidden="true"><BuyerlyIcon name="search" size={16} /></span>
+            <span {...stylex.props(styles.fixed, styles.tertiary)} aria-hidden="true"><BuyerlySearchGlyph size={14} /></span>
             <input
               ref={inputRef}
               data-search-page-input=""
