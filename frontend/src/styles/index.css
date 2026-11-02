@@ -6170,6 +6170,8 @@ button.buyerly-board-hidden-row:hover,
 @keyframes buyerlyCommandMenuGrow { from { transform: scale(0.98); } }
 @keyframes buyerlyCommandMenuShut { to { opacity: 0; transform: scale(0.96); } }
 
+.buyerly-command-menu-motion.buyerly-command-menu-instant[data-state='closed'] { animation: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .buyerly-command-menu-motion,
   .buyerly-command-menu-motion[data-state='closed'] { animation: none; }

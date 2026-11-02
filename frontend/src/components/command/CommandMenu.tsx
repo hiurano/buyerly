@@ -98,6 +98,9 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
   const setCommandMenuOpen = useCommandMenuStore((state) => state.setCommandMenuOpen);
   // A choice moves focus to its destination; only a dismissal gives it back.
   const choiceMade = useRef(false);
+  // A choice shuts the menu at once, as its page or dialog takes over; a menu still fading
+  // out under a dialog it opened would count as an open layer and swallow the next Ctrl/Cmd+K.
+  const [instantClose, setInstantClose] = useState(false);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -135,6 +138,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
 
   const choose = (action: () => void) => {
     choiceMade.current = true;
+    setInstantClose(true);
     setCommandMenuOpen(false);
     action();
   };
@@ -153,6 +157,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
           onCloseAutoFocus={(event) => {
             // Radix would focus a trigger this menu does not have.
             event.preventDefault();
+            setInstantClose(false);
             const target = takeReturnFocus();
             if (choiceMade.current) {
               choiceMade.current = false;
@@ -160,7 +165,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
             }
             if (target?.isConnected) target.focus({ preventScroll: true });
           }}
-          {...withClassName(stylex.props(menu.dialog, styles.dialog, menu.surface), 'buyerly-command-menu-motion')}
+          {...withClassName(stylex.props(menu.dialog, styles.dialog, menu.surface), instantClose ? 'buyerly-command-menu-motion buyerly-command-menu-instant' : 'buyerly-command-menu-motion')}
         >
           <Dialog.Title {...stylex.props(menu.srOnly)}>Command menu</Dialog.Title>
           <CommandPalette workspace={workspace} navigate={navigate} choose={choose} dismiss={dismiss} />
@@ -505,9 +510,14 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
       .map((group) => ({ ...group, commands: filterCommands(group.commands, text) }))
       .filter((group) => group.commands.length > 0)
     : [];
-  // Typed words reach into the submenu too, as Linear's "Change interface theme › Dark", ahead of the groups.
+  // Typed words reach into the submenu too, as Linear's "Change interface theme › Dark", ahead of
+  // the groups; only whole words count here, so "test" does not spell out "theme System".
+  const words = text.toLowerCase().split(/\s+/).filter(Boolean);
   const themeShortcuts = page === 'root' && text.length >= QUICK_RESULTS_MIN_LENGTH
-    ? THEME_OPTIONS.filter((option) => bestCommandScore(text, `${THEME_PARENT} ${option.label}`, ['theme', 'appearance', option.value]) !== null)
+    ? THEME_OPTIONS.filter((option) => {
+      const haystack = `${THEME_PARENT} ${option.label} appearance`.toLowerCase();
+      return words.every((word) => haystack.includes(word));
+    })
     : [];
   const themeChoices = page === 'theme'
     ? THEME_OPTIONS.filter((option) => bestCommandScore(text, option.label, [option.value]) !== null)

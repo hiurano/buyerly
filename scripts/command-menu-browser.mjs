@@ -337,7 +337,7 @@ try {
       await page.waitForURL(`${origin}/alpha/rules`);
       await page.getByRole('heading', { name: 'Recently deleted', exact: true }).waitFor({ state: 'detached' });
 
-      // 6. A quick result opens its record; Ctrl+/ and the footer open the search page with the words.
+      // 6. A quick result opens its record; Ctrl+/ and "No results found" open the search page with the words.
       await page.keyboard.press('Control+K');
       await commandField.waitFor();
       // The page's star comes first, as Linear's "Favorite team"; C creates a rule here.
@@ -367,7 +367,9 @@ try {
       await page.keyboard.press('Control+K');
       await commandField.fill('zzz');
       await commands.getByRole('option', { name: noResults }).waitFor();
-      await commands.getByRole('button', { name: /Advanced search/ }).click();
+      // Linear shows its footer only while a record is selected.
+      assert.equal(await commands.getByRole('button', { name: /Advanced search/ }).count(), 0, 'no footer without a record');
+      await page.keyboard.press('Enter');
       await closed();
       await page.waitForURL(`${origin}/alpha/search?q=zzz`);
 
