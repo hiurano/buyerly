@@ -40,6 +40,7 @@ export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, sel
     <BuyerlyDataListRow
       data-row-id={adSet.id}
       layout="grid"
+      issueLayout
       columns={columns}
       tabIndex={readOnly ? undefined : 0}
       selected={isSelected}
@@ -47,6 +48,7 @@ export const AdSetRow: React.FC<AdSetRowProps> = ({ adSet, readOnly = false, sel
       xstyle={readOnly ? styles.readOnly : styles.row}
     >
       <BuyerlyDataPrimaryCell
+        issueLayout
         leading={(
           <EntityRowControls
             noun="ad set"

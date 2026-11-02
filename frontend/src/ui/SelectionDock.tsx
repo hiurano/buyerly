@@ -29,10 +29,8 @@ const styles = stylex.create({
     height: 44,
     alignItems: 'center',
     gap: 8,
+    // No border, as Linear's (01.11): the shadow alone lifts it.
     borderRadius: 9999,
-    borderWidth: 1,
-    borderStyle: 'solid',
-    borderColor: colors['--dock-border'],
     backgroundColor: colors['--dock-bg'],
     padding: 8,
     boxShadow: colors['--dropdown-shadow'],
@@ -45,6 +43,7 @@ const styles = stylex.create({
     color: colors['--text-primary'],
     fontVariantNumeric: 'tabular-nums',
   },
+  // Linear's secondary pill: a raised fill with a 0.5px ring and soft shadow, a step lighter under the pointer.
   actions: {
     display: 'inline-flex',
     height: 28,
@@ -52,12 +51,12 @@ const styles = stylex.create({
     justifyContent: 'center',
     gap: 6,
     borderRadius: 9999,
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderStyle: 'solid',
-    borderColor: colors['--color-border-secondary'],
+    borderColor: 'transparent',
     backgroundColor: {
-      default: colors['--dock-bg'],
-      ':hover': colors['--item-hover-bg'],
+      default: colors['--dock-button-bg'],
+      ':hover': colors['--dock-button-hover-bg'],
     },
     paddingLeft: 10,
     paddingRight: 10,
@@ -67,7 +66,8 @@ const styles = stylex.create({
     outline: '2px solid transparent',
     outlineOffset: 2,
     boxShadow: {
-      default: null,
+      default: colors['--dock-button-ring'],
+      ':hover': colors['--dock-button-ring-hover'],
       ':focus-visible': `0 0 0 1px ${colors['--focus-ring-color']}`,
     },
     transitionProperty: 'color, background-color, border-color, text-decoration-color, fill, stroke',
@@ -80,7 +80,7 @@ const styles = stylex.create({
     width: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    color: colors['--text-tertiary'],
+    color: colors['--dock-button-fg'],
   },
   clear: {
     display: 'inline-flex',
@@ -88,12 +88,16 @@ const styles = stylex.create({
     width: 28,
     alignItems: 'center',
     justifyContent: 'center',
+    // Bare until the pointer is on it, as Linear's.
     borderRadius: 9999,
     backgroundColor: {
-      default: colors['--dock-clear-btn-bg'],
-      ':hover': colors['--item-hover-bg'],
+      default: 'transparent',
+      ':hover': colors['--dock-clear-hover-bg'],
     },
-    color: colors['--text-primary'],
+    color: {
+      default: colors['--dock-button-fg'],
+      ':hover': colors['--text-primary'],
+    },
     outline: '2px solid transparent',
     outlineOffset: 2,
     boxShadow: {
@@ -146,7 +150,7 @@ export const SelectionDock: React.FC<SelectionDockProps> = ({ count, onOpenActio
             onClick={onClear}
             {...stylex.props(styles.clear)}
           >
-            <BuyerlyIcon name="close" size={12} />
+            <BuyerlyIcon name="close" size={14} />
           </button>
         </Tooltip>
       </div>

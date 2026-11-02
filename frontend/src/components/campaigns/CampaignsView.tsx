@@ -496,6 +496,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
       .map(sub => sub.label ? (
         <BuyerlyDataListGroup key={sub.id} subGroup title={sub.label} count={sub.rows.length}
           statusAligned={displayProperties.status !== false}
+          issueLayout
           dotColor="var(--text-tertiary)"
           icon={rowsField === 'account' ? <BuyerlyIcon name="ad-accounts" size={14} /> : optionIcon(fields.find(field => field.id === rowsField), sub.id)}
           isCollapsed={Boolean(collapsedGroups[subGroupKey(group, sub)])}
@@ -510,6 +511,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
         {group.label ? (
           <BuyerlyDataListGroup title={group.label} count={group.rows.length}
             statusAligned={displayProperties.status !== false}
+            issueLayout
             dotColor="var(--text-tertiary)"
             icon={groupingField === 'account' ? <BuyerlyIcon name="ad-accounts" size={14} /> : undefined}
             isCollapsed={Boolean(collapsedGroups[groupKey(group)])}
@@ -1053,6 +1055,7 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
     return (
       <BuyerlyDataTable
         className="campaign-list-container"
+        issueLayout
         columns={tableColumns}
         sortKey={effectiveOrdering === 'manual' ? undefined : effectiveOrdering}
         sortDirection={sortDirection}

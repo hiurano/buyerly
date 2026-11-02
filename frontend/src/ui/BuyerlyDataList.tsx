@@ -20,13 +20,18 @@ export const BUYERLY_DATA_LIST = {
   statusWidth: 16,
   leadingGap: 12,
   rowPaddingX: 12,
+  // Linear's Issues list is tighter (grid [indent] 8px, column gap 8px, 01.11): the checkbox
+  // sits 8px inside the row's highlight, and checkbox, status and title are 8px apart.
+  issuesPaddingX: 8,
+  issuesLeadingGap: 8,
   columnGap: 6,
   toolbarPaddingLeft: 8,
   // The last toolbar button ends 8px from the canvas's edge, as Linear's (01.11).
   toolbarPaddingRight: 8,
   viewportPaddingX: 8,
-  // Rows and the column header reach into the list's side padding, 8px past the group
-  // headers on each side, as Linear's (1027 against 1011px); their content stays put.
+  // The column header reaches into the list's side padding, 8px past the group headers on
+  // each side, as Linear's rows do (1027 against 1011px). A row's box doesn't: Linear paints
+  // its hover and selection on ::before at inset 0 8px, the group headers' width (01.11).
   rowBleed: 8,
   // Linear's lists start at the top of their scroll area (a column header or the first group at once,
   // measured on Issues, Projects, Members and Teams 01.11); 4px stay below the last row.
@@ -52,16 +57,20 @@ export const getLinearDataListTemplate = (columns: BuyerlyDataListColumn[]) =>
 export const buyerlyDataNameColumn = ({
   width,
   label = 'Name',
+  issueLayout = false,
 }: {
   width: string;
   label?: string;
+  /** In a list with Linear Issues' tighter leading (see BuyerlyDataTable's issueLayout). */
+  issueLayout?: boolean;
 }): BuyerlyDataListColumn => ({
   id: 'name',
   label,
   width,
   // As Linear's, the label starts over the column's first mark (status icon, switch, or
   // the title when status is hidden), past the selection slot; its pill adds 6px of its own.
-  headerInset: BUYERLY_DATA_LIST.selectionWidth + BUYERLY_DATA_LIST.leadingGap - 6,
+  headerInset: BUYERLY_DATA_LIST.selectionWidth
+    + (issueLayout ? BUYERLY_DATA_LIST.issuesLeadingGap : BUYERLY_DATA_LIST.leadingGap) - 6,
   sortable: true,
 });
 
@@ -136,14 +145,11 @@ const styles = stylex.create({
   row: {
     position: 'relative',
     display: 'flex',
-    width: `calc(100% + ${BUYERLY_DATA_LIST.rowBleed * 2}px)`,
-    marginLeft: -BUYERLY_DATA_LIST.rowBleed,
-    marginRight: -BUYERLY_DATA_LIST.rowBleed,
     userSelect: 'none',
     alignItems: 'center',
     borderRadius: BUYERLY_DATA_LIST.radius,
-    paddingLeft: BUYERLY_DATA_LIST.rowPaddingX + BUYERLY_DATA_LIST.rowBleed,
-    paddingRight: BUYERLY_DATA_LIST.rowPaddingX + BUYERLY_DATA_LIST.rowBleed,
+    paddingLeft: BUYERLY_DATA_LIST.rowPaddingX,
+    paddingRight: BUYERLY_DATA_LIST.rowPaddingX,
     backgroundColor: {
       default: 'transparent',
       ':hover': colors['--data-row-hover-bg'],
@@ -166,6 +172,9 @@ const styles = stylex.create({
     display: 'grid',
     gap: BUYERLY_DATA_LIST.columnGap,
   },
+  rowIssues: {
+    paddingLeft: BUYERLY_DATA_LIST.issuesPaddingX,
+  },
   rowSelected: {
     backgroundColor: {
       default: colors['--row-selected-bg'],
@@ -184,6 +193,9 @@ const styles = stylex.create({
     marginRight: -BUYERLY_DATA_LIST.rowBleed,
     paddingLeft: BUYERLY_DATA_LIST.rowPaddingX + BUYERLY_DATA_LIST.rowBleed,
     paddingRight: BUYERLY_DATA_LIST.rowPaddingX + BUYERLY_DATA_LIST.rowBleed,
+  },
+  columnHeaderIssues: {
+    paddingLeft: BUYERLY_DATA_LIST.issuesPaddingX + BUYERLY_DATA_LIST.rowBleed,
   },
   columnCell: {
     display: 'flex',
@@ -267,6 +279,12 @@ const styles = stylex.create({
     width: 34,
     paddingLeft: 8,
   },
+  // Linear Issues': the chevron 8px in, over the checkbox; the icon 34px in, on the status icon.
+  toggleSlotIssues: {
+    width: 28,
+    marginRight: -2,
+    paddingLeft: 8,
+  },
   toggle: {
     display: 'flex',
     height: 20,
@@ -304,6 +322,9 @@ const styles = stylex.create({
   groupIconStatus: {
     marginRight: BUYERLY_DATA_LIST.leadingGap - 8,
   },
+  groupIconIssues: {
+    marginRight: BUYERLY_DATA_LIST.issuesLeadingGap - 8,
+  },
   groupDot: {
     height: 8,
     width: 8,
@@ -321,7 +342,7 @@ const styles = stylex.create({
     fontSize: 13,
     fontWeight: 450,
     fontVariantNumeric: 'tabular-nums',
-    color: colors['--text-tertiary'],
+    color: colors['--group-count-fg'],
   },
   groupDescription: {
     ...truncate,
@@ -364,7 +385,10 @@ const styles = stylex.create({
     display: 'flex',
     minWidth: 0,
     alignItems: 'center',
-    gap: 12,
+    gap: BUYERLY_DATA_LIST.leadingGap,
+  },
+  primaryCellIssues: {
+    gap: BUYERLY_DATA_LIST.issuesLeadingGap,
   },
   primaryCellSticky: {
     position: 'sticky',
@@ -474,19 +498,21 @@ interface BuyerlyDataListRowProps extends React.HTMLAttributes<HTMLDivElement> {
   height?: number;
   layout?: 'flex' | 'grid';
   columns?: BuyerlyDataListColumn[];
+  /** Linear Issues' tighter leading: content 8px inside the row's highlight. */
+  issueLayout?: boolean;
   /** Styles from the parent, applied last. */
   xstyle?: stylex.StyleXStyles;
 }
 
 export const BuyerlyDataListRow = React.forwardRef<HTMLDivElement, BuyerlyDataListRowProps>(
-  ({ selected = false, height = BUYERLY_DATA_LIST.rowHeight, layout = 'flex', columns, className = '', xstyle, style, children, ...props }, ref) => (
+  ({ selected = false, height = BUYERLY_DATA_LIST.rowHeight, layout = 'flex', columns, issueLayout = false, className = '', xstyle, style, children, ...props }, ref) => (
     <div
       ref={ref}
       role="row"
       data-selected={selected ? 'true' : 'false'}
       aria-selected={selected}
       {...withClassName(
-        stylex.props(styles.row, layout === 'grid' && styles.rowGrid, selected && styles.rowSelected, rowMarker, xstyle),
+        stylex.props(styles.row, layout === 'grid' && styles.rowGrid, issueLayout && styles.rowIssues, selected && styles.rowSelected, rowMarker, xstyle),
         `buyerly-data-row ${className}`.trim(),
       )}
       style={{
@@ -508,6 +534,8 @@ interface BuyerlyDataListColumnHeaderProps extends Omit<React.HTMLAttributes<HTM
   sortKey?: string;
   sortDirection?: 'asc' | 'desc';
   onSort?: (columnId: string) => void;
+  /** Lines up with rows in Linear Issues' tighter leading. */
+  issueLayout?: boolean;
 }
 
 export const BuyerlyDataListColumnHeader: React.FC<BuyerlyDataListColumnHeaderProps> = ({
@@ -516,13 +544,14 @@ export const BuyerlyDataListColumnHeader: React.FC<BuyerlyDataListColumnHeaderPr
   sortKey,
   sortDirection = 'desc',
   onSort,
+  issueLayout = false,
   className = '',
   style,
   ...props
 }) => (
   <div
     role="row"
-    {...withClassName(stylex.props(styles.columnHeader), className)}
+    {...withClassName(stylex.props(styles.columnHeader, issueLayout && styles.columnHeaderIssues), className)}
     style={{
       gridTemplateColumns: getLinearDataListTemplate(columns),
       minWidth: minWidth ? `${minWidth}px` : undefined,
@@ -586,6 +615,8 @@ interface BuyerlyDataListGroupHeaderProps {
   subGroup?: boolean;
   /** The rows lead with a checkbox and a status icon: line the group's icon and title up with them. */
   statusAligned?: boolean;
+  /** Over rows in Linear Issues' tighter leading (with statusAligned). */
+  issueLayout?: boolean;
 }
 
 const GROUP_HEADER_BG = 'var(--rules-group-bg, var(--card-bg))';
@@ -604,6 +635,7 @@ export const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProp
   tint,
   subGroup = false,
   statusAligned = false,
+  issueLayout = false,
 }) => (
   <div
     {...withClassName(
@@ -619,7 +651,7 @@ export const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProp
     }}
   >
     <div {...stylex.props(styles.groupHeaderBody)}>
-      <div {...stylex.props(styles.toggleSlot, statusAligned && styles.toggleSlotStatus)}>
+      <div {...stylex.props(styles.toggleSlot, statusAligned && styles.toggleSlotStatus, statusAligned && issueLayout && styles.toggleSlotIssues)}>
         {onToggleCollapse && (
           <button
             type="button"
@@ -634,7 +666,7 @@ export const BuyerlyDataListGroupHeader: React.FC<BuyerlyDataListGroupHeaderProp
       </div>
 
       <span
-        {...stylex.props(styles.groupIcon, statusAligned && styles.groupIconStatus)}
+        {...stylex.props(styles.groupIcon, statusAligned && styles.groupIconStatus, statusAligned && issueLayout && styles.groupIconIssues)}
         style={statusAligned ? { width: BUYERLY_DATA_LIST.statusWidth } : undefined}
         aria-hidden="true"
       >
@@ -680,7 +712,7 @@ export const BuyerlyDataListGroup: React.FC<BuyerlyDataListGroupProps> = ({ chil
 );
 
 interface BuyerlyDataTableProps
-  extends Pick<BuyerlyDataListColumnHeaderProps, 'columns' | 'sortKey' | 'sortDirection' | 'onSort'> {
+  extends Pick<BuyerlyDataListColumnHeaderProps, 'columns' | 'sortKey' | 'sortDirection' | 'onSort' | 'issueLayout'> {
   children: React.ReactNode;
   /** Rendered above the column header at viewport width, e.g. an action notice. */
   before?: React.ReactNode;
@@ -700,6 +732,7 @@ export const BuyerlyDataTable: React.FC<BuyerlyDataTableProps> = ({
   sortKey,
   sortDirection,
   onSort,
+  issueLayout,
   before,
   after,
   divider = false,
@@ -717,6 +750,7 @@ export const BuyerlyDataTable: React.FC<BuyerlyDataTableProps> = ({
           sortKey={sortKey}
           sortDirection={sortDirection}
           onSort={onSort}
+          issueLayout={issueLayout}
           // --canvas-border is a whole border; StyleX would split the shorthand and lose it.
           style={divider ? { borderBottom: 'var(--canvas-border)' } : undefined}
         />
@@ -739,6 +773,8 @@ interface BuyerlyDataPrimaryCellProps {
   hint?: string;
   /** Pins the cell while the table scrolls horizontally. */
   sticky?: boolean;
+  /** Linear Issues' 8px between checkbox, status and title. */
+  issueLayout?: boolean;
 }
 
 /** The Name cell: leading controls, a truncating title and an optional badge. */
@@ -749,8 +785,9 @@ export const BuyerlyDataPrimaryCell: React.FC<BuyerlyDataPrimaryCellProps> = ({
   dimmed = false,
   hint,
   sticky = false,
+  issueLayout = false,
 }) => (
-  <div {...withClassName(stylex.props(styles.primaryCell, sticky && styles.primaryCellSticky), sticky ? 'buyerly-data-sticky' : undefined)}>
+  <div {...withClassName(stylex.props(styles.primaryCell, issueLayout && styles.primaryCellIssues, sticky && styles.primaryCellSticky), sticky ? 'buyerly-data-sticky' : undefined)}>
     {leading}
     <div {...stylex.props(styles.primaryText)} title={hint}>
       <div {...stylex.props(styles.primaryLine)}>
