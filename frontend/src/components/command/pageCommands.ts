@@ -10,6 +10,11 @@ export interface PaletteCommand {
   icon: React.ReactNode;
   /** The shortcut shown on the right, as Tooltip spells it: "C", "G I", "Shift ⌫". */
   shortcut?: string;
+  /**
+   * After it runs: by default the menu closes and focus follows the command;
+   * "stay" closes it and gives focus back, "submenu" keeps it open on a page of its own.
+   */
+  then?: 'stay' | 'submenu';
   run: () => void;
 }
 

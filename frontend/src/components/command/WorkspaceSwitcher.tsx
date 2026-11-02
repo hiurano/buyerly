@@ -188,7 +188,7 @@ export const WorkspaceSwitcher: React.FC = () => {
       <Dialog.Portal>
         <Dialog.Content
           aria-describedby={undefined}
-          {...withClassName(stylex.props(styles.surface), 'animate-scale-in')}
+          {...withClassName(stylex.props(styles.surface), 'buyerly-command-menu-motion')}
         >
           <Dialog.Title {...stylex.props(commandMenuStyles.srOnly)}>Switch workspace</Dialog.Title>
           <Command label="Switch workspace" loop>

@@ -31,7 +31,7 @@ export const commandMenuStyles = stylex.create({
   surface: {
     overflow: 'hidden',
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderStyle: 'solid',
     borderColor: colors['--command-menu-border'],
     backgroundColor: colors['--command-menu-bg'],
@@ -51,23 +51,27 @@ export const commandMenuStyles = stylex.create({
     paddingLeft: 12,
     paddingRight: 12,
     fontSize: 13,
-    color: colors['--text-secondary'],
+    color: colors['--command-menu-text'],
     outline: '2px solid transparent',
     outlineOffset: 2,
     '::placeholder': {
-      color: colors['--text-muted'],
+      color: colors['--command-menu-placeholder'],
     },
   },
+  /** 6px above the first row and below the last, and Linear's thin scrollbar over the rows. */
   list: {
     maxHeight: 'min(404px, 60vh)',
     overflowY: 'auto',
+    scrollbarWidth: 'thin',
     paddingLeft: 6,
     paddingRight: 6,
+    paddingTop: 6,
     paddingBottom: 6,
   },
   /**
-   * 46px rows; the selected one gets a rounded fill inset 2px top and bottom.
-   * Each of a row's parts is `position: relative`, so it draws over the fill.
+   * 46px rows, 8px between icon and label; the selected one gets a rounded fill
+   * inset 2px top and bottom, and Linear brightens its text. Each of a row's
+   * parts is `position: relative`, so it draws over the fill.
    */
   item: {
     position: 'relative',
@@ -78,12 +82,15 @@ export const commandMenuStyles = stylex.create({
     cursor: 'default',
     userSelect: 'none',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
     paddingLeft: 12,
     paddingRight: 12,
     fontSize: 13,
     fontWeight: 450,
-    color: colors['--command-menu-text'],
+    color: {
+      default: colors['--command-menu-text'],
+      ':is([data-selected=true])': colors['--command-menu-text-selected'],
+    },
     outline: '2px solid transparent',
     outlineOffset: 2,
     '::before': {
@@ -101,9 +108,10 @@ export const commandMenuStyles = stylex.create({
       },
     },
   },
-  /** Linear draws a row's icon in the row's own text color. */
+  /** Linear draws a row's icon in the menu's tertiary, selected or not. */
   icon: {
     position: 'relative',
+    color: colors['--command-menu-text-tertiary'],
     display: 'flex',
     height: 16,
     width: 16,
@@ -126,24 +134,22 @@ export const commandMenuStyles = stylex.create({
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
-  /** A row's keys on the right. */
+  /** A row's keys on the right: 11px in a 0.5px box, 4px inside, 21px high. */
   kbd: {
     display: 'inline-flex',
-    height: 23,
     minWidth: 20,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 3,
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderStyle: 'solid',
     borderColor: colors['--command-menu-kbd-border'],
-    paddingLeft: 4,
-    paddingRight: 4,
+    padding: 4,
     fontFamily: SANS,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 450,
-    lineHeight: '13px',
-    color: colors['--text-tertiary'],
+    lineHeight: 1.1,
+    color: colors['--command-menu-text-tertiary'],
   },
   note: {
     paddingLeft: 12,

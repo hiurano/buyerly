@@ -214,7 +214,7 @@ try {
       await page.keyboard.press('Control+K');
       await commandField.waitFor();
       assert.equal(await commandField.getAttribute('placeholder'), 'Type a command or search…');
-      assert.deepEqual(await headings(), ['Notifications', 'Rules', 'Filter', 'Navigation']);
+      assert.deepEqual(await headings(), ['Notifications', 'Rules', 'Filter', 'Navigation', 'Miscellaneous', 'Settings']);
       assert.deepEqual(await commandTexts(), [
         'Delete all notifications', 'Delete all read notifications · ⇧ ⌫', 'Create rule…', 'Create new label…', 'Search workspace…',
         // Linear leaves out Go to inbox on Inbox itself.
@@ -222,6 +222,7 @@ try {
         'Go to recently deleted rules', 'Go to settings · G then S',
         ...openCommands,
         ...(wide ? ['Collapse navigation sidebar · ['] : []),
+        'Copy page URL', 'Change interface theme…',
       ]);
       assert.equal(await page.evaluate(() => [...document.querySelectorAll('body *')].some((element) => {
         const style = getComputedStyle(element);
@@ -239,6 +240,24 @@ try {
       assert.equal(await page.locator('#probe-textarea').inputValue(), 'a/b', 'Ctrl+K typed nothing');
       await page.keyboard.press('Meta+K');
       await commandField.waitFor();
+      await page.keyboard.press('Escape');
+      await closed();
+      await waitForFocus('probe-textarea');
+
+      // Linear's "Change interface theme…" opens a page of its own, on the current theme with
+      // 1–3 beside the choices; typed words find the choices from the root too. Backspace in the
+      // empty field goes back with the query, Esc closes the menu and gives focus back.
+      await page.keyboard.press('Control+K');
+      await commandField.fill('theme');
+      await commands.getByRole('option', { name: 'Change interface theme, Dark' }).waitFor();
+      await commands.getByRole('option', { name: 'Change interface theme…' }).click();
+      await page.waitForFunction(() => document.querySelector('[cmdk-input]')?.getAttribute('placeholder') === 'Change interface theme to…');
+      assert.equal(await commandField.inputValue(), '');
+      assert.deepEqual(await commandTexts(), ['System preference · 1', 'Light · 2', 'Dark · 3']);
+      assert.equal(await commands.locator('[cmdk-item][data-selected="true"]').getAttribute('aria-label'), 'System preference');
+      await page.keyboard.press('Backspace');
+      await page.waitForFunction(() => document.querySelector('[cmdk-input]')?.getAttribute('placeholder') === 'Type a command or search…');
+      assert.equal(await commandField.inputValue(), 'theme', 'Backspace brings the root back with its query');
       await page.keyboard.press('Escape');
       await closed();
       await waitForFocus('probe-textarea');
@@ -318,7 +337,7 @@ try {
       await page.waitForURL(`${origin}/alpha/rules`);
       await page.getByRole('heading', { name: 'Recently deleted', exact: true }).waitFor({ state: 'detached' });
 
-      // 6. A quick result opens its record; Ctrl+/ and the footer open the search page with the words.
+      // 6. A quick result opens its record; Ctrl+/ and "No results found" open the search page with the words.
       await page.keyboard.press('Control+K');
       await commandField.waitFor();
       // The page's star comes first, as Linear's "Favorite team"; C creates a rule here.
@@ -348,7 +367,9 @@ try {
       await page.keyboard.press('Control+K');
       await commandField.fill('zzz');
       await commands.getByRole('option', { name: noResults }).waitFor();
-      await commands.getByRole('button', { name: /Advanced search/ }).click();
+      // Linear shows its footer only while a record is selected.
+      assert.equal(await commands.getByRole('button', { name: /Advanced search/ }).count(), 0, 'no footer without a record');
+      await page.keyboard.press('Enter');
       await closed();
       await page.waitForURL(`${origin}/alpha/search?q=zzz`);
 

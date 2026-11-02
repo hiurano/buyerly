@@ -170,7 +170,7 @@ export const OpenPalette: React.FC<OpenPaletteProps> = ({ workspace, navigate })
             }
             if (target?.isConnected) target.focus({ preventScroll: true });
           }}
-          {...withClassName(stylex.props(menu.dialog, styles.dialog, menu.surface), 'animate-scale-in')}
+          {...withClassName(stylex.props(menu.dialog, styles.dialog, menu.surface), 'buyerly-command-menu-motion')}
         >
           <Dialog.Title {...stylex.props(menu.srOnly)}>{OPEN_PALETTE_LABELS[shownKind].replace('…', '')}</Dialog.Title>
           {kind && (

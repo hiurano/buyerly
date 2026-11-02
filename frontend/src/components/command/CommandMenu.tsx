@@ -33,7 +33,8 @@ import { usePageGroup, type PaletteCommand, type PaletteGroup } from './pageComm
 import { commandMenuStore, useCommandMenuStore, type OpenPaletteKind } from '@/models/commandMenuStore';
 import { useDialogStore } from '@/models/dialogStore';
 import { useScopeStore } from '@/models/scopeStore';
-import { shellStore, useShellStore } from '@/models/shellStore';
+import { shellStore, useShellStore, type InterfaceTheme } from '@/models/shellStore';
+import { toast } from '@/ui/toast';
 import { useViewStore } from '@/models/viewStore';
 
 /** Something else holds the keyboard while it is open: a dialog, a menu, another palette. */
@@ -97,6 +98,9 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
   const setCommandMenuOpen = useCommandMenuStore((state) => state.setCommandMenuOpen);
   // A choice moves focus to its destination; only a dismissal gives it back.
   const choiceMade = useRef(false);
+  // A choice shuts the menu at once, as its page or dialog takes over; a menu still fading
+  // out under a dialog it opened would count as an open layer and swallow the next Ctrl/Cmd+K.
+  const [instantClose, setInstantClose] = useState(false);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -134,6 +138,12 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
 
   const choose = (action: () => void) => {
     choiceMade.current = true;
+    setInstantClose(true);
+    setCommandMenuOpen(false);
+    action();
+  };
+  // A choice that stays on the page, as a theme: focus goes back where it was.
+  const dismiss = (action: () => void) => {
     setCommandMenuOpen(false);
     action();
   };
@@ -147,6 +157,7 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
           onCloseAutoFocus={(event) => {
             // Radix would focus a trigger this menu does not have.
             event.preventDefault();
+            setInstantClose(false);
             const target = takeReturnFocus();
             if (choiceMade.current) {
               choiceMade.current = false;
@@ -154,10 +165,10 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({ workspace, navigate })
             }
             if (target?.isConnected) target.focus({ preventScroll: true });
           }}
-          {...withClassName(stylex.props(menu.dialog, styles.dialog, menu.surface), 'animate-scale-in')}
+          {...withClassName(stylex.props(menu.dialog, styles.dialog, menu.surface), instantClose ? 'buyerly-command-menu-motion buyerly-command-menu-instant' : 'buyerly-command-menu-motion')}
         >
           <Dialog.Title {...stylex.props(menu.srOnly)}>Command menu</Dialog.Title>
-          <CommandPalette workspace={workspace} navigate={navigate} choose={choose} />
+          <CommandPalette workspace={workspace} navigate={navigate} choose={choose} dismiss={dismiss} />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -230,6 +241,27 @@ const styles = stylex.create({
   muted: {
     color: colors['--text-muted'],
   },
+  /** A choice inside a submenu: what it does, muted, then › and the choice. */
+  pathLabel: {
+    position: 'relative',
+    display: 'flex',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '0%',
+    alignItems: 'center',
+    gap: 6,
+  },
+  pathParent: {
+    flexShrink: 0,
+    color: colors['--command-menu-text-tertiary'],
+  },
+  check: {
+    position: 'relative',
+    display: 'flex',
+    flexShrink: 0,
+    color: colors['--command-menu-text-selected'],
+  },
   /** Linear's footer: 35px under a rule, each hint a small button with its keys boxed. */
   footer: {
     display: 'flex',
@@ -269,11 +301,10 @@ const styles = stylex.create({
     gap: 3,
   },
   then: {
-    paddingLeft: 1,
-    paddingRight: 1,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 450,
-    color: colors['--text-tertiary'],
+    lineHeight: 1.1,
+    color: colors['--command-menu-text-tertiary'],
   },
 });
 
@@ -281,27 +312,65 @@ const arrowIcon = <BuyerlyIcon name="arrow-right" size={14} />;
 
 const OPEN_PALETTE_KINDS = Object.keys(OPEN_KEYS) as OpenPaletteKind[];
 
+/** Linear's "Change interface theme…" and its choices, in Settings' order. */
+const THEME_OPTIONS: Array<{ value: InterfaceTheme; label: string }> = [
+  { value: 'system', label: 'System preference' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
+const THEME_PARENT = 'Change interface theme';
+
+/** A submenu of the command menu: Linear's "Change interface theme…" opens one in place. */
+type PalettePage = 'root' | 'theme';
+
 interface CommandPaletteProps {
   workspace: Workspace;
   navigate: (path: string, replace?: boolean) => void;
   choose: (action: () => void) => void;
+  dismiss: (action: () => void) => void;
 }
 
 /** The menu's content, mounted on every open so it starts empty. */
-const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, choose }) => {
+const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, choose, dismiss }) => {
   const { tab: activeTab } = useCurrentPage();
   const campaignFilterTab = useViewStore((state) => state.campaignFilterTab);
   const openCreateRuleModal = useDialogStore((state) => state.openCreateRuleModal);
   const isSidebarCollapsed = useShellStore((state) => state.isSidebarCollapsed);
   const toggleSidebarCollapsed = useShellStore((state) => state.toggleSidebarCollapsed);
+  const interfaceTheme = useShellStore((state) => state.interfaceTheme);
+  const setInterfaceTheme = useShellStore((state) => state.setInterfaceTheme);
   const scope = useScopeStore((state) => state.workspaceScope);
   const pageGroup = usePageGroup();
   const favoriteHere = useFavorites((state) => state.here);
   const starred = useFavorites((state) => state.favorites.some((favorite) => favorite.path === state.here?.path));
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState('');
+  const [page, setPage] = useState<PalettePage>('root');
+  // What the root page had when a submenu opened; Backspace in its empty field brings it back.
+  const [parent, setParent] = useState({ query: '', selected: '' });
   const text = query.trim();
-  const quick = useQuickResults(text);
+  const quick = useQuickResults(page === 'root' ? text : '');
+
+  // Linear's submenu opens on the current choice, its field empty.
+  const openThemePage = () => {
+    setParent({ query, selected });
+    setPage('theme');
+    setQuery('');
+    setSelected(`theme:${interfaceTheme}`);
+  };
+  const backToRoot = () => {
+    setPage('root');
+    setQuery(parent.query);
+    setSelected(parent.selected);
+  };
+  const pickTheme = (theme: InterfaceTheme) => dismiss(() => setInterfaceTheme(theme));
+  const copyPageUrl = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(
+      () => toast.show({ tone: 'success', title: 'Copied page URL to clipboard' }),
+      () => toast.error("Couldn't copy the link", url),
+    );
+  };
 
   // The same address again re-opens it in place instead of repeating history.
   const go = (path: string) => navigate(path, `${window.location.pathname}${window.location.search}` === path);
@@ -422,15 +491,42 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
           : []),
       ],
     },
+    {
+      heading: 'Miscellaneous',
+      commands: [
+        { id: 'copy-page-url', label: 'Copy page URL', keywords: ['link', 'address', 'share'], icon: <BuyerlyIcon name="link" size={14} />, then: 'stay', run: copyPageUrl },
+      ],
+    },
+    {
+      heading: 'Settings',
+      commands: [
+        { id: 'change-theme', label: 'Change interface theme…', keywords: ['appearance', 'dark', 'light', 'mode'], icon: <BuyerlyIcon name="settings" size={14} />, then: 'submenu', run: openThemePage },
+      ],
+    },
   ];
 
-  const shownGroups = groups
-    .map((group) => ({ ...group, commands: filterCommands(group.commands, text) }))
-    .filter((group) => group.commands.length > 0);
-  const showQuick = text.length >= QUICK_RESULTS_MIN_LENGTH && quick !== null;
+  const shownGroups = page === 'root'
+    ? groups
+      .map((group) => ({ ...group, commands: filterCommands(group.commands, text) }))
+      .filter((group) => group.commands.length > 0)
+    : [];
+  // Typed words reach into the submenu too, as Linear's "Change interface theme › Dark", ahead of
+  // the groups; only whole words count here, so "test" does not spell out "theme System".
+  const words = text.toLowerCase().split(/\s+/).filter(Boolean);
+  const themeShortcuts = page === 'root' && text.length >= QUICK_RESULTS_MIN_LENGTH
+    ? THEME_OPTIONS.filter((option) => {
+      const haystack = `${THEME_PARENT} ${option.label} appearance`.toLowerCase();
+      return words.every((word) => haystack.includes(word));
+    })
+    : [];
+  const themeChoices = page === 'theme'
+    ? THEME_OPTIONS.filter((option) => bestCommandScore(text, option.label, [option.value]) !== null)
+    : [];
+  const showQuick = page === 'root' && text.length >= QUICK_RESULTS_MIN_LENGTH && quick !== null;
   const results = showQuick ? quick.slice(0, QUICK_RESULTS_LIMIT) : [];
   const onRecord = selected.startsWith('result:');
-  const shownCount = shownGroups.reduce((sum, group) => sum + group.commands.length, 0) + (showQuick ? results.length + 1 : 0);
+  const shownCount = shownGroups.reduce((sum, group) => sum + group.commands.length, 0) + themeShortcuts.length
+    + themeChoices.length + (showQuick ? results.length + 1 : 0);
 
   return (
     <Command
@@ -446,6 +542,19 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
         if ((event.ctrlKey || event.metaKey) && event.key === '/') {
           event.preventDefault();
           choose(advancedSearch);
+          return;
+        }
+        if (page !== 'theme' || query || event.ctrlKey || event.metaKey || event.altKey) return;
+        // Linear's way back from a submenu, and its 1, 2, 3 beside each choice.
+        if (event.key === 'Backspace') {
+          event.preventDefault();
+          backToRoot();
+          return;
+        }
+        const option = THEME_OPTIONS[Number(event.key) - 1];
+        if (/^[1-9]$/.test(event.key) && option) {
+          event.preventDefault();
+          pickTheme(option.value);
         }
       }}
     >
@@ -454,12 +563,51 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
           autoFocus
           value={query}
           onValueChange={setQuery}
-          placeholder="Type a command or search…"
+          placeholder={page === 'theme' ? `${THEME_PARENT} to…` : 'Type a command or search…'}
           {...stylex.props(menu.input)}
         />
       </div>
       <p role="status" {...stylex.props(menu.srOnly)}>{text ? `Showing ${shownCount} items` : 'Showing all items'}</p>
       <Command.List {...stylex.props(menu.list, styles.list)}>
+        {themeChoices.length > 0 && (
+          <Command.Group className="buyerly-command-group">
+            {themeChoices.map((option) => (
+              <Command.Item
+                key={option.value}
+                value={`theme:${option.value}`}
+                aria-label={option.label}
+                onSelect={() => pickTheme(option.value)}
+                {...stylex.props(menu.item)}
+              >
+                <ThemeBadge theme={option.value} />
+                <span {...stylex.props(menu.label)}>{option.label}</span>
+                {option.value === interfaceTheme && <span {...stylex.props(styles.check)} aria-hidden="true"><BuyerlyIcon name="check" size={14} /></span>}
+                <ShortcutKeys shortcut={String(THEME_OPTIONS.indexOf(option) + 1)} />
+              </Command.Item>
+            ))}
+          </Command.Group>
+        )}
+        {themeShortcuts.length > 0 && (
+          <Command.Group className="buyerly-command-group">
+            {themeShortcuts.map((option) => (
+              <Command.Item
+                key={option.value}
+                value={`theme-shortcut:${option.value}`}
+                aria-label={`${THEME_PARENT}, ${option.label}`}
+                onSelect={() => pickTheme(option.value)}
+                {...stylex.props(menu.item)}
+              >
+                <ThemeBadge theme={option.value} />
+                <span {...stylex.props(styles.pathLabel)}>
+                  <span {...stylex.props(styles.pathParent)}>{THEME_PARENT}</span>
+                  <span {...stylex.props(styles.pathParent)} aria-hidden="true">›</span>
+                  <span {...stylex.props(styles.truncate)}>{option.label}</span>
+                </span>
+                {option.value === interfaceTheme && <span {...stylex.props(styles.check)} aria-hidden="true"><BuyerlyIcon name="check" size={14} /></span>}
+              </Command.Item>
+            ))}
+          </Command.Group>
+        )}
         {shownGroups.map((group, groupIndex) => (
           <Command.Group key={`${groupIndex}:${group.heading}`} heading={group.heading || undefined} className="buyerly-command-group">
             {group.commands.map((command) => (
@@ -467,7 +615,11 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
                 key={command.id}
                 value={`command:${command.id}`}
                 aria-label={command.label}
-                onSelect={() => choose(command.run)}
+                onSelect={() => {
+                  if (command.then === 'submenu') command.run();
+                  else if (command.then === 'stay') dismiss(command.run);
+                  else choose(command.run);
+                }}
                 {...stylex.props(menu.item)}
               >
                 <span {...stylex.props(menu.icon)} aria-hidden="true">{command.icon}</span>
@@ -509,12 +661,12 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ workspace, navigate, ch
           </Command.Group>
         )}
       </Command.List>
-      {showQuick && (
-        // Linear's footer: 35px under a rule, each hint a small button with its keys boxed.
+      {onRecord && (
+        // Linear's footer, only while a record is selected: 35px under a rule, each hint a small button with its keys boxed.
         <div {...stylex.props(styles.footer)}>
           <span {...stylex.props(styles.hint)}>
             <CommandMenuFooterKeys keys={['↵']} />
-            <span>{onRecord ? 'Open' : 'Select'}</span>
+            <span>Open</span>
           </span>
           <button
             type="button"
@@ -597,6 +749,14 @@ function useQuickResults(text: string): SearchResult[] | null {
 
   return answer?.results ?? null;
 }
+
+/** Linear's "Aa" swatch of a theme, as Settings → Preferences draws it. */
+const ThemeBadge: React.FC<{ theme: InterfaceTheme }> = ({ theme }) => (
+  <span className={`preferences-aa-badge preferences-aa-badge--${theme} buyerly-command-theme-badge`} aria-hidden="true">
+    <span className="preferences-aa-dot">•</span>
+    <span>Aa</span>
+  </span>
+);
 
 const KEY_NAMES: Record<string, string> = { Shift: '⇧', Alt: 'Alt', Ctrl: 'Ctrl' };
 const SEQUENCE_PREFIXES = new Set(['G', 'O', 'N']);
