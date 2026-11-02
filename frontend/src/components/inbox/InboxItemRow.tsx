@@ -79,11 +79,12 @@ const styles = stylex.create({
     paddingTop: 6,
     paddingBottom: 6,
   },
+  // Linear's row sits 8px in from the list's edges (383.5px of a 399.5px list).
   row: {
     display: 'block',
     cursor: 'default',
-    paddingLeft: 10,
-    paddingRight: 10,
+    paddingLeft: 8,
+    paddingRight: 8,
     outline: '2px solid transparent',
     outlineOffset: 2,
   },
@@ -97,22 +98,21 @@ const styles = stylex.create({
     paddingRight: 8,
     backgroundColor: {
       default: null,
-      ':hover': colors['--item-hover-bg'],
+      ':hover': colors['--inbox-row-hover-bg'],
     },
   },
   // Its right-click menu is open.
   rowBodyMenuOpen: {
-    backgroundColor: colors['--item-hover-bg'],
+    backgroundColor: colors['--inbox-row-hover-bg'],
   },
   rowBodySelected: {
-    backgroundColor: colors['--item-active-bg'],
+    backgroundColor: colors['--inbox-row-active-bg'],
   },
-  // The avatar stays level with the first two lines when a third one is added.
+  // 12px from the row's top, so it stays level with the first two lines when a third one is added.
   avatar: {
     display: 'flex',
-    height: 55,
     flexShrink: 0,
-    alignItems: 'center',
+    marginTop: 12,
   },
   lines: {
     display: 'flex',
@@ -122,11 +122,13 @@ const styles = stylex.create({
     flexBasis: '0%',
     flexDirection: 'column',
     gap: 2,
-    paddingTop: 11,
-    paddingBottom: 11,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
+  // Linear's lines: the title's is 17px with the text centred, the summary's 16px with the text at its foot.
   line: {
     display: 'flex',
+    height: 17,
     minWidth: 0,
     alignItems: 'center',
     gap: 6,
@@ -135,7 +137,17 @@ const styles = stylex.create({
   lineStrong: {
     color: colors['--text-secondary'],
   },
+  // The open notification's row darkens its text a step, as Linear's does on its background.
+  lineActiveTitle: {
+    color: colors['--inbox-row-active-title'],
+  },
+  lineActive: {
+    color: colors['--inbox-row-active-fg'],
+  },
+  // A pixel below the line's middle, as Linear's.
   unreadDot: {
+    position: 'relative',
+    top: 1,
     height: 8,
     width: 8,
     flexShrink: 0,
@@ -146,12 +158,14 @@ const styles = stylex.create({
     ...truncate,
     fontSize: 13,
     fontWeight: 500,
-    lineHeight: '16px',
+    lineHeight: 'normal',
   },
   summaryLine: {
+    height: 16,
+    alignItems: 'flex-end',
     fontSize: 12,
     fontWeight: 450,
-    lineHeight: '15px',
+    lineHeight: 'normal',
   },
   summary: {
     minWidth: 0,
@@ -350,7 +364,7 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
               <BuyerlyLogoAvatar size={32} />
             </span>
             <div {...stylex.props(styles.lines)}>
-              <div {...stylex.props(styles.line, (isSelected || unread) && styles.lineStrong)}>
+              <div {...stylex.props(styles.line, unread && styles.lineStrong, isSelected && styles.lineActiveTitle)}>
                 {unread && (
                   <span
                     aria-hidden="true"
@@ -361,7 +375,7 @@ export const InboxItemRow: React.FC<InboxItemRowProps> = ({
                   {auditEventTitle(item)}
                 </span>
               </div>
-              <div {...stylex.props(styles.line, styles.summaryLine, isSelected && styles.lineStrong)}>
+              <div {...stylex.props(styles.line, styles.summaryLine, isSelected && styles.lineActive)}>
                 <span {...stylex.props(styles.summary)}>{auditEventSummary(item)}</span>
                 {item.status === 'ERROR' && (
                   <span

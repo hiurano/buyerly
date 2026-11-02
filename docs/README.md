@@ -14,7 +14,7 @@
 | Правила UI-разработки | [UI_CONTRACT.md](UI_CONTRACT.md), [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) |
 | Деплой и восстановление | [DEPLOYMENT.md](DEPLOYMENT.md), [INCIDENT_RUNBOOKS.md](INCIDENT_RUNBOOKS.md), [RELIABILITY_SLO.md](RELIABILITY_SLO.md) |
 | Миграции БД | [database_modernization_and_migrations.md](database_modernization_and_migrations.md) |
-| Дальнейшие задачи | [PRODUCT_BACKLOG.md](PRODUCT_BACKLOG.md) |
+| Дальнейшие задачи | [GitHub Issues](https://github.com/hiurano/buyerly/issues) |
 | Выпущенные изменения | [CHANGELOG.md](../CHANGELOG.md) |
 
 ## Материалы, требующие проверки внешнего состояния

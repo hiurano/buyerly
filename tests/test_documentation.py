@@ -39,7 +39,6 @@ class TestDocumentationContract(unittest.TestCase):
             "API.md",
             "DEPLOYMENT.md",
             "DECISIONS.md",
-            "PRODUCT_BACKLOG.md",
         ):
             self.assertIn(f"]({path})", index)
 
