@@ -49,7 +49,7 @@ const number = (value: unknown): number | null =>
 
 const field = (key: keyof AnalyticsHierarchyItem) => (item: Partial<AnalyticsHierarchyItem>) => number(item[key]);
 
-export const ADS_MANAGER_METRICS: AdsManagerMetric[] = [
+const ADS_MANAGER_METRICS: AdsManagerMetric[] = [
   {
     id: 'budget', label: 'Budget', format: 'budget', width: '120px', filter: true, levels: ['campaigns', 'adsets'],
     // A campaign on ad set budgets, or an ad set under a campaign budget, has none of its own.

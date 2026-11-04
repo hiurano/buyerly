@@ -8,7 +8,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
  * double-click, but the overlay laid down on press swallows the second click,
  * so live nothing happens; neither does it here.
  */
-export const SPLIT_LIST_DEFAULT_WIDTH = 400;
+const SPLIT_LIST_DEFAULT_WIDTH = 400;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(value, max));

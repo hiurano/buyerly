@@ -97,7 +97,7 @@ export const EntityRowControls: React.FC<EntityRowControlsProps> = ({
   </>
 );
 
-export interface EntityPropertyRow {
+interface EntityPropertyRow {
   identifier: string;
   accountName?: string;
   campaignName?: string;

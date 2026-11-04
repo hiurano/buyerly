@@ -28,7 +28,7 @@ export type { SyncAction, SyncRow, SyncStatus } from './syncProtocol';
  * are drawn here until the sync engine holds them (transactions.ts).
  */
 
-export class SyncClient {
+class SyncClient {
   status: SyncStatus = 'off';
   /** The newest change held. */
   lastSyncId = 0;

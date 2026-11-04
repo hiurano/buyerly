@@ -15,13 +15,13 @@ import { makeStore, useStore } from './store';
 
 export type RuleFilterTab = 'active' | 'paused' | 'all';
 export type AdsManagerEntity = 'campaigns' | 'adsets' | 'ads';
-export interface AdsManagerQuickFilter {
+interface AdsManagerQuickFilter {
   entity: AdsManagerEntity;
   sidebarTab: 'groups' | 'rules';
   fieldId: 'group' | 'rule';
   value: string;
 }
-export type CompletedIssuesFilter = 'all' | 'day' | 'week' | 'month' | 'none';
+type CompletedIssuesFilter = 'all' | 'day' | 'week' | 'month' | 'none';
 
 const NO_FILTERS: Record<AdsManagerEntity, FilterClause[]> = { campaigns: [], adsets: [], ads: [] };
 
@@ -29,7 +29,7 @@ const NO_FILTERS: Record<AdsManagerEntity, FilterClause[]> = { campaigns: [], ad
  * How each list is shown: the saved views (#385) and the workspace's defaults
  * (#472), Ads Manager's filters, collapsed groups and Display options.
  */
-export class ViewStore {
+class ViewStore {
   /** Each list page's saved view by key, kept per member on the server (#385); a missing key means defaults. */
   viewSettings: StoredViews = {};
   /** False until this workspace's saved views arrive (or fail to). */

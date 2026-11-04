@@ -54,7 +54,7 @@ const favoritesQuery: ListQuery<Favorite> = {
 
 let standIns = 0;
 
-export class FavoritesStore {
+class FavoritesStore {
   /** The workspace the list belongs to; another one starts empty. */
   workspace: string | null = null;
   /** As the pool shows them, with the stars still being written (#508). */

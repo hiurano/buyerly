@@ -17,7 +17,7 @@ export function findModelContext(): ModelContext | null {
 }
 
 /** Off in production until the tools pass a manual check: built with VITE_WEBMCP=1, or opted in above. */
-export function webMcpEnabled(): boolean {
+function webMcpEnabled(): boolean {
   if (import.meta.env.VITE_WEBMCP === '1') return true;
   try {
     return window.localStorage.getItem(OPT_IN_KEY) === 'on';
@@ -55,7 +55,7 @@ export function useWebMcpEnabled(): boolean {
 }
 
 /** Every tool lives until `signal` aborts. */
-export function registerTools(modelContext: ModelContext, tools: WebMcpTool[], signal: AbortSignal): void {
+function registerTools(modelContext: ModelContext, tools: WebMcpTool[], signal: AbortSignal): void {
   const report = (name: string, error: unknown) => {
     // Aborting a registration still in flight rejects it: that is the unregistration.
     if (signal.aborted) return;

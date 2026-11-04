@@ -41,7 +41,7 @@ type SocketMessage =
   | { type: 'pong' };
 
 /** A tab joined: how the hub talks to it. */
-export interface HubPeer {
+interface HubPeer {
   post(message: HubMessage): void;
 }
 
@@ -65,7 +65,7 @@ export const ADOPT_DELAY_MS = 3_000;
 
 const TRANSACTIONS_KEY = 'transactions';
 
-export interface HubEnvironment {
+interface HubEnvironment {
   /** The page's origin, for the socket's address. */
   origin: string;
   fetch: typeof fetch;
@@ -85,7 +85,7 @@ export const browserEnvironment = (): HubEnvironment => ({
   now: () => Date.now(),
 });
 
-export class SyncHub {
+class SyncHub {
   readonly scope: string;
   #slug = '';
   #account: number | null = null;

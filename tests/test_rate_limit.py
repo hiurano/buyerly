@@ -3,7 +3,7 @@ import unittest
 
 import httpx
 from starlette.requests import Request
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import api.auth as api_auth_module
 import api.routers.auth as auth_router_module
@@ -17,7 +17,6 @@ from core.rate_limit import (
     get_client_location,
     limiter,
 )
-from database.db import Base
 from database.models import User, Workspace
 from tests.test_db_helper import create_test_engine, init_test_db
 from tests.client_api_transport import client_api_transport

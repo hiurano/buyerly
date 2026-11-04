@@ -33,7 +33,7 @@ const TEAM_HOME_TITLES: Record<TeamHomePage, string> = {
   members: 'Members',
 };
 
-export interface PageTitleInput {
+interface PageTitleInput {
   activeTab: ActiveTab;
   settingsSection: SettingsSection;
   /** "<KEY>" or "<KEY>/<page>" on a team's settings. */

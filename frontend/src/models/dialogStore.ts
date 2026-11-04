@@ -4,13 +4,13 @@ import { scopeStore } from './scopeStore';
 import { makeStore, useStore } from './store';
 
 /** Where a new rule starts out running (#387). */
-export interface CreateRulePrefill {
+interface CreateRulePrefill {
   accountId: string;
   scope: RuleScope;
 }
 
 /** The dialogs any page can open: the rule editor, a rule's states, the label picker and delete confirmation. */
-export class DialogStore {
+class DialogStore {
   isCreateRuleModalOpen = false;
   /** The label a new rule starts with: the "+" of a label's group. */
   createRuleTargetLabelId: string | undefined = undefined;

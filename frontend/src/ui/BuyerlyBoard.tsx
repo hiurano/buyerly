@@ -21,14 +21,14 @@ import { BuyerlyDisclosureGlyph } from '@/icons/BuyerlyIcons';
  * sticky bands across every column, and a "Hidden columns" lane on the
  * right for the columns the member hid or that are empty.
  */
-export interface BoardColumn<T> {
+interface BoardColumn<T> {
   id: string;
   label: string;
   icon?: React.ReactNode;
   rows: T[];
 }
 
-export interface BoardHiddenColumn {
+interface BoardHiddenColumn {
   id: string;
   label: string;
   icon?: React.ReactNode;
@@ -45,7 +45,7 @@ export interface BoardLane<T> {
   cells: Record<string, T[]>;
 }
 
-export interface BoardMove<T> {
+interface BoardMove<T> {
   /** Whether cards can be dropped into this column, and (without `canDrag`) dragged out of it. */
   canMove: (columnId: string) => boolean;
   /** Whether this card can be picked up at all, e.g. only what may really change. */

@@ -5,7 +5,7 @@
  * away it is beside it. Days, weeks, months and years land at 9:00, as Linear's.
  */
 
-export interface SnoozeSuggestion {
+interface SnoozeSuggestion {
   id: string;
   label: string;
   /** Right-hand hint: the exact time for a duration, the distance for a time. */
@@ -85,7 +85,7 @@ function formatClock(date: Date): string {
 }
 
 /** "Today at 11:59 PM", "Tomorrow at 4:00 PM", "Monday at 9:00 AM", "Friday, December 25, 10:00 AM". */
-export function formatSnoozePoint(date: Date, now: Date): string {
+function formatSnoozePoint(date: Date, now: Date): string {
   const days = calendarDaysBetween(now, date);
   if (days === 0) return `Today at ${formatClock(date)}`;
   if (days === 1) return `Tomorrow at ${formatClock(date)}`;
@@ -98,7 +98,7 @@ export function formatSnoozePoint(date: Date, now: Date): string {
 }
 
 /** "in 5 hours", "in 1 day", "in 32 days", "in 3 months", "in 1 year". */
-export function formatSnoozeDistance(date: Date, now: Date): string {
+function formatSnoozeDistance(date: Date, now: Date): string {
   const days = calendarDaysBetween(now, date);
   if (days <= 0) {
     // Rounded, as Linear's: 1 h 40 min is "in 2 hours" (7 Oct 10:19 PM, "tonight").

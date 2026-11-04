@@ -33,7 +33,7 @@ const defaultProperties = (entity: AdsManagerEntity) => Object.fromEntries(
  * Every ad account is on screen at once, grouped by account: a group's figures
  * share one currency, and a buyer reads limits and billing per account.
  */
-export const ADS_MANAGER_VIEW_DEFAULTS: Record<AdsManagerEntity, ListViewSettings> = {
+const ADS_MANAGER_VIEW_DEFAULTS: Record<AdsManagerEntity, ListViewSettings> = {
   campaigns: listViewDefaults({
     grouping: 'account',
     ordering: 'manual',
@@ -58,7 +58,7 @@ export const ADS_MANAGER_VIEW_DEFAULTS: Record<AdsManagerEntity, ListViewSetting
 };
 
 /** My campaigns keeps views of its own, as Linear's My issues does beside a team's Issues. */
-export const adsManagerViewKey = (entity: AdsManagerEntity, mine = false) =>
+const adsManagerViewKey = (entity: AdsManagerEntity, mine = false) =>
   `${mine ? 'my-campaigns' : 'ads-manager'}.${entity}`;
 
 export const useAdsManagerView = (entity: AdsManagerEntity, mine = false) =>

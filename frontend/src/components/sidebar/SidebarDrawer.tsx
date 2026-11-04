@@ -60,8 +60,8 @@ export function useSidebarDrawer(surfaceRef: React.RefObject<HTMLElement | null>
  * opens the peek after 250ms, leaving the window closes it after 500ms. The
  * header's sidebar button opens it at once.
  */
-export const PEEK_HOVER_DELAY = 250;
-export const PEEK_WINDOW_LEAVE_DELAY = 500;
+const PEEK_HOVER_DELAY = 250;
+const PEEK_WINDOW_LEAVE_DELAY = 500;
 
 /**
  * The desktop half of Linear's sidebar container: a collapsed sidebar can be

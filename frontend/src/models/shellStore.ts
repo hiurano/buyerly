@@ -33,7 +33,7 @@ function storedTheme(): InterfaceTheme {
 }
 
 /** The app's frame: the sidebar, the app page Settings returns to, and the theme. */
-export class ShellStore {
+class ShellStore {
   sidebarWidth = 244;
   isSidebarCollapsed = false;
   /** The sidebar drawer on a small screen; the collapsed setting above stays for desktop. */

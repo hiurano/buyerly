@@ -23,7 +23,7 @@ function saveDetailsPanes(panes: Record<DetailsPaneId, DetailsPaneState>) {
 }
 
 /** Each view's details pane: open or closed and its dragged width, kept on this device. */
-export class DetailsPaneStore {
+class DetailsPaneStore {
   detailsPanes: Record<DetailsPaneId, DetailsPaneState> = readDetailsPanes();
 
   constructor() {

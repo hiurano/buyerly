@@ -11,7 +11,7 @@ import { sync, type SyncRow } from './sync';
  */
 
 /** A timestamp of a row (to_jsonb, UTC) as the API writes one: ISO with "Z"; empty for none. */
-export function utcIso(value: unknown): string {
+function utcIso(value: unknown): string {
   if (typeof value !== 'string' || !value) return '';
   if (/[zZ]$/.test(value)) return value;
   if (/[+-]\d\d:\d\d$/.test(value)) return value.endsWith('+00:00') ? `${value.slice(0, -6)}Z` : new Date(value).toISOString();

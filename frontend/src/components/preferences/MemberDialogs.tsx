@@ -193,7 +193,7 @@ export interface MemberItem {
   is_current_user: boolean;
 }
 
-export const ROLE_LABELS: Record<string, string> = {
+const ROLE_LABELS: Record<string, string> = {
   owner: 'Owner',
   admin: 'Admin',
   member: 'Member',

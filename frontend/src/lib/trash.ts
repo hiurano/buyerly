@@ -13,7 +13,7 @@ export interface DeletedItem {
   deleted_by: string;
 }
 
-export interface RestoreResult {
+interface RestoreResult {
   kind: DeletedKind;
   entity_id: number;
   name: string;

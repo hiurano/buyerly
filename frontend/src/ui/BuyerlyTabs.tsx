@@ -5,7 +5,7 @@ import { colors } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './DropdownMenu';
 
-export interface BuyerlyTabItem {
+interface BuyerlyTabItem {
   id: string;
   label: string;
   count?: number;

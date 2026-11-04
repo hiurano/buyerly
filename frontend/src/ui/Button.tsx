@@ -3,7 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
 import { withClassName } from '@/ui/withClassName';
 
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /** `danger` is only for the confirming button of a destructive action. */
   variant?: 'primary' | 'secondary' | 'danger';
   size?: 'compact' | 'default';

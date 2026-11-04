@@ -1,14 +1,10 @@
-import asyncio
 import json
 import unittest
 from unittest.mock import AsyncMock, MagicMock
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from database.db import Base
-from database.models import Account, AppSettings, AuditEvent, MetaConnection, User, Workspace, WorkspaceMember
+from database.models import Account, AuditEvent, MetaConnection, User, Workspace, WorkspaceMember
 from meta_api.client import (
-    META_TOKEN_SUBCODE_MAP,
-    MetaClient,
     MetaTokenAuthError,
     classify_meta_token_error,
 )

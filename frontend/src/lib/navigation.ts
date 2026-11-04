@@ -12,7 +12,7 @@ import { viewStore, type AdsManagerEntity } from '@/models/viewStore';
 const isAppTab = (tab: ActiveTab): tab is AppTab => tab !== 'preferences' && tab !== 'search';
 
 /** An app page's place: its tab, team and whether it is My campaigns. */
-export interface AppPlace {
+interface AppPlace {
   tab: AppTab;
   teamKey: string | null;
   mine: boolean;

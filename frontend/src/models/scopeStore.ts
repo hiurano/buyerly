@@ -7,7 +7,7 @@ import './transactions';
 import { makeStore, useStore } from './store';
 
 /** The open workspace: which one, its name and the member's role in it. */
-export class ScopeStore {
+class ScopeStore {
   workspaceScope: string | null = null;
   workspaceSlug: string | null = null;
   scopeGeneration = 0;

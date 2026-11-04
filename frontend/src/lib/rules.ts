@@ -182,7 +182,7 @@ export interface RulePresetWriteRequest {
 }
 
 /** A rule in the rule window before it is saved: no id, the name optional. */
-export type RuleDraftRequest = Omit<RulePresetWriteRequest, 'label_ids' | 'attachments'>;
+type RuleDraftRequest = Omit<RulePresetWriteRequest, 'label_ids' | 'attachments'>;
 
 /** Whether a draft could be saved as it stands; the error says why not. */
 export function checkRuleDraft(draft: RuleDraftRequest): Promise<{ valid: true }> {
@@ -211,7 +211,7 @@ export const RULE_METRIC_LABELS: Record<RuleMetric, string> = {
   link_clicks: 'Link clicks',
 };
 
-export const RULE_OPERATOR_LABELS: Record<RuleOperator, string> = {
+const RULE_OPERATOR_LABELS: Record<RuleOperator, string> = {
   gte: '≥',
   gt: '>',
   lte: '≤',
@@ -250,7 +250,7 @@ export const RULE_LEVEL_LABELS: Record<RuleExecutionLevel, string> = {
   ad: 'Ad',
 };
 
-export const RULE_ACTION_LABELS: Record<RuleAction, string> = {
+const RULE_ACTION_LABELS: Record<RuleAction, string> = {
   turn_off: 'Turn off',
   turn_on: 'Turn on',
   notify_only: 'Notify',
@@ -313,19 +313,6 @@ export function ruleCurrency(
 }
 
 /**
- * What a rule checks and where, in one sentence for the rule form. "Applies
- * to" picks the thing the rule judges and acts on; attaching the rule picks
- * the part of the account it looks in.
- */
-export function describeRuleReach(level: RuleExecutionLevel): string {
-  if (level === 'campaign') {
-    return 'Checks each campaign as a whole. Attached to an ad account, it covers every campaign there; attached to a campaign, only that campaign.';
-  }
-  const noun = level === 'ad' ? 'ad' : 'ad set';
-  return `Checks each ${noun} on its own. Attached to an ad account, it covers every ${noun} there; attached to a campaign, every ${noun} in that campaign.`;
-}
-
-/**
  * Includes the level, because "turn off" means very different things when it
  * takes down one ad set versus a whole campaign.
  */
@@ -370,7 +357,7 @@ export function formatRelativeTime(isoTimestamp: string, now: number = Date.now(
 }
 
 /** Clock time for "until …": today's time alone, otherwise with the date. */
-export function formatUntil(isoTimestamp: string, now: Date = new Date()): string {
+function formatUntil(isoTimestamp: string, now: Date = new Date()): string {
   const parsed = new Date(isoTimestamp);
   if (!isoTimestamp || Number.isNaN(parsed.getTime())) return '';
   const time = parsed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -381,7 +368,7 @@ export function formatUntil(isoTimestamp: string, now: Date = new Date()): strin
 
 export type RuleStateTone = 'acted' | 'waiting' | 'blocked' | 'quiet' | 'error';
 
-export interface RuleStateView {
+interface RuleStateView {
   /** Short status, e.g. "Waiting until 00:00". */
   label: string;
   /** Why, e.g. the readings or the rule it gave way to; may be empty. */
@@ -598,7 +585,7 @@ export function updateRulePreset(
 }
 
 /** The deletion keeps the rule restorable; `deleted_item_id` is its entry in Recently deleted. */
-export interface DeleteResponse {
+interface DeleteResponse {
   success: boolean;
   deleted_item_id: number;
 }
@@ -634,31 +621,6 @@ export function deleteRuleLabel(labelId: number): Promise<DeleteResponse> {
     'mutation RuleLabelDelete($id: Int!) { ruleLabelDelete(id: $id) { success lastSyncId ruleLabel } }',
     { id: labelId },
   ).then((result) => result.ruleLabel);
-}
-
-/** A rule's whole set of labels, in one write. */
-export function setPresetLabels(presetId: number, labelIds: number[]): Promise<RulePresetPayload> {
-  return graphql<{ rule: RulePresetPayload }>(
-    RULE_LABELS_SET,
-    { id: presetId, input: { label_ids: labelIds } },
-  ).then((result) => result.rule);
-}
-
-/** Labels put on, or taken off, several rules at once. */
-export function changePresetsLabels(
-  presetIds: number[],
-  change: { add?: number[]; remove?: number[] },
-): Promise<{ updated_count: number }> {
-  return graphql<{ rules: { updated_count: number } }>(
-    RULES_LABELS_CHANGE,
-    {
-      input: {
-        preset_ids: presetIds,
-        add_label_ids: change.add ?? [],
-        remove_label_ids: change.remove ?? [],
-      },
-    },
-  ).then((result) => result.rules);
 }
 
 /* ------------------------------------------- rules attached to accounts -- */

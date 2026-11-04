@@ -3,7 +3,7 @@
  * finds "Go to settings". Returns null when the letters are not all there, else
  * a score where whole words, word starts and runs of letters rank higher.
  */
-export function commandMatchScore(query: string, text: string): number | null {
+function commandMatchScore(query: string, text: string): number | null {
   const needle = query.toLowerCase().replace(/\s+/g, '');
   if (!needle) return 0;
   const haystack = text.toLowerCase();

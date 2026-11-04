@@ -3,7 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 import { colors } from '@/styles/tokens.stylex';
 import { Button } from './Button';
 
-export interface DataStateProps {
+interface DataStateProps {
   title: string;
   detail: string;
   /** `alert` for a failure the user must notice; `status` for loading and empty. */

@@ -461,7 +461,7 @@ const SearchField = React.forwardRef<HTMLInputElement, {
 SearchField.displayName = 'SearchField';
 
 /** Metric: search and sections — money, counts, rates (#387). */
-export const MetricMenu: React.FC<{
+const MetricMenu: React.FC<{
   value: RuleMetric;
   onPick: (metric: RuleMetric) => void;
   onClose: () => void;

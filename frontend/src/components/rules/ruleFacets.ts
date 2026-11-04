@@ -4,25 +4,25 @@ import { type RuleItem, type RuleLabel } from '@/models/rulesStore';
 export { ruleState };
 
 /** The Rules details pane's quick filters (#367): state, what a rule does, its labels (#383). */
-export type RuleFacetId = 'status' | 'action' | 'label';
-export const RULE_FACET_IDS: RuleFacetId[] = ['status', 'action', 'label'];
+type RuleFacetId = 'status' | 'action' | 'label';
+const RULE_FACET_IDS: RuleFacetId[] = ['status', 'action', 'label'];
 
 /** A rule without labels, as Linear's "No labels". */
-export const NO_LABELS = 'none';
+const NO_LABELS = 'none';
 
 export interface RuleQuickFilter {
   fieldId: string;
   value: string;
 }
 
-export interface RuleFacet {
+interface RuleFacet {
   id: RuleFacetId;
   label: string;
   options: { value: string; label: string; count: number }[];
 }
 
 /** What a rule holds for a facet: one state, one action, any number of labels. */
-export function ruleFacetValues(rule: RuleItem, facet: string): string[] {
+function ruleFacetValues(rule: RuleItem, facet: string): string[] {
   if (facet === 'status') return [ruleState(rule)];
   if (facet === 'action') return [rule.actionKind];
   if (facet === 'label') return rule.labelIds.length ? rule.labelIds : [NO_LABELS];

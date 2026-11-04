@@ -29,7 +29,7 @@ export interface ListViewSettings {
   filters: FilterClause[];
 }
 
-export type ListViewDefaults = Pick<ListViewSettings, 'grouping' | 'ordering' | 'direction' | 'properties'> &
+type ListViewDefaults = Pick<ListViewSettings, 'grouping' | 'ordering' | 'direction' | 'properties'> &
   Partial<ListViewSettings>;
 
 export function listViewDefaults(defaults: ListViewDefaults): ListViewSettings {
@@ -106,12 +106,6 @@ export function sortByColumn(
 ): Partial<ListViewSettings> {
   if (view.ordering === columnId) return { direction: view.direction === 'asc' ? 'desc' : 'asc' };
   return { ordering: columnId, direction: naturalDirection };
-}
-
-export interface ViewGroup<T> {
-  id: string;
-  label: string;
-  rows: T[];
 }
 
 /**

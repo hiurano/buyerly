@@ -13,7 +13,7 @@ import httpx
 from cryptography.fernet import Fernet
 from PIL import Image, PngImagePlugin
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import api.auth as api_auth_module
 import api.routes as api_routes_module
@@ -22,7 +22,6 @@ from api.server import create_app
 from core.config import settings
 from core.meta_tokens import decrypt_meta_token
 from core.rate_limit import limiter
-from database.db import Base
 from database.models import (
     Account,
     AccountHealth,
@@ -536,7 +535,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
 
     async def test_health_overview_is_workspace_isolated_and_secret_safe(self):
         async with self.test_session_maker() as session:
-            buyer = (
+            (
                 await session.execute(select(User).where(User.username == "buyer_nick"))
             ).scalar_one()
             buyer_account = (
@@ -2636,7 +2635,7 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.app.state.meta_client,
             "get_account_insights_summary",
             new=AsyncMock(side_effect=insights_router),
-        ) as mocked_insights:
+        ):
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
                 # 1. Fetch in Workspace 1 (live)
                 resp1_live = await client.get("/api/summary?period=today&force=true", headers=headers)

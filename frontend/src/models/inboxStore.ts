@@ -23,7 +23,7 @@ interface StoredInbox {
 }
 
 /** Inbox's unread counts and its Display options, kept per member on the server. */
-export class InboxStore {
+class InboxStore {
   inboxUnreadCount = 0;
   inboxPriorityUnreadCount = 0;
   inboxDisplay: InboxDisplay = DEFAULT_INBOX_DISPLAY;

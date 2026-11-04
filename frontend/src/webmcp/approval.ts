@@ -3,7 +3,7 @@ import { makeStore, useStore } from '@/models/store';
 export type ApprovalOutcome = 'approved' | 'declined' | 'withdrawn';
 
 /** One change an agent asked for, as the person sees it before it happens. */
-export interface ApprovalRequest {
+interface ApprovalRequest {
   title: string;
   /** What will change, one plain sentence per line. */
   details: string[];
@@ -13,13 +13,13 @@ export interface ApprovalRequest {
   tone: 'primary' | 'danger';
 }
 
-export interface PendingApproval extends ApprovalRequest {
+interface PendingApproval extends ApprovalRequest {
   id: number;
   settle: (outcome: ApprovalOutcome) => void;
 }
 
 /** Changes agents asked for, in arrival order; the first one is on screen. */
-export class ApprovalStore {
+class ApprovalStore {
   queue: PendingApproval[] = [];
 
   constructor() {
@@ -35,7 +35,7 @@ export class ApprovalStore {
   }
 }
 
-export const approvalStore = new ApprovalStore();
+const approvalStore = new ApprovalStore();
 
 export const useApprovalQueue = <T,>(select: (store: ApprovalStore) => T): T => useStore(approvalStore, select);
 

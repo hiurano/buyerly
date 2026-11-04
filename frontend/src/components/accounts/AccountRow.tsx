@@ -143,10 +143,10 @@ const styles = stylex.create({
 });
 
 /** As Linear's Projects rows (measured 31.10). */
-export const ACCOUNT_ROW_HEIGHT = 48;
+const ACCOUNT_ROW_HEIGHT = 48;
 
 /** At phone width the list keeps Name, Status and Spend today (#388). */
-export const PHONE_QUERY = '(max-width: 640px)';
+const PHONE_QUERY = '(max-width: 640px)';
 
 export function getAccountColumns(properties: Record<string, boolean>, phone: boolean): BuyerlyDataListColumn[] {
   // As Linear's, the header's label starts over the row's icon; its pill's 6px sit out to the left.
@@ -184,7 +184,7 @@ export interface AccountRowActions {
 }
 
 /** The row's menu, as Linear's project menu: open, rename, automation, copy ID, remove. */
-export function accountMenuEntries(account: MetaAccount, actions: AccountRowActions, inHeader = false): RowMenuEntry[] {
+function accountMenuEntries(account: MetaAccount, actions: AccountRowActions, inHeader = false): RowMenuEntry[] {
   const automationBlocked = !account.rules_enabled && (account.active_rules?.length ?? 0) === 0;
   return [
     // The page itself has "Campaigns" beside this menu.

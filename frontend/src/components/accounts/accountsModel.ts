@@ -67,13 +67,13 @@ export function accountName(account: Pick<MetaAccount, 'custom_name' | 'name' | 
 }
 
 /** Meta's account status, in the words Ads Manager uses. */
-export interface AccountStatusInfo {
+interface AccountStatusInfo {
   key: string;
   label: string;
   color: string;
 }
 
-export const ACCOUNT_STATUSES: AccountStatusInfo[] = [
+const ACCOUNT_STATUSES: AccountStatusInfo[] = [
   { key: 'active', label: 'Active', color: '#4cb782' },
   { key: 'unsettled', label: 'Unsettled', color: '#f2994a' },
   { key: 'grace', label: 'Grace period', color: '#f2994a' },
@@ -111,11 +111,6 @@ export function connectionProblem(account: Pick<MetaAccount, 'health' | 'status_
   return health.status === 'critical' ? 'Buyerly has not been able to sync this account.' : 'The last syncs of this account failed.';
 }
 
-/** Rules attached to the account, and whether its automation runs. */
-export function accountRulesSummary(account: Pick<MetaAccount, 'active_rules' | 'rules_enabled'>): { count: number; on: boolean } {
-  return { count: account.active_rules?.length ?? 0, on: Boolean(account.rules_enabled) };
-}
-
 export function teamsOf(account: Pick<MetaAccount, 'id'>, teams: AccountTeam[]): AccountTeam[] {
   return account.id === undefined ? [] : teams.filter((team) => team.account_ids.includes(account.id as number));
 }
@@ -144,7 +139,7 @@ export function sortAccounts(accounts: MetaAccount[], ordering: string, directio
   });
 }
 
-export interface AccountListGroup {
+interface AccountListGroup {
   id: string;
   label: string;
   dotColor: string;

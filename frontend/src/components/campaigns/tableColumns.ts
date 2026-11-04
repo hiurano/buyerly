@@ -1,7 +1,7 @@
 import { BuyerlyDataListColumn, buyerlyDataNameColumn } from '@/ui/BuyerlyDataList';
 import { metricsFor } from './adsManagerMetrics';
 
-export type AdsManagerTableTab = 'campaigns' | 'adsets' | 'ads';
+type AdsManagerTableTab = 'campaigns' | 'adsets' | 'ads';
 
 /**
  * The columns a level shows, in the order Display properties lists them

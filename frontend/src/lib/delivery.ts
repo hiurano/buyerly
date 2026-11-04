@@ -17,7 +17,7 @@ export interface DeliveryControl {
 }
 export type DeliveryStatus = 'ACTIVE' | 'PAUSED';
 
-export interface DeliveryResult {
+interface DeliveryResult {
   entity_id: string;
   level: EntityLevel;
   status: DeliveryStatus;
@@ -43,18 +43,18 @@ export function setEntityDelivery(
 }
 
 /** Reverses one recorded action through the audit history that already owns undo. */
-export function undoAction(auditEventId: number): Promise<unknown> {
+function undoAction(auditEventId: number): Promise<unknown> {
   return undoAuditEvent(auditEventId);
 }
 
-export interface BulkDeliveryTarget {
+interface BulkDeliveryTarget {
   level: EntityLevel;
   entityId: string;
   /** The entity's ad account: a selection may span several. */
   accountId: string;
 }
 
-export interface BulkDeliveryOutcome {
+interface BulkDeliveryOutcome {
   /** Entities Meta confirmed in the requested state, with the audit row to undo. */
   changed: { entityId: string; auditEventId: number | null }[];
   /** Already in the requested state: nothing was written. */
@@ -100,7 +100,7 @@ export async function setDeliveryForMany(
 }
 
 /** Reverses each recorded action; reports how many could not be undone. */
-export async function undoActions(auditEventIds: number[], isCurrent: () => boolean = () => true): Promise<{ failed: number; error: string }> {
+async function undoActions(auditEventIds: number[], isCurrent: () => boolean = () => true): Promise<{ failed: number; error: string }> {
   let failed = 0;
   let error = '';
   for (const id of auditEventIds) {
@@ -115,7 +115,7 @@ export async function undoActions(auditEventIds: number[], isCurrent: () => bool
   return { failed, error };
 }
 
-export interface EntityNoun {
+interface EntityNoun {
   singular: string;
   plural: string;
 }

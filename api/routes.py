@@ -2,13 +2,11 @@
 
 import logging
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter
 
-import database.db
 from api.deps import (
-    RESERVED_WORKSPACE_SLUGS,
     SUMMARY_CACHE_TTL,
     SUMMARY_COLUMN_MAX_WIDTH,
     SUMMARY_COLUMN_MIN_WIDTH,
@@ -122,6 +120,7 @@ from api.schemas import (
     WorkspaceMemberItem,
     WorkspaceItem,
 )
+from core.workspace_slugs import RESERVED_WORKSPACE_SLUGS
 from database.db import async_session_maker
 
 logger = logging.getLogger(__name__)

@@ -37,7 +37,7 @@ const MAX_VISIBLE = 3;
 let nextId = 1;
 
 /** The toasts on screen, oldest first. */
-export class ToastStore {
+class ToastStore {
   toasts: ToastItem[] = [];
 
   constructor() {

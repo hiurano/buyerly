@@ -9,7 +9,6 @@ from sqlalchemy.exc import IntegrityError
 
 from api.auth import get_current_user
 from api.deps import (
-    RESERVED_WORKSPACE_SLUGS,
     _utc_iso,
     get_user_workspace,
     get_user_workspaces_list,
@@ -28,7 +27,7 @@ from api.schemas import (
 from core.default_team import create_default_team, join_default_team
 from core.email import send_workspace_invitation_email
 from core.rate_limit import rate_limit_dep
-from core.workspace_slugs import normalize_workspace_slug
+from core.workspace_slugs import RESERVED_WORKSPACE_SLUGS, normalize_workspace_slug
 from database.db import async_session_maker
 from database.models import AuditEvent, User, Workspace, WorkspaceInvite, WorkspaceMember
 from services.image_uploads import (

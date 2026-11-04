@@ -36,7 +36,7 @@ export const RULES_VIEW_DEFAULTS = listViewDefaults({
 export const useRulesView = () => useListView('rules', RULES_VIEW_DEFAULTS);
 
 /** A board always has columns: without a grouping, Rules' board is by Status. */
-export const RULE_BOARD_FALLBACK = 'status';
+const RULE_BOARD_FALLBACK = 'status';
 
 /** Groupings, as Linear's: by label, state, what it does, what it acts on and where it runs. */
 export const RULE_GROUPINGS = [
@@ -106,7 +106,7 @@ export function sortRules(rules: RuleItem[], ordering: string, direction: SortDi
 
 /** The dot of "No label", Linear's neutral gray. */
 export const NO_LABEL_COLOR = '#95a2b3';
-export const NO_LABEL_GROUP_ID = 'no-label';
+const NO_LABEL_GROUP_ID = 'no-label';
 export const NOT_ATTACHED_GROUP_ID = 'account-none';
 
 /** A rule's labels in the workspace's order (by name); a label since deleted is left out. */
@@ -130,7 +130,7 @@ export interface RuleListGroup {
   drop?: { kind: 'label'; labelId: string | null } | { kind: 'status'; enabled: boolean };
 }
 
-export interface RuleGroupAccount {
+interface RuleGroupAccount {
   account_id: string;
   name: string;
 }

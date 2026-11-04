@@ -44,7 +44,7 @@ export interface RuleDraft {
 }
 
 /** Every option mirrors what `api/schemas/rules.py` accepts. */
-export const RULE_ACTIONS: RuleAction[] = ['turn_off', 'turn_on', 'notify_only', 'increase_budget', 'decrease_budget'];
+const RULE_ACTIONS: RuleAction[] = ['turn_off', 'turn_on', 'notify_only', 'increase_budget', 'decrease_budget'];
 export const RULE_LEVELS: RuleExecutionLevel[] = ['adset', 'campaign', 'ad'];
 export const RULE_WINDOWS: RuleTimeWindow[] = ['today', 'yesterday', 'last_3d', 'last_7d', 'lifetime'];
 export const CHECK_INTERVALS = [5, 15, 30, 60, 180, 720, 1440];
@@ -71,7 +71,7 @@ export const METRIC_SECTIONS: { label: string; metrics: RuleMetric[] }[] = [
 const MONEY: ReadonlySet<RuleMetric> = new Set(METRIC_SECTIONS[0].metrics);
 const COUNTS: ReadonlySet<RuleMetric> = new Set(METRIC_SECTIONS[1].metrics);
 
-export type MetricUnit = 'money' | 'count' | 'percent';
+type MetricUnit = 'money' | 'count' | 'percent';
 export const metricUnit = (metric: RuleMetric): MetricUnit =>
   MONEY.has(metric) ? 'money' : COUNTS.has(metric) ? 'count' : 'percent';
 
@@ -217,7 +217,7 @@ export interface RunOnAccount {
 }
 
 /** Where the rule runs, in words: "Runs on Main account", "Runs on 2 campaigns in Main account". */
-export function describeRunOn(runOn: Record<string, RuleScope>, accounts: RunOnAccount[]): string {
+function describeRunOn(runOn: Record<string, RuleScope>, accounts: RunOnAccount[]): string {
   const entries = Object.entries(runOn);
   if (entries.length === 0) return 'Runs nowhere until you pick where.';
   if (entries.length > 1) return `Runs on ${entries.length} ad accounts.`;
@@ -314,7 +314,7 @@ export function withLevel(draft: RuleDraft, level: RuleExecutionLevel): RuleDraf
 }
 
 /** True when nothing was typed or chosen: closing such a window keeps no draft. */
-export function isDraftEmpty(draft: RuleDraft): boolean {
+function isDraftEmpty(draft: RuleDraft): boolean {
   return JSON.stringify({ ...draft }) === JSON.stringify(emptyDraft());
 }
 

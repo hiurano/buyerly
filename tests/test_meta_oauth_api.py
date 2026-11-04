@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 import httpx
 from cryptography.fernet import Fernet
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import api.auth as auth_module
 import api.meta_oauth as meta_oauth_module
@@ -13,7 +13,6 @@ import api.server as server_module
 from api.server import create_app
 from core.config import settings
 from core.meta_tokens import encrypt_meta_token
-from database.db import Base
 from database.models import (
     Account,
     AuditEvent,

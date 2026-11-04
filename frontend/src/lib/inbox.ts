@@ -42,7 +42,7 @@ export interface InboxUnread {
   priority_unread_count?: number;
 }
 
-export interface InboxListResponse extends InboxUnread {
+interface InboxListResponse extends InboxUnread {
   items: InboxItem[];
   has_more: boolean;
   hidden_by_filters: number;
@@ -174,7 +174,7 @@ export interface InboxPriority {
 }
 
 /** Which priority inbox tab the list shows, with what goes in it. */
-export function inboxTabQuery(
+function inboxTabQuery(
   display: InboxDisplay,
   tab: InboxTab | null,
 ): Pick<InboxQuery, 'tab' | 'priority'> {
@@ -312,7 +312,7 @@ const FOCUS_TREE: FocusNode[] = [
   },
 ];
 
-export interface InboxGroup {
+interface InboxGroup {
   id: string;
   label: string;
   items: InboxItem[];
@@ -588,7 +588,7 @@ export function matchesTyped(label: string, typed: string): boolean {
   return true;
 }
 
-export interface SnoozeOption {
+interface SnoozeOption {
   id: string;
   label: string;
   until: Date;

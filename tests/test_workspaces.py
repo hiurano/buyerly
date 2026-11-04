@@ -1,13 +1,12 @@
 import asyncio
 import json
-import time
 import unittest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 import httpx
 from cryptography.fernet import Fernet
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import api.auth as api_auth_module
 import api.routes as api_routes_module
@@ -21,7 +20,6 @@ from core.workspace_slugs import (
     RESERVED_WORKSPACE_SLUGS,
     normalize_workspace_slug,
 )
-from database.db import Base
 from database.models import (
     Account,
     AuditEvent,
@@ -854,8 +852,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(memberships), 1)
 
     async def test_workspace_resource_scoping_and_viewer_rbac_protection(self):
-        artem_data = await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
-        artem_headers = {**artem_data}
+        await session_headers(self.test_session_maker, {'id': 777000111, 'first_name': 'Artem', 'username': 'artem'})
 
         transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url='http://test') as client:
@@ -873,7 +870,6 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
                 session.add(WorkspaceMember(workspace_id=ws.id, user_id=victor.id, role='guest'))
                 victor.active_workspace_id = ws.id
                 await session.commit()
-                ws_id = ws.id
 
             viewer_headers = await session_headers(self.test_session_maker, {'id': 777000555, 'first_name': 'Victor', 'username': 'victor_viewer'})
             # 1. Victor can read accounts and presets

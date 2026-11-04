@@ -7,12 +7,6 @@
 import { ApiError, META_OAUTH_NOT_CONFIGURED, send } from './api';
 import { pool } from '@/models/pool';
 
-/** A mutation's answer, as Linear's `<Model>Payload`. */
-export type Payload<Field extends string, Record> = {
-  success: boolean;
-  lastSyncId: number;
-} & { [key in Field]: Record };
-
 type GraphQLError = {
   message: string;
   extensions?: { statusCode?: number; userPresentableMessage?: string; detail?: { code?: string } };
