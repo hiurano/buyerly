@@ -38,7 +38,7 @@ type Fetcher = (path: string, init: RequestInit) => Promise<Pick<Response, 'ok' 
  * `ApiError`. `through` sends it another way than `fetch`: the transaction
  * queue's go through the sync hub (#498).
  */
-export async function send(path: string, init: RequestInit = {}, through: Fetcher = (url, options) => fetch(url, options)): Promise<any> {
+export async function send(path: string, init: RequestInit = {}, through: Fetcher = (url, options) => fetch(url, options)): Promise<unknown> {
   const method = (init.method || 'GET').toUpperCase();
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
@@ -63,27 +63,29 @@ export async function send(path: string, init: RequestInit = {}, through: Fetche
     headers,
     credentials: 'include',
   });
-  const payload: any = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    let detail = 'Something went wrong';
-    if (typeof payload.detail === 'string') {
-      detail = payload.detail;
-    } else if (payload.detail?.code === 'meta_oauth_not_configured') {
-      detail = META_OAUTH_NOT_CONFIGURED;
-    } else if (typeof payload.detail?.message === 'string') {
-      detail = payload.detail.message;
-    } else if (Array.isArray(payload.detail) && payload.detail.some((item: any) => typeof item?.msg === 'string')) {
-      // FastAPI validation: a list of {loc, msg}; a model check reads "Value error, <reason>".
-      detail = payload.detail
-        .filter((item: any) => typeof item?.msg === 'string')
-        .map((item: any) => item.msg.replace(/^Value error, /, ''))
-        .join(' ');
-    } else if (typeof payload.message === 'string') {
-      detail = payload.message;
-    }
-    throw new ApiError(response.status, detail);
-  }
+  const payload: unknown = await response.json().catch(() => ({}));
+  if (!response.ok) throw new ApiError(response.status, errorDetail(payload));
   return payload;
+}
+
+type ErrorBody = { detail?: unknown; message?: unknown };
+
+/** What a refusal says, in the shapes the API answers with. */
+function errorDetail(payload: unknown): string {
+  const body = (payload ?? {}) as ErrorBody;
+  const detail = body.detail as { code?: unknown; message?: unknown } | null | undefined;
+  if (typeof body.detail === 'string') return body.detail;
+  if (detail?.code === 'meta_oauth_not_configured') return META_OAUTH_NOT_CONFIGURED;
+  if (typeof detail?.message === 'string') return detail.message;
+  if (Array.isArray(body.detail)) {
+    // FastAPI validation: a list of {loc, msg}; a model check reads "Value error, <reason>".
+    const messages = (body.detail as unknown[])
+      .map((item) => (item as { msg?: unknown } | null)?.msg)
+      .filter((msg): msg is string => typeof msg === 'string');
+    if (messages.length > 0) return messages.map((msg) => msg.replace(/^Value error, /, '')).join(' ');
+  }
+  if (typeof body.message === 'string') return body.message;
+  return 'Something went wrong';
 }
 
 export const META_OAUTH_NOT_CONFIGURED =

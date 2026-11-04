@@ -10,7 +10,7 @@ type Filters = Record<AdsManagerEntity, FilterClause[]>;
 const ENTITIES: AdsManagerEntity[] = ['campaigns', 'adsets', 'ads'];
 
 /** `?filter=` holds every level's filters in one object, so one link shares them all. */
-function filtersFromAddress(value: unknown | null = readFilterParam()): Filters | null {
+function filtersFromAddress(value: unknown = readFilterParam()): Filters | null {
   if (value === null) return null;
   const source = typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
   return {
@@ -34,8 +34,8 @@ function writeAddress(filters: Filters) {
 /** The quick filter this tab last had, if storage holds a valid one. */
 function readQuick(key: string): QuickSelection | null {
   try {
-    const saved = JSON.parse(sessionStorage.getItem(key) ?? 'null');
-    if (saved && ['status', 'account', 'group', 'rule', 'campaign'].includes(saved.fieldId) && typeof saved.value === 'string') return saved;
+    const saved = JSON.parse(sessionStorage.getItem(key) ?? 'null') as { fieldId?: unknown; value?: unknown } | null;
+    if (saved && ['status', 'account', 'group', 'rule', 'campaign'].includes(saved.fieldId as string) && typeof saved.value === 'string') return saved as QuickSelection;
   } catch { /* Storage is optional. */ }
   return null;
 }

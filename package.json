@@ -10,7 +10,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "lint": "eslint server packages/shared",
+    "lint": "eslint server packages/shared frontend/src frontend/sw",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm test --workspace @buyerly/server"
   },

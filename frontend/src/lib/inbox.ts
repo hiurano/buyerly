@@ -433,12 +433,14 @@ export function encodeInboxFilter(clauses: InboxFilterClause[]): string {
 /** Inbox filters read back from an address or the saved view; anything malformed is dropped. */
 export function sanitizeInboxFilters(parsed: unknown): InboxFilterClause[] {
   if (!Array.isArray(parsed)) return [];
-  return parsed.filter((clause): clause is InboxFilterClause =>
-    Boolean(clause)
-    && ['type', 'from', 'account', 'status'].includes(clause.field)
-    && ['is', 'is_not'].includes(clause.operator)
-    && Array.isArray(clause.values)
-    && clause.values.every((entry: unknown) => typeof entry === 'string'));
+  return parsed.filter((item): item is InboxFilterClause => {
+    if (typeof item !== 'object' || item === null) return false;
+    const clause = item as { field?: unknown; operator?: unknown; values?: unknown };
+    return ['type', 'from', 'account', 'status'].includes(clause.field as string)
+      && ['is', 'is_not'].includes(clause.operator as string)
+      && Array.isArray(clause.values)
+      && (clause.values as unknown[]).every((entry) => typeof entry === 'string');
+  });
 }
 
 export function decodeInboxFilter(value: string | null): InboxFilterClause[] {

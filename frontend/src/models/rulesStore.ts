@@ -35,7 +35,7 @@ import type {
   RuleScope,
 } from '@/lib/rules';
 import { pushHistory } from '@/lib/undoHistory';
-import { pool, type PoolChange, type Query } from './pool';
+import { pool, type PoolChange, type AnyQuery } from './pool';
 import { transactions } from './transactions';
 import { adAccountsQuery, fetchAccounts, presetsQuery, ruleLabelsQuery } from './queries';
 import { OUT_OF_SCOPE, scopeStore } from './scopeStore';
@@ -44,7 +44,7 @@ import { makeStore, useStore } from './store';
 import { viewStore } from './viewStore';
 
 /** What Rules shows, read through the pool. */
-const RULE_QUERIES: readonly Query<any>[] = [presetsQuery, ruleLabelsQuery, adAccountsQuery];
+const RULE_QUERIES: readonly AnyQuery[] = [presetsQuery, ruleLabelsQuery, adAccountsQuery];
 
 export interface CampaignItem {
   id: string;
@@ -256,7 +256,7 @@ function mergeRuleIndexes(
   scopes: Record<string, RuleScope>[],
   level: 'campaign' | 'adset',
 ): Record<string, string[]> {
-  return Object.assign({}, ...scopes.map((accountScopes) => entityRuleIndex(accountScopes, level)));
+  return Object.assign({}, ...scopes.map((accountScopes) => entityRuleIndex(accountScopes, level))) as Record<string, string[]>;
 }
 
 const sameIds = (left: string[], right: string[]) =>

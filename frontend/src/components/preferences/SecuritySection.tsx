@@ -128,8 +128,8 @@ type Confirmation =
   | { kind: 'revoke-all' }
   | { kind: 'log-out' };
 
-/** Which session's request is running: its id, or every other one. */
-type Busy = string | 'all' | null;
+/** Which session's request is running: its id, or 'all' for every other one. */
+type Busy = string | null;
 
 const ERROR_HINT = 'Please try again or contact Buyerly support.';
 

@@ -1285,7 +1285,7 @@ export const BuyerlyFilterMenu = <T,>({
             <>
               <SectionSeparator />
               <div style={{ display: 'flex', height: 32, alignItems: 'center', gap: 8, padding: '0 14px 6px', color: MENU_TEXT }}>
-                <FilterFieldIcon fieldId={field.id} type={field.type as FilterFieldDefinition<unknown>['type']} />
+                <FilterFieldIcon fieldId={field.id} type={field.type} />
                 {field.unmatchedCount} {field.unmatchedCount === 1 ? 'option' : 'options'} not matching any {countNoun[1]}
               </div>
             </>
@@ -1407,7 +1407,7 @@ export const BuyerlyFilterMenu = <T,>({
                     icon={
                       <FilterFieldIcon
                         fieldId={entry.field.id}
-                        type={entry.field.type as FilterFieldDefinition<unknown>['type']}
+                        type={entry.field.type}
                       />
                     }
                     meta={
@@ -1565,7 +1565,7 @@ export const ActiveFilterFormula = <T,>({
               <span style={{ display: 'inline-flex', height: 22, alignItems: 'center', gap: 5, padding: '0 6px', color: 'var(--text-primary)' }}>
                 <FilterFieldIcon
                   fieldId={field.id}
-                  type={field.type as FilterFieldDefinition<unknown>['type']}
+                  type={field.type}
                 />
                 {field.label}
               </span>

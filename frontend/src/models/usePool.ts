@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useEffectEvent, useSyncExternalStore } from 'react';
-import { pool, type Query, type QueryData, type QueryResult } from './pool';
+import { pool, type AnyQuery, type QueryData, type QueryResult } from './pool';
 
 const NONE: QueryResult<never> = { data: undefined, error: '', loading: false };
 const noSubscription = () => () => {};
@@ -10,7 +10,7 @@ const noSubscription = () => () => {};
  * A null query reads nothing. Read through useSyncExternalStore rather than
  * in render, so the React Compiler sees a new value whenever one arrives.
  */
-export function usePoolQuery<Q extends Query<any>>(query: Q | null): QueryResult<QueryData<Q>> {
+export function usePoolQuery<Q extends AnyQuery>(query: Q | null): QueryResult<QueryData<Q>> {
   const key = query?.key ?? null;
   const subscribe = useCallback(
     (onChange: () => void) => (key === null ? noSubscription() : pool.subscribe(key, onChange)),

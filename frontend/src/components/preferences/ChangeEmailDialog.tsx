@@ -243,7 +243,7 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
                       disabled={busy}
                       onChange={(event) => setNewEmail(event.target.value)}
                       onKeyDown={(event) => {
-                        if (event.key === 'Enter') requestCode();
+                        if (event.key === 'Enter') void requestCode();
                       }}
                     />
                   </div>
@@ -272,7 +272,7 @@ export const ChangeEmailDialog: React.FC<ChangeEmailDialogProps> = ({
                       disabled={busy}
                       onChange={(event) => setCode(event.target.value.replace(/[^a-z]/gi, '').toUpperCase().slice(0, 10))}
                       onKeyDown={(event) => {
-                        if (event.key === 'Enter') confirmCode();
+                        if (event.key === 'Enter') void confirmCode();
                       }}
                     />
                   </div>

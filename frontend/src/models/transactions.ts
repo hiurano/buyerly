@@ -261,7 +261,7 @@ class TransactionQueue {
     let payload: { data?: Record<string, Answer | null> | null; errors?: GraphQLError[] };
     try {
       const { query, variables } = batchDocument(batch);
-      payload = await send('/api/graphql', { method: 'POST', body: JSON.stringify({ query, variables }) }, sync.request);
+      payload = (await send('/api/graphql', { method: 'POST', body: JSON.stringify({ query, variables }) }, sync.request)) as typeof payload;
     } catch (error) {
       if (generation !== this.#generation) return;
       this.#inFlight = false;

@@ -46,7 +46,7 @@ export function parseDetailsPanes(raw: string | null): Record<DetailsPaneId, Det
   const panes = defaultDetailsPanes();
   if (!raw) return panes;
   try {
-    const saved = JSON.parse(raw);
+    const saved = JSON.parse(raw) as Partial<Record<DetailsPaneId, { open?: unknown; width?: unknown } | null>> | null;
     for (const id of Object.keys(panes) as DetailsPaneId[]) {
       const pane = saved?.[id];
       if (typeof pane?.open === 'boolean') panes[id].open = pane.open;

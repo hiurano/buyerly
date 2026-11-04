@@ -17,13 +17,13 @@ export async function graphql<T>(
   variables: Record<string, unknown> = {},
   { signal, headers }: { signal?: AbortSignal; headers?: HeadersInit } = {},
 ): Promise<T> {
-  const payload = await send('/api/graphql', {
+  const payload = (await send('/api/graphql', {
     method: 'POST',
     body: JSON.stringify({ query: document, variables }),
     signal,
     headers,
-  });
-  const error: GraphQLError | undefined = payload.errors?.[0];
+  })) as { data?: Record<string, unknown> | null; errors?: GraphQLError[] };
+  const error = payload.errors?.[0];
   if (error) {
     const message = error.extensions?.detail?.code === 'meta_oauth_not_configured'
       ? META_OAUTH_NOT_CONFIGURED
