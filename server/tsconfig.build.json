@@ -1,0 +1,11 @@
+// The build emits src/ only; tsconfig.json also covers the tests, for
+// typechecking and lint.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src"]
+}

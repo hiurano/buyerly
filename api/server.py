@@ -14,6 +14,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from api.routes import rest_only, router as api_router
 from api.meta_oauth import router as meta_oauth_router
+from api import server_proxy
 from core import telegram
 from core.config import settings
 from core.workspace_slugs import RESERVED_WORKSPACE_SLUGS
@@ -66,6 +67,7 @@ async def lifespan(app: FastAPI):
             await watchdog
         app.state.meta_client = None
         await client.aclose()
+        await server_proxy.close(app)
 
 
 def _create_meta_client() -> MetaClient:
@@ -113,6 +115,11 @@ def create_app() -> FastAPI:
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"
         return response
+
+    # Paths the TypeScript server owns (#611). Added after the middleware
+    # above, so it runs first and those paths never reach this app's routes;
+    # CORS, added below, still wraps it.
+    server_proxy.install(app)
 
     # CORS support
     cors_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]

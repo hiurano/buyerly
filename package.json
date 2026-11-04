@@ -1,0 +1,22 @@
+{
+  "name": "buyerly",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "frontend",
+    "server"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "lint": "eslint server packages/shared",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm test --workspace @buyerly/server"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.14.0",
+    "typescript-eslint": "^8.72.1"
+  }
+}

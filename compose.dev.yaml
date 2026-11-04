@@ -16,6 +16,7 @@ x-app-environment: &app-environment
   OTP_PEPPER: local-development-only
   META_TOKEN_ENCRYPTION_KEY: CKOJW1eA4PLOe59rNqizKftdfj0lN17_CIFSpe7ihLw=
   META_GRAPH_BASE_URL: http://fake-meta:8090
+  SERVER_URL: http://server:8090
   # File events do not cross the Windows bind mount; watch by polling.
   WATCHFILES_FORCE_POLLING: "true"
   TZ: UTC
@@ -78,21 +79,52 @@ services:
       - api
       - fake-meta
 
+  # npm workspaces (#611): one install at the repository root for Vite and
+  # the TypeScript server, before either starts.
+  deps:
+    image: node:24-slim
+    working_dir: /repo
+    command: ["npm", "ci"]
+    volumes:
+      - .:/repo
+      - buyerly-dev-node-modules:/repo/node_modules
+
   # Vite: the page updates in the browser as soon as a frontend file is saved.
   web:
-    image: node:22-alpine
-    working_dir: /frontend
-    command: ["sh", "-c", "npm ci && exec npm run dev"]
+    image: node:24-slim
+    working_dir: /repo/frontend
+    command: ["npm", "run", "dev"]
     environment:
       VITE_API_ORIGIN: http://api:8080
       VITE_POLL: "1"
     volumes:
-      - ./frontend:/frontend
-      - buyerly-dev-node-modules:/frontend/node_modules
+      - .:/repo
+      - buyerly-dev-node-modules:/repo/node_modules
     ports:
       - "127.0.0.1:${BUYERLY_WEB_PORT:-5173}:5173"
     depends_on:
-      - api
+      deps:
+        condition: service_completed_successfully
+      api:
+        condition: service_started
+
+  # The TypeScript server (#611); restarts by itself when its code changes.
+  # The API forwards it the paths it owns, as in production.
+  server:
+    image: node:24-slim
+    working_dir: /repo/server
+    command: ["node", "--watch", "src/main.ts"]
+    environment:
+      DATABASE_URL: postgresql://buyerly:buyerly-dev@db:5432/buyerly
+      TZ: UTC
+    volumes:
+      - .:/repo
+      - buyerly-dev-node-modules:/repo/node_modules
+    depends_on:
+      deps:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
 
 volumes:
   buyerly-dev-postgres:

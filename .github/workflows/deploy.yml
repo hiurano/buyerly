@@ -28,9 +28,9 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: package-lock.json
 
       # `npm run build` runs tsc first, so a type error fails here rather than
       # reaching production. No test reads frontend/dist, so this runs beside
@@ -95,11 +95,11 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: package-lock.json
 
-      # Playwright is a pinned devDependency in frontend/package-lock.json, so
+      # Playwright is a pinned devDependency in package-lock.json, so
       # `npm ci` installs it. Installing it ad hoc without the lock file
       # re-resolved the whole tree and once hit a package version npm listed
       # but did not serve yet (#245).
@@ -227,12 +227,56 @@ jobs:
             exit 1
           }
 
+  # The TypeScript server (#611): types, lint, tests, then the production
+  # image itself. Nothing else builds the Dockerfile before deploy, and the
+  # server runs on the Node binary copied into the Python image there.
+  server:
+    name: TypeScript server and image
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Typecheck, lint and test
+        run: |
+          npm ci
+          npm run typecheck
+          npm run lint
+          npm test --workspace @buyerly/server
+
+      - name: Build the production image
+        run: docker build --build-arg APP_VERSION=ci -t buyerly-app:ci .
+
+      # Compose passes APP_VERSION in production, as here. Without a database
+      # the server is alive but not ready; both answers
+      # prove Node, its dependencies and the compiled code work in the image.
+      - name: Run the server from the image
+        run: |
+          docker run -d --name buyerly-server-ci -e APP_VERSION=ci -p 127.0.0.1:8090:8090 buyerly-app:ci node server/dist/main.js
+          for attempt in $(seq 30); do
+            if curl -fsS http://127.0.0.1:8090/health/server/live; then break; fi
+            sleep 1
+          done
+          echo
+          test "$(curl -fsS http://127.0.0.1:8090/health/server/live)" = '{"status":"alive","version":"ci"}'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/health/server/ready)" = 503
+          docker logs buyerly-server-ci
+          docker rm -f buyerly-server-ci
+
   # One check to require in branch protection. Requiring the shards directly
   # would mean editing the protection rule every time their number changes.
   ci:
     name: CI
     runs-on: ubuntu-24.04
-    needs: [frontend, browser, test]
+    needs: [frontend, browser, test, server]
     if: always()
 
     steps:
@@ -241,15 +285,16 @@ jobs:
           frontend='${{ needs.frontend.result }}'
           browser='${{ needs.browser.result }}'
           tests='${{ needs.test.result }}'
-          echo "frontend=${frontend} browser=${browser} tests=${tests}"
-          if [ "${frontend}" != "success" ] || [ "${browser}" != "success" ] || [ "${tests}" != "success" ]; then
-            echo "::error title=CI failed::frontend=${frontend} browser=${browser} tests=${tests}"
+          server='${{ needs.server.result }}'
+          echo "frontend=${frontend} browser=${browser} tests=${tests} server=${server}"
+          if [ "${frontend}" != "success" ] || [ "${browser}" != "success" ] || [ "${tests}" != "success" ] || [ "${server}" != "success" ]; then
+            echo "::error title=CI failed::frontend=${frontend} browser=${browser} tests=${tests} server=${server}"
             exit 1
           fi
 
   deploy:
     name: Deploy to Production VPS
-    needs: [frontend, browser, test]
+    needs: [frontend, browser, test, server]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 15

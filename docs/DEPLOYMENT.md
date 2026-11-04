@@ -9,13 +9,14 @@
 |---|---|
 | `buyerly-api` | FastAPI: HTTP API, собранное React-приложение, публичные страницы и загруженные картинки |
 | `buyerly-worker` | синхронизация с Meta и выполнение правил (APScheduler) |
+| `buyerly-server` | новый сервер на TypeScript (#611); API пересылает ему пути, которые он уже взял на себя |
 | `buyerly-db` | PostgreSQL 16, данные в томе `buyerly-postgres` |
 | `buyerly-tunnel` | Cloudflare Tunnel (`cloudflared`): единственный вход из интернета |
 | `buyerly-backup` | каждую ночь бэкап базы и uploads, зашифрованный, в S3 (см. «Резервные копии») |
 
 Одноразовый `migrate` (`docker compose run --rm migrate`) применяет миграции
 перед запуском релиза и не остаётся запущенным. Образ один — `buyerly-app`: в
-нём и Python-код, и сборка фронтенда.
+нём Python-код, сборка фронтенда, Node.js и собранный сервер на TypeScript.
 
 Наружу сервер не открывает ни одного веб-порта: `cloudflared` сам подключается к
 Cloudflare и передаёт запросы в `http://api:8080` по Docker-сети `buyerly`.
@@ -87,9 +88,12 @@ Telegram API при старте сам регистрирует webhook
 Settings неактивна. Почта отправляется только через Resend REST API.
 
 Compose задаёт сам и в `.env` не нужны: `APP_VERSION`, `DATABASE_URL`,
+`SERVER_URL` (`http://server:8090`, сервер на TypeScript),
 `TRUSTED_PROXY_CIDRS` (пусто: прокси между туннелем и API нет),
 `CLOUDFLARE_TUNNEL_CIDRS` (фиксированный адрес `buyerly-tunnel`, `172.30.0.10/32`).
 Значения по умолчанию подходят для `API_HOST`, `API_PORT`, `SERVE_STATIC`,
+`SERVER_PATHS` (префиксы путей, которые API пересылает серверу на TypeScript;
+убрать префикс — вернуть область Python),
 `CLOUDFLARE_IP_CIDRS`; `CORS_ORIGINS` нужен только для явно разрешённых
 cross-origin клиентов.
 

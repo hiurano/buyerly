@@ -14,7 +14,11 @@ flowchart LR
     K <--> M[Meta API]
 ```
 
-Состав production задаёт [docker-compose.yml](../docker-compose.yml): `api`, `worker`, `db`, `tunnel` (Cloudflare Tunnel) и одноразовый `migrate`. Точки запуска находятся в `services/`. Один образ `buyerly-app`: frontend собирается на Node.js 22, код работает на Python 3.12. PostgreSQL 16 хранит данные; счётчики rate limit живут в памяти единственного процесса API.
+Состав production задаёт [docker-compose.yml](../docker-compose.yml): `api`, `worker`, `server`, `db`, `tunnel` (Cloudflare Tunnel) и одноразовый `migrate`. Точки запуска находятся в `services/`. Один образ `buyerly-app`: frontend собирается на Node.js 24, код работает на Python 3.12, а новый сервер `server` — на Node.js 24 из того же образа. PostgreSQL 16 хранит данные; счётчики rate limit живут в памяти единственного процесса API.
+
+### Переезд сервера на TypeScript (#611)
+
+Бэкенд переносится с Python на TypeScript по областям (запись №54 в [DECISIONS.md](DECISIONS.md)). Новый сервер — [server/](../server/) (Fastify), общие типы клиента и сервера — [packages/shared](../packages/shared/). Это npm workspaces с одним `package-lock.json` в корне. Пока туннель смотрит на `api`, FastAPI сам пересылает серверу пути, которыми тот владеет ([api/server_proxy.py](../api/server_proxy.py)): префиксы перечислены в `SERVER_PATHS`, адрес сервера задан в `SERVER_URL`. Вернуть область Python — значит убрать её префикс. Сейчас серверу принадлежит только его здоровье, `/health/server/live` и `/health/server/ready`; второй путь проверяет `post_deploy_smoke.py` через API. Когда переедут все области, туннель переключится на `server`, а пересылка исчезнет.
 
 ## Frontend и HTTP
 

@@ -33,10 +33,12 @@ scratch/
 .idea/
 .vscode/
 
-# React build outputs and local dependencies
+# Build outputs and local dependencies (npm workspaces, #611)
+node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+server/dist/
 
 # Runtime user uploads
 /uploads/
