@@ -23,15 +23,11 @@ from api.schemas import (
     AccountLeadUpdateRequest,
     AccountProfileUpdateRequest,
     BatchAddRequest,
-    ParsedAccountItem,
-    ParseRawRequest,
 )
-from core.accounts import parse_fb_raw_accounts
 from core.currency import normalize_currency
 from core.default_team import join_default_team
 from core.meta_tokens import MetaTokenError, encrypt_meta_token
 from core.ownership import owned_by
-from core.rate_limit import rate_limit_dep
 from core.timezones import resolve_account_clock
 from database.db import async_session_maker
 from database.models import (
@@ -226,16 +222,6 @@ async def delete_account(account_id: str, user: User = Depends(get_current_user)
         await session.commit()
         invalidate_summary_cache(workspace_id=ws.id if ws else None, owner_user_id=user.id)
         return {"success": True, "message": f"Ad account {acc_id} deleted"}
-
-
-@router.post(
-    "/accounts/parse-raw",
-    response_model=List[ParsedAccountItem],
-    dependencies=[Depends(rate_limit_dep(limit=20, window_seconds=60, scope="parse_raw"))],
-)
-async def parse_raw_text(payload: ParseRawRequest, user: User = Depends(get_current_user)):
-    parsed = parse_fb_raw_accounts(payload.raw_text)
-    return [ParsedAccountItem(account_id=p["account_id"], parsed_name=p["parsed_name"]) for p in parsed]
 
 
 @router.post("/accounts/batch-add")

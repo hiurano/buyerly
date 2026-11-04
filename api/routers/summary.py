@@ -1,22 +1,17 @@
-import json
 import logging
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
 
 from api.auth import get_current_user
 from api.deps import (
     SUMMARY_CACHE_TTL,
-    SUMMARY_VIEW_SCOPE,
-    _analytics_view_response,
     _cost_or_none,
     _currency_total_payload,
     _enrich_summary_account_metadata,
     _load_persisted_summary,
-    _normalize_summary_view_config,
     _persist_summary,
     _summary_cache,
     _summary_owner_key,
@@ -25,89 +20,18 @@ from api.deps import (
     get_user_accounts,
     get_user_workspace,
 )
-from api.schemas import AnalyticsViewPreferenceRequest
 from core.accounts import get_short_account_label
 from core.currency import UNKNOWN_CURRENCY, normalize_currency
 from core.metrics import SUMMARY_METRIC_DEFINITIONS, round_half_up
 from core.meta_tokens import resolve_account_access_token
-from core.ownership import owned_by
 from database.db import async_session_maker
-from database.models import AnalyticsViewPreference, User
+from database.models import User
 from meta_api.client import MetaClient
 from api.meta_dependencies import get_meta_client
 from services.analytics_store import AnalyticsFactService, resolve_account_period_dates
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Analytics & Summary"])
-
-
-@router.get("/analytics-view")
-async def get_analytics_view(user: User = Depends(get_current_user)):
-    async with async_session_maker() as session:
-        row = (
-            await session.execute(
-                select(AnalyticsViewPreference).where(
-                    owned_by(AnalyticsViewPreference, user),
-                    AnalyticsViewPreference.scope == SUMMARY_VIEW_SCOPE,
-                )
-            )
-        ).scalar_one_or_none()
-        if row is None:
-            config = _normalize_summary_view_config({})
-        else:
-            if isinstance(row.config, dict):
-                stored_config = dict(row.config)
-            elif isinstance(row.config, str):
-                try:
-                    stored_config = json.loads(row.config or "{}")
-                except (TypeError, json.JSONDecodeError):
-                    stored_config = {}
-            else:
-                stored_config = {}
-            stored_order = stored_config.get("column_order")
-            if (
-                isinstance(stored_order, list)
-                and "custom_name" not in stored_order
-                and "note" not in stored_order
-            ):
-                insert_at = stored_order.index("account") + 1 if "account" in stored_order else 0
-                stored_order[insert_at:insert_at] = ["custom_name", "note"]
-                stored_visible = stored_config.get("visible_columns")
-                if isinstance(stored_visible, list):
-                    visible_at = stored_visible.index("account") + 1 if "account" in stored_visible else 0
-                    stored_visible[visible_at:visible_at] = ["custom_name", "note"]
-            config = _normalize_summary_view_config(stored_config, strict=False)
-        return _analytics_view_response(row, config)
-
-
-@router.put("/analytics-view")
-async def save_analytics_view(
-    payload: AnalyticsViewPreferenceRequest,
-    user: User = Depends(get_current_user),
-):
-    config = _normalize_summary_view_config(payload.model_dump())
-    async with async_session_maker() as session:
-        row = (
-            await session.execute(
-                select(AnalyticsViewPreference).where(
-                    owned_by(AnalyticsViewPreference, user),
-                    AnalyticsViewPreference.scope == SUMMARY_VIEW_SCOPE,
-                )
-            )
-        ).scalar_one_or_none()
-        if row is None:
-            row = AnalyticsViewPreference(
-                owner_user_id=user.id,
-                scope=SUMMARY_VIEW_SCOPE,
-                config=config,
-            )
-            session.add(row)
-        else:
-            row.config = config
-            row.updated_at = datetime.now(timezone.utc)
-        await session.commit()
-        await session.refresh(row)
-        return _analytics_view_response(row, config)
 
 
 @router.get("/summary")

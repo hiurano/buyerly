@@ -328,54 +328,6 @@ class TestMetaOAuthApi(unittest.IsolatedAsyncioTestCase):
             self.assertIsNotNone(await session.get(MetaConnection, self.connection_id))
             self.assertIsNotNone(await session.get(MetaConnection, foreign_connection_id))
 
-    async def test_validate_connection_returns_health_status(self):
-        fake_oauth = AsyncMock()
-        fake_oauth.debug_token.return_value = {
-            "is_valid": True,
-            "app_id": settings.META_APP_ID,
-            "scopes": ["ads_read", "ads_management", "business_management"],
-            "expires_at": 1893456000,
-        }
-
-        transport = client_api_transport(app=self.app)
-        with patch.object(meta_oauth_module, "_oauth_client", return_value=fake_oauth):
-            async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-                response = await client.post(
-                    f"/api/meta/connections/{self.connection_id}/validate",
-                    headers=self.headers,
-                )
-
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertEqual(data["status"], "active")
-        self.assertEqual(data["missing_scopes"], [])
-        self.assertIn("ads_management", data["granted_scopes"])
-        self.assertIsNotNone(data["days_until_expiration"])
-        self.assertIsNotNone(data["last_validated_at"])
-
-    async def test_validate_connection_detects_missing_scopes(self):
-        fake_oauth = AsyncMock()
-        fake_oauth.debug_token.return_value = {
-            "is_valid": True,
-            "app_id": settings.META_APP_ID,
-            "scopes": ["ads_read"],  # missing ads_management and business_management
-            "expires_at": 1893456000,
-        }
-
-        transport = client_api_transport(app=self.app)
-        with patch.object(meta_oauth_module, "_oauth_client", return_value=fake_oauth):
-            async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-                response = await client.post(
-                    f"/api/meta/connections/{self.connection_id}/validate",
-                    headers=self.headers,
-                )
-
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertEqual(data["status"], "missing_scopes")
-        self.assertIn("ads_management", data["missing_scopes"])
-        self.assertIn("business_management", data["missing_scopes"])
-
     async def test_reconnect_start_and_callback_flow(self):
         async with self.sessions() as session:
             account = Account(

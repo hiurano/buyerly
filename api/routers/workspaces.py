@@ -101,16 +101,6 @@ async def create_workspace(req: CreateWorkspaceRequest, user: User = Depends(get
         )
 
 
-@router.get("/workspaces/current", response_model=WorkspaceItem)
-async def get_current_workspace_info(user: User = Depends(get_current_user)):
-    async with async_session_maker() as session:
-        workspaces = await get_user_workspaces_list(session, user)
-        active_ws = next((w for w in workspaces if w.is_active), workspaces[0] if workspaces else None)
-        if not active_ws:
-            raise HTTPException(status_code=404, detail="Workspace not found")
-        return active_ws
-
-
 @router.post("/workspaces/switch")
 async def switch_workspace(req: SwitchWorkspaceRequest, user: User = Depends(get_current_user)):
     async with async_session_maker() as session:

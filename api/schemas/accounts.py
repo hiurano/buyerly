@@ -74,17 +74,6 @@ class AccountLeadUpdateRequest(BaseModel):
     lead_user_id: Optional[int] = None
 
 
-class ParseRawRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    raw_text: str = Field(..., min_length=1, max_length=65536)
-
-
-class ParsedAccountItem(BaseModel):
-    account_id: str
-    parsed_name: str
-
-
 class BatchAddAccountEntry(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

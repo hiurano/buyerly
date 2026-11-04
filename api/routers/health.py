@@ -1,8 +1,8 @@
-"""Workspace-scoped SLI overview and per-account health endpoints."""
+"""Workspace-scoped SLI overview."""
 
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 
 from api.auth import get_current_user
@@ -160,28 +160,3 @@ async def health_overview(user: User = Depends(get_current_user)):
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
 
-
-@router.get("/accounts/{account_id}/health")
-async def account_health(account_id: str, user: User = Depends(get_current_user)):
-    async with async_session_maker() as session:
-        workspace = await get_user_workspace(session, user)
-        if workspace is None:
-            raise HTTPException(status_code=404, detail="Ad account not found")
-        account = (
-            await session.execute(
-                select(Account).where(Account.workspace_id == workspace.id, Account.account_id == account_id)
-            )
-        ).scalar_one_or_none()
-        if account is not None and not (await workspace_account_access(session, user, workspace.id)).allows_pk(account.id):
-            account = None
-        if account is None:
-            raise HTTPException(status_code=404, detail="Ad account not found")
-        row = (
-            await session.execute(
-                select(AccountHealth).where(
-                    AccountHealth.account_pk == account.id,
-                    AccountHealth.workspace_id == workspace.id,
-                )
-            )
-        ).scalar_one_or_none()
-        return {"account_id": account.account_id, "name": account.custom_name or account.name, **health_payload(row)}

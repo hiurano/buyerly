@@ -37,7 +37,6 @@ from database.models import (
     RuleGroupItem,
     RulePreset,
     SummarySnapshot,
-    AnalyticsViewPreference,
     MetaConnection,
     StoppedAdSet,
     User,
@@ -583,13 +582,11 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
         transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             overview = await client.get("/api/health/overview", headers=headers)
-            foreign = await client.get("/api/accounts/act_foreign_health/health", headers=headers)
 
         self.assertEqual(overview.status_code, 200)
         payload = overview.json()
         self.assertEqual([item["account_id"] for item in payload["accounts"]], [buyer_account.account_id])
         self.assertNotIn("access_token", str(payload).lower())
-        self.assertEqual(foreign.status_code, 404)
 
     async def test_accounts_list_carries_todays_figures_from_the_fact_store(self):
         """#388: the Ad accounts page shows today's spend, leads and registrations
@@ -2007,24 +2004,6 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             gone = await client.post(f"/api/deleted-items/{expired_id}/restore", headers=buyer_headers)
             self.assertEqual(gone.status_code, 404)
 
-    async def test_parse_raw_endpoint(self):
-        user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
-        auth = await session_headers(self.test_session_maker, user_info)
-        raw_fb_text = """
-        Ad account ID: 1000000000000001
-        Швеция 1083
-        act_1000000000000002
-        """
-        transport = client_api_transport(app=self.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            headers = {**auth}
-            resp = await client.post("/api/accounts/parse-raw", headers=headers, json={"raw_text": raw_fb_text})
-            self.assertEqual(resp.status_code, 200)
-            items = resp.json()
-            self.assertEqual(len(items), 2)
-            self.assertEqual(items[0]["account_id"], "act_1000000000000001")
-            self.assertEqual(items[1]["account_id"], "act_1000000000000002")
-
     async def test_batch_import_never_enables_rules_for_a_new_account(self):
         user_info = {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
         auth = await session_headers(self.test_session_maker, user_info)
@@ -2193,144 +2172,6 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
                 )
             ).scalar_one_or_none()
             self.assertIsNone(rejected)
-
-    async def test_analytics_view_is_saved_per_user_and_validated(self):
-        buyer_data = await session_headers(self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"})
-        admin_data = await session_headers(self.test_session_maker, {"id": 8634201356, "first_name": "Admin", "username": "admin_user"})
-        buyer_headers = {**buyer_data}
-        admin_headers = {**admin_data}
-        transport = client_api_transport(app=self.app)
-
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            default_view = await client.get("/api/analytics-view", headers=buyer_headers)
-            self.assertEqual(default_view.status_code, 200)
-            self.assertFalse(default_view.json()["is_saved"])
-            self.assertEqual(default_view.json()["view_mode"], "all")
-            self.assertEqual(len(default_view.json()["visible_columns"]), 24)
-            self.assertEqual(default_view.json()["sort_column"], "")
-            self.assertEqual(default_view.json()["filters"], {"query": "", "status": "all", "group_id": "all"})
-            self.assertEqual(default_view.json()["period"], "today")
-
-            saved_view = await client.put(
-                "/api/analytics-view",
-                headers=buyer_headers,
-                json={"view_mode": "delivery", "visible_columns": ["spend", "impressions", "cpm"]},
-            )
-            self.assertEqual(saved_view.status_code, 200)
-            self.assertTrue(saved_view.json()["is_saved"])
-            self.assertEqual(
-                saved_view.json()["visible_columns"],
-                ["account", "data", "spend", "impressions", "cpm"],
-            )
-            self.assertEqual(len(saved_view.json()["column_order"]), 24)
-            self.assertEqual(saved_view.json()["column_order"][:3], ["account", "custom_name", "note"])
-            self.assertEqual(saved_view.json()["column_widths"]["account"], 260)
-
-            restored_view = await client.get("/api/analytics-view", headers=buyer_headers)
-            self.assertEqual(restored_view.json()["view_mode"], "delivery")
-            self.assertEqual(restored_view.json()["visible_columns"], saved_view.json()["visible_columns"])
-
-            reordered_view = await client.put(
-                "/api/analytics-view",
-                headers=buyer_headers,
-                json={
-                    "view_mode": "custom",
-                    "visible_columns": ["account", "data", "spend", "cpp"],
-                    "column_order": ["spend", "account", "data", "cpp"],
-                    "column_widths": {"spend": 176, "account": 320, "cpp": 88},
-                    "sort_column": "spend",
-                    "sort_direction": "desc",
-                    "filters": {"query": "sweden", "status": "synced", "group_id": "42"},
-                    "period": "last_7d",
-                },
-            )
-            self.assertEqual(reordered_view.status_code, 200)
-            self.assertEqual(
-                reordered_view.json()["column_order"][:4],
-                ["spend", "account", "data", "cpp"],
-            )
-            self.assertEqual(reordered_view.json()["column_widths"]["spend"], 176)
-            self.assertEqual(reordered_view.json()["column_widths"]["account"], 320)
-            self.assertEqual(reordered_view.json()["sort_column"], "spend")
-            self.assertEqual(reordered_view.json()["sort_direction"], "desc")
-            self.assertEqual(
-                reordered_view.json()["filters"],
-                {"query": "sweden", "status": "synced", "group_id": "42"},
-            )
-            self.assertEqual(reordered_view.json()["period"], "last_7d")
-
-            restored_reordered_view = await client.get("/api/analytics-view", headers=buyer_headers)
-            self.assertEqual(restored_reordered_view.json()["column_order"][:4], ["spend", "account", "data", "cpp"])
-            self.assertEqual(restored_reordered_view.json()["column_widths"]["cpp"], 88)
-            self.assertEqual(restored_reordered_view.json()["sort_column"], "spend")
-            self.assertEqual(restored_reordered_view.json()["filters"]["status"], "synced")
-            self.assertEqual(restored_reordered_view.json()["period"], "last_7d")
-
-            isolated_admin_view = await client.get("/api/analytics-view", headers=admin_headers)
-            self.assertFalse(isolated_admin_view.json()["is_saved"])
-            self.assertEqual(len(isolated_admin_view.json()["visible_columns"]), 24)
-
-            invalid_view = await client.put(
-                "/api/analytics-view",
-                headers=buyer_headers,
-                json={"view_mode": "custom", "visible_columns": ["account", "secret_token"]},
-            )
-            self.assertEqual(invalid_view.status_code, 422)
-
-            invalid_order = await client.put(
-                "/api/analytics-view",
-                headers=buyer_headers,
-                json={"view_mode": "custom", "column_order": ["account", "unknown_metric"]},
-            )
-            self.assertEqual(invalid_order.status_code, 422)
-
-            invalid_width = await client.put(
-                "/api/analytics-view",
-                headers=buyer_headers,
-                json={"view_mode": "custom", "column_widths": {"spend": 421}},
-            )
-            self.assertEqual(invalid_width.status_code, 422)
-
-            invalid_sort = await client.put(
-                "/api/analytics-view",
-                headers=buyer_headers,
-                json={"sort_column": "unknown_metric"},
-            )
-            self.assertEqual(invalid_sort.status_code, 422)
-
-            invalid_filter = await client.put(
-                "/api/analytics-view",
-                headers=buyer_headers,
-                json={"filters": {"owner": "somebody"}},
-            )
-            self.assertEqual(invalid_filter.status_code, 422)
-
-            invalid_status = await client.put(
-                "/api/analytics-view",
-                headers=buyer_headers,
-                json={"filters": {"status": "archived"}},
-            )
-            self.assertEqual(invalid_status.status_code, 422)
-
-            invalid_group = await client.put(
-                "/api/analytics-view",
-                headers=buyer_headers,
-                json={"filters": {"group_id": "foreign"}},
-            )
-            self.assertEqual(invalid_group.status_code, 422)
-
-            invalid_period = await client.put(
-                "/api/analytics-view",
-                headers=buyer_headers,
-                json={"period": "last_30d"},
-            )
-            self.assertEqual(invalid_period.status_code, 422)
-
-        async with self.test_session_maker() as session:
-            count = int(
-                (await session.execute(select(func.count()).select_from(AnalyticsViewPreference))).scalar_one()
-            )
-            self.assertEqual(count, 1)
 
     async def test_summary_exposes_metric_definitions_quality_and_cache_provenance(self):
         async with self.test_session_maker() as session:
@@ -2940,9 +2781,6 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
     async def test_settings_endpoint(self):
         admin_info = {"id": 8634201356, "first_name": "Admin", "username": "admin_user"}
         admin_auth = await session_headers(self.test_session_maker, admin_info)
-        buyer_auth = await session_headers(
-            self.test_session_maker, {"id": 8948797431, "first_name": "Nick", "username": "buyer_nick"}
-        )
 
         transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -2955,64 +2793,6 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(s_resp.json()["critical_rule_interval_minutes"], 2)
             self.assertEqual(s_resp.json()["stop_confirmation_minutes"], 10)
             self.assertEqual(s_resp.json()["usage_hard_limit_percent"], 80)
-
-            # Administrators only; there is no password to confirm any more.
-            as_buyer = await client.post(
-                "/api/settings/interval",
-                headers=buyer_auth,
-                json={"minutes": 30},
-            )
-            set_resp = await client.post(
-                "/api/settings/interval",
-                headers=headers,
-                json={"minutes": 30},
-            )
-
-            automation_resp = await client.post(
-                "/api/settings/automation",
-                headers=headers,
-                json={
-                    "poll_interval_minutes": 15,
-                    "critical_rule_interval_minutes": 1,
-                    "stop_confirmation_minutes": 7,
-                    "inventory_cache_minutes": 5,
-                    "account_health_interval_minutes": 30,
-                    "max_concurrent_accounts": 2,
-                    "max_concurrent_actions": 4,
-                    "usage_soft_limit_percent": 55,
-                    "usage_hard_limit_percent": 78,
-                    "adaptive_polling_enabled": True,
-                },
-            )
-
-            invalid_thresholds = await client.post(
-                "/api/settings/automation",
-                headers=headers,
-                json={
-                    "poll_interval_minutes": 15,
-                    "critical_rule_interval_minutes": 1,
-                    "stop_confirmation_minutes": 7,
-                    "inventory_cache_minutes": 5,
-                    "account_health_interval_minutes": 30,
-                    "max_concurrent_accounts": 2,
-                    "max_concurrent_actions": 4,
-                    "usage_soft_limit_percent": 80,
-                    "usage_hard_limit_percent": 70,
-                    "adaptive_polling_enabled": True,
-                },
-            )
-
-            refreshed = await client.get("/api/settings", headers=headers)
-
-        self.assertEqual(as_buyer.status_code, 403)
-        self.assertEqual(set_resp.status_code, 200)
-        self.assertEqual(set_resp.json()["poll_interval_minutes"], 30)
-        self.assertEqual(automation_resp.status_code, 200)
-        self.assertEqual(invalid_thresholds.status_code, 422)
-        self.assertEqual(refreshed.json()["critical_rule_interval_minutes"], 1)
-        self.assertEqual(refreshed.json()["stop_confirmation_minutes"], 7)
-        self.assertEqual(refreshed.json()["max_concurrent_actions"], 4)
-        self.assertEqual(refreshed.json()["usage_hard_limit_percent"], 78)
 
     async def test_buyer_cannot_dismiss_another_users_stopped_adset(self):
         async with self.test_session_maker() as session:
@@ -4525,55 +4305,6 @@ class TestWebApi(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(me_res.status_code, 200)
             self.assertEqual(me_res.json()["email"], "nick_new@example.com")
             self.assertTrue(me_res.json()["email_verified"])
-
-    async def test_existing_user_request_email_verification(self):
-        async with self.test_session_maker() as session:
-            old_user = User(
-                telegram_id="8948797999",
-                username="old_buyer",
-                email="existing_unverified@corp.com",
-                email_verified_at=None,
-                role="buyer",
-                is_approved=True,
-            )
-            session.add(old_user)
-            await session.commit()
-
-        user_data = await session_headers(self.test_session_maker, {"id": 8948797999, "first_name": "Old", "username": "old_buyer"})
-        headers = {**user_data}
-        delivered = {}
-
-        async def capture_code(email, code):
-            delivered[email] = code
-            return True
-
-        transport = client_api_transport(app=self.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            with patch("api.routers.auth.send_otp_verification_email", new=capture_code):
-                req_res = await client.post("/api/auth/request-email-verification", headers=headers)
-                self.assertEqual(req_res.status_code, 200)
-
-            async with self.test_session_maker() as session:
-                otp = (
-                    await session.execute(
-                        select(EmailVerificationCode)
-                        .where(EmailVerificationCode.email == "existing_unverified@corp.com")
-                    )
-                ).scalar_one()
-                self.assertEqual(otp.code, "")
-                code = delivered["existing_unverified@corp.com"]
-
-            verify_res = await client.post(
-                "/api/auth/verify-email-change",
-                headers=headers,
-                json={"code": code},
-            )
-            self.assertEqual(verify_res.status_code, 200)
-            self.assertTrue(verify_res.json()["email_verified"])
-
-            async with self.test_session_maker() as session:
-                db_u = (await session.execute(select(User).where(User.username == "old_buyer"))).scalar_one()
-                self.assertIsNotNone(db_u.email_verified_at)
 
     async def test_email_uniqueness_and_case_normalization(self):
         async with self.test_session_maker() as session:

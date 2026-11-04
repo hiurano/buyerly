@@ -4,8 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 
 from api.auth import get_current_user
-from api.deps import _require_admin, _load_json_object, _utc_iso
-from api.schemas import AutomationSettingsUpdateRequest, SetIntervalRequest
+from api.deps import _load_json_object, _utc_iso
 from database.db import async_session_maker
 from database.models import AppSettings, AutomationRuntimeState, User
 
@@ -79,58 +78,3 @@ async def get_settings(user: User = Depends(get_current_user)):
             "runtime": runtime,
         }
 
-
-@router.post("/settings/automation")
-async def update_automation_settings(
-    payload: AutomationSettingsUpdateRequest,
-    user: User = Depends(get_current_user),
-):
-    """Update global polling controls; administrators only."""
-    _require_admin(user)
-    async with async_session_maker() as session:
-        app_settings = (
-            await session.execute(select(AppSettings).limit(1))
-        ).scalar_one_or_none()
-        if app_settings is None:
-            app_settings = AppSettings()
-            session.add(app_settings)
-
-        for field_name in (
-            "poll_interval_minutes",
-            "critical_rule_interval_minutes",
-            "stop_confirmation_minutes",
-            "inventory_cache_minutes",
-            "account_health_interval_minutes",
-            "max_concurrent_accounts",
-            "max_concurrent_actions",
-            "usage_soft_limit_percent",
-            "usage_hard_limit_percent",
-            "adaptive_polling_enabled",
-        ):
-            setattr(app_settings, field_name, getattr(payload, field_name))
-        await session.commit()
-
-    return {
-        "success": True,
-        "message": "Automation settings saved",
-    }
-
-
-@router.post("/settings/interval")
-async def set_poll_interval(payload: SetIntervalRequest, user: User = Depends(get_current_user)):
-    _require_admin(user)
-    async with async_session_maker() as session:
-        res = await session.execute(select(AppSettings).limit(1))
-        app_settings = res.scalar_one_or_none()
-        if not app_settings:
-            app_settings = AppSettings(poll_interval_minutes=payload.minutes)
-            session.add(app_settings)
-        else:
-            app_settings.poll_interval_minutes = payload.minutes
-        await session.commit()
-
-    return {
-        "success": True,
-        "poll_interval_minutes": payload.minutes,
-        "message": f"Base monitoring interval changed to {payload.minutes} minutes",
-    }

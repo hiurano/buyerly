@@ -70,18 +70,6 @@ class CreateMetaInviteRequest(BaseModel):
     expires_in_hours: int = Field(default=INVITE_DEFAULT_TTL_HOURS, ge=1, le=168, description="TTL in hours (1–168)")
 
 
-class MetaInviteItem(BaseModel):
-    id: int
-    label: str
-    status: str
-    token_prefix: str
-    invite_url: str
-    created_at: str
-    expires_at: str
-    used_at: str | None
-    created_by_user_name: str | None
-
-
 class PublicMetaInviteInfoResponse(BaseModel):
     valid: bool
     status: str
@@ -941,58 +929,6 @@ async def delete_connection(
     }
 
 
-@router.post("/connections/{connection_id}/validate")
-async def validate_connection(
-    connection_id: int,
-    user: User = Depends(get_current_user),
-):
-    """Explicitly validate Meta token and update health status."""
-    now = datetime.now(timezone.utc)
-    async with async_session_maker() as session:
-        connection, ws, _ = await _workspace_connection(
-            session,
-            connection_id,
-            user,
-            require_write=True,
-        )
-        try:
-            access_token = decrypt_meta_token(connection.access_token_encrypted)
-            client = _oauth_client()
-            debug = await client.debug_token(access_token)
-            health = evaluate_meta_connection_health(debug, now)
-        except (MetaOAuthRemoteError, MetaTokenError) as exc:
-            health = {
-                "status": "needs_reconnect",
-                "days_until_expiration": None,
-                "missing_scopes": list(REQUIRED_META_SCOPES),
-                "granted_scopes": [],
-                "token_expires_at": None,
-                "error": redact_secrets(str(exc)),
-            }
-
-        connection.status = health["status"]
-        connection.granted_scopes = health["granted_scopes"]
-        connection.token_expires_at = health["token_expires_at"]
-        connection.last_error = health["error"]
-        connection.last_validated_at = now
-        await session.commit()
-
-        return {
-            "connection_id": connection.id,
-            "provider_user_id": connection.provider_user_id,
-            "provider_user_name": connection.provider_user_name,
-            "status": connection.status,
-            "days_until_expiration": health["days_until_expiration"],
-            "granted_scopes": health["granted_scopes"],
-            "missing_scopes": health["missing_scopes"],
-            "token_expires_at": connection.token_expires_at.isoformat()
-            if connection.token_expires_at
-            else None,
-            "last_validated_at": connection.last_validated_at.isoformat(),
-            "last_error": connection.last_error,
-        }
-
-
 @router.post("/connections/{connection_id}/discover")
 async def discover_accounts(
     connection_id: int,
@@ -1074,14 +1010,11 @@ async def discover_accounts(
         connection.last_validated_at = now
         await session.commit()
 
-    return await list_connection_assets(connection_id, user)
+    return await _connection_assets(connection_id, user)
 
 
-@router.get("/connections/{connection_id}/assets")
-async def list_connection_assets(
-    connection_id: int,
-    user: User = Depends(get_current_user),
-):
+async def _connection_assets(connection_id: int, user: User):
+    """The connection's ad accounts after a discovery, as discover_accounts returns them."""
     async with async_session_maker() as session:
         connection, ws, _ = await _workspace_connection(
             session,

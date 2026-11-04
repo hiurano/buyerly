@@ -26,10 +26,8 @@ from core.metrics import (
 )
 from core.account_access import EVERYTHING, AccountAccess, account_access
 from core.ownership import owned_by
-from core.workspace_slugs import normalize_workspace_slug
 from database.models import (
     Account,
-    AnalyticsViewPreference,
     AuditEvent,
     RuleGroup,
     RuleEntityState,
@@ -74,75 +72,11 @@ def invalidate_summary_cache(
 
 
 SUMMARY_SNAPSHOT_RETENTION = 100
-SUMMARY_VIEW_SCOPE = "summary"
-SUMMARY_TABLE_COLUMNS = (
-    "account",
-    "custom_name",
-    "note",
-    "data",
-    "spend",
-    "impressions",
-    "reach",
-    "frequency",
-    "cpm",
-    "clicks",
-    "link_clicks",
-    "unique_clicks",
-    "outbound_clicks",
-    "landing_page_views",
-    "ctr",
-    "ctr_link",
-    "cpc",
-    "cpc_link",
-    "leads",
-    "registrations",
-    "purchases",
-    "cpl",
-    "cpreg",
-    "cpp",
-)
-SUMMARY_REQUIRED_COLUMNS = ("account", "data")
-SUMMARY_VIEW_MODES = {"all", "overview", "delivery", "traffic", "funnel", "custom"}
-SUMMARY_VIEW_PERIODS = {"today", "yesterday", "last_3d", "last_7d"}
-SUMMARY_FILTER_KEYS = {"query", "status", "group_id"}
-SUMMARY_FILTER_STATUSES = {"all", "synced", "blocked", "error"}
-SUMMARY_COLUMN_MIN_WIDTH = 72
-SUMMARY_COLUMN_MAX_WIDTH = 420
-SUMMARY_DEFAULT_COLUMN_WIDTHS = {
-    "account": 260,
-    "custom_name": 180,
-    "note": 280,
-    "data": 120,
-    "spend": 112,
-    "impressions": 104,
-    "reach": 104,
-    "frequency": 96,
-    "cpm": 96,
-    "clicks": 104,
-    "link_clicks": 104,
-    "unique_clicks": 104,
-    "outbound_clicks": 112,
-    "landing_page_views": 120,
-    "ctr": 96,
-    "ctr_link": 96,
-    "cpc": 96,
-    "cpc_link": 96,
-    "leads": 88,
-    "registrations": 96,
-    "purchases": 96,
-    "cpl": 96,
-    "cpreg": 96,
-    "cpp": 96,
-}
+
 
 # ----------------------------------------------------
 # Workspace Helpers & Scoping
 # ----------------------------------------------------
-def slugify(text: str) -> str:
-    """Compatibility wrapper for the canonical workspace slug normalizer."""
-    return normalize_workspace_slug(text)
-
-
 async def _active_support_grant(
     session,
     user_id: int,
@@ -1011,131 +945,6 @@ def _summary_owner_key(user: User, workspace_id: Optional[int] = None) -> str:
     return f"ws:{ws_id}" if ws_id is not None else f"user:{user.id}"
 
 
-def _normalize_summary_view_config(config: Any, *, strict: bool = True) -> Dict[str, Any]:
-    if not isinstance(config, dict):
-        config = {}
-    view_mode = str(config.get("view_mode") or "all")
-    if view_mode not in SUMMARY_VIEW_MODES:
-        view_mode = "all"
-
-    requested = config.get("visible_columns")
-    if not isinstance(requested, list):
-        requested = list(SUMMARY_TABLE_COLUMNS)
-    invalid = [key for key in requested if key not in SUMMARY_TABLE_COLUMNS]
-    if invalid and strict:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Unknown analytics columns: {', '.join(map(str, invalid))}",
-        )
-    requested = [key for key in requested if key in SUMMARY_TABLE_COLUMNS]
-    requested_set = set(requested) | set(SUMMARY_REQUIRED_COLUMNS)
-    visible_columns = [key for key in SUMMARY_TABLE_COLUMNS if key in requested_set]
-
-    requested_order = config.get("column_order")
-    if not isinstance(requested_order, list):
-        requested_order = list(SUMMARY_TABLE_COLUMNS)
-    invalid_order = [key for key in requested_order if key not in SUMMARY_TABLE_COLUMNS]
-    if invalid_order and strict:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Unknown columns in the analytics order: {', '.join(map(str, invalid_order))}",
-        )
-    column_order = []
-    for key in requested_order:
-        if key in SUMMARY_TABLE_COLUMNS and key not in column_order:
-            column_order.append(key)
-    column_order.extend(key for key in SUMMARY_TABLE_COLUMNS if key not in column_order)
-
-    requested_widths = config.get("column_widths")
-    if not isinstance(requested_widths, dict):
-        requested_widths = {}
-    invalid_width_keys = [key for key in requested_widths if key not in SUMMARY_TABLE_COLUMNS]
-    if invalid_width_keys and strict:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Unknown columns in the analytics widths: {', '.join(map(str, invalid_width_keys))}",
-        )
-    column_widths = {}
-    for key in SUMMARY_TABLE_COLUMNS:
-        default_width = SUMMARY_DEFAULT_COLUMN_WIDTHS[key]
-        raw_width = requested_widths.get(key, default_width)
-        try:
-            width = int(raw_width)
-        except (TypeError, ValueError):
-            if strict:
-                raise HTTPException(status_code=422, detail=f"Invalid column width: {key}")
-            width = default_width
-        if strict and not SUMMARY_COLUMN_MIN_WIDTH <= width <= SUMMARY_COLUMN_MAX_WIDTH:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Column width {key} must be between {SUMMARY_COLUMN_MIN_WIDTH} and {SUMMARY_COLUMN_MAX_WIDTH}px",
-            )
-        column_widths[key] = max(SUMMARY_COLUMN_MIN_WIDTH, min(SUMMARY_COLUMN_MAX_WIDTH, width))
-
-    sort_column = str(config.get("sort_column") or "")
-    if sort_column and sort_column not in SUMMARY_TABLE_COLUMNS:
-        if strict:
-            raise HTTPException(status_code=422, detail=f"Unknown sort column: {sort_column}")
-        sort_column = ""
-    sort_direction = str(config.get("sort_direction") or "desc")
-    if sort_direction not in {"asc", "desc"}:
-        sort_direction = "desc"
-
-    raw_filters = config.get("filters")
-    if not isinstance(raw_filters, dict):
-        raw_filters = {}
-    invalid_filter_keys = [key for key in raw_filters if key not in SUMMARY_FILTER_KEYS]
-    if invalid_filter_keys and strict:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Unknown analytics filters: {', '.join(map(str, invalid_filter_keys))}",
-        )
-    query_filter = str(raw_filters.get("query") or "").strip()
-    if strict and len(query_filter) > 120:
-        raise HTTPException(status_code=422, detail="The ad account search must not exceed 120 characters")
-    query_filter = query_filter[:120]
-    status_filter = str(raw_filters.get("status") or "all")
-    if status_filter not in SUMMARY_FILTER_STATUSES:
-        if strict:
-            raise HTTPException(status_code=422, detail=f"Unknown status filter: {status_filter}")
-        status_filter = "all"
-    group_filter = str(raw_filters.get("group_id") or "all").strip()
-    if group_filter != "all" and (not group_filter.isdigit() or int(group_filter) <= 0):
-        if strict:
-            raise HTTPException(status_code=422, detail="The group filter must be 'all' or a positive ID")
-        group_filter = "all"
-
-    period = str(config.get("period") or "today")
-    if period not in SUMMARY_VIEW_PERIODS:
-        period = "today"
-    return {
-        "scope": SUMMARY_VIEW_SCOPE,
-        "view_mode": view_mode,
-        "visible_columns": visible_columns,
-        "column_order": column_order,
-        "column_widths": column_widths,
-        "sort_column": sort_column,
-        "sort_direction": sort_direction,
-        "filters": {
-            "query": query_filter,
-            "status": status_filter,
-            "group_id": group_filter,
-        },
-        "period": period,
-    }
-
-
-def _analytics_view_response(
-    row: Optional[AnalyticsViewPreference],
-    config: Dict[str, Any],
-) -> Dict[str, Any]:
-    return {
-        **config,
-        "is_saved": row is not None,
-        "updated_at": _utc_iso(row.updated_at) if row else "",
-    }
-
-
 def _summary_snapshot_reference(
     row: SummarySnapshot,
     payload: Dict[str, Any],
@@ -1415,6 +1224,3 @@ async def _persist_summary(
 # ----------------------------------------------------
 # Settings Helpers
 # ----------------------------------------------------
-def _require_admin(user: User) -> None:
-    if user.role != "admin":
-        raise HTTPException(status_code=403, detail="Only an administrator can change automation settings.")
