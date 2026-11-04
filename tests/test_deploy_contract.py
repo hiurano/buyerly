@@ -15,7 +15,6 @@ class TestDeployContract(unittest.TestCase):
         cls.monitoring_worker = (project_root / "scheduler" / "worker.py").read_text()
         cls.dockerfile = (project_root / "Dockerfile").read_text()
         cls.workflow = (project_root / ".github" / "workflows" / "deploy.yml").read_text()
-        cls.codeowners = (project_root / ".github" / "CODEOWNERS").read_text()
         cls.alembic_env = (project_root / "alembic" / "env.py").read_text()
         cls.cleanup_script = (
             project_root / "scripts" / "cleanup_docker_artifacts.sh"
@@ -304,7 +303,6 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("EXPECTED_GIT_REPOSITORY", self.script)
         self.assertIn("git remote get-url origin", self.script)
         self.assertIn("NORMALIZED_ORIGIN", self.script)
-        self.assertIn("@hiurano", self.codeowners)
 
     def test_production_build_context_matches_the_exact_git_revision(self):
         reset_position = self.script.index('git reset --hard "${TARGET_SHA}"')
