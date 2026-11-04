@@ -68,6 +68,17 @@ class Settings(BaseSettings):
     API_PORT: int = Field(default=8080, description="Web API and static files port")
     API_HOST: str = Field(default="0.0.0.0", description="Web API host")
     SERVE_STATIC: bool = Field(default=True, description="Serve the built React app, public pages and uploads from FastAPI")
+    # The TypeScript server (#611) takes over one area at a time. Until it
+    # fronts the site itself, this API forwards it the paths it owns; moving
+    # an area back is removing its prefix here.
+    SERVER_URL: str = Field(
+        default="",
+        description="Base URL of the TypeScript server (http://server:8090); empty forwards nothing",
+    )
+    SERVER_PATHS: str = Field(
+        default="/health/server/",
+        description="Comma-separated path prefixes forwarded to SERVER_URL",
+    )
     SERVICE_WORKER: bool = Field(
         default=True,
         description="Serve the app's service worker; false serves the kill switch that unregisters it (#499)",

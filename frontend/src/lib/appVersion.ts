@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import type { ServerHealth } from '@buyerly/shared';
 import { toast } from '@/ui/toast';
 import { checkForNewBuild, onNewBuild, reloadToNewBuild, servedByWorker } from './serviceWorker';
 
@@ -33,7 +34,8 @@ async function fetchServerVersion(): Promise<string | null> {
     const response = await fetch('/health/live', { cache: 'no-store', credentials: 'same-origin' });
     if (!response.ok) return null;
     const body: unknown = await response.json();
-    const version = body && typeof body === 'object' ? (body as { version?: unknown }).version : undefined;
+    // Checked at runtime anyway: mid-deploy the answer may come from either server.
+    const version = body && typeof body === 'object' ? (body as Partial<ServerHealth>).version : undefined;
     return typeof version === 'string' ? version : null;
   } catch {
     return null;

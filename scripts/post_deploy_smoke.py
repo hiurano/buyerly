@@ -209,6 +209,8 @@ def main() -> int:
     started_at = _utc_now()
     _record(checks, "health_live", lambda: _health("/health/live", "alive"))
     _record(checks, "health_ready", lambda: _health("/health/ready", "ready"))
+    # Through the API's forwarding, so this also proves the route there (#611).
+    _record(checks, "server_health_ready", lambda: _health("/health/server/ready", "ready"))
     _record(checks, "authentication_boundary", _auth_boundary)
     _record(checks, "runtime_versions", _runtime_versions)
     _record(checks, "worker_heartbeat", _worker_heartbeat)

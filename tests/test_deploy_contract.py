@@ -213,12 +213,29 @@ class TestDeployContract(unittest.TestCase):
         self.assertIn("immutable", server)
 
     def test_one_image_carries_the_api_and_the_react_build(self):
-        self.assertIn("FROM node:22-alpine AS frontend", self.dockerfile)
-        self.assertIn("RUN npm ci", self.dockerfile)
+        self.assertIn("FROM node:24-slim AS frontend", self.dockerfile)
+        self.assertIn("RUN npm ci --workspace buyerly-frontend", self.dockerfile)
         self.assertIn("RUN npm run build", self.dockerfile)
-        self.assertIn("frontend/package-lock.json", self.dockerfile)
+        # npm workspaces (#611): the lock file is the repository root's.
+        self.assertIn("COPY package.json package-lock.json ./", self.dockerfile)
         self.assertIn("FROM python:3.12-slim", self.dockerfile)
-        self.assertIn("COPY --from=frontend /frontend/dist ./frontend/dist", self.dockerfile)
+        self.assertIn("COPY --from=frontend /app/frontend/dist ./frontend/dist", self.dockerfile)
+        # The Python stage is last, so it stays the image's default target.
+        self.assertGreater(self.dockerfile.index("FROM python:3.12-slim"), self.dockerfile.index("AS server"))
+
+    def test_the_typescript_server_runs_from_the_same_image(self):
+        # #611: same image and release tag, so rollback and cleanup cover it.
+        self.assertIn("FROM node:24-slim AS server", self.dockerfile)
+        self.assertIn("COPY --from=server /usr/local/bin/node /usr/local/bin/node", self.dockerfile)
+        self.assertIn("COPY --from=server /app/server/dist ./server/dist", self.dockerfile)
+        service = self.compose.split("\n  server:\n", 1)[1].split("\n\n", 1)[0]
+        self.assertIn("<<: *app", service)
+        self.assertIn('command: ["node", "server/dist/main.js"]', service)
+        self.assertIn("/health/server/ready", service)
+        self.assertNotIn("ports:", service)
+        self.assertIn("SERVER_URL: http://server:8090", self.compose)
+        self.assertEqual(self.script.count("docker compose up -d --no-deps api worker backup server"), 2)
+        self.assertIn("wait_for_container buyerly-server", self.script)
         root = Path(__file__).parents[1]
         self.assertFalse((root / "frontend" / "Dockerfile").exists())
         self.assertFalse((root / "frontend" / "nginx.conf").exists())

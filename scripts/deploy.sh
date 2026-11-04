@@ -153,9 +153,10 @@ rollback() {
     fi
     echo "[ROLLBACK] Returning to ${PREVIOUS_SHA}..."
     export APP_VERSION="${PREVIOUS_SHA}"
-    docker compose up -d --no-deps api worker backup
+    docker compose up -d --no-deps api worker backup server
     wait_for_container buyerly-api || true
     wait_for_container buyerly-worker || true
+    wait_for_container buyerly-server || true
     record_running_version "${PREVIOUS_SHA}"
     echo "[ROLLBACK] Previous release restored."
 }
@@ -309,9 +310,14 @@ if ! docker compose run --rm migrate; then
 fi
 
 echo "[6/7] Starting the release..."
-docker compose up -d --no-deps api worker backup
+docker compose up -d --no-deps api worker backup server
 if ! wait_for_container buyerly-api; then
     docker compose logs --tail=120 api
+    rollback
+    exit 1
+fi
+if ! wait_for_container buyerly-server; then
+    docker compose logs --tail=120 server
     rollback
     exit 1
 fi

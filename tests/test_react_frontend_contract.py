@@ -286,11 +286,11 @@ class TestReactFrontendContract(unittest.TestCase):
         self.assertIn("<NotFoundView", self.app)
 
     def test_production_ui_contract_points_to_the_react_runtime(self):
-        self.assertIn("FROM node:22-alpine AS frontend", self.dockerfile)
+        self.assertIn("FROM node:24-slim AS frontend", self.dockerfile)
         self.assertIn("COPY frontend/src ./src", self.dockerfile)
         # `npm run build` type-checks and compiles the service worker from frontend/sw (#499).
         self.assertIn("COPY frontend/sw ./sw", self.dockerfile)
-        self.assertIn("COPY --from=frontend /frontend/dist ./frontend/dist", self.dockerfile)
+        self.assertIn("COPY --from=frontend /app/frontend/dist ./frontend/dist", self.dockerfile)
         self.assertIn("import 'virtual:buyerly-tokens.css';\nimport './styles/index.css'", self.main)
         self.assertTrue(self.styles.startswith("@import './tokens.css';"))
 
