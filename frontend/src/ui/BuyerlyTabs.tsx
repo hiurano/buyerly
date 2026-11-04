@@ -135,7 +135,7 @@ export const BuyerlyTabs: React.FC<BuyerlyTabsProps> = ({
   }, [collapseOverflow]);
 
   const handleKeyDown = (e: React.KeyboardEvent, currentIndex: number) => {
-    let nextIndex = currentIndex;
+    let nextIndex: number;
 
     if (e.key === 'ArrowRight') {
       nextIndex = (currentIndex + 1) % tabs.length;

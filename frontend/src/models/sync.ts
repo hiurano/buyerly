@@ -167,7 +167,7 @@ class SyncClient {
       if (rows) {
         const id = Number(change.model_id);
         if (change.action === 'delete') rows.delete(id);
-        else rows.set(id, { ...rows.get(id), ...change.data, id } as SyncRow);
+        else rows.set(id, { ...rows.get(id), ...change.data, id });
       }
       this.lastSyncId = change.sync_id;
     }

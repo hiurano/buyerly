@@ -141,7 +141,7 @@ sync.onChanges((actions) => {
       const data = change.data ?? {};
       const fields = Object.keys(data);
       if (change.action === 'update' && typeof accountId === 'string' && fields.every((field) => (ACCOUNT_FIELDS as readonly string[]).includes(field))) {
-        pool.patch<MetaAccount>('adAccount', accountId, Object.fromEntries(fields.map((field) => [field, data[field]])) as Partial<MetaAccount>);
+        pool.patch<MetaAccount>('adAccount', accountId, Object.fromEntries(fields.map((field) => [field, data[field]])));
       } else {
         accountsChanged = true;
       }

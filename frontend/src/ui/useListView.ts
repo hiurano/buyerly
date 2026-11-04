@@ -88,12 +88,12 @@ export function useListView(key: string, defaults: ListViewSettings) {
 }
 
 /** The address's `?filter=`: null when it has none, the clauses it names otherwise. */
-export function readFilterParam(param = 'filter'): unknown | null {
+export function readFilterParam(param = 'filter'): unknown {
   return parseFilterParam(new URLSearchParams(window.location.search).get(param));
 }
 
 /** A `?filter=` value: null for none, the clauses it names otherwise. */
-export function parseFilterParam(raw: string | null): unknown | null {
+export function parseFilterParam(raw: string | null): unknown {
   try {
     if (raw === null) return null;
     if (raw.length > 20000) return [];
@@ -104,7 +104,7 @@ export function parseFilterParam(raw: string | null): unknown | null {
   }
 }
 
-export function writeFilterParam(value: unknown | null, param = 'filter') {
+export function writeFilterParam(value: unknown, param = 'filter') {
   const url = new URL(window.location.href);
   if (value === null) url.searchParams.delete(param);
   else url.searchParams.set(param, JSON.stringify(value));

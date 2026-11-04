@@ -67,6 +67,14 @@ export interface ValueQuery<T> {
 
 export type Query<T> = ListQuery<T> | ValueQuery<T>;
 
+/**
+ * A query of any record type, for code that holds several kinds at once.
+ * `Query<unknown>` would not do: `id` takes a T, so a query of one type is
+ * not a query of another.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type AnyQuery = Query<any>;
+
 /** What a query gives: a list query its records, a value query its answer. */
 export type QueryData<Q> = Q extends ListQuery<infer T> ? T[] : Q extends ValueQuery<infer T> ? T : never;
 
@@ -233,7 +241,7 @@ export class BuyerlyPool {
     if (!laid || base === undefined) return base as T | undefined;
     const kept = this.merged.get(key);
     if (kept && kept.base === base && kept.patches === laid) return kept.value as T;
-    const value = Object.assign({}, base, ...laid);
+    const value: unknown = Object.assign({}, base, ...laid);
     this.merged.set(key, { base, patches: laid, value });
     return value as T;
   }
@@ -357,7 +365,7 @@ export class BuyerlyPool {
   }
 
   /** The held answer, or a read for it when there is none or it is stale; for code outside React. */
-  async read<Q extends Query<any>>(query: Q): Promise<QueryData<Q>> {
+  async read<Q extends AnyQuery>(query: Q): Promise<QueryData<Q>> {
     if (query.kind === 'list' && query.local && this.sync.booting) await this.sync.booting;
     const entry = this.entry(query);
     // A list held from the sync engine's models is current by definition.

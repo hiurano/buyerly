@@ -258,7 +258,7 @@ function routeFromMatches(matches: readonly MatchLike[] | null, search: string):
 /** The route of an address, outside React (the API client, a check made later). */
 export function routeAt(location: { pathname: string; search: string }): Route {
   const matches = matchRoutes(buyerlyRouteTree, location.pathname);
-  return routeFromMatches(matches?.map((match) => ({ params: match.params, handle: match.route.handle })) ?? null, location.search);
+  return routeFromMatches(matches?.map((match) => ({ params: match.params, handle: match.route.handle as unknown })) ?? null, location.search);
 }
 
 /** The route of the address on screen now; for event handlers and code outside React, never while rendering. */

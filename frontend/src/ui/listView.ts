@@ -64,11 +64,11 @@ const cleanIds = (value: unknown): Record<string, string[]> => {
 export function readListView(stored: unknown, defaults: ListViewSettings): ListViewSettings {
   if (!isObject(stored)) return defaults;
   const text = (key: keyof ListViewSettings) =>
-    typeof stored[key] === 'string' && (stored[key] as string).length <= 64 ? (stored[key] as string) : (defaults[key] as string);
+    typeof stored[key] === 'string' && stored[key].length <= 64 ? stored[key] : (defaults[key] as string);
   const properties = { ...defaults.properties };
   if (isObject(stored.properties)) {
     for (const key of Object.keys(properties)) {
-      if (typeof stored.properties[key] === 'boolean') properties[key] = stored.properties[key] as boolean;
+      if (typeof stored.properties[key] === 'boolean') properties[key] = stored.properties[key];
     }
   }
   return {

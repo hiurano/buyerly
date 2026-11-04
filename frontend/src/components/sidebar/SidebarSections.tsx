@@ -40,7 +40,7 @@ const COLLAPSED_KEY = 'buyerly-sidebar-collapsed';
 
 function readCollapsed(): string[] {
   try {
-    const value = JSON.parse(window.localStorage.getItem(COLLAPSED_KEY) || '[]');
+    const value: unknown = JSON.parse(window.localStorage.getItem(COLLAPSED_KEY) || '[]');
     return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
   } catch {
     return [];

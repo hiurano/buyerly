@@ -751,7 +751,6 @@ export const CreateRuleModal: React.FC = () => {
                   <span {...stylex.props(styles.word)}>of</span>
                   {draft.conditions.map((condition, index) => (
                     <ConditionChip
-                      // eslint-disable-next-line react/no-array-index-key
                       key={index}
                       index={index}
                       condition={condition}

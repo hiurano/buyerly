@@ -369,23 +369,23 @@ const CampaignsViewContent: React.FC<CampaignsViewProps> = ({ mine = false, reve
   // Derived as the page draws, so held rows are on screen in its first frame.
   const hierarchy = useMemo(() => {
     const none = { campaigns: [] as CampaignRowItem[], adSets: [] as AdSetRowItem[], ads: [] as AdRowItem[], failed: [] as { account: MetaAccount; error: string }[] };
-    if (accountsState !== 'ready') return { ...none, state: 'loading' as LoadState, error: '' };
-    if (metaAccounts.length === 0) return { ...none, state: 'idle' as LoadState, error: '' };
+    if (accountsState !== 'ready') return { ...none, state: 'loading' as const, error: '' };
+    if (metaAccounts.length === 0) return { ...none, state: 'idle' as const, error: '' };
     if (!hierarchyRows) {
       return hierarchyRead.error
-        ? { ...none, state: 'error' as LoadState, error: hierarchyRead.error }
-        : { ...none, state: 'loading' as LoadState, error: '' };
+        ? { ...none, state: 'error' as const, error: hierarchyRead.error }
+        : { ...none, state: 'loading' as const, error: '' };
     }
     const results = accountHierarchies(metaAccounts, hierarchyRows);
     const loaded = results.filter((result) => !result.error);
-    if (loaded.length === 0) return { ...none, state: 'error' as LoadState, error: results[0]?.error ?? '' };
+    if (loaded.length === 0) return { ...none, state: 'error' as const, error: results[0]?.error ?? '' };
     return {
       campaigns: loaded.flatMap((result) => result.campaigns),
       adSets: loaded.flatMap((result) => result.adSets),
       ads: loaded.flatMap((result) => result.ads),
       // Accounts that could not be read while the others could: named above the list.
       failed: results.flatMap((result) => (result.error ? [{ account: result.account, error: result.error }] : [])),
-      state: 'ready' as LoadState,
+      state: 'ready' as const,
       error: '',
     };
   }, [accountsState, metaAccounts, hierarchyRows, hierarchyRead.error]);

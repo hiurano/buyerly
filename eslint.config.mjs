@@ -21,4 +21,15 @@ export default tseslint.config(
       '@typescript-eslint/require-await': 'off',
     },
   },
+  {
+    files: ['frontend/**'],
+    rules: {
+      // Store methods are bound by makeStore (MobX autoBind), so
+      // `useShellStore((state) => state.toggle)` passes a bound function.
+      '@typescript-eslint/unbound-method': 'off',
+      // React drops what an event handler returns; async onClick/onSubmit
+      // handlers are the usual React pattern. Other void spots stay checked.
+      '@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: { attributes: false } }],
+    },
+  },
 );

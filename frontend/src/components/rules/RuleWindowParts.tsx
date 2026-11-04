@@ -9,7 +9,6 @@ import {
   RULE_METRIC_LABELS,
   type RuleAccountPreview,
   type RuleMetric,
-  type RuleOperator,
   type RuleScope,
 } from '@/lib/rules';
 import {
@@ -591,7 +590,7 @@ export const ConditionChip: React.FC<{
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" sideOffset={4}>
             {RULE_OPERATORS.map((option) => (
-              <DropdownMenuItem key={option.value} onClick={() => onChange({ operator: option.value as RuleOperator })}>
+              <DropdownMenuItem key={option.value} onClick={() => onChange({ operator: option.value })}>
                 <span {...stylex.props(styles.operatorSymbol)}>{option.symbol}</span>
                 <span {...stylex.props(styles.secondary)}>{option.words}</span>
               </DropdownMenuItem>

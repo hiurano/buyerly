@@ -115,7 +115,7 @@ export function useNewVersionNotice(buildVersion: string = BUILD_VERSION): void 
       if (isNewerRelease(buildVersion, serverVersion)) foundNewBuild();
     };
 
-    const interval = window.setInterval(check, VERSION_CHECK_INTERVAL_MS);
+    const interval = window.setInterval(() => void check(), VERSION_CHECK_INTERVAL_MS);
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') void check();
     };

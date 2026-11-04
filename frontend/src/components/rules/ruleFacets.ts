@@ -65,9 +65,9 @@ export function applyRuleQuickFilter(rules: RuleItem[], quick: RuleQuickFilter |
 /** The pane's filter as this browser tab left it; only one the pane can show. */
 export function parseRuleQuickFilter(raw: string | null): RuleQuickFilter | null {
   try {
-    const saved = JSON.parse(raw ?? 'null');
-    if (saved && RULE_FACET_IDS.includes(saved.fieldId) && typeof saved.value === 'string') {
-      return { fieldId: saved.fieldId, value: saved.value };
+    const saved = JSON.parse(raw ?? 'null') as { fieldId?: unknown; value?: unknown } | null;
+    if (saved && RULE_FACET_IDS.includes(saved.fieldId as RuleFacetId) && typeof saved.value === 'string') {
+      return { fieldId: saved.fieldId as RuleFacetId, value: saved.value };
     }
   } catch { /* Storage is optional. */ }
   return null;

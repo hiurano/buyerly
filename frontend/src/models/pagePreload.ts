@@ -1,7 +1,7 @@
 import { decodeInboxFilter, fetchInbox, inboxListKey, inboxPageKey, inboxTabShown, INBOX_PAGE_SIZE, type InboxQuery, type InboxTab } from '@/lib/inbox';
 import { savedAdsManagerPeriod } from '@/components/campaigns/adsManagerViewModel';
 import type { TeamItem } from '@/lib/teams';
-import { pool, type Query } from './pool';
+import { pool, type AnyQuery } from './pool';
 import { adAccountsQuery, connectionsQuery, hierarchyQuery, membersQuery, teamDocumentsQuery, teamsQuery } from './queries';
 import { inboxStore } from '@/models/inboxStore';
 import { type ActiveTab } from '@/models/shellStore';
@@ -37,7 +37,7 @@ export function preloadPage(page: PageToOpen, workspaceId: number): Readiness | 
   const { booting } = pool.sync;
   if (booting) return readiness([booting.then(() => preloadPage(page, workspaceId) ?? undefined)]);
   const waits: Promise<unknown>[] = [];
-  const need = (query: Query<any>) => {
+  const need = (query: AnyQuery) => {
     if (pool.has(query.key)) return;
     const read = pool.fetch(query);
     // One the sync engine's models hold is in the pool already.

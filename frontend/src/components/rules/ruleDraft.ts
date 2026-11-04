@@ -326,10 +326,10 @@ export const draftStorageKey = (workspace: string) => `buyerly:rule-draft:${work
  */
 export function readStoredDraft(key: string): RuleDraft | null {
   try {
-    const stored = JSON.parse(localStorage.getItem(key) ?? 'null');
+    const stored: unknown = JSON.parse(localStorage.getItem(key) ?? 'null');
     if (!stored || typeof stored !== 'object') return null;
     const base = emptyDraft();
-    const draft = { ...base, ...stored } as RuleDraft;
+    const draft: RuleDraft = { ...base, ...stored };
     const valid = typeof draft.name === 'string'
       && RULE_LEVELS.includes(draft.level)
       && RULE_ACTIONS.includes(draft.action)

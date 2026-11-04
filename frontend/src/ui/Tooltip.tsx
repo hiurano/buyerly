@@ -80,7 +80,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
   const renderShortcut = () => {
     if (!shortcut) return null;
 
-    let keys: string[] = [];
+    let keys: string[];
     let isSequence = false;
 
     if (Array.isArray(shortcut)) {

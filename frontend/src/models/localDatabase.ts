@@ -91,15 +91,15 @@ const registry = () => readJson<Record<string, string>>(() => window.localStorag
 function request<T>(run: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     run.onsuccess = () => resolve(run.result);
-    run.onerror = () => reject(run.error);
+    run.onerror = () => reject(run.error ?? new Error('A local database request failed.'));
   });
 }
 
 function done(transaction: IDBTransaction): Promise<void> {
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error);
-    transaction.onabort = () => reject(transaction.error);
+    transaction.onerror = () => reject(transaction.error ?? new Error('A local database write failed.'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('A local database write was aborted.'));
   });
 }
 
@@ -119,7 +119,7 @@ function openDatabase(name: string): Promise<IDBDatabase> {
       db.onversionchange = () => db.close();
       resolve(db);
     };
-    opening.onerror = () => reject(opening.error);
+    opening.onerror = () => reject(opening.error ?? new Error('The local database did not open.'));
     opening.onblocked = () => reject(new Error('The local database is open in an older tab.'));
   });
 }
@@ -150,7 +150,7 @@ export async function readAll(db: IDBDatabase, { models: withModels = true } = {
   const values = transaction.objectStore(VALUES);
   const [rows, valueKeys, valueRows] = await Promise.all([
     withModels ? request(transaction.objectStore(MODELS).getAll() as IDBRequest<StoredRow[]>) : Promise.resolve([]),
-    request(values.getAllKeys()),
+    request(values.getAllKeys() as IDBRequest<string[]>),
     request(values.getAll()),
   ]);
   const data: LocalData = { sync: null, models: new Map(), values: new Map() };
