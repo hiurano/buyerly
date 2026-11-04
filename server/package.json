@@ -5,20 +5,24 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "dev": "node --watch src/main.ts",
+    "dev": "tsc -p tsconfig.build.json && (tsc -p tsconfig.build.json --watch --preserveWatchOutput & node --watch dist/main.js)",
     "start": "node dist/main.js",
     "test": "vitest run",
     "typecheck": "tsc -p ."
   },
   "devDependencies": {
+    "@swc/core": "^1.16.21",
     "@types/node": "^24.19.2",
     "@types/pg": "^8.23.1",
     "typescript": "^5.9.3",
+    "unplugin-swc": "^2.0.0",
     "vitest": "^5.1.0"
   },
   "dependencies": {
     "@buyerly/shared": "*",
     "fastify": "^5.12.8",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^1.1.2"
   }
 }

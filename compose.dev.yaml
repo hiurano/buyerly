@@ -109,13 +109,16 @@ services:
         condition: service_started
 
   # The TypeScript server (#611); restarts by itself when its code changes.
-  # The API forwards it the paths it owns, as in production.
+  # The API forwards it the paths it owns, as in production. tsc compiles it
+  # first: Node's own TypeScript support cannot run TypeORM's decorators.
   server:
     image: node:24-slim
     working_dir: /repo/server
-    command: ["node", "--watch", "src/main.ts"]
+    command: ["npm", "run", "dev"]
     environment:
       DATABASE_URL: postgresql://buyerly:buyerly-dev@db:5432/buyerly
+      # File events do not cross the Windows bind mount; tsc polls instead.
+      TSC_WATCHFILE: DynamicPriorityPolling
       TZ: UTC
     volumes:
       - .:/repo

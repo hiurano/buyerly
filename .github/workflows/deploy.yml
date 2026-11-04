@@ -234,6 +234,23 @@ jobs:
     name: TypeScript server and image
     runs-on: ubuntu-24.04
 
+    # The entities' check (server/test/schema.test.ts) compares them with the
+    # schema Alembic builds, so the job migrates a Postgres of its own.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: buyerly
+          POSTGRES_PASSWORD: buyerly_secret
+          POSTGRES_DB: buyerly_schema
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v7
@@ -245,7 +262,22 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Migrate the schema with Alembic
+        env:
+          DATABASE_URL: postgresql+asyncpg://buyerly:buyerly_secret@localhost:5432/buyerly_schema
+        run: |
+          pip install -r requirements.txt
+          python -m alembic upgrade head
+
       - name: Typecheck, lint and test
+        env:
+          SCHEMA_DATABASE_URL: postgresql://buyerly:buyerly_secret@localhost:5432/buyerly_schema
         run: |
           npm ci
           npm run typecheck
