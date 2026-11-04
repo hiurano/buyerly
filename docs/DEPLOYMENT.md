@@ -89,11 +89,16 @@ Settings неактивна. Почта отправляется только ч
 
 Compose задаёт сам и в `.env` не нужны: `APP_VERSION`, `DATABASE_URL`,
 `SERVER_URL` (`http://server:8090`, сервер на TypeScript),
-`TRUSTED_PROXY_CIDRS` (пусто: прокси между туннелем и API нет),
+`TRUSTED_PROXY_CIDRS` (пусто: прокси между туннелем и API нет; сервису
+`server` — сеть Compose `172.30.0.0/24`, потому что к нему ходит только API и
+дописывает адрес туннеля в `X-Forwarded-For`),
 `CLOUDFLARE_TUNNEL_CIDRS` (фиксированный адрес `buyerly-tunnel`, `172.30.0.10/32`).
 Значения по умолчанию подходят для `API_HOST`, `API_PORT`, `SERVE_STATIC`,
-`SERVER_PATHS` (префиксы путей, которые API пересылает серверу на TypeScript;
-убрать префикс — вернуть область Python),
+`SERVER_PATHS` (префиксы путей, которые API пересылает серверу на TypeScript,
+сейчас `/health/server/,/api/auth/,/api/me/`; убрать префикс — вернуть область
+Python, её код остаётся на месте до конца переезда; если `SERVER_PATHS` задан в
+`.env` сервера, он заменяет значение по умолчанию и должен перечислять новые
+префиксы сам),
 `CLOUDFLARE_IP_CIDRS`; `CORS_ORIGINS` нужен только для явно разрешённых
 cross-origin клиентов.
 

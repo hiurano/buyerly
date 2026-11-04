@@ -275,14 +275,43 @@ jobs:
           pip install -r requirements.txt
           python -m alembic upgrade head
 
+      # The Python API on the same database, for the contract tests: the
+      # moved areas' tests run against both servers, and sessions and codes
+      # from one must work on the other (docs/DEVELOPMENT.md). Its log holds
+      # the emailed codes (DEV_EMAIL_LOG), which the tests read.
+      - name: Start the Python API for the contract tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://buyerly:buyerly_secret@localhost:5432/buyerly_schema
+          API_HOST: 127.0.0.1
+          API_PORT: "18080"
+          SERVE_STATIC: "false"
+          OTP_PEPPER: contract-test-otp-pepper
+          TRUSTED_PROXY_CIDRS: 127.0.0.1/32
+          WEBAPP_URL: https://buyerly.test
+          DEV_EMAIL_LOG: "true"
+          SERVER_URL: ""
+        run: |
+          nohup python -m services.api > /tmp/python-api.out 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18080/health/ready; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/python-api.out
+          exit 1
+
       - name: Typecheck, lint and test
         env:
           SCHEMA_DATABASE_URL: postgresql://buyerly:buyerly_secret@localhost:5432/buyerly_schema
+          PYTHON_API_URL: http://127.0.0.1:18080
+          PYTHON_API_LOG: ${{ github.workspace }}/logs/api.log
         run: |
           npm ci
           npm run typecheck
           npm run lint
           npm test --workspace @buyerly/server
+          echo "::group::The same contract tests against the Python API"
+          (cd server && CONTRACT_TARGET=python npx vitest run test/auth)
+          echo "::endgroup::"
 
       - name: Build the production image
         run: docker build --build-arg APP_VERSION=ci -t buyerly-app:ci .

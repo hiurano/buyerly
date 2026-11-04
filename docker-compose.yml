@@ -90,6 +90,13 @@ services:
     <<: *app
     container_name: buyerly-server
     command: ["node", "server/dist/main.js"]
+    environment:
+      <<: *app-environment
+      # Its only client is the API, which appends the tunnel's address to
+      # X-Forwarded-For; trusting the Compose network lets the server read the
+      # visitor's address and place as the API does. Nothing else connects to
+      # it: it publishes no port and the tunnel routes to the API alone.
+      TRUSTED_PROXY_CIDRS: 172.30.0.0/24
     volumes: []
     depends_on:
       db:

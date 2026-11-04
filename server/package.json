@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@buyerly/shared": "*",
+    "@fastify/cookie": "^11.1.5",
     "fastify": "^5.12.8",
     "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",

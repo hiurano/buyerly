@@ -76,7 +76,7 @@ class Settings(BaseSettings):
         description="Base URL of the TypeScript server (http://server:8090); empty forwards nothing",
     )
     SERVER_PATHS: str = Field(
-        default="/health/server/",
+        default="/health/server/,/api/auth/,/api/me/",
         description="Comma-separated path prefixes forwarded to SERVER_URL",
     )
     SERVICE_WORKER: bool = Field(
