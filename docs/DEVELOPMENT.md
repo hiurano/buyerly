@@ -65,16 +65,16 @@ gh run view <run-id> --log-failed
 
 ### Контрактные тесты сервера
 
-Тесты [server/test](../server/test/) идут по HTTP против Postgres после `alembic upgrade head`; без `SCHEMA_DATABASE_URL` они пропускаются (в CI — никогда). Те же тесты областей запускаются и против работающего Python API на той же базе — так CI доказывает, что оба сервера отвечают одинаково, пока область переезжает (#611). Python API для этого запускается с тем же `OTP_PEPPER`, что у тестов, `TRUSTED_PROXY_CIDRS=127.0.0.1/32` и `DEV_EMAIL_LOG=true`: коды тесты читают из его лога.
+Тесты [server/test](../server/test/) идут по HTTP против Postgres после `alembic upgrade head`; без `SCHEMA_DATABASE_URL` они пропускаются (в CI — никогда). Те же тесты областей запускаются и против работающего Python API на той же базе — так CI доказывает, что оба сервера отвечают одинаково, пока область переезжает (#611). Python API для этого запускается с тем же `OTP_PEPPER`, что у тестов, `TRUSTED_PROXY_CIDRS=127.0.0.1/32` и `DEV_EMAIL_LOG=true`: коды тесты читают из его лога. Загруженные Python API файлы тесты ищут в `uploads/` репозитория (или в `PYTHON_UPLOADS_DIR`), а `/uploads/` он отдаёт только с `SERVE_STATIC=true` (по умолчанию).
 
 ```bash
 export SCHEMA_DATABASE_URL=postgresql://buyerly:<пароль>@localhost:5432/buyerly_schema
 npm test --workspace @buyerly/server
 # Против Python API, запущенного на той же базе:
-DATABASE_URL=postgresql+asyncpg://buyerly:<пароль>@localhost:5432/buyerly_schema API_PORT=18080 SERVE_STATIC=false \
+DATABASE_URL=postgresql+asyncpg://buyerly:<пароль>@localhost:5432/buyerly_schema API_PORT=18080 \
   OTP_PEPPER=contract-test-otp-pepper TRUSTED_PROXY_CIDRS=127.0.0.1/32 DEV_EMAIL_LOG=true python -m services.api &
 cd server
-CONTRACT_TARGET=python PYTHON_API_URL=http://127.0.0.1:18080 PYTHON_API_LOG=../logs/api.log npx vitest run test/auth
+CONTRACT_TARGET=python PYTHON_API_URL=http://127.0.0.1:18080 PYTHON_API_LOG=../logs/api.log npx vitest run test/auth test/uploads
 ```
 
 С `PYTHON_API_URL` обычный прогон включает и [overlap.test.ts](../server/test/auth/overlap.test.ts): сессии и коды одного сервера на другом.

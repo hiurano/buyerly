@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+
 // Settings from the environment, read once at start. The names match the
 // Python services' (core/config.py), since both run from the same .env while
 // the server moves to TypeScript (#611).
@@ -36,7 +38,16 @@ export interface Config {
   // HMAC secret for stored OTP codes and link tokens; the same value as the
   // Python API's, so a code issued by one server verifies on the other.
   otpPepper: string;
+
+  // User images (avatars, workspace logos): the Python API's directory,
+  // <repository>/uploads (services/image_uploads.py UPLOADS_ROOT), which
+  // Compose mounts as the buyerly-uploads volume for both services.
+  // SERVER_UPLOADS_DIR replaces it; the tests use a directory of their own.
+  uploadsRoot: string;
 }
+
+// <repository>/uploads, from server/src/config.ts and server/dist/config.js alike.
+export const DEFAULT_UPLOADS_ROOT = fileURLToPath(new URL('../../uploads', import.meta.url));
 
 // Compose gives the Python services SQLAlchemy URLs
 // ("postgresql+asyncpg://…"); node-postgres wants the plain scheme.
@@ -95,5 +106,6 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
     devEmailLog: envBool(env.DEV_EMAIL_LOG, false),
     turnstileSecretKey: env.TURNSTILE_SECRET_KEY ?? '',
     otpPepper: env.OTP_PEPPER ?? '',
+    uploadsRoot: env.SERVER_UPLOADS_DIR || DEFAULT_UPLOADS_ROOT,
   };
 }
