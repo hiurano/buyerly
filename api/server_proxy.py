@@ -90,7 +90,9 @@ def install(app: FastAPI, base_url: str | None = None, paths: str | None = None,
             request.url.path,
             params=request.url.query or None,
             headers=headers,
-            content=request.stream(),
+            # Whole, not streamed: a request body cannot be streamed out of
+            # FastAPI's http middleware. The API caps bodies at 6 MB anyway.
+            content=await request.body(),
         )
         try:
             upstream = await upstream_client.send(upstream_request, stream=True)

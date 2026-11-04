@@ -255,11 +255,12 @@ jobs:
       - name: Build the production image
         run: docker build --build-arg APP_VERSION=ci -t buyerly-app:ci .
 
-      # Without a database the server is alive but not ready; both answers
+      # Compose passes APP_VERSION in production, as here. Without a database
+      # the server is alive but not ready; both answers
       # prove Node, its dependencies and the compiled code work in the image.
       - name: Run the server from the image
         run: |
-          docker run -d --name buyerly-server-ci -p 127.0.0.1:8090:8090 buyerly-app:ci node server/dist/main.js
+          docker run -d --name buyerly-server-ci -e APP_VERSION=ci -p 127.0.0.1:8090:8090 buyerly-app:ci node server/dist/main.js
           for attempt in $(seq 30); do
             if curl -fsS http://127.0.0.1:8090/health/server/live; then break; fi
             sleep 1

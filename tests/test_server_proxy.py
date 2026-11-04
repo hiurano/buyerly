@@ -1,3 +1,4 @@
+import logging
 import unittest
 
 import httpx
@@ -26,6 +27,9 @@ def upstream_app(seen: list[httpx.Request]) -> httpx.MockTransport:
 
 class ServerProxyTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
+        # Alembic's fileConfig, run in-process by earlier tests, disables
+        # loggers that already exist; production migrates in its own container.
+        logging.getLogger("api.server_proxy").disabled = False
         self.seen: list[httpx.Request] = []
         self.app = FastAPI()
 
