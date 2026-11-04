@@ -24,11 +24,11 @@ import api.server as api_server_module
 import database.db as database_db
 import services.worker_watchdog as watchdog
 from api.server import create_app
-from core.config import settings
 from core.rate_limit import limiter
 from database.models import Account, AuditEvent, AutomationRuntimeState, User, Workspace, WorkspaceMember
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
 from tests.client_api_transport import client_api_transport
+import tests.test_db_helper as test_db_helper
 
 OWNER = {"id": 7300000001, "first_name": "Owner", "username": "watchdog_owner"}
 
@@ -71,7 +71,7 @@ class TestWorkerWatchdog(unittest.IsolatedAsyncioTestCase):
             patcher = mock.patch.object(module, "async_session_maker", self.session_maker)
             patcher.start()
             self.addCleanup(patcher.stop)
-        settings.ADMIN_CHAT_ID = "1"
+        test_db_helper.ADMIN_TELEGRAM_ID = "1"
         self.headers = await session_headers(self.session_maker, OWNER)
         self.now = datetime.now(timezone.utc)
         async with self.session_maker() as session:

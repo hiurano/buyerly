@@ -20,6 +20,7 @@ from core.rate_limit import (
 from database.models import User, Workspace
 from tests.test_db_helper import create_test_engine, init_test_db
 from tests.client_api_transport import client_api_transport
+import tests.test_db_helper as test_db_helper
 
 
 class TestRateLimiterCore(unittest.IsolatedAsyncioTestCase):
@@ -260,7 +261,7 @@ class TestApiRateLimitingAndDosProtection(unittest.IsolatedAsyncioTestCase):
         api_auth_module.async_session_maker = self.test_session_maker
         auth_router_module.async_session_maker = self.test_session_maker
         api_server_module.async_session_maker = self.test_session_maker
-        settings.ADMIN_CHAT_ID = "8634201356"
+        test_db_helper.ADMIN_TELEGRAM_ID = "8634201356"
 
         async with self.test_session_maker() as session:
             user = User(

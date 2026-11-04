@@ -26,7 +26,6 @@ from api.meta_oauth import router as meta_oauth_router
 from api.routers import telegram as telegram_router
 from api.routes import ALL_REST_ROUTERS, rest_only
 from api.server import create_app
-from core.config import settings
 from core.rate_limit import limiter
 from database.models import (
     Account,
@@ -44,6 +43,7 @@ from database.models import (
     WorkspaceMember,
 )
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
+import tests.test_db_helper as test_db_helper
 
 GRAPHQL = "/api/graphql"
 NO_BODY = object()
@@ -448,7 +448,7 @@ class TestClientApi(unittest.IsolatedAsyncioTestCase):
         }
         for module in self.patched:
             module.async_session_maker = self.sessions
-        settings.ADMIN_CHAT_ID = "8634201356"
+        test_db_helper.ADMIN_TELEGRAM_ID = "8634201356"
         f = self.f = Fixture()
         f.salt = secrets.token_hex(3)
         now = datetime.now(timezone.utc)

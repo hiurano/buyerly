@@ -436,7 +436,7 @@
 * **Решение:**
   * удалены проверка `initData`, заголовки `tma`/`X-Init-Data`, настройки `BOT_TOKEN` и `TELEGRAM_INIT_DATA_MAX_AGE_SECONDS`;
   * `OTP_PEPPER` стал обязательным: запасного секрета больше нет;
-  * API-тесты входят через настоящую web-сессию: `tests/test_db_helper.session_headers` создаёт пользователя по legacy `telegram_id` по прежним правилам (ADMIN_CHAT_ID — одобренный admin, остальные — неодобренный buyer) и передаёт cookie `buyerly_session` вместе с CSRF-токеном.
+  * API-тесты входят через настоящую web-сессию: `tests/test_db_helper.session_headers` создаёт пользователя по legacy `telegram_id` по прежним правилам (`ADMIN_TELEGRAM_ID` хелпера — одобренный admin, остальные — неодобренный buyer) и передаёт cookie `buyerly_session` вместе с CSRF-токеном.
 
 
 ---

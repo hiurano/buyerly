@@ -27,6 +27,7 @@ from database.models import (
 )
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
 from tests.client_api_transport import client_api_transport
+import tests.test_db_helper as test_db_helper
 
 OWNER = {"id": 7200000001, "first_name": "Owner", "username": "tg_owner"}
 BUYER = {"id": 7200000002, "first_name": "Buyer", "username": "tg_buyer"}
@@ -55,7 +56,7 @@ class TestTelegram(unittest.IsolatedAsyncioTestCase):
         api_routes_module.async_session_maker = self.session_maker
         api_auth_module.async_session_maker = self.session_maker
         api_server_module.async_session_maker = self.session_maker
-        settings.ADMIN_CHAT_ID = "1"
+        test_db_helper.ADMIN_TELEGRAM_ID = "1"
         self.saved = (settings.TELEGRAM_BOT_TOKEN, settings.WEBAPP_URL, telegram._bot_username)
         settings.TELEGRAM_BOT_TOKEN = "123:test-token"
         settings.WEBAPP_URL = "https://app.example.test"

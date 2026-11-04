@@ -33,6 +33,7 @@ from database.models import (
 
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
 from tests.client_api_transport import client_api_transport
+import tests.test_db_helper as test_db_helper
 
 
 class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
@@ -84,7 +85,7 @@ class TestWorkspaces(unittest.IsolatedAsyncioTestCase):
         api_routes_module.async_session_maker = self.test_session_maker
         api_auth_module.async_session_maker = self.test_session_maker
         api_server_module.async_session_maker = self.test_session_maker
-        settings.ADMIN_CHAT_ID = '8634201356'
+        test_db_helper.ADMIN_TELEGRAM_ID = '8634201356'
 
         async with self.test_session_maker() as session:
             artem = User(

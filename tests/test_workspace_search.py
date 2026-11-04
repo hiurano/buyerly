@@ -8,11 +8,11 @@ import api.auth as api_auth_module
 import api.routes as api_routes_module
 import api.server as api_server_module
 from api.server import create_app
-from core.config import settings
 from database.models import Account, RulePreset, User, Workspace, WorkspaceMember
 from services.analytics_store import AnalyticsFactService, resolve_account_period_dates
 from tests.test_db_helper import create_test_engine, init_test_db, session_headers
 from tests.client_api_transport import client_api_transport
+import tests.test_db_helper as test_db_helper
 
 
 VALID_CONDITIONS = [{"metric": "spend", "operator": "gte", "value": 10, "time_window": "today"}]
@@ -32,7 +32,7 @@ class TestWorkspaceSearch(unittest.IsolatedAsyncioTestCase):
         api_routes_module.async_session_maker = self.test_session_maker
         api_auth_module.async_session_maker = self.test_session_maker
         api_server_module.async_session_maker = self.test_session_maker
-        settings.ADMIN_CHAT_ID = "8634201356"
+        test_db_helper.ADMIN_TELEGRAM_ID = "8634201356"
 
         async with self.test_session_maker() as session:
             self.buyer = User(telegram_id="31000001", username="searcher", full_name="Sam Searcher", role="buyer", is_approved=True)
