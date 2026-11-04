@@ -5,3 +5,6 @@
 // catches a field that one side renamed and the other did not.
 
 export * from './health.ts';
+export * from './json.ts';
+export * from './jsonb.ts';
+export * from './models.ts';
