@@ -1,4 +1,4 @@
-import { randomInt } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
 import { codeFrom, type HttpResponse, type Target } from './target.ts';
 
 // A browser for contract tests: keeps cookies as a browser would (set,
@@ -13,6 +13,29 @@ export interface Response extends HttpResponse {
 
 function randomAddress(): string {
   return `10.${randomInt(256)}.${randomInt(256)}.${randomInt(1, 255)}`;
+}
+
+// One part of a multipart form: a file, or a plain value.
+export type FormPart =
+  | { name: string; filename: string; content: Buffer | string; type?: string }
+  | { name: string; value: string };
+
+// The form a browser sends for <input type="file"> (FormData).
+export function multipart(parts: FormPart[]): { body: Buffer; contentType: string } {
+  const boundary = `----BuyerlyTest${randomBytes(8).toString('hex')}`;
+  const chunks: Buffer[] = [];
+  for (const part of parts) {
+    let head = `--${boundary}\r\nContent-Disposition: form-data; name="${part.name}"`;
+    if ('filename' in part) {
+      head += `; filename="${part.filename}"\r\n`;
+      if (part.type) head += `Content-Type: ${part.type}\r\n`;
+      chunks.push(Buffer.from(`${head}\r\n`), Buffer.from(part.content), Buffer.from('\r\n'));
+    } else {
+      chunks.push(Buffer.from(`${head}\r\n\r\n${part.value}\r\n`));
+    }
+  }
+  chunks.push(Buffer.from(`--${boundary}--\r\n`));
+  return { body: Buffer.concat(chunks), contentType: `multipart/form-data; boundary=${boundary}` };
 }
 
 export class Browser {
@@ -47,7 +70,7 @@ export class Browser {
   async request(
     method: 'GET' | 'POST' | 'DELETE',
     path: string,
-    options: { headers?: Record<string, string>; json?: unknown } = {},
+    options: { headers?: Record<string, string>; json?: unknown; body?: Buffer } = {},
   ): Promise<Response> {
     const headers: Record<string, string> = {
       'x-forwarded-for': this.address,
@@ -57,7 +80,7 @@ export class Browser {
     };
     if (this.cookies.size) headers.cookie = [...this.cookies].map(([name, value]) => `${name}=${value}`).join('; ');
     if (options.json !== undefined) headers['content-type'] = 'application/json';
-    const response = await this.target.send({ method, path, headers, body: options.json });
+    const response = await this.target.send({ method, path, headers, body: options.body ?? options.json });
     this.remember(response.setCookies);
     return {
       ...response,
@@ -72,6 +95,12 @@ export class Browser {
 
   post(path: string, json?: unknown, headers?: Record<string, string>): Promise<Response> {
     return this.request('POST', path, { json, headers });
+  }
+
+  // A multipart form, as the page posts a chosen file.
+  postForm(path: string, parts: FormPart[], headers: Record<string, string> = {}): Promise<Response> {
+    const form = multipart(parts);
+    return this.request('POST', path, { body: form.body, headers: { 'content-type': form.contentType, ...headers } });
   }
 
   delete(path: string, headers?: Record<string, string>): Promise<Response> {
