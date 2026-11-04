@@ -5,7 +5,7 @@ import { logLevel, postgresUrl, readConfig } from '../src/config.ts';
 const config = readConfig({ APP_VERSION: 'abc123', LOG_LEVEL: 'silent' });
 
 function database(ping: () => Promise<void>): Database {
-  return { ping, close: async () => {} };
+  return { ping, close: async () => {}, transaction: async () => { throw new Error("no database"); } };
 }
 
 describe('health', () => {

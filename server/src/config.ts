@@ -10,6 +10,32 @@ export interface Config {
   // A node-postgres URL; empty means "no database" (the ready check fails).
   databaseUrl: string;
   logLevel: string;
+
+  // Who may report the browser's address (core/rate_limit.py): proxies in
+  // TRUSTED_PROXY_CIDRS may send X-Forwarded-For; only Cloudflare (its edge
+  // networks, or our tunnel's address) may send CF-Connecting-IP and the
+  // visitor location headers.
+  trustedProxyCidrs: string;
+  // Empty means Cloudflare's published list; "off" ignores Cloudflare headers.
+  cloudflareIpCidrs: string;
+  cloudflareTunnelCidrs: string;
+
+  // Public URL of the web app; the login email links back to it.
+  webappUrl: string;
+  // A browser session ends after this many days without use.
+  webSessionIdleDays: number;
+  sessionCookieSecure: boolean;
+
+  // Email: Resend when the key is set, otherwise the log (DEV_EMAIL_LOG adds
+  // the message itself, code and link included, on the local stack only).
+  resendApiKey: string;
+  emailFrom: string;
+  devEmailLog: boolean;
+  // Cloudflare Turnstile on sign-up; empty turns the check off.
+  turnstileSecretKey: string;
+  // HMAC secret for stored OTP codes and link tokens; the same value as the
+  // Python API's, so a code issued by one server verifies on the other.
+  otpPepper: string;
 }
 
 // Compose gives the Python services SQLAlchemy URLs
@@ -29,6 +55,24 @@ export function logLevel(value: string | undefined): string {
   return LOG_LEVELS[(value ?? '').trim().toLowerCase()] ?? 'info';
 }
 
+// pydantic's reading of a bool, which the Python services apply to the same
+// variables: 1/true/yes/on and 0/false/no/off, in any case.
+export function envBool(value: string | undefined, fallback: boolean): boolean {
+  const clean = (value ?? '').trim().toLowerCase();
+  if (['1', 'true', 't', 'yes', 'y', 'on'].includes(clean)) return true;
+  if (['0', 'false', 'f', 'no', 'n', 'off'].includes(clean)) return false;
+  return fallback;
+}
+
+function envInt(name: string, value: string | undefined, fallback: number, min: number, max: number): number {
+  if (value === undefined || value.trim() === '') return fallback;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+    throw new Error(`${name} must be an integer from ${min} to ${max}: ${value}`);
+  }
+  return parsed;
+}
+
 export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const port = Number(env.SERVER_PORT ?? 8090);
   if (!Number.isInteger(port) || port <= 0 || port > 65535) {
@@ -40,5 +84,16 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
     version: env.APP_VERSION || 'local',
     databaseUrl: postgresUrl(env.DATABASE_URL ?? ''),
     logLevel: logLevel(env.LOG_LEVEL),
+    trustedProxyCidrs: env.TRUSTED_PROXY_CIDRS ?? '',
+    cloudflareIpCidrs: env.CLOUDFLARE_IP_CIDRS ?? '',
+    cloudflareTunnelCidrs: env.CLOUDFLARE_TUNNEL_CIDRS ?? '',
+    webappUrl: env.WEBAPP_URL ?? '',
+    webSessionIdleDays: envInt('WEB_SESSION_IDLE_DAYS', env.WEB_SESSION_IDLE_DAYS, 90, 1, 365),
+    sessionCookieSecure: envBool(env.SESSION_COOKIE_SECURE, true),
+    resendApiKey: env.RESEND_API_KEY ?? '',
+    emailFrom: env.EMAIL_FROM || 'Buyerly <team@buyerly.app>',
+    devEmailLog: envBool(env.DEV_EMAIL_LOG, false),
+    turnstileSecretKey: env.TURNSTILE_SECRET_KEY ?? '',
+    otpPepper: env.OTP_PEPPER ?? '',
   };
 }

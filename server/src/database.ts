@@ -1,5 +1,4 @@
-import { DataSource, type DataSourceOptions } from 'typeorm';
-import type { Database } from './app.ts';
+import { DataSource, type DataSourceOptions, type EntityManager } from 'typeorm';
 import { BUYERLY_ENTITIES } from './entities/index.ts';
 
 // TypeORM over the tables Alembic owns (#611 stage 2, decision 54). The
@@ -14,16 +13,51 @@ export function createBuyerlyDataSource(url: string, options: Partial<DataSource
     synchronize: false,
     migrationsRun: false,
     migrations: [],
-    // A small pool until the server serves more than its health checks.
-    poolSize: 2,
+    // The Python API keeps a pool of 5 (+10 overflow); the server takes over
+    // its areas one at a time, so a smaller pool is enough for now.
+    poolSize: 10,
     extra: { connectionTimeoutMillis: 3000 },
     ...options,
   } as DataSourceOptions);
 }
 
-export function connectDatabase(url: string): Database | null {
-  if (!url) return null;
-  const dataSource = createBuyerlyDataSource(url);
+// The database as routes see it (app.db). Every unit of work is an explicit
+// transaction: `db.transaction(async (tx) => …)` commits when the callback
+// returns and rolls back when it throws, like the Python handlers'
+// `async with async_session_maker() as session: … await session.commit()`.
+export interface Database {
+  ping(): Promise<void>;
+  close(): Promise<void>;
+  transaction<T>(work: (tx: EntityManager) => Promise<T>): Promise<T>;
+}
+
+// Thrown inside a transaction to keep its writes and still fail the request:
+// a wrong OTP must count the attempt (commit) and answer 401. The Python
+// handlers do `await session.commit(); raise HTTPException(...)`.
+export class AfterCommit extends Error {
+  constructor(readonly error: Error) {
+    super(error.message);
+    this.name = 'AfterCommit';
+  }
+}
+
+export function afterCommit(error: Error): AfterCommit {
+  return new AfterCommit(error);
+}
+
+// The rows of a raw statement. TypeORM's plain query() answers an UPDATE or
+// DELETE with [rows, count] instead of the rows; this always gives the rows.
+export async function rows<T>(tx: EntityManager, sql: string, parameters: unknown[] = []): Promise<T[]> {
+  const runner = tx.queryRunner ?? tx.connection.createQueryRunner();
+  try {
+    const result = await runner.query(sql, parameters, true);
+    return result.records as T[];
+  } finally {
+    if (!tx.queryRunner) await runner.release();
+  }
+}
+
+export function databaseOver(dataSource: DataSource): Database {
   // Connect on first use, not at start: the server starts and reports "not
   // ready" while the database is down, then connects once it is up.
   let connecting: Promise<DataSource> | null = null;
@@ -42,5 +76,28 @@ export function connectDatabase(url: string): Database | null {
     async close() {
       if (dataSource.isInitialized) await dataSource.destroy();
     },
+    async transaction(work) {
+      const runner = (await connected()).createQueryRunner();
+      await runner.connect();
+      await runner.startTransaction();
+      try {
+        const result = await work(runner.manager);
+        await runner.commitTransaction();
+        return result;
+      } catch (error) {
+        if (error instanceof AfterCommit) {
+          await runner.commitTransaction();
+          throw error.error;
+        }
+        await runner.rollbackTransaction();
+        throw error;
+      } finally {
+        await runner.release();
+      }
+    },
   };
+}
+
+export function connectDatabase(url: string): Database | null {
+  return url ? databaseOver(createBuyerlyDataSource(url)) : null;
 }

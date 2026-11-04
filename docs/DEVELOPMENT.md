@@ -29,7 +29,7 @@ curl -fsS http://127.0.0.1:8080/health/ready
 docker compose -f compose.dev.yaml up -d --build
 ```
 
-Сайт — http://localhost:5173, вход через «Continue with email»: `dev@buyerly.localhost`. Письмо никуда не уходит: ссылка и код входа — в логе API (`docker compose -f compose.dev.yaml logs api`, строка после `[DEV EMAIL]`). Изменения во frontend появляются в браузере без перезагрузки, API перезапускается сам при правке Python-кода. База отдельная и локальная (том `buyerly-dev-postgres`), production и Meta не затрагиваются. Остановить — `docker compose -f compose.dev.yaml down`; с `-v` удаляются и локальные данные. Новая база сразу открывается в workspace `Dev` (`scripts/dev_seed.py`), без онбординга.
+Сайт — http://localhost:5173, вход через «Continue with email»: `dev@buyerly.localhost`. Письмо никуда не уходит: ссылка и код входа — в логе сервера на TypeScript, который ведёт вход (`docker compose -f compose.dev.yaml logs server`, строка с `[DEV EMAIL]`). Изменения во frontend появляются в браузере без перезагрузки, API перезапускается сам при правке Python-кода. База отдельная и локальная (том `buyerly-dev-postgres`), production и Meta не затрагиваются. Остановить — `docker compose -f compose.dev.yaml down`; с `-v` удаляются и локальные данные. Новая база сразу открывается в workspace `Dev` (`scripts/dev_seed.py`), без онбординга.
 
 Meta здесь фейковый (`scripts/fake_meta.py`, сервис `fake-meta`): три выдуманных кабинета (NL · Lead gen, US · Sweepstakes, DE · E-commerce) с кампаниями, ad sets и объявлениями уже подключены к `Dev`. Расход за сегодня растёт по ходу дня в часовом поясе кабинета, прошлые дни не меняются. Локальный worker синхронизирует цифры и запускает правила: привяжите правило в Ads Manager, и оно остановит ad set или поменяет бюджет в фейковом Meta, с записью в Inbox и Undo. Кто и когда что остановил, фейк хранит в томе `buyerly-dev-meta`. Worker не перезапускается сам при правке кода — `docker compose -f compose.dev.yaml restart worker`.
 
@@ -62,6 +62,22 @@ Frontend запускается командой `npm run dev` из `frontend/` 
 gh run watch <run-id> --exit-status
 gh run view <run-id> --log-failed
 ```
+
+### Контрактные тесты сервера
+
+Тесты [server/test](../server/test/) идут по HTTP против Postgres после `alembic upgrade head`; без `SCHEMA_DATABASE_URL` они пропускаются (в CI — никогда). Те же тесты областей запускаются и против работающего Python API на той же базе — так CI доказывает, что оба сервера отвечают одинаково, пока область переезжает (#611). Python API для этого запускается с тем же `OTP_PEPPER`, что у тестов, `TRUSTED_PROXY_CIDRS=127.0.0.1/32` и `DEV_EMAIL_LOG=true`: коды тесты читают из его лога.
+
+```bash
+export SCHEMA_DATABASE_URL=postgresql://buyerly:<пароль>@localhost:5432/buyerly_schema
+npm test --workspace @buyerly/server
+# Против Python API, запущенного на той же базе:
+DATABASE_URL=postgresql+asyncpg://buyerly:<пароль>@localhost:5432/buyerly_schema API_PORT=18080 SERVE_STATIC=false \
+  OTP_PEPPER=contract-test-otp-pepper TRUSTED_PROXY_CIDRS=127.0.0.1/32 DEV_EMAIL_LOG=true python -m services.api &
+cd server
+CONTRACT_TARGET=python PYTHON_API_URL=http://127.0.0.1:18080 PYTHON_API_LOG=../logs/api.log npx vitest run test/auth
+```
+
+С `PYTHON_API_URL` обычный прогон включает и [overlap.test.ts](../server/test/auth/overlap.test.ts): сессии и коды одного сервера на другом.
 
 Каждая задача выполняется в отдельной ветке от обновлённого `main`. Слияние PR допускается после успешного CI; `main` автоматически деплоится на VPS.
 

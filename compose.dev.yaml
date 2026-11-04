@@ -1,8 +1,9 @@
 # Local development: the whole app on this computer, with changes visible at
 # once. `docker compose -f compose.dev.yaml up`, then open http://localhost:5173
 # and sign in with "Continue with email": dev@buyerly.localhost. No email is
-# sent: the code and link are in the API log (`docker compose -f
-# compose.dev.yaml logs api`, the line after "[DEV EMAIL]").
+# sent: the code and link are in the TypeScript server's log, which serves
+# sign-in (`docker compose -f compose.dev.yaml logs server`, the line with
+# "[DEV EMAIL]").
 # Everything here is local test data; nothing reaches production or Meta:
 # Meta is the fake from scripts/fake_meta.py, with invented ad accounts.
 name: buyerly-dev
@@ -116,10 +117,11 @@ services:
     working_dir: /repo/server
     command: ["npm", "run", "dev"]
     environment:
-      DATABASE_URL: postgresql://buyerly:buyerly-dev@db:5432/buyerly
+      # The API's settings: sign-in (#611) needs the same OTP pepper, cookie
+      # and email settings. The server reads DATABASE_URL's asyncpg form too.
+      <<: *app-environment
       # File events do not cross the Windows bind mount; tsc polls instead.
       TSC_WATCHFILE: DynamicPriorityPolling
-      TZ: UTC
     volumes:
       - .:/repo
       - buyerly-dev-node-modules:/repo/node_modules

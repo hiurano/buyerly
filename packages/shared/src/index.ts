@@ -4,6 +4,7 @@
 // implement these, and the client imports them directly, so the compiler
 // catches a field that one side renamed and the other did not.
 
+export * from './auth.ts';
 export * from './health.ts';
 export * from './json.ts';
 export * from './jsonb.ts';
