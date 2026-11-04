@@ -21,25 +21,9 @@ __pycache__/
 *.sqlite
 *.sqlite3
 
-# Logs & Temp files
+# Logs and local scratch work (screenshots, patches)
 *.log
 scratch/
-.system_generated/
-.user_uploaded/
-
-# Audio files (voice messages)
-*.ogg
-*.mp3
-*.wav
-transcription.txt
-client_responses.txt
-scratch_*.py
-batch_transcribe.py
-transcribe.py
-
-# Design research captures are not production source material
-app.attio-structure-login-workspaces/
-docs/attio_*.json
 
 # Local agent tooling settings (per-developer, never shared)
 .claude/

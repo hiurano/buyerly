@@ -1,5 +1,6 @@
+# The build context: Dockerfile copies only the runtime folders it names, so
+# this list just keeps the context small and secrets out of it.
 .git
-.github
 .env
 .env.*
 !.env.example
@@ -7,29 +8,11 @@
 venv
 __pycache__
 *.py[cod]
-.pytest_cache
-.ruff_cache
-*.db
-*.sqlite
-*.sqlite3
-data
 logs
 backups
 *.log
-*.ogg
-*.mp3
-*.wav
-transcription.txt
-client_responses.txt
-scratch_*.py
 tests
 docs
-app.attio-structure-login-workspaces
-batch_transcribe.py
-transcribe.py
-main.py
 frontend/node_modules
 frontend/dist
-
-# Runtime user uploads
 /uploads/
