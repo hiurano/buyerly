@@ -28,7 +28,13 @@ export function createBuyerlyDataSource(url: string, options: Partial<DataSource
 export interface Database {
   ping(): Promise<void>;
   close(): Promise<void>;
-  transaction<T>(work: (tx: EntityManager) => Promise<T>): Promise<T>;
+  transaction<T>(work: (tx: EntityManager) => Promise<T>, options?: TransactionOptions): Promise<T>;
+}
+
+export interface TransactionOptions {
+  // REPEATABLE READ: every read sees one moment (sync bootstrap and delta,
+  // database/sync_bootstrap.py begin_snapshot). READ COMMITTED otherwise.
+  isolation?: 'REPEATABLE READ';
 }
 
 // Thrown inside a transaction to keep its writes and still fail the request:
@@ -76,10 +82,10 @@ export function databaseOver(dataSource: DataSource): Database {
     async close() {
       if (dataSource.isInitialized) await dataSource.destroy();
     },
-    async transaction(work) {
+    async transaction(work, options = {}) {
       const runner = (await connected()).createQueryRunner();
       await runner.connect();
-      await runner.startTransaction();
+      await runner.startTransaction(options.isolation);
       try {
         const result = await work(runner.manager);
         await runner.commitTransaction();

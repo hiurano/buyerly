@@ -5,17 +5,9 @@
  * here crosses postMessage, so it is plain data.
  */
 
-/** A row of a synced model, as bootstrap and the change log give it. */
-export type SyncRow = Record<string, unknown> & { id: number };
+import type { SyncActionMessage, SyncRow } from '@buyerly/shared';
 
-/** One change from the log, as /api/sync/ws and /api/sync/delta send it. */
-export interface SyncAction {
-  sync_id: number;
-  model: string;
-  model_id: string;
-  action: 'insert' | 'update' | 'archive' | 'delete';
-  data: Record<string, unknown> | null;
-}
+export type { SyncActionMessage, SyncRow } from '@buyerly/shared';
 
 /**
  * What the app shows of it, as Linear's: `connecting` until the socket is
@@ -67,7 +59,7 @@ export type HubMessage =
   /** Every model held, from the local database or bootstrap: the tab's copy is replaced. */
   | { type: 'hold'; models: Record<string, SyncRow[]>; lastSyncId: number; syncGroups: string[] }
   /** Changes applied after what was held, in order. */
-  | { type: 'delta'; actions: SyncAction[]; lastSyncId: number }
+  | { type: 'delta'; actions: SyncActionMessage[]; lastSyncId: number }
   /** `booting` while the models are being read: the pages wait for them. */
   | { type: 'status'; status: SyncStatus; live: boolean; booting: boolean }
   /** The other tabs' writes, to draw until the sync engine holds them. */

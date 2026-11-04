@@ -93,6 +93,8 @@ def _auth_boundary() -> dict:
         # Served by the TypeScript server through the API's forwarding (#611).
         "/api/me",
         "/api/auth/sessions",
+        "/api/sync/bootstrap",
+        "/api/sync/delta?since=0",
     )
     statuses = {}
     for path in protected_paths:

@@ -17,6 +17,15 @@ export class HttpError extends Error {
   }
 }
 
+// A request FastAPI would refuse before the handler runs (query parameters,
+// http/query.ts): 422 with every issue found.
+export class RequestValidationError extends Error {
+  constructor(readonly issues: ValidationIssue[]) {
+    super('Request validation failed');
+    this.name = 'RequestValidationError';
+  }
+}
+
 // One entry of a FastAPI validation answer.
 export interface ValidationIssue {
   type: string;
@@ -118,10 +127,14 @@ export function pydanticIssues(body: unknown, issues: AjvIssue[]): ValidationIss
 // Answers every error in the FastAPI shape. Routes throw HttpError for the
 // answers they mean; anything else is a bug and answers 500 without details.
 export function installErrorHandler(app: FastifyInstance): void {
-  app.setErrorHandler(async (error: FastifyError | HttpError, request, reply) => {
+  app.setErrorHandler(async (error: FastifyError | HttpError | RequestValidationError, request, reply) => {
     if (error instanceof HttpError) {
       reply.code(error.statusCode).headers(error.headers);
       return { detail: error.detail };
+    }
+    if (error instanceof RequestValidationError) {
+      reply.code(422);
+      return { detail: error.issues };
     }
     if ('validation' in error && error.validation && error.validationContext === 'body') {
       reply.code(422);

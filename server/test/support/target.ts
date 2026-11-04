@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { gunzipSync } from 'node:zlib';
 import type { FastifyInstance } from 'fastify';
 import { buildApp, type Services } from '../../src/app.ts';
 import { readConfig, type Config } from '../../src/config.ts';
@@ -98,11 +99,13 @@ export async function typescriptTarget(env: Record<string, string> = {}): Promis
       for (const [name, value] of Object.entries(response.headers)) {
         if (value !== undefined && name !== 'set-cookie') headers[name] = String(value);
       }
+      // As fetch and browsers do: the body unzipped, Content-Encoding kept.
+      const raw = headers['content-encoding'] === 'gzip' ? gunzipSync(response.rawPayload).toString() : response.body;
       return {
         status: response.statusCode,
         headers,
         setCookies: cookies === undefined ? [] : Array.isArray(cookies) ? cookies : [cookies],
-        body: response.body ? (JSON.parse(response.body) as unknown) : null,
+        body: raw ? (JSON.parse(raw) as unknown) : null,
       };
     },
     async lastEmail(to) {

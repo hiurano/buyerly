@@ -3,10 +3,10 @@ import { runInAction } from 'mobx';
 import { localDatabase, type LocalData } from './localDatabase';
 import { pool, type PoolSnapshot } from './pool';
 import { makeStore, useStore } from './store';
-import type { HubMessage, HubRequest, HubResponse, SharedTransaction, SyncAction, SyncRow, SyncStatus } from './syncProtocol';
+import type { HubMessage, HubRequest, HubResponse, SharedTransaction, SyncActionMessage, SyncRow, SyncStatus } from './syncProtocol';
 import { HubLink, tabId } from './syncTransport';
 
-export type { SyncAction, SyncRow, SyncStatus } from './syncProtocol';
+export type { SyncActionMessage, SyncRow, SyncStatus } from './syncProtocol';
 
 /**
  * The client of the sync engine, as Linear's (#507): the workspace's synced
@@ -52,7 +52,7 @@ class SyncClient {
   #pending: SharedTransaction[] = [];
   #requestId = 0;
   readonly #requests = new Map<number, { resolve: (response: HubResponse) => void }>();
-  readonly #listeners: ((actions: SyncAction[]) => void)[] = [];
+  readonly #listeners: ((actions: SyncActionMessage[]) => void)[] = [];
   #peers: (transactions: SharedTransaction[]) => void = () => {};
   #adopt: (transactions: SharedTransaction[]) => void = () => {};
 
@@ -114,7 +114,7 @@ class SyncClient {
   }
 
   /** Calls back with every batch of changes applied, for lists the pool still reads from the server. */
-  onChanges(listener: (actions: SyncAction[]) => void) {
+  onChanges(listener: (actions: SyncActionMessage[]) => void) {
     this.#listeners.push(listener);
   }
 
@@ -158,8 +158,8 @@ class SyncClient {
   }
 
   /** Applies changes the hub applied, in order, skipping any already held; then the pool reads its lists again. */
-  apply(actions: SyncAction[], lastSyncId: number) {
-    const applied: SyncAction[] = [];
+  apply(actions: SyncActionMessage[], lastSyncId: number) {
+    const applied: SyncActionMessage[] = [];
     for (const change of actions) {
       if (change.sync_id <= this.lastSyncId) continue;
       applied.push(change);

@@ -4,9 +4,10 @@ import {
 } from './localDatabase';
 import {
   SYNC_CHANNEL, wipes,
-  type HubMessage, type HubRequest, type HubResponse, type SharedTransaction, type SyncAction,
+  type HubMessage, type HubRequest, type HubResponse, type SharedTransaction, type SyncActionMessage,
   type SyncRow, type SyncStatus, type TabMessage, type WipeMessage,
 } from './syncProtocol';
+import { SYNC_CLOSE, type SyncBootstrap, type SyncSocketMessage } from '@buyerly/shared';
 
 /**
  * The sync connection of one workspace for all its open tabs, as Linear's
@@ -27,29 +28,10 @@ import {
  * them there, with no bootstrap.
  */
 
-interface Bootstrap {
-  last_sync_id: number;
-  sync_groups: string[];
-  models: Record<string, SyncRow[]>;
-}
-
-type SocketMessage =
-  | { type: 'delta'; actions: SyncAction[]; last_sync_id: number }
-  | { type: 'caught_up'; last_sync_id: number }
-  | { type: 'sync_groups'; sync_groups: string[]; added: string[]; removed: string[] }
-  | { type: 'ping' }
-  | { type: 'pong' };
-
 /** A tab joined: how the hub talks to it. */
 interface HubPeer {
   post(message: HubMessage): void;
 }
-
-// Close codes of /api/sync/ws (api/sync_stream.py).
-const CLOSE_UNAUTHORIZED = 4401;
-const CLOSE_FORBIDDEN = 4403;
-const CLOSE_NOT_FOUND = 4404;
-const CLOSE_BOOTSTRAP = 4410;
 
 /** Waits before opening again: doubling from the first, never longer than the last. */
 const RETRY_MS = [500, 1_000, 2_000, 5_000, 10_000, 30_000];
@@ -306,7 +288,7 @@ class SyncHub {
     this.#setStatus(this.#status === 'offline' ? 'offline' : 'connecting', { booting: true, live: false });
     const answer = await this.#request({ path: '/api/sync/bootstrap', method: 'GET', headers: this.#headers });
     if (!this.#current(generation)) return;
-    const data = 'status' in answer && answer.status < 400 ? answer.body as Bootstrap : null;
+    const data = 'status' in answer && answer.status < 400 ? answer.body as SyncBootstrap : null;
     if (data?.models) {
       this.#take(data);
       // The pages waiting for it read the models now.
@@ -324,7 +306,7 @@ class SyncHub {
     this.#later(() => void this.#bootstrap());
   }
 
-  #take(bootstrap: Bootstrap) {
+  #take(bootstrap: SyncBootstrap) {
     const models = new Map<string, Map<number, SyncRow>>();
     for (const [model, rows] of Object.entries(bootstrap.models)) {
       models.set(model, new Map(rows.map((row) => [row.id, row])));
@@ -352,8 +334,8 @@ class SyncHub {
   }
 
   /** Applies changes from the log in order, skipping any already held; the tabs are sent what was applied. */
-  apply(actions: SyncAction[], lastSyncId: number) {
-    const applied: SyncAction[] = [];
+  apply(actions: SyncActionMessage[], lastSyncId: number) {
+    const applied: SyncActionMessage[] = [];
     const stored: StoredChange[] = [];
     const held = this.#lastSyncId;
     for (const change of actions) {
@@ -393,7 +375,7 @@ class SyncHub {
     this.#socket = socket;
     this.#setStatus(this.#attempt === 0 ? 'connecting' : 'offline');
     socket.onmessage = (event) => {
-      if (this.#current(generation)) this.#receiveSocket(JSON.parse(String(event.data)) as SocketMessage);
+      if (this.#current(generation)) this.#receiveSocket(JSON.parse(String(event.data)) as SyncSocketMessage);
     };
     socket.onclose = (event) => {
       if (!this.#current(generation)) return;
@@ -402,7 +384,7 @@ class SyncHub {
     };
   }
 
-  #receiveSocket(message: SocketMessage) {
+  #receiveSocket(message: SyncSocketMessage) {
     if (message.type === 'delta') {
       this.apply(message.actions, message.last_sync_id);
     } else if (message.type === 'caught_up') {
@@ -417,12 +399,12 @@ class SyncHub {
   }
 
   #closed(code: number) {
-    if (code === CLOSE_UNAUTHORIZED || code === CLOSE_FORBIDDEN || code === CLOSE_NOT_FOUND) {
+    if (code === SYNC_CLOSE.unauthorized || code === SYNC_CLOSE.forbidden || code === SYNC_CLOSE.notFound) {
       // Signed out or out of the workspace: the app finds out with its next request and leaves.
       this.#setStatus('off', { live: false });
       return;
     }
-    if (code === CLOSE_BOOTSTRAP) {
+    if (code === SYNC_CLOSE.bootstrap) {
       this.#rebootstrap();
       return;
     }
