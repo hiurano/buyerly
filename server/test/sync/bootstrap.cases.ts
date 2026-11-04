@@ -345,6 +345,7 @@ export function bootstrapCases(context: SyncContext): void {
       expect(response.headers['content-encoding']).toBe('gzip');
       expect(response.json<SyncBootstrap>().models.InboxEvent.length).toBeGreaterThan(3000);
       expect(elapsed).toBeLessThan(10_000);
-    });
+      // Filling 5500 rows and two servers' worth of sign-in take longer than Vitest's default 5 s.
+    }, 30_000);
   });
 }
