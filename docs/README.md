@@ -15,7 +15,7 @@
 | Деплой и восстановление | [DEPLOYMENT.md](DEPLOYMENT.md), [INCIDENT_RUNBOOKS.md](INCIDENT_RUNBOOKS.md), [RELIABILITY_SLO.md](RELIABILITY_SLO.md) |
 | Миграции БД | [database_modernization_and_migrations.md](database_modernization_and_migrations.md) |
 | Дальнейшие задачи | [GitHub Issues](https://github.com/hiurano/buyerly/issues) |
-| Выпущенные изменения | [CHANGELOG.md](../CHANGELOG.md) |
+| Выпущенные изменения | публичный [changelog](https://buyerly.app/changelog), исходники в [changelog/](../changelog) |
 
 ## Материалы, требующие проверки внешнего состояния
 

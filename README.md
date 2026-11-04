@@ -15,7 +15,7 @@
 <p align="center">
   <a href="https://buyerly.app">buyerly.app</a> ·
   <a href="https://buyerly.app/signup">Sign up</a> ·
-  <a href="CHANGELOG.md">Changelog</a>
+  <a href="https://buyerly.app/changelog">Changelog</a>
 </p>
 
 ---
