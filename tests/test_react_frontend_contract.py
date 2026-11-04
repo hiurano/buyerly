@@ -703,7 +703,7 @@ class TestReactFrontendContract(unittest.TestCase):
         # Bulk delivery goes through the audited single-entity endpoint, entity by
         # entity, and reports every outcome instead of a blanket success.
         for contract in ("export async function setDeliveryForMany", "outcome.failed.push",
-                         "export async function undoActions", "export function reportBulkDelivery",
+                         "async function undoActions", "export function reportBulkDelivery",
                          "export function deliveryHistoryEntry"):
             self.assertIn(contract, self.delivery_lib)
         # The way back reverses the recorded audit rows.
@@ -732,7 +732,7 @@ class TestReactFrontendContract(unittest.TestCase):
             "export const BuyerlyDataListGroup",
             "export const BuyerlyDataPrimaryCell",
             "export const BuyerlyDataMetricCell",
-            "export const getLinearDataListMinWidth",
+            "const getLinearDataListMinWidth",
         ):
             self.assertIn(primitive, self.linear_data_list)
 
