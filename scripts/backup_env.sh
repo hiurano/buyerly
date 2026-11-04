@@ -1,8 +1,10 @@
 # shellcheck shell=bash
-# Backup settings shared by backup_db.sh and restore_db.sh. Sourced, not run.
+# Backup settings shared by backup_db.sh, restore_db.sh and restore_uploads.sh.
+# Sourced, not run.
 #
-# cron and deploy.sh start these scripts with a bare environment: Compose
-# passes .env to the containers, not to host scripts. Without this loader a
+# deploy.sh and the runbooks start these scripts on the host with a bare
+# environment: Compose passes .env to the containers (the backup service
+# included), not to host scripts. Without this loader a
 # key that exists only in .env was silently ignored, so an operator who filled
 # in BACKUP_ENCRYPTION_KEY and S3_* got plaintext, local-only dumps.
 #

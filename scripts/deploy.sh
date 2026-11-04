@@ -153,7 +153,7 @@ rollback() {
     fi
     echo "[ROLLBACK] Returning to ${PREVIOUS_SHA}..."
     export APP_VERSION="${PREVIOUS_SHA}"
-    docker compose up -d --no-deps api worker
+    docker compose up -d --no-deps api worker backup
     wait_for_container buyerly-api || true
     wait_for_container buyerly-worker || true
     record_running_version "${PREVIOUS_SHA}"
@@ -175,6 +175,47 @@ public_edge_ok() {
     done
     echo "[ERROR] ${PUBLIC_HEALTH_URL} did not return 200 through Cloudflare within ${PUBLIC_HEALTH_TIMEOUT_SECONDS}s."
     return 1
+}
+
+# Whether S3 holds a backup whose name starts with $1. Exit 1: S3 is not
+# configured or has none; 2: S3 could not be listed.
+offsite_has_backup() {
+    (
+        # shellcheck source=scripts/backup_env.sh
+        source "${SCRIPT_DIR}/backup_env.sh"
+        load_backup_env >/dev/null
+        [[ -z "$(missing_offsite_keys)" ]] || exit 1
+        listing=$(python3 "${SCRIPT_DIR}/offsite_sync.py" --list) || exit 2
+        grep -q " $1[0-9]" <<<"${listing}"
+    )
+}
+
+# A database without the schema is a new server or a lost volume. Moving to
+# another server is then just clone, .env and this script: the data and the
+# uploads come back from the newest off-site copies before migrations run.
+restore_empty_server() {
+    local empty status=0
+    empty=$(docker exec buyerly-db psql --username=buyerly --dbname=buyerly -Atc \
+        "SELECT to_regclass('public.alembic_version') IS NULL")
+    [[ "${empty}" == "t" ]] || return 0
+    offsite_has_backup buyerly_postgres_ || status=$?
+    case "${status}" in
+        0) ;;
+        1)
+            echo "[INFO] The database is empty and S3 has no backup of it: a new installation."
+            return 0
+            ;;
+        *)
+            echo "[ERROR] The database is empty, and S3 could not be checked for a backup to restore."
+            return 1
+            ;;
+    esac
+    echo "[INFO] The database is empty: restoring the newest off-site backup..."
+    bash "${SCRIPT_DIR}/restore_db.sh" --download-latest-offsite --yes
+    if offsite_has_backup buyerly_uploads_; then
+        RESTORE_IMAGE="buyerly-app:${APP_VERSION}" \
+            bash "${SCRIPT_DIR}/restore_uploads.sh" --download-latest-offsite --yes
+    fi
 }
 
 cd "${APP_DIR}"
@@ -258,6 +299,9 @@ if ! wait_for_container buyerly-db; then
     docker compose logs --tail=120 db
     exit 1
 fi
+if ! restore_empty_server; then
+    exit 1
+fi
 if ! docker compose run --rm migrate; then
     docker compose logs --tail=120 db
     rollback
@@ -265,7 +309,7 @@ if ! docker compose run --rm migrate; then
 fi
 
 echo "[6/7] Starting the release..."
-docker compose up -d --no-deps api worker
+docker compose up -d --no-deps api worker backup
 if ! wait_for_container buyerly-api; then
     docker compose logs --tail=120 api
     rollback

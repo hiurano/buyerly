@@ -67,3 +67,6 @@ frontend/.vite/
 
 # Incremental build state of a local tsc run
 frontend/*.tsbuildinfo
+
+# Runtime logs (logs/smoke/*.json included); deploy.sh runs git clean
+/logs/

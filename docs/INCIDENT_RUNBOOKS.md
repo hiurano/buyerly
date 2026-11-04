@@ -104,25 +104,21 @@ a fully successful result.
 
 **Signal:** Complete loss of VPS, fatal disk corruption, or unrecoverable database state.
 
-1. Provision a clean VPS with Docker and clone the canonical repository `hiurano/buyerly` to `/opt/buyerly`.
-2. Configure `/opt/buyerly/.env` with the production secrets (`POSTGRES_PASSWORD`, `BACKUP_ENCRYPTION_KEY`, `S3_*` credentials). `restore_db.sh` reads the backup key and `S3_*` from this file itself; nothing needs to be exported.
-3. Start the database service:
+1. Provision a clean VPS with Docker and git, and clone the canonical repository `hiurano/buyerly` to `/opt/buyerly`.
+2. Put the old `/opt/buyerly/.env` back (from the password manager; see "Что нельзя потерять" in `DEPLOYMENT.md`). At least `BACKUP_ENCRYPTION_KEY`, the `S3_*` credentials and `META_TOKEN_ENCRYPTION_KEY` must be the old values.
+3. Deploy:
    ```bash
-   docker compose up -d db
+   bash scripts/deploy.sh
    ```
-4. Download and restore the latest encrypted backup from Cloudflare R2 / S3:
-   ```bash
-   bash scripts/restore_db.sh --download-latest-offsite --yes
-   ```
-5. Run migrations and start all production services:
-   ```bash
-   docker compose run --rm migrate
-   docker compose up -d
-   ```
-6. Verify `/health/ready` returns 200 and all worker heartbeats are active.
+   It finds the database empty, restores the newest off-site database backup and uploads archive, runs migrations and starts every service, the backup service included.
+4. Verify `/health/ready` returns 200 and all worker heartbeats are active.
 
-What this restores: the PostgreSQL database as of the newest nightly (03:00 server time) or pre-deploy
-backup. Not included: the `buyerly-uploads` volume (avatars, workspace logos) — users re-upload them.
+To restore by hand instead (a damaged but non-empty database): `docker compose up -d db`, then
+`bash scripts/restore_db.sh --download-latest-offsite --yes` and
+`bash scripts/restore_uploads.sh --download-latest-offsite --yes`, then `bash scripts/deploy.sh`.
+
+What this restores: the PostgreSQL database and the `buyerly-uploads` volume as of the newest nightly
+(03:00 UTC) backup, or the database as of the newest pre-deploy backup if that is later.
 `META_TOKEN_ENCRYPTION_KEY` must be the old value from the lost `.env`, or every stored Meta connection
 has to be re-authorized. Rehearse this path without touching production with
 `sudo bash scripts/offsite_restore_drill.sh --negative` (see `DEPLOYMENT.md`).
