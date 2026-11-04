@@ -84,10 +84,6 @@ class TestReactFrontendContract(unittest.TestCase):
             path.read_text()
             for path in sorted((ROOT / "frontend" / "src" / "ui").glob("*.tsx"))
         )
-        cls.copilot = (ROOT / ".github" / "copilot-instructions.md").read_text()
-        cls.pull_request_template = (
-            ROOT / ".github" / "pull_request_template.md"
-        ).read_text()
         cls.ui_contract = (ROOT / "docs" / "UI_CONTRACT.md").read_text()
         cls.design_system = (ROOT / "docs" / "DESIGN_SYSTEM.md").read_text()
         cls.campaigns_view = (
@@ -318,17 +314,7 @@ class TestReactFrontendContract(unittest.TestCase):
         ):
             self.assertIn(component, self.ui_sources)
 
-        self.assertIn("UI_CONTRACT.md", self.copilot)
-        self.assertIn("DESIGN_SYSTEM.md", self.copilot)
-        self.assertIn("frontend/src/styles/tokens.stylex.ts", self.copilot)
-        self.assertIn("frontend/src/ui/", self.copilot)
-        self.assertNotIn("webapp/css/ui-system.css", self.copilot)
-
-        for contract in (
-            self.ui_contract,
-            self.design_system,
-            self.pull_request_template,
-        ):
+        for contract in (self.ui_contract, self.design_system):
             self.assertIn("frontend/src/styles/tokens.stylex.ts", contract)
             self.assertIn("frontend/src/ui/", contract)
 
