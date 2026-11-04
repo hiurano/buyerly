@@ -545,3 +545,39 @@
   * выделение: одна команда «Labels…» (L) с одним выбором меток — метка, которая стоит не у всех выделенных, показана чертой и по клику ставится всем; отдельных «Add label» и «Remove label» нет, как и в Linear;
   * `assign-rule-group` (привязать к кабинету все правила группы) удалён: интерфейс его не использовал, а метка — пометка, не набор для запуска;
   * группы меток Linear (подметки) не делаем.
+
+---
+
+## Запись №54: Сервер переходит на TypeScript, библиотеки — как у Linear
+* **Дата:** 04.11.2026
+* **Статус:** Принято, этап 0 эпика #611.
+* **Проблема:** Клиент написан на TypeScript, сервер — на Python. Модели, GraphQL-схема и протокол синхронизации (`/sync/bootstrap`, `/sync/delta`, поток изменений) описаны дважды, и их совпадение ничто не проверяет. У Linear один язык на обеих сторонах, и общие типы проверяет компилятор.
+* **Что известно о сервере Linear** (проверено 04.11.2026; подтверждённое — из слов самого Linear, остальное помечено):
+  * TypeScript и Node — интервью CTO в Pragmatic Engineer («React on the frontend and Node on the backend», общий код клиента и сервера) и вакансии на linear.app/careers;
+  * PostgreSQL — основная база; Redis — очереди; GraphQL — API-слой (там же);
+  * TypeORM и TypeGraphQL — в тексте вакансии Senior/Staff Backend Engineer (2025, зеркало на Built In; на linear.app её уже нет);
+  * Temporal — для «agentic workload system» (текущая вакансия Fullstack Engineer на linear.app);
+  * Google Cloud и Kubernetes, мониторинг DataDog — вакансии; MongoDB как кэш — интервью CTO (старое, в вакансиях больше не встречается);
+  * Redis как шина событий синхронизации — только сторонние разборы, не подтверждено;
+  * HTTP-фреймворк, GraphQL-сервер, тестовый раннер и линтер Linear не называет.
+* **Решение:**
+  * **Runtime:** Node 24 LTS. Фронтенд в CI и в Dockerfile переходит на ту же версию;
+  * **Доступ к базе:** TypeORM, как у Linear. Сущности описываются по существующим таблицам: схема на время переезда не меняется;
+  * **Миграции:** пока жив хоть один писатель на Python, остаётся Alembic. После него — миграции TypeORM, первая из них фиксирует схему как есть;
+  * **GraphQL:** TypeGraphQL, как у Linear. Схема и резолверы — классы с декораторами, поэтому в `server/` включены `experimentalDecorators` и `emitDecoratorMetadata`, плюс `reflect-metadata`;
+  * **HTTP и WebSocket:** Fastify с `@fastify/websocket`, GraphQL поверх него — graphql-yoga. Linear своих не называет; берём зрелые и с хорошей поддержкой TypeScript;
+  * **Очереди и расписание:** Redis, как у Linear, через BullMQ — он заменяет APScheduler и даёт несколько воркеров без двойного запуска задач. В Compose появляется сервис `redis`;
+  * **Шина синхронизации:** уведомления о новых `SyncAction` между `worker` и `api` идут через Redis pub/sub вместо Postgres `LISTEN/NOTIFY`. Опрос журнала остаётся страховкой, как сейчас в `api/sync_stream.py`;
+  * **Temporal не берём:** у Linear он для долгих многошаговых агентных задач, у нас таких нет. Вернёмся, если появятся;
+  * **Тесты:** Vitest. esbuild не выводит метаданные декораторов, поэтому серверные тесты идут через `unplugin-swc`, а сборка сервера — через `tsc`;
+  * **Линтер:** ESLint с typescript-eslint, один конфиг на `frontend/`, `server/` и `packages/`;
+  * **Структура репозитория:** npm workspaces в корне — `frontend/`, `server/`, `packages/shared/`. В `packages/shared` лежат обычные типы моделей, JSONB-контрактов и сообщений синхронизации, без декораторов и зависимостей от сервера. Сущности TypeORM и типы TypeGraphQL на сервере реализуют эти типы, клиент импортирует их напрямую. Так компилятор ловит расхождение клиента и сервера;
+  * **Хостинг не меняется:** Google Cloud, Kubernetes и DataDog — вне эпика #611. Остаются один хост и Compose (запись №51). Переход на Kubernetes — отдельное решение, если одного хоста станет мало.
+* **Как переезжаем:** по областям. Новый `server` работает рядом с `api` на той же базе, туннель отдаёт каждый путь тому серверу, который им владеет, откат — переключение маршрута обратно. Движок правил переключается только после параллельного прогона обоих движков на живых данных со сверкой решений. Порядок этапов — в #611.
+* **Источники:**
+  * [The Story of Linear as told by its CTO](https://newsletter.pragmaticengineer.com/p/linear) — Pragmatic Engineer;
+  * [Senior / Staff Fullstack Engineer](https://linear.app/careers/d3bc1ced-3ce4-4086-a050-555055dbb1ff) — linear.app;
+  * [Senior / Staff Backend Engineer](https://www.builtincolorado.com/job/senior-staff-backend-engineer/6670028) — Built In, снята 07.08.2025;
+  * [Senior / Staff Software Engineer, API](https://www.builtinseattle.com/job/senior-staff-software-engineer-api/6399460) — Built In;
+  * [Reverse engineering Linear's sync magic](https://marknotfound.com/posts/reverse-engineering-linears-sync-magic/) — протокол bootstrap и delta;
+  * [How's Linear so fast?](https://performance.dev/how-is-linear-so-fast-a-technical-breakdown) — сторонний разбор (Redis как шина).
