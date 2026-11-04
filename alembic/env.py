@@ -19,20 +19,6 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
-def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode."""
-    url = settings.DATABASE_URL
-    context.configure(
-        url=url,
-        target_metadata=target_metadata,
-        literal_binds=True,
-        dialect_opts={"paramstyle": "named"},
-    )
-
-    with context.begin_transaction():
-        context.run_migrations()
-
-
 def do_run_migrations(connection: Connection) -> None:
     context.configure(connection=connection, target_metadata=target_metadata)
     with context.begin_transaction():
@@ -72,12 +58,14 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode."""
+    """Run migrations online; Buyerly never generates offline SQL scripts."""
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
         loop = None
 
+    # Tests call alembic.command from async test methods, where a loop is
+    # already running; the production runner calls it through asyncio.to_thread.
     if loop and loop.is_running():
         import concurrent.futures
 
@@ -87,7 +75,4 @@ def run_migrations_online() -> None:
         asyncio.run(run_async_migrations())
 
 
-if context.is_offline_mode():
-    run_migrations_offline()
-else:
-    run_migrations_online()
+run_migrations_online()

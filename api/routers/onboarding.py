@@ -44,61 +44,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Onboarding"])
 
 
-@router.get("/onboarding/status", response_model=OnboardingStatusResponse)
-async def get_onboarding_status(user: User = Depends(get_current_user)):
-    """Return the current onboarding status and progress step for the user."""
-    async with async_session_maker() as session:
-        db_user = (await session.execute(select(User).where(User.id == user.id))).scalar_one()
-        workspaces = await get_user_workspaces_list(session, db_user)
-        active_ws = next((w for w in workspaces if w.is_active), workspaces[0] if workspaces else None)
-
-        step = db_user.onboarding_step or "workspace"
-        if not workspaces:
-            step = "workspace"
-        elif not db_user.first_name and not db_user.full_name:
-            step = "personal_details"
-        elif not db_user.onboarding_completed:
-            active_workspace_id = active_ws.id if active_ws else None
-            membership = None
-            if active_workspace_id:
-                membership = (
-                    await session.execute(
-                        select(WorkspaceMember).where(
-                            WorkspaceMember.workspace_id == active_workspace_id,
-                            WorkspaceMember.user_id == db_user.id,
-                        )
-                    )
-                ).scalar_one_or_none()
-            step = "invites" if membership and membership.role == "owner" else "completed"
-        else:
-            step = "completed"
-
-        profile = UserProfileResponse(
-            username=db_user.username or "",
-            full_name=db_user.full_name or "",
-            first_name=getattr(db_user, "first_name", "") or "",
-            last_name=getattr(db_user, "last_name", "") or "",
-            title=db_user.title or "",
-            email=db_user.email,
-            email_verified=bool(getattr(db_user, "email_verified_at", None)),
-            unconfirmed_email=getattr(db_user, "unconfirmed_email", None),
-            avatar_url=getattr(db_user, "avatar_url", "") or "",
-            role=db_user.role,
-            is_approved=db_user.is_approved,
-            onboarding_step=step,
-            onboarding_completed=bool(db_user.onboarding_completed),
-            active_workspace=active_ws,
-            workspaces=workspaces,
-        )
-
-        return OnboardingStatusResponse(
-            onboarding_step=step,
-            onboarding_completed=bool(db_user.onboarding_completed),
-            user=profile,
-            active_workspace=active_ws,
-        )
-
-
 @router.post("/onboarding/personal-details", response_model=OnboardingStatusResponse)
 async def submit_onboarding_personal_details(
     req: PersonalDetailsRequest,

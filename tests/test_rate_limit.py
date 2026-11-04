@@ -345,27 +345,6 @@ class TestApiRateLimitingAndDosProtection(unittest.IsolatedAsyncioTestCase):
             blocked_res = await client.get("/api/onboarding/check-slug?slug=test-slug-blocked", headers=headers)
             self.assertEqual(blocked_res.status_code, 429)
 
-    async def test_parse_raw_max_payload_length_validation(self):
-        headers = {"Authorization": "Bearer test-valid-auth-token-12345"}
-        transport = client_api_transport(app=self.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            # Valid string within 64KB
-            valid_res = await client.post(
-                "/api/accounts/parse-raw",
-                json={"raw_text": "act_1000000000000001"},
-                headers=headers,
-            )
-            self.assertEqual(valid_res.status_code, 200)
-            self.assertEqual(len(valid_res.json()), 1)
-
-            # Oversized string > 65536 characters -> 422 Unprocessable Entity
-            oversized_res = await client.post(
-                "/api/accounts/parse-raw",
-                json={"raw_text": "A" * 70000},
-                headers=headers,
-            )
-            self.assertEqual(oversized_res.status_code, 422)
-
     async def test_request_body_size_limit_middleware(self):
         # 1MB limit for standard API routes -> HTTP 413
         headers = {
@@ -376,7 +355,7 @@ class TestApiRateLimitingAndDosProtection(unittest.IsolatedAsyncioTestCase):
         transport = client_api_transport(app=self.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             res = await client.post(
-                "/api/accounts/parse-raw",
+                "/api/accounts/batch-add",
                 content=b"{}",
                 headers=headers,
             )

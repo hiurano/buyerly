@@ -394,42 +394,6 @@ async def _deliver_otp(session, *, issued, email: str, log_context: str) -> None
 
 
 @router.post(
-    "/auth/request-email-verification",
-    dependencies=[Depends(rate_limit_dep(limit=5, window_seconds=60, scope="verify_req"))],
-)
-async def request_email_verification(user: User = Depends(get_current_user)):
-    """Request OTP code to verify the current unverified email of logged-in user."""
-    async with async_session_maker() as session:
-        db_user = (await session.execute(select(User).where(User.id == user.id))).scalar_one()
-        target_email = (db_user.email or "").strip().lower()
-        if not target_email or "@" not in target_email or "." not in target_email:
-            raise HTTPException(status_code=400, detail="You do not have a valid email address on file")
-        if db_user.email_verified_at is not None:
-            return {"ok": True, "message": "Email already confirmed", "already_verified": True}
-
-        scope = email_scope(db_user.id)
-        if await has_recent_active_otp(session, scope=scope):
-            raise HTTPException(
-                status_code=429,
-                detail="A code was sent recently. Wait one minute before requesting another.",
-            )
-
-        issued = await create_otp(
-            session,
-            email=target_email,
-            purpose=OTP_EMAIL_VERIFICATION,
-            scope=scope,
-        )
-        await session.commit()
-        await _deliver_otp(session, issued=issued, email=target_email, log_context="verification OTP")
-        db_user = (await session.execute(select(User).where(User.id == user.id))).scalar_one()
-        db_user.unconfirmed_email = target_email
-        await session.commit()
-
-        return {"ok": True, "message": "A confirmation code has been sent to your email"}
-
-
-@router.post(
     "/auth/request-email-change",
     dependencies=[Depends(rate_limit_dep(limit=5, window_seconds=60, scope="email_change_req"))],
 )

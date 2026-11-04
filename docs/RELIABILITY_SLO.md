@@ -47,7 +47,6 @@ Response expectations:
 ## Safe API surfaces
 
 - `GET /api/health/overview` returns only the signed-in user's active workspace, aggregate SLI values, alert routes, and safe per-account health.
-- `GET /api/accounts/{account_id}/health` requires the account to belong to that same active workspace.
 - `GET /api/accounts` embeds the latest safe health object for the account details view.
 
 Error messages are redacted and truncated before storage. The health schema intentionally has no token, cookie, authorization header, or raw Meta response fields.

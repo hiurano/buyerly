@@ -15,109 +15,6 @@ from database.db import Base
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 ALEMBIC_INI = PROJECT_ROOT / "alembic.ini"
-LEGACY_BASELINE_REVISION = "0009_web_sessions"
-POST_BASELINE_COLUMNS = {
-    "accounts": {
-        "access_token_encrypted",
-        # Added by the account lead migration (0044).
-        "lead_user_id",
-        # Added by the Statistics cost target migration (0025).
-        "primary_result",
-        "target_cost_per_result",
-    },
-    "email_verification_codes": {
-        "code_hash",
-        "purpose",
-        "scope",
-        "delivered_at",
-        # Added by the passwordless-login link migration (0022). Legacy
-        # databases are allowed to omit these until the normal upgrade runs.
-        "link_token_hash",
-        "invite_id",
-    },
-    "meta_oauth_states": {
-        "reconnect_connection_id",
-        "workspace_id",
-        "invite_id",
-    },
-    # Added by the rule on/off switch migration (0023) and the execution level
-    # migration (0024).
-    "rule_presets": {
-        "enabled",
-        "level",
-    },
-    "rule_groups": {
-        "icon",
-        # Added when groups became labels (0038).
-        "color",
-    },
-    "audit_events": {
-        "entity_level",
-        "entity_id",
-        "entity_name",
-    },
-    "rule_execution_states": {
-        "entity_level",
-        "entity_id",
-    },
-    # Added by the Inbox read-state migration (0028), the Inbox Display
-    # options migration (0029) and the notification channels migration (0030).
-    # Added by the Linear roles migration (0045).
-    "team_members": {
-        "is_owner",
-    },
-    # Added by the private teams migration (0046).
-    "teams": {
-        "private",
-    },
-    "workspace_members": {
-        "inbox_read_before",
-        "inbox_deleted_before",
-        "inbox_display",
-        "notification_channels",
-    },
-    # Added by the session location migration (0034).
-    "web_sessions": {
-        "location",
-    },
-    # Added by the profile title migration (0035).
-    "users": {
-        "title",
-    },
-}
-
-# Tables that were added after the legacy baseline and may be absent on pre-migration databases.
-POST_BASELINE_TABLES: set[str] = {
-    "account_health",
-    "analytics_entity_daily_facts",
-    "deleted_items",
-    "inbox_email_deliveries",
-    "inbox_notification_states",
-    "inbox_telegram_deliveries",
-    "meta_connection_invites",
-    "rule_entity_states",
-    # Added by the teams migration (0036).
-    "team_accounts",
-    # Added by the team documents migration (0043).
-    "team_documents",
-    "team_members",
-    "teams",
-    "telegram_connections",
-    "telegram_link_tokens",
-    # Added by the view settings migration (0037).
-    "view_settings",
-    # Added by the favorites migration (0049).
-    "favorites",
-    # Added by the account notification settings migration (0050).
-    "account_notification_settings",
-    # Added by the workspace view defaults migration (0048).
-    "workspace_view_defaults",
-    # Added by the sync log migration (0051).
-    "sync_actions",
-    # Added by the desktop notifications migration (0053).
-    "desktop_push_subscriptions",
-    "inbox_push_deliveries",
-}
 REQUIRED_COLUMN_TYPES = {
     ("automation_runtime_states", "payload"): "JSONB",
 }
@@ -141,23 +38,15 @@ def _schema_snapshot(sync_connection) -> dict[str, set[str]]:
     }
 
 
-def _contract_errors(
-    snapshot: dict[str, set[str]],
-    *,
-    baseline: bool = False,
-) -> list[str]:
+def _contract_errors(snapshot: dict[str, set[str]]) -> list[str]:
     errors = []
     expected_tables = Base.metadata.tables
     for table_name, table in sorted(expected_tables.items()):
-        if baseline and table_name in POST_BASELINE_TABLES:
-            continue
         actual_columns = snapshot.get(table_name)
         if actual_columns is None:
             errors.append(f"missing table {table_name}")
             continue
         expected_columns = set(table.columns.keys())
-        if baseline:
-            expected_columns -= POST_BASELINE_COLUMNS.get(table_name, set())
         missing_columns = sorted(expected_columns - actual_columns)
         if missing_columns:
             errors.append(
@@ -201,69 +90,6 @@ async def _read_schema_snapshot() -> dict[str, set[str]]:
             return await connection.run_sync(_schema_snapshot)
     finally:
         await migration_engine.dispose()
-
-
-async def _read_alembic_heads() -> set[str] | None:
-    """Return current revisions, or ``None`` when the version table is absent."""
-    migration_engine = create_async_engine(
-        settings.DATABASE_URL,
-        poolclass=NullPool,
-    )
-    try:
-        async with migration_engine.connect() as connection:
-            return await connection.run_sync(
-                lambda sync_connection: (
-                    set(
-                        MigrationContext.configure(
-                            sync_connection
-                        ).get_current_heads()
-                    )
-                    if "alembic_version"
-                    in inspect(sync_connection).get_table_names()
-                    else None
-                )
-            )
-    finally:
-        await migration_engine.dispose()
-
-
-async def _adopt_legacy_schema_if_needed(config: Config) -> None:
-    current_heads = await _read_alembic_heads()
-    if current_heads:
-        return
-
-    snapshot = await _read_schema_snapshot()
-    if not snapshot:
-        return
-
-    errors = _contract_errors(snapshot, baseline=True)
-    if errors:
-        joined = "; ".join(errors[:20])
-        raise RuntimeError(
-            "Refusing to stamp an unversioned database with schema drift: "
-            f"{joined}"
-        )
-
-    unexpected_future_columns = []
-    for table_name, future_columns in POST_BASELINE_COLUMNS.items():
-        present = sorted(snapshot.get(table_name, set()) & future_columns)
-        if present:
-            unexpected_future_columns.append(
-                f"{table_name}: {', '.join(present)}"
-            )
-    if unexpected_future_columns:
-        raise RuntimeError(
-            "Refusing to stamp an unversioned database that already contains "
-            "post-baseline columns: "
-            + "; ".join(unexpected_future_columns)
-        )
-
-    # Buyerly production predates Alembic execution but already contains the
-    # schema/data transformations through 0009. Stamp that explicit baseline;
-    # every later revision is then applied normally by `upgrade head`. Treat an
-    # existing but empty version table like a missing one: a failed/partial
-    # adoption can create the table before its version row is committed.
-    await asyncio.to_thread(command.stamp, config, LEGACY_BASELINE_REVISION)
 
 
 async def _assert_database_at_head(config: Config) -> None:
@@ -314,7 +140,6 @@ async def _assert_schema_contract() -> None:
 async def run_production_migrations() -> None:
     """Run the sole production schema path and fail closed on schema drift."""
     config = alembic_config()
-    await _adopt_legacy_schema_if_needed(config)
     await asyncio.to_thread(command.upgrade, config, "head")
     await _assert_database_at_head(config)
     await _assert_schema_contract()

@@ -43,7 +43,6 @@ monitoring cycle делает обзор `degraded` или `critical`, даже 
 | `POST /api/auth/request-temporary-password` | `email`, `invite_token?`, `turnstile_token?` | вход и регистрация по почте: любой почте высылает одно письмо с одноразовой ссылкой и кодом. Новой почте без приглашения нужен `turnstile_token` от виджета Cloudflare Turnstile, иначе 400 без письма (проверка выключена, пока на сервере не задан `TURNSTILE_SECRET_KEY`). Недействительное или чужое `invite_token` — 403 |
 | `POST /api/auth/verify-temporary-password` | `email`, `code` | атомарно потребляет общий login credential, повторно проверяет доступ и открывает web-сессию; аккаунт с неподтверждённой почтой не открывает (403) |
 | `POST /api/auth/verify-email-link` | `token` | атомарно потребляет тот же login credential по ссылке; после этого код также недействителен |
-| `POST /api/auth/request-email-verification` | — | высылает 6-значный одноразовый код на текущий неподтверждённый email |
 | `POST /api/auth/request-email-change` | `new_email` | высылает 6-значный код подтверждения для привязки нового email |
 | `POST /api/auth/verify-email-change` | `code` | верифицирует OTP и активирует подтверждённый email |
 | `POST /api/auth/update-profile` | `first_name?`, `last_name?`, `email?`, `avatar_url?`, `full_name?`, `title?` (до 128), `username?` (до 40: буквы, цифры, `-` `_` `.`) | обновляет персональные данные профиля; пустое имя, неверный или занятый username — 400 с текстом Linear |
@@ -64,7 +63,6 @@ monitoring cycle делает обзор `degraded` или `critical`, даже 
 |---|---|---|
 | `GET /api/workspaces` | — | список всех доступных пользователю воркспейсов |
 | `POST /api/workspaces` | `name`, `slug?`, `badge_color?`, `badge_text?`, `logo_url?` | создаёт новый воркспейс и делает его активным |
-| `GET /api/workspaces/current` | — | данные текущего активного воркспейса |
 | `POST /api/workspaces/switch` | `workspace_id?`, `slug?` | переключает активный воркспейс пользователя |
 | `PATCH /api/workspaces/{workspace_id}` | `name?`, `slug?`, `badge_color?`, `badge_text?`, `logo_url?` | обновляет настройки и оформление воркспейса (`owner` и `admin`); новый `slug` нормализуется как при создании, занятый или зарезервированный — 409, старый адрес перестаёт работать |
 | `DELETE /api/workspaces/{workspace_id}` | — | удаляет воркспейс (доступно владельцу при наличии других воркспейсов) |
@@ -127,7 +125,6 @@ Settings → Administration → Teams, как в Linear (#371). Команда �
 
 | Метод и путь | Тело | Назначение |
 |---|---|---|
-| `GET /api/onboarding/status` | — | проверка текущего шага онбординга и профиля пользователя |
 | `POST /api/onboarding/personal-details` | `first_name`, `last_name?` | сохранение отображаемого имени после создания или принятия workspace; поле Title отсутствует; почту здесь не меняют |
 | `POST /api/onboarding/avatar` | `file` (multipart) | проверка реального содержимого и загрузка фотографии профиля (PNG, JPG, WEBP до 5 МБ) |
 | `DELETE /api/onboarding/avatar` | — | удаление аватара и возврат к инициальному бейджу |
@@ -147,8 +144,6 @@ Settings → Administration → Teams, как в Linear (#371). Команда �
 | Метод и путь | Тело | Назначение |
 |---|---|---|
 | `GET /api/accounts` | — | список кабинетов, тип подключения, внутренние пометки, Meta/rules state и последние сохранённые метрики `today` |
-| `GET /api/accounts/{account_id}/health` | — | workspace-isolated health конкретного кабинета: статус, причина, безопасная последняя ошибка, сигналы и даты проверок |
-| `POST /api/accounts/parse-raw` | `raw_text` | разбирает текстовый экспорт в `account_id` и `parsed_name`, ничего не сохраняет |
 | `POST /api/accounts/batch-add` | `accounts[]`, `batch_name?`, `access_token` | проверяет кабинеты через Meta и добавляет/обновляет их |
 | `PATCH /api/accounts/{account_id}/profile` | `custom_name`, `note` | сохраняет внутреннее название до 120 символов и заметку до 500 символов, не меняя имя в Meta |
 | `PATCH /api/accounts/{account_id}/lead` | `lead_user_id` (или `null`) | Lead кабинета, как у проекта в Linear: ответственный баер из участников воркспейса (чужой — 400); при подключении Lead — тот, кто подключил, при уходе из воркспейса Lead снимается. Уведомления Inbox по кабинету с Lead приходят только ему; по кабинетам без Lead и событиям без кабинета — всем. Список кабинетов отдаёт `lead_user_id` |
@@ -192,9 +187,7 @@ Settings → Administration → Teams, как в Linear (#371). Команда �
 | `GET /api/meta/invites/public/{token}` | — | публичная проверка статуса инвайт-ссылки без авторизации для лендинга подключения |
 | `GET /api/meta/connections` | — | список Meta-профилей текущего владельца без access token |
 | `DELETE /api/meta/connections/{connection_id}` | — | удаляет собственное подключение в активном workspace, отключает связанные кабинеты и их автоматику до переподключения |
-| `POST /api/meta/connections/{connection_id}/validate` | — | проверяет статус токена в Meta, выявляет отозванные права и обновляет оставшийся срок действия |
 | `POST /api/meta/connections/{connection_id}/discover` | — | проверяет токен и обновляет полный список доступных кабинетов из `/me/adaccounts` |
-| `GET /api/meta/connections/{connection_id}/assets` | — | возвращает последнее сохранённое обнаружение с признаком уже импортированных кабинетов |
 | `POST /api/meta/connections/{connection_id}/import` | `account_ids[]` | повторно проверяет выбранные кабинеты в Meta и связывает их с зашифрованным подключением |
 
 Meta возвращает браузер на служебный callback `/api/meta/oauth/callback`. Callback не требует Buyerly-заголовка, потому что пользователь приходит напрямую от Facebook, но принимает только неистёкший одноразовый `state`, привязанный к Buyerly-пользователю. Полученный токен проверяется через Meta, сверяется с `META_APP_ID`, шифруется и только после этого сохраняется. OAuth `code`, app secret и access token не возвращаются в интерфейс.
@@ -478,8 +471,6 @@ Meta возвращает браузер на служебный callback `/api/
 | `PATCH /api/entities/{level}/{entity_id}/budget` | `account_id`, `daily_budget` | меняет дневной бюджет той сущности, которая им владеет: кампании при CBO, ad set при ABO; бюджет только переносится, но не создаётся — сущность без бюджета отвечает `409`, объявление `400`, значение ниже единицы валюты кабинета `422` |
 | `GET /api/analytics/hierarchy` | `parent_id`, `level=campaign|adset|ad`, `period=today|yesterday|last_3d|last_7d`, `compare=none|previous` | возвращает нормализованные дочерние сущности и метрики из Analytics Fact Store; campaign-уровень сохраняет полный Meta inventory, включая кампании без активности за период; `source` и `data_as_of` описывают источник и консервативную свежесть набора; `compare=previous` добавляет объект `comparison` и поле `previous` в каждую строку; `parent_entity_id` строки — её собственный родитель из fact store (account для campaign, campaign для adset, adset для ad), а не `parent_id` запроса; `parent_id` — рекламный кабинет воркспейса (уровень читается по всему кабинету) либо кампания или ad set, чей кабинет находится по сохранённым фактам этого воркспейса и тоже должен в нём состоять; окна периода и сравнения на любой глубине считаются по часам этого кабинета, иначе — `404`; доли и цены считаются из сумм окна и округляются половиной вверх до сотых; `ctr`, `ctr_link`, `ctr_outbound`, `cpm` без показов, `cpc` без кликов и `cost_per_*` без событий — `null` |
 | `GET /api/analytics/hierarchy/accounts` | `account_ids` (Meta ID кабинетов через запятую, не больше 500), `period=today|yesterday|last_3d|last_7d` | кампании, ad sets и объявления нескольких кабинетов одним запросом — так Campaigns и My campaigns показывают все кабинеты сразу; видимость кабинетов проверяется один раз, а строки каждого кабинета в `accounts[]` (`campaigns`, `adsets`, `ads`) те же, что `/api/analytics/hierarchy` с этим кабинетом в `parent_id`, в его собственных датах; кабинет, которого участник не видит или которого нет в воркспейсе, приходит в `missing` и не скрывает остальные; больше 500 кабинетов — `422` |
-| `GET /api/analytics-view` | — | сохранённое представление таблицы пользователя |
-| `PUT /api/analytics-view` | view payload | сохраняет вид, колонки, порядок, ширины, сортировку, фильтры и период |
 
 `force=true` запрашивает Meta и сохраняет новый snapshot; обычный запрос сначала возвращает память или последний успешный snapshot PostgreSQL. Ответ сводки содержит `generated_at`, `snapshot`, `cache`, `data_quality`, `metric_definitions`, итоги и `accounts[]`. Перед возвратом сохранённые строки обогащаются актуальными `custom_name` и `note`, поэтому изменение внутренней подписи видно без повторной синхронизации Meta.
 
@@ -549,10 +540,6 @@ Inbox, как в Linear, показывает события workspace как у
 | Метод и путь | Доступ | Назначение |
 |---|---|---|
 | `GET /api/settings` | авторизованный пользователь | параметры опроса, роль и последний сохранённый статус worker |
-| `POST /api/settings/automation` | только admin | атомарно сохраняет параметры автоматики и защиты квоты |
-| `POST /api/settings/interval` | только admin | совместимый endpoint базового интервала; тело `{"minutes": 10}` |
-
-`POST /api/settings/automation` принимает `poll_interval_minutes`, `critical_rule_interval_minutes`, `stop_confirmation_minutes`, `inventory_cache_minutes`, `account_health_interval_minutes`, `max_concurrent_accounts`, `max_concurrent_actions`, `usage_soft_limit_percent`, `usage_hard_limit_percent` и `adaptive_polling_enabled`. `stop_confirmation_minutes` задаёт непрерывное окно повторной проверки перед STOP (0–60 минут, по умолчанию 10). Мягкий порог должен быть ниже жёсткого; числовые пределы проверяются API.
 
 Интервал правила применяется к самому правилу, но STOP-правило никогда не ждёт дольше защищённого критического интервала. Базовый интервал относится к фоновому мониторингу кабинета, а здоровье (статус, валюта, часовой пояс) имеет отдельный более редкий график. Worker запускает диспетчерский цикл каждую минуту, но обращается к Meta только при наступлении сохранённого расписания или когда нужно уточнить неизвестную валюту.
 
@@ -607,7 +594,6 @@ curl -fsS https://buyerly.app/api/me \
 
 | Метод и путь | Назначение |
 |---|---|
-| `GET /api/onboarding/status` | текущий шаг и статус прохождения онбординга |
 | `POST /api/onboarding/personal-details` | сохранение Name; фамилия опциональна, Title отсутствует |
 | `POST /api/onboarding/avatar` | загрузка аватара профиля |
 | `DELETE /api/onboarding/avatar` | удаление аватара профиля |

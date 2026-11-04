@@ -371,7 +371,7 @@ gh workflow run ops-drill.yml -f drill=restore-local -f confirm=restore-local
 
 `/health/worker` (публичный: `https://buyerly.app/health/worker`) отдаёт 503, когда последний завершённый monitoring cycle старше 360 с. Его стоит добавить во внешний uptime-монитор рядом с `/health/ready`: тогда о зависшем worker узнают и в случае, когда не работает сама доставка Inbox.
 
-`migrate` изменяет production-схему только через `alembic upgrade head`. Одновременный запуск блокируется PostgreSQL advisory lock; после миграции контейнер сверяет текущий revision с Alembic head и проверяет наличие всех таблиц и колонок из моделей. Для исторической базы без `alembic_version` разрешён только одноразовый переход на явно зафиксированный baseline `0009_web_sessions`, причём перед stamp выполняется fail-closed проверка схемы. `create_all()` и ручные `ALTER TABLE` в production-runner не используются.
+`migrate` изменяет production-схему только через `alembic upgrade head`. Одновременный запуск блокируется PostgreSQL advisory lock; после миграции контейнер сверяет текущий revision с Alembic head и проверяет наличие всех таблиц и колонок из моделей. `create_all()` и ручные `ALTER TABLE` в production-runner не используются.
 
 Пользовательские аватары и логотипы хранятся в именованном Docker volume
 `buyerly-uploads`: API записывает их в `/app/uploads` и сам отдаёт по `/uploads/…`.
