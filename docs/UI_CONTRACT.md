@@ -116,6 +116,6 @@ Every UI pull request must:
 4. Preserve ids, handlers, API payloads, workspace isolation and security boundaries unless explicitly in scope.
 5. Update `tests/test_react_frontend_contract.py` when the production UI contract changes. Legal route and asset coverage lives in `tests/test_legal_pages.py`.
 6. Pass GitHub Actions, and check keyboard focus, disabled/busy/error states and overflow.
-7. Update `CHANGELOG.md` for user-visible or contract-level changes.
+7. For a change users will notice, add or extend a release note in `changelog/` and rebuild it with `scripts/build_changelog.py`.
 
 Vite fingerprints production assets, so there is no manual stylesheet cache-version step. If a request conflicts with this contract, explain the conflict in the pull request instead of silently creating a one-off implementation.
